@@ -472,6 +472,504 @@ At ~30-80 tokens once per file type per session, this is negligible. A typical s
 
 ---
 
+## 4. Empty File Warning (Parity)
+
+**Problem:** When precision_read encounters an empty file, it silently returns `line_count: 1` with a blank line. The agent has no indication the file is actually empty — it may think it read a one-line file with whitespace. Native Read returns a `<system-reminder>Warning: the file exists but the contents are empty.</system-reminder>`. Native throws a hard error for empty images.
+
+**Goal:** Reach parity with native. No intent guessing, no LLM interaction, no template generation. Just clear, structured feedback.
+
+### Detection
+
+```typescript
+const stats = await fs.stat(validatedPath);
+const isEmpty = stats.size === 0;
+```
+
+Using `stats.size === 0` (byte-level) rather than native's `totalLines === 0` (line-level). More accurate — catches true zero-byte files.
+
+### Response Format
+
+```json
+{
+  "status": "empty",
+  "path": "src/config.ts",
+  "exists": true,
+  "size_bytes": 0,
+  "warning": "File exists but is empty (0 bytes)"
+}
+```
+
+For all file types (text, image, PDF, notebook) — return the same structured warning. Non-fatal for all types (native throws on empty images; we don't).
+
+### Integration with FileStateCache
+
+- Empty files are cached with `contentHash` of the empty string's sha256
+- On re-read: if still empty, return `"status": "still_empty"` (short response, no repeated warning)
+- If content appears: return full content normally with `"note": "File was previously empty, now has content"`
+
+### Implementation Notes
+
+- Zero additional disk reads — `stats` is already available from the stat call shared with Item 6
+- Token cost: ~15-20 tokens per empty file response. Prevents agent confusion on a 0-byte file.
+- No file-type-specific suggestions, no git lookups — just the facts.
+
+---
+
+## 5. Slow Filesystem Detection & UNC Path Support
+
+**Problem:** UNC paths (`\\server\share\file.txt` or `//server/share/file.txt`) are one specific case of a broader issue: **non-local filesystems**. Enterprise environments use network drives, but developers also hit slow I/O from WSL cross-filesystem mounts (`/mnt/c/...`), Docker volume mounts, NFS/CIFS shares, and FUSE filesystems. Native Read handles UNC paths implicitly through Node builtins but has no awareness of filesystem speed at all.
+
+**Risk:** Our `normalizePath()` could mangle UNC paths by treating `//server/` as a Git Bash path. And for all slow-filesystem scenarios, re-reading files is expensive — cache priority should be higher.
+
+**Solution:** Three things: (1) UNC-safe path normalization, (2) generic slow-filesystem detection via stat latency, (3) adaptive caching behavior.
+
+### UNC Path Detection & Normalization
+
+```typescript
+function isUNCPath(p: string): boolean {
+  // Windows-style: \\server\share or \\?\UNC\server\share
+  if (p.startsWith('\\\\')) return true;
+  // Unix-style UNC: //server/share
+  if (p.startsWith('//') && !p.startsWith('///')) return true;
+  return false;
+}
+
+function normalizePath(p: string): string {
+  if (isUNCPath(p)) {
+    // UNC paths: normalize but skip Git Bash conversion
+    return path.normalize(p);
+  }
+  // existing Git Bash conversion logic...
+}
+```
+
+Normalization rules:
+1. **UNC paths**: Skip Git Bash conversion, apply `path.normalize()` only
+2. **Git Bash paths** (`/c/Users/...`): Convert to `C:/Users/...` (existing behavior)
+3. **Regular paths**: `path.normalize()` as normal
+
+### Slow Filesystem Detection
+
+We already call `fs.stat()` for Items 4 and 6. Measure how long it takes:
+
+```typescript
+const statStart = performance.now();
+const stats = await fs.stat(validatedPath);
+const statMs = performance.now() - statStart;
+
+const isSlow = statMs > 50; // Local stat is <1ms; >50ms indicates non-local
+```
+
+**Detection heuristics (in order):**
+
+| Signal | Threshold | What it catches |
+|---|---|---|
+| `stat()` latency | >50ms | Any slow filesystem (NFS, CIFS, FUSE, remote) |
+| UNC path prefix | `\\` or `//` | Windows network drives |
+| WSL cross-mount | `/mnt/[a-z]/` | WSL accessing Windows filesystem |
+| Known slow prefixes | configurable list | Docker volumes, custom mounts |
+
+### Adaptive Behavior for Slow Paths
+
+When a path is detected as slow:
+
+1. **Response metadata**: Include `"filesystem": "slow"` and `"stat_ms": 124` so agents know I/O is expensive
+2. **Cache priority boost**: Slow-filesystem files get higher priority in FileStateCache LRU — evicted last, since re-reading is costly
+3. **Timeout extension**: Automatic timeout increase for slow paths (e.g., 2x the normal timeout)
+4. **Network-specific errors**: UNC/network path failures return `"is_network": true` with connectivity suggestions instead of generic ENOENT
+
+### Response Metadata (added to normal read response)
+
+```json
+{
+  "content": "...",
+  "metadata": {
+    "filesystem": "slow",
+    "stat_ms": 124,
+    "is_network": true,
+    "note": "File is on a slow filesystem (124ms stat). Cached with high priority."
+  }
+}
+```
+
+For local files: `"filesystem"` key is omitted entirely (zero token cost on the common path).
+
+### Path Translation Hints
+
+For known cross-filesystem scenarios, suggest the canonical path:
+
+| Detected Path | Suggestion |
+|---|---|
+| `/mnt/c/Users/...` (WSL) | "This is a WSL cross-mount. Native Windows path: `C:\Users\...`" |
+| `C:\Users\...` in WSL context | "Use `/mnt/c/Users/...` for WSL-native access" |
+
+These are regex-based detections — no external calls.
+
+### What Exceeds Native
+
+| Aspect | Native | Ours |
+|---|---|---|
+| UNC detection | Implicit via Node builtins | Explicit detection + `is_network` flag |
+| Slow filesystem awareness | None | Stat latency measurement + adaptive behavior |
+| Cache priority | Same for all files | Slow-filesystem files get LRU priority boost |
+| Error messages | Generic ENOENT/EACCES | Network-specific errors with connectivity suggestions |
+| Path normalization | `path.normalize()` only | UNC-aware + Git Bash-safe normalization |
+| Cross-platform paths | Windows only (effectively) | WSL cross-mounts, Docker volumes, `//` Unix UNC |
+| Path translation | None | Suggests canonical form for WSL/cross-mount paths |
+| Timeout adaptation | Fixed | Auto-extended for slow filesystems |
+
+### Implementation Notes
+
+- **Zero overhead on local files**: `performance.now()` around an already-required `stat()` call. If stat is fast, skip all slow-path logic.
+- `stat()` is shared with Items 4 and 6 — one call serves empty detection, size gating, and speed measurement
+- Slow-path detection is configurable: custom prefix list in `goodvibes.json` for project-specific mounts
+- Path translation hints are pure regex — no external calls, no LLM
+- No new dependencies required
+
+---
+
+## 6. Pre-Read Size Gate with Automatic Pagination & Smart Preview
+
+**Problem:** Both native Read and precision_read read the **entire file into memory** before checking if it's too large. For a 500MB log file or a massive build artifact, this means:
+- Memory spike (Node reads full buffer)
+- Wasted I/O (read then discard)
+- Wasted time (large file reads can take seconds)
+
+Native's limits: `maxSizeBytes = 262144` (256KB), `maxTokens = 25000`. Both checked AFTER read. When exceeded, returns a generic error telling the agent to use offset/limit. Agent gets zero useful data.
+
+Precision_read's limits: `MAX_BINARY_SIZE = 5MB` for binaries only. No text file size gate. `max_per_item` and `max_tokens` are post-read truncation only.
+
+**Solution:** Use `fs.stat()` to check file size BEFORE reading. When a file exceeds the threshold, **never return nothing** — always return useful data. Two modes: (1) paginated content for verbose/content requests, (2) smart auto-preview for unspecified extraction modes.
+
+### Pre-Read Flow
+
+```
+stat() → size check → decide:
+  ├─ Under threshold → read normally
+  ├─ Over threshold, content/verbose requested → paginated read (first page)
+  ├─ Over threshold, no extract specified → smart auto-preview by file type
+  ├─ Over threshold, extract specified (outline/symbols/etc) → use that mode (no gate)
+  ├─ Over threshold, binary → reject with suggestion
+  └─ Over threshold, force: true → read full file with truncation warning
+```
+
+Key insight: if the agent explicitly requested `extract: "symbols"` or `extract: "outline"`, there's no reason to gate — those modes are already token-efficient. The gate only fires for full-content reads.
+
+### Default Thresholds (Configurable)
+
+| Threshold | Default | Native | Notes |
+|---|---|---|---|
+| `max_file_bytes` | 524288 (512KB) | 262144 (256KB) | Higher default — we handle large files better |
+| `max_token_estimate` | 50000 | 25000 | Higher — our verbosity controls reduce output cost |
+| `page_size_lines` | 200 | N/A | Lines per page for paginated reads |
+| `max_binary_bytes` | 5242880 (5MB) | N/A | Existing, keep as-is |
+
+Configurable via `precision_config` tool and `goodvibes.json`.
+
+### Token Estimation Pre-Read
+
+```typescript
+const estimatedTokens = Math.ceil(stats.size / 4);  // ~4 bytes per token
+
+if (estimatedTokens > maxTokenEstimate && !hasExplicitExtract) {
+  // Trigger paginated read or smart preview
+}
+```
+
+### Mode 1: Paginated Content Read
+
+When the agent requests `extract: "content"` (or default) on a large file, return the **first page** of content automatically with pagination metadata:
+
+```json
+{
+  "status": "paginated",
+  "path": "src/large-module.ts",
+  "page": 1,
+  "lines_returned": "1-200",
+  "total_lines": 4850,
+  "total_pages": 25,
+  "size_bytes": 245000,
+  "size_human": "239.3 KB",
+  "content": "    1 | import { foo } from './bar.js';\n    2 | import { baz } from './qux.js';\n    ...\n  200 | export function processData(input: DataInput): Result {",
+  "next_page": {
+    "hint": "To read the next page, use: range: {start: 201, end: 400}",
+    "range": {"start": 201, "end": 400}
+  },
+  "alternatives": [
+    {"extract": "symbols", "description": "Get function/class definitions only"},
+    {"extract": "outline", "description": "Get structural overview"}
+  ]
+}
+```
+
+The agent naturally follows by calling precision_read again with `range: {start: 201, end: 400}`. No special pagination API — uses existing `range` parameter. Each subsequent page also includes `next_page` until the last page.
+
+**Page calculation:**
+```typescript
+const pageSize = config.page_size_lines || 200;
+const totalLines = countLines(stats.size);  // estimate from byte size, or fast line count
+const totalPages = Math.ceil(totalLines / pageSize);
+```
+
+### Mode 2: Smart Auto-Preview
+
+When the agent reads a large file **without specifying an extraction mode**, auto-select the most useful preview based on file type:
+
+| File Type | Auto-Preview Strategy | What's Returned |
+|---|---|---|
+| Source code (`.ts`, `.js`, `.py`, etc.) | `symbols` extraction | Function/class definitions, exports |
+| Log files (`.log`, `*.log.*`) | Last N lines (tail) | Most recent log entries |
+| CSV/TSV data files | First N lines (head) | Headers + first few data rows |
+| JSON files | Structural outline | Keys, nesting depth, array lengths (no values) |
+| Minified/bundled JS | `outline` extraction | Structure without minified content |
+| Lock files (`*.lock`) | Metadata only | "Lock file with X packages. Use precision_grep for specific packages." |
+| Config files | First page (paginated) | Usually small enough, but paginate if huge |
+| Unknown/other | First page (paginated) | Default fallback |
+
+```json
+{
+  "status": "auto_preview",
+  "path": "src/huge-module.ts",
+  "preview_mode": "symbols",
+  "size_bytes": 2097152,
+  "size_human": "2.0 MB",
+  "total_lines": 48500,
+  "content": {
+    "symbols": [
+      {"name": "processData", "kind": "function", "line": 42, "exported": true},
+      {"name": "DataInput", "kind": "interface", "line": 8, "exported": true},
+      {"name": "Result", "kind": "type", "line": 15, "exported": true}
+    ]
+  },
+  "full_content_hint": "File has 48,500 lines. Use range: {start: 1, end: 200} for paginated content read.",
+  "alternatives": [
+    {"extract": "content", "description": "Paginated full content (200 lines per page)"},
+    {"extract": "outline", "description": "Structural overview"},
+    {"action": "precision_grep", "description": "Search for specific content"}
+  ]
+}
+```
+
+For **log files**, the tail behavior is particularly useful:
+
+```json
+{
+  "status": "auto_preview",
+  "path": "logs/server.log",
+  "preview_mode": "tail",
+  "size_bytes": 15728640,
+  "size_human": "15.0 MB",
+  "total_lines": 125000,
+  "lines_returned": "124801-125000",
+  "content": "124801 | 2026-02-07 14:23:01 [INFO] Request processed in 42ms\n124802 | 2026-02-07 14:23:02 [WARN] Connection pool at 80%\n...",
+  "full_content_hint": "File has 125,000 lines. Use range: {start: 1, end: 200} for first page."
+}
+```
+
+### Force Override
+
+When `force: true` is passed, the size gate is bypassed entirely:
+- Full file is read into memory
+- `max_per_item` truncation still applies
+- Response includes a warning: `"warning": "Large file (15.0 MB) — output truncated to {max_per_item} lines"`
+- Token cost is noted: `"estimated_tokens_returned": 8500`
+
+### File-Type-Specific Suggestions (included in all gated responses)
+
+| File Type | Additional Suggestion |
+|---|---|
+| Log files | "Use `range` with `start` near end of file to see recent entries" |
+| Bundle/minified JS | "Use `symbols` to extract exports without reading minified content" |
+| Generated files | "This appears to be a generated file — consider reading the source instead" |
+| CSV/data files | "Use `range` to sample rows, or `precision_grep` to find specific records" |
+| Lock files | "Lock files are rarely useful to read in full — use `precision_grep` for specific packages" |
+
+### Integration with FileStateCache
+
+- **Paginated reads**: Only the returned page is cached. Subsequent pages update the cache entry.
+- **Auto-preview reads**: The preview data (symbols, outline, etc.) is cached. Full content is NOT cached (not read).
+- **Full reads** (force or under threshold): Full content cached as normal.
+- Size-gated files always store `stats` metadata: `{size, mtime, totalLines, gated: true, previewMode}`
+- Re-reads of gated files: if file hasn't changed (same mtime + size), return same gate/preview response from cache
+
+### What Exceeds Native
+
+| Aspect | Native | Ours |
+|---|---|---|
+| When checked | After full read | Before read (via stat) |
+| Memory impact | Full file loaded then discarded | Never loaded (or only one page) |
+| Data returned on gate | Zero (just an error) | First page of content OR smart preview |
+| Pagination | None (manual offset/limit) | Automatic with page metadata and next_page hint |
+| File-type awareness | None | Auto-selects best preview mode per file type |
+| Log file handling | Same as all files | Returns tail (most recent entries) |
+| CSV handling | Same as all files | Returns headers + sample rows |
+| JSON handling | Same as all files | Returns structural outline |
+| Default thresholds | 256KB / 25K tokens | 512KB / 50K tokens |
+| Configurable | Via env var only | Via precision_config + goodvibes.json |
+| Force override | No | Yes — read anyway with truncation warning |
+| Extraction bypass | N/A | outline/symbols requests skip the gate entirely |
+
+### Implementation Notes
+
+- `fs.stat()` is fast (~0.1ms for local files) — negligible overhead even when file is under threshold
+- The stat call is shared with Items 4 and 5 — one `stat()` serves empty detection, size gating, and speed measurement
+- **Paginated reads use streaming**: `fs.createReadStream()` with a line counter, stopping at `pageSize`. Never loads the full file.
+- Smart preview file type detection reuses Item 3's file type detection — no additional logic
+- The `force: true` parameter is shared with FileStateCache (Item 1) — same parameter, consistent behavior
+- Token estimation from bytes is approximate but good enough for gating decisions
+- Total line count estimation: `stats.size / avgBytesPerLine` (use 80 as default, or measure from first 4KB sample)
+
+---
+
+## 7. Token-Budgeted Batch Pagination
+
+**Problem:** Batch reads (`files: [A, B, C, D, E]`) dump all content into a single response. Five medium-sized files at `extract: "content"` can easily produce 200K+ tokens. The MCP response becomes enormous, blowing past context limits and wasting tokens the agent can't use.
+
+**Solution:** Token-budgeted pagination for batch reads. Include as many complete files as fit within the token budget, partial content for the file that straddles the boundary, and explicitly list what's pending. Uses FileStateCache (Item 1) as the intermediate buffer — no special storage area needed.
+
+### When Pagination Applies
+
+Only for verbose/content modes. Lighter extractions never need it:
+
+| Mode | Paginated? | Why |
+|---|---|---|
+| `count_only` | No | A few numbers per file. Entire batch fits trivially. |
+| `minimal` | No | File exists + line count + size. Tiny per file. |
+| `symbols` | No | Function/class names + line numbers. Compact even for 50 files. |
+| `outline` | No | Structural overview. Compact. |
+| `lines` (with range) | No | Bounded by the range itself. |
+| `content` (standard/verbose) | **Yes** | Full file text. Unbounded per file. |
+| `ast` | Rarely | Can be large for complex files, but unlikely in batch. Apply if total exceeds budget. |
+
+Gate logic:
+```typescript
+const needsPagination = 
+  (extract === 'content' || extract === 'ast') &&
+  estimatedBatchTokens > tokenBudget;
+```
+
+### Batch Read Flow
+
+```
+Agent requests: files: [A, B, C, D, E] with extract: "content"
+
+1. Read all 5 from disk → store in FileStateCache
+2. Calculate per-file token costs:
+   A = 800, B = 12000, C = 25000, D = 18000, E = 3000
+3. Token budget: 50000
+4. Pack files in request order:
+   A: complete (800)       running: 800
+   B: complete (12000)     running: 12800
+   C: complete (25000)     running: 37800
+   D: partial, lines 1-120 of 350 (12200)  running: 50000
+   E: pending
+5. Return page 1 with pagination metadata
+```
+
+### Response Format
+
+```json
+{
+  "status": "paginated_batch",
+  "page": 1,
+  "files_requested": 5,
+  "files_complete": 3,
+  "files_partial": 1,
+  "files_pending": 1,
+  "token_budget": 50000,
+  "tokens_used": 49800,
+  "results": {
+    "src/main.ts":   {"status": "complete", "lines": 42, "content": "..."},
+    "src/utils.ts":  {"status": "complete", "lines": 280, "content": "..."},
+    "src/config.ts": {"status": "complete", "lines": 610, "content": "..."},
+    "src/routes.ts": {"status": "partial", "lines_returned": "1-120",
+                      "total_lines": 350, "content": "..."}
+  },
+  "pending": [
+    {"path": "src/handlers.ts", "estimated_tokens": 3000}
+  ],
+  "next_page": {
+    "hint": "Next page: lines 121-350 of src/routes.ts, then src/handlers.ts",
+    "files": [
+      {"path": "src/routes.ts", "range": {"start": 121}},
+      {"path": "src/handlers.ts"}
+    ]
+  }
+}
+```
+
+The agent gets a clear picture: "I got 3 full files, part of a 4th, and the 5th is waiting." The `next_page.files` array is exactly what they'd pass back to precision_read for page 2.
+
+### Packing Rules
+
+1. **Complete files first, then partial** — an agent can use a complete file immediately. A partially-included file mid-batch is confusing.
+2. **Respect original request order** — files appear in the same order the agent asked for them.
+3. **Partial file gets the remaining budget** — don't waste the gap. If there's room for 120 lines of file D, return those 120 lines.
+4. **Pending files show estimated tokens** — agent can decide if it needs all of them or just specific ones.
+5. **Large files trigger Item 6 individually** — a file exceeding the size gate gets auto-preview/pagination treatment, and that preview counts against the batch token budget.
+
+### Page 2+ Retrieval (Cache-Backed)
+
+When the agent requests the next page by passing back `next_page.files`:
+- All files are already in FileStateCache from the initial batch read
+- **Zero disk reads** — content served from cache
+- If a file was modified between pages (detected via hash), the agent is notified (Item 1 cache-hit-changed behavior)
+- Pagination continues until all requested files are fully returned
+
+### Token Budget
+
+| Setting | Default | Source |
+|---|---|---|
+| `batch_token_budget` | 50000 | precision_config + goodvibes.json |
+| Per-file `max_per_item` | Infinity (for batch pagination, the budget is the constraint) | Existing parameter |
+| `max_tokens` (explicit) | Overrides `batch_token_budget` if lower | Existing parameter |
+
+If the agent passes `max_tokens: 20000`, the batch is paginated at 20K tokens regardless of the default budget.
+
+### Interaction with Item 6 (Size Gate)
+
+When a batch includes a file that exceeds the Item 6 size threshold:
+- That file gets its auto-preview treatment (symbols for source, tail for logs, etc.)
+- The preview's token cost counts against the batch budget
+- The file is marked `"status": "auto_preview"` in the results, not `"complete"`
+- The agent can force-read it in a subsequent call if needed
+
+Example: batch of `[small.ts, huge.log, medium.ts]`:
+```json
+{
+  "results": {
+    "small.ts":  {"status": "complete", "lines": 50, "content": "..."},
+    "huge.log":  {"status": "auto_preview", "preview_mode": "tail",
+                  "total_lines": 125000, "lines_returned": "124801-125000",
+                  "content": "..."},
+    "medium.ts": {"status": "complete", "lines": 200, "content": "..."}
+  }
+}
+```
+
+### What Exceeds Native
+
+Native Read doesn't have batch reads at all — it's one file per call. This is entirely additive.
+
+| Aspect | Native | Ours |
+|---|---|---|
+| Batch reads | Not supported | Up to N files per call |
+| Token budgeting | None | Configurable per-batch budget |
+| Pagination across files | N/A | Automatic with clear metadata |
+| Cache-backed continuation | N/A | Page 2+ served from cache (zero disk) |
+| Partial file handling | N/A | Fills remaining budget with partial content |
+| Mixed extraction in batch | N/A | Large files get auto-preview, small files get full content |
+
+### Implementation Notes
+
+- FileStateCache is the intermediate buffer — all files read to cache, pagination is a view over cached content
+- Token estimation uses `Math.ceil(content.length / 4)` per file (same formula throughout)
+- Batch reads with lighter extraction modes (`symbols`, `outline`, etc.) skip pagination entirely — the total is always small
+- Page size is dynamic (token-budget-based), not fixed line counts
+- `ast` extraction: paginate only if total exceeds budget. Rare in practice.
+
+---
+
 ## Gap Analysis Reference
 
 The following gaps were identified comparing native Claude Code tools to precision_engine:
