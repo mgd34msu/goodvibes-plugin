@@ -101,9 +101,9 @@ interface CommandResult {
   timed_out?: boolean;
 }
 
-const DEFAULT_TIMEOUT = 30000;
-const DEFAULT_MAX_OUTPUT_LINES = 100;
-const MAX_OUTPUT_CHARS = 10000;
+const DEFAULT_TIMEOUT = 120000;        // was 30000 — match native Bash 120s
+const DEFAULT_MAX_OUTPUT_LINES = 500;  // was 100 — capture full test/build output
+const MAX_OUTPUT_CHARS = 50000;        // was 10000 — native is 30K, we do 50K
 
 async function executeCommand(
   spec: CommandSpec,

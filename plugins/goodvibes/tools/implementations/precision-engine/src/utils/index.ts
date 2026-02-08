@@ -368,3 +368,12 @@ export { validateDirectoryPath, validateFilePath } from './path-validation.js';
 // Export file type detection and context intelligence
 export { detectFileType, type FileTypeInfo } from './file-type-detection.js';
 export { getContextForFile, type ContextMetadata } from './context-intelligence.js';
+
+// Export lock/error pattern detection utilities
+export { detectIssue, isRetryable, type DetectedIssue } from './lock-detection.js';
+
+// Export exit code interpretation utilities
+export { interpretExitCode, type ExitInterpretation } from './exit-codes.js';
+
+// Export overflow handling utilities
+export { handleOverflow, cleanupOverflowFiles, type OverflowResult } from './overflow-handler.js';

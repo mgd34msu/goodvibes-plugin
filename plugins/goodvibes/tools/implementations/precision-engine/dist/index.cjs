@@ -285794,9 +285794,23 @@ var precisionExecSchema = {
             cmd_base64: { type: "string", description: 'Base64-encoded command. REQUIRED when cmd contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "command" | base64 -w0' },
             args: { type: "array", items: { type: "string" }, description: "Command arguments" },
             cwd: { type: "string", description: "Working directory" },
-            timeout_ms: { type: "integer", minimum: 1, description: "Timeout in ms (default: 60000)" },
-            timeout: { type: "integer", minimum: 1, description: "DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 60000)" },
+            timeout_ms: { type: "integer", minimum: 1, description: "Timeout in ms (default: 120000)" },
+            timeout: { type: "integer", minimum: 1, description: "DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 120000)" },
             env: { type: "object", description: "Additional environment variables" },
+            background: { type: "boolean", description: "Run this command in background (detached)" },
+            until: { type: "string", description: "Regex pattern \u2014 resolve early when stdout matches, promote process to background" },
+            retry: {
+              type: "object",
+              description: "Auto-retry configuration",
+              properties: {
+                max_attempts: { type: "integer", minimum: 1, default: 3 },
+                delay_ms: { type: "integer", minimum: 0, default: 1e3 },
+                on: {
+                  type: "array",
+                  items: { type: "string", enum: ["failure", "lock", "timeout", "network"] }
+                }
+              }
+            },
             expect: {
               type: "object",
               properties: {
@@ -285810,6 +285824,9 @@ var precisionExecSchema = {
           required: ["cmd"]
         }
       },
+      working_dir: { type: "string", description: "Global working directory for all commands (persists across calls)" },
+      background: { type: "boolean", default: false, description: "Run commands in background (detached). Returns immediately with process ID." },
+      timeout_ms: { type: "integer", minimum: 1, description: "Global timeout in ms (default: 120000). Per-command timeout_ms overrides this." },
       parallel: { type: "boolean", default: false, description: "Execute commands in parallel" },
       stop_on_error: { type: "boolean", default: true, description: "Stop on first error (sequential only)" },
       verbosity: verbositySchema
@@ -288381,9 +288398,9 @@ function isDestructiveCommand(cmd, args2) {
   return DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(fullCommand));
 }
 __name(isDestructiveCommand, "isDestructiveCommand");
-var DEFAULT_TIMEOUT = 3e4;
-var DEFAULT_MAX_OUTPUT_LINES = 100;
-var MAX_OUTPUT_CHARS = 1e4;
+var DEFAULT_TIMEOUT = 12e4;
+var DEFAULT_MAX_OUTPUT_LINES = 500;
+var MAX_OUTPUT_CHARS = 5e4;
 async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, captureStdout = true, captureStderr = true, maxOutputLines = DEFAULT_MAX_OUTPUT_LINES) {
   const startTime = Date.now();
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? DEFAULT_TIMEOUT;

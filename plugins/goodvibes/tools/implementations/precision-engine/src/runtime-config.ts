@@ -37,6 +37,15 @@ export interface PrecisionEngineConfig {
   backup_dir?: string;
   /** Skip backup when file is clean in git (recoverable via git checkout). Default: true */
   backup_git_clean_skip?: boolean;
+
+  /** Exec defaults */
+  exec_max_output_chars?: number;
+  exec_default_timeout_ms?: number;
+  exec_max_output_lines?: number;
+  exec_overflow_dir?: string;
+  exec_max_background?: number;
+  exec_history_max?: number;
+
   /** Extensible for future config */
   [key: string]: unknown;
 }
@@ -368,6 +377,72 @@ export function getBackupGitCleanSkip(): boolean {
   const value = config.backup_git_clean_skip;
   if (typeof value === 'boolean') return value;
   return true;
+}
+
+/**
+ * Get max output chars for exec commands from config.
+ * Default: 50000
+ * @returns Maximum output characters before truncation
+ */
+export function getExecMaxOutputChars(): number {
+  const config = loadConfigSync();
+  const value = config.exec_max_output_chars;
+  return typeof value === 'number' && value > 0 ? value : 50000;
+}
+
+/**
+ * Get default timeout for exec commands from config.
+ * Default: 120000 (120 seconds)
+ * @returns Default timeout in milliseconds
+ */
+export function getExecDefaultTimeout(): number {
+  const config = loadConfigSync();
+  const value = config.exec_default_timeout_ms;
+  return typeof value === 'number' && value > 0 ? value : 120000;
+}
+
+/**
+ * Get max output lines for exec commands from config.
+ * Default: 500
+ * @returns Maximum output lines before truncation
+ */
+export function getExecMaxOutputLines(): number {
+  const config = loadConfigSync();
+  const value = config.exec_max_output_lines;
+  return typeof value === 'number' && value > 0 ? value : 500;
+}
+
+/**
+ * Get overflow directory for exec output from config.
+ * Default: '.goodvibes/.exec-output'
+ * @returns Overflow directory path
+ */
+export function getExecOverflowDir(): string {
+  const config = loadConfigSync();
+  const value = config.exec_overflow_dir;
+  return typeof value === 'string' && value.length > 0 ? value : '.goodvibes/.exec-output';
+}
+
+/**
+ * Get max background processes for exec from config.
+ * Default: 5
+ * @returns Maximum concurrent background processes
+ */
+export function getExecMaxBackground(): number {
+  const config = loadConfigSync();
+  const value = config.exec_max_background;
+  return typeof value === 'number' && value > 0 ? value : 5;
+}
+
+/**
+ * Get max exec history entries from config.
+ * Default: 100
+ * @returns Maximum exec history entries to retain
+ */
+export function getExecHistoryMax(): number {
+  const config = loadConfigSync();
+  const value = config.exec_history_max;
+  return typeof value === 'number' && value > 0 ? value : 100;
 }
 
 /**
