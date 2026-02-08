@@ -14,6 +14,15 @@ export interface FileSuggestion {
  *   Layer 1: Common mistakes (missing extension, wrong extension, index files)
  *   Layer 2: Directory listing with fuzzy matching (Levenshtein similarity)
  * Zero overhead — only called on file-not-found errors.
+ * 
+ * @remarks
+ * Called from precision-read.ts ENOENT handler when a file path is invalid.
+ * Suggestions are returned in the error response to help users find the correct file path.
+ * 
+ * @param requestedPath - The file path that was not found
+ * @param maxSuggestions - Maximum number of suggestions to return (default: 5)
+ * @returns Array of file suggestions with paths, reasons, and confidence levels
+ * @see precision-read.ts ENOENT handler (~line 969)
  */
 export async function getFileSuggestions(
   requestedPath: string,

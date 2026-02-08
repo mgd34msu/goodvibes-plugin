@@ -7344,7 +7344,8 @@ function getToolVerbosityDefault(toolName) {
   const config2 = loadConfigSync();
   const defaults = config2.verbosity_defaults;
   if (defaults && typeof defaults === "object") {
-    return defaults[toolName];
+    const value = defaults[toolName];
+    return typeof value === "string" ? value : void 0;
   }
   return void 0;
 }
@@ -15109,54 +15110,50 @@ var init_process_manager = __esm({
           (0, import_fs6.mkdirSync)(overflowDir, { recursive: true });
         }
         const logFile = path12.join(overflowDir, `${id}.log`);
-        try {
-          if (proc.stdout) {
-            proc.stdout.pipe((0, import_fs6.createWriteStream)(logFile, { flags: "a" }));
-          }
-          if (proc.stderr) {
-            proc.stderr.pipe((0, import_fs6.createWriteStream)(logFile, { flags: "a" }));
-          }
-          proc.unref();
-          const bgProcess = {
-            id,
-            pid: proc.pid,
-            command,
-            args: [],
-            // Not available for adopted processes
-            cwd,
-            started_at: Date.now(),
-            status: "running",
-            exit_code: null,
-            log_file: logFile,
-            last_read_offset: 0
-          };
-          this.processes.set(id, bgProcess);
-          proc.on("exit", (code, signal) => {
-            const p = this.processes.get(id);
-            if (p) {
-              p.status = signal ? "killed" : "exited";
-              const signalNum = signal ? import_os.constants.signals[signal] ?? 9 : 0;
-              p.exit_code = code ?? (signal ? 128 + signalNum : 1);
-            }
-          });
-          proc.on("error", (err2) => {
-            const p = this.processes.get(id);
-            if (p) {
-              p.status = "errored";
-              p.exit_code = 1;
-            }
-          });
-          return {
-            status: "started",
-            process_id: id,
-            pid: proc.pid,
-            command,
-            log_file: logFile,
-            hint: `Process promoted to background. Use bg_status ${id} to check status, bg_output ${id} to read output, bg_stop ${id} to terminate.`
-          };
-        } catch (err2) {
-          throw err2;
+        if (proc.stdout) {
+          proc.stdout.pipe((0, import_fs6.createWriteStream)(logFile, { flags: "a" }));
         }
+        if (proc.stderr) {
+          proc.stderr.pipe((0, import_fs6.createWriteStream)(logFile, { flags: "a" }));
+        }
+        proc.unref();
+        const bgProcess = {
+          id,
+          pid: proc.pid,
+          command,
+          args: [],
+          // Not available for adopted processes
+          cwd,
+          started_at: Date.now(),
+          status: "running",
+          exit_code: null,
+          log_file: logFile,
+          last_read_offset: 0
+        };
+        this.processes.set(id, bgProcess);
+        proc.on("exit", (code, signal) => {
+          const p = this.processes.get(id);
+          if (p) {
+            p.status = signal ? "killed" : "exited";
+            const signalNum = signal ? import_os.constants.signals[signal] ?? 9 : 0;
+            p.exit_code = code ?? (signal ? 128 + signalNum : 1);
+          }
+        });
+        proc.on("error", (err2) => {
+          const p = this.processes.get(id);
+          if (p) {
+            p.status = "errored";
+            p.exit_code = 1;
+          }
+        });
+        return {
+          status: "started",
+          process_id: id,
+          pid: proc.pid,
+          command,
+          log_file: logFile,
+          hint: `Process promoted to background. Use bg_status ${id} to check status, bg_output ${id} to read output, bg_stop ${id} to terminate.`
+        };
       }
       /**
        * Spawn a detached background process.
@@ -327689,6 +327686,8 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
                 entry.pagination = r.pagination;
               if (r.cache)
                 entry.cache = r.cache;
+              if (r.metadata)
+                entry.metadata = r.metadata;
               const filePath = path17.isAbsolute(r.path) ? r.path : path17.join(workDir, r.path);
               const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
               if (cacheEntry) {
@@ -328415,7 +328414,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
             result.diff = void 0;
             result.diff_truncated = true;
             result.diff_lines_total = diff.split("\n").length;
-            result.diff_preview = diff.slice(0, Math.floor(maxDiffChars / 2)) + "\n...\n" + diff.slice(-Math.floor(maxDiffChars / 2));
+            result.diff_preview = diff.slice(0, Math.floor(maxDiffChars / 4)) + "\n...\n" + diff.slice(-Math.floor(maxDiffChars / 4));
             result.hint = "Diff truncated. Use precision_read to see full file.";
           } else {
             result.diff = diff;

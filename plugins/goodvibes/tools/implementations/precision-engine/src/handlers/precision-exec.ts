@@ -17,12 +17,15 @@ import { spawn, execFile } from 'child_process';
 import { homedir } from 'os';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, type OverflowResult, interpretExitCode, type ExitInterpretation, detectIssue, type DetectedIssue, createProgressCollector, type ProgressMilestone } from '../utils/index.js';
-import { parseRetryConfig, shouldRetry, computeDelay, type RetryConfig, type RetryResult } from '../utils/retry-engine.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, interpretExitCode, detectIssue, createProgressCollector } from '../utils/index.js';
+import type { OverflowResult, ExitInterpretation, DetectedIssue, ProgressMilestone } from '../utils/index.js';
+import { parseRetryConfig, shouldRetry, computeDelay } from '../utils/retry-engine.js';
+import type { RetryConfig, RetryResult } from '../utils/retry-engine.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
 import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax, getExecMaxBackground, getExecOverflowDir } from '../runtime-config.js';
-import { commandHistory, sessionState, processManager, type BgStartResult } from '../state/index.js';
+import { commandHistory, sessionState, processManager } from '../state/index.js';
+import type { BgStartResult } from '../state/index.js';
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [

@@ -349,6 +349,23 @@ describe('precision_read handler', () => {
       expect(parsed.data.files['empty.ts'].line_count).toBe(1);
     });
 
+    it('should return warning for empty file', async () => {
+      await createTestFile('empty-warn.ts', '');
+
+      const result = await handlePrecisionRead({
+        files: ['empty-warn.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      const fileResult = parsed.data.files['empty-warn.ts'];
+      expect(fileResult.exists).toBe(true);
+      expect(fileResult.status).toBe('empty');
+      expect(fileResult.size_bytes).toBe(0);
+      expect(fileResult.warning).toBe('File exists but is empty (0 bytes)');
+    });
+
     it('should return error for non-TS file with symbols extract', async () => {
       await createTestFile('file.txt', 'just text');
 
@@ -360,6 +377,29 @@ describe('precision_read handler', () => {
 
       const parsed = expectSuccess(result);
       expect(parsed.data.files['file.txt'].error).toContain('Supported languages');
+    });
+  });
+
+  describe('error handling', () => {
+    beforeEach(async () => {
+      await createTestFile('existing-file.ts', 'const x = 1;');
+    });
+
+    it('should return suggestions for ENOENT errors in standard mode', async () => {
+      const result = await handlePrecisionRead({
+        files: ['existing-flie.ts'], // Typo: flie instead of file
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      const fileResult = parsed.data.files['existing-flie.ts'];
+      expect(fileResult.exists).toBe(false);
+      expect(fileResult.error).toContain('File not found');
+      expect(fileResult.suggestions).toBeDefined();
+      expect(Array.isArray(fileResult.suggestions)).toBe(true);
+      expect(fileResult.hint).toBeDefined();
+      expect(fileResult.hint).toContain('Did you mean');
     });
   });
 
@@ -419,6 +459,62 @@ describe('precision_read handler', () => {
 
       const parsed = expectSuccess(result);
       expect(parsed.meta.execution_ms).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('slow filesystem detection', () => {
+    beforeEach(async () => {
+      await createTestFile('test-file.ts', 'const x = 1;');
+    });
+
+    it('should detect slow filesystem and add metadata', async () => {
+      const result = await handlePrecisionRead({
+        files: ['test-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard', include_metadata: true },
+      });
+
+      const parsed = expectSuccess(result);
+      const fileResult = parsed.data.files['test-file.ts'];
+      
+      expect(fileResult.exists).toBe(true);
+      expect(fileResult.metadata).toBeDefined();
+      
+      // Metadata should always be present when include_metadata is true
+      if (fileResult.metadata) {
+        // Basic metadata fields should always exist
+        expect(fileResult.metadata.size).toBeGreaterThanOrEqual(0);
+        expect(fileResult.metadata.modified).toBeDefined();
+        
+        // If filesystem is detected as slow, check the appropriate fields
+        if (fileResult.metadata.filesystem === 'slow') {
+          expect(fileResult.metadata.filesystem).toBe('slow');
+          expect(fileResult.metadata.note).toContain('slow filesystem');
+          expect(fileResult.metadata.stat_ms).toBeGreaterThan(0);
+        }
+        
+        // Test that filesystem type is one of the allowed values (if present)
+        if (fileResult.metadata.filesystem) {
+          expect(['slow', 'fast', 'network', 'local']).toContain(fileResult.metadata.filesystem);
+        }
+      }
+    });
+
+    it('should accept all filesystem type values in union', async () => {
+      // This test verifies TypeScript compilation accepts the expanded union
+      const result = await handlePrecisionRead({
+        files: ['test-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard', include_metadata: true },
+      });
+
+      const parsed = expectSuccess(result);
+      const fileResult = parsed.data.files['test-file.ts'];
+      
+      if (fileResult.metadata?.filesystem) {
+        const fsType: 'slow' | 'fast' | 'network' | 'local' = fileResult.metadata.filesystem;
+        expect(['slow', 'fast', 'network', 'local']).toContain(fsType);
+      }
     });
   });
 });

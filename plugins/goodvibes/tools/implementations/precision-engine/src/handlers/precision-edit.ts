@@ -1190,7 +1190,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
             result.diff = undefined;
             result.diff_truncated = true;
             result.diff_lines_total = diff.split('\n').length;
-            result.diff_preview = diff.slice(0, Math.floor(maxDiffChars / 2)) + '\n...\n' + diff.slice(-Math.floor(maxDiffChars / 2));
+            result.diff_preview = diff.slice(0, Math.floor(maxDiffChars / 4)) + '\n...\n' + diff.slice(-Math.floor(maxDiffChars / 4));
             result.hint = 'Diff truncated. Use precision_read to see full file.';
           } else {
             result.diff = diff;

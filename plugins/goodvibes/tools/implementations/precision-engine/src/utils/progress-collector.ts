@@ -9,11 +9,27 @@ import { createWriteStream, WriteStream } from 'fs';
 import { join } from 'path';
 import { mkdirSync } from 'fs';
 
+/**
+ * A progress milestone captured during command execution.
+ * Used by precision_exec to report progress in long-running commands.
+ * 
+ * @see CommandResult.progress in precision-exec.ts for integration
+ */
 export interface ProgressMilestone {
   at_ms: number;    // milliseconds since command start
   line: string;     // first non-empty line after silence gap
 }
 
+/**
+ * Configuration for progress reporting tiers.
+ * 
+ * Integration with precision_exec:
+ * - Tier 1 (enabled): Always enabled in precision_exec, filtered by duration at finalize time
+ * - Tier 2 (progress_file): Enabled when progress_file=true OR timeout > 30s
+ * 
+ * @see precision-exec.ts lines 280-294 for initialization
+ * @see precision-exec.ts lines 638-650 for finalization and result integration
+ */
 export interface ProgressConfig {
   enabled: boolean;           // Tier 1: collect inline milestones
   progress_file: boolean;     // Tier 2: write to pollable file
@@ -21,10 +37,68 @@ export interface ProgressConfig {
   max_milestones: number;     // Cap (default: 20)
 }
 
+/**
+ * Progress collector interface for tracking command execution progress.
+ * 
+ * Integration with precision_exec:
+ * 1. Created in executeCommand() (precision-exec.ts:285)
+ * 2. Fed data via onData() on stdout chunks (precision-exec.ts:353)
+ * 3. Finalized on command completion (precision-exec.ts:639)
+ * 4. Result included in CommandResult.progress and CommandResult.progress_file
+ * 
+ * @example
+ * ```typescript
+ * // In precision_exec handler (lines 280-294):
+ * const collector = createProgressCollector(
+ *   { enabled: true, progress_file: tier2Enabled, ... },
+ *   commandId,
+ *   overflowDir
+ * );
+ * 
+ * // During stdout capture (line 353):
+ * proc.stdout?.on('data', (data: Buffer) => {
+ *   progressCollector.onData(data.toString());
+ *   // ...
+ * });
+ * 
+ * // On completion (lines 639-650):
+ * const milestones = progressCollector.finalize(duration_ms);
+ * if (duration_ms > 10000 || spec.progress === true) {
+ *   result.progress = milestones;
+ * }
+ * progressCollector.dispose();
+ * ```
+ */
 export interface ProgressCollector {
+  /**
+   * Process a chunk of command output.
+   * Called by precision_exec on each stdout data event.
+   * 
+   * @param chunk - Raw string chunk from command output
+   */
   onData(chunk: string): void;
+  
+  /**
+   * Finalize progress collection and return milestones.
+   * Called by precision_exec when command completes.
+   * 
+   * @param totalDurationMs - Total command duration in milliseconds
+   * @returns Array of progress milestones with first line at 0ms, last line at totalDurationMs
+   */
   finalize(totalDurationMs: number): ProgressMilestone[];
+  
+  /**
+   * Get the path to the progress file (Tier 2), if enabled.
+   * Used by precision_exec to populate CommandResult.progress_file.
+   * 
+   * @returns File path if Tier 2 enabled, undefined otherwise
+   */
   getProgressFilePath(): string | undefined;
+  
+  /**
+   * Clean up resources (close write stream).
+   * Called by precision_exec on command completion or error.
+   */
   dispose(): void;
 }
 

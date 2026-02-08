@@ -99,66 +99,62 @@ export class ProcessManager {
     // Create log file path
     const logFile = path.join(overflowDir, `${id}.log`);
 
-    try {
-      // Redirect stdout/stderr to log file
-      // Since the process is already running, we pipe the streams
-      if (proc.stdout) {
-        proc.stdout.pipe(createWriteStream(logFile, { flags: 'a' }));
-      }
-      if (proc.stderr) {
-        proc.stderr.pipe(createWriteStream(logFile, { flags: 'a' }));
-      }
-
-      // Unref so parent can exit
-      proc.unref();
-
-      // Store process info
-      const bgProcess: BackgroundProcess = {
-        id,
-        pid: proc.pid,
-        command,
-        args: [],  // Not available for adopted processes
-        cwd,
-        started_at: Date.now(),
-        status: 'running',
-        exit_code: null,
-        log_file: logFile,
-        last_read_offset: 0,
-      };
-
-      this.processes.set(id, bgProcess);
-
-      // Register exit handler
-      proc.on('exit', (code, signal) => {
-        const p = this.processes.get(id);
-        if (p) {
-          p.status = signal ? 'killed' : 'exited';
-          const signalNum = signal ? (constants.signals[signal] ?? 9) : 0;
-          p.exit_code = code ?? (signal ? 128 + signalNum : 1);
-        }
-      });
-
-      // Register error handler
-      proc.on('error', (err) => {
-        const p = this.processes.get(id);
-        if (p) {
-          p.status = 'errored';
-          p.exit_code = 1;
-        }
-      });
-
-      // Return start result
-      return {
-        status: 'started',
-        process_id: id,
-        pid: proc.pid,
-        command,
-        log_file: logFile,
-        hint: `Process promoted to background. Use bg_status ${id} to check status, bg_output ${id} to read output, bg_stop ${id} to terminate.`,
-      };
-    } catch (err) {
-      throw err;
+    // Redirect stdout/stderr to log file
+    // Since the process is already running, we pipe the streams
+    if (proc.stdout) {
+      proc.stdout.pipe(createWriteStream(logFile, { flags: 'a' }));
     }
+    if (proc.stderr) {
+      proc.stderr.pipe(createWriteStream(logFile, { flags: 'a' }));
+    }
+
+    // Unref so parent can exit
+    proc.unref();
+
+    // Store process info
+    const bgProcess: BackgroundProcess = {
+      id,
+      pid: proc.pid,
+      command,
+      args: [],  // Not available for adopted processes
+      cwd,
+      started_at: Date.now(),
+      status: 'running',
+      exit_code: null,
+      log_file: logFile,
+      last_read_offset: 0,
+    };
+
+    this.processes.set(id, bgProcess);
+
+    // Register exit handler
+    proc.on('exit', (code, signal) => {
+      const p = this.processes.get(id);
+      if (p) {
+        p.status = signal ? 'killed' : 'exited';
+        const signalNum = signal ? (constants.signals[signal] ?? 9) : 0;
+        p.exit_code = code ?? (signal ? 128 + signalNum : 1);
+      }
+    });
+
+    // Register error handler
+    proc.on('error', (err) => {
+      const p = this.processes.get(id);
+      if (p) {
+        p.status = 'errored';
+        p.exit_code = 1;
+      }
+    });
+
+    // Return start result
+    return {
+      status: 'started',
+      process_id: id,
+      pid: proc.pid,
+      command,
+      log_file: logFile,
+      hint: `Process promoted to background. Use bg_status ${id} to check status, bg_output ${id} to read output, bg_stop ${id} to terminate.`,
+    };
   }
 
   /**

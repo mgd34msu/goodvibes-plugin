@@ -94,6 +94,10 @@ interface FileMetadata {
   size: number;
   modified: string;
   created?: string;
+  filesystem?: 'slow' | 'fast' | 'network' | 'local';
+  stat_ms?: number;
+  is_network?: boolean;
+  note?: string;
   [key: string]: unknown; // Allow dynamic properties for slow FS detection
 }
 
@@ -114,14 +118,41 @@ interface FileReadResult {
   is_image?: boolean;
   mime_type?: string;
   image_base64?: string;
+  /** Status indicator for file read operation ('empty' | 'normal' | 'unchanged') */
   status?: 'empty' | 'normal' | 'unchanged';
+  /** File size in bytes */
   size_bytes?: number;
+  /** Warning message for edge cases (e.g., empty files) */
   warning?: string;
   suggestions?: FileSuggestion[];
   hint?: string;
   token_cost?: number;
   context?: ContextMetadata;
-  [key: string]: unknown; // Allow dynamic properties for pagination
+  pagination?: {
+    page: number;
+    page_size?: number;
+    total_lines?: number;
+    total_pages: number;
+    pending_files?: string[];
+    token_budget?: number;
+    tokens_used?: number;
+    estimated_tokens?: number;
+    hint?: string;
+  };
+  cache?: {
+    status: 'unchanged' | 'modified';
+    last_read?: string;
+    read_count?: number;
+    tokens_saved?: number;
+    hash?: string;
+    hint?: string;
+    previous_lines?: number;
+    changes?: string;
+    diff?: string;
+    modified_by?: string;
+  };
+  cache_version?: number;
+  [key: string]: unknown; // Allow dynamic properties for future extensions
 }
 
 // === Constants ===
@@ -1183,8 +1214,9 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.suggestions !== undefined) entry.suggestions = r.suggestions;
               if (r.hint) entry.hint = r.hint;
               if (r.context) entry.context = r.context;
-              if ((r as Record<string, unknown>).pagination) entry.pagination = (r as Record<string, unknown>).pagination;
-              if ((r as Record<string, unknown>).cache) entry.cache = (r as Record<string, unknown>).cache;
+              if (r.pagination) entry.pagination = r.pagination;
+              if (r.cache) entry.cache = r.cache;
+              if (r.metadata) entry.metadata = r.metadata;
               
               // Add cache version to response metadata for OCC tracking
               const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);

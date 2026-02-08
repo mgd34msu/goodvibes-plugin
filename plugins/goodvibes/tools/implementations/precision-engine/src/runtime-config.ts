@@ -245,7 +245,8 @@ export function getToolVerbosityDefault(toolName: string): string | undefined {
   const config = loadConfigSync();
   const defaults = config.verbosity_defaults;
   if (defaults && typeof defaults === 'object') {
-    return defaults[toolName] as string | undefined;
+    const value = defaults[toolName];
+    return typeof value === 'string' ? value : undefined;
   }
   return undefined;
 }
@@ -285,7 +286,8 @@ export function getSlowFsPrefixes(): string[] {
 
 /**
  * Get the max file bytes setting from config.
- * Returns 524288 (512KB) if not configured or invalid.
+ * When a file exceeds this size, precision_read will suggest pagination instead of reading the entire file.
+ * Returns 524288 (512KB) if not configured or invalid (values <= 0 are treated as invalid).
  *
  * @returns Maximum file size in bytes before size gate prompts pagination
  */
@@ -297,7 +299,8 @@ export function getMaxFileBytes(): number {
 
 /**
  * Get the max token estimate setting from config.
- * Returns 50000 if not configured or invalid.
+ * When a file's estimated token count exceeds this threshold, precision_read will suggest pagination instead of reading the entire file.
+ * Returns 50000 if not configured or invalid (values <= 0 are treated as invalid).
  *
  * @returns Maximum estimated tokens before size gate prompts pagination
  */
@@ -309,7 +312,8 @@ export function getMaxTokenEstimate(): number {
 
 /**
  * Get the page size lines setting from config.
- * Returns 200 if not configured or invalid.
+ * Defines how many lines to read per page when pagination is suggested/used for large files.
+ * Returns 200 if not configured or invalid (values <= 0 are treated as invalid).
  *
  * @returns Lines per page when paginating large file reads
  */

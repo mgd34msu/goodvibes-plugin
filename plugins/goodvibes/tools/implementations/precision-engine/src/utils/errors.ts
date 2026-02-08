@@ -4,6 +4,9 @@
  * All precision-engine tools should use these utilities for consistent error messages.
  */
 
+import { PrecisionResult, OutputMode } from '../types.js';
+import { estimateTokens } from '../logging.js';
+
 // Example calls for each tool (used in error messages)
 export const TOOL_EXAMPLES: Record<string, string> = {
   precision_read: "{\"files\": [{\"path\": \"src/index.ts\"}], \"output_mode\": \"standard\"}",
@@ -66,9 +69,6 @@ Did you mean: ${suggestions.slice(0, 3).join(", ")}?`;
   }
   return msg;
 }
-
-import { PrecisionResult, OutputMode } from '../types.js';
-import { estimateTokens } from '../logging.js';
 
 /**
  * Create standard error result object.
