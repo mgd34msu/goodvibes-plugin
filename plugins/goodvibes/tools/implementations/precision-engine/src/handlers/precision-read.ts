@@ -104,6 +104,9 @@ interface FileReadResult {
   is_image?: boolean;
   mime_type?: string;
   image_base64?: string;
+  status?: 'empty' | 'normal';
+  size_bytes?: number;
+  warning?: string;
 }
 
 // === Constants ===
@@ -562,6 +565,14 @@ async function readSingleFile(
         modified: stats.mtime.toISOString(),
         created: stats.birthtime?.toISOString(),
       };
+    }
+
+    // Item 4: Empty file detection
+    if (stats.size === 0) {
+      result.status = 'empty';
+      result.size_bytes = 0;
+      result.warning = 'File exists but is empty (0 bytes)';
+      return result;
     }
 
     // Read file as buffer first to check if binary

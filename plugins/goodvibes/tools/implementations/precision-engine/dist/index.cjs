@@ -290614,6 +290614,12 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
         created: stats.birthtime?.toISOString()
       };
     }
+    if (stats.size === 0) {
+      result.status = "empty";
+      result.size_bytes = 0;
+      result.warning = "File exists but is empty (0 bytes)";
+      return result;
+    }
     const buffer = await fs9.readFile(validatedPath);
     const mimeType = getImageMimeType(validatedPath);
     const isBinary = isBinaryFile(buffer);
