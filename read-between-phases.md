@@ -11,7 +11,9 @@ USER IS AWAY - DO NOT ASK FOR PERMISSION TO CONTINUE - ALWAYS KEEP GOING
 
 ## Orchestration Rules
 
-WRFC should be something that is implied. Plan phases, split the work between agents within that phase. You don't need a specific task for each WRFC part of a single task. Create tasks for phases. Between those phase tasks, put the read-between-phases.md file. precision-tool-updates.md has the information you need to plan your work.
+WRFC should be something that is implied. Plan phases, split the work between agents within that phase. You don't need a specific task for each WRFC part of a single task. Create tasks for phases. Between those phase tasks, put the read-between-phases.md file as a read task. If you have launched the final WRFC agent for a phase, it is ok to read the read-between-phases.md file at that point so you can continue using the maximum number of parallel agents to start tasks from the next phase. 
+
+Also, precision-tool-updates.md has the information you need to plan your work.
 
 ## Agent Loading Rules
 

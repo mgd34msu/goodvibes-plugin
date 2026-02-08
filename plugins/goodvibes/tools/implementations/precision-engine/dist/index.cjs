@@ -322790,7 +322790,11 @@ var FetchCache = class {
    * Uses the 'diff' package (already a project dependency) for correct multi-hunk diffs.
    */
   generateDiff(oldContent, newContent) {
-    return createPatch("content", oldContent, newContent, "previous", "current", { context: 3 });
+    try {
+      return createPatch("content", oldContent, newContent, "previous", "current", { context: 3 });
+    } catch {
+      return "[diff generation failed - content changed but diff unavailable]";
+    }
   }
   /**
    * Store a fetch result in the cache.
