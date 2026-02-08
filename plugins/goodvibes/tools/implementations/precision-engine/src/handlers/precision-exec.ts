@@ -20,8 +20,8 @@ import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, type OverflowResult, interpretExitCode, type ExitInterpretation, detectIssue, type DetectedIssue } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
-import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax } from '../runtime-config.js';
-import { commandHistory, sessionState } from '../state/index.js';
+import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax, getExecMaxBackground } from '../runtime-config.js';
+import { commandHistory, sessionState, processManager, type BgStartResult } from '../state/index.js';
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [
@@ -112,6 +112,7 @@ interface CommandSpec {
   timeout?: number;  // Legacy support
   env?: Record<string, string>;
   expect?: ExpectSpec;
+  background?: boolean;  // Run in background (Part E)
 }
 
 interface OutputConfig {
@@ -461,6 +462,100 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
     return toCallToolResult(successResult(data, outputMode, getElapsed()));
   }
 
+  // Handle background management commands
+  if (input.commands && input.commands.length === 1) {
+    const cmd = input.commands[0].cmd_base64
+      ? Buffer.from(input.commands[0].cmd_base64, 'base64').toString('utf-8')
+      : input.commands[0].cmd;
+
+    if (cmd) {
+      // bg_list command
+      if (cmd === 'bg_list') {
+        const processes = processManager.list();
+        const data: Record<string, unknown> = {
+          processes: processes.map(p => ({
+            id: p.id,
+            pid: p.pid,
+            command: p.command,
+            status: p.status,
+            exit_code: p.exit_code,
+            started_at: p.started_at,
+            duration_ms: Date.now() - p.started_at,
+          })),
+          count: processes.length,
+        };
+        const responseJson = JSON.stringify(data);
+        data.tokens_used = estimateTokens(responseJson);
+        return toCallToolResult(successResult(data, outputMode, getElapsed()));
+      }
+
+      // bg_status <id> command
+      const statusMatch = cmd.match(/^bg_status\s+(\S+)$/);
+      if (statusMatch) {
+        const id = statusMatch[1];
+        const proc = processManager.getStatus(id);
+        if (!proc) {
+          return toCallToolResult(errorResult(
+            `Background process ${id} not found. Use bg_list to see all processes.`,
+            outputMode,
+            getElapsed()
+          ));
+        }
+        const { output } = processManager.getOutput(id, 50, true);  // peek=true to not consume output
+        const data: Record<string, unknown> = {
+          process: {
+            id: proc.id,
+            pid: proc.pid,
+            command: proc.command,
+            status: proc.status,
+            exit_code: proc.exit_code,
+            started_at: proc.started_at,
+            duration_ms: Date.now() - proc.started_at,
+            log_file: proc.log_file,
+          },
+          recent_output: output || '(no output yet)',
+        };
+        const responseJson = JSON.stringify(data);
+        data.tokens_used = estimateTokens(responseJson);
+        return toCallToolResult(successResult(data, outputMode, getElapsed()));
+      }
+
+      // bg_output <id> command
+      const outputMatch = cmd.match(/^bg_output\s+(\S+)$/);
+      if (outputMatch) {
+        const id = outputMatch[1];
+        try {
+          const { output, complete } = processManager.getOutput(id);
+          const data: Record<string, unknown> = {
+            process_id: id,
+            output: output || '(no new output)',
+            complete,
+          };
+          const responseJson = JSON.stringify(data);
+          data.tokens_used = estimateTokens(responseJson);
+          return toCallToolResult(successResult(data, outputMode, getElapsed()));
+        } catch (err) {
+          return toCallToolResult(errorResult((err as Error).message, outputMode, getElapsed()));
+        }
+      }
+
+      // bg_stop <id> command
+      const stopMatch = cmd.match(/^bg_stop\s+(\S+)$/);
+      if (stopMatch) {
+        const id = stopMatch[1];
+        try {
+          const result = await processManager.stop(id);
+          const data: Record<string, unknown> = result;
+          const responseJson = JSON.stringify(data);
+          data.tokens_used = estimateTokens(responseJson);
+          return toCallToolResult(successResult(data, outputMode, getElapsed()));
+        } catch (err) {
+          return toCallToolResult(errorResult((err as Error).message, outputMode, getElapsed()));
+        }
+      }
+    }
+  }
+
   // Clean up old overflow files (non-blocking, fire-and-forget)
   cleanupOverflowFiles().catch(() => {});
 
@@ -540,6 +635,69 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
           ));
         }
       }
+    }
+
+    // Handle background execution
+    const hasBackgroundCommands = input.commands.some(cmd => cmd.background);
+    if (hasBackgroundCommands) {
+      // Background commands - spawn and return immediately
+      const bgResults: BgStartResult[] = [];
+      
+      for (const cmd of input.commands) {
+        const command = cmd.cmd_base64
+          ? Buffer.from(cmd.cmd_base64, 'base64').toString('utf-8')
+          : cmd.cmd;
+        
+        // Guard against empty command
+        if (!command) {
+          return toCallToolResult(errorResult(
+            'Background command requires cmd or cmd_base64',
+            outputMode,
+            getElapsed()
+          ));
+        }
+        
+        const args = cmd.args ?? [];
+        
+        // Resolve cwd
+        const cwd = cmd.cwd
+          ? await validateDirectoryPath(cmd.cwd, process.cwd())
+          : globalWorkDir ?? sessionState.cwd;
+        
+        try {
+          const bgResult = processManager.spawn(command, args, {
+            cwd,
+            env: { ...globalEnv, ...cmd.env },
+          });
+          
+          // Record in command history with background: true
+          commandHistory.add({
+            id: bgResult.process_id,
+            timestamp: Date.now(),
+            command: bgResult.command,
+            cwd,
+            exit_code: -1, // Still running
+            duration_ms: 0,
+            stdout_lines: 0,
+            stderr_lines: 0,
+            truncated: false,
+            background: true,
+          });
+          
+          bgResults.push(bgResult);
+        } catch (err) {
+          return toCallToolResult(errorResult((err as Error).message, outputMode, getElapsed()));
+        }
+      }
+      
+      // Return immediately with background process info
+      const data: Record<string, unknown> = {
+        processes: bgResults,
+        count: bgResults.length,
+      };
+      const responseJson = JSON.stringify(data);
+      data.tokens_used = estimateTokens(responseJson);
+      return toCallToolResult(successResult(data, outputMode, getElapsed()));
     }
 
     let results: CommandResult[];

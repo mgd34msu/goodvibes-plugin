@@ -125,6 +125,15 @@ class PrecisionEngineServer {
       // Session state may not have been initialized
     }
 
+    // Kill all background processes
+    try {
+      const { processManager } = await import('./state/index.js');
+      await processManager.killAll();
+      logger.info('Background processes terminated');
+    } catch {
+      // Process manager may not have been initialized
+    }
+
     await this.server.close();
   }
 }

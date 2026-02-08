@@ -87,7 +87,7 @@ export const precisionExecSchema: Tool = {
             timeout_ms: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 120000)' },
             timeout: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 120000)' },
             env: { type: 'object', description: 'Additional environment variables' },
-            background: { type: 'boolean', description: 'Run this command in background (detached) (reserved — not yet implemented)' },
+            background: { type: 'boolean', description: 'Run this command in background (detached). Returns immediately. Use bg_status/bg_output/bg_stop to manage.' },
             until: { type: 'string', description: 'Regex pattern — resolve early when stdout matches, promote process to background (reserved — not yet implemented)' },
             retry: {
               type: 'object',
@@ -115,7 +115,7 @@ export const precisionExecSchema: Tool = {
         },
       },
       working_dir: { type: 'string', description: 'Global working directory for all commands (persists across calls). No default (uses process.cwd()).' },
-      background: { type: 'boolean', default: false, description: 'Run commands in background (detached). Returns immediately with process ID. (reserved — not yet implemented)' },
+      background: { type: 'boolean', default: false, description: 'Run commands in background (detached). Returns immediately with process ID. Use bg_list, bg_status <id>, bg_output <id>, bg_stop <id> to manage background processes.' },
       timeout_ms: { type: 'integer', minimum: 1, default: 120000, description: 'Global timeout in ms (default: 120000). Per-command timeout_ms overrides this.' },
       parallel: { type: 'boolean', default: false, description: 'Execute commands in parallel' },
       stop_on_error: { type: 'boolean', default: true, description: 'Stop on first error (sequential only)' },
