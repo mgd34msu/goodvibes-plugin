@@ -289821,7 +289821,8 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
             cmd: r.cmd,
             exit_code: r.exit_code,
             duration_ms: r.duration_ms,
-            expectations_met: r.expectations_met
+            expectations_met: r.expectations_met,
+            ...r.retries && { retry_attempts: r.retries.attempts }
           })),
           summary: {
             total: results.length,

@@ -134,6 +134,9 @@ const RETRYABLE_TYPES = new Set<IssueType>([
 /**
  * Check if a detected issue is retryable (for smart retry feature).
  * Returns true for transient failures that may succeed on retry.
+ * 
+ * NOTE: This is a legacy helper. For category-based retry decisions,
+ * use retry-engine.ts shouldRetry() which consults RETRY_CATEGORY_MAP.
  */
 export function isRetryable(issue: DetectedIssue): boolean {
   return RETRYABLE_TYPES.has(issue.type);

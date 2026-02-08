@@ -3,7 +3,7 @@
  * Implements automatic retry with backoff for transient failures.
  */
 
-import { DetectedIssue, IssueType, detectIssue, isRetryable } from './lock-detection.js';
+import type { DetectedIssue, IssueType } from './lock-detection.js';
 
 export type RetryCategory = 'network' | 'lock' | 'busy' | 'oom';
 
@@ -15,7 +15,7 @@ export interface RetryConfig {
 }
 
 export interface RetryResult {
-  attempts: number;          // Total attempts (1 = no retries needed)
+  attempts: number;          // Number of RETRY attempts (not counting initial run)
   reason?: string;           // Why retries were needed
   delays: number[];          // Actual delays applied
   final_issue?: string;      // Last detected issue type if still failing
