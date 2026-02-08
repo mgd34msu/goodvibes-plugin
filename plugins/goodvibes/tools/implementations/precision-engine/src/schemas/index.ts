@@ -204,7 +204,7 @@ export const discoverSchema: Tool = {
             pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "pattern" | base64 -w0' },
             glob: { type: 'string', description: 'File filter (for grep)' },
             patterns: { type: 'array', items: { type: 'string' }, description: 'Glob patterns (for glob)' },
-            patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns (for glob)' },
+            patterns_base64: { type: 'array', items: { type: 'string' }, description: 'Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Note: Brackets [ ] are auto-escaped for literal matching.' },
             query: { type: 'string', description: 'Symbol name (for symbols)' },
             kinds: { type: 'array', items: { type: 'string' }, description: 'Symbol kinds (for symbols)' },
             structural_pattern: { type: 'string', description: 'AST pattern to search for (e.g., "console.log($$$ARGS)") (for structural)' },

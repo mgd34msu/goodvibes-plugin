@@ -308886,7 +308886,7 @@ var discoverSchema = {
             pattern_base64: { type: "string", description: 'Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "pattern" | base64 -w0' },
             glob: { type: "string", description: "File filter (for grep)" },
             patterns: { type: "array", items: { type: "string" }, description: "Glob patterns (for glob)" },
-            patterns_base64: { type: "array", items: { type: "string" }, description: "Base64-encoded glob patterns (for glob)" },
+            patterns_base64: { type: "array", items: { type: "string" }, description: "Base64-encoded glob patterns. REQUIRED when patterns contain: single quotes, backticks, or ${} patterns. Note: Brackets [ ] are auto-escaped for literal matching." },
             query: { type: "string", description: "Symbol name (for symbols)" },
             kinds: { type: "array", items: { type: "string" }, description: "Symbol kinds (for symbols)" },
             structural_pattern: { type: "string", description: 'AST pattern to search for (e.g., "console.log($$$ARGS)") (for structural)' },
@@ -314230,7 +314230,7 @@ function validateRegexPattern(pattern) {
     if (pattern[i2] === "(" && (i2 === 0 || pattern[i2 - 1] !== "\\" || i2 >= 2 && pattern[i2 - 2] === "\\")) {
       depth++;
       maxDepth = Math.max(maxDepth, depth);
-    } else if (pattern[i2] === ")" && (i2 === 0 || pattern[i2 - 1] !== "\\")) {
+    } else if (pattern[i2] === ")" && (i2 === 0 || pattern[i2 - 1] !== "\\" || i2 >= 2 && pattern[i2 - 2] === "\\")) {
       depth--;
     }
   }
@@ -327436,7 +327436,9 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
       case "ast":
         if (isLanguageSupported(filePath)) {
           try {
-            let simplifyNode2 = function(node) {
+            let simplifyNode2 = function(node, depth = 0) {
+              if (depth > 50)
+                return { kind: node.type, line: node.startPosition.row + 1 };
               const simplified = {
                 kind: node.type,
                 line: node.startPosition.row + 1
@@ -327444,7 +327446,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
               const nameNode = node.childForFieldName?.("name");
               if (nameNode)
                 simplified.name = nameNode.text;
-              const children2 = node.namedChildren.filter((child) => child.namedChildCount > 0 || ["function_declaration", "class_declaration", "variable_declaration", "import_declaration", "export_statement", "interface_declaration", "type_alias_declaration", "enum_declaration", "method_definition"].includes(child.type)).map((child) => simplifyNode2(child));
+              const children2 = node.namedChildren.filter((child) => child.namedChildCount > 0 || ["function_declaration", "class_declaration", "variable_declaration", "import_declaration", "export_statement", "interface_declaration", "type_alias_declaration", "enum_declaration", "method_definition"].includes(child.type)).map((child) => simplifyNode2(child, depth + 1));
               if (children2.length > 0)
                 simplified.children = children2;
               return simplified;
@@ -327453,7 +327455,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
             __name(simplifyNode2, "simplifyNode");
             const treeSitter = getTreeSitter();
             const tree = await treeSitter.parse(content, filePath);
-            const children = tree.rootNode.namedChildren.map((c) => simplifyNode2(c));
+            const children = tree.rootNode.namedChildren.map((c) => simplifyNode2(c, 0));
             result.ast = {
               file: filePath,
               kind: "SourceFile",
@@ -327474,7 +327476,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
             }
           }
         } else {
-          result.error = "AST extraction not supported for this file type";
+          result.error = "AST extraction not supported for this file type. Supported languages include TypeScript, JavaScript, Python, Go, Rust, and more.";
         }
         break;
     }

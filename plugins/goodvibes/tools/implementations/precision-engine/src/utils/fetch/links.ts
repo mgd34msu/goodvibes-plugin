@@ -40,7 +40,7 @@ function validateRegexPattern(pattern: string): void {
     if (pattern[i] === '(' && (i === 0 || pattern[i - 1] !== '\\' || (i >= 2 && pattern[i - 2] === '\\'))) {
       depth++;
       maxDepth = Math.max(maxDepth, depth);
-    } else if (pattern[i] === ')' && (i === 0 || pattern[i - 1] !== '\\')) {
+    } else if (pattern[i] === ')' && (i === 0 || pattern[i - 1] !== '\\' || (i >= 2 && pattern[i - 2] === '\\'))) {
       depth--;
     }
   }

@@ -4,6 +4,97 @@
 **Extraction Date**: 2026-02-08  
 **Source**: JSONL session file review outputs
 
+## 10/10 Remediation Checklist
+
+This section lists the SPECIFIC remaining deductions preventing each item from reaching 10/10, extracted from the JSONL session review agent outputs.
+
+**Base path**: `plugins/goodvibes/tools/implementations/precision-engine/`
+
+### Phase 1: Item 8 Deductions
+
+| Item | Score | File:Line | Category | Deduction | What to Fix |
+|------|-------|-----------|----------|-----------|-------------|
+| 8E | 9.7 | src/utils/errors.ts:70-71 | Organization | -0.3 | Move `import` statements (PrecisionResult, OutputMode, estimateTokens) from lines 70-71 to the top of the file (lines 6-7), before function declarations at lines 23-68. Standard TS convention places all imports at top. |
+| 8F | 10.0 | N/A | N/A | 0.0 | **NO FIX NEEDED** -- JSONL review scored 10.0/10 (perfect). Audit listed 9.8 but the actual JSONL review at line 1700 gave 10.0. |
+| 8G | 9.7 | src/runtime-config.ts:218-219 | Type Safety | -0.3 | Add `typeof` guard before returning config value in `getToolVerbosityDefault()`. Currently line 219 does `as string | undefined` cast without verifying runtime type. Fix: add `typeof defaults[toolName] === 'string'` check before returning, to guard against non-string values in hand-edited JSON config. |
+| 8H | 9.7 | src/handlers/precision-edit.ts:1223 | Performance | -0.3 | `diff_preview` size is nearly equal to truncation threshold (`maxDiffChars/2 + maxDiffChars/2 = maxDiffChars`). Reduce preview slice to `maxDiffChars/4` per side (head + tail) for more meaningful token savings. Zero functional impact -- purely an optimization. |
+
+### Phase 1/2: Items 2, 4, 5 Deductions
+
+| Item | Score | File:Line | Category | Deduction | What to Fix |
+|------|-------|-----------|----------|-----------|-------------|
+| 2A (Fuzzy Utils) | 9.8 | src/utils/fuzzy.ts | Testing | -0.2 | Add dedicated unit tests for `levenshteinDistance`, `calculateSimilarity`, `rankBySimilarity`. Functions are currently verified only through integration testing. Also minor JSDoc enhancement possible. |
+| 2B (Suggestion Engine) | 9.8 | src/utils/file-suggestions.ts | Documentation | -0.2 | JSDoc on `suggestSimilarFiles()` could mention the integration point (where it is called from precision-read.ts ENOENT handler). Purely optional polish. |
+| 2C (Suggestions Integration) | 9.8 | src/handlers/precision-read.ts:920-945 | Maintainability | -0.1 | Standard output mode does not include `suggestions` and `hint` fields in the serialized output entry. They exist in `FileReadResult` but are not added to the `entry` object in the `default:` (standard) case. |
+| 2C (Suggestions Integration) | 9.8 | src/handlers/precision-read.ts | Testing | -0.1 | Add explicit test case verifying suggestions are returned for ENOENT errors. |
+| Item 4 (Empty File) | 9.6 | src/handlers/precision-read.ts:112-114 | Documentation | -0.2 | New interface fields (`status`, `size_bytes`, `warning`) lack JSDoc comments. Add `/** Status indicator for file read operation */` etc. |
+| Item 4 (Empty File) | 9.6 | src/handlers/precision-read.ts | Testing | -0.2 | No dedicated test added for empty file warning feature. Build passes but specific test coverage missing. |
+| Item 5 (Slow FS) | 9.7 | src/handlers/precision-read.ts | Testing | -0.15 | No tests added for slow FS detection feature. |
+| Item 5 (Slow FS) | 9.7 | src/handlers/precision-read.ts | Naming | -0.15 | `filesystem?: 'slow'` type is not extensible. Consider expanding to `'slow' | 'fast' | 'network' | 'local'` union for future FS type detection. |
+
+### Phase 2: Item 6 Deductions
+
+| Item | Score | File:Line | Category | Deduction | What to Fix |
+|------|-------|-----------|----------|-----------|-------------|
+| 6A (Size Gate Config) | 9.8 | src/runtime-config.ts | Testing | -0.1 | No dedicated unit tests for size gate config getters. Pre-existing gap shared with other config getters. |
+| 6A (Size Gate Config) | 9.8 | src/runtime-config.ts:20-25 | Documentation | -0.1 | JSDoc could be more precise about pagination trigger behavior. |
+| 6B (Size Gate Integration) | 9.5 | src/handlers/precision-read.ts:992 | Type Safety | -0.25 | Redundant `(r as Record<string, unknown>)` cast. `FileReadResult` has `[key: string]: unknown` index signature, so `r.pagination` is directly accessible without cast. Simplify to `if (r.pagination) entry.pagination = r.pagination;` |
+| 6B (Size Gate Integration) | 9.5 | src/handlers/precision-read.ts:94-117 | Type Safety | -0.25 | `pagination` property relies on index signature `[key: string]: unknown` instead of having a typed optional property like `pagination?: { page: number; page_size: number; ... }`. Add typed property to `FileReadResult` interface. |
+
+> Note: JSONL final review scored 9.5 for 6B (within the combined "Items 2C, 5, 6B fixes" re-review). Audit document listed 9.7 which may reflect a weighted average.
+
+### Phase 3: Item 1 Deductions
+
+| Item | Score | File:Line | Category | Deduction | What to Fix |
+|------|-------|-----------|----------|-----------|-------------|
+| Item 1 (Cache Config) | 9.0 | src/runtime-config.ts:313,324 | Consistency | -0.3 | Remove unnecessary `config?.` optional chaining. `loadConfigSync()` never returns null/undefined. All existing getters use `config.` (no `?.`). Change to match established pattern. |
+| Item 1 (Cache Config) | 9.0 | src/runtime-config.ts:311-327 | Testing | -0.4 | No test coverage for `getCacheMode()` or `getCacheMaxMb()` getters. Add unit tests covering default values, valid values, and invalid value fallbacks. |
+| Item 1 (Cache Config) | 9.0 | src/runtime-config.ts:307-327 | Documentation | -0.3 | Missing `@returns` JSDoc tags. All existing getters include `@returns` but these two new getters omit them. Add `@returns Cache mode string` and `@returns Maximum cache memory in megabytes`. |
+
+> Note: JSONL review scored 9.0 (FAIL at 9.5 threshold). The audit listed 9.7 -- fixes may have been applied as part of broader cache fix agents but no dedicated re-review of just the config portion was found in the JSONL.
+
+### Phase 5: Item 10 Deductions
+
+| Item | Score | File:Line | Category | Deduction | What to Fix |
+|------|-------|-----------|----------|-----------|-------------|
+| Part F (Progress) | 9.6 | src/utils/progress-collector.ts | Testing | -0.2 | No dedicated unit tests for progress-collector module. The original review (8.2) had 2 major + 3 minor issues; all were fixed in the re-review (9.6), but testing category still below 10. |
+| Part F (Progress) | 9.6 | src/utils/progress-collector.ts, src/handlers/precision-exec.ts | Documentation | -0.2 | No new JSDoc documenting the progress reporting integration was added during fixes. |
+| Part H (Smart Retry) | 9.7 | src/handlers/precision-exec.ts:21 | Organization | -0.3 | Mixed value and inline type imports on a single line: `import { parseRetryConfig, shouldRetry, computeDelay, type RetryConfig, type RetryResult }`. Valid TS 4.5+ syntax but some linters flag mixed import styles. Split into separate value import and `import type` statement. |
+| Part J (Early Term.) | 9.7 | src/state/process-manager.ts:181-183 | Organization | -0.3 | Empty try/catch in `adopt()` that just rethrows. The entire try/catch is a no-op since the catch rethrows. Remove the try/catch entirely and let exceptions propagate naturally, or add meaningful error handling. |
+
+### Score Corrections (Audit vs JSONL)
+
+| Item | Audit Score | JSONL Score | Discrepancy |
+|------|------------|------------|-------------|
+| 8F | 9.8 | 10.0 | JSONL review gave perfect score -- no fixes needed |
+| 8H | 9.8 | 9.7 | JSONL re-review at line 1886 scored 9.7, not 9.8 |
+| 6B | 9.7 | 9.5 | JSONL combined re-review scored 9.5 |
+| Item 1 | 9.7 | 9.0 | Initial review scored 9.0 (FAIL); no dedicated re-review found |
+
+### Fix Priority
+
+**Quick wins (< 5 min each):**
+1. 8E: Move imports to top of errors.ts
+2. 8G: Add typeof guard in getToolVerbosityDefault
+3. Item 1: Remove `?.` optional chaining, add `@returns` JSDoc
+4. Part J: Remove empty try/catch in adopt()
+5. Part H: Split mixed import into value + type imports
+
+**Medium effort (5-15 min each):**
+1. 8H: Reduce diff_preview slice size
+2. 6B: Add typed `pagination` property to FileReadResult interface
+3. 2C: Add suggestions/hint to standard output mode
+4. Item 4: Add JSDoc to interface fields
+5. Item 5: Expand filesystem type union
+
+**Larger effort (15-30 min each):**
+1. 2A: Write dedicated unit tests for fuzzy.ts functions
+2. Item 1: Write unit tests for getCacheMode/getCacheMaxMb
+3. Part F: Write unit tests for progress-collector.ts
+4. Item 4/5/2C: Add feature-specific integration tests
+
+---
+
 ## Executive Summary
 
 This document compiles ALL code review agent results from Phases 1-5 of the `precision-tool-updates.md` implementation. The session followed a strict Work → Review → Fix → Check (WRFC) loop with a 9.5/10 minimum threshold for PASS verdicts.

@@ -168,13 +168,13 @@ function applyOperations(
             cell.cell_type = op.cell_type;
             // Ensure code cells have required nbformat v4 fields
             if (op.cell_type === 'code') {
-              if ((cell as any).execution_count === undefined) (cell as any).execution_count = null;
-              if ((cell as any).outputs === undefined) (cell as any).outputs = [];
+              if (cell.execution_count === undefined) cell.execution_count = null;
+              if (cell.outputs === undefined) cell.outputs = [];
             }
             // Clean non-applicable fields when converting away from code
             if (op.cell_type !== 'code') {
-              delete (cell as any).execution_count;
-              delete (cell as any).outputs;
+              delete cell.execution_count;
+              delete cell.outputs;
             }
           }
           

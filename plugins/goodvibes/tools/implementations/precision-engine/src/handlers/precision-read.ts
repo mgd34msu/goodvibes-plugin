@@ -19,6 +19,7 @@ import { successResult, errorResult, parseOutputMode, toCallToolResult, toMixedC
 import type { ImageContent, TextContent } from '@modelcontextprotocol/sdk/types.js';
 import { parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
+import Parser from 'web-tree-sitter';
 import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
 import { isLanguageSupported } from '../core/languages.js';
 import { validateFilePath } from '../utils/path-validation.js';
@@ -892,8 +893,8 @@ async function readSingleFile(
             const treeSitter = getTreeSitter();
             const tree = await treeSitter.parse(content, filePath);
             // Convert tree-sitter AST to simplified format
-            // Build simplified AST from tree-sitter parse result
-            function simplifyNode(node: any): Record<string, unknown> {
+            function simplifyNode(node: Parser.SyntaxNode, depth: number = 0): Record<string, unknown> {
+              if (depth > 50) return { kind: node.type, line: node.startPosition.row + 1 };
               const simplified: Record<string, unknown> = {
                 kind: node.type,
                 line: node.startPosition.row + 1,
@@ -901,12 +902,12 @@ async function readSingleFile(
               const nameNode = node.childForFieldName?.('name');
               if (nameNode) simplified.name = nameNode.text;
               const children = node.namedChildren
-                .filter((child: any) => child.namedChildCount > 0 || ['function_declaration', 'class_declaration', 'variable_declaration', 'import_declaration', 'export_statement', 'interface_declaration', 'type_alias_declaration', 'enum_declaration', 'method_definition'].includes(child.type))
-                .map((child: any) => simplifyNode(child));
+                .filter((child: Parser.SyntaxNode) => child.namedChildCount > 0 || ['function_declaration', 'class_declaration', 'variable_declaration', 'import_declaration', 'export_statement', 'interface_declaration', 'type_alias_declaration', 'enum_declaration', 'method_definition'].includes(child.type))
+                .map((child: Parser.SyntaxNode) => simplifyNode(child, depth + 1));
               if (children.length > 0) simplified.children = children;
               return simplified;
             }
-            const children = tree.rootNode.namedChildren.map((c: any) => simplifyNode(c));
+            const children = tree.rootNode.namedChildren.map((c: Parser.SyntaxNode) => simplifyNode(c, 0));
             result.ast = {
               file: filePath,
               kind: 'SourceFile',
@@ -928,7 +929,7 @@ async function readSingleFile(
             }
           }
         } else {
-          result.error = 'AST extraction not supported for this file type';
+          result.error = 'AST extraction not supported for this file type. Supported languages include TypeScript, JavaScript, Python, Go, Rust, and more.';
         }
         break;
     }
