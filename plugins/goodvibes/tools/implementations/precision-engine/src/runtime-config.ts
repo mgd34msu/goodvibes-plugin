@@ -31,6 +31,12 @@ export interface PrecisionEngineConfig {
   cache_mode?: 'hash_only' | 'with_content';
   /** Maximum memory budget for file cache in megabytes. Default: 200 MB */
   cache_max_mb?: number;
+  /** Enable safe overwrite protection (auto-backup on first-time overwrite). Default: true */
+  safe_overwrite?: boolean;
+  /** Backup directory for safe overwrites. Default: '.goodvibes/.backups' */
+  backup_dir?: string;
+  /** Skip backup when file is clean in git (recoverable via git checkout). Default: true */
+  backup_git_clean_skip?: boolean;
   /** Extensible for future config */
   [key: string]: unknown;
 }
@@ -326,6 +332,42 @@ export function getCacheMaxMb(): number {
   const value = config.cache_max_mb;
   if (typeof value === 'number' && value > 0) return value;
   return 200;
+}
+
+/**
+ * Get safe overwrite protection setting from config.
+ * Default: true
+ * @returns Whether to enable automatic backup on first-time overwrite
+ */
+export function getSafeOverwrite(): boolean {
+  const config = loadConfigSync();
+  const value = config.safe_overwrite;
+  if (typeof value === 'boolean') return value;
+  return true;
+}
+
+/**
+ * Get backup directory for safe overwrites from config.
+ * Default: '.goodvibes/.backups'
+ * @returns Backup directory path
+ */
+export function getBackupDir(): string {
+  const config = loadConfigSync();
+  const value = config.backup_dir;
+  if (typeof value === 'string' && value.length > 0) return value;
+  return '.goodvibes/.backups';
+}
+
+/**
+ * Get backup git clean skip setting from config.
+ * Default: true (skip backup for clean files in git)
+ * @returns Whether to skip backup when file is clean in git
+ */
+export function getBackupGitCleanSkip(): boolean {
+  const config = loadConfigSync();
+  const value = config.backup_git_clean_skip;
+  if (typeof value === 'boolean') return value;
+  return true;
 }
 
 /**

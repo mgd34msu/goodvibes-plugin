@@ -327,6 +327,8 @@ export const precisionReadSchema: Tool = {
           max_tokens: { type: 'integer', minimum: 1 },
         },
       },
+      token_budget: { type: 'integer', minimum: 1, description: 'Token budget for paginated batch reads. When set, results are binned into pages that fit within the budget.' },
+      page: { type: 'integer', minimum: 1, default: 1, description: 'Page number to return when using token_budget pagination (default: 1).' },
       verbosity: verbositySchema,
     },
     required: ['files'],
@@ -458,7 +460,7 @@ export const precisionConfigSchema: Tool = {
       },
       key: {
         type: 'string',
-        description: 'Config key to get or set. Available keys: sandbox (boolean), cache_mode ("hash_only"|"with_content", default: with_content), cache_max_mb (number, default: 200, minimum: 1), slow_fs_stat_threshold_ms (number), slow_fs_known_prefixes (string[]), max_file_bytes (number), max_token_estimate (number), max_diff_chars (number, default: 10000), page_size_lines (number), verbosity_defaults (object). Omit for get to return all config.',
+        description: 'Config key to get or set. Available keys: sandbox (boolean), cache_mode ("hash_only"|"with_content", default: with_content), cache_max_mb (number, default: 200, minimum: 1), safe_overwrite (boolean, default: true), backup_dir (string, default: ".goodvibes/.backups"), backup_git_clean_skip (boolean, default: true), slow_fs_stat_threshold_ms (number), slow_fs_known_prefixes (string[]), max_file_bytes (number), max_token_estimate (number), max_diff_chars (number, default: 10000), page_size_lines (number), verbosity_defaults (object). Omit for get to return all config.',
       },
       value: {
         // Intentionally no type constraint - accepts any JSON value (boolean, string, number)

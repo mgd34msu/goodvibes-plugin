@@ -364,3 +364,7 @@ export { levenshteinDistance, calculateSimilarity, rankBySimilarity } from './fu
 
 // Export path validation utilities
 export { validateDirectoryPath, validateFilePath } from './path-validation.js';
+
+// Export file type detection and context intelligence
+export { detectFileType, type FileTypeInfo } from './file-type-detection.js';
+export { getContextForFile, type ContextMetadata } from './context-intelligence.js';

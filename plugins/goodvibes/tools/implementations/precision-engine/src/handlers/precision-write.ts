@@ -20,6 +20,7 @@ import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { randomUUID } from 'crypto';
 import { validateFilePath } from '../utils/path-validation.js';
 import { FileStateCache } from '../state/file-cache.js';
+import { performSafeOverwrite } from '../utils/safe-overwrite.js';
 
 // Simple template engines - inline to avoid extra dependencies
 function renderHandlebars(template: string, data: Record<string, unknown>): string {
@@ -85,6 +86,14 @@ interface WriteResult {
   size?: number;
   error?: string;
   preview?: string[];
+  safety?: {
+    first_overwrite: boolean;
+    pre_snapshot?: string;
+    backup?: string;
+    git_status?: 'clean' | 'dirty' | 'staged' | 'untracked' | null;
+    warning?: string;
+    recoverable_via?: string;
+  };
 }
 
 interface RollbackInfo {
@@ -294,6 +303,12 @@ async function writeFile(
       };
     }
 
+    // Layer 3: Safe overwrite detection and handling
+    let safeOverwriteResult;
+    if (exists && effectiveOverwrite && !dryRun) {
+      safeOverwriteResult = await performSafeOverwrite(validatedPath, workDir, exists);
+    }
+
     let rollback: RollbackInfo | undefined;
 
     if (!dryRun) {
@@ -325,12 +340,28 @@ async function writeFile(
       }
     }
 
+    // Build safety metadata if we performed safe overwrite
+    let safety;
+    if (safeOverwriteResult && (safeOverwriteResult.backupPath || safeOverwriteResult.snapshotVersion)) {
+      safety = {
+        first_overwrite: true,
+        pre_snapshot: safeOverwriteResult.snapshotVersion 
+          ? `cached (version ${safeOverwriteResult.snapshotVersion})` 
+          : undefined,
+        backup: safeOverwriteResult.backupPath,
+        git_status: safeOverwriteResult.gitStatus.status,
+        warning: safeOverwriteResult.warning,
+        recoverable_via: safeOverwriteResult.recoverable_via,
+      };
+    }
+
     return {
       result: {
         path: spec.path,
         status: exists ? 'overwritten' : 'created',
         size,
         preview,
+        safety,
       },
       rollback,
     };
@@ -479,6 +510,7 @@ export const handlePrecisionWrite: ToolHandler = async (args: unknown) => {
           files: results.map(r => ({
             path: r.path,
             status: r.status,
+            ...(r.safety && { safety: r.safety }),
           })),
           summary: {
             files_created: filesCreated,
@@ -498,6 +530,7 @@ export const handlePrecisionWrite: ToolHandler = async (args: unknown) => {
             size: r.size,
             preview: r.preview,
             error: r.error,
+            ...(r.safety && { safety: r.safety }),
           })),
           summary: {
             files_created: filesCreated,

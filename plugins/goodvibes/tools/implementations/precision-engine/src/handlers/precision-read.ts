@@ -25,6 +25,8 @@ import { validateFilePath } from '../utils/path-validation.js';
 import { getFileSuggestions, type FileSuggestion } from '../utils/file-suggestions.js';
 import { getSlowFsThreshold, getSlowFsPrefixes, getMaxFileBytes, getMaxTokenEstimate, getPageSizeLines } from '../runtime-config.js';
 import { FileStateCache } from '../state/file-cache.js';
+import { detectFileType } from '../utils/file-type-detection.js';
+import { getContextForFile, type ContextMetadata } from '../utils/context-intelligence.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -61,6 +63,8 @@ interface PrecisionReadInput {
   default_range?: { start: number; end: number };
   pages?: string;
   output_mode?: OutputMode;
+  token_budget?: number;
+  page?: number;
 }
 
 interface SymbolInfo {
@@ -114,6 +118,8 @@ interface FileReadResult {
   warning?: string;
   suggestions?: FileSuggestion[];
   hint?: string;
+  token_cost?: number;
+  context?: ContextMetadata;
   [key: string]: unknown; // Allow dynamic properties for pagination
 }
 
@@ -923,6 +929,17 @@ async function readSingleFile(
     }
   }
 
+  // Contextual Intelligence (Item 3): enrich with file type and memory context
+  if (result.exists) {
+    try {
+      const fileType = detectFileType(validatedPath);
+      const context = await getContextForFile(validatedPath, fileType, workDir);
+      result.context = context;
+    } catch {
+      // Context enrichment is non-critical — don't fail the read
+    }
+  }
+
   return result;
 }
 
@@ -964,22 +981,109 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       )
     );
 
+    // Token-Budgeted Batch Pagination (Item 7)
+    let paginatedResults = results;
+    let paginationMeta: {
+      page: number;
+      total_pages: number;
+      pending_files: string[];
+      token_budget: number;
+      tokens_used: number;
+    } | undefined;
+    let paginationWarning: string | undefined;
+
+    // Check if page is set without token_budget
+    if (input.page && input.page > 1 && (!input.token_budget || input.token_budget <= 0)) {
+      paginationWarning = 'page parameter is ignored without token_budget';
+    }
+
+    if (input.token_budget && input.token_budget > 0) {
+      const budget = input.token_budget;
+      const requestedPage = input.page ?? 1;
+      
+      // Calculate token cost per result
+      const costsPerFile: { index: number; cost: number }[] = results.map((r, i) => {
+        // Strip image_base64 before cost calculation to avoid inflating token cost
+        const { image_base64: _img, ...costTarget } = r;
+        return {
+          index: i,
+          cost: estimateTokens(JSON.stringify(costTarget)),
+        };
+      });
+      
+      // Assign token_cost to each result
+      costsPerFile.forEach(({ index, cost }) => {
+        results[index].token_cost = cost;
+      });
+
+      // Pack files into pageGroups
+      const pageGroups: number[][] = [];
+      let currentPage: number[] = [];
+      let currentPageCost = 0;
+
+      for (const { index, cost } of costsPerFile) {
+        if (currentPage.length > 0 && currentPageCost + cost > budget) {
+          pageGroups.push(currentPage);
+          currentPage = [index];
+          currentPageCost = cost;
+        } else {
+          currentPage.push(index);
+          currentPageCost += cost;
+        }
+      }
+      if (currentPage.length > 0) {
+        pageGroups.push(currentPage);
+      }
+
+      const totalPages = pageGroups.length;
+      const pageIndex = Math.min(requestedPage, totalPages) - 1;
+      const selectedPage = pageGroups[pageIndex] || pageGroups[0] || [];
+      
+      // Get results for selected page
+      paginatedResults = selectedPage.map(i => results[i]);
+      
+      // Build pending files list (files NOT in the selected page)
+      const selectedSet = new Set(selectedPage);
+      const pendingFiles = results
+        .map((r, i) => ({ path: r.path, index: i }))
+        .filter(({ index }) => !selectedSet.has(index))
+        .map(({ path: p }) => p);
+
+      const tokensUsed = selectedPage.reduce((sum, i) => sum + (costsPerFile[i]?.cost ?? 0), 0);
+
+      paginationMeta = {
+        page: pageIndex + 1,
+        total_pages: totalPages,
+        pending_files: pendingFiles,
+        token_budget: budget,
+        tokens_used: tokensUsed,
+      };
+    }
+
     // Build summary
-    const filesRead = results.filter(r => r.exists && !r.error).length;
-    const filesNotFound = results.filter(r => !r.exists).length;
-    const totalLines = results.reduce((sum, r) => sum + (r.line_count ?? 0), 0);
-    const anyTruncated = results.some(r => r.truncated);
+    const filesRead = paginatedResults.filter(r => r.exists && !r.error).length;
+    const filesNotFound = paginatedResults.filter(r => !r.exists).length;
+    const totalLines = paginatedResults.reduce((sum, r) => sum + (r.line_count ?? 0), 0);
+    const anyTruncated = paginatedResults.some(r => r.truncated);
 
     // Build output based on mode
     let data: unknown;
-    const summary = {
+    const summary: Record<string, unknown> = {
       files_read: filesRead,
       files_not_found: filesNotFound,
       total_lines: totalLines,
       truncated: anyTruncated,
-      files_binary: results.filter(r => r.is_binary).length,
-      files_image: results.filter(r => r.is_image).length,
+      files_binary: paginatedResults.filter(r => r.is_binary).length,
+      files_image: paginatedResults.filter(r => r.is_image).length,
     };
+    
+    if (paginationMeta) {
+      summary.pagination = paginationMeta;
+    }
+    
+    if (paginationWarning) {
+      summary.warning = paginationWarning;
+    }
 
     switch (output.mode) {
       case 'count_only':
@@ -989,13 +1093,18 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       case 'minimal':
         data = {
           files: Object.fromEntries(
-            results.map(r => {
+            paginatedResults.map(r => {
               const fileObj: Record<string, unknown> = {
                 exists: r.exists,
                 line_count: r.line_count,
                 error: r.error,
                 is_binary: r.is_binary,
               };
+              
+              // Include context if present (Item 3)
+              if (r.context) {
+                fileObj.context = r.context;
+              }
               
               // Add cache version to response metadata for OCC tracking
               const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);
@@ -1013,7 +1122,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
 
       case 'verbose':
         data = {
-          files: Object.fromEntries(results.map(r => {
+          files: Object.fromEntries(paginatedResults.map(r => {
             const { image_base64, ...rest } = r;
             
             // Add cache version to response metadata for OCC tracking
@@ -1026,14 +1135,14 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
             return [r.path, rest];
           })),
           summary,
-          tokens_used: estimateTokens(JSON.stringify(results)),
+          tokens_used: estimateTokens(JSON.stringify(paginatedResults)),
         };
         break;
 
       default: // standard
         data = {
           files: Object.fromEntries(
-            results.map(r => {
+            paginatedResults.map(r => {
               const entry: Record<string, unknown> = { exists: r.exists };
               if (r.content !== undefined) entry.content = r.content;
               if (r.lines !== undefined) entry.lines = r.lines;
@@ -1051,6 +1160,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.warning) entry.warning = r.warning;
               if (r.suggestions !== undefined) entry.suggestions = r.suggestions;
               if (r.hint) entry.hint = r.hint;
+              if (r.context) entry.context = r.context;
               if ((r as Record<string, unknown>).pagination) entry.pagination = (r as Record<string, unknown>).pagination;
               if ((r as Record<string, unknown>).cache) entry.cache = (r as Record<string, unknown>).cache;
               
@@ -1066,12 +1176,12 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
             })
           ),
           summary,
-          tokens_used: estimateTokens(JSON.stringify(results)),
+          tokens_used: estimateTokens(JSON.stringify(paginatedResults)),
         };
     }
 
     // Check if any results contain images
-    const imageResults = results.filter(r => r.is_image && r.image_base64);
+    const imageResults = paginatedResults.filter(r => r.is_image && r.image_base64);
 
     if (imageResults.length === 0) {
       return toCallToolResult(successResult(data, outputMode, getElapsed()));
