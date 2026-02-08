@@ -4,8 +4,9 @@
  */
 
 import { FileStateCache } from '../state/file-cache.js';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { resolve } from 'path';
+import path from 'path';
 
 /**
  * Ranked file with relevance scoring.
@@ -43,6 +44,7 @@ const WEIGHTS = {
  * @param workDir - Working directory for path resolution
  * @returns Sorted array of ranked files (descending by relevance)
  */
+// Structurally compatible with GrepFileResult from precision-grep handler
 export async function rankResults(
   files: Array<{
     file: string;
@@ -85,7 +87,7 @@ export async function rankResults(
     }
 
     // Factor 4: Recently modified (git) (0.15)
-    const gitRecencyScore = await scoreGitRecency(absolutePath);
+    const gitRecencyScore = scoreGitRecency(absolutePath);
     if (gitRecencyScore > 0) {
       score += gitRecencyScore * WEIGHTS.GIT_RECENCY;
       reasons.push('recently modified');
@@ -184,7 +186,7 @@ function scoreInCache(absolutePath: string): number {
  * Score git recency: normalize timestamp to 0-1 based on how recent the file was modified.
  * Uses a 90-day window: modifications within the last 90 days score higher.
  */
-async function scoreGitRecency(absolutePath: string): Promise<number> {
+function scoreGitRecency(absolutePath: string): number {
   // Check session cache first
   if (gitTimestampCache.has(absolutePath)) {
     return normalizeGitTimestamp(gitTimestampCache.get(absolutePath)!);
@@ -192,8 +194,9 @@ async function scoreGitRecency(absolutePath: string): Promise<number> {
 
   try {
     // Get last commit timestamp for this file
-    const result = execSync(
-      `git log --format=%at -1 -- "${absolutePath}"`,
+    const result = execFileSync(
+      'git',
+      ['log', '--format=%at', '-1', '--', absolutePath],
       { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], timeout: 1000 }
     ).trim();
 
@@ -248,7 +251,7 @@ function normalizeGitTimestamp(timestamp: number): number {
  * Normalize: depth 1 = 1.0, depth 5+ = 0.0.
  */
 function scorePathDepth(filePath: string): number {
-  const depth = filePath.split('/').length;
+  const depth = filePath.split(path.sep).length;
 
   if (depth <= 1) return 1.0;
   if (depth >= 5) return 0.0;

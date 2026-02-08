@@ -395,3 +395,12 @@ export { generateReplacePreview, type ReplacePreviewMatch, type ReplacePreviewRe
 
 // Export grep pagination utilities
 export { applyPagination, type PaginationParams, type PaginationMetadata } from './grep-pagination.js';
+
+// Export grep relationship utilities
+export { findRelatedFiles, type RelatedFile, type RelationshipResult } from './grep-relationships.js';
+
+// Export grep ranking utilities
+export { rankResults, type RankedFile } from './grep-ranking.js';
+
+// Export grep statistics utilities
+export { computeStats, type GrepStatsSummary, type DirectoryStats, type GrepFileData } from './grep-stats.js';

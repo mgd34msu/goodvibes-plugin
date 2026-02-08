@@ -25,7 +25,7 @@ export interface GrepStatsSummary {
   total_files: number;
   /** Per-directory breakdown */
   by_directory: Record<string, DirectoryStats>;
-  /** Per-file-type distribution (extension -> match count) */
+  /** File type distribution - counts by extension. Named 'by_file_type' (more descriptive than spec 'by_type') */
   by_file_type: Record<string, number>;
   /** Top 10 files by match count */
   top_files: Array<{ file: string; matches: number }>;

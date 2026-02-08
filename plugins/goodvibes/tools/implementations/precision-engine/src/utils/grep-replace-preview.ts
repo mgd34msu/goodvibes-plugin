@@ -14,11 +14,13 @@ export interface ReplacePreviewMatch {
   /** Line number where the match occurs (1-based) */
   line: number;
   /** Original line content before replacement */
-  before: string;
+  original: string;
   /** Modified line content after replacement */
-  after: string;
-  /** Unified diff format showing the change ("-old line\n+new line") */
+  replaced: string;
+  /** Unified diff format showing the change (contains actual newline between -old and +new lines) */
   diff: string;
+  /** Optional warning when fallback replacement method was used */
+  warning?: string;
 }
 
 /**
@@ -26,7 +28,7 @@ export interface ReplacePreviewMatch {
  */
 export interface ReplacePreviewResult {
   /** Array of all replacement matches across files */
-  replacements: ReplacePreviewMatch[];
+  matches: ReplacePreviewMatch[];
   /** Total number of replacements that would be made */
   total_replacements: number;
   /** Number of unique files that would be affected */
@@ -36,21 +38,20 @@ export interface ReplacePreviewResult {
 }
 
 /**
- * Represents a grep match from precision_grep output.
+ * Minimal match interface - any match object with these required fields.
  */
-interface GrepMatch {
+interface MinimalMatch {
   line: number;
-  column?: number;
   content?: string;
   highlight?: [number, number];
 }
 
 /**
- * Represents a file result from precision_grep output.
+ * Minimal file result interface - any file result with these required fields.
  */
-interface GrepFileResult {
+interface MinimalFileResult {
   file: string;
-  matches?: GrepMatch[];
+  matches?: MinimalMatch[];
   match_count?: number;
 }
 
@@ -75,14 +76,14 @@ function generateDiffLine(before: string, after: string): string {
  * @param searchPattern - The pattern to search for (regex string)
  * @param replaceString - The replacement string (supports $1, $2, etc. for captures)
  * @param highlight - Optional [start, end] character indices to replace
- * @returns Modified line content
+ * @returns Tuple of [modified line content, optional warning message]
  */
 function applyReplacement(
   content: string,
   searchPattern: string,
   replaceString: string,
   highlight?: [number, number]
-): string {
+): [string, string | undefined] {
   // If highlight is provided, replace only that specific portion
   if (highlight && highlight.length === 2) {
     const [start, end] = highlight;
@@ -92,10 +93,10 @@ function applyReplacement(
       // Invalid highlight - fall back to regex replacement
       try {
         const regex = new RegExp(searchPattern, 'g');
-        return content.replace(regex, replaceString);
+        return [content.replace(regex, replaceString), 'Invalid highlight range, used regex fallback'];
       } catch (err) {
         // If regex fails, do literal replacement
-        return content.replace(searchPattern, replaceString);
+        return [content.replace(searchPattern, replaceString), 'Invalid highlight range, used literal replacement fallback'];
       }
     }
     
@@ -108,26 +109,26 @@ function applyReplacement(
     try {
       const regex = new RegExp(searchPattern);
       const replaced = matched.replace(regex, replaceString);
-      return before + replaced + after;
+      return [before + replaced + after, undefined];
     } catch (err) {
       // Fall back to literal replacement of the highlighted portion
-      return before + replaceString + after;
+      return [before + replaceString + after, 'Regex compilation failed, used literal replacement fallback'];
     }
   }
   
   // No highlight - apply regex replacement to full line
   try {
     const regex = new RegExp(searchPattern, 'g');
-    return content.replace(regex, replaceString);
+    return [content.replace(regex, replaceString), undefined];
   } catch (err) {
     // If regex compilation fails, try literal replacement
     const escapedPattern = escapeRegex(searchPattern);
     try {
       const regex = new RegExp(escapedPattern, 'g');
-      return content.replace(regex, replaceString);
+      return [content.replace(regex, replaceString), 'Regex compilation failed, used escaped pattern fallback'];
     } catch {
       // Last resort: simple string replacement
-      return content.split(searchPattern).join(replaceString);
+      return [content.split(searchPattern).join(replaceString), 'Regex compilation failed, used simple string replacement fallback'];
     }
   }
 }
@@ -141,24 +142,24 @@ function applyReplacement(
  * @returns Preview result showing all replacements that would be made
  */
 export function generateReplacePreview(
-  files: GrepFileResult[],
+  files: MinimalFileResult[],
   searchPattern: string,
   replaceString: string
 ): ReplacePreviewResult {
-  const replacements: ReplacePreviewMatch[] = [];
+  const matches: ReplacePreviewMatch[] = [];
   const affectedFiles = new Set<string>();
   
   // Process each file
   for (const fileResult of files) {
-    const { file, matches } = fileResult;
+    const { file, matches: fileMatches } = fileResult;
     
     // Skip files without matches or content
-    if (!matches || matches.length === 0) {
+    if (!fileMatches || fileMatches.length === 0) {
       continue;
     }
     
     // Process each match in the file
-    for (const match of matches) {
+    for (const match of fileMatches) {
       const { line, content, highlight } = match;
       
       // Skip matches without content - can't preview replacement
@@ -167,7 +168,7 @@ export function generateReplacePreview(
       }
       
       // Apply the replacement
-      const modifiedContent = applyReplacement(
+      const [modifiedContent, warning] = applyReplacement(
         content,
         searchPattern,
         replaceString,
@@ -176,12 +177,13 @@ export function generateReplacePreview(
       
       // Only add if content actually changed
       if (modifiedContent !== content) {
-        replacements.push({
+        matches.push({
           file,
           line,
-          before: content,
-          after: modifiedContent,
+          original: content,
+          replaced: modifiedContent,
           diff: generateDiffLine(content, modifiedContent),
+          ...(warning && { warning }),
         });
         
         affectedFiles.add(file);
@@ -190,13 +192,13 @@ export function generateReplacePreview(
   }
   
   // Generate hint for applying changes
-  const hint = replacements.length > 0
-    ? `To apply: use precision_edit with find: '${searchPattern}', replace: '${replaceString}', occurrence: 'all'`
+  const hint = matches.length > 0
+    ? `To apply: use precision_edit with find: ${JSON.stringify(searchPattern)}, replace: ${JSON.stringify(replaceString)}, occurrence: 'all'`
     : 'No replacements would be made (pattern not found or no content available)';
   
   return {
-    replacements,
-    total_replacements: replacements.length,
+    matches,
+    total_replacements: matches.length,
     files_affected: affectedFiles.size,
     hint,
   };
