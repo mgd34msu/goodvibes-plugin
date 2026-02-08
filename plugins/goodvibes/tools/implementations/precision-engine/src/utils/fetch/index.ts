@@ -8,4 +8,8 @@ export * from './content-type.js';
 export * from './links.js';
 export * from './structured-data.js';
 export * from './turndown.js';
+export * from './readability.js';
 export * from './tables.js';
+export * from './format-negotiation.js';
+export * from './redirect-tracker.js';
+export * from './pdf-routing.js';

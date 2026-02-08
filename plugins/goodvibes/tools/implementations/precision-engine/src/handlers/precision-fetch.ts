@@ -15,6 +15,19 @@ import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
+import {
+  htmlToMarkdown,
+  extractCodeBlocks,
+  extractTables,
+  extractLinks,
+  extractStructuredData,
+  detectContentType,
+  type CodeBlock,
+  type TableData,
+  type LinkInfo,
+  type StructuredData,
+  type ContentTypeInfo,
+} from '../utils/fetch/index.js';
 
 // Simple in-memory cache
 interface CacheEntry {
@@ -61,57 +74,7 @@ function setCache(url: string, method: string, entry: Omit<CacheEntry, 'timestam
   cache.set(key, { ...entry, timestamp: Date.now() });
 }
 
-// Simple HTML to Markdown converter
-function htmlToMarkdown(html: string): string {
-  let md = html
-    // Remove scripts and styles
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    // Convert headers
-    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '\n# $1\n')
-    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '\n## $1\n')
-    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '\n### $1\n')
-    .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '\n#### $1\n')
-    .replace(/<h5[^>]*>([\s\S]*?)<\/h5>/gi, '\n##### $1\n')
-    .replace(/<h6[^>]*>([\s\S]*?)<\/h6>/gi, '\n###### $1\n')
-    // Convert paragraphs
-    .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '\n$1\n')
-    // Convert line breaks
-    .replace(/<br\s*\/?>/gi, '\n')
-    // Convert bold
-    .replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi, '**$2**')
-    // Convert italic
-    .replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi, '*$2*')
-    // Convert code blocks
-    .replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '\n```\n$1\n```\n')
-    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
-    // Convert links
-    .replace(/<a[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
-    // Convert images
-    .replace(/<img[^>]*src=["']([^"']*)["'][^>]*alt=["']([^"']*)["'][^>]*\/?>/gi, '![$2]($1)')
-    .replace(/<img[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']*)["'][^>]*\/?>/gi, '![$1]($2)')
-    .replace(/<img[^>]*src=["']([^"']*)["'][^>]*\/?>/gi, '![]($1)')
-    // Convert lists
-    .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n')
-    .replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, '\n$1\n')
-    .replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, '\n$1\n')
-    // Convert blockquotes
-    .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, '\n> $1\n')
-    // Remove remaining HTML tags
-    .replace(/<[^>]+>/g, '')
-    // Decode HTML entities
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    // Clean up whitespace
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
 
-  return md;
-}
 
 // Simple CSS selector extractor
 function extractWithSelectors(html: string, selectors: string[]): Record<string, string[]> {
@@ -191,7 +154,7 @@ function summarizeContent(text: string, prompt?: string): string {
   return summary;
 }
 
-type ExtractMode = 'raw' | 'text' | 'json' | 'markdown' | 'structured' | 'summary';
+type ExtractMode = 'raw' | 'text' | 'json' | 'markdown' | 'structured' | 'summary' | 'code_blocks' | 'tables' | 'links' | 'metadata';
 
 interface FetchSpec {
   url: string;
@@ -234,6 +197,11 @@ interface FetchResult {
   error?: string;
   duration_ms?: number;
   from_cache?: boolean;
+  content_type_info?: ContentTypeInfo;
+  code_blocks?: CodeBlock[];
+  tables?: TableData[];
+  links?: LinkInfo[];
+  metadata?: StructuredData;
 }
 
 async function fetchSingleUrl(
@@ -305,6 +273,8 @@ async function fetchSingleUrl(
       rawContent = await response.text();
     }
 
+    const contentTypeInfo = detectContentType(response.headers, url, rawContent?.slice(0, 512));
+
     // Cache successful GET responses
     if (method === 'GET' && response.ok && cacheTtl > 0) {
       setCache(url, method, {
@@ -322,6 +292,7 @@ async function fetchSingleUrl(
       size: rawContent.length,
       duration_ms: Date.now() - startTime,
       from_cache: false,
+      content_type_info: contentTypeInfo,
     };
 
     if (!response.ok) {
@@ -408,6 +379,22 @@ async function processContent(
     case 'summary':
       const plainText = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       result.summary = summarizeContent(plainText, summaryPrompt);
+      break;
+
+    case 'code_blocks':
+      result.code_blocks = extractCodeBlocks(rawContent);
+      break;
+
+    case 'tables':
+      result.tables = extractTables(rawContent);
+      break;
+
+    case 'links':
+      result.links = extractLinks(rawContent, result.url);
+      break;
+
+    case 'metadata':
+      result.metadata = extractStructuredData(rawContent);
       break;
 
     default:
@@ -523,6 +510,11 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.content && { content: r.content.length > 2000 ? r.content.slice(0, 2000) + '...' : r.content }),
             ...(r.structured && { structured: r.structured }),
             ...(r.summary && { summary: r.summary }),
+            ...(r.code_blocks && { code_blocks: r.code_blocks }),
+            ...(r.tables && { tables: r.tables }),
+            ...(r.links && { links: r.links }),
+            ...(r.metadata && { metadata: r.metadata }),
+            ...(r.content_type_info && { content_type_info: r.content_type_info }),
             ...(r.error && { error: r.error }),
           })),
           summary: {
@@ -548,6 +540,11 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.content !== undefined && { content: r.content }),
             ...(r.structured && { structured: r.structured }),
             ...(r.summary && { summary: r.summary }),
+            ...(r.code_blocks && { code_blocks: r.code_blocks }),
+            ...(r.tables && { tables: r.tables }),
+            ...(r.links && { links: r.links }),
+            ...(r.metadata && { metadata: r.metadata }),
+            ...(r.content_type_info && { content_type_info: r.content_type_info }),
             ...(r.error && { error: r.error }),
           })),
           summary: {
