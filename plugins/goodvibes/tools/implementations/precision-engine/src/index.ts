@@ -30,6 +30,7 @@ import { logger } from './logging.js';
 import { allSchemas } from './schemas/index.js';
 import { getHandler, hasHandler, listHandlers } from './handlers/index.js';
 import { FileStateCache } from './state/file-cache.js';
+import { sessionState } from './state/index.js';
 
 /**
  * PrecisionEngineServer - MCP server for token-efficient file operations.
@@ -114,6 +115,14 @@ class PrecisionEngineServer {
       cache.clear();
     } catch {
       // Cache may not have been initialized
+    }
+
+    // Reset session state on shutdown
+    try {
+      sessionState.reset();
+      logger.info('Session state reset');
+    } catch {
+      // Session state may not have been initialized
     }
 
     await this.server.close();

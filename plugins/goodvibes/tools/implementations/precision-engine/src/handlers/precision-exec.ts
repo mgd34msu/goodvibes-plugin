@@ -19,7 +19,9 @@ import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, type OverflowResult, interpretExitCode, type ExitInterpretation, detectIssue, type DetectedIssue } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
-import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars } from '../runtime-config.js';
+import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax } from '../runtime-config.js';
+import { commandHistory } from '../state/index.js';
+import { sessionState } from '../state/index.js';
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [
@@ -45,6 +47,22 @@ const DESTRUCTIVE_PATTERNS = [
 function isDestructiveCommand(cmd: string, args?: string[]): boolean {
   const fullCommand = args ? `${cmd} ${args.join(' ')}` : cmd;
   return DESTRUCTIVE_PATTERNS.some(pattern => pattern.test(fullCommand));
+}
+
+/**
+ * Detect cd command from command string and return new directory if found.
+ * Handles: cd <path>, pushd <path>, cd ~ , cd ..
+ */
+function detectCdFromCommand(command: string): string | null {
+  // Match cd or pushd followed by a path
+  // Handles: cd /path, cd ./path, cd ../path, cd ~, cd ~ /path, pushd /path
+  const cdMatch = command.match(/^\s*(cd|pushd)\s+([^;&|]+)/);
+  if (cdMatch) {
+    const newDir = cdMatch[2].trim();
+    // Remove quotes if present
+    return newDir.replace(/^["']|["']$/g, '');
+  }
+  return null;
 }
 
 interface ExpectSpec {
@@ -122,9 +140,14 @@ async function executeCommand(
   const effectiveMaxOutputLines = maxOutputLines ?? getExecMaxOutputLines();
   const maxOutputChars = getExecMaxOutputChars();
   const args = spec.args ?? [];
+  
+  // CWD resolution priority:
+  // 1. Per-command cwd field (explicit override)
+  // 2. Request-level working_dir (globalWorkDir) - also updates session
+  // 3. Session state (persisted from previous calls)
   const cwd = spec.cwd
     ? await validateDirectoryPath(spec.cwd, process.cwd())
-    : globalWorkDir;
+    : globalWorkDir ?? sessionState.cwd;
 
   // Decode cmd_base64 if provided, otherwise use cmd
   const command = spec.cmd_base64
@@ -340,6 +363,14 @@ async function executeCommand(
         result.expectation_failures = expectationFailures;
       }
 
+      // Detect cd command and update session state
+      if (exitCode === 0) {
+        const detectedCd = detectCdFromCommand(command);
+        if (detectedCd) {
+          sessionState.setCwd(detectedCd);
+        }
+      }
+
       resolve(result);
     });
 
@@ -376,6 +407,22 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const input = { ...rawInput, commands: parseJsonField(rawInput.commands) } as PrecisionExecInput;
   const outputMode = parseOutputMode(args, "precision_exec");
 
+  // Initialize command history max entries from config
+  commandHistory.setMaxEntries(getExecHistoryMax());
+
+  // Handle built-in exec_history command
+  if (input.commands.length === 1 && (input.commands[0].cmd === 'exec_history' || input.commands[0].cmd_base64 === Buffer.from('exec_history').toString('base64'))) {
+    const history = commandHistory.getAll();
+    const stats = commandHistory.getStats();
+    const data = {
+      history,
+      stats,
+    };
+    const responseJson = JSON.stringify(data);
+    data.tokens_used = estimateTokens(responseJson);
+    return toCallToolResult(successResult(data, outputMode, getElapsed()));
+  }
+
   // Clean up old overflow files (non-blocking, fire-and-forget)
   cleanupOverflowFiles().catch(() => {});
 
@@ -384,9 +431,19 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const failFast = input.fail_fast ?? input.stop_on_error ?? true;
   const safeMode = input.safe_mode ?? true;
   const globalEnv = input.env;
+  
+  // Track previous cwd for session metadata
+  const previousCwd = sessionState.cwd;
+  
   const globalWorkDir = input.working_dir
     ? await validateDirectoryPath(input.working_dir, process.cwd())
     : undefined;
+  
+  // Update session state if working_dir is provided
+  if (globalWorkDir) {
+    sessionState.setCwd(globalWorkDir);
+  }
+  
   const globalTimeout = input.timeout_ms;
 
   // Output configuration
@@ -397,6 +454,28 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   try {
     if (!input.commands || !Array.isArray(input.commands) || input.commands.length === 0) {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_exec', 'commands', 'array of command objects'), { output_mode: outputMode, execution_ms: getElapsed() }));
+    }
+
+    // Check for previous runs and add inline context hints
+    const commandsWithContext: Array<{ spec: CommandSpec; previousRun?: { exit_code: number; duration_ms: number; timestamp: number } }> = [];
+    for (const cmd of input.commands) {
+      const command = cmd.cmd_base64
+        ? Buffer.from(cmd.cmd_base64, 'base64').toString('utf-8')
+        : cmd.cmd;
+      
+      if (command) {
+        const previousRun = commandHistory.findByCommand(command);
+        commandsWithContext.push({
+          spec: cmd,
+          previousRun: previousRun ? {
+            exit_code: previousRun.exit_code,
+            duration_ms: previousRun.duration_ms,
+            timestamp: previousRun.timestamp,
+          } : undefined,
+        });
+      } else {
+        commandsWithContext.push({ spec: cmd });
+      }
     }
 
     // Validate commands and check for destructive commands
@@ -443,6 +522,24 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
           break;
         }
       }
+    }
+
+    // Add commands to history
+    for (const result of results) {
+      const stdoutLines = result.stdout ? result.stdout.split('\n').length : 0;
+      const stderrLines = result.stderr ? result.stderr.split('\n').length : 0;
+      
+      commandHistory.add({
+        id: result.id || `cmd-${Date.now()}`,
+        timestamp: Date.now(),
+        command: result.cmd,
+        cwd: globalWorkDir || sessionState.cwd,
+        exit_code: result.exit_code,
+        duration_ms: result.duration_ms,
+        stdout_lines: stdoutLines,
+        stderr_lines: stderrLines,
+        truncated: result.truncated || false,
+      });
     }
 
     // Calculate summary
@@ -556,6 +653,14 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
         break;
     }
 
+    // Add session metadata
+    const currentCwd = sessionState.cwd;
+    data.session = {
+      cwd: currentCwd,
+      cwd_changed: currentCwd !== previousCwd,
+      ...(currentCwd !== previousCwd && { previous_cwd: previousCwd }),
+    };
+    
     // Calculate tokens_used
     const responseJson = JSON.stringify(data);
     data.tokens_used = estimateTokens(responseJson);
