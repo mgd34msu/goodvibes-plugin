@@ -1,0 +1,1 @@
+const x = foo(baz, bar);

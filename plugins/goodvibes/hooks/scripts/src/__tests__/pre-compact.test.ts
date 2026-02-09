@@ -488,4 +488,328 @@ describe('pre-compact hook', () => {
       expect(summary).toBe('');
     });
   });
+
+  describe('agent tracking in checkpoint messages', () => {
+    let mockReadFile: ReturnType<typeof vi.fn>;
+    let mockHasUncommittedChanges: ReturnType<typeof vi.fn>;
+    let mockCreateCheckpointIfNeeded: ReturnType<typeof vi.fn>;
+    let mockFileExistsForCheckpoint: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      mockReadFile = vi.fn();
+      mockHasUncommittedChanges = vi.fn();
+      mockCreateCheckpointIfNeeded = vi.fn();
+      mockFileExistsForCheckpoint = vi.fn();
+    });
+
+    async function setupCheckpointMocksAndImport() {
+      // Mock fs/promises
+      vi.doMock('fs/promises', () => ({
+        writeFile: mockWriteFile,
+        readFile: mockReadFile,
+        access: vi.fn(),
+        mkdir: vi.fn(),
+      }));
+
+      // Mock shared module
+      vi.doMock('../shared/index.js', () => ({
+        respond: mockRespond,
+        readHookInput: mockReadHookInput,
+        loadAnalytics: mockLoadAnalytics,
+        debug: mockDebug,
+        logError: mockLogError,
+        createResponse: mockCreateResponse,
+        parseTranscript: mockParseTranscript,
+        fileExists: mockFileExistsForCheckpoint,
+        CACHE_DIR: '/mock/cache/dir',
+        isTestEnvironment: () => false,
+        ensureGoodVibesDir: vi.fn(),
+      }));
+
+      // Mock state module
+      vi.doMock('../state/index.js', () => ({
+        loadState: mockLoadState,
+        saveState: vi.fn(),
+      }));
+
+      // Mock automation/git-operations
+      vi.doMock('../automation/git-operations.js', () => ({
+        hasUncommittedChanges: mockHasUncommittedChanges,
+      }));
+
+      // Mock post-tool-use/checkpoint-manager
+      vi.doMock('../post-tool-use/checkpoint-manager.js', () => ({
+        createCheckpointIfNeeded: mockCreateCheckpointIfNeeded,
+      }));
+
+      // Mock pre-compact/state-preservation module with actual implementation
+      vi.doMock('../pre-compact/state-preservation.js', async () => {
+        const actual = await vi.importActual<typeof import('../pre-compact/state-preservation.js')>(
+          '../pre-compact/state-preservation.js'
+        );
+        return {
+          ...actual,
+          saveSessionSummary: mockSaveSessionSummary,
+          getFilesModifiedThisSession: mockGetFilesModifiedThisSession,
+        };
+      });
+
+      // Import the module
+      await import('../pre-compact/index.js');
+
+      // Allow async operations to complete
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    it('should include agent info in checkpoint message when agents are running', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'test-session-123' },
+      });
+
+      const trackingData = {
+        'agent-1': {
+          agent_id: 'agent-1',
+          agent_type: 'goodvibes:tester',
+          session_id: 'test-session-123',
+          project: '/test/project',
+          project_name: 'my-project',
+          started_at: new Date().toISOString(),
+          task_description: 'Write comprehensive tests for the new authentication module',
+        },
+        'agent-2': {
+          agent_id: 'agent-2',
+          agent_type: 'goodvibes:engineer',
+          session_id: 'test-session-123',
+          project: '/test/project',
+          project_name: 'my-project',
+          started_at: new Date().toISOString(),
+          task_description: 'Implement user registration endpoint with email verification',
+        },
+      };
+
+      mockFileExistsForCheckpoint.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(trackingData));
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      // Verify checkpoint was called with agent info in commit message
+      expect(mockCreateCheckpointIfNeeded).toHaveBeenCalled();
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      expect(commitMessage).toContain('agents running during compact:');
+      expect(commitMessage).toContain('agent-1 - Write comprehensive tests for the new authentication module');
+      expect(commitMessage).toContain('agent-2 - Implement user registration endpoint with email verification');
+
+    });
+
+    it('should not include agent line when no agents are tracked', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'test-session-123' },
+      });
+
+      mockFileExistsForCheckpoint.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify({}));
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      expect(commitMessage).toBe('pre-compact: saving work before context compaction');
+      expect(commitMessage).not.toContain('agents running during compact:');
+    });
+
+    it('should not include agent line when tracking file does not exist', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'test-session-123' },
+      });
+
+      mockFileExistsForCheckpoint.mockResolvedValue(false);
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      expect(commitMessage).toBe('pre-compact: saving work before context compaction');
+      expect(commitMessage).not.toContain('agents running during compact:');
+    });
+
+    it('should fall back to agent_type when task_description is missing', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'test-session-123' },
+      });
+
+      const trackingData = {
+        'agent-1': {
+          agent_id: 'agent-1',
+          agent_type: 'goodvibes:tester',
+          session_id: 'test-session-123',
+          project: '/test/project',
+          project_name: 'my-project',
+          started_at: new Date().toISOString(),
+          // No task_description
+        },
+      };
+
+      mockFileExistsForCheckpoint.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(trackingData));
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      expect(commitMessage).toContain('agent-1 - goodvibes:tester');
+      expect(commitMessage).not.toContain('undefined');
+    });
+
+    it('should truncate long task descriptions over 80 chars', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'test-session-123' },
+      });
+
+      const longDescription =
+        'This is a very long task description that exceeds eighty characters and should be truncated to prevent the commit message from being too long';
+
+      const trackingData = {
+        'agent-1': {
+          agent_id: 'agent-1',
+          agent_type: 'goodvibes:tester',
+          session_id: 'test-session-123',
+          project: '/test/project',
+          project_name: 'my-project',
+          started_at: new Date().toISOString(),
+          task_description: longDescription,
+        },
+      };
+
+      mockFileExistsForCheckpoint.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(trackingData));
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      const truncated = longDescription.substring(0, 80);
+      expect(commitMessage).toContain(`agent-1 - ${truncated}`);
+      expect(truncated.length).toBe(80);
+    });
+
+    it('should only include agents from current session', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'current-session' },
+      });
+
+      const trackingData = {
+        'agent-1': {
+          agent_id: 'agent-1',
+          agent_type: 'goodvibes:tester',
+          session_id: 'current-session',
+          project: '/test/project',
+          project_name: 'my-project',
+          started_at: new Date().toISOString(),
+          task_description: 'Current session task',
+        },
+        'agent-2': {
+          agent_id: 'agent-2',
+          agent_type: 'goodvibes:engineer',
+          session_id: 'different-session',
+          project: '/test/project',
+          project_name: 'my-project',
+          started_at: new Date().toISOString(),
+          task_description: 'Different session task',
+        },
+      };
+
+      mockFileExistsForCheckpoint.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(trackingData));
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      expect(commitMessage).toContain('agent-1 - Current session task');
+      expect(commitMessage).not.toContain('agent-2');
+      expect(commitMessage).not.toContain('Different session task');
+    });
+
+    it('should handle malformed JSON in tracking file gracefully', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'test-session-123' },
+      });
+
+      mockFileExistsForCheckpoint.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue('invalid json{');
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      // Should not crash, should use default message
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      expect(commitMessage).toBe('pre-compact: saving work before context compaction');
+    });
+
+    it('should replace newlines in task_description with spaces', async () => {
+      mockHasUncommittedChanges.mockResolvedValue(true);
+      mockLoadState.mockResolvedValue({
+        session: { id: 'test-session-123' },
+      });
+
+      const trackingData = {
+        'agent-1': {
+          agent_id: 'agent-1',
+          agent_type: 'goodvibes:tester',
+          session_id: 'test-session-123',
+          project: '/test/project',
+          project_name: 'my-project',
+          started_at: new Date().toISOString(),
+          task_description: 'Task with\nnewlines\nin it',
+        },
+      };
+
+      mockFileExistsForCheckpoint.mockResolvedValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify(trackingData));
+      mockCreateCheckpointIfNeeded.mockResolvedValue({
+        created: true,
+        message: 'Checkpoint created',
+      });
+
+      await setupCheckpointMocksAndImport();
+
+      const commitMessage = mockCreateCheckpointIfNeeded.mock.calls[0][2];
+      expect(commitMessage).toContain('agent-1 - Task with newlines in it');
+      // Verify agent line is a single line (no embedded newlines)
+      const agentsLine = commitMessage.split('\n').find((l: string) => l.startsWith('agents running'));
+      expect(agentsLine).toBeDefined();
+      expect(agentsLine).toContain('agent-1 - Task with newlines in it');
+    });
+
+    });
+
 });

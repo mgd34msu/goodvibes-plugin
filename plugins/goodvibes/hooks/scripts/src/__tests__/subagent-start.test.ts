@@ -272,6 +272,7 @@ describe('subagent-start hook', () => {
           project_name: 'test-project',
           git_branch: 'main',
           git_commit: 'abc1234',
+          task_description: 'Run unit tests for the login module',
         })
       );
       expect(mockDebug).toHaveBeenCalledWith('Saved agent tracking', {
@@ -825,7 +826,7 @@ describe('subagent-start hook', () => {
         transcript_path: '/test/transcript',
         permission_mode: 'default',
         agent_id: 'agent-abc',
-        agent_type: 'goodvibes:test-engineer',
+        agent_type: 'goodvibes:tester',
       });
       mockGetGitInfo.mockReturnValue({
         branch: 'feature/branch',
@@ -846,7 +847,7 @@ describe('subagent-start hook', () => {
         transcript_path: '/test/transcript',
         permission_mode: 'default',
         agent_id: 'agent-abc',
-        agent_type: 'goodvibes:test-engineer',
+        agent_type: 'goodvibes:tester',
       });
       mockGetGitInfo.mockReturnValue({ commit: 'abc123' });
 

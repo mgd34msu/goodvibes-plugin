@@ -75,6 +75,7 @@ describe('subagent-stop hook', () => {
     started_at: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
     git_branch: 'main',
     git_commit: 'abc1234',
+    task_description: 'Run integration tests for payment module',
   };
 
   const defaultTelemetryEntry = {
@@ -92,6 +93,7 @@ describe('subagent-stop hook', () => {
     files_modified: ['/src/test.ts'],
     tools_used: ['Write', 'Bash'],
     summary: 'Completed testing',
+    task_description: 'Run integration tests for payment module',
   };
 
   beforeEach(() => {
@@ -687,6 +689,78 @@ describe('subagent-stop hook', () => {
           ]),
         })
       );
+    });
+  });
+
+  describe('buildTelemetryEntry propagation', () => {
+    it('should propagate task_description from tracking to telemetry entry', async () => {
+      const trackingWithTask = {
+        ...defaultTracking,
+        task_description: 'Implement user authentication with OAuth2',
+      };
+
+      mockGetAgentTracking.mockResolvedValue(trackingWithTask);
+      mockBuildTelemetryEntry.mockResolvedValue({
+        ...defaultTelemetryEntry,
+        task_description: 'Implement user authentication with OAuth2',
+      });
+
+      await setupMocksAndImport();
+
+      // Verify buildTelemetryEntry was called with tracking that has task_description
+      expect(mockBuildTelemetryEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          task_description: 'Implement user authentication with OAuth2',
+        }),
+        '/path/to/agent/transcript.jsonl',
+        'completed'
+      );
+
+      // Verify telemetry entry was written with task_description
+      expect(mockWriteTelemetryEntry).toHaveBeenCalledWith(
+        '/workspace/project',
+        expect.objectContaining({
+          task_description: 'Implement user authentication with OAuth2',
+        })
+      );
+    });
+
+    it('should handle missing task_description gracefully', async () => {
+      const trackingWithoutTask = {
+        agent_id: 'agent-no-task',
+        agent_type: 'test-engineer',
+        session_id: 'session-456',
+        project: '/workspace/project',
+        project_name: 'my-project',
+        started_at: new Date(Date.now() - 60000).toISOString(),
+        git_branch: 'main',
+        git_commit: 'abc1234',
+        // No task_description
+      };
+
+      mockGetAgentTracking.mockResolvedValue(trackingWithoutTask);
+      mockBuildTelemetryEntry.mockResolvedValue({
+        ...defaultTelemetryEntry,
+        agent_id: 'agent-no-task',
+        task_description: undefined,
+      });
+
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'session-456',
+        transcript_path: '/test/transcript',
+        cwd: '/workspace/project',
+        permission_mode: 'default',
+        hook_event_name: 'SubagentStop',
+        agent_id: 'agent-no-task',
+        agent_type: 'test-engineer',
+        agent_transcript_path: '/path/to/agent/transcript.jsonl',
+      });
+
+      await setupMocksAndImport();
+
+      // Should still complete without error
+      expect(mockBuildTelemetryEntry).toHaveBeenCalled();
+      expect(mockWriteTelemetryEntry).toHaveBeenCalled();
     });
   });
 
