@@ -16,6 +16,8 @@ export interface TelemetryEntry {
   git_branch?: string;
   git_commit?: string;
   started_at: string;
+  /** Description of the task assigned to this agent, if available */
+  task_description?: string;
   ended_at: string;
   duration_ms: number;
   status: 'completed' | 'failed';
@@ -38,4 +40,6 @@ export interface TelemetryTracking {
   git_branch?: string;
   git_commit?: string;
   started_at: string;
+  /** Description of the task assigned to this agent, if available */
+  task_description?: string;
 }
