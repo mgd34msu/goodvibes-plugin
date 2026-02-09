@@ -16,6 +16,7 @@ import { AstGrepCore } from '../core/ast-grep.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { validateDirectoryPath } from '../utils/path-validation.js';
+import { getDiscoverSymbolTimeout } from '../runtime-config.js';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
@@ -278,8 +279,6 @@ async function executeGlobQuery(
   }
 }
 
-const SYMBOL_TIMEOUT = 30000; // 30 second timeout for symbols
-
 async function executeSymbolsQuery(
   query: QuerySpec,
   outputMode: DiscoverOutputMode,
@@ -311,8 +310,9 @@ async function executeSymbolsQuery(
       },
     });
 
+    const symbolTimeout = getDiscoverSymbolTimeout();
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error(`Symbol search timeout after ${SYMBOL_TIMEOUT / 1000}s`)), SYMBOL_TIMEOUT);
+      timeoutId = setTimeout(() => reject(new Error(`Symbol search timeout after ${symbolTimeout / 1000}s`)), symbolTimeout);
     });
 
     const result = await Promise.race([symbolsPromise, timeoutPromise]);

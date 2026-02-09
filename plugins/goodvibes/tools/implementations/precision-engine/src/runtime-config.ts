@@ -51,6 +51,9 @@ export interface PrecisionEngineConfig {
   /** Maximum exec history entries to retain (default: 100) */
   exec_history_max?: number;
 
+  /** Symbol search timeout in discover tool (default: 60000ms = 60s) */
+  discover_symbol_timeout_ms?: number;
+
   /** Extensible for future config */
   [key: string]: unknown;
 }
@@ -78,6 +81,8 @@ const EXEC_DEFAULTS = {
   MAX_BACKGROUND: 5,
   /** Maximum exec history entries to retain */
   HISTORY_MAX: 100,
+  /** Symbol search timeout in discover tool */
+  DISCOVER_SYMBOL_TIMEOUT_MS: 60000,
 } as const;
 
 /**
@@ -318,7 +323,58 @@ export function getConfig(): PrecisionEngineConfig {
  */
 export function getConfigValue<T = unknown>(key: string): T {
   const config = loadConfigSync();
-  return config[key] as T;
+  
+  // Return the actual value if it exists
+  const value = config[key];
+  if (value !== undefined) {
+    return value as T;
+  }
+  
+  // Return default values for known config keys
+  switch (key) {
+    case 'sandbox':
+      return false as T;
+    case 'max_diff_chars':
+      return CONFIG_DEFAULTS.MAX_DIFF_CHARS as T;
+    case 'max_file_bytes':
+      return CONFIG_DEFAULTS.MAX_FILE_BYTES as T;
+    case 'max_token_estimate':
+      return CONFIG_DEFAULTS.MAX_TOKEN_ESTIMATE as T;
+    case 'page_size_lines':
+      return CONFIG_DEFAULTS.PAGE_SIZE_LINES as T;
+    case 'slow_fs_stat_threshold_ms':
+      return CONFIG_DEFAULTS.SLOW_FS_THRESHOLD_MS as T;
+    case 'slow_fs_known_prefixes':
+      return CONFIG_DEFAULTS.SLOW_FS_PREFIXES as T;
+    case 'cache_mode':
+      return CONFIG_DEFAULTS.CACHE_MODE as T;
+    case 'cache_max_mb':
+      return CONFIG_DEFAULTS.CACHE_MAX_MB as T;
+    case 'safe_overwrite':
+      return CONFIG_DEFAULTS.SAFE_OVERWRITE as T;
+    case 'backup_dir':
+      return CONFIG_DEFAULTS.BACKUP_DIR as T;
+    case 'backup_git_clean_skip':
+      return CONFIG_DEFAULTS.BACKUP_GIT_CLEAN_SKIP as T;
+    case 'exec_max_output_chars':
+      return EXEC_DEFAULTS.MAX_OUTPUT_CHARS as T;
+    case 'exec_default_timeout_ms':
+      return EXEC_DEFAULTS.DEFAULT_TIMEOUT_MS as T;
+    case 'exec_max_output_lines':
+      return EXEC_DEFAULTS.MAX_OUTPUT_LINES as T;
+    case 'exec_overflow_dir':
+      return EXEC_DEFAULTS.OVERFLOW_DIR as T;
+    case 'exec_max_background':
+      return EXEC_DEFAULTS.MAX_BACKGROUND as T;
+    case 'exec_history_max':
+      return EXEC_DEFAULTS.HISTORY_MAX as T;
+    case 'discover_symbol_timeout_ms':
+      return EXEC_DEFAULTS.DISCOVER_SYMBOL_TIMEOUT_MS as T;
+    default:
+      // For unknown keys or optional nested objects like verbosity_defaults,
+      // return undefined
+      return undefined as T;
+  }
 }
 
 /**
@@ -525,6 +581,17 @@ export function getExecMaxBackground(): number {
 export function getExecHistoryMax(): number {
   const config = loadConfigSync();
   return getValidNumber(config.exec_history_max, EXEC_DEFAULTS.HISTORY_MAX);
+}
+
+/**
+ * Get symbol search timeout for discover tool from config.
+ * Rejects NaN, Infinity, negative numbers, and zero.
+ *
+ * @returns Symbol search timeout in milliseconds (default: 60000)
+ */
+export function getDiscoverSymbolTimeout(): number {
+  const config = loadConfigSync();
+  return getValidNumber(config.discover_symbol_timeout_ms, EXEC_DEFAULTS.DISCOVER_SYMBOL_TIMEOUT_MS);
 }
 
 /**

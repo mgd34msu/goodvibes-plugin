@@ -202,6 +202,62 @@ function getImageMimeType(filePath: string): string | null {
   return null;
 }
 
+/**
+ * Validates image file by checking magic bytes (file signature).
+ * Returns true if the buffer contains a valid image header.
+ */
+function isValidImageBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 2) return false; // Minimum bytes needed (BMP only needs 2)
+  
+  // PNG: 89 50 4e 47 0d 0a 1a 0a
+  if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return true;
+  }
+  
+  // JPEG: ff d8 ff
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return true;
+  }
+  
+  // GIF: 47 49 46 38 ("GIF8")
+  if (buffer.length >= 4 && buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return true;
+  }
+  
+  // WebP: 52 49 46 46 ... 57 45 42 50 ("RIFF...WEBP")
+  if (buffer.length >= 12 && buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return true;
+  }
+  
+  // BMP: 42 4d ("BM")
+  if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
+    return true;
+  }
+  
+  // ICO: 00 00 01 00
+  if (buffer.length >= 4 && buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0x01 && buffer[3] === 0x00) {
+    return true;
+  }
+  
+  // TIFF little-endian: 49 49 2a 00
+  if (buffer.length >= 4 && buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00) {
+    return true;
+  }
+  
+  // TIFF big-endian: 4d 4d 00 2a
+  if (buffer.length >= 4 && buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a) {
+    return true;
+  }
+  
+  // AVIF: Check for "ftyp" at offset 4 (bytes 4-7 are 66 74 79 70)
+  if (buffer.length >= 8 && buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70) {
+    return true;
+  }
+  
+  return false;
+}
+
 function isPdfFile(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === '.pdf';
 }
@@ -807,6 +863,99 @@ function extractAst(sourceFile: ts.SourceFile): unknown {
 }
 
 /**
+ * Regex-based fallback for Python symbol extraction.
+ * Tracks class scope via indentation and handles dunder vs name-mangled privacy.
+ */
+function extractPythonSymbols(
+  content: string,
+  symbolFilter?: SymbolKind[],
+  includeSignatures: boolean = false
+): SymbolInfo[] {
+  const symbols: SymbolInfo[] = [];
+  const lines = content.split('\n');
+  
+  // Track current class context by indentation level
+  let currentClass: { name: string; indent: number } | null = null;
+  
+  // Regex patterns
+  const classPattern = /^(\s*)class\s+(\w+)\s*[:(]/;
+  const functionPattern = /^(\s*)def\s+(\w+)\s*\(/;
+  const methodPattern = /^(\s+)def\s+(\w+)\s*\(/;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNum = i + 1;
+    
+    // Match class definition
+    const classMatch = line.match(classPattern);
+    if (classMatch) {
+      const indent = classMatch[1].length;
+      const name = classMatch[2];
+      
+      // Update current class context
+      if (indent === 0 || !currentClass || indent <= currentClass.indent) {
+        currentClass = { name, indent };
+      }
+      
+      if (!symbolFilter || symbolFilter.includes('class')) {
+        const symbol: SymbolInfo = {
+          name,
+          kind: 'class',
+          line: lineNum,
+          column: indent + 1,
+          exported: !name.startsWith('_'), // Private if starts with _
+        };
+        
+        if (includeSignatures) {
+          symbol.signature = line.trim();
+        }
+        
+        symbols.push(symbol);
+      }
+      continue;
+    }
+    
+    // Match function/method definition
+    const funcMatch = line.match(functionPattern);
+    if (funcMatch) {
+      const indent = funcMatch[1].length;
+      const name = funcMatch[2];
+      
+      // Determine if it's a method (inside a class) or a function
+      const isMethod = currentClass && indent > currentClass.indent;
+      const kind = isMethod ? 'method' : 'function';
+      
+      // Check if we've left the class scope
+      if (currentClass && indent <= currentClass.indent) {
+        currentClass = null;
+      }
+      
+      if (!symbolFilter || symbolFilter.includes(kind)) {
+        const symbol: SymbolInfo = {
+          name,
+          kind,
+          line: lineNum,
+          column: indent + 1,
+          exported: !name.startsWith('_'), // Private if starts with _ or __
+        };
+        
+        if (isMethod && currentClass) {
+          symbol.container = currentClass.name;
+        }
+        
+        if (includeSignatures) {
+          symbol.signature = line.trim();
+        }
+        
+        symbols.push(symbol);
+      }
+    }
+  }
+  
+  return symbols;
+}
+
+/**
  * Format a timestamp as a human-readable relative time string
  */
 function formatTimeAgo(timestamp: number): string {
@@ -894,11 +1043,13 @@ async function readSingleFile(
     const estimatedTokens = Math.ceil(stats.size / 4);
 
     // Size gate only fires for full-content reads, not targeted extractions
+    // Skip overflow for count_only mode since output will be minimal regardless of file size
     const isContentRead = extract === 'content' || extract === 'lines';
     const exceedsBytes = stats.size > maxFileBytes;
     const exceedsTokens = estimatedTokens > maxTokenEstimate;
+    const isCountOnlyMode = output.mode === 'count_only';
 
-    if (isContentRead && (exceedsBytes || exceedsTokens) && !spec.force) {
+    if (isContentRead && (exceedsBytes || exceedsTokens) && !spec.force && !isCountOnlyMode) {
       // Check if a range was already specified (user is paginating manually)
       const hasRange = (spec.range && (spec.range.start !== undefined || spec.range.end !== undefined)) ||
                        (spec.lines && (spec.lines.start !== undefined || spec.lines.end !== undefined)) ||
@@ -947,7 +1098,7 @@ async function readSingleFile(
     if (isBinary) {
       // Handle PDF files
       if (isPdfFile(validatedPath)) {
-        return readPdfFile(buffer, validatedPath, result, spec.pages);
+        return await readPdfFile(buffer, validatedPath, result, spec.pages);
       }
 
       // Check binary file size
@@ -968,6 +1119,19 @@ async function readSingleFile(
 
       // Handle image files (binary images like PNG, JPG)
       if (mimeType) {
+        // Validate image buffer with magic byte check
+        const isValidImage = isValidImageBuffer(buffer);
+        if (!isValidImage) {
+          // Extension suggests image, but magic bytes don't match - treat as corrupted binary
+          result.is_binary = true;
+          result.is_image = false;
+          result.error = `File has image extension but invalid/corrupted image data. No visual content returned.`;
+          if (output.include_metadata && result.metadata) {
+            result.metadata.size = buffer.length;
+          }
+          return result;
+        }
+        
         result.is_binary = true;
         result.is_image = true;
         result.mime_type = mimeType;
@@ -1011,10 +1175,11 @@ async function readSingleFile(
     result.line_count = allLines.length;
 
     // FileStateCache lookup — check if content is unchanged since last read
+    // Skip cache entirely if force is true
     const cache = FileStateCache.getInstance();
-    const cacheLookup = cache.lookup(validatedPath, content, extract);
+    const cacheLookup = spec.force ? { status: 'miss' as const } : cache.lookup(validatedPath, content, extract);
 
-    if (cacheLookup.status === 'unchanged' && !spec.force) {
+    if (cacheLookup.status === 'unchanged') {
       // Return abbreviated response — file hasn't changed
       result.content = undefined; // Don't send full content
       result.status = 'unchanged';
@@ -1150,6 +1315,10 @@ async function readSingleFile(
               );
               const includeSignatures = output.mode === 'verbose';
               result.symbols = extractSymbols(sourceFile, symbolFilter, includeSignatures);
+            } else if (filePath.endsWith('.py')) {
+              // Fallback to regex-based extraction for Python files
+              const includeSignatures = output.mode === 'verbose';
+              result.symbols = extractPythonSymbols(content, symbolFilter, includeSignatures);
             } else {
               result.error = `Symbol extraction failed: ${(error as Error).message}`;
             }
@@ -1255,7 +1424,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
     const extract: ExtractMode = input.extract ?? 'content';
     const output: ReadOutput = {
-      mode: input.output?.mode ?? 'standard',
+      mode: input.output?.format ?? input.output?.mode ?? 'standard',
       include_line_numbers: input.output?.include_line_numbers ?? true,
       include_metadata: input.output?.include_metadata ?? false,
       ...input.output
@@ -1424,7 +1593,11 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
     }
 
     // Check if any results contain images
-    const imageResults = paginatedResults.filter(r => r.is_image && r.image_base64);
+    // Suppress ImageContent blocks for count_only and minimal modes to prevent API crashes
+    const shouldIncludeImages = output.mode !== 'count_only' && output.mode !== 'minimal';
+    const imageResults = shouldIncludeImages 
+      ? paginatedResults.filter(r => r.is_image && r.image_base64)
+      : [];
 
     if (imageResults.length === 0) {
       return toCallToolResult(successResult(data, outputMode, getElapsed()));

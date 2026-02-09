@@ -115,6 +115,27 @@ const searchCache = SearchCache.getInstance();
 
 // === Helper Functions ===
 
+/**
+ * Split a glob pattern with literal path prefix into (directory, pattern).
+ * Extracts literal directory prefix from glob patterns for ripgrep compatibility.
+ * Returns null if no literal prefix found.
+ */
+function splitGlobPattern(globPattern: string): { dir: string; glob: string } | null {
+  // Match literal path prefix (no wildcards) followed by glob pattern
+  const match = globPattern.match(/^([^*?\[\]{}]+\/)(.*)/)
+  if (!match) return null
+  
+  const [, literalPrefix, remainingGlob] = match
+  // Remove trailing slash from prefix
+  const dir = literalPrefix.replace(/\/$/, '')
+  
+  // If remaining glob is empty or doesn't have wildcards, return null (not a glob pattern)
+  if (!remainingGlob || !/[*?\[\]{}]/.test(remainingGlob)) {
+    return null
+  }
+  
+  return { dir, glob: remainingGlob }
+}
 
 function estimateTokens(str: string): number {
   // Rough estimate: ~4 chars per token
@@ -388,15 +409,70 @@ async function executeQuery(
   }
 
   // Map query options to RipgrepSearchOptions
-  const searchPath = query.path
-    ? await validateDirectoryPath(query.path, workDir)
-    : workDir;
+  let searchPath: string;
+  let effectiveGlob = query.glob;
+  
+  // Bug 3 fix: Handle glob patterns with literal directory prefixes
+  // Example: "pt-tests/fixtures/**/*.ts" needs to be split into path + glob
+  if (query.glob && !query.path) {
+    const split = splitGlobPattern(query.glob);
+    if (split) {
+      // Glob has literal prefix - use it as the search path
+      searchPath = path.resolve(workDir, split.dir);
+      effectiveGlob = split.glob;
+      
+      // Validate the extracted directory exists
+      try {
+        await validateDirectoryPath(searchPath, workDir);
+      } catch (error) {
+        throw new Error(
+          `Glob pattern '${query.glob}' contains directory prefix '${split.dir}' which doesn't exist. ` +
+          `Error: ${(error as Error).message}`
+        );
+      }
+    } else {
+      searchPath = workDir;
+    }
+  } else {
+    // Bug 11 fix: Support file paths in addition to directories
+    if (query.path) {
+      const absolutePath = path.isAbsolute(query.path)
+        ? query.path
+        : path.resolve(workDir, query.path);
+      
+      try {
+        // Try as directory first
+        searchPath = await validateDirectoryPath(query.path, workDir);
+      } catch (error) {
+        // Not a directory - check if it's a file
+        try {
+          const stats = await fs.stat(absolutePath);
+          if (stats.isFile()) {
+            // It's a file - search within this specific file
+            // We'll use the parent directory as search path and force ripgrep to only search this file
+            searchPath = path.dirname(absolutePath);
+            // Override glob to match only this specific file (relative to parent dir)
+            effectiveGlob = path.basename(absolutePath);
+          } else {
+            throw error; // Re-throw original directory validation error
+          }
+        } catch {
+          throw new Error(
+            `Path '${query.path}' is neither a directory nor a file, or is not accessible.`
+          );
+        }
+      }
+    } else {
+      searchPath = workDir;
+    }
+  }
+  
   const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
 
   const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {
     pattern: patternStr,
     path: searchPath,
-    glob: query.glob,
+    glob: effectiveGlob,
     exclude: excludePatterns,
     caseInsensitive: query.case_sensitive === false,
     wholeWord: query.whole_word,

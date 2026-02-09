@@ -47,7 +47,7 @@ interface PrecisionSymbolsInput {
   exported_only?: boolean;
   include_private?: boolean;
   language?: 'auto' | 'typescript' | 'python' | 'rust' | 'go';
-  output: SymbolOutput;
+  output?: SymbolOutput;  // Optional per schema
   output_mode?: OutputMode;
 }
 
@@ -732,20 +732,19 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_symbols', 'mode', 'workspace or document'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
-    if (!input.output) {
-      return toCallToolResult(createErrorResult(formatMissingParamError('precision_symbols', 'output', 'output configuration object'), { output_mode: outputMode, execution_ms: getElapsed() }));
-    }
+    // Apply defaults for optional output parameter
+    const output = input.output ?? {};
 
     if (input.mode === 'document' && (!input.files || input.files.length === 0)) {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_symbols', 'files', 'array of file paths (required for document mode)'), { output_mode: outputMode, execution_ms: getElapsed() }));
     }
 
-    const maxResults = input.output.max_results ?? 100;
-    const maxTokens = input.output.max_tokens ?? Infinity;
-    const groupBy = input.output.group_by ?? 'none';
+    const maxResults = output.max_results ?? 100;
+    const maxTokens = output.max_tokens ?? Infinity;
+    const groupBy = output.group_by ?? 'none';
 
     // S1b fix: Support both 'mode' and 'format' for backwards compatibility
-    const outputFormat = input.output.mode ?? input.output.format ?? 'locations';
+    const outputFormat = output.mode ?? output.format ?? 'locations';
     const includeSignatures = outputFormat === 'signatures' || outputFormat === 'full';
     const includeFull = outputFormat === 'full';
 

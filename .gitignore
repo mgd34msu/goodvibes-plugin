@@ -71,3 +71,4 @@ logs/
 RELEASE.md
 test-auto-encode/
 new_pe_tests/
+new_e2e_tests/

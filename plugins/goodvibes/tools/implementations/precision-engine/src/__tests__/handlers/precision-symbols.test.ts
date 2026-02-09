@@ -16,13 +16,13 @@ describe('precision_symbols handler', () => {
       expect(parsed.error).toContain("Missing required parameter 'mode'");
     });
 
-    it('should return error when output is missing', async () => {
+    it('should succeed with defaults when output is omitted', async () => {
       const result = await handlePrecisionSymbols({
         mode: 'workspace',
         query: 'test',
       });
-      const parsed = expectError(result);
-      expect(parsed.error).toContain("Missing required parameter 'output'");
+      const parsed = expectSuccess(result);
+      expect(parsed).toBeDefined();
     });
 
     it('should return error for document mode without files', async () => {

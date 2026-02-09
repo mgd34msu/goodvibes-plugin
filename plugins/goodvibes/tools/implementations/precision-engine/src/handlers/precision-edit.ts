@@ -1233,6 +1233,17 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     // Handle transaction modes
     if (transaction.mode === 'atomic' && hasFailures) {
       // Don't write anything
+      // Bug 8 fix: Clear diffs for atomic rollback (pre-write failure) and add indicator
+      for (const r of results) {
+        if (r.status === 'applied') {
+          r.diff = undefined;
+          r.diff_truncated = undefined;
+          r.diff_lines_total = undefined;
+          r.diff_preview = undefined;
+          r.hint = '[ROLLED BACK] Atomic transaction failed - changes were not applied';
+        }
+      }
+      
       const data = {
         edits: results,
         summary: {
@@ -1269,7 +1280,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, content, 'utf-8');
         
-        // Update FileStateCache with edited content
+        // Update FileStateCache with edited content (refreshes entry with new content, increments version)
         try {
           const cache = FileStateCache.getInstance();
           cache.update(filePath, content, 'precision_edit', undefined, `edited ${path.basename(filePath)}`);
@@ -1295,6 +1306,27 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
               } else {
                 await fs.writeFile(backup.path, backup.content, 'utf-8');
               }
+            }
+            
+            // Bug 8 fix: Invalidate cache for rolled-back files to prevent stale reads
+            try {
+              const cache = FileStateCache.getInstance();
+              for (const backup of backups) {
+                cache.invalidate(backup.path);
+              }
+            } catch {
+              // Cache invalidation is non-critical
+            }
+          }
+          
+          // Bug 8 fix: Clear diffs for rolled-back edits and add rollback indicator
+          for (const r of results) {
+            if (r.status === 'applied') {
+              r.diff = undefined;
+              r.diff_truncated = undefined;
+              r.diff_lines_total = undefined;
+              r.diff_preview = undefined;
+              r.hint = '[ROLLED BACK] Transaction failed - changes were not applied';
             }
           }
 

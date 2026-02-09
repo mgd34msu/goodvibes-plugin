@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getMaxFileBytes, getMaxTokenEstimate, getPageSizeLines, getCacheMode, getCacheMaxMb, setConfigValue } from '../runtime-config.js';
+import { getMaxFileBytes, getMaxTokenEstimate, getPageSizeLines, getCacheMode, getCacheMaxMb, setConfigValue, getConfigValue, loadConfig } from '../runtime-config.js';
 
 describe('Size Gate Config Getters', () => {
   const testConfigDir = path.join(process.cwd(), '.goodvibes');
@@ -211,6 +211,35 @@ describe('Size Gate Config Getters', () => {
       expect(getCacheMode()).toBe('with_content');
       expect(getCacheMaxMb()).toBe(1024);
       expect(getMaxFileBytes()).toBe(1048576);
+    });
+  });
+
+  describe('getConfigValue', () => {
+    it('returns actual value when config key is set', async () => {
+      await setConfigValue('cache_mode', 'hash_only');
+      await setConfigValue('max_file_bytes', 1048576);
+      await loadConfig(); // Reload to ensure fresh state
+      
+      expect(getConfigValue('cache_mode')).toBe('hash_only');
+      expect(getConfigValue('max_file_bytes')).toBe(1048576);
+    });
+
+    it('returns default value for exec_default_timeout_ms when not explicitly set', async () => {
+      await loadConfig();
+      expect(getConfigValue('exec_default_timeout_ms')).toBe(120000);
+    });
+
+    it('returns default value for sandbox when not explicitly set', async () => {
+      await loadConfig();
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns undefined for unknown config keys', () => {
+      expect(getConfigValue('unknown_key')).toBeUndefined();
+    });
+
+    it('returns undefined for optional nested objects like verbosity_defaults when not set', () => {
+      expect(getConfigValue('verbosity_defaults')).toBeUndefined();
     });
   });
 });
