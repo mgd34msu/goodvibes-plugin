@@ -12453,7 +12453,7 @@ var require_pattern2 = __commonJS({
       const absolute = [];
       const relative10 = [];
       for (const pattern of patterns2) {
-        if (isAbsolute7(pattern)) {
+        if (isAbsolute8(pattern)) {
           absolute.push(pattern);
         } else {
           relative10.push(pattern);
@@ -12463,11 +12463,11 @@ var require_pattern2 = __commonJS({
     }
     __name(partitionAbsoluteAndRelative, "partitionAbsoluteAndRelative");
     exports2.partitionAbsoluteAndRelative = partitionAbsoluteAndRelative;
-    function isAbsolute7(pattern) {
+    function isAbsolute8(pattern) {
       return path20.isAbsolute(pattern);
     }
-    __name(isAbsolute7, "isAbsolute");
-    exports2.isAbsolute = isAbsolute7;
+    __name(isAbsolute8, "isAbsolute");
+    exports2.isAbsolute = isAbsolute8;
   }
 });
 
@@ -311136,7 +311136,10 @@ var TreeSitterCore = class {
     const extractSymbols3 = /* @__PURE__ */ __name((node, container) => {
       if (!node || !node.type)
         return;
-      const kind = mapNodeTypeToKind(node.type, language);
+      let kind = mapNodeTypeToKind(node.type, language);
+      if (kind === "function" && container && language === "python") {
+        kind = "method";
+      }
       if (kind && (!filter2 || filter2.includes(kind))) {
         const name2 = extractSymbolName(node);
         if (name2) {
@@ -325994,9 +325997,11 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
         void 0,
         3e4
       );
-      const matchingSet = new Set(matchingFiles.map((f) => path14.resolve(workDir, f)));
+      const matchingSet = new Set(matchingFiles.map((f) => {
+        return path14.isAbsolute(f) ? f : path14.resolve(workDir, f);
+      }));
       files = files.filter((f) => {
-        const normalizedPath = path14.resolve(workDir, f.path);
+        const normalizedPath = path14.isAbsolute(f.path) ? f.path : path14.resolve(workDir, f.path);
         return matchingSet.has(normalizedPath);
       });
     }
@@ -326269,6 +326274,159 @@ function getJsDocComment(node, sourceFile) {
   return void 0;
 }
 __name(getJsDocComment, "getJsDocComment");
+function extractPythonSymbols(content, filePath, options) {
+  const symbols = [];
+  const lines = content.split("\n");
+  const queryRegex = options.query ? new RegExp(options.query, "i") : null;
+  const classStack = [];
+  const isPythonPrivate = /* @__PURE__ */ __name((name2) => {
+    const isDunder = name2.startsWith("__") && name2.endsWith("__") && name2.length > 4;
+    return name2.startsWith("_") && !isDunder;
+  }, "isPythonPrivate");
+  const patterns2 = {
+    // Function: def name(...) or async def name(...)
+    function: /^(\s*)(async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/,
+    // Class: class name(...)
+    class: /^(\s*)class\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*[:(]/,
+    // Variable/constant: NAME = value (top-level or indented)
+    variable: /^(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*[:=]/
+  };
+  for (let i2 = 0; i2 < lines.length; i2++) {
+    const line = lines[i2];
+    const lineNum = i2 + 1;
+    const currentIndent = line.match(/^(\s*)/)?.[1].length ?? 0;
+    while (classStack.length > 0 && currentIndent <= classStack[classStack.length - 1].indent) {
+      classStack.pop();
+    }
+    const classMatch = line.match(patterns2.class);
+    if (classMatch) {
+      const indent = classMatch[1];
+      const name2 = classMatch[2];
+      const kind = "class";
+      if (queryRegex && !queryRegex.test(name2)) {
+        classStack.push({ name: name2, indent: indent.length });
+        continue;
+      }
+      if (options.kinds && !options.kinds.includes(kind)) {
+        classStack.push({ name: name2, indent: indent.length });
+        continue;
+      }
+      const isPrivate2 = isPythonPrivate(name2);
+      if (!options.includePrivate && isPrivate2) {
+        classStack.push({ name: name2, indent: indent.length });
+        continue;
+      }
+      let signature = line.trim();
+      const bodyColonMatch = signature.match(/:\s*$/);
+      if (bodyColonMatch) {
+        signature = signature.slice(0, signature.length - bodyColonMatch[0].length).trim();
+      }
+      if (signature.length > 200) {
+        signature = signature.slice(0, 200) + "...";
+      }
+      const symbol2 = {
+        name: name2,
+        kind,
+        file: filePath,
+        line: lineNum,
+        column: indent.length + 1
+      };
+      if (options.includeSignatures || options.includeFull) {
+        symbol2.signature = signature;
+      }
+      if (options.includeFull) {
+        symbol2.exported = indent.length === 0 && !isPrivate2;
+        if (classStack.length > 0) {
+          symbol2.container = classStack[classStack.length - 1].name;
+        }
+      }
+      symbols.push(symbol2);
+      classStack.push({ name: name2, indent: indent.length });
+      continue;
+    }
+    const funcMatch = line.match(patterns2.function);
+    if (funcMatch) {
+      const indent = funcMatch[1];
+      const isAsync2 = !!funcMatch[2];
+      const name2 = funcMatch[3];
+      const isMethod = classStack.length > 0 && indent.length > classStack[classStack.length - 1].indent;
+      let kind = isMethod ? "method" : "function";
+      if (queryRegex && !queryRegex.test(name2))
+        continue;
+      if (options.kinds && !options.kinds.includes(kind))
+        continue;
+      const isPrivate2 = isPythonPrivate(name2);
+      if (!options.includePrivate && isPrivate2)
+        continue;
+      let signature = line.trim();
+      const bodyColonMatch = signature.match(/:\s*$/);
+      if (bodyColonMatch) {
+        signature = signature.slice(0, signature.length - bodyColonMatch[0].length).trim();
+      }
+      if (signature.length > 200) {
+        signature = signature.slice(0, 200) + "...";
+      }
+      const symbol2 = {
+        name: name2,
+        kind,
+        file: filePath,
+        line: lineNum,
+        column: indent.length + 1
+      };
+      if (options.includeSignatures || options.includeFull) {
+        symbol2.signature = signature;
+      }
+      if (options.includeFull) {
+        symbol2.exported = indent.length === 0 && !isPrivate2;
+        if (isMethod && classStack.length > 0) {
+          symbol2.container = classStack[classStack.length - 1].name;
+        }
+      }
+      symbols.push(symbol2);
+      continue;
+    }
+    if (!options.kinds || options.kinds.includes("variable") || options.kinds.includes("constant")) {
+      const varMatch = line.match(patterns2.variable);
+      if (varMatch) {
+        const indent = varMatch[1];
+        const name2 = varMatch[2];
+        if (indent.length > 0 && !options.kinds?.includes("property"))
+          continue;
+        if (["if", "for", "while", "with", "try", "except", "elif", "else", "class", "def", "import", "from", "return"].includes(name2)) {
+          continue;
+        }
+        const isConstant = name2 === name2.toUpperCase() && name2.length > 1 && /^[A-Z]/.test(name2);
+        const kind = isConstant ? "constant" : "variable";
+        if (queryRegex && !queryRegex.test(name2))
+          continue;
+        if (options.kinds && !options.kinds.includes(kind))
+          continue;
+        const isPrivate2 = isPythonPrivate(name2);
+        if (!options.includePrivate && isPrivate2)
+          continue;
+        const symbol2 = {
+          name: name2,
+          kind,
+          file: filePath,
+          line: lineNum,
+          column: indent.length + 1
+        };
+        if (options.includeSignatures || options.includeFull) {
+          symbol2.signature = line.trim();
+          if (symbol2.signature && symbol2.signature.length > 200) {
+            symbol2.signature = symbol2.signature.slice(0, 200) + "...";
+          }
+        }
+        if (options.includeFull) {
+          symbol2.exported = indent.length === 0 && !isPrivate2;
+        }
+        symbols.push(symbol2);
+      }
+    }
+  }
+  return symbols;
+}
+__name(extractPythonSymbols, "extractPythonSymbols");
 function extractSymbols(sourceFile, filePath, options) {
   const symbols = [];
   const queryRegex = options.query ? new RegExp(options.query, "i") : null;
@@ -326364,11 +326522,18 @@ async function processFile(filePath, workDir, options) {
     const tsSymbols = treeSitterCore3.getSymbols(tree, absolutePath, options.kinds);
     const symbols = [];
     const queryRegex = options.query ? new RegExp(options.query, "i") : null;
+    const isPythonPrivate = /* @__PURE__ */ __name((name2) => {
+      const isDunder = name2.startsWith("__") && name2.endsWith("__") && name2.length > 4;
+      return name2.startsWith("_") && !isDunder;
+    }, "isPythonPrivate");
     for (const tsSymbol of tsSymbols) {
       if (queryRegex && !queryRegex.test(tsSymbol.name)) {
         continue;
       }
       if (options.exportedOnly && !tsSymbol.exported) {
+        continue;
+      }
+      if (/\.py$/.test(absolutePath) && !options.includePrivate && isPythonPrivate(tsSymbol.name)) {
         continue;
       }
       const symbol2 = {
@@ -326412,6 +326577,13 @@ async function processFile(filePath, workDir, options) {
       }
       symbols.push(symbol2);
     }
+    if (symbols.length === 0 && /\.py$/.test(absolutePath)) {
+      try {
+        return extractPythonSymbols(content, relativePath, options);
+      } catch (fallbackError) {
+        return [];
+      }
+    }
     return symbols;
   } catch (error2) {
     const errMsg = error2 instanceof Error ? error2.message : String(error2);
@@ -326428,6 +326600,15 @@ async function processFile(filePath, workDir, options) {
       } catch (fallbackError) {
         const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
         console.error(`[precision-symbols] Both parsers failed for ${absolutePath}: tree-sitter: ${errMsg}, ts-compiler: ${fbMsg}`);
+        return [];
+      }
+    }
+    if (/\.py$/.test(absolutePath)) {
+      try {
+        return extractPythonSymbols(content, relativePath, options);
+      } catch (fallbackError) {
+        const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        console.error(`[precision-symbols] Both parsers failed for ${absolutePath}: tree-sitter: ${errMsg}, python-regex: ${fbMsg}`);
         return [];
       }
     }
@@ -327415,7 +327596,82 @@ function estimateTokens5(str) {
   return Math.ceil(str.length / 4);
 }
 __name(estimateTokens5, "estimateTokens");
+function paginateSingleFile(result, tokenBudget, requestedPage) {
+  if (!result.content && !result.lines) {
+    const cost = estimateTokens5(JSON.stringify(result));
+    return {
+      paginatedResults: [result],
+      paginationMeta: {
+        page: 1,
+        total_pages: 1,
+        pending_files: [],
+        token_budget: tokenBudget,
+        tokens_used: cost,
+        budget_exceeded: cost > tokenBudget || void 0
+      }
+    };
+  }
+  const allLines = result.lines || (result.content ? result.content.split("\n") : []);
+  const overheadEstimate = tokenBudget < 300 ? Math.floor(tokenBudget * 0.7) : Math.floor(tokenBudget * 0.6);
+  const contentBudget = Math.max(tokenBudget - overheadEstimate, 5);
+  const pages = [];
+  let currentPage = [];
+  let currentPageTokens = 0;
+  for (const line of allLines) {
+    const lineTokens = estimateTokens5(line);
+    if (currentPage.length === 0 || currentPageTokens + lineTokens <= contentBudget) {
+      currentPage.push(line);
+      currentPageTokens += lineTokens;
+    } else {
+      pages.push(currentPage);
+      currentPage = [line];
+      currentPageTokens = lineTokens;
+    }
+  }
+  if (currentPage.length > 0) {
+    pages.push(currentPage);
+  }
+  const totalPages = Math.max(pages.length, 1);
+  const pageIndex = Math.min(Math.max(requestedPage, 1), totalPages) - 1;
+  const selectedPageLines = pages[pageIndex] || [];
+  const pageContent = selectedPageLines.join("\n");
+  const pageResult = {
+    ...result,
+    content: pageContent,
+    lines: selectedPageLines,
+    line_count: allLines.length
+    // Keep total line count
+  };
+  const { image_base64: _img, ...costTarget } = pageResult;
+  const tokensUsed = estimateTokens5(JSON.stringify(costTarget));
+  pageResult.token_cost = tokensUsed;
+  let pageClampedWarning;
+  if (requestedPage > totalPages) {
+    pageClampedWarning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  } else if (requestedPage < 1) {
+    pageClampedWarning = `Requested page ${requestedPage} is invalid. Showing page 1 instead.`;
+  }
+  const paginationMeta = {
+    page: pageIndex + 1,
+    total_pages: totalPages,
+    pending_files: [],
+    // No other files in single-file pagination
+    token_budget: tokenBudget,
+    tokens_used: tokensUsed,
+    warning: pageClampedWarning
+  };
+  return { paginatedResults: [pageResult], paginationMeta };
+}
+__name(paginateSingleFile, "paginateSingleFile");
 function paginateByTokenBudget(results, tokenBudget, requestedPage) {
+  if (results.length === 1) {
+    const result = results[0];
+    const { image_base64: _img, ...costTarget } = result;
+    const fileCost = result.size_bytes !== void 0 && result.size_bytes > 0 && result.status === "unchanged" ? Math.ceil(result.size_bytes / 4) : estimateTokens5(JSON.stringify(costTarget));
+    if (fileCost > tokenBudget && (result.content || result.lines)) {
+      return paginateSingleFile(result, tokenBudget, requestedPage);
+    }
+  }
   const costsPerFile = results.map((r, i2) => {
     const { image_base64: _img, ...costTarget } = r;
     const cost = r.size_bytes !== void 0 && r.size_bytes > 0 && r.status === "unchanged" ? Math.ceil(r.size_bytes / 4) : estimateTokens5(JSON.stringify(costTarget));
@@ -328009,9 +328265,10 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
       include_metadata: input.output?.include_metadata ?? false,
       ...input.output
     };
+    const forceRead = input.token_budget !== void 0 && input.token_budget > 0;
     const fileSpecs = input.files.map(
-      (f) => typeof f === "string" ? { path: f, pages: input.pages } : { pages: input.pages, ...f }
-      // per-file pages overrides top-level
+      (f) => typeof f === "string" ? { path: f, pages: input.pages, force: forceRead } : { pages: input.pages, force: forceRead || f.force, ...f }
+      // per-file force overrides
     );
     const results = await Promise.all(
       fileSpecs.map(
@@ -328319,7 +328576,7 @@ function regexMatch(content, pattern, caseSensitive, multiline = true) {
   const matches2 = [];
   let match;
   while ((match = regex.exec(content)) !== null) {
-    matches2.push({ index: match.index, match: match[0] });
+    matches2.push({ index: match.index, match: match[0], fullMatch: match });
     if (match[0].length === 0)
       regex.lastIndex++;
   }
@@ -328549,7 +328806,7 @@ function findInContext(filePath, content, find2, hints, matchConfig) {
     }
   } else if (matchConfig.mode === "regex") {
     const matches2 = regexMatch(normalizedContent, normalizedFind, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);
-    allMatches = matches2.map((m) => ({ index: m.index, length: m.match.length }));
+    allMatches = matches2.map((m) => ({ index: m.index, length: m.match.length, fullMatch: m.fullMatch }));
   } else if (matchConfig.mode === "fuzzy") {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
     const findForMatching = matchConfig.whitespace_sensitive === false ? normalizeWhitespace(normalizedFind) : normalizedFind;
@@ -328742,8 +328999,24 @@ async function applyEdit(filePath, content, edit, matchConfig) {
   }
   let newContent = normalizeLineEndings(content);
   const sortedMatches = [...matchesToReplace].sort((a, b) => b.index - a.index);
+  const originalContent = newContent;
   for (const match of sortedMatches) {
-    newContent = newContent.slice(0, match.index) + replaceValue + newContent.slice(match.index + match.length);
+    let replacementText = replaceValue;
+    if (matchConfig.mode === "regex" && match.fullMatch) {
+      replacementText = replaceValue.replace(/\$(\d+|&|`|'|\$)/g, (_, token) => {
+        if (token === "&")
+          return match.fullMatch[0];
+        if (token === "`")
+          return originalContent.slice(0, match.index);
+        if (token === "'")
+          return originalContent.slice(match.index + match.length);
+        if (token === "$")
+          return "$";
+        const groupIndex = parseInt(token, 10);
+        return match.fullMatch[groupIndex] ?? `$${token}`;
+      });
+    }
+    newContent = newContent.slice(0, match.index) + replacementText + newContent.slice(match.index + match.length);
   }
   return { newContent, status: "applied", editsApplied: matchesToReplace.length };
 }

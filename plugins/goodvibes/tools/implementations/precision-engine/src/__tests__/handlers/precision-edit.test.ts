@@ -90,6 +90,177 @@ describe('precision_edit handler', () => {
       const parsed = expectSuccess(result);
       expect(parsed.data.summary.edits_applied).toBe(2);
     });
+
+    it('should interpolate capture groups in replacement (E2E test 03.07)', async () => {
+      await createTestFile('counter.ts', 'let count = 0;\ncount = count + 1;\ncount = count + 5;');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'counter.ts', 
+          find: 'count = count \\+ (\\d+);', 
+          replace: 'count += $1;',
+          occurrence: 'all'
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'regex' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(2);
+
+      const content = await readTestFile('counter.ts');
+      expect(content).toContain('count += 1;');
+      expect(content).toContain('count += 5;');
+      expect(content).not.toContain('count = count +');
+    });
+
+    it('should support multiple capture groups', async () => {
+      await createTestFile('swap.ts', 'const x = foo(bar, baz);');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'swap.ts', 
+          find: 'foo\\((\\w+), (\\w+)\\)', 
+          replace: 'foo($2, $1)',
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'regex' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(1);
+
+      const content = await readTestFile('swap.ts');
+      expect(content).toContain('foo(baz, bar)');
+    });
+
+    it('should support $& for full match replacement', async () => {
+      await createTestFile('match.ts', 'const value = 42;');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'match.ts', 
+          find: '\\d+', 
+          replace: '[$&]',
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'regex' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(1);
+
+      const content = await readTestFile('match.ts');
+      expect(content).toContain('[42]');
+    });
+
+    it('should support $$ for literal $ in replacement', async () => {
+      await createTestFile('dollar.ts', 'const price = 100;');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'dollar.ts', 
+          find: '(\\d+)', 
+          replace: '$$$1',  // $$ becomes literal $, $1 becomes capture group 1 → result: $100
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'regex' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(1);
+
+      const content = await readTestFile('dollar.ts');
+      expect(content).toContain('const price = $100;');  // $$ → $, $1 → 100
+    });
+
+    it('should support $` for text before match', async () => {
+      await createTestFile('before.ts', 'prefix middle suffix');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'before.ts', 
+          find: 'middle', 
+          replace: '[$`]',  // Should produce [prefix ]
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'regex' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(1);
+
+      const content = await readTestFile('before.ts');
+      expect(content).toBe('prefix [prefix ] suffix');
+    });
+
+    it("should support $' for text after match", async () => {
+      await createTestFile('after.ts', 'prefix middle suffix');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'after.ts', 
+          find: 'middle', 
+          replace: "[$']",  // Should produce [ suffix]
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'regex' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(1);
+
+      const content = await readTestFile('after.ts');
+      expect(content).toBe('prefix [ suffix] suffix');
+    });
+
+    it('should treat non-existent capture groups as literals', async () => {
+      await createTestFile('nonexist.ts', 'const foo = 1;');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'nonexist.ts', 
+          find: '(\\w+) = (\\d+)', 
+          replace: '$1 = $5',  // $5 doesn't exist, should be literal $5
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'regex' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(1);
+
+      const content = await readTestFile('nonexist.ts');
+      expect(content).toContain('foo = $5');
+    });
+
+    it('should treat $1 literally in non-regex mode', async () => {
+      await createTestFile('literal.ts', 'const foo = 1;');
+
+      const result = await handlePrecisionEdit({
+        edits: [{ 
+          file: 'literal.ts', 
+          find: 'foo = 1', 
+          replace: 'bar = $1',  // In exact mode, $1 should be literal
+        }],
+        transaction: { mode: 'none', rollback_on_fail: false },
+        match: { mode: 'exact' },
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary.edits_applied).toBe(1);
+
+      const content = await readTestFile('literal.ts');
+      expect(content).toContain('const bar = $1;');
+    });
   });
 
   describe('occurrence handling', () => {

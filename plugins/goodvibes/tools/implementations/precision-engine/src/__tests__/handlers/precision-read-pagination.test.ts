@@ -159,18 +159,20 @@ describe('precision_read pagination', () => {
       }
     });
 
-    it('should set budget_exceeded flag when single file exceeds budget', async () => {
+    it('should split large file into pages when budget exceeded', async () => {
       const result = await handlePrecisionRead({
         files: ['large-file.ts'],
         extract: 'content',
         output: { mode: 'standard' },
-        token_budget: 50,
+        token_budget: 200, // Small but realistic budget
       });
 
       const parsed = expectSuccess(result);
       const pagination = parsed.data.summary.pagination;
       
-      expect(pagination.budget_exceeded).toBe(true);
+      // Should split into multiple pages instead of setting budget_exceeded
+      expect(pagination.total_pages).toBeGreaterThan(1);
+      expect(pagination.tokens_used).toBeLessThanOrEqual(pagination.token_budget);
     });
 
     it('should not set budget_exceeded when files fit in budget', async () => {
@@ -274,7 +276,7 @@ describe('precision_read pagination', () => {
       expect(pagination.budget_exceeded).toBeUndefined();
     });
 
-    it('should handle single file exceeding budget', async () => {
+    it('should split single file content across multiple pages when exceeding budget', async () => {
       const largeContent = Array(500).fill('line of content').join('\n');
       await createTestFile('huge.ts', largeContent);
 
@@ -282,16 +284,22 @@ describe('precision_read pagination', () => {
         files: ['huge.ts'],
         extract: 'content',
         output: { mode: 'standard' },
-        token_budget: 50,
+        token_budget: 200, // Small but realistic budget
       });
 
       const parsed = expectSuccess(result);
       const pagination = parsed.data.summary.pagination;
       
+      // Should split into multiple pages
       expect(pagination.page).toBe(1);
-      expect(pagination.total_pages).toBe(1);
-      expect(pagination.budget_exceeded).toBe(true);
-      expect(pagination.tokens_used).toBeGreaterThan(pagination.token_budget);
+      expect(pagination.total_pages).toBeGreaterThan(1);
+      expect(pagination.pending_files).toEqual([]); // No other files
+      expect(pagination.tokens_used).toBeLessThanOrEqual(pagination.token_budget);
+      
+      // Content should be truncated to fit budget
+      const content = parsed.data.files['huge.ts'].content;
+      expect(content).toBeDefined();
+      expect(content.split('\n').length).toBeLessThan(500); // Not all lines
     });
 
     it('should not paginate when token_budget is 0', async () => {
@@ -687,6 +695,180 @@ describe('precision_read pagination', () => {
       // Page 2 files should be different from page 1
       expect(page2Files).not.toContain(page1Files[0]);
       expect(page2Files[0]).toMatch(/cached[23]\.ts/);
+    });
+  });
+
+  describe('single file content splitting', () => {
+    beforeEach(async () => {
+      // Create a large file that should be split across pages
+      const lines = [];
+      for (let i = 1; i <= 100; i++) {
+        lines.push(`Line ${i}: This is some content that contributes to token count`);
+      }
+      await createTestFile('large-file.ts', lines.join('\n'));
+    });
+
+    it('should split single large file into multiple pages', async () => {
+      const result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 500,
+        page: 1,
+      });
+
+      const parsed = expectSuccess(result);
+      const pagination = parsed.data.summary.pagination;
+      
+      // Should create multiple pages
+      expect(pagination.total_pages).toBeGreaterThan(1);
+      expect(pagination.page).toBe(1);
+      expect(pagination.pending_files).toEqual([]);
+      expect(pagination.tokens_used).toBeLessThanOrEqual(pagination.token_budget);
+    });
+
+    it('should return different content on different pages', async () => {
+      // Get page 1
+      const page1Result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 500,
+        page: 1,
+      });
+      const page1Parsed = expectSuccess(page1Result);
+      const page1Content = page1Parsed.data.files['large-file.ts'].content;
+      
+      // Get page 2
+      const page2Result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 500,
+        page: 2,
+      });
+      const page2Parsed = expectSuccess(page2Result);
+      const page2Content = page2Parsed.data.files['large-file.ts'].content;
+      
+      // Pages should have different content
+      expect(page1Content).not.toBe(page2Content);
+      expect(page1Content).toContain('Line 1:');
+      expect(page2Content).not.toContain('Line 1:'); // Should start later
+    });
+
+    it('should maintain total line_count across all pages', async () => {
+      const page1Result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 500,
+        page: 1,
+      });
+      const page1Parsed = expectSuccess(page1Result);
+      const totalLines = page1Parsed.data.files['large-file.ts'].line_count;
+      
+      // Total line count should be 100 (the full file)
+      expect(totalLines).toBe(100);
+      
+      // Page 2 should report the same total
+      const page2Result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 500,
+        page: 2,
+      });
+      const page2Parsed = expectSuccess(page2Result);
+      expect(page2Parsed.data.files['large-file.ts'].line_count).toBe(100);
+    });
+
+    it('should respect token budget on each page', async () => {
+      const budget = 300;
+      const page1Result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: budget,
+        page: 1,
+      });
+      const page1Parsed = expectSuccess(page1Result);
+      const pagination1 = page1Parsed.data.summary.pagination;
+      
+      expect(pagination1.tokens_used).toBeLessThanOrEqual(budget);
+      
+      // Check page 2
+      const page2Result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: budget,
+        page: 2,
+      });
+      const page2Parsed = expectSuccess(page2Result);
+      const pagination2 = page2Parsed.data.summary.pagination;
+      
+      expect(pagination2.tokens_used).toBeLessThanOrEqual(budget);
+    });
+
+    it('should handle requesting page beyond total_pages', async () => {
+      const result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 500,
+        page: 999,
+      });
+
+      const parsed = expectSuccess(result);
+      const pagination = parsed.data.summary.pagination;
+      
+      // Should clamp to last page
+      expect(pagination.page).toBe(pagination.total_pages);
+      expect(pagination.warning).toBeDefined();
+      expect(pagination.warning).toContain('exceeds total pages');
+    });
+
+    it('should handle very small token budget', async () => {
+      // Budget so small that even one line might exceed it
+      const result = await handlePrecisionRead({
+        files: ['large-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 10,
+        page: 1,
+      });
+
+      const parsed = expectSuccess(result);
+      const pagination = parsed.data.summary.pagination;
+      
+      // Should still create pages
+      expect(pagination.total_pages).toBeGreaterThan(1);
+      expect(pagination.page).toBe(1);
+      
+      // First page should have at least one line
+      const content = parsed.data.files['large-file.ts'].content;
+      expect(content).toBeDefined();
+      expect(content.length).toBeGreaterThan(0);
+    });
+
+    it('should handle single file that fits within budget', async () => {
+      await createTestFile('small.ts', 'tiny content');
+      
+      const result = await handlePrecisionRead({
+        files: ['small.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 5000,
+        page: 1,
+      });
+
+      const parsed = expectSuccess(result);
+      const pagination = parsed.data.summary.pagination;
+      
+      // Should fit in one page
+      expect(pagination.total_pages).toBe(1);
+      expect(pagination.page).toBe(1);
+      expect(pagination.tokens_used).toBeLessThanOrEqual(pagination.token_budget);
     });
   });
 });

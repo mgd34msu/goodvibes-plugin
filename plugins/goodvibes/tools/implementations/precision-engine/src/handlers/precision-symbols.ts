@@ -231,6 +231,227 @@ function getJsDocComment(node: ts.Node, sourceFile: ts.SourceFile): string | und
   return undefined;
 }
 
+/**
+ * Extract symbols from Python source using regex patterns
+ * Used as fallback when tree-sitter fails for Python files
+ */
+function extractPythonSymbols(
+  content: string,
+  filePath: string,
+  options: {
+    query?: string;
+    kinds?: SymbolKind[];
+    exportedOnly?: boolean;
+    includePrivate?: boolean;
+    includeSignatures?: boolean;
+    includeFull?: boolean;
+  }
+): SymbolResult[] {
+  const symbols: SymbolResult[] = [];
+  const lines = content.split('\n');
+  const queryRegex = options.query ? new RegExp(options.query, 'i') : null;
+
+  // Track class scope using indentation levels
+  interface ClassScope {
+    name: string;
+    indent: number;
+  }
+  const classStack: ClassScope[] = [];
+
+  // Helper to determine if name is private
+  const isPythonPrivate = (name: string): boolean => {
+    // Dunder methods (__init__, __str__, etc.) are public
+    const isDunder = name.startsWith('__') && name.endsWith('__') && name.length > 4;
+    // Name-mangled (__private_var) or single underscore (_protected) are private
+    return name.startsWith('_') && !isDunder;
+  };
+
+  // Regex patterns for Python symbols
+  const patterns = {
+    // Function: def name(...) or async def name(...)
+    function: /^(\s*)(async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/,
+    // Class: class name(...)
+    class: /^(\s*)class\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*[:(]/,
+    // Variable/constant: NAME = value (top-level or indented)
+    variable: /^(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*[:=]/,
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNum = i + 1;
+    const currentIndent = line.match(/^(\s*)/)?.[1].length ?? 0;
+
+    // Update class stack - pop classes that have ended (dedent)
+    while (classStack.length > 0 && currentIndent <= classStack[classStack.length - 1].indent) {
+      classStack.pop();
+    }
+
+    // Check for classes first
+    const classMatch = line.match(patterns.class);
+    if (classMatch) {
+      const indent = classMatch[1];
+      const name = classMatch[2];
+      const kind: SymbolKind = 'class';
+
+      // Apply filters
+      if (queryRegex && !queryRegex.test(name)) {
+        // Push to class stack even if filtered out, for proper method scoping
+        classStack.push({ name, indent: indent.length });
+        continue;
+      }
+      if (options.kinds && !options.kinds.includes(kind)) {
+        classStack.push({ name, indent: indent.length });
+        continue;
+      }
+
+      const isPrivate = isPythonPrivate(name);
+      if (!options.includePrivate && isPrivate) {
+        classStack.push({ name, indent: indent.length });
+        continue;
+      }
+
+      // Extract signature (only remove trailing body colon, not type annotation colons)
+      let signature = line.trim();
+      const bodyColonMatch = signature.match(/:\s*$/);
+      if (bodyColonMatch) {
+        signature = signature.slice(0, signature.length - bodyColonMatch[0].length).trim();
+      }
+      if (signature.length > 200) {
+        signature = signature.slice(0, 200) + '...';
+      }
+
+      const symbol: SymbolResult = {
+        name,
+        kind,
+        file: filePath,
+        line: lineNum,
+        column: indent.length + 1,
+      };
+
+      if (options.includeSignatures || options.includeFull) {
+        symbol.signature = signature;
+      }
+
+      if (options.includeFull) {
+        symbol.exported = indent.length === 0 && !isPrivate;
+        // Classes can be nested, set container if inside another class
+        if (classStack.length > 0) {
+          symbol.container = classStack[classStack.length - 1].name;
+        }
+      }
+
+      symbols.push(symbol);
+      // Add this class to the stack for tracking methods
+      classStack.push({ name, indent: indent.length });
+      continue;
+    }
+
+    // Check for functions/methods
+    const funcMatch = line.match(patterns.function);
+    if (funcMatch) {
+      const indent = funcMatch[1];
+      const isAsync = !!funcMatch[2];
+      const name = funcMatch[3];
+      
+      // Determine if this is a method (inside a class) or a function
+      const isMethod = classStack.length > 0 && indent.length > classStack[classStack.length - 1].indent;
+      let kind: SymbolKind = isMethod ? 'method' : 'function';
+
+      // Apply filters
+      if (queryRegex && !queryRegex.test(name)) continue;
+      if (options.kinds && !options.kinds.includes(kind)) continue;
+
+      const isPrivate = isPythonPrivate(name);
+      if (!options.includePrivate && isPrivate) continue;
+
+      // Extract signature (only remove trailing body colon, not type annotation colons)
+      let signature = line.trim();
+      const bodyColonMatch = signature.match(/:\s*$/);
+      if (bodyColonMatch) {
+        signature = signature.slice(0, signature.length - bodyColonMatch[0].length).trim();
+      }
+      if (signature.length > 200) {
+        signature = signature.slice(0, 200) + '...';
+      }
+
+      const symbol: SymbolResult = {
+        name,
+        kind,
+        file: filePath,
+        line: lineNum,
+        column: indent.length + 1,
+      };
+
+      if (options.includeSignatures || options.includeFull) {
+        symbol.signature = signature;
+      }
+
+      if (options.includeFull) {
+        // Top-level functions (no indent) are considered exported
+        symbol.exported = indent.length === 0 && !isPrivate;
+        // Set container for methods
+        if (isMethod && classStack.length > 0) {
+          symbol.container = classStack[classStack.length - 1].name;
+        }
+      }
+
+      symbols.push(symbol);
+      continue;
+    }
+
+    // Check for variables/constants (only if 'variable' or 'constant' kind is requested)
+    if (!options.kinds || options.kinds.includes('variable') || options.kinds.includes('constant')) {
+      const varMatch = line.match(patterns.variable);
+      if (varMatch) {
+        const indent = varMatch[1];
+        const name = varMatch[2];
+        
+        // Skip if it's inside a class/function (indented) unless we want all variables
+        if (indent.length > 0 && !options.kinds?.includes('property')) continue;
+        
+        // Skip common non-variable patterns
+        if (['if', 'for', 'while', 'with', 'try', 'except', 'elif', 'else', 'class', 'def', 'import', 'from', 'return'].includes(name)) {
+          continue;
+        }
+
+        // Determine if constant (ALL_CAPS with length > 1 and starts with A-Z)
+        const isConstant = name === name.toUpperCase() && name.length > 1 && /^[A-Z]/.test(name);
+        const kind: SymbolKind = isConstant ? 'constant' : 'variable';
+
+        // Apply filters
+        if (queryRegex && !queryRegex.test(name)) continue;
+        if (options.kinds && !options.kinds.includes(kind)) continue;
+
+        const isPrivate = isPythonPrivate(name);
+        if (!options.includePrivate && isPrivate) continue;
+
+        const symbol: SymbolResult = {
+          name,
+          kind,
+          file: filePath,
+          line: lineNum,
+          column: indent.length + 1,
+        };
+
+        if (options.includeSignatures || options.includeFull) {
+          symbol.signature = line.trim();
+          if (symbol.signature && symbol.signature.length > 200) {
+            symbol.signature = symbol.signature.slice(0, 200) + '...';
+          }
+        }
+
+        if (options.includeFull) {
+          symbol.exported = indent.length === 0 && !isPrivate;
+        }
+
+        symbols.push(symbol);
+      }
+    }
+  }
+
+  return symbols;
+}
+
 function extractSymbols(
   sourceFile: ts.SourceFile,
   filePath: string,
@@ -374,6 +595,12 @@ async function processFile(
     const symbols: SymbolResult[] = [];
     const queryRegex = options.query ? new RegExp(options.query, 'i') : null;
     
+    // Helper to check Python privacy
+    const isPythonPrivate = (name: string): boolean => {
+      const isDunder = name.startsWith('__') && name.endsWith('__') && name.length > 4;
+      return name.startsWith('_') && !isDunder;
+    };
+    
     for (const tsSymbol of tsSymbols) {
       // Apply filters
       if (queryRegex && !queryRegex.test(tsSymbol.name)) {
@@ -381,6 +608,11 @@ async function processFile(
       }
       
       if (options.exportedOnly && !tsSymbol.exported) {
+        continue;
+      }
+      
+      // Python privacy filter
+      if (/\.py$/.test(absolutePath) && !options.includePrivate && isPythonPrivate(tsSymbol.name)) {
         continue;
       }
       
@@ -434,10 +666,22 @@ async function processFile(
       symbols.push(symbol);
     }
     
+    // S1b fix: If tree-sitter succeeded but returned 0 symbols for Python, try regex fallback
+    if (symbols.length === 0 && /\.py$/.test(absolutePath)) {
+      try {
+        return extractPythonSymbols(content, relativePath, options);
+      } catch (fallbackError) {
+        // Regex fallback failed, return empty array
+        return [];
+      }
+    }
+    
     return symbols;
   } catch (error) {
-    // S1a fix: Tree-sitter failed, try TypeScript compiler as fallback for TS/JS files
+    // S1a fix: Tree-sitter failed, try fallback parsers
     const errMsg = error instanceof Error ? error.message : String(error);
+    
+    // Try TypeScript compiler fallback for TS/JS files
     if (/\.(ts|tsx|js|jsx)$/.test(absolutePath)) {
       try {
         const sourceFile = ts.createSourceFile(
@@ -457,7 +701,18 @@ async function processFile(
       }
     }
     
-    // Non-TS/JS file or both parsers failed
+    // Try regex-based fallback for Python files
+    if (/\.py$/.test(absolutePath)) {
+      try {
+        return extractPythonSymbols(content, relativePath, options);
+      } catch (fallbackError) {
+        const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        console.error(`[precision-symbols] Both parsers failed for ${absolutePath}: tree-sitter: ${errMsg}, python-regex: ${fbMsg}`);
+        return [];
+      }
+    }
+    
+    // Unsupported file type or all parsers failed
     return [];
   }
 }

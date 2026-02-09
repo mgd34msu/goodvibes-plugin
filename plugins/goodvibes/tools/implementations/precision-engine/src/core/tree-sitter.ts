@@ -443,7 +443,12 @@ export class TreeSitterCore {
 
     const extractSymbols = (node: Parser.SyntaxNode, container?: string): void => {
       if (!node || !node.type) return;
-      const kind = mapNodeTypeToKind(node.type, language);
+      let kind = mapNodeTypeToKind(node.type, language);
+
+      // Python fix: function_definition inside a class should be classified as method
+      if (kind === 'function' && container && language === 'python') {
+        kind = 'method';
+      }
 
       if (kind && (!filter || filter.includes(kind))) {
         const name = extractSymbolName(node);

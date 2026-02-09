@@ -303,9 +303,14 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
         30000
       );
       // Normalize paths for comparison
-      const matchingSet = new Set(matchingFiles.map(f => path.resolve(workDir, f)));
+      // filesWithMatches returns paths relative to workDir, so resolve them to absolute paths
+      const matchingSet = new Set(matchingFiles.map(f => {
+        // If path is already absolute, use as-is; otherwise resolve relative to workDir
+        return path.isAbsolute(f) ? f : path.resolve(workDir, f);
+      }));
       files = files.filter(f => {
-        const normalizedPath = path.resolve(workDir, f.path);
+        // f.path is already absolute from fast-glob or ripgrep listFiles
+        const normalizedPath = path.isAbsolute(f.path) ? f.path : path.resolve(workDir, f.path);
         return matchingSet.has(normalizedPath);
       });
     }

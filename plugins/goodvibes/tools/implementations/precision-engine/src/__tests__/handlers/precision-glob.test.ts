@@ -176,6 +176,26 @@ describe('precision_glob handler', () => {
       expect(parsed.data.files).toContain('match.ts');
       expect(parsed.data.files).not.toContain('nomatch.ts');
     });
+
+    it('should filter by has_content with common keyword (export)', async () => {
+      await createTestFiles({
+        'with-export.ts': 'export const foo = 1;',
+        'without-export.ts': 'const bar = 2;',
+        'also-export.ts': 'export function baz() {}',
+      });
+
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        filters: { has_content: 'export' },
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files).toContain('with-export.ts');
+      expect(parsed.data.files).toContain('also-export.ts');
+      expect(parsed.data.files).not.toContain('without-export.ts');
+      expect(parsed.data.files.length).toBe(2);
+    });
   });
 
   describe('sorting', () => {

@@ -394,11 +394,112 @@ function estimateTokens(str: string): number {
 }
 
 /**
+ * Split a single file's content into multiple pages based on token budget.
+ * 
+ * @param result - File read result to split
+ * @param tokenBudget - Maximum token budget per page
+ * @param requestedPage - 1-indexed page number to return
+ * @returns Object containing paginated results for the requested page
+ */
+function paginateSingleFile(
+  result: FileReadResult,
+  tokenBudget: number,
+  requestedPage: number
+): { paginatedResults: FileReadResult[]; paginationMeta: ReadPaginationMetadata } {
+  // If file has no content or lines, can't paginate it
+  if (!result.content && !result.lines) {
+    const cost = estimateTokens(JSON.stringify(result));
+    return {
+      paginatedResults: [result],
+      paginationMeta: {
+        page: 1,
+        total_pages: 1,
+        pending_files: [],
+        token_budget: tokenBudget,
+        tokens_used: cost,
+        budget_exceeded: cost > tokenBudget || undefined,
+      },
+    };
+  }
+
+  // Split content by lines
+  const allLines = result.lines || (result.content ? result.content.split('\n') : []);
+  
+  // Reserve tokens for response structure overhead (JSON formatting, metadata fields, context, etc.)
+  // For small budgets (<300), overhead is relatively fixed at ~60-120 tokens
+  // For larger budgets, use percentage-based allocation
+  const overheadEstimate = tokenBudget < 300 ? Math.floor(tokenBudget * 0.7) : Math.floor(tokenBudget * 0.6);
+  const contentBudget = Math.max(tokenBudget - overheadEstimate, 5);
+  
+  // Build pages by grouping lines that fit within content budget
+  const pages: string[][] = [];
+  let currentPage: string[] = [];
+  let currentPageTokens = 0;
+
+  for (const line of allLines) {
+    const lineTokens = estimateTokens(line);
+    
+    // If this is the first line of the page or adding it stays within content budget
+    if (currentPage.length === 0 || currentPageTokens + lineTokens <= contentBudget) {
+      currentPage.push(line);
+      currentPageTokens += lineTokens;
+    } else {
+      // Start a new page
+      pages.push(currentPage);
+      currentPage = [line];
+      currentPageTokens = lineTokens;
+    }
+  }
+  
+  // Don't forget the last page
+  if (currentPage.length > 0) {
+    pages.push(currentPage);
+  }
+
+  const totalPages = Math.max(pages.length, 1);
+  const pageIndex = Math.min(Math.max(requestedPage, 1), totalPages) - 1;
+  const selectedPageLines = pages[pageIndex] || [];
+  
+  // Create a result for the selected page
+  const pageContent = selectedPageLines.join('\n');
+  
+  const pageResult: FileReadResult = {
+    ...result,
+    content: pageContent,
+    lines: selectedPageLines,
+    line_count: allLines.length, // Keep total line count
+  };
+  
+  // Calculate token cost for the full response (not just content)
+  const { image_base64: _img, ...costTarget } = pageResult;
+  const tokensUsed = estimateTokens(JSON.stringify(costTarget));
+  pageResult.token_cost = tokensUsed;
+
+  // Check if requested page was clamped
+  let pageClampedWarning: string | undefined;
+  if (requestedPage > totalPages) {
+    pageClampedWarning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  } else if (requestedPage < 1) {
+    pageClampedWarning = `Requested page ${requestedPage} is invalid. Showing page 1 instead.`;
+  }
+
+  const paginationMeta: ReadPaginationMetadata = {
+    page: pageIndex + 1,
+    total_pages: totalPages,
+    pending_files: [], // No other files in single-file pagination
+    token_budget: tokenBudget,
+    tokens_used: tokensUsed,
+    warning: pageClampedWarning,
+  };
+
+  return { paginatedResults: [pageResult], paginationMeta };
+}
+
+/**
  * Apply token-budgeted bin-packing pagination to file read results.
  * 
- * Groups files into pages where each page stays within the token budget.
- * Uses a first-fit bin-packing algorithm: files are added to the current page
- * until the budget is exceeded, then a new page is started.
+ * For single file: splits content across pages by line groups that fit within budget.
+ * For multiple files: groups entire files into pages using bin-packing.
  *
  * @param results - Array of file read results to paginate
  * @param tokenBudget - Maximum token budget per page
@@ -410,6 +511,21 @@ function paginateByTokenBudget(
   tokenBudget: number,
   requestedPage: number
 ): { paginatedResults: FileReadResult[]; paginationMeta: ReadPaginationMetadata } {
+  // Special case: single file that exceeds budget should be split by content
+  if (results.length === 1) {
+    const result = results[0];
+    const { image_base64: _img, ...costTarget } = result;
+    const fileCost = result.size_bytes !== undefined && result.size_bytes > 0 && result.status === 'unchanged'
+      ? Math.ceil(result.size_bytes / 4)
+      : estimateTokens(JSON.stringify(costTarget));
+    
+    // If single file exceeds budget and has content to split, use single-file pagination
+    if (fileCost > tokenBudget && (result.content || result.lines)) {
+      return paginateSingleFile(result, tokenBudget, requestedPage);
+    }
+  }
+
+  // Multi-file pagination: use bin-packing algorithm
   // Calculate token cost per result
   const costsPerFile: { index: number; cost: number }[] = results.map((r, i) => {
     // Strip image_base64 before cost calculation to avoid inflating token cost
@@ -1146,10 +1262,12 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
     };
 
     // Normalize file specs
+    // If token_budget is set, force-read files to ensure we have full content for pagination
+    const forceRead = input.token_budget !== undefined && input.token_budget > 0;
     const fileSpecs: FileReadSpec[] = input.files.map(f =>
       typeof f === 'string'
-        ? { path: f, pages: input.pages }
-        : { pages: input.pages, ...f }  // per-file pages overrides top-level
+        ? { path: f, pages: input.pages, force: forceRead }
+        : { pages: input.pages, force: forceRead || f.force, ...f }  // per-file force overrides
     );
 
     // Read all files in parallel

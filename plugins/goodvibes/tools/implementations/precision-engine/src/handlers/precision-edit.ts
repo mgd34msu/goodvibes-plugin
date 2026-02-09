@@ -328,17 +328,17 @@ function fuzzyMatch(
   return matches.sort((a, b) => b.similarity - a.similarity);
 }
 
-function regexMatch(content: string, pattern: string, caseSensitive: boolean, multiline: boolean = true): { index: number; match: string }[] {
+function regexMatch(content: string, pattern: string, caseSensitive: boolean, multiline: boolean = true): { index: number; match: string; fullMatch: RegExpExecArray }[] {
   let flags = 'g';
   if (!caseSensitive) flags += 'i';
   if (multiline) flags += 'm';
 
   const regex = new RegExp(pattern, flags);
-  const matches: { index: number; match: string }[] = [];
+  const matches: { index: number; match: string; fullMatch: RegExpExecArray }[] = [];
 
   let match: RegExpExecArray | null;
   while ((match = regex.exec(content)) !== null) {
-    matches.push({ index: match.index, match: match[0] });
+    matches.push({ index: match.index, match: match[0], fullMatch: match });
     if (match[0].length === 0) regex.lastIndex++;
   }
 
@@ -576,6 +576,7 @@ interface MatchResult {
   index: number;
   length: number; // For AST mode, length of the matched node
   captures?: Record<string, string>;
+  fullMatch?: RegExpExecArray; // For regex mode, full match data including capture groups
 }
 
 /**
@@ -727,7 +728,7 @@ function findInContext(
     }
   } else if (matchConfig.mode === 'regex') {
     const matches = regexMatch(normalizedContent, normalizedFind, matchConfig.case_sensitive ?? true, matchConfig.multiline ?? true);
-    allMatches = matches.map(m => ({ index: m.index, length: m.match.length }));
+    allMatches = matches.map(m => ({ index: m.index, length: m.match.length, fullMatch: m.fullMatch }));
   } else if (matchConfig.mode === 'fuzzy') {
     const threshold = matchConfig.fuzzy_threshold ?? 0.7;
     
@@ -1001,12 +1002,30 @@ async function applyEdit(
   // CRITICAL: Normalize content before applying replacements to match normalized positions
   let newContent = normalizeLineEndings(content);
   const sortedMatches = [...matchesToReplace].sort((a, b) => b.index - a.index);
+  
+  // Snapshot original content for $` and $' substitutions (before mutations)
+  const originalContent = newContent;
 
   for (const match of sortedMatches) {
+    // For regex mode with capture groups, use proper substitution
+    let replacementText = replaceValue;
+    if (matchConfig.mode === 'regex' && match.fullMatch) {
+      // Replace $1, $2, etc. with captured groups
+      // Also handle $& (full match), $` (before match), $' (after match), $$ (literal $)
+      replacementText = replaceValue.replace(/\$(\d+|&|`|'|\$)/g, (_, token) => {
+        if (token === '&') return match.fullMatch![0]; // Full match
+        if (token === '`') return originalContent.slice(0, match.index); // Text before match
+        if (token === "'") return originalContent.slice(match.index + match.length); // Text after match
+        if (token === '$') return '$'; // Literal $ escape
+        const groupIndex = parseInt(token, 10);
+        return match.fullMatch![groupIndex] ?? `$${token}`; // Return capture group or original if not found
+      });
+    }
+    
     // Use the match.length property which is set correctly for each match mode
     // For AST mode, this will be the entire node length
     // For other modes, this will be the matched string length
-    newContent = newContent.slice(0, match.index) + replaceValue + newContent.slice(match.index + match.length);
+    newContent = newContent.slice(0, match.index) + replacementText + newContent.slice(match.index + match.length);
   }
 
   return { newContent, status: 'applied', editsApplied: matchesToReplace.length };
