@@ -173,7 +173,7 @@ export const precisionFetchSchema: Tool = {
               type: 'object',
               description: 'Per-request auth override',
               properties: {
-                type: { type: 'string', enum: ['none', 'bearer', 'basic', 'api-key', 'custom-headers'] },
+                type: { type: 'string', enum: ['none', 'bearer', 'basic', 'api-key', 'custom-headers'], description: 'Auth type to apply for this request' },
                 token: { type: 'string', description: 'Bearer token' },
                 username: { type: 'string', description: 'Basic auth username' },
                 password: { type: 'string', description: 'Basic auth password' },
