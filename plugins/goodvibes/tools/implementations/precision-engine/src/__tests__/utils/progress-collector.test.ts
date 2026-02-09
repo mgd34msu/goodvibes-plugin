@@ -186,7 +186,7 @@ describe('progress-collector', () => {
 
       const milestones = collector.finalize(5000);
 
-      expect(milestones.length).toBeGreaterThanOrEqual(2);
+      expect(milestones).toHaveLength(2);
       expect(milestones[0]).toEqual({
         at_ms: 0,
         line: 'First line',
@@ -370,10 +370,71 @@ describe('progress-collector', () => {
       expect(milestones[0].line).toBe('First');
       expect(milestones[milestones.length - 1].line).toBe('Third');
     });
+
+    it('should enforce max_milestones cap', async () => {
+      const config: ProgressConfig = {
+        enabled: true,
+        progress_file: false,
+        silence_gap_ms: 60,  // Very short gap for testing
+        max_milestones: 2,   // Cap at 2 intermediate milestones
+      };
+
+      collector = createProgressCollector(config, 'test-cmd-18', TEST_DIR);
+      
+      // Add first line
+      collector.onData('Line 1\n');
+      
+      // Add multiple lines with sufficient gaps to trigger milestones
+      for (let i = 2; i <= 5; i++) {
+        await new Promise(resolve => setTimeout(resolve, 80)); // Exceeds 60ms gap
+        collector.onData(`Line ${i}\n`);
+      }
+
+      const milestones = collector.finalize(500);
+
+      // Should have at most 4 milestones: first + 2 intermediate + last
+      expect(milestones.length).toBeLessThanOrEqual(4);
+      expect(milestones[0]).toEqual({ at_ms: 0, line: 'Line 1' });
+      expect(milestones[milestones.length - 1]).toEqual({ at_ms: 500, line: 'Line 5' });
+    });
+
+    it('should write timestamped lines to progress file (Tier 2)', async () => {
+      const config: ProgressConfig = {
+        enabled: true,
+        progress_file: true,  // Enable Tier 2
+        silence_gap_ms: 2000,
+        max_milestones: 20,
+      };
+
+      collector = createProgressCollector(config, 'test-cmd-19', TEST_DIR);
+      
+      // Add some data
+      collector.onData('First line\n');
+      collector.onData('Second line\n');
+      collector.onData('Third line\n');
+
+      // Get the progress file path first
+      const progressFilePath = collector.getProgressFilePath();
+      expect(progressFilePath).toBeDefined();
+
+      // Dispose to flush the stream
+      collector.dispose();
+
+      // Wait for stream to fully flush
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Read the progress file
+      const fileContent = await fs.readFile(progressFilePath!, 'utf-8');
+      
+      // Verify format: [<ms>ms] <line>
+      expect(fileContent).toMatch(/\[\d+ms\] First line\n/);
+      expect(fileContent).toMatch(/\[\d+ms\] Second line\n/);
+      expect(fileContent).toMatch(/\[\d+ms\] Third line\n/);
+    });
   });
 
   describe('integration with precision_exec', () => {
-    it('should be compatible with precision_exec expected data flow', () => {
+    it('should be compatible with precision_exec expected data flow', async () => {
       // This test validates the interface contract between progress-collector and precision_exec
       const config: ProgressConfig = {
         enabled: true,

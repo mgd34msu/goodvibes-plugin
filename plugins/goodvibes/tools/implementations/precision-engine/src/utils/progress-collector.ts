@@ -27,8 +27,8 @@ export interface ProgressMilestone {
  * - Tier 1 (enabled): Always enabled in precision_exec, filtered by duration at finalize time
  * - Tier 2 (progress_file): Enabled when progress_file=true OR timeout > 30s
  * 
- * @see precision-exec.ts lines 280-294 for initialization
- * @see precision-exec.ts lines 638-650 for finalization and result integration
+ * @see executeCommand() in precision-exec.ts for initialization
+ * @see executeCommand() in precision-exec.ts for finalization and result integration
  */
 export interface ProgressConfig {
   enabled: boolean;           // Tier 1: collect inline milestones
@@ -41,7 +41,7 @@ export interface ProgressConfig {
  * Progress collector interface for tracking command execution progress.
  * 
  * Integration with precision_exec:
- * 1. Created in executeCommand() (precision-exec.ts:285)
+ * 1. Created in executeCommand() in precision-exec.ts
  * 2. Fed data via onData() on stdout chunks (precision-exec.ts:353)
  * 3. Finalized on command completion (precision-exec.ts:639)
  * 4. Result included in CommandResult.progress and CommandResult.progress_file

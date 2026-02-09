@@ -401,6 +401,23 @@ describe('precision_read handler', () => {
       expect(fileResult.hint).toBeDefined();
       expect(fileResult.hint).toContain('Did you mean');
     });
+
+    it('should return suggestions for ENOENT errors in minimal mode', async () => {
+      const result = await handlePrecisionRead({
+        files: ['existing-flie.ts'], // Typo: flie instead of file
+        extract: 'content',
+        output: { mode: 'minimal' },
+      });
+
+      const parsed = expectSuccess(result);
+      const fileResult = parsed.data.files['existing-flie.ts'];
+      expect(fileResult.exists).toBe(false);
+      expect(fileResult.error).toContain('File not found');
+      expect(fileResult.suggestions).toBeDefined();
+      expect(Array.isArray(fileResult.suggestions)).toBe(true);
+      expect(fileResult.hint).toBeDefined();
+      expect(fileResult.hint).toContain('Did you mean');
+    });
   });
 
   describe('summary', () => {
@@ -496,6 +513,36 @@ describe('precision_read handler', () => {
         // Test that filesystem type is one of the allowed values (if present)
         if (fileResult.metadata.filesystem) {
           expect(['slow', 'fast', 'network', 'local']).toContain(fileResult.metadata.filesystem);
+        }
+      }
+    });
+
+    it('should NOT detect slow filesystem on normal local filesystem', async () => {
+      const result = await handlePrecisionRead({
+        files: ['test-file.ts'],
+        extract: 'content',
+        output: { mode: 'standard', include_metadata: true },
+      });
+
+      const parsed = expectSuccess(result);
+      const fileResult = parsed.data.files['test-file.ts'];
+      
+      expect(fileResult.exists).toBe(true);
+      expect(fileResult.metadata).toBeDefined();
+      
+      if (fileResult.metadata) {
+        // On a normal fast local filesystem:
+        // - filesystem should NOT be 'slow'
+        // - is_network should NOT be true
+        // - note should NOT be set (no slow filesystem warning)
+        // - stat_ms might be present but should be below threshold (typically < 100ms)
+        expect(fileResult.metadata.filesystem).not.toBe('slow');
+        expect(fileResult.metadata.is_network).not.toBe(true);
+        expect(fileResult.metadata.note).toBeUndefined();
+        
+        // If stat_ms is present, it should be reasonable for a local filesystem
+        if (fileResult.metadata.stat_ms !== undefined) {
+          expect(fileResult.metadata.stat_ms).toBeLessThan(1000);
         }
       }
     });

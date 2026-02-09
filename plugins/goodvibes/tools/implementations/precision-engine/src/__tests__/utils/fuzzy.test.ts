@@ -59,21 +59,14 @@ describe('calculateSimilarity', () => {
     expect(calculateSimilarity('', '')).toBe(1);
   });
 
-  it('returns 0 for empty strings', () => {
+  it('returns 0 when one string is empty', () => {
     expect(calculateSimilarity('', 'hello')).toBe(0);
     expect(calculateSimilarity('hello', '')).toBe(0);
-    expect(calculateSimilarity('', '')).toBe(1); // Empty equals empty
   });
 
-  it('returns 0 for falsy values', () => {
-    expect(calculateSimilarity('', 'test')).toBe(0);
-    expect(calculateSimilarity('test', '')).toBe(0);
-  });
-
-  it('returns value between 0 and 1', () => {
+  it('returns exact similarity for known inputs', () => {
     const similarity = calculateSimilarity('hello', 'hallo');
-    expect(similarity).toBeGreaterThan(0);
-    expect(similarity).toBeLessThan(1);
+    expect(similarity).toBe(0.8);
   });
 
   it('returns higher scores for more similar strings', () => {
@@ -95,13 +88,12 @@ describe('calculateSimilarity', () => {
 
   it('handles different length strings', () => {
     const similarity = calculateSimilarity('test', 'testing');
-    expect(similarity).toBeGreaterThan(0);
-    expect(similarity).toBeLessThan(1);
+    expect(similarity).toBeCloseTo(4 / 7, 2);
   });
 
   it('is case sensitive', () => {
     const similarity = calculateSimilarity('Hello', 'hello');
-    expect(similarity).toBeLessThan(1);
+    expect(similarity).toBe(0.8);
   });
 
   it('calculates correct similarity for known examples', () => {
@@ -175,7 +167,7 @@ describe('rankBySimilarity', () => {
 
   it('returns all candidates when all meet threshold', () => {
     const results = rankBySimilarity('test', ['test', 'best', 'rest'], 0.5);
-    expect(results.length).toBeGreaterThan(0);
+    expect(results.length).toBe(3);
     expect(results.length).toBeLessThanOrEqual(5);
   });
 

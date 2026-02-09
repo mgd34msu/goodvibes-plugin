@@ -327617,6 +327617,12 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
               if (r.context) {
                 fileObj.context = r.context;
               }
+              if (r.suggestions !== void 0)
+                fileObj.suggestions = r.suggestions;
+              if (r.hint)
+                fileObj.hint = r.hint;
+              if (r.metadata)
+                fileObj.metadata = r.metadata;
               const filePath = path17.isAbsolute(r.path) ? r.path : path17.join(workDir, r.path);
               const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
               if (cacheEntry) {

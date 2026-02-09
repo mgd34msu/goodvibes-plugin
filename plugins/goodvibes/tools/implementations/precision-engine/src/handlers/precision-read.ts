@@ -1159,6 +1159,13 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
                 fileObj.context = r.context;
               }
               
+              // Include error-companion fields (Item 2C)
+              if (r.suggestions !== undefined) fileObj.suggestions = r.suggestions;
+              if (r.hint) fileObj.hint = r.hint;
+              
+              // Include metadata if present (Item 5)
+              if (r.metadata) fileObj.metadata = r.metadata;
+              
               // Add cache version to response metadata for OCC tracking
               const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);
               const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
