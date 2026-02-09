@@ -23,40 +23,109 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 
 ### Token Efficiency
 
-Native Claude Code tools are all-or-nothing. `Read` returns the entire file. `Grep` returns every match with full context. There's no way to say "just give me the count" or "just give me the file paths." Every operation consumes the maximum amount of tokens whether you need that information or not.
+Token consumption in AI coding sessions follows a layered pattern: individual operations add tokens, round trips resend conversation context, sessions accumulate state, and knowledge either persists or gets rediscovered. GoodVibes optimizes all seven layers.
 
-Precision tools fix this. Every tool lets the AI request exactly the amount of information needed to fulfill a task:
+#### Layer 1: Per-Operation Savings
 
-- **Need a file count?** `precision_glob` with `count_only` returns just the number — not hundreds of file paths
-- **Need file paths?** `paths_only` returns paths without file contents or metadata
-- **Need a function signature?** `precision_read` with `symbols` extract mode returns signatures without reading the entire file
-- **Need specific lines?** Read a range instead of the whole document
-- **Need to check if a pattern exists?** `precision_grep` with `count_only` tells you how many matches without returning any content
+Native tools return maximum output regardless of need. Precision tools let you request exactly the detail level required.
 
-#### Savings at a Glance
+*Note: Token estimates below are for typical small-to-medium files (~50-100 lines). Savings scale linearly with file size (e.g., a 500-line file would be ~5,000 tokens native vs. the same low precision overhead).*
 
 | Operation | Native Tool | Precision Tool | Savings |
-|-----------|-------------|----------------|---------------|
+|-----------|-------------|----------------|---------|
 | Check if a file exists | `Read` returns full content (~500+ tokens) | `precision_read` with `count_only` (~15 tokens) | ~97% |
 | Count files matching a pattern | `Glob` returns all paths (~200+ tokens) | `precision_glob` with `count_only` (~15 tokens) | ~92% |
 | Check if a pattern exists in code | `Grep` returns all matches with context (~300+ tokens) | `precision_grep` with `count_only` (~15 tokens) | ~95% |
 | Re-read an unchanged file | `Read` returns full content again (~500+ tokens) | `precision_read` returns cache hit (~20 tokens) | ~96% |
-| Read 10 files | 10 separate `Read` calls (~5000+ tokens + 10 round trips) | 1 `precision_read` call (~5000 tokens + 1 round trip) | 9 fewer round trips |
-| Search 5 patterns | 5 separate `Grep` calls (~1500+ tokens + 5 round trips) | 1 `precision_grep` call (~1500 tokens + 1 round trip) | 4 fewer round trips |
 | Get function signatures from a file | `Read` returns entire file (~500+ tokens) | `precision_read` with `symbols` extract (~50 tokens) | ~90% |
 
-#### How It Adds Up
+**Mechanisms:**
+- **Verbosity levels** (4-6 per tool): `count_only`, `files_only`, `minimal`, `standard`, `verbose`. Tools default to minimal output automatically — `precision_edit` defaults to `minimal`, `precision_grep` to `files_only`, `precision_glob` to `paths_only`. Savings are automatic even without explicit requests.
+- **Extract modes** (`precision_read`): `content`, `outline`, `symbols`, `ast`, `lines`. Get function signatures (~50 tokens) instead of full file content (~500+ tokens). 75-95% savings.
+- **Token budget pagination**: Large results auto-paginate to stay within a specified token limit. Prevents single responses from consuming disproportionate context.
+- **AST pattern matching** (`precision_edit`): More precise than regex, fewer false positives, fewer failed edits requiring retry.
 
-In a typical coding session, an agent reads files 50+ times, searches code 20+ times, and runs commands 10+ times. With native tools, every operation returns maximum output regardless of what's actually needed. With precision tools:
+#### Layer 2: Per-Round-Trip Savings
 
-- **Verbosity control** (4-6 levels per tool) means you only pay for the detail level you need. A `count_only` response averages ~15 tokens vs ~500+ for full output.
-- **Batch operations** collapse N tool calls into 1. Each round trip costs latency plus request/response overhead. Reading 10 files in 1 call instead of 10 eliminates 9 round trips.
-- **File state caching** tracks content hashes. Re-reading an unchanged file returns a cache hit (~20 tokens) instead of the full content again. In edit-verify-edit cycles where the same files are read repeatedly, this compounds rapidly.
-- **Token budgets** automatically paginate large results to fit within a specified limit, preventing single responses from consuming disproportionate context.
+Every API call resends the entire conversation (system prompt + tool definitions + all messages). Fewer calls = less overhead.
 
-For API users paying per token, this directly reduces cost. For Pro/Max subscribers, it means less of your weekly allocation consumed per session, allowing more work before hitting limits.
+- **Batch operations**: Read 10 files, edit 5 files, run 3 commands, fetch 5 URLs — each in a single tool call. Eliminates N-1 round trips.
+- **discover tool**: Runs grep + glob + symbol queries simultaneously in one call. Results keyed by query ID. 5 searches → 1 round trip instead of 5.
+- **Atomic transactions**: `precision_edit` and `precision_write` in atomic mode. If any operation fails, all roll back. Prevents partial failures that require re-investigation (which costs more round trips).
 
-The best part: you get these savings without changing how you work.
+Quick example:
+```
+Reading 10 files:
+  Native: 10 calls × (full conversation prefix resent each time)
+  Precision: 1 call × (conversation prefix sent once)
+  = 9 fewer prefix resends
+```
+
+#### Layer 3: Per-Session Savings
+
+State tracked within a session avoids redundant work.
+
+- **File state caching**: SHA256 hash-based. Re-reading an unchanged file returns ~20 tokens instead of full content. In edit-verify-edit cycles, this compounds rapidly.
+- **Search cache**: Last 20 grep results stored by query ID. Enables incremental refinement without re-running expensive searches.
+- **Stack detection caching**: `detect_stack` results cached to `.goodvibes/detected-stack.json`. Re-detection skipped within session.
+- **Context injection at session start**: SessionStart hook gathers 8 context types in parallel (stack, git, environment, TODOs, health, folder structure, memory, ports) and injects them upfront. Agents skip discovery.
+- **Conditional context sections**: Context builder omits healthy sections entirely. If no health warnings exist, no health section is injected. Saves 200-500 tokens on healthy projects.
+- **Subagent context pre-loading**: SubagentStart hook injects project name, git branch, and stack info into every subagent at spawn. No per-agent discovery needed.
+
+#### Layer 4: Cross-Session Savings
+
+Knowledge persists across conversations. Same problem next week? Already documented.
+
+- **Memory system**: `.goodvibes/memory/` stores decisions, patterns, failures, and preferences in structured JSON. Agents read memory before acting. An agent that would spend 5K+ tokens debugging a known issue instead reads a 200-token failure record.
+- **PostToolUseFailure logging**: Failed tool attempts are logged with root cause and prevention guidance. Future sessions inherit this knowledge automatically.
+- **Learn-and-abandon pattern**: Fix attempts are capped. If the issue is upstream (in a package you can't change), you don't burn tokens trying to fix it again — every future session reads the failure record and skips the investigation entirely.
+
+#### Layer 5: Infrastructure Savings (Dual-Layer Caching)
+
+Precision engine's local file cache and Anthropic's remote prompt cache operate at different layers and compound:
+
+| Layer | What It Does | Impact |
+|-------|--------------|--------|
+| **Local (MCP)** | Caches file state by content hash | Shrinks token volume added to conversation |
+| **Remote (Anthropic)** | Caches conversation prefix | Discounts per-token cost for cached turns |
+
+Without local caching, re-reading a file adds full content to the conversation every time. With local caching, only the first read adds full content; subsequent reads return cache hits (~20 tokens each). This keeps the conversation prefix smaller.
+
+Since Anthropic's prompt cache pricing uses multipliers (cache reads at ~10% of base input price), a smaller prefix means cheaper cache operations on every turn.
+
+```
+Re-reading a 500-line file 3 times during a session:
+  Native tools:  5,000 + 5,000 + 5,000 = 15,000 tokens added to conversation
+  Precision:     5,000 + 20 + 20       = 5,040 tokens added
+
+Over 20 files read multiple times:
+  Native:    ~100K+ tokens × cache rates = expensive prefix
+  Precision: ~20K tokens × cache rates   = 80% reduction in cache cost
+```
+
+**Context window longevity:** Slower conversation growth delays context compaction. Compaction rewrites the conversation prefix, which means the remote cache no longer matches, requiring a new cache write. Precision caching keeps the remote cache hot longer, avoiding repeated cold starts.
+
+#### Layer 6: Prevention Savings
+
+Structured error handling prevents expensive failure cascades.
+
+- **3-phase fix loop**: Systematic escalation (internal → docs → community → internet) with capped attempts instead of random debugging that burns tokens.
+- **Blocker classification**: Output style classifies blockers by type (issue/error/other) with specific recovery strategies. Structured response = targeted fix = fewer wasted tokens.
+- **Atomic transactions with rollback**: Failed batch operations roll back cleanly. No partial corruption requiring manual investigation.
+
+#### Layer 7: Orchestration Savings
+
+The output style enforces patterns that keep the entire agent tree efficient.
+
+- **Orchestrator stays lean**: "You ARE the orchestrator. Coordination, NOT implementation." The main context — the most expensive one because it persists across the whole session — never bloats with file contents or grep results. All implementation happens in subagent contexts that are discarded after completion.
+- **Mandatory precision tools for all agents**: The output style and PreToolUse hook force precision tools across the entire agent tree. One rogue subagent using native `Read` in a loop would burn thousands of tokens. This prevents it.
+- **Planned execution**: "Plan all work" instruction means agents execute targeted operations instead of speculative exploration. Pre-meditated work = fewer wasted reads and searches.
+- **Parallel agents with background execution**: Up to 6 agents run concurrently in background. Parallel execution plus explicit instructions not to monitor agents via Task Output unless absolutely necessary (and even then to use the non-blocking version), and to wait for a Task Completion notification means fewer wasted tokens and the ability to keep conversing and planning in the main conversation context while work is done in the background.
+- **Cost analysis engine**: Built-in analytics track native vs MCP tool costs with empirical per-call pricing. Enables data-driven optimization of which tools to use and how.
+
+#### Summary
+
+These seven layers compound: per-operation savings reduce round-trip overhead, which shrinks per-session context growth, which delays compaction, which keeps the remote cache hot, while cross-session memory prevents rediscovering solved problems, and orchestration patterns ensure the entire agent tree operates efficiently. For API users paying per token, this directly reduces cost. For Pro/Max subscribers, it means less of your weekly allocation consumed per session, allowing more work before hitting limits.
 
 ### Transparent Tool Upgrade
 
@@ -74,7 +143,34 @@ A two-tier memory system stores decisions, patterns, failures, and preferences i
 
 ### Quality Loops
 
-WRFC (Write-Review-Fix-Check) loops ensure code is reviewed before commit. The orchestrator spawns a reviewer after implementation, fixes issues, and re-reviews until verified, then creates a commit.
+WRFC (Write-Review-Fix-Check) loops enforce a mandatory review cycle on every unit of work. No code reaches a commit without passing review.
+
+**The loop:**
+
+```
+1. WORK   →  Spawn agent to implement the task (background)
+2. REVIEW →  Spawn reviewer to check the work (background)
+3. Evaluate:
+   │  PASS → Proceed to step 5
+   │  FAIL → Enter Fix-Check cycle:
+   │         FIX   →  Spawn agent to address all issues (background)
+   │         CHECK →  Spawn reviewer to re-check (background)
+   │         Repeat until PASS (or max attempts reached)
+4. COMMIT →  Git commit the verified work
+5. LOG    →  Update .goodvibes/ memory and logs
+6. REPORT →  "✓ [task] complete." then loop for next task.
+```
+
+**Key properties:**
+
+- **Per-task, not per-batch.** Each unit of work gets its own WRFC cycle. A phase with 4 tasks runs 4 independent loops.
+- **All agents run in background.** The orchestrator coordinates; it never implements. Up to 6 agents run concurrently.
+- **No issue is too minor.** Reviewers flag everything — major, minor, nitpick. All must be addressed before the loop passes.
+- **Fix-Check is iterative.** If the fix introduces new issues, the reviewer catches them. The loop continues until the reviewer returns zero issues.
+- **Failures are logged.** If max fix attempts are exhausted, the failure is recorded in `.goodvibes/memory/failures.json` with root cause and prevention guidance.
+- **Commit gates on review.** Code is only committed after the reviewer confirms zero issues. No exceptions.
+
+The orchestrator maintains WRFC loops across concurrent tasks — when one task's reviewer returns PASS, the orchestrator commits that work and checks for newly unblocked tasks, keeping agent utilization high.
 
 ### Two Execution Modes
 
