@@ -171,5 +171,77 @@ describe('CookieJar', () => {
       const allCookies = await jar.getAllCookies();
       expect(allCookies.length).toBeLessThanOrEqual(1000);
     });
+
+    it('should evict cookies when file size exceeds limit', async () => {
+      // Create cookies with large values to exceed 500KB
+      const largeValue = 'x'.repeat(1000); // 1KB per cookie
+      const headers: string[] = [];
+      for (let i = 0; i < 600; i++) {
+        headers.push(`largecookie${i}=${largeValue}; Path=/; Max-Age=3600`);
+      }
+      await jar.setCookies('https://example.com/', headers);
+      
+      // Verify file exists and is within size limit
+      const cookiePath = path.join(tmpDir, '.goodvibes', 'goodvibes.cookies.json');
+      const stat = await fs.promises.stat(cookiePath);
+      expect(stat.size).toBeLessThanOrEqual(512 * 1024); // 500KB + overhead
+      
+      // Verify some cookies were evicted
+      const allCookies = await jar.getAllCookies();
+      expect(allCookies.length).toBeLessThan(600);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle Max-Age=0 (cookie deletion)', async () => {
+      // Set a cookie
+      await jar.setCookies('https://example.com/', ['temp=value; Path=/']);
+      expect(await jar.getAllCookies()).toHaveLength(1);
+      
+      // Delete it with Max-Age=0
+      await jar.setCookies('https://example.com/', ['temp=deleted; Path=/; Max-Age=0']);
+      
+      // Cookie should be expired and not returned
+      const cookies = await jar.getCookies('https://example.com/');
+      expect(cookies).toHaveLength(0);
+    });
+
+    it('should reject malformed Set-Cookie headers', async () => {
+      await jar.setCookies('https://example.com/', [
+        'valid=ok; Path=/',
+        'noequals',
+        '=noname',
+        '',
+        'another=valid; Path=/',
+      ]);
+      
+      const cookies = await jar.getAllCookies();
+      expect(cookies).toHaveLength(2);
+      expect(cookies.find(c => c.name === 'valid')).toBeDefined();
+      expect(cookies.find(c => c.name === 'another')).toBeDefined();
+    });
+
+    it('should reject public suffix cookies', async () => {
+      await jar.setCookies('https://example.com/', [
+        'valid=ok; Domain=example.com; Path=/',
+        'bad=tld; Domain=com; Path=/',
+        'bad2=org; Domain=org; Path=/',
+        'bad3=net; Domain=net; Path=/',
+      ]);
+      
+      const cookies = await jar.getAllCookies();
+      expect(cookies).toHaveLength(1);
+      expect(cookies[0].name).toBe('valid');
+      expect(cookies[0].domain).toBe('example.com');
+    });
+
+    it('should handle negative Max-Age', async () => {
+      await jar.setCookies('https://example.com/', [
+        'expired=old; Path=/; Max-Age=-100',
+      ]);
+      
+      const cookies = await jar.getCookies('https://example.com/');
+      expect(cookies).toHaveLength(0);
+    });
   });
 });

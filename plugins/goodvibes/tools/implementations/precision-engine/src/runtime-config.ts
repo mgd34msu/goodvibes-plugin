@@ -331,6 +331,11 @@ export function getConfigValue<T = unknown>(key: string): T {
   // Return the actual value if it exists
   const value = config[key];
   if (value !== undefined) {
+    // Coerce sandbox to boolean regardless of stored type
+    // This handles string values from manual config edits
+    if (key === 'sandbox') {
+      return (value === true || value === 'true') as unknown as T;
+    }
     return value as T;
   }
   

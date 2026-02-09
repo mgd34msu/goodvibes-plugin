@@ -36,12 +36,18 @@ export class CookieJar {
   private cookies: StoredCookie[] = [];
   private dirty = false;
   private loaded = false;
+  private cookiePath: string;
+
+  constructor() {
+    // Cache the cookie path at construction to prevent issues if cwd changes
+    this.cookiePath = path.join(process.cwd(), '.goodvibes', 'goodvibes.cookies.json');
+  }
 
   /**
    * Get the cookie file path.
    */
   private getCookiePath(): string {
-    return path.join(process.cwd(), '.goodvibes', 'goodvibes.cookies.json');
+    return this.cookiePath;
   }
 
   /**
@@ -85,14 +91,24 @@ export class CookieJar {
       updated_at: new Date().toISOString(),
     };
     
-    const content = JSON.stringify(data, null, 2) + '\n';
+    let content = JSON.stringify(data, null, 2) + '\n';
     
     // Check file size limit
     if (content.length > MAX_FILE_SIZE) {
-      // Evict oldest cookies until under limit
-      this.cookies.sort((a, b) => (a.expires ?? Infinity) - (b.expires ?? Infinity));
-      while (JSON.stringify({ cookies: this.cookies }).length > MAX_FILE_SIZE && this.cookies.length > 0) {
+      // Evict session cookies first (they're transient), then oldest expiring cookies
+      this.cookies.sort((a, b) => {
+        const aExpiry = a.expires ?? Infinity;
+        const bExpiry = b.expires ?? Infinity;
+        // Session cookies (Infinity) sort to end, will be evicted first via shift()
+        return bExpiry - aExpiry;
+      });
+      while (content.length > MAX_FILE_SIZE && this.cookies.length > 0) {
         this.cookies.shift();
+        const updatedData: CookieFile = {
+          cookies: this.cookies,
+          updated_at: new Date().toISOString(),
+        };
+        content = JSON.stringify(updatedData, null, 2) + '\n';
       }
     }
     
@@ -130,9 +146,14 @@ export class CookieJar {
       this.cookies.push(cookie);
     }
     
-    // Enforce max cookies limit (evict oldest)
+    // Enforce max cookies limit (evict session cookies first, then oldest expiring)
     if (this.cookies.length > MAX_COOKIES) {
-      this.cookies.sort((a, b) => (a.expires ?? Infinity) - (b.expires ?? Infinity));
+      this.cookies.sort((a, b) => {
+        const aExpiry = a.expires ?? Infinity;
+        const bExpiry = b.expires ?? Infinity;
+        // Session cookies (Infinity) sort to end for slice(-MAX_COOKIES) to keep freshest
+        return aExpiry - bExpiry;
+      });
       this.cookies = this.cookies.slice(-MAX_COOKIES);
     }
     
@@ -145,7 +166,12 @@ export class CookieJar {
    */
   async getCookies(url: string): Promise<StoredCookie[]> {
     await this.ensureLoaded();
+    const wasDirty = this.dirty;
     this.pruneExpired();
+    // Save pruned state if cookies were removed
+    if (!wasDirty && this.dirty) {
+      await this.save();
+    }
     
     const urlObj = new URL(url);
     const domain = urlObj.hostname;
@@ -227,9 +253,15 @@ export class CookieJar {
       const attrValue = attrValueParts.join('=').trim();
       
       switch (attrNameLower) {
-        case 'domain':
-          cookie.domain = attrValue.replace(/^\./, ''); // Remove leading dot
+        case 'domain': {
+          const normalizedDomain = attrValue.replace(/^\./, ''); // Remove leading dot
+          // Reject public suffix cookies (basic check: reject single-label domains)
+          if (!normalizedDomain.includes('.')) {
+            return null; // Reject TLD cookies like 'com', 'org', 'net'
+          }
+          cookie.domain = normalizedDomain;
           break;
+        }
         case 'path':
           cookie.path = attrValue || '/';
           break;
@@ -243,7 +275,12 @@ export class CookieJar {
         case 'max-age': {
           const seconds = parseInt(attrValue, 10);
           if (!isNaN(seconds)) {
-            cookie.expires = Date.now() + seconds * 1000;
+            if (seconds <= 0) {
+              // Max-Age=0 means delete the cookie immediately
+              cookie.expires = Date.now() - 1;
+            } else {
+              cookie.expires = Date.now() + seconds * 1000;
+            }
           }
           break;
         }

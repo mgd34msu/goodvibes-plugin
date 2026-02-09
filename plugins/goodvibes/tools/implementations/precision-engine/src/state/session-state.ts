@@ -66,7 +66,9 @@ class SessionState {
       const sandboxEnabled = getConfigValue<boolean>('sandbox');
       
       // Enforce sandbox boundary if sandbox is enabled
-      if (sandboxEnabled !== false) {
+      // Only enable sandbox when explicitly set to true or 'true'
+      // Everything else (false, 'false', undefined, null, etc.) means disabled (default)
+      if (sandboxEnabled === true || sandboxEnabled === ('true' as unknown)) {
         const projectRoot = process.cwd();
         const normalizedReal = path.normalize(realPath);
         const normalizedRoot = path.normalize(projectRoot);

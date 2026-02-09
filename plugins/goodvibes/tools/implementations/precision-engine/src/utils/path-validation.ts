@@ -24,8 +24,10 @@ function enforceSandboxBoundary(
 ): void {
   const sandboxEnabled = getConfigValue<boolean>('sandbox');
   
-  if (sandboxEnabled === false) {
-    return; // Sandbox disabled, skip enforcement
+  // Only enable sandbox when explicitly set to true or 'true'
+  // Everything else (false, 'false', undefined, null, etc.) means disabled (default)
+  if (sandboxEnabled !== true && sandboxEnabled !== ('true' as unknown)) {
+    return; // Sandbox disabled (default), skip enforcement
   }
   
   const normalizedReal = path.normalize(resolvedPath);
