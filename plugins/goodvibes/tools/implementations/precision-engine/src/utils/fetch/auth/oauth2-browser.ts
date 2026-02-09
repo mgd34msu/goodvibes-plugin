@@ -37,8 +37,8 @@ const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 /**
  * Escape HTML special characters to prevent XSS.
  */
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 
