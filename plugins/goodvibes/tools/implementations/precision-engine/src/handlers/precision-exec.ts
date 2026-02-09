@@ -13,7 +13,7 @@
  * - tokens_used tracking
  */
 
-import { spawn, execFile } from 'child_process';
+import { spawn, execFile, type ChildProcess } from 'child_process';
 import { homedir } from 'os';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
@@ -28,11 +28,13 @@ import { commandHistory, sessionState, processManager } from '../state/index.js'
 import type { BgStartResult } from '../state/index.js';
 import { warnDeprecatedParam } from '../utils/deprecation.js';
 
-// Buffer capacity multiplier: allows overflow handler to capture full output
-// Set to 5x the normal threshold to prevent premature truncation during capture
+/**
+ * Buffer capacity multiplier: allows overflow handler to capture full output.
+ * Set to 5x the normal threshold to prevent premature truncation during capture.
+ */
 const OVERFLOW_BUFFER_MULTIPLIER = 5;
 
-// Destructive command patterns for safe_mode
+/** Destructive command patterns for safe_mode */
 const DESTRUCTIVE_PATTERNS = [
   /\brm\s+(-[rf]+\s+)*[\/~]/i,                    // rm -rf /path
   /\brm\s+-[rf]*\s+--no-preserve-root/i,          // rm --no-preserve-root
@@ -56,18 +58,14 @@ const DESTRUCTIVE_PATTERNS = [
 // Timeout and threshold constants
 /** Default command timeout in milliseconds when not explicitly specified */
 const DEFAULT_TIMEOUT_MS = 30000;
-/** Default maximum line length for output truncation */
-const DEFAULT_MAX_LINE_LENGTH = 2000;
-/** Maximum number of commands allowed in a single batch execution */
-const MAX_BATCH_COMMANDS = 20;
-/** Default timeout for until pattern matching in milliseconds */
-const DEFAULT_UNTIL_TIMEOUT_MS = 10000;
-/** Default polling interval for until pattern checks in milliseconds */
-const DEFAULT_UNTIL_POLL_MS = 500;
 /** Delay in milliseconds between SIGTERM and SIGKILL when terminating processes */
 const KILL_SIGNAL_DELAY_MS = 5000;
-/** Delay in milliseconds before reporting background process startup */
-const BACKGROUND_START_DELAY_MS = 50;
+/** Exit code indicating the command was killed due to timeout. */
+const TIMEOUT_EXIT_CODE = 124;
+/** Maximum characters of stderr to include in error preview messages. */
+const STDERR_ERROR_PREVIEW_CHARS = 100;
+/** Exit code indicating the process is still running in background. */
+const BG_RUNNING_EXIT_CODE = -1;
 /** Maximum number of lines to preview from background process output */
 const BG_OUTPUT_PREVIEW_LINES = 50;
 /** Maximum characters to display in stdout preview for minimal output mode */
@@ -96,6 +94,8 @@ function isDestructiveCommand(cmd: string, args?: string[]): boolean {
  * Shell-escape a single argument for safe concatenation.
  * Wraps arguments containing special characters in single quotes,
  * escaping any single quotes within the argument.
+ * @param arg - The shell argument to escape
+ * @returns The escaped argument safe for shell concatenation
  */
 function shellEscape(arg: string): string {
   // If the argument contains no special characters, return as-is
@@ -333,6 +333,88 @@ interface CommandResult {
 // Config defaults are now retrieved from runtime-config getters
 
 /**
+ * Handle until pattern match in stdout or stderr.
+ * Extracts common logic for pattern matching, timeout clearing, and background process promotion.
+ * @param child - The child process
+ * @param clearTimeouts - Function to clear all timeouts
+ * @param matchedOutput - The line that matched the pattern
+ * @param spec - Command specification
+ * @param stdout - Accumulated stdout
+ * @param stderr - Accumulated stderr
+ * @param startTime - Command start timestamp
+ * @param progressCollector - Progress collector instance
+ * @param resolve - Promise resolve function
+ * @param untilKillAfter - Whether to kill process after match
+ * @param fullCommand - Full command string for logging
+ * @param cwd - Current working directory
+ * @param command - Original command for result
+ * @returns true if the handler resolved the promise, false otherwise
+ */
+function handleUntilMatch(
+  child: ChildProcess,
+  clearTimeouts: () => void,
+  matchedOutput: string,
+  spec: CommandSpec,
+  stdout: string,
+  stderr: string,
+  startTime: number,
+  progressCollector: ReturnType<typeof createProgressCollector>,
+  resolve: (value: CommandResult) => void,
+  untilKillAfter: boolean,
+  fullCommand: string,
+  cwd: string,
+  command: string
+): boolean {
+  const matchedLine = matchedOutput;
+  const matchedAtMs = Date.now() - startTime;
+  
+  clearTimeouts();
+  
+  if (untilKillAfter) {
+    // Kill the process - wait for it to exit naturally via close handler
+    child.kill('SIGTERM');
+    return false; // Don't resolve yet, wait for close
+  } else {
+    // Promote to background and resolve immediately
+    const bgId = processManager.generateId();
+    try {
+      const backgroundResult = processManager.adopt(bgId, child, fullCommand, cwd);
+      
+      // Build result and resolve immediately
+      progressCollector.dispose();
+      
+      const result: CommandResult = {
+        cmd: command,
+        exit_code: BG_RUNNING_EXIT_CODE, // Still running in background
+        duration_ms: Date.now() - startTime,
+        expectations_met: true,
+        stdout: stdout.trim(),
+        stderr: stderr.trim(),
+        until_status: 'pattern_matched',
+        matched_line: matchedLine,
+        matched_at_ms: matchedAtMs,
+        background: {
+          process_id: backgroundResult.process_id,
+          pid: backgroundResult.pid,
+          log_file: backgroundResult.log_file,
+          hint: backgroundResult.hint,
+        },
+      };
+      
+      if (spec.id) {
+        result.id = spec.id;
+      }
+      
+      resolve(result);
+      return true; // Resolved
+    } catch (err) {
+      // Adoption failed - fall through to normal handling
+      return false;
+    }
+  }
+}
+
+/**
  * Execute a single command with full feature support.
  * Handles timeout, expectations, progress tracking, pattern matching, and background execution.
  * @param spec - Command specification
@@ -524,55 +606,27 @@ async function executeCommand(
           for (const line of lines) {
             if (untilPattern.test(line)) {
               untilMatched = true;
-              matchedLine = line;
-              matchedAtMs = Date.now() - startTime;
-              
-              clearTimeout(timeoutId);
-              if (untilTimeoutId) clearTimeout(untilTimeoutId);
-              
-              if (untilKillAfter) {
-                // Kill the process - wait for it to exit naturally via close handler
-                proc.kill('SIGTERM');
-              } else {
-                // Promote to background and resolve immediately
-                const bgId = processManager.generateId();
-                try {
-                  backgroundResult = processManager.adopt(bgId, proc, fullCommand, cwd);
-                  
-                  // Build result and resolve immediately
+              const resolved = handleUntilMatch(
+                proc,
+                () => {
                   clearTimeout(timeoutId);
-                  progressCollector.dispose();
-                  
-                  const result: CommandResult = {
-                    cmd: command,
-                    exit_code: -1, // Still running in background
-                    duration_ms: Date.now() - startTime,
-                    expectations_met: true,
-                    stdout: stdout.trim(),
-                    stderr: stderr.trim(),
-                    until_status: 'pattern_matched',
-                    matched_line: matchedLine ?? undefined,
-                    matched_at_ms: matchedAtMs ?? undefined,
-                    background: {
-                      process_id: backgroundResult.process_id,
-                      pid: backgroundResult.pid,
-                      log_file: backgroundResult.log_file,
-                      hint: backgroundResult.hint,
-                    },
-                  };
-                  
-                  if (spec.id) {
-                    result.id = spec.id;
-                  }
-                  
-                  resolve(result);
-                  return; // Exit the data handler
-                } catch (err) {
-                  // Adoption failed - fall through to normal handling
-                }
+                  if (untilTimeoutId) clearTimeout(untilTimeoutId);
+                },
+                line,
+                spec,
+                stdout,
+                stderr,
+                startTime,
+                progressCollector,
+                resolve,
+                untilKillAfter,
+                fullCommand,
+                cwd,
+                command
+              );
+              if (resolved) {
+                return; // Exit the data handler
               }
-              
-              // For kill_after: true, continue capturing until process exits
               break;
             }
           }
@@ -600,55 +654,27 @@ async function executeCommand(
           for (const line of lines) {
             if (untilPattern.test(line)) {
               untilMatched = true;
-              matchedLine = line;
-              matchedAtMs = Date.now() - startTime;
-              
-              clearTimeout(timeoutId);
-              if (untilTimeoutId) clearTimeout(untilTimeoutId);
-              
-              if (untilKillAfter) {
-                // Kill the process - wait for it to exit naturally via close handler
-                proc.kill('SIGTERM');
-              } else {
-                // Promote to background and resolve immediately
-                const bgId = processManager.generateId();
-                try {
-                  backgroundResult = processManager.adopt(bgId, proc, fullCommand, cwd);
-                  
-                  // Build result and resolve immediately
+              const resolved = handleUntilMatch(
+                proc,
+                () => {
                   clearTimeout(timeoutId);
-                  progressCollector.dispose();
-                  
-                  const result: CommandResult = {
-                    cmd: command,
-                    exit_code: -1, // Still running in background
-                    duration_ms: Date.now() - startTime,
-                    expectations_met: true,
-                    stdout: stdout.trim(),
-                    stderr: stderr.trim(),
-                    until_status: 'pattern_matched',
-                    matched_line: matchedLine ?? undefined,
-                    matched_at_ms: matchedAtMs ?? undefined,
-                    background: {
-                      process_id: backgroundResult.process_id,
-                      pid: backgroundResult.pid,
-                      log_file: backgroundResult.log_file,
-                      hint: backgroundResult.hint,
-                    },
-                  };
-                  
-                  if (spec.id) {
-                    result.id = spec.id;
-                  }
-                  
-                  resolve(result);
-                  return; // Exit the data handler
-                } catch (err) {
-                  // Adoption failed - fall through to normal handling
-                }
+                  if (untilTimeoutId) clearTimeout(untilTimeoutId);
+                },
+                line,
+                spec,
+                stdout,
+                stderr,
+                startTime,
+                progressCollector,
+                resolve,
+                untilKillAfter,
+                fullCommand,
+                cwd,
+                command
+              );
+              if (resolved) {
+                return; // Exit the data handler
               }
-              
-              // For kill_after: true, continue capturing until process exits
               break;
             }
           }
@@ -676,7 +702,7 @@ async function executeCommand(
       
       clearTimeout(timeoutId);
       if (untilTimeoutId) clearTimeout(untilTimeoutId);
-      const exitCode = code ?? (timedOut ? 124 : 1);
+      const exitCode = code ?? (timedOut ? TIMEOUT_EXIT_CODE : 1);
       const duration_ms = Date.now() - startTime;
 
       // Apply max_output_lines truncation
@@ -741,7 +767,7 @@ async function executeCommand(
 
         // stderr_empty check
         if (spec.expect.stderr_empty && stderr.trim().length > 0) {
-          expectationFailures.push(`Expected stderr to be empty, but got: "${stderr.slice(0, 100)}..."`);
+          expectationFailures.push(`Expected stderr to be empty, but got: "${stderr.slice(0, STDERR_ERROR_PREVIEW_CHARS)}..."`);
           expectationsMet = false;
         }
       }
@@ -883,10 +909,6 @@ async function executeCommand(
 }
 
 /**
- * Execute a command with retry logic based on retry configuration.
- * Wraps executeCommand and handles retry attempts with backoff.
- */
-/**
  * Execute a command with automatic retry logic.
  * Retries failed commands based on exit codes with configurable backoff strategy.
  * @param spec - Command specification
@@ -977,6 +999,63 @@ async function executeWithRetry(
   }
 }
 
+/**
+ * Map command results to output format.
+ * Extracts common result mapping logic for standard and verbose output modes.
+ * @param results - Array of command results
+ * @param commandsWithContext - Array of commands with historical context
+ * @param truncateOutput - Whether to truncate stdout/stderr (true for standard, false for verbose)
+ * @returns Array of mapped results
+ */
+function mapCommandResults(
+  results: CommandResult[],
+  commandsWithContext: Array<{ cmd: string; previousRun?: { exit_code: number; duration_ms: number; timestamp: string } }>,
+  truncateOutput: boolean
+) {
+  return results.map((r, i) => {
+    const context = commandsWithContext[i];
+    return {
+      ...(r.id && { id: r.id }),
+      cmd: r.cmd,
+      exit_code: r.exit_code,
+      duration_ms: r.duration_ms,
+      expectations_met: r.expectations_met,
+      ...(r.truncated && { truncated: r.truncated }),
+      ...(r.timed_out && { timed_out: r.timed_out }),
+      ...(truncateOutput && r.stdout && { stdout: r.stdout.length > MINIMAL_STDOUT_PREVIEW_CHARS ? r.stdout.slice(0, MINIMAL_STDOUT_PREVIEW_CHARS) + '...' : r.stdout }),
+      ...(!truncateOutput && r.stdout !== undefined && { stdout: r.stdout }),
+      ...(truncateOutput && r.stderr && { stderr: r.stderr.length > MINIMAL_STDERR_PREVIEW_CHARS ? r.stderr.slice(0, MINIMAL_STDERR_PREVIEW_CHARS) + '...' : r.stderr }),
+      ...(!truncateOutput && r.stderr !== undefined && { stderr: r.stderr }),
+      ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
+      ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
+      ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
+      ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
+      ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
+      ...(r.retries && { retries: r.retries }),
+      ...(r.progress && r.progress.length > 0 && { progress: r.progress }),
+      ...(r.progress_file && { progress_file: r.progress_file }),
+      ...(r.until_status && { until_status: r.until_status }),
+      ...(r.matched_line && { matched_line: r.matched_line }),
+      ...(r.matched_at_ms !== undefined && { matched_at_ms: r.matched_at_ms }),
+      ...(r.background && { background: r.background }),
+      ...(context?.previousRun && {
+        same_command_last_run: {
+          exit_code: context.previousRun.exit_code,
+          duration_ms: context.previousRun.duration_ms,
+          timestamp: context.previousRun.timestamp,
+        },
+      }),
+    };
+  });
+}
+
+/**
+ * Main handler for precision_exec tool.
+ * Executes shell commands with child_process, supporting batch execution,
+ * expectations, retries, background processes, and until patterns.
+ * @param args - Tool input containing commands, environment, options, and output mode
+ * @returns Tool result with command results and execution metadata
+ */
 export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionExecInput;
@@ -1226,7 +1305,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             timestamp: Date.now(),
             command: bgResult.command,
             cwd,
-            exit_code: -1, // Still running
+            exit_code: BG_RUNNING_EXIT_CODE, // Still running
             duration_ms: 0,
             stdout_lines: 0,
             stderr_lines: 0,
@@ -1378,40 +1457,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
 
       case 'standard':
         data = {
-          commands: results.map((r, i) => {
-            // Safe: results is a subset of input.commands in order (fail_fast may truncate), so i < commandsWithContext.length always holds
-            const context = commandsWithContext[i];
-            return {
-              ...(r.id && { id: r.id }),
-              cmd: r.cmd,
-              exit_code: r.exit_code,
-              duration_ms: r.duration_ms,
-              expectations_met: r.expectations_met,
-              ...(r.truncated && { truncated: r.truncated }),
-              ...(r.timed_out && { timed_out: r.timed_out }),
-              ...(r.stdout && { stdout: r.stdout.length > MINIMAL_STDOUT_PREVIEW_CHARS ? r.stdout.slice(0, MINIMAL_STDOUT_PREVIEW_CHARS) + '...' : r.stdout }),
-              ...(r.stderr && { stderr: r.stderr.length > MINIMAL_STDERR_PREVIEW_CHARS ? r.stderr.slice(0, MINIMAL_STDERR_PREVIEW_CHARS) + '...' : r.stderr }),
-              ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
-              ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
-              ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
-              ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
-              ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
-              ...(r.retries && { retries: r.retries }),
-              ...(r.progress && r.progress.length > 0 && { progress: r.progress }),
-              ...(r.progress_file && { progress_file: r.progress_file }),
-              ...(r.until_status && { until_status: r.until_status }),
-              ...(r.matched_line && { matched_line: r.matched_line }),
-              ...(r.matched_at_ms !== undefined && { matched_at_ms: r.matched_at_ms }),
-              ...(r.background && { background: r.background }),
-              ...(context?.previousRun && {
-                same_command_last_run: {
-                  exit_code: context.previousRun.exit_code,
-                  duration_ms: context.previousRun.duration_ms,
-                  timestamp: context.previousRun.timestamp,
-                },
-              }),
-            };
-          }),
+          commands: mapCommandResults(results, commandsWithContext, true),
           summary: {
             total: results.length,
             succeeded,
@@ -1422,42 +1468,8 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
         break;
 
       case 'verbose':
-      default:
         data = {
-          commands: results.map((r, i) => {
-            // Safe: results is a subset of input.commands in order (fail_fast may truncate), so i < commandsWithContext.length always holds
-            const context = commandsWithContext[i];
-            return {
-              ...(r.id && { id: r.id }),
-              cmd: r.cmd,
-              exit_code: r.exit_code,
-              duration_ms: r.duration_ms,
-              expectations_met: r.expectations_met,
-              ...(r.truncated && { truncated: r.truncated }),
-              ...(r.timed_out && { timed_out: r.timed_out }),
-              ...(r.stdout !== undefined && { stdout: r.stdout }),
-              ...(r.stderr !== undefined && { stderr: r.stderr }),
-              ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
-              ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
-              ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),
-              ...(r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) }),
-              ...(r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) }),
-              ...(r.retries && { retries: r.retries }),
-              ...(r.progress && r.progress.length > 0 && { progress: r.progress }),
-              ...(r.progress_file && { progress_file: r.progress_file }),
-              ...(r.until_status && { until_status: r.until_status }),
-              ...(r.matched_line && { matched_line: r.matched_line }),
-              ...(r.matched_at_ms !== undefined && { matched_at_ms: r.matched_at_ms }),
-              ...(r.background && { background: r.background }),
-              ...(context?.previousRun && {
-                same_command_last_run: {
-                  exit_code: context.previousRun.exit_code,
-                  duration_ms: context.previousRun.duration_ms,
-                  timestamp: context.previousRun.timestamp,
-                },
-              }),
-            };
-          }),
+          commands: mapCommandResults(results, commandsWithContext, false),
           summary: {
             total: results.length,
             succeeded,

@@ -7249,6 +7249,11 @@ function getValidNumber(value, defaultValue) {
 function getValidString(value, defaultValue) {
   return typeof value === "string" && value.length > 0 ? value : defaultValue;
 }
+function getValidBool(value, defaultValue) {
+  if (typeof value === "boolean")
+    return value;
+  return defaultValue;
+}
 async function persistConfig(configToPersist) {
   const configPath = getConfigPath();
   const configDir = path.dirname(configPath);
@@ -7365,7 +7370,7 @@ function getSlowFsThreshold() {
 }
 function getSlowFsPrefixes() {
   const config2 = loadConfigSync();
-  return Array.isArray(config2.slow_fs_known_prefixes) ? config2.slow_fs_known_prefixes : ["/mnt/"];
+  return Array.isArray(config2.slow_fs_known_prefixes) ? config2.slow_fs_known_prefixes : [...CONFIG_DEFAULTS.SLOW_FS_PREFIXES];
 }
 function getMaxFileBytes() {
   const config2 = loadConfigSync();
@@ -7381,24 +7386,15 @@ function getPageSizeLines() {
 }
 function getSafeOverwrite() {
   const config2 = loadConfigSync();
-  const value = config2.safe_overwrite;
-  if (typeof value === "boolean")
-    return value;
-  return true;
+  return getValidBool(config2.safe_overwrite, CONFIG_DEFAULTS.SAFE_OVERWRITE);
 }
 function getBackupDir() {
   const config2 = loadConfigSync();
-  const value = config2.backup_dir;
-  if (typeof value === "string" && value.length > 0)
-    return value;
-  return ".goodvibes/.backups";
+  return getValidString(config2.backup_dir, CONFIG_DEFAULTS.BACKUP_DIR);
 }
 function getBackupGitCleanSkip() {
   const config2 = loadConfigSync();
-  const value = config2.backup_git_clean_skip;
-  if (typeof value === "boolean")
-    return value;
-  return true;
+  return getValidBool(config2.backup_git_clean_skip, CONFIG_DEFAULTS.BACKUP_GIT_CLEAN_SKIP);
 }
 function getExecMaxOutputChars() {
   const config2 = loadConfigSync();
@@ -7501,10 +7497,21 @@ var init_runtime_config = __esm({
       /** Lines per page when paginating large file reads */
       PAGE_SIZE_LINES: 200,
       /** Maximum memory budget for file cache in megabytes */
-      CACHE_MAX_MB: 200
+      CACHE_MAX_MB: 200,
+      /** Default backup directory path. */
+      BACKUP_DIR: ".goodvibes/.backups",
+      /** Default safe overwrite setting. */
+      SAFE_OVERWRITE: true,
+      /** Default backup git clean skip setting. */
+      BACKUP_GIT_CLEAN_SKIP: true,
+      /** Default cache mode. */
+      CACHE_MODE: "with_content",
+      /** Default slow filesystem path prefixes. */
+      SLOW_FS_PREFIXES: ["/mnt/"]
     };
     __name(getValidNumber, "getValidNumber");
     __name(getValidString, "getValidString");
+    __name(getValidBool, "getValidBool");
     cachedConfig = null;
     configForFile = null;
     pendingPersist = null;
@@ -313216,6 +313223,9 @@ var DESTRUCTIVE_PATTERNS = [
 ];
 var DEFAULT_TIMEOUT_MS = 3e4;
 var KILL_SIGNAL_DELAY_MS = 5e3;
+var TIMEOUT_EXIT_CODE = 124;
+var STDERR_ERROR_PREVIEW_CHARS = 100;
+var BG_RUNNING_EXIT_CODE = -1;
 var BG_OUTPUT_PREVIEW_LINES = 50;
 var MINIMAL_STDOUT_PREVIEW_CHARS = 500;
 var MINIMAL_STDERR_PREVIEW_CHARS = 200;
@@ -313250,6 +313260,47 @@ function detectCdFromCommand(command) {
   return null;
 }
 __name(detectCdFromCommand, "detectCdFromCommand");
+function handleUntilMatch(child, clearTimeouts, matchedOutput, spec, stdout, stderr, startTime, progressCollector, resolve10, untilKillAfter, fullCommand, cwd, command) {
+  const matchedLine = matchedOutput;
+  const matchedAtMs = Date.now() - startTime;
+  clearTimeouts();
+  if (untilKillAfter) {
+    child.kill("SIGTERM");
+    return false;
+  } else {
+    const bgId = processManager.generateId();
+    try {
+      const backgroundResult = processManager.adopt(bgId, child, fullCommand, cwd);
+      progressCollector.dispose();
+      const result = {
+        cmd: command,
+        exit_code: BG_RUNNING_EXIT_CODE,
+        // Still running in background
+        duration_ms: Date.now() - startTime,
+        expectations_met: true,
+        stdout: stdout.trim(),
+        stderr: stderr.trim(),
+        until_status: "pattern_matched",
+        matched_line: matchedLine,
+        matched_at_ms: matchedAtMs,
+        background: {
+          process_id: backgroundResult.process_id,
+          pid: backgroundResult.pid,
+          log_file: backgroundResult.log_file,
+          hint: backgroundResult.hint
+        }
+      };
+      if (spec.id) {
+        result.id = spec.id;
+      }
+      resolve10(result);
+      return true;
+    } catch (err2) {
+      return false;
+    }
+  }
+}
+__name(handleUntilMatch, "handleUntilMatch");
 async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, captureStdout = true, captureStderr = true, maxOutputLines, isParallel = false) {
   if (spec.timeout !== void 0 && spec.timeout_ms === void 0) {
     warnDeprecatedParam("commands[].timeout", "commands[].timeout_ms", "precision_exec");
@@ -313376,44 +313427,27 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
           for (const line of lines) {
             if (untilPattern.test(line)) {
               untilMatched = true;
-              matchedLine = line;
-              matchedAtMs = Date.now() - startTime;
-              clearTimeout(timeoutId);
-              if (untilTimeoutId)
-                clearTimeout(untilTimeoutId);
-              if (untilKillAfter) {
-                proc.kill("SIGTERM");
-              } else {
-                const bgId = processManager.generateId();
-                try {
-                  backgroundResult = processManager.adopt(bgId, proc, fullCommand, cwd);
+              const resolved = handleUntilMatch(
+                proc,
+                () => {
                   clearTimeout(timeoutId);
-                  progressCollector.dispose();
-                  const result = {
-                    cmd: command,
-                    exit_code: -1,
-                    // Still running in background
-                    duration_ms: Date.now() - startTime,
-                    expectations_met: true,
-                    stdout: stdout.trim(),
-                    stderr: stderr.trim(),
-                    until_status: "pattern_matched",
-                    matched_line: matchedLine ?? void 0,
-                    matched_at_ms: matchedAtMs ?? void 0,
-                    background: {
-                      process_id: backgroundResult.process_id,
-                      pid: backgroundResult.pid,
-                      log_file: backgroundResult.log_file,
-                      hint: backgroundResult.hint
-                    }
-                  };
-                  if (spec.id) {
-                    result.id = spec.id;
-                  }
-                  resolve10(result);
-                  return;
-                } catch (err2) {
-                }
+                  if (untilTimeoutId)
+                    clearTimeout(untilTimeoutId);
+                },
+                line,
+                spec,
+                stdout,
+                stderr,
+                startTime,
+                progressCollector,
+                resolve10,
+                untilKillAfter,
+                fullCommand,
+                cwd,
+                command
+              );
+              if (resolved) {
+                return;
               }
               break;
             }
@@ -313438,44 +313472,27 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
           for (const line of lines) {
             if (untilPattern.test(line)) {
               untilMatched = true;
-              matchedLine = line;
-              matchedAtMs = Date.now() - startTime;
-              clearTimeout(timeoutId);
-              if (untilTimeoutId)
-                clearTimeout(untilTimeoutId);
-              if (untilKillAfter) {
-                proc.kill("SIGTERM");
-              } else {
-                const bgId = processManager.generateId();
-                try {
-                  backgroundResult = processManager.adopt(bgId, proc, fullCommand, cwd);
+              const resolved = handleUntilMatch(
+                proc,
+                () => {
                   clearTimeout(timeoutId);
-                  progressCollector.dispose();
-                  const result = {
-                    cmd: command,
-                    exit_code: -1,
-                    // Still running in background
-                    duration_ms: Date.now() - startTime,
-                    expectations_met: true,
-                    stdout: stdout.trim(),
-                    stderr: stderr.trim(),
-                    until_status: "pattern_matched",
-                    matched_line: matchedLine ?? void 0,
-                    matched_at_ms: matchedAtMs ?? void 0,
-                    background: {
-                      process_id: backgroundResult.process_id,
-                      pid: backgroundResult.pid,
-                      log_file: backgroundResult.log_file,
-                      hint: backgroundResult.hint
-                    }
-                  };
-                  if (spec.id) {
-                    result.id = spec.id;
-                  }
-                  resolve10(result);
-                  return;
-                } catch (err2) {
-                }
+                  if (untilTimeoutId)
+                    clearTimeout(untilTimeoutId);
+                },
+                line,
+                spec,
+                stdout,
+                stderr,
+                startTime,
+                progressCollector,
+                resolve10,
+                untilKillAfter,
+                fullCommand,
+                cwd,
+                command
+              );
+              if (resolved) {
+                return;
               }
               break;
             }
@@ -313502,7 +313519,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       clearTimeout(timeoutId);
       if (untilTimeoutId)
         clearTimeout(untilTimeoutId);
-      const exitCode = code ?? (timedOut ? 124 : 1);
+      const exitCode = code ?? (timedOut ? TIMEOUT_EXIT_CODE : 1);
       const duration_ms = Date.now() - startTime;
       if (effectiveMaxOutputLines > 0) {
         const stdoutLines = stdout.split("\n");
@@ -313549,7 +313566,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
           expectationsMet = false;
         }
         if (spec.expect.stderr_empty && stderr.trim().length > 0) {
-          expectationFailures.push(`Expected stderr to be empty, but got: "${stderr.slice(0, 100)}..."`);
+          expectationFailures.push(`Expected stderr to be empty, but got: "${stderr.slice(0, STDERR_ERROR_PREVIEW_CHARS)}..."`);
           expectationsMet = false;
         }
       }
@@ -313716,6 +313733,44 @@ async function executeWithRetry(spec, retryConfig, globalEnv, globalWorkDir, glo
   }
 }
 __name(executeWithRetry, "executeWithRetry");
+function mapCommandResults(results, commandsWithContext, truncateOutput) {
+  return results.map((r, i2) => {
+    const context = commandsWithContext[i2];
+    return {
+      ...r.id && { id: r.id },
+      cmd: r.cmd,
+      exit_code: r.exit_code,
+      duration_ms: r.duration_ms,
+      expectations_met: r.expectations_met,
+      ...r.truncated && { truncated: r.truncated },
+      ...r.timed_out && { timed_out: r.timed_out },
+      ...truncateOutput && r.stdout && { stdout: r.stdout.length > MINIMAL_STDOUT_PREVIEW_CHARS ? r.stdout.slice(0, MINIMAL_STDOUT_PREVIEW_CHARS) + "..." : r.stdout },
+      ...!truncateOutput && r.stdout !== void 0 && { stdout: r.stdout },
+      ...truncateOutput && r.stderr && { stderr: r.stderr.length > MINIMAL_STDERR_PREVIEW_CHARS ? r.stderr.slice(0, MINIMAL_STDERR_PREVIEW_CHARS) + "..." : r.stderr },
+      ...!truncateOutput && r.stderr !== void 0 && { stderr: r.stderr },
+      ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
+      ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
+      ...r.expectation_failures && { expectation_failures: r.expectation_failures },
+      ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
+      ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) },
+      ...r.retries && { retries: r.retries },
+      ...r.progress && r.progress.length > 0 && { progress: r.progress },
+      ...r.progress_file && { progress_file: r.progress_file },
+      ...r.until_status && { until_status: r.until_status },
+      ...r.matched_line && { matched_line: r.matched_line },
+      ...r.matched_at_ms !== void 0 && { matched_at_ms: r.matched_at_ms },
+      ...r.background && { background: r.background },
+      ...context?.previousRun && {
+        same_command_last_run: {
+          exit_code: context.previousRun.exit_code,
+          duration_ms: context.previousRun.duration_ms,
+          timestamp: context.previousRun.timestamp
+        }
+      }
+    };
+  });
+}
+__name(mapCommandResults, "mapCommandResults");
 var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
   const getElapsed = startTimer();
   const rawInput = args2;
@@ -313903,7 +313958,7 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
             timestamp: Date.now(),
             command: bgResult.command,
             cwd,
-            exit_code: -1,
+            exit_code: BG_RUNNING_EXIT_CODE,
             // Still running
             duration_ms: 0,
             stdout_lines: 0,
@@ -314035,39 +314090,7 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
         break;
       case "standard":
         data = {
-          commands: results.map((r, i2) => {
-            const context = commandsWithContext[i2];
-            return {
-              ...r.id && { id: r.id },
-              cmd: r.cmd,
-              exit_code: r.exit_code,
-              duration_ms: r.duration_ms,
-              expectations_met: r.expectations_met,
-              ...r.truncated && { truncated: r.truncated },
-              ...r.timed_out && { timed_out: r.timed_out },
-              ...r.stdout && { stdout: r.stdout.length > MINIMAL_STDOUT_PREVIEW_CHARS ? r.stdout.slice(0, MINIMAL_STDOUT_PREVIEW_CHARS) + "..." : r.stdout },
-              ...r.stderr && { stderr: r.stderr.length > MINIMAL_STDERR_PREVIEW_CHARS ? r.stderr.slice(0, MINIMAL_STDERR_PREVIEW_CHARS) + "..." : r.stderr },
-              ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
-              ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
-              ...r.expectation_failures && { expectation_failures: r.expectation_failures },
-              ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
-              ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) },
-              ...r.retries && { retries: r.retries },
-              ...r.progress && r.progress.length > 0 && { progress: r.progress },
-              ...r.progress_file && { progress_file: r.progress_file },
-              ...r.until_status && { until_status: r.until_status },
-              ...r.matched_line && { matched_line: r.matched_line },
-              ...r.matched_at_ms !== void 0 && { matched_at_ms: r.matched_at_ms },
-              ...r.background && { background: r.background },
-              ...context?.previousRun && {
-                same_command_last_run: {
-                  exit_code: context.previousRun.exit_code,
-                  duration_ms: context.previousRun.duration_ms,
-                  timestamp: context.previousRun.timestamp
-                }
-              }
-            };
-          }),
+          commands: mapCommandResults(results, commandsWithContext, true),
           summary: {
             total: results.length,
             succeeded,
@@ -314077,41 +314100,8 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
         };
         break;
       case "verbose":
-      default:
         data = {
-          commands: results.map((r, i2) => {
-            const context = commandsWithContext[i2];
-            return {
-              ...r.id && { id: r.id },
-              cmd: r.cmd,
-              exit_code: r.exit_code,
-              duration_ms: r.duration_ms,
-              expectations_met: r.expectations_met,
-              ...r.truncated && { truncated: r.truncated },
-              ...r.timed_out && { timed_out: r.timed_out },
-              ...r.stdout !== void 0 && { stdout: r.stdout },
-              ...r.stderr !== void 0 && { stderr: r.stderr },
-              ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
-              ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
-              ...r.expectation_failures && { expectation_failures: r.expectation_failures },
-              ...r.exit_code !== 0 && { exit_interpretation: interpretExitCode(r.exit_code) },
-              ...r.exit_code !== 0 && r.stderr && { detected_issue: detectIssue(r.stderr, r.stdout) },
-              ...r.retries && { retries: r.retries },
-              ...r.progress && r.progress.length > 0 && { progress: r.progress },
-              ...r.progress_file && { progress_file: r.progress_file },
-              ...r.until_status && { until_status: r.until_status },
-              ...r.matched_line && { matched_line: r.matched_line },
-              ...r.matched_at_ms !== void 0 && { matched_at_ms: r.matched_at_ms },
-              ...r.background && { background: r.background },
-              ...context?.previousRun && {
-                same_command_last_run: {
-                  exit_code: context.previousRun.exit_code,
-                  duration_ms: context.previousRun.duration_ms,
-                  timestamp: context.previousRun.timestamp
-                }
-              }
-            };
-          }),
+          commands: mapCommandResults(results, commandsWithContext, false),
           summary: {
             total: results.length,
             succeeded,

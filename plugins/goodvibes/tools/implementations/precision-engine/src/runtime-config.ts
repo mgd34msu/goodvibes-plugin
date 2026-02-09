@@ -96,6 +96,16 @@ const CONFIG_DEFAULTS = {
   PAGE_SIZE_LINES: 200,
   /** Maximum memory budget for file cache in megabytes */
   CACHE_MAX_MB: 200,
+  /** Default backup directory path. */
+  BACKUP_DIR: '.goodvibes/.backups',
+  /** Default safe overwrite setting. */
+  SAFE_OVERWRITE: true,
+  /** Default backup git clean skip setting. */
+  BACKUP_GIT_CLEAN_SKIP: true,
+  /** Default cache mode. */
+  CACHE_MODE: 'with_content' as const,
+  /** Default slow filesystem path prefixes. */
+  SLOW_FS_PREFIXES: ['/mnt/'] as readonly string[],
 } as const;
 
 /**
@@ -120,6 +130,18 @@ function getValidNumber(value: unknown, defaultValue: number): number {
  */
 function getValidString(value: unknown, defaultValue: string): string {
   return typeof value === 'string' && value.length > 0 ? value : defaultValue;
+}
+
+/**
+ * Validate and return a boolean config value, or fall back to the default.
+ *
+ * @param value - The config value to validate
+ * @param defaultValue - The default value to return if validation fails
+ * @returns The validated boolean or the default
+ */
+function getValidBool(value: unknown, defaultValue: boolean): boolean {
+  if (typeof value === 'boolean') return value;
+  return defaultValue;
 }
 
 /**
@@ -342,11 +364,13 @@ export function getSlowFsThreshold(): number {
  * Get the known slow filesystem prefixes from config.
  * Returns ["/mnt/"] if not configured.
  *
+ * Array validation is inline since this is the only array-typed config value.
+ *
  * @returns Array of path prefixes known to be slow filesystems
  */
 export function getSlowFsPrefixes(): string[] {
   const config = loadConfigSync();
-  return Array.isArray(config.slow_fs_known_prefixes) ? config.slow_fs_known_prefixes : ['/mnt/'];
+  return Array.isArray(config.slow_fs_known_prefixes) ? config.slow_fs_known_prefixes : [...CONFIG_DEFAULTS.SLOW_FS_PREFIXES];
 }
 
 /**
@@ -394,7 +418,7 @@ export function getCacheMode(): 'hash_only' | 'with_content' {
   const config = loadConfigSync();
   const value = config.cache_mode;
   if (value === 'hash_only' || value === 'with_content') return value;
-  return 'with_content';
+  return CONFIG_DEFAULTS.CACHE_MODE;
 }
 
 /**
@@ -414,9 +438,7 @@ export function getCacheMaxMb(): number {
  */
 export function getSafeOverwrite(): boolean {
   const config = loadConfigSync();
-  const value = config.safe_overwrite;
-  if (typeof value === 'boolean') return value;
-  return true;
+  return getValidBool(config.safe_overwrite, CONFIG_DEFAULTS.SAFE_OVERWRITE);
 }
 
 /**
@@ -426,9 +448,7 @@ export function getSafeOverwrite(): boolean {
  */
 export function getBackupDir(): string {
   const config = loadConfigSync();
-  const value = config.backup_dir;
-  if (typeof value === 'string' && value.length > 0) return value;
-  return '.goodvibes/.backups';
+  return getValidString(config.backup_dir, CONFIG_DEFAULTS.BACKUP_DIR);
 }
 
 /**
@@ -438,9 +458,7 @@ export function getBackupDir(): string {
  */
 export function getBackupGitCleanSkip(): boolean {
   const config = loadConfigSync();
-  const value = config.backup_git_clean_skip;
-  if (typeof value === 'boolean') return value;
-  return true;
+  return getValidBool(config.backup_git_clean_skip, CONFIG_DEFAULTS.BACKUP_GIT_CLEAN_SKIP);
 }
 
 /**

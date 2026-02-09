@@ -75,8 +75,11 @@ export interface PrecisionResult<T = unknown> {
   error?: string;
   /** Metadata about the operation (output mode, token estimate, execution time). */
   meta: {
+    /** The output mode used for this response. */
     output_mode: OutputMode;
+    /** Estimated token count of the response payload. */
     token_estimate: number;
+    /** Wall-clock execution time in milliseconds. */
     execution_ms: number;
   };
 }
