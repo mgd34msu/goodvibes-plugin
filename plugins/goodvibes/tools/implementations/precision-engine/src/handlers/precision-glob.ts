@@ -46,6 +46,7 @@ interface GlobFilters {
 
 interface GlobOutput {
   mode: GlobOutputMode;
+  format?: GlobOutputMode; // Alias for mode (MCP schema uses format)
   // Standardized name (preferred)
   max_results?: number;
   // Deprecated name (backward compatibility)
@@ -183,15 +184,15 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
     const output: GlobOutput = {
-      mode: input.output?.mode ?? 'paths_only',
+      ...input.output,  // spread FIRST so computed defaults always win
+      mode: (input.output?.mode ?? (input.output as any)?.format ?? 'paths_only') as GlobOutputMode,
       // Support both new and old parameter names
       max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
       max_files: input.output?.max_files ?? 100,
       sort_by: input.output?.sort_by,
       sort_order: input.output?.sort_order ?? 'asc',
       preview_lines: input.output?.preview_lines ?? 3,
-      max_tokens: input.output?.max_tokens,
-      ...input.output
+      max_tokens: input.output?.max_tokens
     };
     // Warn about deprecated parameters
     if (output.max_files !== undefined && output.max_results === undefined) {
@@ -215,8 +216,10 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
 
     // Backend selection
     const backend = input.backend ?? 'auto';
+    // Ripgrep cannot handle subdirectory patterns like 'dir/*.ts' - force fast-glob
+    const hasSubdirPatterns = patterns.some(p => /^[^*?{}\[\]]+\//.test(p));
     const useRipgrep = backend === 'ripgrep' || 
-      (backend === 'auto' && !input.filters?.has_content);
+      (backend === 'auto' && !input.filters?.has_content && !hasSubdirPatterns);
 
     // Find files using selected backend
     let rawFiles: Array<string | { path: string; stats: Stats | null }>;

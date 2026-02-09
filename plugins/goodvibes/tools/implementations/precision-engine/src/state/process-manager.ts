@@ -8,6 +8,24 @@ import { openSync, closeSync, readSync, fstatSync, existsSync, mkdirSync, create
 import * as path from 'path';
 import { getExecMaxBackground, getExecOverflowDir } from '../runtime-config.js';
 
+/**
+ * Shell-escape a single argument for safe concatenation.
+ * Wraps arguments containing special characters in single quotes,
+ * escaping any single quotes within the argument.
+ * This matches the escaping strategy used in the foreground execution path.
+ * @param arg - The shell argument to escape
+ * @returns The escaped argument safe for shell concatenation
+ */
+function shellEscape(arg: string): string {
+  // If the argument contains no special characters, return as-is
+  if (/^[a-zA-Z0-9_\/.,-]+$/.test(arg)) {
+    return arg;
+  }
+  
+  // Otherwise, wrap in single quotes and escape any single quotes
+  return `'${arg.replace(/'/g, "'\\''")}' `;
+}
+
 /** Time in milliseconds to wait for graceful SIGTERM exit before escalating to SIGKILL. */
 const SIGTERM_TIMEOUT_MS = 5000;
 
@@ -252,11 +270,18 @@ export class ProcessManager {
 
     try {
       // Spawn detached process
-      const child: ChildProcess = spawn(command, args, {
+      // When shell: true, concatenate command and escaped args into a single string.
+      // This matches the foreground execution path's escaping strategy.
+      const fullCommand = args.length > 0 
+        ? `${command} ${args.map(shellEscape).join(' ')}`.trim()
+        : command;
+
+      const child: ChildProcess = spawn(fullCommand, [], {
         detached: true,
         stdio: ['ignore', logFd, logFd],
         cwd: resolvedCwd,
         env: options.env ? { ...process.env, ...options.env } : process.env,
+        shell: true,
       });
 
       // Close the log file descriptor in the parent process

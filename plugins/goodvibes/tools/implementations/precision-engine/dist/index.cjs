@@ -15168,6 +15168,12 @@ var init_command_history = __esm({
 });
 
 // src/state/process-manager.ts
+function shellEscape(arg) {
+  if (/^[a-zA-Z0-9_\/.,-]+$/.test(arg)) {
+    return arg;
+  }
+  return `'${arg.replace(/'/g, "'\\''")}' `;
+}
 var import_child_process5, import_os, import_fs5, path12, SIGTERM_TIMEOUT_MS, POLL_INTERVAL_MS, SIGKILL_EXIT_CODE, SIGNAL_EXIT_CODE_BASE, DEFAULT_SIGNAL_NUMBER, ProcessManager, processManager;
 var init_process_manager = __esm({
   "src/state/process-manager.ts"() {
@@ -15177,6 +15183,7 @@ var init_process_manager = __esm({
     import_fs5 = require("fs");
     path12 = __toESM(require("path"), 1);
     init_runtime_config();
+    __name(shellEscape, "shellEscape");
     SIGTERM_TIMEOUT_MS = 5e3;
     POLL_INTERVAL_MS = 100;
     SIGKILL_EXIT_CODE = 137;
@@ -15328,11 +15335,13 @@ var init_process_manager = __esm({
         let fdClosed = false;
         const resolvedCwd = options.cwd || process.cwd();
         try {
-          const child = (0, import_child_process5.spawn)(command, args2, {
+          const fullCommand = args2.length > 0 ? `${command} ${args2.map(shellEscape).join(" ")}`.trim() : command;
+          const child = (0, import_child_process5.spawn)(fullCommand, [], {
             detached: true,
             stdio: ["ignore", logFd, logFd],
             cwd: resolvedCwd,
-            env: options.env ? { ...process.env, ...options.env } : process.env
+            env: options.env ? { ...process.env, ...options.env } : process.env,
+            shell: true
           });
           (0, import_fs5.closeSync)(logFd);
           fdClosed = true;
@@ -137807,37 +137816,37 @@ ${lanes.join("\n")}
               }
             }
             __name(visitSymbolTable, "visitSymbolTable");
-            function serializeSymbol(symbol2, isPrivate, propertyAsAlias) {
+            function serializeSymbol(symbol2, isPrivate2, propertyAsAlias) {
               void getPropertiesOfType(getTypeOfSymbol(symbol2));
               const visitedSym = getMergedSymbol(symbol2);
               if (visitedSymbols.has(getSymbolId(visitedSym))) {
                 return;
               }
               visitedSymbols.add(getSymbolId(visitedSym));
-              const skipMembershipCheck = !isPrivate;
+              const skipMembershipCheck = !isPrivate2;
               if (skipMembershipCheck || !!length(symbol2.declarations) && some(symbol2.declarations, (d) => !!findAncestor(d, (n) => n === enclosingDeclaration))) {
                 const scopeCleanup = cloneNodeBuilderContext(context);
                 context.tracker.pushErrorFallbackNode(find2(symbol2.declarations, (d) => getSourceFileOfNode(d) === context.enclosingFile));
-                serializeSymbolWorker(symbol2, isPrivate, propertyAsAlias);
+                serializeSymbolWorker(symbol2, isPrivate2, propertyAsAlias);
                 context.tracker.popErrorFallbackNode();
                 scopeCleanup();
               }
             }
             __name(serializeSymbol, "serializeSymbol");
-            function serializeSymbolWorker(symbol2, isPrivate, propertyAsAlias, escapedSymbolName = symbol2.escapedName) {
+            function serializeSymbolWorker(symbol2, isPrivate2, propertyAsAlias, escapedSymbolName = symbol2.escapedName) {
               var _a22, _b, _c, _d, _e, _f, _g;
               const symbolName2 = unescapeLeadingUnderscores(escapedSymbolName);
               const isDefault = escapedSymbolName === "default";
-              if (isPrivate && !(context.flags & 131072) && isStringANonContextualKeyword(symbolName2) && !isDefault) {
+              if (isPrivate2 && !(context.flags & 131072) && isStringANonContextualKeyword(symbolName2) && !isDefault) {
                 context.encounteredError = true;
                 return;
               }
               let needsPostExportDefault = isDefault && !!(symbol2.flags & -113 || symbol2.flags & 16 && length(getPropertiesOfType(getTypeOfSymbol(symbol2)))) && !(symbol2.flags & 2097152);
-              let needsExportDeclaration = !needsPostExportDefault && !isPrivate && isStringANonContextualKeyword(symbolName2) && !isDefault;
+              let needsExportDeclaration = !needsPostExportDefault && !isPrivate2 && isStringANonContextualKeyword(symbolName2) && !isDefault;
               if (needsPostExportDefault || needsExportDeclaration) {
-                isPrivate = true;
+                isPrivate2 = true;
               }
-              const modifierFlags = (!isPrivate ? 32 : 0) | (isDefault && !needsPostExportDefault ? 2048 : 0);
+              const modifierFlags = (!isPrivate2 ? 32 : 0) | (isDefault && !needsPostExportDefault ? 2048 : 0);
               const isConstMergedWithNS = symbol2.flags & 1536 && symbol2.flags & (2 | 1 | 4) && escapedSymbolName !== "export=";
               const isConstMergedWithNSPrintableAsSignatureMerge = isConstMergedWithNS && isTypeRepresentableAsFunctionNamespaceMerge(getTypeOfSymbol(symbol2), symbol2);
               if (symbol2.flags & (16 | 8192) || isConstMergedWithNSPrintableAsSignatureMerge) {
@@ -137861,7 +137870,7 @@ ${lanes.join("\n")}
                       context.remappedSymbolReferences = /* @__PURE__ */ new Map();
                     }
                     context.remappedSymbolReferences.set(getSymbolId(type.symbol), symbol2);
-                    serializeSymbolWorker(type.symbol, isPrivate, propertyAsAlias, escapedSymbolName);
+                    serializeSymbolWorker(type.symbol, isPrivate2, propertyAsAlias, escapedSymbolName);
                     context.remappedSymbolReferences.delete(getSymbolId(type.symbol));
                   } else if (!(symbol2.flags & 16) && isTypeRepresentableAsFunctionNamespaceMerge(type, symbol2)) {
                     serializeAsFunctionNamespaceMerge(type, symbol2, localName, modifierFlags);
@@ -137923,7 +137932,7 @@ ${lanes.join("\n")}
                       );
                       context.approximateLength += 7 + name2.length;
                       addResult(statement, name2 !== localName ? modifierFlags & ~32 : modifierFlags);
-                      if (name2 !== localName && !isPrivate) {
+                      if (name2 !== localName && !isPrivate2) {
                         context.approximateLength += 16 + name2.length + localName.length;
                         addResult(
                           factory.createExportDeclaration(
@@ -165573,13 +165582,13 @@ ${lanes.join("\n")}
           ), [thisType, valueType]);
         }
         __name(createClassFieldDecoratorContextType, "createClassFieldDecoratorContextType");
-        function getClassMemberDecoratorContextOverrideType(nameType, isPrivate, isStatic2) {
-          const key2 = `${isPrivate ? "p" : "P"}${isStatic2 ? "s" : "S"}${nameType.id}`;
+        function getClassMemberDecoratorContextOverrideType(nameType, isPrivate2, isStatic2) {
+          const key2 = `${isPrivate2 ? "p" : "P"}${isStatic2 ? "s" : "S"}${nameType.id}`;
           let overrideType = decoratorContextOverrideTypeCache.get(key2);
           if (!overrideType) {
             const members = createSymbolTable();
             members.set("name", createProperty("name", nameType));
-            members.set("private", createProperty("private", isPrivate ? trueType : falseType));
+            members.set("private", createProperty("private", isPrivate2 ? trueType : falseType));
             members.set("static", createProperty("static", isStatic2 ? trueType : falseType));
             overrideType = createAnonymousType(
               /*symbol*/
@@ -165596,10 +165605,10 @@ ${lanes.join("\n")}
         __name(getClassMemberDecoratorContextOverrideType, "getClassMemberDecoratorContextOverrideType");
         function createClassMemberDecoratorContextTypeForNode(node, thisType, valueType) {
           const isStatic2 = hasStaticModifier(node);
-          const isPrivate = isPrivateIdentifier(node.name);
-          const nameType = isPrivate ? getStringLiteralType(idText(node.name)) : getLiteralTypeFromPropertyName(node.name);
+          const isPrivate2 = isPrivateIdentifier(node.name);
+          const nameType = isPrivate2 ? getStringLiteralType(idText(node.name)) : getLiteralTypeFromPropertyName(node.name);
           const contextType = isMethodDeclaration2(node) ? createClassMethodDecoratorContextType(thisType, valueType) : isGetAccessorDeclaration(node) ? createClassGetterDecoratorContextType(thisType, valueType) : isSetAccessorDeclaration(node) ? createClassSetterDecoratorContextType(thisType, valueType) : isAutoAccessorPropertyDeclaration(node) ? createClassAccessorDecoratorContextType(thisType, valueType) : isPropertyDeclaration(node) ? createClassFieldDecoratorContextType(thisType, valueType) : Debug.failBadSyntaxKind(node);
-          const overrideType = getClassMemberDecoratorContextOverrideType(nameType, isPrivate, isStatic2);
+          const overrideType = getClassMemberDecoratorContextOverrideType(nameType, isPrivate2, isStatic2);
           return getIntersectionType([contextType, overrideType]);
         }
         __name(createClassMemberDecoratorContextTypeForNode, "createClassMemberDecoratorContextTypeForNode");
@@ -168964,9 +168973,9 @@ ${lanes.join("\n")}
               if (!name2) {
                 continue;
               }
-              const isPrivate = isPrivateIdentifier(name2);
-              const privateStaticFlags = isPrivate && isStaticMember ? 16 : 0;
-              const names = isPrivate ? privateIdentifiers : isStaticMember ? staticNames : instanceNames;
+              const isPrivate2 = isPrivateIdentifier(name2);
+              const privateStaticFlags = isPrivate2 && isStaticMember ? 16 : 0;
+              const names = isPrivate2 ? privateIdentifiers : isStaticMember ? staticNames : instanceNames;
               const memberName = name2 && getEffectivePropertyNameForPropertyNameNode(name2);
               if (memberName) {
                 switch (member.kind) {
@@ -206408,9 +206417,9 @@ ${lanes.join("\n")}
           return factory2.createNodeArray(newParams, params.hasTrailingComma);
         }
         __name(updateParamsList, "updateParamsList");
-        function updateAccessorParamsList(input, isPrivate) {
+        function updateAccessorParamsList(input, isPrivate2) {
           let newParams;
-          if (!isPrivate) {
+          if (!isPrivate2) {
             const thisParameter = getThisParameter(input);
             if (thisParameter) {
               newParams = [ensureParameter(thisParameter)];
@@ -206418,7 +206427,7 @@ ${lanes.join("\n")}
           }
           if (isSetAccessorDeclaration(input)) {
             let newValueParameter;
-            if (!isPrivate) {
+            if (!isPrivate2) {
               const valueParameter = getSetAccessorValueParameter(input);
               if (valueParameter) {
                 newValueParameter = ensureParameter(valueParameter);
@@ -238430,7 +238439,7 @@ interface Symbol {
       __name(makeVariableStatement, "makeVariableStatement");
       function addExports(sourceFile, toMove, needExport, useEs6Exports) {
         return flatMap(toMove, (statement) => {
-          if (isTopLevelDeclarationStatement(statement) && !isExported3(sourceFile, statement, useEs6Exports) && forEachTopLevelDeclaration(statement, (d) => {
+          if (isTopLevelDeclarationStatement(statement) && !isExported4(sourceFile, statement, useEs6Exports) && forEachTopLevelDeclaration(statement, (d) => {
             var _a4;
             return needExport.includes(Debug.checkDefined((_a4 = tryCast(d, canHaveSymbol)) == null ? void 0 : _a4.symbol));
           })) {
@@ -238442,7 +238451,7 @@ interface Symbol {
         });
       }
       __name(addExports, "addExports");
-      function isExported3(sourceFile, decl, useEs6Exports, name2) {
+      function isExported4(sourceFile, decl, useEs6Exports, name2) {
         var _a4;
         if (useEs6Exports) {
           return !isExpressionStatement(decl) && hasSyntacticModifier(
@@ -238453,7 +238462,7 @@ interface Symbol {
         }
         return !!sourceFile.symbol && !!sourceFile.symbol.exports && getNamesToExportInCommonJS(decl).some((name22) => sourceFile.symbol.exports.has(escapeLeadingUnderscores(name22)));
       }
-      __name(isExported3, "isExported");
+      __name(isExported4, "isExported");
       function deleteUnusedImports(sourceFile, importDecl, changes, isUnused) {
         if (importDecl.kind === 273 && importDecl.importClause) {
           const { name: name2, namedBindings } = importDecl.importClause;
@@ -238609,7 +238618,7 @@ interface Symbol {
       }
       __name(getTopLevelDeclarationStatement, "getTopLevelDeclarationStatement");
       function addExportToChanges(sourceFile, decl, name2, changes, useEs6Exports) {
-        if (isExported3(sourceFile, decl, useEs6Exports, name2))
+        if (isExported4(sourceFile, decl, useEs6Exports, name2))
           return;
         if (useEs6Exports) {
           if (!isExpressionStatement(decl))
@@ -250010,7 +250019,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const propertyTags = typeLiteral.jsDocPropertyTags;
         if (!some(propertyTags))
           return;
-        const getSignature2 = /* @__PURE__ */ __name((tag) => {
+        const getSignature3 = /* @__PURE__ */ __name((tag) => {
           var _a4;
           const name2 = getPropertyName(tag);
           const type = (_a4 = tag.typeExpression) == null ? void 0 : _a4.type;
@@ -250036,7 +250045,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             );
           }
         }, "getSignature");
-        return mapDefined(propertyTags, getSignature2);
+        return mapDefined(propertyTags, getSignature3);
       }
       __name(createSignatureFromTypeLiteral, "createSignatureFromTypeLiteral");
       function getPropertyName(tag) {
@@ -311124,7 +311133,7 @@ var TreeSitterCore = class {
     const language = getLanguageNameForFile(filePath) ?? this.lastParsedLanguage ?? "typescript";
     const symbols = [];
     const rootNode = tree.rootNode;
-    const extractSymbols2 = /* @__PURE__ */ __name((node, container) => {
+    const extractSymbols3 = /* @__PURE__ */ __name((node, container) => {
       if (!node || !node.type)
         return;
       const kind = mapNodeTypeToKind(node.type, language);
@@ -311146,11 +311155,11 @@ var TreeSitterCore = class {
       for (let i2 = 0; i2 < node.childCount; i2++) {
         const child = node.child(i2);
         if (child) {
-          extractSymbols2(child, newContainer);
+          extractSymbols3(child, newContainer);
         }
       }
     }, "extractSymbols");
-    extractSymbols2(rootNode);
+    extractSymbols3(rootNode);
     return symbols;
   }
   /**
@@ -311289,12 +311298,12 @@ async function findRelatedFiles(filePath, symbol2, workDir) {
   };
   try {
     await treeSitterCore.init();
-    let isExported3 = false;
+    let isExported4 = false;
     try {
       const fileContent = await (0, import_promises2.readFile)(filePath, "utf-8");
       const tree = await treeSitterCore.parse(fileContent, filePath);
       const symbols = treeSitterCore.getSymbols(tree, filePath);
-      isExported3 = symbols.some(
+      isExported4 = symbols.some(
         (s) => s.name === symbol2 && s.exported
       );
     } catch (error2) {
@@ -311341,7 +311350,7 @@ async function findRelatedFiles(filePath, symbol2, workDir) {
       } catch (error2) {
       }
     }
-    if (isExported3) {
+    if (isExported4) {
       try {
         const exportPattern = `export\\s+(const|let|var|function|class|interface|type|enum)\\s+${escapedSymbol}\\b|export\\s+\\{[^}]*\\b${escapedSymbol}\\b`;
         const exportResult = await ripgrepCore2.search({
@@ -313237,13 +313246,13 @@ function isDestructiveCommand(cmd, args2) {
   return DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(fullCommand));
 }
 __name(isDestructiveCommand, "isDestructiveCommand");
-function shellEscape(arg) {
+function shellEscape2(arg) {
   if (/^[a-zA-Z0-9_\/.,-]+$/.test(arg)) {
     return arg;
   }
   return `'${arg.replace(/'/g, "'\\''")}' `;
 }
-__name(shellEscape, "shellEscape");
+__name(shellEscape2, "shellEscape");
 function detectCdFromCommand(command) {
   const cdMatch = command.match(/(?:^|&&|;|\|\|)\s*(cd|pushd)\s+([^;&|]+)\s*$/);
   if (cdMatch) {
@@ -313352,7 +313361,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
       }
     }
     const bufferCap = maxOutputChars * OVERFLOW_BUFFER_MULTIPLIER;
-    const fullCommand = args2.length > 0 ? `${command} ${args2.map(shellEscape).join(" ")}`.trim() : command;
+    const fullCommand = args2.length > 0 ? `${command} ${args2.map(shellEscape2).join(" ")}`.trim() : command;
     const proc = (0, import_child_process6.spawn)(fullCommand, [], {
       cwd,
       env: { ...process.env, ...globalEnv, ...spec.env },
@@ -325891,15 +325900,16 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
       ));
     }
     const output = {
-      mode: input.output?.mode ?? "paths_only",
+      ...input.output,
+      // spread FIRST so computed defaults always win
+      mode: input.output?.mode ?? input.output?.format ?? "paths_only",
       // Support both new and old parameter names
       max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
       max_files: input.output?.max_files ?? 100,
       sort_by: input.output?.sort_by,
       sort_order: input.output?.sort_order ?? "asc",
       preview_lines: input.output?.preview_lines ?? 3,
-      max_tokens: input.output?.max_tokens,
-      ...input.output
+      max_tokens: input.output?.max_tokens
     };
     if (output.max_files !== void 0 && output.max_results === void 0) {
       warnDeprecatedParam("output.max_files", "output.max_results", "precision_glob");
@@ -325916,7 +325926,8 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
       ...input.exclude ?? []
     ];
     const backend = input.backend ?? "auto";
-    const useRipgrep = backend === "ripgrep" || backend === "auto" && !input.filters?.has_content;
+    const hasSubdirPatterns = patterns2.some((p) => /^[^*?{}\[\]]+\//.test(p));
+    const useRipgrep = backend === "ripgrep" || backend === "auto" && !input.filters?.has_content && !hasSubdirPatterns;
     let rawFiles;
     if (useRipgrep) {
       try {
@@ -326150,6 +326161,100 @@ function estimateTokens4(str) {
   return Math.ceil(str.length / 4);
 }
 __name(estimateTokens4, "estimateTokens");
+function tsKindToSymbolKind(kind) {
+  switch (kind) {
+    case ts.SyntaxKind.FunctionDeclaration:
+    case ts.SyntaxKind.FunctionExpression:
+    case ts.SyntaxKind.ArrowFunction:
+      return "function";
+    case ts.SyntaxKind.MethodDeclaration:
+    case ts.SyntaxKind.MethodSignature:
+      return "method";
+    case ts.SyntaxKind.ClassDeclaration:
+    case ts.SyntaxKind.ClassExpression:
+      return "class";
+    case ts.SyntaxKind.InterfaceDeclaration:
+      return "interface";
+    case ts.SyntaxKind.TypeAliasDeclaration:
+      return "type";
+    case ts.SyntaxKind.VariableDeclaration:
+      return "variable";
+    case ts.SyntaxKind.EnumDeclaration:
+      return "enum";
+    case ts.SyntaxKind.PropertyDeclaration:
+    case ts.SyntaxKind.PropertySignature:
+      return "property";
+    case ts.SyntaxKind.ModuleDeclaration:
+      return "namespace";
+    default:
+      return null;
+  }
+}
+__name(tsKindToSymbolKind, "tsKindToSymbolKind");
+function getNodeName(node) {
+  if ("name" in node) {
+    const nameNode = node.name;
+    if (nameNode && ts.isIdentifier(nameNode)) {
+      return nameNode.text;
+    }
+  }
+  return null;
+}
+__name(getNodeName, "getNodeName");
+function collectExportedNames(sourceFile) {
+  const exportedNames = /* @__PURE__ */ new Set();
+  ts.forEachChild(sourceFile, (node) => {
+    if (ts.isExportDeclaration(node)) {
+      const exportClause = node.exportClause;
+      if (exportClause && ts.isNamedExports(exportClause)) {
+        for (const element of exportClause.elements) {
+          const localName = element.propertyName?.text ?? element.name.text;
+          exportedNames.add(localName);
+        }
+      }
+    }
+    if (ts.isExportAssignment(node)) {
+      if (ts.isIdentifier(node.expression)) {
+        exportedNames.add(node.expression.text);
+      }
+    }
+  });
+  return exportedNames;
+}
+__name(collectExportedNames, "collectExportedNames");
+function isExported2(node, exportedNames) {
+  const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : void 0;
+  if (modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
+    return true;
+  }
+  const nodeName = getNodeName(node);
+  if (!nodeName)
+    return false;
+  return exportedNames.has(nodeName);
+}
+__name(isExported2, "isExported");
+function isPrivate(node) {
+  const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : void 0;
+  return modifiers?.some((m) => m.kind === ts.SyntaxKind.PrivateKeyword) ?? false;
+}
+__name(isPrivate, "isPrivate");
+function getSignature(node, sourceFile) {
+  const start2 = node.getStart(sourceFile);
+  const end = node.getEnd();
+  let text = sourceFile.text.slice(start2, end);
+  const braceIndex = text.indexOf("{");
+  const semiIndex = text.indexOf(";");
+  if (braceIndex !== -1 && (semiIndex === -1 || braceIndex < semiIndex)) {
+    text = text.slice(0, braceIndex).trim();
+  } else if (semiIndex !== -1) {
+    text = text.slice(0, semiIndex).trim();
+  }
+  if (text.length > 200) {
+    text = text.slice(0, 200) + "...";
+  }
+  return text;
+}
+__name(getSignature, "getSignature");
 function getJsDocComment(node, sourceFile) {
   const jsDocs = ts.getJSDocCommentsAndTags(node);
   if (jsDocs.length === 0)
@@ -326164,14 +326269,97 @@ function getJsDocComment(node, sourceFile) {
   return void 0;
 }
 __name(getJsDocComment, "getJsDocComment");
+function extractSymbols(sourceFile, filePath, options) {
+  const symbols = [];
+  const queryRegex = options.query ? new RegExp(options.query, "i") : null;
+  const exportedNames = collectExportedNames(sourceFile);
+  function visit(node, container) {
+    const kind = tsKindToSymbolKind(node.kind);
+    if (kind !== null) {
+      const name2 = getNodeName(node);
+      if (name2) {
+        if (queryRegex && !queryRegex.test(name2)) {
+          if (kind === "class" || kind === "interface" || kind === "namespace") {
+            ts.forEachChild(node, (child) => visit(child, name2));
+          } else {
+            ts.forEachChild(node, (child) => visit(child, container));
+          }
+          return;
+        }
+        if (options.kinds && !options.kinds.includes(kind)) {
+          if (kind === "class" || kind === "interface" || kind === "namespace") {
+            ts.forEachChild(node, (child) => visit(child, name2));
+          } else {
+            ts.forEachChild(node, (child) => visit(child, container));
+          }
+          return;
+        }
+        const exported = isExported2(node, exportedNames);
+        if (options.exportedOnly && !exported) {
+          if (kind === "class" || kind === "interface" || kind === "namespace") {
+            ts.forEachChild(node, (child) => visit(child, name2));
+          } else {
+            ts.forEachChild(node, (child) => visit(child, container));
+          }
+          return;
+        }
+        const priv = isPrivate(node);
+        if (!options.includePrivate && priv) {
+          if (kind === "class" || kind === "interface" || kind === "namespace") {
+            ts.forEachChild(node, (child) => visit(child, name2));
+          } else {
+            ts.forEachChild(node, (child) => visit(child, container));
+          }
+          return;
+        }
+        const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+        const symbol2 = {
+          name: name2,
+          kind,
+          file: filePath,
+          line: line + 1,
+          column: character + 1
+        };
+        if (options.includeSignatures || options.includeFull) {
+          symbol2.signature = getSignature(node, sourceFile);
+        }
+        if (options.includeFull) {
+          symbol2.exported = exported;
+          if (container) {
+            symbol2.container = container;
+          }
+          const doc = getJsDocComment(node, sourceFile);
+          if (doc) {
+            symbol2.documentation = doc;
+          }
+        }
+        symbols.push(symbol2);
+        if (kind === "class" || kind === "interface" || kind === "namespace") {
+          ts.forEachChild(node, (child) => visit(child, name2));
+          return;
+        }
+      }
+    }
+    ts.forEachChild(node, (child) => visit(child, container));
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return symbols;
+}
+__name(extractSymbols, "extractSymbols");
 async function processFile(filePath, workDir, options) {
   const absolutePath = path15.isAbsolute(filePath) ? filePath : path15.join(workDir, filePath);
   const relativePath = path15.relative(workDir, absolutePath);
+  let content;
+  try {
+    content = await fs9.readFile(absolutePath, "utf-8");
+  } catch {
+    return [];
+  }
   try {
     if (!isLanguageSupported(absolutePath)) {
       return [];
     }
-    const content = await fs9.readFile(absolutePath, "utf-8");
     const tree = await treeSitterCore3.parse(content, absolutePath);
     const tsSymbols = treeSitterCore3.getSymbols(tree, absolutePath, options.kinds);
     const symbols = [];
@@ -326225,7 +326413,24 @@ async function processFile(filePath, workDir, options) {
       symbols.push(symbol2);
     }
     return symbols;
-  } catch {
+  } catch (error2) {
+    const errMsg = error2 instanceof Error ? error2.message : String(error2);
+    if (/\.(ts|tsx|js|jsx)$/.test(absolutePath)) {
+      try {
+        const sourceFile = ts.createSourceFile(
+          absolutePath,
+          content,
+          ts.ScriptTarget.Latest,
+          true,
+          /\.tsx$|\.jsx$/.test(absolutePath) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+        );
+        return extractSymbols(sourceFile, relativePath, options);
+      } catch (fallbackError) {
+        const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        console.error(`[precision-symbols] Both parsers failed for ${absolutePath}: tree-sitter: ${errMsg}, ts-compiler: ${fbMsg}`);
+        return [];
+      }
+    }
     return [];
   }
 }
@@ -326249,8 +326454,9 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
     const maxResults = input.output.max_results ?? 100;
     const maxTokens = input.output.max_tokens ?? Infinity;
     const groupBy = input.output.group_by ?? "none";
-    const includeSignatures = input.output.mode === "signatures" || input.output.mode === "full";
-    const includeFull = input.output.mode === "full";
+    const outputFormat = input.output.mode ?? input.output.format ?? "locations";
+    const includeSignatures = outputFormat === "signatures" || outputFormat === "full";
+    const includeFull = outputFormat === "full";
     let files;
     if (input.mode === "document") {
       files = input.files.map((f) => path15.isAbsolute(f) ? f : path15.join(workDir, f));
@@ -326313,7 +326519,7 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
       files_searched: filesSearched
     };
     let data;
-    switch (input.output.mode) {
+    switch (outputFormat) {
       case "count_only":
         data = {
           summary,
@@ -327212,9 +327418,10 @@ __name(estimateTokens5, "estimateTokens");
 function paginateByTokenBudget(results, tokenBudget, requestedPage) {
   const costsPerFile = results.map((r, i2) => {
     const { image_base64: _img, ...costTarget } = r;
+    const cost = r.size_bytes !== void 0 && r.size_bytes > 0 && r.status === "unchanged" ? Math.ceil(r.size_bytes / 4) : estimateTokens5(JSON.stringify(costTarget));
     return {
       index: i2,
-      cost: estimateTokens5(JSON.stringify(costTarget))
+      cost
     };
   });
   costsPerFile.forEach(({ index, cost }) => {
@@ -327261,7 +327468,7 @@ function paginateByTokenBudget(results, tokenBudget, requestedPage) {
   return { paginatedResults, paginationMeta };
 }
 __name(paginateByTokenBudget, "paginateByTokenBudget");
-function tsKindToSymbolKind(kind) {
+function tsKindToSymbolKind2(kind) {
   switch (kind) {
     case ts2.SyntaxKind.FunctionDeclaration:
     case ts2.SyntaxKind.FunctionExpression:
@@ -327290,8 +327497,8 @@ function tsKindToSymbolKind(kind) {
       return null;
   }
 }
-__name(tsKindToSymbolKind, "tsKindToSymbolKind");
-function getNodeName(node) {
+__name(tsKindToSymbolKind2, "tsKindToSymbolKind");
+function getNodeName2(node) {
   if ("name" in node) {
     const nameNode = node.name;
     if (nameNode && ts2.isIdentifier(nameNode)) {
@@ -327300,13 +327507,13 @@ function getNodeName(node) {
   }
   return null;
 }
-__name(getNodeName, "getNodeName");
-function isExported2(node) {
+__name(getNodeName2, "getNodeName");
+function isExported3(node) {
   const modifiers = ts2.canHaveModifiers(node) ? ts2.getModifiers(node) : void 0;
   return modifiers?.some((m) => m.kind === ts2.SyntaxKind.ExportKeyword) ?? false;
 }
-__name(isExported2, "isExported");
-function getSignature(node, sourceFile) {
+__name(isExported3, "isExported");
+function getSignature2(node, sourceFile) {
   const start2 = node.getStart(sourceFile);
   const end = node.getEnd();
   let text = sourceFile.text.slice(start2, end);
@@ -327322,13 +327529,13 @@ function getSignature(node, sourceFile) {
   }
   return text;
 }
-__name(getSignature, "getSignature");
-function extractSymbols(sourceFile, symbolFilter, includeSignatures = false) {
+__name(getSignature2, "getSignature");
+function extractSymbols2(sourceFile, symbolFilter, includeSignatures = false) {
   const symbols = [];
   function visit(node, container) {
-    const kind = tsKindToSymbolKind(node.kind);
+    const kind = tsKindToSymbolKind2(node.kind);
     if (kind !== null) {
-      const name2 = getNodeName(node);
+      const name2 = getNodeName2(node);
       if (name2) {
         if (!symbolFilter || symbolFilter.includes(kind)) {
           const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
@@ -327337,13 +327544,13 @@ function extractSymbols(sourceFile, symbolFilter, includeSignatures = false) {
             kind,
             line: line + 1,
             column: character + 1,
-            exported: isExported2(node)
+            exported: isExported3(node)
           };
           if (container) {
             symbol2.container = container;
           }
           if (includeSignatures) {
-            symbol2.signature = getSignature(node, sourceFile);
+            symbol2.signature = getSignature2(node, sourceFile);
           }
           symbols.push(symbol2);
         }
@@ -327359,14 +327566,14 @@ function extractSymbols(sourceFile, symbolFilter, includeSignatures = false) {
   visit(sourceFile);
   return symbols;
 }
-__name(extractSymbols, "extractSymbols");
+__name(extractSymbols2, "extractSymbols");
 function extractOutline(sourceFile) {
   const outline = [];
   function visit(node) {
-    const kind = tsKindToSymbolKind(node.kind);
+    const kind = tsKindToSymbolKind2(node.kind);
     if (!kind)
       return null;
-    const name2 = getNodeName(node);
+    const name2 = getNodeName2(node);
     if (!name2)
       return null;
     const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
@@ -327402,14 +327609,14 @@ function extractAst(sourceFile) {
     const result = {
       kind: ts2.SyntaxKind[node.kind]
     };
-    const name2 = getNodeName(node);
+    const name2 = getNodeName2(node);
     if (name2)
       result.name = name2;
     const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
     result.line = line + 1;
     const children2 = [];
     ts2.forEachChild(node, (child) => {
-      const childKind = tsKindToSymbolKind(child.kind);
+      const childKind = tsKindToSymbolKind2(child.kind);
       if (childKind || child.kind === ts2.SyntaxKind.Block) {
         children2.push(simplifyNode(child));
       }
@@ -327701,7 +327908,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
                 filePath.endsWith(".tsx") || filePath.endsWith(".jsx") ? ts2.ScriptKind.TSX : ts2.ScriptKind.TS
               );
               const includeSignatures = output.mode === "verbose";
-              result.symbols = extractSymbols(sourceFile, symbolFilter, includeSignatures);
+              result.symbols = extractSymbols2(sourceFile, symbolFilter, includeSignatures);
             } else {
               result.error = `Symbol extraction failed: ${error2.message}`;
             }

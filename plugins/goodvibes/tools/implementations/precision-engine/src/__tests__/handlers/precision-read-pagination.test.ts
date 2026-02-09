@@ -635,5 +635,58 @@ describe('precision_read pagination', () => {
       
       expect(collectedFiles.sort()).toEqual(totalFiles.sort());
     });
+
+    it('should correctly estimate tokens for cached results using size_bytes', async () => {
+      // Create files with known sizes
+      await createTestFiles({
+        'cached1.ts': 'x'.repeat(2000), // 2000 bytes -> ~500 tokens
+        'cached2.ts': 'y'.repeat(3000), // 3000 bytes -> ~750 tokens
+        'cached3.ts': 'z'.repeat(2000), // 2000 bytes -> ~500 tokens
+      });
+
+      // First read to populate cache
+      await handlePrecisionRead({
+        files: ['cached1.ts', 'cached2.ts', 'cached3.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+
+      // Second read with token budget - should use cached size_bytes for cost estimation
+      const result = await handlePrecisionRead({
+        files: ['cached1.ts', 'cached2.ts', 'cached3.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 600, // Small budget - should fit only 1 file per page
+        page: 1,
+      });
+
+      const page1Parsed = expectSuccess(result);
+      const pagination = page1Parsed.data.summary.pagination;
+      
+      // Should have multiple pages since each file is ~500-750 tokens
+      expect(pagination.total_pages).toBeGreaterThan(1);
+      
+      // Page 1 should have exactly 1 file (cached1.ts - 500 tokens)
+      const page1Files = Object.keys(page1Parsed.data.files);
+      expect(page1Files.length).toBe(1);
+      expect(page1Files[0]).toMatch(/cached1\.ts/);
+      
+      // Page 2 should have different file(s)
+      const page2Result = await handlePrecisionRead({
+        files: ['cached1.ts', 'cached2.ts', 'cached3.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        token_budget: 600,
+        page: 2,
+      });
+      
+      const page2Parsed = expectSuccess(page2Result);
+      const page2Files = Object.keys(page2Parsed.data.files);
+      expect(page2Files.length).toBeGreaterThan(0);
+      
+      // Page 2 files should be different from page 1
+      expect(page2Files).not.toContain(page1Files[0]);
+      expect(page2Files[0]).toMatch(/cached[23]\.ts/);
+    });
   });
 });

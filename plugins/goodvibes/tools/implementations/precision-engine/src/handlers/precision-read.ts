@@ -414,9 +414,16 @@ function paginateByTokenBudget(
   const costsPerFile: { index: number; cost: number }[] = results.map((r, i) => {
     // Strip image_base64 before cost calculation to avoid inflating token cost
     const { image_base64: _img, ...costTarget } = r;
+    
+    // For cached/unchanged results, use size_bytes for realistic token estimate
+    // instead of stringified metadata which is much smaller than actual content
+    const cost = r.size_bytes !== undefined && r.size_bytes > 0 && r.status === 'unchanged'
+      ? Math.ceil(r.size_bytes / 4)  // ~4 bytes per token
+      : estimateTokens(JSON.stringify(costTarget));
+    
     return {
       index: i,
-      cost: estimateTokens(JSON.stringify(costTarget)),
+      cost,
     };
   });
   

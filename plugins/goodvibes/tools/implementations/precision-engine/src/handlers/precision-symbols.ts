@@ -32,7 +32,8 @@ type SymbolOutputMode = 'count_only' | 'names_only' | 'locations' | 'signatures'
 type GroupBy = 'file' | 'kind' | 'none';
 
 interface SymbolOutput {
-  mode: SymbolOutputMode;
+  mode?: SymbolOutputMode;
+  format?: SymbolOutputMode;  // MCP schema-aligned alias
   max_results?: number;
   group_by?: GroupBy;
   max_tokens?: number;
@@ -351,13 +352,19 @@ async function processFile(
   const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(workDir, filePath);
   const relativePath = path.relative(workDir, absolutePath);
 
+  // Read file content once for both tree-sitter and potential TS compiler fallback
+  let content: string;
+  try {
+    content = await fs.readFile(absolutePath, 'utf-8');
+  } catch {
+    return [];
+  }
+
   try {
     // Check if language is supported by tree-sitter
     if (!isLanguageSupported(absolutePath)) {
       return [];
     }
-
-    const content = await fs.readFile(absolutePath, 'utf-8');
     
     // Use tree-sitter for multi-language parsing
     const tree = await treeSitterCore.parse(content, absolutePath);
@@ -428,7 +435,29 @@ async function processFile(
     }
     
     return symbols;
-  } catch {
+  } catch (error) {
+    // S1a fix: Tree-sitter failed, try TypeScript compiler as fallback for TS/JS files
+    const errMsg = error instanceof Error ? error.message : String(error);
+    if (/\.(ts|tsx|js|jsx)$/.test(absolutePath)) {
+      try {
+        const sourceFile = ts.createSourceFile(
+          absolutePath,
+          content,
+          ts.ScriptTarget.Latest,
+          true,
+          /\.tsx$|\.jsx$/.test(absolutePath) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+        );
+        
+        return extractSymbols(sourceFile, relativePath, options);
+      } catch (fallbackError) {
+        const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        // Both tree-sitter and TS compiler failed - log for debugging
+        console.error(`[precision-symbols] Both parsers failed for ${absolutePath}: tree-sitter: ${errMsg}, ts-compiler: ${fbMsg}`);
+        return [];
+      }
+    }
+    
+    // Non-TS/JS file or both parsers failed
     return [];
   }
 }
@@ -460,8 +489,10 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
     const maxTokens = input.output.max_tokens ?? Infinity;
     const groupBy = input.output.group_by ?? 'none';
 
-    const includeSignatures = input.output.mode === 'signatures' || input.output.mode === 'full';
-    const includeFull = input.output.mode === 'full';
+    // S1b fix: Support both 'mode' and 'format' for backwards compatibility
+    const outputFormat = input.output.mode ?? input.output.format ?? 'locations';
+    const includeSignatures = outputFormat === 'signatures' || outputFormat === 'full';
+    const includeFull = outputFormat === 'full';
 
     // Get files to process
     let files: string[];
@@ -536,7 +567,7 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
 
     // Build output based on mode
     let data: unknown;
-    switch (input.output.mode) {
+    switch (outputFormat) {
       case 'count_only':
         data = {
           summary,

@@ -503,4 +503,67 @@ describe('precision_glob handler', () => {
       expect(parsed.data.files.length).toBeLessThanOrEqual(5);
     });
   });
+
+  describe('output format alias', () => {
+    beforeEach(async () => {
+      await createTestFiles({
+        'file1.ts': 'content 1',
+        'file2.ts': 'content 2',
+        'file3.ts': 'content 3',
+      });
+    });
+
+    it('should accept format: "count_only" (returns count, not file paths)', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { format: 'count_only' } as any,
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.summary).toBeDefined();
+      expect(parsed.data.summary.total_files).toBeGreaterThan(0);
+      expect(parsed.data.files).toBeUndefined(); // count_only does not return file paths
+    });
+
+    it('should accept format: "with_stats" (returns files with stats)', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { format: 'with_stats' } as any,
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files).toBeInstanceOf(Array);
+      expect(parsed.data.files[0]).toHaveProperty('path');
+      expect(parsed.data.files[0]).toHaveProperty('size');
+      expect(parsed.data.files[0]).toHaveProperty('modified');
+    });
+
+    it('should accept format: "with_preview" (returns files with preview lines)', async () => {
+      await createTestFile('preview-alias.ts', 'line 1\nline 2\nline 3\nline 4\nline 5');
+
+      const result = await handlePrecisionGlob({
+        patterns: ['preview-alias.ts'],
+        output: { format: 'with_preview', preview_lines: 3 } as any,
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files).toBeInstanceOf(Array);
+      expect(parsed.data.files[0]).toHaveProperty('preview');
+      expect(parsed.data.files[0].preview).toHaveLength(3);
+    });
+
+    it('should prefer mode over format when both are provided', async () => {
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { mode: 'paths_only', format: 'with_stats' } as any,
+      });
+
+      const parsed = expectSuccess(result);
+      // mode: 'paths_only' should win, so files should be strings, not objects with stats
+      expect(parsed.data.files).toBeInstanceOf(Array);
+      expect(typeof parsed.data.files[0]).toBe('string');
+      // Should NOT have stats properties if paths_only is used
+      expect(parsed.data.files[0]).not.toHaveProperty('size');
+    });
+  });
 });
