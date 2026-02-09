@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The precision engine provides **11 tools** that directly compete with or extend **7 native tools** (Read, Write, Edit, Bash, Glob, Grep, NotebookEdit). Additionally, it introduces **4 tools with no native equivalent** (precision_symbols, discover, precision_config, precision_fetch as a standalone).
+The precision engine provides **11 tools** that directly compete with or extend **7 native tools** (Read, Write, Edit, Bash, Glob, Grep, NotebookEdit). Additionally, it introduces **3 tools with no native equivalent** (precision_symbols, discover, precision_config). precision_fetch serves as a full HTTP client that significantly extends beyond native WebFetch's read-only AI-prompt model.
 
 The core differentiator is **token efficiency** — every precision tool offers granular verbosity control, batch operations, and output capping that the native tools lack entirely. The native tools return full output every time with no way to control response size.
 
@@ -63,11 +63,11 @@ The core differentiator is **token efficiency** — every precision tool offers 
 | **Rollback on failure** | No | Yes (automatic with backup tracking) | Precision |
 | **Template engines** | No | Yes (Handlebars, EJS) | Precision |
 | **Verbosity control** | None | 4 levels: count_only, minimal, with_preview, verbose | Precision |
-| **Read-before-write enforcement** | Yes (must Read first) | No requirement | Precision (fewer round trips) |
+| **File safety model** | Read-before-write gate (must Read before Write/Edit) | 7-layer safety: OCC version control, SHA256 content hashing, atomic transactions with rollback, git-aware timestamped backups, pre/post validation hooks, dry run preview, real-time conflict detection | Precision (categorically safer — see Error Handling & Safety) |
 | **Backup creation** | No | Yes (backup mode with timestamp) | Precision |
 | **Token cost tracking** | No | Yes | Precision |
 
-**Verdict: precision_write is a superset of Write.** Native Write is minimal — overwrite-only, no batching, no safety modes. Precision adds batch writes, transactions, templates, dry run, and backup modes.
+**Verdict: precision_write is a superset of Write.** Native Write is minimal — overwrite-only, no batching, no safety modes beyond a read-before-write gate. Precision replaces that single gate with layered safety: OCC version tracking with conflict detection, git-aware timestamped backups, atomic transactions with rollback, pre/post validation hooks, and dry run preview. Combined with batch writes and templates, it's categorically more capable and safer.
 
 ---
 
@@ -249,7 +249,7 @@ No native equivalent exists. The closest is the `LSP` tool, but:
 | **Grouping** | No | Yes (by file, by kind) |
 | **Availability** | Requires running LSP servers | Always available (tree-sitter bundled) |
 
-**Assessment:** precision_symbols provides self-contained, always-available symbol intelligence without requiring external LSP servers. LSP offers go-to-definition and find-references which precision_symbols does not. They're complementary.
+**Assessment:** precision_symbols provides self-contained, always-available symbol intelligence without requiring external LSP servers. Go-to-definition is covered by workspace mode queries (returns file, line, column, signature, documentation). Find-references is covered by precision_grep with `relationships: true` (traces imports/exports/re-exports across the codebase). LSP's remaining unique capability is hover info (rich interactive type information).
 
 ---
 
@@ -323,7 +323,7 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 |---------|-------------|------------------|
 | **Transaction support** | No | Yes (atomic/partial with rollback) |
 | **Dry run** | No | Yes (edit, write) |
-| **Conflict detection** | Read-before-write enforcement | Cache-based modification tracking |
+| **Conflict detection** | Read-before-write gate only (no concurrent modification detection, no version tracking, no rollback) | OCC version control + SHA256 hashing detects external changes; reports who modified, when, and diff since your last read |
 | **Backup creation** | No | Yes (timestamped backups) |
 | **Validation hooks** | No | Yes (typecheck, lint, test, build) |
 | **Retry engine** | No | Yes (exec: configurable backoff) |
@@ -337,11 +337,8 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 |-------------------|--------------------|
 | **Bash sandbox execution** (platform-level process isolation) | Different approach — precision_config sandbox_mode restricts all tool paths to project root via validateBasePath() |
 | **AI-powered web analysis** (WebFetch prompt) | Not implemented — extraction modes only |
-| **LSP go-to-definition** | Implemented via precision_symbols workspace mode — returns file, line, column, signature, documentation |
-| **LSP find-references** | Implemented via precision_grep relationships param — findRelatedFiles() traces imports/exports/re-exports across codebase |
 | **Simulated sed edits** (Bash) | Not needed — precision_edit handles this |
-| **Cell ID targeting** (NotebookEdit) | Now implemented — cell_id with metadata.id fallback, auto-ID generation for nbformat 4.5+, bypasses indexOffset for stable batch targeting |
-| **Read-before-write enforcement** (Write/Edit) | Not enforced (relies on cache instead) |
+| **File mutation safety** (Write/Edit) | Native uses read-before-write gate. Replaced in precision by superior layered safety: OCC version control with conflict detection, SHA256 content hashing, atomic transactions with rollback, git-aware timestamped backups, pre/post validation hooks (typecheck/lint/test/build), and dry run preview. See Error Handling & Safety section. |
 | **Browser/computer use tools** (18 tools) | Out of scope |
 | **Agent/task management** (7 tools) | Out of scope |
 | **Planning tools** (2 tools) | Out of scope |
@@ -352,7 +349,7 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 
 ## Feature Gap Analysis
 
-### Precision Engine Advantages (features native lacks entirely)
+### Precision Engine Advantages (features native lacks or where precision significantly exceeds native)
 
 1. **Batch everything** — Every precision tool accepts arrays. Native tools are always 1-at-a-time.
 2. **Verbosity control** — 4-6 levels per tool. Native is always maximum verbosity.
@@ -383,10 +380,7 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 2. **AI-powered web analysis** — Send a natural language prompt, get intelligent extraction.
 3. **LSP hover info** — Rich type information on hover (precision_symbols provides signatures and docs but not the same interactive hover experience).
 4. **Browser automation** — 18 tools for full browser control (out of scope for precision).
-~~5. **Cell ID targeting** — Now implemented in precision_notebook with additional features: metadata.id fallback, auto-generation for nbformat 4.5+, and stable targeting during batch operations.~~
-~~6. **Image detection in command output** — Incorrectly attributed to native Bash. Neither tool detects images in command output. Native image handling is limited to the Read tool (5 formats, extension-only). Precision_read supports 10 formats with magic byte validation — a strict superset.~~
-
-**Effective native-only advantages: 4** (items 1-4 above). Items 5-6 have been debunked.
+**Effective native-only advantages: 4** (items 1-4 above).
 
 ---
 
@@ -426,9 +420,9 @@ The precision engine is a **comprehensive superset** of native file I/O, search,
 
 - **Platform-level process sandbox** (Bash isolates at OS level; precision uses path-level sandboxing)
 - **AI-powered web content analysis** (WebFetch's prompt-based extraction has no precision equivalent)
-- **LSP hover info** (precision_symbols provides signatures/docs but not interactive hover)
+- **LSP hover info** (precision_symbols provides signatures/docs but not the same interactive hover experience)
 
-Go-to-definition and find-references — traditionally LSP-only features — are covered by precision_symbols (workspace query → definition location) and precision_grep with `relationships: true` (traces imports/exports/re-exports across the codebase).
+Go-to-definition and find-references — traditionally LSP-only features — are fully covered by precision_symbols (workspace query → definition location with file, line, column, signature, docs) and precision_grep with `relationships: true` (traces imports/exports/re-exports). Read-before-write — often cited as a native safety feature — is replaced by a categorically superior 7-layer safety model in precision: OCC version control, SHA256 content hashing, atomic transactions with rollback, git-aware timestamped backups, pre/post validation hooks, dry run preview, and real-time conflict detection.
 
 The core value proposition is **token efficiency through control** — verbosity modes, batch operations, caching, and token budgets that native tools simply don't offer. In high-volume agent workflows, this translates directly to lower cost, fewer round trips, and faster completion.
 
