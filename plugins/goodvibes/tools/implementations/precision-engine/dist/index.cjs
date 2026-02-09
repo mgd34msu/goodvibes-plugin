@@ -12505,7 +12505,7 @@ var require_pattern2 = __commonJS({
       const absolute = [];
       const relative10 = [];
       for (const pattern of patterns2) {
-        if (isAbsolute8(pattern)) {
+        if (isAbsolute9(pattern)) {
           absolute.push(pattern);
         } else {
           relative10.push(pattern);
@@ -12515,11 +12515,11 @@ var require_pattern2 = __commonJS({
     }
     __name(partitionAbsoluteAndRelative, "partitionAbsoluteAndRelative");
     exports2.partitionAbsoluteAndRelative = partitionAbsoluteAndRelative;
-    function isAbsolute8(pattern) {
+    function isAbsolute9(pattern) {
       return path20.isAbsolute(pattern);
     }
-    __name(isAbsolute8, "isAbsolute");
-    exports2.isAbsolute = isAbsolute8;
+    __name(isAbsolute9, "isAbsolute");
+    exports2.isAbsolute = isAbsolute9;
   }
 });
 
@@ -326102,10 +326102,10 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
         3e4
       );
       const matchingSet = new Set(matchingFiles.map((f) => {
-        return path14.resolve(workDir, f);
+        return path14.isAbsolute(f) ? f : path14.resolve(workDir, f);
       }));
       files = files.filter((f) => {
-        const normalizedPath = path14.resolve(workDir, f.path);
+        const normalizedPath = path14.isAbsolute(f.path) ? f.path : path14.resolve(workDir, f.path);
         return matchingSet.has(normalizedPath);
       });
     }

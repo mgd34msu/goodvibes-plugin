@@ -29,7 +29,7 @@ describe('precision-grep bug fixes', () => {
       queries: [{
         id: 'bug3-test',
         pattern: 'export',
-        glob: 'test-bugs-unit/subdir/**/*.ts'
+        glob: `${TEST_DIR}/subdir/**/*.ts`
       }],
       output: {
         mode: 'files_only'
@@ -40,11 +40,13 @@ describe('precision-grep bug fixes', () => {
       console.error('Bug 3 test error:', result.content[0].text);
     }
     expect(result.isError).toBe(false);
-    const data = JSON.parse(result.content[0].text);
-    expect(data.queries['bug3-test'].file_count).toBeGreaterThan(0);
-    expect(data.queries['bug3-test'].files).toBeDefined();
-    expect(data.queries['bug3-test'].files.length).toBeGreaterThan(0);
-    expect(data.queries['bug3-test'].files[0].file).toContain('sample.ts');
+    const response = JSON.parse(result.content[0].text);
+    expect(response.success).toBe(true);
+    const queries = response.data.queries;
+    expect(queries['bug3-test'].file_count).toBeGreaterThan(0);
+    expect(queries['bug3-test'].files).toBeDefined();
+    expect(queries['bug3-test'].files.length).toBeGreaterThan(0);
+    expect(queries['bug3-test'].files[0].file).toContain('sample.ts');
   });
 
   it('Bug 11: path parameter should accept file paths, not just directories', async () => {
@@ -52,7 +54,7 @@ describe('precision-grep bug fixes', () => {
       queries: [{
         id: 'bug11-test',
         pattern: 'CONSTANT',
-        path: 'test-bugs-unit/single-file.ts'
+        path: SINGLE_FILE
       }],
       output: {
         mode: 'files_only'
@@ -63,9 +65,11 @@ describe('precision-grep bug fixes', () => {
       console.error('Bug 11 test error:', result.content[0].text);
     }
     expect(result.isError).toBe(false);
-    const data = JSON.parse(result.content[0].text);
-    expect(data.queries['bug11-test'].file_count).toBe(1);
-    expect(data.queries['bug11-test'].files).toBeDefined();
-    expect(data.queries['bug11-test'].files[0].file).toContain('single-file.ts');
+    const response = JSON.parse(result.content[0].text);
+    expect(response.success).toBe(true);
+    const queries = response.data.queries;
+    expect(queries['bug11-test'].file_count).toBe(1);
+    expect(queries['bug11-test'].files).toBeDefined();
+    expect(queries['bug11-test'].files[0].file).toContain('single-file.ts');
   });
 });
