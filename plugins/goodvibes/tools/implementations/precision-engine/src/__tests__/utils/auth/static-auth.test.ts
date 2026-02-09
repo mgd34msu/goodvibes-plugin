@@ -34,6 +34,13 @@ describe('static-auth', () => {
       expect(result).toBe(false);
       expect(headers['Authorization']).toBeUndefined();
     });
+
+    it('should reject whitespace-only token', () => {
+      const headers: Record<string, string> = {};
+      const result = applyBearerAuth(headers, '   ');
+      expect(result).toBe(false);
+      expect(headers['Authorization']).toBeUndefined();
+    });
   });
 
   describe('applyBasicAuth', () => {
@@ -41,7 +48,7 @@ describe('static-auth', () => {
       const headers: Record<string, string> = {};
       const result = applyBasicAuth(headers, 'admin', 'secret');
       expect(result).toBe(true);
-      const expected = 'Basic ' + Buffer.from('admin:secret').toString('base64');
+      const expected = 'Basic ' + Buffer.from('admin:secret', 'utf-8').toString('base64');
       expect(headers['Authorization']).toBe(expected);
     });
 
@@ -49,6 +56,19 @@ describe('static-auth', () => {
       const headers: Record<string, string> = {};
       const result = applyBasicAuth(headers, { $env: 'NOPE_12345' }, 'pass');
       expect(result).toBe(false);
+    });
+
+    it('should return false if password missing', () => {
+      const headers: Record<string, string> = {};
+      const result = applyBasicAuth(headers, 'user', { $env: 'NOPE_12345' });
+      expect(result).toBe(false);
+    });
+
+    it('should reject whitespace-only credentials', () => {
+      const headers: Record<string, string> = {};
+      const result = applyBasicAuth(headers, 'user', '  \t  ');
+      expect(result).toBe(false);
+      expect(headers['Authorization']).toBeUndefined();
     });
   });
 
@@ -58,6 +78,25 @@ describe('static-auth', () => {
       const result = applyApiKeyAuth(headers, 'X-API-Key', 'key-123');
       expect(result).toBe(true);
       expect(headers['X-API-Key']).toBe('key-123');
+    });
+
+    it('should resolve env ref', () => {
+      process.env.TEST_API_KEY = 'env-key-456';
+      try {
+        const headers: Record<string, string> = {};
+        const result = applyApiKeyAuth(headers, 'X-API-Key', { $env: 'TEST_API_KEY' });
+        expect(result).toBe(true);
+        expect(headers['X-API-Key']).toBe('env-key-456');
+      } finally {
+        delete process.env.TEST_API_KEY;
+      }
+    });
+
+    it('should reject whitespace-only key', () => {
+      const headers: Record<string, string> = {};
+      const result = applyApiKeyAuth(headers, 'X-API-Key', '\t\t');
+      expect(result).toBe(false);
+      expect(headers['X-API-Key']).toBeUndefined();
     });
   });
 
@@ -83,6 +122,42 @@ describe('static-auth', () => {
       expect(headers['X-Good']).toBe('value');
       expect(headers['X-Bad']).toBeUndefined();
     });
+
+    it('should return false when all headers are unresolvable', () => {
+      const headers: Record<string, string> = {};
+      const result = applyCustomHeaders(headers, {
+        'X-Bad-1': { $env: 'NONEXISTENT_1' },
+        'X-Bad-2': { $env: 'NONEXISTENT_2' },
+      });
+      expect(result).toBe(false);
+      expect(Object.keys(headers).length).toBe(0);
+    });
+
+    it('should return false for empty headers object', () => {
+      const headers: Record<string, string> = {};
+      const result = applyCustomHeaders(headers, {});
+      expect(result).toBe(false);
+    });
+
+    it('should reject whitespace-only header values', () => {
+      const headers: Record<string, string> = {};
+      const result = applyCustomHeaders(headers, {
+        'X-Good': 'value',
+        'X-Whitespace': '   ',
+      });
+      expect(result).toBe(true);
+      expect(headers['X-Good']).toBe('value');
+      expect(headers['X-Whitespace']).toBeUndefined();
+    });
+
+    it('should override existing Authorization header', () => {
+      const headers: Record<string, string> = { Authorization: 'Bearer old-token' };
+      const result = applyCustomHeaders(headers, {
+        Authorization: 'Bearer new-token',
+      });
+      expect(result).toBe(true);
+      expect(headers['Authorization']).toBe('Bearer new-token');
+    });
   });
 
   describe('applyStaticAuth', () => {
@@ -105,6 +180,16 @@ describe('static-auth', () => {
       const result = applyStaticAuth(headers, { type: 'api-key', header: 'X-Key', key: 'k' });
       expect(result).toBe(true);
       expect(headers['X-Key']).toBe('k');
+    });
+
+    it('should route custom-headers type', () => {
+      const headers: Record<string, string> = {};
+      const result = applyStaticAuth(headers, {
+        type: 'custom-headers',
+        headers: { 'X-Custom': 'value' },
+      });
+      expect(result).toBe(true);
+      expect(headers['X-Custom']).toBe('value');
     });
 
     it('should return true for none type', () => {

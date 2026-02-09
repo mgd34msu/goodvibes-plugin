@@ -21,3 +21,4 @@ export * from './secrets-store.js';
 export * from './service-registry.js';
 export * from './service-resolver.js';
 export * from './cookie-jar.js';
+export * from './auth/index.js';
