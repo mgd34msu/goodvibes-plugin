@@ -7,10 +7,17 @@
 const shownWarnings = new Set<string>();
 
 /**
- * Log a deprecation warning for a parameter, only once per session
- * @param oldName - The deprecated parameter name
- * @param newName - The new parameter name to use
- * @param toolName - The tool where this parameter is used
+ * Log a deprecation warning for a parameter, only once per session.
+ * Centralized deprecation warning to avoid spam and provide consistent messaging.
+ * 
+ * @param oldName - The deprecated parameter name (e.g., "file", "max_files")
+ * @param newName - The new parameter name to use instead (e.g., "path", "max_results")
+ * @param toolName - The tool where this parameter is used (e.g., "precision_edit", "precision_grep")
+ * @returns void
+ * 
+ * @example
+ * warnDeprecatedParam('file', 'path', 'precision_edit');
+ * // Logs: [precision_edit] Parameter "file" is deprecated. Use "path" instead.
  */
 export function warnDeprecatedParam(oldName: string, newName: string, toolName: string): void {
   const key = `${toolName}:${oldName}`;

@@ -44,6 +44,7 @@ import { formatMissingParamError, formatInvalidValueError, createErrorResult } f
 import { validateFilePath } from '../utils/path-validation.js';
 import { levenshteinDistance, calculateSimilarity } from '../utils/fuzzy.js';
 import { FileStateCache } from '../state/file-cache.js';
+import { warnDeprecatedParam } from '../utils/deprecation.js';
 
 const execAsync = promisify(exec);
 
@@ -957,7 +958,7 @@ async function applyEdit(
 
   if (matches.length === 0) {
     const closestMatches = findClosestMatch(content, findValue);
-    const errorDetails: any = {
+    const errorDetails: Record<string, unknown> = {
       message: 'Pattern not found',
       pattern_length: findValue.length,
       file_length: content.length,
@@ -1065,7 +1066,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
 
       // Warn if deprecated file is used
       if (edit.file && !edit.path) {
-        console.warn(`[precision_edit] DEPRECATION WARNING: edits[${i}].file is deprecated. Use edits[${i}].path instead.`);
+        warnDeprecatedParam(`edits[${i}].file`, `edits[${i}].path`, 'precision_edit');
       }
 
       // Check for find value via any supported source

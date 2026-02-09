@@ -8,25 +8,54 @@ import { openSync, closeSync, readSync, fstatSync, existsSync, mkdirSync, create
 import * as path from 'path';
 import { getExecMaxBackground, getExecOverflowDir } from '../runtime-config.js';
 
+// Constants for process management
+const SIGTERM_TIMEOUT_MS = 5000;      // Time to wait for graceful SIGTERM exit
+const POLL_INTERVAL_MS = 100;          // Polling interval for process status checks
+const SIGKILL_EXIT_CODE = 137;         // Exit code for SIGKILL (128 + 9)
+const SIGNAL_EXIT_CODE_BASE = 128;     // Base for signal exit codes (128 + signal number)
+const DEFAULT_SIGNAL_NUMBER = 9;       // Default signal number (SIGKILL) when not found
+
+/**
+ * Background process metadata tracked by ProcessManager.
+ */
 export interface BackgroundProcess {
-  id: string;                    // "bg-1", "bg-2", etc.
-  pid: number;                   // OS process ID
-  command: string;               // The command string
-  args: string[];                // Command arguments
-  cwd: string;                   // Working directory used
-  started_at: number;            // Date.now() timestamp
+  /** Unique process identifier (e.g., "bg-1", "bg-2") */
+  id: string;
+  /** Operating system process ID */
+  pid: number;
+  /** The command string that was executed */
+  command: string;
+  /** Command arguments array */
+  args: string[];
+  /** Working directory where command was executed */
+  cwd: string;
+  /** Timestamp when process was started (Date.now()) */
+  started_at: number;
+  /** Current process status */
   status: 'running' | 'exited' | 'killed' | 'errored';
-  exit_code: number | null;      // null while running
-  log_file: string;              // Absolute path to log file
-  last_read_offset: number;      // Byte offset for bg_output "since last check"
+  /** Process exit code (null while running) */
+  exit_code: number | null;
+  /** Absolute path to log file containing stdout/stderr */
+  log_file: string;
+  /** Byte offset for incremental log reading (tracks last read position) */
+  last_read_offset: number;
 }
 
+/**
+ * Result returned when a background process is started or adopted.
+ */
 export interface BgStartResult {
+  /** Status indicator (always 'started' on success) */
   status: 'started';
+  /** Unique process identifier assigned to this process */
   process_id: string;
+  /** Operating system process ID */
   pid: number;
+  /** Full command string that was executed */
   command: string;
+  /** Absolute path to log file containing process output */
   log_file: string;
+  /** Hint message with commands for checking status, output, and stopping */
   hint: string;
 }
 
@@ -35,8 +64,13 @@ export class ProcessManager {
   private processes: Map<string, BackgroundProcess> = new Map();
   private counter: number = 1;
 
+  /** Prevent external instantiation; use getInstance(). */
   private constructor() {}
 
+  /**
+   * Get the singleton instance of ProcessManager.
+   * @returns The singleton ProcessManager instance
+   */
   static getInstance(): ProcessManager {
     if (!ProcessManager.instance) {
       ProcessManager.instance = new ProcessManager();
@@ -46,13 +80,14 @@ export class ProcessManager {
 
   /**
    * Reset the singleton instance (for testing).
+   * Destroys the current instance so a fresh one will be created on next getInstance call.
    */
   static resetInstance(): void {
     ProcessManager.instance = null;
   }
 
   /**
-   * Generate a unique background process ID.
+   * Generate a unique background process ID by incrementing internal counter.
    * @returns Next available process ID (e.g., "bg-1")
    */
   generateId(): string {
@@ -132,8 +167,8 @@ export class ProcessManager {
       const p = this.processes.get(id);
       if (p) {
         p.status = signal ? 'killed' : 'exited';
-        const signalNum = signal ? (constants.signals[signal] ?? 9) : 0;
-        p.exit_code = code ?? (signal ? 128 + signalNum : 1);
+        const signalNum = signal ? (constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER) : 0;
+        p.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
       }
     });
 
@@ -158,8 +193,12 @@ export class ProcessManager {
   }
 
   /**
-   * Spawn a detached background process.
-   * Returns a BgStartResult with process info.
+   * Spawn a detached background process with stdout/stderr redirected to a log file.
+   * Process is detached and unref'd so the parent can exit independently.
+   * @param command Command executable to run
+   * @param args Array of command arguments
+   * @param options Optional cwd and env overrides
+   * @returns BgStartResult with process info including ID, PID, and log file path
    */
   spawn(
     command: string,
@@ -179,7 +218,7 @@ export class ProcessManager {
     }
 
     // Generate process ID
-    const id = `bg-${this.counter++}`;
+    const id = this.generateId();
 
     // Create log directory if needed
     const overflowDir = getExecOverflowDir();
@@ -219,7 +258,7 @@ export class ProcessManager {
       // Store process info
       const bgProcess: BackgroundProcess = {
         id,
-        pid: child.pid!,
+        pid: child.pid,
         command,
         args,
         cwd: options.cwd || process.cwd(),
@@ -238,8 +277,8 @@ export class ProcessManager {
         if (proc) {
           proc.status = signal ? 'killed' : 'exited';
           // Properly map signal to exit code using OS constants
-          const signalNum = signal ? (constants.signals[signal] ?? 9) : 0;
-          proc.exit_code = code ?? (signal ? 128 + signalNum : 1);
+          const signalNum = signal ? (constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER) : 0;
+          proc.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
         }
       });
 
@@ -256,7 +295,7 @@ export class ProcessManager {
       return {
         status: 'started',
         process_id: id,
-        pid: child.pid!,
+        pid: child.pid,
         command: [command, ...args].join(' '),
         log_file: logFile,
         hint: `Use bg_status ${id} to check status, bg_output ${id} to read output, bg_stop ${id} to terminate.`,
@@ -271,7 +310,9 @@ export class ProcessManager {
   }
 
   /**
-   * Get status of a background process.
+   * Get status and metadata of a background process.
+   * @param id Process ID to query
+   * @returns BackgroundProcess metadata if found, undefined otherwise
    */
   getStatus(id: string): BackgroundProcess | undefined {
     return this.processes.get(id);
@@ -280,9 +321,10 @@ export class ProcessManager {
   /**
    * Read new output from the log file since last read.
    * Updates last_read_offset unless peek=true.
-   * @param id Process ID
-   * @param lines Optional limit to return only last N lines
-   * @param peek If true, don't update last_read_offset (for bg_status)
+   * @param id Process ID to read output from
+   * @param lines Optional limit to return only last N lines (undefined = all lines)
+   * @param peek If true, don't update last_read_offset (for bg_status non-destructive reads)
+   * @returns Object containing output string, completion status, bytes read, and total bytes
    */
   getOutput(id: string, lines?: number, peek = false): { output: string; complete: boolean; bytes_read: number; total_bytes: number } {
     const proc = this.processes.get(id);
@@ -336,8 +378,10 @@ export class ProcessManager {
   }
 
   /**
-   * Stop a background process.
-   * Sends SIGTERM, waits 5s, then SIGKILL if needed.
+   * Stop a background process gracefully with SIGTERM, escalating to SIGKILL if needed.
+   * Sends SIGTERM and waits up to 5 seconds, then sends SIGKILL if still running.
+   * @param id Process ID to stop
+   * @returns Object indicating whether process was stopped and reason
    */
   async stop(id: string): Promise<{ stopped: boolean; reason: string }> {
     const proc = this.processes.get(id);
@@ -359,15 +403,15 @@ export class ProcessManager {
       // Wait up to 5 seconds for graceful exit
       // Use polling approach since exit handler updates proc.status asynchronously
       const startWait = Date.now();
-      while (proc.status === 'running' && Date.now() - startWait < 5000) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      while (proc.status === 'running' && Date.now() - startWait < SIGTERM_TIMEOUT_MS) {
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       }
 
       // If still running, SIGKILL
       if (proc.status === 'running') {
         process.kill(proc.pid, 'SIGKILL');
         proc.status = 'killed';
-        proc.exit_code = 137; // 128 + 9 (SIGKILL)
+        proc.exit_code = SIGKILL_EXIT_CODE;
       }
 
       return {
@@ -389,7 +433,8 @@ export class ProcessManager {
   }
 
   /**
-   * List all background processes, sorted by started_at descending.
+   * List all background processes, sorted by started_at descending (newest first).
+   * @returns Array of BackgroundProcess metadata sorted by start time
    */
   list(): BackgroundProcess[] {
     return Array.from(this.processes.values()).sort(
@@ -398,8 +443,9 @@ export class ProcessManager {
   }
 
   /**
-   * Kill all running background processes.
-   * Used during shutdown.
+   * Kill all running background processes in parallel.
+   * Used during shutdown. Swallows errors to ensure all processes are attempted.
+   * @returns Promise that resolves when all stop attempts complete
    */
   async killAll(): Promise<void> {
     const running = Array.from(this.processes.values()).filter(
@@ -411,7 +457,8 @@ export class ProcessManager {
 
   /**
    * Reset all state (for testing).
-   * Kills all running processes before clearing.
+   * Kills all running processes before clearing maps and resetting counter.
+   * @returns Promise that resolves when reset is complete
    */
   async reset(): Promise<void> {
     await this.killAll();

@@ -2,17 +2,25 @@
  * Utility functions for precision-engine.
  */
 
+import { readFileSync } from 'fs';
+import { resolve as resolvePath } from 'path';
 import { CallToolResult, TextContent, ImageContent } from '@modelcontextprotocol/sdk/types.js';
 import { OutputMode, PrecisionResult } from '../types.js';
 import { getToolVerbosityDefault } from '../runtime-config.js';
+import { estimateTokens } from '../logging.js';
+import { formatMutualExclusivityError } from './errors.js';
+import { warnDeprecatedParam } from './deprecation.js';
 
 /**
- * Handler function type.
+ * Handler function type for precision-engine MCP tools.
+ * Takes unknown args (validated internally) and returns an MCP CallToolResult.
  */
 export type ToolHandler = (args: unknown) => Promise<CallToolResult>;
 
 /**
  * Convert a PrecisionResult to MCP CallToolResult format.
+ * @param result - The precision result to convert
+ * @returns MCP CallToolResult with JSON-serialized result
  */
 export function toCallToolResult<T>(result: PrecisionResult<T>): CallToolResult {
   const content: TextContent = {
@@ -29,6 +37,9 @@ export function toCallToolResult<T>(result: PrecisionResult<T>): CallToolResult 
 /**
  * Convert a PrecisionResult to MCP CallToolResult with additional content blocks.
  * Used when response includes image data alongside JSON metadata.
+ * @param result - The precision result to convert
+ * @param extraContent - Additional content blocks (images, etc.) to include
+ * @returns MCP CallToolResult with JSON result plus extra content blocks
  */
 export function toMixedCallToolResult<T>(
   result: PrecisionResult<T>,
@@ -44,10 +55,13 @@ export function toMixedCallToolResult<T>(
     isError: !result.success,
   };
 }
-import { estimateTokens } from '../logging.js';
 
 /**
  * Create a successful precision result.
+ * @param data - The result data payload
+ * @param outputMode - The output mode used for this result
+ * @param executionMs - Execution time in milliseconds
+ * @returns A successful PrecisionResult with metadata
  */
 export function successResult<T>(
   data: T,
@@ -70,6 +84,10 @@ export function successResult<T>(
 
 /**
  * Create an error precision result.
+ * @param error - The error message
+ * @param outputMode - The output mode used for this result
+ * @param executionMs - Execution time in milliseconds
+ * @returns A failed PrecisionResult with error message and metadata
  */
 export function errorResult(
   error: string,
@@ -88,7 +106,8 @@ export function errorResult(
 }
 
 /**
- * Standard defaults for most tools.
+ * Standard defaults for most precision tools.
+ * These apply unless overridden by tool-specific defaults or user arguments.
  */
 export const STANDARD_DEFAULTS = {
   verbosity: 'standard' as OutputMode,
@@ -97,8 +116,9 @@ export const STANDARD_DEFAULTS = {
 
 /**
  * Tool-specific defaults that override standard defaults.
+ * Keys are tool names, values are default parameters for that tool.
  */
-export const TOOL_SPECIFIC_DEFAULTS: Record<string, Partial<typeof STANDARD_DEFAULTS & { verbosity: string }>> = {
+export const TOOL_SPECIFIC_DEFAULTS: Record<string, { verbosity?: string }> = {
   discover: { verbosity: 'files_only' },
   precision_symbols: { verbosity: 'signatures' },
   precision_edit: { verbosity: 'minimal' },     // was 'with_diff' — saves 1K-30K tokens per edit
@@ -109,6 +129,7 @@ export const TOOL_SPECIFIC_DEFAULTS: Record<string, Partial<typeof STANDARD_DEFA
 
 /**
  * Apply defaults to input, with optional tool-specific overrides.
+ * @template T - The input type (must be a record)
  * @param input - The input object to apply defaults to
  * @param defaults - The defaults to apply
  * @returns Input with defaults applied (defaults do not override existing values)
@@ -127,6 +148,25 @@ export function applyDefaults<T extends Record<string, unknown>>(
  * @param toolName - Optional tool name for tool-specific defaults
  * @returns The output mode to use
  */
+
+/**
+ * Valid output modes accepted by all precision tools.
+ * Used for validating verbosity and output_mode parameters.
+ */
+const VALID_OUTPUT_MODES = new Set<OutputMode>([
+  'count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose',
+  'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context', 'names_only'
+]);
+
+/**
+ * Valid output format modes for nested output.format parameter.
+ * Subset of VALID_OUTPUT_MODES for SPEC-v2 structured output.
+ */
+const VALID_FORMAT_MODES = new Set<OutputMode>([
+  'count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'
+]);
+
+
 export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
   // Check for new 'verbosity' parameter first
   if (
@@ -136,7 +176,7 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
     typeof (args as Record<string, unknown>).verbosity === 'string'
   ) {
     const mode = (args as Record<string, unknown>).verbosity as string;
-    if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose', 'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context'].includes(mode)) {
+    if (VALID_OUTPUT_MODES.has(mode as OutputMode)) {
       return mode as OutputMode;
     }
   }
@@ -148,9 +188,9 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
     'output_mode' in args &&
     typeof (args as Record<string, unknown>).output_mode === 'string'
   ) {
-    console.warn('[DEPRECATED] "output_mode" parameter is deprecated. Use "verbosity" instead.');
+    warnDeprecatedParam('output_mode', 'verbosity', toolName ?? 'unknown');
     const mode = (args as Record<string, unknown>).output_mode as string;
-    if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose', 'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context'].includes(mode)) {
+    if (VALID_OUTPUT_MODES.has(mode as OutputMode)) {
       return mode as OutputMode;
     }
   }
@@ -166,14 +206,14 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
     const output = (args as Record<string, { format?: string; mode?: string }>).output;
 
     // Check for new 'format' property first
-    if (output.format && ['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(output.format)) {
+    if (output.format && VALID_FORMAT_MODES.has(output.format as OutputMode)) {
       return output.format as OutputMode;
     }
 
     // Check for deprecated 'mode' property (backward compatibility)
     if (output.mode) {
-      console.warn('[DEPRECATED] "output.mode" parameter is deprecated. Use "output.format" instead.');
-      if (['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'].includes(output.mode)) {
+      warnDeprecatedParam('output.mode', 'output.format', toolName ?? 'unknown');
+      if (VALID_FORMAT_MODES.has(output.mode as OutputMode)) {
         return output.mode as OutputMode;
       }
     }
@@ -182,7 +222,7 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
   // Check goodvibes.json per-tool verbosity default
   if (toolName) {
     const configDefault = getToolVerbosityDefault(toolName);
-    if (configDefault && ['count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose', 'paths_only', 'files_only', 'with_diff', 'signatures', 'locations', 'matches', 'context', 'names_only'].includes(configDefault)) {
+    if (configDefault && VALID_OUTPUT_MODES.has(configDefault as OutputMode)) {
       return configDefault as OutputMode;
     }
   }
@@ -198,6 +238,9 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
 
 /**
  * Normalize a file path for consistent handling.
+ * Converts backslashes to forward slashes and removes trailing slashes.
+ * @param filePath - The file path to normalize
+ * @returns Normalized file path
  */
 export function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/\/+$/, '');
@@ -205,6 +248,10 @@ export function normalizePath(filePath: string): string {
 
 /**
  * Extract lines from content with offset and limit.
+ * @param content - The content to extract lines from
+ * @param offset - Starting line index (0-based, defaults to 0)
+ * @param limit - Maximum number of lines to extract (optional)
+ * @returns Object with extracted lines, total line count, and truncation flag
  */
 export function extractLines(
   content: string,
@@ -224,19 +271,26 @@ export function extractLines(
 }
 
 /**
+ * Set of file extensions that should be treated as text files.
+ * Used by isTextFile() for fast lookup without repeated Set construction.
+ */
+const TEXT_EXTENSIONS = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.json', '.yaml', '.yml', '.toml', '.xml',
+  '.md', '.mdx', '.txt', '.rst',
+  '.html', '.css', '.scss', '.sass', '.less',
+  '.py', '.rb', '.go', '.rs', '.java', '.kt',
+  '.c', '.cpp', '.h', '.hpp', '.sh', '.sql',
+]);
+
+/**
  * Check if a file extension is a text file.
+ * @param filePath - The file path to check
+ * @returns True if the file extension indicates a text file, false otherwise
  */
 export function isTextFile(filePath: string): boolean {
   const ext = filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
-  const textExtensions = new Set([
-    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-    '.json', '.yaml', '.yml', '.toml', '.xml',
-    '.md', '.mdx', '.txt', '.rst',
-    '.html', '.css', '.scss', '.sass', '.less',
-    '.py', '.rb', '.go', '.rs', '.java', '.kt',
-    '.c', '.cpp', '.h', '.hpp', '.sh', '.sql',
-  ]);
-  return textExtensions.has(ext);
+  return TEXT_EXTENSIONS.has(ext);
 }
 
 // Export error formatting utilities
@@ -247,14 +301,18 @@ export * from './deprecation.js';
 
 // === String Field Resolution Utilities ===
 
-import { readFileSync } from 'fs';
-import { resolve as resolvePath } from 'path';
-import { formatMutualExclusivityError } from './errors.js';
-
+/**
+ * Options for resolving string fields from multiple sources (direct, base64, or file).
+ * Used by resolveStringField() to handle field value resolution.
+ */
 export interface ResolveStringFieldOptions {
+  /** Allow resolution from file path (fieldName_file parameter). */
   allowFile?: boolean;
+  /** Base directory for relative file path resolution. */
   basePath?: string;
+  /** Whether the field is required (throw if missing). */
   required?: boolean;
+  /** The base field name being resolved. */
   fieldName: string;
 }
 
@@ -265,6 +323,11 @@ export interface ResolveStringFieldOptions {
  * - File path: { fieldName_file: "/path/to/file.txt" }
  *
  * Ensures mutual exclusivity and handles all three sources.
+ * @param obj - The object containing the field
+ * @param fieldName - The base field name to resolve
+ * @param options - Resolution options (file support, base path, required flag)
+ * @returns The resolved string value
+ * @throws Error if multiple sources provided or if required field is missing
  */
 export function resolveStringField(
   obj: Record<string, unknown>,
@@ -334,6 +397,11 @@ export function resolveStringField(
 /**
  * Async version of resolveStringField for use in async contexts.
  * Currently uses sync file reading, but structured for future async file operations.
+ * @param obj - The object containing the field
+ * @param fieldName - The base field name to resolve
+ * @param options - Resolution options (file support, base path, required flag)
+ * @returns Promise resolving to the resolved string value
+ * @throws Error if multiple sources provided or if required field is missing
  */
 export async function resolveStringFieldAsync(
   obj: Record<string, unknown>,
@@ -346,7 +414,10 @@ export async function resolveStringFieldAsync(
 }
 
 /**
- * Parse a field that might be a JSON string (from Claude Code) into its actual type
+ * Parse a field that might be a JSON string (from Claude Code) into its actual type.
+ * @template T - The expected type of the parsed value
+ * @param value - The value to parse (may already be the correct type or a JSON string)
+ * @returns The parsed value or the original value if parsing fails
  */
 export function parseJsonField<T>(value: T | string): T {
   if (typeof value === 'string') {

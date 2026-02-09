@@ -4,6 +4,24 @@
 
 /**
  * Output mode controls verbosity/token usage of responses.
+ *
+ * Universal modes (all tools):
+ * - count_only: Minimal tokens, only counts/summaries
+ * - minimal: Basic info without details
+ * - standard: Normal output with key information
+ * - verbose: Full details and metadata
+ * - with_preview: Include file previews
+ * - exit_codes: Exit code only (precision_exec)
+ *
+ * Tool-specific modes:
+ * - files_only: File paths only (precision_grep, discover)
+ * - locations: File + line/column locations (precision_grep, discover)
+ * - matches: Match content with context (precision_grep)
+ * - context: Full context around matches (precision_grep)
+ * - paths_only: Just file paths (precision_glob)
+ * - with_diff: Include diff output (precision_edit)
+ * - signatures: Function signatures only (precision_symbols)
+ * - names_only: Symbol names only (precision_symbols, discover)
  */
 export type OutputMode =
   // Universal modes
@@ -42,9 +60,13 @@ export interface ValidationResult {
  * Standard result wrapper for all precision tools.
  */
 export interface PrecisionResult<T = unknown> {
+  /** Whether the operation succeeded. */
   success: boolean;
+  /** Result data payload (only present when success=true). */
   data?: T;
+  /** Error message (only present when success=false). */
   error?: string;
+  /** Metadata about the operation (output mode, token estimate, execution time). */
   meta: {
     output_mode: OutputMode;
     token_estimate: number;

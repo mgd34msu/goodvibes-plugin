@@ -27,6 +27,7 @@ import { rankResults, type RankedFile } from '../utils/grep-ranking.js';
 import { computeStats, type GrepStatsSummary } from '../utils/grep-stats.js';
 import { findRelatedFiles, type RelationshipResult } from '../utils/grep-relationships.js';
 import { SearchCache } from '../state/search-cache.js';
+import { warnDeprecatedParam } from '../utils/deprecation.js';
 
 // === Interfaces per SPEC-v2 ===
 
@@ -310,7 +311,15 @@ async function executeQuery(
   query: GrepQuery,
   output: GrepOutput,
   workDir: string
-): Promise<GrepResult> {
+): Promise<GrepResultData> {
+  // Warn about deprecated parameters
+  if (output.max_files !== undefined && output.max_results === undefined) {
+    warnDeprecatedParam('output.max_files', 'output.max_results', 'precision_grep');
+  }
+  if (output.max_matches_per_file !== undefined && output.max_per_item === undefined) {
+    warnDeprecatedParam('output.max_matches_per_file', 'output.max_per_item', 'precision_grep');
+  }
+
   // Support both new (max_results) and old (max_files) parameter names
   const maxFiles = output.max_results ?? output.max_files ?? 100;
   // Support both new (max_per_item) and old (max_matches_per_file) parameter names

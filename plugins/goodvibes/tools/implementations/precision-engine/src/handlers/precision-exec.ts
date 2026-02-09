@@ -26,6 +26,11 @@ import { validateDirectoryPath } from '../utils/path-validation.js';
 import { getExecDefaultTimeout, getExecMaxOutputLines, getExecMaxOutputChars, getExecHistoryMax, getExecMaxBackground, getExecOverflowDir } from '../runtime-config.js';
 import { commandHistory, sessionState, processManager } from '../state/index.js';
 import type { BgStartResult } from '../state/index.js';
+import { warnDeprecatedParam } from '../utils/deprecation.js';
+
+// Buffer capacity multiplier: allows overflow handler to capture full output
+// Set to 5x the normal threshold to prevent premature truncation during capture
+const OVERFLOW_BUFFER_MULTIPLIER = 5;
 
 // Destructive command patterns for safe_mode
 const DESTRUCTIVE_PATTERNS = [
@@ -72,16 +77,32 @@ function shellEscape(arg: string): string {
  * Detect cd command from command string and return new directory if found.
  * Handles: cd <path>, pushd <path>, cd ~ , cd ..
  * Matches the LAST cd/pushd in a command chain (e.g., git clone repo && cd repo)
+ * 
+ * Supported syntax:
+ * - `cd /path` - absolute path
+ * - `cd ./path` - relative path
+ * - `cd ../path` - parent directory path
+ * - `cd ~` or `cd ~/path` - home directory expansion
+ * - `pushd <path>` - push directory onto stack
+ * - Chained commands: `git clone repo && cd repo`, `command1 ; cd dir`, `command1 || cd fallback`
+ * 
+ * @param command The full command string to analyze
+ * @returns The detected directory path, or null if no cd/pushd found or unsupported syntax (e.g., `cd -`)
  */
 function detectCdFromCommand(command: string): string | null {
-  // Match the LAST cd or pushd in a command chain
-  // Handles: cd /path, cd ./path, cd ../path, cd ~, cd ~/path, pushd /path
-  // Also handles chained commands: git clone repo && cd repo
+  // Regex breakdown:
+  // (?:^|&&|;|\|\|) - Start of string OR command separator (&&, ;, ||)
+  // \s* - Optional whitespace
+  // (cd|pushd) - Capture cd or pushd command
+  // \s+ - Required whitespace
+  // ([^;&|]+) - Capture everything except command separators (the directory argument)
+  // \s*$ - Optional trailing whitespace, then end of string
   const cdMatch = command.match(/(?:^|&&|;|\|\|)\s*(cd|pushd)\s+([^;&|]+)\s*$/);
   if (cdMatch) {
     let newDir = cdMatch[2].trim();
     
-    // Filter out cd - (return to previous directory - too complex to track)
+    // Filter out `cd -` (return to previous directory)
+    // This requires tracking directory stack history, which is too complex for simple detection
     if (newDir === '-') return null;
     
     // Remove paired quotes if present
@@ -119,7 +140,7 @@ interface CommandSpec {
   args?: string[];
   cwd?: string;
   timeout_ms?: number;
-  timeout?: number;  // Legacy support
+  timeout?: number;  // DEPRECATED: Use timeout_ms instead
   env?: Record<string, string>;
   expect?: ExpectSpec;
   background?: boolean;  // Run in background (Part E)
@@ -146,7 +167,7 @@ interface PrecisionExecInput {
   commands: CommandSpec[];
   parallel?: boolean;
   fail_fast?: boolean;
-  stop_on_error?: boolean;  // Legacy support
+  stop_on_error?: boolean;  // DEPRECATED: Use fail_fast instead
   shell?: string;
   env?: Record<string, string>;
   working_dir?: string;
@@ -156,31 +177,59 @@ interface PrecisionExecInput {
   output_mode?: OutputMode;  // Legacy support
 }
 
+/**
+ * Result of executing a single command.
+ */
 interface CommandResult {
+  /** Optional command ID for tracking */
   id?: string;
+  /** The command that was executed */
   cmd: string;
+  /** Process exit code (0 = success, non-zero = error) */
   exit_code: number;
+  /** Command execution duration in milliseconds */
   duration_ms: number;
+  /** Whether all expectations were met */
   expectations_met: boolean;
+  /** List of expectation failures, if any */
   expectation_failures?: string[];
+  /** Captured stdout output */
   stdout?: string;
+  /** Captured stderr output */
   stderr?: string;
+  /** Overflow file info for stdout if output exceeded limits */
   stdout_overflow?: OverflowResult;
+  /** Overflow file info for stderr if output exceeded limits */
   stderr_overflow?: OverflowResult;
+  /** Whether output was truncated */
   truncated?: boolean;
+  /** Whether command exceeded timeout */
   timed_out?: boolean;
+  /** Human-readable interpretation of non-zero exit codes (Part D) */
   exit_interpretation?: ExitInterpretation;
+  /** Detected issue type from stderr analysis */
   detected_issue?: DetectedIssue;
-  progress?: ProgressMilestone[];  // Tier 1: inline milestones (Part F)
-  progress_file?: string;  // Tier 2: path to live log file (Part F)
+  /** Tier 1 progress milestones (Part F) */
+  progress?: ProgressMilestone[];
+  /** Tier 2 path to live log file (Part F) */
+  progress_file?: string;
+  /** Retry attempt information */
   retries?: RetryResult;
-  until_status?: 'pattern_matched' | 'timeout' | 'exited_before_match';  // Part J: pattern termination status
-  matched_line?: string;  // Part J: the line that matched the pattern
-  matched_at_ms?: number;  // Part J: time from start to match
-  background?: {  // Part J: background process info (when promoted)
+  /** Pattern termination status (Part J) */
+  until_status?: 'pattern_matched' | 'timeout' | 'exited_before_match';
+  /** The line that matched the until pattern (Part J) */
+  matched_line?: string;
+  /** Time from start to pattern match in milliseconds (Part J) */
+  matched_at_ms?: number;
+  /** Background process info when promoted (Part J) */
+  background?: {
+    /** Background process ID */
     process_id: string;
+    /** System process ID */
     pid: number;
+    /** Path to log file for background process */
     log_file: string;
+    /** Usage hint for the user */
     hint: string;
   };
 }
@@ -197,6 +246,10 @@ async function executeCommand(
   maxOutputLines?: number,
   isParallel = false
 ): Promise<CommandResult> {
+  // Warn about deprecated timeout parameter
+  if (spec.timeout !== undefined && spec.timeout_ms === undefined) {
+    warnDeprecatedParam('commands[].timeout', 'commands[].timeout_ms', 'precision_exec');
+  }
   const startTime = Date.now();
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? getExecDefaultTimeout();
   const effectiveMaxOutputLines = maxOutputLines ?? getExecMaxOutputLines();
@@ -262,8 +315,8 @@ async function executeCommand(
       }
     }
 
-    // Buffer cap: 5x the normal threshold to allow overflow handler to save full output
-    const bufferCap = maxOutputChars * 5;
+    // Buffer cap: Use multiplier to allow overflow handler to save full output
+    const bufferCap = maxOutputChars * OVERFLOW_BUFFER_MULTIPLIER;
 
     // When shell: true, we need to pass the full command as a single string to avoid
     // the deprecation warning and ensure proper command execution.
@@ -675,8 +728,11 @@ async function executeCommand(
         }
       }
 
-      // Detect cd command and update session state
-      // Skip cd detection when running in parallel to avoid race conditions
+      /**
+       * Detect cd command and update session state.
+       * Only update on successful commands (exit_code === 0) to avoid tracking failed cd attempts.
+       * Skip when running in parallel to avoid race conditions on sessionState.setCwd().
+       */
       if (exitCode === 0 && !isParallel) {
         const detectedCd = detectCdFromCommand(fullCommand);
         if (detectedCd) {
@@ -913,6 +969,10 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
     }
   }
 
+  // Warn about deprecated stop_on_error parameter
+  if (input.stop_on_error !== undefined && input.fail_fast === undefined) {
+    warnDeprecatedParam('stop_on_error', 'fail_fast', 'precision_exec');
+  }
   // Clean up old overflow files (non-blocking, fire-and-forget)
   cleanupOverflowFiles().catch(() => {});
 

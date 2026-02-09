@@ -7243,6 +7243,12 @@ var init_logging = __esm({
 });
 
 // src/runtime-config.ts
+function getValidNumber(value, defaultValue) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : defaultValue;
+}
+function getValidString(value, defaultValue) {
+  return typeof value === "string" && value.length > 0 ? value : defaultValue;
+}
 async function persistConfig(configToPersist) {
   const configPath = getConfigPath();
   const configDir = path.dirname(configPath);
@@ -7399,33 +7405,27 @@ function getBackupGitCleanSkip() {
 }
 function getExecMaxOutputChars() {
   const config2 = loadConfigSync();
-  const value = config2.exec_max_output_chars;
-  return typeof value === "number" && value > 0 ? value : 5e4;
+  return getValidNumber(config2.exec_max_output_chars, EXEC_DEFAULTS.MAX_OUTPUT_CHARS);
 }
 function getExecDefaultTimeout() {
   const config2 = loadConfigSync();
-  const value = config2.exec_default_timeout_ms;
-  return typeof value === "number" && value > 0 ? value : 12e4;
+  return getValidNumber(config2.exec_default_timeout_ms, EXEC_DEFAULTS.DEFAULT_TIMEOUT_MS);
 }
 function getExecMaxOutputLines() {
   const config2 = loadConfigSync();
-  const value = config2.exec_max_output_lines;
-  return typeof value === "number" && value > 0 ? value : 500;
+  return getValidNumber(config2.exec_max_output_lines, EXEC_DEFAULTS.MAX_OUTPUT_LINES);
 }
 function getExecOverflowDir() {
   const config2 = loadConfigSync();
-  const value = config2.exec_overflow_dir;
-  return typeof value === "string" && value.length > 0 ? value : ".goodvibes/.exec-output";
+  return getValidString(config2.exec_overflow_dir, EXEC_DEFAULTS.OVERFLOW_DIR);
 }
 function getExecMaxBackground() {
   const config2 = loadConfigSync();
-  const value = config2.exec_max_background;
-  return typeof value === "number" && value > 0 ? value : 5;
+  return getValidNumber(config2.exec_max_background, EXEC_DEFAULTS.MAX_BACKGROUND);
 }
 function getExecHistoryMax() {
   const config2 = loadConfigSync();
-  const value = config2.exec_history_max;
-  return typeof value === "number" && value > 0 ? value : 100;
+  return getValidNumber(config2.exec_history_max, EXEC_DEFAULTS.HISTORY_MAX);
 }
 async function setConfigValue(key2, value) {
   if (pendingPersist) {
@@ -7468,7 +7468,7 @@ async function setConfigValue(key2, value) {
     throw error2;
   }
 }
-var fs2, path, DEFAULT_CONFIG, cachedConfig, configForFile, pendingPersist;
+var fs2, path, DEFAULT_CONFIG, EXEC_DEFAULTS, cachedConfig, configForFile, pendingPersist;
 var init_runtime_config = __esm({
   "src/runtime-config.ts"() {
     "use strict";
@@ -7478,6 +7478,16 @@ var init_runtime_config = __esm({
     DEFAULT_CONFIG = {
       sandbox: false
     };
+    EXEC_DEFAULTS = {
+      MAX_OUTPUT_CHARS: 5e4,
+      DEFAULT_TIMEOUT_MS: 12e4,
+      MAX_OUTPUT_LINES: 500,
+      OVERFLOW_DIR: ".goodvibes/.exec-output",
+      MAX_BACKGROUND: 5,
+      HISTORY_MAX: 100
+    };
+    __name(getValidNumber, "getValidNumber");
+    __name(getValidString, "getValidString");
     cachedConfig = null;
     configForFile = null;
     pendingPersist = null;
@@ -14924,16 +14934,28 @@ var init_session_state = __esm({
       static {
         __name(this, "SessionState");
       }
+      /** Singleton instance holder */
       static instance;
+      /** Current working directory for the session */
       _cwd = process.cwd();
+      /** Private constructor enforces singleton pattern */
       constructor() {
       }
+      /**
+       * Get the singleton instance of SessionState.
+       * Creates the instance on first call.
+       * @returns The SessionState singleton instance
+       */
       static getInstance() {
         if (!_SessionState.instance) {
           _SessionState.instance = new _SessionState();
         }
         return _SessionState.instance;
       }
+      /**
+       * Get the current working directory for this session.
+       * @returns The current working directory path
+       */
       get cwd() {
         return this._cwd;
       }
@@ -14941,6 +14963,13 @@ var init_session_state = __esm({
        * Set the current working directory.
        * Resolves relative paths against current cwd.
        * Only updates if the resolved path exists and is within sandbox boundaries.
+       * 
+       * Silently returns (no-op) if:
+       * - The resolved path does not exist
+       * - The path is outside sandbox boundaries (when sandbox is enabled)
+       * - Symlink resolution fails (e.g., permission denied, ELOOP)
+       * 
+       * @param newCwd The new working directory path (absolute or relative)
        */
       setCwd(newCwd) {
         const resolved = path11.resolve(this._cwd, newCwd);
@@ -14965,7 +14994,8 @@ var init_session_state = __esm({
         }
       }
       /**
-       * Reset to process.cwd().
+       * Reset the session working directory to the process working directory.
+       * Useful for testing or restoring default state.
        */
       reset() {
         this._cwd = process.cwd();
@@ -14976,20 +15006,35 @@ var init_session_state = __esm({
 });
 
 // src/state/command-history.ts
-var CommandHistory, commandHistory;
+var DEFAULT_MAX_ENTRIES, PERCENT_MULTIPLIER, CommandHistory, commandHistory;
 var init_command_history = __esm({
   "src/state/command-history.ts"() {
     "use strict";
+    DEFAULT_MAX_ENTRIES = 100;
+    PERCENT_MULTIPLIER = 100;
     CommandHistory = class _CommandHistory {
       static {
         __name(this, "CommandHistory");
       }
       static instance = null;
+      /** In-memory command execution history, ordered by timestamp (oldest first) */
       entries = [];
+      /** Maximum number of entries before LRU eviction */
       maxEntries;
-      constructor(maxEntries = 100) {
+      /**
+       * Private constructor for singleton pattern.
+       * 
+       * @param maxEntries Maximum history entries to retain (default: 100)
+       */
+      constructor(maxEntries = DEFAULT_MAX_ENTRIES) {
         this.maxEntries = maxEntries;
       }
+      /**
+       * Get the singleton CommandHistory instance.
+       * Creates the instance on first call.
+       * 
+       * @returns The singleton CommandHistory instance
+       */
       static getInstance() {
         if (!_CommandHistory.instance) {
           _CommandHistory.instance = new _CommandHistory();
@@ -15002,16 +15047,38 @@ var init_command_history = __esm({
       static resetInstance() {
         _CommandHistory.instance = null;
       }
+      /**
+       * Add a command execution record to the history.
+       * Applies LRU eviction if maxEntries exceeded (removes oldest entry).
+       * 
+       * @param entry The command execution record to add
+       */
       add(entry) {
         this.entries.push(entry);
         if (this.entries.length > this.maxEntries) {
           this.entries.shift();
         }
       }
+      /**
+       * Get all command history entries.
+       * Returns a shallow copy to prevent external mutation.
+       * 
+       * @returns Array of all history entries, ordered by timestamp (oldest first)
+       */
       getAll() {
         return [...this.entries];
       }
+      /**
+       * Find the most recent execution of a specific command.
+       * Searches backwards through history (most recent first).
+       * 
+       * @param command The command string to search for (exact match)
+       * @returns The most recent matching entry, or undefined if not found
+       */
       findByCommand(command) {
+        if (!command || command.trim().length === 0) {
+          return void 0;
+        }
         for (let i2 = this.entries.length - 1; i2 >= 0; i2--) {
           if (this.entries[i2].command === command) {
             return this.entries[i2];
@@ -15019,26 +15086,57 @@ var init_command_history = __esm({
         }
         return void 0;
       }
+      /**
+       * Calculate aggregate statistics across all history entries.
+       * 
+       * @returns Statistics object with totals, durations, and success rate
+       */
       getStats() {
         const total = this.entries.length;
         const succeeded = this.entries.filter((e) => e.exit_code === 0).length;
         const totalDuration = this.entries.reduce((sum, e) => sum + e.duration_ms, 0);
-        const retriesTotal = this.entries.reduce((sum, e) => sum + (e.retries || 0), 0);
+        const totalRetries = this.entries.reduce((sum, e) => sum + (e.retries || 0), 0);
+        const successRate = total > 0 ? `${this.formatPercentage(succeeded, total)}%` : "0%";
         return {
           total_commands: total,
           total_duration_ms: totalDuration,
-          success_rate: total > 0 ? `${(succeeded / total * 100).toFixed(1)}%` : "0%",
-          retries_total: retriesTotal
+          success_rate: successRate,
+          total_retries: totalRetries
         };
       }
+      /**
+       * Clear all history entries.
+       * Used for testing or manual reset.
+       */
       clear() {
         this.entries = [];
       }
+      /**
+       * Update the maximum number of history entries.
+       * If the new limit is lower than current entry count, applies LRU eviction immediately.
+       * 
+       * @param max New maximum entry limit (must be > 0)
+       */
       setMaxEntries(max) {
+        if (!Number.isFinite(max) || max <= 0 || !Number.isInteger(max)) {
+          throw new Error("maxEntries must be a positive integer");
+        }
         this.maxEntries = max;
         while (this.entries.length > this.maxEntries) {
           this.entries.shift();
         }
+      }
+      /**
+       * Helper to format percentage with one decimal place.
+       * 
+       * @param numerator Value to convert to percentage
+       * @param denominator Total value (returns "0.0" if zero)
+       * @returns Formatted percentage string (e.g., "85.3")
+       */
+      formatPercentage(numerator, denominator) {
+        if (denominator === 0)
+          return "0.0";
+        return (numerator / denominator * PERCENT_MULTIPLIER).toFixed(1);
       }
     };
     commandHistory = CommandHistory.getInstance();
@@ -15046,7 +15144,7 @@ var init_command_history = __esm({
 });
 
 // src/state/process-manager.ts
-var import_child_process5, import_os, import_fs5, path12, ProcessManager, processManager;
+var import_child_process5, import_os, import_fs5, path12, SIGTERM_TIMEOUT_MS, POLL_INTERVAL_MS, SIGKILL_EXIT_CODE, SIGNAL_EXIT_CODE_BASE, DEFAULT_SIGNAL_NUMBER, ProcessManager, processManager;
 var init_process_manager = __esm({
   "src/state/process-manager.ts"() {
     "use strict";
@@ -15055,6 +15153,11 @@ var init_process_manager = __esm({
     import_fs5 = require("fs");
     path12 = __toESM(require("path"), 1);
     init_runtime_config();
+    SIGTERM_TIMEOUT_MS = 5e3;
+    POLL_INTERVAL_MS = 100;
+    SIGKILL_EXIT_CODE = 137;
+    SIGNAL_EXIT_CODE_BASE = 128;
+    DEFAULT_SIGNAL_NUMBER = 9;
     ProcessManager = class _ProcessManager {
       static {
         __name(this, "ProcessManager");
@@ -15062,8 +15165,13 @@ var init_process_manager = __esm({
       static instance = null;
       processes = /* @__PURE__ */ new Map();
       counter = 1;
+      /** Prevent external instantiation; use getInstance(). */
       constructor() {
       }
+      /**
+       * Get the singleton instance of ProcessManager.
+       * @returns The singleton ProcessManager instance
+       */
       static getInstance() {
         if (!_ProcessManager.instance) {
           _ProcessManager.instance = new _ProcessManager();
@@ -15072,12 +15180,13 @@ var init_process_manager = __esm({
       }
       /**
        * Reset the singleton instance (for testing).
+       * Destroys the current instance so a fresh one will be created on next getInstance call.
        */
       static resetInstance() {
         _ProcessManager.instance = null;
       }
       /**
-       * Generate a unique background process ID.
+       * Generate a unique background process ID by incrementing internal counter.
        * @returns Next available process ID (e.g., "bg-1")
        */
       generateId() {
@@ -15135,8 +15244,8 @@ var init_process_manager = __esm({
           const p = this.processes.get(id);
           if (p) {
             p.status = signal ? "killed" : "exited";
-            const signalNum = signal ? import_os.constants.signals[signal] ?? 9 : 0;
-            p.exit_code = code ?? (signal ? 128 + signalNum : 1);
+            const signalNum = signal ? import_os.constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER : 0;
+            p.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
           }
         });
         proc.on("error", (err2) => {
@@ -15156,8 +15265,12 @@ var init_process_manager = __esm({
         };
       }
       /**
-       * Spawn a detached background process.
-       * Returns a BgStartResult with process info.
+       * Spawn a detached background process with stdout/stderr redirected to a log file.
+       * Process is detached and unref'd so the parent can exit independently.
+       * @param command Command executable to run
+       * @param args Array of command arguments
+       * @param options Optional cwd and env overrides
+       * @returns BgStartResult with process info including ID, PID, and log file path
        */
       spawn(command, args2, options = {}) {
         const maxBackground = getExecMaxBackground();
@@ -15169,7 +15282,7 @@ var init_process_manager = __esm({
             `Maximum background processes (${maxBackground}) reached. Stop a process with bg_stop <id> before starting new ones.`
           );
         }
-        const id = `bg-${this.counter++}`;
+        const id = this.generateId();
         const overflowDir = getExecOverflowDir();
         if (!(0, import_fs5.existsSync)(overflowDir)) {
           (0, import_fs5.mkdirSync)(overflowDir, { recursive: true });
@@ -15208,8 +15321,8 @@ var init_process_manager = __esm({
             const proc = this.processes.get(id);
             if (proc) {
               proc.status = signal ? "killed" : "exited";
-              const signalNum = signal ? import_os.constants.signals[signal] ?? 9 : 0;
-              proc.exit_code = code ?? (signal ? 128 + signalNum : 1);
+              const signalNum = signal ? import_os.constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER : 0;
+              proc.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
             }
           });
           child.on("error", (err2) => {
@@ -15235,7 +15348,9 @@ var init_process_manager = __esm({
         }
       }
       /**
-       * Get status of a background process.
+       * Get status and metadata of a background process.
+       * @param id Process ID to query
+       * @returns BackgroundProcess metadata if found, undefined otherwise
        */
       getStatus(id) {
         return this.processes.get(id);
@@ -15243,9 +15358,10 @@ var init_process_manager = __esm({
       /**
        * Read new output from the log file since last read.
        * Updates last_read_offset unless peek=true.
-       * @param id Process ID
-       * @param lines Optional limit to return only last N lines
-       * @param peek If true, don't update last_read_offset (for bg_status)
+       * @param id Process ID to read output from
+       * @param lines Optional limit to return only last N lines (undefined = all lines)
+       * @param peek If true, don't update last_read_offset (for bg_status non-destructive reads)
+       * @returns Object containing output string, completion status, bytes read, and total bytes
        */
       getOutput(id, lines, peek = false) {
         const proc = this.processes.get(id);
@@ -15287,8 +15403,10 @@ var init_process_manager = __esm({
         }
       }
       /**
-       * Stop a background process.
-       * Sends SIGTERM, waits 5s, then SIGKILL if needed.
+       * Stop a background process gracefully with SIGTERM, escalating to SIGKILL if needed.
+       * Sends SIGTERM and waits up to 5 seconds, then sends SIGKILL if still running.
+       * @param id Process ID to stop
+       * @returns Object indicating whether process was stopped and reason
        */
       async stop(id) {
         const proc = this.processes.get(id);
@@ -15304,13 +15422,13 @@ var init_process_manager = __esm({
         try {
           process.kill(proc.pid, "SIGTERM");
           const startWait = Date.now();
-          while (proc.status === "running" && Date.now() - startWait < 5e3) {
-            await new Promise((resolve10) => setTimeout(resolve10, 100));
+          while (proc.status === "running" && Date.now() - startWait < SIGTERM_TIMEOUT_MS) {
+            await new Promise((resolve10) => setTimeout(resolve10, POLL_INTERVAL_MS));
           }
           if (proc.status === "running") {
             process.kill(proc.pid, "SIGKILL");
             proc.status = "killed";
-            proc.exit_code = 137;
+            proc.exit_code = SIGKILL_EXIT_CODE;
           }
           return {
             stopped: true,
@@ -15329,7 +15447,8 @@ var init_process_manager = __esm({
         }
       }
       /**
-       * List all background processes, sorted by started_at descending.
+       * List all background processes, sorted by started_at descending (newest first).
+       * @returns Array of BackgroundProcess metadata sorted by start time
        */
       list() {
         return Array.from(this.processes.values()).sort(
@@ -15337,8 +15456,9 @@ var init_process_manager = __esm({
         );
       }
       /**
-       * Kill all running background processes.
-       * Used during shutdown.
+       * Kill all running background processes in parallel.
+       * Used during shutdown. Swallows errors to ensure all processes are attempted.
+       * @returns Promise that resolves when all stop attempts complete
        */
       async killAll() {
         const running = Array.from(this.processes.values()).filter(
@@ -15349,7 +15469,8 @@ var init_process_manager = __esm({
       }
       /**
        * Reset all state (for testing).
-       * Kills all running processes before clearing.
+       * Kills all running processes before clearing maps and resetting counter.
+       * @returns Promise that resolves when reset is complete
        */
       async reset() {
         await this.killAll();
@@ -34778,12 +34899,12 @@ var require_CSSValueExpression = __commonJS({
         return false;
       }
     };
-    CSSOM.CSSValueExpression.prototype._parseJSString = function(token, idx, sep4) {
-      var endIdx = this._findMatchedIdx(token, idx, sep4), text;
+    CSSOM.CSSValueExpression.prototype._parseJSString = function(token, idx, sep5) {
+      var endIdx = this._findMatchedIdx(token, idx, sep5), text;
       if (endIdx === -1) {
         return false;
       } else {
-        text = token.substring(idx, endIdx + sep4.length);
+        text = token.substring(idx, endIdx + sep5.length);
         return {
           idx: endIdx,
           text
@@ -34823,15 +34944,15 @@ var require_CSSValueExpression = __commonJS({
       if (!isLegal) {
         return false;
       } else {
-        var sep4 = "/";
-        return this._parseJSString(token, idx, sep4);
+        var sep5 = "/";
+        return this._parseJSString(token, idx, sep5);
       }
     };
-    CSSOM.CSSValueExpression.prototype._findMatchedIdx = function(token, idx, sep4) {
+    CSSOM.CSSValueExpression.prototype._findMatchedIdx = function(token, idx, sep5) {
       var startIdx = idx, endIdx;
       var NOT_FOUND = -1;
       while (true) {
-        endIdx = token.indexOf(sep4, startIdx + 1);
+        endIdx = token.indexOf(sep5, startIdx + 1);
         if (endIdx === -1) {
           endIdx = NOT_FOUND;
           break;
@@ -122127,11 +122248,11 @@ ${lanes.join("\n")}
             if (i2 < rootLength) {
               return void 0;
             }
-            const sep4 = directory.lastIndexOf(directorySeparator, i2 - 1);
-            if (sep4 === -1) {
+            const sep5 = directory.lastIndexOf(directorySeparator, i2 - 1);
+            if (sep5 === -1) {
               return void 0;
             }
-            return directory.substr(0, Math.max(sep4, rootLength));
+            return directory.substr(0, Math.max(sep5, rootLength));
           }
           __name(getCommonPrefix, "getCommonPrefix");
         }
@@ -308828,7 +308949,7 @@ var precisionExecSchema = {
       background: { type: "boolean", default: false, description: "Run commands in background (detached). Returns immediately with process ID. Use bg_list, bg_status <id>, bg_output <id>, bg_stop <id> to manage background processes." },
       timeout_ms: { type: "integer", minimum: 1, default: 12e4, description: "Global timeout in ms (default: 120000). Per-command timeout_ms overrides this." },
       parallel: { type: "boolean", default: false, description: "Execute commands in parallel" },
-      stop_on_error: { type: "boolean", default: true, description: "Stop on first error (sequential only)" },
+      stop_on_error: { type: "boolean", default: true, description: "DEPRECATED: Use fail_fast. Stop on first error (sequential only)" },
       verbosity: verbositySchema
     },
     required: ["commands"]
@@ -309268,6 +309389,8 @@ var import_child_process4 = require("child_process");
 init_logging();
 
 // src/utils/index.ts
+var import_fs3 = require("fs");
+var import_path4 = require("path");
 init_runtime_config();
 init_logging();
 
@@ -309313,9 +309436,16 @@ Please provide only ONE of:
 }
 __name(formatMutualExclusivityError, "formatMutualExclusivityError");
 
-// src/utils/index.ts
-var import_fs3 = require("fs");
-var import_path4 = require("path");
+// src/utils/deprecation.ts
+var shownWarnings = /* @__PURE__ */ new Set();
+function warnDeprecatedParam(oldName, newName, toolName) {
+  const key2 = `${toolName}:${oldName}`;
+  if (shownWarnings.has(key2))
+    return;
+  shownWarnings.add(key2);
+  console.warn(`[${toolName}] Parameter "${oldName}" is deprecated. Use "${newName}" instead.`);
+}
+__name(warnDeprecatedParam, "warnDeprecatedParam");
 
 // src/utils/fuzzy.ts
 function levenshteinDistance(a, b) {
@@ -309757,28 +309887,45 @@ function detectIssue(stderr, stdout) {
 __name(detectIssue, "detectIssue");
 
 // src/utils/exit-codes.ts
+var SIGNAL_EXIT_CODE_OFFSET = 128;
+var MAX_SIGNAL_EXIT_CODE = 192;
 var EXIT_CODE_SEMANTICS = {
   1: { meaning: "General error", suggestion: "Check stderr for details" },
   2: { meaning: "Misuse of shell command", suggestion: "Check command syntax" },
+  124: { meaning: "Timeout", suggestion: "Command exceeded timeout limit" },
+  125: { meaning: "Exit code out of range", suggestion: "Program returned an exit code outside the valid range (0-255)" },
   126: { meaning: "Permission denied (not executable)", suggestion: "Check file permissions, try chmod +x" },
   127: { meaning: "Command not found", suggestion: "Check if the command is installed and in PATH" },
-  128: { meaning: "Invalid exit argument", suggestion: "" },
-  130: { meaning: "Interrupted (SIGINT / Ctrl+C)", suggestion: "Process was interrupted" },
+  128: { meaning: "Invalid exit argument", suggestion: "Program called exit() with invalid argument" },
+  129: { meaning: "Hangup (SIGHUP)", suggestion: "Terminal controlling the process was closed" },
+  130: { meaning: "Interrupted (SIGINT / Ctrl+C)", suggestion: "Process was interrupted by user" },
+  131: { meaning: "Quit (SIGQUIT)", suggestion: "Process quit and dumped core" },
+  132: { meaning: "Illegal instruction (SIGILL)", suggestion: "Process attempted to execute illegal instruction" },
+  134: { meaning: "Abort (SIGABRT)", suggestion: "Process aborted \u2014 check for assertion failures" },
   137: { meaning: "Killed (SIGKILL)", suggestion: "Process was killed \u2014 likely OOM or timeout. Check memory usage." },
   139: { meaning: "Segmentation fault (SIGSEGV)", suggestion: "Memory access violation in the process" },
-  143: { meaning: "Terminated (SIGTERM)", suggestion: "Process was terminated gracefully" }
+  141: { meaning: "Broken pipe (SIGPIPE)", suggestion: "Process wrote to a pipe with no reader" },
+  142: { meaning: "Alarm (SIGALRM)", suggestion: "Process alarm timer expired" },
+  143: { meaning: "Terminated (SIGTERM)", suggestion: "Process was terminated gracefully" },
+  255: { meaning: "Exit code out of range", suggestion: "Exit code wrapped around (was likely negative or > 255)" }
 };
 function interpretExitCode(code) {
   if (code === 0)
     return null;
+  if (code < 0) {
+    return {
+      meaning: `Negative exit code (${code})`,
+      suggestion: "System-specific error code \u2014 check documentation for your platform"
+    };
+  }
   if (EXIT_CODE_SEMANTICS[code]) {
     return EXIT_CODE_SEMANTICS[code];
   }
-  if (code > 128 && code <= 192) {
-    const signal = code - 128;
+  if (code > SIGNAL_EXIT_CODE_OFFSET && code <= MAX_SIGNAL_EXIT_CODE) {
+    const signal = code - SIGNAL_EXIT_CODE_OFFSET;
     return {
       meaning: `Killed by signal ${signal}`,
-      suggestion: `Process received signal ${signal}`
+      suggestion: `Process received signal ${signal}. Check process status and system logs.`
     };
   }
   return {
@@ -309799,14 +309946,28 @@ async function handleOverflow(output, commandId, threshold) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
   const fileName = `${safeId}-${timestamp}.log`;
   const filePath = path3.join(overflowDir, fileName);
+  const resolvedPath = path3.resolve(filePath);
+  const resolvedDir = path3.resolve(overflowDir);
+  if (!resolvedPath.startsWith(resolvedDir + path3.sep)) {
+    throw new Error(`Path traversal detected: ${filePath}`);
+  }
   await fs3.writeFile(filePath, output, "utf-8");
   const halfThreshold = Math.floor(threshold / 2);
   const head = output.slice(0, halfThreshold);
   const tail = output.slice(-halfThreshold);
-  let totalLines = 1;
-  for (let i2 = 0; i2 < output.length; i2++) {
-    if (output[i2] === "\n")
-      totalLines++;
+  let totalLines = 0;
+  if (output.length === 0) {
+    totalLines = 0;
+  } else {
+    totalLines = 1;
+    for (let i2 = 0; i2 < output.length; i2++) {
+      if (output[i2] === "\n") {
+        totalLines++;
+      }
+    }
+    if (output[output.length - 1] === "\n") {
+      totalLines--;
+    }
   }
   return {
     status: "overflow",
@@ -309833,10 +309994,10 @@ async function cleanupOverflowFiles(maxAgeMs = 36e5) {
           await fs3.unlink(filePath);
           cleaned++;
         }
-      } catch {
+      } catch (err2) {
       }
     }
-  } catch {
+  } catch (err2) {
   }
   return cleaned;
 }
@@ -312483,35 +312644,59 @@ var TOOL_SPECIFIC_DEFAULTS = {
   precision_glob: { verbosity: "paths_only" },
   precision_grep: { verbosity: "files_only" }
 };
+var VALID_OUTPUT_MODES = /* @__PURE__ */ new Set([
+  "count_only",
+  "exit_codes",
+  "minimal",
+  "standard",
+  "with_preview",
+  "verbose",
+  "paths_only",
+  "files_only",
+  "with_diff",
+  "signatures",
+  "locations",
+  "matches",
+  "context",
+  "names_only"
+]);
+var VALID_FORMAT_MODES = /* @__PURE__ */ new Set([
+  "count_only",
+  "exit_codes",
+  "minimal",
+  "standard",
+  "with_preview",
+  "verbose"
+]);
 function parseOutputMode(args2, toolName) {
   if (typeof args2 === "object" && args2 !== null && "verbosity" in args2 && typeof args2.verbosity === "string") {
     const mode = args2.verbosity;
-    if (["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose", "paths_only", "files_only", "with_diff", "signatures", "locations", "matches", "context"].includes(mode)) {
+    if (VALID_OUTPUT_MODES.has(mode)) {
       return mode;
     }
   }
   if (typeof args2 === "object" && args2 !== null && "output_mode" in args2 && typeof args2.output_mode === "string") {
-    console.warn('[DEPRECATED] "output_mode" parameter is deprecated. Use "verbosity" instead.');
+    warnDeprecatedParam("output_mode", "verbosity", toolName ?? "unknown");
     const mode = args2.output_mode;
-    if (["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose", "paths_only", "files_only", "with_diff", "signatures", "locations", "matches", "context"].includes(mode)) {
+    if (VALID_OUTPUT_MODES.has(mode)) {
       return mode;
     }
   }
   if (typeof args2 === "object" && args2 !== null && "output" in args2 && typeof args2.output === "object" && args2.output !== null) {
     const output = args2.output;
-    if (output.format && ["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose"].includes(output.format)) {
+    if (output.format && VALID_FORMAT_MODES.has(output.format)) {
       return output.format;
     }
     if (output.mode) {
-      console.warn('[DEPRECATED] "output.mode" parameter is deprecated. Use "output.format" instead.');
-      if (["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose"].includes(output.mode)) {
+      warnDeprecatedParam("output.mode", "output.format", toolName ?? "unknown");
+      if (VALID_FORMAT_MODES.has(output.mode)) {
         return output.mode;
       }
     }
   }
   if (toolName) {
     const configDefault = getToolVerbosityDefault(toolName);
-    if (configDefault && ["count_only", "exit_codes", "minimal", "standard", "with_preview", "verbose", "paths_only", "files_only", "with_diff", "signatures", "locations", "matches", "context", "names_only"].includes(configDefault)) {
+    if (configDefault && VALID_OUTPUT_MODES.has(configDefault)) {
       return configDefault;
     }
   }
@@ -312968,6 +313153,7 @@ var import_os2 = require("os");
 init_logging();
 init_runtime_config();
 init_state();
+var OVERFLOW_BUFFER_MULTIPLIER = 5;
 var DESTRUCTIVE_PATTERNS = [
   /\brm\s+(-[rf]+\s+)*[\/~]/i,
   // rm -rf /path
@@ -313033,6 +313219,9 @@ function detectCdFromCommand(command) {
 }
 __name(detectCdFromCommand, "detectCdFromCommand");
 async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, captureStdout = true, captureStderr = true, maxOutputLines, isParallel = false) {
+  if (spec.timeout !== void 0 && spec.timeout_ms === void 0) {
+    warnDeprecatedParam("commands[].timeout", "commands[].timeout_ms", "precision_exec");
+  }
   const startTime = Date.now();
   const timeout = spec.timeout_ms ?? spec.timeout ?? globalTimeout ?? getExecDefaultTimeout();
   const effectiveMaxOutputLines = maxOutputLines ?? getExecMaxOutputLines();
@@ -313079,7 +313268,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
         });
       }
     }
-    const bufferCap = maxOutputChars * 5;
+    const bufferCap = maxOutputChars * OVERFLOW_BUFFER_MULTIPLIER;
     const fullCommand = args2.length > 0 ? `${command} ${args2.map(shellEscape).join(" ")}`.trim() : command;
     const proc = (0, import_child_process6.spawn)(fullCommand, [], {
       cwd,
@@ -313593,6 +313782,9 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
         }
       }
     }
+  }
+  if (input.stop_on_error !== void 0 && input.fail_fast === void 0) {
+    warnDeprecatedParam("stop_on_error", "fail_fast", "precision_exec");
   }
   cleanupOverflowFiles().catch(() => {
   });
@@ -325370,6 +325562,12 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, 
 }
 __name(transformRipgrepResult, "transformRipgrepResult");
 async function executeQuery(query2, output, workDir) {
+  if (output.max_files !== void 0 && output.max_results === void 0) {
+    warnDeprecatedParam("output.max_files", "output.max_results", "precision_grep");
+  }
+  if (output.max_matches_per_file !== void 0 && output.max_per_item === void 0) {
+    warnDeprecatedParam("output.max_matches_per_file", "output.max_per_item", "precision_grep");
+  }
   const maxFiles = output.max_results ?? output.max_files ?? 100;
   const maxMatchesPerFile = output.max_per_item ?? output.max_matches_per_file ?? 10;
   const maxTotalMatches = output.max_total_matches ?? 100;
@@ -327223,6 +327421,9 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
   const filePath = path17.isAbsolute(normalizedPath) ? normalizedPath : path17.join(workDir, normalizedPath);
   const relativePath = path17.relative(workDir, filePath);
   const extract = spec.extract ?? globalExtract;
+  if (output.max_lines_per_file !== void 0 && output.max_per_item === void 0) {
+    warnDeprecatedParam("output.max_lines_per_file", "output.max_per_item", "precision_read");
+  }
   const maxLinesPerFile = output.max_per_item ?? output.max_lines_per_file ?? Infinity;
   const result = {
     path: relativePath,
@@ -328336,7 +328537,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
         return toCallToolResult(errorResult(`edits[${i2}].path (or deprecated .file) is required and must be a string`, outputMode, getElapsed()));
       }
       if (edit.file && !edit.path) {
-        console.warn(`[precision_edit] DEPRECATION WARNING: edits[${i2}].file is deprecated. Use edits[${i2}].path instead.`);
+        warnDeprecatedParam(`edits[${i2}].file`, `edits[${i2}].path`, "precision_edit");
       }
       const hasFindValue = edit.find !== void 0 || edit.find_base64 !== void 0 || edit.find_file !== void 0;
       if (!hasFindValue) {

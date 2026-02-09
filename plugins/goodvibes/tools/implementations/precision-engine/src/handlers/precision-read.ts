@@ -26,6 +26,7 @@ import { validateFilePath } from '../utils/path-validation.js';
 import { getFileSuggestions, type FileSuggestion } from '../utils/file-suggestions.js';
 import { getSlowFsThreshold, getSlowFsPrefixes, getMaxFileBytes, getMaxTokenEstimate, getPageSizeLines } from '../runtime-config.js';
 import { FileStateCache } from '../state/file-cache.js';
+import { warnDeprecatedParam } from '../utils/deprecation.js';
 import { detectFileType } from '../utils/file-type-detection.js';
 import { getContextForFile, type ContextMetadata } from '../utils/context-intelligence.js';
 
@@ -705,6 +706,9 @@ async function readSingleFile(
   const relativePath = path.relative(workDir, filePath);
   const extract = spec.extract ?? globalExtract;
   // Support both new (max_per_item) and old (max_lines_per_file) parameter names
+  if (output.max_lines_per_file !== undefined && output.max_per_item === undefined) {
+    warnDeprecatedParam('output.max_lines_per_file', 'output.max_per_item', 'precision_read');
+  }
   const maxLinesPerFile = output.max_per_item ?? output.max_lines_per_file ?? Infinity;
 
   const result: FileReadResult = {

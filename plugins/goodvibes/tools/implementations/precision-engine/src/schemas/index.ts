@@ -132,7 +132,7 @@ export const precisionExecSchema: Tool = {
       background: { type: 'boolean', default: false, description: 'Run commands in background (detached). Returns immediately with process ID. Use bg_list, bg_status <id>, bg_output <id>, bg_stop <id> to manage background processes.' },
       timeout_ms: { type: 'integer', minimum: 1, default: 120000, description: 'Global timeout in ms (default: 120000). Per-command timeout_ms overrides this.' },
       parallel: { type: 'boolean', default: false, description: 'Execute commands in parallel' },
-      stop_on_error: { type: 'boolean', default: true, description: 'Stop on first error (sequential only)' },
+      stop_on_error: { type: 'boolean', default: true, description: 'DEPRECATED: Use fail_fast. Stop on first error (sequential only)' },
       verbosity: verbositySchema,
     },
     required: ['commands'],
