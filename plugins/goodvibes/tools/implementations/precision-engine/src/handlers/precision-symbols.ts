@@ -20,9 +20,11 @@ import { formatMissingParamError, formatInvalidValueError, createErrorResult } f
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { TreeSitterCore, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
 import { isLanguageSupported, getSupportedExtensions } from '../core/languages.js';
+import { RipgrepCore } from '../core/ripgrep.js';
 
 // === Singleton Parser ===
 const treeSitterCore = new TreeSitterCore();
+const ripgrepCore = new RipgrepCore();
 
 // === Interfaces per SPEC-v2 ===
 
@@ -760,6 +762,20 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
         ignore: DEFAULT_EXCLUDES,
         absolute: true,
       });
+      
+      // U4 grep-first strategy: if query is provided, use ripgrep to narrow files
+      if (input.query && input.query.trim().length > 0) {
+        const patterns = getGlobPatterns(input.language);
+        const globPattern = patterns.length === 1 ? patterns[0] : `{${patterns.join(',')}}`;
+        try {
+          const matchingFiles = await ripgrepCore.filesWithMatches(input.query, workDir, globPattern, 30000);
+          // Filter files to only those with matches
+          files = files.filter(f => matchingFiles.includes(f));
+        } catch (error) {
+          // If ripgrep fails, continue with all files (fallback)
+          console.warn(`[precision-symbols] Ripgrep filtering failed, processing all files`);
+        }
+      }
     }
 
     // Process all files
@@ -782,9 +798,10 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
         includeSignatures,
         includeFull,
       });
+      let timer: ReturnType<typeof setTimeout>;
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`File timeout: ${file}`)), PER_FILE_TIMEOUT_MS);
+        timer = setTimeout(() => reject(new Error(`File timeout: ${file}`)), PER_FILE_TIMEOUT_MS);
       });
       
       let symbols;
@@ -792,10 +809,13 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
         symbols = await Promise.race([filePromise, timeoutPromise]);
       } catch (error) {
         // Skip files that timeout or fail
-        console.warn(`[precision-symbols] Skipped file (${error.message}): ${file}`);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn(`[precision-symbols] Skipped file (${msg}): ${file}`);
         continue;
-      }
+      } finally {
+        clearTimeout(timer!);
 
+      }
       filesSearched++;
 
       for (const symbol of symbols) {

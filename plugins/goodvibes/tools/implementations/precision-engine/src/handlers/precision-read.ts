@@ -1003,6 +1003,7 @@ async function readSingleFile(
     const stats = await fs.stat(validatedPath);
     const statMs = performance.now() - statStart;
     result.exists = true;
+    result.size_bytes = stats.size;
 
     // Detect slow filesystem
     const slowThreshold = getSlowFsThreshold();
@@ -1431,10 +1432,10 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
     const extract: ExtractMode = input.extract ?? 'content';
     const output: ReadOutput = {
+      ...input.output,
       mode: input.output?.format ?? input.output?.mode ?? 'standard',
       include_line_numbers: input.output?.include_line_numbers ?? true,
       include_metadata: input.output?.include_metadata ?? false,
-      ...input.output
     };
 
     // Normalize file specs
@@ -1486,6 +1487,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       truncated: anyTruncated,
       files_binary: paginatedResults.filter(r => r.is_binary).length,
       files_image: paginatedResults.filter(r => r.is_image).length,
+      total_bytes: paginatedResults.reduce((sum, r) => sum + (r.size_bytes ?? 0), 0),
     };
     
     if (paginationMeta) {

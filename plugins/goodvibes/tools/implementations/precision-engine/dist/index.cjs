@@ -326251,6 +326251,7 @@ __name(isLanguageSupported, "isLanguageSupported");
 
 // src/handlers/precision-symbols.ts
 var treeSitterCore3 = new TreeSitterCore();
+var ripgrepCore5 = new RipgrepCore();
 function getGlobPatterns(language) {
   if (!language || language === "auto") {
     return ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.py", "**/*.rs", "**/*.go"];
@@ -326753,6 +326754,16 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
         ignore: DEFAULT_EXCLUDES,
         absolute: true
       });
+      if (input.query && input.query.trim().length > 0) {
+        const patterns3 = getGlobPatterns(input.language);
+        const globPattern = patterns3.length === 1 ? patterns3[0] : `{${patterns3.join(",")}}`;
+        try {
+          const matchingFiles = await ripgrepCore5.filesWithMatches(input.query, workDir, globPattern, 3e4);
+          files = files.filter((f) => matchingFiles.includes(f));
+        } catch (error2) {
+          console.warn(`[precision-symbols] Ripgrep filtering failed, processing all files`);
+        }
+      }
     }
     const allSymbols = [];
     const byKind = {};
@@ -326770,15 +326781,19 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
         includeSignatures,
         includeFull
       });
+      let timer;
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`File timeout: ${file2}`)), PER_FILE_TIMEOUT_MS);
+        timer = setTimeout(() => reject(new Error(`File timeout: ${file2}`)), PER_FILE_TIMEOUT_MS);
       });
       let symbols;
       try {
         symbols = await Promise.race([filePromise, timeoutPromise]);
       } catch (error2) {
-        console.warn(`[precision-symbols] Skipped file (${error2.message}): ${file2}`);
+        const msg = error2 instanceof Error ? error2.message : String(error2);
+        console.warn(`[precision-symbols] Skipped file (${msg}): ${file2}`);
         continue;
+      } finally {
+        clearTimeout(timer);
       }
       filesSearched++;
       for (const symbol2 of symbols) {
@@ -328167,6 +328182,7 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
     const stats = await fs12.stat(validatedPath);
     const statMs = performance.now() - statStart;
     result.exists = true;
+    result.size_bytes = stats.size;
     const slowThreshold = getSlowFsThreshold();
     const slowPrefixes = getSlowFsPrefixes();
     const isUNC = validatedPath.startsWith("\\\\") || validatedPath.startsWith("//") && !validatedPath.startsWith("///");
@@ -328516,10 +328532,10 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
     }
     const extract = input.extract ?? "content";
     const output = {
+      ...input.output,
       mode: input.output?.format ?? input.output?.mode ?? "standard",
       include_line_numbers: input.output?.include_line_numbers ?? true,
-      include_metadata: input.output?.include_metadata ?? false,
-      ...input.output
+      include_metadata: input.output?.include_metadata ?? false
     };
     const forceRead = input.token_budget !== void 0 && input.token_budget > 0;
     const fileSpecs = input.files.map(
@@ -328554,7 +328570,8 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
       total_lines: totalLines,
       truncated: anyTruncated,
       files_binary: paginatedResults.filter((r) => r.is_binary).length,
-      files_image: paginatedResults.filter((r) => r.is_image).length
+      files_image: paginatedResults.filter((r) => r.is_image).length,
+      total_bytes: paginatedResults.reduce((sum, r) => sum + (r.size_bytes ?? 0), 0)
     };
     if (paginationMeta) {
       summary.pagination = paginationMeta;
@@ -328727,6 +328744,10 @@ function findWhitespaceInsensitiveMatches(content, pattern) {
   const regex = new RegExp(regexPattern, "g");
   let match;
   while ((match = regex.exec(content)) !== null) {
+    if (match[0].length === 0) {
+      regex.lastIndex++;
+      continue;
+    }
     matches2.push({
       index: match.index,
       length: match[0].length

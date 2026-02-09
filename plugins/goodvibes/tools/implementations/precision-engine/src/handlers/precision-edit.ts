@@ -191,6 +191,7 @@ function findWhitespaceInsensitiveMatches(content: string, pattern: string): Mat
   // Find all matches
   let match;
   while ((match = regex.exec(content)) !== null) {
+    if (match[0].length === 0) { regex.lastIndex++; continue; }
     matches.push({
       index: match.index,
       length: match[0].length
