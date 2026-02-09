@@ -338,12 +338,12 @@ async function writeFile(
       // Write the file
       await fs.writeFile(validatedPath, content, { encoding });
 
-      // Update FileStateCache with new content
+      // Invalidate FileStateCache so next read returns fresh content
       try {
         const cache = FileStateCache.getInstance();
         cache.update(validatedPath, content, 'precision_write', undefined, `wrote ${spec.path}`);
       } catch {
-        // Cache update is non-critical — don't fail the write
+        // Cache invalidation is non-critical — don't fail the write
       }
     }
 

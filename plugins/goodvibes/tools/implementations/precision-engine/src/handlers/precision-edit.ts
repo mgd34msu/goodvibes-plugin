@@ -177,55 +177,24 @@ function findWhitespaceInsensitiveMatches(content: string, pattern: string): Mat
   const normalizedPattern = normalizeWhitespace(pattern);
   const matches: MatchResult[] = [];
 
-  // Scan through content looking for sequences that normalize to the pattern
-  let pos = 0;
-  while (pos < content.length) {
-    // Skip leading whitespace for this position
-    let scanPos = pos;
-    let patternPos = 0;
-    let matchStart = -1;
-    let matchEnd = -1;
+  // Split pattern by whitespace and escape each part for regex
+  const parts = normalizedPattern.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return matches;
 
-    while (scanPos < content.length && patternPos < normalizedPattern.length) {
-      // Skip whitespace in content
-      while (scanPos < content.length && /\s/.test(content[scanPos])) {
-        if (matchStart === -1) scanPos++;
-        else break; // Don't skip whitespace mid-match unless pattern also has it
-      }
+  // Build regex: join parts with \s+ to match any amount of whitespace
+  const escapedParts = parts.map(part => 
+    part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  );
+  const regexPattern = escapedParts.join('\\s+');
+  const regex = new RegExp(regexPattern, 'g');
 
-      // Skip whitespace in pattern
-      while (patternPos < normalizedPattern.length && /\s/.test(normalizedPattern[patternPos])) {
-        patternPos++;
-        // Skip corresponding whitespace in content
-        while (scanPos < content.length && /\s/.test(content[scanPos])) {
-          scanPos++;
-        }
-      }
-
-      if (patternPos >= normalizedPattern.length) break;
-      if (scanPos >= content.length) break;
-
-      if (matchStart === -1) matchStart = scanPos;
-
-      if (content[scanPos] === normalizedPattern[patternPos]) {
-        scanPos++;
-        patternPos++;
-        matchEnd = scanPos;
-      } else {
-        break; // No match
-      }
-    }
-
-    // Check if we matched the full pattern
-    if (patternPos === normalizedPattern.length && matchStart !== -1) {
-      matches.push({
-        index: matchStart,
-        length: matchEnd - matchStart
-      });
-      pos = matchEnd;
-    } else {
-      pos++;
-    }
+  // Find all matches
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    matches.push({
+      index: match.index,
+      length: match[0].length
+    });
   }
 
   return matches;
@@ -957,6 +926,16 @@ async function applyEdit(
   // Find matches using hints and match mode
   const matches = findInContext(filePath, content, findValue, edit.hints ?? {}, matchConfig);
 
+  // U2: When near_line is the only hint and occurrence is not "all", disambiguate
+  const occurrence = edit.occurrence ?? 'first';
+  if (occurrence !== 'all' &&
+      edit.hints?.near_line !== undefined &&
+      !edit.hints?.in_function && !edit.hints?.in_class &&
+      !edit.hints?.after && !edit.hints?.before &&
+      matches.length > 1) {
+    matches.splice(1); // Keep only the closest match (already sorted by proximity)
+  }
+
   if (matches.length === 0) {
     const closestMatches = findClosestMatch(content, findValue);
     const errorDetails: Record<string, unknown> = {
@@ -975,7 +954,6 @@ async function applyEdit(
 
   // Determine which occurrences to replace
   let matchesToReplace: MatchResult[];
-  const occurrence = edit.occurrence ?? 'first';
 
   if (occurrence === 'first') {
     matchesToReplace = [matches[0]];

@@ -440,7 +440,7 @@ export const handlePrecisionNotebook: ToolHandler = async (args: unknown) => {
       );
     }
     
-    // Update FileStateCache
+    // Invalidate FileStateCache so next read returns fresh content
     try {
       const cache = FileStateCache.getInstance();
       cache.update(
@@ -451,7 +451,7 @@ export const handlePrecisionNotebook: ToolHandler = async (args: unknown) => {
         `applied ${applyResult.applied} operations`
       );
     } catch {
-      // Cache update is non-critical
+      // Cache invalidation is non-critical
     }
     
     const result: NotebookResult = {

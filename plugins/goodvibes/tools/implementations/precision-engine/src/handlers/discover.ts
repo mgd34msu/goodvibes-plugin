@@ -469,8 +469,7 @@ async function executeQuery(
     case 'glob':
       return executeGlobQuery(query, outputMode, searchRoot);
     case 'symbols':
-      // Note: symbols search currently uses process.cwd() internally
-      // and doesn't support base_path override
+      // Symbols search scopes via document mode when base_path differs from cwd
       return executeSymbolsQuery(query, outputMode, searchRoot);
     case 'structural':
       return executeStructuralQuery(query, outputMode, searchRoot);

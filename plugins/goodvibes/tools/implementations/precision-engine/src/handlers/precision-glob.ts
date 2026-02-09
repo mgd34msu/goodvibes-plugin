@@ -305,10 +305,11 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       // Normalize ALL paths to canonical absolute form for comparison
       // Ripgrep may return absolute or relative paths depending on how it was invoked
       // The files array from glob phase also needs consistent normalization
+      const cwd = process.cwd();
       const matchingSet = new Set(matchingFiles.map(f => {
         // Step 1: Resolve to absolute (relative paths are relative to process.cwd())
-        const absolutePath = path.isAbsolute(f) ? f : path.resolve(process.cwd(), f);
-        // Step 2: Normalize to canonical form (resolve ., .., symlinks, etc)
+        const absolutePath = path.isAbsolute(f) ? f : path.resolve(cwd, f);
+        // Step 2: Normalize to canonical form (resolve ., .. and normalize separators)
         return path.normalize(absolutePath);
       }));
       

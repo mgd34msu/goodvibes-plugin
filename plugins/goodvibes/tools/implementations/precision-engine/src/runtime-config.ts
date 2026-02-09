@@ -51,7 +51,7 @@ export interface PrecisionEngineConfig {
   /** Maximum exec history entries to retain (default: 100) */
   exec_history_max?: number;
 
-  /** Symbol search timeout in discover tool (default: 60000ms = 60s) */
+  /** Symbol search timeout in discover tool (default: 120000ms = 120s) */
   discover_symbol_timeout_ms?: number;
 
   /** Extensible for future config */
@@ -587,7 +587,7 @@ export function getExecHistoryMax(): number {
  * Get symbol search timeout for discover tool from config.
  * Rejects NaN, Infinity, negative numbers, and zero.
  *
- * @returns Symbol search timeout in milliseconds (default: 60000)
+ * @returns Symbol search timeout in milliseconds (default: 120000)
  */
 export function getDiscoverSymbolTimeout(): number {
   const config = loadConfigSync();

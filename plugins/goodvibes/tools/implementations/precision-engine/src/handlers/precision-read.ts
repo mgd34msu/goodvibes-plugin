@@ -1036,7 +1036,7 @@ async function readSingleFile(
       return result;
     }
 
-    // Handle PDF files early - they require special parsing and should bypass text size gate
+    // Handle PDF files early - they require special parsing and should bypass text size gate and extract mode routing
     if (isPdfFile(validatedPath)) {
       const buffer = await fs.readFile(validatedPath);
       return await readPdfFile(buffer, validatedPath, result, spec.pages);
@@ -1102,6 +1102,7 @@ async function readSingleFile(
 
     // Handle binary files
     if (isBinary) {
+      // Fallback: PDF should be caught by early check above (line 1040) - kept as defense-in-depth
       // Handle PDF files
       if (isPdfFile(validatedPath)) {
         return await readPdfFile(buffer, validatedPath, result, spec.pages);

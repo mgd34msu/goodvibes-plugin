@@ -326101,8 +326101,9 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
         void 0,
         3e4
       );
+      const cwd = process.cwd();
       const matchingSet = new Set(matchingFiles.map((f) => {
-        const absolutePath = path14.isAbsolute(f) ? f : path14.resolve(process.cwd(), f);
+        const absolutePath = path14.isAbsolute(f) ? f : path14.resolve(cwd, f);
         return path14.normalize(absolutePath);
       }));
       files = files.filter((f) => {
@@ -328716,48 +328717,20 @@ __name(normalizeLineEndings, "normalizeLineEndings");
 function findWhitespaceInsensitiveMatches(content, pattern) {
   const normalizedPattern = normalizeWhitespace(pattern);
   const matches2 = [];
-  let pos = 0;
-  while (pos < content.length) {
-    let scanPos = pos;
-    let patternPos = 0;
-    let matchStart = -1;
-    let matchEnd = -1;
-    while (scanPos < content.length && patternPos < normalizedPattern.length) {
-      while (scanPos < content.length && /\s/.test(content[scanPos])) {
-        if (matchStart === -1)
-          scanPos++;
-        else
-          break;
-      }
-      while (patternPos < normalizedPattern.length && /\s/.test(normalizedPattern[patternPos])) {
-        patternPos++;
-        while (scanPos < content.length && /\s/.test(content[scanPos])) {
-          scanPos++;
-        }
-      }
-      if (patternPos >= normalizedPattern.length)
-        break;
-      if (scanPos >= content.length)
-        break;
-      if (matchStart === -1)
-        matchStart = scanPos;
-      if (content[scanPos] === normalizedPattern[patternPos]) {
-        scanPos++;
-        patternPos++;
-        matchEnd = scanPos;
-      } else {
-        break;
-      }
-    }
-    if (patternPos === normalizedPattern.length && matchStart !== -1) {
-      matches2.push({
-        index: matchStart,
-        length: matchEnd - matchStart
-      });
-      pos = matchEnd;
-    } else {
-      pos++;
-    }
+  const parts2 = normalizedPattern.split(/\s+/).filter(Boolean);
+  if (parts2.length === 0)
+    return matches2;
+  const escapedParts = parts2.map(
+    (part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+  const regexPattern = escapedParts.join("\\s+");
+  const regex = new RegExp(regexPattern, "g");
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    matches2.push({
+      index: match.index,
+      length: match[0].length
+    });
   }
   return matches2;
 }
@@ -329215,6 +329188,10 @@ async function applyEdit(filePath, content, edit, matchConfig) {
     fieldName: "replace"
   });
   const matches2 = findInContext(filePath, content, findValue, edit.hints ?? {}, matchConfig);
+  const occurrence = edit.occurrence ?? "first";
+  if (occurrence !== "all" && edit.hints?.near_line !== void 0 && !edit.hints?.in_function && !edit.hints?.in_class && !edit.hints?.after && !edit.hints?.before && matches2.length > 1) {
+    matches2.splice(1);
+  }
   if (matches2.length === 0) {
     const closestMatches = findClosestMatch(content, findValue);
     const errorDetails = {
@@ -329231,7 +329208,6 @@ async function applyEdit(filePath, content, edit, matchConfig) {
     };
   }
   let matchesToReplace;
-  const occurrence = edit.occurrence ?? "first";
   if (occurrence === "first") {
     matchesToReplace = [matches2[0]];
   } else if (occurrence === "last") {
