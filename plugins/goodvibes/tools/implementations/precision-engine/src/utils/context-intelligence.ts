@@ -3,7 +3,7 @@
  * Enriches file reads with memory and pattern information.
  */
 
-import { readFileSync, statSync } from 'fs';
+import { readFile, stat } from 'fs/promises';
 import { join, dirname } from 'path';
 import { FileTypeInfo } from './file-type-detection.js';
 
@@ -54,9 +54,6 @@ export function resetContextTracking(): void {
   sentCategories.clear();
 }
 
-/**
- * Extract keywords from file path for matching.
- */
 // Stopwords to filter out common but non-meaningful directory/file names (Item 3 m5)
 const KEYWORD_STOPWORDS = new Set([
   'src', 'lib', 'dist', 'build', 'index', 'app', 'main',
@@ -64,6 +61,11 @@ const KEYWORD_STOPWORDS = new Set([
   'out', 'bin', 'obj', 'var', 'log', 'logs', 'utils', 'util'
 ]);
 
+/**
+ * Extract keywords from file path for matching.
+ * @param filePath - The file path to extract keywords from
+ * @returns Set of extracted keywords, excluding stopwords
+ */
 function extractKeywords(filePath: string): Set<string> {
   const keywords = new Set<string>();
   const parts = filePath.split('/').filter(Boolean);
@@ -97,6 +99,9 @@ function extractKeywords(filePath: string): Set<string> {
 
 /**
  * Calculate keyword overlap relevance.
+ * @param fileKeywords - Keywords extracted from the file path
+ * @param entryKeywords - Keywords from a memory entry
+ * @returns Relevance level based on keyword overlap ratio
  */
 function calculateRelevance(fileKeywords: Set<string>, entryKeywords: string[]): 'high' | 'medium' | 'low' {
   if (!entryKeywords || entryKeywords.length === 0) {
@@ -113,6 +118,11 @@ function calculateRelevance(fileKeywords: Set<string>, entryKeywords: string[]):
 
 /**
  * Generic helper to find relevant memory entries based on keyword matching.
+ * @param entries - Array of memory entries to search through
+ * @param source - Source category name (e.g., 'decisions', 'patterns', 'failures')
+ * @param fileKeywords - Keywords extracted from the file path
+ * @param toSummary - Function to convert an entry to a summary string
+ * @returns Array of relevant memory entries with relevance scores
  */
 function findRelevantEntries<T extends { id: string; keywords?: string[] }>(
   entries: T[],
@@ -153,8 +163,10 @@ const MEMORY_CACHE_TTL_MS = 30000; // 30 seconds
 
 /**
  * Load memory files with 30-second TTL caching.
+ * @param memoryDir - Path to the .goodvibes/memory directory
+ * @returns Cached memory data including decisions, patterns, and failures
  */
-function loadMemoryFiles(memoryDir: string): MemoryCache {
+async function loadMemoryFiles(memoryDir: string): Promise<MemoryCache> {
   const now = Date.now();
   if (memoryCache && memoryCache.memoryDir === memoryDir && (now - memoryCache.loadedAt) < MEMORY_CACHE_TTL_MS) {
     return memoryCache;
@@ -167,7 +179,7 @@ function loadMemoryFiles(memoryDir: string): MemoryCache {
   // Read decisions.json
   try {
     const decisionsPath = join(memoryDir, 'decisions.json');
-    const decisionsData = JSON.parse(readFileSync(decisionsPath, 'utf-8'));
+    const decisionsData = JSON.parse(await readFile(decisionsPath, 'utf-8'));
     decisions.push(...(decisionsData.entries || []));
   } catch {
     // File may not exist or be malformed
@@ -176,7 +188,7 @@ function loadMemoryFiles(memoryDir: string): MemoryCache {
   // Read patterns.json
   try {
     const patternsPath = join(memoryDir, 'patterns.json');
-    const patternsData = JSON.parse(readFileSync(patternsPath, 'utf-8'));
+    const patternsData = JSON.parse(await readFile(patternsPath, 'utf-8'));
     patterns.push(...(patternsData.entries || []));
   } catch {
     // File may not exist or be malformed
@@ -185,7 +197,7 @@ function loadMemoryFiles(memoryDir: string): MemoryCache {
   // Read failures.json
   try {
     const failuresPath = join(memoryDir, 'failures.json');
-    const failuresData = JSON.parse(readFileSync(failuresPath, 'utf-8'));
+    const failuresData = JSON.parse(await readFile(failuresPath, 'utf-8'));
     failures.push(...(failuresData.entries || []));
   } catch {
     // File may not exist or be malformed
@@ -197,16 +209,18 @@ function loadMemoryFiles(memoryDir: string): MemoryCache {
 
 /**
  * Find project root by looking for .goodvibes directory.
+ * @param startPath - File path to begin searching upward from
+ * @returns Project root path, or null if no .goodvibes directory found
  */
-function findProjectRoot(startPath: string): string | null {
+async function findProjectRoot(startPath: string): Promise<string | null> {
   let current = dirname(startPath);
   let previous = '';
   
   while (current !== previous) {
     try {
       const goodvibesPath = join(current, '.goodvibes');
-      const stat = statSync(goodvibesPath);
-      if (stat.isDirectory()) {
+      const statResult = await stat(goodvibesPath);
+      if (statResult.isDirectory()) {
         return current;
       }
     } catch {
@@ -222,6 +236,10 @@ function findProjectRoot(startPath: string): string | null {
 
 /**
  * Get context metadata for a file.
+ * @param filePath - Path to the file being read
+ * @param fileType - Detected file type information
+ * @param workDir - Working directory for fallback project root
+ * @returns Context metadata including file type and related memory entries
  */
 export async function getContextForFile(
   filePath: string,
@@ -240,7 +258,7 @@ export async function getContextForFile(
   };
 
   // Find project root
-  const projectRoot = findProjectRoot(filePath) || workDir;
+  const projectRoot = (await findProjectRoot(filePath)) || workDir;
   const memoryDir = join(projectRoot, '.goodvibes', 'memory');
   
   // Extract keywords from file path
@@ -255,52 +273,31 @@ export async function getContextForFile(
   const relatedMemory: RelatedMemoryEntry[] = [];
   
   // Layer 2: Memory lookup using cached memory files (Item 3 m4)
-  const memory = loadMemoryFiles(memoryDir);
+  const memory = await loadMemoryFiles(memoryDir);
   
   // Check decisions
-  for (const decision of memory.decisions) {
-    const keywords = decision.keywords || [];
-    const relevance = calculateRelevance(fileKeywords, keywords);
-    
-    if (relevance === 'high' || relevance === 'medium') {
-      relatedMemory.push({
-        source: 'decisions',
-        id: decision.id,
-        summary: `${decision.what}: ${decision.why}`,
-        relevance,
-      });
-    }
-  }
+  relatedMemory.push(...findRelevantEntries(
+    memory.decisions,
+    'decisions',
+    fileKeywords,
+    (d) => `${d.what}: ${d.why}`
+  ));
   
   // Check patterns
-  for (const pattern of memory.patterns) {
-    const keywords = pattern.keywords || [];
-    const relevance = calculateRelevance(fileKeywords, keywords);
-    
-    if (relevance === 'high' || relevance === 'medium') {
-      relatedMemory.push({
-        source: 'patterns',
-        id: pattern.id,
-        summary: pattern.pattern,
-        relevance,
-      });
-    }
-  }
+  relatedMemory.push(...findRelevantEntries(
+    memory.patterns,
+    'patterns',
+    fileKeywords,
+    (p) => p.pattern
+  ));
   
   // Check failures
-  for (const failure of memory.failures) {
-    const keywords = failure.keywords || [];
-    const relevance = calculateRelevance(fileKeywords, keywords);
-    
-    if (relevance === 'high' || relevance === 'medium') {
-      relatedMemory.push({
-        source: 'failures',
-        id: failure.id,
-        summary: `${failure.operation}: ${failure.error}${failure.resolution ? ` → ${failure.resolution}` : ''}`,
-        relevance,
-      });
-    }
-  }
+  relatedMemory.push(...findRelevantEntries(
+    memory.failures,
+    'failures',
+    fileKeywords,
+    (f) => `${f.operation}: ${f.error}${f.resolution ? ` → ${f.resolution}` : ''}`
+  ));
   
   // Sort by relevance (high first) and limit to top 3
   relatedMemory.sort((a, b) => {

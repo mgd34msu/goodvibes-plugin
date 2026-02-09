@@ -10,6 +10,9 @@ import { spawn } from 'child_process';
 import { FileStateCache } from '../state/file-cache.js';
 import { getBackupDir, getBackupGitCleanSkip, getSafeOverwrite } from '../runtime-config.js';
 
+const GIT_TIMEOUT_MS = 5000;
+const MAX_BACKUP_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+
 export interface GitStatus {
   status: 'clean' | 'dirty' | 'staged' | 'untracked' | null;
   inRepo: boolean;
@@ -20,12 +23,14 @@ export interface SafeOverwriteResult {
   gitStatus: GitStatus;
   snapshotVersion?: number;
   warning?: string;
-  recoverable_via?: string;
+  recoverableVia?: string;
 }
 
 /**
  * Check git status for a specific file
  * Returns null if not in a git repo or git not available
+ * @param filePath - Absolute path to the file to check
+ * @returns GitStatus object indicating file status and repository state
  */
 export async function checkGitStatus(filePath: string): Promise<GitStatus> {
   try {
@@ -39,7 +44,7 @@ export async function checkGitStatus(filePath: string): Promise<GitStatus> {
       const timeout = setTimeout(() => {
         proc.kill();
         resolve(false);
-      }, 5000);
+      }, GIT_TIMEOUT_MS);
       
       let output = '';
       proc.stdout?.on('data', (data) => {
@@ -71,7 +76,7 @@ export async function checkGitStatus(filePath: string): Promise<GitStatus> {
       const timeout = setTimeout(() => {
         proc.kill();
         resolve('');
-      }, 5000);
+      }, GIT_TIMEOUT_MS);
       
       let output = '';
       proc.stdout?.on('data', (data) => {
@@ -113,6 +118,9 @@ export async function checkGitStatus(filePath: string): Promise<GitStatus> {
 
 /**
  * Generate backup path with timestamp
+ * @param filePath - Absolute path to the file being backed up
+ * @param workDir - Working directory for path resolution
+ * @returns Absolute path to the backup file location
  */
 export function generateBackupPath(filePath: string, workDir: string): string {
   const backupDir = getBackupDir();
@@ -138,6 +146,9 @@ export function generateBackupPath(filePath: string, workDir: string): string {
 
 /**
  * Create backup of existing file
+ * @param filePath - Absolute path to the file to back up
+ * @param backupPath - Absolute path where the backup will be created
+ * @returns Promise that resolves when backup is complete
  */
 export async function createBackup(
   filePath: string,
@@ -145,7 +156,7 @@ export async function createBackup(
 ): Promise<void> {
   // Check file size before backup
   const stats = await fs.stat(filePath);
-  if (stats.size > 50 * 1024 * 1024) {
+  if (stats.size > MAX_BACKUP_SIZE_BYTES) {
     // Skip backup for files > 50MB
     throw new Error('File too large for backup (>50MB)');
   }
@@ -161,6 +172,10 @@ export async function createBackup(
  * Perform safe overwrite check and backup if needed
  * 
  * Returns SafeOverwriteResult with backup info and git status
+ * @param filePath - Absolute path to the file being overwritten
+ * @param workDir - Working directory for backup path resolution
+ * @param fileExists - Whether the file currently exists
+ * @returns SafeOverwriteResult containing backup info, git status, and warnings
  */
 export async function performSafeOverwrite(
   filePath: string,
@@ -228,7 +243,7 @@ export async function performSafeOverwrite(
       result.warning = result.warning ? `${result.warning}; ${backupMsg}` : backupMsg;
     }
   } else {
-    result.recoverable_via = 'git checkout (file is committed and clean)';
+    result.recoverableVia = 'git checkout (file is committed and clean)';
   }
   
   return result;

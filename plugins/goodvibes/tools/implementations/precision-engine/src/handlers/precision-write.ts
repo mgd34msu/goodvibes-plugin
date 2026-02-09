@@ -142,6 +142,13 @@ async function resolveContent(spec: WriteSpec, workDir: string): Promise<string>
   return spec.content;
 }
 
+/**
+ * Generate inline backup path for mode:'backup' writes.
+ * Separate from safe-overwrite.ts generateBackupPath which uses a dedicated backup directory.
+ * Path traversal is not a concern here because filePath was already validated by validateFilePath().
+ * @param filePath - Already-validated absolute file path
+ * @returns Inline backup path adjacent to the original file
+ */
 function generateBackupPath(filePath: string): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const ext = path.extname(filePath);
@@ -342,7 +349,7 @@ async function writeFile(
 
     // Build safety metadata if we performed safe overwrite
     let safety;
-    if (safeOverwriteResult && (safeOverwriteResult.backupPath || safeOverwriteResult.snapshotVersion)) {
+    if (safeOverwriteResult && (safeOverwriteResult.backupPath || safeOverwriteResult.snapshotVersion || safeOverwriteResult.warning)) {
       safety = {
         first_overwrite: true,
         pre_snapshot: safeOverwriteResult.snapshotVersion 
@@ -351,7 +358,7 @@ async function writeFile(
         backup: safeOverwriteResult.backupPath,
         git_status: safeOverwriteResult.gitStatus.status,
         warning: safeOverwriteResult.warning,
-        recoverable_via: safeOverwriteResult.recoverable_via,
+        recoverable_via: safeOverwriteResult.recoverableVia,
       };
     }
 

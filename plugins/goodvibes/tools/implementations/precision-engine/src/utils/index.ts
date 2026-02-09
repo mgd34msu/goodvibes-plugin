@@ -367,7 +367,7 @@ export { validateDirectoryPath, validateFilePath } from './path-validation.js';
 
 // Export file type detection and context intelligence
 export { detectFileType, type FileTypeInfo } from './file-type-detection.js';
-export { getContextForFile, type ContextMetadata } from './context-intelligence.js';
+export { getContextForFile, resetContextTracking, type ContextMetadata } from './context-intelligence.js';
 
 // Export lock/error pattern detection utilities
 export { detectIssue, isRetryable, type DetectedIssue, type IssueType } from './lock-detection.js';
@@ -404,3 +404,6 @@ export { rankResults, type RankedFile } from './grep-ranking.js';
 
 // Export grep statistics utilities
 export { computeStats, type GrepStatsSummary, type DirectoryStats, type GrepFileData } from './grep-stats.js';
+
+// Export safe-overwrite utilities
+export { performSafeOverwrite, checkGitStatus, generateBackupPath as generateSafeBackupPath, createBackup, type SafeOverwriteResult, type GitStatus } from './safe-overwrite.js';

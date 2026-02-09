@@ -101,6 +101,27 @@ interface FileMetadata {
   [key: string]: unknown; // Allow dynamic properties for slow FS detection
 }
 
+/**
+ * Pagination metadata for token-budgeted batch operations.
+ * Returned when token_budget is specified to indicate paging state.
+ */
+interface ReadPaginationMetadata {
+  /** Current page number (1-indexed) */
+  page: number;
+  /** Total number of pages available */
+  total_pages: number;
+  /** Files not included in current page */
+  pending_files: string[];
+  /** Token budget per page */
+  token_budget: number;
+  /** Tokens consumed by current page */
+  tokens_used: number;
+  /** True if a single file exceeded the budget and was placed alone on this page */
+  budget_exceeded?: boolean;
+  /** Warning message (e.g., page clamped to max) */
+  warning?: string;
+}
+
 interface FileReadResult {
   path: string;
   exists: boolean;
@@ -369,6 +390,96 @@ function normalizePath(inputPath: string): string {
 
 function estimateTokens(str: string): number {
   return Math.ceil(str.length / 4);
+}
+
+/**
+ * Apply token-budgeted bin-packing pagination to file read results.
+ * 
+ * Groups files into pages where each page stays within the token budget.
+ * Uses a first-fit bin-packing algorithm: files are added to the current page
+ * until the budget is exceeded, then a new page is started.
+ *
+ * @param results - Array of file read results to paginate
+ * @param tokenBudget - Maximum token budget per page
+ * @param requestedPage - 1-indexed page number to return (clamped to valid range)
+ * @returns Object containing the paginated results and pagination metadata
+ */
+function paginateByTokenBudget(
+  results: FileReadResult[],
+  tokenBudget: number,
+  requestedPage: number
+): { paginatedResults: FileReadResult[]; paginationMeta: ReadPaginationMetadata } {
+  // Calculate token cost per result
+  const costsPerFile: { index: number; cost: number }[] = results.map((r, i) => {
+    // Strip image_base64 before cost calculation to avoid inflating token cost
+    const { image_base64: _img, ...costTarget } = r;
+    return {
+      index: i,
+      cost: estimateTokens(JSON.stringify(costTarget)),
+    };
+  });
+  
+  // Assign token_cost to each result
+  costsPerFile.forEach(({ index, cost }) => {
+    results[index].token_cost = cost;
+  });
+
+  // Pack files into pageGroups using first-fit bin packing
+  const pageGroups: number[][] = [];
+  let currentPage: number[] = [];
+  let currentPageCost = 0;
+
+  for (const { index, cost } of costsPerFile) {
+    if (currentPage.length > 0 && currentPageCost + cost > tokenBudget) {
+      // Current page is full, start a new page
+      pageGroups.push(currentPage);
+      currentPage = [index];
+      currentPageCost = cost;
+    } else {
+      currentPage.push(index);
+      currentPageCost += cost;
+    }
+  }
+  if (currentPage.length > 0) {
+    pageGroups.push(currentPage);
+  }
+
+  const totalPages = pageGroups.length;
+  const pageIndex = Math.min(requestedPage, totalPages) - 1;
+  const selectedPage = pageGroups[pageIndex] || pageGroups[0] || [];
+  
+  // Check if a single file exceeded the budget (placed alone on a page)
+  const budgetExceeded = selectedPage.length === 1 && (costsPerFile[selectedPage[0]]?.cost ?? 0) > tokenBudget;
+  
+  // Check if requested page was clamped to total pages
+  let pageClampedWarning: string | undefined;
+  if (requestedPage > totalPages) {
+    pageClampedWarning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  }
+  
+  // Get results for selected page
+  const paginatedResults = selectedPage.map(i => results[i]);
+  
+  // Build pending files list (files NOT in the selected page)
+  const selectedSet = new Set(selectedPage);
+  const pendingFiles = results
+    .map((r, i) => ({ path: r.path, index: i }))
+    .filter(({ index }) => !selectedSet.has(index))
+    .map(({ path: p }) => p);
+
+  const tokensUsed = selectedPage.reduce((sum, i) => sum + (costsPerFile[i]?.cost ?? 0), 0);
+
+  const paginationMeta: ReadPaginationMetadata = {
+    page: pageIndex + 1,
+    total_pages: totalPages,
+    pending_files: pendingFiles,
+    token_budget: tokenBudget,
+    tokens_used: tokensUsed,
+    budget_exceeded: budgetExceeded || undefined, // Only include if true
+    warning: pageClampedWarning,
+  };
+
+  return { paginatedResults, paginationMeta };
 }
 
 function tsKindToSymbolKind(kind: ts.SyntaxKind): SymbolKind | null {
@@ -1036,81 +1147,20 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
 
     // Token-Budgeted Batch Pagination (Item 7)
     let paginatedResults = results;
-    let paginationMeta: {
-      page: number;
-      total_pages: number;
-      pending_files: string[];
-      token_budget: number;
-      tokens_used: number;
-    } | undefined;
+    let paginationMeta: ReadPaginationMetadata | undefined;
     let paginationWarning: string | undefined;
 
     // Check if page is set without token_budget
-    if (input.page && input.page > 1 && (!input.token_budget || input.token_budget <= 0)) {
+    if (input.page !== undefined && input.page > 1 && (input.token_budget === undefined || input.token_budget <= 0)) {
       paginationWarning = 'page parameter is ignored without token_budget';
     }
 
-    if (input.token_budget && input.token_budget > 0) {
-      const budget = input.token_budget;
+    // Apply token-budgeted pagination if requested
+    if (input.token_budget !== undefined && input.token_budget > 0) {
       const requestedPage = input.page ?? 1;
-      
-      // Calculate token cost per result
-      const costsPerFile: { index: number; cost: number }[] = results.map((r, i) => {
-        // Strip image_base64 before cost calculation to avoid inflating token cost
-        const { image_base64: _img, ...costTarget } = r;
-        return {
-          index: i,
-          cost: estimateTokens(JSON.stringify(costTarget)),
-        };
-      });
-      
-      // Assign token_cost to each result
-      costsPerFile.forEach(({ index, cost }) => {
-        results[index].token_cost = cost;
-      });
-
-      // Pack files into pageGroups
-      const pageGroups: number[][] = [];
-      let currentPage: number[] = [];
-      let currentPageCost = 0;
-
-      for (const { index, cost } of costsPerFile) {
-        if (currentPage.length > 0 && currentPageCost + cost > budget) {
-          pageGroups.push(currentPage);
-          currentPage = [index];
-          currentPageCost = cost;
-        } else {
-          currentPage.push(index);
-          currentPageCost += cost;
-        }
-      }
-      if (currentPage.length > 0) {
-        pageGroups.push(currentPage);
-      }
-
-      const totalPages = pageGroups.length;
-      const pageIndex = Math.min(requestedPage, totalPages) - 1;
-      const selectedPage = pageGroups[pageIndex] || pageGroups[0] || [];
-      
-      // Get results for selected page
-      paginatedResults = selectedPage.map(i => results[i]);
-      
-      // Build pending files list (files NOT in the selected page)
-      const selectedSet = new Set(selectedPage);
-      const pendingFiles = results
-        .map((r, i) => ({ path: r.path, index: i }))
-        .filter(({ index }) => !selectedSet.has(index))
-        .map(({ path: p }) => p);
-
-      const tokensUsed = selectedPage.reduce((sum, i) => sum + (costsPerFile[i]?.cost ?? 0), 0);
-
-      paginationMeta = {
-        page: pageIndex + 1,
-        total_pages: totalPages,
-        pending_files: pendingFiles,
-        token_budget: budget,
-        tokens_used: tokensUsed,
-      };
+      const paginated = paginateByTokenBudget(results, input.token_budget, requestedPage);
+      paginatedResults = paginated.paginatedResults;
+      paginationMeta = paginated.paginationMeta;
     }
 
     // Build summary

@@ -57,6 +57,8 @@ const patterns: DetectionPattern[] = [
 
 /**
  * Detect file type from path using pattern matching.
+ * @param filePath - The file path to analyze
+ * @returns File type information including category, framework, and matched patterns
  */
 export function detectFileType(filePath: string): FileTypeInfo {
   const matched: DetectionPattern[] = [];

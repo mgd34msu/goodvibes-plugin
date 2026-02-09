@@ -12752,7 +12752,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path20, (statError, stat6) => {
+        settings.fs.stat(path20, (statError, stat7) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -12762,9 +12762,9 @@ var require_async = __commonJS({
             return;
           }
           if (settings.markSymbolicLink) {
-            stat6.isSymbolicLink = () => true;
+            stat7.isSymbolicLink = () => true;
           }
-          callSuccessCallback(callback, stat6);
+          callSuccessCallback(callback, stat7);
         });
       });
     }
@@ -12793,11 +12793,11 @@ var require_sync = __commonJS({
         return lstat;
       }
       try {
-        const stat6 = settings.fs.statSync(path20);
+        const stat7 = settings.fs.statSync(path20);
         if (settings.markSymbolicLink) {
-          stat6.isSymbolicLink = () => true;
+          stat7.isSymbolicLink = () => true;
         }
-        return stat6;
+        return stat7;
       } catch (error2) {
         if (!settings.throwErrorOnBrokenSymbolicLink) {
           return lstat;
@@ -12869,21 +12869,21 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports2.Settings = settings_1.default;
-    function stat6(path20, optionsOrSettingsOrCallback, callback) {
+    function stat7(path20, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
         async.read(path20, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
       async.read(path20, getSettings(optionsOrSettingsOrCallback), callback);
     }
-    __name(stat6, "stat");
-    exports2.stat = stat6;
-    function statSync2(path20, optionsOrSettings) {
+    __name(stat7, "stat");
+    exports2.stat = stat7;
+    function statSync(path20, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
       return sync.read(path20, settings);
     }
-    __name(statSync2, "statSync");
-    exports2.statSync = statSync2;
+    __name(statSync, "statSync");
+    exports2.statSync = statSync;
     function getSettings(settingsOrOptions = {}) {
       if (settingsOrOptions instanceof settings_1.default) {
         return settingsOrOptions;
@@ -14913,12 +14913,12 @@ var require_out4 = __commonJS({
 });
 
 // src/state/session-state.ts
-var path11, import_fs5, SessionState, sessionState;
+var path11, import_fs4, SessionState, sessionState;
 var init_session_state = __esm({
   "src/state/session-state.ts"() {
     "use strict";
     path11 = __toESM(require("path"), 1);
-    import_fs5 = require("fs");
+    import_fs4 = require("fs");
     init_runtime_config();
     SessionState = class _SessionState {
       static {
@@ -14944,11 +14944,11 @@ var init_session_state = __esm({
        */
       setCwd(newCwd) {
         const resolved = path11.resolve(this._cwd, newCwd);
-        if (!(0, import_fs5.existsSync)(resolved)) {
+        if (!(0, import_fs4.existsSync)(resolved)) {
           return;
         }
         try {
-          const realPath = (0, import_fs5.realpathSync)(resolved);
+          const realPath = (0, import_fs4.realpathSync)(resolved);
           const sandboxEnabled = getConfigValue("sandbox");
           if (sandboxEnabled !== false) {
             const projectRoot = process.cwd();
@@ -15046,13 +15046,13 @@ var init_command_history = __esm({
 });
 
 // src/state/process-manager.ts
-var import_child_process5, import_os, import_fs6, path12, ProcessManager, processManager;
+var import_child_process5, import_os, import_fs5, path12, ProcessManager, processManager;
 var init_process_manager = __esm({
   "src/state/process-manager.ts"() {
     "use strict";
     import_child_process5 = require("child_process");
     import_os = require("os");
-    import_fs6 = require("fs");
+    import_fs5 = require("fs");
     path12 = __toESM(require("path"), 1);
     init_runtime_config();
     ProcessManager = class _ProcessManager {
@@ -15106,15 +15106,15 @@ var init_process_manager = __esm({
           throw new Error(`Cannot adopt process: no PID available for "${command}"`);
         }
         const overflowDir = getExecOverflowDir();
-        if (!(0, import_fs6.existsSync)(overflowDir)) {
-          (0, import_fs6.mkdirSync)(overflowDir, { recursive: true });
+        if (!(0, import_fs5.existsSync)(overflowDir)) {
+          (0, import_fs5.mkdirSync)(overflowDir, { recursive: true });
         }
         const logFile = path12.join(overflowDir, `${id}.log`);
         if (proc.stdout) {
-          proc.stdout.pipe((0, import_fs6.createWriteStream)(logFile, { flags: "a" }));
+          proc.stdout.pipe((0, import_fs5.createWriteStream)(logFile, { flags: "a" }));
         }
         if (proc.stderr) {
-          proc.stderr.pipe((0, import_fs6.createWriteStream)(logFile, { flags: "a" }));
+          proc.stderr.pipe((0, import_fs5.createWriteStream)(logFile, { flags: "a" }));
         }
         proc.unref();
         const bgProcess = {
@@ -15171,11 +15171,11 @@ var init_process_manager = __esm({
         }
         const id = `bg-${this.counter++}`;
         const overflowDir = getExecOverflowDir();
-        if (!(0, import_fs6.existsSync)(overflowDir)) {
-          (0, import_fs6.mkdirSync)(overflowDir, { recursive: true });
+        if (!(0, import_fs5.existsSync)(overflowDir)) {
+          (0, import_fs5.mkdirSync)(overflowDir, { recursive: true });
         }
         const logFile = path12.join(overflowDir, `${id}.log`);
-        const logFd = (0, import_fs6.openSync)(logFile, "a");
+        const logFd = (0, import_fs5.openSync)(logFile, "a");
         let fdClosed = false;
         try {
           const child = (0, import_child_process5.spawn)(command, args2, {
@@ -15184,7 +15184,7 @@ var init_process_manager = __esm({
             cwd: options.cwd || process.cwd(),
             env: options.env ? { ...process.env, ...options.env } : process.env
           });
-          (0, import_fs6.closeSync)(logFd);
+          (0, import_fs5.closeSync)(logFd);
           fdClosed = true;
           if (child.pid === void 0) {
             child.kill();
@@ -15229,7 +15229,7 @@ var init_process_manager = __esm({
           };
         } catch (err2) {
           if (!fdClosed) {
-            (0, import_fs6.closeSync)(logFd);
+            (0, import_fs5.closeSync)(logFd);
           }
           throw err2;
         }
@@ -15252,12 +15252,12 @@ var init_process_manager = __esm({
         if (!proc) {
           throw new Error(`Background process ${id} not found`);
         }
-        if (!(0, import_fs6.existsSync)(proc.log_file)) {
+        if (!(0, import_fs5.existsSync)(proc.log_file)) {
           return { output: "", complete: proc.status !== "running", bytes_read: 0, total_bytes: 0 };
         }
-        const fd = (0, import_fs6.openSync)(proc.log_file, "r");
+        const fd = (0, import_fs5.openSync)(proc.log_file, "r");
         try {
-          const stats = (0, import_fs6.fstatSync)(fd);
+          const stats = (0, import_fs5.fstatSync)(fd);
           const totalBytes = stats.size;
           const startOffset = proc.last_read_offset;
           if (startOffset >= totalBytes) {
@@ -15265,7 +15265,7 @@ var init_process_manager = __esm({
           }
           const bytesToRead = totalBytes - startOffset;
           const buffer = Buffer.alloc(bytesToRead);
-          (0, import_fs6.readSync)(fd, buffer, 0, bytesToRead, startOffset);
+          (0, import_fs5.readSync)(fd, buffer, 0, bytesToRead, startOffset);
           let output = buffer.toString("utf-8");
           if (lines !== void 0 && lines > 0) {
             const allLines = output.split("\n");
@@ -15283,7 +15283,7 @@ var init_process_manager = __esm({
             total_bytes: totalBytes
           };
         } finally {
-          (0, import_fs6.closeSync)(fd);
+          (0, import_fs5.closeSync)(fd);
         }
       }
       /**
@@ -56270,8 +56270,8 @@ var init_pdf = __esm({
         this._readCapability = Promise.withResolvers();
         this._headersCapability = Promise.withResolvers();
         const fs15 = process.getBuiltinModule("fs");
-        fs15.promises.lstat(this._url).then((stat6) => {
-          this._contentLength = stat6.size;
+        fs15.promises.lstat(this._url).then((stat7) => {
+          this._contentLength = stat7.size;
           this._setReadableStream(fs15.createReadStream(this._url));
           this._headersCapability.resolve();
         }, (error2) => {
@@ -79669,7 +79669,7 @@ ${lanes.join("\n")}
             writeOutputIsTTY() {
               return process.stdout.isTTY;
             },
-            readFile: readFile12,
+            readFile: readFile13,
             writeFile: writeFile22,
             watchFile: watchFile2,
             watchDirectory,
@@ -79710,9 +79710,9 @@ ${lanes.join("\n")}
               return process.memoryUsage().heapUsed;
             },
             getFileSize(path20) {
-              const stat6 = statSync2(path20);
-              if (stat6 == null ? void 0 : stat6.isFile()) {
-                return stat6.size;
+              const stat7 = statSync(path20);
+              if (stat7 == null ? void 0 : stat7.isFile()) {
+                return stat7.size;
               }
               return 0;
             },
@@ -79754,14 +79754,14 @@ ${lanes.join("\n")}
             }
           };
           return nodeSystem;
-          function statSync2(path20) {
+          function statSync(path20) {
             try {
               return _fs.statSync(path20, statSyncOptions);
             } catch {
               return void 0;
             }
           }
-          __name(statSync2, "statSync");
+          __name(statSync, "statSync");
           function enableCPUProfiler(path20, cb) {
             if (activeSession) {
               cb();
@@ -79816,7 +79816,7 @@ ${lanes.join("\n")}
               activeSession.post("Profiler.stop", (err2, { profile }) => {
                 var _a4;
                 if (!err2) {
-                  if ((_a4 = statSync2(profilePath)) == null ? void 0 : _a4.isDirectory()) {
+                  if ((_a4 = statSync(profilePath)) == null ? void 0 : _a4.isDirectory()) {
                     profilePath = _path.join(profilePath, `${(/* @__PURE__ */ new Date()).toISOString().replace(/:/g, "-")}+P${process.pid}.cpuprofile`);
                   }
                   try {
@@ -79884,7 +79884,7 @@ ${lanes.join("\n")}
             );
           }
           __name(fsWatchWorker, "fsWatchWorker");
-          function readFile12(fileName, _encoding) {
+          function readFile13(fileName, _encoding) {
             let buffer;
             try {
               buffer = _fs.readFileSync(fileName);
@@ -79909,7 +79909,7 @@ ${lanes.join("\n")}
             }
             return buffer.toString("utf8");
           }
-          __name(readFile12, "readFile");
+          __name(readFile13, "readFile");
           function writeFile22(fileName, data, writeByteOrderMark) {
             if (writeByteOrderMark) {
               data = byteOrderMarkIndicator + data;
@@ -79941,19 +79941,19 @@ ${lanes.join("\n")}
                 if (entry === "." || entry === "..") {
                   continue;
                 }
-                let stat6;
+                let stat7;
                 if (typeof dirent === "string" || dirent.isSymbolicLink()) {
                   const name2 = combinePaths(path20, entry);
-                  stat6 = statSync2(name2);
-                  if (!stat6) {
+                  stat7 = statSync(name2);
+                  if (!stat7) {
                     continue;
                   }
                 } else {
-                  stat6 = dirent;
+                  stat7 = dirent;
                 }
-                if (stat6.isFile()) {
+                if (stat7.isFile()) {
                   files.push(entry);
-                } else if (stat6.isDirectory()) {
+                } else if (stat7.isDirectory()) {
                   directories.push(entry);
                 }
               }
@@ -79970,15 +79970,15 @@ ${lanes.join("\n")}
           }
           __name(readDirectory, "readDirectory");
           function fileSystemEntryExists(path20, entryKind) {
-            const stat6 = statSync2(path20);
-            if (!stat6) {
+            const stat7 = statSync(path20);
+            if (!stat7) {
               return false;
             }
             switch (entryKind) {
               case 0:
-                return stat6.isFile();
+                return stat7.isFile();
               case 1:
-                return stat6.isDirectory();
+                return stat7.isDirectory();
               default:
                 return false;
             }
@@ -80018,7 +80018,7 @@ ${lanes.join("\n")}
           __name(realpath2, "realpath");
           function getModifiedTime3(path20) {
             var _a4;
-            return (_a4 = statSync2(path20)) == null ? void 0 : _a4.mtime;
+            return (_a4 = statSync(path20)) == null ? void 0 : _a4.mtime;
           }
           __name(getModifiedTime3, "getModifiedTime3");
           function setModifiedTime(path20, time3) {
@@ -119270,7 +119270,7 @@ ${lanes.join("\n")}
         return possibleOption ? createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownDidYouMeanDiagnostic, unknownOptionErrorText || unknownOption, possibleOption.name) : createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownOptionDiagnostic, unknownOptionErrorText || unknownOption);
       }
       __name(createUnknownOptionError, "createUnknownOptionError");
-      function parseCommandLineWorker(diagnostics, commandLine, readFile12) {
+      function parseCommandLineWorker(diagnostics, commandLine, readFile13) {
         const options = {};
         let watchOptions;
         const fileNames = [];
@@ -119319,7 +119319,7 @@ ${lanes.join("\n")}
         }
         __name(parseStrings, "parseStrings");
         function parseResponseFile(fileName) {
-          const text = tryReadFile(fileName, readFile12 || ((fileName2) => sys.readFile(fileName2)));
+          const text = tryReadFile(fileName, readFile13 || ((fileName2) => sys.readFile(fileName2)));
           if (!isString(text)) {
             errors.push(text);
             return;
@@ -119430,8 +119430,8 @@ ${lanes.join("\n")}
         unknownDidYouMeanDiagnostic: Diagnostics.Unknown_compiler_option_0_Did_you_mean_1,
         optionTypeMismatchDiagnostic: Diagnostics.Compiler_option_0_expects_an_argument
       };
-      function parseCommandLine(commandLine, readFile12) {
-        return parseCommandLineWorker(compilerOptionsDidYouMeanDiagnostics, commandLine, readFile12);
+      function parseCommandLine(commandLine, readFile13) {
+        return parseCommandLineWorker(compilerOptionsDidYouMeanDiagnostics, commandLine, readFile13);
       }
       __name(parseCommandLine, "parseCommandLine");
       function getOptionFromName(optionName, allowShort) {
@@ -119520,8 +119520,8 @@ ${lanes.join("\n")}
         );
       }
       __name(getParsedCommandLineOfConfigFile, "getParsedCommandLineOfConfigFile");
-      function readConfigFile(fileName, readFile12) {
-        const textOrDiagnostic = tryReadFile(fileName, readFile12);
+      function readConfigFile(fileName, readFile13) {
+        const textOrDiagnostic = tryReadFile(fileName, readFile13);
         return isString(textOrDiagnostic) ? parseConfigFileTextToJson(fileName, textOrDiagnostic) : { config: {}, error: textOrDiagnostic };
       }
       __name(readConfigFile, "readConfigFile");
@@ -119538,15 +119538,15 @@ ${lanes.join("\n")}
         };
       }
       __name(parseConfigFileTextToJson, "parseConfigFileTextToJson");
-      function readJsonConfigFile(fileName, readFile12) {
-        const textOrDiagnostic = tryReadFile(fileName, readFile12);
+      function readJsonConfigFile(fileName, readFile13) {
+        const textOrDiagnostic = tryReadFile(fileName, readFile13);
         return isString(textOrDiagnostic) ? parseJsonText(fileName, textOrDiagnostic) : { fileName, parseDiagnostics: [textOrDiagnostic] };
       }
       __name(readJsonConfigFile, "readJsonConfigFile");
-      function tryReadFile(fileName, readFile12) {
+      function tryReadFile(fileName, readFile13) {
         let text;
         try {
-          text = readFile12(fileName);
+          text = readFile13(fileName);
         } catch (e) {
           return createCompilerDiagnostic(Diagnostics.Cannot_read_file_0_Colon_1, fileName, e.message);
         }
@@ -214420,12 +214420,12 @@ ${lanes.join("\n")}
         return createCompilerHostWorker(options, setParentNodes);
       }
       __name(createCompilerHost, "createCompilerHost");
-      function createGetSourceFile(readFile12, setParentNodes) {
+      function createGetSourceFile(readFile13, setParentNodes) {
         return (fileName, languageVersionOrOptions, onError) => {
           let text;
           try {
             mark("beforeIORead");
-            text = readFile12(fileName);
+            text = readFile13(fileName);
             mark("afterIORead");
             measure("I/O Read", "beforeIORead", "afterIORead");
           } catch (e) {
@@ -215395,7 +215395,7 @@ ${lanes.join("\n")}
           getRedirectFromOutput,
           forEachResolvedProjectReference: forEachResolvedProjectReference2
         });
-        const readFile12 = host.readFile.bind(host);
+        const readFile13 = host.readFile.bind(host);
         (_e = tracing) == null ? void 0 : _e.push(tracing.Phase.Program, "shouldProgramCreateNewSourceFiles", { hasOldProgram: !!oldProgram });
         const shouldCreateNewSourceFile = shouldProgramCreateNewSourceFiles(oldProgram, options);
         (_f = tracing) == null ? void 0 : _f.pop();
@@ -215622,7 +215622,7 @@ ${lanes.join("\n")}
           shouldTransformImportCall,
           emitBuildInfo,
           fileExists: fileExists3,
-          readFile: readFile12,
+          readFile: readFile13,
           directoryExists,
           getSymlinkCache,
           realpath: (_o = host.realpath) == null ? void 0 : _o.bind(host),
@@ -309314,7 +309314,7 @@ Please provide only ONE of:
 __name(formatMutualExclusivityError, "formatMutualExclusivityError");
 
 // src/utils/index.ts
-var import_fs4 = require("fs");
+var import_fs3 = require("fs");
 var import_path4 = require("path");
 
 // src/utils/fuzzy.ts
@@ -309494,7 +309494,7 @@ function detectFileType(filePath) {
 __name(detectFileType, "detectFileType");
 
 // src/utils/context-intelligence.ts
-var import_fs = require("fs");
+var import_promises = require("fs/promises");
 var import_path = require("path");
 var sentCategories = /* @__PURE__ */ new Set();
 var KEYWORD_STOPWORDS = /* @__PURE__ */ new Set([
@@ -309557,11 +309557,28 @@ function calculateRelevance(fileKeywords, entryKeywords) {
   return "low";
 }
 __name(calculateRelevance, "calculateRelevance");
+function findRelevantEntries(entries2, source, fileKeywords, toSummary) {
+  const result = [];
+  for (const entry of entries2) {
+    const keywords = entry.keywords || [];
+    const relevance = calculateRelevance(fileKeywords, keywords);
+    if (relevance === "high" || relevance === "medium") {
+      result.push({
+        source,
+        id: entry.id,
+        summary: toSummary(entry),
+        relevance
+      });
+    }
+  }
+  return result;
+}
+__name(findRelevantEntries, "findRelevantEntries");
 var memoryCache = null;
 var MEMORY_CACHE_TTL_MS = 3e4;
-function loadMemoryFiles(memoryDir) {
+async function loadMemoryFiles(memoryDir) {
   const now = Date.now();
-  if (memoryCache && now - memoryCache.loadedAt < MEMORY_CACHE_TTL_MS) {
+  if (memoryCache && memoryCache.memoryDir === memoryDir && now - memoryCache.loadedAt < MEMORY_CACHE_TTL_MS) {
     return memoryCache;
   }
   const decisions = [];
@@ -309569,34 +309586,34 @@ function loadMemoryFiles(memoryDir) {
   const failures = [];
   try {
     const decisionsPath = (0, import_path.join)(memoryDir, "decisions.json");
-    const decisionsData = JSON.parse((0, import_fs.readFileSync)(decisionsPath, "utf-8"));
+    const decisionsData = JSON.parse(await (0, import_promises.readFile)(decisionsPath, "utf-8"));
     decisions.push(...decisionsData.entries || []);
   } catch {
   }
   try {
     const patternsPath = (0, import_path.join)(memoryDir, "patterns.json");
-    const patternsData = JSON.parse((0, import_fs.readFileSync)(patternsPath, "utf-8"));
+    const patternsData = JSON.parse(await (0, import_promises.readFile)(patternsPath, "utf-8"));
     patterns2.push(...patternsData.entries || []);
   } catch {
   }
   try {
     const failuresPath = (0, import_path.join)(memoryDir, "failures.json");
-    const failuresData = JSON.parse((0, import_fs.readFileSync)(failuresPath, "utf-8"));
+    const failuresData = JSON.parse(await (0, import_promises.readFile)(failuresPath, "utf-8"));
     failures.push(...failuresData.entries || []);
   } catch {
   }
-  memoryCache = { decisions, patterns: patterns2, failures, loadedAt: now };
+  memoryCache = { memoryDir, decisions, patterns: patterns2, failures, loadedAt: now };
   return memoryCache;
 }
 __name(loadMemoryFiles, "loadMemoryFiles");
-function findProjectRoot(startPath) {
+async function findProjectRoot(startPath) {
   let current = (0, import_path.dirname)(startPath);
   let previous = "";
   while (current !== previous) {
     try {
       const goodvibesPath = (0, import_path.join)(current, ".goodvibes");
-      const stat6 = (0, import_fs.statSync)(goodvibesPath);
-      if (stat6.isDirectory()) {
+      const statResult = await (0, import_promises.stat)(goodvibesPath);
+      if (statResult.isDirectory()) {
         return current;
       }
     } catch {
@@ -309616,7 +309633,7 @@ async function getContextForFile(filePath, fileType, workDir) {
   const context = {
     file_type: fileType
   };
-  const projectRoot = findProjectRoot(filePath) || workDir;
+  const projectRoot = await findProjectRoot(filePath) || workDir;
   const memoryDir = (0, import_path.join)(projectRoot, ".goodvibes", "memory");
   const fileKeywords = extractKeywords(filePath);
   fileKeywords.add(fileType.category.toLowerCase());
@@ -309624,43 +309641,25 @@ async function getContextForFile(filePath, fileType, workDir) {
     fileKeywords.add(fileType.framework.toLowerCase());
   }
   const relatedMemory = [];
-  const memory = loadMemoryFiles(memoryDir);
-  for (const decision of memory.decisions) {
-    const keywords = decision.keywords || [];
-    const relevance = calculateRelevance(fileKeywords, keywords);
-    if (relevance === "high" || relevance === "medium") {
-      relatedMemory.push({
-        source: "decisions",
-        id: decision.id,
-        summary: `${decision.what}: ${decision.why}`,
-        relevance
-      });
-    }
-  }
-  for (const pattern of memory.patterns) {
-    const keywords = pattern.keywords || [];
-    const relevance = calculateRelevance(fileKeywords, keywords);
-    if (relevance === "high" || relevance === "medium") {
-      relatedMemory.push({
-        source: "patterns",
-        id: pattern.id,
-        summary: pattern.pattern,
-        relevance
-      });
-    }
-  }
-  for (const failure of memory.failures) {
-    const keywords = failure.keywords || [];
-    const relevance = calculateRelevance(fileKeywords, keywords);
-    if (relevance === "high" || relevance === "medium") {
-      relatedMemory.push({
-        source: "failures",
-        id: failure.id,
-        summary: `${failure.operation}: ${failure.error}${failure.resolution ? ` \u2192 ${failure.resolution}` : ""}`,
-        relevance
-      });
-    }
-  }
+  const memory = await loadMemoryFiles(memoryDir);
+  relatedMemory.push(...findRelevantEntries(
+    memory.decisions,
+    "decisions",
+    fileKeywords,
+    (d) => `${d.what}: ${d.why}`
+  ));
+  relatedMemory.push(...findRelevantEntries(
+    memory.patterns,
+    "patterns",
+    fileKeywords,
+    (p) => p.pattern
+  ));
+  relatedMemory.push(...findRelevantEntries(
+    memory.failures,
+    "failures",
+    fileKeywords,
+    (f) => `${f.operation}: ${f.error}${f.resolution ? ` \u2192 ${f.resolution}` : ""}`
+  ));
   relatedMemory.sort((a, b) => {
     const order = { high: 0, medium: 1, low: 2 };
     return order[a.relevance] - order[b.relevance];
@@ -309948,9 +309947,9 @@ function computeDelay(config2, attempt) {
 __name(computeDelay, "computeDelay");
 
 // src/utils/progress-collector.ts
-var import_fs2 = require("fs");
+var import_fs = require("fs");
 var import_path2 = require("path");
-var import_fs3 = require("fs");
+var import_fs2 = require("fs");
 function createProgressCollector(config2, commandId, overflowDir) {
   const startTime = Date.now();
   let lastDataTimestamp = startTime;
@@ -309961,11 +309960,11 @@ function createProgressCollector(config2, commandId, overflowDir) {
   let progressFilePath;
   if (config2.progress_file) {
     try {
-      (0, import_fs3.mkdirSync)(overflowDir, { recursive: true });
+      (0, import_fs2.mkdirSync)(overflowDir, { recursive: true });
       const safeId = commandId.replace(/[^a-zA-Z0-9_-]/g, "_");
       const timestamp = Date.now();
       progressFilePath = (0, import_path2.join)(overflowDir, `progress-${safeId}-${timestamp}.log`);
-      writeStream = (0, import_fs2.createWriteStream)(progressFilePath, { flags: "a" });
+      writeStream = (0, import_fs.createWriteStream)(progressFilePath, { flags: "a" });
       writeStream.on("error", () => {
         writeStream = void 0;
       });
@@ -310619,7 +310618,7 @@ __name(applyPagination, "applyPagination");
 
 // src/utils/grep-relationships.ts
 var path6 = __toESM(require("path"), 1);
-var import_promises = require("fs/promises");
+var import_promises2 = require("fs/promises");
 
 // src/core/tree-sitter.ts
 var import_web_tree_sitter = __toESM(require_tree_sitter(), 1);
@@ -311100,7 +311099,7 @@ async function findRelatedFiles(filePath, symbol2, workDir) {
     await treeSitterCore.init();
     let isExported3 = false;
     try {
-      const fileContent = await (0, import_promises.readFile)(filePath, "utf-8");
+      const fileContent = await (0, import_promises2.readFile)(filePath, "utf-8");
       const tree = await treeSitterCore.parse(fileContent, filePath);
       const symbols = treeSitterCore.getSymbols(tree, filePath);
       isExported3 = symbols.some(
@@ -312273,6 +312272,154 @@ function computeStats(files, pattern) {
 }
 __name(computeStats, "computeStats");
 
+// src/utils/safe-overwrite.ts
+var fs5 = __toESM(require("fs/promises"), 1);
+var path9 = __toESM(require("path"), 1);
+var import_child_process3 = require("child_process");
+init_runtime_config();
+var GIT_TIMEOUT_MS = 5e3;
+var MAX_BACKUP_SIZE_BYTES = 50 * 1024 * 1024;
+async function checkGitStatus(filePath) {
+  try {
+    const checkRepo = await new Promise((resolve10) => {
+      const proc = (0, import_child_process3.spawn)("git", ["rev-parse", "--is-inside-work-tree"], {
+        cwd: path9.dirname(filePath),
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      const timeout = setTimeout(() => {
+        proc.kill();
+        resolve10(false);
+      }, GIT_TIMEOUT_MS);
+      let output = "";
+      proc.stdout?.on("data", (data) => {
+        output += data.toString();
+      });
+      proc.on("close", (code) => {
+        clearTimeout(timeout);
+        resolve10(code === 0 && output.trim() === "true");
+      });
+      proc.on("error", () => {
+        clearTimeout(timeout);
+        resolve10(false);
+      });
+    });
+    if (!checkRepo) {
+      return { status: null, inRepo: false };
+    }
+    const status = await new Promise((resolve10) => {
+      const proc = (0, import_child_process3.spawn)("git", ["status", "--porcelain", "--", filePath], {
+        cwd: path9.dirname(filePath),
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      const timeout = setTimeout(() => {
+        proc.kill();
+        resolve10("");
+      }, GIT_TIMEOUT_MS);
+      let output = "";
+      proc.stdout?.on("data", (data) => {
+        output += data.toString();
+      });
+      proc.on("close", () => {
+        clearTimeout(timeout);
+        resolve10(output.trim());
+      });
+      proc.on("error", () => {
+        clearTimeout(timeout);
+        resolve10("");
+      });
+    });
+    if (!status) {
+      return { status: "clean", inRepo: true };
+    }
+    const statusCode = status.substring(0, 2);
+    if (statusCode.includes("?")) {
+      return { status: "untracked", inRepo: true };
+    } else if (statusCode[0] !== " " && statusCode[0] !== "?") {
+      return { status: "staged", inRepo: true };
+    } else {
+      return { status: "dirty", inRepo: true };
+    }
+  } catch {
+    return { status: null, inRepo: false };
+  }
+}
+__name(checkGitStatus, "checkGitStatus");
+function generateBackupPath(filePath, workDir) {
+  const backupDir = getBackupDir();
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+  const relativePath = path9.isAbsolute(filePath) ? path9.relative(workDir, filePath) : filePath;
+  const backupFilePath = path9.join(
+    backupDir,
+    `${relativePath}.${timestamp}.bak`
+  );
+  const resolvedBackup = path9.resolve(workDir, backupFilePath);
+  const resolvedBackupDir = path9.resolve(workDir, getBackupDir());
+  if (!resolvedBackup.startsWith(resolvedBackupDir + path9.sep)) {
+    throw new Error(`Backup path escapes backup directory: ${resolvedBackup}`);
+  }
+  return resolvedBackup;
+}
+__name(generateBackupPath, "generateBackupPath");
+async function createBackup(filePath, backupPath) {
+  const stats = await fs5.stat(filePath);
+  if (stats.size > MAX_BACKUP_SIZE_BYTES) {
+    throw new Error("File too large for backup (>50MB)");
+  }
+  await fs5.mkdir(path9.dirname(backupPath), { recursive: true });
+  await fs5.copyFile(filePath, backupPath);
+}
+__name(createBackup, "createBackup");
+async function performSafeOverwrite(filePath, workDir, fileExists3) {
+  const result = {
+    gitStatus: { status: null, inRepo: false }
+  };
+  if (!getSafeOverwrite()) {
+    return result;
+  }
+  if (!fileExists3) {
+    return result;
+  }
+  const cache = FileStateCache.getInstance();
+  const entry = cache.getEntryInfo(filePath);
+  if (entry) {
+    return result;
+  }
+  try {
+    const existingContent = await fs5.readFile(filePath, "utf-8");
+    const updateResult = cache.update(
+      filePath,
+      existingContent,
+      "pre_overwrite_snapshot",
+      void 0,
+      "Automatic snapshot before first overwrite"
+    );
+    result.snapshotVersion = updateResult.version;
+  } catch (error2) {
+    const cacheMsg = `Failed to create cache snapshot: ${error2.message}`;
+    result.warning = result.warning ? `${result.warning}; ${cacheMsg}` : cacheMsg;
+  }
+  const gitStatus = await checkGitStatus(filePath);
+  result.gitStatus = gitStatus;
+  const skipGitClean = getBackupGitCleanSkip();
+  const needsBackup = !gitStatus.inRepo || gitStatus.status !== "clean" || !skipGitClean;
+  if (needsBackup) {
+    try {
+      const backupPath = generateBackupPath(filePath, workDir);
+      await createBackup(filePath, backupPath);
+      result.backupPath = backupPath;
+      const backupMsg = `First-time overwrite: backup created at ${backupPath}`;
+      result.warning = result.warning ? `${result.warning}; ${backupMsg}` : backupMsg;
+    } catch (error2) {
+      const backupMsg = `Failed to create backup: ${error2.message}`;
+      result.warning = result.warning ? `${result.warning}; ${backupMsg}` : backupMsg;
+    }
+  } else {
+    result.recoverableVia = "git checkout (file is committed and clean)";
+  }
+  return result;
+}
+__name(performSafeOverwrite, "performSafeOverwrite");
+
 // src/utils/index.ts
 function toCallToolResult(result) {
   const content = {
@@ -312408,7 +312555,7 @@ function resolveStringField(obj, fieldName, options) {
     }
     const filePath = (0, import_path4.resolve)(basePath, fileValue);
     try {
-      return (0, import_fs4.readFileSync)(filePath, "utf-8");
+      return (0, import_fs3.readFileSync)(filePath, "utf-8");
     } catch (e) {
       throw new Error(`Failed to read ${fieldName}_file at '${filePath}': ${e.message}`);
     }
@@ -312439,154 +312586,6 @@ __name(parseJsonField, "parseJsonField");
 
 // src/handlers/precision-write.ts
 var import_crypto2 = require("crypto");
-
-// src/utils/safe-overwrite.ts
-var fs5 = __toESM(require("fs/promises"), 1);
-var path9 = __toESM(require("path"), 1);
-var import_child_process3 = require("child_process");
-init_runtime_config();
-async function checkGitStatus(filePath) {
-  try {
-    const checkRepo = await new Promise((resolve10) => {
-      const proc = (0, import_child_process3.spawn)("git", ["rev-parse", "--is-inside-work-tree"], {
-        cwd: path9.dirname(filePath),
-        stdio: ["ignore", "pipe", "ignore"]
-      });
-      const timeout = setTimeout(() => {
-        proc.kill();
-        resolve10(false);
-      }, 5e3);
-      let output = "";
-      proc.stdout?.on("data", (data) => {
-        output += data.toString();
-      });
-      proc.on("close", (code) => {
-        clearTimeout(timeout);
-        resolve10(code === 0 && output.trim() === "true");
-      });
-      proc.on("error", () => {
-        clearTimeout(timeout);
-        resolve10(false);
-      });
-    });
-    if (!checkRepo) {
-      return { status: null, inRepo: false };
-    }
-    const status = await new Promise((resolve10) => {
-      const proc = (0, import_child_process3.spawn)("git", ["status", "--porcelain", "--", filePath], {
-        cwd: path9.dirname(filePath),
-        stdio: ["ignore", "pipe", "ignore"]
-      });
-      const timeout = setTimeout(() => {
-        proc.kill();
-        resolve10("");
-      }, 5e3);
-      let output = "";
-      proc.stdout?.on("data", (data) => {
-        output += data.toString();
-      });
-      proc.on("close", () => {
-        clearTimeout(timeout);
-        resolve10(output.trim());
-      });
-      proc.on("error", () => {
-        clearTimeout(timeout);
-        resolve10("");
-      });
-    });
-    if (!status) {
-      return { status: "clean", inRepo: true };
-    }
-    const statusCode = status.substring(0, 2);
-    if (statusCode.includes("?")) {
-      return { status: "untracked", inRepo: true };
-    } else if (statusCode[0] !== " " && statusCode[0] !== "?") {
-      return { status: "staged", inRepo: true };
-    } else {
-      return { status: "dirty", inRepo: true };
-    }
-  } catch {
-    return { status: null, inRepo: false };
-  }
-}
-__name(checkGitStatus, "checkGitStatus");
-function generateBackupPath(filePath, workDir) {
-  const backupDir = getBackupDir();
-  const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-  const relativePath = path9.isAbsolute(filePath) ? path9.relative(workDir, filePath) : filePath;
-  const backupFilePath = path9.join(
-    backupDir,
-    `${relativePath}.${timestamp}.bak`
-  );
-  const resolvedBackup = path9.resolve(workDir, backupFilePath);
-  const resolvedBackupDir = path9.resolve(workDir, getBackupDir());
-  if (!resolvedBackup.startsWith(resolvedBackupDir + path9.sep)) {
-    throw new Error(`Backup path escapes backup directory: ${resolvedBackup}`);
-  }
-  return resolvedBackup;
-}
-__name(generateBackupPath, "generateBackupPath");
-async function createBackup(filePath, backupPath) {
-  const stats = await fs5.stat(filePath);
-  if (stats.size > 50 * 1024 * 1024) {
-    throw new Error("File too large for backup (>50MB)");
-  }
-  await fs5.mkdir(path9.dirname(backupPath), { recursive: true });
-  await fs5.copyFile(filePath, backupPath);
-}
-__name(createBackup, "createBackup");
-async function performSafeOverwrite(filePath, workDir, fileExists3) {
-  const result = {
-    gitStatus: { status: null, inRepo: false }
-  };
-  if (!getSafeOverwrite()) {
-    return result;
-  }
-  if (!fileExists3) {
-    return result;
-  }
-  const cache = FileStateCache.getInstance();
-  const entry = cache.getEntryInfo(filePath);
-  if (entry) {
-    return result;
-  }
-  try {
-    const existingContent = await fs5.readFile(filePath, "utf-8");
-    const updateResult = cache.update(
-      filePath,
-      existingContent,
-      "pre_overwrite_snapshot",
-      void 0,
-      "Automatic snapshot before first overwrite"
-    );
-    result.snapshotVersion = updateResult.version;
-  } catch (error2) {
-    const cacheMsg = `Failed to create cache snapshot: ${error2.message}`;
-    result.warning = result.warning ? `${result.warning}; ${cacheMsg}` : cacheMsg;
-  }
-  const gitStatus = await checkGitStatus(filePath);
-  result.gitStatus = gitStatus;
-  const skipGitClean = getBackupGitCleanSkip();
-  const needsBackup = !gitStatus.inRepo || gitStatus.status !== "clean" || !skipGitClean;
-  if (needsBackup) {
-    try {
-      const backupPath = generateBackupPath(filePath, workDir);
-      await createBackup(filePath, backupPath);
-      result.backupPath = backupPath;
-      const backupMsg = `First-time overwrite: backup created at ${backupPath}`;
-      result.warning = result.warning ? `${result.warning}; ${backupMsg}` : backupMsg;
-    } catch (error2) {
-      const backupMsg = `Failed to create backup: ${error2.message}`;
-      result.warning = result.warning ? `${result.warning}; ${backupMsg}` : backupMsg;
-    }
-  } else {
-    result.recoverable_via = "git checkout (file is committed and clean)";
-  }
-  return result;
-}
-__name(performSafeOverwrite, "performSafeOverwrite");
-
-// src/handlers/precision-write.ts
 function renderHandlebars(template, data) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key2) => {
     return String(data[key2] ?? "");
@@ -312790,14 +312789,14 @@ async function writeFile3(spec, dryRun, workDir, options) {
       }
     }
     let safety;
-    if (safeOverwriteResult && (safeOverwriteResult.backupPath || safeOverwriteResult.snapshotVersion)) {
+    if (safeOverwriteResult && (safeOverwriteResult.backupPath || safeOverwriteResult.snapshotVersion || safeOverwriteResult.warning)) {
       safety = {
         first_overwrite: true,
         pre_snapshot: safeOverwriteResult.snapshotVersion ? `cached (version ${safeOverwriteResult.snapshotVersion})` : void 0,
         backup: safeOverwriteResult.backupPath,
         git_status: safeOverwriteResult.gitStatus.status,
         warning: safeOverwriteResult.warning,
-        recoverable_via: safeOverwriteResult.recoverable_via
+        recoverable_via: safeOverwriteResult.recoverableVia
       };
     }
     return {
@@ -326716,7 +326715,7 @@ var ts2 = __toESM(require_typescript(), 1);
 init_logging();
 
 // src/utils/file-suggestions.ts
-var import_fs7 = require("fs");
+var import_fs6 = require("fs");
 var import_path5 = require("path");
 async function getFileSuggestions(requestedPath, maxSuggestions = 5) {
   const suggestions = [];
@@ -326781,7 +326780,7 @@ async function checkCommonMistakes(requested, dir, base, ext, suggestions) {
 __name(checkCommonMistakes, "checkCommonMistakes");
 async function checkDirectoryListing(requested, dir, base, suggestions) {
   try {
-    const entries2 = await import_fs7.promises.readdir(dir);
+    const entries2 = await import_fs6.promises.readdir(dir);
     const ranked = rankBySimilarity(base, entries2, 0.4);
     for (const match of ranked.slice(0, 3)) {
       suggestions.push({
@@ -326796,7 +326795,7 @@ async function checkDirectoryListing(requested, dir, base, suggestions) {
 __name(checkDirectoryListing, "checkDirectoryListing");
 async function fileExists2(filePath) {
   try {
-    await import_fs7.promises.access(filePath);
+    await import_fs6.promises.access(filePath);
     return true;
   } catch {
     return false;
@@ -326987,6 +326986,58 @@ function estimateTokens5(str) {
   return Math.ceil(str.length / 4);
 }
 __name(estimateTokens5, "estimateTokens");
+function paginateByTokenBudget(results, tokenBudget, requestedPage) {
+  const costsPerFile = results.map((r, i2) => {
+    const { image_base64: _img, ...costTarget } = r;
+    return {
+      index: i2,
+      cost: estimateTokens5(JSON.stringify(costTarget))
+    };
+  });
+  costsPerFile.forEach(({ index, cost }) => {
+    results[index].token_cost = cost;
+  });
+  const pageGroups = [];
+  let currentPage = [];
+  let currentPageCost = 0;
+  for (const { index, cost } of costsPerFile) {
+    if (currentPage.length > 0 && currentPageCost + cost > tokenBudget) {
+      pageGroups.push(currentPage);
+      currentPage = [index];
+      currentPageCost = cost;
+    } else {
+      currentPage.push(index);
+      currentPageCost += cost;
+    }
+  }
+  if (currentPage.length > 0) {
+    pageGroups.push(currentPage);
+  }
+  const totalPages = pageGroups.length;
+  const pageIndex = Math.min(requestedPage, totalPages) - 1;
+  const selectedPage = pageGroups[pageIndex] || pageGroups[0] || [];
+  const budgetExceeded = selectedPage.length === 1 && (costsPerFile[selectedPage[0]]?.cost ?? 0) > tokenBudget;
+  let pageClampedWarning;
+  if (requestedPage > totalPages) {
+    pageClampedWarning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  }
+  const paginatedResults = selectedPage.map((i2) => results[i2]);
+  const selectedSet = new Set(selectedPage);
+  const pendingFiles = results.map((r, i2) => ({ path: r.path, index: i2 })).filter(({ index }) => !selectedSet.has(index)).map(({ path: p }) => p);
+  const tokensUsed = selectedPage.reduce((sum, i2) => sum + (costsPerFile[i2]?.cost ?? 0), 0);
+  const paginationMeta = {
+    page: pageIndex + 1,
+    total_pages: totalPages,
+    pending_files: pendingFiles,
+    token_budget: tokenBudget,
+    tokens_used: tokensUsed,
+    budget_exceeded: budgetExceeded || void 0,
+    // Only include if true
+    warning: pageClampedWarning
+  };
+  return { paginatedResults, paginationMeta };
+}
+__name(paginateByTokenBudget, "paginateByTokenBudget");
 function tsKindToSymbolKind(kind) {
   switch (kind) {
     case ts2.SyntaxKind.FunctionDeclaration:
@@ -327534,52 +327585,14 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
     let paginatedResults = results;
     let paginationMeta;
     let paginationWarning;
-    if (input.page && input.page > 1 && (!input.token_budget || input.token_budget <= 0)) {
+    if (input.page !== void 0 && input.page > 1 && (input.token_budget === void 0 || input.token_budget <= 0)) {
       paginationWarning = "page parameter is ignored without token_budget";
     }
-    if (input.token_budget && input.token_budget > 0) {
-      const budget = input.token_budget;
+    if (input.token_budget !== void 0 && input.token_budget > 0) {
       const requestedPage = input.page ?? 1;
-      const costsPerFile = results.map((r, i2) => {
-        const { image_base64: _img, ...costTarget } = r;
-        return {
-          index: i2,
-          cost: estimateTokens5(JSON.stringify(costTarget))
-        };
-      });
-      costsPerFile.forEach(({ index, cost }) => {
-        results[index].token_cost = cost;
-      });
-      const pageGroups = [];
-      let currentPage = [];
-      let currentPageCost = 0;
-      for (const { index, cost } of costsPerFile) {
-        if (currentPage.length > 0 && currentPageCost + cost > budget) {
-          pageGroups.push(currentPage);
-          currentPage = [index];
-          currentPageCost = cost;
-        } else {
-          currentPage.push(index);
-          currentPageCost += cost;
-        }
-      }
-      if (currentPage.length > 0) {
-        pageGroups.push(currentPage);
-      }
-      const totalPages = pageGroups.length;
-      const pageIndex = Math.min(requestedPage, totalPages) - 1;
-      const selectedPage = pageGroups[pageIndex] || pageGroups[0] || [];
-      paginatedResults = selectedPage.map((i2) => results[i2]);
-      const selectedSet = new Set(selectedPage);
-      const pendingFiles = results.map((r, i2) => ({ path: r.path, index: i2 })).filter(({ index }) => !selectedSet.has(index)).map(({ path: p }) => p);
-      const tokensUsed = selectedPage.reduce((sum, i2) => sum + (costsPerFile[i2]?.cost ?? 0), 0);
-      paginationMeta = {
-        page: pageIndex + 1,
-        total_pages: totalPages,
-        pending_files: pendingFiles,
-        token_budget: budget,
-        tokens_used: tokensUsed
-      };
+      const paginated = paginateByTokenBudget(results, input.token_budget, requestedPage);
+      paginatedResults = paginated.paginatedResults;
+      paginationMeta = paginated.paginationMeta;
     }
     const filesRead = paginatedResults.filter((r) => r.exists && !r.error).length;
     const filesNotFound = paginatedResults.filter((r) => !r.exists).length;
