@@ -809,7 +809,6 @@ describe('pre-compact hook', () => {
       expect(agentsLine).toBeDefined();
       expect(agentsLine).toContain('agent-1 - Task with newlines in it');
     });
-
-    });
+  });
 
 });

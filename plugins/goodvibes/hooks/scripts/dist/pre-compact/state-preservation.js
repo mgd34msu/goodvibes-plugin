@@ -10,6 +10,36 @@ import { createCheckpointIfNeeded } from '../post-tool-use/checkpoint-manager.js
 import { ensureGoodVibesDir, debug, logError, fileExists, } from '../shared/index.js';
 import { loadState, saveState } from '../state/index.js';
 /**
+ * Reads currently active agents from agent-tracking.json and formats a summary string.
+ * Returns empty string if no agents are tracked or on any error.
+ */
+async function getActiveAgentsSummary(cwd, sessionId) {
+    const AGENT_DESC_MAX_LENGTH = 80;
+    try {
+        const trackingPath = path.join(cwd, '.goodvibes', 'state', 'agent-tracking.json');
+        if (!(await fileExists(trackingPath)))
+            return '';
+        const content = await fs.readFile(trackingPath, 'utf-8');
+        const trackings = JSON.parse(content);
+        let entries = Object.values(trackings);
+        if (sessionId) {
+            entries = entries.filter(entry => entry.session_id === sessionId);
+        }
+        if (entries.length === 0)
+            return '';
+        const agentDescriptions = entries.map(entry => {
+            const desc = entry.task_description
+                ? entry.task_description.substring(0, AGENT_DESC_MAX_LENGTH).replace(/\n/g, ' ').trim()
+                : entry.agent_type || 'unknown';
+            return `${entry.agent_id} - ${desc}`;
+        });
+        return `agents running during compact: ${agentDescriptions.join(', ')}`;
+    }
+    catch {
+        return '';
+    }
+}
+/**
  * Creates a checkpoint commit before context compaction if there are uncommitted changes.
  * This ensures work is not lost during the compaction process.
  */
@@ -20,7 +50,11 @@ export async function createPreCompactCheckpoint(cwd) {
             return;
         }
         const state = await loadState(cwd);
-        const result = await createCheckpointIfNeeded(state, cwd, 'pre-compact: saving work before context compaction');
+        const agentsSummary = await getActiveAgentsSummary(cwd, state.session.id);
+        const commitMessage = agentsSummary
+            ? `pre-compact: saving work before context compaction\n${agentsSummary}`
+            : 'pre-compact: saving work before context compaction';
+        const result = await createCheckpointIfNeeded(state, cwd, commitMessage);
         if (result.created) {
             debug('Pre-compact checkpoint created', { message: result.message });
             await saveState(cwd, state);

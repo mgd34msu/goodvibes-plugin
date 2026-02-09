@@ -786,6 +786,27 @@ async function createCheckpointIfNeeded(state, cwd, forcedReason) {
 }
 
 // src/pre-compact/state-preservation.ts
+async function getActiveAgentsSummary(cwd, sessionId) {
+  const AGENT_DESC_MAX_LENGTH = 80;
+  try {
+    const trackingPath = path5.join(cwd, ".goodvibes", "state", "agent-tracking.json");
+    if (!await fileExists(trackingPath)) return "";
+    const content = await fs6.readFile(trackingPath, "utf-8");
+    const trackings = JSON.parse(content);
+    let entries = Object.values(trackings);
+    if (sessionId) {
+      entries = entries.filter((entry) => entry.session_id === sessionId);
+    }
+    if (entries.length === 0) return "";
+    const agentDescriptions = entries.map((entry) => {
+      const desc = entry.task_description ? entry.task_description.substring(0, AGENT_DESC_MAX_LENGTH).replace(/\n/g, " ").trim() : entry.agent_type || "unknown";
+      return `${entry.agent_id} - ${desc}`;
+    });
+    return `agents running during compact: ${agentDescriptions.join(", ")}`;
+  } catch {
+    return "";
+  }
+}
 async function createPreCompactCheckpoint(cwd) {
   try {
     if (!await hasUncommittedChanges(cwd)) {
@@ -793,10 +814,13 @@ async function createPreCompactCheckpoint(cwd) {
       return;
     }
     const state = await loadState(cwd);
+    const agentsSummary = await getActiveAgentsSummary(cwd, state.session.id);
+    const commitMessage = agentsSummary ? `pre-compact: saving work before context compaction
+${agentsSummary}` : "pre-compact: saving work before context compaction";
     const result = await createCheckpointIfNeeded(
       state,
       cwd,
-      "pre-compact: saving work before context compaction"
+      commitMessage
     );
     if (result.created) {
       debug("Pre-compact checkpoint created", { message: result.message });

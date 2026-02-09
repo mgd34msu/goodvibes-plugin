@@ -842,7 +842,8 @@ async function buildTelemetryEntry(tracking, transcriptPath, status) {
     keywords,
     files_modified: transcriptData.filesModified,
     tools_used: transcriptData.toolsUsed,
-    summary: transcriptData.summary
+    summary: transcriptData.summary,
+    task_description: tracking.task_description
   };
 }
 

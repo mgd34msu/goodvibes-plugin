@@ -178,5 +178,6 @@ export async function buildTelemetryEntry(tracking, transcriptPath, status) {
         files_modified: transcriptData.filesModified,
         tools_used: transcriptData.toolsUsed,
         summary: transcriptData.summary,
+        task_description: tracking.task_description,
     };
 }

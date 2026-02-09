@@ -77,9 +77,10 @@ function extractStartInputFields(input) {
  * @param cwd - Current working directory
  * @param projectName - Derived project name
  * @param gitInfo - Git branch and commit information
+ * @param taskDescription - Description of the task assigned to this agent
  * @returns TelemetryTracking object for persistence
  */
-function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo) {
+function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription) {
     return {
         agent_id: agentId,
         agent_type: agentType,
@@ -89,6 +90,7 @@ function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gi
         git_branch: gitInfo.branch,
         git_commit: gitInfo.commit,
         started_at: new Date().toISOString(),
+        task_description: taskDescription || undefined,
     };
 }
 /**
@@ -200,7 +202,7 @@ async function runSubagentStartHook() {
         debug('Git info', gitInfo);
         const projectName = deriveProjectName(cwd);
         debug('Project name', projectName);
-        const tracking = createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo);
+        const tracking = createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription);
         await saveAgentTracking(cwd, tracking);
         debug('Saved agent tracking', { agent_id: agentId });
         const analytics = await trackInAnalytics(agentType, taskDescription, tracking.started_at);
