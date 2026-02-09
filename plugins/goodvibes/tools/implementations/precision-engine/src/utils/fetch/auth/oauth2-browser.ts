@@ -8,8 +8,7 @@
 
 import * as http from 'http';
 import * as crypto from 'crypto';
-import { type ServiceAuth } from '../secrets-store.js';
-import { setServiceSecret } from '../secrets-store.js';
+import { type ServiceAuth, setServiceSecret, resolveSecretValue } from '../secrets-store.js';
 
 /** OAuth2 flow configuration */
 export interface OAuth2FlowConfig {
@@ -36,6 +35,14 @@ const PREFERRED_PORTS = [9876, 9877, 9878];
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
+ * Escape HTML special characters to prevent XSS.
+ */
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+
+/**
  * Generate a cryptographically random state parameter for CSRF protection.
  */
 export function generateState(): string {
@@ -51,7 +58,7 @@ export function buildAuthorizeUrl(auth: ServiceAuth, redirectUri: string, state:
   }
   
   const url = new URL(auth.authorize_url);
-  url.searchParams.set('client_id', typeof auth.client_id === 'string' ? auth.client_id : '');
+  url.searchParams.set('client_id', resolveSecretValue(auth.client_id) ?? '');
   url.searchParams.set('redirect_uri', redirectUri);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('state', state);
@@ -73,6 +80,7 @@ async function openBrowser(url: string): Promise<boolean> {
   const platform = process.platform;
   let command: string;
   let args: string[];
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
   
   if (platform === 'darwin') {
     command = 'open';
@@ -94,9 +102,12 @@ async function openBrowser(url: string): Promise<boolean> {
         shell: platform === 'win32',
       });
       child.unref();
-      child.on('error', () => resolve(false));
+      child.on('error', () => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+        resolve(false);
+      });
       // Give it a moment to fail
-      setTimeout(() => resolve(true), 1000);
+      timeoutHandle = setTimeout(() => resolve(true), 1000);
     } catch {
       resolve(false);
     }
@@ -183,7 +194,20 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
   }
   
   // Find available port
-  const port = await findAvailablePort(config.port);
+  // If auth.redirect_uri is set, extract its port and prefer that
+  let port = config.port;
+  if (!port && auth.redirect_uri) {
+    try {
+      const parsedRedirectUri = new URL(auth.redirect_uri);
+      if (parsedRedirectUri.port) {
+        port = parseInt(parsedRedirectUri.port, 10);
+      }
+    } catch {
+      // Invalid URI, will use default ports
+    }
+  }
+
+  port = await findAvailablePort(port);
   const redirectUri = auth.redirect_uri ?? `http://localhost:${port}/callback`;
   
   // Generate state
@@ -220,8 +244,9 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
         const errorParam = reqUrl.searchParams.get('error');
         if (errorParam) {
           const errorDesc = reqUrl.searchParams.get('error_description') ?? errorParam;
+          const escapedErrorDesc = escapeHtml(errorDesc);
           res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end(`<html><body><h2>Authorization Failed</h2><p>${errorDesc}</p><p>You can close this window.</p></body></html>`);
+          res.end(`<html><body><h2>Authorization Failed</h2><p>${escapedErrorDesc}</p><p>You can close this window.</p></body></html>`);
           resolve({ error: `OAuth2 error: ${errorDesc}` });
           return;
         }
@@ -245,6 +270,11 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
         openBrowser(authorizeUrl).catch(() => {
           // Browser failed — user will need to copy URL manually
         });
+      });
+
+      // Add error handler for server
+      server.on('error', (err) => {
+        resolve({ error: `Server error: ${err.message}` });
       });
       
       // Set timeout
@@ -272,11 +302,11 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
       grant_type: 'authorization_code',
       code,
       redirect_uri: redirectUri,
-      client_id: typeof auth.client_id === 'string' ? auth.client_id : '',
+      client_id: resolveSecretValue(auth.client_id) ?? '',
     });
     
     if (auth.client_secret) {
-      tokenBody.set('client_secret', typeof auth.client_secret === 'string' ? auth.client_secret : '');
+      tokenBody.set('client_secret', resolveSecretValue(auth.client_secret) ?? '');
     }
     
     const tokenResponse = await fetch(auth.token_url, {
@@ -327,6 +357,12 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
       access_token: accessToken,
       refresh_token: refreshToken,
       expires_at: expiresAt,
+      authorize_url: authorizeUrl,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `OAuth2 flow error: ${error instanceof Error ? error.message : String(error)}`,
       authorize_url: authorizeUrl,
     };
   } finally {

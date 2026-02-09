@@ -202,4 +202,95 @@ describe('request-builder', () => {
       expect(built.service!.name).toBe('fast-api');
     });
   });
+
+  describe('auth type: none', () => {
+    it('should not add auth headers when auth type is none', () => {
+      const headers = builder.buildRequestHeaders(
+        { url: 'https://example.com', auth: { type: 'none' } },
+        undefined,
+        undefined
+      );
+      expect(headers['Authorization']).toBeUndefined();
+      expect(headers['X-API-Key']).toBeUndefined();
+    });
+  });
+
+  describe('auth type: custom-headers', () => {
+    it('should merge custom headers', () => {
+      const headers = builder.buildRequestHeaders(
+        { url: 'https://example.com', auth: { type: 'custom-headers', headers: { 'X-Custom': 'val', 'X-Another': 'test' } } },
+        undefined,
+        undefined
+      );
+      expect(headers['X-Custom']).toBe('val');
+      expect(headers['X-Another']).toBe('test');
+    });
+  });
+
+  describe('string body_data with body_type', () => {
+    it('should handle string body_data with body_type: json', () => {
+      const [body, contentType] = builder.buildRequestBody({
+        url: 'https://example.com',
+        body_type: 'json',
+        body_data: '{"already":"json"}',
+      });
+      expect(body).toBe('{"already":"json"}');
+      expect(contentType).toBe('application/json');
+    });
+
+    it('should handle string body_data with body_type: form', () => {
+      const [body, contentType] = builder.buildRequestBody({
+        url: 'https://example.com',
+        body_type: 'form',
+        body_data: 'key=value&another=test',
+      });
+      expect(body).toBe('key=value&another=test');
+      expect(contentType).toBe('application/x-www-form-urlencoded');
+    });
+  });
+
+  describe('multipart boundary validation', () => {
+    it('should generate valid multipart boundary format', () => {
+      const [body, contentType] = builder.buildRequestBody({
+        url: 'https://example.com',
+        body_type: 'multipart',
+        body_data: { field: 'value' },
+      });
+      expect(contentType).toMatch(/^multipart\/form-data; boundary=----/);
+      const boundary = contentType!.split('boundary=')[1];
+      expect(boundary).toMatch(/^----[a-zA-Z0-9]+$/);
+    });
+  });
+
+  describe('URL with params edge cases', () => {
+    it('should handle invalid/malformed URL with params gracefully', () => {
+      // Invalid protocol
+      expect(() => builder.buildRequestUrl({
+        url: 'not-a-url',
+        params: { q: 'test' },
+      })).toThrow();
+    });
+  });
+
+  describe('buildRequest defaults', () => {
+    it('should default to GET method when not specified', async () => {
+      const built = await builder.buildRequest({
+        url: 'https://example.com/api',
+      });
+      expect(built.method).toBe('GET');
+    });
+
+    it('should allow auth override at request level', async () => {
+      await registry.addService('auth-service', {
+        base_url: 'https://api.example.com',
+        auth: { type: 'bearer', token: 'service-token' },
+      });
+      const built = await builder.buildRequest({
+        url: 'https://api.example.com/test',
+        service: 'auth-service',
+        auth: { type: 'bearer', token: 'override-token' },
+      });
+      expect(built.headers['Authorization']).toBe('Bearer override-token');
+    });
+  });
 });

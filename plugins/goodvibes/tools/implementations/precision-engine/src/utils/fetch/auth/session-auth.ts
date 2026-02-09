@@ -3,8 +3,7 @@
  * Acquires session tokens by posting login credentials to a login URL.
  */
 
-import { type ServiceAuth } from '../secrets-store.js';
-import { setServiceSecret } from '../secrets-store.js';
+import { type ServiceAuth, type EnvRef, resolveSecretValue, setServiceSecret } from '../secrets-store.js';
 
 /** Session acquisition result */
 export interface SessionResult {
@@ -40,6 +39,21 @@ export function extractFromPath(obj: unknown, jsonPath: string): unknown {
 }
 
 /**
+ * Deep-resolve all EnvRef values in a login body object.
+ * Returns a new object with all { $env: "VAR" } replaced by their values.
+ */
+function resolveLoginBody(body: Record<string, string | EnvRef>): Record<string, string> {
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(body)) {
+    const resolvedValue = resolveSecretValue(value);
+    if (resolvedValue !== undefined) {
+      resolved[key] = resolvedValue;
+    }
+  }
+  return resolved;
+}
+
+/**
  * Acquire a session token by posting to the login URL.
  *
  * @param auth - Auth config with login_url, login_body, and optional token_path
@@ -53,13 +67,26 @@ export async function acquireSessionToken(auth: ServiceAuth): Promise<SessionRes
     };
   }
 
+  // Validate URL format
   try {
+    new URL(auth.login_url);
+  } catch {
+    return {
+      success: false,
+      error: `Invalid login_url: ${auth.login_url}`,
+    };
+  }
+
+  try {
+    // Resolve EnvRef values in login_body before sending
+    const resolvedBody = resolveLoginBody(auth.login_body);
+
     const response = await fetch(auth.login_url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(auth.login_body),
+      body: JSON.stringify(resolvedBody),
     });
 
     if (!response.ok) {

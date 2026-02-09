@@ -120,7 +120,7 @@ export async function removeService(name: string): Promise<boolean> {
   // Remove secrets (fire-and-forget, log but don't fail if no secrets exist)
   try {
     await removeServiceSecret(name);
-  } catch (error) {
+  } catch {
     // Log but don't fail — service may not have had secrets, or file may not exist
     // Error is swallowed intentionally to not block service removal
   }
@@ -154,7 +154,7 @@ export async function addUrlPattern(hostname: string, serviceName: string): Prom
   // Replace existing pattern for this hostname, or add new
   const existingIndex = patterns.findIndex(p => p.hostname === hostname);
   if (existingIndex >= 0) {
-    patterns[existingIndex].service = serviceName;
+    patterns[existingIndex] = { ...patterns[existingIndex], service: serviceName };
   } else {
     patterns.push({ hostname, service: serviceName });
   }

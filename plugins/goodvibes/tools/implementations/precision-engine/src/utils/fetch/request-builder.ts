@@ -1,6 +1,6 @@
 /**
  * Request builder for precision_fetch.
- * Constructs fetch-ready request configurations from FetchSpec + service context.
+ * Constructs fetch-ready request configurations from RequestSpec + service context.
  */
 
 import { resolveService, buildServiceHeaders, resolveBaseUrl, type ResolvedService } from './service-resolver.js';
@@ -134,7 +134,8 @@ export function buildRequestHeaders(
   const headers = buildServiceHeaders(service, spec.headers);
   
   // Add auto content-type if not already set
-  if (autoContentType && !headers['Content-Type'] && !headers['content-type']) {
+  const hasContentType = Object.keys(headers).some(k => k.toLowerCase() === 'content-type');
+  if (autoContentType && !hasContentType) {
     headers['Content-Type'] = autoContentType;
   }
   

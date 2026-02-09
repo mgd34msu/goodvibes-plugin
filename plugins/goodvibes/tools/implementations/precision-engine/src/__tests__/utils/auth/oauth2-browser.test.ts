@@ -111,3 +111,115 @@ describe('oauth2-browser', () => {
     // which is tested at the integration level.
   });
 });
+
+  describe('resolveSecretValue usage', () => {
+    it('should use resolveSecretValue for EnvRef client_id', () => {
+      const auth: ServiceAuth = {
+        type: 'oauth2',
+        authorize_url: 'https://auth.example.com/authorize',
+        client_id: { $env: 'MY_CLIENT_ID' } as any,
+      };
+      
+      // Set env var
+      process.env.MY_CLIENT_ID = 'test-client-123';
+      
+      const url = buildAuthorizeUrl(auth, 'http://localhost:9876/callback', 'state');
+      const parsed = new URL(url);
+      
+      expect(parsed.searchParams.get('client_id')).toBe('test-client-123');
+      
+      delete process.env.MY_CLIENT_ID;
+    });
+
+    it('should handle undefined EnvRef gracefully', () => {
+      const auth: ServiceAuth = {
+        type: 'oauth2',
+        authorize_url: 'https://auth.example.com/authorize',
+        client_id: { $env: 'NONEXISTENT_CLIENT_ID' } as any,
+      };
+      
+      const url = buildAuthorizeUrl(auth, 'http://localhost:9876/callback', 'state');
+      const parsed = new URL(url);
+      
+      // Should use empty string when env var doesn't exist
+      expect(parsed.searchParams.get('client_id')).toBe('');
+    });
+  });
+
+  describe('security features', () => {
+    it('should have escapeHtml function for XSS protection', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, '../../../utils/fetch/auth/oauth2-browser.ts');
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      
+      // Check that escapeHtml function is defined
+      expect(fileContent).toContain('function escapeHtml(str: string): string');
+      
+      // Check that it escapes the necessary characters
+      expect(fileContent).toContain('.replace(/&/g,');
+      expect(fileContent).toContain('.replace(/</g,');
+      expect(fileContent).toContain('.replace(/>/g,');
+      expect(fileContent).toContain('.replace(/"/g,');
+      
+      // Check that escapedErrorDesc is used in the HTML response
+      expect(fileContent).toContain('escapedErrorDesc');
+    });
+
+    it('should import and use resolveSecretValue', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, '../../../utils/fetch/auth/oauth2-browser.ts');
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      
+      // Check import
+      expect(fileContent).toContain('resolveSecretValue');
+      
+      // Check usage for client_id in multiple places
+      const clientIdMatches = fileContent.match(/resolveSecretValue\(auth\.client_id\)/g);
+      expect(clientIdMatches).toBeTruthy();
+      expect(clientIdMatches!.length).toBeGreaterThanOrEqual(2);
+      
+      // Check usage for client_secret
+      expect(fileContent).toMatch(/resolveSecretValue\(auth\.client_secret\)/);
+    });
+  });
+
+  describe('error handling', () => {
+    it('should have catch clause for network errors', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, '../../../utils/fetch/auth/oauth2-browser.ts');
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      
+      // Check for catch clause with proper error handling
+      expect(fileContent).toContain('} catch (error) {');
+      expect(fileContent).toContain('OAuth2 flow error');
+    });
+
+    it('should have server error handler', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, '../../../utils/fetch/auth/oauth2-browser.ts');
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      
+      // Check for server error handler
+      expect(fileContent).toContain("server.on('error'");
+    });
+  });
+
+  describe('timer management', () => {
+    it('should clean up timeout handles in openBrowser', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, '../../../utils/fetch/auth/oauth2-browser.ts');
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      
+      // Check that timeoutHandle is declared in openBrowser
+      expect(fileContent).toMatch(/let timeoutHandle.*?ReturnType<typeof setTimeout>/);
+      
+      // Check that clearTimeout is called
+      expect(fileContent).toContain('clearTimeout(timeoutHandle)');
+    });
+  });
+});

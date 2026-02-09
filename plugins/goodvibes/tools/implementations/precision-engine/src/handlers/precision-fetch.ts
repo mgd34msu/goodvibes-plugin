@@ -112,13 +112,7 @@ function summarizeContent(html: string, url: string, prompt?: string): string {
  */
 type ExtractMode = 'raw' | 'text' | 'json' | 'markdown' | 'structured' | 'summary' | 'code_blocks' | 'tables' | 'links' | 'metadata' | 'readable' | 'pdf';
 
-/** Per-request auth configuration */
-type RequestAuth = 
-  | { type: 'none' }
-  | { type: 'bearer'; token: string }
-  | { type: 'basic'; username: string; password: string }
-  | { type: 'api-key'; header: string; key: string }
-  | { type: 'custom-headers'; headers: Record<string, string> };
+// RequestAuth type imported from request-builder.ts above
 
 interface FetchSpec {
   url: string;
@@ -618,6 +612,9 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.redirected !== undefined && { redirected: r.redirected }),
             ...(r.readable && { readable: r.readable }),
             ...(r.pdf && { pdf: r.pdf }),
+            ...(r.response_headers && { response_headers: r.response_headers }),
+            ...(r.timing && { timing: r.timing }),
+            // cookies, redirect_chain, auth_info: populated by Phase 4 auth orchestrator integration
             ...(r.error && { error: r.error }),
           })),
           summary: {
@@ -653,6 +650,9 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.redirected !== undefined && { redirected: r.redirected }),
             ...(r.readable && { readable: r.readable }),
             ...(r.pdf && { pdf: r.pdf }),
+            ...(r.response_headers && { response_headers: r.response_headers }),
+            ...(r.timing && { timing: r.timing }),
+            // cookies, redirect_chain, auth_info: populated by Phase 4 auth orchestrator integration
             ...(r.error && { error: r.error }),
           })),
           summary: {

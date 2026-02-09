@@ -3,8 +3,7 @@
  * Handles automatic access token refresh using refresh_token + client credentials.
  */
 
-import { type ServiceAuth } from '../secrets-store.js';
-import { setServiceSecret } from '../secrets-store.js';
+import { type ServiceAuth, resolveSecretValue, setServiceSecret } from '../secrets-store.js';
 
 /** Token refresh result */
 export interface TokenRefreshResult {
@@ -46,16 +45,26 @@ export async function refreshAccessToken(auth: ServiceAuth): Promise<TokenRefres
     };
   }
 
+  // Validate URL format
+  try {
+    new URL(auth.token_url);
+  } catch {
+    return {
+      success: false,
+      error: `Invalid token_url: ${auth.token_url}`,
+    };
+  }
+
   try {
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: auth.refresh_token,
-      client_id: typeof auth.client_id === 'string' ? auth.client_id : '',
+      client_id: resolveSecretValue(auth.client_id) ?? '',
     });
 
     // Add client_secret if available
     if (auth.client_secret) {
-      body.set('client_secret', typeof auth.client_secret === 'string' ? auth.client_secret : '');
+      body.set('client_secret', resolveSecretValue(auth.client_secret) ?? '');
     }
 
     const response = await fetch(auth.token_url, {
