@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The precision engine provides **11 tools** that directly compete with or extend **7 native tools** (Read, Write, Edit, Bash, Glob, Grep, NotebookEdit). Additionally, it introduces **3 tools with no native equivalent** (precision_symbols, discover, precision_config). precision_fetch serves as a full HTTP client that significantly extends beyond native WebFetch's read-only AI-prompt model.
+The precision engine provides **11 tools**: **8** directly compete with or extend **8 native tools** (Read, Write, Edit, Bash, Glob, Grep, NotebookEdit, WebFetch), and **3** have no native equivalent (precision_symbols, discover, precision_config). precision_fetch serves as a full HTTP client that significantly extends beyond native WebFetch's read-only AI-prompt model.
 
 The core differentiator is **token efficiency** — every precision tool offers granular verbosity control, batch operations, and output capping that the native tools lack entirely. The native tools return full output every time with no way to control response size.
 
@@ -336,9 +336,7 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 | Native Capability | Status in Precision |
 |-------------------|--------------------|
 | **Bash sandbox execution** (platform-level process isolation) | Different approach — precision_config sandbox_mode restricts all tool paths to project root via validateBasePath() |
-| **AI-powered web analysis** (WebFetch prompt) | Not implemented — extraction modes only |
-| **Simulated sed edits** (Bash) | Not needed — precision_edit handles this |
-| **File mutation safety** (Write/Edit) | Native uses read-before-write gate. Replaced in precision by superior layered safety: OCC version control with conflict detection, SHA256 content hashing, atomic transactions with rollback, git-aware timestamped backups, pre/post validation hooks (typecheck/lint/test/build), and dry run preview. See Error Handling & Safety section. |
+| **AI-powered web analysis** (WebFetch prompt) | Not implemented, relies on Native for AI analysis |
 | **Browser/computer use tools** (18 tools) | Out of scope |
 | **Agent/task management** (7 tools) | Out of scope |
 | **Planning tools** (2 tools) | Out of scope |
@@ -354,9 +352,9 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 1. **Batch everything** — Every precision tool accepts arrays. Native tools are always 1-at-a-time.
 2. **Verbosity control** — 4-6 levels per tool. Native is always maximum verbosity.
 3. **Token budgets** — Automatic pagination within token limits. Native has no concept of this.
-4. **5 match modes** (edit) — Fuzzy, regex, AST, AST pattern. Native has exact-only.
+4. **5 match modes** (edit) — Exact, fuzzy, regex, AST, AST pattern. Native has exact-only.
 5. **Disambiguation hints** (edit) — near_line, in_function, in_class. Native requires globally unique matches.
-6. **Extraction modes** (read) — outline, symbols, AST. Native is content-only.
+6. **Extraction modes** (read) — content, outline, symbols, AST, lines (5 modes). Native is content-only.
 7. **Transaction/rollback** — Atomic operations with automatic rollback. Native has no transactions.
 8. **Search caching** — LRU cache for refined searches. Native re-searches from scratch every time.
 9. **File state caching** — Content hash, version tracking, modification logs. Native re-reads fully every time.
@@ -371,16 +369,6 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 18. **Find-replace preview** (grep) — Preview replacements without writing. Not in native.
 19. **Runtime configuration** — Tune all settings without restart. Not in native.
 20. **Template engines** (write) — Handlebars/EJS for dynamic content. Not in native.
-21. **Image format coverage** (read) — 10 formats vs native's 5, magic byte validation for 9 binary formats, SVG dual output (text + image). Native uses extension-only detection with no validation.
-22. **Cell ID targeting with enhancements** (notebook) — cell_id with metadata.id fallback, auto-generation for nbformat 4.5+, bypasses indexOffset for stable batch targeting. Native has basic cell_id only.
-
-### Native Advantages (features precision lacks)
-
-1. **Platform-level process sandbox** — OS-level isolation for Bash commands (precision engine uses path-level sandboxing instead via validateBasePath).
-2. **AI-powered web analysis** — Send a natural language prompt, get intelligent extraction.
-3. **LSP hover info** — Rich type information on hover (precision_symbols provides signatures and docs but not the same interactive hover experience).
-4. **Browser automation** — 18 tools for full browser control (out of scope for precision).
-**Effective native-only advantages: 4** (items 1-4 above).
 
 ---
 
@@ -420,7 +408,7 @@ The precision engine is a **comprehensive superset** of native file I/O, search,
 
 - **Platform-level process sandbox** (Bash isolates at OS level; precision uses path-level sandboxing)
 - **AI-powered web content analysis** (WebFetch's prompt-based extraction has no precision equivalent)
-- **LSP hover info** (precision_symbols provides signatures/docs but not the same interactive hover experience)
+- **LSP hover info** (minor — precision_symbols provides the underlying data via signatures and docs; the difference is presentation format, not capability)
 
 Go-to-definition and find-references — traditionally LSP-only features — are fully covered by precision_symbols (workspace query → definition location with file, line, column, signature, docs) and precision_grep with `relationships: true` (traces imports/exports/re-exports). Read-before-write — often cited as a native safety feature — is replaced by a categorically superior 7-layer safety model in precision: OCC version control, SHA256 content hashing, atomic transactions with rollback, git-aware timestamped backups, pre/post validation hooks, dry run preview, and real-time conflict detection.
 
@@ -438,13 +426,13 @@ The precision engine does not attempt to replace native tools outside its scope 
 Native tools have zero output control. Every Read returns full content, every Grep returns full matches, every Bash returns full stdout. Precision tools have 4-6 verbosity levels per tool, token budgets, max_tokens caps, and tokens_used tracking in every response. In a 200-turn agent session, this is the difference between burning 2M tokens and burning 500K. There is no scenario at scale where native is more token-efficient — even a minimal precision_read call (`{"files": [{"path": "foo.txt"}]}`) adds only ~50 tokens of metadata overhead versus native Read, and that overhead is immediately recouped on the second read of the same file via caching (which returns near-zero tokens for unchanged files). Native would only "win" on a file so small (~50 tokens of content) that the metadata overhead exceeds the content — essentially an empty file.
 
 **2. Batch operations — eliminates round-trip tax.**
-This is the single biggest architectural advantage. An agent that needs to read 10 files, search 5 patterns, and run 3 commands needs 18 native tool calls. With precision tools, that's 3 calls. Each round trip costs ~500ms latency plus the full request/response token overhead. At scale, batching is a force multiplier. Every precision tool accepts arrays — native tools are universally 1-item-per-call.
+This is the single biggest architectural advantage. An agent that needs to read 10 files, search 5 patterns, and run 3 commands needs 18 native tool calls. With precision tools, that's 3 calls. Each round trip costs ~500ms latency plus the full request/response token overhead. At scale, batching is a force multiplier. Every precision tool accepts arrays — native tools are universally 1-item-per-call. Additionally, caching and paged output make consuming returned data from batched execution painless, even for extremely large batched responses.
 
 **3. Editing intelligence — different league entirely.**
 Native Edit requires globally unique string matches. If your target string appears twice, it fails. Precision offers 5 match modes (exact, fuzzy, regex, AST, AST pattern), near_line/in_function/in_class disambiguation hints, occurrence targeting (first, last, Nth, all), whitespace/case sensitivity toggles, and transaction support with rollback. For real-world code editing where context matters, this is transformative.
 
 **4. Caching — compound savings over a session.**
-FileStateCache means re-reading an unchanged file costs nearly zero tokens (just the "unchanged" status with hash). Native re-reads the entire file every time, paying full token cost. Over a session with repeated reads of the same files — which agents do constantly during edit-verify-edit cycles — the savings compound dramatically. The cache also enables conflict detection ("this file was modified since you last read it"), which native tools cannot do at all.
+FileStateCache means re-reading an unchanged file costs nearly zero tokens (just the "unchanged" status with hash). Native re-reads the entire file every time, paying full token cost. Over a session with repeated reads of the same files — which agents do constantly during edit-verify-edit cycles — the savings compound dramatically. The cache also enables conflict detection ("this file was modified since you last read it"), which native tools cannot do at all. This allows for teams of agents to perform parallel operations that might not otherwise be possible due to overlap.
 
 **5. Discovery and symbol intelligence — no native equivalent.**
 `discover` running grep+glob+symbols+structural queries in parallel with one call replaces 5+ separate native tool calls. `precision_symbols` extracting function signatures, JSDoc, export status, and container info from tree-sitter/TS compiler API is fully self-contained — no external LSP server configuration needed, works out of the box for TypeScript, Python, Rust, and Go.
@@ -460,17 +448,6 @@ WebFetch's ability to send a natural language prompt and get intelligent, summar
 **2. Process-level sandboxing (different approach, not better/worse).**
 Bash's OS-level sandbox isolates the entire process. Precision's path-level sandbox via `validateBasePath()` prevents tools from accessing files outside project root, and precision_exec trusts commands directly. For untrusted command execution in multi-tenant environments, native Bash's process isolation is architecturally stronger. However, precision's path sandboxing covers the common case (preventing accidental writes outside project scope) and is toggleable at runtime via precision_config — something native's sandbox is not.
 
-**3. Default availability (diminishing advantage).**
-Native tools require zero setup — they're built into every Claude Code session. Precision tools require the plugin installed, MCP server running, and ToolSearch to load them. This is a one-time setup cost, not an ongoing disadvantage. Once configured, precision tools are loaded on first use and remain available for the session. The MCP server (544 unit tests, comprehensive E2E, 26 bugs fixed at 10/10) is as stable as any well-tested runtime component — if it crashes, the underlying Node.js environment is failing, and the native CLI (which runs on the same Node.js runtime) faces the same stability concerns.
-
-### What Is NOT a Native Advantage
-
-**"Simplicity for simple tasks" — debunked.**
-All precision parameters beyond the core input are optional with sensible defaults. A minimal precision_read is `{"files": [{"path": "foo.txt"}]}`. A minimal precision_edit is `{"edits": [{"path": "f.ts", "find": "x", "replace": "y"}]}`. The schema is larger (more parameters available), but the invocation for simple tasks is nearly identical in size to native. The argument that "precision is more complex" confuses available options with required complexity.
-
-**"MCP server might crash" — debunked.**
-A server with 544 passing unit tests across 19 test files and comprehensive E2E agent-verified coverage is not a fragile dependency. It runs on the same Node.js runtime as the native CLI. If the MCP server crashes, the environment has larger problems. This is like arguing that an apartment on the second floor of a building in the middle of a highway is safer than a single-story house in the same location — the hypothetical failure mode applies equally to both.
-
 ### Bottom Line
 
-Precision engine wins on every dimension that matters for agent-driven, multi-file, high-throughput workflows: token efficiency, batch operations, caching, edit intelligence, search sophistication, and symbol intelligence. Native tools win on AI-powered web analysis (genuine gap) and have a different but not superior approach to sandboxing. The "simplicity" and "stability" arguments for native don't hold up under scrutiny — precision's optional parameters make simple tasks equally simple, and its test coverage makes it as reliable as any component in the stack.
+Precision engine wins on every dimension that matters for agent-driven, multi-file, high-throughput workflows: token efficiency, batch operations, caching, edit intelligence, search sophistication, and symbol intelligence. Native tools win on AI-powered web analysis (genuine gap) and have a different but not superior approach to sandboxing.
