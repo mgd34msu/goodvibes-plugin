@@ -1,1 +1,0 @@
-const fs=require("fs");fs.appendFileSync("plugins/goodvibes/hooks/scripts/src/cost-analysis/formatter.ts","test","utf8");console.log("OK");

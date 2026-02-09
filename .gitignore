@@ -37,6 +37,8 @@ implementation-plan.md
 final-plan.md
 new_tool_test/
 goodvibes_final_test/
+temp-hold/
+pt-tests/
 
 # Environment files
 .env
