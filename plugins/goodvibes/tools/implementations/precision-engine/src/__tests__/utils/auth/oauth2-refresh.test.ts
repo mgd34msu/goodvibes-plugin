@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   isTokenExpired,
   canRefreshToken,
@@ -133,7 +133,6 @@ describe('oauth2-refresh', () => {
         globalThis.fetch = originalFetch;
       }
     });
-  });
 
     it('should resolve EnvRef values in client_id and client_secret', async () => {
       // Set env vars for testing
@@ -184,6 +183,7 @@ describe('oauth2-refresh', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid token_url');
       });
+  });
 
   describe('refreshAndStore', () => {
     it('should refresh and store updated auth', async () => {

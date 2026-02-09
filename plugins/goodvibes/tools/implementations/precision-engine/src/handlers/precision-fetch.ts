@@ -188,7 +188,7 @@ interface FetchResult {
   /** Request timing breakdown. Currently only total_ms is populated.
    *  Granular fields (dns_ms, connect_ms, ttfb_ms) require Node.js perf_hooks
    *  integration and are reserved for future implementation.
-   *  Cached responses include timing.total_ms for consistency. */
+   *  Cached responses do not include response_headers but do include timing.total_ms for consistency. */
   timing?: { dns_ms?: number; connect_ms?: number; ttfb_ms?: number; total_ms: number };
 }
 

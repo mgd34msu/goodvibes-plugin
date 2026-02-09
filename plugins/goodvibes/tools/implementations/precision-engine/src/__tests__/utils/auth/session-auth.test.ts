@@ -140,7 +140,6 @@ describe('session-auth', () => {
         globalThis.fetch = originalFetch;
       }
     });
-  });
 
     it('should resolve EnvRef values in login_body', async () => {
       // Set env var for testing
@@ -187,6 +186,7 @@ describe('session-auth', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid login_url');
+  });
 });
 
   describe('acquireAndStore', () => {
