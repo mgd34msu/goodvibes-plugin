@@ -244,4 +244,55 @@ describe('CookieJar', () => {
       expect(cookies).toHaveLength(0);
     });
   });
+
+  describe('eviction order', () => {
+    it('should evict session cookies before persistent cookies during file size overflow', async () => {
+      // Create a mix of session cookies (no expiry) and persistent cookies (with expiry)
+      const largeValue = 'x'.repeat(1000); // 1KB per cookie
+      const headers: string[] = [];
+      
+      // Add 200 persistent cookies (with expiry in the future)
+      for (let i = 0; i < 200; i++) {
+        headers.push(`persistent${i}=${largeValue}; Path=/; Max-Age=3600`);
+      }
+      
+      // Add 200 session cookies (no expiry)
+      for (let i = 0; i < 200; i++) {
+        headers.push(`session${i}=${largeValue}; Path=/`);
+      }
+      
+      // More persistent cookies with varying expiry times
+      for (let i = 0; i < 200; i++) {
+        const maxAge = 1800 + i; // Varying expiry times
+        headers.push(`persistent_var${i}=${largeValue}; Path=/; Max-Age=${maxAge}`);
+      }
+      
+      await jar.setCookies('https://example.com/', headers);
+      
+      // Verify file size is within limit
+      const cookiePath = path.join(tmpDir, '.goodvibes', 'goodvibes.cookies.json');
+      const stat = await fs.promises.stat(cookiePath);
+      expect(stat.size).toBeLessThanOrEqual(512 * 1024);
+      
+      // Get all remaining cookies
+      const allCookies = await jar.getAllCookies();
+      
+      // Count session vs persistent cookies
+      const sessionCookies = allCookies.filter(c => !c.expires);
+      const persistentCookies = allCookies.filter(c => c.expires);
+      
+      // Session cookies should be evicted first, so we expect:
+      // - Fewer or zero session cookies remaining
+      // - More persistent cookies remaining
+      // If eviction is working correctly, session cookies should be heavily reduced
+      const sessionRatio = sessionCookies.length / 200; // Originally 200 session cookies
+      const persistentRatio = persistentCookies.length / 400; // Originally 400 persistent cookies
+      
+      // Session cookies should have a lower survival rate than persistent cookies
+      expect(sessionRatio).toBeLessThan(persistentRatio);
+      
+      // Most session cookies should be gone
+      expect(sessionCookies.length).toBeLessThan(persistentCookies.length);
+    });
+  });
 });

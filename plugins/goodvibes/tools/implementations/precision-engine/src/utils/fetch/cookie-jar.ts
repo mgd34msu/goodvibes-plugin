@@ -60,6 +60,10 @@ export class CookieJar {
       const parsed: CookieFile = JSON.parse(content);
       this.cookies = parsed.cookies ?? [];
       this.pruneExpired();
+      // Save pruned state if cookies were removed
+      if (this.dirty) {
+        await this.save();
+      }
       this.loaded = true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -76,42 +80,49 @@ export class CookieJar {
    */
   async save(): Promise<void> {
     if (!this.dirty) return;
-    
+
     const cookiePath = this.getCookiePath();
     const cookieDir = path.dirname(cookiePath);
-    
-    // Ensure gitignore protection
-    await ensureGitignore(process.cwd());
-    
+
+    // Ensure gitignore protection (use cached project root from cookiePath)
+    const projectRoot = path.dirname(path.dirname(cookiePath));
+    await ensureGitignore(projectRoot);
+
     // Ensure directory exists
     await fs.promises.mkdir(cookieDir, { recursive: true });
-    
+
     const data: CookieFile = {
       cookies: this.cookies,
       updated_at: new Date().toISOString(),
     };
-    
+
     let content = JSON.stringify(data, null, 2) + '\n';
-    
-    // Check file size limit
-    if (content.length > MAX_FILE_SIZE) {
-      // Evict session cookies first (they're transient), then oldest expiring cookies
+
+    // Check file size limit (use byte size, not string length)
+    const contentSize = Buffer.byteLength(content, 'utf-8');
+    if (contentSize > MAX_FILE_SIZE) {
+      // Evict session cookies first (they're transient), then oldest expiring persistent cookies
+      // After descending sort (bExpiry - aExpiry), session cookies (Infinity) are at the END
       this.cookies.sort((a, b) => {
         const aExpiry = a.expires ?? Infinity;
         const bExpiry = b.expires ?? Infinity;
-        // Session cookies (Infinity) sort to end, will be evicted first via shift()
         return bExpiry - aExpiry;
       });
-      while (content.length > MAX_FILE_SIZE && this.cookies.length > 0) {
-        this.cookies.shift();
+
+      // Create timestamp once for all evicted updates
+      const updatedAt = new Date().toISOString();
+
+      // pop() removes from end = session cookies first, then oldest persistent cookies
+      while (Buffer.byteLength(content, 'utf-8') > MAX_FILE_SIZE && this.cookies.length > 0) {
+        this.cookies.pop();
         const updatedData: CookieFile = {
           cookies: this.cookies,
-          updated_at: new Date().toISOString(),
+          updated_at: updatedAt,
         };
         content = JSON.stringify(updatedData, null, 2) + '\n';
       }
     }
-    
+
     await fs.promises.writeFile(cookiePath, content, { encoding: 'utf-8', mode: 0o600 });
     this.dirty = false;
   }

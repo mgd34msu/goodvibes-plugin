@@ -1,4 +1,11 @@
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Secrets store for precision_fetch service authentication.
  * Manages API keys, tokens, and credentials in a secure local file.
  * 
@@ -57,6 +64,13 @@ export interface SecretsFile {
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Get the secrets file path.
  */
 function getSecretsPath(): string {
@@ -64,6 +78,13 @@ function getSecretsPath(): string {
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Load secrets from disk.
  * Returns empty defaults if file doesn't exist.
  */
@@ -86,6 +107,13 @@ export async function loadSecrets(): Promise<SecretsFile> {
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Save secrets to disk with secure permissions.
  * Ensures gitignore entries exist before writing.
  */
@@ -108,6 +136,13 @@ export async function saveSecrets(secrets: SecretsFile): Promise<void> {
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Get auth configuration for a specific service.
  * Returns undefined if service not found.
  */
@@ -117,6 +152,13 @@ export async function getServiceSecrets(name: string): Promise<ServiceAuth | und
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Set auth configuration for a specific service.
  * Creates or updates the service entry.
  * 
@@ -130,6 +172,13 @@ export async function setServiceSecret(name: string, auth: ServiceAuth): Promise
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Remove auth configuration for a specific service.
  * 
  * NOTE: No file-level locking. Safe in single-threaded MCP execution model.
@@ -145,6 +194,13 @@ export async function removeServiceSecret(name: string): Promise<boolean> {
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Check if a value is an environment variable reference.
  */
 export function isEnvRef(value: unknown): value is EnvRef {
@@ -152,6 +208,13 @@ export function isEnvRef(value: unknown): value is EnvRef {
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * Resolve a secret value.
  * - If string, return as-is.
  * - If { "$env": "VAR" }, resolve from process.env.
@@ -170,6 +233,10 @@ export function resolveSecretValue(value: string | EnvRef | undefined): string |
  * Deep-resolve all $env references in an auth config object.
  * Returns a new object with all env refs replaced by their values.
  * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  */
 export function resolveAuthConfig(auth: ServiceAuth): ServiceAuth {
   const resolved: ServiceAuth = { type: auth.type };
@@ -220,6 +287,13 @@ export function resolveAuthConfig(auth: ServiceAuth): ServiceAuth {
 }
 
 /**
+ * Deep-resolve all $env references in an auth config object.
+ * Returns a new object with all env refs replaced by their values.
+ * Unresolvable refs become undefined.
+ *
+ * Note: Resolved string fields may be undefined at runtime if referenced
+ * environment variables are missing, despite the ServiceAuth type signature.
+ * Consumers should validate resolved values before use.
  * List all service names that have stored secrets.
  */
 export async function listServiceNames(): Promise<string[]> {

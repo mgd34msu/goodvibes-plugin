@@ -104,13 +104,7 @@ describe('oauth2-browser', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('Missing required fields');
     });
-
-    // Note: Full flow tests with actual HTTP server + browser are integration tests.
-    // Unit tests verify the building blocks (generateState, buildAuthorizeUrl) and error paths.
-    // The startOAuth2Flow function would require mocking http.createServer for full coverage,
-    // which is tested at the integration level.
   });
-});
 
   describe('resolveSecretValue usage', () => {
     it('should use resolveSecretValue for EnvRef client_id', () => {

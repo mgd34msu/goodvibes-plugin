@@ -6,26 +6,24 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-/** File patterns that should never be committed */
-const SECRET_FILE_PATTERNS = [
-  'goodvibes.secrets.json',
-  'goodvibes.cookies.json',
-];
-
-/** Gitignore entries to ensure */
-const GITIGNORE_ENTRIES = [
+/** Protected files that should never be committed */
+const PROTECTED_FILES = [
   'goodvibes.secrets.json',
   'goodvibes.cookies.json',
 ];
 
 /**
  * Check if a file path matches a known secret file pattern.
+ *
+ * @public - Intended for external consumption by precision_write and other tools
+ * to validate file operations before execution.
+ *
  * @param filePath - Absolute or relative file path to check
  * @returns true if the file matches a secret file pattern
  */
 export function isSecretFile(filePath: string): boolean {
   const basename = path.basename(filePath);
-  return SECRET_FILE_PATTERNS.some(pattern => basename === pattern);
+  return PROTECTED_FILES.some(pattern => basename === pattern);
 }
 
 /**
@@ -49,7 +47,7 @@ export async function ensureGitignore(projectRoot: string): Promise<void> {
   }
 
   const lines = content.split('\n').map(l => l.trim());
-  const missingEntries = GITIGNORE_ENTRIES.filter(entry => !lines.includes(entry));
+  const missingEntries = PROTECTED_FILES.filter(entry => !lines.includes(entry));
 
   if (missingEntries.length === 0) {
     return; // All entries already present
