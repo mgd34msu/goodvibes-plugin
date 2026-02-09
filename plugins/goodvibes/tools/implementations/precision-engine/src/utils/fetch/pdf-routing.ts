@@ -80,7 +80,7 @@ export async function parsePdfBuffer(
 ): Promise<PdfFetchResult> {
   try {
     // Dynamic import for pdf-parse
-    // Note: pdf-parse@2.x exports PDFParse class, but we import as CommonJS for compatibility
+    // Note: pdf-parse@1.x exports a function via module.exports
     // CJS/ESM interop: in CJS bundle context, mod.default may not be the expected function.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfParseModule = await import('pdf-parse') as any;
