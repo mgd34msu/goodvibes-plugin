@@ -41,6 +41,7 @@ import {
   type ReadabilityResult,
 } from '../utils/fetch/index.js';
 import { buildRequest, type RequestSpec, type BuiltRequest, type RequestAuth } from '../utils/fetch/request-builder.js';
+import { applyAuth, handleAuthFailure } from '../utils/fetch/auth/auth-orchestrator.js';
 
 const DEFAULT_CACHE_TTL = 900; // 15 minutes in seconds
 const DEFAULT_TIMEOUT = 30000;
@@ -223,6 +224,24 @@ async function fetchSingleUrl(
   const timeout = built.timeout_ms;
   const extract = request.extract ?? globalExtract ?? 'text';
   const selectors = request.selectors ?? globalSelectors;
+  const serviceName = request.service;
+
+  // Apply service-level auth + cookie jar (per-request auth already applied by buildRequest)
+  let authApplied = false;
+  let authType = 'none';
+  if (serviceName || request.auth) {
+    try {
+      authApplied = await applyAuth(built.headers, url, undefined, serviceName);
+      authType = request.auth?.type ?? (serviceName ? 'service' : 'none');
+    } catch {
+      // Auth failure should not block the request
+    }
+  }
+
+  // Build auth_info for result population
+  const authInfo: FetchResult['auth_info'] = (serviceName || request.auth)
+    ? { type: authType, service: serviceName, status: authApplied ? 'applied' : 'skipped' }
+    : undefined;
 
   // Check cache first (only for GET requests)
   if (method === 'GET' && cacheTtl > 0) {
@@ -238,6 +257,7 @@ async function fetchSingleUrl(
         from_cache: true,
         timing: { total_ms: Date.now() - startTime },
         response_headers: {}, // Headers not preserved in cache
+        ...(authInfo && { auth_info: authInfo }),
       };
 
       // Process cached content based on extract mode
@@ -271,8 +291,29 @@ async function fetchSingleUrl(
     }
 
     // Rate-limited fetch (replaces raw fetch)
-    const response = await rateLimitedFetch(url, fetchOptions);
+    let response = await rateLimitedFetch(url, fetchOptions);
     clearTimeout(timeoutId);
+
+    // 401 retry with auth refresh (max 1 retry)
+    if (response.status === 401 && serviceName) {
+      try {
+        const recovery = await handleAuthFailure(response, serviceName);
+        if (recovery.retry) {
+          // Re-apply refreshed auth to headers
+          await applyAuth(built.headers, url, undefined, serviceName);
+          const retryOptions: RequestInit = {
+            ...fetchOptions,
+            headers: { ...built.headers },
+          };
+          response = await rateLimitedFetch(url, retryOptions);
+          if (authInfo) {
+            authInfo.status = 'applied';
+          }
+        }
+      } catch {
+        // Recovery failed, continue with original 401 response
+      }
+    }
 
     // Capture response headers
     const responseHeaders: Record<string, string> = {};
@@ -304,6 +345,7 @@ async function fetchSingleUrl(
         redirected: wasRedirected,
         response_headers: responseHeaders,
         timing: { total_ms: Date.now() - startTime },
+        ...(authInfo && { auth_info: authInfo }),
         pdf: {
           text: pdfResult.text,
           pages: pdfResult.pages,
@@ -373,6 +415,7 @@ async function fetchSingleUrl(
       redirected: wasRedirected,
       response_headers: responseHeaders,
       timing: { total_ms: Date.now() - startTime },
+      ...(authInfo && { auth_info: authInfo }),
     };
 
     if (!response.ok) {
@@ -407,6 +450,7 @@ async function fetchSingleUrl(
       error: errorMessage,
       duration_ms,
       from_cache: false,
+      ...(authInfo && { auth_info: authInfo }),
     };
   }
 }
@@ -620,6 +664,7 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.pdf && { pdf: r.pdf }),
             ...(r.response_headers && { response_headers: r.response_headers }),
             ...(r.timing && { timing: r.timing }),
+            ...(r.auth_info && { auth_info: r.auth_info }),
             ...(r.error && { error: r.error }),
           })),
           summary: {
@@ -657,6 +702,7 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.pdf && { pdf: r.pdf }),
             ...(r.response_headers && { response_headers: r.response_headers }),
             ...(r.timing && { timing: r.timing }),
+            ...(r.auth_info && { auth_info: r.auth_info }),
             ...(r.error && { error: r.error }),
           })),
           summary: {
