@@ -185,7 +185,10 @@ interface FetchResult {
   redirect_chain?: Array<{ url: string; status: number }>;
   /** Auth info for the request */
   auth_info?: { type: string; service?: string; status: string };
-  /** Request timing breakdown */
+  /** Request timing breakdown. Currently only total_ms is populated.
+   *  Granular fields (dns_ms, connect_ms, ttfb_ms) require Node.js perf_hooks
+   *  integration and are reserved for future implementation.
+   *  Cached responses include timing.total_ms for consistency. */
   timing?: { dns_ms?: number; connect_ms?: number; ttfb_ms?: number; total_ms: number };
 }
 
@@ -233,6 +236,8 @@ async function fetchSingleUrl(
         size: cached.extractedContent.length,
         duration_ms: Date.now() - startTime,
         from_cache: true,
+        timing: { total_ms: Date.now() - startTime },
+        response_headers: {}, // Headers not preserved in cache
       };
 
       // Process cached content based on extract mode
@@ -556,6 +561,7 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
     const totalSize = results.reduce((sum, r) => sum + (r.size ?? 0), 0);
 
     // Build response based on output mode
+    // Note: cookies, redirect_chain, auth_info fields populated by Phase 4 auth orchestrator integration
     let data: Record<string, unknown>;
 
     switch (outputMode) {
@@ -614,7 +620,6 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.pdf && { pdf: r.pdf }),
             ...(r.response_headers && { response_headers: r.response_headers }),
             ...(r.timing && { timing: r.timing }),
-            // cookies, redirect_chain, auth_info: populated by Phase 4 auth orchestrator integration
             ...(r.error && { error: r.error }),
           })),
           summary: {
@@ -652,7 +657,6 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
             ...(r.pdf && { pdf: r.pdf }),
             ...(r.response_headers && { response_headers: r.response_headers }),
             ...(r.timing && { timing: r.timing }),
-            // cookies, redirect_chain, auth_info: populated by Phase 4 auth orchestrator integration
             ...(r.error && { error: r.error }),
           })),
           summary: {

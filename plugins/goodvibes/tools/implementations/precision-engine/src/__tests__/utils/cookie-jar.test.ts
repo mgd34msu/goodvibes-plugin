@@ -247,29 +247,26 @@ describe('CookieJar', () => {
 
   describe('eviction order', () => {
     it('should evict session cookies before persistent cookies during file size overflow', async () => {
-      // Create a mix of session cookies (no expiry) and persistent cookies (with expiry)
-      const largeValue = 'x'.repeat(1000); // 1KB per cookie
+      // Strategy: Create a small number of easily identifiable cookies with large values
+      // to trigger file-size eviction, then verify by name which were removed
+      
+      const largeValue = 'x'.repeat(60000); // 50KB per cookie
       const headers: string[] = [];
       
-      // Add 200 persistent cookies (with expiry in the future)
-      for (let i = 0; i < 200; i++) {
-        headers.push(`persistent${i}=${largeValue}; Path=/; Max-Age=3600`);
+      // Add 5 session cookies with identifiable names
+      for (let i = 0; i < 5; i++) {
+        headers.push(`session_${i}=${largeValue}; Path=/`);
       }
       
-      // Add 200 session cookies (no expiry)
-      for (let i = 0; i < 200; i++) {
-        headers.push(`session${i}=${largeValue}; Path=/`);
-      }
-      
-      // More persistent cookies with varying expiry times
-      for (let i = 0; i < 200; i++) {
-        const maxAge = 1800 + i; // Varying expiry times
-        headers.push(`persistent_var${i}=${largeValue}; Path=/; Max-Age=${maxAge}`);
+      // Add 5 persistent cookies with varying expiry times
+      for (let i = 0; i < 5; i++) {
+        const maxAge = 3600 + (i * 100); // Different expiry times
+        headers.push(`persistent_${i}=${largeValue}; Path=/; Max-Age=${maxAge}`);
       }
       
       await jar.setCookies('https://example.com/', headers);
       
-      // Verify file size is within limit
+      // Verify file size is within limit (should trigger eviction)
       const cookiePath = path.join(tmpDir, '.goodvibes', 'goodvibes.cookies.json');
       const stat = await fs.promises.stat(cookiePath);
       expect(stat.size).toBeLessThanOrEqual(512 * 1024);
@@ -277,22 +274,62 @@ describe('CookieJar', () => {
       // Get all remaining cookies
       const allCookies = await jar.getAllCookies();
       
-      // Count session vs persistent cookies
-      const sessionCookies = allCookies.filter(c => !c.expires);
-      const persistentCookies = allCookies.filter(c => c.expires);
+      // Count remaining session vs persistent cookies by name prefix
+      const sessionCookies = allCookies.filter(c => c.name.startsWith('session_'));
+      const persistentCookies = allCookies.filter(c => c.name.startsWith('persistent_'));
       
-      // Session cookies should be evicted first, so we expect:
-      // - Fewer or zero session cookies remaining
-      // - More persistent cookies remaining
-      // If eviction is working correctly, session cookies should be heavily reduced
-      const sessionRatio = sessionCookies.length / 200; // Originally 200 session cookies
-      const persistentRatio = persistentCookies.length / 400; // Originally 400 persistent cookies
+      // File-size eviction should remove session cookies first
+      // We started with 5 of each, so session cookies should be more heavily evicted
+      expect(sessionCookies.length).toBeLessThan(5);
+      expect(sessionCookies.length).toBeLessThanOrEqual(persistentCookies.length);
       
-      // Session cookies should have a lower survival rate than persistent cookies
-      expect(sessionRatio).toBeLessThan(persistentRatio);
+      // If any session cookies remain, ALL persistent cookies should remain
+      if (sessionCookies.length > 0) {
+        expect(persistentCookies.length).toBe(5);
+      }
+    });
+
+    it('should preserve session cookies during count-based eviction', async () => {
+      // Strategy: Create cookies exceeding MAX_COOKIES count (not file size)
+      // to trigger count-based eviction, verify session cookies survive
       
-      // Most session cookies should be gone
-      expect(sessionCookies.length).toBeLessThan(persistentCookies.length);
+      const smallValue = 'y'; // Small value to avoid file-size eviction
+      const headers: string[] = [];
+      
+      // Add 50 session cookies
+      for (let i = 0; i < 50; i++) {
+        headers.push(`count_session_${i}=${smallValue}; Path=/`);
+      }
+      
+      // Add 1000 persistent cookies with varying short expiry times
+      for (let i = 0; i < 1000; i++) {
+        const maxAge = 60 + i; // Varying expiry from 60s to 1060s
+        headers.push(`count_persistent_${i}=${smallValue}; Path=/; Max-Age=${maxAge}`);
+      }
+      
+      await jar.setCookies('https://example.com/', headers);
+      
+      // Verify total count is at MAX_COOKIES
+      const allCookies = await jar.getAllCookies();
+      expect(allCookies.length).toBeLessThanOrEqual(1000); // MAX_COOKIES
+      
+      // Count remaining session vs persistent cookies
+      const sessionCookies = allCookies.filter(c => c.name.startsWith('count_session_'));
+      const persistentCookies = allCookies.filter(c => c.name.startsWith('count_persistent_'));
+      
+      // Count-based eviction should preserve ALL session cookies
+      expect(sessionCookies.length).toBe(50);
+      
+      // Soonest-expiring persistent cookies should be evicted
+      // Check that higher-numbered (longer-lived) persistent cookies survived
+      const persistentNumbers = persistentCookies.map(c => {
+        const match = c.name.match(/count_persistent_(\d+)/);
+        return match ? parseInt(match[1], 10) : -1;
+      });
+      
+      // The average index should be higher (we kept the longer-lived ones)
+      const avgIndex = persistentNumbers.reduce((a, b) => a + b, 0) / persistentNumbers.length;
+      expect(avgIndex).toBeGreaterThan(500); // Should be in upper half
     });
   });
 });

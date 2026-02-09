@@ -183,8 +183,7 @@ describe('oauth2-refresh', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid token_url');
-    });
-});
+      });
 
   describe('refreshAndStore', () => {
     it('should refresh and store updated auth', async () => {
@@ -257,3 +256,6 @@ describe('oauth2-refresh', () => {
       }
     });
   });
+});
+
+

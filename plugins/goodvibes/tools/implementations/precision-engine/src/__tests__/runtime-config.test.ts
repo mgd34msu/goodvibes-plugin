@@ -242,4 +242,66 @@ describe('Size Gate Config Getters', () => {
       expect(getConfigValue('verbosity_defaults')).toBeUndefined();
     });
   });
+
+  describe('Sandbox Boolean Coercion', () => {
+    it('returns true for boolean true', async () => {
+      await setConfigValue('sandbox', true);
+      expect(getConfigValue('sandbox')).toBe(true);
+    });
+
+    it('returns true for string "true"', async () => {
+      await setConfigValue('sandbox', 'true');
+      expect(getConfigValue('sandbox')).toBe(true);
+    });
+
+    it('returns false for boolean false', async () => {
+      await setConfigValue('sandbox', false);
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for string "false"', async () => {
+      await setConfigValue('sandbox', 'false');
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for undefined (missing key)', async () => {
+      await loadConfig(); // Ensure clean state
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for null', async () => {
+      await setConfigValue('sandbox', null);
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for number 0 (falsy but not boolean)', async () => {
+      await setConfigValue('sandbox', 0);
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for number 1 (truthy but not boolean true)', async () => {
+      await setConfigValue('sandbox', 1);
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for empty string', async () => {
+      await setConfigValue('sandbox', '');
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for arbitrary string (not "true")', async () => {
+      await setConfigValue('sandbox', 'yes');
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for object (invalid type)', async () => {
+      await setConfigValue('sandbox', { enabled: true });
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+
+    it('returns false for array (invalid type)', async () => {
+      await setConfigValue('sandbox', [true]);
+      expect(getConfigValue('sandbox')).toBe(false);
+    });
+  });
 });

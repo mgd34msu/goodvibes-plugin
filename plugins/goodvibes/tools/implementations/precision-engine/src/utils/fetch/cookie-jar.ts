@@ -95,6 +95,14 @@ export class CookieJar {
       cookies: this.cookies,
       updated_at: new Date().toISOString(),
     };
+  /**
+   * Eviction Policy:
+   * - Count overflow (setCookies): Evict soonest-expiring persistent cookies first.
+   *   Session cookies (no expiry) are preserved as they represent active user state.
+   * - File-size overflow (save): Evict session cookies first, then longest-lived
+   *   persistent cookies. Session cookies are expendable under disk pressure since
+   *   they have no expiry and can accumulate without bound.
+   */
 
     let content = JSON.stringify(data, null, 2) + '\n';
 
@@ -102,7 +110,7 @@ export class CookieJar {
     const contentSize = Buffer.byteLength(content, 'utf-8');
     if (contentSize > MAX_FILE_SIZE) {
       // Evict session cookies first (they're transient), then oldest expiring persistent cookies
-      // After descending sort (bExpiry - aExpiry), session cookies (Infinity) are at the END
+      // Descending sort (bExpiry - aExpiry) puts session cookies (Infinity) at the FRONT
       this.cookies.sort((a, b) => {
         const aExpiry = a.expires ?? Infinity;
         const bExpiry = b.expires ?? Infinity;
@@ -112,9 +120,9 @@ export class CookieJar {
       // Create timestamp once for all evicted updates
       const updatedAt = new Date().toISOString();
 
-      // pop() removes from end = session cookies first, then oldest persistent cookies
+      // shift() removes from front = session cookies first, then longest-lived persistent cookies
       while (Buffer.byteLength(content, 'utf-8') > MAX_FILE_SIZE && this.cookies.length > 0) {
-        this.cookies.pop();
+        this.cookies.shift();
         const updatedData: CookieFile = {
           cookies: this.cookies,
           updated_at: updatedAt,
@@ -157,7 +165,8 @@ export class CookieJar {
       this.cookies.push(cookie);
     }
     
-    // Enforce max cookies limit (evict session cookies first, then oldest expiring)
+    // Count overflow: evict soonest-expiring persistent cookies first, keep session cookies
+    // Ascending sort puts soonest-expiring at front, slice(-MAX_COOKIES) keeps the tail
     if (this.cookies.length > MAX_COOKIES) {
       this.cookies.sort((a, b) => {
         const aExpiry = a.expires ?? Infinity;

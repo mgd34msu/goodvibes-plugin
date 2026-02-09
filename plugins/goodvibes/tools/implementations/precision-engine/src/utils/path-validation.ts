@@ -24,9 +24,8 @@ function enforceSandboxBoundary(
 ): void {
   const sandboxEnabled = getConfigValue<boolean>('sandbox');
   
-  // Only enable sandbox when explicitly set to true or 'true'
-  // Everything else (false, 'false', undefined, null, etc.) means disabled (default)
-  if (sandboxEnabled !== true && sandboxEnabled !== ('true' as unknown)) {
+  // Sandbox is only enabled when explicitly true (getConfigValue coerces strings at source)
+  if (sandboxEnabled !== true) {
     return; // Sandbox disabled (default), skip enforcement
   }
   

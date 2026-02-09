@@ -187,7 +187,6 @@ describe('session-auth', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid login_url');
-    });
 });
 
   describe('acquireAndStore', () => {
@@ -255,3 +254,6 @@ describe('session-auth', () => {
       }
     });
   });
+});
+
+
