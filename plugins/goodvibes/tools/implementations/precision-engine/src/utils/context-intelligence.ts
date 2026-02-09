@@ -10,7 +10,6 @@ import { FileTypeInfo } from './file-type-detection.js';
 export interface ContextMetadata {
   file_type: FileTypeInfo;
   related_memory?: RelatedMemoryEntry[];
-  related_patterns?: string[];
 }
 
 interface RelatedMemoryEntry {
@@ -112,8 +111,37 @@ function calculateRelevance(fileKeywords: Set<string>, entryKeywords: string[]):
   return 'low';
 }
 
+/**
+ * Generic helper to find relevant memory entries based on keyword matching.
+ */
+function findRelevantEntries<T extends { id: string; keywords?: string[] }>(
+  entries: T[],
+  source: string,
+  fileKeywords: Set<string>,
+  toSummary: (entry: T) => string
+): RelatedMemoryEntry[] {
+  const result: RelatedMemoryEntry[] = [];
+  
+  for (const entry of entries) {
+    const keywords = entry.keywords || [];
+    const relevance = calculateRelevance(fileKeywords, keywords);
+    
+    if (relevance === 'high' || relevance === 'medium') {
+      result.push({
+        source,
+        id: entry.id,
+        summary: toSummary(entry),
+        relevance,
+      });
+    }
+  }
+  
+  return result;
+}
+
 // Memory file caching to avoid repeated disk reads (Item 3 m4)
 interface MemoryCache {
+  memoryDir: string;
   decisions: MemoryDecision[];
   patterns: MemoryPattern[];
   failures: MemoryFailure[];
@@ -128,7 +156,7 @@ const MEMORY_CACHE_TTL_MS = 30000; // 30 seconds
  */
 function loadMemoryFiles(memoryDir: string): MemoryCache {
   const now = Date.now();
-  if (memoryCache && (now - memoryCache.loadedAt) < MEMORY_CACHE_TTL_MS) {
+  if (memoryCache && memoryCache.memoryDir === memoryDir && (now - memoryCache.loadedAt) < MEMORY_CACHE_TTL_MS) {
     return memoryCache;
   }
 
@@ -163,7 +191,7 @@ function loadMemoryFiles(memoryDir: string): MemoryCache {
     // File may not exist or be malformed
   }
 
-  memoryCache = { decisions, patterns, failures, loadedAt: now };
+  memoryCache = { memoryDir, decisions, patterns, failures, loadedAt: now };
   return memoryCache;
 }
 
@@ -284,9 +312,8 @@ export async function getContextForFile(
     context.related_memory = relatedMemory.slice(0, 3);
   }
   
-  // Layer 3: Registry skill lookup
-  // TODO: Add registry skill lookup when cross-MCP communication is available
-  // For now, we could scan registry data files directly if needed
+  // Layer 3: Registry skill lookup (planned future enhancement)
+  // Will integrate with registry-engine MCP when cross-MCP communication is available
   
   // Mark this category as sent for progressive loading (Item 3 M2)
   sentCategories.add(fileType.category);
