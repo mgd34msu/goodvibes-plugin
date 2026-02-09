@@ -16,6 +16,8 @@ import { AstGrepCore } from '../core/ast-grep.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { validateDirectoryPath } from '../utils/path-validation.js';
+import fg from 'fast-glob';
+import { DEFAULT_EXCLUDES } from '../config.js';
 import { getDiscoverSymbolTimeout } from '../runtime-config.js';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
@@ -288,6 +290,34 @@ async function executeSymbolsQuery(
     return { type: 'symbols', count: 0, error: "Missing 'query' for symbols query" };
   }
 
+  // Helper: Get glob patterns for symbol search
+  function getGlobPatterns(): string[] {
+    return ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.py', '**/*.rs', '**/*.go'];
+  }
+
+  // If searchRoot is different from cwd, we need to scope the search
+  const needsScoping = searchRoot !== process.cwd();
+  let scopedFiles: string[] | undefined;
+
+  if (needsScoping) {
+    try {
+      // Get files from searchRoot to scope the symbol search
+      const patterns = getGlobPatterns();
+      scopedFiles = await fg(patterns, {
+        cwd: searchRoot,
+        ignore: DEFAULT_EXCLUDES,
+        absolute: true,
+      });
+
+      // If no files found in searchRoot, return empty result
+      if (scopedFiles.length === 0) {
+        return { type: 'symbols', count: 0, files: [] };
+      }
+    } catch (e) {
+      return { type: 'symbols', count: 0, error: `Failed to scan directory: ${(e as Error).message}` };
+    }
+  }
+
   let timeoutId: NodeJS.Timeout;
   try {
     let mode: 'count_only' | 'names_only' | 'locations';
@@ -301,7 +331,8 @@ async function executeSymbolsQuery(
 
     // Add timeout protection
     const symbolsPromise = handlePrecisionSymbols({
-      mode: 'workspace',
+      mode: needsScoping ? 'document' : 'workspace',
+      files: scopedFiles, // Only set when needsScoping is true
       query: query.query,
       kinds: query.kinds as Array<'function' | 'method' | 'class' | 'interface' | 'type' | 'variable' | 'constant' | 'enum' | 'property' | 'namespace'>,
       output: {

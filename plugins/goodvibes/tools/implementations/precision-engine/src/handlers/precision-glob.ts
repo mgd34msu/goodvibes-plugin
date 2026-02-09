@@ -302,18 +302,20 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
         undefined,
         30000
       );
-      // Normalize paths for comparison
-      // filesWithMatches returns paths relative to workDir when workDir is passed as search path
-      // Convert them to absolute paths for comparison with files array (which has absolute paths)
+      // Normalize ALL paths to canonical absolute form for comparison
+      // Ripgrep may return absolute or relative paths depending on how it was invoked
+      // The files array from glob phase also needs consistent normalization
       const matchingSet = new Set(matchingFiles.map(f => {
-        // Ripgrep may return absolute or relative paths depending on the search path used
-        // If already absolute, use as-is; otherwise resolve relative to workDir
-        return path.isAbsolute(f) ? f : path.resolve(workDir, f);
+        // Step 1: Resolve to absolute (relative paths are relative to process.cwd())
+        const absolutePath = path.isAbsolute(f) ? f : path.resolve(process.cwd(), f);
+        // Step 2: Normalize to canonical form (resolve ., .., symlinks, etc)
+        return path.normalize(absolutePath);
       }));
+      
       files = files.filter(f => {
-        // f.path may be absolute (from ripgrep) or relative (from fast-glob in some modes)
-        // Normalize to absolute for comparison
-        const normalizedPath = path.isAbsolute(f.path) ? f.path : path.resolve(workDir, f.path);
+        // f.path from glob phase - normalize to same canonical form
+        const absolutePath = path.isAbsolute(f.path) ? f.path : path.resolve(workDir, f.path);
+        const normalizedPath = path.normalize(absolutePath);
         return matchingSet.has(normalizedPath);
       });
     }

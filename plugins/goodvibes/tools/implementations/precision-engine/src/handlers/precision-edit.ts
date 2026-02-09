@@ -1280,10 +1280,10 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, content, 'utf-8');
         
-        // Update FileStateCache with edited content (refreshes entry with new content, increments version)
+        // Invalidate cache so next read returns fresh content
         try {
           const cache = FileStateCache.getInstance();
-          cache.update(filePath, content, 'precision_edit', undefined, `edited ${path.basename(filePath)}`);
+          cache.invalidate(filePath);
         } catch {
           // Cache update is non-critical — don't fail the edit
         }

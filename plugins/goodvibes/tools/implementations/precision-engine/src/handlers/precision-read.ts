@@ -1036,6 +1036,12 @@ async function readSingleFile(
       return result;
     }
 
+    // Handle PDF files early - they require special parsing and should bypass text size gate
+    if (isPdfFile(validatedPath)) {
+      const buffer = await fs.readFile(validatedPath);
+      return await readPdfFile(buffer, validatedPath, result, spec.pages);
+    }
+
     // Item 6B: Pre-read size gate — check file size before reading into memory
     const maxFileBytes = getMaxFileBytes();
     const maxTokenEstimate = getMaxTokenEstimate();
@@ -1501,29 +1507,24 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               const fileObj: Record<string, unknown> = {
                 exists: r.exists,
                 line_count: r.line_count,
-                error: r.error,
                 is_binary: r.is_binary,
               };
-              
-              // Include context if present (Item 3)
-              if (r.context) {
-                fileObj.context = r.context;
+
+              // Include size_bytes if available
+              if (r.size_bytes !== undefined) {
+                fileObj.size_bytes = r.size_bytes;
               }
-              
+
+              // Include encoding if available
+              if (r.encoding !== undefined) fileObj.encoding = r.encoding;
+
+              // Include error for failed reads
+              if (r.error) fileObj.error = r.error;
+
               // Include error-companion fields (Item 2C)
               if (r.suggestions !== undefined) fileObj.suggestions = r.suggestions;
               if (r.hint) fileObj.hint = r.hint;
-              
-              // Include metadata if present (Item 5)
-              if (r.metadata) fileObj.metadata = r.metadata;
-              
-              // Add cache version to response metadata for OCC tracking
-              const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);
-              const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
-              if (cacheEntry) {
-                fileObj.cache_version = cacheEntry.version;
-              }
-              
+
               return [r.path, fileObj];
             })
           ),

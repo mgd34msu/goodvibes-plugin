@@ -2445,8 +2445,8 @@ var require_resolve = __commonJS({
       return count;
     }
     __name(countKeys, "countKeys");
-    function getFullPath(resolver, id = "", normalize3) {
-      if (normalize3 !== false)
+    function getFullPath(resolver, id = "", normalize4) {
+      if (normalize4 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -3872,7 +3872,7 @@ var require_fast_uri = __commonJS({
     "use strict";
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizeComponentEncoding, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
-    function normalize3(uri, options) {
+    function normalize4(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         serialize(parse10(uri, options), options);
@@ -3882,7 +3882,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    __name(normalize3, "normalize");
+    __name(normalize4, "normalize");
     function resolve11(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse10(baseURI, schemelessOptions), parse10(relativeURI, schemelessOptions), schemelessOptions, true);
@@ -4115,7 +4115,7 @@ var require_fast_uri = __commonJS({
     __name(parse10, "parse");
     var fastUri = {
       SCHEMES,
-      normalize: normalize3,
+      normalize: normalize4,
       resolve: resolve11,
       resolveComponent,
       equal,
@@ -7534,7 +7534,7 @@ var init_runtime_config = __esm({
       /** Maximum exec history entries to retain */
       HISTORY_MAX: 100,
       /** Symbol search timeout in discover tool */
-      DISCOVER_SYMBOL_TIMEOUT_MS: 6e4
+      DISCOVER_SYMBOL_TIMEOUT_MS: 12e4
     };
     CONFIG_DEFAULTS = {
       /** Maximum diff characters before truncation */
@@ -12449,8 +12449,8 @@ var require_pattern2 = __commonJS({
     __name(endsWithSlashGlobStar, "endsWithSlashGlobStar");
     exports2.endsWithSlashGlobStar = endsWithSlashGlobStar;
     function isAffectDepthOfReadingPattern(pattern) {
-      const basename5 = path20.basename(pattern);
-      return endsWithSlashGlobStar(pattern) || isStaticPattern(basename5);
+      const basename4 = path20.basename(pattern);
+      return endsWithSlashGlobStar(pattern) || isStaticPattern(basename4);
     }
     __name(isAffectDepthOfReadingPattern, "isAffectDepthOfReadingPattern");
     exports2.isAffectDepthOfReadingPattern = isAffectDepthOfReadingPattern;
@@ -40543,10 +40543,10 @@ var init_pdf = __esm({
           var isCallable = __webpack_require__2(4901);
           var replacement = /#|\.prototype\./;
           var isForced = /* @__PURE__ */ __name(function(feature, detection) {
-            var value = data[normalize3(feature)];
+            var value = data[normalize4(feature)];
             return value === POLYFILL ? true : value === NATIVE ? false : isCallable(detection) ? fails(detection) : !!detection;
           }, "isForced");
-          var normalize3 = isForced.normalize = function(string3) {
+          var normalize4 = isForced.normalize = function(string3) {
             return String(string3).replace(replacement, ".").toLowerCase();
           };
           var data = isForced.data = {};
@@ -51765,11 +51765,11 @@ var init_pdf = __esm({
           [fgGray, bgGray, newFgRGB, newBgRGB] = [bgGray, fgGray, newBgRGB, newFgRGB];
         }
         this.#defs.style.color = "";
-        const getSteps = /* @__PURE__ */ __name((fg5, bg, n) => {
+        const getSteps = /* @__PURE__ */ __name((fg6, bg, n) => {
           const arr = new Array(256);
           const step = (bgGray - fgGray) / n;
-          const newStart = fg5 / 255;
-          const newStep = (bg - fg5) / (255 * n);
+          const newStart = fg6 / 255;
+          const newStep = (bg - fg6) / (255 * n);
           let prev = 0;
           for (let i2 = 0; i2 <= n; i2++) {
             const k = Math.round(fgGray + i2 * step);
@@ -215997,10 +215997,10 @@ ${lanes.join("\n")}
             /*ignoreCase*/
             false
           )) {
-            const basename5 = getBaseFileName(a.fileName);
-            if (basename5 === "lib.d.ts" || basename5 === "lib.es6.d.ts")
+            const basename4 = getBaseFileName(a.fileName);
+            if (basename4 === "lib.d.ts" || basename4 === "lib.es6.d.ts")
               return 0;
-            const name2 = removeSuffix(removePrefix(basename5, "lib."), ".d.ts");
+            const name2 = removeSuffix(removePrefix(basename4, "lib."), ".d.ts");
             const index = libs.indexOf(name2);
             if (index !== -1)
               return index + 1;
@@ -283768,8 +283768,8 @@ ${options.prefix}` : "\n" : options.prefix
             }
           }, "createProjectWatcher");
           for (const file2 of files) {
-            const basename5 = getBaseFileName(file2);
-            if (basename5 === "package.json" || basename5 === "bower.json") {
+            const basename4 = getBaseFileName(file2);
+            if (basename4 === "package.json" || basename4 === "bower.json") {
               createProjectWatcher(
                 file2,
                 "FileWatcher"
@@ -287606,8 +287606,8 @@ All files are: ${JSON.stringify(names)}`,
               const fileOrDirectoryPath = removeIgnoredPath(this.toPath(fileOrDirectory));
               if (!fileOrDirectoryPath)
                 return;
-              const basename5 = getBaseFileName(fileOrDirectoryPath);
-              if (((_a4 = result.affectedModuleSpecifierCacheProjects) == null ? void 0 : _a4.size) && (basename5 === "package.json" || basename5 === "node_modules")) {
+              const basename4 = getBaseFileName(fileOrDirectoryPath);
+              if (((_a4 = result.affectedModuleSpecifierCacheProjects) == null ? void 0 : _a4.size) && (basename4 === "package.json" || basename4 === "node_modules")) {
                 result.affectedModuleSpecifierCacheProjects.forEach((project) => {
                   var _a22;
                   (_a22 = project.getModuleSpecifierCache()) == null ? void 0 : _a22.clear();
@@ -326102,10 +326102,12 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
         3e4
       );
       const matchingSet = new Set(matchingFiles.map((f) => {
-        return path14.isAbsolute(f) ? f : path14.resolve(workDir, f);
+        const absolutePath = path14.isAbsolute(f) ? f : path14.resolve(process.cwd(), f);
+        return path14.normalize(absolutePath);
       }));
       files = files.filter((f) => {
-        const normalizedPath = path14.isAbsolute(f.path) ? f.path : path14.resolve(workDir, f.path);
+        const absolutePath = path14.isAbsolute(f.path) ? f.path : path14.resolve(workDir, f.path);
+        const normalizedPath = path14.normalize(absolutePath);
         return matchingSet.has(normalizedPath);
       });
     }
@@ -326755,10 +326757,11 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
     const byKind = {};
     let filesSearched = 0;
     let totalTokens = 0;
+    const PER_FILE_TIMEOUT_MS = 5e3;
     for (const file2 of files) {
       if (allSymbols.length >= maxResults || totalTokens >= maxTokens)
         break;
-      const symbols = await processFile(file2, workDir, {
+      const filePromise = processFile(file2, workDir, {
         query: input.query,
         kinds: input.kinds,
         exportedOnly: input.exported_only,
@@ -326766,6 +326769,16 @@ var handlePrecisionSymbols = /* @__PURE__ */ __name(async (args2) => {
         includeSignatures,
         includeFull
       });
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`File timeout: ${file2}`)), PER_FILE_TIMEOUT_MS);
+      });
+      let symbols;
+      try {
+        symbols = await Promise.race([filePromise, timeoutPromise]);
+      } catch (error2) {
+        console.warn(`[precision-symbols] Skipped file (${error2.message}): ${file2}`);
+        continue;
+      }
       filesSearched++;
       for (const symbol2 of symbols) {
         if (allSymbols.length >= maxResults || totalTokens >= maxTokens)
@@ -327089,6 +327102,7 @@ function generateUnifiedDiff(filePath, original, modified) {
 __name(generateUnifiedDiff, "generateUnifiedDiff");
 
 // src/handlers/discover.ts
+var import_fast_glob5 = __toESM(require_out4(), 1);
 init_runtime_config();
 var astGrepInstance = null;
 function getAstGrep() {
@@ -327255,6 +327269,27 @@ async function executeSymbolsQuery(query2, outputMode, searchRoot) {
   if (!query2.query) {
     return { type: "symbols", count: 0, error: "Missing 'query' for symbols query" };
   }
+  function getGlobPatterns2() {
+    return ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.py", "**/*.rs", "**/*.go"];
+  }
+  __name(getGlobPatterns2, "getGlobPatterns");
+  const needsScoping = searchRoot !== process.cwd();
+  let scopedFiles;
+  if (needsScoping) {
+    try {
+      const patterns2 = getGlobPatterns2();
+      scopedFiles = await (0, import_fast_glob5.default)(patterns2, {
+        cwd: searchRoot,
+        ignore: DEFAULT_EXCLUDES,
+        absolute: true
+      });
+      if (scopedFiles.length === 0) {
+        return { type: "symbols", count: 0, files: [] };
+      }
+    } catch (e) {
+      return { type: "symbols", count: 0, error: `Failed to scan directory: ${e.message}` };
+    }
+  }
   let timeoutId;
   try {
     let mode;
@@ -327266,7 +327301,9 @@ async function executeSymbolsQuery(query2, outputMode, searchRoot) {
       mode = "names_only";
     }
     const symbolsPromise = handlePrecisionSymbols({
-      mode: "workspace",
+      mode: needsScoping ? "document" : "workspace",
+      files: scopedFiles,
+      // Only set when needsScoping is true
       query: query2.query,
       kinds: query2.kinds,
       output: {
@@ -328156,6 +328193,10 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
       result.warning = "File exists but is empty (0 bytes)";
       return result;
     }
+    if (isPdfFile2(validatedPath)) {
+      const buffer2 = await fs12.readFile(validatedPath);
+      return await readPdfFile(buffer2, validatedPath, result, spec.pages);
+    }
     const maxFileBytes = getMaxFileBytes();
     const maxTokenEstimate = getMaxTokenEstimate();
     const pageSizeLines = getPageSizeLines();
@@ -328531,23 +328572,19 @@ var handlePrecisionRead = /* @__PURE__ */ __name(async (args2) => {
               const fileObj = {
                 exists: r.exists,
                 line_count: r.line_count,
-                error: r.error,
                 is_binary: r.is_binary
               };
-              if (r.context) {
-                fileObj.context = r.context;
+              if (r.size_bytes !== void 0) {
+                fileObj.size_bytes = r.size_bytes;
               }
+              if (r.encoding !== void 0)
+                fileObj.encoding = r.encoding;
+              if (r.error)
+                fileObj.error = r.error;
               if (r.suggestions !== void 0)
                 fileObj.suggestions = r.suggestions;
               if (r.hint)
                 fileObj.hint = r.hint;
-              if (r.metadata)
-                fileObj.metadata = r.metadata;
-              const filePath = path17.isAbsolute(r.path) ? r.path : path17.join(workDir, r.path);
-              const cacheEntry = FileStateCache.getInstance().getEntryInfo(filePath);
-              if (cacheEntry) {
-                fileObj.cache_version = cacheEntry.version;
-              }
               return [r.path, fileObj];
             })
           ),
@@ -329416,7 +329453,7 @@ var handlePrecisionEdit = /* @__PURE__ */ __name(async (args2) => {
         await fs13.writeFile(filePath, content, "utf-8");
         try {
           const cache = FileStateCache.getInstance();
-          cache.update(filePath, content, "precision_edit", void 0, `edited ${path18.basename(filePath)}`);
+          cache.invalidate(filePath);
         } catch {
         }
       }

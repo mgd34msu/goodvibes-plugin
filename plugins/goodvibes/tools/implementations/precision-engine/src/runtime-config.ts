@@ -82,7 +82,7 @@ const EXEC_DEFAULTS = {
   /** Maximum exec history entries to retain */
   HISTORY_MAX: 100,
   /** Symbol search timeout in discover tool */
-  DISCOVER_SYMBOL_TIMEOUT_MS: 60000,
+  DISCOVER_SYMBOL_TIMEOUT_MS: 120000,
 } as const;
 
 /**

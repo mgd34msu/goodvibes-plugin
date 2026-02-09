@@ -768,10 +768,13 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
     let filesSearched = 0;
     let totalTokens = 0;
 
+    const PER_FILE_TIMEOUT_MS = 5000; // 5s per file to prevent blocking
+    
     for (const file of files) {
       if (allSymbols.length >= maxResults || totalTokens >= maxTokens) break;
 
-      const symbols = await processFile(file, workDir, {
+      // Wrap file processing with per-file timeout
+      const filePromise = processFile(file, workDir, {
         query: input.query,
         kinds: input.kinds,
         exportedOnly: input.exported_only,
@@ -779,6 +782,19 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
         includeSignatures,
         includeFull,
       });
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`File timeout: ${file}`)), PER_FILE_TIMEOUT_MS);
+      });
+      
+      let symbols;
+      try {
+        symbols = await Promise.race([filePromise, timeoutPromise]);
+      } catch (error) {
+        // Skip files that timeout or fail
+        console.warn(`[precision-symbols] Skipped file (${error.message}): ${file}`);
+        continue;
+      }
 
       filesSearched++;
 
