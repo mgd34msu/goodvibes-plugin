@@ -486,7 +486,7 @@ export const precisionNotebookSchema: Tool = {
   name: 'precision_notebook',
   description:
     'Edit Jupyter notebook (.ipynb) cells with batch operations. ' +
-    'Supports replace, insert, and delete with index adjustment.',
+    'Supports replace, insert, and delete with index or cell_id targeting and automatic index adjustment.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -505,12 +505,16 @@ export const precisionNotebookSchema: Tool = {
             cell: {
               type: 'integer',
               minimum: 0,
-              description: 'Cell index (0-based). Required for replace and delete.',
+              description: 'Cell index (0-based). Required for replace and delete (unless cell_id is provided).',
+            },
+            cell_id: {
+              type: 'string',
+              description: 'Cell ID (from notebook metadata). Alternative to index-based targeting. If both cell/after and cell_id are provided, cell_id takes precedence.',
             },
             after: {
               type: 'integer',
               minimum: -1,
-              description: 'Insert after this cell index (-1 for beginning). Required for insert.',
+              description: 'Insert after this cell index (-1 for beginning). Required for insert (unless cell_id is provided).',
             },
             source: {
               type: 'string',

@@ -21,7 +21,10 @@ The core differentiator is **token efficiency** — every precision tool offers 
 | **Basic file reading** | Yes | Yes | Tie |
 | **Line ranges** | offset + limit (line-based) | range.start + range.end (per-file) | Precision (per-file overrides) |
 | **Batch reads** | No (1 file per call) | Yes (N files per call) | Precision |
-| **Image support** | Yes (visual multimodal) | Yes (ImageContent blocks with magic byte validation for 9 formats) | Precision (validation) |
+| **Image format coverage** | 5 formats (png, jpg, jpeg, gif, webp) | 10 formats (+ bmp, ico, tiff, tif, avif) plus SVG | Precision (2x coverage) |
+| **Image validation** | Extension-only detection, no content validation | Magic byte validation for 9 binary formats (PNG, JPEG, GIF, WebP, BMP, ICO, TIFF LE/BE, AVIF) | Precision (native has none) |
+| **Image MIME typing** | 4 MIME types (image/jpeg, image/png, image/gif, image/webp) | 10 MIME types including image/bmp, image/x-icon, image/tiff, image/avif, image/svg+xml | Precision (2.5x) |
+| **ImageContent suppression** | No (always sends visual blocks) | Suppresses ImageContent in count_only/minimal modes to prevent API 400 errors | Precision |
 | **PDF support** | Yes (pages param) | Yes (pages param, per-page text extraction with custom renderer) | Precision (per-page callbacks) |
 | **Jupyter notebooks** | Yes (structured cell output) | Yes (structured cell output) | Tie |
 | **Extraction modes** | Content only | 5 modes: content, outline, symbols, AST, lines | Precision |
@@ -39,7 +42,7 @@ The core differentiator is **token efficiency** — every precision tool offers 
 | **SVG handling** | No special handling | Dual text + image representation | Precision |
 | **Encoding support** | UTF-8 only assumed | Explicit encoding detection | Precision |
 
-**Verdict: precision_read is a superset of Read.** The batch support alone (N files in 1 call vs 1 file per call) is a major efficiency gain. Combined with 5 extraction modes, caching, token budgets, and verbosity control, it's categorically more capable.
+**Verdict: precision_read is a strict superset of Read.** The batch support alone (N files in 1 call vs 1 file per call) is a major efficiency gain. Combined with 5 extraction modes, caching, token budgets, and verbosity control, it's categorically more capable. On image handling specifically, precision_read doubles the format coverage (10 vs 5), adds magic byte validation that native lacks entirely, provides intelligent MIME type detection for all formats, and suppresses ImageContent blocks in minimal verbosity modes to prevent API errors — a robustness feature native doesn't address.
 
 ---
 
@@ -116,12 +119,11 @@ The core differentiator is **token efficiency** — every precision tool offers 
 | **Output overflow handling** | Truncation at 30000 chars | Streams to .goodvibes/.overflow/ directory | Precision |
 | **Exit code interpretation** | Raw code only | Human-readable exit code meanings | Precision |
 | **Sandbox support** | Yes (platform process sandbox) | Yes (path-level sandbox via precision_config) | Different approaches |
-| **Image output detection** | Yes | No | Native |
 | **Simulated sed edits** | Yes (_simulatedSedEdit) | No (uses precision_edit instead) | N/A |
 | **Verbosity control** | None | 5 levels: count_only, exit_codes, minimal, standard, verbose | Precision |
 | **Token cost tracking** | No | Yes | Precision |
 
-**Verdict: precision_exec is significantly more capable for automation.** Batch execution, parallel commands, retry engine, expectations checking, and progress tracking make it far superior for orchestrated workflows. Native Bash wins only on sandbox integration and image detection.
+**Verdict: precision_exec is significantly more capable for automation.** Batch execution, parallel commands, retry engine, expectations checking, and progress tracking make it far superior for orchestrated workflows. Native Bash's only different approach is sandbox integration (OS-level process isolation vs precision's path-level sandboxing).
 
 ---
 
@@ -186,17 +188,17 @@ The core differentiator is **token efficiency** — every precision tool offers 
 
 | Capability | Native `NotebookEdit` | `precision_notebook` | Winner |
 |-----------|----------------------|----------------------|--------|
-| **Cell replace** | Yes (by cell_id or cell_number) | Yes (by cell index) | Tie |
-| **Cell insert** | Yes (edit_mode=insert) | Yes (op=insert, after index) | Tie |
+| **Cell replace** | Yes (by cell_id or cell_number) | Yes (by cell_id or cell index) | Tie |
+| **Cell insert** | Yes (edit_mode=insert) | Yes (op=insert, after index or cell_id) | Tie |
 | **Cell delete** | Yes (edit_mode=delete) | Yes (op=delete) | Tie |
 | **Batch operations** | No (1 operation per call) | Yes (N operations per call) | Precision |
 | **Index adjustment** | No (manual tracking) | Yes (automatic shift tracking across operations) | Precision |
 | **Output clearing** | No | Yes (clear_outputs flag per operation) | Precision |
-| **Cell ID targeting** | Yes (cell_id param) | No (index-based) | Native |
+| **Cell ID targeting** | Yes (cell_id param) | Yes (cell_id with metadata.id fallback, auto-generation for nbformat 4.5+) | Precision (richer) |
 | **Verbosity control** | None | 4 levels | Precision |
 | **Token cost tracking** | No | Yes | Precision |
 
-**Verdict: Roughly equivalent with different strengths.** Native has cell_id targeting (more stable). Precision has batch operations with auto-index adjustment (more efficient). Edge to precision for batch workflows.
+**Verdict: Precision wins.** Both now have cell_id targeting (precision also checks metadata.id fallback and auto-generates IDs for new cells on nbformat 4.5+). Precision adds batch operations with auto-index adjustment, output clearing, and verbosity control. Cell_id operations in precision bypass indexOffset for stable targeting even during batch operations.
 
 ---
 
@@ -337,9 +339,8 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 | **AI-powered web analysis** (WebFetch prompt) | Not implemented — extraction modes only |
 | **LSP go-to-definition** | Implemented via precision_symbols workspace mode — returns file, line, column, signature, documentation |
 | **LSP find-references** | Implemented via precision_grep relationships param — findRelatedFiles() traces imports/exports/re-exports across codebase |
-| **Image output detection** (Bash) | Not implemented |
 | **Simulated sed edits** (Bash) | Not needed — precision_edit handles this |
-| **Cell ID targeting** (NotebookEdit) | Not implemented (index-based only) |
+| **Cell ID targeting** (NotebookEdit) | Now implemented — cell_id with metadata.id fallback, auto-ID generation for nbformat 4.5+, bypasses indexOffset for stable batch targeting |
 | **Read-before-write enforcement** (Write/Edit) | Not enforced (relies on cache instead) |
 | **Browser/computer use tools** (18 tools) | Out of scope |
 | **Agent/task management** (7 tools) | Out of scope |
@@ -373,6 +374,8 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 18. **Find-replace preview** (grep) — Preview replacements without writing. Not in native.
 19. **Runtime configuration** — Tune all settings without restart. Not in native.
 20. **Template engines** (write) — Handlebars/EJS for dynamic content. Not in native.
+21. **Image format coverage** (read) — 10 formats vs native's 5, magic byte validation for 9 binary formats, SVG dual output (text + image). Native uses extension-only detection with no validation.
+22. **Cell ID targeting with enhancements** (notebook) — cell_id with metadata.id fallback, auto-generation for nbformat 4.5+, bypasses indexOffset for stable batch targeting. Native has basic cell_id only.
 
 ### Native Advantages (features precision lacks)
 
@@ -380,8 +383,10 @@ Configurable keys include: sandbox_mode, cache_mode, cache_max_mb, safe_overwrit
 2. **AI-powered web analysis** — Send a natural language prompt, get intelligent extraction.
 3. **LSP hover info** — Rich type information on hover (precision_symbols provides signatures and docs but not the same interactive hover experience).
 4. **Browser automation** — 18 tools for full browser control (out of scope for precision).
-5. **Cell ID targeting** — More stable notebook cell identification.
-6. **Image detection in command output** — Bash can detect and return images from command output.
+~~5. **Cell ID targeting** — Now implemented in precision_notebook with additional features: metadata.id fallback, auto-generation for nbformat 4.5+, and stable targeting during batch operations.~~
+~~6. **Image detection in command output** — Incorrectly attributed to native Bash. Neither tool detects images in command output. Native image handling is limited to the Read tool (5 formats, extension-only). Precision_read supports 10 formats with magic byte validation — a strict superset.~~
+
+**Effective native-only advantages: 4** (items 1-4 above). Items 5-6 have been debunked.
 
 ---
 

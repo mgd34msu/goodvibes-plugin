@@ -26,6 +26,7 @@ interface NotebookCell {
   metadata?: Record<string, unknown>;
   execution_count?: number | null;
   outputs?: unknown[];
+  id?: string; // nbformat 4.5+ cell ID
 }
 
 /**
@@ -44,6 +45,7 @@ interface JupyterNotebook {
 interface NotebookOperation {
   op: 'replace' | 'insert' | 'delete';
   cell?: number;       // 0-indexed cell index (required for replace/delete)
+  cell_id?: string;    // Cell ID (alternative to index-based targeting)
   after?: number;      // 0-indexed position for insert (insert after this index, -1 for beginning)
   source?: string;     // Cell content (required for replace/insert)
   cell_type?: 'code' | 'markdown' | 'raw'; // Cell type (required for replace/insert)
@@ -65,6 +67,7 @@ interface PrecisionNotebookInput {
 interface OperationSummary {
   op: string;
   cell?: number;
+  cell_id?: string;
   after?: number;
   cell_type?: string;
 }
@@ -116,6 +119,36 @@ function validateNotebook(notebook: unknown): notebook is JupyterNotebook {
 }
 
 /**
+ * Resolve cell_id to cell index. Checks cell.id first, then cell.metadata.id.
+ * Returns -1 if not found.
+ */
+function resolveCellId(cells: NotebookCell[], cellId: string): number {
+  const id = String(cellId); // Type safety coercion
+  return cells.findIndex(cell => 
+    cell.id === id || (cell.metadata && (cell.metadata as Record<string, unknown>).id === id)
+  );
+}
+
+/**
+ * Generate a unique random 8-character alphanumeric cell ID (nbformat 4.5 spec).
+ * Checks existing cells to avoid collisions.
+ */
+function generateCellId(existingCells?: NotebookCell[]): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const existing = existingCells 
+    ? new Set(existingCells.map(c => c.id).filter(Boolean))
+    : new Set<string>();
+  let id: string;
+  do {
+    id = '';
+    for (let i = 0; i < 8; i++) {
+      id += chars[Math.floor(Math.random() * chars.length)];
+    }
+  } while (existing.has(id));
+  return id;
+}
+
+/**
  * Apply operations to notebook with index adjustment
  */
 function applyOperations(
@@ -132,12 +165,12 @@ function applyOperations(
     try {
       switch (op.op) {
         case 'replace': {
-          if (op.cell === undefined) {
+          if (op.cell === undefined && op.cell_id === undefined) {
             return {
               success: false,
               applied,
               summary,
-              error: 'replace operation requires "cell" index'
+              error: 'replace operation requires "cell" index or "cell_id"'
             };
           }
           
@@ -150,18 +183,33 @@ function applyOperations(
             };
           }
           
-          const adjustedIndex = op.cell + indexOffset;
+          // Resolve cell index (cell_id takes precedence)
+          let targetIndex: number;
+          if (op.cell_id !== undefined) {
+            const resolved = resolveCellId(notebook.cells, op.cell_id);
+            if (resolved === -1) {
+              return {
+                success: false,
+                applied,
+                summary,
+                error: `replace: cell_id "${op.cell_id}" not found in notebook`
+              };
+            }
+            targetIndex = resolved;
+          } else {
+            targetIndex = op.cell! + indexOffset;
+          }
           
-          if (adjustedIndex < 0 || adjustedIndex >= notebook.cells.length) {
+          if (targetIndex < 0 || targetIndex >= notebook.cells.length) {
             return {
               success: false,
               applied,
               summary,
-              error: `replace: cell index ${op.cell} (adjusted to ${adjustedIndex}) out of bounds (0-${notebook.cells.length - 1})`
+              error: `replace: cell index ${op.cell} (adjusted to ${targetIndex}) out of bounds (0-${notebook.cells.length - 1})`
             };
           }
           
-          const cell = notebook.cells[adjustedIndex];
+          const cell = notebook.cells[targetIndex];
           cell.source = normalizeSource(op.source);
           
           if (op.cell_type) {
@@ -186,6 +234,7 @@ function applyOperations(
           summary.push({
             op: 'replace',
             cell: op.cell,
+            cell_id: op.cell_id,
             cell_type: cell.cell_type
           });
           applied++;
@@ -222,9 +271,26 @@ function applyOperations(
             newCell.outputs = [];
           }
           
+          // Generate cell ID for nbformat 4.5+ notebooks
+          if (notebook.nbformat > 4 || (notebook.nbformat === 4 && notebook.nbformat_minor >= 5)) {
+            newCell.id = generateCellId(notebook.cells);
+          }
+          
           let insertIndex: number;
           
-          if (op.after !== undefined) {
+          // Resolve insert position (cell_id takes precedence)
+          if (op.cell_id !== undefined) {
+            const resolved = resolveCellId(notebook.cells, op.cell_id);
+            if (resolved === -1) {
+              return {
+                success: false,
+                applied,
+                summary,
+                error: `insert: cell_id "${op.cell_id}" not found in notebook`
+              };
+            }
+            insertIndex = resolved + 1; // Insert after the found cell
+          } else if (op.after !== undefined) {
             // Insert after specified index (after === -1 means beginning)
             const adjustedAfter = op.after + indexOffset;
             if (adjustedAfter < -1 || adjustedAfter >= notebook.cells.length) {
@@ -247,6 +313,7 @@ function applyOperations(
           summary.push({
             op: 'insert',
             after: op.after,
+            cell_id: op.cell_id,
             cell_type: op.cell_type
           });
           applied++;
@@ -254,32 +321,48 @@ function applyOperations(
         }
         
         case 'delete': {
-          if (op.cell === undefined) {
+          if (op.cell === undefined && op.cell_id === undefined) {
             return {
               success: false,
               applied,
               summary,
-              error: 'delete operation requires "cell" index'
+              error: 'delete operation requires "cell" index or "cell_id"'
             };
           }
           
-          const adjustedIndex = op.cell + indexOffset;
+          // Resolve cell index (cell_id takes precedence)
+          let targetIndex: number;
+          if (op.cell_id !== undefined) {
+            const resolved = resolveCellId(notebook.cells, op.cell_id);
+            if (resolved === -1) {
+              return {
+                success: false,
+                applied,
+                summary,
+                error: `delete: cell_id "${op.cell_id}" not found in notebook`
+              };
+            }
+            targetIndex = resolved;
+          } else {
+            targetIndex = op.cell! + indexOffset;
+          }
           
-          if (adjustedIndex < 0 || adjustedIndex >= notebook.cells.length) {
+          if (targetIndex < 0 || targetIndex >= notebook.cells.length) {
             return {
               success: false,
               applied,
               summary,
-              error: `delete: cell index ${op.cell} (adjusted to ${adjustedIndex}) out of bounds (0-${notebook.cells.length - 1})`
+              error: `delete: cell index ${op.cell} (adjusted to ${targetIndex}) out of bounds (0-${notebook.cells.length - 1})`
             };
           }
           
-          notebook.cells.splice(adjustedIndex, 1);
+          notebook.cells.splice(targetIndex, 1);
           indexOffset--; // Adjust for deleted cell
           
           summary.push({
             op: 'delete',
-            cell: op.cell
+            cell: op.cell,
+            cell_id: op.cell_id
           });
           applied++;
           break;
@@ -443,13 +526,7 @@ export const handlePrecisionNotebook: ToolHandler = async (args: unknown) => {
     // Invalidate FileStateCache so next read returns fresh content
     try {
       const cache = FileStateCache.getInstance();
-      cache.update(
-        filePath,
-        newContent,
-        'precision_notebook',
-        undefined,
-        `applied ${applyResult.applied} operations`
-      );
+      cache.invalidate(filePath);
     } catch {
       // Cache invalidation is non-critical
     }
