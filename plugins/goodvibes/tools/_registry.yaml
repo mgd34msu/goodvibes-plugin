@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-02-09T09:00:15.827Z'
+generated: '2026-02-09T20:08:50.629Z'
 total: 76
 servers:
   - name: precision-engine
@@ -18,7 +18,8 @@ servers:
       - name: precision_fetch
         path: precision-engine/precision-fetch.yaml
         description: >-
-          Fetch URLs with native fetch. Supports batch fetching, extraction modes
+          Fetch URLs with native fetch. Service registry integration for named APIs with auto-auth. ' + 'Supports batch
+          fetching, extraction modes
           (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), ' + 'custom
           headers, method override, timeout, and content type detection.
       - name: discover
@@ -52,7 +53,7 @@ servers:
         path: precision-engine/precision_notebook
         description: >-
           Edit Jupyter notebook (.ipynb) cells with batch operations. ' + 'Supports replace, insert, and delete with
-          index adjustment.
+          index or cell_id targeting and automatic index adjustment.
       - name: precision_config
         path: precision-engine/precision_config
         description: >-
@@ -513,6 +514,13 @@ search_index:
       - fetch
       - urls
       - native
+      - service
+      - registry
+      - integration
+      - named
+      - apis
+      - auto
+      - auth
       - supports
       - batch
       - fetching
@@ -540,7 +548,8 @@ search_index:
       - detection
     path: precision-engine/precision-fetch.yaml
     description: >-
-      Fetch URLs with native fetch. Supports batch fetching, extraction modes
+      Fetch URLs with native fetch. Service registry integration for named APIs with auto-auth. ' + 'Supports batch
+      fetching, extraction modes
       (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), ' + 'custom headers,
       method override, timeout, and content type detection.
     server: precision-engine
@@ -702,11 +711,14 @@ search_index:
       - insert
       - delete
       - index
+      - cell_id
+      - targeting
+      - automatic
       - adjustment
     path: precision-engine/precision_notebook
     description: >-
       Edit Jupyter notebook (.ipynb) cells with batch operations. ' + 'Supports replace, insert, and delete with index
-      adjustment.
+      or cell_id targeting and automatic index adjustment.
     server: precision-engine
   - name: precision_config
     keywords:

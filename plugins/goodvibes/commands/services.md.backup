@@ -1,0 +1,459 @@
+---
+description: Manage precision_fetch service registry (add, remove, test, auth)
+argument-hint: <subcommand> [name] [options]
+allowed-tools:
+  - mcp__plugin_goodvibes_precision-engine__precision_config
+  - mcp__plugin_goodvibes_precision-engine__precision_fetch
+  - mcp__plugin_goodvibes_precision-engine__precision_exec
+---
+
+# Precision Fetch Service Registry
+
+Manage authenticated service configurations for `precision_fetch`. Services provide base URLs, authentication strategies, and default headers for API requests.
+
+## Usage
+
+```
+/goodvibes:services <subcommand> [name] [options]
+```
+
+## Subcommands
+
+| Subcommand | Description |
+|------------|-------------|
+| `list` | List all registered services |
+| `add <name>` | Add a new service configuration |
+| `remove <name>` | Remove a service configuration |
+| `show <name>` | Show detailed service configuration |
+| `test <name>` | Test service connectivity |
+| `auth <name>` | Trigger authentication flow |
+| `refresh <name>` | Refresh OAuth2 tokens |
+| `set-secret <name>` | Set service credentials |
+| `cookies [clear\|show] [domain]` | Manage cookie jar |
+
+## Instructions
+
+Parse the subcommand and arguments from $ARGUMENTS.
+
+### `list` — List all registered services
+
+1. Call `precision_config` to get service list:
+   ```json
+   {"action": "get", "key": "fetch.services"}
+   ```
+
+2. Call `precision_config` to get auth status:
+   ```json
+   {"action": "get", "key": "fetch.auth_status"}
+   ```
+
+3. Format as a table:
+
+```
+Registered Services
+===================
+
+| Service Name | Base URL | Auth Type | Status |
+|--------------|----------|-----------|--------|
+| github       | https://api.github.com | oauth2 | ✓ Authenticated |
+| confluence   | https://company.atlassian.net | session | ✓ Active |
+| internal-api | https://api.internal.com | static | ✓ Configured |
+
+Total: {count} services
+
+Add a service: /goodvibes:services add <name>
+Show details: /goodvibes:services show <name>
+```
+
+If no services are registered:
+```
+No services registered.
+
+Add your first service: /goodvibes:services add <name>
+```
+
+### `add <name>` — Add a new service
+
+Parse `<name>` from $ARGUMENTS.
+
+1. Prompt the user for required information:
+   - **Base URL**: Service API base URL (e.g., `https://api.github.com`)
+   - **Auth Type**: `none`, `static`, `oauth2`, or `session`
+   - **Default Headers** (optional): JSON object of headers to include in all requests
+
+2. Based on auth type, collect additional configuration:
+
+   **For `static`:**
+   - Header name (e.g., `Authorization`, `X-API-Key`)
+   - Instructions to set secret via `/goodvibes:services set-secret <name>`
+
+   **For `oauth2`:**
+   - Client ID
+   - Client Secret (stored in secrets)
+   - Auth URL
+   - Token URL
+   - Scopes (space-separated)
+   - Redirect URI (default: `http://localhost:3000/oauth/callback`)
+
+   **For `session`:**
+   - Login URL
+   - Session cookie name
+   - Instructions for browser authentication
+
+3. Call `precision_config` to save the service:
+   ```json
+   {
+     "action": "set",
+     "key": "fetch.services.<name>",
+     "value": {
+       "base_url": "<base_url>",
+       "auth_type": "<auth_type>",
+       "default_headers": {},
+       "oauth2_config": {
+         "client_id": "...",
+         "auth_url": "...",
+         "token_url": "...",
+         "scopes": "...",
+         "redirect_uri": "..."
+       }
+     }
+   }
+   ```
+
+4. Confirm to the user:
+```
+Service '{name}' added successfully!
+
+Base URL: {base_url}
+Auth Type: {auth_type}
+
+Next steps:
+  - Set credentials: /goodvibes:services set-secret {name}
+  - Test connection: /goodvibes:services test {name}
+  - Authenticate: /goodvibes:services auth {name}
+```
+
+### `remove <name>` — Remove a service
+
+Parse `<name>` from $ARGUMENTS.
+
+1. Confirm the service exists by calling:
+   ```json
+   {"action": "get", "key": "fetch.services.<name>"}
+   ```
+
+2. If it doesn't exist, inform the user:
+   ```
+   Service '{name}' not found.
+
+   List services: /goodvibes:services list
+   ```
+
+3. Call `precision_config` to remove the service:
+   ```json
+   {"action": "delete", "key": "fetch.services.<name>"}
+   ```
+
+4. Also clean up related configurations:
+   - URL patterns: `{"action": "delete", "key": "fetch.url_patterns.<name>"}`
+   - Auth status: `{"action": "delete", "key": "fetch.auth_status.<name>"}`
+
+5. Confirm to the user:
+```
+Service '{name}' removed successfully.
+
+Note: Stored credentials remain in .goodvibes/goodvibes.secrets.json
+Clean up manually if needed.
+```
+
+### `show <name>` — Show service details
+
+Parse `<name>` from $ARGUMENTS.
+
+1. Call `precision_config` to get service configuration:
+   ```json
+   {"action": "get", "key": "fetch.services.<name>"}
+   ```
+
+2. Call `precision_config` to get auth status:
+   ```json
+   {"action": "get", "key": "fetch.auth_status.<name>"}
+   ```
+
+3. Display full configuration (excluding secrets):
+
+```
+Service: {name}
+================
+
+Base URL: {base_url}
+Auth Type: {auth_type}
+Status: {status}
+
+Default Headers:
+  {header}: {value}
+  ...
+
+OAuth2 Configuration:
+  Client ID: {client_id}
+  Auth URL: {auth_url}
+  Token URL: {token_url}
+  Scopes: {scopes}
+  Redirect URI: {redirect_uri}
+
+URL Patterns:
+  {pattern} → {name}
+  ...
+
+Actions:
+  Test: /goodvibes:services test {name}
+  Authenticate: /goodvibes:services auth {name}
+  Remove: /goodvibes:services remove {name}
+```
+
+### `test <name>` — Test service connectivity
+
+Parse `<name>` from $ARGUMENTS.
+
+1. Call `precision_fetch` to make a test request:
+   ```json
+   {
+     "url": "{base_url}/",
+     "method": "HEAD",
+     "service": "<name>",
+     "timeout": 5000
+   }
+   ```
+
+   If HEAD fails, try GET with the base URL.
+
+2. Report results:
+
+```
+Testing service '{name}'...
+
+✓ Connection successful
+  Status: {status_code}
+  Response Time: {time_ms}ms
+  Auth Status: {authenticated ? "Authenticated" : "Not authenticated"}
+
+Service is ready to use.
+```
+
+Or on failure:
+```
+✗ Connection failed
+  Error: {error_message}
+
+Troubleshooting:
+  - Check base URL: {base_url}
+  - Verify authentication: /goodvibes:services auth {name}
+  - Check credentials: /goodvibes:services set-secret {name}
+```
+
+### `auth <name>` — Trigger authentication
+
+Parse `<name>` from $ARGUMENTS.
+
+1. Get service config to determine auth type:
+   ```json
+   {"action": "get", "key": "fetch.services.<name>"}
+   ```
+
+2. Based on auth type:
+
+   **For `oauth2`:**
+   - Call `precision_exec` to start OAuth2 flow:
+     ```json
+     {
+       "commands": [{
+         "cmd": "node /path/to/oauth-helper.js start {name}",
+         "expect": {"exit_code": 0}
+       }]
+     }
+     ```
+   - Instruct user to complete browser authentication
+   - Display: `Opening browser for OAuth2 authentication...`
+
+   **For `session`:**
+   - Instruct user to authenticate in browser
+   - Display: `Navigate to {login_url} and complete authentication`
+   - Mention that cookies will be captured automatically
+
+   **For `static`:**
+   - Display: `Static auth requires credentials to be set manually`
+   - Instruct: `/goodvibes:services set-secret {name}`
+
+   **For `none`:**
+   - Display: `This service does not require authentication`
+
+### `refresh <name>` — Refresh OAuth2 tokens
+
+Parse `<name>` from $ARGUMENTS.
+
+1. Verify service uses OAuth2:
+   ```json
+   {"action": "get", "key": "fetch.services.<name>"}
+   ```
+
+2. If not OAuth2:
+   ```
+   Service '{name}' does not use OAuth2 authentication.
+   Current auth type: {auth_type}
+   ```
+
+3. Call token refresh endpoint:
+   ```json
+   {
+     "url": "{token_url}",
+     "method": "POST",
+     "body": {
+       "grant_type": "refresh_token",
+       "refresh_token": "{refresh_token}",
+       "client_id": "{client_id}",
+       "client_secret": "{client_secret}"
+     }
+   }
+   ```
+
+4. Update stored tokens via `precision_config`
+
+5. Confirm:
+```
+✓ Tokens refreshed successfully for '{name}'
+
+New expiry: {expiry_time}
+```
+
+### `set-secret <name>` — Set service credentials
+
+Parse `<name>` from $ARGUMENTS.
+
+1. Get service config to determine auth requirements:
+   ```json
+   {"action": "get", "key": "fetch.services.<name>"}
+   ```
+
+2. Based on auth type, prompt for appropriate credentials:
+
+   **For `static`:**
+   - Prompt: "Enter API key or token:"
+   - Store in: `.goodvibes/goodvibes.secrets.json` under `fetch.services.<name>.api_key`
+
+   **For `oauth2`:**
+   - Prompt: "Enter client secret:"
+   - Store in: `.goodvibes/goodvibes.secrets.json` under `fetch.services.<name>.client_secret`
+
+3. Call `precision_config` to save (config tool handles secrets file):
+   ```json
+   {
+     "action": "set",
+     "key": "fetch.secrets.<name>",
+     "value": {
+       "api_key": "...",
+       "client_secret": "..."
+     }
+   }
+   ```
+
+4. Confirm:
+```
+Credentials saved for service '{name}'.
+
+Credentials are stored in:
+  .goodvibes/goodvibes.secrets.json (never committed to git)
+
+Test connection: /goodvibes:services test {name}
+```
+
+**Security reminder:**
+- Never display secrets in output
+- Confirm `.goodvibes/goodvibes.secrets.json` is in `.gitignore`
+- Use `[REDACTED]` when showing config with secrets
+
+### `cookies` — Manage cookie jar
+
+Parse subcommand and optional domain from $ARGUMENTS.
+
+#### `cookies show` — Display stored cookies
+
+1. Call `precision_config` to get cookies:
+   ```json
+   {"action": "get", "key": "fetch.cookies"}
+   ```
+
+2. Group cookies by domain and display:
+
+```
+Stored Cookies
+==============
+
+github.com (3 cookies):
+  - user_session (expires: {date})
+  - logged_in (expires: {date})
+  - __Host-user_id (expires: {date})
+
+atlassian.net (2 cookies):
+  - cloud.session.token (expires: {date})
+  - tenant.session.token (expires: {date})
+
+Total: {count} cookies across {domain_count} domains
+
+Clear cookies: /goodvibes:services cookies clear [domain]
+```
+
+#### `cookies clear [domain]` — Clear cookies
+
+If domain is specified:
+1. Clear cookies for that domain only
+2. Call `precision_config`:
+   ```json
+   {"action": "delete", "key": "fetch.cookies.<domain>"}
+   ```
+3. Confirm: `Cleared {count} cookies for {domain}`
+
+If no domain specified:
+1. Clear all cookies
+2. Call `precision_config`:
+   ```json
+   {"action": "delete", "key": "fetch.cookies"}
+   ```
+3. Confirm: `Cleared all cookies ({count} total)`
+
+### Unknown subcommand
+
+If the subcommand is not recognized:
+
+```
+Unknown subcommand: {subcommand}
+
+Available subcommands:
+  list                - List all registered services
+  add <name>          - Add a new service
+  remove <name>       - Remove a service
+  show <name>         - Show service details
+  test <name>         - Test service connectivity
+  auth <name>         - Trigger authentication
+  refresh <name>      - Refresh OAuth2 tokens
+  set-secret <name>   - Set service credentials
+  cookies [show|clear] [domain] - Manage cookie jar
+
+Examples:
+  /goodvibes:services list
+  /goodvibes:services add github
+  /goodvibes:services test github
+  /goodvibes:services auth github
+```
+
+## Storage Locations
+
+- **Service registry**: `.goodvibes/goodvibes.json` under `fetch.services`
+- **Credentials**: `.goodvibes/goodvibes.secrets.json` under `fetch.secrets`
+- **Cookies**: `.goodvibes/goodvibes.json` under `fetch.cookies`
+- **Auth status**: `.goodvibes/goodvibes.json` under `fetch.auth_status`
+
+**Note:** `goodvibes.secrets.json` is automatically added to `.gitignore` and should never be committed.
+
+## Arguments
+
+$ARGUMENTS
