@@ -763,7 +763,15 @@ git diff HEAD~N to review
 
 ### precision_fetch
 
-**Description:** Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json), custom headers, method override, and timeout.
+**Description:** Fetch URLs with native fetch. Service registry integration for named APIs with auto-auth. Supports batch fetching, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), custom headers, method override, timeout, and content type detection.
+
+**Use this tool for:**
+- **API interaction** - Call REST APIs, GraphQL endpoints, and web services directly. Supports all HTTP methods including PATCH, HEAD, and OPTIONS.
+- **Authenticated requests** - Use the service registry for auto-auth against named services, or pass per-request auth (bearer tokens, basic auth, API keys, custom headers). Handles 401 retry with token refresh.
+- **Testing & local development** - Test API endpoints during development, verify response formats, debug request/response cycles with detailed timing and header inspection.
+- **Remote resource access** - Fetch and parse remote content including web pages (readable/markdown extraction), JSON APIs, PDF documents, structured data tables, and code blocks.
+- **Batch operations** - Fetch multiple URLs in parallel with per-URL extraction mode overrides and global defaults.
+- **Content extraction** - Extract specific content types: `markdown` for article text, `structured` with CSS selectors, `tables` for tabular data, `code_blocks` for code snippets, `links` for URL discovery, `metadata` for page metadata, `summary` for AI-generated summaries.
 
 ```json
 {
@@ -781,7 +789,7 @@ git diff HEAD~N to review
           },
           "method": {
             "type": "string",
-            "enum": ["GET", "POST", "PUT", "DELETE"],
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
             "description": "HTTP method (default: GET)"
           },
           "headers": {
@@ -794,7 +802,7 @@ git diff HEAD~N to review
           },
           "body_base64": {
             "type": "string",
-            "description": "Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n 'body' | base64 -w0"
+            "description": "Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n \"body\" | base64 -w0"
           },
           "timeout": {
             "type": "integer",
@@ -808,8 +816,64 @@ git diff HEAD~N to review
           },
           "extract": {
             "type": "string",
-            "enum": ["raw", "text", "json"],
+            "enum": ["raw", "text", "json", "markdown", "structured", "summary", "code_blocks", "tables", "links", "metadata", "readable", "pdf"],
             "description": "Extraction mode (default: text)"
+          },
+          "params": {
+            "type": "object",
+            "description": "Query parameters to append to URL (key-value pairs)"
+          },
+          "body_type": {
+            "type": "string",
+            "enum": ["json", "form", "multipart", "raw"],
+            "description": "Body encoding type (default: json when body_data is provided)"
+          },
+          "body_data": {
+            "description": "Body data to encode. Object for json/form/multipart, string for raw."
+          },
+          "service": {
+            "type": "string",
+            "description": "Service name from registry for auto-auth and base URL resolution"
+          },
+          "auth": {
+            "type": "object",
+            "description": "Per-request auth override",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["none", "bearer", "basic", "api-key", "custom-headers"],
+                "description": "Auth type to apply for this request"
+              },
+              "token": {
+                "type": "string",
+                "description": "Bearer token"
+              },
+              "username": {
+                "type": "string",
+                "description": "Basic auth username"
+              },
+              "password": {
+                "type": "string",
+                "description": "Basic auth password"
+              },
+              "header": {
+                "type": "string",
+                "description": "API key header name"
+              },
+              "key": {
+                "type": "string",
+                "description": "API key value"
+              },
+              "headers": {
+                "type": "object",
+                "description": "Custom auth headers"
+              }
+            }
+          },
+          "selectors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "CSS selectors for structured extraction"
           }
         },
         "required": ["url"]
@@ -819,6 +883,12 @@ git diff HEAD~N to review
       "type": "boolean",
       "default": true,
       "description": "Fetch URLs in parallel"
+    },
+    "extract": {
+      "type": "string",
+      "enum": ["raw", "text", "json", "markdown", "structured", "summary", "code_blocks", "tables", "links", "metadata", "readable", "pdf"],
+      "default": "text",
+      "description": "Global extraction mode applied to all URLs (default: text). Per-URL extract overrides this."
     },
     "verbosity": {
       "type": "string",
