@@ -1,0 +1,13 @@
+Hello World 🌍🌎🌏
+中文测试 Chinese
+日本語テスト Japanese
+�琭어 Korean
+العربية Arabic (RTL)
+हिन्दी Hindi
+Ñoño España
+Ünîçöäé Tëst
+Emoji: 👨‍🐩‍👧‍👦 🏰️‍🌈 🇺🇸
+Combining: é = e + ◌́  ñ = n + ◌̃
+Math: ∑∏∪∂√∞≈≠≤≥
+Symbols: ™®©¶§†‡
+Zero-width: [​] (ZWSP between brackets)

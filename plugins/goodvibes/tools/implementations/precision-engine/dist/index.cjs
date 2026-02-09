@@ -324600,7 +324600,10 @@ __name(formatPageTexts, "formatPageTexts");
 async function parsePdfBuffer(buffer, pages) {
   try {
     const pdfParseModule = await Promise.resolve().then(() => (init_esm(), esm_exports5));
-    const pdfParse = pdfParseModule.default;
+    const pdfParse = typeof pdfParseModule.default === "function" ? pdfParseModule.default : typeof pdfParseModule === "function" ? pdfParseModule : null;
+    if (!pdfParse) {
+      throw new Error("Failed to load pdf-parse: module does not export a callable function");
+    }
     const pageTexts = [];
     const options = {
       pagerender: async function(pageData) {
@@ -327308,14 +327311,7 @@ async function executeSymbolsQuery(query2, outputMode, searchRoot) {
   }
   let timeoutId;
   try {
-    let mode;
-    if (outputMode === "count_only") {
-      mode = "count_only";
-    } else if (outputMode === "locations") {
-      mode = "locations";
-    } else {
-      mode = "names_only";
-    }
+    const mode = outputMode === "count_only" ? "count_only" : "locations";
     const symbolsPromise = handlePrecisionSymbols({
       mode: needsScoping ? "document" : "workspace",
       files: scopedFiles,
@@ -327332,7 +327328,6 @@ async function executeSymbolsQuery(query2, outputMode, searchRoot) {
       timeoutId = setTimeout(() => reject(new Error(`Symbol search timeout after ${symbolTimeout / 1e3}s`)), symbolTimeout);
     });
     const result = await Promise.race([symbolsPromise, timeoutPromise]);
-    clearTimeout(timeoutId);
     const content = result.content?.[0];
     if (!content || content.type !== "text") {
       return { type: "symbols", count: 0, files: [] };
@@ -327368,12 +327363,13 @@ async function executeSymbolsQuery(query2, outputMode, searchRoot) {
     const files = [...new Set(symbols.map((s) => s.file).filter(Boolean))];
     return { type: "symbols", count: symbols.length, files };
   } catch (e) {
-    clearTimeout(timeoutId);
     return {
       type: "symbols",
       count: 0,
       error: `Symbol search failed: ${e.message}`
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 __name(executeSymbolsQuery, "executeSymbolsQuery");
@@ -327659,7 +327655,12 @@ function parsePageRange2(pages) {
 __name(parsePageRange2, "parsePageRange");
 async function readPdfFile(buffer, filePath, result, pages) {
   try {
-    const pdfParse = (await Promise.resolve().then(() => (init_esm(), esm_exports5))).default;
+    const mod = await Promise.resolve().then(() => (init_esm(), esm_exports5));
+    const pdfParse = typeof mod.default === "function" ? mod.default : typeof mod === "function" ? mod : null;
+    if (!pdfParse) {
+      result.error = "Failed to load pdf-parse: module does not export a callable function";
+      return result;
+    }
     const pageTexts = [];
     const options = {
       pagerender: async function(pageData) {
@@ -328764,7 +328765,7 @@ function findBestSubstringMatch(originalLine, lowerLine, searchStr, caseSensitiv
   for (let windowSize = minWindow; windowSize <= maxWindow; windowSize++) {
     for (let i2 = 0; i2 <= lowerLine.length - windowSize; i2++) {
       const substring = (caseSensitive ? originalLine : lowerLine).substring(i2, i2 + windowSize);
-      const similarity = calculateSimilarity(substring.trim(), searchStr.trim());
+      const similarity = calculateSimilarity(normalizeWhitespace(substring), normalizeWhitespace(searchStr));
       if (similarity >= minSimilarity && (!bestMatch || similarity > bestMatch.similarity)) {
         bestMatch = {
           startIndex: i2,
@@ -328794,7 +328795,7 @@ function fuzzyMatch(content, search, caseSensitive, minSimilarity = 0.7) {
         originalText: line.substring(exactIndex, exactIndex + search.length)
       });
     } else if (line.trim().length > 0) {
-      const lineSimilarity = calculateSimilarity(lineToMatch.trim(), searchStr.trim());
+      const lineSimilarity = calculateSimilarity(normalizeWhitespace(lineToMatch), normalizeWhitespace(searchStr));
       if (lineSimilarity >= minSimilarity) {
         const bestMatch = findBestSubstringMatch(line, lineToMatch, searchStr, caseSensitive, minSimilarity);
         if (bestMatch) {
@@ -328844,7 +328845,7 @@ function findClosestMatch(content, pattern, maxResults = 3) {
     const lineTrimmed = line.trim();
     if (lineTrimmed.length === 0)
       continue;
-    const similarity = calculateSimilarity(lineTrimmed, patternFirstLine);
+    const similarity = calculateSimilarity(normalizeWhitespace(lineTrimmed), normalizeWhitespace(patternFirstLine));
     if (similarity > 0.4) {
       matches2.push({
         line: i2 + 1,

@@ -320,14 +320,7 @@ async function executeSymbolsQuery(
 
   let timeoutId: NodeJS.Timeout;
   try {
-    let mode: 'count_only' | 'names_only' | 'locations';
-    if (outputMode === 'count_only') {
-      mode = 'count_only';
-    } else if (outputMode === 'locations') {
-      mode = 'locations';
-    } else {
-      mode = 'names_only';
-    }
+    const mode = outputMode === 'count_only' ? 'count_only' : 'locations';
 
     // Add timeout protection
     const symbolsPromise = handlePrecisionSymbols({
@@ -347,7 +340,6 @@ async function executeSymbolsQuery(
     });
 
     const result = await Promise.race([symbolsPromise, timeoutPromise]);
-    clearTimeout(timeoutId); // Clean up on success
 
     const content = result.content?.[0];
     if (!content || content.type !== 'text') {
@@ -393,12 +385,13 @@ async function executeSymbolsQuery(
     const files = [...new Set(symbols.map((s: any) => s.file).filter(Boolean))] as string[];
     return { type: 'symbols', count: symbols.length, files };
   } catch (e) {
-    clearTimeout(timeoutId!); // Clean up on any error
     return {
       type: 'symbols',
       count: 0,
       error: `Symbol search failed: ${(e as Error).message}`
     };
+  } finally {
+    clearTimeout(timeoutId!);
   }
 }
 

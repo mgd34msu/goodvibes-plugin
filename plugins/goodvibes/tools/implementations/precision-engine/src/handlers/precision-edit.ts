@@ -228,7 +228,7 @@ function findBestSubstringMatch(
   for (let windowSize = minWindow; windowSize <= maxWindow; windowSize++) {
     for (let i = 0; i <= lowerLine.length - windowSize; i++) {
       const substring = (caseSensitive ? originalLine : lowerLine).substring(i, i + windowSize);
-      const similarity = calculateSimilarity(substring.trim(), searchStr.trim());
+      const similarity = calculateSimilarity(normalizeWhitespace(substring), normalizeWhitespace(searchStr));
 
       if (similarity >= minSimilarity && (!bestMatch || similarity > bestMatch.similarity)) {
         bestMatch = {
@@ -276,7 +276,7 @@ function fuzzyMatch(
       });
     } else if (line.trim().length > 0) {
       // Try fuzzy matching on the whole line first
-      const lineSimilarity = calculateSimilarity(lineToMatch.trim(), searchStr.trim());
+      const lineSimilarity = calculateSimilarity(normalizeWhitespace(lineToMatch), normalizeWhitespace(searchStr));
 
       if (lineSimilarity >= minSimilarity) {
         // Find the best matching substring within the line
@@ -345,7 +345,7 @@ function findClosestMatch(content: string, pattern: string, maxResults = 3): Clo
 
     if (lineTrimmed.length === 0) continue;
 
-    const similarity = calculateSimilarity(lineTrimmed, patternFirstLine);
+    const similarity = calculateSimilarity(normalizeWhitespace(lineTrimmed), normalizeWhitespace(patternFirstLine));
 
     if (similarity > 0.4) {
       matches.push({

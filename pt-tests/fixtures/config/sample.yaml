@@ -1,0 +1,25 @@
+name: test-project
+version: "1.0.0"
+settings:
+  debug: true
+  logLevel: info
+  maxRetries: 3
+  features:
+    - dark-mode
+    - notifications
+    - experimental
+
+database:
+  host: localhost
+  port: 5432
+  credentials:
+    username: admin
+    password: secret123
+
+environments:
+  - name: development
+    url: http://localhost:3000
+  - name: staging
+    url: https://staging.example.com
+  - name: production
+    url: https://api.example.com

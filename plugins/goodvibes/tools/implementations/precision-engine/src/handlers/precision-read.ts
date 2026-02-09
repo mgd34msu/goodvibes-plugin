@@ -295,7 +295,16 @@ async function readPdfFile(
   pages?: string,
 ): Promise<FileReadResult> {
   try {
-    const pdfParse = (await import('pdf-parse')).default;
+    // CJS/ESM interop: in CJS bundle context, mod.default may not be the expected function.
+    // Fall back to the module itself if default is not callable.
+    const mod = await import('pdf-parse');
+    const pdfParse = typeof mod.default === 'function' ? mod.default
+                   : typeof mod === 'function' ? mod
+                   : null;
+    if (!pdfParse) {
+      result.error = 'Failed to load pdf-parse: module does not export a callable function';
+      return result;
+    }
 
     // Collect text per page using custom renderer
     const pageTexts: string[] = [];

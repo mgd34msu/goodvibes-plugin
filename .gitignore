@@ -38,7 +38,6 @@ final-plan.md
 new_tool_test/
 goodvibes_final_test/
 temp-hold/
-pt-tests/
 
 # Environment files
 .env
@@ -71,4 +70,3 @@ logs/
 RELEASE.md
 test-auto-encode/
 new_pe_tests/
-new_e2e_tests/

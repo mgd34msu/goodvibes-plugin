@@ -81,9 +81,15 @@ export async function parsePdfBuffer(
   try {
     // Dynamic import for pdf-parse
     // Note: pdf-parse@2.x exports PDFParse class, but we import as CommonJS for compatibility
+    // CJS/ESM interop: in CJS bundle context, mod.default may not be the expected function.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfParseModule = await import('pdf-parse') as any;
-    const pdfParse = pdfParseModule.default as (buffer: Buffer, options?: Record<string, unknown>) => Promise<PdfParseResult>;
+    const pdfParse = typeof pdfParseModule.default === 'function' ? pdfParseModule.default
+                   : typeof pdfParseModule === 'function' ? pdfParseModule
+                   : null;
+    if (!pdfParse) {
+      throw new Error('Failed to load pdf-parse: module does not export a callable function');
+    }
 
     // Collect text per page using custom renderer
     const pageTexts: string[] = [];

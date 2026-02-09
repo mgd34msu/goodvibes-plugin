@@ -1,0 +1,24 @@
+{
+  "name": "test-project",
+  "version": "1.0.0",
+  "settings": {
+    "debug": true,
+    "logLevel": "info",
+    "maxRetries": 3,
+    "timeout": 5000,
+    "features": {
+      "darkMode": true,
+      "notifications": false,
+      "experimental": {
+        "newUI": true,
+        "betaFeatures": ["feature-a", "feature-b"]
+      }
+    }
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "name": "testdb"
+  },
+  "tags": ["production", "v1", "stable"]
+}

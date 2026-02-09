@@ -1,0 +1,13 @@
+Backticks: `code` and ```block```
+Template: ${variable} and ${obj.prop}
+Single quotes: 'hello' and 'world'
+Double quotes: "hello" and "world"
+Regex: /^test\d+\$/gi and /[a-z]{3,}/
+Backslash: C:\Users\test\path
+Dollar: $HOME and $$escaped
+Angle brackets: <div> and </div>
+Ampersand: A & B && C
+Pipe: cmd | grep | sort
+Semicolons: a; b; c;
+Parentheses: fn() and (a, b)
+Brackets: arr[0] and {key: val}
