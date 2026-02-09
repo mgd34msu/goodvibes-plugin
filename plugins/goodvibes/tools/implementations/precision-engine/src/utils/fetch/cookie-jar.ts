@@ -95,21 +95,21 @@ export class CookieJar {
       cookies: this.cookies,
       updated_at: new Date().toISOString(),
     };
-  /**
-   * Eviction Policy:
-   * - Count overflow (setCookies): Evict soonest-expiring persistent cookies first.
-   *   Session cookies (no expiry) are preserved as they represent active user state.
-   * - File-size overflow (save): Evict session cookies first, then longest-lived
-   *   persistent cookies. Session cookies are expendable under disk pressure since
-   *   they have no expiry and can accumulate without bound.
-   */
+    /**
+     * Eviction Policy:
+     * - Count overflow (setCookies): Evict soonest-expiring persistent cookies first.
+     *   Session cookies (no expiry) are preserved as they represent active user state.
+     * - File-size overflow (save): Evict session cookies first, then longest-lived
+     *   persistent cookies. Session cookies are expendable under disk pressure since
+     *   they have no expiry and can accumulate without bound.
+     */
 
     let content = JSON.stringify(data, null, 2) + '\n';
 
     // Check file size limit (use byte size, not string length)
     const contentSize = Buffer.byteLength(content, 'utf-8');
     if (contentSize > MAX_FILE_SIZE) {
-      // Evict session cookies first (they're transient), then oldest expiring persistent cookies
+      // Evict session cookies first (they're transient), then longest-lived persistent cookies
       // Descending sort (bExpiry - aExpiry) puts session cookies (Infinity) at the FRONT
       this.cookies.sort((a, b) => {
         const aExpiry = a.expires ?? Infinity;
