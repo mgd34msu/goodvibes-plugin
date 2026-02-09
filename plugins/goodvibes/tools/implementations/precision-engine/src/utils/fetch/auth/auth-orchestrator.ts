@@ -156,36 +156,41 @@ export async function handleAuthFailure(
     return { retry: false };
   }
 
-  const auth = await getServiceSecrets(serviceName);
-  if (!auth) {
+  try {
+    const auth = await getServiceSecrets(serviceName);
+    if (!auth) {
+      return { retry: false };
+    }
+
+    // OAuth2: try to refresh
+    if (auth.type === 'oauth2') {
+      if (canRefreshToken(auth)) {
+        const refreshed = await refreshAndStore(serviceName, auth);
+        if (refreshed) {
+          return { retry: true };
+        }
+      }
+      // OAuth2 without refresh capability = needs browser auth
+      return { retry: false, hint: 'needs_browser_auth' };
+    }
+
+    // Session: try to acquire new session
+    if (auth.type === 'session') {
+      if (canAcquireSession(auth)) {
+        const acquired = await acquireAndStore(serviceName, auth);
+        if (acquired) {
+          return { retry: true };
+        }
+      }
+      return { retry: false };
+    }
+
+    // Static auth failed = bad credentials
+    return { retry: false };
+  } catch {
+    // Filesystem/JSON errors during secret retrieval or token refresh
     return { retry: false };
   }
-
-  // OAuth2: try to refresh
-  if (auth.type === 'oauth2') {
-    if (canRefreshToken(auth)) {
-      const refreshed = await refreshAndStore(serviceName, auth);
-      if (refreshed) {
-        return { retry: true };
-      }
-    }
-    // OAuth2 without refresh capability = needs browser auth
-    return { retry: false, hint: 'needs_browser_auth' };
-  }
-
-  // Session: try to acquire new session
-  if (auth.type === 'session') {
-    if (canAcquireSession(auth)) {
-      const acquired = await acquireAndStore(serviceName, auth);
-      if (acquired) {
-        return { retry: true };
-      }
-    }
-    return { retry: false };
-  }
-
-  // Static auth failed = bad credentials
-  return { retry: false };
 }
 
 /**
@@ -195,48 +200,63 @@ export async function handleAuthFailure(
  * @returns Status enum indicating auth health
  */
 export async function getAuthStatus(serviceName: string): Promise<AuthStatus> {
-  const auth = await getServiceSecrets(serviceName);
+  try {
+    const auth = await getServiceSecrets(serviceName);
 
-  // No auth configured
-  if (!auth) {
+    // No auth configured
+    if (!auth) {
+      return 'no_auth_configured';
+    }
+
+    // Check for credentials based on auth type
+    const hasCredentials = (() => {
+      switch (auth.type) {
+        case 'bearer':
+          return !!auth.token;
+        case 'basic':
+          return !!(auth.username && auth.password);
+        case 'api-key':
+          return !!(auth.header && auth.key);
+        case 'custom-headers':
+          return !!(auth.headers && Object.keys(auth.headers).length > 0);
+        case 'oauth2':
+          return !!auth.access_token;
+        case 'session':
+          return !!auth.access_token;
+        case 'none':
+          return true;
+        default:
+          return false;
+      }
+    })();
+
+    if (!hasCredentials) {
+      return 'no_credentials';
+    }
+
+    // Check OAuth2 token expiration
+    if (auth.type === 'oauth2') {
+      if (isTokenExpired(auth)) {
+        if (canRefreshToken(auth)) {
+          return 'needs_refresh';
+        }
+        return 'needs_browser_auth';
+      }
+    }
+
+    // Check for expired non-OAuth2 tokens without refresh mechanism
+    if ('expires_at' in auth && typeof auth.expires_at === 'number') {
+      if (auth.expires_at < Date.now()) {
+        // Token is expired and no refresh mechanism available
+        if (auth.type !== 'oauth2' && !('login_url' in auth)) {
+          return 'expired';
+        }
+      }
+    }
+
+    return 'valid';
+  } catch {
+    // Filesystem/JSON errors during secret retrieval
     return 'no_auth_configured';
   }
-
-  // Check for credentials based on auth type
-  const hasCredentials = (() => {
-    switch (auth.type) {
-      case 'bearer':
-        return !!auth.token;
-      case 'basic':
-        return !!(auth.username && auth.password);
-      case 'api-key':
-        return !!(auth.header && auth.key);
-      case 'custom-headers':
-        return !!(auth.headers && Object.keys(auth.headers).length > 0);
-      case 'oauth2':
-        return !!auth.access_token;
-      case 'session':
-        return !!auth.access_token;
-      case 'none':
-        return true;
-      default:
-        return false;
-    }
-  })();
-
-  if (!hasCredentials) {
-    return 'no_credentials';
-  }
-
-  // Check OAuth2 token expiration
-  if (auth.type === 'oauth2') {
-    if (isTokenExpired(auth)) {
-      if (canRefreshToken(auth)) {
-        return 'needs_refresh';
-      }
-      return 'needs_browser_auth';
-    }
-  }
-
-  return 'valid';
 }

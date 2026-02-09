@@ -345,4 +345,75 @@ describe('auth-orchestrator', () => {
       expect(result).toBe('valid');
     });
   });
+
+  describe('edge cases', () => {
+    describe('applyAuth edge cases', () => {
+      it('should return false for empty bearer token', async () => {
+        const headers: Record<string, string> = {};
+        const requestAuth: RequestAuth = { type: 'bearer', token: '' };
+
+        (globalCookieJar.getCookies as Mock).mockResolvedValue([]);
+
+        const result = await applyAuth(headers, 'https://api.example.com', requestAuth);
+
+        expect(result).toBe(false);
+        expect(headers['Authorization']).toBeUndefined();
+      });
+
+      it('should return false for whitespace-only bearer token', async () => {
+        const headers: Record<string, string> = {};
+        const requestAuth: RequestAuth = { type: 'bearer', token: '   ' };
+
+        (globalCookieJar.getCookies as Mock).mockResolvedValue([]);
+
+        const result = await applyAuth(headers, 'https://api.example.com', requestAuth);
+
+        expect(result).toBe(false);
+        expect(headers['Authorization']).toBeUndefined();
+      });
+    });
+
+    describe('getAuthStatus edge cases', () => {
+      it('should return no_auth_configured when getServiceSecrets throws', async () => {
+        (getServiceSecrets as Mock).mockRejectedValue(new Error('Filesystem error'));
+
+        const result = await getAuthStatus('test-service');
+
+        expect(result).toBe('no_auth_configured');
+      });
+
+      it('should return expired for non-OAuth2 expired token without refresh', async () => {
+        const auth: ServiceAuth = {
+          type: 'bearer',
+          token: 'expired-token',
+          expires_at: Date.now() - 1000,
+        };
+
+        (getServiceSecrets as Mock).mockResolvedValue(auth);
+
+        const result = await getAuthStatus('test-service');
+
+        expect(result).toBe('expired');
+      });
+    });
+
+    describe('handleAuthFailure edge cases', () => {
+      it('should return retry false when getServiceSecrets returns undefined', async () => {
+        (getServiceSecrets as Mock).mockResolvedValue(undefined);
+
+        const result = await handleAuthFailure({ status: 401 }, 'test-service');
+
+        expect(result).toEqual({ retry: false });
+      });
+
+      it('should return retry false when getServiceSecrets throws', async () => {
+        (getServiceSecrets as Mock).mockRejectedValue(new Error('Filesystem error'));
+
+        const result = await handleAuthFailure({ status: 401 }, 'test-service');
+
+        expect(result).toEqual({ retry: false });
+      });
+    });
+  });
 });
+
