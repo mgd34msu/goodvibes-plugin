@@ -7357,11 +7357,11 @@ function getToolVerbosityDefault(toolName) {
 }
 function getMaxDiffChars() {
   const config2 = loadConfigSync();
-  return typeof config2.max_diff_chars === "number" ? config2.max_diff_chars : 1e4;
+  return getValidNumber(config2.max_diff_chars, CONFIG_DEFAULTS.MAX_DIFF_CHARS);
 }
 function getSlowFsThreshold() {
   const config2 = loadConfigSync();
-  return typeof config2.slow_fs_stat_threshold_ms === "number" ? config2.slow_fs_stat_threshold_ms : 50;
+  return getValidNumber(config2.slow_fs_stat_threshold_ms, CONFIG_DEFAULTS.SLOW_FS_THRESHOLD_MS);
 }
 function getSlowFsPrefixes() {
   const config2 = loadConfigSync();
@@ -7369,18 +7369,15 @@ function getSlowFsPrefixes() {
 }
 function getMaxFileBytes() {
   const config2 = loadConfigSync();
-  const value = config2.max_file_bytes;
-  return typeof value === "number" && value > 0 ? value : 524288;
+  return getValidNumber(config2.max_file_bytes, CONFIG_DEFAULTS.MAX_FILE_BYTES);
 }
 function getMaxTokenEstimate() {
   const config2 = loadConfigSync();
-  const value = config2.max_token_estimate;
-  return typeof value === "number" && value > 0 ? value : 5e4;
+  return getValidNumber(config2.max_token_estimate, CONFIG_DEFAULTS.MAX_TOKEN_ESTIMATE);
 }
 function getPageSizeLines() {
   const config2 = loadConfigSync();
-  const value = config2.page_size_lines;
-  return typeof value === "number" && value > 0 ? value : 200;
+  return getValidNumber(config2.page_size_lines, CONFIG_DEFAULTS.PAGE_SIZE_LINES);
 }
 function getSafeOverwrite() {
   const config2 = loadConfigSync();
@@ -7468,7 +7465,7 @@ async function setConfigValue(key2, value) {
     throw error2;
   }
 }
-var fs2, path, DEFAULT_CONFIG, EXEC_DEFAULTS, cachedConfig, configForFile, pendingPersist;
+var fs2, path, DEFAULT_CONFIG, EXEC_DEFAULTS, CONFIG_DEFAULTS, cachedConfig, configForFile, pendingPersist;
 var init_runtime_config = __esm({
   "src/runtime-config.ts"() {
     "use strict";
@@ -7479,12 +7476,32 @@ var init_runtime_config = __esm({
       sandbox: false
     };
     EXEC_DEFAULTS = {
+      /** Maximum stdout/stderr characters before overflow */
       MAX_OUTPUT_CHARS: 5e4,
+      /** Command timeout in milliseconds */
       DEFAULT_TIMEOUT_MS: 12e4,
+      /** Maximum output lines before truncation */
       MAX_OUTPUT_LINES: 500,
+      /** Directory path for overflow output files */
       OVERFLOW_DIR: ".goodvibes/.exec-output",
+      /** Maximum concurrent background processes */
       MAX_BACKGROUND: 5,
+      /** Maximum exec history entries to retain */
       HISTORY_MAX: 100
+    };
+    CONFIG_DEFAULTS = {
+      /** Maximum diff characters before truncation */
+      MAX_DIFF_CHARS: 1e4,
+      /** Slow filesystem detection threshold in milliseconds */
+      SLOW_FS_THRESHOLD_MS: 50,
+      /** Maximum file size in bytes before size gate prompts pagination */
+      MAX_FILE_BYTES: 524288,
+      /** Maximum estimated tokens before size gate prompts pagination */
+      MAX_TOKEN_ESTIMATE: 5e4,
+      /** Lines per page when paginating large file reads */
+      PAGE_SIZE_LINES: 200,
+      /** Maximum memory budget for file cache in megabytes */
+      CACHE_MAX_MB: 200
     };
     __name(getValidNumber, "getValidNumber");
     __name(getValidString, "getValidString");
@@ -15193,6 +15210,57 @@ var init_process_manager = __esm({
         return `bg-${this.counter++}`;
       }
       /**
+       * Enforce maximum background process limit by checking running process count.
+       * @throws Error if limit is reached
+       */
+      enforceProcessLimit() {
+        const maxBackground = getExecMaxBackground();
+        const runningCount = Array.from(this.processes.values()).filter(
+          (p) => p.status === "running"
+        ).length;
+        if (runningCount >= maxBackground) {
+          throw new Error(
+            `Maximum background processes (${maxBackground}) reached. Stop a process with bg_stop <id> before starting new ones.`
+          );
+        }
+      }
+      /**
+       * Ensure log directory exists and return the full log file path.
+       * @param id Process ID to generate log file path for
+       * @returns Absolute path to log file
+       */
+      ensureLogDir(id) {
+        const overflowDir = getExecOverflowDir();
+        if (!(0, import_fs5.existsSync)(overflowDir)) {
+          (0, import_fs5.mkdirSync)(overflowDir, { recursive: true });
+        }
+        return path12.join(overflowDir, `${id}.log`);
+      }
+      /**
+       * Register exit and error handlers for a child process.
+       * Handlers update process status and exit code in the processes map.
+       * @param child ChildProcess to attach handlers to
+       * @param id Process ID for looking up metadata in processes map
+       */
+      registerProcessHandlers(child, id) {
+        child.on("exit", (code, signal) => {
+          const proc = this.processes.get(id);
+          if (proc) {
+            proc.status = signal ? "killed" : "exited";
+            const signalNum = signal ? import_os.constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER : 0;
+            proc.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
+          }
+        });
+        child.on("error", (err2) => {
+          const proc = this.processes.get(id);
+          if (proc) {
+            proc.status = "errored";
+            proc.exit_code = 1;
+            proc.error_message = err2.message;
+          }
+        });
+      }
+      /**
        * Adopt an existing ChildProcess into background management.
        * Used for pattern-based early termination (Part J).
        * @param id Process ID to assign (e.g., "bg-1")
@@ -15202,23 +15270,11 @@ var init_process_manager = __esm({
        * @returns BgStartResult with process info
        */
       adopt(id, proc, command, cwd) {
-        const maxBackground = getExecMaxBackground();
-        const runningCount = Array.from(this.processes.values()).filter(
-          (p) => p.status === "running"
-        ).length;
-        if (runningCount >= maxBackground) {
-          throw new Error(
-            `Maximum background processes (${maxBackground}) reached. Cannot promote process to background.`
-          );
-        }
+        this.enforceProcessLimit();
         if (proc.pid === void 0) {
           throw new Error(`Cannot adopt process: no PID available for "${command}"`);
         }
-        const overflowDir = getExecOverflowDir();
-        if (!(0, import_fs5.existsSync)(overflowDir)) {
-          (0, import_fs5.mkdirSync)(overflowDir, { recursive: true });
-        }
-        const logFile = path12.join(overflowDir, `${id}.log`);
+        const logFile = this.ensureLogDir(id);
         if (proc.stdout) {
           proc.stdout.pipe((0, import_fs5.createWriteStream)(logFile, { flags: "a" }));
         }
@@ -15231,7 +15287,6 @@ var init_process_manager = __esm({
           pid: proc.pid,
           command,
           args: [],
-          // Not available for adopted processes
           cwd,
           started_at: Date.now(),
           status: "running",
@@ -15240,21 +15295,7 @@ var init_process_manager = __esm({
           last_read_offset: 0
         };
         this.processes.set(id, bgProcess);
-        proc.on("exit", (code, signal) => {
-          const p = this.processes.get(id);
-          if (p) {
-            p.status = signal ? "killed" : "exited";
-            const signalNum = signal ? import_os.constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER : 0;
-            p.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
-          }
-        });
-        proc.on("error", (err2) => {
-          const p = this.processes.get(id);
-          if (p) {
-            p.status = "errored";
-            p.exit_code = 1;
-          }
-        });
+        this.registerProcessHandlers(proc, id);
         return {
           status: "started",
           process_id: id,
@@ -15273,34 +15314,26 @@ var init_process_manager = __esm({
        * @returns BgStartResult with process info including ID, PID, and log file path
        */
       spawn(command, args2, options = {}) {
-        const maxBackground = getExecMaxBackground();
-        const runningCount = Array.from(this.processes.values()).filter(
-          (p) => p.status === "running"
-        ).length;
-        if (runningCount >= maxBackground) {
-          throw new Error(
-            `Maximum background processes (${maxBackground}) reached. Stop a process with bg_stop <id> before starting new ones.`
-          );
-        }
+        this.enforceProcessLimit();
         const id = this.generateId();
-        const overflowDir = getExecOverflowDir();
-        if (!(0, import_fs5.existsSync)(overflowDir)) {
-          (0, import_fs5.mkdirSync)(overflowDir, { recursive: true });
-        }
-        const logFile = path12.join(overflowDir, `${id}.log`);
+        const logFile = this.ensureLogDir(id);
         const logFd = (0, import_fs5.openSync)(logFile, "a");
         let fdClosed = false;
+        const resolvedCwd = options.cwd || process.cwd();
         try {
           const child = (0, import_child_process5.spawn)(command, args2, {
             detached: true,
             stdio: ["ignore", logFd, logFd],
-            cwd: options.cwd || process.cwd(),
+            cwd: resolvedCwd,
             env: options.env ? { ...process.env, ...options.env } : process.env
           });
           (0, import_fs5.closeSync)(logFd);
           fdClosed = true;
           if (child.pid === void 0) {
-            child.kill();
+            try {
+              child.kill();
+            } catch {
+            }
             throw new Error(`Failed to spawn process: no PID returned for "${command}"`);
           }
           child.unref();
@@ -15309,7 +15342,7 @@ var init_process_manager = __esm({
             pid: child.pid,
             command,
             args: args2,
-            cwd: options.cwd || process.cwd(),
+            cwd: resolvedCwd,
             started_at: Date.now(),
             status: "running",
             exit_code: null,
@@ -15317,21 +15350,7 @@ var init_process_manager = __esm({
             last_read_offset: 0
           };
           this.processes.set(id, bgProcess);
-          child.on("exit", (code, signal) => {
-            const proc = this.processes.get(id);
-            if (proc) {
-              proc.status = signal ? "killed" : "exited";
-              const signalNum = signal ? import_os.constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER : 0;
-              proc.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
-            }
-          });
-          child.on("error", (err2) => {
-            const proc = this.processes.get(id);
-            if (proc) {
-              proc.status = "errored";
-              proc.exit_code = 1;
-            }
-          });
+          this.registerProcessHandlers(child, id);
           return {
             status: "started",
             process_id: id,
@@ -15404,7 +15423,7 @@ var init_process_manager = __esm({
       }
       /**
        * Stop a background process gracefully with SIGTERM, escalating to SIGKILL if needed.
-       * Sends SIGTERM and waits up to 5 seconds, then sends SIGKILL if still running.
+       * Sends SIGTERM and waits up to SIGTERM_TIMEOUT_MS, then sends SIGKILL if still running.
        * @param id Process ID to stop
        * @returns Object indicating whether process was stopped and reason
        */
@@ -309980,7 +309999,8 @@ async function handleOverflow(output, commandId, threshold) {
   };
 }
 __name(handleOverflow, "handleOverflow");
-async function cleanupOverflowFiles(maxAgeMs = 36e5) {
+var DEFAULT_OVERFLOW_MAX_AGE_MS = 36e5;
+async function cleanupOverflowFiles(maxAgeMs = DEFAULT_OVERFLOW_MAX_AGE_MS) {
   const overflowDir = path3.resolve(process.cwd(), getExecOverflowDir());
   let cleaned = 0;
   try {
@@ -309988,6 +310008,10 @@ async function cleanupOverflowFiles(maxAgeMs = 36e5) {
     const now = Date.now();
     for (const entry of entries2) {
       const filePath = path3.join(overflowDir, entry);
+      const resolvedFilePath = path3.resolve(filePath);
+      if (!resolvedFilePath.startsWith(path3.resolve(overflowDir) + path3.sep)) {
+        continue;
+      }
       try {
         const stats = await fs3.stat(filePath);
         if (now - stats.mtimeMs > maxAgeMs) {
@@ -313190,6 +313214,14 @@ var DESTRUCTIVE_PATTERNS = [
   /\bdelete\s+from\s+\w+\s*;/i
   // DELETE without WHERE
 ];
+var DEFAULT_TIMEOUT_MS = 3e4;
+var KILL_SIGNAL_DELAY_MS = 5e3;
+var BG_OUTPUT_PREVIEW_LINES = 50;
+var MINIMAL_STDOUT_PREVIEW_CHARS = 500;
+var MINIMAL_STDERR_PREVIEW_CHARS = 200;
+var PROGRESS_SILENCE_GAP_MS = 2e3;
+var PROGRESS_MAX_MILESTONES = 20;
+var PROGRESS_DURATION_THRESHOLD_MS = 1e4;
 function isDestructiveCommand(cmd, args2) {
   const fullCommand = args2 ? `${cmd} ${args2.join(" ")}` : cmd;
   return DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(fullCommand));
@@ -313278,14 +313310,14 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
     });
     const commandId = spec.id || `cmd-${startTime}`;
     const overflowDir = getExecOverflowDir();
-    const tier2Enabled = spec.progress_file === true || timeout > 3e4;
+    const tier2Enabled = spec.progress_file === true || timeout > DEFAULT_TIMEOUT_MS;
     const progressCollector = createProgressCollector(
       {
         enabled: true,
         // Always collect
         progress_file: tier2Enabled,
-        silence_gap_ms: 2e3,
-        max_milestones: 20
+        silence_gap_ms: PROGRESS_SILENCE_GAP_MS,
+        max_milestones: PROGRESS_MAX_MILESTONES
       },
       commandId,
       overflowDir
@@ -313308,7 +313340,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
         setTimeout(() => {
           if (!proc.killed)
             proc.kill("SIGKILL");
-        }, 5e3);
+        }, KILL_SIGNAL_DELAY_MS);
       }
     }, timeout);
     if (untilTimeout !== null && untilTimeout !== timeout) {
@@ -313331,7 +313363,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
           setTimeout(() => {
             if (!proc.killed)
               proc.kill("SIGKILL");
-          }, 5e3);
+          }, KILL_SIGNAL_DELAY_MS);
         }
       }, untilTimeout);
     }
@@ -313566,7 +313598,7 @@ async function executeCommand(spec, globalEnv, globalWorkDir, globalTimeout, cap
         result.expectation_failures = expectationFailures;
       }
       const milestones = progressCollector.finalize(duration_ms);
-      if (duration_ms > 1e4 || spec.progress === true) {
+      if (duration_ms > PROGRESS_DURATION_THRESHOLD_MS || spec.progress === true) {
         result.progress = milestones;
       }
       const progressFilePath = progressCollector.getProgressFilePath();
@@ -313733,7 +313765,7 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
             getElapsed()
           ));
         }
-        const { output } = processManager.getOutput(id, 50, true);
+        const { output } = processManager.getOutput(id, BG_OUTPUT_PREVIEW_LINES, true);
         const data = {
           process: {
             id: proc.id,
@@ -314013,8 +314045,8 @@ var handlePrecisionExec = /* @__PURE__ */ __name(async (args2) => {
               expectations_met: r.expectations_met,
               ...r.truncated && { truncated: r.truncated },
               ...r.timed_out && { timed_out: r.timed_out },
-              ...r.stdout && { stdout: r.stdout.length > 500 ? r.stdout.slice(0, 500) + "..." : r.stdout },
-              ...r.stderr && { stderr: r.stderr.length > 200 ? r.stderr.slice(0, 200) + "..." : r.stderr },
+              ...r.stdout && { stdout: r.stdout.length > MINIMAL_STDOUT_PREVIEW_CHARS ? r.stdout.slice(0, MINIMAL_STDOUT_PREVIEW_CHARS) + "..." : r.stdout },
+              ...r.stderr && { stderr: r.stderr.length > MINIMAL_STDERR_PREVIEW_CHARS ? r.stderr.slice(0, MINIMAL_STDERR_PREVIEW_CHARS) + "..." : r.stderr },
               ...r.stdout_overflow && { stdout_overflow: r.stdout_overflow },
               ...r.stderr_overflow && { stderr_overflow: r.stderr_overflow },
               ...r.expectation_failures && { expectation_failures: r.expectation_failures },
@@ -325850,7 +325882,7 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
   const outputMode = parseOutputMode(args2, "precision_glob");
   const rawWorkDir = input.base_path ?? input.cwd ?? process.cwd();
   if (input.cwd && !input.base_path) {
-    console.warn('[precision_glob] DEPRECATION WARNING: Parameter "cwd" is deprecated. Use "base_path" instead.');
+    warnDeprecatedParam("cwd", "base_path", "precision_glob");
   }
   try {
     const workDir = input.base_path || input.cwd ? await validateDirectoryPath(rawWorkDir, process.cwd()) : rawWorkDir;
@@ -325879,6 +325911,9 @@ var handlePrecisionGlob = /* @__PURE__ */ __name(async (args2) => {
       max_tokens: input.output?.max_tokens,
       ...input.output
     };
+    if (output.max_files !== void 0 && output.max_results === void 0) {
+      warnDeprecatedParam("output.max_files", "output.max_results", "precision_glob");
+    }
     const maxFiles = output.max_results ?? output.max_files ?? 100;
     const sortBy = output.sort_by ?? "name";
     const sortOrder = output.sort_order;
@@ -327586,6 +327621,9 @@ async function readSingleFile(spec, globalExtract, output, symbolFilter, default
         tokens_saved: cacheLookup.tokensSaved ?? 0,
         hint: "Use force: true for full content without diff"
       };
+    }
+    if (spec.lines && !spec.range) {
+      warnDeprecatedParam("files[].lines", "files[].range", "precision_read");
     }
     const lineRange = spec.range ?? spec.lines ?? defaultRange;
     let lines = allLines;

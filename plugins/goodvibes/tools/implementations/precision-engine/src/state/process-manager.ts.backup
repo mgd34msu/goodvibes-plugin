@@ -8,20 +8,12 @@ import { openSync, closeSync, readSync, fstatSync, existsSync, mkdirSync, create
 import * as path from 'path';
 import { getExecMaxBackground, getExecOverflowDir } from '../runtime-config.js';
 
-/** Time in milliseconds to wait for graceful SIGTERM exit before escalating to SIGKILL. */
-const SIGTERM_TIMEOUT_MS = 5000;
-
-/** Polling interval in milliseconds for process status checks during graceful shutdown. */
-const POLL_INTERVAL_MS = 100;
-
-/** Exit code for SIGKILL termination (128 + 9). */
-const SIGKILL_EXIT_CODE = 137;
-
-/** Base value for signal exit codes (128 + signal number). */
-const SIGNAL_EXIT_CODE_BASE = 128;
-
-/** Default signal number (SIGKILL) when signal lookup fails. */
-const DEFAULT_SIGNAL_NUMBER = 9;
+// Constants for process management
+const SIGTERM_TIMEOUT_MS = 5000;      // Time to wait for graceful SIGTERM exit
+const POLL_INTERVAL_MS = 100;          // Polling interval for process status checks
+const SIGKILL_EXIT_CODE = 137;         // Exit code for SIGKILL (128 + 9)
+const SIGNAL_EXIT_CODE_BASE = 128;     // Base for signal exit codes (128 + signal number)
+const DEFAULT_SIGNAL_NUMBER = 9;       // Default signal number (SIGKILL) when not found
 
 /**
  * Background process metadata tracked by ProcessManager.
@@ -47,8 +39,6 @@ export interface BackgroundProcess {
   log_file: string;
   /** Byte offset for incremental log reading (tracks last read position) */
   last_read_offset: number;
-  /** Error message if process errored (undefined for adopted processes). */
-  error_message?: string;
 }
 
 /**
@@ -105,61 +95,6 @@ export class ProcessManager {
   }
 
   /**
-   * Enforce maximum background process limit by checking running process count.
-   * @throws Error if limit is reached
-   */
-  private enforceProcessLimit(): void {
-    const maxBackground = getExecMaxBackground();
-    const runningCount = Array.from(this.processes.values()).filter(
-      (p) => p.status === 'running'
-    ).length;
-    if (runningCount >= maxBackground) {
-      throw new Error(
-        `Maximum background processes (${maxBackground}) reached. Stop a process with bg_stop <id> before starting new ones.`
-      );
-    }
-  }
-
-  /**
-   * Ensure log directory exists and return the full log file path.
-   * @param id Process ID to generate log file path for
-   * @returns Absolute path to log file
-   */
-  private ensureLogDir(id: string): string {
-    const overflowDir = getExecOverflowDir();
-    if (!existsSync(overflowDir)) {
-      mkdirSync(overflowDir, { recursive: true });
-    }
-    return path.join(overflowDir, `${id}.log`);
-  }
-
-  /**
-   * Register exit and error handlers for a child process.
-   * Handlers update process status and exit code in the processes map.
-   * @param child ChildProcess to attach handlers to
-   * @param id Process ID for looking up metadata in processes map
-   */
-  private registerProcessHandlers(child: ChildProcess, id: string): void {
-    child.on('exit', (code, signal) => {
-      const proc = this.processes.get(id);
-      if (proc) {
-        proc.status = signal ? 'killed' : 'exited';
-        const signalNum = signal ? (constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER) : 0;
-        proc.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
-      }
-    });
-
-    child.on('error', (err) => {
-      const proc = this.processes.get(id);
-      if (proc) {
-        proc.status = 'errored';
-        proc.exit_code = 1;
-        proc.error_message = err.message;
-      }
-    });
-  }
-
-  /**
    * Adopt an existing ChildProcess into background management.
    * Used for pattern-based early termination (Part J).
    * @param id Process ID to assign (e.g., "bg-1")
@@ -174,14 +109,30 @@ export class ProcessManager {
     command: string,
     cwd: string
   ): BgStartResult {
-    this.enforceProcessLimit();
+    // Check max background process limit
+    const maxBackground = getExecMaxBackground();
+    const runningCount = Array.from(this.processes.values()).filter(
+      (p) => p.status === 'running'
+    ).length;
+    if (runningCount >= maxBackground) {
+      throw new Error(
+        `Maximum background processes (${maxBackground}) reached. Cannot promote process to background.`
+      );
+    }
 
     // Guard against undefined PID
     if (proc.pid === undefined) {
       throw new Error(`Cannot adopt process: no PID available for "${command}"`);
     }
 
-    const logFile = this.ensureLogDir(id);
+    // Create log directory if needed
+    const overflowDir = getExecOverflowDir();
+    if (!existsSync(overflowDir)) {
+      mkdirSync(overflowDir, { recursive: true });
+    }
+
+    // Create log file path
+    const logFile = path.join(overflowDir, `${id}.log`);
 
     // Redirect stdout/stderr to log file
     // Since the process is already running, we pipe the streams
@@ -200,7 +151,7 @@ export class ProcessManager {
       id,
       pid: proc.pid,
       command,
-      args: [],
+      args: [],  // Not available for adopted processes
       cwd,
       started_at: Date.now(),
       status: 'running',
@@ -211,7 +162,24 @@ export class ProcessManager {
 
     this.processes.set(id, bgProcess);
 
-    this.registerProcessHandlers(proc, id);
+    // Register exit handler
+    proc.on('exit', (code, signal) => {
+      const p = this.processes.get(id);
+      if (p) {
+        p.status = signal ? 'killed' : 'exited';
+        const signalNum = signal ? (constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER) : 0;
+        p.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
+      }
+    });
+
+    // Register error handler
+    proc.on('error', (err) => {
+      const p = this.processes.get(id);
+      if (p) {
+        p.status = 'errored';
+        p.exit_code = 1;
+      }
+    });
 
     // Return start result
     return {
@@ -237,25 +205,40 @@ export class ProcessManager {
     args: string[],
     options: { cwd?: string; env?: Record<string, string> } = {}
   ): BgStartResult {
-    this.enforceProcessLimit();
+    // Check if we've hit the max background limit
+    const maxBackground = getExecMaxBackground();
+    const runningCount = Array.from(this.processes.values()).filter(
+      (p) => p.status === 'running'
+    ).length;
+
+    if (runningCount >= maxBackground) {
+      throw new Error(
+        `Maximum background processes (${maxBackground}) reached. Stop a process with bg_stop <id> before starting new ones.`
+      );
+    }
 
     // Generate process ID
     const id = this.generateId();
 
-    const logFile = this.ensureLogDir(id);
+    // Create log directory if needed
+    const overflowDir = getExecOverflowDir();
+    if (!existsSync(overflowDir)) {
+      mkdirSync(overflowDir, { recursive: true });
+    }
+
+    // Create log file path
+    const logFile = path.join(overflowDir, `${id}.log`);
 
     // Open log file descriptor
     const logFd = openSync(logFile, 'a');
     let fdClosed = false;
-
-    const resolvedCwd = options.cwd || process.cwd();
 
     try {
       // Spawn detached process
       const child: ChildProcess = spawn(command, args, {
         detached: true,
         stdio: ['ignore', logFd, logFd],
-        cwd: resolvedCwd,
+        cwd: options.cwd || process.cwd(),
         env: options.env ? { ...process.env, ...options.env } : process.env,
       });
 
@@ -265,11 +248,7 @@ export class ProcessManager {
 
       // Guard against undefined PID (can happen on some platforms when spawn fails)
       if (child.pid === undefined) {
-        try {
-          child.kill();
-        } catch {
-          /* best-effort cleanup */
-        }
+        child.kill();
         throw new Error(`Failed to spawn process: no PID returned for "${command}"`);
       }
 
@@ -282,7 +261,7 @@ export class ProcessManager {
         pid: child.pid,
         command,
         args,
-        cwd: resolvedCwd,
+        cwd: options.cwd || process.cwd(),
         started_at: Date.now(),
         status: 'running',
         exit_code: null,
@@ -292,7 +271,25 @@ export class ProcessManager {
 
       this.processes.set(id, bgProcess);
 
-      this.registerProcessHandlers(child, id);
+      // Register exit handler
+      child.on('exit', (code, signal) => {
+        const proc = this.processes.get(id);
+        if (proc) {
+          proc.status = signal ? 'killed' : 'exited';
+          // Properly map signal to exit code using OS constants
+          const signalNum = signal ? (constants.signals[signal] ?? DEFAULT_SIGNAL_NUMBER) : 0;
+          proc.exit_code = code ?? (signal ? SIGNAL_EXIT_CODE_BASE + signalNum : 1);
+        }
+      });
+
+      // Register error handler
+      child.on('error', (err) => {
+        const proc = this.processes.get(id);
+        if (proc) {
+          proc.status = 'errored';
+          proc.exit_code = 1;
+        }
+      });
 
       // Return start result
       return {
@@ -382,7 +379,7 @@ export class ProcessManager {
 
   /**
    * Stop a background process gracefully with SIGTERM, escalating to SIGKILL if needed.
-   * Sends SIGTERM and waits up to SIGTERM_TIMEOUT_MS, then sends SIGKILL if still running.
+   * Sends SIGTERM and waits up to 5 seconds, then sends SIGKILL if still running.
    * @param id Process ID to stop
    * @returns Object indicating whether process was stopped and reason
    */
@@ -403,7 +400,7 @@ export class ProcessManager {
       // Send SIGTERM
       process.kill(proc.pid, 'SIGTERM');
 
-      // Wait up to SIGTERM_TIMEOUT_MS for graceful exit
+      // Wait up to 5 seconds for graceful exit
       // Use polling approach since exit handler updates proc.status asynchronously
       const startWait = Date.now();
       while (proc.status === 'running' && Date.now() - startWait < SIGTERM_TIMEOUT_MS) {

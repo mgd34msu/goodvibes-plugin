@@ -53,6 +53,40 @@ const DESTRUCTIVE_PATTERNS = [
   /\bdelete\s+from\s+\w+\s*;/i,                   // DELETE without WHERE
 ];
 
+// Timeout and threshold constants
+/** Default command timeout in milliseconds when not explicitly specified */
+const DEFAULT_TIMEOUT_MS = 30000;
+/** Default maximum line length for output truncation */
+const DEFAULT_MAX_LINE_LENGTH = 2000;
+/** Maximum number of commands allowed in a single batch execution */
+const MAX_BATCH_COMMANDS = 20;
+/** Default timeout for until pattern matching in milliseconds */
+const DEFAULT_UNTIL_TIMEOUT_MS = 10000;
+/** Default polling interval for until pattern checks in milliseconds */
+const DEFAULT_UNTIL_POLL_MS = 500;
+/** Delay in milliseconds between SIGTERM and SIGKILL when terminating processes */
+const KILL_SIGNAL_DELAY_MS = 5000;
+/** Delay in milliseconds before reporting background process startup */
+const BACKGROUND_START_DELAY_MS = 50;
+/** Maximum number of lines to preview from background process output */
+const BG_OUTPUT_PREVIEW_LINES = 50;
+/** Maximum characters to display in stdout preview for minimal output mode */
+const MINIMAL_STDOUT_PREVIEW_CHARS = 500;
+/** Maximum characters to display in stderr preview for minimal output mode */
+const MINIMAL_STDERR_PREVIEW_CHARS = 200;
+/** Silence gap threshold in milliseconds for progress milestone collection */
+const PROGRESS_SILENCE_GAP_MS = 2000;
+/** Maximum number of progress milestones to collect per command */
+const PROGRESS_MAX_MILESTONES = 20;
+/** Minimum duration in milliseconds to include progress in command result */
+const PROGRESS_DURATION_THRESHOLD_MS = 10000;
+
+/**
+ * Check if a command is potentially destructive and should be blocked in safe mode.
+ * @param cmd - The base command to check
+ * @param args - Optional command arguments
+ * @returns true if the command matches any destructive pattern, false otherwise
+ */
 function isDestructiveCommand(cmd: string, args?: string[]): boolean {
   const fullCommand = args ? `${cmd} ${args.join(' ')}` : cmd;
   return DESTRUCTIVE_PATTERNS.some(pattern => pattern.test(fullCommand));
@@ -119,62 +153,124 @@ function detectCdFromCommand(command: string): string | null {
   return null;
 }
 
+/**
+ * Expectation specification for command validation.
+ * Used to verify command output and exit codes meet requirements.
+ */
 interface ExpectSpec {
+  /** Expected exit code(s) - single number or array of acceptable codes */
   exit_code?: number | number[];
+  /** Substring that must appear in stdout */
   stdout_contains?: string;
-  stdout_matches?: string;  // Regex pattern
+  /** Regex pattern that stdout must match */
+  stdout_matches?: string;
+  /** Substring that must appear in stderr */
   stderr_contains?: string;
+  /** Whether stderr must be empty */
   stderr_empty?: boolean;
 }
 
+/**
+ * Pattern-based early termination specification.
+ * Allows commands to exit early when a specific pattern appears in output.
+ */
 interface UntilSpec {
-  pattern: string;       // Regex pattern to watch for in stdout/stderr
-  timeout_ms?: number;   // Max wait time (default: command timeout)
-  kill_after?: boolean;  // Kill process after pattern match? (default: false — leave running in background)
+  /** Regex pattern to watch for in stdout/stderr */
+  pattern: string;
+  /** Maximum wait time in milliseconds (default: command timeout) */
+  timeout_ms?: number;
+  /** Whether to kill process after pattern match (default: false - leave running) */
+  kill_after?: boolean;
 }
 
+/**
+ * Specification for a single command execution.
+ * Defines the command, environment, timeouts, expectations, and special features.
+ */
 interface CommandSpec {
+  /** Optional identifier for tracking this command */
   id?: string;
+  /** Command to execute (plain text) */
   cmd?: string;
+  /** Base64-encoded command (alternative to cmd) */
   cmd_base64?: string;
+  /** Command arguments array */
   args?: string[];
+  /** Working directory for command execution */
   cwd?: string;
+  /** Command timeout in milliseconds */
   timeout_ms?: number;
-  timeout?: number;  // DEPRECATED: Use timeout_ms instead
+  /** @deprecated Use timeout_ms instead */
+  timeout?: number;
+  /** Environment variables for command */
   env?: Record<string, string>;
+  /** Expectations to validate after execution */
   expect?: ExpectSpec;
-  background?: boolean;  // Run in background (Part E)
-  progress?: boolean;  // Enable Tier 1 inline progress (Part F)
-  progress_file?: boolean;  // Enable Tier 2 live file (Part F)
-  until?: UntilSpec;  // Pattern-based early termination (Part J)
+  /** Run command in background (Part E) */
+  background?: boolean;
+  /** Enable Tier 1 inline progress reporting (Part F) */
+  progress?: boolean;
+  /** Enable Tier 2 live progress file (Part F) */
+  progress_file?: boolean;
+  /** Pattern-based early termination specification (Part J) */
+  until?: UntilSpec;
+  /** Retry configuration for failed commands */
   retry?: {
+    /** Maximum number of retry attempts */
     max?: number;
+    /** Delay between retries in milliseconds */
     delay_ms?: number;
+    /** Backoff strategy: fixed or exponential */
     backoff?: 'fixed' | 'exponential';
+    /** Exit codes that trigger retry */
     on?: string[];
   };
 }
 
+/**
+ * Output configuration for command results.
+ * Controls verbosity and output capture behavior.
+ */
 interface OutputConfig {
+  /** Verbosity level for output */
   mode: 'count_only' | 'exit_codes' | 'minimal' | 'standard' | 'verbose';
+  /** Whether to capture stdout (default: true) */
   capture_stdout?: boolean;
+  /** Whether to capture stderr (default: true) */
   capture_stderr?: boolean;
+  /** Maximum lines to include in output */
   max_output_lines?: number;
+  /** Maximum tokens to include in output */
   max_tokens?: number;
 }
 
+/**
+ * Input specification for precision_exec tool.
+ * Defines batch command execution with global settings and output configuration.
+ */
 interface PrecisionExecInput {
+  /** Array of commands to execute */
   commands: CommandSpec[];
+  /** Execute commands in parallel (default: sequential) */
   parallel?: boolean;
+  /** Stop execution on first failure (default: false) */
   fail_fast?: boolean;
-  stop_on_error?: boolean;  // DEPRECATED: Use fail_fast instead
+  /** @deprecated Use fail_fast instead */
+  stop_on_error?: boolean;
+  /** Shell to use for execution (default: /bin/bash or cmd.exe) */
   shell?: string;
+  /** Global environment variables for all commands */
   env?: Record<string, string>;
+  /** Global working directory for all commands */
   working_dir?: string;
+  /** Block potentially destructive commands (default: false) */
   safe_mode?: boolean;
+  /** Global timeout for all commands in milliseconds */
   timeout_ms?: number;
+  /** Output configuration */
   output?: OutputConfig;
-  output_mode?: OutputMode;  // Legacy support
+  /** @deprecated Legacy output mode support */
+  output_mode?: OutputMode;
 }
 
 /**
@@ -236,6 +332,20 @@ interface CommandResult {
 
 // Config defaults are now retrieved from runtime-config getters
 
+/**
+ * Execute a single command with full feature support.
+ * Handles timeout, expectations, progress tracking, pattern matching, and background execution.
+ * @param spec - Command specification
+ * @param globalEnv - Global environment variables
+ * @param globalWorkDir - Global working directory
+ * @param globalTimeout - Global timeout in milliseconds
+ * @param captureStdout - Whether to capture stdout
+ * @param captureStderr - Whether to capture stderr
+ * @param maxOutputLines - Maximum output lines to capture
+ * @param isParallel - Whether executing in parallel mode
+ * @returns Promise resolving to command result
+ * @throws Never throws - all errors captured in result
+ */
 async function executeCommand(
   spec: CommandSpec,
   globalEnv?: Record<string, string>,
@@ -337,13 +447,13 @@ async function executeCommand(
     // Tier 2: Enabled when progress_file=true OR timeout > 30s
     const commandId = spec.id || `cmd-${startTime}`;
     const overflowDir = getExecOverflowDir();
-    const tier2Enabled = spec.progress_file === true || timeout > 30000;
+    const tier2Enabled = spec.progress_file === true || timeout > DEFAULT_TIMEOUT_MS;
     const progressCollector = createProgressCollector(
       {
         enabled: true,  // Always collect
         progress_file: tier2Enabled,
-        silence_gap_ms: 2000,
-        max_milestones: 20,
+        silence_gap_ms: PROGRESS_SILENCE_GAP_MS,
+        max_milestones: PROGRESS_MAX_MILESTONES,
       },
       commandId,
       overflowDir
@@ -369,7 +479,7 @@ async function executeCommand(
         proc.kill('SIGTERM');
         setTimeout(() => {
           if (!proc.killed) proc.kill('SIGKILL');
-        }, 5000);
+        }, KILL_SIGNAL_DELAY_MS);
       }
     }, timeout);
 
@@ -397,7 +507,7 @@ async function executeCommand(
           proc.kill('SIGTERM');
           setTimeout(() => {
             if (!proc.killed) proc.kill('SIGKILL');
-          }, 5000);
+          }, KILL_SIGNAL_DELAY_MS);
         }
       }, untilTimeout);
     }
@@ -694,7 +804,7 @@ async function executeCommand(
       // Finalize progress collection (Part F)
       const milestones = progressCollector.finalize(duration_ms);
       // Tier 1: Include progress if duration > 10s OR explicitly requested
-      if (duration_ms > 10000 || spec.progress === true) {
+      if (duration_ms > PROGRESS_DURATION_THRESHOLD_MS || spec.progress === true) {
         result.progress = milestones;
       }
       // Tier 2: Include progress file path if available
@@ -775,6 +885,20 @@ async function executeCommand(
 /**
  * Execute a command with retry logic based on retry configuration.
  * Wraps executeCommand and handles retry attempts with backoff.
+ */
+/**
+ * Execute a command with automatic retry logic.
+ * Retries failed commands based on exit codes with configurable backoff strategy.
+ * @param spec - Command specification
+ * @param retryConfig - Retry configuration (null for no retries)
+ * @param globalEnv - Global environment variables
+ * @param globalWorkDir - Global working directory
+ * @param globalTimeout - Global timeout in milliseconds
+ * @param captureStdout - Whether to capture stdout
+ * @param captureStderr - Whether to capture stderr
+ * @param maxOutputLines - Maximum output lines to capture
+ * @param isParallel - Whether executing in parallel mode
+ * @returns Promise resolving to final command result with retry metadata
  */
 async function executeWithRetry(
   spec: CommandSpec,
@@ -914,7 +1038,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
             getElapsed()
           ));
         }
-        const { output } = processManager.getOutput(id, 50, true);  // peek=true to not consume output
+        const { output } = processManager.getOutput(id, BG_OUTPUT_PREVIEW_LINES, true);  // peek=true to not consume output
         const data: Record<string, unknown> = {
           process: {
             id: proc.id,
@@ -1265,8 +1389,8 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
               expectations_met: r.expectations_met,
               ...(r.truncated && { truncated: r.truncated }),
               ...(r.timed_out && { timed_out: r.timed_out }),
-              ...(r.stdout && { stdout: r.stdout.length > 500 ? r.stdout.slice(0, 500) + '...' : r.stdout }),
-              ...(r.stderr && { stderr: r.stderr.length > 200 ? r.stderr.slice(0, 200) + '...' : r.stderr }),
+              ...(r.stdout && { stdout: r.stdout.length > MINIMAL_STDOUT_PREVIEW_CHARS ? r.stdout.slice(0, MINIMAL_STDOUT_PREVIEW_CHARS) + '...' : r.stdout }),
+              ...(r.stderr && { stderr: r.stderr.length > MINIMAL_STDERR_PREVIEW_CHARS ? r.stderr.slice(0, MINIMAL_STDERR_PREVIEW_CHARS) + '...' : r.stderr }),
               ...(r.stdout_overflow && { stdout_overflow: r.stdout_overflow }),
               ...(r.stderr_overflow && { stderr_overflow: r.stderr_overflow }),
               ...(r.expectation_failures && { expectation_failures: r.expectation_failures }),

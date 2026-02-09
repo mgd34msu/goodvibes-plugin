@@ -63,15 +63,17 @@ export async function handleOverflow(
   const head = output.slice(0, halfThreshold);
   const tail = output.slice(-halfThreshold);
   
-  // Efficiently count lines: handle empty string, LF, and CRLF
+  // Count lines by counting newline characters
+  // Works correctly for both LF (\n) and CRLF (\r\n) since each line break contains exactly one \n
   let totalLines = 0;
   if (output.length === 0) {
     totalLines = 0;
   } else {
     // Start with 1 line, then add for each newline
     totalLines = 1;
+    // Manual iteration avoids allocating a split() array for potentially large outputs
     for (let i = 0; i < output.length; i++) {
-      // Count \n but skip if it's part of \r\n (already counted)
+      // Count each \n character
       if (output[i] === '\n') {
         totalLines++;
       }
@@ -93,14 +95,14 @@ export async function handleOverflow(
   };
 }
 
-/**
- * Clean up overflow files older than maxAge.
 /** Default maximum age in milliseconds for overflow file cleanup (1 hour). */
 const DEFAULT_OVERFLOW_MAX_AGE_MS = 3_600_000;
 
+/**
+ * Clean up overflow files older than maxAge.
  * Called at the start of each exec to prevent disk fill.
  * 
- * @param maxAgeMs - Maximum age in milliseconds before cleanup (default: 3600000ms = 1 hour)
+ * @param maxAgeMs - Maximum age in milliseconds before cleanup (default: 1 hour)
  * @returns Number of files successfully deleted
  */
 export async function cleanupOverflowFiles(maxAgeMs: number = DEFAULT_OVERFLOW_MAX_AGE_MS): Promise<number> {
@@ -113,6 +115,12 @@ export async function cleanupOverflowFiles(maxAgeMs: number = DEFAULT_OVERFLOW_M
     
     for (const entry of entries) {
       const filePath = path.join(overflowDir, entry);
+
+      // Defense in depth: verify resolved path is within overflow directory
+      const resolvedFilePath = path.resolve(filePath);
+      if (!resolvedFilePath.startsWith(path.resolve(overflowDir) + path.sep)) {
+        continue; // Skip entries with suspicious path-traversal names
+      }
       try {
         const stats = await fs.stat(filePath);
         if (now - stats.mtimeMs > maxAgeMs) {

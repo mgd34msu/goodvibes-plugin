@@ -923,6 +923,9 @@ async function readSingleFile(
     }
 
     // Determine line range (SPEC-v2 uses 'range', fallback to 'lines' for backward compatibility)
+    if (spec.lines && !spec.range) {
+      warnDeprecatedParam('files[].lines', 'files[].range', 'precision_read');
+    }
     const lineRange = spec.range ?? spec.lines ?? defaultRange;
     let lines = allLines;
     let truncated = false;

@@ -118,7 +118,7 @@ export const STANDARD_DEFAULTS = {
  * Tool-specific defaults that override standard defaults.
  * Keys are tool names, values are default parameters for that tool.
  */
-export const TOOL_SPECIFIC_DEFAULTS: Record<string, { verbosity?: string }> = {
+export const TOOL_SPECIFIC_DEFAULTS: Record<string, { verbosity?: OutputMode }> = {
   discover: { verbosity: 'files_only' },
   precision_symbols: { verbosity: 'signatures' },
   precision_edit: { verbosity: 'minimal' },     // was 'with_diff' — saves 1K-30K tokens per edit
@@ -142,14 +142,6 @@ export function applyDefaults<T extends Record<string, unknown>>(
 }
 
 /**
- * Parse output mode from arguments, with optional tool-specific defaults.
- * Supports both new (verbosity) and deprecated (output_mode) parameter names.
- * @param args - The arguments object containing verbosity or output_mode (deprecated)
- * @param toolName - Optional tool name for tool-specific defaults
- * @returns The output mode to use
- */
-
-/**
  * Valid output modes accepted by all precision tools.
  * Used for validating verbosity and output_mode parameters.
  */
@@ -166,7 +158,13 @@ const VALID_FORMAT_MODES = new Set<OutputMode>([
   'count_only', 'exit_codes', 'minimal', 'standard', 'with_preview', 'verbose'
 ]);
 
-
+/**
+ * Parse output mode from arguments, with optional tool-specific defaults.
+ * Supports both new (verbosity) and deprecated (output_mode) parameter names.
+ * @param args - The arguments object containing verbosity or output_mode (deprecated)
+ * @param toolName - Optional tool name for tool-specific defaults
+ * @returns The output mode to use
+ */
 export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
   // Check for new 'verbosity' parameter first
   if (
@@ -229,7 +227,7 @@ export function parseOutputMode(args: unknown, toolName?: string): OutputMode {
 
   // Apply tool-specific default if provided
   if (toolName && TOOL_SPECIFIC_DEFAULTS[toolName]?.verbosity) {
-    return TOOL_SPECIFIC_DEFAULTS[toolName].verbosity as OutputMode;
+    return TOOL_SPECIFIC_DEFAULTS[toolName].verbosity;
   }
 
   // Fall back to standard default

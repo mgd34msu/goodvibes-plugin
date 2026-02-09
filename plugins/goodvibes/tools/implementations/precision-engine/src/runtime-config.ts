@@ -38,12 +38,17 @@ export interface PrecisionEngineConfig {
   /** Skip backup when file is clean in git (recoverable via git checkout). Default: true */
   backup_git_clean_skip?: boolean;
 
-  /** Exec defaults */
+  /** Maximum stdout/stderr characters before overflow (default: 50000) */
   exec_max_output_chars?: number;
+  /** Command timeout in milliseconds (default: 120000) */
   exec_default_timeout_ms?: number;
+  /** Maximum output lines before truncation (default: 500) */
   exec_max_output_lines?: number;
+  /** Directory path for overflow output files (default: '.goodvibes/.exec-output') */
   exec_overflow_dir?: string;
+  /** Maximum concurrent background processes (default: 5) */
   exec_max_background?: number;
+  /** Maximum exec history entries to retain (default: 100) */
   exec_history_max?: number;
 
   /** Extensible for future config */
@@ -61,12 +66,36 @@ const DEFAULT_CONFIG: PrecisionEngineConfig = {
  * Default values for exec configuration.
  */
 const EXEC_DEFAULTS = {
+  /** Maximum stdout/stderr characters before overflow */
   MAX_OUTPUT_CHARS: 50000,
+  /** Command timeout in milliseconds */
   DEFAULT_TIMEOUT_MS: 120000,
+  /** Maximum output lines before truncation */
   MAX_OUTPUT_LINES: 500,
+  /** Directory path for overflow output files */
   OVERFLOW_DIR: '.goodvibes/.exec-output',
+  /** Maximum concurrent background processes */
   MAX_BACKGROUND: 5,
+  /** Maximum exec history entries to retain */
   HISTORY_MAX: 100,
+} as const;
+
+/**
+ * Default values for non-exec configuration.
+ */
+const CONFIG_DEFAULTS = {
+  /** Maximum diff characters before truncation */
+  MAX_DIFF_CHARS: 10000,
+  /** Slow filesystem detection threshold in milliseconds */
+  SLOW_FS_THRESHOLD_MS: 50,
+  /** Maximum file size in bytes before size gate prompts pagination */
+  MAX_FILE_BYTES: 524288,
+  /** Maximum estimated tokens before size gate prompts pagination */
+  MAX_TOKEN_ESTIMATE: 50000,
+  /** Lines per page when paginating large file reads */
+  PAGE_SIZE_LINES: 200,
+  /** Maximum memory budget for file cache in megabytes */
+  CACHE_MAX_MB: 200,
 } as const;
 
 /**
@@ -295,7 +324,7 @@ export function getToolVerbosityDefault(toolName: string): string | undefined {
  */
 export function getMaxDiffChars(): number {
   const config = loadConfigSync();
-  return typeof config.max_diff_chars === 'number' ? config.max_diff_chars : 10000;
+  return getValidNumber(config.max_diff_chars, CONFIG_DEFAULTS.MAX_DIFF_CHARS);
 }
 
 /**
@@ -306,7 +335,7 @@ export function getMaxDiffChars(): number {
  */
 export function getSlowFsThreshold(): number {
   const config = loadConfigSync();
-  return typeof config.slow_fs_stat_threshold_ms === 'number' ? config.slow_fs_stat_threshold_ms : 50;
+  return getValidNumber(config.slow_fs_stat_threshold_ms, CONFIG_DEFAULTS.SLOW_FS_THRESHOLD_MS);
 }
 
 /**
@@ -329,8 +358,7 @@ export function getSlowFsPrefixes(): string[] {
  */
 export function getMaxFileBytes(): number {
   const config = loadConfigSync();
-  const value = config.max_file_bytes;
-  return typeof value === 'number' && value > 0 ? value : 524288;
+  return getValidNumber(config.max_file_bytes, CONFIG_DEFAULTS.MAX_FILE_BYTES);
 }
 
 /**
@@ -342,8 +370,7 @@ export function getMaxFileBytes(): number {
  */
 export function getMaxTokenEstimate(): number {
   const config = loadConfigSync();
-  const value = config.max_token_estimate;
-  return typeof value === 'number' && value > 0 ? value : 50000;
+  return getValidNumber(config.max_token_estimate, CONFIG_DEFAULTS.MAX_TOKEN_ESTIMATE);
 }
 
 /**
@@ -355,8 +382,7 @@ export function getMaxTokenEstimate(): number {
  */
 export function getPageSizeLines(): number {
   const config = loadConfigSync();
-  const value = config.page_size_lines;
-  return typeof value === 'number' && value > 0 ? value : 200;
+  return getValidNumber(config.page_size_lines, CONFIG_DEFAULTS.PAGE_SIZE_LINES);
 }
 
 /**
@@ -378,9 +404,7 @@ export function getCacheMode(): 'hash_only' | 'with_content' {
  */
 export function getCacheMaxMb(): number {
   const config = loadConfigSync();
-  const value = config.cache_max_mb;
-  if (typeof value === 'number' && value > 0) return value;
-  return 200;
+  return getValidNumber(config.cache_max_mb, CONFIG_DEFAULTS.CACHE_MAX_MB);
 }
 
 /**
@@ -486,6 +510,13 @@ export function getExecHistoryMax(): number {
 }
 
 /**
+ * Eager initialization: load config (and persist missing defaults) at module import time.
+ * This ensures the config file gets populated as soon as the MCP server starts,
+ * regardless of which tool is called first.
+ */
+loadConfigSync();
+
+/**
  * Set a config value at runtime and persist to config file.
  * Updates both in-memory cache and config file.
  *
@@ -493,11 +524,6 @@ export function getExecHistoryMax(): number {
  * @param value - Value to set
  * @returns Promise that resolves when config is persisted
  */
-// Eager initialization: load config (and persist missing defaults) at module import time.
-// This ensures the config file gets populated as soon as the MCP server starts,
-// regardless of which tool is called first.
-loadConfigSync();
-
 export async function setConfigValue(key: string, value: unknown): Promise<void> {
   // Drain any pending fire-and-forget persist
   if (pendingPersist) {

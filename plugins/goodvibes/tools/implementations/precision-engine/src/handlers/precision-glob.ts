@@ -19,6 +19,7 @@ import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, parseJsonField } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
+import { warnDeprecatedParam } from '../utils/deprecation.js';
 import { RipgrepCore } from '../core/ripgrep.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
 
@@ -144,7 +145,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
 
   // Warn if deprecated cwd is used
   if (input.cwd && !input.base_path) {
-    console.warn('[precision_glob] DEPRECATION WARNING: Parameter "cwd" is deprecated. Use "base_path" instead.');
+    warnDeprecatedParam('cwd', 'base_path', 'precision_glob');
   }
 
   try {
@@ -192,6 +193,10 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       max_tokens: input.output?.max_tokens,
       ...input.output
     };
+    // Warn about deprecated parameters
+    if (output.max_files !== undefined && output.max_results === undefined) {
+      warnDeprecatedParam('output.max_files', 'output.max_results', 'precision_glob');
+    }
 
     // Support both new (max_results) and old (max_files) parameter names
     const maxFiles = output.max_results ?? output.max_files ?? 100;
