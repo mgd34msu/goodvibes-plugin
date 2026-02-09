@@ -145,7 +145,8 @@ export const precisionExecSchema: Tool = {
 export const precisionFetchSchema: Tool = {
   name: 'precision_fetch',
   description:
-    'Fetch URLs with native fetch. Supports batch fetching, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), ' +
+    'Fetch URLs with native fetch. Service registry integration for named APIs with auto-auth. ' +
+    'Supports batch fetching, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), ' +
     'custom headers, method override, timeout, and content type detection.',
   inputSchema: {
     type: 'object',
@@ -157,13 +158,31 @@ export const precisionFetchSchema: Tool = {
           type: 'object',
           properties: {
             url: { type: 'string', description: 'URL to fetch' },
-            method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method (default: GET)' },
+            method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'], description: 'HTTP method (default: GET)' },
             headers: { type: 'object', description: 'Custom headers to send' },
             body: { type: 'string', description: 'Request body (for POST/PUT)' },
             body_base64: { type: 'string', description: 'Base64-encoded request body. REQUIRED when body contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "body" | base64 -w0' },
             timeout_ms: { type: 'integer', minimum: 1, description: 'Timeout in ms (default: 30000)' },
             timeout: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use timeout_ms instead. Timeout in ms (default: 30000)' },
             extract: { type: 'string', enum: ['raw', 'text', 'json', 'markdown', 'structured', 'summary', 'code_blocks', 'tables', 'links', 'metadata', 'readable', 'pdf'], description: 'Extraction mode (default: text)' },
+            params: { type: 'object', description: 'Query parameters to append to URL (key-value pairs)' },
+            body_type: { type: 'string', enum: ['json', 'form', 'multipart', 'raw'], description: 'Body encoding type (default: json when body_data is provided)' },
+            body_data: { description: 'Body data to encode. Object for json/form/multipart, string for raw.' },
+            service: { type: 'string', description: 'Service name from registry for auto-auth and base URL resolution' },
+            auth: {
+              type: 'object',
+              description: 'Per-request auth override',
+              properties: {
+                type: { type: 'string', enum: ['none', 'bearer', 'basic', 'api-key', 'custom-headers'] },
+                token: { type: 'string', description: 'Bearer token' },
+                username: { type: 'string', description: 'Basic auth username' },
+                password: { type: 'string', description: 'Basic auth password' },
+                header: { type: 'string', description: 'API key header name' },
+                key: { type: 'string', description: 'API key value' },
+                headers: { type: 'object', description: 'Custom auth headers' },
+              },
+            },
+            selectors: { type: 'array', items: { type: 'string' }, description: 'CSS selectors for structured extraction' },
           },
           required: ['url'],
         },

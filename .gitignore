@@ -52,6 +52,8 @@ temp-hold/
 credentials.json
 secrets.json
 service-account*.json
+goodvibes.secrets.json
+goodvibes.cookies.json
 
 # Cloud credentials
 .aws/

@@ -40,6 +40,7 @@ import {
   type NegotiationInfo,
   type ReadabilityResult,
 } from '../utils/fetch/index.js';
+import { buildRequest, type RequestSpec, type BuiltRequest, type RequestAuth } from '../utils/fetch/request-builder.js';
 
 const DEFAULT_CACHE_TTL = 900; // 15 minutes in seconds
 const DEFAULT_TIMEOUT = 30000;
@@ -111,9 +112,17 @@ function summarizeContent(html: string, url: string, prompt?: string): string {
  */
 type ExtractMode = 'raw' | 'text' | 'json' | 'markdown' | 'structured' | 'summary' | 'code_blocks' | 'tables' | 'links' | 'metadata' | 'readable' | 'pdf';
 
+/** Per-request auth configuration */
+type RequestAuth = 
+  | { type: 'none' }
+  | { type: 'bearer'; token: string }
+  | { type: 'basic'; username: string; password: string }
+  | { type: 'api-key'; header: string; key: string }
+  | { type: 'custom-headers'; headers: Record<string, string> };
+
 interface FetchSpec {
   url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
   headers?: Record<string, string>;
   body?: string;
   body_base64?: string;
@@ -121,6 +130,17 @@ interface FetchSpec {
   timeout?: number;  // Legacy support
   extract?: ExtractMode;
   selectors?: string[];  // For structured extraction
+  // NEW fields:
+  /** Query parameters to append to URL */
+  params?: Record<string, string | number | boolean>;
+  /** Body encoding type */
+  body_type?: 'json' | 'form' | 'multipart' | 'raw';
+  /** Body data (auto-encoded based on body_type) */
+  body_data?: Record<string, unknown> | string;
+  /** Service name for auto-auth and base URL resolution */
+  service?: string;
+  /** Per-request auth override */
+  auth?: RequestAuth;
 }
 
 interface OutputConfig {
@@ -162,6 +182,17 @@ interface FetchResult {
   redirected?: boolean;
   readable?: ReadabilityResult;
   pdf?: { text: string; pages: number; page_range?: string; metadata?: Record<string, string | undefined> };
+  // NEW response fields:
+  /** Response headers (all headers from the response) */
+  response_headers?: Record<string, string>;
+  /** Cookies set by the response */
+  cookies?: Array<{ name: string; value: string; domain?: string; path?: string; expires?: string; httpOnly?: boolean; secure?: boolean }>;
+  /** Full redirect chain */
+  redirect_chain?: Array<{ url: string; status: number }>;
+  /** Auth info for the request */
+  auth_info?: { type: string; service?: string; status: string };
+  /** Request timing breakdown */
+  timing?: { dns_ms?: number; connect_ms?: number; ttfb_ms?: number; total_ms: number };
 }
 
 async function fetchSingleUrl(
@@ -173,9 +204,26 @@ async function fetchSingleUrl(
   maxContentLength?: number
 ): Promise<FetchResult> {
   const startTime = Date.now();
-  const url = request.url;
-  const method = request.method ?? 'GET';
-  const timeout = request.timeout_ms ?? request.timeout ?? DEFAULT_TIMEOUT;
+  
+  // Build request with service resolution
+  const requestSpec: RequestSpec = {
+    url: request.url,
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+    body_base64: request.body_base64,
+    params: request.params,
+    body_type: request.body_type,
+    body_data: request.body_data,
+    service: request.service,
+    auth: request.auth,
+    timeout_ms: request.timeout_ms ?? request.timeout,
+  };
+  
+  const built = await buildRequest(requestSpec);
+  const url = built.url;
+  const method = built.method;
+  const timeout = built.timeout_ms;
   const extract = request.extract ?? globalExtract ?? 'text';
   const selectors = request.selectors ?? globalSelectors;
 
@@ -205,31 +253,33 @@ async function fetchSingleUrl(
 
   try {
     const fetchOptions: RequestInit = {
-      method,
-      headers: request.headers,
+      method: built.method,
+      headers: { ...built.headers },
       signal: controller.signal,
     };
 
-    // Auto-negotiate JSON for API-like URLs
+    // Auto-negotiate JSON for API-like URLs (layered on built headers)
     let autoNegotiated = false;
-    if (shouldRequestJson(url, method, request.headers)) {
-      fetchOptions.headers = getJsonHeaders(request.headers);
+    if (shouldRequestJson(built.url, built.method, built.headers)) {
+      fetchOptions.headers = getJsonHeaders(built.headers);
       autoNegotiated = true;
     }
 
-    if (method !== 'GET') {
-      const requestBody = request.body_base64
-        ? Buffer.from(request.body_base64, 'base64').toString('utf-8')
-        : request.body;
-
-      if (requestBody) {
-        fetchOptions.body = requestBody;
+    if (built.method !== 'GET' && built.method !== 'HEAD') {
+      if (built.body) {
+        fetchOptions.body = built.body;
       }
     }
 
     // Rate-limited fetch (replaces raw fetch)
     const response = await rateLimitedFetch(url, fetchOptions);
     clearTimeout(timeoutId);
+
+    // Capture response headers
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
 
     // Track redirects if the response URL differs from request URL
     const wasRedirected = response.url !== url;
@@ -253,6 +303,8 @@ async function fetchSingleUrl(
         content_type_info: detectContentType(response.headers, url, ''),
         final_url: wasRedirected ? finalUrl : undefined,
         redirected: wasRedirected,
+        response_headers: responseHeaders,
+        timing: { total_ms: Date.now() - startTime },
         pdf: {
           text: pdfResult.text,
           pages: pdfResult.pages,
@@ -320,6 +372,8 @@ async function fetchSingleUrl(
       ) : undefined,
       final_url: wasRedirected ? finalUrl : undefined,
       redirected: wasRedirected,
+      response_headers: responseHeaders,
+      timing: { total_ms: Date.now() - startTime },
     };
 
     if (!response.ok) {

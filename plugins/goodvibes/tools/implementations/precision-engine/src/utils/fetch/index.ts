@@ -16,3 +16,8 @@ export * from './pdf-routing.js';
 export * from './content-fingerprint.js';
 export * from './rate-limiter.js';
 export * from './css-selectors.js';
+export * from './secrets-guard.js';
+export * from './secrets-store.js';
+export * from './service-registry.js';
+export * from './service-resolver.js';
+export * from './cookie-jar.js';

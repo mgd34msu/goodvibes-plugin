@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './logging.js';
+import type { FetchConfig } from './utils/fetch/service-registry.js';
 
 /**
  * Configuration schema for precision-engine.
@@ -53,6 +54,9 @@ export interface PrecisionEngineConfig {
 
   /** Symbol search timeout in discover tool (default: 120000ms = 120s) */
   discover_symbol_timeout_ms?: number;
+
+  /** Fetch service registry and configuration */
+  fetch?: FetchConfig;
 
   /** Extensible for future config */
   [key: string]: unknown;
@@ -370,6 +374,14 @@ export function getConfigValue<T = unknown>(key: string): T {
       return EXEC_DEFAULTS.HISTORY_MAX as T;
     case 'discover_symbol_timeout_ms':
       return EXEC_DEFAULTS.DISCOVER_SYMBOL_TIMEOUT_MS as T;
+    case 'fetch':
+      return (config.fetch ?? {}) as T;
+    case 'fetch.services':
+      return ((config.fetch as FetchConfig)?.services ?? {}) as T;
+    case 'fetch.url_patterns':
+      return ((config.fetch as FetchConfig)?.url_patterns ?? []) as T;
+    case 'fetch.global_defaults':
+      return ((config.fetch as FetchConfig)?.global_defaults ?? undefined) as T;
     default:
       // For unknown keys or optional nested objects like verbosity_defaults,
       // return undefined
@@ -593,6 +605,8 @@ export function getDiscoverSymbolTimeout(): number {
   const config = loadConfigSync();
   return getValidNumber(config.discover_symbol_timeout_ms, EXEC_DEFAULTS.DISCOVER_SYMBOL_TIMEOUT_MS);
 }
+
+
 
 /**
  * Eager initialization: load config (and persist missing defaults) at module import time.
