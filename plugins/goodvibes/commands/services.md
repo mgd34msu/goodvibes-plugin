@@ -63,7 +63,7 @@ Registered Services
 |--------------|----------|-----------|--------|
 | github       | https://api.github.com | oauth2 | ✓ Authenticated |
 | confluence   | https://company.atlassian.net | session | ✓ Active |
-| internal-api | https://api.internal.com | static | ✓ Configured |
+| internal-api | https://api.internal.com | bearer | ✓ Configured |
 
 Total: {count} services
 
@@ -77,16 +77,19 @@ Parse `<name>` from $ARGUMENTS.
 
 1. Prompt the user for required information:
    - **Base URL**: Service API base URL (e.g., `https://api.github.com`)
-   - **Auth Type**: `none`, `static`, `oauth2`, or `session`
+   - **Auth Type**: `bearer`, `basic`, `api-key`, `oauth2`, `session`, `custom-headers`, or `none`
    - **Default Headers** (optional): JSON object of headers to include in all requests
 
 2. Based on auth type, collect additional configuration:
 
-   **For `none`:**
-   - No additional configuration needed
+   **For `bearer`:**
+   - No additional configuration needed (credentials set via `/goodvibes:services set-secret <name>`)
 
-   **For `static`:**
-   - Header name (e.g., `Authorization`, `X-API-Key`)
+   **For `basic`:**
+   - No additional configuration needed (credentials set via `/goodvibes:services set-secret <name>`)
+
+   **For `api-key`:**
+   - Header name (e.g., `X-API-Key`, `Authorization`)
    - Instructions to set secret via `/goodvibes:services set-secret <name>`
 
    **For `oauth2`:**
@@ -99,12 +102,19 @@ Parse `<name>` from $ARGUMENTS.
 
    **For `session`:**
    - Login URL
-   - Session cookie name
+   - Login credentials format (what fields the login endpoint expects)
    - Instructions for browser authentication
+
+   **For `custom-headers`:**
+   - Header names that will be used for authentication
+   - Instructions to set secret via `/goodvibes:services set-secret <name>`
+
+   **For `none`:**
+   - No additional configuration needed
 
 3. Call `precision_config` to save the service configuration (non-secret data only):
 
-   **For `none` or `static` auth:**
+   **For `none`, `bearer`, or `basic` auth:**
    ```json
    {
      "action": "set",
@@ -117,22 +127,30 @@ Parse `<name>` from $ARGUMENTS.
    }
    ```
 
-   **For `oauth2` auth (include oauth2_config):**
+   **For `api-key` or `oauth2` auth:**
    ```json
    {
      "action": "set",
      "key": "fetch.services.<name>",
      "value": {
        "base_url": "<base_url>",
-       "auth_type": "oauth2",
-       "default_headers": {},
-       "oauth2_config": {
-         "client_id": "...",
-         "auth_url": "...",
-         "token_url": "...",
-         "scopes": "...",
-         "redirect_uri": "..."
-       }
+       "auth_type": "<auth_type>",
+       "default_headers": {}
+     }
+   }
+   ```
+   
+   Note: Auth-specific fields (API key header name, OAuth2 client secret, etc.) are configured via `/goodvibes:services set-secret <name>`.
+
+   **For `custom-headers` auth:**
+   ```json
+   {
+     "action": "set",
+     "key": "fetch.services.<name>",
+     "value": {
+       "base_url": "<base_url>",
+       "auth_type": "custom-headers",
+       "default_headers": {}
      }
    }
    ```
@@ -145,11 +163,7 @@ Parse `<name>` from $ARGUMENTS.
      "value": {
        "base_url": "<base_url>",
        "auth_type": "session",
-       "default_headers": {},
-       "session_config": {
-         "login_url": "...",
-         "cookie_name": "..."
-       }
+       "default_headers": {}
      }
    }
    ```
@@ -162,9 +176,9 @@ Base URL: {base_url}
 Auth Type: {auth_type}
 
 Next steps:
-  - Set credentials: /goodvibes:services set-secret {name}
+  - Set credentials: /goodvibes:services set-secret {name} (if auth requires secrets)
   - Test connection: /goodvibes:services test {name}
-  - Authenticate: /goodvibes:services auth {name}
+  - Authenticate: /goodvibes:services auth {name} (for oauth2/session)
 ```
 
 ### `remove <name>` — Remove a service
@@ -183,21 +197,21 @@ Parse `<name>` from $ARGUMENTS.
    List services: /goodvibes:services list
    ```
 
-3. Call `precision_config` to remove the service:
-   ```json
-   {"action": "delete", "key": "fetch.services.<name>"}
-   ```
+3. Remove the service using read-modify-write pattern:
+   - Get the full fetch section: `{"action": "get", "key": "fetch"}`
+   - Remove the service entry from `services.<name>`
+   - Write back the modified fetch section: `{"action": "set", "key": "fetch", "value": {...}}`
 
-4. Also clean up related configurations:
-   - URL patterns: `{"action": "delete", "key": "fetch.url_patterns.<name>"}`
-   - Auth status: `{"action": "delete", "key": "fetch.auth_status.<name>"}`
+4. Remove secrets using `precision_write`:
+   - Read `.goodvibes/goodvibes.secrets.json`
+   - Delete the `services.<name>` entry
+   - Write back the modified secrets file
 
 5. Confirm to the user:
 ```
 Service '{name}' removed successfully.
 
-Note: Stored credentials remain in .goodvibes/goodvibes.secrets.json
-Clean up manually if needed.
+Note: Credentials have been removed from .goodvibes/goodvibes.secrets.json
 ```
 
 ### `show <name>` — Show service details
@@ -211,8 +225,9 @@ Parse `<name>` from $ARGUMENTS.
 
 2. Call `precision_config` to get auth status:
    ```json
-   {"action": "get", "key": "fetch.auth_status.<name>"}
+   {"action": "get", "key": "fetch.auth_status"}
    ```
+   Extract the status for `<name>` from the returned status map.
 
 3. Display full configuration. **IMPORTANT**: Show `client_id`, `auth_url`, `token_url` as they are non-secret configuration values. Display actual secrets (client_secret, tokens, passwords, API keys) as `[REDACTED]`.
 
@@ -299,8 +314,9 @@ Parse `<name>` from $ARGUMENTS.
 
 2. Check current auth status:
    ```json
-   {"action": "get", "key": "fetch.auth_status.<name>"}
+   {"action": "get", "key": "fetch.auth_status"}
    ```
+   Extract the status for `<name>` from the returned status map.
 
 3. Based on auth type:
 
@@ -341,8 +357,8 @@ Parse `<name>` from $ARGUMENTS.
    - Display: `Authenticating with {login_url}...`
    - Cookies will be captured automatically and stored
 
-   **For `static`:**
-   - Display: `Static auth requires credentials to be set manually`
+   **For `bearer`, `basic`, `api-key`, or `custom-headers`:**
+   - Display: `{auth_type} auth requires credentials to be set manually`
    - Instruct: `/goodvibes:services set-secret {name}`
 
    **For `none`:**
@@ -367,8 +383,9 @@ Parse `<name>` from $ARGUMENTS.
 
 3. Check auth status by calling `precision_config`:
    ```json
-   {"action": "get", "key": "fetch.auth_status.<name>"}
+   {"action": "get", "key": "fetch.auth_status"}
    ```
+   Extract the status for `<name>` from the returned status map.
 
 4. Inform the user:
 ```
@@ -406,34 +423,134 @@ Parse `<name>` from $ARGUMENTS.
 
 2. Based on auth type, prompt for appropriate credentials:
 
-   **For `static`:**
-   - Prompt: "Enter API key or token:"
-   - Collect the credential from the user
-   - Store it in `.goodvibes/goodvibes.secrets.json`
+   **Note:** The examples below show the ServiceAuth object to place at `services.<name>` in the secrets file. Read the existing `.goodvibes/goodvibes.secrets.json` file, add or update the entry at `services.<name>` with this object, then write back. Preserve existing service entries.
+
+   **For `bearer`:**
+   - Prompt: "Enter bearer token (API key, JWT, etc.):"
+   - Collect the token from the user
+   - Write to secrets file:
+     ```json
+     {
+       "services": {
+         "<name>": {
+           "type": "bearer",
+           "token": "<user_input>"
+         }
+       },
+       "global": {}
+     }
+     ```
+
+   **For `basic`:**
+   - Prompt: "Enter username:" and "Enter password:"
+   - Collect both values from the user
+   - Write to secrets file:
+     ```json
+     {
+       "services": {
+         "<name>": {
+           "type": "basic",
+           "username": "<user_input_username>",
+           "password": "<user_input_password>"
+         }
+       },
+       "global": {}
+     }
+     ```
+
+   **For `api-key`:**
+   - Prompt: "Enter header name (e.g., X-API-Key, Authorization):" and "Enter API key:"
+   - Collect the header name and key from the user
+   - Write to secrets file:
+     ```json
+     {
+       "services": {
+         "<name>": {
+           "type": "api-key",
+           "header": "<user_input_header>",
+           "key": "<user_input_key>"
+         }
+       },
+       "global": {}
+     }
+     ```
+
+   **For `custom-headers`:**
+   - Prompt: "Enter header names (comma-separated, e.g., X-Custom-Auth,X-Request-ID):"
+   - For each header name, prompt: "Enter value for {header_name}:"
+   - Collect all header values from the user
+   - Write to secrets file:
+     ```json
+     {
+       "services": {
+         "<name>": {
+           "type": "custom-headers",
+           "headers": {
+             "<header_name_1>": "<user_input_1>",
+             "<header_name_2>": "<user_input_2>"
+           }
+         }
+       },
+       "global": {}
+     }
+     ```
 
    **For `oauth2`:**
    - Prompt: "Enter client secret:"
-   - Collect the credential from the user
-   - Store it in `.goodvibes/goodvibes.secrets.json`
-
-3. Write credentials to secrets file using a simple approach:
-   - Read existing `.goodvibes/goodvibes.secrets.json` (create empty object if doesn't exist)
-   - Add or update the key at `fetch.services.<name>.api_key` or `fetch.services.<name>.client_secret`
-   - Write back to file
-
-   Example structure for secrets file:
-   ```json
-   {
-     "fetch": {
+   - Collect the client secret from the user
+   - Get client_id, auth_url, token_url, scopes, redirect_uri from service config
+   - Write to secrets file:
+     ```json
+     {
        "services": {
          "<name>": {
-           "api_key": "secret_value",
-           "client_secret": "secret_value"
+           "type": "oauth2",
+           "client_id": "<from_config>",
+           "client_secret": "<user_input>",
+           "token_url": "<from_config>",
+           "authorize_url": "<from_config>",
+           "redirect_uri": "<from_config>",
+           "scopes": ["<from_config>"]
          }
-       }
+       },
+       "global": {}
      }
-   }
-   ```
+     ```
+     
+     Note: While ServiceAuth supports both config fields (client_id, token_url, etc.) and secrets (client_secret), the non-secret OAuth2 config can optionally be stored in the config file instead. The secrets file is the single source of truth when both exist.
+
+   **For `session`:**
+   - Prompt: "Enter username:" and "Enter password:"
+   - Optionally prompt: "Enter token path (e.g., 'data.access_token') or leave blank:"
+   - Get login_url from service config
+   - Write to secrets file:
+     ```json
+     {
+       "services": {
+         "<name>": {
+           "type": "session",
+           "login_url": "<from_config>",
+           "login_body": {
+             "username": "<user_input_username>",
+             "password": "<user_input_password>"
+           },
+           "token_path": "data.access_token"
+         }
+       },
+       "global": {}
+     }
+     ```
+     
+     Note: `token_path` is optional and specifies where in a JSON response body to find a session token (e.g., "data.access_token"). Omit if the session uses cookies only.
+
+   **For `none`:**
+   - Display: "This service does not require credentials."
+   - No action needed
+
+3. Write credentials to `.goodvibes/goodvibes.secrets.json`:
+   - Read existing file (create `{"services": {}, "global": {}}` if doesn't exist)
+   - Add or update the key at `services.<name>` with the full ServiceAuth object
+   - Write back to file
 
 4. Confirm:
 ```
@@ -442,6 +559,9 @@ Credentials saved for service '{name}'.
 Credentials are stored in:
   .goodvibes/goodvibes.secrets.json (never committed to git)
 
+Note: Secret values can use environment variable references:
+  { "$env": "MY_API_KEY" } instead of literal values
+
 Test connection: /goodvibes:services test {name}
 ```
 
@@ -449,6 +569,7 @@ Test connection: /goodvibes:services test {name}
 - Never display secrets in output
 - Confirm `.goodvibes/goodvibes.secrets.json` is in `.gitignore`
 - Use `[REDACTED]` when showing config with secrets
+- Mention `$env` reference support for environment variables
 
 ### `cookies` — Manage cookie jar
 
@@ -484,20 +605,16 @@ Clear cookies: /goodvibes:services cookies clear [domain]
 #### `cookies clear [domain]` — Clear cookies
 
 If domain is specified:
-1. Clear cookies for that domain only
-2. Call `precision_config`:
-   ```json
-   {"action": "delete", "key": "fetch.cookies.<domain>"}
-   ```
-3. Confirm: `Cleared {count} cookies for {domain}`
+1. Clear cookies for that domain only using read-modify-write pattern:
+   - Get fetch.cookies: `{"action": "get", "key": "fetch.cookies"}`
+   - Remove the domain entry from the cookies object
+   - Write back: `{"action": "set", "key": "fetch.cookies", "value": {...}}`
+2. Confirm: `Cleared {count} cookies for {domain}`
 
 If no domain specified:
-1. Clear all cookies
-2. Call `precision_config`:
-   ```json
-   {"action": "delete", "key": "fetch.cookies"}
-   ```
-3. Confirm: `Cleared all cookies ({count} total)`
+1. Clear all cookies:
+   - Set to empty object: `{"action": "set", "key": "fetch.cookies", "value": {}}`
+2. Confirm: `Cleared all cookies ({count} total)`
 
 ### Unknown subcommand
 
@@ -527,7 +644,7 @@ Examples:
 ## Storage Locations
 
 - **Service registry**: `.goodvibes/goodvibes.json` under `fetch.services`
-- **Credentials/Secrets**: `.goodvibes/goodvibes.secrets.json` under `fetch.services.<name>`
+- **Credentials/Secrets**: `.goodvibes/goodvibes.secrets.json` under `services.<name>` (NO `fetch` prefix)
 - **Cookies**: `.goodvibes/goodvibes.json` under `fetch.cookies`
 - **Auth status**: `.goodvibes/goodvibes.json` under `fetch.auth_status`
 
@@ -536,6 +653,8 @@ Examples:
 **Storage Path Rules:**
 - Non-secret config (base_url, client_id, auth_url, token_url, etc.) goes to `goodvibes.json`
 - Secret data (api_key, client_secret, tokens, passwords) goes to `goodvibes.secrets.json`
+- Secrets support environment variable references: `{ "$env": "VAR_NAME" }` instead of literal values
+- Secrets file has two top-level keys: `services` (per-service auth) and `global` (shared secrets)
 
 ## Arguments
 
