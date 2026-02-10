@@ -28,7 +28,7 @@ import type { _ProjectMemory } from '../../types/memory.js';
 
 // Helper to construct platform-specific file paths
 const getExpectedPath = (cwd: string): string =>
-  path.join(cwd, '.goodvibes', 'memory', 'patterns.md');
+  path.join(cwd, '.goodvibes', 'memory', 'patterns.json');
 
 describe('memory/patterns', () => {
   beforeEach(() => {

@@ -1,3 +1,6 @@
+<!-- GOODVIBES IMPORTS -->
+@.goodvibes/GOODVIBES.md
+
 
 
 ## MANDATORY

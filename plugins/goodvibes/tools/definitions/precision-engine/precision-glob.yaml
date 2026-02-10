@@ -84,6 +84,10 @@ inputSchema:
       type: boolean
       default: false
       description: Follow symbolic links
+    include_hidden:
+      type: boolean
+      default: true
+      description: Include hidden/dot files and directories (e.g. .git, .config)
     backend:
       type: string
       enum: [auto, fast-glob, ripgrep]

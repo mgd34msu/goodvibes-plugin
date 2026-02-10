@@ -53,16 +53,16 @@ describe('memory', () => {
 
     it('should return correct memory file paths', () => {
       expect(getMemoryFilePath(testDir, 'decisions')).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'decisions.md')
+        path.join(testDir, '.goodvibes', 'memory', 'decisions.json')
       );
       expect(getMemoryFilePath(testDir, 'patterns')).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'patterns.md')
+        path.join(testDir, '.goodvibes', 'memory', 'patterns.json')
       );
       expect(getMemoryFilePath(testDir, 'failures')).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'failures.md')
+        path.join(testDir, '.goodvibes', 'memory', 'failures.json')
       );
       expect(getMemoryFilePath(testDir, 'preferences')).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'preferences.md')
+        path.join(testDir, '.goodvibes', 'memory', 'preferences.json')
       );
     });
   });
@@ -137,7 +137,7 @@ describe('memory', () => {
   });
 
   describe('appendDecision', () => {
-    it('should create decisions.md and append decision', async () => {
+    it('should create decisions.json and append decision', async () => {
       const decision: Decision = {
         title: 'Use TypeScript',
         date: '2024-01-15',
@@ -199,7 +199,7 @@ describe('memory', () => {
   });
 
   describe('appendPattern', () => {
-    it('should create patterns.md and append pattern', async () => {
+    it('should create patterns.json and append pattern', async () => {
       const pattern: Pattern = {
         name: 'Repository Pattern',
         date: '2024-01-15',
@@ -236,7 +236,7 @@ describe('memory', () => {
   });
 
   describe('appendFailure', () => {
-    it('should create failures.md and append failure', async () => {
+    it('should create failures.json and append failure', async () => {
       const failure: Failure = {
         approach: 'Using raw SQL queries',
         date: '2024-01-15',
@@ -271,7 +271,7 @@ describe('memory', () => {
   });
 
   describe('appendPreference', () => {
-    it('should create preferences.md and append preference', async () => {
+    it('should create preferences.json and append preference', async () => {
       const preference: Preference = {
         key: 'code_style',
         value: 'Use 2-space indentation',

@@ -40,6 +40,9 @@ inputSchema:
           include_binary:
             type: boolean
             description: Search binary files (default false)
+          include_hidden:
+            type: boolean
+            description: Include hidden/dot files and directories in search (default true)
         required: [id, pattern]
     output:
       type: object

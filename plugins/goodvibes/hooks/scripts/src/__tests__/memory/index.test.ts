@@ -74,10 +74,10 @@ describe('memory/index', () => {
     it('should export MEMORY_FILES constant', () => {
       expect(MEMORY_FILES).toBeDefined();
       expect(typeof MEMORY_FILES).toBe('object');
-      expect(MEMORY_FILES.decisions).toBe('decisions.md');
-      expect(MEMORY_FILES.patterns).toBe('patterns.md');
-      expect(MEMORY_FILES.failures).toBe('failures.md');
-      expect(MEMORY_FILES.preferences).toBe('preferences.md');
+      expect(MEMORY_FILES.decisions).toBe('decisions.json');
+      expect(MEMORY_FILES.patterns).toBe('patterns.json');
+      expect(MEMORY_FILES.failures).toBe('failures.json');
+      expect(MEMORY_FILES.preferences).toBe('preferences.json');
     });
 
     it('should export getGoodVibesDir', () => {

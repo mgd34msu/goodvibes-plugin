@@ -98,7 +98,7 @@ describe('memory/parser', () => {
     });
 
     it('should parse file content when file exists', async () => {
-      const filePath = path.join(testDir, 'decisions.md');
+      const filePath = path.join(testDir, 'decisions.json');
       const content = `# Decisions
 
 ## Use TypeScript

@@ -47,7 +47,7 @@ describe('memory/preferences', () => {
       expect(mockParseMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath] = mockParseMemoryFile.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'preferences.md')
+        path.join(testDir, '.goodvibes', 'memory', 'preferences.json')
       );
     });
 
@@ -207,7 +207,7 @@ describe('memory/preferences', () => {
       expect(mockEnsureMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath, header] = mockEnsureMemoryFile.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'preferences.md')
+        path.join(testDir, '.goodvibes', 'memory', 'preferences.json')
       );
       expect(header).toContain('# User Preferences');
       expect(header).toContain('This file stores user preferences');
@@ -231,7 +231,7 @@ describe('memory/preferences', () => {
       expect(mockAppendMemoryEntry).toHaveBeenCalledTimes(1);
       const [filePath, entry] = mockAppendMemoryEntry.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'preferences.md')
+        path.join(testDir, '.goodvibes', 'memory', 'preferences.json')
       );
       expect(entry).toContain('## code-style');
       expect(entry).toContain('**Value:** functional');

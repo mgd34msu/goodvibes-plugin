@@ -23,8 +23,7 @@ import { checkCrashRecovery, } from './crash-recovery.js';
 import { buildSystemMessage } from './response-formatter.js';
 import { checkForUpdates } from './version-checker.js';
 import { fetchPricingIfStale } from './pricing-fetcher.js';
-import * as fs from 'fs';
-import * as path from 'path';
+import { ensureClaudeMdImports } from './claude-md-manager.js';
 /**
  * Default recovery info when crash recovery check fails.
  * Used as a fallback to ensure the hook continues gracefully.
@@ -86,51 +85,6 @@ async function savePluginState(projectDir, state) {
     catch (saveError) {
         logError('State saving', saveError);
         // Continue even if state save fails
-    }
-}
-/** GoodVibes mandatory instructions for CLAUDE.md */
-const GOODVIBES_MANDATORY_SECTION = `
-
-## MANDATORY
-
-1. You MUST maintain usage of WRFC Loops at all times.
-
-2. You MUST maintain usage of goodvibes logging and memory functions.
-
-3. You MUST remind subagents to use information from .goodvibes/ memory and logging when troubleshooting a problem, as it may have been solved previously.
-
-4. You MUST remind subagents to use DBE Loops.
-
-5. You MUST remind subagents to NEVER use Bash cat, echo, heredoc, or any other workaround unless precision_engine tools will not work after multiple attempts.
-
-6. You MUST remind subagents that incorrect usage of precision_engine tools does not count as a failed attempt, only truly failed tool uses.
-
-7. You MUST remind agents to return to using precision_engine tools after a successful workaround.
-`;
-/** Creates or appends to CLAUDE.md in the project root */
-async function ensureClaudeMd(projectDir) {
-    try {
-        const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
-        const marker = '## MANDATORY';
-        if (fs.existsSync(claudeMdPath)) {
-            const existingContent = fs.readFileSync(claudeMdPath, 'utf8');
-            if (!existingContent.includes(marker)) {
-                // Append mandatory section with newlines
-                fs.appendFileSync(claudeMdPath, '' + GOODVIBES_MANDATORY_SECTION);
-                debug('CLAUDE.md updated with mandatory section');
-            }
-            else {
-                debug('CLAUDE.md already contains mandatory section');
-            }
-        }
-        else {
-            // Create new file with mandatory section
-            fs.writeFileSync(claudeMdPath, GOODVIBES_MANDATORY_SECTION);
-            debug('CLAUDE.md created with mandatory section');
-        }
-    }
-    catch (err) {
-        logError('CLAUDE.md creation/update', err);
     }
 }
 /** Initializes analytics for the session */
@@ -195,8 +149,8 @@ async function runSessionStartHook() {
         });
         // Step 5: Save state
         await savePluginState(projectDir, state);
-        // Step 5.5: Ensure CLAUDE.md has mandatory GoodVibes instructions
-        await ensureClaudeMd(projectDir);
+        // Step 5.5: Ensure CLAUDE.md import architecture is installed
+        await ensureClaudeMdImports(projectDir);
         // Step 6: Initialize analytics
         initializeAnalytics(sessionId, contextResult);
         // Step 7: Check for plugin updates

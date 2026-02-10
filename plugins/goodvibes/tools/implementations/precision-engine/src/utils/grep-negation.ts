@@ -26,6 +26,7 @@ export interface NegationOptions {
   caseInsensitive?: boolean;
   wholeWord?: boolean;
   maxResults?: number;
+  hidden?: boolean;
 }
 
 // === Singleton Instance ===
@@ -62,6 +63,7 @@ export async function findFilesWithoutPattern(
       path: workDir,
       patterns: globPatterns,
       exclude: excludePatterns,
+      hidden: options.hidden,
     });
 
     // Edge case: No candidates found
@@ -87,6 +89,7 @@ export async function findFilesWithoutPattern(
         path: workDir,
         glob: options.glob,
         exclude: excludePatterns,
+        hidden: options.hidden,
         caseInsensitive: options.caseInsensitive,
         wholeWord: options.wholeWord,
         maxCount: 1, // We only need to know if file has at least one match

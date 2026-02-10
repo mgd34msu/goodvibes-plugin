@@ -15,6 +15,7 @@ export interface RipgrepSearchOptions {
   maxCount?: number;
   maxColumns?: number;
   timeoutMs?: number;
+  hidden?: boolean;
 }
 
 export interface RipgrepMatch {
@@ -39,6 +40,7 @@ export interface RipgrepListOptions {
   patterns?: string[];
   path: string;
   exclude?: string[];
+  hidden?: boolean;
 }
 
 interface RipgrepJsonMatch {
@@ -119,6 +121,10 @@ export class RipgrepCore {
       args.push(...options.exclude.flatMap(e => ['--glob', `!${e}`]));
     }
 
+    if (options.hidden) {
+      args.push('--hidden');
+    }
+
     args.push(options.path);
 
     try {
@@ -132,11 +138,15 @@ export class RipgrepCore {
   /**
    * Get list of files that contain matches (equivalent to rg -l).
    */
-  async filesWithMatches(pattern: string, path: string, glob?: string, timeoutMs?: number): Promise<string[]> {
+  async filesWithMatches(pattern: string, path: string, glob?: string, timeoutMs?: number, hidden?: boolean): Promise<string[]> {
     const args = ['--files-with-matches', '--json', pattern];
 
     if (glob) {
       args.push('--glob', glob);
+    }
+
+    if (hidden) {
+      args.push('--hidden');
     }
 
     args.push(path);
@@ -202,6 +212,10 @@ export class RipgrepCore {
 
     if (options.maxColumns !== undefined && options.maxColumns > 0) {
       args.push('--max-columns', String(options.maxColumns));
+    }
+
+    if (options.hidden) {
+      args.push('--hidden');
     }
 
     args.push(options.path);

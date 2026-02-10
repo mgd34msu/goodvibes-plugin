@@ -544,7 +544,7 @@ describe('memory-persistence integration', () => {
       fs.mkdirSync(memoryDir, { recursive: true });
 
       // Create malformed decision file
-      const decisionsPath = path.join(memoryDir, 'decisions.md');
+      const decisionsPath = path.join(memoryDir, 'decisions.json');
       fs.writeFileSync(
         decisionsPath,
         '# Malformed\nIncomplete entry without proper headers'

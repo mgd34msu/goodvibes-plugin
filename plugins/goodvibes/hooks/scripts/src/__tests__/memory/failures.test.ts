@@ -47,7 +47,7 @@ describe('memory/failures', () => {
       expect(mockParseMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath] = mockParseMemoryFile.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'failures.md')
+        path.join(testDir, '.goodvibes', 'memory', 'failures.json')
       );
     });
 
@@ -208,7 +208,7 @@ describe('memory/failures', () => {
       expect(mockEnsureMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath, header] = mockEnsureMemoryFile.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'failures.md')
+        path.join(testDir, '.goodvibes', 'memory', 'failures.json')
       );
       expect(header).toContain('# Failed Approaches');
       expect(header).toContain('approaches that were tried and failed');
@@ -231,7 +231,7 @@ describe('memory/failures', () => {
       expect(mockAppendMemoryEntry).toHaveBeenCalledTimes(1);
       const [filePath, entry] = mockAppendMemoryEntry.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'failures.md')
+        path.join(testDir, '.goodvibes', 'memory', 'failures.json')
       );
       expect(entry).toContain('## Using synchronous file reads');
       expect(entry).toContain('**Date:** 2024-01-04');

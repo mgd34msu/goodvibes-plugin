@@ -46,6 +46,7 @@ interface GrepQuery {
   multiline?: boolean;
   include_binary?: boolean;
   negate?: boolean;
+  include_hidden?: boolean;
 }
 
 interface GrepOutput {
@@ -392,6 +393,7 @@ async function executeQuery(
       caseInsensitive: query.case_sensitive === false,
       wholeWord: query.whole_word,
       maxResults: maxFiles,
+      hidden: query.include_hidden,
     });
 
     const negationReturn = {
@@ -482,6 +484,7 @@ async function executeQuery(
     contextAfter,
     maxCount: maxMatchesPerFile,
     maxColumns: output.max_line_length,
+    hidden: query.include_hidden,
   };
 
   // Use RipgrepCore for search (50-100x faster than fast-glob + JS RegExp)

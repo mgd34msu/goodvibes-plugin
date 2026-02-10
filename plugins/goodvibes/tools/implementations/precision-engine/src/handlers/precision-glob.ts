@@ -70,6 +70,7 @@ interface PrecisionGlobInput {
   cwd?: string; // DEPRECATED: Use base_path instead
   output_mode?: OutputMode;
   backend?: 'fast-glob' | 'ripgrep' | 'auto'; // Default 'auto'
+  include_hidden?: boolean;
 }
 
 interface FileStats {
@@ -95,13 +96,15 @@ async function listFilesWithRipgrep(
   basePath: string,
   patterns: string[],
   exclude: string[],
-  timeoutMs?: number
+  timeoutMs?: number,
+  hidden?: boolean
 ): Promise<string[]> {
   return ripgrepCore.listFiles({
     path: basePath,
     patterns,
     exclude,
     timeoutMs: timeoutMs ?? 30000,
+    hidden,
   });
 }
 
@@ -207,11 +210,14 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
     const maxTokens = output.max_tokens ?? Infinity;
     const respectGitignore = input.respect_gitignore ?? true;
     const followSymlinks = input.follow_symlinks ?? false;
+    const includeHidden = input.include_hidden ?? true;
 
     // Build exclude patterns
     const excludePatterns = [
       ...(respectGitignore ? DEFAULT_EXCLUDES : []),
       ...(input.exclude ?? []),
+      // Exclude hidden files/dirs when include_hidden is explicitly false
+      ...(includeHidden === false ? ['**/.*', '.*'] : []),
     ];
 
     // Backend selection
@@ -225,7 +231,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
     let rawFiles: Array<string | { path: string; stats: Stats | null }>;
     if (useRipgrep) {
       try {
-        const filePaths = await listFilesWithRipgrep(workDir, patterns, excludePatterns);
+        const filePaths = await listFilesWithRipgrep(workDir, patterns, excludePatterns, undefined, includeHidden);
         rawFiles = filePaths.map(path => ({ path, stats: null }));
       } catch (error) {
         // Fallback to fast-glob on error
@@ -236,6 +242,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
           absolute: true,
           onlyFiles: true,
           followSymbolicLinks: followSymlinks,
+          dot: includeHidden,
           stats: true,
         });
       }
@@ -246,6 +253,7 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
         absolute: true,
         onlyFiles: true,
         followSymbolicLinks: followSymlinks,
+        dot: includeHidden,
         stats: true,
       });
     }
@@ -300,7 +308,8 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
         input.filters.has_content,
         workDir,
         undefined,
-        30000
+        30000,
+        includeHidden
       );
       // Normalize ALL paths to canonical absolute form for comparison
       // Ripgrep may return absolute or relative paths depending on how it was invoked

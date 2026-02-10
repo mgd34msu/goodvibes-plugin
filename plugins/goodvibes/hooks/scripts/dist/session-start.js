@@ -141,14 +141,14 @@ var LOCKFILES = [
   "package-lock.json",
   "bun.lockb"
 ];
-function resolvePluginRootFromDirname(dirname3) {
+function resolvePluginRootFromDirname(dirname4) {
   if (process.env.CLAUDE_PLUGIN_ROOT) {
     return process.env.CLAUDE_PLUGIN_ROOT;
   }
-  if (dirname3 !== void 0 && dirname3.includes("hooks")) {
-    const hooksIndex = dirname3.indexOf("hooks");
+  if (dirname4 !== void 0 && dirname4.includes("hooks")) {
+    const hooksIndex = dirname4.indexOf("hooks");
     if (hooksIndex > 0) {
-      return dirname3.substring(0, hooksIndex - 1);
+      return dirname4.substring(0, hooksIndex - 1);
     }
   }
   const devPluginPath = path.join(process.cwd(), "plugins", "goodvibes");
@@ -4561,7 +4561,7 @@ function getLocalVersion() {
   }
 }
 function fetchLatestVersion() {
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     const options = {
       headers: {
         "User-Agent": "GoodVibes-Plugin-VersionCheck",
@@ -4578,26 +4578,26 @@ function fetchLatestVersion() {
         try {
           if (res.statusCode !== 200) {
             debug(`GitHub API returned status ${res.statusCode}`);
-            resolve2(null);
+            resolve3(null);
             return;
           }
           const release = JSON.parse(data);
           const tagName = release.tag_name || "";
           const version = tagName.replace(/^v/, "");
-          resolve2(version || null);
+          resolve3(version || null);
         } catch {
-          resolve2(null);
+          resolve3(null);
         }
       });
     });
     req.on("error", (err) => {
       debug(`GitHub API request failed: ${err.message}`);
-      resolve2(null);
+      resolve3(null);
     });
     req.on("timeout", () => {
       debug(`GitHub API request timed out after ${REQUEST_TIMEOUT_MS}ms`);
       req.destroy();
-      resolve2(null);
+      resolve3(null);
     });
   });
 }
@@ -4827,9 +4827,175 @@ async function fetchPricingIfStale() {
   }
 }
 
-// src/session-start/index.ts
+// src/session-start/claude-md-manager.ts
 import * as fs14 from "fs";
 import * as path15 from "path";
+import * as os2 from "os";
+var CLAUDE_MD_IMPORT = `<!-- GOODVIBES IMPORTS -->
+@.goodvibes/GOODVIBES.md
+`;
+var GOODVIBES_MD = `<!-- UPGRADE NOTIFICATIONS -->
+@prompt/UPGRADE-NOTIFICATIONS.md
+
+<!-- PRIMARY GOALS -->
+@prompt/PRIMARY-GOALS.md
+
+<!-- CORE PRINCIPLES -->
+@prompt/CORE-PRINCIPLES.md
+
+<!-- SUBAGENT PROTOCOL -->
+@prompt/SUBAGENT-PROTOCOL.md
+`;
+var PROMPT_FILES = {
+  "UPGRADE-NOTIFICATIONS.md": `## IMPORTANT!
+
+TOOL UPGRADES AVAILABLE! The precision_engine has tools that are a superset of native tools, with transaction support, batching, and token-efficient output. Prioritize their use over the deprecated native tools (Read, Edit, Write, Glob, Grep, WebFetch). Always use precision_engine equivalents. WebSearch has no replacement \u2014 use it directly.
+`,
+  "PRIMARY-GOALS.md": `## MANDATORY
+
+PRIMARY GOAL: Fully complete and functional code that passes review with no major or minor issues. Score 9.5 or higher.
+PRIMARY DIRECTIVE: Be as token-efficient as possible while still achieving the primary goal.
+`,
+  "CORE-PRINCIPLES.md": `## MANDATORY
+
+1. Maintain usage of WRFC Loops and goodvibes logging & memory functions
+2. Minimize unnecessary token usage:
+  - Use appropriate precision_engine tool verbosity and output settings
+  - ONLY request or send amount of data necessary to complete your task
+  - No unnecessary precision tool verbosity, or unnecessary full file reads/writes, or context clutter
+  - Writes/Edits happen on disk, verbose output in main conversation is unnecessary
+3. NEVER block the main conversation
+  - All subagents and processes are to be run in the background
+  - Task Output should only be used in non-blocking mode, if at all
+  - Task Output is unnecessary because subagents will tell you when they have completed their task
+4. ALWAYS think before you act. Time is cheap, tokens are expensive. Always have a plan.
+`,
+  "SUBAGENT-PROTOCOL.md": `## MANDATORY
+
+ALWAYS provide the following reminders to subagents:
+1. Use .goodvibes/ memory and logging when troubleshooting a problem
+2. Maintain usage of DPB Loops. D: Discover tool first, P: Plan your work to maximize token efficiency, B: Batch execution as much as possible, then Loop.
+  - Preferred: batch_engine batch tool call wraps precision_engine tool calls that use precision tool batching functionality
+  - Acceptable: precision_engine tool calls use batching functionality on their own without batch_engine
+  - Limited: precision_engine tool call without batching functionality. (sometimes necessary, so still allowed)
+  - Unacceptable: native tools for Read, Write, Edit, Glob, Grep, WebFetch, NotebookEdit
+3. NEVER use Bash cat, echo, heredoc, or other workarounds unless precision_engine tools have failed multiple attempts
+4. Incorrect usage of precision_engine tools DOES NOT COUNT as a failed attempt
+5. ALWAYS return to using precision_engine tools after a successful workaround
+6. Use appropriate precision tool verbosity, only consume or produce the amount of data necessary to complete the task
+`
+};
+async function writeIfChanged(filePath, content) {
+  try {
+    const existing = await fs14.promises.readFile(filePath, "utf-8");
+    if (existing.trimEnd() === content.trimEnd()) {
+      debug(`Skipping write (content unchanged): ${filePath}`);
+      return;
+    }
+  } catch {
+  }
+  const dirname4 = path15.dirname(filePath);
+  await fs14.promises.mkdir(dirname4, { recursive: true });
+  await fs14.promises.writeFile(filePath, content, "utf-8");
+  debug(`Wrote file: ${filePath}`);
+}
+async function tryClaudeHomeDir(projectDir) {
+  try {
+    const claudeHome = path15.join(os2.homedir(), ".claude");
+    const resolvedProject = path15.resolve(projectDir);
+    const claudeHomeSep = claudeHome + path15.sep;
+    if (resolvedProject === claudeHome || resolvedProject.startsWith(claudeHomeSep)) {
+      debug("Project is inside ~/.claude/, skipping home directory strategy");
+      return null;
+    }
+    await fs14.promises.access(claudeHome, fs14.constants.W_OK);
+    debug(`Using ~/.claude/ directory: ${claudeHome}`);
+    return claudeHome;
+  } catch {
+    return null;
+  }
+}
+async function findHighestAncestorClaudeMd(projectDir) {
+  try {
+    const resolved = path15.resolve(projectDir);
+    const parsed = path15.parse(resolved);
+    const root = parsed.root;
+    const segments = resolved.substring(root.length).split(path15.sep).filter((s) => s.length > 0);
+    let highestMatch = null;
+    for (let i = 0; i < segments.length; i++) {
+      const checkPath = path15.join(root, ...segments.slice(0, i + 1));
+      if (checkPath === resolved) {
+        continue;
+      }
+      const claudeMdPath = path15.join(checkPath, "CLAUDE.md");
+      try {
+        await fs14.promises.access(claudeMdPath, fs14.constants.R_OK);
+        if (!highestMatch) {
+          highestMatch = checkPath;
+          break;
+        }
+      } catch {
+      }
+    }
+    if (highestMatch) {
+      debug(`Found highest ancestor CLAUDE.md at: ${highestMatch}`);
+    }
+    return highestMatch;
+  } catch {
+    return null;
+  }
+}
+async function resolveTargetDirectory(projectDir) {
+  const claudeHome = await tryClaudeHomeDir(projectDir);
+  if (claudeHome) {
+    return claudeHome;
+  }
+  const ancestorDir = await findHighestAncestorClaudeMd(projectDir);
+  if (ancestorDir) {
+    return ancestorDir;
+  }
+  debug(`Using project directory: ${projectDir}`);
+  return projectDir;
+}
+async function ensureClaudeMdImport(targetDir) {
+  const claudeMdPath = path15.join(targetDir, "CLAUDE.md");
+  try {
+    const existing = await fs14.promises.readFile(claudeMdPath, "utf-8");
+    if (existing.includes("<!-- GOODVIBES IMPORTS -->")) {
+      debug(`CLAUDE.md already has import: ${claudeMdPath}`);
+      return;
+    }
+    const separator = existing.endsWith("\n") ? "\n" : "\n\n";
+    const updated = existing + separator + CLAUDE_MD_IMPORT;
+    await writeIfChanged(claudeMdPath, updated);
+  } catch {
+    await writeIfChanged(claudeMdPath, CLAUDE_MD_IMPORT);
+  }
+}
+async function ensureGoodvibesMd(targetDir) {
+  const goodvibesMdPath = path15.join(targetDir, ".goodvibes", "GOODVIBES.md");
+  await writeIfChanged(goodvibesMdPath, GOODVIBES_MD);
+}
+async function ensurePromptFiles(targetDir) {
+  for (const [filename, content] of Object.entries(PROMPT_FILES)) {
+    const filePath = path15.join(targetDir, ".goodvibes", "prompt", filename);
+    await writeIfChanged(filePath, content);
+  }
+}
+async function ensureClaudeMdImports(projectDir) {
+  try {
+    const targetDir = await resolveTargetDirectory(projectDir);
+    await ensureClaudeMdImport(targetDir);
+    await Promise.all([
+      ensureGoodvibesMd(targetDir),
+      ensurePromptFiles(targetDir)
+    ]);
+  } catch (err) {
+    logError("Failed to ensure CLAUDE.md imports", err instanceof Error ? err : new Error(String(err)));
+  }
+}
+
+// src/session-start/index.ts
 var DEFAULT_RECOVERY_INFO = {
   needsRecovery: false,
   previousFeature: null,
@@ -4878,44 +5044,6 @@ async function savePluginState(projectDir, state) {
     debug("State saved");
   } catch (saveError) {
     logError("State saving", saveError);
-  }
-}
-var GOODVIBES_MANDATORY_SECTION = `
-
-## MANDATORY
-
-1. You MUST maintain usage of WRFC Loops at all times.
-
-2. You MUST maintain usage of goodvibes logging and memory functions.
-
-3. You MUST remind subagents to use information from .goodvibes/ memory and logging when troubleshooting a problem, as it may have been solved previously.
-
-4. You MUST remind subagents to use DBE Loops.
-
-5. You MUST remind subagents to NEVER use Bash cat, echo, heredoc, or any other workaround unless precision_engine tools will not work after multiple attempts.
-
-6. You MUST remind subagents that incorrect usage of precision_engine tools does not count as a failed attempt, only truly failed tool uses.
-
-7. You MUST remind agents to return to using precision_engine tools after a successful workaround.
-`;
-async function ensureClaudeMd(projectDir) {
-  try {
-    const claudeMdPath = path15.join(projectDir, "CLAUDE.md");
-    const marker = "## MANDATORY";
-    if (fs14.existsSync(claudeMdPath)) {
-      const existingContent = fs14.readFileSync(claudeMdPath, "utf8");
-      if (!existingContent.includes(marker)) {
-        fs14.appendFileSync(claudeMdPath, "" + GOODVIBES_MANDATORY_SECTION);
-        debug("CLAUDE.md updated with mandatory section");
-      } else {
-        debug("CLAUDE.md already contains mandatory section");
-      }
-    } else {
-      fs14.writeFileSync(claudeMdPath, GOODVIBES_MANDATORY_SECTION);
-      debug("CLAUDE.md created with mandatory section");
-    }
-  } catch (err) {
-    logError("CLAUDE.md creation/update", err);
   }
 }
 function initializeAnalytics(sessionId, contextResult) {
@@ -4974,7 +5102,7 @@ async function runSessionStartHook() {
       startedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     await savePluginState(projectDir, state);
-    await ensureClaudeMd(projectDir);
+    await ensureClaudeMdImports(projectDir);
     initializeAnalytics(sessionId, contextResult);
     const versionCheck = await checkForUpdates();
     debug("Version check", { isUpToDate: versionCheck.isUpToDate, local: versionCheck.localVersion, remote: versionCheck.remoteVersion });

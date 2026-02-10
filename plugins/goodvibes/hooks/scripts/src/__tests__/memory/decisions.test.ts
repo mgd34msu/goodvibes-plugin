@@ -48,7 +48,7 @@ describe('memory/decisions', () => {
       expect(mockParseMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath] = mockParseMemoryFile.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'decisions.md')
+        path.join(testDir, '.goodvibes', 'memory', 'decisions.json')
       );
     });
 
@@ -216,7 +216,7 @@ describe('memory/decisions', () => {
       expect(mockEnsureMemoryFile).toHaveBeenCalledTimes(1);
       const [filePath, header] = mockEnsureMemoryFile.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'decisions.md')
+        path.join(testDir, '.goodvibes', 'memory', 'decisions.json')
       );
       expect(header).toContain('# Architectural Decisions');
       expect(header).toContain('This file records architectural decisions');
@@ -240,7 +240,7 @@ describe('memory/decisions', () => {
       expect(mockAppendMemoryEntry).toHaveBeenCalledTimes(1);
       const [filePath, entry] = mockAppendMemoryEntry.mock.calls[0];
       expect(filePath).toBe(
-        path.join(testDir, '.goodvibes', 'memory', 'decisions.md')
+        path.join(testDir, '.goodvibes', 'memory', 'decisions.json')
       );
       expect(entry).toContain('## Use tRPC');
       expect(entry).toContain('**Date:** 2024-01-04');

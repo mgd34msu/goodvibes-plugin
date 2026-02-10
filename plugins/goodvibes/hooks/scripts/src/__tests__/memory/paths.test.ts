@@ -39,23 +39,23 @@ describe('memory/paths', () => {
 
     describe('MEMORY_FILES', () => {
       it('should have decisions file mapping', () => {
-        expect(MEMORY_FILES.decisions).toBe('decisions.md');
+        expect(MEMORY_FILES.decisions).toBe('decisions.json');
       });
 
       it('should have patterns file mapping', () => {
-        expect(MEMORY_FILES.patterns).toBe('patterns.md');
+        expect(MEMORY_FILES.patterns).toBe('patterns.json');
       });
 
       it('should have failures file mapping', () => {
-        expect(MEMORY_FILES.failures).toBe('failures.md');
+        expect(MEMORY_FILES.failures).toBe('failures.json');
       });
 
       it('should have preferences file mapping', () => {
-        expect(MEMORY_FILES.preferences).toBe('preferences.md');
+        expect(MEMORY_FILES.preferences).toBe('preferences.json');
       });
 
-      it('should have exactly 4 memory file types', () => {
-        expect(Object.keys(MEMORY_FILES)).toHaveLength(4);
+      it('should have exactly 5 memory file types', () => {
+        expect(Object.keys(MEMORY_FILES)).toHaveLength(5);
       });
     });
   });
@@ -145,37 +145,37 @@ describe('memory/paths', () => {
     const testCwd = '/path/to/project';
 
     describe('decisions memory file', () => {
-      it('should return path to decisions.md', () => {
+      it('should return path to decisions.json', () => {
         const result = getMemoryFilePath(testCwd, 'decisions');
         expect(result).toBe(
-          path.join(testCwd, '.goodvibes', 'memory', 'decisions.md')
+          path.join(testCwd, '.goodvibes', 'memory', 'decisions.json')
         );
       });
     });
 
     describe('patterns memory file', () => {
-      it('should return path to patterns.md', () => {
+      it('should return path to patterns.json', () => {
         const result = getMemoryFilePath(testCwd, 'patterns');
         expect(result).toBe(
-          path.join(testCwd, '.goodvibes', 'memory', 'patterns.md')
+          path.join(testCwd, '.goodvibes', 'memory', 'patterns.json')
         );
       });
     });
 
     describe('failures memory file', () => {
-      it('should return path to failures.md', () => {
+      it('should return path to failures.json', () => {
         const result = getMemoryFilePath(testCwd, 'failures');
         expect(result).toBe(
-          path.join(testCwd, '.goodvibes', 'memory', 'failures.md')
+          path.join(testCwd, '.goodvibes', 'memory', 'failures.json')
         );
       });
     });
 
     describe('preferences memory file', () => {
-      it('should return path to preferences.md', () => {
+      it('should return path to preferences.json', () => {
         const result = getMemoryFilePath(testCwd, 'preferences');
         expect(result).toBe(
-          path.join(testCwd, '.goodvibes', 'memory', 'preferences.md')
+          path.join(testCwd, '.goodvibes', 'memory', 'preferences.json')
         );
       });
     });
@@ -184,7 +184,7 @@ describe('memory/paths', () => {
       it('should handle root path', () => {
         const result = getMemoryFilePath('/', 'decisions');
         expect(result).toBe(
-          path.join('/', '.goodvibes', 'memory', 'decisions.md')
+          path.join('/', '.goodvibes', 'memory', 'decisions.json')
         );
       });
 
@@ -198,7 +198,7 @@ describe('memory/paths', () => {
             'C:\\Users\\test\\project',
             '.goodvibes',
             'memory',
-            'patterns.md'
+            'patterns.json'
           )
         );
       });
@@ -206,14 +206,14 @@ describe('memory/paths', () => {
       it('should handle paths with trailing slash', () => {
         const result = getMemoryFilePath('/path/to/project/', 'failures');
         expect(result).toBe(
-          path.join('/path/to/project/', '.goodvibes', 'memory', 'failures.md')
+          path.join('/path/to/project/', '.goodvibes', 'memory', 'failures.json')
         );
       });
 
       it('should handle relative paths', () => {
         const result = getMemoryFilePath('./my-project', 'preferences');
         expect(result).toBe(
-          path.join('./my-project', '.goodvibes', 'memory', 'preferences.md')
+          path.join('./my-project', '.goodvibes', 'memory', 'preferences.json')
         );
       });
 
@@ -224,7 +224,7 @@ describe('memory/paths', () => {
             '/path/to/my project',
             '.goodvibes',
             'memory',
-            'decisions.md'
+            'decisions.json'
           )
         );
       });
