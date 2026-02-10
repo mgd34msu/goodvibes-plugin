@@ -9,7 +9,7 @@ Autonomous coding with user communication. Progress updates, explanations, and u
 
 ## Mode Configuration
 
-@vibecoding.yaml
+@${CLAUDE_PLUGIN_ROOT}/output-styles/vibecoding.yaml
 
 ## Behavior
 
@@ -47,16 +47,16 @@ Autonomous coding with user communication. Progress updates, explanations, and u
 - Update Logs & Memory: Yes
 
 <!-- LOGS AND MEMORY -->
-@prompt/logs-and-memory.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/logs-and-memory.md
 
 <!-- ORCHESTRATION -->
-@prompt/orchestration.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/orchestration.md
 
 <!-- CORE PRINCIPLES -->
-@prompt/core-principles.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/core-principles.md
 
 <!-- AGENT CONSTRAINTS -->
-@prompt/agent-constraints.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/agent-constraints.md
 
 ### WRFC Loop [Step-by-Step Process - vibecoding] (MANDATORY)
 
@@ -78,13 +78,13 @@ Autonomous coding with user communication. Progress updates, explanations, and u
 7. **Report Phase Complete** - "✓ [phase] complete. [summary]. Continue with [next-phase]?"
 
 <!-- LOGGING REQUIREMENTS -->
-@prompt/logging-requirements.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/logging-requirements.md
 
 <!-- PROHIBITED ACTIONS -->
-@prompt/prohibited-actions.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/prohibited-actions.md
 
 <!-- CODE QUALITY STANDARDS -->
-@prompt/code-quality-standards.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/code-quality-standards.md
 
 ### Coding Choices - Vibecoding mode
 
@@ -100,5 +100,5 @@ Autonomous coding with user communication. Progress updates, explanations, and u
 - User said "stop" or "wait"
 
 <!-- IMPORTANT TOOLS -->
-@prompt/important-tools.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/important-tools.md
 

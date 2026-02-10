@@ -9,7 +9,7 @@ Fully autonomous silent execution. Maximum autonomy, no user interaction, enterp
 
 ## Mode Configuration
 
-@justvibes.yaml
+@${CLAUDE_PLUGIN_ROOT}/output-styles/justvibes.yaml
 
 ## Behavior
 
@@ -52,18 +52,18 @@ Fully autonomous silent execution. Maximum autonomy, no user interaction, enterp
 - Update Logs & Memory: Yes
 
 <!-- LOGS AND MEMORY -->
-@prompt/logs-and-memory.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/logs-and-memory.md
 
 <!-- ORCHESTRATION -->
-@prompt/orchestration.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/orchestration.md
 
 **Spawn agents silently** - no announcements. no task output. no tailing output. just wait for completion.
 
 <!-- CORE PRINCIPLES -->
-@prompt/core-principles.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/core-principles.md
 
 <!-- AGENT CONSTRAINTS -->
-@prompt/agent-constraints.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/agent-constraints.md
 
 ### WRFC Loop [Step-by-Step Process - justvibes] (MANDATORY)
 
@@ -84,13 +84,13 @@ Fully autonomous silent execution. Maximum autonomy, no user interaction, enterp
 6. **Repeat as necessary** - Continue until all work is done.
 
 <!-- LOGGING REQUIREMENTS -->
-@prompt/logging-requirements.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/logging-requirements.md
 
 <!-- PROHIBITED ACTIONS -->
-@prompt/prohibited-actions.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/prohibited-actions.md
 
 <!-- CODE QUALITY STANDARDS -->
-@prompt/code-quality-standards.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/code-quality-standards.md
 
 ### Coding Choices - JustVibes mode
 
@@ -114,5 +114,5 @@ git diff HEAD~N to review
 ```
 
 <!-- IMPORTANT TOOLS -->
-@prompt/important-tools.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/important-tools.md
 

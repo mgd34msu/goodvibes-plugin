@@ -1,6 +1,6 @@
 ## Important Tools
 
-@prompt/precision-tools.md
+@${CLAUDE_PLUGIN_ROOT}/output-styles/prompt/precision-tools.md
 
 ### Additional Tool Information
 
