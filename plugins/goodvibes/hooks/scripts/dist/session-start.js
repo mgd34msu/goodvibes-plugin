@@ -4930,10 +4930,8 @@ async function findHighestAncestorClaudeMd(projectDir) {
       const claudeMdPath = path15.join(checkPath, "CLAUDE.md");
       try {
         await fs14.promises.access(claudeMdPath, fs14.constants.R_OK);
-        if (!highestMatch) {
-          highestMatch = checkPath;
-          break;
-        }
+        highestMatch = checkPath;
+        break;
       } catch {
       }
     }
@@ -4977,10 +4975,12 @@ async function ensureGoodvibesMd(targetDir) {
   await writeIfChanged(goodvibesMdPath, GOODVIBES_MD);
 }
 async function ensurePromptFiles(targetDir) {
-  for (const [filename, content] of Object.entries(PROMPT_FILES)) {
-    const filePath = path15.join(targetDir, ".goodvibes", "prompt", filename);
-    await writeIfChanged(filePath, content);
-  }
+  await Promise.all(
+    Object.entries(PROMPT_FILES).map(([filename, content]) => {
+      const filePath = path15.join(targetDir, ".goodvibes", "prompt", filename);
+      return writeIfChanged(filePath, content);
+    })
+  );
 }
 async function ensureClaudeMdImports(projectDir) {
   try {

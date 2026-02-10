@@ -10,6 +10,11 @@ inputSchema:
       items:
         type: string
       description: Glob patterns to match
+    patterns_base64:
+      type: array
+      items:
+        type: string
+      description: Base64-encoded glob patterns. REQUIRED when patterns contain single quotes, backticks, or ${} patterns. Encode each with echo -n "pattern" | base64 -w0. Note Brackets [ ] are auto-escaped for literal matching.
     preset:
       type: string
       enum: [typescript, javascript, styles, config, tests, all]
@@ -48,10 +53,16 @@ inputSchema:
     output:
       type: object
       properties:
-        mode:
+        format:
           type: string
           enum: [count_only, paths_only, with_stats, with_preview]
-          description: Output verbosity mode
+          default: paths_only
+          description: Output data format (alias for mode)
+        max_results:
+          type: integer
+          minimum: 1
+          default: 100
+          description: Maximum files to return (alias for max_files)
         max_files:
           type: integer
           minimum: 1
@@ -91,15 +102,20 @@ inputSchema:
     backend:
       type: string
       enum: [auto, fast-glob, ripgrep]
-      default: auto
       description: |
         Backend implementation:
         - auto: Choose best based on query (default)
         - fast-glob: JavaScript glob implementation
         - ripgrep: Fast CLI tool (better for large repos)
-    output_mode:
+    base_path:
+      type: string
+      description: Base directory for glob patterns (defaults to process.cwd())
+    cwd:
+      type: string
+      description: 'DEPRECATED: Use base_path instead. Working directory for glob patterns (defaults to process.cwd())'
+    verbosity:
       type: string
       enum: [count_only, minimal, standard, verbose]
       default: standard
-      description: Output verbosity level
+      description: Response verbosity
   required: []

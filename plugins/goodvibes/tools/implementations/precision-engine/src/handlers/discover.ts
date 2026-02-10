@@ -119,6 +119,7 @@ async function executeGrepQuery(
         pattern: patternValue,
         glob: query.glob,
         path: searchRoot !== process.cwd() ? searchRoot : undefined,
+        include_hidden: true,
       }],
       output: {
         mode,
@@ -224,6 +225,7 @@ async function executeGlobQuery(
     const result = await handlePrecisionGlob({
       patterns: patterns,
       cwd: searchRoot !== process.cwd() ? searchRoot : undefined,
+      include_hidden: true,
       output: {
         mode,
         max_files: 100,

@@ -285,7 +285,7 @@ export const precisionGrepSchema: Tool = {
             multiline: { type: 'boolean', description: 'Allow multiline matches (default: false)' },
             include_binary: { type: 'boolean', description: 'Search binary files (default: false)' },
             negate: { type: 'boolean', description: 'Return files WITHOUT this pattern (negation search)' },
-            include_hidden: { type: 'boolean', description: 'Include hidden/dot files and directories in search (default: true)' },
+            include_hidden: { type: 'boolean', default: true, description: 'Include hidden/dot files and directories in search (default: true)' },
           },
           required: ['id'],
         },

@@ -385,7 +385,12 @@ async function executeQuery(
     const searchPath = query.path
       ? await validateDirectoryPath(query.path, workDir)
       : workDir;
-    const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
+    const excludePatterns = [
+      ...DEFAULT_EXCLUDES,
+      ...(query.exclude ?? []),
+      // Exclude hidden files/dirs when include_hidden is explicitly false
+      ...((query.include_hidden ?? true) === false ? ['**/.*', '.*'] : []),
+    ];
     
     const negationResult = await findFilesWithoutPattern(patternStr, searchPath, {
       glob: query.glob,
@@ -393,7 +398,7 @@ async function executeQuery(
       caseInsensitive: query.case_sensitive === false,
       wholeWord: query.whole_word,
       maxResults: maxFiles,
-      hidden: query.include_hidden,
+      hidden: query.include_hidden ?? true,
     });
 
     const negationReturn = {
@@ -469,7 +474,12 @@ async function executeQuery(
     }
   }
   
-  const excludePatterns = [...DEFAULT_EXCLUDES, ...(query.exclude ?? [])];
+  const excludePatterns = [
+    ...DEFAULT_EXCLUDES,
+    ...(query.exclude ?? []),
+    // Exclude hidden files/dirs when include_hidden is explicitly false
+    ...((query.include_hidden ?? true) === false ? ['**/.*', '.*'] : []),
+  ];
 
   const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {
     pattern: patternStr,
@@ -484,7 +494,7 @@ async function executeQuery(
     contextAfter,
     maxCount: maxMatchesPerFile,
     maxColumns: output.max_line_length,
-    hidden: query.include_hidden,
+    hidden: query.include_hidden ?? true,
   };
 
   // Use RipgrepCore for search (50-100x faster than fast-glob + JS RegExp)
