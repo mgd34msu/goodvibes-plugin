@@ -811,6 +811,12 @@ var TOOL_REPLACEMENTS = {
     usage: `Call mcp__plugin_goodvibes_precision-engine__precision_grep with:
 {"queries": [{"id": "search1", "pattern": "searchPattern", "glob": "**/*.ts"}], "verbosity": "standard"}`,
     capabilities: "Supports: batch queries, regex patterns, file filtering, context control, multiple output formats"
+  },
+  WebFetch: {
+    replacement: "precision_fetch",
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_fetch with:
+{"urls": [{"url": "https://example.com", "extract": "markdown"}], "verbosity": "standard"}`,
+    capabilities: "Supports: batch URLs, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), HTTP methods, auth, service registry"
   }
 };
 var BLOCKED_NATIVE_TOOLS = [
@@ -818,7 +824,8 @@ var BLOCKED_NATIVE_TOOLS = [
   "Edit",
   "Write",
   "Glob",
-  "Grep"
+  "Grep",
+  "WebFetch"
 ];
 function formatBlockMessage(toolName, replacement) {
   const mcpToolName = `mcp__plugin_goodvibes_precision-engine__${replacement.replacement}`;

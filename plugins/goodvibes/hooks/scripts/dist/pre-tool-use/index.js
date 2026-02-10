@@ -4,7 +4,7 @@
  * Pre-tool-use hook utilities for validating and guarding tool execution.
  *
  * This module re-exports all pre-tool-use functionality including:
- * - Subagent tool blocking (redirect Read/Edit/Glob/Grep to MCP batch tools)
+ * - Subagent tool blocking (redirect Read/Edit/Write/Glob/Grep/WebFetch to MCP precision tools)
  * - Quality gates for file operations (require Read before Edit/Write)
  * - Git operation guards (prevent destructive operations, detect secrets)
  * - Command validation and safety checks

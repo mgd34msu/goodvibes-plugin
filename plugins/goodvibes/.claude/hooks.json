@@ -11,7 +11,7 @@
         ]
       },
       {
-        "matcher": "Read|Edit|Write|Glob|Grep",
+        "matcher": "Read|Edit|Write|Glob|Grep|WebFetch",
         "hooks": [
           {
             "type": "command",

@@ -77,6 +77,13 @@ describe('subagent-blockers', () => {
       expect(TOOL_REPLACEMENTS.Grep.usage).toContain('precision_grep');
       expect(TOOL_REPLACEMENTS.Grep.capabilities).toContain('regex');
     });
+
+    it('should define replacement for WebFetch tool', () => {
+      expect(TOOL_REPLACEMENTS.WebFetch).toBeDefined();
+      expect(TOOL_REPLACEMENTS.WebFetch.replacement).toBe('precision_fetch');
+      expect(TOOL_REPLACEMENTS.WebFetch.usage).toContain('precision_fetch');
+      expect(TOOL_REPLACEMENTS.WebFetch.capabilities).toContain('extraction');
+    });
   });
 
   describe('BLOCKED_NATIVE_TOOLS', () => {
@@ -86,10 +93,11 @@ describe('subagent-blockers', () => {
       expect(BLOCKED_NATIVE_TOOLS).toContain('Write');
       expect(BLOCKED_NATIVE_TOOLS).toContain('Glob');
       expect(BLOCKED_NATIVE_TOOLS).toContain('Grep');
+      expect(BLOCKED_NATIVE_TOOLS).toContain('WebFetch');
     });
 
-    it('should have exactly 5 blocked tools', () => {
-      expect(BLOCKED_NATIVE_TOOLS).toHaveLength(5);
+    it('should have exactly 6 blocked tools', () => {
+      expect(BLOCKED_NATIVE_TOOLS).toHaveLength(6);
     });
   });
 
@@ -139,6 +147,10 @@ describe('subagent-blockers', () => {
 
     it('should return true for Grep', () => {
       expect(isBlockedNativeTool('Grep')).toBe(true);
+    });
+
+    it('should return true for WebFetch', () => {
+      expect(isBlockedNativeTool('WebFetch')).toBe(true);
     });
 
     it('should return false for Bash', () => {
@@ -274,6 +286,25 @@ describe('subagent-blockers', () => {
       );
     });
 
+    it('should block WebFetch tool', () => {
+      const input: PreToolUseInput = {
+        session_id: 'test',
+        transcript_path: '/path',
+        cwd: '/test',
+        permission_mode: 'default',
+        hook_event_name: 'PreToolUse',
+        tool_name: 'WebFetch',
+        is_subagent: true,
+      };
+
+      const result = handleNativeToolBlocking(input);
+
+      expect(result).toBe(true);
+      expect(mockedBlockTool).toHaveBeenCalledWith(
+        expect.stringContaining('precision_fetch')
+      );
+    });
+
     it('should return false for non-blocked tool', () => {
       const input: PreToolUseInput = {
         session_id: 'test',
@@ -386,6 +417,7 @@ describe('subagent-blockers', () => {
       expect(reminder).toContain('precision_write');
       expect(reminder).toContain('precision_glob');
       expect(reminder).toContain('precision_grep');
+      expect(reminder).toContain('precision_fetch');
       expect(reminder).toContain('discover');
       expect(reminder).toContain('batch');
       expect(reminder).toContain('output.mode: "minimal"');

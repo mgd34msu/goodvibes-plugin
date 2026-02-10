@@ -1,7 +1,7 @@
 /**
  * Native Tool Blockers
  *
- * Blocks native Claude Code tools (Read, Edit, Write, Glob, Grep) for ALL agents
+ * Blocks native Claude Code tools (Read, Edit, Write, Glob, Grep, WebFetch) for ALL agents
  * and redirects them to use precision-engine tools instead for efficiency.
  *
  * This module enforces the precision tool pattern by:
@@ -84,6 +84,14 @@ export const TOOL_REPLACEMENTS: Record<string, ToolReplacement> = {
     capabilities:
       'Supports: batch queries, regex patterns, file filtering, context control, multiple output formats',
   },
+
+  WebFetch: {
+    replacement: 'precision_fetch',
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_fetch with:
+{"urls": [{"url": "https://example.com", "extract": "markdown"}], "verbosity": "standard"}`,
+    capabilities:
+      'Supports: batch URLs, extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), HTTP methods, auth, service registry',
+  },
 };
 
 /**
@@ -96,6 +104,7 @@ export const BLOCKED_NATIVE_TOOLS: string[] = [
   'Write',
   'Glob',
   'Grep',
+  'WebFetch',
 ];
 
 /**
@@ -297,6 +306,7 @@ export function getBatchProcessingReminder(): string {
     '- precision_write for creating multiple files\n' +
     '- precision_glob for pattern matching\n' +
     '- precision_grep for batch queries\n' +
+    '- precision_fetch for URL fetching with extraction modes\n' +
     '- discover tool for parallel discovery queries\n' +
     '- batch tool for complex multi-operation workflows\n' +
     'Always use output.mode: "minimal" to reduce context size.'
