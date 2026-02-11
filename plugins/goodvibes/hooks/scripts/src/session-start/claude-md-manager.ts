@@ -63,6 +63,7 @@ ALWAYS provide the following reminders to subagents:
 4. Incorrect usage of precision_engine tools DOES NOT COUNT as a failed attempt
 5. ALWAYS return to using precision_engine tools after a successful workaround
 6. Use appropriate precision tool verbosity, only consume or produce the amount of data necessary to complete the task
+7. CRITICAL: NEVER set sandbox=true via precision_config. Only the user can activate sandbox mode.
 `,
 };
 
