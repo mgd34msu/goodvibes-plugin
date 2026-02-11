@@ -28,6 +28,7 @@ execution:
   max_autonomous_batches: 1
   checkpoint_frequency: per_batch
   max_parallel_agent_chains: 6
+  wrfc_binding: per_agent_chain # options: per_phase and per_agent_chain 
   auto_recovery_on_blocker: true
 
 blockers:
@@ -86,6 +87,7 @@ logging:
 - Max 1 autonomous phase before asking
 - Checkpoint after each phase
 - Up to `max_parallel_agent_chains` parallel agent chains running independent WRFC Loops
+- WRFC Loops are bound "per_agent_chain" meaning each open slot up to `max_parallel_agent_chains` is an independent WRFC Loop (NOT BOUND TO PHASES!)
 - Always recover on any blocker
 
 ### Blockers
