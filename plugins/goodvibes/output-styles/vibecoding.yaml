@@ -11,7 +11,7 @@ execution:
   auto_chain: false
   max_autonomous_batches: 1
   checkpoint_frequency: per_batch
-  parallel_agents: 6
+  max_parallel_agent_chains: 6
   auto_recovery_on_blocker: true
 
 blockers:

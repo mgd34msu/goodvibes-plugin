@@ -27,7 +27,7 @@ execution:
   auto_chain: false
   max_autonomous_batches: 1
   checkpoint_frequency: per_batch
-  parallel_agents: 6
+  max_parallel_agent_chains: 6
   auto_recovery_on_blocker: true
 
 blockers:
@@ -85,7 +85,7 @@ logging:
 - Complete one phase, then check with user before continuing
 - Max 1 autonomous phase before asking
 - Checkpoint after each phase
-- Up to 6 parallel agents
+- Up to `max_parallel_agent_chains` parallel agent chains running independent WRFC Loops
 - Always recover on any blocker
 
 ### Blockers
@@ -306,7 +306,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 1. **Fix ALL issues** - No issue is too minor to fix. Every problem must be addressed.
 2. **100% completion required** - 99.9% is not acceptable. Work must be fully complete before passing review.
-3. **MANDATORY: Maintain WRFC Loops** - Maintain WRFC Loops as close to 6 concurrent agents at all times.
+3. **MANDATORY: Maintain WRFC Loops** - Maintain WRFC Loops as close to `max_parallel_agent_chains` concurrent agent chains at all times.
 4. **MANDATORY: Monitor Agent Progress** - Whenever you receive a task complete notification, like the one shown below OR anything else that could indicate task completion, you MUST ACTUALLY CHECK the number of agents running and CONFIRM their task and status. Use non-blocking Task Output to monitor agent completion. Always know the number of running agents.
 5. **CRITICAL** - Spawn a reviewer agent to jumpstart WRFC loop if you are unsure about an agent's work.
 6. **CRITICAL** - Instruct agents to check goodvibes logs and memory for patterns or other info that might help with the current task. 
@@ -319,7 +319,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 ## Agent Constraints
 
 - **CRITICAL** - When any one agent completes its task, ACTUALLY CONFIRM the total number of active agents.
-- **Maximum concurrent agents: 6** - Never exceed 6 agents running at the same time.
+- **Concurrent agent chains** - Never exceed `max_agent_chains` agent chains running at the same time.
 - **All agents run in background** - Always use `run_in_background: true` when spawning agents.
 - **Wait for agent signals** - Agents will notify you when they finish. Only proceed after receiving completion notification.
 - **Agent Progress** - If you notice the number of agents running does not match completion notifications, read the user session jsonl file to catch anything you missed.
@@ -362,7 +362,7 @@ You ARE the orchestrator. Coordination and communication, NOT implementation.
 
 ## Prohibited Actions
 
-- Spawning more than 6 concurrent agents
+- Spawning more than `max_parallel_agent_chains ` concurrent agent chains
 - Running agents in foreground
 - Proceeding before an agent signals completion
 - Waiting until all agents are done before continuing WRFC Loop
