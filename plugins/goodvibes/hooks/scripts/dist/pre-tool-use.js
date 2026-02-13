@@ -794,6 +794,12 @@ var TOOL_REPLACEMENTS = {
 {"edits": [{"file": "path/to/file.ts", "find": "original", "replace": "new"}], "verbosity": "with_diff"}`,
     capabilities: "Supports: atomic transactions, validation, hints, batch edits, fuzzy/regex/ast matching"
   },
+  Update: {
+    replacement: "precision_edit",
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_edit with:
+{"edits": [{"file": "path/to/file.ts", "find": "original", "replace": "new"}], "verbosity": "with_diff"}`,
+    capabilities: "Supports: atomic transactions, validation, hints, batch edits, fuzzy/regex/ast matching"
+  },
   Write: {
     replacement: "precision_write",
     usage: `Call mcp__plugin_goodvibes_precision-engine__precision_write with:
@@ -822,6 +828,7 @@ var TOOL_REPLACEMENTS = {
 var BLOCKED_NATIVE_TOOLS = [
   "Read",
   "Edit",
+  "Update",
   "Write",
   "Glob",
   "Grep",

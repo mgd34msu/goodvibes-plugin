@@ -61,6 +61,13 @@ export const TOOL_REPLACEMENTS: Record<string, ToolReplacement> = {
     capabilities: 'Supports: atomic transactions, validation, hints, batch edits, fuzzy/regex/ast matching',
   },
 
+  Update: {
+    replacement: 'precision_edit',
+    usage: `Call mcp__plugin_goodvibes_precision-engine__precision_edit with:
+{"edits": [{"file": "path/to/file.ts", "find": "original", "replace": "new"}], "verbosity": "with_diff"}`,
+    capabilities: 'Supports: atomic transactions, validation, hints, batch edits, fuzzy/regex/ast matching',
+  },
+
   Write: {
     replacement: 'precision_write',
     usage: `Call mcp__plugin_goodvibes_precision-engine__precision_write with:
@@ -101,6 +108,7 @@ export const TOOL_REPLACEMENTS: Record<string, ToolReplacement> = {
 export const BLOCKED_NATIVE_TOOLS: string[] = [
   'Read',
   'Edit',
+  'Update',
   'Write',
   'Glob',
   'Grep',
