@@ -165,9 +165,25 @@ precision_exec:
     - { cmd: "npm run build", expect: { exit_code: 0 } }
 ```
 
-## Discovery -> Batch Workflow (DPB Loop)
+## Discover-Plan-Batch Loop [DPB Loop]
 
-**CRITICAL: Always discover before batching.**
+**MANDATORY: Follow the strict DPB Loop for all work.**
+
+Every task cycle follows this pattern with a target of 3 tool calls:
+
+| Phase | Tool Calls | What Happens |
+|-------|-----------|-------------|
+| **D** (Discover) | 1 | Single `discover` call with ALL queries batched (grep, glob, symbols, structural) |
+| **P** (Plan Input) | 0 | Cognitively plan what to read — ZERO tool calls |
+| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob`, or `batch_engine batch` wrapping multiple tool types) |
+| **P** (Plan Output) | 0 | Cognitively plan what to write — ZERO tool calls |
+| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit`, or `batch_engine batch` wrapping multiple tool types) |
+
+**Rules:**
+- Target: 3 tool calls per cycle. 2 is acceptable when no output is needed.
+- `batch_engine batch` wrapping multiple precision calls counts as 1 call (preferred for mixed tool types)
+- Sequential calls are acceptable but not preferred — always prefer true batching
+- Repeat D-P-B-P-B cycles until task is complete
 
 The `discover` tool runs multiple queries in parallel to gather context before building a batch. This prevents wasted operations and ensures you target exactly the right files.
 
@@ -1591,7 +1607,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DPB Loop (Discovery -> Batch -> Execute) defined in this document
+- **MUST** follow the DPB Loop (Discover-Plan-Batch Loop)
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

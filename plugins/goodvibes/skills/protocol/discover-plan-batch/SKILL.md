@@ -21,7 +21,7 @@ The DPB loop enforces a strict **3-call-per-cycle** workflow that eliminates tok
 1. D — DISCOVER (1 tool call)
    - Single `discover` call with ALL queries batched inside
    - Multiple query types (glob, grep, symbols, structural) in one call
-   - Also include .goodvibes/memory reads in the discover batch
+   - Can search file content via grep/symbols queries
    - Output: files_only or locations (minimal verbosity)
 
 2. P — PLAN (0 tool calls, cognitive only)
@@ -66,6 +66,10 @@ The DPB loop enforces a strict **3-call-per-cycle** workflow that eliminates tok
 | **TOTAL** | **3** | | |
 
 Validation (`precision_exec`) is OPTIONAL and happens AFTER the cycle completes, not during.
+
+**Note on batch_engine:** A `batch_engine batch` call wrapping multiple precision_* tools counts as 1 call because overhead is produced once. This is the PREFERRED pattern when you need different tool types in the same phase.
+
+**Note on sequential calls:** Sequential calls are acceptable but not preferred. Always prefer true batching via batched precision calls or batch_engine batch.
 
 ## KEY RULES (NON-NEGOTIABLE)
 
@@ -116,9 +120,9 @@ discover:
 - `files_only` - File paths only (building target lists) ← **USE THIS**
 - `locations` - File paths + line numbers (when you need exact locations)
 
-### Include Memory Reads in Discovery
+### Reading Full File Contents
 
-While `.goodvibes/memory/*.json` files should ideally be read via `discover` with file-content queries, the current `discover` tool doesn't support file content reads. Use `precision_read` for memory files, but batch them with your Batch Input phase (step 3), not as separate calls.
+The `discover` tool excels at searching file content via grep/glob/symbols/structural queries. For reading full file contents (like `.goodvibes/memory/*.json` files), use `precision_read` in the Batch Input phase (step 3), batched with other file reads.
 
 ### [BAD] vs [GOOD] Discovery Patterns
 
@@ -651,7 +655,7 @@ precision_read:
   verbosity: minimal
 ```
 
-**Total calls in Cycle 2: 3** (or 2 if skipping step 5)
+**Total calls in Cycle 2: Target 3 calls per cycle. 2 is acceptable when no output is needed.**
 
 ### Final Validation
 

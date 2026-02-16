@@ -143,7 +143,7 @@ precision_grep:
   output: { format: context, context_before: 3, context_after: 3 }
 ```
 
-## Discovery -> Batch Workflow
+## Discover-Plan-Batch Workflow
 
 **CRITICAL: Always discover before batching.**
 
@@ -708,23 +708,25 @@ Use precision_glob to find test files, compare to source files
 
 ## Workflows
 
-### Discover Batch Execute Loop [DPB Loop]
+### Discover-Plan-Batch Loop [DPB Loop]
 
-> **MANDATORY**: Follow this loop for all work as a subagent.
+**MANDATORY: Follow the strict DPB Loop for all work.**
 
-1. **Plan your work: discover and batch**
-   - Use `discover` to run multiple grep/glob/symbol queries in parallel, finding all files and patterns you will need upfront
-   - Use `batch` to execute multiple precision_engine operations (reads, edits, writes) in a single call
+Every task cycle follows this pattern with a target of 3 tool calls:
 
-2. **Run the plan** - Complete operations based on your initial plan
-   - batch_engine can be used for concurrent execution of independent operations
-   - precision_engine tools inside batch_engine saves significant tokens
+| Phase | Tool Calls | What Happens |
+|-------|-----------|-------------|
+| **D** (Discover) | 1 | Single `discover` call with ALL queries batched (grep, glob, symbols, structural) |
+| **P** (Plan Input) | 0 | Cognitively plan what to read — ZERO tool calls |
+| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob`, or `batch_engine batch` wrapping multiple tool types) |
+| **P** (Plan Output) | 0 | Cognitively plan what to write — ZERO tool calls |
+| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit`, or `batch_engine batch` wrapping multiple tool types) |
 
-3. **Repeat** steps 1 and 2 until you finish your assigned task
-
-#### DPB Loop Caveats
-- One-off tool executions are OK but minimize them - batching saves tokens!
-- If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
+**Rules:**
+- Target: 3 tool calls per cycle. 2 is acceptable when no output is needed.
+- `batch_engine batch` wrapping multiple precision calls counts as 1 call (preferred for mixed tool types)
+- Sequential calls are acceptable but not preferred — always prefer true batching
+- Repeat D-P-B-P-B cycles until task is complete
 
 ---
 
@@ -879,7 +881,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DPB Loop (Discover Batch Execute Loop) defined in the Workflows section
+- **MUST** follow the DPB Loop (Discover-Plan-Batch Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible
