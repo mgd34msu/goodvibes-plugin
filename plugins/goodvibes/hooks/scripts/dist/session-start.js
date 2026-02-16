@@ -5050,6 +5050,7 @@ var INDEX_EXCLUSIONS = [
   ".venv",
   "target"
 ];
+var INDEX_EXCLUSIONS_SET = new Set(INDEX_EXCLUSIONS);
 var EXCLUDED_EXTENSIONS = [
   ".min.js",
   ".min.css",
@@ -5058,14 +5059,13 @@ var EXCLUDED_EXTENSIONS = [
 ];
 var EXCLUDED_FILENAMES = [
   "package-lock.json",
-  "yarn.lock",
   "pnpm-lock.yaml",
   "bun.lockb"
 ];
 function shouldExclude(name, relativePath) {
   const segments = relativePath.split(path16.sep);
   for (const segment of segments) {
-    if (INDEX_EXCLUSIONS.includes(segment)) {
+    if (INDEX_EXCLUSIONS_SET.has(segment)) {
       return true;
     }
   }
@@ -5112,7 +5112,7 @@ function categorizeFileType(filePath) {
     case ".yml":
       return "yaml";
     default:
-      return "other";
+      return void 0;
   }
 }
 function countUniqueDirs(entries) {
@@ -5135,6 +5135,7 @@ async function buildProjectIndex(projectDir) {
       recursive: true,
       withFileTypes: true
     });
+    const pendingFiles = [];
     for (const entry of dirEntries) {
       if (Date.now() - startMs > 3e4) {
         debug("Project indexing timeout - writing partial index");
@@ -5144,22 +5145,33 @@ async function buildProjectIndex(projectDir) {
       if (!entry.isFile()) {
         continue;
       }
-      const relativePath = entry.parentPath ? path16.relative(projectDir, path16.join(entry.parentPath, entry.name)) : entry.name;
+      const parent = entry.parentPath ?? entry.path;
+      const relativePath = parent ? path16.relative(projectDir, path16.join(parent, entry.name)) : entry.name;
       if (shouldExclude(entry.name, relativePath)) {
         continue;
       }
-      try {
-        const fullPath = path16.join(projectDir, relativePath);
-        const stats = await stat(fullPath);
-        entries.push({
-          p: relativePath,
-          s: stats.size,
-          m: Math.floor(stats.mtimeMs),
-          t: categorizeFileType(relativePath)
-        });
-      } catch (statError) {
-        debug("Failed to stat file", { relativePath, error: statError });
-        continue;
+      const fullPath = path16.join(projectDir, relativePath);
+      pendingFiles.push({ name: entry.name, relativePath, fullPath });
+    }
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
+      const batch = pendingFiles.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(
+          (f) => stat(f.fullPath).then((s) => ({ ...f, size: s.size, mtimeMs: s.mtimeMs })).catch(() => null)
+        )
+      );
+      for (const result of results) {
+        if (result) {
+          const type2 = categorizeFileType(result.relativePath);
+          const entry = {
+            p: result.relativePath,
+            s: result.size,
+            m: Math.floor(result.mtimeMs)
+          };
+          if (type2) entry.t = type2;
+          entries.push(entry);
+        }
       }
     }
     entries.sort((a, b) => a.p.localeCompare(b.p));
@@ -5181,7 +5193,7 @@ async function buildProjectIndex(projectDir) {
     const indexPath = path16.join(indexDir, "project-index.json");
     const tempPath = indexPath + ".tmp";
     await mkdir6(indexDir, { recursive: true });
-    await writeFile7(tempPath, JSON.stringify(index), "utf-8");
+    await writeFile7(tempPath, JSON.stringify(index) + "\n", "utf-8");
     await rename2(tempPath, indexPath);
     debug("Project index created", {
       files: entries.length,
@@ -5191,10 +5203,6 @@ async function buildProjectIndex(projectDir) {
       partial: isPartial
     });
   } catch (error) {
-    logError(
-      "Project indexer failed",
-      error instanceof Error ? error : new Error(String(error))
-    );
     throw error;
   }
 }
@@ -5306,7 +5314,7 @@ async function runSessionStartHook() {
       startedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     await savePluginState(projectDir, state);
-    await buildProjectIndex(projectDir).catch(
+    buildProjectIndex(projectDir).catch(
       (err) => logError("Project indexer failed", err instanceof Error ? err : new Error(String(err)))
     );
     await ensureClaudeMdImports(projectDir);
