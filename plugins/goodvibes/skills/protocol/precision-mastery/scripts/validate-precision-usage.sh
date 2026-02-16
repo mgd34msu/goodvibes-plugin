@@ -26,7 +26,7 @@ echo "[1/4] Checking for native tool usage..."
 NATIVE_TOOLS=("\"name\":\"Read\"" "\"name\":\"Edit\"" "\"name\":\"Write\"" "\"name\":\"Glob\"" "\"name\":\"Grep\"" "\"name\":\"WebFetch\"")
 
 for tool in "${NATIVE_TOOLS[@]}"; do
-  if grep -q "$tool" "$TRANSCRIPT_FILE"; then
+  if grep -q "$tool" -- "$TRANSCRIPT_FILE"; then
     tool_name=$(printf '%s\n' "$tool" | sed 's/.*:\"\(.*\)\".*/\1/')
     VIOLATIONS+=("Native tool call detected: $tool_name (should use precision equivalent)")
   fi
@@ -34,24 +34,26 @@ done
 
 # Check 2: Verbosity not set to "verbose" for writes/edits
 echo "[2/4] Checking for verbose verbosity on write/edit operations..."
-if grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' "$TRANSCRIPT_FILE" | grep -q '"verbosity":"verbose"'; then
+if grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' -- "$TRANSCRIPT_FILE" | grep -q '"verbosity":"verbose"'; then
   VIOLATIONS+=("Verbose verbosity detected on write/edit operation (should use count_only or minimal)")
 fi
 
 # Check 3: Discover tool used before implementation (DPB compliance)
 echo "[3/4] Checking for discover usage before implementation..."
 # Look for precision_write or precision_edit calls
-HAS_IMPLEMENTATION=$(grep -c -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' "$TRANSCRIPT_FILE" || true)
+HAS_IMPLEMENTATION=$(grep -c -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' -- "$TRANSCRIPT_FILE" || true)
 
 if [[ $HAS_IMPLEMENTATION -gt 0 ]]; then
   # Check if discover was called before first write/edit
-  FIRST_WRITE_LINE=$(grep -n -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' "$TRANSCRIPT_FILE" | head -1 | cut -d: -f1)
+  FIRST_WRITE_LINE=$(grep -n -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' -- "$TRANSCRIPT_FILE" | head -1 | cut -d: -f1)
   
-  # Extract everything before first write/edit
-  BEFORE_WRITE=$(head -n "$FIRST_WRITE_LINE" "$TRANSCRIPT_FILE")
-  
-  if ! echo "$BEFORE_WRITE" | grep -q '"name":".*discover"'; then
-    VIOLATIONS+=("No discover call before implementation (DPB violation: should discover before implementing)")
+  if [[ -n "$FIRST_WRITE_LINE" ]]; then
+    # Extract everything before first write/edit
+    BEFORE_WRITE=$(head -n "$FIRST_WRITE_LINE" "$TRANSCRIPT_FILE")
+    
+    if ! echo "$BEFORE_WRITE" | grep -q '"name":".*discover"'; then
+      VIOLATIONS+=("No discover call before implementation (DPB violation: should discover before implementing)")
+    fi
   fi
 fi
 
@@ -61,7 +63,7 @@ echo "[4/4] Checking for batching opportunities..."
 # This is a simplified check - in real usage, would need more sophisticated analysis
 
 # Check for multiple sequential precision_read calls with single file
-SEQUENTIAL_READS=$(grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_read"' "$TRANSCRIPT_FILE" | 
+SEQUENTIAL_READS=$(grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_read"' -- "$TRANSCRIPT_FILE" | 
   grep -c '"files":\[\{[^\[\]]*\}\]' || true)
 
 if [[ $SEQUENTIAL_READS -ge 3 ]]; then
@@ -69,7 +71,7 @@ if [[ $SEQUENTIAL_READS -ge 3 ]]; then
 fi
 
 # Check for multiple sequential precision_write calls with single file
-SEQUENTIAL_WRITES=$(grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_write"' "$TRANSCRIPT_FILE" | 
+SEQUENTIAL_WRITES=$(grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_write"' -- "$TRANSCRIPT_FILE" | 
   grep -c '"files":\[\{[^\[\]]*\}\]' || true)
 
 if [[ $SEQUENTIAL_WRITES -ge 3 ]]; then
