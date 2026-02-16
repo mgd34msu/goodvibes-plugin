@@ -13,12 +13,13 @@ The Discover-Plan-Batch (DPB) loop is the foundational execution pattern for all
 
 ## Overview
 
-The DPB loop consists of three phases:
+The DPB loop consists of three phases, with a re-entry condition:
 
 1. **DISCOVER** - Understand the current state before making changes
 2. **PLAN** - Structure your work for maximum efficiency
 3. **BATCH** - Execute operations in batched groups
-4. **LOOP** - Return to discovery when assumptions change
+
+After execution, **LOOP** back to DISCOVER when assumptions change.
 
 ## Phase 1: DISCOVER
 
@@ -556,6 +557,23 @@ precision_grep:
     mode: files_only
 ```
 
+**Batch edits:**
+```yaml
+precision_edit:
+  edits:
+    - path: "src/config/routes.ts"
+      find: "const routes = [];"
+      replace: "const routes = ['/auth'];"
+    - path: "src/app/layout.tsx"
+      find: "<App />"
+      replace: "<AuthProvider><App /></AuthProvider>"
+    - path: "src/lib/api.ts"
+      find: "export const api = createClient();"
+      replace: "export const api = createClient({ auth: true });"
+  output:
+    format: minimal
+```
+
 #### 3. Sequential precision_engine (Acceptable When Necessary)
 
 Sometimes operations must be sequential due to dependencies:
@@ -984,7 +1002,7 @@ The DPB loop is not optional — it's the foundation of efficient agent executio
 1. **DISCOVER** - Understand before acting
 2. **PLAN** - Structure before executing
 3. **BATCH** - Group operations for efficiency
-4. **LOOP** - Adapt when assumptions change
+- **LOOP** - Adapt when assumptions change
 
 Following DPB consistently results in:
 - 50-90% token savings vs. ad-hoc execution
