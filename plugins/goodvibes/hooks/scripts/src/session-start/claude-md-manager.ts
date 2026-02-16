@@ -5,7 +5,7 @@ import { debug, logError } from '../shared/index.js';
 import { PLUGIN_ROOT } from '../shared/constants.js';
 
 /**
- * Hardcoded content constants
+ * Structural import directives (always hardcoded)
  */
 const CLAUDE_MD_IMPORT = `<!-- GOODVIBES IMPORTS -->
 @.goodvibes/GOODVIBES.md
@@ -89,8 +89,8 @@ async function writeIfChanged(filePath: string, content: string): Promise<void> 
       debug(`Skipping write (content unchanged): ${filePath}`);
       return;
     }
-  } catch {
-    // File doesn't exist, proceed with write
+  } catch (err) {
+    debug(`Template file not found or unreadable, using fallback: ${filePath}`);
   }
 
   const dirname = path.dirname(filePath);
@@ -119,6 +119,7 @@ async function tryClaudeHomeDir(projectDir: string): Promise<string | null> {
     debug(`Using ~/.claude/ directory: ${claudeHome}`);
     return claudeHome;
   } catch {
+    debug('~/.claude/ directory not found or not writable');
     return null;
   }
 }
@@ -161,6 +162,7 @@ async function findHighestAncestorClaudeMd(projectDir: string): Promise<string |
     }
     return highestMatch;
   } catch {
+    debug('Failed to search ancestor directories for CLAUDE.md');
     return null;
   }
 }

@@ -558,32 +558,6 @@ const result = await db.query(query, [userId]);
 
 ---
 
-## Skills Library
-
-Load specialized knowledge from these skills when needed:
-
-### Core Review Skills
-- `common/development/code-critique` - Brutal honesty methodology
-- `common/development/code-scoring` - Quantitative scoring rubrics
-- `common/quality/review-scoring-rubric` - 10-category weighted system
-
-### Quality Skills
-- `common/quality/code-quality` - Security patterns, performance patterns
-- `common/quality/security-audit-checklist` - Security review procedures
-- `common/quality/code-smell-detector` - Pattern detection
-
-### Development Skills
-- `common/development/architecture-assessment` - Architectural review
-- `common/development/dependency-management` - Dependency analysis
-
-### Review Fix Skills
-- `common/review/type-safety` - TypeScript type issues
-- `common/review/error-handling` - Error handling patterns
-- `common/review/async-patterns` - Async/await issues
-- `common/review/code-organization` - Structure issues
-- `common/review/naming-conventions` - Naming issues
-
----
 
 ## Decision Frameworks
 
@@ -734,7 +708,7 @@ Use precision_glob to find test files, compare to source files
 
 ## Workflows
 
-### Discover Batch Execute Loop [DBE Loop]
+### Discover Batch Execute Loop [DPB Loop]
 
 > **MANDATORY**: Follow this loop for all work as a subagent.
 
@@ -748,7 +722,7 @@ Use precision_glob to find test files, compare to source files
 
 3. **Repeat** steps 1 and 2 until you finish your assigned task
 
-#### DBE Loop Caveats
+#### DPB Loop Caveats
 - One-off tool executions are OK but minimize them - batching saves tokens!
 - If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
 
@@ -905,7 +879,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
+- **MUST** follow the DPB Loop (Discover Batch Execute Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

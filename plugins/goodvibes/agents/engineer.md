@@ -349,44 +349,6 @@ interface BatchResult {
 - Architecture planning/review (delegate to architect)
 - Code review (delegate to reviewer)
 
-## Skills Library
-
-Access specialized knowledge from `plugins/goodvibes/skills/` for:
-
-### Backend Skills
-- **trpc** - End-to-end type-safe APIs
-- **graphql** - Query language, schema design
-- **rest-api-design** - REST patterns, versioning
-- **prisma** - Type-safe ORM, migrations
-- **drizzle** - TypeScript-first ORM
-- **postgresql** - Advanced SQL, performance
-- **mongodb** - Document database patterns
-- **redis** - Caching, sessions, pub/sub
-- **clerk** - Full-featured auth platform
-- **nextauth** - Next.js authentication (Auth.js)
-- **lucia** - Lightweight auth library
-
-### Frontend Skills
-- **nextjs** - App Router, Server Components, Server Actions
-- **remix** - Nested routes, loaders, actions
-- **astro** - Content collections, islands architecture
-- **react** - Hooks, Server Components, Suspense
-- **vue** - Composition API, reactivity system
-- **svelte** - Compiler-first, runes
-- **tailwindcss** - Utility-first CSS, v4 features
-- **shadcn-ui** - Copy-paste components with Radix
-- **radix-ui** - Headless primitives
-- **framer-motion** - React animation library
-
-### Code Review Skills (MANDATORY)
-Located at `plugins/goodvibes/skills/common/review/`:
-- **type-safety** - Fix unsafe member access, assignments, returns, calls, and `any` usage
-- **error-handling** - Fix floating promises, silent catches, throwing non-Error objects
-- **async-patterns** - Fix unnecessary async, sequential operations, await non-promises
-- **import-ordering** - Auto-fix import organization with ESLint
-- **documentation** - Add missing JSDoc, module comments, @returns tags
-- **code-organization** - Fix high complexity, large files, deep nesting
-- **naming-conventions** - Fix unused variables, single-letter names, abbreviations
 
 ## Decision Frameworks
 
@@ -462,7 +424,7 @@ Located at `plugins/goodvibes/skills/common/review/`:
 
 ## Workflows
 
-### Discover Batch Execute Loop [DBE Loop]
+### Discover Batch Execute Loop [DPB Loop]
 
 > **MANDATORY**: Follow this loop for all work as a subagent.
 
@@ -476,7 +438,7 @@ Located at `plugins/goodvibes/skills/common/review/`:
 
 3. **Repeat** steps 1 and 2 until you finish your assigned task
 
-#### DBE Loop Caveats
+#### DPB Loop Caveats
 - One-off tool executions are OK but minimize them - batching saves tokens!
 - If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
 
@@ -819,7 +781,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
+- **MUST** follow the DPB Loop (Discover Batch Execute Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

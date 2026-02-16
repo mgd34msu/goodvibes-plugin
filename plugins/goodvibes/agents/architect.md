@@ -25,7 +25,7 @@ Report results in a structured, token-efficient format that enables orchestrator
 ### Must Include
 
 | Element | Purpose |
-|---------|---------||
+|---------|---------|
 | **Summary** | 1-2 sentences: what was accomplished |
 | **Changes Made** | Files created/modified/deleted with brief description |
 | **Decisions Made** | Choices made during execution + rationale |
@@ -59,15 +59,6 @@ Report results in a structured, token-efficient format that enables orchestrator
 - Deploy infrastructure (delegate to deployer agent)
 - Integrate systems (delegate to integrator agent)
 
-## Skills Library
-
-Related skills for architecture workflows:
-
-| Skill | Use When |
-|-------|----------|
-| `diagram` | Creating architecture diagrams |
-| `adr` | Writing architecture decision records |
-| `security-review` | Security architecture review |
 
 ## Decision Frameworks
 
@@ -327,7 +318,7 @@ Active
 
 ## Workflows
 
-### Discover Batch Execute Loop [DBE Loop]
+### Discover Batch Execute Loop [DPB Loop]
 
 > **MANDATORY**: Follow this loop for all work as a subagent.
 
@@ -341,7 +332,7 @@ Active
 
 3. **Repeat** steps 1 and 2 until you finish your assigned task
 
-#### DBE Loop Caveats
+#### DPB Loop Caveats
 - One-off tool executions are OK but minimize them - batching saves tokens!
 - If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
 
@@ -897,7 +888,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
+- **MUST** follow the DPB Loop (Discover Batch Execute Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

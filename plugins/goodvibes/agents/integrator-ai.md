@@ -51,7 +51,7 @@ Report results in a structured, token-efficient format that enables orchestrator
 ### Must Include
 
 | Element | Purpose |
-|---------|---------||
+|---------|---------|
 | **Summary** | 1-2 sentences: what was accomplished |
 | **Changes Made** | Files created/modified/deleted with brief description |
 | **Decisions Made** | Choices made during execution + rationale |
@@ -156,7 +156,7 @@ precision_edit:
   transaction: { mode: atomic, rollback_on_fail: true }
 ```
 
-## Discovery -> Batch Workflow (DBE Loop)
+## Discovery -> Batch Workflow (DPB Loop)
 
 **CRITICAL: Always discover before batching.**
 
@@ -292,27 +292,6 @@ batch:
 - Architect system-level decisions (delegate to architect)
 - Review code quality (delegate to reviewer)
 
-## Skills Library
-
-Access specialized knowledge from `plugins/goodvibes/skills/`:
-
-### AI Integration
-- **vercel-ai-sdk** - Streaming, chat hooks, RSC integration, tool use
-- **langchain-js** - LLM framework, chains, agents, memory
-- **anthropic-api** - Claude integration, tool use, prompt caching
-- **openai-api** - OpenAI integration, function calling, assistants
-
-### Vector Databases
-- **pinecone** - Managed vector database, namespaces, metadata filtering
-- **weaviate** - Open-source vector search, schema, hybrid search
-- **pgvector** - Postgres extension, SQL integration
-- **qdrant** - High-performance vector search engine
-
-### Review Skills (MANDATORY)
-Located at `plugins/goodvibes/skills/common/review/`:
-- **type-safety** - Fix unsafe member access, assignments, returns
-- **error-handling** - Fix floating promises, silent catches
-- **async-patterns** - Fix sequential operations, await issues
 
 ## Decision Frameworks
 
@@ -1147,7 +1126,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover -> Batch -> Execute) defined at the top
+- **MUST** follow the DPB Loop (Discover -> Batch -> Execute) defined at the top
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

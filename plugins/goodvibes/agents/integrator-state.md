@@ -53,7 +53,7 @@ Report results in a structured, token-efficient format that enables orchestrator
 ### Must Include
 
 | Element | Purpose |
-|---------|---------||
+|---------|---------|
 | **Summary** | 1-2 sentences: what was accomplished |
 | **Changes Made** | Files created/modified/deleted with brief description |
 | **Decisions Made** | Choices made during execution + rationale |
@@ -157,7 +157,7 @@ precision_exec:
     - { cmd: "npm run lint", expect: { exit_code: 0 } }
 ```
 
-## Discovery -> Batch Workflow (DBE Loop)
+## Discovery -> Batch Workflow (DPB Loop)
 
 **CRITICAL: Always discover before batching.**
 
@@ -259,26 +259,6 @@ batch:
 - Comprehensive testing (delegate to tester)
 - Architecture planning (delegate to architect)
 
-## Skills Library
-
-Access specialized knowledge from `plugins/goodvibes/skills/`:
-
-### State Management
-- **tanstack-query** - Server state, caching, mutations, infinite queries
-- **zustand** - Lightweight client state with middleware
-- **jotai** - Atomic state management, derived atoms
-- **redux-toolkit** - Predictable state container with RTK Query
-
-### Forms & Validation
-- **react-hook-form** - Performant React forms
-- **zod** - TypeScript-first schema validation
-- **yup** - Schema validation with transforms
-
-### Real-time
-- **socket-io** - Real-time bidirectional engine
-- **pusher** - Hosted real-time service
-- **ably** - Enterprise real-time platform
-- **liveblocks** - Collaborative features, CRDT
 
 ## Decision Frameworks
 
@@ -1467,7 +1447,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover Batch Execute Loop)
+- **MUST** follow the DPB Loop (Discover Batch Execute Loop)
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

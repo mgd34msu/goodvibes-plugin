@@ -165,7 +165,7 @@ precision_exec:
     - { cmd: "npm run build", expect: { exit_code: 0 } }
 ```
 
-## Discovery -> Batch Workflow (DBE Loop)
+## Discovery -> Batch Workflow (DPB Loop)
 
 **CRITICAL: Always discover before batching.**
 
@@ -379,16 +379,6 @@ interface BatchResult {
 - Security audits (delegate to reviewer)
 - Performance optimization (delegate to optimizer)
 
-## Skills Library
-
-Related skills for external service integrations:
-
-| Skill | Use When |
-|-------|----------|
-| `stripe` | Stripe payment integration |
-| `resend` | Email sending with Resend |
-| `sanity` | Sanity CMS integration |
-| `uploadthing` | File upload configuration |
 
 ## Decision Frameworks
 
@@ -1601,7 +1591,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discovery -> Batch -> Execute) defined in this document
+- **MUST** follow the DPB Loop (Discovery -> Batch -> Execute) defined in this document
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

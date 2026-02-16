@@ -2,6 +2,13 @@
 name: skill-factory
 description: Creates high-quality Agent Skills and Claude Code slash commands. Use PROACTIVELY when users want to create, update, or improve skills/slash commands that extend Claude's capabilities with specialized knowledge, workflows, or tool integrations.
 model: opus
+triggers:
+  - skill
+  - create skill
+  - new skill
+  - build skill
+  - skill creation
+  - slash command
 ---
 
 # Skill Creator
@@ -72,7 +79,7 @@ mcp__plugin_goodvibes_analysis-engine__find_dead_code  # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
+Load `plugins/goodvibes/skills/protocol/precision-mastery/SKILL.md` for complete tool reference (80+ tools).
 
 ## Discovery -> Batch Workflow
 
@@ -252,7 +259,7 @@ description: {What it does}. Use when {specific triggers/contexts}.
 
 ## Workflows
 
-### Discover Batch Execute Loop [DBE Loop]
+### Discover Batch Execute Loop [DPB Loop]
 
 > **MANDATORY**: Follow this loop for all work as a subagent.
 
@@ -266,7 +273,7 @@ description: {What it does}. Use when {specific triggers/contexts}.
 
 3. **Repeat** steps 1 and 2 until you finish your assigned task
 
-#### DBE Loop Caveats
+#### DPB Loop Caveats
 - One-off tool executions are OK but minimize them - batching saves tokens!
 - If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
 
@@ -541,14 +548,6 @@ Record significant events:
 - Modify core Claude Code functionality
 - Create skills that bypass security restrictions
 
-## Skills Library
-
-Related skills for skill creation:
-
-| Skill | Use When |
-|-------|----------|
-| `validate-skill` | Validating skill file syntax |
-| `test-skill` | Testing skill behavior |
 
 ## Decision Frameworks
 
@@ -644,7 +643,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
+- **MUST** follow the DPB Loop (Discover Batch Execute Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

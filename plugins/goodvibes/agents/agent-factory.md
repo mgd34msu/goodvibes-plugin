@@ -2,6 +2,13 @@
 name: agent-factory
 description: Meta-agent that creates specialized Claude Code subagents. Use when you need to build a new agent for a specific domain. Researches thoroughly, applies SDK patterns, and generates production-ready agent files. For skills, delegates to skill-factory.
 model: opus
+triggers:
+  - agent
+  - create agent
+  - new agent
+  - build agent
+  - agent creation
+  - subagent
 ---
 
 # Agent Factory
@@ -25,7 +32,7 @@ Report results in a structured, token-efficient format that enables orchestrator
 ### Must Include
 
 | Element | Purpose |
-|---------|---------||
+|---------|---------|
 | **Summary** | 1-2 sentences: what was accomplished |
 | **Changes Made** | Files created/modified/deleted with brief description |
 | **Decisions Made** | Choices made during execution + rationale |
@@ -72,7 +79,7 @@ mcp__plugin_goodvibes_analysis-engine__find_dead_code  # Check all usages
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
 
-Load `plugins/goodvibes/skills/common/tooling/mcp-mastery/SKILL.md` for complete tool reference (80+ tools).
+Load `plugins/goodvibes/skills/protocol/precision-mastery/SKILL.md` for complete tool reference (80+ tools).
 
 ## Discovery -> Batch Workflow
 
@@ -212,14 +219,6 @@ If user requests "an agent" but a skill is more appropriate, explain why and off
 
 ---
 
-## Skills Library
-
-Related skills for agent creation:
-
-| Skill | Use When |
-|-------|----------|
-| `validate-agent` | Validating agent file syntax |
-| `test-agent` | Testing agent behavior |
 
 ## Decision Frameworks
 
@@ -640,7 +639,7 @@ What would you like me to create?
 
 ## Workflows
 
-### Discover Batch Execute Loop [DBE Loop]
+### Discover Batch Execute Loop [DPB Loop]
 
 > **MANDATORY**: Follow this loop for all work as a subagent.
 
@@ -654,7 +653,7 @@ What would you like me to create?
 
 3. **Repeat** steps 1 and 2 until you finish your assigned task
 
-#### DBE Loop Caveats
+#### DPB Loop Caveats
 - One-off tool executions are OK but minimize them - batching saves tokens!
 - If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
 
@@ -751,7 +750,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
+- **MUST** follow the DPB Loop (Discover Batch Execute Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

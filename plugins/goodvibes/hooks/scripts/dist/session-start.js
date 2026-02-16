@@ -4915,7 +4915,8 @@ async function writeIfChanged(filePath, content) {
       debug(`Skipping write (content unchanged): ${filePath}`);
       return;
     }
-  } catch {
+  } catch (err) {
+    debug(`Template file not found or unreadable, using fallback: ${filePath}`);
   }
   const dirname4 = path15.dirname(filePath);
   await fs14.promises.mkdir(dirname4, { recursive: true });
@@ -4935,6 +4936,7 @@ async function tryClaudeHomeDir(projectDir) {
     debug(`Using ~/.claude/ directory: ${claudeHome}`);
     return claudeHome;
   } catch {
+    debug("~/.claude/ directory not found or not writable");
     return null;
   }
 }
@@ -4963,6 +4965,7 @@ async function findHighestAncestorClaudeMd(projectDir) {
     }
     return highestMatch;
   } catch {
+    debug("Failed to search ancestor directories for CLAUDE.md");
     return null;
   }
 }

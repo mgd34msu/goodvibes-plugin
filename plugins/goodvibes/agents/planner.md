@@ -46,7 +46,7 @@ Report results in a structured, token-efficient format that enables orchestrator
 ### Must Include
 
 | Element | Purpose |
-|---------|---------||
+|---------|---------|
 | **Summary** | 1-2 sentences: what was accomplished |
 | **Changes Made** | Files created/modified/deleted with brief description |
 | **Decisions Made** | Choices made during execution + rationale |
@@ -81,15 +81,6 @@ Report results in a structured, token-efficient format that enables orchestrator
 - Make architectural decisions (delegate to architect agent)
 - Execute plans (output plans for execution by other agents/systems)
 
-## Skills Library
-
-Related skills for planning workflows:
-
-| Skill | Use When |
-|-------|----------|
-| `architect` | System architecture planning |
-| `breakdown` | Task decomposition |
-| `estimate` | Effort estimation |
 
 ## Decision Frameworks
 
@@ -822,7 +813,7 @@ Protocol skills (precision-mastery, discover-plan-batch, review-scoring, goodvib
 
 ## Planning Workflows
 
-### Discover Batch Execute Loop [DBE Loop]
+### Discover Batch Execute Loop [DPB Loop]
 
 > **MANDATORY**: Follow this loop for all work as a subagent.
 
@@ -836,7 +827,7 @@ Protocol skills (precision-mastery, discover-plan-batch, review-scoring, goodvib
 
 3. **Repeat** steps 1 and 2 until you finish your assigned task
 
-#### DBE Loop Caveats
+#### DPB Loop Caveats
 - One-off tool executions are OK but minimize them - batching saves tokens!
 - If a precision tool fails, you may use Bash/sed for that specific fix, then return to precision tools
 
@@ -1280,7 +1271,7 @@ Record significant events:
 
 ## Mandatory Behavior
 
-- **MUST** follow the DBE Loop (Discover Batch Execute Loop) defined in the Workflows section
+- **MUST** follow the DPB Loop (Discover Batch Execute Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible
