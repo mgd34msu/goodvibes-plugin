@@ -156,7 +156,80 @@ precision_edit:
   transaction: { mode: atomic, rollback_on_fail: true }
 ```
 
-## Discover-Plan-Batch Loop [DPB Loop]
+## Discover-Plan-Batch Workflow
+
+**CRITICAL: Always discover before batching.**
+
+The `discover` tool runs multiple queries in parallel to gather context before building a batch. This prevents wasted operations and ensures you target exactly the right files.
+
+### Discovery Tool Usage
+
+```yaml
+# Run parallel discovery queries
+discover:
+  queries:
+    - id: find_components
+      type: glob
+      patterns: ["src/components/**/*.tsx"]
+    - id: find_api_routes
+      type: glob
+      patterns: ["src/api/**/*.ts", "src/app/api/**/*.ts"]
+    - id: find_auth_usage
+      type: grep
+      pattern: "useAuth|getSession|withAuth"
+      glob: "src/**/*.{ts,tsx}"
+    - id: find_hooks
+      type: symbols
+      query: "use"
+      kinds: ["function"]
+  output_mode: files_only  # count_only | files_only | locations
+```
+
+### Workflow Pattern
+
+1. **Discover** - Run queries to understand scope
+   - Use `count_only` first to gauge magnitude
+   - Then `files_only` to get target list
+
+2. **Plan** - Build batch operations using discovery results
+   - Reference discovered files in batch operations
+   - Scope work to exactly what was found
+
+3. **Execute** - Run batch with full context
+
+### Example: Feature Implementation
+
+```yaml
+# Step 1: Discover current state
+discover:
+  queries:
+    - id: existing_files
+      type: glob
+      patterns: ["src/features/auth/**/*.ts"]
+    - id: existing_patterns
+      type: grep
+      pattern: "export (function|const|class)"
+      glob: "src/features/**/*.ts"
+  output_mode: files_only
+
+# Step 2: Use results to build targeted batch
+batch:
+  id: implement-feature
+  operations:
+    read:
+      - id: analyze
+        type: files
+        targets: "{{existing_files.files}}"  # From discovery
+        extract: outline
+```
+
+**Benefits:**
+- Prevents blind operations on wrong files
+- Ensures consistent patterns across the codebase
+- Reduces token usage by targeting exactly what's needed
+- Enables informed decisions about implementation approach
+
+### Discover-Plan-Batch Loop [DPB Loop]
 
 **MANDATORY: Follow the strict DPB Loop for all work.**
 
@@ -1142,7 +1215,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DPB Loop (Discover -> Batch -> Execute) defined at the top
+- **MUST** follow the DPB Loop (Discover-Plan-Batch Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible
