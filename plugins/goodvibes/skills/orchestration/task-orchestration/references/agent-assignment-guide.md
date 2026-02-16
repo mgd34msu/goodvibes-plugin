@@ -75,7 +75,7 @@ This guide provides the complete agent-skill assignment decision tables and exam
 tasks:
   - task_id: setup-nextauth-config
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextauth, nextjs]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextauth, nextjs]
     description: Configure NextAuth with GitHub provider
     scope:
       files:
@@ -88,7 +88,7 @@ tasks:
 
   - task_id: add-session-wrapper
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, react]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react]
     description: Wrap app with SessionProvider
     scope:
       files:
@@ -99,7 +99,7 @@ tasks:
 
   - task_id: protect-routes
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, nextauth]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
     description: Add middleware to protect authenticated routes
     scope:
       files:
@@ -110,22 +110,39 @@ tasks:
 
   - task_id: add-auth-components
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react, nextjs, shadcn-ui]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, shadcn-ui]
     description: Create login/logout buttons and user profile display
     scope:
       files:
         - src/components/LoginButton.tsx
         - src/components/LogoutButton.tsx
         - src/components/UserProfile.tsx
-    blocking: []
+    blocking: [review-auth-implementation]
     blocked_by: [add-session-wrapper]
     expected_outcome: UI components for auth, using session data
+
+  - task_id: review-auth-implementation
+    agent: reviewer
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling, async-patterns]
+    description: Review authentication implementation for security and best practices
+    scope:
+      files:
+        - src/app/api/auth/[...nextauth]/route.ts
+        - src/lib/auth.ts
+        - src/middleware.ts
+        - src/components/LoginButton.tsx
+        - src/components/LogoutButton.tsx
+        - src/components/UserProfile.tsx
+    blocking: []
+    blocked_by: [add-auth-components]
+    expected_outcome: Review report with security assessment, no major issues
 ```
 
 **Parallelism:**
 - Wave 1: setup-nextauth-config
 - Wave 2: add-session-wrapper + protect-routes (parallel)
 - Wave 3: add-auth-components
+- Wave 4: review-auth-implementation
 
 ### Example 2: Create CRUD API for Posts
 
@@ -137,7 +154,7 @@ tasks:
 tasks:
   - task_id: create-post-schema
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, prisma, postgresql]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, prisma, postgresql]
     description: Add Post model to Prisma schema
     scope:
       files:
@@ -148,7 +165,7 @@ tasks:
 
   - task_id: create-post-types
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
     description: Create TypeScript types and Zod schemas for Post
     scope:
       files:
@@ -159,7 +176,7 @@ tasks:
 
   - task_id: create-post-api
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, trpc, prisma]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
     description: Implement tRPC router for post CRUD operations
     scope:
       files:
@@ -185,7 +202,7 @@ tasks:
 tasks:
   - task_id: create-dashboard-layout
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, react, tailwindcss]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react, tailwindcss]
     description: Create dashboard page with grid layout
     scope:
       files:
@@ -196,7 +213,7 @@ tasks:
 
   - task_id: create-stats-widget
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react, tailwindcss, shadcn-ui, trpc]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui, trpc]
     description: Build user stats widget (posts count, views, etc.)
     scope:
       files:
@@ -207,7 +224,7 @@ tasks:
 
   - task_id: create-activity-widget
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react, tailwindcss, shadcn-ui, trpc]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui, trpc]
     description: Build recent activity widget (latest posts, comments)
     scope:
       files:
@@ -218,19 +235,34 @@ tasks:
 
   - task_id: create-actions-widget
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react, tailwindcss, shadcn-ui]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui]
     description: Build quick actions widget (create post, view profile)
     scope:
       files:
         - src/components/dashboard/ActionsWidget.tsx
-    blocking: []
+    blocking: [test-dashboard-widgets]
     blocked_by: [create-dashboard-layout]
     expected_outcome: Actions widget with buttons for common tasks
+
+  - task_id: test-dashboard-widgets
+    agent: tester
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs]
+    description: Write integration tests for dashboard widgets
+    scope:
+      files:
+        - src/components/dashboard/__tests__/StatsWidget.test.tsx
+        - src/components/dashboard/__tests__/ActivityWidget.test.tsx
+        - src/components/dashboard/__tests__/ActionsWidget.test.tsx
+        - src/app/dashboard/__tests__/page.test.tsx
+    blocking: []
+    blocked_by: [create-actions-widget]
+    expected_outcome: Test suite with >80% coverage for dashboard components
 ```
 
 **Parallelism:**
 - Wave 1: create-dashboard-layout
 - Wave 2: create-stats-widget + create-activity-widget + create-actions-widget (3 parallel)
+- Wave 3: test-dashboard-widgets
 
 ### Example 4: Database Migration
 
@@ -242,7 +274,7 @@ tasks:
 tasks:
   - task_id: update-user-schema
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, prisma, postgresql]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, prisma, postgresql]
     description: Add emailVerified and verificationToken fields to User model
     scope:
       files:
@@ -253,7 +285,7 @@ tasks:
 
   - task_id: create-verification-api
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, trpc, prisma]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
     description: Add API endpoints for sending and verifying email tokens
     scope:
       files:
@@ -264,7 +296,7 @@ tasks:
 
   - task_id: update-signup-flow
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react, nextjs, trpc]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, trpc]
     description: Update signup to send verification email
     scope:
       files:
@@ -276,7 +308,7 @@ tasks:
 
   - task_id: create-verify-page
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react, nextjs, trpc]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, trpc]
     description: Create email verification page
     scope:
       files:
@@ -301,8 +333,8 @@ tasks:
 ```yaml
 tasks:
   - task_id: analyze-data-fetching
-    agent: engineer
-    skills: [discover-plan-batch, precision-mastery]
+    agent: architect
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
     description: Discover all data fetching patterns in components
     scope:
       directories:
@@ -314,7 +346,7 @@ tasks:
 
   - task_id: create-server-actions
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, prisma]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, prisma]
     description: Create server actions based on discovered patterns
     scope:
       files:
@@ -327,7 +359,7 @@ tasks:
 
   - task_id: refactor-pages
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, react]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react]
     description: Update app pages to use server actions
     scope:
       directories:
@@ -338,7 +370,7 @@ tasks:
 
   - task_id: refactor-components
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Update components to use server actions
     scope:
       directories:
@@ -569,7 +601,7 @@ agent: engineer
 ```yaml
 task_id: review-code
 agent: reviewer
-skills: [review-scoring, type-safety, error-handling]
+skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling]
 ```
 
 ### Mistake 5: Over-Parallelization

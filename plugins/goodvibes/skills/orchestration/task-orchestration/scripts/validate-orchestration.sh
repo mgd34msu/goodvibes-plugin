@@ -157,7 +157,7 @@ if [[ -n "$CONCURRENT_MENTIONS" ]]; then
     printf '  %s[PASS]%s Concurrent agent limit respected\n' "$GREEN" "$NC"
   fi
 else
-  printf '  %s[PASS]%s No concurrent agent tracking detected (likely ≤6)\n' "$GREEN" "$NC"
+  printf '  %s[PASS]%s No concurrent agent tracking detected (likely <=6)\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -199,7 +199,7 @@ else
   printf 'Review the orchestrator transcript and ensure:\n'
   printf '  1. Tasks are decomposed before spawning agents\n'
   printf '  2. Agent prompts include skill references (especially protocol skills)\n'
-  printf '  3. WRFC loop is maintained (WRITE → REPORT → FIX → CONTINUE)\n'
+  printf '  3. WRFC loop is maintained (WRITE -> REPORT -> FIX -> CONTINUE)\n'
   printf '  4. No more than 6 concurrent agent chains\n'
   printf '  5. Agents use structured output format\n'
   exit 1
