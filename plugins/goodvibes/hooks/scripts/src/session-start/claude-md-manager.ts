@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { debug, logError } from '../shared/index.js';
+import { PLUGIN_ROOT } from '../shared/constants.js';
 
 /**
  * Hardcoded content constants
@@ -26,78 +27,57 @@ const GOODVIBES_MD = `<!-- UPGRADE NOTIFICATIONS -->
 @prompt/SKILLS.md
 `;
 
-const PROMPT_FILES: Record<string, string> = {
-  'UPGRADE-NOTIFICATIONS.md': `## IMPORTANT!
-
-TOOL UPGRADES AVAILABLE! The precision_engine has tools that are a superset of native tools, with transaction support, batching, and token-efficient output. Prioritize their use over the deprecated native tools (Read, Edit, Write, Glob, Grep, WebFetch). Always use precision_engine equivalents. WebSearch has no replacement — use it directly.
-`,
-
-  'PRIMARY-GOALS.md': `## MANDATORY
-
-PRIMARY GOAL: Fully complete and functional code that passes review with no major or minor issues. Score 9.5 or higher.
-SECONDARY DIRECTIVE: Be as token-efficient as possible while still achieving the primary goal.
-`,
-
-  'CORE-PRINCIPLES.md': `## MANDATORY
-
-1. Maintain usage of WRFC Loops and goodvibes logging & memory functions
-2. Minimize unnecessary token usage:
-  - Use appropriate precision_engine tool verbosity and output settings
-  - ONLY request or send amount of data necessary to complete your task
-  - No unnecessary precision tool verbosity, or unnecessary full file reads/writes, or context clutter
-  - Writes/Edits happen on disk, verbose output in main conversation is unnecessary
-3. NEVER block the main conversation
-  - All subagents and processes are to be run in the background
-  - Task Output should only be used in non-blocking mode, if at all
-  - Task Output is unnecessary because subagents will tell you when they have completed their task
-4. ALWAYS think before you act. Time is cheap, tokens are expensive. Always have a plan.
-`,
-
-  'SUBAGENT-PROTOCOL.md': `## MANDATORY
-
-ALWAYS provide the following reminders to subagents:
-1. Use .goodvibes/ memory and logging when troubleshooting a problem
-2. Maintain usage of DPB Loops. D: Discover tool first, P: Plan your work to maximize token efficiency, B: Batch execution as much as possible, then Loop.
-  - Preferred: batch_engine batch tool call wraps precision_engine tool calls that use precision tool batching functionality
-  - Acceptable: precision_engine tool calls use batching functionality on their own without batch_engine
-  - Limited: precision_engine tool call without batching functionality. (sometimes necessary, so still allowed)
-  - Unacceptable: native tools for Read, Write, Edit, Glob, Grep, WebFetch, NotebookEdit
-3. NEVER use Bash cat, echo, heredoc, or other workarounds unless precision_engine tools have failed multiple attempts
-4. Incorrect usage of precision_engine tools DOES NOT COUNT as a failed attempt
-5. ALWAYS return to using precision_engine tools after a successful workaround
-6. Use appropriate precision tool verbosity, only consume or produce the amount of data necessary to complete the task
-7. CRITICAL: NEVER set sandbox=true via precision_config. Only the user can activate sandbox mode.
-`,
-
-  // NOTE: Keep skill names in sync with SKILL_CATALOG in subagent-start/context-injection.ts
-  'SKILLS.md': `## SKILL AWARENESS
-
-### Protocol Skills (Load before starting work)
-- precision-mastery: Optimal usage of precision engine tools for maximum token efficiency
-- review-scoring: Quantified scoring rubric and review format for WRFC loops
-- discover-plan-batch: Discover-Plan-Batch loop for all agents
-- goodvibes-memory: Reading/writing persistent memory and logging system
-- error-recovery: Error recovery procedures with escalation tiers
-
-### Orchestration Skills
-- task-orchestration: Decomposing requests into parallel agent tasks with WRFC coordination
-- fullstack-feature: End-to-end feature development across full stack
-
-### Outcome Skills (Assign to agents by role)
-- ai-integration, api-design, authentication, component-architecture, database-layer
-- deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy
-
-### Quality Skills (Assign to agents by role)
-- accessibility-audit, code-review, debugging, performance-audit
-- project-onboarding, refactoring, security-audit
-
-### How to Use Skills
-1. Load full skill: get_skill_content from registry-engine
-2. Follow the workflow in SKILL.md body
-3. After work, validate: bash plugins/goodvibes/skills/{tier}/{name}/scripts/{script}
-   Example: bash plugins/goodvibes/skills/outcome/api-design/scripts/api-checklist.sh
-`,
+/**
+ * Minimal fallback prompt files (used only if templates can't be read)
+ */
+const FALLBACK_PROMPT_FILES: Record<string, string> = {
+  'UPGRADE-NOTIFICATIONS.md': `## IMPORTANT!\n\nTOOL UPGRADES AVAILABLE! Use precision_engine tools.\n`,
+  'PRIMARY-GOALS.md': `## MANDATORY\n\nPRIMARY GOAL: Fully complete and functional code.\nSECONDARY DIRECTIVE: Be token-efficient.\n`,
+  'CORE-PRINCIPLES.md': `## MANDATORY\n\n1. Maintain usage of WRFC Loops\n2. Minimize token usage\n3. NEVER block main conversation\n4. Always have a plan\n`,
+  'SUBAGENT-PROTOCOL.md': `## MANDATORY\n\nALWAYS provide reminders to subagents:\n1. Use .goodvibes/ memory\n2. Use DPB Loops\n3. Use precision_engine tools\n`,
+  'SKILLS.md': `## SKILL AWARENESS\n\nSee templates/prompt/SKILLS.md for full list.\n`,
 };
+
+/**
+ * Load prompt files from templates directory
+ */
+async function loadPromptFiles(): Promise<Record<string, string>> {
+  const templatesDir = path.join(PLUGIN_ROOT, 'templates', 'prompt');
+  const promptFiles: Record<string, string> = {};
+
+  try {
+    const files = await fs.promises.readdir(templatesDir);
+    const mdFiles = files.filter(f => f.endsWith('.md'));
+
+    // Read all template files
+    await Promise.all(
+      mdFiles.map(async (filename) => {
+        try {
+          const filePath = path.join(templatesDir, filename);
+          const content = await fs.promises.readFile(filePath, 'utf-8');
+          promptFiles[filename] = content;
+        } catch (err) {
+          debug(`Failed to read template file ${filename}, using fallback`);
+          // Use fallback if available
+          if (filename in FALLBACK_PROMPT_FILES) {
+            promptFiles[filename] = FALLBACK_PROMPT_FILES[filename];
+          }
+        }
+      })
+    );
+
+    if (Object.keys(promptFiles).length > 0) {
+      debug(`Loaded ${Object.keys(promptFiles).length} prompt files from templates`);
+      return promptFiles;
+    }
+  } catch (err) {
+    debug(`Failed to read templates directory: ${templatesDir}`);
+  }
+
+  // Fallback: use minimal hardcoded versions
+  debug('Using fallback prompt files');
+  return FALLBACK_PROMPT_FILES;
+}
 
 /**
  * Helper: Write file only if content differs
@@ -243,8 +223,9 @@ async function ensureGoodvibesMd(targetDir: string): Promise<void> {
  * Ensure all prompt files exist
  */
 async function ensurePromptFiles(targetDir: string): Promise<void> {
+  const promptFiles = await loadPromptFiles();
   await Promise.all(
-    Object.entries(PROMPT_FILES).map(([filename, content]) => {
+    Object.entries(promptFiles).map(([filename, content]) => {
       const filePath = path.join(targetDir, '.goodvibes', 'prompt', filename);
       return writeIfChanged(filePath, content);
     })
