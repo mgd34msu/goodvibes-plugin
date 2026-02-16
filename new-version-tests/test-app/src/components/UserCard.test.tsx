@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import UserCard from './UserCard';
+import { UserCard } from './UserCard';
 
 interface User {
   id: string;
@@ -373,8 +373,8 @@ describe('UserCard', () => {
       await user.click(deleteButton);
 
       await waitFor(() => {
-        const errorParagraph = container.querySelector('p[style*="color: red"]');
-        expect(errorParagraph).toBeInTheDocument();
+        const errorDiv = container.querySelector('div[role="alert"]');
+        expect(errorDiv).toBeInTheDocument();
       });
     });
   });
