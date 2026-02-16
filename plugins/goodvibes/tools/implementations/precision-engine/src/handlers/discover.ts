@@ -476,7 +476,10 @@ async function executeIndexQuery(
   
   // Apply filters
   if (query.filter) {
-    files = files.filter(f => f.p.startsWith(query.filter!));
+    // Note: filter matches path PREFIX, not directory boundary.
+    // e.g., "src/comp" matches both "src/company/" and "src/components/"
+    // This is intentional to support file-level prefix matching.
+    files = projectIndex.getFilesByPrefix(query.filter);
   }
   if (query.file_types && query.file_types.length > 0) {
     const types = new Set(query.file_types);
@@ -484,19 +487,20 @@ async function executeIndexQuery(
   }
 
   const detail = query.detail || 'summary';
+  const isFiltered = !!(query.filter || (query.file_types && query.file_types.length > 0));
   
   // Return appropriate detail level
   switch (detail) {
     case 'count_only':
-      return { type: 'index', count: files.length, stats: index.stats };
+      return { type: 'index', count: files.length, ...(isFiltered ? {} : { stats: index.stats }) };
     case 'summary':
-      return { type: 'index', count: files.length, stats: index.stats, type_counts: projectIndex.getTypeCounts() };
+      return { type: 'index', count: files.length, ...(isFiltered ? {} : { stats: index.stats }), type_counts: projectIndex.getTypeCounts() };
     case 'paths_only':
       return { type: 'index', count: files.length, files: files.map(f => f.p) };
     case 'full':
       return { type: 'index', count: files.length, files: files.map(f => ({ path: f.p, size: f.s, modified: f.m, type: f.t })) };
     default:
-      return { type: 'index', count: files.length, stats: index.stats, type_counts: projectIndex.getTypeCounts() };
+      return { type: 'index', count: files.length, ...(isFiltered ? {} : { stats: index.stats }), type_counts: projectIndex.getTypeCounts() };
   }
 }
 

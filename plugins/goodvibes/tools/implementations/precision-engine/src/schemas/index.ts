@@ -206,7 +206,7 @@ export const precisionFetchSchema: Tool = {
 export const discoverSchema: Tool = {
   name: 'discover',
   description:
-    'Execute multiple grep, glob, or symbol queries in parallel. ' +
+    'Execute multiple grep, glob, symbol, or index queries in parallel. ' +
     'Returns results keyed by query ID for efficient batch discovery.',
   inputSchema: {
     type: 'object',
