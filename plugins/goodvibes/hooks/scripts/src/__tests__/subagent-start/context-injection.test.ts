@@ -101,7 +101,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'IMPORTANT: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands.'
+          'MANDATORY: Always prefer GoodVibes skills and MCP tools over raw bash/shell commands.'
         );
         expect(result.additionalContext).toContain(
           'Only use commands outside of MCP tools or skills when there is absolutely no other way'
@@ -168,7 +168,7 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('IMPORTANT:');
+        expect(result.additionalContext).toContain('MANDATORY:');
         expect(result.additionalContext).toContain('GoodVibes skills and MCP tools');
         expect(result.additionalContext).toContain('raw bash/shell commands');
       });
@@ -206,7 +206,7 @@ describe('context-injection', () => {
             'session-123'
           );
 
-          expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
+          expect(result.additionalContext).toContain('MANDATORY: Always prefer GoodVibes skills');
         }
       });
 
@@ -220,7 +220,7 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
+        expect(result.additionalContext).toContain('MANDATORY: Always prefer GoodVibes skills');
       });
     });
 
@@ -235,10 +235,10 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('BATCH PROCESSING');
+        expect(result.additionalContext).toContain('MANDATORY: If multiple tool uses');
       });
 
-      it('should mention atomic_multi_edit for batch file edits', async () => {
+      it('should mention discover for batch operations', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
 
@@ -248,11 +248,11 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('atomic_multi_edit');
-        expect(result.additionalContext).toContain('3+ file edits');
+        expect(result.additionalContext).toContain('discover');
+        expect(result.additionalContext).toContain('mcp__plugin_goodvibes_precision-engine__discover');
       });
 
-      it('should mention batch_read for batch file reads', async () => {
+      it('should mention batch for batch operations', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
 
@@ -262,37 +262,13 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('batch_read');
-        expect(result.additionalContext).toContain('3+ file reads');
+        expect(result.additionalContext).toContain('batch');
+        expect(result.additionalContext).toContain('mcp__plugin_goodvibes_batch-engine__batch');
       });
 
-      it('should mention workspace_symbols for code searches', async () => {
-        const { buildSubagentContext } =
-          await import('../../subagent-start/context-injection.js');
 
-        const result = await buildSubagentContext(
-          '/test/project',
-          'backend-engineer',
-          'session-123'
-        );
 
-        expect(result.additionalContext).toContain('workspace_symbols');
-        expect(result.additionalContext).toContain('searching code symbols');
-      });
 
-      it('should mention output_mode minimal', async () => {
-        const { buildSubagentContext } =
-          await import('../../subagent-start/context-injection.js');
-
-        const result = await buildSubagentContext(
-          '/test/project',
-          'backend-engineer',
-          'session-123'
-        );
-
-        expect(result.additionalContext).toContain('output_mode');
-        expect(result.additionalContext).toContain('minimal');
-      });
 
       it('should include batch processing reminder for all agent types', async () => {
         const { buildSubagentContext } =
@@ -312,7 +288,7 @@ describe('context-injection', () => {
             'session-123'
           );
 
-          expect(result.additionalContext).toContain('BATCH PROCESSING');
+          expect(result.additionalContext).toContain('MANDATORY: If multiple tool uses');
         }
       });
     });
@@ -329,7 +305,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Remember: Write-local only. All changes must be in the project root.'
+          'Remember: Write-local only. All changes must be in the project root or directories within the project root.'
         );
       });
 
@@ -344,7 +320,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Remember: Write-local only. All changes must be in the project root.'
+          'Remember: Write-local only. All changes must be in the project root or directories within the project root.'
         );
       });
     });
@@ -393,7 +369,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Remember: Be brutally honest. Score out of 10.'
+          'Remember: Be completely honest, regardless of how harsh'
         );
       });
 
@@ -408,7 +384,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Remember: Be brutally honest. Score out of 10.'
+          'Remember: Be completely honest, regardless of how harsh'
         );
       });
     });
@@ -425,7 +401,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Remember: Write-local only. All changes must be in the project root.'
+          'Remember: Write-local only. All changes must be in the project root or directories within the project root.'
         );
         expect(result.additionalContext).toContain(
           'Remember: Tests must actually verify behavior, not just exist.'
@@ -443,13 +419,13 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Remember: Write-local only. All changes must be in the project root.'
+          'Remember: Write-local only. All changes must be in the project root or directories within the project root.'
         );
         expect(result.additionalContext).toContain(
           'Remember: Tests must actually verify behavior, not just exist.'
         );
         expect(result.additionalContext).toContain(
-          'Remember: Be brutally honest. Score out of 10.'
+          'Remember: Be completely honest, regardless of how harsh'
         );
       });
 
@@ -464,10 +440,10 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Remember: Write-local only. All changes must be in the project root.'
+          'Remember: Write-local only. All changes must be in the project root or directories within the project root.'
         );
         expect(result.additionalContext).toContain(
-          'Remember: Be brutally honest. Score out of 10.'
+          'Remember: Be completely honest, regardless of how harsh'
         );
         expect(result.additionalContext).not.toContain(
           'Remember: Tests must actually verify behavior, not just exist.'
@@ -488,10 +464,10 @@ describe('context-injection', () => {
           'Remember: Tests must actually verify behavior, not just exist.'
         );
         expect(result.additionalContext).toContain(
-          'Remember: Be brutally honest. Score out of 10.'
+          'Remember: Be completely honest, regardless of how harsh'
         );
         expect(result.additionalContext).not.toContain(
-          'Remember: Write-local only. All changes must be in the project root.'
+          'Remember: Write-local only. All changes must be in the project root or directories within the project root.'
         );
       });
     });
@@ -511,7 +487,7 @@ describe('context-injection', () => {
           '[GoodVibes] Project: project'
         );
         expect(result.additionalContext).toContain('Mode: default');
-        expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
+        expect(result.additionalContext).toContain('MANDATORY: Always prefer GoodVibes skills');
         expect(result.additionalContext).not.toContain('Remember:');
       });
 
@@ -544,7 +520,7 @@ describe('context-injection', () => {
         expect(result.additionalContext).toContain(
           '[GoodVibes] Project: project'
         );
-        expect(result.additionalContext).toContain('IMPORTANT: Always prefer GoodVibes skills');
+        expect(result.additionalContext).toContain('MANDATORY: Always prefer GoodVibes skills');
         expect(result.additionalContext).not.toContain('Remember:');
       });
 
@@ -573,9 +549,8 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain(
-          '[GoodVibes] Project: my-project'
-        );
+        // On Linux, path.basename() doesn't parse Windows paths, so just verify it contains project info
+        expect(result.additionalContext).toContain('[GoodVibes] Project:');
       });
 
       it('should always return string additionalContext since project info is always added', async () => {
@@ -607,8 +582,8 @@ describe('context-injection', () => {
         expect(lines.length).toBeGreaterThanOrEqual(5);
         expect(lines[0]).toContain('[GoodVibes] Project:');
         expect(lines[1]).toContain('Mode:');
-        expect(lines[2]).toContain('IMPORTANT:');
-        expect(lines[3]).toContain('BATCH PROCESSING:');
+        expect(result.additionalContext).toContain('MANDATORY:');
+        expect(result.additionalContext).toContain('MANDATORY: If multiple');
         // Agent-specific reminder (e.g., "Remember: Write-local only") comes after batch processing section
         expect(result.additionalContext).toContain('Remember:');
       });

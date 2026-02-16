@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # API Checklist Validator
 # Checks API implementation quality gates
 # Usage: ./api-checklist.sh <project_root>
@@ -15,16 +15,16 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 log_pass() {
-  printf "${GREEN}[PASS]${NC} %s\n" "$1"
+  printf '%s[PASS]%s %s\n' "$GREEN" "$NC" "$1"
 }
 
 log_fail() {
-  printf "${RED}[FAIL]${NC} %s\n" "$1"
+  printf '%s[FAIL]%s %s\n' "$RED" "$NC" "$1"
   EXIT_CODE=1
 }
 
 log_warn() {
-  printf "${YELLOW}[WARN]${NC} %s\n" "$1"
+  printf '%s[WARN]%s %s\n' "$YELLOW" "$NC" "$1"
 }
 
 log_info() {
@@ -40,11 +40,11 @@ log_info "Check 1: Route files exist"
 ROUTE_COUNT=0
 
 if [ -d "${PROJECT_ROOT}/src/app/api" ]; then
-  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/app/api" -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
+  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/app/api" -- -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
 elif [ -d "${PROJECT_ROOT}/src/api" ]; then
-  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/api" -name '*.ts' -o -name '*.js' 2>/dev/null | wc -l)
+  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/api" -- -name '*.ts' -o -name '*.js' 2>/dev/null | wc -l)
 elif [ -d "${PROJECT_ROOT}/app/api" ]; then
-  ROUTE_COUNT=$(find "${PROJECT_ROOT}/app/api" -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
+  ROUTE_COUNT=$(find "${PROJECT_ROOT}/app/api" -- -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
 fi
 
 if [ "$ROUTE_COUNT" -gt 0 ]; then

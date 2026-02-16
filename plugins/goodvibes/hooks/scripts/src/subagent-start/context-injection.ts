@@ -16,6 +16,28 @@ import * as path from 'path';
 import { loadSharedConfig } from '../shared/index.js';
 import { getDefaultConfig as getAutomationConfig } from '../types/config.js';
 
+/** Protocol skills that should be loaded before starting work */
+export const PROTOCOL_SKILLS = [
+  'precision-mastery',
+  'review-scoring',
+  'discover-plan-batch',
+  'goodvibes-memory',
+  'error-recovery'
+];
+
+/** Agent-specific skill recommendations based on role */
+export const AGENT_SKILL_MAP: Record<string, string[]> = {
+  'engineer': ['authentication', 'database-layer', 'api-design', 'component-architecture', 'styling-system', 'state-management', 'payment-integration', 'ai-integration', 'service-integration', 'refactoring', 'debugging'],
+  'reviewer': ['code-review', 'security-audit', 'performance-audit', 'accessibility-audit'],
+  'tester': ['testing-strategy'],
+  'architect': ['project-onboarding'], // Loads outcome skills as needed per task; project-onboarding is the primary quality skill
+  'deployer': ['deployment'],
+  'integrator-ai': ['ai-integration'],
+  'integrator-services': ['payment-integration', 'service-integration', 'authentication'],
+  'integrator-state': ['state-management'],
+  'planner': ['task-orchestration', 'fullstack-feature'],
+};
+
 /** Context to inject into a subagent session */
 export interface SubagentContext {
   /** Additional context string to inject (always contains at least project info) */
@@ -40,7 +62,7 @@ export async function buildSubagentContext(
   agentType: string,
   _sessionId: string
 ): Promise<SubagentContext> {
-  // Load shared config for telemetry settings (unused currently but available)
+  // Load shared config for telemetry settings (reserved for future use; kept to ensure config is loaded)
   const _sharedConfig = await loadSharedConfig(cwd);
   const automationConfig = getAutomationConfig();
   const projectName = path.basename(cwd);
@@ -67,13 +89,13 @@ export async function buildSubagentContext(
   );
 
   // Add agent-specific reminders based on type
-  if (agentType.includes('engineer')) {
+  if (agentType.includes('backend')) {
     contextParts.push(
       'Remember: Write-local only. All changes must be in the project root or directories within the project root.\n\n'
     );
   }
 
-  if (agentType.includes('tester')) {
+  if (agentType.includes('test')) {
     contextParts.push(
       'Remember: Tests must actually verify behavior, not just exist.\n\n'
     );
@@ -84,6 +106,16 @@ export async function buildSubagentContext(
       'Remember: Be completely honest, regardless of how harsh the truth would be. Never sugar coat or take feelings into account.\n\n'
     );
   }
+
+  // Inject skill recommendations
+  const agentSuffix = agentType.split(':').pop() ?? agentType;
+  const outcomeSkills = AGENT_SKILL_MAP[agentSuffix] ?? [];
+
+  contextParts.push(
+    `Available protocol skills (load before starting work): ${PROTOCOL_SKILLS.join(', ')}\n` +
+    `Relevant outcome/quality skills for your role: ${outcomeSkills.length > 0 ? outcomeSkills.join(', ') : 'none — load as needed'}\n` +
+    `Load skills with: search_skills or get_skill_content from the registry engine.\n\n`
+  );
 
   // contextParts always has at least 2 elements (project name and mode)
   return {
