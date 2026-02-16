@@ -34,7 +34,7 @@ done
 
 # Check 2: Verbosity not set to "verbose" for writes/edits
 echo "[2/4] Checking for verbose verbosity on write/edit operations..."
-if grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' -- "$TRANSCRIPT_FILE" | grep -q '"verbosity":"verbose"'; then
+if { grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' -- "$TRANSCRIPT_FILE" || true; } | grep -q '"verbosity":"verbose"'; then
   VIOLATIONS+=("Verbose verbosity detected on write/edit operation (should use count_only or minimal)")
 fi
 
@@ -63,7 +63,7 @@ echo "[4/4] Checking for batching opportunities..."
 # This is a simplified check - in real usage, would need more sophisticated analysis
 
 # Check for multiple sequential precision_read calls with single file
-SEQUENTIAL_READS=$(grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_read"' -- "$TRANSCRIPT_FILE" | 
+SEQUENTIAL_READS=$({ grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_read"' -- "$TRANSCRIPT_FILE" || true; } | 
   grep -c '"files":\[\{[^\[\]]*\}\]' || true)
 
 if [[ $SEQUENTIAL_READS -ge 3 ]]; then
@@ -71,7 +71,7 @@ if [[ $SEQUENTIAL_READS -ge 3 ]]; then
 fi
 
 # Check for multiple sequential precision_write calls with single file
-SEQUENTIAL_WRITES=$(grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_write"' -- "$TRANSCRIPT_FILE" | 
+SEQUENTIAL_WRITES=$({ grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_write"' -- "$TRANSCRIPT_FILE" || true; } | 
   grep -c '"files":\[\{[^\[\]]*\}\]' || true)
 
 if [[ $SEQUENTIAL_WRITES -ge 3 ]]; then

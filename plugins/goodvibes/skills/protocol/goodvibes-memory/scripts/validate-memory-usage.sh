@@ -91,7 +91,7 @@ if ! pattern_exists 'precision_read.*failures\.json' "$TRANSCRIPT_FILE"; then
   add_violation "failures.json not read at task start (no precision_read call found)"
   printf '[FAIL] failures.json not read\n'
 else
-  echo -e "${GREEN}✓${NC} failures.json read"
+  printf '%s[OK]%s failures.json read\n' "$GREEN" "$NC"
   printf '[PASS] failures.json read\n'
 fi
 
@@ -100,7 +100,7 @@ if ! pattern_exists 'precision_read.*patterns\.json' "$TRANSCRIPT_FILE"; then
   add_violation "patterns.json not read at task start (no precision_read call found)"
   printf '[FAIL] patterns.json not read\n'
 else
-  echo -e "${GREEN}✓${NC} patterns.json read"
+  printf '%s[OK]%s patterns.json read\n' "$GREEN" "$NC"
   printf '[PASS] patterns.json read\n'
 fi
 
@@ -109,7 +109,7 @@ if ! pattern_exists 'precision_read.*decisions\.json' "$TRANSCRIPT_FILE"; then
   add_violation "decisions.json not read at task start (no precision_read call found)"
   printf '[FAIL] decisions.json not read\n'
 else
-  echo -e "${GREEN}✓${NC} decisions.json read"
+  printf '%s[OK]%s decisions.json read\n' "$GREEN" "$NC"
   printf '[PASS] decisions.json read\n'
 fi
 
@@ -118,7 +118,7 @@ if ! pattern_exists 'precision_read.*preferences\.json' "$TRANSCRIPT_FILE"; then
   add_violation "preferences.json not read at task start (no precision_read call found)"
   printf '[FAIL] preferences.json not read\n'
 else
-  echo -e "${GREEN}✓${NC} preferences.json read"
+  printf '%s[OK]%s preferences.json read\n' "$GREEN" "$NC"
   printf '[PASS] preferences.json read\n'
 fi
 
@@ -133,11 +133,11 @@ if pattern_exists '(task.*complete|implementation.*done|review.*pass)' "$TRANSCR
     add_violation "Task completed but no write to activity.md found"
     printf '[FAIL] activity.md not updated\n'
   else
-    echo -e "${GREEN}✓${NC} activity.md updated after task completion"
+    printf '%s[OK]%s activity.md updated after task completion\n' "$GREEN" "$NC"
     printf '[PASS] activity.md updated\n'
   fi
 else
-  echo -e "${YELLOW}⊘${NC} No task completion detected (skipping activity.md check)"
+  printf '%s[-]%s No task completion detected (skipping activity.md check)\n' "$YELLOW" "$NC"
 fi
 
 # Check 3: Failures logged when errors encountered and resolved
@@ -153,7 +153,7 @@ if pattern_exists '(TOOL_FAILURE|BUILD_ERROR|TEST_FAILURE|Error:|failed with exi
       add_violation "Error encountered and resolved but no write to failures.json found"
       printf '[FAIL] failures.json not updated\n'
     else
-      echo -e "${GREEN}✓${NC} failures.json updated after error resolution"
+      printf '%s[OK]%s failures.json updated after error resolution\n' "$GREEN" "$NC"
       printf '[PASS] failures.json updated\n'
     fi
     
@@ -162,14 +162,14 @@ if pattern_exists '(TOOL_FAILURE|BUILD_ERROR|TEST_FAILURE|Error:|failed with exi
       add_violation "Error encountered and resolved but no write to errors.md found"
       printf '[FAIL] errors.md not updated\n'
     else
-      echo -e "${GREEN}✓${NC} errors.md updated after error resolution"
+      printf '%s[OK]%s errors.md updated after error resolution\n' "$GREEN" "$NC"
       printf '[PASS] errors.md updated\n'
     fi
   else
-    echo -e "${YELLOW}⊘${NC} Error encountered but not resolved (skipping failure logging check)"
+    printf '%s[-]%s Error encountered but not resolved (skipping failure logging check)\n' "$YELLOW" "$NC"
   fi
 else
-  echo -e "${YELLOW}⊘${NC} No errors detected (skipping failure logging check)"
+  printf '%s[-]%s No errors detected (skipping failure logging check)\n' "$YELLOW" "$NC"
 fi
 
 # Check 4: Patterns logged when reusable approaches discovered
@@ -186,13 +186,13 @@ if pattern_exists '(pattern|approach|reusable|abstraction)' "$TRANSCRIPT_FILE"; 
   # Potential pattern discovered
   if ! pattern_exists 'precision_edit.*patterns\.json|precision_write.*patterns\.json' "$TRANSCRIPT_FILE"; then
     # This is a soft warning, not a hard violation
-    echo -e "${YELLOW}⚠${NC} Pattern-related work detected but no write to patterns.json (may be intentional)"
+    printf '%s[!]%s Pattern-related work detected but no write to patterns.json (may be intentional)\n' "$YELLOW" "$NC"
   else
-    echo -e "${GREEN}✓${NC} patterns.json updated when pattern discovered"
+    printf '%s[OK]%s patterns.json updated when pattern discovered\n' "$GREEN" "$NC"
     printf '[PASS] patterns.json updated\n'
   fi
 else
-  echo -e "${YELLOW}⊘${NC} No pattern discovery detected (skipping pattern logging check)"
+  printf '%s[-]%s No pattern discovery detected (skipping pattern logging check)\n' "$YELLOW" "$NC"
 fi
 
 # Check 5: Decisions logged when architectural choices made
@@ -203,14 +203,14 @@ echo "[CHECK 5] Verifying decisions logged when choices made..."
 if pattern_exists '(chose|selected|decided|option)' "$TRANSCRIPT_FILE"; then
   # Decision may have been made
   if pattern_exists 'precision_edit.*decisions\.json|precision_write.*decisions\.json' "$TRANSCRIPT_FILE"; then
-    echo -e "${GREEN}✓${NC} decisions.json updated when choice made"
+    printf '%s[OK]%s decisions.json updated when choice made\n' "$GREEN" "$NC"
     printf '[PASS] decisions.json updated\n'
   else
     # Soft warning - not all choices are architectural decisions
-    echo -e "${YELLOW}⊘${NC} Decision-making detected but no write to decisions.json (may be intentional)"
+    printf '%s[-]%s Decision-making detected but no write to decisions.json (may be intentional)\n' "$YELLOW" "$NC"
   fi
 else
-  echo -e "${YELLOW}⊘${NC} No decision-making detected (skipping decision logging check)"
+  printf '%s[-]%s No decision-making detected (skipping decision logging check)\n' "$YELLOW" "$NC"
 fi
 
 # Summary
@@ -225,7 +225,7 @@ else
   echo ""
   echo "Violations (${#VIOLATIONS[@]}):"
   for violation in "${VIOLATIONS[@]}"; do
-    echo -e "  ${RED}✗${NC} $violation"
+    printf '  %s[X]%s %s\n' "$RED" "$NC" "$violation"
   done
   echo ""
   echo "Fix these violations by:"

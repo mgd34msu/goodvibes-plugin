@@ -64,11 +64,11 @@ for dimension in "${DIMENSIONS[@]}"; do
     # Extract dimension score (just the number, not /10)
     dim_score=$(grep -E "^\|[[:space:]]+$dimension[[:space:]]+\|[[:space:]]+[0-9]+/10[[:space:]]+\|" -- "$REVIEW_FILE" | grep -oE '[0-9]+/10' | grep -oE '^[0-9]+' || echo "0")
     if [[ "$dim_score" -eq 0 ]]; then
-        ERRORS+=("Dimension '$dimension' is missing or has score 0 — all 10 dimensions required")
+        ERRORS+=("Dimension '$dimension' is missing or has score 0 -- all 10 dimensions required")
     elif [[ "$dim_score" -lt 4 ]]; then
         # Score below 4 requires FAIL verdict
         if [[ "$VERDICT" != "FAIL" ]]; then
-            ERRORS+=("Dimension '$dimension' scored $dim_score/10 (below 4) — verdict must be FAIL per critical dimension rule, but verdict is $VERDICT")
+            ERRORS+=("Dimension '$dimension' scored $dim_score/10 (below 4) -- verdict must be FAIL per critical dimension rule, but verdict is $VERDICT")
         fi
     fi
 done

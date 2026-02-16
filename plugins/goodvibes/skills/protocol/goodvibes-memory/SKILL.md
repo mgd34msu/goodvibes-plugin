@@ -69,8 +69,8 @@ precision_read:
 - `context` field matches your current situation
 
 **If found**:
-- Read `resolution` — how was it fixed?
-- Read `prevention` — how to avoid it?
+- Read `resolution` -- how was it fixed?
+- Read `prevention` -- how to avoid it?
 - Apply the prevention strategy
 
 ### 2. Check `patterns.json`
@@ -91,8 +91,8 @@ precision_read:
 - `name` suggests a relevant pattern
 
 **If found**:
-- Read `description` — what's the pattern?
-- Check `example_files` — where is it used?
+- Read `description` -- what's the pattern?
+- Check `example_files` -- where is it used?
 - Follow the pattern unless there's a compelling reason not to
 
 ### 3. Check `decisions.json`
@@ -113,7 +113,7 @@ precision_read:
 - `status` is "active" (not "superseded" or "reverted")
 
 **If found**:
-- Read `what` and `why` — understand the decision
+- Read `what` and `why` -- understand the decision
 - If your task conflicts with the decision: flag to orchestrator before proceeding
 - If your task aligns with the decision: follow it
 
@@ -274,13 +274,13 @@ Schema:
 ```
 
 **Error categories** (for `errors.md`):
-- `TOOL_FAILURE` — Precision tool or native tool failed
-- `AGENT_FAILURE` — Agent crashed or failed to complete task
-- `BUILD_ERROR` — TypeScript compilation, build step failed
-- `TEST_FAILURE` — Test suite failed
-- `VALIDATION_ERROR` — Validation, linting, or format checking failed
-- `EXTERNAL_ERROR` — API, network, dependency issue
-- `UNKNOWN` — Error category could not be determined
+- `TOOL_FAILURE` -- Precision tool or native tool failed
+- `AGENT_FAILURE` -- Agent crashed or failed to complete task
+- `BUILD_ERROR` -- TypeScript compilation, build step failed
+- `TEST_FAILURE` -- Test suite failed
+- `VALIDATION_ERROR` -- Validation, linting, or format checking failed
+- `EXTERNAL_ERROR` -- API, network, dependency issue
+- `UNKNOWN` -- Error category could not be determined
 
 ### After Decision Made
 
@@ -367,21 +367,21 @@ If `exists: false`, create the file before appending.
 
 ### Don't Do This
 
-- **Don't skip reading memory** — You'll repeat failures and violate decisions
-- **Don't write for trivial work** — Only log meaningful patterns/decisions/failures
-- **Don't use random IDs** — Use timestamp-based IDs (no need to read existing entries)
-- **Don't forget prevention field** — Failures without prevention strategies aren't useful
-- **Don't log to JSON only** — Always write to BOTH JSON and Markdown
-- **Don't create duplicate entries** — Search keywords first to check if pattern/failure already exists
+- **Don't skip reading memory** -- You'll repeat failures and violate decisions
+- **Don't write for trivial work** -- Only log meaningful patterns/decisions/failures
+- **Don't use random IDs** -- Use timestamp-based IDs (no need to read existing entries)
+- **Don't forget prevention field** -- Failures without prevention strategies aren't useful
+- **Don't log to JSON only** -- Always write to BOTH JSON and Markdown
+- **Don't create duplicate entries** -- Search keywords first to check if pattern/failure already exists
 
 ### Do This
 
-- **Do read failures.json first** — Check for known issues before starting
-- **Do search by keywords** — Manual keyword matching is fast and effective
-- **Do include full context** — Root cause + resolution + prevention for failures
-- **Do use timestamp IDs** — No collision risk, no need to read existing entries
-- **Do log to both formats** — JSON for machines, Markdown for humans
-- **Do update last_updated** — Update timestamp when modifying index.json
+- **Do read failures.json first** -- Check for known issues before starting
+- **Do search by keywords** -- Manual keyword matching is fast and effective
+- **Do include full context** -- Root cause + resolution + prevention for failures
+- **Do use timestamp IDs** -- No collision risk, no need to read existing entries
+- **Do log to both formats** -- JSON for machines, Markdown for humans
+- **Do update last_updated** -- Update timestamp when modifying index.json
 
 ---
 
@@ -411,10 +411,10 @@ The script checks:
 
 ### Read Phase Checklist
 
-- [ ] Read `failures.json` — keyword search for similar errors
-- [ ] Read `patterns.json` — keyword search for proven approaches
-- [ ] Read `decisions.json` — scope search for relevant decisions
-- [ ] Read `preferences.json` — apply project conventions
+- [ ] Read `failures.json` -- keyword search for similar errors
+- [ ] Read `patterns.json` -- keyword search for proven approaches
+- [ ] Read `decisions.json` -- scope search for relevant decisions
+- [ ] Read `preferences.json` -- apply project conventions
 
 ### Write Phase Checklist
 

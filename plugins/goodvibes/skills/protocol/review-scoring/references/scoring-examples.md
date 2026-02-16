@@ -110,7 +110,7 @@ None
 [NO] **Score inflation**: Giving 8-9 scores when "issues need work" is inconsistent
 [NO] **Generic positive feedback**: "Good implementation" doesn't highlight specific strengths
 [NO] **Verdict is correct but scores are inflated**: The 8.50 score gets CONDITIONAL PASS (8.0-9.49 range is correct), but dimension scores like 9/10 and 10/10 don't match vague notes like "Looks good"
-[NO] **Score math is correct**: Weighted average = (9×0.20 + 8×0.15 + 8×0.15 + 9×0.10 + 10×0.10 + 7×0.10 + 9×0.05 + 8×0.05 + 8×0.05 + 9×0.05) = 8.50/10
+[NO] **Score math is correct**: Weighted average = (9x0.20 + 8x0.15 + 8x0.15 + 9x0.10 + 10x0.10 + 7x0.10 + 9x0.05 + 8x0.05 + 8x0.05 + 9x0.05) = 8.50/10
 
 ### How to Fix This Review
 
@@ -151,13 +151,13 @@ profile rendering into separate `UserProfileDisplay` component.
 
 [NO] **Wrong**:
 ```
-Security: 9/10 — No major issues found
+Security: 9/10 -- No major issues found
 ```
 (But review found: hardcoded API key, missing auth on endpoint, SQL injection)
 
 [YES] **Right**:
 ```
-Security: 3/10 — Critical vulnerabilities present: hardcoded API key in 
+Security: 3/10 -- Critical vulnerabilities present: hardcoded API key in 
 src/config.ts:12, missing auth check on DELETE endpoint, SQL injection 
 vulnerable query at src/db/users.ts:45
 ```
@@ -183,12 +183,12 @@ vulnerable query at src/db/users.ts:45
 
 [NO] **Wrong**:
 ```
-Performance: 6/10 — Multiple N+1 query issues
+Performance: 6/10 -- Multiple N+1 query issues
 ```
 
 [YES] **Right**:
 ```
-Performance: 6/10 — Three N+1 query patterns found:
+Performance: 6/10 -- Three N+1 query patterns found:
   1. src/api/posts.ts:34 - Fetches author for each post in loop
   2. src/api/comments.ts:67 - Fetches user for each comment individually  
   3. src/api/likes.ts:12 - No eager loading of relationships

@@ -779,7 +779,7 @@ precision_write:
 
 **[BAD] Falling back to native tools**
 
-The PreToolUse hook blocks native tools and redirects to precision_engine. Don't fight it — use precision tools from the start.
+The PreToolUse hook blocks native tools and redirects to precision_engine. Don't fight it -- use precision tools from the start.
 
 ## LOOP: When to Return to Discovery
 

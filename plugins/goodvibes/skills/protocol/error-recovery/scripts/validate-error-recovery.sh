@@ -44,12 +44,12 @@ else
   # Validate JSON structure
   if command -v jq &>/dev/null; then
     if ! jq . "$FAILURES_JSON" > /dev/null 2>&1; then
-      printf '  %s⚠%s failures.json is not valid JSON (jq validation)\n' "$YELLOW" "$NC"
+      printf '  %s[!]%s failures.json is not valid JSON (jq validation)\n' "$YELLOW" "$NC"
       VIOLATIONS+=("failures.json is not valid JSON (jq validation)")
     fi
   elif command -v python3 &>/dev/null; then
     if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$FAILURES_JSON" 2>/dev/null; then
-      printf '  %s⚠%s failures.json is not valid JSON (python3 validation)\n' "$YELLOW" "$NC"
+      printf '  %s[!]%s failures.json is not valid JSON (python3 validation)\n' "$YELLOW" "$NC"
       VIOLATIONS+=("failures.json is not valid JSON (python3 validation)")
     fi
   fi
@@ -82,10 +82,10 @@ if [[ -n "$ERROR_LINES" ]]; then
 fi
 
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then
-  printf '  %s✓%s All errors were categorized\n' "$GREEN" "$NC"
+  printf '  %s[OK]%s All errors were categorized\n' "$GREEN" "$NC"
   printf '[PASS] All errors categorized\n'
 else
-  printf '  %s✗%s Found uncategorized errors\n' "$RED" "$NC"
+  printf '  %s[X]%s Found uncategorized errors\n' "$RED" "$NC"
   printf '[FAIL] Uncategorized errors found\n'
 fi
 echo ""
@@ -99,10 +99,10 @@ FAILURES_CHECKED=$(grep -i -E "$FAILURES_CHECK_PATTERNS" -- "$TRANSCRIPT" || tru
 if [[ -n "$ERROR_LINES" ]] && [[ -z "$FAILURES_CHECKED" ]]; then
   VIOLATIONS+=("Errors occurred but failures.json was not checked for known patterns")
   PASS=false
-  printf '  %s✗%s failures.json was not checked\n' "$RED" "$NC"
+  printf '  %s[X]%s failures.json was not checked\n' "$RED" "$NC"
   printf '[FAIL] failures.json not checked\n'
 else
-  printf '  %s✓%s failures.json was checked\n' "$GREEN" "$NC"
+  printf '  %s[OK]%s failures.json was checked\n' "$GREEN" "$NC"
   printf '[PASS] failures.json checked\n'
 fi
 echo ""
@@ -120,10 +120,10 @@ RESOLVED_COUNT=$(grep -c -i -E "$RESOLVED_PATTERNS" -- "$TRANSCRIPT" || echo 0)
 if [[ $RESOLVED_COUNT -gt 0 ]] && [[ -z "$RESOLUTION_LOGGED" ]]; then
   VIOLATIONS+=("Errors were resolved but not logged to failures.json")
   PASS=false
-  printf '  %s✗%s Resolutions were not logged\n' "$RED" "$NC"
+  printf '  %s[X]%s Resolutions were not logged\n' "$RED" "$NC"
   printf '[FAIL] Resolutions not logged\n'
 else
-  printf '  %s✓%s Resolutions were logged or no resolutions needed\n' "$GREEN" "$NC"
+  printf '  %s[OK]%s Resolutions were logged or no resolutions needed\n' "$GREEN" "$NC"
   printf '[PASS] Resolutions logged\n'
 fi
 echo ""
@@ -141,10 +141,10 @@ MARKED_INCOMPLETE=$(grep -i -E "$INCOMPLETE_PATTERNS" -- "$TRANSCRIPT" || true)
 if [[ -n "$MAX_ATTEMPTS" ]] && [[ -n "$MARKED_INCOMPLETE" ]] && [[ -z "$ESCALATION" ]]; then
   VIOLATIONS+=("Max attempts reached and task marked incomplete, but no escalation to orchestrator")
   PASS=false
-  printf '  %s✗%s Failed to escalate after max attempts\n' "$RED" "$NC"
+  printf '  %s[X]%s Failed to escalate after max attempts\n' "$RED" "$NC"
   printf '[FAIL] No escalation after max attempts\n'
 else
-  printf '  %s✓%s Proper escalation or no max attempts reached\n' "$GREEN" "$NC"
+  printf '  %s[OK]%s Proper escalation or no max attempts reached\n' "$GREEN" "$NC"
   printf '[PASS] Proper escalation\n'
 fi
 echo ""
@@ -160,7 +160,7 @@ else
   echo ""
   echo "Protocol violations found:"
   for violation in "${VIOLATIONS[@]}"; do
-    printf '  %s✗%s %s\n' "$RED" "$NC" "${violation}"
+    printf '  %s[X]%s %s\n' "$RED" "$NC" "${violation}"
   done
   echo ""
   echo "Review the session transcript and ensure:"

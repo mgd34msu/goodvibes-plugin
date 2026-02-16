@@ -280,7 +280,7 @@ precision_exec:
 
 ## Implementation Tips
 
-The DPB loop is not optional — it's the foundation of efficient agent execution. Every task, from adding a single function to implementing a complete feature, should follow this pattern:
+The DPB loop is not optional -- it's the foundation of efficient agent execution. Every task, from adding a single function to implementing a complete feature, should follow this pattern:
 
 1. **DISCOVER** - Understand before acting
 2. **PLAN** - Structure before executing

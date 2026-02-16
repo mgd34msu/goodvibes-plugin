@@ -339,7 +339,7 @@ interface MemoryIndex {
 
 ### Purpose
 
-The index file is optional and provides quick statistics and searchable tags. It's NOT required for the memory system to function — it's a convenience for human readers.
+The index file is optional and provides quick statistics and searchable tags. It's NOT required for the memory system to function -- it's a convenience for human readers.
 
 ---
 

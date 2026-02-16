@@ -18,12 +18,12 @@ When an error occurs during task execution:
 1. **DO NOT retry blindly**. Read the full error message, stack trace, and any diagnostic output.
 
 2. **Categorize the error** into one of six types:
-   - **TOOL_FAILURE** — Precision tool or MCP tool returned an error
-   - **BUILD_ERROR** — Build/compile command failed (npm, tsc, vite, etc.)
-   - **TEST_FAILURE** — Test suite failed (vitest, jest, etc.)
-   - **TYPE_ERROR** — TypeScript type checking failed
-   - **RUNTIME_ERROR** — Code crashed during execution
-   - **EXTERNAL_ERROR** — Third-party service or API failure
+   - **TOOL_FAILURE** -- Precision tool or MCP tool returned an error
+   - **BUILD_ERROR** -- Build/compile command failed (npm, tsc, vite, etc.)
+   - **TEST_FAILURE** -- Test suite failed (vitest, jest, etc.)
+   - **TYPE_ERROR** -- TypeScript type checking failed
+   - **RUNTIME_ERROR** -- Code crashed during execution
+   - **EXTERNAL_ERROR** -- Third-party service or API failure
 
 3. **Check `.goodvibes/memory/failures.json`** for matching keywords using precision_read:
    - Search for keywords from the error message
@@ -174,10 +174,10 @@ When an error occurs during task execution:
 
 After categorizing the error and checking failures.json, use a **one-shot strategy** where you consult ALL knowledge sources simultaneously (not sequentially) and apply the best solution:
 
-1. **Internal knowledge** — your training data, codebase patterns (discover, precision_grep, precision_read), GoodVibes memory
-2. **First-party docs** — official documentation, API references, changelogs, migration guides
-3. **Community knowledge** — Stack Overflow, GitHub Issues, forums
-4. **Open internet** — broader web search for edge cases
+1. **Internal knowledge** -- your training data, codebase patterns (discover, precision_grep, precision_read), GoodVibes memory
+2. **First-party docs** -- official documentation, API references, changelogs, migration guides
+3. **Community knowledge** -- Stack Overflow, GitHub Issues, forums
+4. **Open internet** -- broader web search for edge cases
 
 ### Applying the Best Solution
 
@@ -387,4 +387,4 @@ Discovered: Requires new database schema, auth changes, API endpoints
 - Precision tools are the default, native tools are the fallback
 - User error ≠ tool failure
 - Recovery attempts should be systematic, not random
-- Memory is institutional knowledge — use it and contribute to it
+- Memory is institutional knowledge -- use it and contribute to it

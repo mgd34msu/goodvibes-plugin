@@ -71,6 +71,7 @@ printf '[CHECK 2] Verifying protected routes configured...\n'
 PROTECTED_ROUTES_FOUND=false
 
 if grep -rq --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+  --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next \
   -e "requireAuth" -e "withAuth" -e "protectedRoute" -e "isAuthenticated" -e "authMiddleware" -e "authenticate" .; then
   PROTECTED_ROUTES_FOUND=true
 fi
@@ -129,7 +130,7 @@ if [[ -f ".env.example" ]] || [[ -f ".env.template" ]] || [[ -f "env.example" ]]
   
   # Check if auth-related vars are documented
   if grep -iq -e "JWT_SECRET" -e "SESSION_SECRET" -e "NEXTAUTH" -e "AUTH" \
-    .env.example .env.template env.example 2>/dev/null; then
+    -- .env.example .env.template env.example 2>/dev/null; then
     AUTH_VARS_DOCUMENTED=true
   fi
 fi
@@ -155,6 +156,7 @@ printf '[CHECK 5] Verifying session/token configuration...\n'
 SESSION_CONFIG_FOUND=false
 
 if grep -rq --include="*.ts" --include="*.js" \
+  --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next \
   -e "createCookieSessionStorage" -e "jwt.sign" -e "jwt.verify" \
   -e "getSession" -e "setSession" .; then
   SESSION_CONFIG_FOUND=true
@@ -176,6 +178,7 @@ printf '[CHECK 6] Verifying password hashing implementation...\n'
 HASHING_FOUND=false
 
 if grep -rq --include="*.ts" --include="*.js" \
+  --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next \
   -e "bcrypt" -e "argon2" -e "hashPassword" -e "pbkdf2" -e "scrypt" -e "createHash" .; then
   HASHING_FOUND=true
 fi
@@ -186,6 +189,7 @@ if [[ "$HASHING_FOUND" == true ]]; then
 else
   # This might be OK for OAuth-only or managed auth
   printf '  %sWARN%s No password hashing found (OK if using OAuth/managed auth)\n' "$YELLOW" "$NC"
+  printf '[WARN] No password hashing detected\n'
 fi
 printf '\n'
 

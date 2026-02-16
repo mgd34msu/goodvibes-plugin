@@ -191,16 +191,16 @@ Does it work with existing code?
 The overall score is a weighted average of the 10 dimensions:
 
 ```
-Overall = (Correctness × 0.20) + 
-          (Completeness × 0.15) + 
-          (Security × 0.15) + 
-          (Performance × 0.10) + 
-          (Conventions × 0.10) + 
-          (Testability × 0.10) + 
-          (Readability × 0.05) + 
-          (Error Handling × 0.05) + 
-          (Type Safety × 0.05) + 
-          (Integration × 0.05)
+Overall = (Correctness x 0.20) + 
+          (Completeness x 0.15) + 
+          (Security x 0.15) + 
+          (Performance x 0.10) + 
+          (Conventions x 0.10) + 
+          (Testability x 0.10) + 
+          (Readability x 0.05) + 
+          (Error Handling x 0.05) + 
+          (Type Safety x 0.05) + 
+          (Integration x 0.05)
 ```
 
 **Example:**
@@ -216,8 +216,8 @@ Error Handling: 7
 Type Safety: 9
 Integration: 9
 
-Overall = (9×0.20) + (8×0.15) + (10×0.15) + (7×0.10) + (9×0.10) + 
-          (6×0.10) + (8×0.05) + (7×0.05) + (9×0.05) + (9×0.05)
+Overall = (9x0.20) + (8x0.15) + (10x0.15) + (7x0.10) + (9x0.10) + 
+          (6x0.10) + (8x0.05) + (7x0.05) + (9x0.05) + (9x0.05)
         = 1.8 + 1.2 + 1.5 + 0.7 + 0.9 + 0.6 + 0.4 + 0.35 + 0.45 + 0.45
         = 8.35/10
 ```
@@ -228,10 +228,10 @@ The overall score determines the verdict:
 
 | Score Range | Verdict | Action Required |
 |-------------|---------|----------------|
-| **>= 9.5** | PASS | Ship it — production ready |
-| **8.0-9.49** | CONDITIONAL PASS | Minor issues — fix and re-check (8.0 is inclusive, no full re-review) |
-| **6.0-7.9** | FAIL | Significant issues — fix and full re-review required |
-| **Below 6.0** | FAIL | Major rework needed — fix and full re-review required |
+| **>= 9.5** | PASS | Ship it -- production ready |
+| **8.0-9.49** | CONDITIONAL PASS | Minor issues -- fix and re-check (8.0 is inclusive, no full re-review) |
+| **6.0-7.9** | FAIL | Significant issues -- fix and full re-review required |
+| **Below 6.0** | FAIL | Major rework needed -- fix and full re-review required |
 
 **Critical dimension rule**: If any dimension scores below 4, the overall verdict is automatically FAIL regardless of the calculated score.
 
@@ -318,9 +318,9 @@ Every review MUST produce this exact structure. Validation scripts check for the
 When a fix agent receives a review with issues:
 
 ### Must Fix
-1. **ALL Critical issues** — No exceptions
-2. **ALL Major issues** — No exceptions
-3. **Minor issues** — Unless explicitly deprioritized by orchestrator
+1. **ALL Critical issues** -- No exceptions
+2. **ALL Major issues** -- No exceptions
+3. **Minor issues** -- Unless explicitly deprioritized by orchestrator
 
 ### Must Document
 After applying fixes, the fix agent must produce:
@@ -421,11 +421,11 @@ The orchestrator uses the numeric score and verdict to make decisions:
 
 ### Score Inflation
 **Wrong**: Giving 8-9 scores when significant issues exist
-**Right**: Use the rubric literally — 6-7 means "acceptable but with notable issues"
+**Right**: Use the rubric literally -- 6-7 means "acceptable but with notable issues"
 
 ### Inconsistent Severity
 **Wrong**: Marking a security vulnerability as "Major" instead of "Critical"
-**Right**: Use severity guidelines — auth bypass is ALWAYS Critical
+**Right**: Use severity guidelines -- auth bypass is ALWAYS Critical
 
 ### Missing FILE:LINE References
 **Wrong**: "The error handling is poor"

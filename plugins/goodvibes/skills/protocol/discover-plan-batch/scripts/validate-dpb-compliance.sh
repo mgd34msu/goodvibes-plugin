@@ -8,10 +8,10 @@
 # Workflow:
 #   1. Check discovery phase present before write/edit operations
 #   2. Check plan step present with structured file lists
-#   3. Check batch operations used appropriately (3+ calls → batch)
+#   3. Check batch operations used appropriately (3+ calls -> batch)
 #   4. Check memory files accessed before implementation
 #   5. Check verbosity usage (warn on verbose mode)
-#   6. Check operation ordering (discover → plan → batch)
+#   6. Check operation ordering (discover -> plan -> batch)
 #   7. Check post-batch validation (precision_exec after writes)
 #
 # Exit codes:
@@ -100,11 +100,11 @@ if [[ -n "$WRITE_LINE" ]]; then
     add_violation "Write/edit operation (line $WRITE_LINE) before discovery (line $DISCOVER_LINE)"
     printf '[FAIL] Write before discovery\n'
   else
-    echo -e "  ${GREEN}✓${NC} Discovery phase found before write operations"
+    printf '  %sPASS%s Discovery phase found before write operations\n' "$GREEN" "$NC"
     printf '[PASS] Discovery phase before writes\n'
   fi
 else
-  echo -e "  ${YELLOW}⊘${NC} No write/edit operations found (nothing to validate)"
+  printf '  %s[-]%s No write/edit operations found (nothing to validate)\n' "$YELLOW" "$NC"
 fi
 
 # ============================================================================
@@ -130,7 +130,7 @@ PLAN_FOUND=false
 for indicator in "${PLAN_INDICATORS[@]}"; do
   if has_literal "$indicator"; then
     PLAN_FOUND=true
-    echo -e "  ${GREEN}✓${NC} Plan step found: '$indicator'"
+    printf '  %s[OK]%s Plan step found: %s\n' "$GREEN" "$NC" "$indicator"
     printf '[PASS] Plan step found\n'
     break
   fi
@@ -192,7 +192,7 @@ if [[ "$GREP_COUNT" -ge 3 ]]; then
 fi
 
 if [[ "$BATCH_ISSUES" == false ]]; then
-  echo -e "  ${GREEN}✓${NC} Batch operations used appropriately"
+  printf '  %s[OK]%s Batch operations used appropriately\n' "$GREEN" "$NC"
   printf '[PASS] Batch operations appropriate\n'
 fi
 
@@ -212,7 +212,7 @@ MEMORY_FILES=(
 MEMORY_CHECKED=false
 for mem_file in "${MEMORY_FILES[@]}"; do
   if has_literal "$mem_file"; then
-    echo -e "  ${GREEN}✓${NC} Memory file checked: $mem_file"
+    printf '  %s[OK]%s Memory file checked: %s\n' "$GREEN" "$NC" "$mem_file"
     printf '[PASS] Memory file checked: %s\n' "$mem_file"
     MEMORY_CHECKED=true
   fi
@@ -232,8 +232,9 @@ echo "[5/7] Checking verbosity usage..."
 # Warn if verbose mode used (not a violation, just inefficient)
 if grep -qE "verbosity:[[:space:]]*verbose" -- "$TRANSCRIPT" 2>/dev/null; then
   add_warning "verbose verbosity mode detected. Consider using minimal/standard for token efficiency."
+  printf '[FAIL] Verbose verbosity detected\n'
 else
-  echo -e "  ${GREEN}✓${NC} No excessive verbosity detected"
+  printf '  %s[OK]%s No excessive verbosity detected\n' "$GREEN" "$NC"
   printf '[PASS] Verbosity appropriate\n'
 fi
 
@@ -243,7 +244,7 @@ fi
 
 echo "[6/7] Checking operation ordering..."
 
-# Verify discover → plan → batch order
+# Verify discover -> plan -> batch order
 DISCOVER_LINE=$(get_line_number "discover|precision_grep|precision_glob")
 PLAN_LINE=$(get_line_number "Files to create:|Files to modify:|## PLAN|### PLAN")
 BATCH_LINE=$(get_line_number "precision_write|precision_edit|batch:")
@@ -251,18 +252,20 @@ BATCH_LINE=$(get_line_number "precision_write|precision_edit|batch:")
 ORDERING_OK=true
 
 if [[ -n "$DISCOVER_LINE" && -n "$PLAN_LINE" && "$DISCOVER_LINE" -gt "$PLAN_LINE" ]]; then
-  add_warning "Plan step (line $PLAN_LINE) appears before discovery (line $DISCOVER_LINE). Recommended order: discover → plan → batch."
+  add_warning "Plan step (line $PLAN_LINE) appears before discovery (line $DISCOVER_LINE). Recommended order: discover -> plan -> batch."
   ORDERING_OK=false
 fi
 
 if [[ -n "$PLAN_LINE" && -n "$BATCH_LINE" && "$PLAN_LINE" -gt "$BATCH_LINE" ]]; then
-  add_warning "Batch operations (line $BATCH_LINE) appear before plan (line $PLAN_LINE). Recommended order: discover → plan → batch."
+  add_warning "Batch operations (line $BATCH_LINE) appear before plan (line $PLAN_LINE). Recommended order: discover -> plan -> batch."
   ORDERING_OK=false
 fi
 
 if [[ "$ORDERING_OK" == true ]]; then
-  echo -e "  ${GREEN}✓${NC} Operation ordering follows DPB pattern"
+  printf '  %s[OK]%s Operation ordering follows DPB pattern\n' "$GREEN" "$NC"
   printf '[PASS] Operation ordering correct\n'
+else
+  printf '[FAIL] Operation ordering incorrect\n'
 fi
 
 # ============================================================================
@@ -280,13 +283,14 @@ if [[ -n "$WRITE_LINE" ]]; then
   VALIDATION_KEYWORDS=$(sed -n "${WRITE_LINE},\$p" -- "$TRANSCRIPT" | grep -E "typecheck|lint|test" || true)
   
   if [[ -n "$EXEC_LINE" && -n "$VALIDATION_KEYWORDS" && "$EXEC_LINE" -gt "$WRITE_LINE" ]]; then
-    echo -e "  ${GREEN}✓${NC} Post-batch validation detected (precision_exec + typecheck/lint/test after writes)"
+    printf '  %s[OK]%s Post-batch validation detected (precision_exec + typecheck/lint/test after writes)\n' "$GREEN" "$NC"
     printf '[PASS] Post-batch validation present\n'
   else
     add_warning "No post-batch validation found after write operations. Consider running typecheck/lint/test."
+    printf '[FAIL] No post-batch validation found\n'
   fi
 else
-  echo -e "  ${YELLOW}⊘${NC} No write operations to validate"
+  printf '  %s[-]%s No write operations to validate\n' "$YELLOW" "$NC"
 fi
 
 # ============================================================================
@@ -294,25 +298,25 @@ fi
 # ============================================================================
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+printf '%s\n' "================================================================="
 
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then
   if [[ ${#WARNINGS[@]} -eq 0 ]]; then
-    echo -e "${GREEN}✓ PASS${NC} - Transcript is DPB compliant"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    printf '%s[OK] PASS%s - Transcript is DPB compliant\n' "$GREEN" "$NC"
+    printf '%s\n' "================================================================="
     exit 0
   else
-    echo -e "${GREEN}✓ PASS${NC} - Transcript is DPB compliant (with warnings)"
+    printf '%s[OK] PASS%s - Transcript is DPB compliant (with warnings)\n' "$GREEN" "$NC"
     echo ""
     echo -e "${YELLOW}Warnings:${NC}"
     for i in "${!WARNINGS[@]}"; do
       echo -e "  ${YELLOW}$((i + 1)):${NC} ${WARNINGS[$i]}"
     done
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    printf '%s\n' "================================================================="
     exit 0
   fi
 else
-  echo -e "${RED}✗ FAIL${NC} - ${#VIOLATIONS[@]} DPB violation(s) found:"
+  printf '%s[X] FAIL%s - %d DPB violation(s) found:\n' "$RED" "$NC" "${#VIOLATIONS[@]}"
   echo ""
   for i in "${!VIOLATIONS[@]}"; do
     echo -e "  ${RED}$((i + 1)):${NC} ${VIOLATIONS[$i]}"
@@ -326,6 +330,6 @@ else
     done
   fi
   
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  printf '%s\n' "================================================================="
   exit 1
 fi
