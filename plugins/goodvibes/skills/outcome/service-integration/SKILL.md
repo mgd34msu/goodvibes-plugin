@@ -536,7 +536,7 @@ precision_write:
         
         export async function getUploadUrl(key: string, contentType: string) {
           const command = new PutObjectCommand({
-            Bucket: process.env.AWS_S3_BUCKET!,
+            Bucket: process.env.AWS_S3_BUCKET,
             Key: key,
             ContentType: contentType,
           });

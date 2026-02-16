@@ -286,6 +286,7 @@ precision_grep:
   queries:
     - id: type_assertions
       pattern: "as (unknown|any|[A-Z][a-zA-Z]+)"
+      glob: "**/*.{ts,tsx}"
   output:
     format: context
     context_before: 2
@@ -347,7 +348,7 @@ await fetchData();
 // After: Try/catch
 try {
   await fetchData();
-} catch (error) {
+} catch (error: unknown) {
   logger.error('Failed to fetch data', { error });
   throw new AppError('Data fetch failed', { cause: error });
 }
@@ -399,7 +400,7 @@ function isUser(value: unknown): value is User {
 
 if (isUser(data)) {
   // TypeScript knows data is User
-  console.log(data.email);
+  logger.info('User email', { email: data.email });
 }
 ```
 
@@ -527,6 +528,7 @@ precision_grep:
   queries:
     - id: fetch_with_catch
       pattern: "fetch\\([^)]+\\).*catch"
+      glob: "**/*.{ts,tsx,js,jsx}"
   output:
     format: context
     context_after: 5
@@ -551,7 +553,7 @@ precision_grep:
 export async function GET(request: Request) {
   return Response.json(data, {
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': '*', // Development only - use specific origin in production
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
@@ -570,7 +572,7 @@ if (!token) {
 
 try {
   const session = await verifyToken(token);
-} catch (error) {
+} catch (error: unknown) {
   logger.error('Token verification failed', { error });
   return Response.json({ error: 'Invalid token' }, { status: 401 });
 }
@@ -878,7 +880,7 @@ function processUser(user: User | undefined) {
   
   try {
     // Process user
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Failed to process user', { userId: user.id, error });
     throw error;
   }
@@ -1015,6 +1017,7 @@ precision_grep:
   queries:
     - id: error_context
       pattern: "TypeError|ReferenceError|RangeError"
+      glob: "**/*.{ts,tsx,js,jsx}"
   output:
     format: context
     context_before: 5
@@ -1211,7 +1214,7 @@ export async function POST(request: Request) {
     const result = await processRequest(request);
     logger.info('Request completed', { requestId });
     return Response.json(result);
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Request failed', { requestId, error });
     throw error;
   }

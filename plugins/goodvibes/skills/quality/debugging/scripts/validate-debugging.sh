@@ -50,7 +50,7 @@ if [[ -d "src" ]]; then
   if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
     --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
     --exclude-dir=coverage --exclude-dir=build \
-    "console\\.log" src 2>/dev/null | grep -q .; then
+    "console\\.log" -- src 2>/dev/null | grep -q .; then
     CONSOLE_LOG_FOUND=true
   fi
 fi
@@ -59,7 +59,7 @@ if [[ "$CONSOLE_LOG_FOUND" == true ]]; then
   CONSOLE_COUNT=$(grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
     --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
     --exclude-dir=coverage --exclude-dir=build \
-    "console\\.log" src 2>/dev/null | wc -l)
+    "console\\.log" -- src 2>/dev/null | wc -l)
   VIOLATIONS+=("Found $CONSOLE_COUNT console.log statements (use proper logger instead)")
   PASS=false
   printf '  %s[FAIL]%s Found %d console.log statements\n' "$RED" "$NC" "$CONSOLE_COUNT"
@@ -81,7 +81,7 @@ fi
 if [[ "$REACT_PROJECT" == true ]]; then
   if grep -rq --include="*.tsx" --include="*.jsx" \
     --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
-    -E "(ErrorBoundary|componentDidCatch|static getDerivedStateFromError)" . 2>/dev/null; then
+    -E "(ErrorBoundary|componentDidCatch|static getDerivedStateFromError)" -- . 2>/dev/null; then
     ERROR_BOUNDARY_FOUND=true
   fi
 
@@ -127,7 +127,7 @@ fi
 
 if grep -rq --include="*.ts" --include="*.js" \
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
-  -E "(logger\\.(info|error|warn|debug)|log\\.(info|error))" . 2>/dev/null; then
+  -E "(logger\\.(info|error|warn|debug)|log\\.(info|error))" -- . 2>/dev/null; then
   LOGGING_LIB_FOUND=true
 fi
 
@@ -145,7 +145,7 @@ EMPTY_CATCH_FOUND=false
 
 if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
-  -E "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}" . 2>/dev/null | grep -q .; then
+  -E "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}" -- . 2>/dev/null | grep -q .; then
   EMPTY_CATCH_FOUND=true
 fi
 
@@ -163,7 +163,7 @@ printf '[CHECK 6] Checking debug dependencies...\n'
 DEBUG_DEPS_IN_PROD=false
 
 if [[ -f "package.json" ]]; then
-  if grep -A 999 '"dependencies"' -- package.json 2>/dev/null | \
+  if sed -n '/"dependencies"/,/^  }/p' package.json 2>/dev/null | \
      grep -qE '"(debug|why-did-you-render|react-devtools)"'; then
     DEBUG_DEPS_IN_PROD=true
   fi
@@ -183,7 +183,7 @@ DEBUGGER_FOUND=false
 
 if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
-  "debugger;" . 2>/dev/null | grep -q .; then
+  "debugger;" -- . 2>/dev/null | grep -q .; then
   DEBUGGER_FOUND=true
 fi
 
@@ -207,7 +207,7 @@ fi
 
 if grep -rq --include="*.ts" --include="*.js" \
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
-  -E "(Sentry\\.init|Rollbar\\.init|bugsnag)" . 2>/dev/null; then
+  -E "(Sentry\\.init|Rollbar\\.init|bugsnag)" -- . 2>/dev/null; then
   ERROR_MONITORING_FOUND=true
 fi
 
@@ -225,7 +225,7 @@ THROWING_STRINGS_FOUND=false
 
 if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
-  -E 'throw ["'\''`]' . 2>/dev/null | grep -q .; then
+  -E 'throw ["'\''`]' -- . 2>/dev/null | grep -q .; then
   THROWING_STRINGS_FOUND=true
 fi
 
@@ -244,8 +244,8 @@ FLOATING_PROMISES_FOUND=false
 
 if grep -r --include="*.ts" --include="*.tsx" \
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git \
-  -E '^[[:space:]]+(fetch|axios|prisma)\\.' . 2>/dev/null | \
-  grep -v 'await' | grep -v '\\.then' | grep -v '\\.catch' | grep -q .; then
+  -E '^[[:space:]]+(fetch|axios|prisma)\.' -- . 2>/dev/null | \
+  grep -v 'await' | grep -v '\.then' | grep -v '\.catch' | grep -q .; then
   FLOATING_PROMISES_FOUND=true
 fi
 

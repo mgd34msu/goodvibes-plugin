@@ -142,7 +142,7 @@ async function saveUser(user: User) {
 // Or use .then
 function saveUser(user: User) {
   return db.user.create(user).then(result => {
-    console.log('Saved');
+    logger.info('Saved');
     return result;
   });
 }
@@ -151,7 +151,7 @@ function saveUser(user: User) {
 async function saveUser(user: User) {
   try {
     await db.user.create(user);
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Failed to save user', { error });
     throw error;
   }
@@ -164,7 +164,7 @@ async function saveUser(user: User) {
 ```typescript
 try {
   await riskyOperation();
-} catch (error) {
+} catch (error: unknown) {
   // Error silently swallowed
 }
 ```
@@ -179,7 +179,7 @@ try {
 // Log the error
 try {
   await riskyOperation();
-} catch (error) {
+} catch (error: unknown) {
   logger.error('Operation failed', { error });
   throw error;
 }
@@ -187,7 +187,7 @@ try {
 // Handle specific errors
 try {
   await riskyOperation();
-} catch (error) {
+} catch (error: unknown) {
   if (error instanceof ValidationError) {
     return { success: false, errors: error.errors };
   }
@@ -197,7 +197,7 @@ try {
 // Return default value
 try {
   return await fetchData();
-} catch (error) {
+} catch (error: unknown) {
   logger.warn('Fetch failed, using default', { error });
   return defaultValue;
 }
@@ -335,7 +335,7 @@ has been blocked by CORS policy
 export async function GET(request: Request) {
   return Response.json(data, {
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': '*', // Development only - use specific origin in production
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
@@ -346,7 +346,7 @@ export async function GET(request: Request) {
 export async function OPTIONS() {
   return new Response(null, {
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': '*', // Development only - use specific origin in production
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
@@ -392,7 +392,7 @@ export async function GET(request: Request) {
   
   try {
     const session = await verifyToken(token);
-  } catch (error) {
+  } catch (error: unknown) {
     return Response.json({ error: 'Invalid token' }, { status: 401 });
   }
 }
@@ -422,18 +422,18 @@ try {
     signal: controller.signal,
   });
   clearTimeout(timeoutId);
-} catch (error) {
-  if (error.name === 'AbortError') {
-    console.error('Request timed out');
+} catch (error: unknown) {
+  if (error instanceof Error && error.name === 'AbortError') {
+    logger.error('Request timed out');
   }
 }
 
 // With retry
-async function fetchWithRetry(url: string, retries = 3) {
+async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
       return await fetch(url, { signal: AbortSignal.timeout(5000) });
-    } catch (error) {
+    } catch (error: unknown) {
       if (i === retries - 1) throw error;
       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
@@ -510,7 +510,7 @@ function Parent() {
 }
 
 // Memoize child
-const Child = React.memo(({ onClick }) => {
+const Child = React.memo(({ onClick }: { onClick: () => void }) => {
   return <button onClick={onClick}>Click</button>;
 });
 

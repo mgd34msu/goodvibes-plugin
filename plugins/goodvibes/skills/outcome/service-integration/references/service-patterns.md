@@ -183,7 +183,7 @@ export async function withRetry<T>(
     retryableErrors = () => true,
   } = options;
   
-  let lastError: Error;
+  let lastError: Error = new Error('All retry attempts failed');
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -220,7 +220,7 @@ export async function withRetry<T>(
     }
   }
   
-  throw lastError!;
+  throw lastError;
 }
 ```
 
@@ -248,7 +248,7 @@ export async function withLinearRetry<T>(
   maxAttempts: number = 3,
   delayMs: number = 1000
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: Error = new Error('All retry attempts failed');
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -262,7 +262,7 @@ export async function withLinearRetry<T>(
     }
   }
   
-  throw lastError!;
+  throw lastError;
 }
 ```
 
@@ -283,7 +283,7 @@ export async function withFibonacciRetry<T>(
   maxAttempts: number = 5,
   baseDelayMs: number = 1000
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: Error = new Error('All retry attempts failed');
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -298,7 +298,7 @@ export async function withFibonacciRetry<T>(
     }
   }
   
-  throw lastError!;
+  throw lastError;
 }
 ```
 
@@ -408,6 +408,8 @@ try {
 ## Webhook Verification Patterns
 
 **CRITICAL**: Always verify webhook signatures using HMAC with constant-time comparison (`crypto.timingSafeEqual`) to prevent timing attacks. Never use simple string comparison (`===` or `!==`).
+
+**NOTE**: The following examples use non-null assertions (`process.env.VAR!`) for brevity. In production code, always validate environment variables at startup using runtime validation (see "Environment Variable Management" section below) to ensure type safety and prevent runtime errors.
 
 ### HMAC Signature Verification
 
