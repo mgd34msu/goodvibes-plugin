@@ -64,7 +64,7 @@ VERDICT=$(grep -oE '^- \*\*Verdict\*\*: (PASS|CONDITIONAL PASS|FAIL)' "$REVIEW_F
 
 for dimension in "${DIMENSIONS[@]}"; do
     # Extract dimension score (just the number, not /10)
-    dim_score=$(grep -oP "^\| $dimension \| \K[0-9]+" "$REVIEW_FILE" || echo "0")
+    dim_score=$(grep -E "^\| $dimension \| [0-9]+/10 \|" -- "$REVIEW_FILE" | grep -oE '[0-9]+/10' | grep -oE '^[0-9]+' || echo "0")
     if [[ "$dim_score" -lt 4 ]] && [[ "$dim_score" -ne 0 ]]; then
         # Score below 4 (and not missing/0) requires FAIL verdict
         if [[ "$VERDICT" != "FAIL" ]]; then

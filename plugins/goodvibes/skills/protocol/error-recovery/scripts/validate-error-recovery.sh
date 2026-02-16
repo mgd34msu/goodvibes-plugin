@@ -36,6 +36,17 @@ fi
 if [[ ! -f "$FAILURES_JSON" ]]; then
   echo -e "${YELLOW}WARNING: failures.json not found: $FAILURES_JSON${NC}"
   echo "This may indicate no failures were logged."
+else
+  # Validate JSON structure
+  if command -v jq &>/dev/null; then
+    if ! jq . "$FAILURES_JSON" > /dev/null 2>&1; then
+      echo -e "  ${YELLOW}⚠${NC} failures.json is not valid JSON"
+    fi
+  elif command -v python3 &>/dev/null; then
+    if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$FAILURES_JSON" 2>/dev/null; then
+      echo -e "  ${YELLOW}⚠${NC} failures.json is not valid JSON"
+    fi
+  fi
 fi
 
 # Initialize violation tracking
@@ -51,21 +62,21 @@ ERROR_PATTERNS="(Error:|Exception:|Failed:|ENOENT|EACCES|TypeError|ReferenceErro
 CATEGORY_PATTERNS="(TOOL_FAILURE|BUILD_ERROR|TEST_FAILURE|TYPE_ERROR|RUNTIME_ERROR|EXTERNAL_ERROR)"
 
 # Find lines with errors
-ERROR_LINES=$(grep -n -E "$ERROR_PATTERNS" "$TRANSCRIPT" | cut -d: -f1 || true)
+ERROR_LINES=$(grep -n -E "$ERROR_PATTERNS" -- "$TRANSCRIPT" | cut -d: -f1 || true)
 
 if [[ -n "$ERROR_LINES" ]]; then
-  for line_num in $ERROR_LINES; do
+  while IFS= read -r line_num; do
     # Check if categorization appears within 20 lines after the error
     CONTEXT_START=$line_num
     CONTEXT_END=$((line_num + 20))
     
-    CATEGORIZED=$(sed -n "${CONTEXT_START},${CONTEXT_END}p" "$TRANSCRIPT" | grep -E "$CATEGORY_PATTERNS" || true)
+    CATEGORIZED=$(sed -n "${CONTEXT_START},${CONTEXT_END}p" -- "$TRANSCRIPT" | grep -E "$CATEGORY_PATTERNS" || true)
     
     if [[ -z "$CATEGORIZED" ]]; then
       VIOLATIONS+=("Line $line_num: Error detected but not categorized within 20 lines")
       PASS=false
     fi
-  done
+  done <<< "$ERROR_LINES"
 fi
 
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then
@@ -77,9 +88,9 @@ echo ""
 
 # Check 2: failures.json was checked for known patterns
 echo "[CHECK 2] Verifying failures.json was consulted before fixes..."
-FAILURES_CHECK_PATTERNS="(precision_read.*failures\\.json|checking failures\\.json|check.*failures\\.json|read.*failures\\.json)"
+FAILURES_CHECK_PATTERNS="(precision_read.*failures\\.json|precision_grep.*failures\\.json|discover.*failures\\.json|\\.goodvibes/memory/failures\\.json)"
 
-FAILURES_CHECKED=$(grep -i -E "$FAILURES_CHECK_PATTERNS" "$TRANSCRIPT" || true)
+FAILURES_CHECKED=$(grep -i -E "$FAILURES_CHECK_PATTERNS" -- "$TRANSCRIPT" || true)
 
 if [[ -n "$ERROR_LINES" ]] && [[ -z "$FAILURES_CHECKED" ]]; then
   VIOLATIONS+=("Errors occurred but failures.json was not checked for known patterns")
@@ -94,11 +105,11 @@ echo ""
 echo "[CHECK 3] Verifying resolutions were logged to failures.json..."
 RESOLUTION_PATTERNS="(precision_edit.*failures\\.json|logging to failures\\.json|log.*resolution|updated failures\\.json)"
 
-RESOLUTION_LOGGED=$(grep -i -E "$RESOLUTION_PATTERNS" "$TRANSCRIPT" || true)
+RESOLUTION_LOGGED=$(grep -i -E "$RESOLUTION_PATTERNS" -- "$TRANSCRIPT" || true)
 
 # Count errors that were resolved (look for success indicators after errors)
 RESOLVED_PATTERNS="(resolved|fixed|working now|success|passed)"
-RESOLVED_COUNT=$(grep -i -E "$RESOLVED_PATTERNS" "$TRANSCRIPT" | wc -l || echo 0)
+RESOLVED_COUNT=$(grep -c -i -E "$RESOLVED_PATTERNS" -- "$TRANSCRIPT" || echo 0)
 
 if [[ $RESOLVED_COUNT -gt 0 ]] && [[ -z "$RESOLUTION_LOGGED" ]]; then
   VIOLATIONS+=("Errors were resolved but not logged to failures.json")
@@ -115,9 +126,9 @@ MAX_ATTEMPTS_PATTERNS="(attempt 3|third attempt|max attempts|tried 3 times)"
 ESCALATION_PATTERNS="(escalate|report to orchestrator|blocked|need user|requires intervention)"
 INCOMPLETE_PATTERNS="(task incomplete|cannot complete|unable to complete|failed to complete)"
 
-MAX_ATTEMPTS=$(grep -i -E "$MAX_ATTEMPTS_PATTERNS" "$TRANSCRIPT" || true)
-ESCALATION=$(grep -i -E "$ESCALATION_PATTERNS" "$TRANSCRIPT" || true)
-MARKED_INCOMPLETE=$(grep -i -E "$INCOMPLETE_PATTERNS" "$TRANSCRIPT" || true)
+MAX_ATTEMPTS=$(grep -i -E "$MAX_ATTEMPTS_PATTERNS" -- "$TRANSCRIPT" || true)
+ESCALATION=$(grep -i -E "$ESCALATION_PATTERNS" -- "$TRANSCRIPT" || true)
+MARKED_INCOMPLETE=$(grep -i -E "$INCOMPLETE_PATTERNS" -- "$TRANSCRIPT" || true)
 
 if [[ -n "$MAX_ATTEMPTS" ]] && [[ -n "$MARKED_INCOMPLETE" ]] && [[ -z "$ESCALATION" ]]; then
   VIOLATIONS+=("Max attempts reached and task marked incomplete, but no escalation to orchestrator")

@@ -381,52 +381,13 @@ Discovered: Requires new database schema, auth changes, API endpoints
 
 ## Common Error Patterns
 
-### Precision Tool User Errors vs Actual Failures
+For detailed TOOL_FAILURE patterns, see the TOOL_FAILURE section above.
 
-**USER ERROR** (fix and retry with precision tools):
-- Wrong parameter types (string instead of array)
-- Bad regex syntax (unescaped special chars)
-- File path doesn't exist (typo, wrong directory)
-- Extract mode mismatch (using `outline` when `content` is needed)
-- Sandbox blocking external paths (need to disable sandbox or use absolute path within project)
-
-**ACTUAL FAILURE** (fallback to native tools for this operation):
-- Tool crashes with stack trace
-- Tool returns corrupted data
-- Tool times out on valid input
-- Tool produces wrong output for correct parameters
-
-**How to tell the difference:**
-1. Re-read the tool schema carefully
-2. Try the simplest possible invocation first
-3. Check if the error message says "invalid parameter" or "missing required field" → USER ERROR
-4. Check if the error is a JavaScript exception or timeout → ACTUAL FAILURE
-
-**After native tool fallback:**
-- Log the failure to failures.json
-- Return to precision tools for subsequent operations
-- Only use native tools for the specific operation that failed
-
-### When Native Tool Fallback is Appropriate
-
-**Appropriate (ACTUAL FAILURE confirmed):**
-- Precision tool crashes on valid input → use Read/Write/Edit for that file
-- Precision grep times out → use Bash + ripgrep directly
-- Precision exec fails on valid command → use Bash
-
-**Not Appropriate (USER ERROR):**
-- "I don't want to figure out the right parameters" → Fix parameters, retry precision tool
-- "Native tools are easier" → Precision tools are required by protocol
-- "I'm not sure if my regex is right" → Test the regex, fix it, retry precision tool
-
-### The 3-Attempt Rule
-
-Before falling back to native tools:
-1. **Attempt 1**: Read tool schema, fix obvious parameter issues
-2. **Attempt 2**: Simplify to minimal invocation, verify it works
-3. **Attempt 3**: Check failures.json for known issues with this tool
-
-Only after 3 attempts with precision tools should you consider native fallback.
+Key reminders:
+- **Precision tool user errors** (wrong params, bad paths) → fix and retry with precision tools
+- **Actual tool failures** (crashes, timeouts) → fallback to native tools for that operation only
+- **The 3-attempt rule**: Try precision tools 3 times before considering native fallback
+- **After fallback**: Log the failure to failures.json and return to precision tools
 
 ## Summary
 

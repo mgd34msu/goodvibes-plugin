@@ -107,6 +107,13 @@ else
   echo -e "${GREEN}✓${NC} decisions.json read"
 fi
 
+# Check for precision_read of preferences.json
+if ! pattern_exists 'precision_read.*preferences\.json' "$TRANSCRIPT_FILE"; then
+  add_violation "preferences.json not read at task start (no precision_read call found)"
+else
+  echo -e "${GREEN}✓${NC} preferences.json read"
+fi
+
 # Check 2: Activity logged after task completion
 echo ""
 echo "[CHECK 2] Verifying activity logged after task completion..."
@@ -127,8 +134,8 @@ fi
 echo ""
 echo "[CHECK 3] Verifying failures logged when errors resolved..."
 
-# Look for error patterns
-if pattern_exists '(error|failed|exception|crash)' "$TRANSCRIPT_FILE"; then
+# Look for error patterns (tightened to avoid false positives from normal conversation)
+if pattern_exists '(TOOL_FAILURE|BUILD_ERROR|TEST_FAILURE|Error:|failed with exit|exception thrown|stack trace)' "$TRANSCRIPT_FILE"; then
   # Error encountered, check if it was resolved
   if pattern_exists '(resolved|fixed|solution|workaround)' "$TRANSCRIPT_FILE"; then
     # Error was resolved, check for failures.json write
@@ -160,6 +167,7 @@ echo "[CHECK 4] Verifying patterns logged when reusable approaches discovered...
 # - New files created with reusable code
 # - Comments about "pattern" or "approach"
 # - Multiple similar implementations
+# Note: This is a soft warning check, not a hard violation
 if pattern_exists '(pattern|approach|reusable|abstraction)' "$TRANSCRIPT_FILE"; then
   # Potential pattern discovered
   if ! pattern_exists 'precision_edit.*patterns\.json|precision_write.*patterns\.json' "$TRANSCRIPT_FILE"; then

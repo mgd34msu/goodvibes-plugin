@@ -110,7 +110,7 @@ precision_read:
 **What to look for**:
 - `scope` includes files you'll modify
 - `category` matches your domain (e.g., "architecture", "pattern", "library")
-- `status` is "active" (not "deprecated" or "superseded")
+- `status` is "active" (not "superseded" or "reverted")
 
 **If found**:
 - Read `what` and `why` — understand the decision
@@ -130,8 +130,7 @@ precision_read:
 ```
 
 **What to look for**:
-- `key` matches your domain (e.g., "naming", "style", "import-order")
-- `scope` is "global" or matches your area
+- `key` matches your domain (e.g., "category.preference_name")
 
 **If found**:
 - Apply the `value` preference
@@ -223,12 +222,12 @@ Schema:
 {
   "id": "dec_YYYYMMDD_HHMMSS",
   "date": "YYYY-MM-DDTHH:MM:SSZ",
-  "category": "architecture | pattern | library | tool",
+  "category": "library|architecture|pattern|convention",
   "what": "What was decided",
   "why": "Rationale for the decision",
   "scope": ["files/directories affected"],
   "confidence": "high | medium | low",
-  "status": "active | deprecated | superseded"
+  "status": "active|superseded|reverted"
 }
 ```
 
@@ -276,11 +275,12 @@ Schema:
 
 **Error categories** (for `errors.md`):
 - `TOOL_FAILURE` — Precision tool or native tool failed
+- `AGENT_FAILURE` — Agent crashed or failed to complete task
 - `BUILD_ERROR` — TypeScript compilation, build step failed
 - `TEST_FAILURE` — Test suite failed
-- `TYPE_ERROR` — Type checking error
-- `RUNTIME_ERROR` — Runtime crash or exception
+- `VALIDATION_ERROR` — Validation, linting, or format checking failed
 - `EXTERNAL_ERROR` — API, network, dependency issue
+- `UNKNOWN` — Error category could not be determined
 
 ### After Decision Made
 
@@ -334,17 +334,9 @@ Before first write to any memory/log file, check if it exists:
 
 ### For JSON files
 
-If file doesn't exist, create with:
+If file doesn't exist, create with bare array:
 ```json
 []
-```
-
-Or with a wrapper object:
-```json
-{
-  "decisions": [],
-  "last_updated": "YYYY-MM-DDTHH:MM:SSZ"
-}
 ```
 
 ### For Markdown files
@@ -389,7 +381,7 @@ If `exists: false`, create the file before appending.
 - **Do include full context** — Root cause + resolution + prevention for failures
 - **Do use timestamp IDs** — No collision risk, no need to read existing entries
 - **Do log to both formats** — JSON for machines, Markdown for humans
-- **Do update last_updated** — Update timestamp when modifying JSON files
+- **Do update last_updated** — Update timestamp when modifying index.json
 
 ---
 

@@ -28,16 +28,14 @@ interface Decision {
   why: string;             // Rationale for the decision
   scope: string[];         // Files/directories affected
   confidence: "high" | "medium" | "low";
-  status: "active" | "deprecated" | "superseded";
+  status: "active" | "superseded" | "reverted";
 }
 
 type DecisionCategory = 
+  | "library"        // Library/package selection
   | "architecture"   // System design decisions
   | "pattern"        // Code pattern choices
-  | "library"        // Library/package selection
-  | "tool"           // Tool/framework choice
-  | "process"        // Development process decisions
-  | "style";         // Code style decisions
+  | "convention";    // Project conventions and standards
 
 type DecisionsFile = Decision[];
 ```
@@ -93,7 +91,7 @@ type DecisionsFile = Decision[];
 - **why**: Detailed rationale with trade-offs considered
 - **scope**: List all affected directories/files (can use glob patterns)
 - **confidence**: High = proven approach, Medium = reasonable choice, Low = experimental
-- **status**: Active = currently applicable, Deprecated = outdated, Superseded = replaced by newer decision
+- **status**: Active = currently applicable, Superseded = replaced by newer decision, Reverted = decision was reversed
 
 ---
 
@@ -241,87 +239,51 @@ type FailuresFile = Failure[];
 
 ```typescript
 interface Preference {
-  id: string;              // Format: "pref_YYYYMMDD_HHMMSS"
-  timestamp: string;       // ISO 8601: "YYYY-MM-DDTHH:MM:SSZ"
-  key: string;             // Preference identifier (kebab-case)
-  value: any;              // Preference value (string, object, array, etc.)
-  source: "user" | "team" | "project" | "inferred";
-  scope: "global" | "session" | string; // Scope of preference
-  reason?: string;         // Optional: why this preference exists
+  key: string;    // Preference identifier (category.preference_name)
+  value: any;     // Preference value or setting
+  reason: string; // Why this preference exists
 }
 
-interface PreferencesFile {
-  preferences: Preference[];
-  last_updated: string;    // ISO 8601 timestamp
-}
+type PreferencesFile = Preference[];
 ```
 
 ### Example Entry
 
 ```json
 {
-  "id": "pref_20260215_150000",
-  "timestamp": "2026-02-15T15:00:00Z",
-  "key": "import-order",
-  "value": {
-    "order": ["react", "next", "external", "internal", "relative"],
-    "separator": true
-  },
-  "source": "team",
-  "scope": "global",
-  "reason": "Consistent import ordering improves readability and reduces merge conflicts"
+  "key": "naming.component-files",
+  "value": "PascalCase with .tsx extension",
+  "reason": "Standard React convention for component files"
 }
 ```
 
 ### Complete File Example
 
 ```json
-{
-  "preferences": [
-    {
-      "id": "pref_20260215_150000",
-      "timestamp": "2026-02-15T15:00:00Z",
-      "key": "import-order",
-      "value": {
-        "order": ["react", "next", "external", "internal", "relative"],
-        "separator": true
-      },
-      "source": "team",
-      "scope": "global",
-      "reason": "Consistent import ordering improves readability and reduces merge conflicts"
-    },
-    {
-      "id": "pref_20260215_150100",
-      "timestamp": "2026-02-15T15:01:00Z",
-      "key": "component-naming",
-      "value": "PascalCase with .tsx extension",
-      "source": "team",
-      "scope": "global",
-      "reason": "Standard React convention"
-    },
-    {
-      "id": "pref_20260215_150200",
-      "timestamp": "2026-02-15T15:02:00Z",
-      "key": "test-location",
-      "value": "colocated with source files",
-      "source": "team",
-      "scope": "global",
-      "reason": "Easier to maintain tests when they're next to the code they test"
-    }
-  ],
-  "last_updated": "2026-02-15T15:02:00Z"
-}
+[
+  {
+    "key": "import.order",
+    "value": ["react", "next", "external", "internal", "relative"],
+    "reason": "Consistent import ordering improves readability and reduces merge conflicts"
+  },
+  {
+    "key": "naming.component-files",
+    "value": "PascalCase with .tsx extension",
+    "reason": "Standard React convention for component files"
+  },
+  {
+    "key": "testing.location",
+    "value": "colocated with source files",
+    "reason": "Easier to maintain tests when they're next to the code they test"
+  }
+]
 ```
 
 ### Field Guidelines
 
-- **id**: Always use timestamp format `pref_YYYYMMDD_HHMMSS`
-- **timestamp**: Use ISO 8601 UTC format with Z suffix
-- **key**: Use kebab-case, descriptive identifier
+- **key**: Use dot notation for categorization (e.g., "category.preference_name")
 - **value**: Can be string, number, boolean, object, or array
-- **source**: Who/what established this preference
-- **scope**: "global" = project-wide, "session" = temporary, or specific path/domain
-- **reason**: Optional but recommended for team preferences
+- **reason**: Explanation for why this preference exists
 
 ---
 
@@ -370,7 +332,7 @@ interface MemoryIndex {
     "architecture",
     "library",
     "pattern",
-    "tool"
+    "convention"
   ]
 }
 ```
@@ -494,7 +456,7 @@ The index file is optional and provides quick statistics and searchable tags. It
 - [ ] Category is one of the allowed values
 - [ ] Scope is an array (not a string)
 - [ ] Confidence is "high", "medium", or "low"
-- [ ] Status is "active", "deprecated", or "superseded"
+- [ ] Status is "active", "superseded", or "reverted"
 
 ### patterns.json
 
@@ -518,12 +480,10 @@ The index file is optional and provides quick statistics and searchable tags. It
 
 ### preferences.json
 
-- [ ] All entries have unique timestamp-based IDs
-- [ ] All timestamps are ISO 8601 with Z suffix
-- [ ] Keys are kebab-case
-- [ ] Source is valid ("user", "team", "project", "inferred")
-- [ ] File has last_updated timestamp
-- [ ] Preferences array is not empty
+- [ ] All entries have key, value, and reason fields
+- [ ] Keys use dot notation (category.preference_name)
+- [ ] Value can be any type (string, object, array, etc.)
+- [ ] Reason provides clear explanation
 
 ---
 
@@ -537,12 +497,12 @@ For projects using TypeScript, these types can be used for type-safe memory oper
 export interface Decision {
   id: string;
   date: string;
-  category: "architecture" | "pattern" | "library" | "tool" | "process" | "style";
+  category: "library" | "architecture" | "pattern" | "convention";
   what: string;
   why: string;
   scope: string[];
   confidence: "high" | "medium" | "low";
-  status: "active" | "deprecated" | "superseded";
+  status: "active" | "superseded" | "reverted";
 }
 
 export interface Pattern {
@@ -566,18 +526,9 @@ export interface Failure {
 }
 
 export interface Preference {
-  id: string;
-  timestamp: string;
-  key: string;
-  value: any;
-  source: "user" | "team" | "project" | "inferred";
-  scope: string;
-  reason?: string;
-}
-
-export interface PreferencesFile {
-  preferences: Preference[];
-  last_updated: string;
+  key: string;    // Preference identifier (category.preference_name)
+  value: any;     // Preference value or setting
+  reason: string; // Why this preference exists
 }
 
 export interface MemoryIndex {
@@ -620,7 +571,7 @@ For automated validation, here are JSON Schema definitions:
       },
       "category": {
         "type": "string",
-        "enum": ["architecture", "pattern", "library", "tool", "process", "style"]
+        "enum": ["library", "architecture", "pattern", "convention"]
       },
       "what": { "type": "string" },
       "why": { "type": "string" },
@@ -634,7 +585,7 @@ For automated validation, here are JSON Schema definitions:
       },
       "status": {
         "type": "string",
-        "enum": ["active", "deprecated", "superseded"]
+        "enum": ["active", "superseded", "reverted"]
       }
     }
   }
@@ -698,6 +649,27 @@ For automated validation, here are JSON Schema definitions:
         "type": "array",
         "items": { "type": "string" }
       }
+    }
+  }
+}
+```
+
+### Preference Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["key", "value", "reason"],
+    "properties": {
+      "key": {
+        "type": "string",
+        "pattern": "^[a-z]+\\.[a-z-]+$"
+      },
+      "value": {},
+      "reason": { "type": "string" }
     }
   }
 }
