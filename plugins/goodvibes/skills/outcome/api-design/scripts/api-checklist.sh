@@ -40,11 +40,11 @@ log_info "Check 1: Route files exist"
 ROUTE_COUNT=0
 
 if [ -d "${PROJECT_ROOT}/src/app/api" ]; then
-  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/app/api" -- -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
+  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/app/api" -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
 elif [ -d "${PROJECT_ROOT}/src/api" ]; then
-  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/api" -- -name '*.ts' -o -name '*.js' 2>/dev/null | wc -l)
+  ROUTE_COUNT=$(find "${PROJECT_ROOT}/src/api" -name '*.ts' -o -name '*.js' 2>/dev/null | wc -l)
 elif [ -d "${PROJECT_ROOT}/app/api" ]; then
-  ROUTE_COUNT=$(find "${PROJECT_ROOT}/app/api" -- -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
+  ROUTE_COUNT=$(find "${PROJECT_ROOT}/app/api" -name 'route.ts' -o -name 'route.js' 2>/dev/null | wc -l)
 fi
 
 if [ "$ROUTE_COUNT" -gt 0 ]; then

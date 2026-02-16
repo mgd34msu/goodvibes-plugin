@@ -325,7 +325,7 @@ precision_exec:
       timeout_ms: 60000
       expect:
         exit_code: 0
-        stderr_empty: false  # Prisma outputs to stderr
+      # Note: Prisma outputs progress to stderr; this is expected behavior
     - cmd: "npx prisma generate"
       expect:
         exit_code: 0

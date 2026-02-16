@@ -424,6 +424,7 @@ Implement authentication, CORS, and rate limiting middleware following the patte
 ## Testing
 
 Test API endpoints with meaningful assertions covering success cases, validation errors, and authentication failures. See `references/api-style-guide.md` for testing patterns.
+
 ## Common Anti-Patterns
 
 **DON'T:**

@@ -234,7 +234,7 @@ precision_exec:
     # For managed services
     - cmd: "npm install @clerk/nextjs"  # Clerk
     - cmd: "npm install next-auth"      # NextAuth
-    - cmd: "npm install lucia"          # Lucia
+    - cmd: "npm install better-auth"    # Better Auth (replaces deprecated Lucia)
   verbosity: minimal
 ```
 
