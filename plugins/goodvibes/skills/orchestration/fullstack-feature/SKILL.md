@@ -18,7 +18,7 @@ Use fullstack-feature when the user requests:
 - A complete feature that requires database, API, and UI changes
 - End-to-end implementation with testing and review
 - A new user-facing capability that touches multiple components
-- Anything described as: "build X`, "add X feature", "implement X capability"
+- Anything described as: "build X", "add X feature", "implement X capability"
 
 **Do NOT use this skill for:**
 - Single-layer changes (just API, just UI)
@@ -95,7 +95,7 @@ At the end of Phase 1, you must have:
 
 ### Purpose
 
-Establish the data model and type foundation before building any upstream code. This ensurestype safety and consistency across layers.
+Establish the data model and type foundation before building any upstream code. This ensures type safety and consistency across layers.
 
 ### Steps
 
@@ -118,6 +118,9 @@ Establish the data model and type foundation before building any upstream code. 
 ### Agent Instructions
 
 **Database agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Use `discover-plan-batch` protocol
 - Follow existing schema patterns (check memory/decisions.json)
 - Add appropriate indexes for query performance
@@ -125,7 +128,10 @@ Establish the data model and type foundation before building any upstream code. 
 - Use timestamps (`createdAt`, `updatedAt`)
 - Test migration before completing
 
-**Type generator agent**:
+**Engineer agent (type generation)**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Run type generation command
 - Verify types are correct (spot check generated code)
 - Run `tsc` to confirm no type errors
@@ -159,6 +165,9 @@ These sub-phases run in parallel:
 ### Agent Instructions
 
 **API agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Implement endpoints using existing patterns (check decisions.json for API style)
 - Add input validation (use Zod or similar)
 - Add error handling
@@ -168,6 +177,9 @@ These sub-phases run in parallel:
 - Use `discover-plan-batch` protocol
 
 **UI agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Create components using existing patterns (check decisions.json for UI libraries)
 - Follow accessibility best practices (ARIA attributes, keyboard navigation)
 - Implement responsive design
@@ -176,6 +188,9 @@ These sub-phases run in parallel:
 - Use `discover-plan-batch` protocol
 
 **State agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Implement state management using existing patterns (Zustand, Redux, etc)
 - Define state shape and actions
 - Add selectors for derived state
@@ -217,7 +232,8 @@ Connect UI to API, wire state to UI, and verify data flows end-to-end. This phas
    - Verify UI updates when state changes
 
 3. **End-to-end verification**:
-   - Manually test data flow: UI -> API -> Database -> API <- UI.   - Confirm loading states appear
+   - Manually test data flow: UI -> API -> Database -> API -> UI
+   - Confirm loading states appear
    - Confirm error states appear on failure
    - Confirm success states appear on success
 
@@ -229,6 +245,9 @@ Connect UI to API, wire state to UI, and verify data flows end-to-end. This phas
 ### Agent Instructions
 
 **Integration agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Read both API and UI code to understand interfaces
 - Add API client calls in correct lifecycle hooks (`useEffect`, event handlers)
 - Ensure error handling is present
@@ -239,7 +258,8 @@ Connect UI to API, wire state to UI, and verify data flows end-to-end. This phas
 ### Clear Definition of Done
 
 - UI components can call API endpoints
-- Data flows from UI -> API <- TI- State works correctly
+- Data flows from UI -> API -> DB -> API -> UI
+- State works correctly
 - Loading states display
 - Error states display
 - `npm run typecheck` passes
@@ -267,6 +287,9 @@ These sub-phases run in parallel:
 ### Agent Instructions
 
 **Tester agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Write unit tests for API endpoints
 - Write component tests for UI
 - Write integration tests for data flow
@@ -275,6 +298,9 @@ These sub-phases run in parallel:
 - Use `discover-plan-batch` protocol
 
 **Security agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Check for input validation on all endpoints
 - Check for authentication/authorization checks
 - Check for SQL injection vulnerabilities
@@ -284,6 +310,9 @@ These sub-phases run in parallel:
 - Use `discover-plan-batch` protocol
 
 **A11y agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Check for ARIA attributes on interactive elements
 - Check for keyboard navigation support
 - Check for color contrast (WCAG AA)
@@ -294,7 +323,7 @@ These sub-phases run in parallel:
 ### Clear Definition of Done
 
 - Tests written and passing
-- Security check complete (no, critical issues)
+- Security check complete (no critical issues)
 - Accessibility check complete (no critical issues)
 - All files committed
 
@@ -325,21 +354,28 @@ Ensure all code meets production standards through systematic review and fix. Us
    - Verify all issues were fixed
    - Re-score all 10 dimensions
    - Identify new issues (if any)
-   - Determine verdict: PASS (>= 9.5), CONDITIONAL PASS  8.0-9.49), FAIL (< 8.0)
+   - Determine verdict: PASS (>= 9.5), CONDITIONAL PASS (8.0-9.49), FAIL (< 8.0)
 
 4. **Loop**:
-   - If FAIL or CONDITIONAL PASS, RePEATd�U YeV 2(FO"�  - Id�PASS, Kb� loop
+   - If FAIL or CONDITIONAL PASS, repeat from step 1
+   - If PASS, exit the loop
 
 ### Agent Instructions
 
 **Reviewer agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Use `review-scoring` skill
-- Score obj ectively, use the rubric literally
+- Score objectively, use the rubric literally
 - Provide specific FILE:LINE references
 - Provide specific fix suggestions
 - Categorize issues as Critical/Major/Minor
 
 **Fix agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Address all Critical and Major issues
 - Document fixes applied
 - Document issues not fixed (with reasons)
@@ -347,8 +383,11 @@ Ensure all code meets production standards through systematic review and fix. Us
 - Use `discover-plan-batch` protocol
 
 **Re-reviewer agent**:
+
+Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+
 - Verify each previously flagged issue was fixed
-- Re-score from scratch DDO NOT copy previous scores)
+- Re-score from scratch (DO NOT copy previous scores)
 - Identify new issues
 - Use `review-scoring` skill
 
@@ -449,7 +488,7 @@ Phases 2, 4, 6, 7 must be sequential:
 Phases 3 and 5 spawn multiple agents in parallel:
 
 - **Phase 3 (Core)**: API agent, UI agent, State agent run in parallel
-- **Phase 5 (Quality) **: Tester agent, Security agent, A11y agent run in parallel
+- **Phase 5 (Quality)**: Tester agent, Security agent, A11y agent run in parallel
 
 All agents in a parallel phase must complete before proceeding to the next phase.
 
@@ -480,7 +519,8 @@ Phase 6 uses the Work-Review-Fix-Check loop:
 
 1. **Work**: Phases 2-5 produce the work
 2. **Review**: Reviewer agent scores using review-scoring rubric
-3. **Fix**: Fix agent addresses issues 4. **Check**: Re-reviewer agent verifies fixes
+3. **Fix**: Fix agent addresses issues
+4. **Check**: Re-reviewer agent verifies fixes
 5. Loop until score >= 9.5
 
 See `review-scoring` skill for details.

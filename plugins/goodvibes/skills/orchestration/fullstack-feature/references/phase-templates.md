@@ -45,10 +45,10 @@ Deliverables:
 ### Phase 2: Foundation - Database Agent Prompt Template
 
 ```
-Your task is to design the database schema for: {FEATUSE_NAME}
+Your task is to design the database schema for: {FEATURE_NAME}
 
 Requirements:
-{$REQUIREMENTS_FROM_PHASEE}
+{$REQUIREMENTS_FROM_PHASE1}
 
 Steps:
 1. Use discover tool to explore existing schema:
@@ -152,7 +152,7 @@ Deliverables:
 ### Phase 3: Core Implementation - UI Agent Prompt Template
 
 ```
-Your task is to implement UI components for: {FEATUSE_NAME}
+Your task is to implement UI components for: {FEATURE_NAME}
 
 Requirements:
 {$REQUIREMENTS_FROM_PHASE1}
@@ -523,7 +523,7 @@ Phase 1: Understand
     ↓
     | (Requirements, plan)
     ↓
-Phase 2: Foundation (SEQUENCIAL)
+Phase 2: Foundation (SEQUENTIAL)
     | - Database schema
     | - Type generation
     ↓
@@ -536,7 +536,7 @@ Phase 3: Core Implementation (PARALLEL)
     ↓
     | (API + UI + State ready)
     ↓
-Phase 4: Integration (SEQUENCIAL)
+Phase 4: Integration (SEQUENTIAL)
     | - Wire UI to API
     | - Wire state to UI
     | - Test data flow
@@ -556,7 +556,7 @@ Phase 6: Review (SEQUENTIAL - WRFC loop)
     | - Check
     ↓ (loop until score >= 9.5)
     ↓
-Phase 7: Commit + Log (SEQUENCIAL)
+Phase 7: Commit + Log (SEQUENTIAL)
     | - Git commit
     | - Update memory
     | - Update logs

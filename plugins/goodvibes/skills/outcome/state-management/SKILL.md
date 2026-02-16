@@ -115,7 +115,7 @@ For data from APIs that needs caching, background updates, and optimistic mutati
 Check if installed, otherwise add:
 
 ```bash
-npm install @tanstack/react-query
+npm install @tanstack/react-query  # Note: Targeting TanStack Query v5
 npm install -D @tanstack/react-query-devtools
 ```
 
@@ -206,6 +206,19 @@ queryClient.invalidateQueries({ queryKey: ['user', userId] });
 queryClient.removeQueries({ queryKey: ['user', userId] });
 ```
 
+**Consuming Error and Loading States:**
+
+```typescript
+function UserProfile({ userId }: { userId: string }) {
+  const { data, isPending, isError, error } = useUser(userId);
+
+  if (isPending) return <Skeleton />;
+  if (isError) return <ErrorDisplay error={error} />;
+  
+  return <UserProfile user={data} />;
+}
+```
+
 ### Phase 4: Client State with Zustand
 
 For UI state shared across components (modals, themes, filters).
@@ -241,7 +254,7 @@ export const useUIStore = create<UIStore>((set) => ({
 **Store with Slices:**
 
 ```typescript
-import { create } from 'zustand';
+import { create, StateCreator } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
 // Slice pattern for organization
@@ -257,19 +270,19 @@ interface UISlice {
 
 type Store = AuthSlice & UISlice;
 
-const createAuthSlice = (set: any): AuthSlice => ({
+const createAuthSlice: StateCreator<Store, [], [], AuthSlice> = (set) => ({
   user: null,
   setUser: (user) => set({ user }),
 });
 
-const createUISlice = (set: any): UISlice => ({
+const createUISlice: StateCreator<Store, [], [], UISlice> = (set) => ({
   sidebarOpen: true,
   toggleSidebar: () => set((state: Store) => ({ 
     sidebarOpen: !state.sidebarOpen 
   })),
 });
 
-export const useStore = create<Store>()((
+export const useStore = create<Store>()(
   devtools(
     persist(
       (...a) => ({
@@ -279,7 +292,7 @@ export const useStore = create<Store>()((
       { name: 'app-store' }
     )
   )
-));
+);
 ```
 
 **Using Selectors:**
@@ -420,7 +433,7 @@ For state that should be shareable and bookmarkable.
 #### Step 6.1: Using nuqs (Recommended)
 
 ```bash
-npm install nuqs
+npm install nuqs  # Note: Targeting nuqs v1.x
 ```
 
 ```typescript

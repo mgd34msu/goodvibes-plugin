@@ -197,6 +197,7 @@ if [[ -d "src/app/api" ]] || [[ -d "app/api" ]] || [[ -d "pages/api" ]]; then
 fi
 
 if grep -rq --include="*.ts" --include="*.tsx" \
+  --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist \
   -e "msw" -e "setupServer" -e "http.get" -e "http.post" . 2>/dev/null; then
   MSW_SETUP_FOUND=true
 fi

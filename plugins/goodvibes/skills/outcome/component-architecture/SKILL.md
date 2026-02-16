@@ -240,12 +240,22 @@ export default defineComponent({
 **Svelte Example:**
 
 ```typescript
-// Button.svelte
+// Button.svelte (Svelte 4)
 <script lang="ts">
   export let variant: 'primary' | 'secondary' | 'ghost' | 'danger' = 'primary';
   export let size: 'sm' | 'md' | 'lg' = 'md';
   export let isLoading = false;
   export let disabled = false;
+</script>
+
+// Button.svelte (Svelte 5 - using $props rune)
+<script lang="ts">
+  let { variant = 'primary', size = 'md', isLoading = false, disabled = false }: {
+    variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+    size?: 'sm' | 'md' | 'lg';
+    isLoading?: boolean;
+    disabled?: boolean;
+  } = $props();
 </script>
 ```
 

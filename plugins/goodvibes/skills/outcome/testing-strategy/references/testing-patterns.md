@@ -39,7 +39,7 @@ For a 200-test suite:
 
 | Feature | Vitest | Jest |
 |---------|--------|------|
-| Speed | ⚡ Very fast (ESM-native, Vite transform) | 🐢 Slower (requires babel transform) |
+| Speed | Very fast (ESM-native, Vite transform) | Slower (requires babel transform) |
 | Config | Uses vite.config.ts (unified) | Separate jest.config.js |
 | TypeScript | Native support | Requires ts-jest |
 | ESM | First-class | Experimental |
@@ -52,7 +52,7 @@ For a 200-test suite:
 ### Vitest Migration Example
 
 ```typescript
-// jest.config.js → vitest.config.ts
+// jest.config.js to vitest.config.ts
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -100,28 +100,28 @@ export default defineConfig({
 ```
 Need to mock something?
 |
-├─ External API?
-│  └─ Use MSW (Mock Service Worker)
-│     - Intercepts fetch/axios at network level
-│     - Works in tests and browser (dev mode)
-│     - Realistic network behavior
-│
-├─ Database?
-│  ├─ Unit tests → Mock the ORM (vi.mock)
-│  └─ Integration tests → Use real database (test DB)
-│
-├─ Date/Time?
-│  └─ Use vi.useFakeTimers() or vi.setSystemTime()
-│
-├─ Randomness?
-│  └─ Seed random generators or mock Math.random()
-│
-├─ Browser APIs?
-│  └─ Mock with vi.stubGlobal() or jsdom
-│
-└─ Your own modules?
-   ├─ External dependencies → Mock with vi.mock()
-   └─ Internal code → Don't mock (test real code)
++-- External API?
+    +-- Use MSW (Mock Service Worker)
+        - Intercepts fetch/axios at network level
+        - Works in tests and browser (dev mode)
+        - Realistic network behavior
+
++-- Database?
+    +-- Unit tests -> Mock the ORM (vi.mock)
+    +-- Integration tests -> Use real database (test DB)
+
++-- Date/Time?
+    +-- Use vi.useFakeTimers() or vi.setSystemTime()
+
++-- Randomness?
+    +-- Seed random generators or mock Math.random()
+
++-- Browser APIs?
+    +-- Mock with vi.stubGlobal() or jsdom
+
++-- Your own modules?
+    +-- External dependencies -> Mock with vi.mock()
+    +-- Internal code -> Don't mock (test real code)
 ```
 
 ### When NOT to Mock
@@ -252,30 +252,30 @@ it('expires sessions after 1 hour', () => {
 
 ### Coverage Doesn't Mean...
 
-❌ **100% coverage = bug-free code**
+[X] **100% coverage = bug-free code**
 - You can have 100% coverage and still miss edge cases
 - Coverage shows what ran, not what was tested correctly
 
-❌ **High coverage = good tests**
+[X] **High coverage = good tests**
 - Tests might not assert anything meaningful
 - Might just execute code without verifying behavior
 
-❌ **All coverage is equal**
+[X] **All coverage is equal**
 - Critical paths (auth, payments) need 100%
 - UI components may be fine with 80%
 - Generated code can be excluded
 
 ### What Coverage IS Good For
 
-✅ **Finding untested code**
+[OK] **Finding untested code**
 - Easily spot functions/branches never executed
 - Identify dead code
 
-✅ **Preventing regressions**
+[OK] **Preventing regressions**
 - Ensure new code has tests
 - Block PRs that reduce coverage
 
-✅ **Guiding test writing**
+[OK] **Guiding test writing**
 - Start with 0%, write tests, watch it grow
 - Use coverage to find what to test next
 
@@ -329,13 +329,13 @@ it('gives no discount to new users', () => {
 ### 1. Testing Implementation Details
 
 ```typescript
-// ❌ BAD - tests internal state
+// [X] BAD - tests internal state
 it('sets isLoading to true', () => {
   const { result } = renderHook(() => useUsers());
   expect(result.current.isLoading).toBe(true);
 });
 
-// ✅ GOOD - tests user-visible behavior
+// [OK] GOOD - tests user-visible behavior
 it('shows loading spinner while fetching users', () => {
   render(<UserList />);
   expect(screen.getByRole('status')).toBeInTheDocument();
@@ -346,11 +346,11 @@ it('shows loading spinner while fetching users', () => {
 ### 2. Brittle Selectors
 
 ```typescript
-// ❌ BAD - breaks when CSS changes
+// [X] BAD - breaks when CSS changes
 const button = container.querySelector('.btn-primary');
 const heading = container.querySelector('#main-heading');
 
-// ✅ GOOD - uses semantic/accessible queries
+// [OK] GOOD - uses semantic/accessible queries
 const button = screen.getByRole('button', { name: /submit/i });
 const heading = screen.getByRole('heading', { level: 1 });
 ```
@@ -358,7 +358,7 @@ const heading = screen.getByRole('heading', { level: 1 });
 ### 3. Overmocking
 
 ```typescript
-// ❌ BAD - mocks everything, tests nothing
+// [X] BAD - mocks everything, tests nothing
 vi.mock('./api');
 vi.mock('./utils');
 vi.mock('./hooks');
@@ -370,7 +370,7 @@ it('renders user profile', () => {
   expect(true).toBe(true);
 });
 
-// ✅ GOOD - only mocks external dependencies
+// [OK] GOOD - only mocks external dependencies
 vi.mock('axios'); // HTTP client is external
 
 it('displays user data from API', async () => {
@@ -390,7 +390,7 @@ it('displays user data from API', async () => {
 ### 4. Testing Multiple Things
 
 ```typescript
-// ❌ BAD - tests too much at once
+// [X] BAD - tests too much at once
 it('handles user flow', async () => {
   render(<App />);
   
@@ -409,7 +409,7 @@ it('handles user flow', async () => {
   expect(screen.getByText('Login')).toBeInTheDocument();
 });
 
-// ✅ GOOD - one test per behavior
+// [OK] GOOD - one test per behavior
 it('logs in user with valid credentials', async () => {
   render(<LoginForm />);
   await userEvent.type(screen.getByLabelText('Email'), 'test@example.com');
@@ -436,13 +436,13 @@ it('creates new post when submitted', async () => {
 ### 5. No Assertions
 
 ```typescript
-// ❌ BAD - just executes code, doesn't test anything
+// [X] BAD - just executes code, doesn't test anything
 it('renders user profile', () => {
   render(<UserProfile user={mockUser} />);
   // Missing assertions!
 });
 
-// ✅ GOOD - verifies expected behavior
+// [OK] GOOD - verifies expected behavior
 it('displays user name and email', () => {
   const user = { name: 'John Doe', email: 'john@example.com' };
   render(<UserProfile user={user} />);
@@ -455,7 +455,7 @@ it('displays user name and email', () => {
 ### 6. Flaky Tests (Time-Dependent)
 
 ```typescript
-// ❌ BAD - depends on real time
+// [X] BAD - depends on real time
 it('expires token after 1 hour', async () => {
   const token = createToken();
   expect(token.isValid()).toBe(true);
@@ -466,7 +466,7 @@ it('expires token after 1 hour', async () => {
   expect(token.isValid()).toBe(false);
 });
 
-// ✅ GOOD - uses fake timers
+// [OK] GOOD - uses fake timers
 it('expires token after 1 hour', () => {
   vi.useFakeTimers();
   const token = createToken();
@@ -545,7 +545,7 @@ export async function cleanupDatabase() {
 ### Snapshot Testing (Use Sparingly)
 
 ```typescript
-// ✅ GOOD use case - error messages
+// [OK] GOOD use case - error messages
 it('returns validation error with details', () => {
   const result = validateEmail('invalid');
   expect(result).toMatchInlineSnapshot(`
@@ -557,7 +557,7 @@ it('returns validation error with details', () => {
   `);
 });
 
-// ❌ BAD use case - entire component (brittle)
+// [X] BAD use case - entire component (brittle)
 it('renders user profile', () => {
   const { container } = render(<UserProfile user={mockUser} />);
   expect(container).toMatchSnapshot(); // Will break on any change!

@@ -655,9 +655,9 @@ export function CardSkeleton() {
 }
 ```
 
-### Phase 8: Animation Patterns
+### Phase 9: Animation Patterns
 
-#### Step 8.1: CSS Transitions (Lightweight)
+#### Step 9.1: CSS Transitions (Lightweight)
 
 ```css
 .button {
@@ -676,7 +676,7 @@ export function CardSkeleton() {
 </button>
 ```
 
-#### Step 8.2: Framer Motion (Advanced)
+#### Step 9.2: Framer Motion (Advanced)
 
 For complex animations and gestures.
 
@@ -707,9 +707,9 @@ export function AnimatedCard() {
 - Avoid animating layout-triggering properties (width, height)
 - Prefer transform and opacity (GPU-accelerated)
 
-### Phase 9: Validation
+### Phase 10: Validation
 
-#### Step 9.1: Run Styling Validation Script
+#### Step 10.1: Run Styling Validation Script
 
 ```bash
 bash scripts/validate-styling.sh .
@@ -717,7 +717,7 @@ bash scripts/validate-styling.sh .
 
 See `scripts/validate-styling.sh` for the complete validation suite.
 
-#### Step 9.2: Check Build Output
+#### Step 10.2: Check Build Output
 
 Verify CSS bundle size and ensure no unused styles.
 
@@ -736,7 +736,7 @@ precision_exec:
 - Proper tree-shaking
 - Dark mode classes generated correctly
 
-#### Step 9.3: Accessibility Check
+#### Step 10.3: Accessibility Check
 
 Ensure color contrast meets WCAG standards.
 
@@ -747,7 +747,7 @@ precision_exec:
   verbosity: standard
 ```
 
-#### Step 9.4: Visual Regression Testing
+#### Step 10.4: Visual Regression Testing
 
 Catch unintended visual changes with automated screenshot comparison.
 
@@ -799,7 +799,7 @@ test('responsive layout', async ({ page }) => {
 });
 ```
 
-#### Step 9.5: CSS Purging Configuration
+#### Step 10.5: CSS Purging Configuration
 
 **Tailwind v3+ with JIT:**
 The `content` paths in `tailwind.config.ts` serve as the purge configuration. Tailwind automatically removes unused classes in production builds.

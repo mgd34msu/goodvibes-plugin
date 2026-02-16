@@ -583,6 +583,7 @@ export class LoginPage {
   }
 
   async expectError(message: string) {
+    // Note: expect is imported from @playwright/test
     await expect(this.errorMessage).toContainText(message);
   }
 }
@@ -773,7 +774,6 @@ precision_exec:
     - cmd: "npm run test:coverage -- --reporter=json-summary"
       expect:
         exit_code: 0
-      capture_output: true
 
 # Parse coverage report
 precision_read:
@@ -874,26 +874,20 @@ export default defineConfig({
 # Run tests and validate output
 precision_exec:
   commands:
-    - id: unit-tests
-      cmd: "npm run test -- --run"
-      expect:
-        exit_code: 0
-        stderr_empty: false  # Vitest writes to stderr
-    
-    - id: type-check
-      cmd: "npm run typecheck"
+    - cmd: "npm run test -- --run"
       expect:
         exit_code: 0
     
-    - id: coverage-check
-      cmd: "npm run test:coverage -- --run"
+    - cmd: "npm run typecheck"
+      expect:
+        exit_code: 0
+    
+    - cmd: "npm run test:coverage -- --run"
       expect:
         exit_code: 0
         stdout_contains: "All files"
   
-  output:
-    mode: minimal
-    capture_output: true
+  verbosity: minimal
 ```
 
 ### Batch Test Validation
@@ -998,7 +992,7 @@ it('sorts users by creation date', () => {
 
 ## Common Anti-Patterns
 
-### ❌ Testing Implementation Details
+### [X] Testing Implementation Details
 
 ```typescript
 // BAD - tests internal state
@@ -1014,7 +1008,7 @@ it('shows loading spinner while fetching', () => {
 });
 ```
 
-### ❌ Overmocking
+### [X] Overmocking
 
 ```typescript
 // BAD - mocks everything, tests nothing
@@ -1027,7 +1021,7 @@ vi.mock('axios'); // Mock HTTP client
 // Let your code run for real
 ```
 
-### ❌ Brittle Selectors
+### [X] Brittle Selectors
 
 ```typescript
 // BAD - breaks when styling changes

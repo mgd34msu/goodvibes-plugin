@@ -221,12 +221,12 @@ Named slots for flexible composition.
 Pass rendering function as prop.
 
 ```typescript
-interface DataFetcherProps {
+interface DataFetcherProps<T> {
   url: string;
-  render: (data: any) => ReactNode;
+  render: (data: T) => ReactNode;
 }
 
-function DataFetcher({ url, render }: DataFetcherProps) {
+function DataFetcher<T>({ url, render }: DataFetcherProps<T>) {
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -257,7 +257,13 @@ function DataFetcher({ url, render }: DataFetcherProps) {
 Components that work together.
 
 ```typescript
-const TabsContext = createContext<{ activeTab: string; setActiveTab: (tab: string) => void }>({});
+const TabsContext = createContext<{ activeTab: string; setActiveTab: (tab: string) => void } | null>(null);
+
+function useTabsContext() {
+  const context = useContext(TabsContext);
+  if (!context) throw new Error('Tab components must be used within <Tabs>');
+  return context;
+}
 
 function Tabs({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState('');
@@ -274,7 +280,7 @@ function TabList({ children }: { children: ReactNode }) {
 }
 
 function Tab({ id, children }: { id: string; children: ReactNode }) {
-  const { activeTab, setActiveTab } = useContext(TabsContext);
+  const { activeTab, setActiveTab } = useTabsContext();
   return (
     <button
       onClick={() => setActiveTab(id)}
@@ -286,7 +292,7 @@ function Tab({ id, children }: { id: string; children: ReactNode }) {
 }
 
 function TabPanel({ id, children }: { id: string; children: ReactNode }) {
-  const { activeTab } = useContext(TabsContext);
+  const { activeTab } = useTabsContext();
   return activeTab === id ? <div>{children}</div> : null;
 }
 
@@ -527,8 +533,9 @@ const sortedData = useMemo(() => {
 
 ```typescript
 const handleClick = useCallback(() => {
-  console.log('Clicked');
-}, []);
+  // Perform actual action
+  onSave(formData);
+}, [formData, onSave]);
 ```
 
 **Vue computed** - Cached reactive values.
@@ -662,7 +669,10 @@ setUser({ ...user, name: 'Bob' });
 
 **Good:**
 ```typescript
-const handleClick = useCallback(() => console.log('Click'), []);
+const handleClick = useCallback(() => {
+  // Perform actual action
+  onItemClick(item.id);
+}, [item.id, onItemClick]);
 <button onClick={handleClick}>Click</button>
 ```
 

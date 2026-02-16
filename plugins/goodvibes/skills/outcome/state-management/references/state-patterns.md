@@ -185,7 +185,7 @@ function PostList() {
 ### Slice Pattern for Large Stores
 
 ```typescript
-import { create } from 'zustand';
+import { create, StateCreator } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
 interface AuthSlice {
@@ -209,13 +209,13 @@ interface NotificationSlice {
 
 type AppStore = AuthSlice & UISlice & NotificationSlice;
 
-const createAuthSlice = (set: any): AuthSlice => ({
+const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set) => ({
   user: null,
   login: (user) => set({ user }),
   logout: () => set({ user: null }),
 });
 
-const createUISlice = (set: any): UISlice => ({
+const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
   sidebarOpen: true,
   theme: 'light',
   toggleSidebar: () => set((state: AppStore) => ({ 
@@ -224,7 +224,7 @@ const createUISlice = (set: any): UISlice => ({
   setTheme: (theme) => set({ theme }),
 });
 
-const createNotificationSlice = (set: any): NotificationSlice => ({
+const createNotificationSlice: StateCreator<AppStore, [], [], NotificationSlice> = (set) => ({
   notifications: [],
   addNotification: (notification) => set((state: AppStore) => ({
     notifications: [...state.notifications, notification],
@@ -234,7 +234,7 @@ const createNotificationSlice = (set: any): NotificationSlice => ({
   })),
 });
 
-export const useAppStore = create<AppStore>()((
+export const useAppStore = create<AppStore>()(
   devtools(
     persist(
       (...a) => ({
@@ -251,7 +251,7 @@ export const useAppStore = create<AppStore>()((
       }
     )
   )
-));
+);
 ```
 
 ### Selector Best Practices

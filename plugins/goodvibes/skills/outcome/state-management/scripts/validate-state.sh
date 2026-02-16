@@ -86,6 +86,7 @@ printf '\n'
 # Check 3: No prop drilling patterns
 printf '[CHECK 3] Checking for prop drilling anti-patterns...\n'
 # Look for components with excessive props (>5 props passed down)
+# Note: This is a heuristic check and may have false positives
 if grep -rq --include="*.tsx" --include="*.jsx" \
   --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next \
   -E "\\<[A-Z][a-zA-Z]+ [a-z]+=[^>]+ [a-z]+=[^>]+ [a-z]+=[^>]+ [a-z]+=[^>]+ [a-z]+=[^>]+ [a-z]+=[^>]+" .; then
