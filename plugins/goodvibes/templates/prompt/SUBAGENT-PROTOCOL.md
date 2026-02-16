@@ -2,7 +2,7 @@
 
 ALWAYS provide the following reminders to subagents:
 1. Use .goodvibes/ memory and logging when troubleshooting a problem
-2. Maintain usage of DPB Loops. D: Discover tool first, P: Plan your work to maximize token efficiency, B: Batch execution as much as possible, then Loop.
+2. MANDATORY: Follow strict DPB Loops. D: Single discover call (all queries batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.
   - Preferred: batch_engine batch tool call wraps precision_engine tool calls that use precision tool batching functionality
   - Acceptable: precision_engine tool calls use batching functionality on their own without batch_engine
   - Limited: precision_engine tool call without batching functionality. (sometimes necessary, so still allowed)
@@ -482,19 +482,61 @@ precision_exec:
 
 ## DISCOVER-PLAN-BATCH (Auto-loaded for all subagents)
 
-# Discover-Plan-Batch Protocol
+# Discover-Plan-Batch Protocol (Strict 3-Call Workflow)
 
-The Discover-Plan-Batch (DPB) loop is the foundational execution pattern for all GoodVibes agents. It ensures efficient token usage, prevents wasted work, and produces higher-quality results by frontloading discovery and planning before execution.
+The DPB loop enforces a strict **3-call-per-cycle** workflow that eliminates token waste from excessive tool calls. This is NOT a suggestion — it is a MANDATORY execution pattern for all GoodVibes agents.
 
-## Overview
+## THE EXACT WORKFLOW
 
-The DPB loop consists of three phases, with a re-entry condition:
+```
+0. LOAD SKILLS (once, before any DPB cycle)
+   - Call get_skill_content for role-relevant skills
+   - This is NOT part of the DPB cycle itself
 
-1. **DISCOVER** - Understand the current state before making changes
-2. **PLAN** - Structure your work for maximum efficiency
-3. **BATCH** - Execute operations in batched groups
+1. D — DISCOVER (1 tool call)
+   - Single `discover` call with ALL queries batched inside
+   - Multiple query types (glob, grep, symbols, structural) in one call
+   - Output: files_only or locations (minimal verbosity)
 
-After execution, **LOOP** back to DISCOVER when assumptions change.
+2. P — PLAN (0 tool calls, cognitive only)
+   - Agent thinks about what it needs from discovery results
+   - Plans the EXACT precision_read/precision_grep call
+   - All token INPUT operations get planned here
+
+3. B — BATCH INPUT (1 tool call)
+   - Single precision_read/precision_grep/batch call
+   - Everything batched inside it
+
+4. P — PLAN (0 tool calls, cognitive only)
+   - Plans the EXACT precision_write/precision_edit call
+   - All token OUTPUT operations get planned here
+
+5. B — BATCH OUTPUT (1 tool call)
+   - Single precision_write/precision_edit/batch call
+   - Everything batched inside it
+
+6. LOOP — Back to D if needed
+```
+
+## CALL BUDGET PER CYCLE
+
+| Phase | Tool Calls | Type |
+|-------|-----------|------|
+| **D** (Discover) | 1 | `discover` |
+| **P** (Plan) | 0 | Cognitive |
+| **B** (Batch Input) | 1 | `precision_*` |
+| **P** (Plan) | 0 | Cognitive |
+| **B** (Batch Output) | 1 | `precision_*` |
+| **TOTAL** | **3** | |
+
+## KEY RULES (NON-NEGOTIABLE)
+
+1. **`discover` batches ALL discovery queries into 1 call** — NEVER use separate `precision_glob`, `precision_grep` for discovery
+2. **Plan steps produce ZERO tool calls** — they are cognitive (agent thinks in text)
+3. **Batch input = 1 call** — use internal batching (`files` array, `queries` array)
+4. **Batch output = 1 call** — use internal batching (`files` array, `edits` array)
+5. **NEVER make sequential calls of the same tool type** — batch them
+6. **ToolSearch is NOT part of DPB** — load tools once at start
 
 ## Phase 1: DISCOVER
 

@@ -1,54 +1,91 @@
 ---
 name: discover-plan-batch
-description: "ALWAYS load before starting any task. Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use before starting any development task. Covers discovery patterns using the discover tool, work planning for token efficiency, and batch execution strategies."
+description: "MANDATORY before starting any task. Defines the strict 3-call-per-cycle Discover-Plan-Batch loop. D: Single discover call with all queries batched. P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle."
 metadata:
-  version: 1.0.0
+  version: 2.0.0
   category: protocol
-  tags: [dpb, discover, plan, batch, workflow, token-efficiency]
+  tags: [dpb, discover, plan, batch, workflow, token-efficiency, strict-workflow]
 ---
 
-# Discover-Plan-Batch Protocol
+# Discover-Plan-Batch Protocol (Strict 3-Call Workflow)
 
-The Discover-Plan-Batch (DPB) loop is the foundational execution pattern for all GoodVibes agents. It ensures efficient token usage, prevents wasted work, and produces higher-quality results by frontloading discovery and planning before execution.
+The DPB loop enforces a strict **3-call-per-cycle** workflow that eliminates token waste from excessive tool calls. This is NOT a suggestion — it is a MANDATORY execution pattern for all GoodVibes agents.
 
-## Overview
+## THE EXACT WORKFLOW
 
-The DPB loop consists of three phases, with a re-entry condition:
+```
+0. LOAD SKILLS (once, before any DPB cycle)
+   - Call get_skill_content for role-relevant skills
+   - This is NOT part of the DPB cycle itself
 
-1. **DISCOVER** - Understand the current state before making changes
-2. **PLAN** - Structure your work for maximum efficiency
-3. **BATCH** - Execute operations in batched groups
+1. D — DISCOVER (1 tool call)
+   - Single `discover` call with ALL queries batched inside
+   - Multiple query types (glob, grep, symbols, structural) in one call
+   - Also include .goodvibes/memory reads in the discover batch
+   - Output: files_only or locations (minimal verbosity)
 
-After execution, **LOOP** back to DISCOVER when assumptions change.
+2. P — PLAN (0 tool calls, cognitive only)
+   - Agent thinks about what it needs from discovery results
+   - Plans which files to read (with extract modes), what patterns to grep
+   - Plans the EXACT precision_read/precision_grep/precision_glob call
+   - All token INPUT operations get planned here
 
-## Phase 1: DISCOVER
+3. B — BATCH INPUT (1 tool call)
+   - Single precision_read with multiple files batched internally
+   - OR single precision_grep with multiple queries batched internally  
+   - OR batch_engine batch wrapping multiple precision_* tools if DIFFERENT tool types needed
+   - Key: 1 call, everything batched inside it
 
-### Purpose
+4. P — PLAN (0 tool calls, cognitive only)
+   - Agent now has all the information it needs
+   - Plans which files to write/create and which edits to make
+   - Plans the EXACT precision_write/precision_edit call
+   - All token OUTPUT operations get planned here
 
-Discovery prevents blind implementation. Before writing code, you must understand:
+5. B — BATCH OUTPUT (1 tool call)
+   - Single precision_write with multiple files batched internally
+   - OR single precision_edit with multiple edits batched internally
+   - OR batch_engine batch wrapping precision_write + precision_edit if both needed
+   - Key: 1 call, everything batched inside it
 
-- What files already exist in the target area
-- What patterns/conventions are already established
-- What functions/types/components you'll integrate with
-- What previous attempts/failures are documented
-- What architectural decisions constrain your approach
+6. LOOP — Back to D if:
+   - Results didn't match expectations
+   - Scope changed
+   - Validation failed (run precision_exec to validate, then loop)
+```
 
-**When to skip discovery:**
-- Task is 1-2 files you already have full context for
-- Task has zero file I/O (pure analysis/reporting)
-- You're in a LOOP iteration with fresh discovery already done
+## CALL BUDGET PER CYCLE
 
-For all other tasks: **always discover first**.
+| Phase | Tool Calls | Type | Purpose |
+|-------|-----------|------|----------|
+| **D** (Discover) | 1 | `discover` | All discovery queries batched |
+| **P** (Plan) | 0 | Cognitive | Plan input operations |
+| **B** (Batch Input) | 1 | `precision_*` or `batch` | All reads/greps batched |
+| **P** (Plan) | 0 | Cognitive | Plan output operations |
+| **B** (Batch Output) | 1 | `precision_*` or `batch` | All writes/edits batched |
+| **TOTAL** | **3** | | |
 
-### Discovery Tools
+Validation (`precision_exec`) is OPTIONAL and happens AFTER the cycle completes, not during.
 
-#### The `discover` Tool
+## KEY RULES (NON-NEGOTIABLE)
 
-The `discover` tool runs multiple grep/glob/symbols queries **in parallel**, returning results keyed by query ID. This is your primary discovery mechanism.
+1. **`discover` batches ALL discovery queries into 1 call** — NEVER use separate `precision_glob`, `precision_grep`, `precision_read` for discovery
+2. **Plan steps produce ZERO tool calls** — they are cognitive (agent thinks in text)
+3. **Batch input = 1 call** — use internal batching (`files` array, `queries` array) or `batch_engine`
+4. **Batch output = 1 call** — use internal batching (`files` array, `edits` array) or `batch_engine`
+5. **NEVER make sequential calls of the same tool type** — if you need 3 files read, batch them in 1 `precision_read` call
+6. **ToolSearch is NOT part of DPB** — load tools once at start, don't search mid-cycle
 
-**Pattern: Parallel exploration**
+## Phase 1: DISCOVER (1 call)
+
+### The `discover` Tool
+
+The `discover` tool runs multiple grep/glob/symbols/structural queries **in parallel**, returning results keyed by query ID. This is your ONLY discovery mechanism.
+
+**Pattern: Batch ALL discovery queries**
 
 ```yaml
+# GOOD: 1 discover call with everything
 discover:
   queries:
     - id: existing_files
@@ -58,209 +95,59 @@ discover:
       type: grep
       pattern: "export (function|const|class)"
       glob: "src/features/**/*.ts"
-    - id: exported_symbols
+    - id: exported_hooks
       type: symbols
       query: "use"
       kinds: ["function"]
+    - id: console_logs
+      type: structural
+      structural_pattern: "console.log($$$ARGS)"
   verbosity: files_only
 ```
 
-**When to use each query type:**
-
-- **glob** - Find files by path patterns ("what files exist here?")
-- **grep** - Find files containing specific patterns ("where is this pattern used?")
-- **symbols** - Find exported functions/types/classes ("what can I import?")
-- **structural** - Find AST patterns ("where is console.log called?")
+**Query types:**
+- **glob** - Find files by path patterns
+- **grep** - Find files containing patterns
+- **symbols** - Find exported functions/types/classes
+- **structural** - Find AST patterns (e.g., function calls)
 
 **Output modes:**
+- `count_only` - Just counts (scope estimation)
+- `files_only` - File paths only (building target lists) ← **USE THIS**
+- `locations` - File paths + line numbers (when you need exact locations)
 
-- `count_only` - Just counts (scope estimation: "are there 10 files or 1000?")
-- `files_only` - File paths only (building target lists)
-- `locations` - File paths + line numbers (reviewing matches)
+### Include Memory Reads in Discovery
 
-#### The `precision_read` Extract Modes
+While `.goodvibes/memory/*.json` files should ideally be read via `discover` with file-content queries, the current `discover` tool doesn't support file content reads. Use `precision_read` for memory files, but batch them with your Batch Input phase (step 3), not as separate calls.
 
-After discovering target files, use `precision_read` with extract modes to understand structure without consuming full content:
+### [BAD] vs [GOOD] Discovery Patterns
 
-**Extract: outline**
-
-Returns hierarchical structure of the file:
-
-```yaml
-precision_read:
-  files:
-    - path: "src/api/routes/users.ts"
-      extract: outline
-  verbosity: minimal
-```
-
-Use when you need to understand:
-- File organization (what's exported, what's internal)
-- Available functions/classes without implementation details
-- Module structure before editing
-
-**Extract: symbols**
-
-Returns just exported symbols:
+**[BAD] — Sequential discovery queries (19+ tool calls)**
 
 ```yaml
-precision_read:
-  files:
-    - path: "src/types/user.ts"
-      extract: symbols
-  symbol_filter: ["interface", "type"]
-  verbosity: minimal
-```
-
-Use when you need to:
-- See available types to import
-- Understand the public API surface
-- Check what's already exported
-
-**Extract: content**
-
-Returns full file content. Only use when you actually need implementation details.
-
-```yaml
-precision_read:
-  files:
-    - path: "src/config/database.ts"
-      extract: content
-  verbosity: standard
-```
-
-**Decision criteria:**
-- Use `outline` when you need structure but not implementation (checking what exists)
-- Use `symbols` when you need to know what's importable (building import statements)
-- Use `content` only when you need implementation details (before editing, understanding logic)
-
-### Check GoodVibes Memory
-
-Before implementing anything, check memory files for context:
-
-**failures.json** - Has this task been attempted before?
-
-```yaml
-precision_read:
-  files:
-    - path: ".goodvibes/memory/failures.json"
-  verbosity: minimal
-```
-
-Look for:
-- Similar errors you might repeat
-- Known bugs in tools/dependencies
-- Approaches that didn't work
-
-**patterns.json** - Are there proven approaches?
-
-```yaml
-precision_read:
-  files:
-    - path: ".goodvibes/memory/patterns.json"
-  verbosity: minimal
-```
-
-Look for:
-- Coding patterns for this type of work
-- Tool usage patterns (e.g., "use path not glob for grep")
-- Performance optimizations
-
-**decisions.json** - What constraints apply?
-
-```yaml
-precision_read:
-  files:
-    - path: ".goodvibes/memory/decisions.json"
-  verbosity: minimal
-```
-
-Look for:
-- Architectural decisions ("use Prisma not Drizzle")
-- Library choices ("prefer Zustand over Redux")
-- Convention decisions ("cell_id takes precedence over index")
-
-### Scope Estimation
-
-Use discovery to estimate scope before committing to an approach:
-
-**Pattern: Count-first discovery**
-
-```yaml
-discover:
-  queries:
-    - id: component_count
-      type: glob
-      patterns: ["src/components/**/*.tsx"]
-  verbosity: count_only
-```
-
-If you discover 5 files, full reads are feasible. If you discover 500 files, you need a more targeted approach (grep for specific patterns first, narrow the scope).
-
-### Discovery Anti-Patterns
-
-**[BAD] Reading entire files when outline would suffice**
-
-```yaml
-# BAD: Consuming 5000 tokens for 50-line outline
-precision_read:
-  files:
-    - path: "src/lib/utils.ts"
-      extract: content  # Full content not needed!
-```
-
-```yaml
-# GOOD: Consuming 300 tokens for same information
-precision_read:
-  files:
-    - path: "src/lib/utils.ts"
-      extract: outline
-```
-
-**[BAD] Reading outline then full content**
-
-```yaml
-# BAD: Reading same file twice
-precision_read:
-  files:
-    - path: "src/lib/utils.ts"
-      extract: outline  # First read
-
-# Later...
-precision_read:
-  files:
-    - path: "src/lib/utils.ts"
-      extract: content  # Re-reading for content
-```
-
-```yaml
-# GOOD: Read content once if you'll need it
-precision_read:
-  files:
-    - path: "src/lib/utils.ts"
-      extract: content  # Single read
-```
-
-**[BAD] Sequential discovery queries**
-
-```yaml
-# BAD: 3 separate tool calls
+# BAD: 4 separate tool calls for discovery
 precision_glob:
   patterns: ["src/**/*.ts"]
 
-# Then later...
 precision_grep:
-  pattern: "export function"
-  
-# Then later...
+  queries:
+    - id: exports
+      pattern: "export function"
+
 precision_read:
   files:
-    - path: "src/hooks/"
-      extract: symbols
+    - path: ".goodvibes/memory/failures.json"
+
+precision_grep:
+  queries:
+    - id: imports
+      pattern: "import.*from"
 ```
 
+**[GOOD] — Single discover call (1 tool call)**
+
 ```yaml
-# GOOD: 1 tool call, parallel execution
+# GOOD: 1 discover call with all queries
 discover:
   queries:
     - id: files
@@ -269,282 +156,92 @@ discover:
     - id: exports
       type: grep
       pattern: "export function"
-    - id: hooks
-      type: symbols
-      query: "use"
+      glob: "src/**/*.ts"
+    - id: imports
+      type: grep
+      pattern: "import.*from"
+      glob: "src/**/*.ts"
+  verbosity: files_only
+
+# Then batch memory reads with your Batch Input phase
 ```
 
-**[BAD] Skipping memory checks**
-
-Starting implementation without checking failures.json, patterns.json, decisions.json leads to:
-- Repeating past mistakes
-- Violating architectural decisions
-- Ignoring proven patterns
-
-## Phase 2: PLAN
+## Phase 2: PLAN (0 calls, cognitive only)
 
 ### Purpose
 
-Planning prevents token waste from execution churn. A good plan identifies:
+Planning is **cognitive work**, not tool calls. You think in text about:
 
-- Exactly which files need to be created/modified/read
-- The order of operations (dependencies)
-- Opportunities for batching
-- Expected outcomes (for validation)
+- Which files to read (with extract modes)
+- Which patterns to grep
+- The EXACT `precision_read` or `precision_grep` call structure
+- What you'll do with the results
+
+**Output: A written plan with NO tool calls**
 
 ### Plan Structure
 
-Every plan should explicitly list:
-
-#### 1. Files to Create
-
-List full paths with brief descriptions:
-
 ```
-Files to create:
-- src/features/auth/hooks/useAuth.ts - Auth context hook
-- src/features/auth/types.ts - Auth type definitions
-- src/features/auth/index.ts - Barrel export
-```
+Plan:
+1. Read the following files:
+   - src/types/user.ts (extract: symbols) — need User interface
+   - src/config/app.ts (extract: outline) — check structure
+   - .goodvibes/memory/decisions.json (content) — check arch decisions
 
-#### 2. Files to Modify
+2. Batch into 1 precision_read call with 3 files
 
-List full paths with specific changes:
-
-```
-Files to modify:
-- src/app/layout.tsx - Wrap with AuthProvider
-- src/middleware.ts - Add auth checks to protected routes
-- src/lib/api.ts - Add auth token to request headers
+3. Expected result: User interface, app config structure, decisions
 ```
 
-#### 3. Files to Read
+### [BAD] vs [GOOD] Planning
 
-List files you need full content from (not just outline/symbols):
-
-```
-Files to read:
-- src/config/database.ts - Need connection string format
-- src/types/user.ts - Need User interface details
-```
-
-#### 4. Commands to Run
-
-List validation commands with expected outcomes:
+**[BAD] — Vague plan that leads to sequential calls**
 
 ```
-Commands to run:
-- npm run typecheck (expect: exit 0)
-- npm run lint (expect: exit 0)
-- npm run test -- auth.test.ts (expect: all pass)
+Plan:
+- Read some files
+- Check patterns
+- Maybe grep for something
 ```
 
-#### 5. Order of Operations
-
-Identify dependencies between steps:
-
-```
-Order:
-1. Create types.ts (no dependencies)
-2. Create useAuth.ts (depends on types.ts)
-3. Create index.ts (depends on useAuth.ts)
-4. Modify layout.tsx (depends on index.ts)
-5. Run typecheck (depends on all files)
-```
-
-#### 6. Batch Opportunities
-
-Identify operations that can be combined:
-
-```
-Batch opportunities:
-- Steps 1-3 (create files) -> single precision_write call with 3 files
-- Steps 5-7 (run commands) -> single precision_exec call with 3 commands
-```
-
-### The "3+ Sequential Calls" Rule
-
-If your plan contains 3 or more sequential calls to the same precision tool, you should batch them into 1 call.
-
-**Example: Creating multiple files**
-
-**[BAD]**
-```
-1. precision_write - create types.ts
-2. precision_write - create hooks.ts
-3. precision_write - create index.ts
-4. precision_write - create utils.ts
-```
-
-**[GOOD]**
-```
-1. precision_write - create types.ts, hooks.ts, index.ts, utils.ts (batched)
-```
-
-**Example: Running validation commands**
-
-**[BAD]**
-```
-1. precision_exec - npm run typecheck
-2. precision_exec - npm run lint
-3. precision_exec - npm run test
-```
-
-**[GOOD]**
-```
-1. precision_exec - run typecheck, lint, test (batched)
-```
-
-### Dependency Analysis
-
-Identify which operations must be sequential vs parallel:
-
-**Sequential dependencies:**
-- Read file -> Edit file (need content before editing)
-- Create types -> Create code using types (need types to exist)
-- Edit files -> Run typecheck (need files saved before checking)
-
-**Parallel opportunities:**
-- Create multiple independent files
-- Read multiple files for context
-- Run multiple independent commands
-
-**Pattern: Label dependencies in your plan**
-
-```
-Phase 1 (Parallel - no dependencies):
-- Create src/types/user.ts
-- Create src/types/auth.ts
-- Create src/types/api.ts
-
-Phase 2 (Parallel - depends on Phase 1):
-- Create src/hooks/useAuth.ts (needs user.ts, auth.ts)
-- Create src/hooks/useApi.ts (needs api.ts)
-
-Phase 3 (Sequential - depends on Phase 2):
-- Create src/index.ts (barrel export for all hooks)
-
-Phase 4 (Sequential - depends on Phase 3):
-- Run typecheck (needs all files created)
-```
-
-### Token Budget Estimation
-
-Estimate token costs before execution:
-
-**Reading files:**
-- Outline: ~5-10 tokens per exported symbol
-- Symbols: ~3-5 tokens per symbol
-- Content: ~1 token per 4 characters
-
-**Writing files:**
-- Minimal verbosity: ~50 tokens per file
-- Standard verbosity: ~150 tokens per file
-
-**Discover query costs:**
-- glob: ~50 tokens (count_only), ~100 tokens (files_only)
-- grep: ~200-500 tokens depending on matches (files_only)
-- symbols: ~100-300 tokens depending on symbol count (files_only)
-
-**Example estimation:**
-```
-Plan token budget:
-- Discover (glob + grep + symbols): ~500 tokens
-- Read 3 files (outline): 3 * 200 = 600 tokens
-- Create 5 files (minimal): 5 * 50 = 250 tokens
-- Run 3 commands (minimal): 3 * 100 = 300 tokens
-Total estimated: ~1,650 tokens
-```
-
-If your estimate exceeds your token budget, revise the plan to be more targeted.
-
-### Planning Anti-Patterns
-
-**[BAD] Vague plans without specific files**
-
-```
-BAD:
-1. Add authentication
-2. Update components
-3. Test everything
-```
-
-```
-GOOD:
-1. Create src/features/auth/useAuth.ts
-2. Modify src/components/LoginForm.tsx - use useAuth hook
-3. Run npm run test -- auth.test.ts
-```
-
-**[BAD] Plans without dependency analysis**
-
-Leads to:
-- Sequential execution when parallelism is possible
-- Parallel execution when dependencies exist (causing errors)
-
-**[BAD] Plans without batch opportunities identified**
-
-Leads to:
-- One tool call per operation (10x+ token waste)
-- Slower execution (network roundtrips)
-
-## Phase 3: BATCH
-
-### Purpose
-
-Batching minimizes token usage and maximizes execution efficiency by grouping operations.
-
-### Execution Patterns (Ranked by Efficiency)
-
-#### 1. batch_engine Wrapping precision_engine (Maximum Efficiency)
-
-The `batch` tool from batch_engine wraps multiple precision_engine operations into a single atomic transaction with phase-grouped operations:
-
+This leads to:
 ```yaml
-batch:
-  operations:
-    read:
-      - files:
-          - path: "src/types.ts"
-            extract: symbols
-    
-    write:
-      - files:
-          - path: "src/features/auth/types.ts"
-            content: |
-              export interface User {
-                id: string;
-                email: string;
-              }
-          - path: "src/features/auth/hooks.ts"
-            content: |
-              import type { User } from './types';
-              export function useAuth() { /*...*/ }
-    
-    exec:
-      - commands:
-          - cmd: "npm run typecheck"
-            expect:
-              exit_code: 0
-        verbosity: minimal
+precision_read: ...
+precision_read: ...  # Second call!
+precision_grep: ...  # Third call!
 ```
 
-**Benefits:**
-- Single tool call for entire workflow
-- Atomic transactions (all-or-nothing)
-- Checkpoint support (can rollback)
-- Operation results accessible to subsequent operations
+**[GOOD] — Specific plan with exact batch structure**
 
-**Note on tool relationships:**
-- `discover` is a **precision_engine tool** that runs multiple grep/glob/symbols queries in parallel
-- `batch_engine` is an **orchestration wrapper** around precision_engine tools for atomic transactions
-- All precision_engine tools have **built-in batching** (multiple files/edits/commands per call)
+```
+Plan:
+1. Read 3 files in 1 precision_read call:
+   - src/types/user.ts (symbols)
+   - src/config/app.ts (outline)
+   - .goodvibes/memory/decisions.json (content)
 
-#### 2. precision_engine Built-in Batching (Good Efficiency)
+2. Batch call structure:
+   precision_read:
+     files: [{path: ..., extract: symbols}, {path: ..., extract: outline}, {path: ...}]
+```
 
-Precision tools support batching within their own operation type:
+This leads to:
+```yaml
+precision_read:  # Single call
+  files:
+    - path: "src/types/user.ts"
+      extract: symbols
+    - path: "src/config/app.ts"
+      extract: outline
+    - path: ".goodvibes/memory/decisions.json"
+```
 
-**Batch reads:**
+## Phase 3: BATCH INPUT (1 call)
+
+### Pattern: Batch All Reads
+
+**Single precision_read with multiple files:**
+
 ```yaml
 precision_read:
   files:
@@ -554,155 +251,236 @@ precision_read:
       extract: symbols
     - path: "src/config/app.ts"
       extract: outline
+    - path: ".goodvibes/memory/decisions.json"
   verbosity: minimal
 ```
 
-**Batch writes:**
+**OR single precision_grep with multiple queries:**
+
+```yaml
+precision_grep:
+  queries:
+    - id: auth_usage
+      pattern: "useAuth|getSession"
+      glob: "src/**/*.tsx"
+    - id: api_calls
+      pattern: "fetch|axios"
+      glob: "src/**/*.ts"
+  output:
+    format: files_only
+  verbosity: minimal
+```
+
+**OR batch_engine wrapping different tool types:**
+
+```yaml
+batch:
+  operations:
+    read:
+      - files:
+          - path: "src/types/user.ts"
+            extract: symbols
+    query:
+      - type: grep
+        queries:
+          - id: exports
+            pattern: "export function"
+            glob: "src/**/*.ts"
+```
+
+### [BAD] vs [GOOD] Input Batching
+
+**[BAD] — 3 separate precision_read calls**
+
+```yaml
+precision_read:
+  files:
+    - path: "src/types/user.ts"
+
+precision_read:  # Second call!
+  files:
+    - path: "src/types/auth.ts"
+
+precision_read:  # Third call!
+  files:
+    - path: "src/config/app.ts"
+```
+
+**[GOOD] — 1 precision_read call with 3 files**
+
+```yaml
+precision_read:
+  files:
+    - path: "src/types/user.ts"
+    - path: "src/types/auth.ts"
+    - path: "src/config/app.ts"
+  verbosity: minimal
+```
+
+## Phase 4: PLAN (0 calls, cognitive only)
+
+### Purpose
+
+You now have all the information from Batch Input. Plan your output operations:
+
+- Which files to create/write
+- Which files to edit
+- The EXACT `precision_write` or `precision_edit` call structure
+
+**Output: A written plan with NO tool calls**
+
+### Plan Structure
+
+```
+Plan:
+1. Create the following files:
+   - src/features/auth/types.ts (User interface)
+   - src/features/auth/hooks.ts (useAuth hook)
+   - src/features/auth/index.ts (barrel export)
+
+2. Batch into 1 precision_write call with 3 files
+
+3. Expected result: 3 new files created
+```
+
+## Phase 5: BATCH OUTPUT (1 call)
+
+### Pattern: Batch All Writes/Edits
+
+**Single precision_write with multiple files:**
+
 ```yaml
 precision_write:
   files:
     - path: "src/features/auth/types.ts"
-      content: "export interface User {...}"
-    - path: "src/features/auth/index.ts"
-      content: "export * from './types';"
+      content: |
+        export interface User {
+          id: string;
+          email: string;
+        }
     - path: "src/features/auth/hooks.ts"
-      content: "export function useAuth() {...}"
+      content: |
+        import type { User } from './types';
+        export function useAuth(): User | null { /*...*/ }
+    - path: "src/features/auth/index.ts"
+      content: |
+        export * from './types';
+        export * from './hooks';
   verbosity: minimal
 ```
 
-**Batch commands:**
-```yaml
-precision_exec:
-  commands:
-    - cmd: "npm run typecheck"
-      expect:
-        exit_code: 0
-    - cmd: "npm run lint"
-      expect:
-        exit_code: 0
-    - cmd: "npm run test"
-      expect:
-        exit_code: 0
-  verbosity: minimal
-```
+**OR single precision_edit with multiple edits:**
 
-**Batch queries:**
-```yaml
-precision_grep:
-  queries:
-    - id: exports
-      pattern: "export function"
-      glob: "src/**/*.ts"
-    - id: imports
-      pattern: "import.*from"
-      glob: "src/**/*.ts"
-  output:
-    format: files_only
-```
-
-**Batch edits:**
 ```yaml
 precision_edit:
   edits:
-    - path: "src/config/routes.ts"
-      find: "const routes = [];"
-      replace: "const routes = ['/auth'];"
     - path: "src/app/layout.tsx"
       find: "<App />"
       replace: "<AuthProvider><App /></AuthProvider>"
+    - path: "src/middleware.ts"
+      find: "export const config = {}"
+      replace: "export const config = { matcher: ['/dashboard/:path*'] }"
     - path: "src/lib/api.ts"
-      find: "export const api = createClient();"
-      replace: "export const api = createClient({ auth: true });"
-  output:
-    format: minimal
+      find: "headers: {}"
+      replace: "headers: { Authorization: `Bearer ${token}` }"
+  verbosity: minimal
 ```
 
-#### 3. Sequential precision_engine (Acceptable When Necessary)
-
-Sometimes operations must be sequential due to dependencies:
+**OR batch_engine wrapping both writes and edits:**
 
 ```yaml
-# Step 1: Read file to understand current state
-precision_read:
+batch:
+  operations:
+    write:
+      - files:
+          - path: "src/features/auth/types.ts"
+            content: "..."
+          - path: "src/features/auth/hooks.ts"
+            content: "..."
+    edit:
+      - edits:
+          - path: "src/app/layout.tsx"
+            find: "<App />"
+            replace: "<AuthProvider><App /></AuthProvider>"
+```
+
+### [BAD] vs [GOOD] Output Batching
+
+**[BAD] — 3 separate precision_write calls**
+
+```yaml
+precision_write:
   files:
-    - path: "src/config/routes.ts"
-      extract: content
-  verbosity: minimal
+    - path: "file1.ts"
+      content: "..."
 
-# Step 2: Edit based on what was read
-precision_edit:
-  edits:
-    - path: "src/config/routes.ts"
-      find: "const routes = [];"
-      replace: "const routes = ['/auth', '/profile'];"
-  verbosity: minimal
+precision_write:  # Second call!
+  files:
+    - path: "file2.ts"
+      content: "..."
 
-# Step 3: Verify edit succeeded
-precision_exec:
+precision_write:  # Third call!
+  files:
+    - path: "file3.ts"
+      content: "..."
+```
+
+**[GOOD] — 1 precision_write call with 3 files**
+
+```yaml
+precision_write:
+  files:
+    - path: "file1.ts"
+      content: "..."
+    - path: "file2.ts"
+      content: "..."
+    - path: "file3.ts"
+      content: "..."
+  verbosity: minimal
+```
+
+## Phase 6: LOOP (When to Return to Discovery)
+
+### Loop Triggers
+
+1. **Results don't match expectations** — Typecheck fails, tests fail, unexpected behavior
+2. **Scope changed** — Discovery revealed different situation than expected
+3. **New information** — Task requirements clarified during execution
+
+### Loop Pattern
+
+```yaml
+# Initial DPB cycle
+discover: ...  # Call 1
+precision_read: ...  # Call 2
+precision_write: ...  # Call 3
+
+# Validation reveals issue
+precision_exec:  # Optional validation AFTER cycle
   commands:
     - cmd: "npm run typecheck"
       expect:
-        exit_code: 0
-  verbosity: minimal
+        exit_code: 0  # FAILS
+
+# LOOP: Start new DPB cycle with refined discovery
+discover:  # Call 1 (new cycle)
+  queries:
+    - id: find_missing_import
+      type: grep
+      pattern: "export.*User"
+      glob: "src/**/*.ts"
+  verbosity: locations  # Need exact location
+
+precision_read: ...  # Call 2 (new cycle)
+precision_edit: ...  # Call 3 (new cycle) - fix the issue
 ```
 
-**When sequential is acceptable:**
-- Read -> Edit -> Verify workflows
-- Operations where output of one determines input of next
-- Error handling between steps
+## Validation (AFTER the cycle)
 
-#### 4. Native Tools (NEVER)
-
-Native tools (Read, Write, Edit, Grep, Glob, Bash) are blocked by the PreToolUse hook. Always use precision_engine equivalents.
-
-### Batch Failure Handling
-
-When batch operations fail, the behavior depends on the tool:
-
-**batch_engine failures:**
-- Atomic mode: All operations rolled back on any failure
-- Partial mode: Successful operations kept, failed operations reported
-- Check `operations[id].status` in batch result to identify failures
-
-**precision_engine failures:**
-- Individual file/edit/command failures reported in result
-- Successful operations complete, failures don't affect them
-- Check `files[path].status` or `edits[id].status` for failures
-
-**Recovery pattern:**
-1. Examine error output to identify root cause
-2. Determine if issue is code-related or environment-related
-3. Fix the specific failed operation(s)
-4. Re-run just the failed operations (don't re-run successful ones)
-5. If root cause was incorrect assumptions, LOOP back to DISCOVER
-
-**Example recovery:**
-```yaml
-# Initial batch failed on file3.ts (import error)
-# Fix: Read the file that should export the symbol
-precision_read:
-  files:
-    - path: "src/types/index.ts"
-      extract: symbols
-  verbosity: minimal
-
-# Re-write just the failed file with correct import
-precision_write:
-  files:
-    - path: "src/features/auth/file3.ts"
-      content: |
-        import { User } from '@/types';  // Fixed import
-        export function getUser(): User { /*...*/ }
-  verbosity: minimal
-```
-
-### Post-Execution Validation
-
-After batch execution, verify results match plan expectations:
-
-**Pattern: Validate with precision_exec**
+Validation is OPTIONAL and happens AFTER the 3-call cycle completes:
 
 ```yaml
+# After completing a DPB cycle (3 calls), validate:
 precision_exec:
   commands:
     - cmd: "npm run typecheck"
@@ -711,167 +489,214 @@ precision_exec:
     - cmd: "npm run lint"
       expect:
         exit_code: 0
-    - cmd: "npm run build"
-      expect:
-        exit_code: 0
   verbosity: minimal
 ```
 
-**If validation fails:**
-1. Check the error output
-2. Determine if it's a code issue or plan issue
-3. If code issue: fix and re-validate
-4. If plan issue: loop back to DISCOVER
+If validation fails, LOOP back to Discovery (start a new 3-call cycle).
 
-### Batching Anti-Patterns
+## Complete Example: Implementing Auth Feature
 
-**[BAD] One operation per tool call**
+### Cycle 1: Initial Implementation
+
+**Step 1 — DISCOVER (1 call)**
 
 ```yaml
-# BAD: 3 tool calls
-precision_write:
-  files:
-    - path: "file1.ts"
-      content: "..."
-
-precision_write:
-  files:
-    - path: "file2.ts"
-      content: "..."
-
-precision_write:
-  files:
-    - path: "file3.ts"
-      content: "..."
-```
-
-```yaml
-# GOOD: 1 tool call
-precision_write:
-  files:
-    - path: "file1.ts"
-      content: "..."
-    - path: "file2.ts"
-      content: "..."
-    - path: "file3.ts"
-      content: "..."
-```
-
-**[BAD] Using verbose output when minimal suffices**
-
-```yaml
-# BAD: 10x token cost
-precision_write:
-  files:
-    - path: "file.ts"
-      content: "..."
-  verbosity: verbose  # Returns full content + metadata
-```
-
-```yaml
-# GOOD: Minimal tokens
-precision_write:
-  files:
-    - path: "file.ts"
-      content: "..."
-  verbosity: minimal  # Just confirms success
-```
-
-**[BAD] Falling back to native tools**
-
-The PreToolUse hook blocks native tools and redirects to precision_engine. Don't fight it -- use precision tools from the start.
-
-## LOOP: When to Return to Discovery
-
-### Scope Changed
-
-If discovery reveals the situation is different than expected:
-
-**Example:**
-```
-Expected: Create new auth system from scratch
-Discovered: Auth system already exists, just needs extension
--> LOOP: Re-discover existing auth patterns before planning
-```
-
-### Results Don't Match Plan
-
-If execution produces unexpected output:
-
-**Example:**
-```
-Expected: Typecheck passes after adding types
-Actual: Typecheck fails with "module not found"
--> LOOP: Discover import structure, re-plan file organization
-```
-
-### New Information
-
-If task requirements are clarified during execution:
-
-**Example:**
-```
-Original task: Add user authentication
-Clarification: Must integrate with existing Clerk setup
--> LOOP: Discover Clerk integration patterns before continuing
-```
-
-### Looping Pattern
-
-```yaml
-# Initial discovery
 discover:
   queries:
-    - id: initial
+    - id: existing_auth
       type: glob
-      patterns: ["src/features/**/*.ts"]
-
-# Execution reveals unexpected structure
-# LOOP: Re-discover with new information
-
-discover:
-  queries:
-    - id: refined
-      type: glob
-      patterns: ["src/features/*/index.ts"]  # More specific
-    - id: patterns
+      patterns: ["src/features/auth/**/*.ts", "src/**/auth*.ts"]
+    - id: auth_patterns
       type: grep
-      pattern: "export.*from"
-      glob: "src/features/*/index.ts"
+      pattern: "(useAuth|getSession|AuthProvider)"
+      glob: "src/**/*.{ts,tsx}"
+    - id: user_types
+      type: symbols
+      query: "User"
+      kinds: ["interface", "type"]
+  verbosity: files_only
 ```
 
-**Example: Execution reveals unexpected dependency**
+**Step 2 — PLAN (0 calls, cognitive)**
 
 ```
-Plan: Create auth/hooks.ts using User type
-Execution: Typecheck fails - User type not exported from expected location
--> LOOP: Discover where User type actually lives
+Discovery results:
+- No existing auth files
+- No auth patterns in use
+- User type exists in src/types/user.ts
+
+Plan:
+1. Read src/types/user.ts to understand User interface
+2. Read .goodvibes/memory/decisions.json for auth constraints
+3. Batch into 1 precision_read call
 ```
+
+**Step 3 — BATCH INPUT (1 call)**
 
 ```yaml
-# Re-discovery after execution failure
-discover:
-  queries:
-    - id: find_user_type
-      type: grep
-      pattern: "export (interface|type) User"
-      glob: "src/**/*.ts"
-  verbosity: locations  # Need exact location
-
-# Adjust plan based on discovered location
-# Re-run failed operation with corrected import
+precision_read:
+  files:
+    - path: "src/types/user.ts"
+      extract: symbols
+    - path: ".goodvibes/memory/decisions.json"
+  verbosity: minimal
 ```
 
-## Examples and Reference
+**Step 4 — PLAN (0 calls, cognitive)**
 
-For a complete worked example of the DPB loop, anti-patterns summary, checklists, and implementation tips, see:
+```
+Input results:
+- User interface has id, email, name fields
+- Decisions.json says: use Clerk for auth
 
-**[references/examples-and-checklists.md](references/examples-and-checklists.md)**
+Plan:
+1. Create src/features/auth/provider.tsx (Clerk wrapper)
+2. Create src/features/auth/hooks.ts (useAuth hook)
+3. Create src/features/auth/index.ts (barrel export)
+4. Batch into 1 precision_write call
+```
 
-The reference file includes:
-- Complete DPB example (user profile feature implementation)
-- Anti-patterns summary with [BAD]/[GOOD] comparisons
-- Quick reference checklists for discovery, planning, batching, and looping
-- Implementation tips and expected outcomes
+**Step 5 — BATCH OUTPUT (1 call)**
 
-Make DPB your default mode of operation.
+```yaml
+precision_write:
+  files:
+    - path: "src/features/auth/provider.tsx"
+      content: |
+        import { ClerkProvider } from '@clerk/nextjs';
+        export function AuthProvider({ children }: { children: React.ReactNode }) {
+          return <ClerkProvider>{children}</ClerkProvider>;
+        }
+    - path: "src/features/auth/hooks.ts"
+      content: |
+        import { useUser } from '@clerk/nextjs';
+        import type { User } from '@/types/user';
+        export function useAuth(): User | null {
+          const { user } = useUser();
+          if (!user) return null;
+          return { id: user.id, email: user.emailAddresses[0].emailAddress, name: user.fullName };
+        }
+    - path: "src/features/auth/index.ts"
+      content: |
+        export { AuthProvider } from './provider';
+        export { useAuth } from './hooks';
+  verbosity: minimal
+```
+
+**Total calls in Cycle 1: 3** (discover + precision_read + precision_write)
+
+### Validation (AFTER Cycle 1)
+
+```yaml
+precision_exec:
+  commands:
+    - cmd: "npm run typecheck"
+      expect:
+        exit_code: 0
+  verbosity: minimal
+
+# Result: FAILS — missing @clerk/nextjs import
+```
+
+### Cycle 2: Fix Import Issue
+
+**Step 1 — DISCOVER (1 call)**
+
+```yaml
+discover:
+  queries:
+    - id: package_json
+      type: glob
+      patterns: ["package.json"]
+    - id: clerk_usage
+      type: grep
+      pattern: "@clerk/nextjs"
+      glob: "src/**/*.{ts,tsx}"
+  verbosity: files_only
+```
+
+**Step 2 — PLAN (0 calls, cognitive)**
+
+```
+Discovery: @clerk/nextjs not in package.json
+
+Plan:
+1. Install @clerk/nextjs via precision_exec
+```
+
+**Step 3 — BATCH INPUT (1 call)**
+
+```yaml
+precision_exec:
+  commands:
+    - cmd: "npm install @clerk/nextjs"
+  verbosity: minimal
+```
+
+**Step 4 — PLAN (0 calls, cognitive)**
+
+```
+No output operations needed (package installed)
+```
+
+**Step 5 — BATCH OUTPUT (1 call)**
+
+```yaml
+# No-op or skip — nothing to write/edit
+# If you must make a call, you can read package.json to confirm:
+precision_read:
+  files:
+    - path: "package.json"
+      extract: outline
+  verbosity: minimal
+```
+
+**Total calls in Cycle 2: 3** (or 2 if skipping step 5)
+
+### Final Validation
+
+```yaml
+precision_exec:
+  commands:
+    - cmd: "npm run typecheck"
+      expect:
+        exit_code: 0
+  verbosity: minimal
+
+# Result: PASSES
+```
+
+## Common Violations and Fixes
+
+| Violation | Tool Calls | Fix |
+|-----------|-----------|-----|
+| Sequential precision_read calls | 5+ | Batch all files into 1 precision_read call |
+| Sequential precision_write calls | 5+ | Batch all files into 1 precision_write call |
+| Using precision_glob + precision_grep separately | 2+ | Use 1 discover call with both query types |
+| Reading outline, then content | 2 | Read content once if you'll need it |
+| Planning via tool calls | 1+ | Plan in text (cognitive work = 0 calls) |
+
+## Enforcement
+
+If you find yourself making 5+ tool calls in a single DPB cycle, you are violating the protocol. Stop and restructure:
+
+1. Identify which calls are discovery → batch into 1 `discover` call
+2. Identify which calls are input → batch into 1 `precision_read`/`precision_grep` call
+3. Identify which calls are output → batch into 1 `precision_write`/`precision_edit` call
+4. Ensure planning happens in text, not via tools
+
+Target: **3 tool calls per DPB cycle**.
+
+## Summary
+
+- **D** (Discover): 1 `discover` call with all queries
+- **P** (Plan): 0 calls (cognitive)
+- **B** (Batch Input): 1 call (precision_read/precision_grep/batch)
+- **P** (Plan): 0 calls (cognitive)
+- **B** (Batch Output): 1 call (precision_write/precision_edit/batch)
+- **LOOP**: Start new cycle if needed
+- **Validation**: AFTER cycle (optional precision_exec)
+
+**Total: 3 calls per cycle**.
+
+Make this your default mode of operation.
