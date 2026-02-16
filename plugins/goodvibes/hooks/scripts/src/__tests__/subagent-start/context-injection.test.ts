@@ -266,10 +266,6 @@ describe('context-injection', () => {
         expect(result.additionalContext).toContain('mcp__plugin_goodvibes_batch-engine__batch');
       });
 
-
-
-
-
       it('should include batch processing reminder for all agent types', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
@@ -809,6 +805,47 @@ describe('context-injection', () => {
         expect(result.additionalContext).toContain('service-integration');
         expect(result.additionalContext).toContain('state-management');
         expect(result.additionalContext).toContain('authentication');
+      });
+
+      it('should inject ai-integration skill for goodvibes:integrator-ai', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:integrator-ai',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('ai-integration');
+      });
+
+      it('should inject service integration skills for goodvibes:integrator-services', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:integrator-services',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('payment-integration');
+        expect(result.additionalContext).toContain('service-integration');
+        expect(result.additionalContext).toContain('authentication');
+      });
+
+      it('should inject state-management skill for goodvibes:integrator-state', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:integrator-state',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('state-management');
       });
 
       it('should inject planner skills for goodvibes:planner', async () => {

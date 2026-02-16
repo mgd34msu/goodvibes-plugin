@@ -57,8 +57,8 @@ export interface SubagentContext {
  * @returns Promise resolving to SubagentContext with additional context string
  *
  * @example
- * const context = await buildSubagentContext(cwd, 'backend-engineer', sessionId);
- * // Returns context with write-local reminder
+ * const context = await buildSubagentContext(cwd, 'goodvibes:engineer', sessionId);
+ * // Returns context with write-local and skill recommendations
  */
 export async function buildSubagentContext(
   cwd: string,
