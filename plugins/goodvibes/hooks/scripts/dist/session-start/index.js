@@ -24,6 +24,7 @@ import { buildSystemMessage } from './response-formatter.js';
 import { checkForUpdates } from './version-checker.js';
 import { fetchPricingIfStale } from './pricing-fetcher.js';
 import { ensureClaudeMdImports } from './claude-md-manager.js';
+import { buildProjectIndex } from './project-indexer.js';
 /**
  * Default recovery info when crash recovery check fails.
  * Used as a fallback to ensure the hook continues gracefully.
@@ -149,6 +150,8 @@ async function runSessionStartHook() {
         });
         // Step 5: Save state
         await savePluginState(projectDir, state);
+        // Step 5.25: Build project file index
+        await buildProjectIndex(projectDir).catch((err) => logError('Project indexer failed', err instanceof Error ? err : new Error(String(err))));
         // Step 5.5: Ensure CLAUDE.md import architecture is installed
         await ensureClaudeMdImports(projectDir);
         // Step 6: Initialize analytics

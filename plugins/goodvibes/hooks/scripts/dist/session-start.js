@@ -5023,6 +5023,182 @@ async function ensureClaudeMdImports(projectDir) {
   }
 }
 
+// src/session-start/project-indexer.ts
+import { readdir as readdir3, stat, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
+import path16 from "path";
+var INDEX_EXCLUSIONS = [
+  "node_modules",
+  ".git",
+  ".goodvibes",
+  "dist",
+  "build",
+  "out",
+  ".next",
+  ".nuxt",
+  ".svelte-kit",
+  "__pycache__",
+  ".cache",
+  ".turbo",
+  ".vercel",
+  ".netlify",
+  "coverage",
+  ".nyc_output",
+  ".pytest_cache",
+  ".mypy_cache",
+  ".tox",
+  "venv",
+  ".venv",
+  "target"
+];
+var EXCLUDED_EXTENSIONS = [
+  ".min.js",
+  ".min.css",
+  ".map",
+  ".lock"
+];
+var EXCLUDED_FILENAMES = [
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "bun.lockb"
+];
+function shouldExclude(name, relativePath) {
+  const segments = relativePath.split(path16.sep);
+  for (const segment of segments) {
+    if (INDEX_EXCLUSIONS.includes(segment)) {
+      return true;
+    }
+  }
+  if (EXCLUDED_FILENAMES.includes(name)) {
+    return true;
+  }
+  for (const ext of EXCLUDED_EXTENSIONS) {
+    if (name.endsWith(ext)) {
+      return true;
+    }
+  }
+  return false;
+}
+function categorizeFileType(filePath) {
+  const ext = path16.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".ts":
+    case ".tsx":
+      return "ts";
+    case ".js":
+    case ".jsx":
+    case ".mjs":
+    case ".cjs":
+      return "js";
+    case ".json":
+      return "json";
+    case ".md":
+    case ".mdx":
+      return "md";
+    case ".css":
+    case ".scss":
+    case ".less":
+      return "css";
+    case ".html":
+    case ".htm":
+      return "html";
+    case ".py":
+      return "py";
+    case ".go":
+      return "go";
+    case ".rs":
+      return "rs";
+    case ".yaml":
+    case ".yml":
+      return "yaml";
+    default:
+      return "other";
+  }
+}
+function countUniqueDirs(entries) {
+  const dirs = /* @__PURE__ */ new Set();
+  for (const entry of entries) {
+    const dir = path16.dirname(entry.p);
+    if (dir && dir !== ".") {
+      dirs.add(dir);
+    }
+  }
+  return dirs.size;
+}
+async function buildProjectIndex(projectDir) {
+  const startMs = Date.now();
+  const entries = [];
+  let isPartial = false;
+  try {
+    debug("Building project file index", { projectDir });
+    const dirEntries = await readdir3(projectDir, {
+      recursive: true,
+      withFileTypes: true
+    });
+    for (const entry of dirEntries) {
+      if (Date.now() - startMs > 3e4) {
+        debug("Project indexing timeout - writing partial index");
+        isPartial = true;
+        break;
+      }
+      if (!entry.isFile()) {
+        continue;
+      }
+      const relativePath = entry.parentPath ? path16.relative(projectDir, path16.join(entry.parentPath, entry.name)) : entry.name;
+      if (shouldExclude(entry.name, relativePath)) {
+        continue;
+      }
+      try {
+        const fullPath = path16.join(projectDir, relativePath);
+        const stats = await stat(fullPath);
+        entries.push({
+          p: relativePath,
+          s: stats.size,
+          m: Math.floor(stats.mtimeMs),
+          t: categorizeFileType(relativePath)
+        });
+      } catch (statError) {
+        debug("Failed to stat file", { relativePath, error: statError });
+        continue;
+      }
+    }
+    entries.sort((a, b) => a.p.localeCompare(b.p));
+    const index = {
+      version: 1,
+      created_at: (/* @__PURE__ */ new Date()).toISOString(),
+      updated_at: (/* @__PURE__ */ new Date()).toISOString(),
+      project_root: projectDir,
+      stats: {
+        total_files: entries.length,
+        total_dirs: countUniqueDirs(entries),
+        total_size_bytes: entries.reduce((sum, e) => sum + e.s, 0),
+        index_duration_ms: Date.now() - startMs,
+        ...isPartial && { partial: true }
+      },
+      files: entries
+    };
+    const indexDir = path16.join(projectDir, ".goodvibes");
+    const indexPath = path16.join(indexDir, "project-index.json");
+    const tempPath = indexPath + ".tmp";
+    await mkdir6(indexDir, { recursive: true });
+    await writeFile7(tempPath, JSON.stringify(index), "utf-8");
+    await rename2(tempPath, indexPath);
+    debug("Project index created", {
+      files: entries.length,
+      dirs: index.stats.total_dirs,
+      size_mb: (index.stats.total_size_bytes / 1024 / 1024).toFixed(2),
+      duration_ms: index.stats.index_duration_ms,
+      partial: isPartial
+    });
+  } catch (error) {
+    logError(
+      "Project indexer failed",
+      error instanceof Error ? error : new Error(String(error))
+    );
+    throw error;
+  }
+}
+
 // src/session-start/index.ts
 var DEFAULT_RECOVERY_INFO = {
   needsRecovery: false,
@@ -5130,6 +5306,9 @@ async function runSessionStartHook() {
       startedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     await savePluginState(projectDir, state);
+    await buildProjectIndex(projectDir).catch(
+      (err) => logError("Project indexer failed", err instanceof Error ? err : new Error(String(err)))
+    );
     await ensureClaudeMdImports(projectDir);
     initializeAnalytics(sessionId, contextResult);
     const versionCheck = await checkForUpdates();
