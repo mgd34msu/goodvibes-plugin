@@ -1,6 +1,6 @@
 ---
 name: goodvibes-memory
-description: "Defines how all GoodVibes agents read from and write to the persistent memory and logging system. Use at the start of any task (read) and after completing any task (write). Covers decisions.json, patterns.json, failures.json, preferences.json, and session logs."
+description: "ALWAYS load before starting any task. Defines how all GoodVibes agents read from and write to the persistent memory and logging system. Use at the start of any task (read) and after completing any task (write). Covers decisions.json, patterns.json, failures.json, preferences.json, and session logs."
 metadata:
   version: 1.0.0
   category: protocol

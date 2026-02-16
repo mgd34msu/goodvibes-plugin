@@ -1,6 +1,6 @@
 ---
 name: service-integration
-description: "External service integration workflow using GoodVibes precision tools. Use when integrating email services (Resend, SendGrid), CMS platforms (Sanity, Contentful, Payload), file uploads (UploadThing, Cloudinary, S3), or analytics. Covers setup, error handling, and testing."
+description: "Load PROACTIVELY when task involves email, CMS, upload, Resend, Sanity, S3, or Cloudinary. External service integration workflow using GoodVibes precision tools. Use when integrating email services (Resend, SendGrid), CMS platforms (Sanity, Contentful, Payload), file uploads (UploadThing, Cloudinary, S3), or analytics. Covers setup, error handling, and testing."
 metadata:
   version: 1.0.0
   category: outcome

@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Systematic code review methodology using precision tools. Use when reviewing PRs, validating implementations, or performing quality audits. Covers security, performance, architecture, testing, and accessibility reviews with automated pattern detection and the 10-dimension weighted scoring rubric."
+description: "Load PROACTIVELY when performing review, audit, PR, or quality assessment. Systematic code review methodology using precision tools. Use when reviewing PRs, validating implementations, or performing quality audits. Covers security, performance, architecture, testing, and accessibility reviews with automated pattern detection and the 10-dimension weighted scoring rubric."
 metadata:
   version: 1.0.0
   category: quality

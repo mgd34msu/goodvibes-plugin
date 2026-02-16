@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: "Systematic debugging methodology using precision tools. Use when investigating errors, tracing issues, analyzing runtime behavior, or diagnosing performance problems. Covers error analysis, runtime debugging, network inspection, state debugging, and root cause analysis with automated pattern detection."
+description: "Load PROACTIVELY when performing debug, error, stack trace, type error, or build failure investigation. Systematic debugging methodology using precision tools. Use when investigating errors, tracing issues, analyzing runtime behavior, or diagnosing performance problems. Covers error analysis, runtime debugging, network inspection, state debugging, and root cause analysis with automated pattern detection."
 metadata:
   version: 1.0.0
   category: quality

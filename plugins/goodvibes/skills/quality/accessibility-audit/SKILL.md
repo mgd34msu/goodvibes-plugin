@@ -1,6 +1,6 @@
 ---
 name: accessibility-audit
-description: "WCAG 2.1 AA compliance audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen reader support, color contrast, forms, and media accessibility. Includes precision tool workflows for automated pattern detection and structured reporting."
+description: "Load PROACTIVELY when performing accessibility, a11y, WCAG, ARIA, or keyboard nav audit. WCAG 2.1 AA compliance audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen reader support, color contrast, forms, and media accessibility. Includes precision tool workflows for automated pattern detection and structured reporting."
 metadata:
   version: "1.0.0"
   category: quality

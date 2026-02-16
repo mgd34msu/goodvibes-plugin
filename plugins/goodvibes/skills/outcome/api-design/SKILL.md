@@ -1,6 +1,6 @@
 ---
 name: api-design
-description: "API endpoint design and implementation workflow using GoodVibes precision tools. Use when building REST endpoints, GraphQL resolvers, tRPC procedures, API middleware, request validation, or response formatting. Covers route design, error handling, and documentation."
+description: "Load PROACTIVELY when task involves API, endpoint, route, REST, GraphQL, tRPC, or middleware. API endpoint design and implementation workflow using GoodVibes precision tools. Use when building REST endpoints, GraphQL resolvers, tRPC procedures, API middleware, request validation, or response formatting. Covers route design, error handling, and documentation."
 metadata:
   version: 1.0.0
   category: outcome

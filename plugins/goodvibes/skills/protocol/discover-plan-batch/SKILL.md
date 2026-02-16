@@ -1,6 +1,6 @@
 ---
 name: discover-plan-batch
-description: "Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use before starting any development task. Covers discovery patterns using the discover tool, work planning for token efficiency, and batch execution strategies."
+description: "ALWAYS load before starting any task. Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use before starting any development task. Covers discovery patterns using the discover tool, work planning for token efficiency, and batch execution strategies."
 metadata:
   version: 1.0.0
   category: protocol

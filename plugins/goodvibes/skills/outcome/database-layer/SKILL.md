@@ -1,6 +1,6 @@
 ---
 name: database-layer
-description: "Database and ORM setup workflow using GoodVibes precision tools. Use when creating schemas, running migrations, setting up database connections, defining models, writing queries, or optimizing database performance. Covers relational and document databases."
+description: "Load PROACTIVELY when task involves database, schema, migration, ORM, Prisma, Drizzle, or SQL. Database and ORM setup workflow using GoodVibes precision tools. Use when creating schemas, running migrations, setting up database connections, defining models, writing queries, or optimizing database performance. Covers relational and document databases."
 metadata:
   version: 1.0.0
   category: outcome

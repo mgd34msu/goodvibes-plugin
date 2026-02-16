@@ -1,6 +1,6 @@
 ---
 name: refactoring
-description: "Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename, simplify conditionals, type improvements, dependency inversion, and database refactoring with automated safety validation."
+description: "Load PROACTIVELY when performing refactor, cleanup, dead code removal, reorganize, or extract operations. Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename, simplify conditionals, type improvements, dependency inversion, and database refactoring with automated safety validation."
 metadata:
   version: 1.0.0
   category: quality

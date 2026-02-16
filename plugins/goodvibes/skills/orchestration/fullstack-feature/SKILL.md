@@ -1,6 +1,6 @@
 ---
 name: fullstack-feature
-description: "End-to-end feature development workflow that orchestrates multiple agents across the full stack. Use when the user requests a complete feature that spans backend, frontend, and testing. Sequences work across database, API, UI, tests, and review."
+description: "Load PROACTIVELY when coordinating multiple agents or planning multi-step work. End-to-end feature development workflow that orchestrates multiple agents across the full stack. Use when the user requests a complete feature that spans backend, frontend, and testing. Sequences work across database, API, UI, tests, and review."
 metadata:
   version: 1.0.0
   category: orchestration

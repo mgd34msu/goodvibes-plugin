@@ -1,6 +1,6 @@
 ---
 name: project-onboarding
-description: "Guides systematic project onboarding through codebase analysis, architecture mapping, dependency auditing, convention detection, and developer environment setup for rapid productive contribution"
+description: "Load PROACTIVELY when performing onboard, new project, codebase analysis, or setup. Guides systematic project onboarding through codebase analysis, architecture mapping, dependency auditing, convention detection, and developer environment setup for rapid productive contribution"
 metadata:
   version: 1.0.0
   category: quality

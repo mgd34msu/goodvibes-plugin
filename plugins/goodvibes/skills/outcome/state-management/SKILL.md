@@ -1,6 +1,6 @@
 ---
 name: state-management
-description: "Guides state architecture decisions including server state (TanStack Query), client state (Zustand), form state (React Hook Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data fetching, or managing complex form state."
+description: "Load PROACTIVELY when task involves state, store, Zustand, React Query, or form validation. Guides state architecture decisions including server state (TanStack Query), client state (Zustand), form state (React Hook Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data fetching, or managing complex form state."
 metadata:
   version: 1.0.0
   category: outcome

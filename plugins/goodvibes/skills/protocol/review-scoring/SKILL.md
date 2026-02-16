@@ -1,6 +1,6 @@
 ---
 name: review-scoring
-description: 'Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring implementations, or validating that work meets quality standards. Includes deterministic validation scripts for review output.'
+description: 'ALWAYS load before starting any task. Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring implementations, or validating that work meets quality standards. Includes deterministic validation scripts for review output.'
 metadata:
   version: 1.0.0
   category: protocol

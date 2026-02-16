@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: "Comprehensive security audit methodology covering authentication, authorization, input validation, data protection, dependency scanning, API security, and infrastructure hardening. Includes precision tool workflows for automated vulnerability detection."
+description: "Load PROACTIVELY when performing security, vulnerability, secrets, or OWASP audit. Comprehensive security audit methodology covering authentication, authorization, input validation, data protection, dependency scanning, API security, and infrastructure hardening. Includes precision tool workflows for automated vulnerability detection."
 metadata:
   version: "1.0.0"
   category: quality

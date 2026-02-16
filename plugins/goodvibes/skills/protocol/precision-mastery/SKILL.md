@@ -1,6 +1,6 @@
 ---
 name: precision-mastery
-description: "Teaches optimal usage of GoodVibes precision engine tools for maximum token efficiency. Use when performing any file operations, searches, or command execution. Covers extract modes, verbosity settings, batching patterns, and discover tool orchestration."
+description: "ALWAYS load before starting any task. Teaches optimal usage of GoodVibes precision engine tools for maximum token efficiency. Use when performing any file operations, searches, or command execution. Covers extract modes, verbosity settings, batching patterns, and discover tool orchestration."
 metadata:
   version: 1.0.0
   category: protocol

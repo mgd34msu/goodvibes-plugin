@@ -1,6 +1,6 @@
 ---
 name: component-architecture
-description: "Component design workflow using GoodVibes precision tools. Use when building UI components, designing component hierarchies, optimizing render performance, or organizing component files. Covers composition patterns, state management, render optimization, and file organization for React/Vue/Svelte."
+description: "Load PROACTIVELY when task involves component, UI, React, Vue, Svelte, page, layout, or form. Component design workflow using GoodVibes precision tools. Use when building UI components, designing component hierarchies, optimizing render performance, or organizing component files. Covers composition patterns, state management, render optimization, and file organization for React/Vue/Svelte."
 metadata:
   version: 1.0.0
   category: outcome

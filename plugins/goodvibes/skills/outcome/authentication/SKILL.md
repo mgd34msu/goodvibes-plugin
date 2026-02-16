@@ -1,6 +1,6 @@
 ---
 name: authentication
-description: "Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery, implementation, security verification, and testing."
+description: "Load PROACTIVELY when task involves login, auth, JWT, OAuth, sessions, RBAC, or protected routes. Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery, implementation, security verification, and testing."
 metadata:
   version: 1.0.0
   category: outcome

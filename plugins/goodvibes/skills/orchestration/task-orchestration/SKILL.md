@@ -1,6 +1,6 @@
 ---
 name: task-orchestration
-description: "Guides the GoodVibes orchestrator in decomposing feature requests into parallel agent tasks, assigning appropriate agents and skills, managing dependencies, and coordinating WRFC loops across up to 6 concurrent agent chains. Use when receiving a new user request that requires multiple agents."
+description: "Load PROACTIVELY when coordinating multiple agents or planning multi-step work. Guides the GoodVibes orchestrator in decomposing feature requests into parallel agent tasks, assigning appropriate agents and skills, managing dependencies, and coordinating WRFC loops across up to 6 concurrent agent chains. Use when receiving a new user request that requires multiple agents."
 metadata:
   version: 1.0.0
   category: orchestration

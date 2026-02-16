@@ -1,6 +1,6 @@
 ---
 name: performance-audit
-description: "Systematic performance audit methodology covering bundle analysis, database optimization, rendering performance, network optimization, memory management, server-side performance, and Core Web Vitals. Includes precision tool workflows for automated performance checks."
+description: "Load PROACTIVELY when performing performance, bundle, re-render, N+1, or optimization audit. Systematic performance audit methodology covering bundle analysis, database optimization, rendering performance, network optimization, memory management, server-side performance, and Core Web Vitals. Includes precision tool workflows for automated performance checks."
 metadata:
   version: "1.0.0"
   category: quality

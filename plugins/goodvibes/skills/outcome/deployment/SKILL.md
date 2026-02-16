@@ -1,6 +1,6 @@
 ---
 name: deployment
-description: "Deployment patterns for Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD pipelines, preview deployments, health checks, rollback strategies, and monitoring setup."
+description: "Load PROACTIVELY when task involves deploy, CI/CD, Docker, Vercel, Railway, or production. Deployment patterns for Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD pipelines, preview deployments, health checks, rollback strategies, and monitoring setup."
 metadata:
   version: "1.0.0"
   category: outcome

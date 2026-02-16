@@ -1,6 +1,6 @@
 ---
 name: styling-system
-description: "Guides CSS architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark mode implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design systems, or choosing between styling approaches."
+description: "Load PROACTIVELY when task involves CSS, Tailwind, styling, theme, dark mode, or responsive design. Guides CSS architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark mode implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design systems, or choosing between styling approaches."
 metadata:
   version: 1.0.0
   category: outcome

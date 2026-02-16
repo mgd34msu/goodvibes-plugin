@@ -1,6 +1,6 @@
 ---
 name: payment-integration
-description: "Payment processing integration workflow using GoodVibes precision tools. Use when implementing Stripe, LemonSqueezy, or Paddle checkout flows, subscription billing, webhook handling, or payment security. Covers setup, testing, and PCI compliance."
+description: "Load PROACTIVELY when task involves payment, Stripe, checkout, subscription, or billing. Payment processing integration workflow using GoodVibes precision tools. Use when implementing Stripe, LemonSqueezy, or Paddle checkout flows, subscription billing, webhook handling, or payment security. Covers setup, testing, and PCI compliance."
 metadata:
   version: 1.0.0
   category: outcome
