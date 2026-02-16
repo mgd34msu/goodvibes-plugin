@@ -135,10 +135,10 @@ Consult `references/component-patterns.md` for the organization decision tree.
 - **Hybrid** - shared components + feature components
 
 **Decision factors:**
-- Team size (larger teams → more structure)
-- Application complexity (complex → feature-based)
-- Design system presence (yes → atomic design)
-- Component reusability (high → shared/ui directory)
+- Team size (larger teams -> more structure)
+- Application complexity (complex -> feature-based)
+- Design system presence (yes -> atomic design)
+- Component reusability (high -> shared/ui directory)
 
 #### Step 2.2: Choose Composition Pattern
 
@@ -399,9 +399,15 @@ precision_write:
 ```typescript
 import { useState } from 'react';
 
+interface SearchResult {
+  id: string;
+  title: string;
+  description: string;
+}
+
 function SearchInput() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
 
   const handleSearch = async () => {
     const data = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -422,7 +428,7 @@ function SearchInput() {
 ```typescript
 function SearchPage() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
 
   return (
     <>
@@ -436,7 +442,18 @@ function SearchPage() {
 **React - Derived State:**
 
 ```typescript
-function FilteredList({ items, filter }) {
+interface Item {
+  id: string;
+  category: string;
+  name: string;
+}
+
+interface FilteredListProps {
+  items: Item[];
+  filter: string;
+}
+
+function FilteredList({ items, filter }: FilteredListProps) {
   // Don't store filtered items in state - derive them
   const filteredItems = items.filter(item => item.category === filter);
 
@@ -453,7 +470,11 @@ import { createContext, useContext } from 'react';
 
 const ThemeContext = createContext({ theme: 'light', toggleTheme: () => {} });
 
-export function ThemeProvider({ children }) {
+interface ThemeProviderProps {
+  children: ReactNode;
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState('light');
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
@@ -496,7 +517,17 @@ mcp__plugin_goodvibes_frontend-engine__analyze_render_triggers:
 ```typescript
 import { useMemo } from 'react';
 
-function DataTable({ data, filters }) {
+interface DataItem {
+  id: string;
+  [key: string]: unknown;
+}
+
+interface DataTableProps {
+  data: DataItem[];
+  filters: Record<string, any>;
+}
+
+function DataTable({ data, filters }: DataTableProps) {
   const filteredData = useMemo(() => {
     return data.filter(item => matchesFilters(item, filters));
   }, [data, filters]);
@@ -527,7 +558,11 @@ function Parent() {
 ```typescript
 import { memo } from 'react';
 
-const ExpensiveChild = memo(function ExpensiveChild({ data }) {
+interface ExpensiveChildProps {
+  data: DataItem[];
+}
+
+const ExpensiveChild = memo(function ExpensiveChild({ data }: ExpensiveChildProps) {
   // Only re-renders if data changes
   return <div>{/* complex rendering */}</div>;
 });
@@ -540,7 +575,11 @@ For large lists, use virtualization libraries.
 ```typescript
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-function VirtualList({ items }) {
+interface VirtualListProps<T = unknown> {
+  items: T[];
+}
+
+function VirtualList({ items }: VirtualListProps) {
   const parentRef = useRef(null);
 
   const virtualizer = useVirtualizer({
@@ -549,6 +588,7 @@ function VirtualList({ items }) {
     estimateSize: () => 50,
   });
 
+  // Note: Inline styles acceptable here for virtualization positioning
   return (
     <div ref={parentRef} style={{ height: '400px', overflow: 'auto' }}>
       <div style={{ height: `${virtualizer.getTotalSize()}px` }}>
@@ -608,7 +648,13 @@ Use proper HTML elements instead of divs.
 Add ARIA labels for screen readers.
 
 ```typescript
-function Dialog({ isOpen, onClose, children }) {
+interface DialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+function Dialog({ isOpen, onClose, children }: DialogProps) {
   return (
     <div
       role="dialog"
@@ -760,3 +806,13 @@ bash scripts/validate-components.sh .
 ```
 
 For detailed patterns, framework comparisons, and decision trees, see `references/component-patterns.md`.
+
+## Related Skills
+
+Consider using these complementary GoodVibes skills:
+
+- **styling-system** - Design system tokens, theme architecture, and CSS-in-JS patterns
+- **state-management** - Global state patterns, store architecture, and data flow
+- **testing-strategy** - Component testing, visual regression, and accessibility testing
+- **performance-audit** - Bundle analysis, render profiling, and optimization strategies
+- **accessibility-audit** - WCAG compliance, screen reader testing, and ARIA patterns

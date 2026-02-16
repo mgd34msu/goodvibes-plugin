@@ -466,7 +466,17 @@ export const useUser = () => useContext(UserContext);
 ```typescript
 import { create } from 'zustand';
 
-const useStore = create((set) => ({
+interface User {
+  id: string;
+  name: string;
+}
+
+interface StoreState {
+  user: User | null;
+  setUser: (user: User | null) => void;
+}
+
+const useStore = create<StoreState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
 }));
@@ -499,14 +509,14 @@ export const user = writable(null);
 
 ```
 Does only one component need this state?
-├─ YES → Local state (useState, ref, let)
-└─ NO → Do siblings need to share it?
-    ├─ YES → Lift state to parent
-    └─ NO → Is it used across the app?
-        ├─ YES → Global state (Context, Zustand, Pinia, Stores)
-        └─ NO → Can it be derived from existing state?
-            ├─ YES → Derive it (computed, useMemo)
-            └─ NO → Lift to nearest common ancestor
++-- YES -> Local state (useState, ref, let)
+\-- NO -> Do siblings need to share it?
+    +-- YES -> Lift state to parent
+    \-- NO -> Is it used across the app?
+        +-- YES -> Global state (Context, Zustand, Pinia, Stores)
+        \-- NO -> Can it be derived from existing state?
+            +-- YES -> Derive it (computed, useMemo)
+            \-- NO -> Lift to nearest common ancestor
 ```
 
 ## Performance Patterns
@@ -620,8 +630,13 @@ const virtualizer = useVirtualizer({
 
 **Bad:**
 ```typescript
-const [items, setItems] = useState([]);
-const [filteredItems, setFilteredItems] = useState([]);
+interface Item {
+  id: string;
+  active: boolean;
+}
+
+const [items, setItems] = useState<Item[]>([]);
+const [filteredItems, setFilteredItems] = useState<Item[]>([]);
 
 useEffect(() => {
   setFilteredItems(items.filter(item => item.active));
@@ -630,7 +645,7 @@ useEffect(() => {
 
 **Good:**
 ```typescript
-const [items, setItems] = useState([]);
+const [items, setItems] = useState<Item[]>([]);
 const filteredItems = items.filter(item => item.active);
 ```
 
@@ -663,8 +678,8 @@ setUser({ ...user, name: 'Bob' });
 
 **Bad:**
 ```typescript
+// Note: This is intentionally bad - creates new function on every render
 <button onClick={() => console.log('Click')}>Click</button>
-// New function on every render
 ```
 
 **Good:**
@@ -706,7 +721,12 @@ const Component = memo(function Component({ name }) {
 **Good:**
 ```typescript
 // Use Context or global state
-const UserContext = createContext(null);
+interface User {
+  id: string;
+  name: string;
+}
+
+const UserContext = createContext<User | null>(null);
 
 <UserContext.Provider value={user}>
   <A><B><C><D /></C></B></A>

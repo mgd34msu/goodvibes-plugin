@@ -62,7 +62,7 @@ printf "\n"
 log_info "Check 2: Component prop types/interfaces defined"
 PROP_TYPES_COUNT=0
 
-PROP_TYPES_COUNT=$(grep -rE "(interface.*Props|type.*Props|PropType|defineProps)" --exclude-dir=node_modules --include="*.ts" --include="*.tsx" --include="*.vue" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l)
+PROP_TYPES_COUNT=$(grep -rE "(interface.*Props|type.*Props|PropType|defineProps)" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=build --include="*.ts" --include="*.tsx" --include="*.vue" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l || true)
 
 if [ "$PROP_TYPES_COUNT" -gt 0 ]; then
   log_pass "Found ${PROP_TYPES_COUNT} prop type definitions"
@@ -75,7 +75,7 @@ printf "\n"
 log_info "Check 3: No inline styles (prefer className/class)"
 INLINE_STYLES_COUNT=0
 
-INLINE_STYLES_COUNT=$(grep -rE 'style=\{\{|style="[^"]*:[^"]*"' --exclude-dir=node_modules --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l)
+INLINE_STYLES_COUNT=$(grep -rE 'style=\{\{|style="[^"]*:[^"]*"' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=build --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l || true)
 
 if [ "$INLINE_STYLES_COUNT" -eq 0 ]; then
   log_pass "No inline styles detected"
@@ -116,7 +116,7 @@ printf "\n"
 log_info "Check 6: No 'any' types in component interfaces"
 ANY_TYPES_COUNT=0
 
-ANY_TYPES_COUNT=$(grep -rE "(interface.*Props|type.*Props)" --exclude-dir=node_modules --include="*.ts" --include="*.tsx" -A 10 -- "${PROJECT_ROOT}" 2>/dev/null | grep -E ":\\s*any" | wc -l)
+ANY_TYPES_COUNT=$(grep -rE "(interface.*Props|type.*Props)" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=build --include="*.ts" --include="*.tsx" -A 10 -- "${PROJECT_ROOT}" 2>/dev/null | grep -E ':\s*any' | wc -l || true)
 
 if [ "$ANY_TYPES_COUNT" -eq 0 ]; then
   log_pass "No 'any' types in component props"
@@ -129,7 +129,7 @@ printf "\n"
 log_info "Check 7: Accessibility attributes used (ARIA)"
 ARIA_COUNT=0
 
-ARIA_COUNT=$(grep -rE "(aria-|role=|alt=)" --exclude-dir=node_modules --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l)
+ARIA_COUNT=$(grep -rE "(aria-|role=|alt=)" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=build --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l || true)
 
 if [ "$ARIA_COUNT" -gt 0 ]; then
   log_pass "Found ${ARIA_COUNT} accessibility attributes"
@@ -142,7 +142,7 @@ printf "\n"
 log_info "Check 8: No console.log statements in production code"
 CONSOLE_COUNT=0
 
-CONSOLE_COUNT=$(grep -rE "console\\.(log|debug|info)" --exclude-dir=node_modules --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l)
+CONSOLE_COUNT=$(grep -rE 'console\.(log|debug|info)' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=build --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l || true)
 
 if [ "$CONSOLE_COUNT" -eq 0 ]; then
   log_pass "No console.log statements found"
@@ -171,7 +171,7 @@ printf "\n"
 log_info "Check 10: Performance optimizations (memo, useMemo, useCallback)"
 PERF_OPT_COUNT=0
 
-PERF_OPT_COUNT=$(grep -rE "(React\\.memo|useMemo|useCallback|computed|\\$:)" --exclude-dir=node_modules --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l)
+PERF_OPT_COUNT=$(grep -rE '(React\.memo|useMemo|useCallback|computed|\$:)' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=build --include="*.tsx" --include="*.jsx" --include="*.vue" --include="*.svelte" -- "${PROJECT_ROOT}" 2>/dev/null | wc -l || true)
 
 if [ "$PERF_OPT_COUNT" -gt 0 ]; then
   log_pass "Found ${PERF_OPT_COUNT} performance optimizations"

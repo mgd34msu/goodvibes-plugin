@@ -120,7 +120,7 @@ Steps:
          patterns: ["src/app/api/**/route.ts", "src/api/**/*.ts"]
        - id: validation_patterns
          type: grep
-         pattern: "(^\s*const\\s+\\w+Schema\\s*=\\s*z\\.)|(import \\{ z \\} from 'zod')"
+         pattern: "(^\s*const\s+\w+Schema\s*=\s*z\.)|(import \{ z \} from 'zod')"
          glob: "src/**/*.ts"
      verbosity: files_only
 
@@ -334,7 +334,7 @@ Steps:
 7. Calculate overall score and verdict:
    - >= 9.5 => PASS
    - 8.0-9.49 => CONDITIONAL PASS
-    - < 8.0 => FAIL
+   - < 8.0 => FAIL
 
 Deliverables:
 - Structured review following review-scoring output format
@@ -524,47 +524,47 @@ Re-reviewer agent output:
 
 ```
 Phase 1: Understand
-    ↓
+    v
     | (Requirements, plan)
-    ↓
+    v
 Phase 2: Foundation (SEQUENTIAL)
     | - Database schema
     | - Type generation
-    ↓
+    v
     | (Types available)
-    ↓
+    v
 Phase 3: Core Implementation (PARALLEL)
-    │── API agent
-    │── UI agent
-    └── State agent
-    ↓
+    |-- API agent
+    |-- UI agent
+    +-- State agent
+    v
     | (API + UI + State ready)
-    ↓
+    v
 Phase 4: Integration (SEQUENTIAL)
     | - Wire UI to API
     | - Wire state to UI
     | - Test data flow
-    ↓
+    v
     | (Full integration working)
-    ↓
+    v
 Phase 5: Quality (PARALLEL)
-    │── Tester agent
-    │── Security agent
-    └── A11y agent
-    ↓
+    |-- Tester agent
+    |-- Security agent
+    +-- A11y agent
+    v
     | (Tests + checks passing)
-    ↓
+    v
 Phase 6: Review (SEQUENTIAL - WRFC loop)
     | - Review
     | - Fix
     | - Check
-    ↓ (loop until score >= 9.5)
-    ↓
+    v (loop until score >= 9.5)
+    v
 Phase 7: Commit + Log (SEQUENTIAL)
     | - Git commit
     | - Update memory
     | - Update logs
-    ↓
+    v
     DONE
 ```
 
