@@ -229,7 +229,7 @@ The overall score determines the verdict:
 | Score Range | Verdict | Action Required |
 |-------------|---------|----------------|
 | **>= 9.5** | PASS | Ship it — production ready |
-| **8.0-9.49** | CONDITIONAL PASS | Minor issues — fix and re-check (no full re-review) |
+| **8.0-9.49** | CONDITIONAL PASS | Minor issues — fix and re-check (8.0 is inclusive, no full re-review) |
 | **6.0-7.9** | FAIL | Significant issues — fix and full re-review required |
 | **Below 6.0** | FAIL | Major rework needed — fix and full re-review required |
 
@@ -282,10 +282,10 @@ Every review MUST produce this exact structure. Validation scripts check for the
 
 1. **Overall score**: Must be numeric (X.X/10 format, one decimal place)
 2. **Verdict**: Must exactly match one of: PASS, CONDITIONAL PASS, FAIL
-3. **Dimension scores**: All 10 dimensions present with X/10 format
+3. **Dimension scores**: All 10 dimensions present with X/10 format, notes must contain specific findings (not generic phrases like "looks good")
 4. **Issue categorization**: Every issue must be in Critical/Major/Minor category
 5. **FILE:LINE references**: Every issue must reference specific file and line number
-6. **Fix suggestions**: Every issue must include specific fix guidance
+6. **Fix suggestions**: Every issue must include specific fix guidance (what to change, how to change it, example code)
 7. **What Was Done Well**: Must be present with at least one positive observation
 
 ### Issue Severity Guidelines
@@ -310,6 +310,8 @@ Every review MUST produce this exact structure. Validation scripts check for the
 - Minor style inconsistencies
 - Opportunities for refactoring
 - Weak test assertions
+
+**Note**: Severity can depend on system risk context (e.g., performance issue may be Critical in high-scale systems).
 
 ## Fix Agent Requirements
 
@@ -338,6 +340,9 @@ After applying fixes, the fix agent must produce:
 
 ### Issues Not Fixed
 - [FILE:LINE] [Original issue] → Reason: [why it wasn't fixed]
+
+**Example**:
+- [src/api/legacy.ts:45] Complex refactoring of legacy code → Reason: Out of scope for this PR, tracked in ticket #1234
 ```
 
 ### Prohibited Behaviors
@@ -354,11 +359,11 @@ After fixes are applied, a re-reviewer must:
 1. **Check each previously flagged issue**
    - Verify the fix was applied
    - Verify the fix actually resolves the issue
-   - Verify the fix didn't introduce new issues
+   - Verify the fix didn't introduce new issues or just move the problem elsewhere
 
 2. **Re-score all dimensions**
    - Do NOT just copy previous scores
-   - Evaluate current state from scratch
+   - Evaluate current state from scratch: (a) read modified files, (b) apply rubric criteria, (c) score based on current state
    - Document score changes ("Security: 6 → 9")
 
 3. **Identify new issues**
@@ -385,11 +390,14 @@ After fixes are applied, a re-reviewer must:
 ## Previous Issues - Resolution Status
 
 ### Critical Issues
-- ✅ [FILE:LINE] [Original issue] → RESOLVED
-- ❌ [FILE:LINE] [Original issue] → NOT FIXED: [reason]
+- [RESOLVED] [FILE:LINE] [Original issue] → RESOLVED
+- [NOT FIXED] [FILE:LINE] [Original issue] → NOT FIXED: [reason]
 
 ### Major Issues
-- ✅ [FILE:LINE] [Original issue] → RESOLVED
+- [RESOLVED] [FILE:LINE] [Original issue] → RESOLVED
+
+### Minor Issues
+- [RESOLVED] [FILE:LINE] [Original issue] → RESOLVED
 
 ## New Issues Found
 [Use standard Critical/Major/Minor format]

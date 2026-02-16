@@ -91,8 +91,13 @@ if [ -n "$MAJOR_ISSUES" ]; then
             # Verify it's marked as fixed (not in "Issues Not Fixed" section)
             if sed -En '/^### Issues Not Fixed/,/^### |^##/p' -- "$FIX_FILE" | grep -qF -- "$FILE_LINE"; then
                 # Major issues in "not fixed" must have valid reason
-                if ! sed -n "/$(printf '%s' "$FILE_LINE" | sed 's/[]\/.*^$[]/\\&/g')/,+2p" -- "$FIX_FILE" | grep -qE 'Reason:|reason:'; then
-                    ERRORS+=("Major issue not fixed without reason: $FILE_LINE")
+                # Extract 3 lines starting from the match (POSIX-compatible)
+                start_line=$(grep -n -F "$FILE_LINE" -- "$FIX_FILE" | head -1 | cut -d: -f1)
+                if [ -n "$start_line" ]; then
+                    end_line=$((start_line + 2))
+                    if ! sed -n "${start_line},${end_line}p" -- "$FIX_FILE" | grep -qE 'Reason:|reason:'; then
+                        ERRORS+=("Major issue not fixed without reason: $FILE_LINE")
+                    fi
                 fi
             fi
         fi
@@ -104,20 +109,35 @@ if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' -- "$FI
     FIX_DESCRIPTIONS=$(sed -En '/^### Critical Issues Addressed|^### Major Issues Addressed/,/^### [^CM]|^## /p' -- "$FIX_FILE" | grep -- '^- \[' || true)
     
     if [ -n "$FIX_DESCRIPTIONS" ]; then
+        # Check for FILE:LINE and Fixed by/→ within multi-line blocks
+        current_block=""
         while IFS= read -r line; do
-            if [ -z "$line" ]; then
-                continue
-            fi
-            
-            # Each fix should have FILE:LINE and "Fixed by:" description
-            if ! echo "$line" | grep -qE '\[[^:]+:[0-9]+\]'; then
-                ERRORS+=("Fix description missing FILE:LINE reference: ${line:0:80}...")
-            fi
-            
-            if ! echo "$line" | grep -Eqi 'Fixed by:|→'; then
-                ERRORS+=("Fix description missing 'Fixed by:' explanation: ${line:0:80}...")
+            if [[ "$line" =~ ^'-  ' ]]; then
+                # Process previous block if exists
+                if [ -n "$current_block" ]; then
+                    if ! echo "$current_block" | grep -qE '\[[^:]+:[0-9]+\]'; then
+                        ERRORS+=("Fix description missing FILE:LINE reference: ${current_block:0:80}...")
+                    fi
+                    if ! echo "$current_block" | grep -Eqi 'Fixed by:|→'; then
+                        ERRORS+=("Fix description missing 'Fixed by:' explanation: ${current_block:0:80}...")
+                    fi
+                fi
+                # Start new block
+                current_block="$line"
+            else
+                # Continue current block
+                current_block="$current_block $line"
             fi
         done <<< "$FIX_DESCRIPTIONS"
+        # Process final block
+        if [ -n "$current_block" ]; then
+            if ! echo "$current_block" | grep -qE '\[[^:]+:[0-9]+\]'; then
+                ERRORS+=("Fix description missing FILE:LINE reference: ${current_block:0:80}...")
+            fi
+            if ! echo "$current_block" | grep -Eqi 'Fixed by:|→'; then
+                ERRORS+=("Fix description missing 'Fixed by:' explanation: ${current_block:0:80}...")
+            fi
+        fi
     fi
 fi
 
@@ -125,7 +145,7 @@ fi
 HAS_ERRORS=false
 
 if [ ${#UNADDRESSED_CRITICAL[@]} -gt 0 ]; then
-    echo "❌ FAIL: Critical issues not addressed" >&2
+    echo "[FAIL] Critical issues not addressed" >&2
     echo "" >&2
     for issue in "${UNADDRESSED_CRITICAL[@]}"; do
         echo "  - $issue" >&2
@@ -134,7 +154,7 @@ if [ ${#UNADDRESSED_CRITICAL[@]} -gt 0 ]; then
 fi
 
 if [ ${#UNADDRESSED_MAJOR[@]} -gt 0 ]; then
-    echo "⚠️  WARNING: Major issues not addressed" >&2
+    echo "[FAIL] Major issues not addressed" >&2
     echo "" >&2
     for issue in "${UNADDRESSED_MAJOR[@]}"; do
         echo "  - $issue" >&2
@@ -143,7 +163,7 @@ if [ ${#UNADDRESSED_MAJOR[@]} -gt 0 ]; then
 fi
 
 if [ ${#ERRORS[@]} -gt 0 ]; then
-    echo "❌ FAIL: Fix output validation failed" >&2
+    echo "[FAIL] Fix output validation failed" >&2
     echo "" >&2
     echo "Errors found:" >&2
     for error in "${ERRORS[@]}"; do
@@ -155,6 +175,6 @@ fi
 if [ "$HAS_ERRORS" = true ]; then
     exit 1
 else
-    echo "✅ PASS: All critical and major issues addressed"
+    echo "[PASS] All critical and major issues addressed"
     exit 0
 fi

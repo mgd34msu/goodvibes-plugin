@@ -122,7 +122,7 @@ Search for patterns with batch queries and precise output control.
 | `queries[].include_binary` | boolean | No | `false` | Search binary files |
 | `queries[].include_hidden` | boolean | No | `true` | Include hidden/dot files and directories |
 | `output` | object | No | - | Output formatting options |
-| `output.format` | enum | No | `files_only` | Output format: `count_only`, `files_only`, `locations`, `matches`, `context`, `stats` |
+| `output.format` | enum | No | `files_only` (runtime default, not schema-declared) | Output format: `count_only`, `files_only`, `locations`, `matches`, `context`, `stats` |
 | `output.context_before` | number | No | `0` | Lines before match |
 | `output.context_after` | number | No | `0` | Lines after match |
 | `output.expand_to` | enum | No | - | Expand context: `line`, `block`, `function`, `class` |
@@ -138,7 +138,7 @@ Search for patterns with batch queries and precise output control.
 | `relationships` | boolean | No | `false` | Show cross-file import/export relationships |
 | `verbosity` | enum | No | `standard` | Response verbosity: `count_only`, `minimal`, `standard`, `verbose` |
 
-*One of `pattern` or `pattern_base64` is required.
+*One of `pattern` or `pattern_base64` is required. Note: The schema's `required` array only enforces `id`, but `pattern` is semantically required for grep queries.
 
 ---
 
@@ -359,7 +359,7 @@ Available keys: `sandbox`, `cache_mode`, `cache_max_mb`, `safe_overwrite`, `back
 | `precision_edit` | Atomic find-and-replace | `edits`, `transaction.mode`, `verbosity: minimal` |
 | `precision_grep` | Search for patterns | `queries`, `output.format`, `verbosity` |
 | `precision_glob` | Find files by pattern | `patterns`, `output.format: paths_only` |
-| `precision_exec` | Run commands with expectations | `commands`, `expect`, `retry.max` |
+| `precision_exec` | Run commands with expectations | `commands`, `expect`, `retry`, `verbosity` |
 | `precision_fetch` | Fetch URLs with auth | `urls`, `service`, `extract` |
 | `discover` | Parallel discovery queries | `queries`, `verbosity: files_only` |
 | `precision_symbols` | Extract code symbols | `mode`, `kinds`, `output.format: locations` |

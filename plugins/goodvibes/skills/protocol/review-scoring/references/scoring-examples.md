@@ -48,13 +48,13 @@ None
 
 ### Why This Is a 9.75/10 Review
 
-✅ **Specific findings**: Each dimension score has concrete justification
-✅ **Accurate scoring**: Minor issues don't inflate scores (Testability = 9, not 10)
-✅ **FILE:LINE references**: Every issue pinpoints exact location
-✅ **Actionable fixes**: Each fix suggestion is specific and implementable
-✅ **Balanced**: Highlights both issues and strengths
-✅ **Format compliance**: Follows required structure exactly
-✅ **Verdict matches score**: 9.75 → PASS (correct threshold)
+[YES] **Specific findings**: Each dimension score has concrete justification
+[YES] **Accurate scoring**: Minor issues don't inflate scores (Testability = 9, not 10)
+[YES] **FILE:LINE references**: Every issue pinpoints exact location
+[YES] **Actionable fixes**: Each fix suggestion is specific and implementable
+[YES] **Balanced**: Highlights both issues and strengths
+[YES] **Format compliance**: Follows required structure exactly
+[YES] **Verdict matches score**: 9.75 → PASS (correct threshold)
 
 ---
 
@@ -64,8 +64,8 @@ This example demonstrates common mistakes in reviews.
 
 ```markdown
 ## Review Summary
-- **Overall Score**: 8.5/10
-- **Verdict**: PASS
+- **Overall Score**: 8.50/10
+- **Verdict**: CONDITIONAL PASS
 - **Files Reviewed**: src/api/users.ts, src/components/UserProfile.tsx
 
 ## Dimension Scores
@@ -104,12 +104,13 @@ None
 
 ### Why This Is a Poor Review (6.0/10)
 
-❌ **Vague dimension notes**: "Looks good" and "Seems complete" provide zero actionable insight
-❌ **Missing FILE:LINE references**: Issues don't pinpoint specific locations
-❌ **No fix suggestions**: "Could be improved" doesn't tell developer what to do
-❌ **Score inflation**: Giving 8-9 scores when "issues need work" is inconsistent
-❌ **Generic positive feedback**: "Good implementation" doesn't highlight specific strengths
-❌ **Verdict mismatch**: Should be CONDITIONAL PASS (8.5) not PASS (requires 9.5+)
+[NO] **Vague dimension notes**: "Looks good" and "Seems complete" provide zero actionable insight
+[NO] **Missing FILE:LINE references**: Issues don't pinpoint specific locations
+[NO] **No fix suggestions**: "Could be improved" doesn't tell developer what to do
+[NO] **Score inflation**: Giving 8-9 scores when "issues need work" is inconsistent
+[NO] **Generic positive feedback**: "Good implementation" doesn't highlight specific strengths
+[NO] **Verdict is correct but scores are inflated**: The 8.50 score gets CONDITIONAL PASS (8.0-9.49 range is correct), but dimension scores like 9/10 and 10/10 don't match vague notes like "Looks good"
+[NO] **Score math is correct**: Weighted average = (9×0.20 + 8×0.15 + 8×0.15 + 9×0.10 + 10×0.10 + 7×0.10 + 9×0.05 + 8×0.05 + 8×0.05 + 9×0.05) = 8.50/10
 
 ### How to Fix This Review
 
@@ -148,13 +149,13 @@ profile rendering into separate `UserProfileDisplay` component.
 
 ### Mistake 1: Score Inflation
 
-❌ **Wrong**:
+[NO] **Wrong**:
 ```
 Security: 9/10 — No major issues found
 ```
 (But review found: hardcoded API key, missing auth on endpoint, SQL injection)
 
-✅ **Right**:
+[YES] **Right**:
 ```
 Security: 3/10 — Critical vulnerabilities present: hardcoded API key in 
 src/config.ts:12, missing auth check on DELETE endpoint, SQL injection 
@@ -163,13 +164,13 @@ vulnerable query at src/db/users.ts:45
 
 ### Mistake 2: Inconsistent Severity
 
-❌ **Wrong**:
+[NO] **Wrong**:
 ```
 ### Major (should fix)
 - [src/api/auth.ts:23] Authentication can be bypassed by omitting header
 ```
 
-✅ **Right**:
+[YES] **Right**:
 ```
 ### Critical (must fix)
 - [src/api/auth.ts:23] Authentication bypass: middleware returns early if 
@@ -180,12 +181,12 @@ vulnerable query at src/db/users.ts:45
 
 ### Mistake 3: Missing Specificity
 
-❌ **Wrong**:
+[NO] **Wrong**:
 ```
 Performance: 6/10 — Multiple N+1 query issues
 ```
 
-✅ **Right**:
+[YES] **Right**:
 ```
 Performance: 6/10 — Three N+1 query patterns found:
   1. src/api/posts.ts:34 - Fetches author for each post in loop
@@ -195,12 +196,12 @@ Performance: 6/10 — Three N+1 query patterns found:
 
 ### Mistake 4: Vague Fix Suggestions
 
-❌ **Wrong**:
+[NO] **Wrong**:
 ```
 - [src/components/Form.tsx:45] Accessibility issues. Fix: Add ARIA attributes.
 ```
 
-✅ **Right**:
+[YES] **Right**:
 ```
 - [src/components/Form.tsx:45] Submit button has no accessible label for 
   screen readers. Fix: Add `aria-label="Submit registration form"` to button 
@@ -209,13 +210,13 @@ Performance: 6/10 — Three N+1 query patterns found:
 
 ### Mistake 5: Ignoring Positive Observations
 
-❌ **Wrong**:
+[NO] **Wrong**:
 ```
 ## What Was Done Well
 - Code works
 ```
 
-✅ **Right**:
+[YES] **Right**:
 ```
 ## What Was Done Well
 - **Defensive programming**: src/lib/parser.ts:23-45 has excellent input 
@@ -228,21 +229,21 @@ Performance: 6/10 — Three N+1 query patterns found:
 
 ### Mistake 6: Verdict Threshold Errors
 
-❌ **Wrong**:
+[NO] **Wrong**:
 ```
 - **Overall Score**: 9.2/10
 - **Verdict**: PASS
 ```
 (PASS requires 9.5+, this should be CONDITIONAL PASS)
 
-❌ **Wrong**:
+[NO] **Wrong**:
 ```
 - **Overall Score**: 7.8/10
 - **Verdict**: CONDITIONAL PASS
 ```
 (CONDITIONAL PASS requires 8.0+, this should be FAIL)
 
-✅ **Right**:
+[YES] **Right**:
 ```
 - **Overall Score**: 9.2/10
 - **Verdict**: CONDITIONAL PASS
@@ -296,4 +297,12 @@ Example: [Code showing safe approach]
 [FILE:LINE] [A11y violation] prevents [user group] from [action].
 Fix: [WCAG-compliant solution]
 WCAG Criterion: [2.x.x Level A/AA/AAA]
+```
+
+### Multi-Reference Issue Template
+```
+- [FILE1:LINE1] [Issue affecting multiple locations]
+  Also: [FILE2:LINE2], [FILE3:LINE3]
+  Fix: [Consistent fix across all locations]
+  Example: Apply same pattern to all files
 ```

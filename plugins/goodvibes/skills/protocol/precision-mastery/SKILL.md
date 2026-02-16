@@ -170,34 +170,37 @@ precision_write:
 
 The highest form of batching: wrap multiple precision calls in a single batch engine transaction.
 
+Each operation type (read, write, exec, query) uses the corresponding precision_engine tool's schema. For example:
+- `read` operations use precision_read schema (with `files` array)
+- `write` operations use precision_write schema (with `files` array)
+- `exec` operations use precision_exec schema (with `commands` array)
+- `query` operations use precision_grep/precision_glob schemas
+
 ```yaml
 batch:
-  id: implement-user-feature
   operations:
     read:
-      - id: patterns
-        type: glob
-        patterns: ["src/features/**/*.ts"]
-        output:
-          mode: minimal
+      - files:
+          - path: "src/types.ts"
+            extract: symbols
     write:
-      - id: create-files
-        type: create
-        files:
-          - path: "src/features/user/index.ts"
-            content: "export * from './types';"
+      - files:
+          - path: "src/features/auth/types.ts"
+            content: |
+              export interface User {
+                id: string;
+                email: string;
+                name: string;
+              }
     exec:
-      - id: validate
-        type: command
-        commands:
+      - commands:
           - cmd: "npm run typecheck"
             expect:
               exit_code: 0
   config:
     transaction:
       mode: atomic
-    execution:
-      mode: parallel
+  verbosity: minimal
 ```
 
 ## Token Budget & Pagination
@@ -334,7 +337,7 @@ Extract specific data from JSON responses.
 precision_fetch:
   urls:
     - url: "https://api.example.com/users"
-      extract: "json"  # Extract mode: raw, text, json, markdown, structured, etc.
+      extract: json  # Extract mode: raw, text, json, markdown, structured, etc.
   verbosity: standard
 ```
 
@@ -368,7 +371,7 @@ precision_fetch:
 
 8. **Making multiple sequential precision tool calls that could be batched**: If 3+ calls to the same tool, batch them.
 
-9. **Using `verbose: verbose` as default**: Only use it when debugging.
+9. **Using `verbosity: verbose` as default**: Only use it when debugging.
 
 10. **Ignoring token_budget for large batch reads**: Without a budget, you might get truncated results.
 
