@@ -20,6 +20,7 @@ import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { randomUUID } from 'crypto';
 import { validateFilePath } from '../utils/path-validation.js';
 import { FileStateCache } from '../state/file-cache.js';
+import { ProjectIndex } from '../state/project-index.js';
 import { performSafeOverwrite } from '../utils/safe-overwrite.js';
 
 // Simple template engines - inline to avoid extra dependencies
@@ -344,6 +345,16 @@ async function writeFile(
         cache.update(validatedPath, content, 'precision_write', undefined, `wrote ${spec.path}`);
       } catch {
         // Cache invalidation is non-critical — don't fail the write
+      }
+
+      // Update project file index
+      try {
+        const projectIndex = ProjectIndex.getInstance();
+        const relativePath = path.relative(process.cwd(), validatedPath);
+        const stats = await fs.stat(validatedPath);
+        projectIndex.upsertFile(relativePath, stats.size);
+      } catch {
+        // Index update is non-critical — don't fail the write
       }
     }
 

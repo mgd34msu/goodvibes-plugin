@@ -44,6 +44,7 @@ import { formatMissingParamError, formatInvalidValueError, createErrorResult } f
 import { validateFilePath } from '../utils/path-validation.js';
 import { levenshteinDistance, calculateSimilarity } from '../utils/fuzzy.js';
 import { FileStateCache } from '../state/file-cache.js';
+import { ProjectIndex } from '../state/project-index.js';
 import { warnDeprecatedParam } from '../utils/deprecation.js';
 
 const execAsync = promisify(exec);
@@ -1265,6 +1266,16 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
           cache.invalidate(filePath);
         } catch {
           // Cache update is non-critical — don't fail the edit
+        }
+
+        // Update project file index
+        try {
+          const projectIndex = ProjectIndex.getInstance();
+          const relativePath = path.relative(process.cwd(), filePath);
+          const stats = await fs.stat(filePath);
+          projectIndex.touchFile(relativePath, stats.size);
+        } catch {
+          // Index update is non-critical — don't fail the edit
         }
       }
     }
