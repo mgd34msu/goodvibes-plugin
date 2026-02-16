@@ -176,7 +176,7 @@ Railway automatically injects `DATABASE_URL` as an environment variable.
 2. Click "Domains"
 3. Add custom domain
 4. Configure DNS:
-   - CNAME: `your-domain.com` → `your-app.up.railway.app`
+   - CNAME: `your-domain.com` -> `your-app.up.railway.app`
    - Railway handles SSL automatically
 
 ### Deployments
@@ -667,7 +667,7 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error('❌ Invalid environment variables:');
+  console.error('[FAIL] Invalid environment variables:');
   console.error(JSON.stringify(parsed.error.format(), null, 2));
   process.exit(1);
 }
@@ -856,7 +856,7 @@ Paid:
 
 **Key Decisions:**
 
-1. **Framework determines platform**: Next.js → Vercel, Full-stack → Railway/Fly.io
+1. **Framework determines platform**: Next.js -> Vercel, Full-stack -> Railway/Fly.io
 2. **Database needs**: Managed (Railway) vs. External (Vercel + Supabase)
 3. **Global users**: Fly.io multi-region or Vercel Edge
 4. **Budget**: Start with free tiers, scale as needed
@@ -864,11 +864,11 @@ Paid:
 
 **Essential Features:**
 
-- ✅ Health check endpoint
-- ✅ Environment variable validation
-- ✅ CI/CD pipeline
-- ✅ Preview deployments
-- ✅ Instant rollback capability
-- ✅ Error tracking (Sentry)
-- ✅ Uptime monitoring
-- ✅ Database migration strategy
+- [x] Health check endpoint
+- [x] Environment variable validation
+- [x] CI/CD pipeline
+- [x] Preview deployments
+- [x] Instant rollback capability
+- [x] Error tracking (Sentry)
+- [x] Uptime monitoring
+- [x] Database migration strategy

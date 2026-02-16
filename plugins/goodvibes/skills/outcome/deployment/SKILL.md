@@ -209,7 +209,7 @@ const merged = server.merge(client);
 const parsed = merged.safeParse(processEnv);
 
 if (!parsed.success) {
-  console.error('❌ Invalid environment variables:', parsed.error.flatten().fieldErrors);
+  console.error('[FAIL] Invalid environment variables:', parsed.error.flatten().fieldErrors);
   throw new Error('Invalid environment variables');
 }
 
@@ -527,7 +527,7 @@ jobs:
         issue_number: context.issue.number,
         owner: context.repo.owner,
         repo: context.repo.repo,
-        body: '🚀 Preview deployed to: https://pr-${{ github.event.number }}.myapp.com'
+        body: '[DEPLOY] Preview deployed to: https://pr-${{ github.event.number }}.myapp.com'
       })
 ```
 
@@ -683,15 +683,13 @@ precision_exec:
     - cmd: "npm run build"
       expect:
         exit_code: 0
-        stderr_empty: true
     - cmd: "docker build -t my-app ."
       expect:
         exit_code: 0
     - cmd: "npm run typecheck"
       expect:
         exit_code: 0
-  output:
-    mode: minimal
+  verbosity: minimal
 ```
 
 ### Health Check with precision_fetch
@@ -747,6 +745,7 @@ The script checks:
 5. .dockerignore exists
 6. No hardcoded secrets in code
 7. Build command succeeds
+8. Database migration configuration present
 
 ## Common Pitfalls
 

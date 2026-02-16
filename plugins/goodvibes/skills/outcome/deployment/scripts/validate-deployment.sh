@@ -175,7 +175,7 @@ printf "[4/8] Checking health check endpoint...\n"
 HEALTH_FOUND=false
 
 # Search for health check routes
-if grep -r --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist -E '/api/health|/health|route.*health' "$PROJECT_ROOT" | grep -q .; then
+if grep -r --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E '/api/health|/health|route.*health' -- "$PROJECT_ROOT" | grep -q .; then
   printf "  %b[PASS]%b Health check endpoint found\n" "$GREEN" "$NC"
   HEALTH_FOUND=true
 fi
@@ -231,7 +231,7 @@ SECRET_PATTERNS=(
 )
 
 for pattern in "${SECRET_PATTERNS[@]}"; do
-  if grep -r --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist -E -i "$pattern" "$PROJECT_ROOT" | grep -q .; then
+  if grep -r --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E -i -- "$pattern" "$PROJECT_ROOT" | grep -q .; then
     add_violation "Potential hardcoded secret detected (pattern: $pattern). Use environment variables."
     SECRETS_FOUND=true
   fi
