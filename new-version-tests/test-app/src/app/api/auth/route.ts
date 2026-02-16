@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { db } from '@/lib/db';
+import { logger, getClientIp } from '@/lib/logger';
+import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
+import { ValidationError, AuthenticationError, RateLimitError, AppError } from '@/lib/errors';
 import type { User, AuthRequest, AuthResponse, ErrorResponse } from '@/types/api';
 
 // Validate JWT secret from environment
@@ -25,32 +28,33 @@ function isValidEmail(email: string): boolean {
  * Authenticates a user and returns a JWT token
  */
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  const ip = getClientIp(request);
+
   try {
+    // Stricter rate limiting for auth endpoint to prevent brute force attacks
+    if (rateLimiter.check(`auth:${ip}`, RATE_LIMITS.auth)) {
+      const info = rateLimiter.getInfo(`auth:${ip}`, RATE_LIMITS.auth);
+      const retryAfter = info.resetAt - Date.now();
+      throw new RateLimitError(retryAfter);
+    }
+
     const body: unknown = await request.json();
 
     // Validate request body structure
     if (!body || typeof body !== 'object') {
-      return NextResponse.json<ErrorResponse>(
-        { error: 'Invalid request body' },
-        { status: 400 }
-      );
+      throw new ValidationError('Invalid request body');
     }
 
     const { email, password } = body as Partial<AuthRequest>;
 
     // Validate required fields
     if (!email || typeof email !== 'string' || !isValidEmail(email)) {
-      return NextResponse.json<ErrorResponse>(
-        { error: 'Invalid email', details: 'Valid email address is required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Invalid email', 'Valid email address is required');
     }
 
     if (!password || typeof password !== 'string' || password.length === 0) {
-      return NextResponse.json<ErrorResponse>(
-        { error: 'Invalid password', details: 'Password is required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Invalid password', 'Password is required');
     }
 
     // Sanitize email
@@ -64,31 +68,27 @@ export async function POST(request: Request) {
 
     if (users.length === 0) {
       // Use generic error message to prevent user enumeration
-      return NextResponse.json<ErrorResponse>(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const user = users[0];
 
     // Validate password_hash exists
     if (!user.password_hash) {
-      console.error('User missing password_hash:', user.id);
-      return NextResponse.json<ErrorResponse>(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      logger.error('POST /api/auth - User missing password_hash', {
+        method: 'POST',
+        path: '/api/auth',
+        ip,
+        userId: user.id,
+      });
+      throw new AuthenticationError();
     }
 
     // Verify password
     const valid = await bcrypt.compare(password, user.password_hash);
 
     if (!valid) {
-      return NextResponse.json<ErrorResponse>(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     // Generate JWT token with expiration
@@ -99,9 +99,49 @@ export async function POST(request: Request) {
     );
 
     const response: AuthResponse = { token };
+
+    const duration = Date.now() - startTime;
+    logger.info('POST /api/auth - Login successful', {
+      method: 'POST',
+      path: '/api/auth',
+      ip,
+      userId: user.id,
+      status: 200,
+      duration,
+    });
+
     return NextResponse.json(response);
   } catch (error) {
-    console.error('POST /api/auth error:', error);
+    const duration = Date.now() - startTime;
+
+    if (error instanceof AppError) {
+      logger.warn('POST /api/auth', {
+        method: 'POST',
+        path: '/api/auth',
+        ip,
+        status: error.statusCode,
+        duration,
+        error: error.message,
+      });
+
+      const response = NextResponse.json<ErrorResponse>(error.toJSON(), { status: error.statusCode });
+      
+      if (error instanceof RateLimitError) {
+        response.headers.set('Retry-After', Math.ceil(error.retryAfter / 1000).toString());
+      }
+      
+      return response;
+    }
+
+    logger.error('POST /api/auth', {
+      method: 'POST',
+      path: '/api/auth',
+      ip,
+      status: 500,
+      duration,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+
     return NextResponse.json<ErrorResponse>(
       { error: 'Internal server error' },
       { status: 500 }
