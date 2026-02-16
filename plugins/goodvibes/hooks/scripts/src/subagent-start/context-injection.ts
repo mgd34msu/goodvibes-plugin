@@ -110,15 +110,15 @@ export async function buildSubagentContext(
     );
   }
 
-  // Inject skill recommendations
-  const agentSuffix = agentType.split(':').pop() ?? agentType;
-  const outcomeSkills = AGENT_SKILL_MAP[agentSuffix] ?? [];
-
-  contextParts.push(
-    `Available protocol skills (load before starting work): ${PROTOCOL_SKILLS.join(', ')}\n` +
-    `Relevant outcome/quality skills for your role: ${outcomeSkills.length > 0 ? outcomeSkills.join(', ') : 'none — load as needed'}\n` +
-    `Load skills with: search_skills or get_skill_content from the registry engine.\n\n`
-  );
+  // TEMPORARILY DISABLED: Custom skill injection
+  // Testing Claude's native progressive disclosure for skill loading
+  // const agentSuffix = agentType.split(':').pop() ?? agentType;
+  // const outcomeSkills = AGENT_SKILL_MAP[agentSuffix] ?? [];
+  // contextParts.push(
+  //   `Available protocol skills (load before starting work): ${PROTOCOL_SKILLS.join(', ')}\n` +
+  //   `Relevant outcome/quality skills for your role: ${outcomeSkills.length > 0 ? outcomeSkills.join(', ') : 'none — load as needed'}\n` +
+  //   `Load skills with: search_skills or get_skill_content from the registry engine.\n\n`
+  // );
 
   // contextParts always has at least 2 elements (project name and mode)
   return {
