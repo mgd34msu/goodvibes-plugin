@@ -88,7 +88,7 @@ precision_exec:
 precision_grep:
   queries:
     - id: heavy_deps
-      pattern: "import.*from ['\"](moment|lodash|date-fns|rxjs|@material-ui|antd|chart\\.js)['\"]|"
+      pattern: "import.*from ['\"](moment|lodash|date-fns|rxjs|@material-ui|antd|chart\\.js)['\"]"
       glob: "**/*.{ts,tsx,js,jsx}"
     - id: full_library_imports
       pattern: "import .* from ['\"](lodash|@mui/material|react-icons)['\"]$"
@@ -132,8 +132,9 @@ precision_grep:
     - id: large_components
       pattern: "export (default )?(function|const).*\\{[\\s\\S]{2000,}"
       glob: "src/components/**/*.{tsx,jsx}"
+      multiline: true
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Code splitting patterns:**
@@ -184,7 +185,9 @@ precision_grep:
       pattern: "findMany\\(\\{[^}]*where[^}]*\\}\\)"
       glob: "**/*.{ts,tsx,js,jsx}"
   output:
-    format: verbose
+    format: context
+    context_before: 3
+    context_after: 3
 ```
 
 **Common N+1 patterns:**
@@ -295,11 +298,14 @@ precision_grep:
     - id: prisma_config
       pattern: "PrismaClient\\(.*\\{[\\s\\S]*?\\}"
       glob: "**/*.{ts,tsx,js,jsx}"
+      multiline: true
     - id: connection_string
       pattern: "connection_limit=|pool_timeout=|connect_timeout="
       glob: ".env*"
   output:
-    format: verbose
+    format: context
+    context_before: 3
+    context_after: 3
 ```
 
 **Optimal connection pool settings:**
@@ -335,6 +341,8 @@ DATABASE_URL="postgresql://user:pass@host:5432/db?connection_limit=20&pool_timeo
 
 **Find missing memoization:**
 ```yaml
+# Note: These patterns are approximations for single-line detection.
+# Multi-line component definitions may require manual inspection.
 precision_grep:
   queries:
     - id: missing_memo
@@ -347,7 +355,7 @@ precision_grep:
       pattern: "(useMemo|useCallback|React\\.memo)"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Memoization patterns:**
@@ -487,11 +495,14 @@ precision_grep:
     - id: sequential_fetches
       pattern: "await fetch.*\\n.*await fetch"
       glob: "**/*.{ts,tsx,js,jsx}"
+      multiline: true
     - id: use_effect_fetches
       pattern: "useEffect\\(.*fetch"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: verbose
+    format: context
+    context_before: 3
+    context_after: 3
 ```
 
 **Waterfall optimization:**
@@ -596,7 +607,7 @@ precision_grep:
       pattern: "(next/image|Image\\s+from)"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Image optimization patterns:**
@@ -645,6 +656,7 @@ precision_grep:
     - id: missing_cleanup
       pattern: "useEffect\\(.*\\{[^}]*addEventListener(?!.*return.*removeEventListener)"
       glob: "**/*.{tsx,jsx}"
+      multiline: true
     - id: interval_leaks
       pattern: "(setInterval|setTimeout)(?!.*clear)"
       glob: "**/*.{tsx,jsx}"
@@ -652,7 +664,9 @@ precision_grep:
       pattern: "subscribe\\((?!.*unsubscribe)"
       glob: "**/*.{ts,tsx,js,jsx}"
   output:
-    format: verbose
+    format: context
+    context_before: 3
+    context_after: 3
 ```
 
 **Memory leak patterns:**
@@ -731,6 +745,7 @@ precision_grep:
     - id: blocking_awaits
       pattern: "const.*await.*\\n.*const.*await"
       glob: "src/app/**/*.{tsx,jsx}"
+      multiline: true
   output:
     format: locations
 ```
@@ -793,7 +808,7 @@ async function PostList() {
 precision_grep:
   queries:
     - id: edge_config
-      pattern: "export const runtime = ['\"](edge|nodejs)['\"]|"
+      pattern: "export const runtime = ['\"](edge|nodejs)['\"]"
       glob: "**/*.{ts,tsx}"
     - id: edge_incompatible
       pattern: "(fs\\.|path\\.|process\\.cwd)"
@@ -827,9 +842,14 @@ export async function GET(request: Request) {
 **Add Web Vitals reporting:**
 ```typescript
 // app/layout.tsx or app/web-vitals.tsx
-import { onCLS, onFCP, onFID, onINP, onLCP, onTTFB } from 'web-vitals';
+'use client';
 
-function sendToAnalytics(metric: any) {
+import { useEffect } from 'react';
+import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals';
+
+import type { Metric } from 'web-vitals';
+
+function sendToAnalytics(metric: Metric) {
   const body = JSON.stringify(metric);
   const url = '/api/analytics';
   
@@ -844,7 +864,6 @@ export function WebVitals() {
   useEffect(() => {
     onCLS(sendToAnalytics);
     onFCP(sendToAnalytics);
-    onFID(sendToAnalytics);
     onINP(sendToAnalytics);
     onLCP(sendToAnalytics);
     onTTFB(sendToAnalytics);
@@ -971,7 +990,7 @@ Structure findings with impact, effort, and priority:
 ### 1. N+1 Query in Post Listing
 - **File:** `src/app/posts/page.tsx`
 - **Issue:** Sequential database queries for each post author
-- **Impact:** Page load time 3.2s → should be <500ms
+- **Impact:** Page load time 3.2s -> should be <500ms
 - **Effort:** 15 minutes
 - **Fix:** Add `include: { author: true }` to findMany query
 
@@ -980,7 +999,7 @@ Structure findings with impact, effort, and priority:
 ### 2. Missing Bundle Splitting
 - **Files:** `src/app/admin/*`
 - **Issue:** Admin panel code (250KB) loaded on all pages
-- **Impact:** Initial bundle size 850KB → should be <200KB
+- **Impact:** Initial bundle size 850KB -> should be <200KB
 - **Effort:** 1 hour
 - **Fix:** Use `next/dynamic` for admin routes
 

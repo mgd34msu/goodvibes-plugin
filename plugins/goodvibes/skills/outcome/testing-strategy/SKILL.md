@@ -902,7 +902,7 @@ batch:
         pattern: "\\.skip|it\\.only|describe\\.only"
         glob: "**/*.test.ts"
         output:
-          mode: count_only
+          format: count_only
     
     exec:
       - id: run-tests

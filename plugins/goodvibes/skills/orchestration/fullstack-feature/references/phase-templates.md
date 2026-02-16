@@ -208,7 +208,7 @@ Steps:
      files:
        - path: {$API_FILES_FROM_PHASE3}
          extract: outline
-       - path: {$UI_FILES_FROM_PHASE3=
+       - path: {$UI_FILES_FROM_PHASE3}
          extract: outline
      verbosity: minimal
 
@@ -216,7 +216,7 @@ Steps:
    - In correct lifecycle hooks (useEffect, event handlers)
    - Handle loading states
    - Handle error states
-   - Display API ResVnses
+   - Display API responses
 
 3. Wire state management:
    - Connect state to components
@@ -232,7 +232,8 @@ Steps:
      verbosity: minimal
 
    Manually test:
-   - UI -> API <- UI.   - Loading states appear
+   - UI -> API -> Database -> API -> UI
+   - Loading states appear
    - Error states appear on failure
 
 5. Fix any integration issues (type mismatches, data mapping)
@@ -254,7 +255,7 @@ Deliverables:
 ### Phase 5: Quality - Tester Agent Prompt Template
 
 ```
-Your task is to write tests for: {FEATUSE_NAME}
+Your task is to write tests for: {FEATURE_NAME}
 
 Requirements:
 {$REQUIREMENTS_FROM_PHASE1}
@@ -332,7 +333,8 @@ Steps:
 
 7. Calculate overall score and verdict:
    - >= 9.5 => PASS
-   - 8.0-9.49 => CONDITIONAL PASS� / 8.0 => FAIL
+   - 8.0-9.49 => CONDITIONAL PASS
+    - < 8.0 => FAIL
 
 Deliverables:
 - Structured review following review-scoring output format
@@ -369,7 +371,8 @@ Implementation plan:
    - UI: Create LoginForm, SignupForm, dashboard layout
 3. Integration: Wrap app with SessionProvider, add middleware for protected routes
 4. Quality (parallel): Tests, security check (password hashing), a11y check (forms)
-5. Review: WRFC loop 6. Commit: `feat: add user authentication with NextAuth`
+5. Review: WRFC loop
+6. Commit: `feat: add user authentication with NextAuth`
 
 **Phase 2: Foundation**
 
@@ -421,7 +424,7 @@ Tester agent output:
 - Wrote integration test for full auth flow
 - Coverage: 85%
 
-�ecurity agent output:
+Security agent output:
 - Verified passwords are bcrypted
 - Verified JWT secret is not hardcoded (in env var)
 - Verified protected routes require authentication
@@ -462,7 +465,7 @@ Re-reviewer agent output:
   
   - Add email/password fields to User table
   - Implement NextAuth with Credentials provider
-  - Add login/#ignup forms with accessibility
+  - Add login/signup forms with accessibility
   - Add protected route middleware
   - Add rate limiting and password validation
   - Add comprehensive test suite (85% coverage)
@@ -511,7 +514,8 @@ Re-reviewer agent output:
    - UI: Chart components with Recharts
    - State: Zustand store for filters
 3. Integration: Wire filters to API, charts to data
-4. Quality (parallel): Tests for aggregation logic, a11y for charts 5. Review: WRFC
+4. Quality (parallel): Tests for aggregation logic, a11y for charts
+5. Review: WRFC
 6. Commit: `feat: add analytics dashboard`
 
 ## Dependency Diagrams
