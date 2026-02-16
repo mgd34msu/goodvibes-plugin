@@ -41,7 +41,7 @@ precision_grep:
       pattern: "(webhook|payment|checkout)"
       glob: "src/**/*.{ts,js,tsx,jsx}"
   output:
-    mode: minimal
+    format: minimal
 ```
 
 Check for:
@@ -58,7 +58,7 @@ precision_read:
     - path: ".goodvibes/memory/decisions.md"
       extract: content
   output:
-    mode: minimal
+    format: minimal
 ```
 
 Search for payment provider choices, checkout flow patterns, and subscription models.
@@ -177,7 +177,7 @@ precision_grep:
       pattern: "^\\.env$"
       path: ".gitignore"
   output:
-    mode: minimal
+    format: minimal
 ```
 
 If not found, add `.env` to `.gitignore`.
@@ -238,7 +238,9 @@ precision_write:
             const { priceId, successUrl, cancelUrl } = result.data;
             
             // Validate URLs against allowed origins
-            const allowedOrigins = [process.env.NEXT_PUBLIC_APP_URL!];
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+            if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL is required');
+            const allowedOrigins = [appUrl];
             const successOrigin = new URL(successUrl).origin;
             const cancelOrigin = new URL(cancelUrl).origin;
             
@@ -340,14 +342,22 @@ precision_write:
         export const SUBSCRIPTION_PLANS = {
           starter: {
             name: 'Starter',
-            priceId: process.env.STRIPE_PRICE_STARTER!,
+            priceId: (() => {
+              const priceId = process.env.STRIPE_PRICE_STARTER;
+              if (!priceId) throw new Error('STRIPE_PRICE_STARTER is required');
+              return priceId;
+            })(),
             price: 9,
             interval: 'month' as const,
             features: ['Feature 1', 'Feature 2'],
           },
           pro: {
             name: 'Pro',
-            priceId: process.env.STRIPE_PRICE_PRO!,
+            priceId: (() => {
+              const priceId = process.env.STRIPE_PRICE_PRO;
+              if (!priceId) throw new Error('STRIPE_PRICE_PRO is required');
+              return priceId;
+            })(),
             price: 29,
             interval: 'month' as const,
             features: ['All Starter features', 'Feature 3', 'Feature 4'],
@@ -369,7 +379,9 @@ precision_write:
         import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
         
         // Validated above in checkout route
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        if (!secretKey) throw new Error('STRIPE_SECRET_KEY is required');
+        const stripe = new Stripe(secretKey, {
           apiVersion: '2024-11-20.acacia',
         });
         
@@ -419,7 +431,9 @@ precision_write:
         import { NextRequest, NextResponse } from 'next/server';
         import Stripe from 'stripe';
         
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        if (!secretKey) throw new Error('STRIPE_SECRET_KEY is required');
+        const stripe = new Stripe(secretKey, {
           apiVersion: '2024-11-20.acacia',
         });
         
@@ -485,7 +499,9 @@ precision_write:
         import Stripe from 'stripe';
         import { headers } from 'next/headers';
         
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        if (!secretKey) throw new Error('STRIPE_SECRET_KEY is required');
+        const stripe = new Stripe(secretKey, {
           apiVersion: '2024-11-20.acacia',
         });
         
@@ -662,7 +678,7 @@ precision_write:
           const digest = hmac.update(body).digest('hex');
           
           const signatureBuffer = Buffer.from(signature, 'utf8');
-  const digestBuffer = Buffer.from(digest, 'utf8');
+          const digestBuffer = Buffer.from(digest, 'utf8');
   if (signatureBuffer.length !== digestBuffer.length || !crypto.timingSafeEqual(signatureBuffer, digestBuffer)) {
 
             console.error('Webhook signature verification failed');
@@ -814,7 +830,7 @@ precision_grep:
       pattern: "(sk_test|pk_test)"
       path: ".env"
   output:
-    mode: minimal
+    format: minimal
 ```
 
 #### Stripe CLI for Webhook Testing
@@ -912,7 +928,7 @@ precision_grep:
       pattern: "(card_number|cvv|cvc|card.*exp)"
       glob: "src/**/*.{ts,js,tsx,jsx}"
       output:
-        mode: files_with_matches
+        format: files_only
 ```
 
 If any matches are found, refactor to use provider's hosted solutions.
@@ -957,7 +973,7 @@ precision_grep:
       pattern: "(sk_live|sk_test)_[a-zA-Z0-9]{24,}"
       glob: "src/**/*.{ts,js,tsx,jsx}"
   output:
-    mode: files_with_matches
+    format: files_only
 ```
 
 If found, move to environment variables immediately.

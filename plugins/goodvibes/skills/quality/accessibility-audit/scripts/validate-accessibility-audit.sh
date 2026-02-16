@@ -20,7 +20,7 @@
 #   0 = all checks passed
 #   1 = one or more checks failed
 
-set -euo pipefail
+set -u
 
 # Colors for output
 RED='\033[0;31m'

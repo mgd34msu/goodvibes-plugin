@@ -236,7 +236,7 @@ if find "$PROJECT_ROOT" -type f \( -name "*.ts" -o -name "*.js" \) \
      -not -path "*/dist/*" \
      -not -path "*/.next/*" \
      -print0 | xargs -0 grep -l "try" | \
-     xargs -0 grep -lE "(stripe|lemonsqueezy|paddle)" | grep -q .; then
+     xargs grep -lE "(stripe|lemonsqueezy|paddle)" | grep -q .; then
   printf "  %b[PASS]%b Error handling found around payment operations\n" "$GREEN" "$NC"
   ERROR_HANDLING_FOUND=true
 fi

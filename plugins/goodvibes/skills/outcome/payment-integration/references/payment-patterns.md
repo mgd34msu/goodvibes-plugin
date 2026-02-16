@@ -178,6 +178,7 @@ Comprehensive reference for payment provider integration patterns, webhook handl
 import Stripe from 'stripe';
 import { headers } from 'next/headers';
 
+// NOTE: Validate env vars at app startup in production code
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -209,6 +210,7 @@ export async function POST(request: Request) {
 ```typescript
 import crypto from 'crypto';
 
+// NOTE: Validate env vars at app startup in production code
 const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET!;
 
 export async function POST(request: Request) {
@@ -403,7 +405,7 @@ module.exports = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://app.lemonsqueezy.com",
+              "script-src 'self' 'unsafe-inline' https://js.stripe.com https://app.lemonsqueezy.com",
               "frame-src https://js.stripe.com https://checkout.stripe.com https://app.lemonsqueezy.com",
               "connect-src 'self' https://api.stripe.com https://api.lemonsqueezy.com",
               "img-src 'self' data: https:",
@@ -557,7 +559,7 @@ interface CacheEntry<T> {
   expiresAt: number;
 }
 
-const priceCache = new Map<string, CacheEntry<any>>();
+const priceCache = new Map<string, CacheEntry<Stripe.Price>>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 async function getPrice(priceId: string) {
