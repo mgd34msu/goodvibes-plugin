@@ -4869,9 +4869,10 @@ SECONDARY DIRECTIVE: Be token-efficient.
   "SUBAGENT-PROTOCOL.md": `## MANDATORY
 
 ALWAYS provide reminders to subagents:
-1. Use .goodvibes/ memory
-2. Use DPB Loops
-3. Use precision_engine tools
+1. Use .goodvibes/ memory and logging
+2. MANDATORY: Follow strict DPB Loops. D: Single discover call (batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.
+3. Use precision_engine tools, NEVER native tools
+4. CRITICAL: NEVER set sandbox=true. Only user can activate sandbox.
 `,
   "SKILLS.md": `## SKILL AWARENESS
 

@@ -34,7 +34,7 @@ const FALLBACK_PROMPT_FILES: Record<string, string> = {
   'UPGRADE-NOTIFICATIONS.md': `## IMPORTANT!\n\nTOOL UPGRADES AVAILABLE! Use precision_engine tools.\n`,
   'PRIMARY-GOALS.md': `## MANDATORY\n\nPRIMARY GOAL: Fully complete and functional code.\nSECONDARY DIRECTIVE: Be token-efficient.\n`,
   'CORE-PRINCIPLES.md': `## MANDATORY\n\n1. Maintain usage of WRFC Loops\n2. Minimize token usage\n3. NEVER block main conversation\n4. Always have a plan\n`,
-  'SUBAGENT-PROTOCOL.md': `## MANDATORY\n\nALWAYS provide reminders to subagents:\n1. Use .goodvibes/ memory\n2. Use DPB Loops\n3. Use precision_engine tools\n`,
+  'SUBAGENT-PROTOCOL.md': `## MANDATORY\n\nALWAYS provide reminders to subagents:\n1. Use .goodvibes/ memory and logging\n2. MANDATORY: Follow strict DPB Loops. D: Single discover call (batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.\n3. Use precision_engine tools, NEVER native tools\n4. CRITICAL: NEVER set sandbox=true. Only user can activate sandbox.\n`,
   'SKILLS.md': `## SKILL AWARENESS\n\nSee templates/prompt/SKILLS.md for full list.\n`,
 };
 
