@@ -96,31 +96,7 @@ Choose the API paradigm that fits your needs. See `references/api-style-guide.md
 
 #### Quick Decision Guide
 
-**Use REST when:**
-- Public API for multiple clients
-- Resource-based operations (CRUD)
-- Caching is critical
-- HTTP semantics are important
-
-**Use GraphQL when:**
-- Complex, nested data requirements
-- Clients need flexible queries
-- Multiple related resources per request
-- Strong typing and introspection needed
-
-**Use tRPC when:**
-- Full TypeScript stack (same repo)
-- End-to-end type safety required
-- Rapid iteration on API contract
-- No need for public API
-
-**Use Server Actions (Next.js) when:**
-- Form submissions and mutations
-- Progressive enhancement needed
-- Co-located with React components
-- Simplified data mutations
-
-For detailed trade-offs, reference `api-style-guide.md`.
+Consult `references/api-style-guide.md` for the REST vs GraphQL vs tRPC vs Server Actions decision tree.
 
 ### Phase 3: Implementation
 
@@ -443,127 +419,11 @@ See `scripts/api-checklist.sh` for the complete validation suite.
 
 ## Middleware Patterns
 
-### Authentication Middleware
-
-```typescript
-// middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
-export async function middleware(request: NextRequest) {
-  const token = request.headers.get('authorization')?.split(' ')[1];
-  
-  if (!token) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
-  // Verify token
-  // ...
-
-  return NextResponse.next();
-}
-
-export const config = {
-  matcher: '/api/:path*',
-};
-```
-
-### CORS Middleware
-
-```typescript
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-
-  response.headers.set('Access-Control-Allow-Origin', '*');
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (request.method === 'OPTIONS') {
-    return new NextResponse(null, { status: 204, headers: response.headers });
-  }
-
-  return response;
-}
-```
-
-### Rate Limiting
-
-```typescript
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
-
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '10 s'),
-});
-
-export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
-  const { success } = await ratelimit.limit(ip);
-
-  if (!success) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429 }
-    );
-  }
-
-  // Continue with route logic
-}
-```
+Implement authentication, CORS, and rate limiting middleware following the patterns in `references/api-style-guide.md`. Always use environment variables for security-sensitive configuration like CORS origins.
 
 ## Testing
 
-Test API endpoints with meaningful assertions.
-
-```typescript
-import { describe, it, expect } from 'vitest';
-
-describe('POST /api/users', () => {
-  it('creates a user with valid input', async () => {
-    const response = await fetch('http://localhost:3000/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'test@example.com',
-        name: 'Test User',
-      }),
-    });
-
-    expect(response.status).toBe(201);
-    const user = await response.json();
-    expect(user).toHaveProperty('id');
-    expect(user.email).toBe('test@example.com');
-  });
-
-  it('returns 400 for invalid email', async () => {
-    const response = await fetch('http://localhost:3000/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'invalid',
-        name: 'Test User',
-      }),
-    });
-
-    expect(response.status).toBe(400);
-    const error = await response.json();
-    expect(error).toHaveProperty('error');
-  });
-
-  it('returns 401 without authentication', async () => {
-    const response = await fetch('http://localhost:3000/api/users', {
-      method: 'POST',
-    });
-
-    expect(response.status).toBe(401);
-  });
-});
-```
-
+Test API endpoints with meaningful assertions covering success cases, validation errors, and authentication failures. See `references/api-style-guide.md` for testing patterns.
 ## Common Anti-Patterns
 
 **DON'T:**

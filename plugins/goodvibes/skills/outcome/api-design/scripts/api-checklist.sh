@@ -59,7 +59,7 @@ log_info "Check 2: Error handling patterns present"
 ERROR_HANDLING_COUNT=0
 
 if [ -f "${PROJECT_ROOT}/src/middleware.ts" ] || [ -f "${PROJECT_ROOT}/middleware.ts" ]; then
-  ERROR_HANDLING_COUNT=$(grep -r "catch\|try\|Error" "${PROJECT_ROOT}/src/middleware.ts" "${PROJECT_ROOT}/middleware.ts" 2>/dev/null | wc -l)
+  ERROR_HANDLING_COUNT=$(grep -rE "catch|try|Error" -- "${PROJECT_ROOT}/src/middleware.ts" "${PROJECT_ROOT}/middleware.ts" 2>/dev/null | wc -l)
 fi
 
 if [ "$ERROR_HANDLING_COUNT" -gt 0 ]; then
@@ -73,9 +73,7 @@ printf "\n"
 log_info "Check 3: Validation schemas defined"
 VALIDATION_COUNT=0
 
-if command -v grep >/dev/null 2>&1; then
-  VALIDATION_COUNT=$(grep -r "z\.object\|yup\.object\|joi\.object" "${PROJECT_ROOT}" --include="*.ts" --include="*.js" 2>/dev/null | wc -l)
-fi
+VALIDATION_COUNT=$(grep -rE "z\.object|yup\.object|joi\.object" --exclude-dir=node_modules -- "${PROJECT_ROOT}" --include="*.ts" --include="*.js" 2>/dev/null | wc -l)
 
 if [ "$VALIDATION_COUNT" -gt 0 ]; then
   log_pass "Found ${VALIDATION_COUNT} validation schemas"
@@ -87,10 +85,7 @@ printf "\n"
 # Check 4: No untyped request bodies
 log_info "Check 4: No untyped request bodies (TypeScript check)"
 UNTYPED_COUNT=0
-
-if command -v grep >/dev/null 2>&1; then
-  UNTYPED_COUNT=$(grep -r "request\.json()" "${PROJECT_ROOT}" --include="*.ts" --include="*.js" 2>/dev/null | grep -v "safeParse\|parse\|validate" | wc -l)
-fi
+UNTYPED_COUNT=$(grep -r "request\.json()" --exclude-dir=node_modules -- "${PROJECT_ROOT}" --include="*.ts" --include="*.js" 2>/dev/null | grep -vE "safeParse|parse|validate" | wc -l)
 
 if [ "$UNTYPED_COUNT" -eq 0 ]; then
   log_pass "No untyped request.json() calls found"
@@ -107,7 +102,7 @@ if [ -f "${PROJECT_ROOT}/docs/openapi.yaml" ] || [ -f "${PROJECT_ROOT}/docs/open
   log_pass "OpenAPI documentation found"
   DOCS_FOUND=true
 elif [ -f "${PROJECT_ROOT}/README.md" ]; then
-  if grep -q "API" "${PROJECT_ROOT}/README.md" 2>/dev/null; then
+  if grep -q "API" -- "${PROJECT_ROOT}/README.md" 2>/dev/null; then
     log_pass "API documentation found in README.md"
     DOCS_FOUND=true
   fi
@@ -122,9 +117,7 @@ printf "\n"
 log_info "Check 6: Proper HTTP status code usage"
 STATUS_CODES_FOUND=0
 
-if command -v grep >/dev/null 2>&1; then
-  STATUS_CODES_FOUND=$(grep -r "status:.*40[0134]\|status:.*20[014]" "${PROJECT_ROOT}" --include="*.ts" --include="*.js" 2>/dev/null | wc -l)
-fi
+STATUS_CODES_FOUND=$(grep -rE "status:.*40[0134]|status:.*20[014]" --exclude-dir=node_modules -- "${PROJECT_ROOT}" --include="*.ts" --include="*.js" 2>/dev/null | wc -l)
 
 if [ "$STATUS_CODES_FOUND" -gt 0 ]; then
   log_pass "Found proper status code usage (200, 201, 204, 400, 401, 403, 404)"
@@ -137,9 +130,7 @@ printf "\n"
 log_info "Check 7: No hardcoded secrets"
 SECRETS_FOUND=0
 
-if command -v grep >/dev/null 2>&1; then
-  SECRETS_FOUND=$(grep -rE "(apiKey|api_key|secret|password|token).*=.*['\"]" "${PROJECT_ROOT}" --include="*.ts" --include="*.js" --exclude-dir=node_modules 2>/dev/null | grep -v "process.env\|import\|export\|type\|interface" | wc -l)
-fi
+SECRETS_FOUND=$(grep -rE "(apiKey|api_key|secret|password|token).*=.*['\"]" --exclude-dir=node_modules -- "${PROJECT_ROOT}" --include="*.ts" --include="*.js" 2>/dev/null | grep -vE "process.env|import|export|type|interface" | wc -l)
 
 if [ "$SECRETS_FOUND" -eq 0 ]; then
   log_pass "No hardcoded secrets detected"
