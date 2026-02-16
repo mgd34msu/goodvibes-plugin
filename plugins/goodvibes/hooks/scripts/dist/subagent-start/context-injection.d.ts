@@ -14,6 +14,12 @@
 export declare const PROTOCOL_SKILLS: string[];
 /** Agent-specific skill recommendations based on role */
 export declare const AGENT_SKILL_MAP: Record<string, string[]>;
+/** Skill catalog with descriptions and validation scripts */
+export declare const SKILL_CATALOG: Record<string, {
+    description: string;
+    path: string;
+    scripts: string[];
+}>;
 /** Context to inject into a subagent session */
 export interface SubagentContext {
     /** Additional context string to inject (always contains at least project info) */

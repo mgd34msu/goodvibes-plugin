@@ -247,6 +247,8 @@ describe('ensureClaudeMdImports', () => {
       expect(content).toContain('@prompt/CORE-PRINCIPLES.md');
       expect(content).toContain('<!-- SUBAGENT PROTOCOL -->');
       expect(content).toContain('@prompt/SUBAGENT-PROTOCOL.md');
+      expect(content).toContain('<!-- SKILL AWARENESS -->');
+      expect(content).toContain('@prompt/SKILLS.md');
     });
 
     it('creates parent directories', async () => {
@@ -292,7 +294,7 @@ describe('ensureClaudeMdImports', () => {
   // =============================================================================
 
   describe('Prompt Files', () => {
-    it('creates all 4 prompt files', async () => {
+    it('creates all 5 prompt files', async () => {
       vi.mocked(os.homedir).mockReturnValue(path.join(tmpDir, 'nonexistent'));
 
       const projectDir = path.join(tmpDir, 'prompt-test');
@@ -306,6 +308,7 @@ describe('ensureClaudeMdImports', () => {
       expect(fs.existsSync(path.join(promptDir, 'PRIMARY-GOALS.md'))).toBe(true);
       expect(fs.existsSync(path.join(promptDir, 'CORE-PRINCIPLES.md'))).toBe(true);
       expect(fs.existsSync(path.join(promptDir, 'SUBAGENT-PROTOCOL.md'))).toBe(true);
+      expect(fs.existsSync(path.join(promptDir, 'SKILLS.md'))).toBe(true);
     });
 
     it('UPGRADE-NOTIFICATIONS.md has correct content', async () => {
@@ -370,6 +373,36 @@ describe('ensureClaudeMdImports', () => {
       expect(content).toContain('## MANDATORY');
       expect(content).toContain('DPB Loops');
       expect(content).toContain('batch_engine');
+    });
+
+    it('SKILLS.md has correct content', async () => {
+      vi.mocked(os.homedir).mockReturnValue(path.join(tmpDir, 'nonexistent'));
+
+      const projectDir = path.join(tmpDir, 'skills-test');
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      await ensureClaudeMdImports(projectDir);
+
+      const filePath = path.join(projectDir, '.goodvibes', 'prompt', 'SKILLS.md');
+      const content = fs.readFileSync(filePath, 'utf-8');
+      
+      expect(content).toContain('## SKILL AWARENESS');
+      
+      // Tier headers
+      expect(content).toContain('### Protocol Skills');
+      expect(content).toContain('### Orchestration Skills');
+      expect(content).toContain('### Outcome Skills');
+      expect(content).toContain('### Quality Skills');
+      
+      // One skill from each tier
+      expect(content).toContain('precision-mastery');
+      expect(content).toContain('task-orchestration');
+      expect(content).toContain('api-design');
+      expect(content).toContain('security-audit');
+      
+      // How to Use section
+      expect(content).toContain('### How to Use Skills');
+      expect(content).toContain('get_skill_content');
     });
 
     it('creates prompt directory', async () => {

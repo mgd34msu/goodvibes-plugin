@@ -851,6 +851,37 @@ var AGENT_SKILL_MAP = {
   "skill-factory": []
   // Meta-agent, loads skills as needed
 };
+var SKILL_CATALOG = {
+  // Protocol
+  "precision-mastery": { description: "Optimal usage of precision engine tools for maximum token efficiency", path: "protocol/precision-mastery", scripts: ["validate-precision-usage.sh"] },
+  "review-scoring": { description: "Quantified scoring rubric and review format for WRFC loops", path: "protocol/review-scoring", scripts: ["validate-review.sh", "validate-fix.sh"] },
+  "discover-plan-batch": { description: "Discover-Plan-Batch loop for all agents", path: "protocol/discover-plan-batch", scripts: ["validate-dpb-compliance.sh"] },
+  "goodvibes-memory": { description: "Reading/writing persistent memory and logging system", path: "protocol/goodvibes-memory", scripts: ["validate-memory-usage.sh"] },
+  "error-recovery": { description: "Error recovery procedures with escalation tiers", path: "protocol/error-recovery", scripts: ["validate-error-recovery.sh"] },
+  // Orchestration
+  "fullstack-feature": { description: "End-to-end feature development across full stack", path: "orchestration/fullstack-feature", scripts: ["validate-feature-workflow.sh"] },
+  "task-orchestration": { description: "Decomposing requests into parallel agent tasks with WRFC coordination", path: "orchestration/task-orchestration", scripts: ["validate-orchestration.sh"] },
+  // Outcome
+  "ai-integration": { description: "AI/LLM integration: chat, streaming, RAG, embeddings, tool calling", path: "outcome/ai-integration", scripts: ["validate-ai-integration.sh"] },
+  "api-design": { description: "API endpoint design: REST, GraphQL, tRPC, validation, error handling", path: "outcome/api-design", scripts: ["api-checklist.sh"] },
+  "authentication": { description: "Auth setup: login, JWT, OAuth, sessions, RBAC, protected routes", path: "outcome/authentication", scripts: ["auth-checklist.sh"] },
+  "component-architecture": { description: "Component design: composition, state, render optimization, file organization", path: "outcome/component-architecture", scripts: ["validate-components.sh"] },
+  "database-layer": { description: "Database/ORM setup: schema, migrations, queries, connection pooling", path: "outcome/database-layer", scripts: ["database-checklist.sh"] },
+  "deployment": { description: "Deployment patterns: Vercel, Railway, Fly.io, Docker, AWS", path: "outcome/deployment", scripts: ["validate-deployment.sh"] },
+  "payment-integration": { description: "Payment processing: Stripe, LemonSqueezy, subscriptions, webhooks", path: "outcome/payment-integration", scripts: ["validate-payments.sh"] },
+  "service-integration": { description: "External service integration: email, CMS, file uploads", path: "outcome/service-integration", scripts: ["validate-services.sh"] },
+  "state-management": { description: "State architecture: server state, client state, form state, URL state", path: "outcome/state-management", scripts: ["validate-state.sh"] },
+  "styling-system": { description: "CSS architecture: Tailwind, design tokens, responsive, dark mode", path: "outcome/styling-system", scripts: ["validate-styling.sh"] },
+  "testing-strategy": { description: "Testing patterns: Vitest/Jest, RTL, Playwright E2E, MSW mocking", path: "outcome/testing-strategy", scripts: ["validate-tests.sh"] },
+  // Quality
+  "accessibility-audit": { description: "WCAG 2.1 AA audit: semantic HTML, ARIA, keyboard, screen reader, contrast", path: "quality/accessibility-audit", scripts: ["validate-accessibility-audit.sh"] },
+  "code-review": { description: "Systematic code review methodology with precision tools", path: "quality/code-review", scripts: ["validate-code-review.sh"] },
+  "debugging": { description: "Systematic debugging methodology with precision tools", path: "quality/debugging", scripts: ["validate-debugging.sh"] },
+  "performance-audit": { description: "Performance audit: bundle, database, rendering, network, Core Web Vitals", path: "quality/performance-audit", scripts: ["validate-performance-audit.sh"] },
+  "project-onboarding": { description: "Codebase analysis, architecture mapping, dependency audit, convention detection", path: "quality/project-onboarding", scripts: ["validate-onboarding.sh"] },
+  "refactoring": { description: "Systematic refactoring methodology with precision tools", path: "quality/refactoring", scripts: ["validate-refactoring.sh"] },
+  "security-audit": { description: "Security audit: auth, input validation, data protection, dependency scanning", path: "quality/security-audit", scripts: ["validate-security-audit.sh"] }
+};
 async function buildSubagentContext(cwd, agentType, _sessionId) {
   const _sharedConfig = await loadSharedConfig(cwd);
   const automationConfig = getDefaultConfig();
@@ -885,12 +916,29 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
   }
   const agentSuffix = agentType.split(":").pop() ?? agentType;
   const outcomeSkills = AGENT_SKILL_MAP[agentSuffix] ?? [];
+  const formatSkillList = (skillNames) => {
+    return skillNames.map((name) => {
+      const info = SKILL_CATALOG[name];
+      return info ? `  - ${name}: ${info.description}` : `  - ${name}`;
+    }).join("\n");
+  };
+  const protocolSection = [
+    "Protocol skills (MUST load before starting work):",
+    formatSkillList(PROTOCOL_SKILLS)
+  ].join("\n");
+  const roleSkillsSection = outcomeSkills.length > 0 ? ["Skills for your role:", formatSkillList(outcomeSkills)].join("\n") : "Skills for your role: none \u2014 load as needed";
+  const loadInstruction = [
+    "MANDATORY: Load assigned skills using get_skill_content from registry-engine BEFORE starting work.",
+    "Skills contain workflows, checklists, and validation scripts that define quality standards."
+  ].join("\n");
+  const validationInstruction = [
+    "AFTER completing work, validate with the relevant skill script:",
+    '  precision_exec cmd: "bash plugins/goodvibes/skills/{tier}/{skill}/scripts/{script-name}"',
+    "  Example: bash plugins/goodvibes/skills/outcome/api-design/scripts/api-checklist.sh",
+    "Scripts verify work programmatically. Run BEFORE submitting for review."
+  ].join("\n");
   contextParts.push(
-    `Available protocol skills (load before starting work): ${PROTOCOL_SKILLS.join(", ")}
-Relevant outcome/quality skills for your role: ${outcomeSkills.length > 0 ? outcomeSkills.join(", ") : "none \u2014 load as needed"}
-Load skills with: search_skills or get_skill_content from the registry engine.
-
-`
+    [protocolSection, roleSkillsSection, loadInstruction, validationInstruction].join("\n\n") + "\n\n"
   );
   return {
     additionalContext: contextParts.join("\n")

@@ -708,7 +708,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Available protocol skills'
+          'Protocol skills (MUST load before starting work):'
         );
         expect(result.additionalContext).toContain('precision-mastery');
         expect(result.additionalContext).toContain('review-scoring');
@@ -912,7 +912,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Load skills with: search_skills or get_skill_content from the registry engine'
+          'MANDATORY: Load assigned skills using get_skill_content from registry-engine BEFORE starting work.'
         );
       });
     });

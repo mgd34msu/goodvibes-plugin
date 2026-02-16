@@ -4845,6 +4845,9 @@ var GOODVIBES_MD = `<!-- UPGRADE NOTIFICATIONS -->
 
 <!-- SUBAGENT PROTOCOL -->
 @prompt/SUBAGENT-PROTOCOL.md
+
+<!-- SKILL AWARENESS -->
+@prompt/SKILLS.md
 `;
 var PROMPT_FILES = {
   "UPGRADE-NOTIFICATIONS.md": `## IMPORTANT!
@@ -4884,6 +4887,34 @@ ALWAYS provide the following reminders to subagents:
 5. ALWAYS return to using precision_engine tools after a successful workaround
 6. Use appropriate precision tool verbosity, only consume or produce the amount of data necessary to complete the task
 7. CRITICAL: NEVER set sandbox=true via precision_config. Only the user can activate sandbox mode.
+`,
+  // NOTE: Keep skill names in sync with SKILL_CATALOG in subagent-start/context-injection.ts
+  "SKILLS.md": `## SKILL AWARENESS
+
+### Protocol Skills (Load before starting work)
+- precision-mastery: Optimal usage of precision engine tools for maximum token efficiency
+- review-scoring: Quantified scoring rubric and review format for WRFC loops
+- discover-plan-batch: Discover-Plan-Batch loop for all agents
+- goodvibes-memory: Reading/writing persistent memory and logging system
+- error-recovery: Error recovery procedures with escalation tiers
+
+### Orchestration Skills
+- task-orchestration: Decomposing requests into parallel agent tasks with WRFC coordination
+- fullstack-feature: End-to-end feature development across full stack
+
+### Outcome Skills (Assign to agents by role)
+- ai-integration, api-design, authentication, component-architecture, database-layer
+- deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy
+
+### Quality Skills (Assign to agents by role)
+- accessibility-audit, code-review, debugging, performance-audit
+- project-onboarding, refactoring, security-audit
+
+### How to Use Skills
+1. Load full skill: get_skill_content from registry-engine
+2. Follow the workflow in SKILL.md body
+3. After work, validate: bash plugins/goodvibes/skills/{tier}/{name}/scripts/{script}
+   Example: bash plugins/goodvibes/skills/outcome/api-design/scripts/api-checklist.sh
 `
 };
 async function writeIfChanged(filePath, content) {
