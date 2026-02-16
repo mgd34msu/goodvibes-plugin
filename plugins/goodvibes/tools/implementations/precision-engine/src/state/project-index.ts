@@ -3,7 +3,7 @@
  * Provides fast lookups by path, type, and prefix with lazy disk persistence.
  */
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, rename } from 'fs/promises';
 import * as path from 'path';
 import { existsSync } from 'fs';
 
@@ -78,7 +78,15 @@ export class ProjectIndex {
     try {
       if (existsSync(this.indexPath)) {
         const content = await readFile(this.indexPath, 'utf-8');
-        this.index = JSON.parse(content);
+        const parsed = JSON.parse(content);
+        
+        // Validate version before accepting the index
+        if (!parsed || parsed.version !== 1) {
+          console.error(`[ProjectIndex] Unsupported index version: ${parsed?.version}`);
+          this.index = null;
+        } else {
+          this.index = parsed as ProjectFileIndex;
+        }
       } else {
         // Index doesn't exist yet - will be created on first session start
         this.index = null;
@@ -110,7 +118,7 @@ export class ProjectIndex {
   /**
    * Get summary statistics from the index.
    */
-  public getStats(): object | null {
+  public getStats(): ProjectFileIndex['stats'] | null {
     if (!this.index) return null;
     return this.index.stats;
   }
@@ -121,6 +129,7 @@ export class ProjectIndex {
   public upsertFile(relativePath: string, sizeBytes: number): void {
     if (!this.index) return;
 
+    // Unix ms timestamp for FileEntry.m
     const now = Date.now();
     const fileType = categorizeFileType(relativePath);
     const newEntry: FileEntry = {
@@ -144,6 +153,7 @@ export class ProjectIndex {
       this.index.stats.total_size_bytes += sizeBytes;
     }
 
+    // ISO string for ProjectFileIndex.updated_at
     this.index.updated_at = new Date().toISOString();
     this.markDirty();
   }
@@ -226,14 +236,6 @@ export class ProjectIndex {
   }
 
   /**
-   * Find a file entry by path using binary search.
-   */
-  private findEntry(p: string): FileEntry | null {
-    const idx = this.findEntryIndex(p);
-    return idx >= 0 ? this.index!.files[idx] : null;
-  }
-
-  /**
    * Find the index of a file entry by path using binary search.
    * Returns -1 if not found.
    */
@@ -246,7 +248,8 @@ export class ProjectIndex {
 
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
-      const cmp = files[mid].p.localeCompare(p);
+      // Use consistent comparison with insertSorted() and getFilesByPrefix()
+      const cmp = files[mid].p < p ? -1 : files[mid].p > p ? 1 : 0;
 
       if (cmp === 0) {
         return mid;
@@ -315,14 +318,15 @@ export class ProjectIndex {
       // Atomic write: temp file + rename
       const tempPath = this.indexPath + '.tmp';
       await writeFile(tempPath, JSON.stringify(this.index), 'utf-8');
-      await import('fs/promises').then((fs) => fs.rename(tempPath, this.indexPath));
+      await rename(tempPath, this.indexPath);
 
       this.dirty = false;
     } catch (error) {
       // Keep dirty flag for retry
       console.error('[ProjectIndex] Failed to flush index:', error);
     } finally {
-      // Clear timer reference
+      // Timer has fired — null it regardless of outcome.
+      // If flush failed, dirty remains true, and next markDirty() will schedule a retry.
       this.flushTimer = null;
     }
   }
