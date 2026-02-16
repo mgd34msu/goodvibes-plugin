@@ -6,34 +6,34 @@ This reference provides detailed decision trees, implementation patterns, and an
 
 ```
 What kind of state are you managing?
-├─ From a server API?
-│  └─ YES → TanStack Query
-│     ├─ Needs caching
-│     ├─ Needs background updates
-│     ├─ Needs optimistic updates
-│     └─ Needs cache invalidation
-│
-├─ Form input with validation?
-│  └─ YES → React Hook Form + Zod
-│     ├─ Complex validation rules
-│     ├─ Field arrays
-│     ├─ Nested objects
-│     └─ Type-safe validation
-│
-├─ Should be in URL (shareable/bookmarkable)?
-│  └─ YES → nuqs or searchParams
-│     ├─ Pagination
-│     ├─ Filters
-│     ├─ Search queries
-│     └─ Tab selection
-│
-├─ Shared across multiple components?
-│  ├─ YES → How many components?
-│  │  ├─ 2-3 nearby → Lift to common parent
-│  │  └─ Many/distant → Zustand
-│  │
-│  └─ NO → useState (component state)
-│     └─ Local to one component only
+|-- From a server API?
+|  +-- YES -> TanStack Query
+|     |-- Needs caching
+|     |-- Needs background updates
+|     |-- Needs optimistic updates
+|     +-- Needs cache invalidation
+|
+|-- Form input with validation?
+|  +-- YES -> React Hook Form + Zod
+|     |-- Complex validation rules
+|     |-- Field arrays
+|     |-- Nested objects
+|     +-- Type-safe validation
+|
+|-- Should be in URL (shareable/bookmarkable)?
+|  +-- YES -> nuqs or searchParams
+|     |-- Pagination
+|     |-- Filters
+|     |-- Search queries
+|     +-- Tab selection
+|
+|-- Shared across multiple components?
+|  |-- YES -> How many components?
+|  |  |-- 2-3 nearby -> Lift to common parent
+|  |  +-- Many/distant -> Zustand
+|  |
+|  +-- NO -> useState (component state)
+|     +-- Local to one component only
 ```
 
 ## TanStack Query Patterns

@@ -109,7 +109,7 @@ if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' -- "$FI
     FIX_DESCRIPTIONS=$(sed -En '/^### Critical Issues Addressed|^### Major Issues Addressed/,/^### [^CM]|^## /p' -- "$FIX_FILE" | grep -- '^- \[' || true)
     
     if [ -n "$FIX_DESCRIPTIONS" ]; then
-        # Check for FILE:LINE and Fixed by/→ within multi-line blocks
+        # Check for FILE:LINE and Fixed by/-> within multi-line blocks
         current_block=""
         while IFS= read -r line; do
             if [[ "$line" =~ ^'-  ' ]]; then
@@ -118,7 +118,7 @@ if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' -- "$FI
                     if ! echo "$current_block" | grep -qE '\[[^:]+:[0-9]+\]'; then
                         ERRORS+=("Fix description missing FILE:LINE reference: ${current_block:0:80}...")
                     fi
-                    if ! echo "$current_block" | grep -Eqi 'Fixed by:|→'; then
+                    if ! echo "$current_block" | grep -Eqi 'Fixed by:|->'; then
                         ERRORS+=("Fix description missing 'Fixed by:' explanation: ${current_block:0:80}...")
                     fi
                 fi
@@ -134,7 +134,7 @@ if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' -- "$FI
             if ! echo "$current_block" | grep -qE '\[[^:]+:[0-9]+\]'; then
                 ERRORS+=("Fix description missing FILE:LINE reference: ${current_block:0:80}...")
             fi
-            if ! echo "$current_block" | grep -Eqi 'Fixed by:|→'; then
+            if ! echo "$current_block" | grep -Eqi 'Fixed by:|->'; then
                 ERRORS+=("Fix description missing 'Fixed by:' explanation: ${current_block:0:80}...")
             fi
         fi

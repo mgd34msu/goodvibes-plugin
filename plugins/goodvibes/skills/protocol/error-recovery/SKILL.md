@@ -385,6 +385,6 @@ Discovered: Requires new database schema, auth changes, API endpoints
 
 **Remember:**
 - Precision tools are the default, native tools are the fallback
-- User error ≠ tool failure
+- User error != tool failure
 - Recovery attempts should be systematic, not random
 - Memory is institutional knowledge -- use it and contribute to it

@@ -8,33 +8,33 @@ Decision trees and trade-off analysis for selecting database technology in your 
 
 ```
 Start: What type of database?
-├─ Relational (PostgreSQL, MySQL, SQLite)
-│  ├─ Priority: Type safety and DX
-│  │  ├─ Prisma
-│  │  │  Pros: Best-in-class DX, auto-completion, visual schema
-│  │  │  Cons: Query builder abstraction, larger bundle
-│  │  │  Use when: Team values DX, rapid prototyping, Next.js apps
-│  │  └─ Drizzle
-│  │     Pros: SQL-like, lightweight, edge-compatible
-│  │     Cons: Newer ecosystem, less mature tooling
-│  │     Use when: Edge/serverless, need SQL control, small bundle
-│  ├─ Priority: Maximum SQL control
-│  │  └─ Kysely
-│  │     Pros: Type-safe SQL builder, full SQL control
-│  │     Cons: More verbose, manual migration management
-│  │     Use when: Complex queries, existing SQL knowledge, need control
-│  └─ Priority: Simplicity
-│     └─ Prisma
-│        Best for: Learning, MVPs, standard CRUD apps
-│
-├─ Document (MongoDB)
-│  └─ Mongoose
-│     Pros: Schema validation, middleware, virtuals
-│     Cons: Overhead, less TypeScript-friendly
-│     Use when: MongoDB, need schema validation, established patterns
-│
-└─ Key-Value / Cache (Redis)
-   └─ ioredis or @upstash/redis
+|-- Relational (PostgreSQL, MySQL, SQLite)
+|  |-- Priority: Type safety and DX
+|  |  |-- Prisma
+|  |  |  Pros: Best-in-class DX, auto-completion, visual schema
+|  |  |  Cons: Query builder abstraction, larger bundle
+|  |  |  Use when: Team values DX, rapid prototyping, Next.js apps
+|  |  +-- Drizzle
+|  |     Pros: SQL-like, lightweight, edge-compatible
+|  |     Cons: Newer ecosystem, less mature tooling
+|  |     Use when: Edge/serverless, need SQL control, small bundle
+|  |-- Priority: Maximum SQL control
+|  |  +-- Kysely
+|  |     Pros: Type-safe SQL builder, full SQL control
+|  |     Cons: More verbose, manual migration management
+|  |     Use when: Complex queries, existing SQL knowledge, need control
+|  +-- Priority: Simplicity
+|     +-- Prisma
+|        Best for: Learning, MVPs, standard CRUD apps
+|
+|-- Document (MongoDB)
+|  +-- Mongoose
+|     Pros: Schema validation, middleware, virtuals
+|     Cons: Overhead, less TypeScript-friendly
+|     Use when: MongoDB, need schema validation, established patterns
+|
++-- Key-Value / Cache (Redis)
+   +-- ioredis or @upstash/redis
       Pros: Simple API, connection pooling
       Use when: Caching, sessions, pub/sub, rate limiting
 ```
@@ -302,7 +302,7 @@ const users = await User.find({ active: true })
 
 ### Type Safety
 
-| ORM | Schema → Types | Query → Types | Autocomplete |
+| ORM | Schema -> Types | Query -> Types | Autocomplete |
 |-----|---------------|---------------|-------------|
 | Prisma | Excellent | Excellent | Excellent |
 | Drizzle | Excellent | Excellent | Good |

@@ -8,20 +8,20 @@ Comprehensive reference for API design decisions, patterns, and best practices.
 
 ```
 Start Here
-│
-├─ Same codebase + TypeScript?
-│  └─ YES → tRPC
-│
-├─ Complex nested data requirements?
-│  └─ YES → GraphQL
-│
-├─ Public API for multiple clients?
-│  └─ YES → REST
-│
-├─ Form-heavy mutations in Next.js?
-│  └─ YES → Server Actions
-│
-└─ Default → REST (most flexible)
+|
+|-- Same codebase + TypeScript?
+|  +-- YES -> tRPC
+|
+|-- Complex nested data requirements?
+|  +-- YES -> GraphQL
+|
+|-- Public API for multiple clients?
+|  +-- YES -> REST
+|
+|-- Form-heavy mutations in Next.js?
+|  +-- YES -> Server Actions
+|
++-- Default -> REST (most flexible)
 ```
 
 ### Detailed Decision Criteria

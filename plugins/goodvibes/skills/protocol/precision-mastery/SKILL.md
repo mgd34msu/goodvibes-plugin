@@ -397,14 +397,14 @@ If a precision tool fails:
 
 ```
 Do I know the exact file paths?
-  ├── Yes ── precision_read (with appropriate extract mode)
-  └── No ── Do I know a pattern?
-      ├── Yes ── precision_glob
-      └── No ── Am I searching for content?
-         ├── Yes ── precision_grep
-         └── No ── Am I searching for symbols?
-            ├── Yes ── precision_symbols
-            └── No ── Use discover with multiple query types
+  |-- Yes -- precision_read (with appropriate extract mode)
+  +-- No -- Do I know a pattern?
+      |-- Yes -- precision_glob
+      +-- No -- Am I searching for content?
+         |-- Yes -- precision_grep
+         +-- No -- Am I searching for symbols?
+            |-- Yes -- precision_symbols
+            +-- No -- Use discover with multiple query types
 ```
 
 ## Performance Benchmarks

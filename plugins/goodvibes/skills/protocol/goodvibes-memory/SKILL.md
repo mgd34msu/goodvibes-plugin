@@ -29,16 +29,16 @@ With memory:
 
 ```
 .goodvibes/
-├── memory/           # Structured JSON (machine-readable)
-│   ├── decisions.json    # Architectural decisions
-│   ├── patterns.json     # Proven approaches
-│   ├── failures.json     # Past errors + resolutions
-│   ├── preferences.json  # Project conventions
-│   └── index.json        # Index file (optional)
-└── logs/             # Markdown logs (human-readable)
-    ├── activity.md       # Completed work log
-    ├── decisions.md      # Decision log with context
-    └── errors.md         # Error log with resolution
+|-- memory/           # Structured JSON (machine-readable)
+|   |-- decisions.json    # Architectural decisions
+|   |-- patterns.json     # Proven approaches
+|   |-- failures.json     # Past errors + resolutions
+|   |-- preferences.json  # Project conventions
+|   +-- index.json        # Index file (optional)
++-- logs/             # Markdown logs (human-readable)
+    |-- activity.md       # Completed work log
+    |-- decisions.md      # Decision log with context
+    +-- errors.md         # Error log with resolution
 ```
 
 ---
@@ -550,15 +550,15 @@ All memory files are relative to project root:
 
 ```
 .goodvibes/
-├── memory/
-│   ├── decisions.json
-│   ├── patterns.json
-│   ├── failures.json
-│   └── preferences.json
-└── logs/
-    ├── activity.md
-    ├── decisions.md
-    └── errors.md
+|-- memory/
+|   |-- decisions.json
+|   |-- patterns.json
+|   |-- failures.json
+|   +-- preferences.json
++-- logs/
+    |-- activity.md
+    |-- decisions.md
+    +-- errors.md
 ```
 
 Always use `.goodvibes/memory/` and `.goodvibes/logs/` as paths (relative to project root).

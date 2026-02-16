@@ -347,7 +347,7 @@ The index file is optional and provides quick statistics and searchable tags. It
 
 ### Wrong ID Format
 
-❌ **Wrong**:
+[FAIL] **Wrong**:
 ```json
 {
   "id": "decision-1",
@@ -356,7 +356,7 @@ The index file is optional and provides quick statistics and searchable tags. It
 }
 ```
 
-✅ **Correct**:
+[PASS] **Correct**:
 ```json
 {
   "id": "dec_20260215_143022"
@@ -365,7 +365,7 @@ The index file is optional and provides quick statistics and searchable tags. It
 
 ### Missing Required Fields
 
-❌ **Wrong**:
+[FAIL] **Wrong**:
 ```json
 {
   "id": "fail_20260215_143022",
@@ -374,7 +374,7 @@ The index file is optional and provides quick statistics and searchable tags. It
 }
 ```
 
-✅ **Correct**:
+[PASS] **Correct**:
 ```json
 {
   "id": "fail_20260215_143022",
@@ -390,20 +390,20 @@ The index file is optional and provides quick statistics and searchable tags. It
 
 ### Stale Status
 
-❌ **Wrong**: Decision marked as "active" but actually superseded by newer decision
+[FAIL] **Wrong**: Decision marked as "active" but actually superseded by newer decision
 
-✅ **Correct**: Update old decision status to "superseded" when creating new decision
+[PASS] **Correct**: Update old decision status to "superseded" when creating new decision
 
 ### Missing Prevention
 
-❌ **Wrong**:
+[FAIL] **Wrong**:
 ```json
 {
   "resolution": "RESOLVED - Installed missing package"
 }
 ```
 
-✅ **Correct**:
+[PASS] **Correct**:
 ```json
 {
   "resolution": "RESOLVED - Installed missing package",
@@ -413,14 +413,14 @@ The index file is optional and provides quick statistics and searchable tags. It
 
 ### Vague Keywords
 
-❌ **Wrong**:
+[FAIL] **Wrong**:
 ```json
 {
   "keywords": ["error", "bug", "fix"]
 }
 ```
 
-✅ **Correct**:
+[PASS] **Correct**:
 ```json
 {
   "keywords": ["clerk", "authentication", "module-not-found", "nextjs", "subpath-exports"]
@@ -429,7 +429,7 @@ The index file is optional and provides quick statistics and searchable tags. It
 
 ### Wrong ISO 8601 Format
 
-❌ **Wrong**:
+[FAIL] **Wrong**:
 ```json
 {
   "date": "2026-02-15",
@@ -438,7 +438,7 @@ The index file is optional and provides quick statistics and searchable tags. It
 }
 ```
 
-✅ **Correct**:
+[PASS] **Correct**:
 ```json
 {
   "date": "2026-02-15T14:30:22Z"

@@ -128,7 +128,7 @@ if [ ${#DIM_SCORES[@]} -eq 10 ]; then
         -v read="${DIM_SCORES[6]}" -v err="${DIM_SCORES[7]}" -v type="${DIM_SCORES[8]}" -v integ="${DIM_SCORES[9]}" \
         'BEGIN {printf "%.2f", (c*0.20 + comp*0.15 + s*0.15 + perf*0.10 + conv*0.10 + test*0.10 + read*0.05 + err*0.05 + type*0.05 + integ*0.05)}')
     
-    # Check if calculated score matches claimed score (tolerance ±0.15 for rounding)
+    # Check if calculated score matches claimed score (tolerance +/-0.15 for rounding)
     SCORE_DIFF=$(awk -v claimed="$SCORE" -v calc="$CALCULATED_SCORE" 'BEGIN {diff = claimed - calc; if (diff < 0) diff = -diff; printf "%.2f", diff}')
     SCORE_DIFF_OK=$(awk -v diff="$SCORE_DIFF" 'BEGIN {print (diff <= 0.15) ? "yes" : "no"}')
     

@@ -708,7 +708,7 @@ export function ButtonWithIcon({ onClick, label }: ButtonWithIconProps) {
 
 **WCAG 2.1 AA requirements:**
 - Normal text (< 18pt): 4.5:1 minimum contrast ratio
-- Large text (≥ 18pt or ≥ 14pt bold): 3:1 minimum contrast ratio
+- Large text (>= 18pt or >= 14pt bold): 3:1 minimum contrast ratio
 - UI components and graphics: 3:1 minimum contrast ratio
 
 **Search for color definitions:**

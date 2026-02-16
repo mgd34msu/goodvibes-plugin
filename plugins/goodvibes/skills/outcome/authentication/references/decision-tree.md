@@ -7,26 +7,26 @@ Choosing the right authentication approach depends on your project requirements,
 Answer these questions to guide your choice:
 
 1. **Do you need to own the user database?**
-   - YES → Self-hosted or Serverless
-   - NO → Managed service
+   - YES -> Self-hosted or Serverless
+   - NO -> Managed service
 
 2. **What is your team's backend expertise?**
-   - Strong → Self-hosted (full control)
-   - Moderate → Serverless (balance)
-   - Minimal → Managed service (easiest)
+   - Strong -> Self-hosted (full control)
+   - Moderate -> Serverless (balance)
+   - Minimal -> Managed service (easiest)
 
 3. **Do you need enterprise SSO (SAML, AD, Okta)?**
-   - YES → Managed service (Auth0, Clerk)
-   - NO → Any option works
+   - YES -> Managed service (Auth0, Clerk)
+   - NO -> Any option works
 
 4. **What is your budget?**
-   - Free tier only → Self-hosted or Serverless
-   - Moderate ($20-100/mo) → Managed service
-   - Enterprise → Managed service with SLA
+   - Free tier only -> Self-hosted or Serverless
+   - Moderate ($20-100/mo) -> Managed service
+   - Enterprise -> Managed service with SLA
 
 5. **Do you need multi-tenancy or complex user hierarchies?**
-   - YES → Managed service (Clerk) or custom self-hosted
-   - NO → Any option works
+   - YES -> Managed service (Clerk) or custom self-hosted
+   - NO -> Any option works
 
 ## Approach Comparison
 
@@ -168,7 +168,7 @@ Answer these questions to guide your choice:
 - Multi-language support (not just JS)
 - Strict compliance requirements (HIPAA, SOC2)
 
-**Pricing:** Free (7k MAU) → $240/mo (Essentials) → Custom (Enterprise)
+**Pricing:** Free (7k MAU) -> $240/mo (Essentials) -> Custom (Enterprise)
 
 **Key Features:**
 - Universal Login (hosted auth pages)
@@ -242,7 +242,7 @@ Answer these questions to guide your choice:
 - Postgres-backed user storage
 - Generous free tier
 
-**Pricing:** Free (50k MAU) → $25/mo (Pro)
+**Pricing:** Free (50k MAU) -> $25/mo (Pro)
 
 **Key Features:**
 - Postgres-backed user table (public.users)
@@ -402,22 +402,22 @@ Answer these questions to guide your choice:
 
 ```
 START HERE
-↓
+|
 Do you need SSO (SAML, Okta, AD)?
-├─ YES → Auth0 or Clerk (Enterprise)
-└─ NO → Continue
-   ↓
+|-- YES -> Auth0 or Clerk (Enterprise)
++-- NO -> Continue
+   |
    Is budget a concern?
-   ├─ YES → NextAuth, Better Auth, or Supabase
-   └─ NO → Continue
-      ↓
+   |-- YES -> NextAuth, Better Auth, or Supabase
+   +-- NO -> Continue
+      |
       Do you need pre-built UI?
-      ├─ YES → Clerk
-      └─ NO → Continue
-         ↓
+      |-- YES -> Clerk
+      +-- NO -> Continue
+         |
          Strong backend team?
-         ├─ YES → Better Auth or NextAuth
-         └─ NO → Supabase or Clerk
+         |-- YES -> Better Auth or NextAuth
+         +-- NO -> Supabase or Clerk
 ```
 
 ---
