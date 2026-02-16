@@ -1,118 +1,994 @@
-# GoodVibes Plugin Skills Registry
-# Auto-generated on 2026-02-16
-
-version: 2.0.0
-total_skills: 25
-
+version: 1.0.0
+generated: '2026-02-16T15:56:30.649Z'
+total: 25
 categories:
-  protocol:
-    description: "Core protocols and workflows that all agents must follow"
-    skills:
-      - name: precision-mastery
-        path: protocol/precision-mastery
-        description: "Teaches optimal usage of GoodVibes precision engine tools for maximum token efficiency. Use when performing any file operations, searches, or command execution. Covers extract modes, verbosity settings, batching patterns, and discover tool orchestration."
-
-      - name: discover-plan-batch
-        path: protocol/discover-plan-batch
-        description: "Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use before starting any development task. Covers discovery patterns using the discover tool, work planning for token efficiency, and batch execution strategies."
-
-      - name: review-scoring
-        path: protocol/review-scoring
-        description: "Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring implementations, or validating that work meets quality standards. Includes deterministic validation scripts for review output."
-
-      - name: goodvibes-memory
-        path: protocol/goodvibes-memory
-        description: "Defines how all GoodVibes agents read from and write to the persistent memory and logging system. Use at the start of any task (read) and after completing any task (write). Covers decisions.json, patterns.json, failures.json, preferences.json, and session logs."
-
-      - name: error-recovery
-        path: protocol/error-recovery
-        description: "Defines error recovery procedures for all GoodVibes agents. Use when encountering tool failures, build errors, test failures, or unexpected results during task execution. Covers systematic error recovery, memory-informed diagnostics, and when to escalate to the orchestrator."
-
   orchestration:
-    description: "Agent coordination and task management workflows"
-    skills:
-      - name: task-orchestration
-        path: orchestration/task-orchestration
-        description: "Guides the GoodVibes orchestrator in decomposing feature requests into parallel agent tasks, assigning appropriate agents and skills, managing dependencies, and coordinating WRFC loops across up to 6 concurrent agent chains. Use when receiving a new user request that requires multiple agents."
-
+    _items:
       - name: fullstack-feature
         path: orchestration/fullstack-feature
-        description: "End-to-end feature development workflow that orchestrates multiple agents across the full stack. Use when the user requests a complete feature that spans backend, frontend, and testing. Sequences work across database, API, UI, tests, and review."
-
+        description: >-
+          End-to-end feature development workflow that orchestrates multiple agents across the full stack. Use when the
+          user requests a complete feature that spans backend, frontend, and testing. Sequences work across database,
+          API, UI, tests, and review.
+        triggers: &ref_0
+          - fullstack
+          - feature
+          - end
+          - development
+          - workflow
+          - that
+          - orchestrates
+          - multiple
+          - agents
+          - across
+          - full
+          - stack
+          - user
+          - requests
+          - complete
+          - spans
+          - backend
+          - frontend
+          - testing
+          - sequences
+          - work
+          - database
+          - api
+          - tests
+          - review
+      - name: task-orchestration
+        path: orchestration/task-orchestration
+        description: >-
+          Guides the GoodVibes orchestrator in decomposing feature requests into parallel agent tasks, assigning
+          appropriate agents and skills, managing dependencies, and coordinating WRFC loops across up to 6 concurrent
+          agent chains. Use when receiving a new user request that requires multiple agents.
+        triggers: &ref_1
+          - task
+          - orchestration
+          - guides
+          - goodvibes
+          - orchestrator
+          - decomposing
+          - feature
+          - requests
+          - into
+          - parallel
+          - agent
+          - tasks
+          - assigning
+          - appropriate
+          - agents
+          - skills
+          - managing
+          - dependencies
+          - coordinating
+          - wrfc
+          - loops
+          - across
+          - concurrent
+          - chains
+          - receiving
+          - new
+          - user
+          - request
+          - that
+          - requires
+          - multiple
   outcome:
-    description: "Concrete feature implementation workflows"
-    skills:
-      - name: database-layer
-        path: outcome/database-layer
-        description: "Database and ORM setup workflow using GoodVibes precision tools. Use when creating schemas, running migrations, setting up database connections, defining models, writing queries, or optimizing database performance. Covers relational and document databases."
-
-      - name: api-design
-        path: outcome/api-design
-        description: "API endpoint design and implementation workflow using GoodVibes precision tools. Use when building REST endpoints, GraphQL resolvers, tRPC procedures, API middleware, request validation, or response formatting. Covers route design, error handling, and documentation."
-
-      - name: authentication
-        path: outcome/authentication
-        description: "Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery, implementation, security verification, and testing."
-
-      - name: component-architecture
-        path: outcome/component-architecture
-        description: "Component design workflow using GoodVibes precision tools. Use when building UI components, designing component hierarchies, optimizing render performance, or organizing component files. Covers composition patterns, state management, render optimization, and file organization for React/Vue/Svelte."
-
-      - name: styling-system
-        path: outcome/styling-system
-        description: "Guides CSS architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark mode implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design systems, or choosing between styling approaches."
-
-      - name: state-management
-        path: outcome/state-management
-        description: "Guides state architecture decisions including server state (TanStack Query), client state (Zustand), form state (React Hook Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data fetching, or managing complex form state."
-
-      - name: testing-strategy
-        path: outcome/testing-strategy
-        description: "Comprehensive testing patterns for Vitest/Jest unit tests, React Testing Library component tests, Playwright E2E tests, and MSW API mocking. Covers test organization, coverage targets, fixture management, and CI integration."
-
-      - name: deployment
-        path: outcome/deployment
-        description: "Deployment patterns for Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD pipelines, preview deployments, health checks, rollback strategies, and monitoring setup."
-
+    _items:
       - name: ai-integration
         path: outcome/ai-integration
-        description: "AI and LLM integration workflow using GoodVibes precision tools. Use when implementing chat interfaces, streaming responses, RAG pipelines, embeddings, vector search, or tool/function calling. Covers Vercel AI SDK, OpenAI, Anthropic, and local model patterns."
-
-      - name: service-integration
-        path: outcome/service-integration
-        description: "External service integration workflow using GoodVibes precision tools. Use when integrating email services (Resend, SendGrid), CMS platforms (Sanity, Contentful, Payload), file uploads (UploadThing, Cloudinary, S3), or analytics. Covers setup, error handling, and testing."
-
+        description: >-
+          AI and LLM integration workflow using GoodVibes precision tools. Use when implementing chat interfaces,
+          streaming responses, RAG pipelines, embeddings, vector search, or tool/function calling. Covers Vercel AI SDK,
+          OpenAI, Anthropic, and local model patterns.
+        triggers: &ref_2
+          - ai
+          - integration
+          - llm
+          - workflow
+          - using
+          - goodvibes
+          - precision
+          - tools
+          - implementing
+          - chat
+          - interfaces
+          - streaming
+          - responses
+          - rag
+          - pipelines
+          - embeddings
+          - vector
+          - search
+          - tool
+          - function
+          - calling
+          - covers
+          - vercel
+          - sdk
+          - openai
+          - anthropic
+          - local
+          - model
+          - patterns
+      - name: api-design
+        path: outcome/api-design
+        description: >-
+          API endpoint design and implementation workflow using GoodVibes precision tools. Use when building REST
+          endpoints, GraphQL resolvers, tRPC procedures, API middleware, request validation, or response formatting.
+          Covers route design, error handling, and documentation.
+        triggers: &ref_3
+          - api
+          - design
+          - endpoint
+          - implementation
+          - workflow
+          - using
+          - goodvibes
+          - precision
+          - tools
+          - building
+          - rest
+          - endpoints
+          - graphql
+          - resolvers
+          - trpc
+          - procedures
+          - middleware
+          - request
+          - validation
+          - response
+          - formatting
+          - covers
+          - route
+          - error
+          - handling
+          - documentation
+      - name: authentication
+        path: outcome/authentication
+        description: >-
+          Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password
+          reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery,
+          implementation, security verification, and testing.
+        triggers: &ref_4
+          - authentication
+          - setup
+          - workflow
+          - using
+          - goodvibes
+          - precision
+          - tools
+          - implementing
+          - login
+          - sign
+          - password
+          - reset
+          - session
+          - management
+          - jwt
+          - oauth
+          - protected
+          - routes
+          - middleware
+          - auth
+          - rbac
+          - orchestrates
+          - discovery
+          - implementation
+          - security
+          - verification
+          - testing
+      - name: component-architecture
+        path: outcome/component-architecture
+        description: >-
+          Component design workflow using GoodVibes precision tools. Use when building UI components, designing
+          component hierarchies, optimizing render performance, or organizing component files. Covers composition
+          patterns, state management, render optimization, and file organization for React/Vue/Svelte.
+        triggers: &ref_5
+          - component
+          - architecture
+          - design
+          - workflow
+          - using
+          - goodvibes
+          - precision
+          - tools
+          - building
+          - components
+          - designing
+          - hierarchies
+          - optimizing
+          - render
+          - performance
+          - organizing
+          - files
+          - covers
+          - composition
+          - patterns
+          - state
+          - management
+          - optimization
+          - file
+          - organization
+          - react
+          - vue
+          - svelte
+      - name: database-layer
+        path: outcome/database-layer
+        description: >-
+          Database and ORM setup workflow using GoodVibes precision tools. Use when creating schemas, running
+          migrations, setting up database connections, defining models, writing queries, or optimizing database
+          performance. Covers relational and document databases.
+        triggers: &ref_6
+          - database
+          - layer
+          - orm
+          - setup
+          - workflow
+          - using
+          - goodvibes
+          - precision
+          - tools
+          - creating
+          - schemas
+          - running
+          - migrations
+          - setting
+          - connections
+          - defining
+          - models
+          - writing
+          - queries
+          - optimizing
+          - performance
+          - covers
+          - relational
+          - document
+          - databases
+      - name: deployment
+        path: outcome/deployment
+        description: >-
+          Deployment patterns for Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD
+          pipelines, preview deployments, health checks, rollback strategies, and monitoring setup.
+        triggers: &ref_7
+          - deployment
+          - patterns
+          - vercel
+          - railway
+          - fly
+          - docker
+          - aws
+          - covers
+          - environment
+          - configuration
+          - pipelines
+          - preview
+          - deployments
+          - health
+          - checks
+          - rollback
+          - strategies
+          - monitoring
+          - setup
       - name: payment-integration
         path: outcome/payment-integration
-        description: "Payment processing integration workflow using GoodVibes precision tools. Use when implementing Stripe, LemonSqueezy, or Paddle checkout flows, subscription billing, webhook handling, or payment security. Covers setup, testing, and PCI compliance."
-
+        description: >-
+          Payment processing integration workflow using GoodVibes precision tools. Use when implementing Stripe,
+          LemonSqueezy, or Paddle checkout flows, subscription billing, webhook handling, or payment security. Covers
+          setup, testing, and PCI compliance.
+        triggers: &ref_8
+          - payment
+          - integration
+          - processing
+          - workflow
+          - using
+          - goodvibes
+          - precision
+          - tools
+          - implementing
+          - stripe
+          - lemonsqueezy
+          - paddle
+          - checkout
+          - flows
+          - subscription
+          - billing
+          - webhook
+          - handling
+          - security
+          - covers
+          - setup
+          - testing
+          - pci
+          - compliance
+      - name: service-integration
+        path: outcome/service-integration
+        description: >-
+          External service integration workflow using GoodVibes precision tools. Use when integrating email services
+          (Resend, SendGrid), CMS platforms (Sanity, Contentful, Payload), file uploads (UploadThing, Cloudinary, S3),
+          or analytics. Covers setup, error handling, and testing.
+        triggers: &ref_9
+          - service
+          - integration
+          - external
+          - workflow
+          - using
+          - goodvibes
+          - precision
+          - tools
+          - integrating
+          - email
+          - services
+          - resend
+          - sendgrid
+          - cms
+          - platforms
+          - sanity
+          - contentful
+          - payload
+          - file
+          - uploads
+          - uploadthing
+          - cloudinary
+          - analytics
+          - covers
+          - setup
+          - error
+          - handling
+          - testing
+      - name: state-management
+        path: outcome/state-management
+        description: >-
+          Guides state architecture decisions including server state (TanStack Query), client state (Zustand), form
+          state (React Hook Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data
+          fetching, or managing complex form state.
+        triggers: &ref_10
+          - state
+          - management
+          - guides
+          - architecture
+          - decisions
+          - including
+          - server
+          - tanstack
+          - query
+          - client
+          - zustand
+          - form
+          - react
+          - hook
+          - zod
+          - url
+          - patterns
+          - choosing
+          - solutions
+          - implementing
+          - data
+          - fetching
+          - managing
+          - complex
+      - name: styling-system
+        path: outcome/styling-system
+        description: >-
+          Guides CSS architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark
+          mode implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design
+          systems, or choosing between styling approaches.
+        triggers: &ref_11
+          - styling
+          - system
+          - guides
+          - css
+          - architecture
+          - decisions
+          - including
+          - tailwind
+          - configuration
+          - design
+          - tokens
+          - responsive
+          - patterns
+          - dark
+          - mode
+          - implementation
+          - alternatives
+          - setting
+          - infrastructure
+          - creating
+          - systems
+          - choosing
+          - between
+          - approaches
+      - name: testing-strategy
+        path: outcome/testing-strategy
+        description: >-
+          Comprehensive testing patterns for Vitest/Jest unit tests, React Testing Library component tests, Playwright
+          E2E tests, and MSW API mocking. Covers test organization, coverage targets, fixture management, and CI
+          integration.
+        triggers: &ref_12
+          - testing
+          - strategy
+          - comprehensive
+          - patterns
+          - vitest
+          - jest
+          - unit
+          - tests
+          - react
+          - library
+          - component
+          - playwright
+          - e2e
+          - msw
+          - api
+          - mocking
+          - covers
+          - test
+          - organization
+          - coverage
+          - targets
+          - fixture
+          - management
+          - integration
+  protocol:
+    _items:
+      - name: discover-plan-batch
+        path: protocol/discover-plan-batch
+        description: >-
+          Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use before starting any development task.
+          Covers discovery patterns using the discover tool, work planning for token efficiency, and batch execution
+          strategies.
+        triggers: &ref_13
+          - discover
+          - plan
+          - batch
+          - defines
+          - loop
+          - all
+          - goodvibes
+          - agents
+          - before
+          - starting
+          - any
+          - development
+          - task
+          - covers
+          - discovery
+          - patterns
+          - using
+          - tool
+          - work
+          - planning
+          - token
+          - efficiency
+          - execution
+          - strategies
+      - name: error-recovery
+        path: protocol/error-recovery
+        description: >-
+          Defines error recovery procedures for all GoodVibes agents. Use when encountering tool failures, build errors,
+          test failures, or unexpected results during task execution. Covers systematic error recovery, memory-informed
+          diagnostics, and when to escalate to the orchestrator.
+        triggers: &ref_14
+          - error
+          - recovery
+          - defines
+          - procedures
+          - all
+          - goodvibes
+          - agents
+          - encountering
+          - tool
+          - failures
+          - build
+          - errors
+          - test
+          - unexpected
+          - results
+          - during
+          - task
+          - execution
+          - covers
+          - systematic
+          - memory
+          - informed
+          - diagnostics
+          - escalate
+          - orchestrator
+      - name: goodvibes-memory
+        path: protocol/goodvibes-memory
+        description: >-
+          Defines how all GoodVibes agents read from and write to the persistent memory and logging system. Use at the
+          start of any task (read) and after completing any task (write). Covers decisions.json, patterns.json,
+          failures.json, preferences.json, and session logs.
+        triggers: &ref_15
+          - goodvibes
+          - memory
+          - defines
+          - how
+          - all
+          - agents
+          - read
+          - from
+          - write
+          - persistent
+          - logging
+          - system
+          - start
+          - any
+          - task
+          - after
+          - completing
+          - covers
+          - decisions
+          - json
+          - patterns
+          - failures
+          - preferences
+          - session
+          - logs
+      - name: precision-mastery
+        path: protocol/precision-mastery
+        description: >-
+          Teaches optimal usage of GoodVibes precision engine tools for maximum token efficiency. Use when performing
+          any file operations, searches, or command execution. Covers extract modes, verbosity settings, batching
+          patterns, and discover tool orchestration.
+        triggers: &ref_16
+          - precision
+          - mastery
+          - teaches
+          - optimal
+          - usage
+          - goodvibes
+          - engine
+          - tools
+          - maximum
+          - token
+          - efficiency
+          - performing
+          - any
+          - file
+          - operations
+          - searches
+          - command
+          - execution
+          - covers
+          - extract
+          - modes
+          - verbosity
+          - settings
+          - batching
+          - patterns
+          - discover
+          - tool
+          - orchestration
+      - name: review-scoring
+        path: protocol/review-scoring
+        description: >-
+          Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring
+          implementations, or validating that work meets quality standards. Includes deterministic validation scripts
+          for review output.
+        triggers: &ref_17
+          - review
+          - scoring
+          - defines
+          - quantified
+          - rubric
+          - format
+          - wrfc
+          - loops
+          - reviewing
+          - code
+          - implementations
+          - validating
+          - that
+          - work
+          - meets
+          - quality
+          - standards
+          - includes
+          - deterministic
+          - validation
+          - scripts
+          - output
   quality:
-    description: "Code quality, auditing, and improvement workflows"
-    skills:
-      - name: code-review
-        path: quality/code-review
-        description: "Systematic code review methodology using precision tools. Use when reviewing PRs, validating implementations, or performing quality audits. Covers security, performance, architecture, testing, and accessibility reviews with automated pattern detection and the 10-dimension weighted scoring rubric."
-
-      - name: security-audit
-        path: quality/security-audit
-        description: "Comprehensive security audit methodology covering authentication, authorization, input validation, data protection, dependency scanning, API security, and infrastructure hardening. Includes precision tool workflows for automated vulnerability detection."
-
-      - name: performance-audit
-        path: quality/performance-audit
-        description: "Systematic performance audit methodology covering bundle analysis, database optimization, rendering performance, network optimization, memory management, server-side performance, and Core Web Vitals. Includes precision tool workflows for automated performance checks."
-
+    _items:
       - name: accessibility-audit
         path: quality/accessibility-audit
-        description: "WCAG 2.1 AA compliance audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen reader support, color contrast, forms, and media accessibility. Includes precision tool workflows for automated pattern detection and structured reporting."
-
-      - name: refactoring
-        path: quality/refactoring
-        description: "Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename, simplify conditionals, type improvements, dependency inversion, and database refactoring with automated safety validation."
-
+        description: >-
+          WCAG 2.1 AA compliance audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen
+          reader support, color contrast, forms, and media accessibility. Includes precision tool workflows for
+          automated pattern detection and structured reporting.
+        triggers: &ref_18
+          - accessibility
+          - audit
+          - wcag
+          - compliance
+          - methodology
+          - covering
+          - semantic
+          - html
+          - aria
+          - patterns
+          - keyboard
+          - navigation
+          - screen
+          - reader
+          - support
+          - color
+          - contrast
+          - forms
+          - media
+          - includes
+          - precision
+          - tool
+          - workflows
+          - automated
+          - pattern
+          - detection
+          - structured
+          - reporting
+      - name: code-review
+        path: quality/code-review
+        description: >-
+          Systematic code review methodology using precision tools. Use when reviewing PRs, validating implementations,
+          or performing quality audits. Covers security, performance, architecture, testing, and accessibility reviews
+          with automated pattern detection and the 10-dimension weighted scoring rubric.
+        triggers: &ref_19
+          - code
+          - review
+          - systematic
+          - methodology
+          - using
+          - precision
+          - tools
+          - reviewing
+          - prs
+          - validating
+          - implementations
+          - performing
+          - quality
+          - audits
+          - covers
+          - security
+          - performance
+          - architecture
+          - testing
+          - accessibility
+          - reviews
+          - automated
+          - pattern
+          - detection
+          - dimension
+          - weighted
+          - scoring
+          - rubric
       - name: debugging
         path: quality/debugging
-        description: "Systematic debugging methodology using precision tools. Use when investigating errors, tracing issues, analyzing runtime behavior, or diagnosing performance problems. Covers error analysis, runtime debugging, network inspection, state debugging, and root cause analysis with automated pattern detection."
-
+        description: >-
+          Systematic debugging methodology using precision tools. Use when investigating errors, tracing issues,
+          analyzing runtime behavior, or diagnosing performance problems. Covers error analysis, runtime debugging,
+          network inspection, state debugging, and root cause analysis with automated pattern detection.
+        triggers: &ref_20
+          - debugging
+          - systematic
+          - methodology
+          - using
+          - precision
+          - tools
+          - investigating
+          - errors
+          - tracing
+          - issues
+          - analyzing
+          - runtime
+          - behavior
+          - diagnosing
+          - performance
+          - problems
+          - covers
+          - error
+          - analysis
+          - network
+          - inspection
+          - state
+          - root
+          - cause
+          - automated
+          - pattern
+          - detection
+      - name: performance-audit
+        path: quality/performance-audit
+        description: >-
+          Systematic performance audit methodology covering bundle analysis, database optimization, rendering
+          performance, network optimization, memory management, server-side performance, and Core Web Vitals. Includes
+          precision tool workflows for automated performance checks.
+        triggers: &ref_21
+          - performance
+          - audit
+          - systematic
+          - methodology
+          - covering
+          - bundle
+          - analysis
+          - database
+          - optimization
+          - rendering
+          - network
+          - memory
+          - management
+          - server
+          - side
+          - core
+          - web
+          - vitals
+          - includes
+          - precision
+          - tool
+          - workflows
+          - automated
+          - checks
       - name: project-onboarding
         path: quality/project-onboarding
-        description: "Guides systematic project onboarding through codebase analysis, architecture mapping, dependency auditing, convention detection, and developer environment setup for rapid productive contribution"
+        description: >-
+          Guides systematic project onboarding through codebase analysis, architecture mapping, dependency auditing,
+          convention detection, and developer environment setup for rapid productive contribution
+        triggers: &ref_22
+          - project
+          - onboarding
+          - guides
+          - systematic
+          - through
+          - codebase
+          - analysis
+          - architecture
+          - mapping
+          - dependency
+          - auditing
+          - convention
+          - detection
+          - developer
+          - environment
+          - setup
+          - rapid
+          - productive
+          - contribution
+      - name: refactoring
+        path: quality/refactoring
+        description: >-
+          Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing
+          duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename,
+          simplify conditionals, type improvements, dependency inversion, and database refactoring with automated safety
+          validation.
+        triggers: &ref_23
+          - refactoring
+          - systematic
+          - code
+          - methodology
+          - using
+          - precision
+          - tools
+          - improving
+          - structure
+          - reducing
+          - duplication
+          - enhancing
+          - type
+          - safety
+          - reorganizing
+          - codebases
+          - covers
+          - extract
+          - function
+          - component
+          - rename
+          - simplify
+          - conditionals
+          - improvements
+          - dependency
+          - inversion
+          - database
+          - automated
+          - validation
+      - name: security-audit
+        path: quality/security-audit
+        description: >-
+          Comprehensive security audit methodology covering authentication, authorization, input validation, data
+          protection, dependency scanning, API security, and infrastructure hardening. Includes precision tool workflows
+          for automated vulnerability detection.
+        triggers: &ref_24
+          - security
+          - audit
+          - comprehensive
+          - methodology
+          - covering
+          - authentication
+          - authorization
+          - input
+          - validation
+          - data
+          - protection
+          - dependency
+          - scanning
+          - api
+          - infrastructure
+          - hardening
+          - includes
+          - precision
+          - tool
+          - workflows
+          - automated
+          - vulnerability
+          - detection
+search_index:
+  - name: fullstack-feature
+    keywords: *ref_0
+    path: orchestration/fullstack-feature
+    description: >-
+      End-to-end feature development workflow that orchestrates multiple agents across the full stack. Use when the user
+      requests a complete feature that spans backend, frontend, and testing. Sequences work across database, API, UI,
+      tests, and review.
+  - name: task-orchestration
+    keywords: *ref_1
+    path: orchestration/task-orchestration
+    description: >-
+      Guides the GoodVibes orchestrator in decomposing feature requests into parallel agent tasks, assigning appropriate
+      agents and skills, managing dependencies, and coordinating WRFC loops across up to 6 concurrent agent chains. Use
+      when receiving a new user request that requires multiple agents.
+  - name: ai-integration
+    keywords: *ref_2
+    path: outcome/ai-integration
+    description: >-
+      AI and LLM integration workflow using GoodVibes precision tools. Use when implementing chat interfaces, streaming
+      responses, RAG pipelines, embeddings, vector search, or tool/function calling. Covers Vercel AI SDK, OpenAI,
+      Anthropic, and local model patterns.
+  - name: api-design
+    keywords: *ref_3
+    path: outcome/api-design
+    description: >-
+      API endpoint design and implementation workflow using GoodVibes precision tools. Use when building REST endpoints,
+      GraphQL resolvers, tRPC procedures, API middleware, request validation, or response formatting. Covers route
+      design, error handling, and documentation.
+  - name: authentication
+    keywords: *ref_4
+    path: outcome/authentication
+    description: >-
+      Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password
+      reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery,
+      implementation, security verification, and testing.
+  - name: component-architecture
+    keywords: *ref_5
+    path: outcome/component-architecture
+    description: >-
+      Component design workflow using GoodVibes precision tools. Use when building UI components, designing component
+      hierarchies, optimizing render performance, or organizing component files. Covers composition patterns, state
+      management, render optimization, and file organization for React/Vue/Svelte.
+  - name: database-layer
+    keywords: *ref_6
+    path: outcome/database-layer
+    description: >-
+      Database and ORM setup workflow using GoodVibes precision tools. Use when creating schemas, running migrations,
+      setting up database connections, defining models, writing queries, or optimizing database performance. Covers
+      relational and document databases.
+  - name: deployment
+    keywords: *ref_7
+    path: outcome/deployment
+    description: >-
+      Deployment patterns for Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD
+      pipelines, preview deployments, health checks, rollback strategies, and monitoring setup.
+  - name: payment-integration
+    keywords: *ref_8
+    path: outcome/payment-integration
+    description: >-
+      Payment processing integration workflow using GoodVibes precision tools. Use when implementing Stripe,
+      LemonSqueezy, or Paddle checkout flows, subscription billing, webhook handling, or payment security. Covers setup,
+      testing, and PCI compliance.
+  - name: service-integration
+    keywords: *ref_9
+    path: outcome/service-integration
+    description: >-
+      External service integration workflow using GoodVibes precision tools. Use when integrating email services
+      (Resend, SendGrid), CMS platforms (Sanity, Contentful, Payload), file uploads (UploadThing, Cloudinary, S3), or
+      analytics. Covers setup, error handling, and testing.
+  - name: state-management
+    keywords: *ref_10
+    path: outcome/state-management
+    description: >-
+      Guides state architecture decisions including server state (TanStack Query), client state (Zustand), form state
+      (React Hook Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data fetching,
+      or managing complex form state.
+  - name: styling-system
+    keywords: *ref_11
+    path: outcome/styling-system
+    description: >-
+      Guides CSS architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark mode
+      implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design systems,
+      or choosing between styling approaches.
+  - name: testing-strategy
+    keywords: *ref_12
+    path: outcome/testing-strategy
+    description: >-
+      Comprehensive testing patterns for Vitest/Jest unit tests, React Testing Library component tests, Playwright E2E
+      tests, and MSW API mocking. Covers test organization, coverage targets, fixture management, and CI integration.
+  - name: discover-plan-batch
+    keywords: *ref_13
+    path: protocol/discover-plan-batch
+    description: >-
+      Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use before starting any development task. Covers
+      discovery patterns using the discover tool, work planning for token efficiency, and batch execution strategies.
+  - name: error-recovery
+    keywords: *ref_14
+    path: protocol/error-recovery
+    description: >-
+      Defines error recovery procedures for all GoodVibes agents. Use when encountering tool failures, build errors,
+      test failures, or unexpected results during task execution. Covers systematic error recovery, memory-informed
+      diagnostics, and when to escalate to the orchestrator.
+  - name: goodvibes-memory
+    keywords: *ref_15
+    path: protocol/goodvibes-memory
+    description: >-
+      Defines how all GoodVibes agents read from and write to the persistent memory and logging system. Use at the start
+      of any task (read) and after completing any task (write). Covers decisions.json, patterns.json, failures.json,
+      preferences.json, and session logs.
+  - name: precision-mastery
+    keywords: *ref_16
+    path: protocol/precision-mastery
+    description: >-
+      Teaches optimal usage of GoodVibes precision engine tools for maximum token efficiency. Use when performing any
+      file operations, searches, or command execution. Covers extract modes, verbosity settings, batching patterns, and
+      discover tool orchestration.
+  - name: review-scoring
+    keywords: *ref_17
+    path: protocol/review-scoring
+    description: >-
+      Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring
+      implementations, or validating that work meets quality standards. Includes deterministic validation scripts for
+      review output.
+  - name: accessibility-audit
+    keywords: *ref_18
+    path: quality/accessibility-audit
+    description: >-
+      WCAG 2.1 AA compliance audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen reader
+      support, color contrast, forms, and media accessibility. Includes precision tool workflows for automated pattern
+      detection and structured reporting.
+  - name: code-review
+    keywords: *ref_19
+    path: quality/code-review
+    description: >-
+      Systematic code review methodology using precision tools. Use when reviewing PRs, validating implementations, or
+      performing quality audits. Covers security, performance, architecture, testing, and accessibility reviews with
+      automated pattern detection and the 10-dimension weighted scoring rubric.
+  - name: debugging
+    keywords: *ref_20
+    path: quality/debugging
+    description: >-
+      Systematic debugging methodology using precision tools. Use when investigating errors, tracing issues, analyzing
+      runtime behavior, or diagnosing performance problems. Covers error analysis, runtime debugging, network
+      inspection, state debugging, and root cause analysis with automated pattern detection.
+  - name: performance-audit
+    keywords: *ref_21
+    path: quality/performance-audit
+    description: >-
+      Systematic performance audit methodology covering bundle analysis, database optimization, rendering performance,
+      network optimization, memory management, server-side performance, and Core Web Vitals. Includes precision tool
+      workflows for automated performance checks.
+  - name: project-onboarding
+    keywords: *ref_22
+    path: quality/project-onboarding
+    description: >-
+      Guides systematic project onboarding through codebase analysis, architecture mapping, dependency auditing,
+      convention detection, and developer environment setup for rapid productive contribution
+  - name: refactoring
+    keywords: *ref_23
+    path: quality/refactoring
+    description: >-
+      Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing
+      duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename, simplify
+      conditionals, type improvements, dependency inversion, and database refactoring with automated safety validation.
+  - name: security-audit
+    keywords: *ref_24
+    path: quality/security-audit
+    description: >-
+      Comprehensive security audit methodology covering authentication, authorization, input validation, data
+      protection, dependency scanning, API security, and infrastructure hardening. Includes precision tool workflows for
+      automated vulnerability detection.

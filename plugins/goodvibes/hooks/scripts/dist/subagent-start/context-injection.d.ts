@@ -10,6 +10,10 @@
  * @module subagent-start/context-injection
  * @see {@link ../session-start/context-injection} for main session context
  */
+/** Protocol skills that should be loaded before starting work */
+export declare const PROTOCOL_SKILLS: string[];
+/** Agent-specific skill recommendations based on role */
+export declare const AGENT_SKILL_MAP: Record<string, string[]>;
 /** Context to inject into a subagent session */
 export interface SubagentContext {
     /** Additional context string to inject (always contains at least project info) */
@@ -25,7 +29,7 @@ export interface SubagentContext {
  * @returns Promise resolving to SubagentContext with additional context string
  *
  * @example
- * const context = await buildSubagentContext(cwd, 'backend-engineer', sessionId);
- * // Returns context with write-local reminder
+ * const context = await buildSubagentContext(cwd, 'goodvibes:engineer', sessionId);
+ * // Returns context with write-local and skill recommendations
  */
 export declare function buildSubagentContext(cwd: string, agentType: string, _sessionId: string): Promise<SubagentContext>;

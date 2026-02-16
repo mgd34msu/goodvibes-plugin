@@ -826,6 +826,31 @@ function getDefaultConfig() {
 }
 
 // src/subagent-start/context-injection.ts
+var PROTOCOL_SKILLS = [
+  "precision-mastery",
+  "review-scoring",
+  "discover-plan-batch",
+  "goodvibes-memory",
+  "error-recovery"
+];
+var AGENT_SKILL_MAP = {
+  "engineer": ["authentication", "database-layer", "api-design", "component-architecture", "styling-system", "state-management", "payment-integration", "ai-integration", "service-integration", "refactoring", "debugging"],
+  "reviewer": ["code-review", "security-audit", "performance-audit", "accessibility-audit"],
+  "tester": ["testing-strategy"],
+  "architect": ["project-onboarding"],
+  // Loads outcome skills as needed per task; project-onboarding is the primary quality skill
+  "deployer": ["deployment"],
+  "integrator": ["ai-integration", "payment-integration", "service-integration", "state-management", "authentication"],
+  // Generic integrator
+  "integrator-ai": ["ai-integration"],
+  "integrator-services": ["payment-integration", "service-integration", "authentication"],
+  "integrator-state": ["state-management"],
+  "planner": ["task-orchestration", "fullstack-feature"],
+  "agent-factory": [],
+  // Meta-agent, loads skills as needed
+  "skill-factory": []
+  // Meta-agent, loads skills as needed
+};
 async function buildSubagentContext(cwd, agentType, _sessionId) {
   const _sharedConfig = await loadSharedConfig(cwd);
   const automationConfig = getDefaultConfig();
@@ -848,7 +873,7 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
       "Remember: Write-local only. All changes must be in the project root or directories within the project root.\n\n"
     );
   }
-  if (agentType.includes("tester")) {
+  if (agentType.includes("test")) {
     contextParts.push(
       "Remember: Tests must actually verify behavior, not just exist.\n\n"
     );
@@ -858,6 +883,15 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
       "Remember: Be completely honest, regardless of how harsh the truth would be. Never sugar coat or take feelings into account.\n\n"
     );
   }
+  const agentSuffix = agentType.split(":").pop() ?? agentType;
+  const outcomeSkills = AGENT_SKILL_MAP[agentSuffix] ?? [];
+  contextParts.push(
+    `Available protocol skills (load before starting work): ${PROTOCOL_SKILLS.join(", ")}
+Relevant outcome/quality skills for your role: ${outcomeSkills.length > 0 ? outcomeSkills.join(", ") : "none \u2014 load as needed"}
+Load skills with: search_skills or get_skill_content from the registry engine.
+
+`
+  );
   return {
     additionalContext: contextParts.join("\n")
   };
