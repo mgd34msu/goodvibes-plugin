@@ -39,10 +39,10 @@ UNADDRESSED_CRITICAL=()
 UNADDRESSED_MAJOR=()
 
 # Extract critical issues from original review
-CRITICAL_ISSUES=$(sed -n '/^### Critical (must fix)/,/^### Major\|^### Minor\|^##/p' "$REVIEW_FILE" | grep '^- \[' || true)
+CRITICAL_ISSUES=$(sed -En '/^### Critical \(must fix\)/,/^### Major|^### Minor|^##/p' "$REVIEW_FILE" | grep '^- \[' || true)
 
 # Extract major issues from original review
-MAJOR_ISSUES=$(sed -n '/^### Major (should fix)/,/^### Minor\|^##/p' "$REVIEW_FILE" | grep '^- \[' || true)
+MAJOR_ISSUES=$(sed -En '/^### Major \(should fix\)/,/^### Minor|^##/p' "$REVIEW_FILE" | grep '^- \[' || true)
 
 # Check if fix output has required sections
 if ! grep -qE '^## Fixes Applied' "$FIX_FILE"; then
@@ -101,7 +101,7 @@ fi
 
 # Check that fixes reference specific files
 if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' "$FIX_FILE"; then
-    FIX_DESCRIPTIONS=$(grep -A 100 '^### Critical Issues Addressed\|^### Major Issues Addressed' "$FIX_FILE" | grep '^- \[' || true)
+    FIX_DESCRIPTIONS=$(grep -E -A 100 '^### Critical Issues Addressed|^### Major Issues Addressed' "$FIX_FILE" | grep '^- \[' || true)
     
     if [ -n "$FIX_DESCRIPTIONS" ]; then
         while IFS= read -r line; do
@@ -114,7 +114,7 @@ if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' "$FIX_F
                 ERRORS+=("Fix description missing FILE:LINE reference: ${line:0:80}...")
             fi
             
-            if ! echo "$line" | grep -qi 'Fixed by:\|→'; then
+            if ! echo "$line" | grep -Eqi 'Fixed by:|→'; then
                 ERRORS+=("Fix description missing 'Fixed by:' explanation: ${line:0:80}...")
             fi
         done <<< "$FIX_DESCRIPTIONS"

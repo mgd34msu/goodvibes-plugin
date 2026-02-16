@@ -49,9 +49,27 @@ DIMENSIONS=(
     "Integration"
 )
 
+# NOTE: Dimension score regex expects exact markdown table format:
+# | Dimension Name | Score/10 | Notes |
+# with single spaces around pipe delimiters
 for dimension in "${DIMENSIONS[@]}"; do
     if ! grep -qE "^\| $dimension \| [0-9]+/10 \|" "$REVIEW_FILE"; then
         ERRORS+=("Missing or malformed dimension score for: $dimension")
+    fi
+done
+
+# Check critical dimension rule (SKILL.md line 236)
+# Extract verdict for later comparison
+VERDICT=$(grep -oE '^- \*\*Verdict\*\*: (PASS|CONDITIONAL PASS|FAIL)' "$REVIEW_FILE" | grep -oE '(PASS|CONDITIONAL PASS|FAIL)$' || echo "UNKNOWN")
+
+for dimension in "${DIMENSIONS[@]}"; do
+    # Extract dimension score (just the number, not /10)
+    dim_score=$(grep -oP "^\| $dimension \| \K[0-9]+" "$REVIEW_FILE" || echo "0")
+    if [[ "$dim_score" -lt 4 ]] && [[ "$dim_score" -ne 0 ]]; then
+        # Score below 4 (and not missing/0) requires FAIL verdict
+        if [[ "$VERDICT" != "FAIL" ]]; then
+            ERRORS+=("Dimension '$dimension' scored $dim_score/10 (below 4) — verdict must be FAIL per critical dimension rule, but verdict is $VERDICT")
+        fi
     fi
 done
 
@@ -70,7 +88,7 @@ fi
 
 # Check 5: Issues have FILE:LINE references and fix suggestions
 # Extract issue lines (those starting with '- [' after category headers)
-ISSUE_LINES=$(grep -A 100 '^### Critical\|^### Major\|^### Minor' "$REVIEW_FILE" | grep '^- \[' || true)
+ISSUE_LINES=$(grep -E -A 100 '^### Critical|^### Major|^### Minor' "$REVIEW_FILE" | grep '^- \[' || true)
 
 if [ -n "$ISSUE_LINES" ]; then
     # Check each issue line has FILE:LINE format
@@ -93,11 +111,12 @@ fi
 
 # Check 7: Verdict matches score thresholds
 SCORE=$(grep -oE '^- \*\*Overall Score\*\*: [0-9]+\.[0-9]+' "$REVIEW_FILE" | grep -oE '[0-9]+\.[0-9]+' || echo "0.0")
-VERDICT=$(grep -oE '^- \*\*Verdict\*\*: (PASS|CONDITIONAL PASS|FAIL)' "$REVIEW_FILE" | grep -oE '(PASS|CONDITIONAL PASS|FAIL)$' || echo "UNKNOWN")
+# Note: VERDICT already extracted above for critical dimension check
 
 # Convert score to integer (multiply by 10 to avoid float comparison)
-SCORE_INT=$(awk "BEGIN {printf \"%.0f\", $SCORE * 10}")
+SCORE_INT=$(awk -v score="$SCORE" 'BEGIN {printf "%.0f", score * 10}')
 
+# Determine expected verdict based on score
 if [ "$SCORE_INT" -ge 95 ]; then
     EXPECTED_VERDICT="PASS"
 elif [ "$SCORE_INT" -ge 80 ]; then
@@ -106,8 +125,21 @@ else
     EXPECTED_VERDICT="FAIL"
 fi
 
+# Only check verdict-score match if critical dimension rule hasn't already triggered FAIL
 if [ "$VERDICT" != "$EXPECTED_VERDICT" ] && [ "$VERDICT" != "UNKNOWN" ]; then
-    ERRORS+=("Verdict mismatch: Score $SCORE should be $EXPECTED_VERDICT but got $VERDICT")
+    # Check if a critical dimension rule violation already flagged this
+    CRIT_DIM_FAIL=false
+    for error in "${ERRORS[@]}"; do
+        if [[ "$error" == *"critical dimension rule"* ]]; then
+            CRIT_DIM_FAIL=true
+            break
+        fi
+    done
+    
+    # Only add verdict mismatch if it's not due to critical dimension rule
+    if [ "$CRIT_DIM_FAIL" = false ]; then
+        ERRORS+=("Verdict mismatch: Score $SCORE should be $EXPECTED_VERDICT but got $VERDICT")
+    fi
 fi
 
 # Report results

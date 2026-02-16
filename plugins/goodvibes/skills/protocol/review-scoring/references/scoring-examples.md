@@ -2,13 +2,13 @@
 
 This document provides real examples of high-quality and low-quality reviews to illustrate proper application of the review-scoring rubric.
 
-## Example 1: High-Quality Review (9.5/10)
+## Example 1: High-Quality Review (9.7/10)
 
 This example demonstrates a thorough, well-scored review that would PASS.
 
 ```markdown
 ## Review Summary
-- **Overall Score**: 9.5/10
+- **Overall Score**: 9.7/10
 - **Verdict**: PASS
 - **Files Reviewed**: src/api/users.ts, src/lib/auth.ts, src/components/UserProfile.tsx
 
@@ -46,7 +46,7 @@ None
 - **Testing mindset**: Tests are comprehensive for the happy path and include proper setup/teardown. The use of fixtures makes tests maintainable.
 ```
 
-### Why This Is a 9.5/10 Review
+### Why This Is a 9.7/10 Review
 
 ✅ **Specific findings**: Each dimension score has concrete justification
 ✅ **Accurate scoring**: Minor issues don't inflate scores (Testability = 8, not 10)
@@ -54,7 +54,7 @@ None
 ✅ **Actionable fixes**: Each fix suggestion is specific and implementable
 ✅ **Balanced**: Highlights both issues and strengths
 ✅ **Format compliance**: Follows required structure exactly
-✅ **Verdict matches score**: 9.5 → PASS (correct threshold)
+✅ **Verdict matches score**: 9.7 → PASS (correct threshold)
 
 ---
 
@@ -79,7 +79,7 @@ This example demonstrates common mistakes in reviews.
 | Testability | 7/10 | Tests could be better |
 | Readability | 9/10 | Easy to read |
 | Error Handling | 8/10 | Some error handling |
-| Type Safety | 7/10 | Has types |
+| Type Safety | 8/10 | Has types |
 | Integration | 9/10 | Works with other code |
 
 ## Issues Found
