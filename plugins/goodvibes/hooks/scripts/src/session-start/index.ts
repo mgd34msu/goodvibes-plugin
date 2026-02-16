@@ -222,8 +222,8 @@ async function runSessionStartHook(): Promise<void> {
     // Step 5: Save state
     await savePluginState(projectDir, state);
 
-    // Step 5.25: Build project file index
-    await buildProjectIndex(projectDir).catch((err) =>
+    // Step 5.25: Build project file index (fire-and-forget - must NOT block session start)
+    buildProjectIndex(projectDir).catch((err) =>
       logError('Project indexer failed', err instanceof Error ? err : new Error(String(err)))
     );
 

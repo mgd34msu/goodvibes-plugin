@@ -41,6 +41,8 @@ const INDEX_EXCLUSIONS = [
   'target',
 ];
 
+const INDEX_EXCLUSIONS_SET = new Set(INDEX_EXCLUSIONS);
+
 /**
  * File extensions to exclude (typically minified or generated files).
  */
@@ -56,7 +58,6 @@ const EXCLUDED_EXTENSIONS = [
  */
 const EXCLUDED_FILENAMES = [
   'package-lock.json',
-  'yarn.lock',
   'pnpm-lock.yaml',
   'bun.lockb',
 ];
@@ -106,7 +107,7 @@ function shouldExclude(name: string, relativePath: string): boolean {
   // Check if any path segment matches exclusion list
   const segments = relativePath.split(path.sep);
   for (const segment of segments) {
-    if (INDEX_EXCLUSIONS.includes(segment)) {
+    if (INDEX_EXCLUSIONS_SET.has(segment)) {
       return true;
     }
   }
@@ -167,7 +168,7 @@ function categorizeFileType(filePath: string): string | undefined {
     case '.yml':
       return 'yaml';
     default:
-      return 'other';
+      return undefined;
   }
 }
 
@@ -210,7 +211,9 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
       withFileTypes: true,
     });
 
-    // Process each entry
+    // Collect all file entries first (avoid N+1 stat calls)
+    const pendingFiles: Array<{ name: string; relativePath: string; fullPath: string }> = [];
+
     for (const entry of dirEntries) {
       // Check timeout (30 seconds max)
       if (Date.now() - startMs > 30000) {
@@ -224,9 +227,10 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
         continue;
       }
 
-      // Build relative path
-      const relativePath = entry.parentPath
-        ? path.relative(projectDir, path.join(entry.parentPath, entry.name))
+      // Build relative path with Node 20.0-20.11 compatibility
+      const parent = entry.parentPath ?? (entry as any).path;
+      const relativePath = parent
+        ? path.relative(projectDir, path.join(parent, entry.name))
         : entry.name;
 
       // Check if should be excluded
@@ -234,21 +238,32 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
         continue;
       }
 
-      // Get file stats
-      try {
-        const fullPath = path.join(projectDir, relativePath);
-        const stats = await stat(fullPath);
+      const fullPath = path.join(projectDir, relativePath);
+      pendingFiles.push({ name: entry.name, relativePath, fullPath });
+    }
 
-        entries.push({
-          p: relativePath,
-          s: stats.size,
-          m: Math.floor(stats.mtimeMs),
-          t: categorizeFileType(relativePath),
-        });
-      } catch (statError) {
-        // Skip files that fail to stat
-        debug('Failed to stat file', { relativePath, error: statError });
-        continue;
+    // Batch stat calls with controlled concurrency
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
+      const batch = pendingFiles.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map((f) =>
+          stat(f.fullPath)
+            .then((s) => ({ ...f, size: s.size, mtimeMs: s.mtimeMs }))
+            .catch(() => null)
+        )
+      );
+      for (const result of results) {
+        if (result) {
+          const type = categorizeFileType(result.relativePath);
+          const entry: FileEntry = {
+            p: result.relativePath,
+            s: result.size,
+            m: Math.floor(result.mtimeMs),
+          };
+          if (type) entry.t = type;
+          entries.push(entry);
+        }
       }
     }
 
@@ -277,7 +292,7 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
     const tempPath = indexPath + '.tmp';
 
     await mkdir(indexDir, { recursive: true });
-    await writeFile(tempPath, JSON.stringify(index), 'utf-8');
+    await writeFile(tempPath, JSON.stringify(index) + '\n', 'utf-8');
     await rename(tempPath, indexPath);
 
     debug('Project index created', {
@@ -288,10 +303,7 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
       partial: isPartial,
     });
   } catch (error) {
-    logError(
-      'Project indexer failed',
-      error instanceof Error ? error : new Error(String(error))
-    );
+    // Let caller handle error logging
     throw error;
   }
 }
