@@ -241,7 +241,7 @@ export const discoverSchema: Tool = {
       },
       base_path: {
         type: 'string',
-        description: 'Base directory for searches (default: cwd). Must be within project root when sandbox is enabled (default). Use precision_config to allow external paths.',
+        description: 'Base directory for searches (default: cwd). When sandbox is enabled, must be within project root. (Default: Sandbox OFF. Only explicit user authorization can enable sandbox — never enable programmatically.)',
       },
     },
     required: ['queries'],
