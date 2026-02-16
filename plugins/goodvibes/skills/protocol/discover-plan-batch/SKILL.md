@@ -33,6 +33,13 @@ Discovery prevents blind implementation. Before writing code, you must understan
 - What previous attempts/failures are documented
 - What architectural decisions constrain your approach
 
+**When to skip discovery:**
+- Task is 1-2 files you already have full context for
+- Task has zero file I/O (pure analysis/reporting)
+- You're in a LOOP iteration with fresh discovery already done
+
+For all other tasks: **always discover first**.
+
 ### Discovery Tools
 
 #### The `discover` Tool
@@ -122,6 +129,11 @@ precision_read:
   verbosity: standard
 ```
 
+**Decision criteria:**
+- Use `outline` when you need structure but not implementation (checking what exists)
+- Use `symbols` when you need to know what's importable (building import statements)
+- Use `content` only when you need implementation details (before editing, understanding logic)
+
 ### Check GoodVibes Memory
 
 Before implementing anything, check memory files for context:
@@ -203,6 +215,30 @@ precision_read:
   files:
     - path: "src/lib/utils.ts"
       extract: outline
+```
+
+**[BAD] Reading outline then full content**
+
+```yaml
+# BAD: Reading same file twice
+precision_read:
+  files:
+    - path: "src/lib/utils.ts"
+      extract: outline  # First read
+
+# Later...
+precision_read:
+  files:
+    - path: "src/lib/utils.ts"
+      extract: content  # Re-reading for content
+```
+
+```yaml
+# GOOD: Read content once if you'll need it
+precision_read:
+  files:
+    - path: "src/lib/utils.ts"
+      extract: content  # Single read
 ```
 
 **[BAD] Sequential discovery queries**
@@ -332,7 +368,7 @@ If your plan contains 3 or more sequential calls to the same precision tool, you
 
 **Example: Creating multiple files**
 
-[BAD] **BAD PLAN:**
+**[BAD]**
 ```
 1. precision_write - create types.ts
 2. precision_write - create hooks.ts
@@ -340,21 +376,21 @@ If your plan contains 3 or more sequential calls to the same precision tool, you
 4. precision_write - create utils.ts
 ```
 
-[GOOD] **GOOD PLAN:**
+**[GOOD]**
 ```
 1. precision_write - create types.ts, hooks.ts, index.ts, utils.ts (batched)
 ```
 
 **Example: Running validation commands**
 
-[BAD] **BAD PLAN:**
+**[BAD]**
 ```
 1. precision_exec - npm run typecheck
 2. precision_exec - npm run lint
 3. precision_exec - npm run test
 ```
 
-[GOOD] **GOOD PLAN:**
+**[GOOD]**
 ```
 1. precision_exec - run typecheck, lint, test (batched)
 ```
@@ -405,13 +441,19 @@ Estimate token costs before execution:
 - Minimal verbosity: ~50 tokens per file
 - Standard verbosity: ~150 tokens per file
 
+**Discover query costs:**
+- glob: ~50 tokens (count_only), ~100 tokens (files_only)
+- grep: ~200-500 tokens depending on matches (files_only)
+- symbols: ~100-300 tokens depending on symbol count (files_only)
+
 **Example estimation:**
 ```
 Plan token budget:
+- Discover (glob + grep + symbols): ~500 tokens
 - Read 3 files (outline): 3 * 200 = 600 tokens
 - Create 5 files (minimal): 5 * 50 = 250 tokens
 - Run 3 commands (minimal): 3 * 100 = 300 tokens
-Total estimated: ~1,150 tokens
+Total estimated: ~1,650 tokens
 ```
 
 If your estimate exceeds your token budget, revise the plan to be more targeted.
@@ -456,23 +498,18 @@ Batching minimizes token usage and maximizes execution efficiency by grouping op
 
 #### 1. batch_engine Wrapping precision_engine (Maximum Efficiency)
 
-The `batch` tool from batch_engine wraps multiple precision_engine operations into a single atomic transaction:
+The `batch` tool from batch_engine wraps multiple precision_engine operations into a single atomic transaction with phase-grouped operations:
 
 ```yaml
 batch:
-  id: implement-auth-feature
   operations:
     read:
-      - id: discover
-        type: glob
-        patterns: ["src/features/**/*.ts"]
-        output:
-          format: files_only
+      - files:
+          - path: "src/types.ts"
+            extract: symbols
     
     write:
-      - id: create-files
-        type: create
-        files:
+      - files:
           - path: "src/features/auth/types.ts"
             content: |
               export interface User {
@@ -485,12 +522,11 @@ batch:
               export function useAuth() { /*...*/ }
     
     exec:
-      - id: validate
-        type: command
-        commands:
+      - commands:
           - cmd: "npm run typecheck"
             expect:
               exit_code: 0
+        verbosity: minimal
 ```
 
 **Benefits:**
@@ -498,6 +534,11 @@ batch:
 - Atomic transactions (all-or-nothing)
 - Checkpoint support (can rollback)
 - Operation results accessible to subsequent operations
+
+**Note on tool relationships:**
+- `discover` is a **precision_engine tool** that runs multiple grep/glob/symbols queries in parallel
+- `batch_engine` is an **orchestration wrapper** around precision_engine tools for atomic transactions
+- All precision_engine tools have **built-in batching** (multiple files/edits/commands per call)
 
 #### 2. precision_engine Built-in Batching (Good Efficiency)
 
@@ -613,6 +654,47 @@ precision_exec:
 #### 4. Native Tools (NEVER)
 
 Native tools (Read, Write, Edit, Grep, Glob, Bash) are blocked by the PreToolUse hook. Always use precision_engine equivalents.
+
+### Batch Failure Handling
+
+When batch operations fail, the behavior depends on the tool:
+
+**batch_engine failures:**
+- Atomic mode: All operations rolled back on any failure
+- Partial mode: Successful operations kept, failed operations reported
+- Check `operations[id].status` in batch result to identify failures
+
+**precision_engine failures:**
+- Individual file/edit/command failures reported in result
+- Successful operations complete, failures don't affect them
+- Check `files[path].status` or `edits[id].status` for failures
+
+**Recovery pattern:**
+1. Examine error output to identify root cause
+2. Determine if issue is code-related or environment-related
+3. Fix the specific failed operation(s)
+4. Re-run just the failed operations (don't re-run successful ones)
+5. If root cause was incorrect assumptions, LOOP back to DISCOVER
+
+**Example recovery:**
+```yaml
+# Initial batch failed on file3.ts (import error)
+# Fix: Read the file that should export the symbol
+precision_read:
+  files:
+    - path: "src/types/index.ts"
+      extract: symbols
+  verbosity: minimal
+
+# Re-write just the failed file with correct import
+precision_write:
+  files:
+    - path: "src/features/auth/file3.ts"
+      content: |
+        import { User } from '@/types';  // Fixed import
+        export function getUser(): User { /*...*/ }
+  verbosity: minimal
+```
 
 ### Post-Execution Validation
 
@@ -758,254 +840,38 @@ discover:
       glob: "src/features/*/index.ts"
 ```
 
-## Complete DPB Example
+**Example: Execution reveals unexpected dependency**
 
-### Task: Implement user profile feature
-
-#### DISCOVER Phase
+```
+Plan: Create auth/hooks.ts using User type
+Execution: Typecheck fails - User type not exported from expected location
+→ LOOP: Discover where User type actually lives
+```
 
 ```yaml
-# Discovery: Understand landscape
+# Re-discovery after execution failure
 discover:
   queries:
-    - id: existing_features
-      type: glob
-      patterns: ["src/features/**/*"]
-    - id: user_types
+    - id: find_user_type
       type: grep
-      pattern: "interface User|type User"
+      pattern: "export (interface|type) User"
       glob: "src/**/*.ts"
-    - id: react_hooks
-      type: symbols
-      query: "use"
-      kinds: ["function"]
-  verbosity: files_only
+  verbosity: locations  # Need exact location
 
-# Check memory
-precision_read:
-  files:
-    - path: ".goodvibes/memory/patterns.json"
-    - path: ".goodvibes/memory/decisions.json"
-  verbosity: minimal
-
-# Understand key files
-precision_read:
-  files:
-    - path: "src/types/user.ts"
-      extract: symbols
-    - path: "src/features/auth/index.ts"
-      extract: outline
-  verbosity: minimal
+# Adjust plan based on discovered location
+# Re-run failed operation with corrected import
 ```
 
-**Discovery Results:**
-- User type already exists in src/types/user.ts
-- Features follow pattern: features/<name>/{types.ts, hooks.ts, index.ts}
-- Memory shows: "Use Zustand for state, not Context API"
+## Examples and Reference
 
-#### PLAN Phase
+For a complete worked example of the DPB loop, anti-patterns summary, checklists, and implementation tips, see:
 
-```
-Files to create:
-- src/features/profile/types.ts - Profile-specific types
-- src/features/profile/hooks.ts - useProfile hook with Zustand
-- src/features/profile/index.ts - Barrel export
-- src/components/ProfileCard.tsx - Profile display component
+**[references/examples-and-checklists.md](references/examples-and-checklists.md)**
 
-Files to modify:
-- src/app/profile/page.tsx - Use new ProfileCard component
-
-Files to read:
-- src/types/user.ts - Need full User interface
-- src/features/auth/hooks.ts - Reference Zustand pattern
-
-Commands:
-- npm run typecheck (expect: exit 0)
-- npm run lint (expect: exit 0)
-- npm run build (expect: exit 0)
-
-Order:
-1. Read user.ts and auth/hooks.ts (parallel)
-2. Create types.ts, hooks.ts, index.ts, ProfileCard.tsx (batched)
-3. Modify profile/page.tsx
-4. Run typecheck, lint, build (batched)
-
-Batch opportunities:
-- Step 1: batch reads (2 files)
-- Step 2: batch writes (4 files)
-- Step 4: batch commands (3 commands)
-```
-
-#### BATCH Phase
-
-```yaml
-# Step 1: Read for context
-precision_read:
-  files:
-    - path: "src/types/user.ts"
-      extract: content
-    - path: "src/features/auth/hooks.ts"
-      extract: content
-  verbosity: minimal
-
-# Step 2: Create files
-precision_write:
-  files:
-    - path: "src/features/profile/types.ts"
-      content: |
-        export interface ProfileData {
-          bio: string;
-          avatar: string;
-        }
-    - path: "src/features/profile/hooks.ts"
-      content: |
-        import { create } from 'zustand';
-        export const useProfile = create((set) => ({...}));
-    - path: "src/features/profile/index.ts"
-      content: |
-        export * from './types';
-        export * from './hooks';
-    - path: "src/components/ProfileCard.tsx"
-      content: |
-        import { useProfile } from '@/features/profile';
-        export function ProfileCard() {...}
-  verbosity: minimal
-
-# Step 3: Modify existing file
-precision_edit:
-  edits:
-    - path: "src/app/profile/page.tsx"
-      find: "export default function ProfilePage() {"
-      replace: |
-        import { ProfileCard } from '@/components/ProfileCard';
-        export default function ProfilePage() {
-  verbosity: minimal
-
-# Step 4: Validate
-precision_exec:
-  commands:
-    - cmd: "npm run typecheck"
-      expect:
-        exit_code: 0
-    - cmd: "npm run lint"
-      expect:
-        exit_code: 0
-    - cmd: "npm run build"
-      expect:
-        exit_code: 0
-  verbosity: minimal
-```
-
-#### LOOP Check
-
-[GOOD] Results match plan:
-- All files created successfully
-- All validations pass
-- No unexpected errors
-
-→ No loop needed. Report success to orchestrator.
-
-## Anti-Patterns Summary
-
-### Diving In Without Discovery
-
-[BAD] Starting with `precision_write` before understanding the codebase
-
-[GOOD] Always run `discover` first to understand landscape
-
-### Unstructured Plans
-
-[BAD] "I'll add some files and see what happens"
-
-[GOOD] Explicit list of files to create/modify, commands to run, dependencies
-
-### Missing Batch Opportunities
-
-[BAD] 5 separate `precision_write` calls for 5 files
-
-[GOOD] 1 `precision_write` call with 5 files in the `files` array
-
-### Skipping Memory Checks
-
-[BAD] Implementing without checking failures.json, patterns.json, decisions.json
-
-[GOOD] Check memory files during discovery phase
-
-### Over-Reading Files
-
-[BAD] Using `extract: content` when `extract: outline` would suffice
-
-[GOOD] Use minimal extraction needed (outline → symbols → content)
-
-### Verbose Output Everywhere
-
-[BAD] `verbosity: verbose` for all operations
-
-[GOOD] `verbosity: minimal` unless you need detailed output
-
-### Sequential When Parallel Works
-
-[BAD] Reading files one at a time when they're independent
-
-[GOOD] Batch reads in single call or use `discover` for parallel queries
-
-### Not Looping When Needed
-
-[BAD] Continuing with outdated plan when discovery reveals new information
-
-[GOOD] Loop back to discovery when assumptions change
-
-## Quick Reference
-
-### Discovery Checklist
-
-- [ ] Run `discover` with parallel queries (glob + grep + symbols)
-- [ ] Check `.goodvibes/memory/failures.json`
-- [ ] Check `.goodvibes/memory/patterns.json`
-- [ ] Check `.goodvibes/memory/decisions.json`
-- [ ] Use `extract: outline` or `extract: symbols` for key files
-- [ ] Estimate scope (count_only mode)
-
-### Planning Checklist
-
-- [ ] List files to create
-- [ ] List files to modify
-- [ ] List files to read (full content)
-- [ ] List commands to run
-- [ ] Identify order of operations
-- [ ] Identify batch opportunities
-- [ ] Apply "3+ sequential calls" rule
-- [ ] Estimate token budget
-
-### Batching Checklist
-
-- [ ] Batch reads when possible
-- [ ] Batch writes when possible
-- [ ] Batch commands when possible
-- [ ] Use minimal verbosity
-- [ ] Validate after execution
-- [ ] Check results match plan
-
-### Loop Checklist
-
-- [ ] Scope matches expectations?
-- [ ] Results match plan?
-- [ ] New information revealed?
-- [ ] If any "no" → loop back to DISCOVER
-
-## Conclusion
-
-The DPB loop is not optional — it's the foundation of efficient agent execution. Every task, from adding a single function to implementing a complete feature, should follow this pattern:
-
-1. **DISCOVER** - Understand before acting
-2. **PLAN** - Structure before executing
-3. **BATCH** - Group operations for efficiency
-- **LOOP** - Adapt when assumptions change
-
-Following DPB consistently results in:
-- 50-90% token savings vs. ad-hoc execution
-- Higher quality implementations (fewer mistakes)
-- Faster iteration (less rework)
-- Better alignment with existing patterns
+The reference file includes:
+- Complete DPB example (user profile feature implementation)
+- Anti-patterns summary with [BAD]/[GOOD] comparisons
+- Quick reference checklists for discovery, planning, batching, and looping
+- Implementation tips and expected outcomes
 
 Make DPB your default mode of operation.
