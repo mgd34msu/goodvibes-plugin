@@ -74,8 +74,8 @@ printf '\n'
 printf '[CHECK 3] Checking for any types...\n'
 ANY_USAGE_COUNT=0
 if [[ -d "src" ]]; then
-  if grep -r --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E ":\\s*any(\\s|;|,|\\))" src 2>/dev/null | grep -q .; then
-    ANY_USAGE_COUNT=$(grep -r --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E ":\\s*any(\\s|;|,|\\))" src 2>/dev/null | wc -l)
+  if grep -r --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E -- ":\\s*any(\\s|;|,|\\))" src 2>/dev/null | grep -q .; then
+    ANY_USAGE_COUNT=$(grep -r --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E -- ":\\s*any(\\s|;|,|\\))" src 2>/dev/null | wc -l)
   fi
 fi
 
@@ -114,7 +114,7 @@ printf '\n'
 printf '[CHECK 5] Checking for console.log statements...\n'
 CONSOLE_LOG_FOUND=false
 if [[ -d "src" ]]; then
-  if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next "console\\.log" src 2>/dev/null | grep -q .; then
+  if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -- "console\\.log" src 2>/dev/null | grep -q .; then
     CONSOLE_LOG_FOUND=true
   fi
 fi
@@ -130,7 +130,7 @@ printf '\n'
 # Check 6: No hardcoded secrets
 printf '[CHECK 6] Checking for hardcoded secrets...\n'
 SECRETS_FOUND=false
-if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git -E "(password|secret|api[_-]?key)\\s*=\\s*[\\\"''][^\\\"'']+[\\\"'']" . 2>/dev/null | grep -v "process.env" | grep -q .; then
+if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=.git -E -- "(password|secret|api[_-]?key)\\s*=\\s*[\\\"''][^\\\"'']+[\\\"'']" . 2>/dev/null | grep -v "process.env" | grep -q .; then
   SECRETS_FOUND=true
 fi
 

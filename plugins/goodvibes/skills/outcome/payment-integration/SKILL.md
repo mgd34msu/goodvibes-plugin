@@ -41,7 +41,7 @@ precision_grep:
       pattern: "(webhook|payment|checkout)"
       glob: "src/**/*.{ts,js,tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 Check for:
@@ -177,7 +177,7 @@ precision_grep:
       pattern: "^\\.env$"
       path: ".gitignore"
   output:
-    format: minimal
+    format: files_only
 ```
 
 If not found, add `.env` to `.gitignore`.
@@ -266,7 +266,7 @@ precision_write:
               },
             });
             
-            return NextResponse.json({ sessionId: session.id });
+            return NextResponse.json({ sessionId: stripeSession.id });
           } catch (error) {
             console.error('Checkout error:', error);
             return NextResponse.json(
@@ -295,6 +295,11 @@ precision_write:
         
         export async function POST(request: NextRequest) {
           try {
+            const authSession = await getServerSession(authOptions);
+            if (!authSession?.user) {
+              return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+            
             const { variantId, email } = await request.json();
             
             const lemonSqueezyStoreId = process.env.LEMONSQUEEZY_STORE_ID;
@@ -309,7 +314,7 @@ precision_write:
                 checkoutData: {
                   email,
                   custom: {
-                    user_id: session.userId, // Get from authenticated session
+                    user_id: authSession.user.id,
                   },
                 },
               }
@@ -387,6 +392,11 @@ precision_write:
         
         export async function POST(request: NextRequest) {
           try {
+            const authSession = await getServerSession(authOptions);
+            if (!authSession?.user) {
+              return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+            
             const { planId, customerId, successUrl, cancelUrl } = await request.json();
             
             const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
@@ -440,6 +450,11 @@ precision_write:
         // Cancel subscription
         export async function DELETE(request: NextRequest) {
           try {
+            const authSession = await getServerSession(authOptions);
+            if (!authSession?.user) {
+              return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+            
             const { subscriptionId } = await request.json();
             
             const subscription = await stripe.subscriptions.update(subscriptionId, {
@@ -459,6 +474,11 @@ precision_write:
         // Update subscription
         export async function PATCH(request: NextRequest) {
           try {
+            const authSession = await getServerSession(authOptions);
+            if (!authSession?.user) {
+              return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+            
             const { subscriptionId, newPriceId } = await request.json();
             
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -498,6 +518,7 @@ precision_write:
         import { NextRequest, NextResponse } from 'next/server';
         import Stripe from 'stripe';
         import { headers } from 'next/headers';
+        import { db } from '@/lib/db';
         
         const secretKey = process.env.STRIPE_SECRET_KEY;
         if (!secretKey) throw new Error('STRIPE_SECRET_KEY is required');
@@ -512,7 +533,15 @@ precision_write:
         
         export async function POST(request: NextRequest) {
           const body = await request.text();
-          const signature = headers().get('stripe-signature')!;
+          const headersList = await headers();
+          const signature = headersList.get('stripe-signature');
+          
+          if (!signature) {
+            return NextResponse.json(
+              { error: 'Missing stripe-signature header' },
+              { status: 400 }
+            );
+          }
           
           let event: Stripe.Event;
           
@@ -679,8 +708,7 @@ precision_write:
           
           const signatureBuffer = Buffer.from(signature, 'utf8');
           const digestBuffer = Buffer.from(digest, 'utf8');
-  if (signatureBuffer.length !== digestBuffer.length || !crypto.timingSafeEqual(signatureBuffer, digestBuffer)) {
-
+          if (signatureBuffer.length !== digestBuffer.length || !crypto.timingSafeEqual(signatureBuffer, digestBuffer)) {
             console.error('Webhook signature verification failed');
             return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
           }
@@ -729,23 +757,55 @@ precision_write:
         }
         
         async function handleOrderCreated(data: LemonSqueezyWebhookData) {
-          // Process one-time order
+          await db.order.create({
+            data: {
+              id: data.id,
+              status: 'completed',
+              attributes: data.attributes,
+            },
+          });
         }
         
         async function handleSubscriptionCreated(data: LemonSqueezyWebhookData) {
-          // Create subscription in database
+          await db.subscription.create({
+            data: {
+              id: data.id,
+              status: 'active',
+              userId: data.attributes.user_id as string,
+              attributes: data.attributes,
+            },
+          });
         }
         
         async function handleSubscriptionUpdated(data: LemonSqueezyWebhookData) {
-          // Update subscription status
+          await db.subscription.update({
+            where: { id: data.id },
+            data: {
+              status: data.attributes.status as string,
+              attributes: data.attributes,
+            },
+          });
         }
         
         async function handleSubscriptionCancelled(data: LemonSqueezyWebhookData) {
-          // Handle cancellation
+          await db.subscription.update({
+            where: { id: data.id },
+            data: {
+              status: 'cancelled',
+              cancelledAt: new Date(),
+            },
+          });
         }
         
         async function handlePaymentSuccess(data: LemonSqueezyWebhookData) {
-          // Record successful payment
+          await db.payment.create({
+            data: {
+              id: data.id,
+              status: 'succeeded',
+              amount: data.attributes.total as number,
+              attributes: data.attributes,
+            },
+          });
         }
 ```
 
@@ -830,7 +890,7 @@ precision_grep:
       pattern: "(sk_test|pk_test)"
       path: ".env"
   output:
-    format: minimal
+    format: files_only
 ```
 
 #### Stripe CLI for Webhook Testing
@@ -927,8 +987,8 @@ precision_grep:
     - id: check-card-handling
       pattern: "(card_number|cvv|cvc|card.*exp)"
       glob: "src/**/*.{ts,js,tsx,jsx}"
-      output:
-        format: files_only
+  output:
+    format: files_only
 ```
 
 If any matches are found, refactor to use provider's hosted solutions.

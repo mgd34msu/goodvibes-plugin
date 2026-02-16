@@ -194,6 +194,7 @@ precision_write:
     - path: "src/lib/email.ts"
       mode: fail_if_exists
       content: |
+        import type { ReactElement } from 'react';
         import { Resend } from 'resend';
         
         if (!process.env.RESEND_API_KEY) {
@@ -341,6 +342,7 @@ precision_write:
       content: |
         import { createClient } from '@sanity/client';
         import imageUrlBuilder from '@sanity/image-url';
+        import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
         
         if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) {
           throw new Error('NEXT_PUBLIC_SANITY_PROJECT_ID is required');
@@ -353,7 +355,7 @@ precision_write:
         export const sanityClient = createClient({
           projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
           dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
-          apiVersion: '2024-01-01', // Update to current API version date
+          apiVersion: '2026-01-01', // Update to current API version date
           useCdn: process.env.NODE_ENV === 'production',
         });
         
@@ -397,7 +399,11 @@ precision_write:
           const signature = request.headers.get('sanity-webhook-signature');
           
           // Verify webhook signature
-          const expected = Buffer.from(process.env.SANITY_WEBHOOK_SECRET!);
+          const secret = process.env.SANITY_WEBHOOK_SECRET;
+          if (!secret) {
+            return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+          }
+          const expected = Buffer.from(secret);
           const received = Buffer.from(signature || '');
           if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
             return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -454,7 +460,8 @@ precision_write:
         export const ourFileRouter = {
           imageUploader: f({ image: { maxFileSize: '4MB', maxFileCount: 4 } })
             .middleware(async ({ req }) => {
-              // Authenticate user
+              // Authenticate user (placeholder imports shown for context)
+              // In real code: import { getUserFromRequest } from '@/lib/auth';
               const user = await getUserFromRequest(req); // Import from your auth module
               if (!user) throw new Error('Unauthorized');
               
@@ -514,11 +521,16 @@ precision_write:
         import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
         import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
         
+        // Validate S3 configuration
+        if (!process.env.AWS_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_S3_BUCKET) {
+          throw new Error('Missing required AWS S3 environment variables');
+        }
+        
         const s3Client = new S3Client({
-          region: process.env.AWS_REGION!,
+          region: process.env.AWS_REGION,
           credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
           },
         });
         
@@ -562,6 +574,7 @@ precision_write:
         'use client';
         
         import { useEffect } from 'react';
+        import type { ReactNode } from 'react';
         import posthog from 'posthog-js';
         
         export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
@@ -571,7 +584,7 @@ precision_write:
                 api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
                 loaded: (posthog) => {
                   if (process.env.NODE_ENV === 'development') {
-                    posthog.opt_out_capturing(); // Re-enable for testing by calling posthog.opt_in_capturing()
+                    posthog.opt_out_capturing(); // Disabled in dev to avoid polluting analytics (re-enable for testing with posthog.opt_in_capturing())
                   }
                 },
               });
@@ -621,7 +634,7 @@ precision_write:
             backoffMultiplier = 2,
           } = options;
           
-          let lastError: Error;
+          let lastError: Error = new Error('All retry attempts failed');
           
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
@@ -643,7 +656,7 @@ precision_write:
             }
           }
           
-          throw lastError!;
+          throw lastError;
         }
   
   verbosity: minimal
@@ -888,12 +901,23 @@ await sendEmail({ to: user.email, subject: 'Welcome' });
 return res.json({ success: true });
 ```
 
-**GOOD:**
+**ACCEPTABLE (for simple cases):**
 ```typescript
 // Send email async
-// Note: Queue-based approach with retries is preferred for production
+// Note: Fire-and-forget is only suitable for non-critical operations.
+// For production: use a queue-based approach with retries (see BEST example below).
 sendEmail({ to: user.email, subject: 'Welcome' })
   .catch(err => console.error('[Email] Failed:', err));
+return res.json({ success: true });
+```
+
+**BEST (production-ready):**
+```typescript
+// Queue-based approach with retries
+await emailQueue.add('welcome-email', {
+  to: user.email,
+  subject: 'Welcome'
+});
 return res.json({ success: true });
 ```
 
@@ -913,7 +937,14 @@ import { timingSafeEqual } from 'crypto';
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('webhook-signature');
-  const expected = Buffer.from(process.env.WEBHOOK_SECRET!);
+  
+  // Validate webhook secret
+  const secret = process.env.WEBHOOK_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+  }
+  
+  const expected = Buffer.from(secret);
   const received = Buffer.from(signature || '');
   if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -927,7 +958,7 @@ export async function POST(request: NextRequest) {
 
 ### Email Not Sending
 
-1. Verify API key is set: `printf "%s\n" "${RESEND_API_KEY:0:5}..."`
+1. Verify API key is set: `printf "%s\n" "${RESEND_API_KEY:0:5}..."` (bash parameter expansion to display first 5 chars)
 2. Check API key permissions in provider dashboard
 3. Verify sender domain is verified
 4. Check rate limits in provider logs

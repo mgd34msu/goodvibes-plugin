@@ -340,9 +340,10 @@ DATABASE_URL="postgresql://user:pass@host:5432/db?connection_limit=20&pool_timeo
 #### Detect Unnecessary Re-renders
 
 **Find missing memoization:**
+
+> **Note:** These patterns are approximations for single-line detection. Multi-line component definitions may require manual inspection.
+
 ```yaml
-# Note: These patterns are approximations for single-line detection.
-# Multi-line component definitions may require manual inspection.
 precision_grep:
   queries:
     - id: missing_memo
@@ -510,9 +511,17 @@ precision_grep:
 **Bad - sequential requests:**
 ```typescript
 async function loadDashboard() {
-  const user = await fetch('/api/user').then(r => r.json());
-  const posts = await fetch(`/api/posts?userId=${user.id}`).then(r => r.json());
-  const comments = await fetch(`/api/comments?userId=${user.id}`).then(r => r.json());
+  const userRes = await fetch('/api/user');
+  if (!userRes.ok) throw new Error(`Failed to fetch user: ${userRes.status}`);
+  const user = await userRes.json();
+  
+  const postsRes = await fetch(`/api/posts?userId=${user.id}`);
+  if (!postsRes.ok) throw new Error(`Failed to fetch posts: ${postsRes.status}`);
+  const posts = await postsRes.json();
+  
+  const commentsRes = await fetch(`/api/comments?userId=${user.id}`);
+  if (!commentsRes.ok) throw new Error(`Failed to fetch comments: ${commentsRes.status}`);
+  const comments = await commentsRes.json();
   
   return { user, posts, comments };
 }
@@ -522,9 +531,18 @@ async function loadDashboard() {
 ```typescript
 async function loadDashboard(userId: string) {
   const [user, posts, comments] = await Promise.all([
-    fetch(`/api/user/${userId}`).then(r => r.json()),
-    fetch(`/api/posts?userId=${userId}`).then(r => r.json()),
-    fetch(`/api/comments?userId=${userId}`).then(r => r.json()),
+    fetch(`/api/user/${userId}`).then(async r => {
+      if (!r.ok) throw new Error(`Failed to fetch user: ${r.status}`);
+      return r.json();
+    }),
+    fetch(`/api/posts?userId=${userId}`).then(async r => {
+      if (!r.ok) throw new Error(`Failed to fetch posts: ${r.status}`);
+      return r.json();
+    }),
+    fetch(`/api/comments?userId=${userId}`).then(async r => {
+      if (!r.ok) throw new Error(`Failed to fetch comments: ${r.status}`);
+      return r.json();
+    }),
   ]);
   
   return { user, posts, comments };
@@ -535,7 +553,11 @@ async function loadDashboard(userId: string) {
 ```typescript
 // Single API endpoint that aggregates data server-side
 async function loadDashboard(userId: string) {
-  const data = await fetch(`/api/dashboard?userId=${userId}`).then(r => r.json());
+  const response = await fetch(`/api/dashboard?userId=${userId}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch dashboard: ${response.status}`);
+  }
+  const data = await response.json();
   return data;
 }
 ```
@@ -710,6 +732,33 @@ useEffect(() => {
   return () => {
     clearInterval(interval);
   };
+}, []);
+```
+
+**Bad - fetch without abort:**
+```typescript
+useEffect(() => {
+  fetch('/api/data')
+    .then(r => r.json() as Promise<DataType>)
+    .then(setData)
+    .catch(console.error);
+  // Missing abort on unmount!
+}, []);
+```
+
+**Good - AbortController cleanup:**
+```typescript
+useEffect(() => {
+  const controller = new AbortController();
+  
+  fetch('/api/data', { signal: controller.signal })
+    .then(r => r.json() as Promise<DataType>)
+    .then(setData)
+    .catch(err => {
+      if (err.name !== 'AbortError') console.error(err);
+    });
+  
+  return () => controller.abort();
 }, []);
 ```
 

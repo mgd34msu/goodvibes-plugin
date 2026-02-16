@@ -165,7 +165,7 @@ Common accessibility patterns and anti-patterns organized by WCAG 2.1 criteria.
 
 **Good:**
 ```tsx
-function CustomButton({ onClick, children }) {
+function CustomButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <div
       role="button"
@@ -186,7 +186,7 @@ function CustomButton({ onClick, children }) {
 
 **Bad:**
 ```tsx
-function CustomButton({ onClick, children }) {
+function CustomButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <div onClick={onClick}>
       {children}
@@ -197,7 +197,7 @@ function CustomButton({ onClick, children }) {
 
 **Best (use native element):**
 ```tsx
-function Button({ onClick, children }) {
+function Button({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return <button onClick={onClick}>{children}</button>;
 }
 ```
@@ -206,7 +206,7 @@ function Button({ onClick, children }) {
 
 **Good:**
 ```tsx
-function SkipLink() {
+function SkipLink(): JSX.Element {
   return (
     <a href="#main-content" className="sr-only focus:not-sr-only">
       Skip to main content
@@ -219,8 +219,8 @@ function SkipLink() {
 
 **Good:**
 ```tsx
-function Modal({ isOpen, onClose, children }) {
-  const modalRef = useRef();
+function Modal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) {
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -325,7 +325,7 @@ button:focus {
 
 **Good:**
 ```tsx
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>{children}</body>
@@ -340,7 +340,7 @@ export default function RootLayout({ children }) {
 
 **Good:**
 ```tsx
-function Navigation() {
+function Navigation(): JSX.Element {
   return (
     <nav aria-label="Main navigation">
       <ul>
@@ -360,10 +360,10 @@ function Navigation() {
 
 **Good:**
 ```tsx
-function EmailField() {
+function EmailField(): JSX.Element {
   const id = useId();
   const errorId = useId();
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string>('');
 
   return (
     <div>
@@ -388,7 +388,7 @@ function EmailField() {
 
 **Bad:**
 ```tsx
-function EmailField() {
+function EmailField(): JSX.Element {
   return (
     <input type="email" placeholder="Email" />
   );
@@ -399,7 +399,7 @@ function EmailField() {
 
 **Good:**
 ```tsx
-function FormErrors({ errors }) {
+function FormErrors({ errors }: { errors: Array<{ field: string; message: string }> }) {
   if (errors.length === 0) return null;
 
   return (
@@ -464,7 +464,7 @@ function FormErrors({ errors }) {
 
 **Good:**
 ```tsx
-function CustomCheckbox({ checked, onChange, label }) {
+function CustomCheckbox({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
   return (
     <label>
       <span
@@ -489,7 +489,7 @@ function CustomCheckbox({ checked, onChange, label }) {
 
 **Best (use native element):**
 ```tsx
-function Checkbox({ checked, onChange, label }) {
+function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
   return (
     <label>
       <input
@@ -509,7 +509,7 @@ function Checkbox({ checked, onChange, label }) {
 
 **Good:**
 ```tsx
-function Tabs({ tabs, activeTab, onChange }) {
+function Tabs({ tabs, activeTab, onChange }: { tabs: Array<{ id: string; label: string }>; activeTab: string; onChange: (id: string) => void }) {
   return (
     <div>
       <div role="tablist" aria-label="Content sections">
@@ -548,7 +548,7 @@ function Tabs({ tabs, activeTab, onChange }) {
 
 **Good:**
 ```tsx
-function Accordion({ items }) {
+function Accordion({ items }: { items: Array<{ id: string; title: string; content: React.ReactNode }> }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
@@ -584,9 +584,9 @@ function Accordion({ items }) {
 
 **Good:**
 ```tsx
-function Combobox({ options, value, onChange }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
+function Combobox({ options, value, onChange }: { options: Array<{ id: string; label: string }>; value: string; onChange: (value: string) => void }) {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const inputId = useId();
   const listboxId = useId();
 

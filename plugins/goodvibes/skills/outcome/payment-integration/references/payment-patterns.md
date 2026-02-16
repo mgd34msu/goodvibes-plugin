@@ -178,9 +178,17 @@ Comprehensive reference for payment provider integration patterns, webhook handl
 import Stripe from 'stripe';
 import { headers } from 'next/headers';
 
-// NOTE: Validate env vars at app startup in production code
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+// Validate env vars at app startup in production code
+const secretKey = process.env.STRIPE_SECRET_KEY;
+if (!secretKey) throw new Error('STRIPE_SECRET_KEY is required');
+const stripe = new Stripe(secretKey, {
+  apiVersion: '2024-11-20.acacia',
+});
+
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+if (!webhookSecret) {
+  throw new Error('STRIPE_WEBHOOK_SECRET is required');
+}
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -210,8 +218,11 @@ export async function POST(request: Request) {
 ```typescript
 import crypto from 'crypto';
 
-// NOTE: Validate env vars at app startup in production code
-const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET!;
+// Validate env vars at app startup in production code
+const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+if (!webhookSecret) {
+  throw new Error('LEMONSQUEEZY_WEBHOOK_SECRET is required');
+}
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -468,12 +479,12 @@ export async function POST(request: Request) {
 
 ```typescript
 // WRONG - Processes duplicate events
-export async function handleSubscriptionCreated(subscription) {
+export async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   await db.subscription.create({ data: subscription });
 }
 
 // CORRECT - Idempotent handling
-export async function handleSubscriptionCreated(eventId, subscription) {
+export async function handleSubscriptionCreated(eventId: string, subscription: Stripe.Subscription) {
   const existing = await db.webhookEvent.findUnique({ where: { id: eventId } });
   if (existing) return; // Already processed
   
@@ -537,6 +548,7 @@ await db.$transaction(async (tx) => {
 });
 
 // Return 200 quickly, process async
+// NOTE: setImmediate is Node.js-specific. Use queue systems (BullMQ, etc.) for production.
 setImmediate(async () => {
   try {
     await sendConfirmationEmail(customer);
@@ -598,11 +610,10 @@ async function getPrice(priceId: string) {
 
 ### Alert Thresholds
 
-```typescript
-// Set up alerts for:
+Set up alerts for:
+
 - Payment success rate < 95%
 - Webhook failures > 5% in 1 hour
 - Failed payments > 10% of total
 - Webhook processing time > 5s
 - Dispute rate > 1%
-```

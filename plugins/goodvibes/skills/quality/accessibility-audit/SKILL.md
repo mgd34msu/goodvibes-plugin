@@ -77,7 +77,7 @@ precision_grep:
 ```
 
 **Common violations:**
-- Skipping heading levels (h1 → h3 without h2)
+- Skipping heading levels (h1 -> h3 without h2)
 - Multiple h1 elements on a page
 - Using headings for visual styling instead of structure
 - Missing heading hierarchy in complex components
@@ -145,7 +145,7 @@ precision_grep:
       pattern: "(<header|<main|<nav|<aside|<footer|role=\"(banner|navigation|main|complementary|contentinfo)\")"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Required landmarks:**
@@ -204,7 +204,7 @@ precision_grep:
       pattern: "<(ul|ol|li|dl|dt|dd)"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Common violations:**
@@ -312,7 +312,7 @@ precision_grep:
       pattern: "aria-(label|labelledby|describedby)"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: verbose
+    format: context
 ```
 
 **Common violations:**
@@ -527,7 +527,7 @@ precision_grep:
       pattern: "(skip.*main|skip.*content|skip.*navigation)"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Skip link implementation:**
@@ -623,7 +623,7 @@ precision_grep:
       pattern: "(sr-only|visually-hidden|screen-reader)"
       glob: "**/*.{tsx,jsx,css,scss}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Visually hidden text for icons:**
@@ -701,8 +701,8 @@ export function ButtonWithIcon({ onClick, label }: ButtonWithIconProps) {
 #### Check Contrast Ratios
 
 **Use browser DevTools or external tools:**
-- Chrome DevTools: Inspect element → Accessibility pane → Contrast ratio
-- Firefox DevTools: Inspector → Accessibility panel
+- Chrome DevTools: Inspect element -> Accessibility pane -> Contrast ratio
+- Firefox DevTools: Inspector -> Accessibility panel
 - axe DevTools browser extension
 - Lighthouse accessibility audit
 
@@ -812,7 +812,7 @@ precision_grep:
       pattern: "@media.*forced-colors|prefers-contrast"
       glob: "**/*.{css,scss,tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Support Windows High Contrast Mode:**
@@ -1057,7 +1057,7 @@ precision_grep:
       pattern: "(required|aria-required)"
       glob: "**/*.{tsx,jsx}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Accessible required field indicator:**
@@ -1216,7 +1216,7 @@ precision_grep:
       pattern: "(animate|transition|prefers-reduced-motion)"
       glob: "**/*.{tsx,jsx,css,scss}"
   output:
-    format: minimal
+    format: files_only
 ```
 
 **Respect prefers-reduced-motion:**
@@ -1318,7 +1318,7 @@ Run these tools for comprehensive automated testing:
 
 2. **axe DevTools**
    - Install: [axe DevTools Chrome Extension](https://chrome.google.com/webstore)
-   - Run: F12 → axe DevTools → Scan
+   - Run: F12 -> axe DevTools -> Scan
 
 3. **Pa11y CI**
    ```bash

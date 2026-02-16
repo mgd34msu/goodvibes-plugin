@@ -86,7 +86,7 @@ printf "\n"
 printf "[1/8] Checking image alt attributes...\n"
 
 # Check for images without alt attribute
-if grep -r --include='*.tsx' --include='*.jsx' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E '<img[^>]*(?!alt)' -- "$PROJECT_ROOT" 2>/dev/null | grep -v 'alt=' | grep '<img' | grep -q .; then
+if grep -r --include='*.tsx' --include='*.jsx' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E '<img[^>]*>' -- "$PROJECT_ROOT" 2>/dev/null | grep -v 'alt=' | grep '<img' | grep -q .; then
   add_violation "Images found without alt attribute. All images must have alt text or alt=\"\" for decorative images."
 else
   printf "  %b[PASS]%b All images have alt attributes\n" "$GREEN" "$NC"
@@ -161,7 +161,7 @@ if [[ $ONCLICK_COUNT -gt 0 ]]; then
 fi
 
 # Check for focus management
-if grep -r --include='*.tsx' --include='*.jsx' --include='*.ts' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E '(\\.focus\\(\\)|useRef.*focus|autoFocus)' -- "$PROJECT_ROOT" 2>/dev/null | grep -q .; then
+if grep -r --include='*.tsx' --include='*.jsx' --include='*.ts' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -E '(\.focus\(\)|useRef.*focus|autoFocus)' -- "$PROJECT_ROOT" 2>/dev/null | grep -q .; then
   printf "  %b[PASS]%b Focus management detected\n" "$GREEN" "$NC"
 else
   add_warning "No focus management detected. Consider focus handling in modals and dynamic content."

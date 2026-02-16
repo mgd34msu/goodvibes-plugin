@@ -20,7 +20,7 @@ readonly FAIL="${RED}[FAIL]${NC}"
 readonly WARN="${YELLOW}[WARN]${NC}"
 
 # Common grep exclusions
-readonly GREP_EXCLUDE="--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=.turbo"
+readonly GREP_EXCLUDE=(--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next --exclude-dir=.turbo)
 
 total_checks=0
 passed_checks=0
@@ -59,7 +59,7 @@ check_bundle_analysis() {
   
   # Check for dynamic imports
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" --include="*.ts" --include="*.js" "(import\(|next/dynamic|React\.lazy)" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" --include="*.ts" --include="*.js" -- "(import\(|next/dynamic|React\.lazy)" . >/dev/null 2>&1; then
     print_result "$PASS" "Code splitting patterns found (dynamic imports)"
     ((passed_checks++))
   else
@@ -73,7 +73,7 @@ check_database_patterns() {
   
   # Check for potential N+1 queries
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.ts" --include="*.tsx" "(map|forEach).*await.*(findUnique|findFirst)" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.ts" --include="*.tsx" -- "(map|forEach).*await.*(findUnique|findFirst)" . >/dev/null 2>&1; then
     print_result "$FAIL" "Potential N+1 query pattern detected (map/forEach + await findUnique)"
     ((failed_checks++))
   else
@@ -83,7 +83,7 @@ check_database_patterns() {
   
   # Check for proper eager loading
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.ts" --include="*.tsx" "findMany.*include:" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.ts" --include="*.tsx" -- "findMany.*include:" . >/dev/null 2>&1; then
     print_result "$PASS" "Eager loading patterns found (include)"
     ((passed_checks++))
   else
@@ -112,7 +112,7 @@ check_rendering_patterns() {
   
   # Check for memoization usage
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" "(useMemo|useCallback|React\.memo)" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" -- "(useMemo|useCallback|React\.memo)" . >/dev/null 2>&1; then
     print_result "$PASS" "Memoization patterns found (useMemo/useCallback/React.memo)"
     ((passed_checks++))
   else
@@ -122,12 +122,21 @@ check_rendering_patterns() {
   
   # Check for virtualization libraries
   ((total_checks++))
-  if grep -qE "(react-window|react-virtualized|@tanstack/react-virtual)" package.json 2>/dev/null; then
-    print_result "$PASS" "Virtual list library detected"
-    ((passed_checks++))
+  
+  # First check if there are large list patterns in the codebase
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" -- "{.*\.map\(.*=>\s*<" . >/dev/null 2>&1; then
+    # Large lists exist, check for virtualizer
+    if grep -qE "(react-window|react-virtualized|@tanstack/react-virtual)" package.json 2>/dev/null; then
+      print_result "$PASS" "Virtual list library detected"
+      ((passed_checks++))
+    else
+      print_result "$WARN" "No virtualization library found - may be needed for large lists"
+      ((warnings++))
+    fi
   else
-    print_result "$WARN" "No virtualization library found - may be needed for large lists"
-    ((warnings++))
+    # No large lists, skip warning
+    print_result "$PASS" "No large list patterns detected (virtualization not needed)"
+    ((passed_checks++))
   fi
 }
 
@@ -136,7 +145,7 @@ check_image_optimization() {
   
   # Check for next/image usage
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" "next/image" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" -- "next/image" . >/dev/null 2>&1; then
     print_result "$PASS" "next/image usage detected"
     ((passed_checks++))
   else
@@ -146,7 +155,7 @@ check_image_optimization() {
   
   # Check for unoptimized <img> tags
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" --include="*.html" "<img\\s+" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" --include="*.html" -- "<img\\s+" . >/dev/null 2>&1; then
     print_result "$FAIL" "Unoptimized <img> tags detected - use next/image instead"
     ((failed_checks++))
   else
@@ -156,7 +165,7 @@ check_image_optimization() {
   
   # Check for lazy loading
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" 'loading="lazy"' . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" -- 'loading="lazy"' . >/dev/null 2>&1; then
     print_result "$PASS" "Lazy loading attributes found"
     ((passed_checks++))
   else
@@ -170,7 +179,7 @@ check_caching_strategies() {
   
   # Check for cache headers or revalidation
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.ts" --include="*.tsx" "(Cache-Control|revalidate|stale-while-revalidate)" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.ts" --include="*.tsx" -- "(Cache-Control|revalidate|stale-while-revalidate)" . >/dev/null 2>&1; then
     print_result "$PASS" "Caching strategies detected"
     ((passed_checks++))
   else
@@ -184,9 +193,9 @@ check_memory_management() {
   
   # Check for cleanup in useEffect
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" "useEffect.*addEventListener" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" -- "useEffect.*addEventListener" . >/dev/null 2>&1; then
     # Now check if there are corresponding cleanups
-    if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" "removeEventListener" . >/dev/null 2>&1; then
+    if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" -- "removeEventListener" . >/dev/null 2>&1; then
       print_result "$PASS" "Event listener cleanup detected"
       ((passed_checks++))
     else
@@ -200,8 +209,8 @@ check_memory_management() {
   
   # Check for interval cleanup
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" --include="*.ts" --include="*.js" "setInterval" . >/dev/null 2>&1; then
-    if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" --include="*.ts" --include="*.js" "clearInterval" . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" --include="*.ts" --include="*.js" -- "setInterval" . >/dev/null 2>&1; then
+    if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" --include="*.ts" --include="*.js" -- "clearInterval" . >/dev/null 2>&1; then
       print_result "$PASS" "Interval cleanup detected"
       ((passed_checks++))
     else
@@ -229,7 +238,7 @@ check_web_vitals() {
   
   # Check for priority image preloading
   ((total_checks++))
-  if grep -rE $GREP_EXCLUDE --include="*.tsx" --include="*.jsx" 'priority' . >/dev/null 2>&1; then
+  if grep -rE "${GREP_EXCLUDE[@]}" --include="*.tsx" --include="*.jsx" -- 'priority' . >/dev/null 2>&1; then
     print_result "$PASS" "Priority image loading detected"
     ((passed_checks++))
   else

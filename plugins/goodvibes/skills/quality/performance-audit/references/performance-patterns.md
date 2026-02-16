@@ -166,6 +166,7 @@ export async function GET() {
 // lib/db.ts - singleton pattern
 import { PrismaClient } from '@prisma/client';
 
+// Standard Prisma singleton pattern for Next.js
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
@@ -472,7 +473,7 @@ import LRU from 'lru-cache';
 
 const cache = new LRU<string, Data>({
   max: 500,
-  maxAge: 1000 * 60 * 5, // 5 minutes
+  ttl: 1000 * 60 * 5, // 5 minutes
 });
 
 function getData(key: string) {

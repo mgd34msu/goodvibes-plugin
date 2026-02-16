@@ -717,11 +717,11 @@ interface Employee {
 function getPayAmount(employee: Employee): number {
   switch (employee.type) {
     case 'engineer':
-      return employee.monthlySalary!;  // Non-null assertion needed
+      return employee.monthlySalary!;  // BAD: Non-null assertions bypass type safety
     case 'manager':
-      return employee.monthlySalary!;
+      return employee.monthlySalary!;  // BAD: Non-null assertions bypass type safety
     case 'salesperson':
-      return employee.monthlySalary! + employee.commission!;
+      return employee.monthlySalary! + employee.commission!;  // BAD: Non-null assertions bypass type safety
   }
 }
 ```
@@ -978,11 +978,11 @@ class Salesperson extends Employee {
 
 ```typescript
 class Stack extends ArrayList {
-  push(item: any) {
+  push(item: any) {  // BAD: Using any loses type safety
     this.add(item);
   }
 
-  pop(): any {
+  pop(): any {  // BAD: Using any loses type safety
     return this.remove(this.size() - 1);
   }
 }
@@ -994,14 +994,14 @@ class Stack extends ArrayList {
 ### After
 
 ```typescript
-class Stack {
-  private items: any[] = [];
+class Stack<T> {
+  private items: T[] = [];
 
-  push(item: any): void {
+  push(item: T): void {
     this.items.push(item);
   }
 
-  pop(): any {
+  pop(): T | undefined {
     return this.items.pop();
   }
 

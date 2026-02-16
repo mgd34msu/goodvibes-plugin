@@ -790,7 +790,11 @@ function createEmailClient(): EmailClient {
   if (process.env.NODE_ENV === 'test') {
     return new MockEmailClient();
   }
-  return new SendGridEmailClient(process.env.SENDGRID_API_KEY!);
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    throw new Error('SENDGRID_API_KEY environment variable is required');
+  }
+  return new SendGridEmailClient(apiKey);
 }
 
 function sendEmail(client: EmailClient, to: string, subject: string, body: string) {
@@ -898,7 +902,7 @@ model Order {
 const posts = await prisma.post.findMany();
 for (const post of posts) {
   const author = await prisma.user.findUnique({ where: { id: post.authorId } });
-  console.log(`${post.title} by ${author.name}`);
+  console.log(`${post.title} by ${author.name}`);  // Note: Use structured logger in production
 }
 ```
 
@@ -911,7 +915,7 @@ const posts = await prisma.post.findMany({
   },
 });
 for (const post of posts) {
-  console.log(`${post.title} by ${post.author.name}`);
+  console.log(`${post.title} by ${post.author.name}`);  // Note: Use structured logger in production
 }
 ```
 
@@ -1245,8 +1249,8 @@ Track improvement over time.
 ```yaml
 precision_exec:
   commands:
-    - cmd: "find src -name '*.ts' -exec wc -l {} + | tail -1"
-    - cmd: "grep -r 'any' src --include='*.ts' | wc -l"
+    - cmd: "find src -not -path '*/node_modules/*' -not -path '*/dist/*' -name '*.ts' -exec wc -l {} + | tail -1"
+    - cmd: "grep -r --include='*.ts' --exclude-dir=node_modules --exclude-dir=dist -- 'any' src | wc -l"
   verbosity: standard
 ```
 

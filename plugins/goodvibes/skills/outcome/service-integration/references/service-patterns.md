@@ -10,9 +10,9 @@ Comprehensive reference for integrating external services into applications.
 | **SendGrid** | 100 emails/day | $20/mo for 100K | Enterprise, high volume | Advanced analytics, A/B testing, templates |
 | **Postmark** | None | $15/mo for 10K | High deliverability | Bounce handling, delivery tracking |
 | **AWS SES** | 62K/mo (EC2)* | $0.10/1000 | High volume, cost-sensitive | Cheapest at scale, requires AWS setup |
+| **Mailgun** | None | $15/mo for 10K | Developers | Powerful API, email validation |
 
 *Note: AWS SES pricing may have changed. Check current AWS pricing documentation.
-| **Mailgun** | None | $15/mo for 10K | Developers | Powerful API, email validation |
 | **ConvertKit** | None | $29/mo for 1K subs | Creators, marketing | Landing pages, automation, forms |
 | **Mailchimp** | 500 contacts | $13/mo for 500 | Marketing campaigns | All-in-one platform, CRM features |
 | **Loops** | None | $49/mo for 2K subs | Product updates | Developer-friendly, event-based |
