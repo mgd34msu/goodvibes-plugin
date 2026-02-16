@@ -44,11 +44,6 @@ add_violation() {
   VIOLATIONS+=("$1")
 }
 
-# Helper: Check if pattern exists in transcript (regex mode)
-has_pattern() {
-  grep -q "$1" -- "$TRANSCRIPT" 2>/dev/null
-}
-
 # Helper: Check if literal string exists in transcript (fixed string mode)
 has_literal() {
   grep -qF "$1" -- "$TRANSCRIPT" 2>/dev/null
@@ -70,7 +65,7 @@ echo ""
 echo "[1/4] Checking discovery phase..."
 
 # Find first discover/precision_grep/precision_glob call
-DISCOVER_LINE=$(get_line_number "discover|precision_grep|precision_glob|precision_symbols")
+DISCOVER_LINE=$(get_line_number "discover|precision_grep|precision_glob|precision_read")
 
 # Find first precision_write/precision_edit call
 WRITE_LINE=$(get_line_number "precision_write|precision_edit")
@@ -127,33 +122,33 @@ echo "[3/4] Checking batch usage..."
 
 # Count lines that look like actual tool invocations, not prose mentions
 # Look for tool name followed by typical invocation patterns (colon, opening brace, etc.)
-WRITE_COUNT=$(grep -cE "precision_write[[:space:]]*(files:|\{|\.)" -- "$TRANSCRIPT" 2>/dev/null || true)
+WRITE_COUNT=$(grep -cE "precision_write[[:space:]]*[:({.]" -- "$TRANSCRIPT" 2>/dev/null || true)
 [[ -z "$WRITE_COUNT" ]] && WRITE_COUNT=0
-EXEC_COUNT=$(grep -cE "precision_exec[[:space:]]*(commands:|\{|\.)" -- "$TRANSCRIPT" 2>/dev/null || true)
+EXEC_COUNT=$(grep -cE "precision_exec[[:space:]]*[:({.]" -- "$TRANSCRIPT" 2>/dev/null || true)
 [[ -z "$EXEC_COUNT" ]] && EXEC_COUNT=0
-READ_COUNT=$(grep -cE "precision_read[[:space:]]*(files:|\{|\.)" -- "$TRANSCRIPT" 2>/dev/null || true)
+READ_COUNT=$(grep -cE "precision_read[[:space:]]*[:({.]" -- "$TRANSCRIPT" 2>/dev/null || true)
 [[ -z "$READ_COUNT" ]] && READ_COUNT=0
 
 BATCH_ISSUES=false
 
 # Check if multiple writes could be batched
 if [[ "$WRITE_COUNT" -ge 3 ]]; then
-  # Heuristic check (may count prose mentions) - if we see 3+ writes, flag as potentially batchable
-  add_violation "Found $WRITE_COUNT precision_write calls (heuristic — may count prose mentions). Consider batching into 1 call with multiple files."
+  # Pattern-based detection - if we see 3+ writes, flag as potentially batchable
+  add_violation "Found $WRITE_COUNT precision_write calls (pattern-based detection). Consider batching into 1 call with multiple files."
   BATCH_ISSUES=true
 fi
 
 # Check if multiple exec calls could be batched
 if [[ "$EXEC_COUNT" -ge 3 ]]; then
-  # Heuristic check (may count prose mentions) - if we see 3+ execs, flag as potentially batchable
-  add_violation "Found $EXEC_COUNT precision_exec calls (heuristic — may count prose mentions). Consider batching into 1 call with multiple commands."
+  # Pattern-based detection - if we see 3+ execs, flag as potentially batchable
+  add_violation "Found $EXEC_COUNT precision_exec calls (pattern-based detection). Consider batching into 1 call with multiple commands."
   BATCH_ISSUES=true
 fi
 
 # Check if multiple reads could be batched
 if [[ "$READ_COUNT" -ge 3 ]]; then
-  # Heuristic check (may count prose mentions) - if we see 3+ reads, flag as potentially batchable
-  add_violation "Found $READ_COUNT precision_read calls (heuristic — may count prose mentions). Consider batching into 1 call with multiple files."
+  # Pattern-based detection - if we see 3+ reads, flag as potentially batchable
+  add_violation "Found $READ_COUNT precision_read calls (pattern-based detection). Consider batching into 1 call with multiple files."
   BATCH_ISSUES=true
 fi
 

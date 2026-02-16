@@ -27,31 +27,33 @@ fi
 TRANSCRIPT="$1"
 FAILURES_JSON="$2"
 
+# Initialize violation tracking
+VIOLATIONS=()
+PASS=true
+
 # Validate files exist
 if [[ ! -f "$TRANSCRIPT" ]]; then
-  echo -e "${RED}ERROR: Transcript file not found: $TRANSCRIPT${NC}"
+  printf '%sERROR: Transcript file not found: %s%s\n' "$RED" "$TRANSCRIPT" "$NC"
   exit 1
 fi
 
 if [[ ! -f "$FAILURES_JSON" ]]; then
-  echo -e "${YELLOW}WARNING: failures.json not found: $FAILURES_JSON${NC}"
+  printf '%sWARNING: failures.json not found: %s%s\n' "$YELLOW" "$FAILURES_JSON" "$NC"
   echo "This may indicate no failures were logged."
 else
   # Validate JSON structure
   if command -v jq &>/dev/null; then
     if ! jq . "$FAILURES_JSON" > /dev/null 2>&1; then
-      echo -e "  ${YELLOW}⚠${NC} failures.json is not valid JSON"
+      echo -e "  ${YELLOW}⚠${NC} failures.json is not valid JSON (jq validation)"
+      VIOLATIONS+=("failures.json is not valid JSON (jq validation)")
     fi
   elif command -v python3 &>/dev/null; then
     if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$FAILURES_JSON" 2>/dev/null; then
-      echo -e "  ${YELLOW}⚠${NC} failures.json is not valid JSON"
+      echo -e "  ${YELLOW}⚠${NC} failures.json is not valid JSON (python3 validation)"
+      VIOLATIONS+=("failures.json is not valid JSON (python3 validation)")
     fi
   fi
 fi
-
-# Initialize violation tracking
-VIOLATIONS=()
-PASS=true
 
 echo "Validating error recovery protocol compliance..."
 echo ""
@@ -150,7 +152,7 @@ else
   echo ""
   echo "Protocol violations found:"
   for violation in "${VIOLATIONS[@]}"; do
-    echo -e "  ${RED}✗${NC} $violation"
+    printf '  %s✗%s %s\n' "$RED" "$NC" "${violation}"
   done
   echo ""
   echo "Review the session transcript and ensure:"

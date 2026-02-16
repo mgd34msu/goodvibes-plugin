@@ -2,13 +2,13 @@
 
 This document provides real examples of high-quality and low-quality reviews to illustrate proper application of the review-scoring rubric.
 
-## Example 1: High-Quality Review (9.7/10)
+## Example 1: High-Quality Review (9.75/10)
 
 This example demonstrates a thorough, well-scored review that would PASS.
 
 ```markdown
 ## Review Summary
-- **Overall Score**: 9.7/10
+- **Overall Score**: 9.75/10
 - **Verdict**: PASS
 - **Files Reviewed**: src/api/users.ts, src/lib/auth.ts, src/components/UserProfile.tsx
 
@@ -20,7 +20,7 @@ This example demonstrates a thorough, well-scored review that would PASS.
 | Security | 10/10 | Input validated with zod, auth checked on all routes, no secrets exposed |
 | Performance | 9/10 | Efficient queries with proper indexes, minor optimization opportunity with memoization |
 | Conventions | 10/10 | Follows project naming, file structure, and import ordering perfectly |
-| Testability | 8/10 | Good test coverage on happy path, missing edge case tests for error scenarios |
+| Testability | 9/10 | Good test coverage on happy path, missing edge case tests for error scenarios |
 | Readability | 9/10 | Clear naming, appropriate abstraction, one complex function could use inline comment |
 | Error Handling | 10/10 | All errors caught, logged with context, user-facing messages are clear |
 | Type Safety | 10/10 | Full TypeScript coverage, no any types, generics used appropriately |
@@ -46,15 +46,15 @@ None
 - **Testing mindset**: Tests are comprehensive for the happy path and include proper setup/teardown. The use of fixtures makes tests maintainable.
 ```
 
-### Why This Is a 9.7/10 Review
+### Why This Is a 9.75/10 Review
 
 ✅ **Specific findings**: Each dimension score has concrete justification
-✅ **Accurate scoring**: Minor issues don't inflate scores (Testability = 8, not 10)
+✅ **Accurate scoring**: Minor issues don't inflate scores (Testability = 9, not 10)
 ✅ **FILE:LINE references**: Every issue pinpoints exact location
 ✅ **Actionable fixes**: Each fix suggestion is specific and implementable
 ✅ **Balanced**: Highlights both issues and strengths
 ✅ **Format compliance**: Follows required structure exactly
-✅ **Verdict matches score**: 9.7 → PASS (correct threshold)
+✅ **Verdict matches score**: 9.75 → PASS (correct threshold)
 
 ---
 
@@ -255,7 +255,7 @@ Performance: 6/10 — Three N+1 query patterns found:
 Before submitting a review, verify:
 
 - [ ] Overall score is calculated correctly using weighted dimensions
-- [ ] Verdict matches score thresholds (9.5+ PASS, 8.0-9.4 CONDITIONAL, <8.0 FAIL)
+- [ ] Verdict matches score thresholds (9.5+ PASS, 8.0-9.49 CONDITIONAL, <8.0 FAIL)
 - [ ] All 10 dimensions scored with specific justification (not "looks good")
 - [ ] Every issue has FILE:LINE reference
 - [ ] Every issue has severity (Critical/Major/Minor) matching guidelines

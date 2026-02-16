@@ -39,13 +39,13 @@ UNADDRESSED_CRITICAL=()
 UNADDRESSED_MAJOR=()
 
 # Extract critical issues from original review
-CRITICAL_ISSUES=$(sed -En '/^### Critical \(must fix\)/,/^### Major|^### Minor|^##/p' "$REVIEW_FILE" | grep '^- \[' || true)
+CRITICAL_ISSUES=$(sed -En '/^### Critical \(must fix\)/,/^### Major|^### Minor|^##/p' -- "$REVIEW_FILE" | grep '^- \[' || true)
 
 # Extract major issues from original review
-MAJOR_ISSUES=$(sed -En '/^### Major \(should fix\)/,/^### Minor|^##/p' "$REVIEW_FILE" | grep '^- \[' || true)
+MAJOR_ISSUES=$(sed -En '/^### Major \(should fix\)/,/^### Minor|^##/p' -- "$REVIEW_FILE" | grep '^- \[' || true)
 
 # Check if fix output has required sections
-if ! grep -qE '^## Fixes Applied' "$FIX_FILE"; then
+if ! grep -qE '^## Fixes Applied' -- "$FIX_FILE"; then
     ERRORS+=("Missing 'Fixes Applied' section in fix output")
 fi
 
@@ -64,11 +64,11 @@ if [ -n "$CRITICAL_ISSUES" ]; then
         FILE_LINE=$(extract_file_line "$issue")
         
         # Check if this FILE:LINE appears in fix output
-        if ! grep -qF "$FILE_LINE" "$FIX_FILE"; then
+        if ! grep -qF -- "$FILE_LINE" "$FIX_FILE"; then
             UNADDRESSED_CRITICAL+=("$issue")
         else
             # Verify it's marked as fixed (not in "Issues Not Fixed" section)
-            if grep -A 100 '^### Issues Not Fixed' "$FIX_FILE" | grep -qF "$FILE_LINE"; then
+            if sed -En '/^### Issues Not Fixed/,/^### |^##/p' -- "$FIX_FILE" | grep -qF -- "$FILE_LINE"; then
                 UNADDRESSED_CRITICAL+=("$issue (listed as not fixed)")
             fi
         fi
@@ -85,13 +85,13 @@ if [ -n "$MAJOR_ISSUES" ]; then
         FILE_LINE=$(extract_file_line "$issue")
         
         # Check if this FILE:LINE appears in fix output
-        if ! grep -qF "$FILE_LINE" "$FIX_FILE"; then
+        if ! grep -qF -- "$FILE_LINE" "$FIX_FILE"; then
             UNADDRESSED_MAJOR+=("$issue")
         else
             # Verify it's marked as fixed (not in "Issues Not Fixed" section)
-            if grep -A 100 '^### Issues Not Fixed' "$FIX_FILE" | grep -qF "$FILE_LINE"; then
+            if sed -En '/^### Issues Not Fixed/,/^### |^##/p' -- "$FIX_FILE" | grep -qF -- "$FILE_LINE"; then
                 # Major issues in "not fixed" must have valid reason
-                if ! grep -A 2 "$FILE_LINE" "$FIX_FILE" | grep -qE 'Reason:|reason:'; then
+                if ! sed -n "/$(printf '%s' "$FILE_LINE" | sed 's/[]\/.*^$[]/\\&/g')/,+2p" -- "$FIX_FILE" | grep -qE 'Reason:|reason:'; then
                     ERRORS+=("Major issue not fixed without reason: $FILE_LINE")
                 fi
             fi
@@ -100,8 +100,8 @@ if [ -n "$MAJOR_ISSUES" ]; then
 fi
 
 # Check that fixes reference specific files
-if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' "$FIX_FILE"; then
-    FIX_DESCRIPTIONS=$(grep -E -A 100 '^### Critical Issues Addressed|^### Major Issues Addressed' "$FIX_FILE" | grep '^- \[' || true)
+if grep -qE '^### Critical Issues Addressed|^### Major Issues Addressed' -- "$FIX_FILE"; then
+    FIX_DESCRIPTIONS=$(sed -En '/^### Critical Issues Addressed|^### Major Issues Addressed/,/^### [^CM]|^## /p' -- "$FIX_FILE" | grep -- '^- \[' || true)
     
     if [ -n "$FIX_DESCRIPTIONS" ]; then
         while IFS= read -r line; do

@@ -1,6 +1,6 @@
 ---
 name: review-scoring
-description: "Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring implementations, or validating that work meets quality standards. Includes deterministic validation scripts for review output."
+description: 'Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring implementations, or validating that work meets quality standards. Includes deterministic validation scripts for review output.'
 metadata:
   version: 1.0.0
   category: protocol
@@ -228,8 +228,8 @@ The overall score determines the verdict:
 
 | Score Range | Verdict | Action Required |
 |-------------|---------|----------------|
-| **9.5-10.0** | PASS | Ship it — production ready |
-| **8.0-9.4** | CONDITIONAL PASS | Minor issues — fix and re-check (no full re-review) |
+| **>= 9.5** | PASS | Ship it — production ready |
+| **8.0-9.49** | CONDITIONAL PASS | Minor issues — fix and re-check (no full re-review) |
 | **6.0-7.9** | FAIL | Significant issues — fix and full re-review required |
 | **Below 6.0** | FAIL | Major rework needed — fix and full re-review required |
 
@@ -406,7 +406,7 @@ This skill is a critical component of the Work-Review-Fix-Check loop:
 
 The orchestrator uses the numeric score and verdict to make decisions:
 - **PASS (9.5+)**: Exit loop, mark complete
-- **CONDITIONAL PASS (8.0-9.4)**: One more quick fix+check cycle
+- **CONDITIONAL PASS (8.0-9.49)**: One more quick fix+check cycle
 - **FAIL (<8.0)**: Full review-fix-check loop again
 
 ## Common Scoring Mistakes to Avoid
@@ -463,7 +463,7 @@ Integration:       5%
 ### Verdict Thresholds
 ```
 9.5+ → PASS
-8.0-9.4 → CONDITIONAL PASS
+8.0-9.49 → CONDITIONAL PASS
 6.0-7.9 → FAIL
 <6.0 → FAIL (major rework)
 ```

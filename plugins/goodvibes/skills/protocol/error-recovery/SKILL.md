@@ -1,6 +1,6 @@
 ---
 name: error-recovery
-description: "Defines error recovery procedures for all GoodVibes agents. Use when encountering tool failures, build errors, test failures, or unexpected results during task execution. Covers 3-phase escalation, memory-informed recovery, and when to escalate to the orchestrator."
+description: "Defines error recovery procedures for all GoodVibes agents. Use when encountering tool failures, build errors, test failures, or unexpected results during task execution. Covers systematic error recovery, memory-informed diagnostics, and when to escalate to the orchestrator."
 metadata:
   version: 1.0.0
   category: protocol
@@ -174,27 +174,10 @@ When an error occurs during task execution:
 
 After categorizing the error and checking failures.json, use a **one-shot strategy** where you consult ALL knowledge sources simultaneously (not sequentially) and apply the best solution:
 
-### 1. Internal Knowledge
-- **Precision tools**: Use discover, precision_grep, precision_read to find similar patterns in the codebase
-- **Project context**: Check existing implementations, config files, similar components
-- **GoodVibes memory**: Read `.goodvibes/memory/failures.json` (already done), `.goodvibes/memory/decisions.json`, `.goodvibes/logs/errors.md`
-
-### 2. First-Party Documentation
-- **Official docs**: Framework docs (Next.js, React, Vue, etc.), library docs (Prisma, tRPC, etc.)
-- **API references**: Official API documentation for external services
-- **Migration guides**: If the error relates to version upgrades
-- **Use precision_fetch** to fetch official docs directly when possible
-
-### 3. Community Knowledge
-- **Stack Overflow**: Search for exact error messages
-- **GitHub Issues**: Check the library's GitHub issues for similar errors
-- **Blog posts**: Developer blogs often have detailed troubleshooting guides
-- **Use WebSearch** with specific error keywords + library name
-
-### 4. Open Internet
-- **Recent solutions**: Use WebSearch to find solutions from the last 6 months
-- **Reddit/Discord**: Community discussions often reveal undocumented issues
-- **Search with context**: Include framework version, environment (Node.js version, OS)
+1. **Internal knowledge** — your training data, codebase patterns (discover, precision_grep, precision_read), GoodVibes memory
+2. **First-party docs** — official documentation, API references, changelogs, migration guides
+3. **Community knowledge** — Stack Overflow, GitHub Issues, forums
+4. **Open internet** — broader web search for edge cases
 
 ### Applying the Best Solution
 
@@ -244,7 +227,7 @@ Use precision_edit to append a new entry with:
   "error": "precision_read returns 'file not found' for valid path",
   "context": "Reading component file at src/components/Button.tsx",
   "root_cause": "Path was relative, but precision tools require absolute paths. Sandbox was enabled, blocking CWD resolution.",
-  "resolution": "RESOLVED - Used path.resolve(__dirname, 'src/components/Button.tsx') to create absolute path before calling precision_read.",
+  "resolution": "RESOLVED - Used absolute path with process.cwd() to create absolute path before calling precision_read.",
   "prevention": "Always use absolute paths with precision tools. Use path.resolve() to convert relative to absolute.",
   "keywords": ["precision_read", "path", "absolute", "relative", "sandbox", "file-not-found"]
 }
@@ -379,36 +362,26 @@ Discovered: Requires new database schema, auth changes, API endpoints
 
 **Escalate with**: "Scope expansion discovered. Original: [task]. Required: [new dependencies/changes]. Recommend: [break into subtasks / get user approval]."
 
-## Common Error Patterns
-
-For detailed TOOL_FAILURE patterns, see the TOOL_FAILURE section above.
-
-Key reminders:
-- **Precision tool user errors** (wrong params, bad paths) → fix and retry with precision tools
-- **Actual tool failures** (crashes, timeouts) → fallback to native tools for that operation only
-- **The 3-attempt rule**: Try precision tools 3 times before considering native fallback
-- **After fallback**: Log the failure to failures.json and return to precision tools
-
 ## Summary
 
 **When errors occur:**
-1. ✅ Categorize immediately (TOOL_FAILURE, BUILD_ERROR, etc.)
-2. ✅ Check failures.json for known patterns
-3. ✅ Use one-shot multi-source recovery (internal + docs + community + web)
-4. ✅ Apply the best solution completely
-5. ✅ Log resolution to failures.json and errors.md
-6. ✅ Continue with task
+1. Categorize immediately (TOOL_FAILURE, BUILD_ERROR, etc.)
+2. Check failures.json for known patterns
+3. Use one-shot multi-source recovery (internal + docs + community + web)
+4. Apply the best solution completely
+5. Log resolution to failures.json and errors.md
+6. Continue with task
 
 **After 3 attempts:**
-1. ✅ Log as UNRESOLVED
-2. ✅ Report to orchestrator with structured summary
-3. ✅ Do NOT mark task complete
+1. Log as UNRESOLVED
+2. Report to orchestrator with structured summary
+3. Do NOT mark task complete
 
 **Escalate immediately for:**
-1. ✅ Permission errors
-2. ✅ Missing credentials
-3. ✅ Architectural ambiguity
-4. ✅ Scope changes
+1. Permission errors
+2. Missing credentials
+3. Architectural ambiguity
+4. Scope changes
 
 **Remember:**
 - Precision tools are the default, native tools are the fallback

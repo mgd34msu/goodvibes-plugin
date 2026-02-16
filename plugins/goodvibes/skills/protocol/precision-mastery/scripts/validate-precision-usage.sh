@@ -27,7 +27,7 @@ NATIVE_TOOLS=("\"name\":\"Read\"" "\"name\":\"Edit\"" "\"name\":\"Write\"" "\"na
 
 for tool in "${NATIVE_TOOLS[@]}"; do
   if grep -q "$tool" "$TRANSCRIPT_FILE"; then
-    tool_name=$(echo "$tool" | sed 's/.*:\"\(.*\)\".*/\1/')
+    tool_name=$(printf '%s\n' "$tool" | sed 's/.*:\"\(.*\)\".*/\1/')
     VIOLATIONS+=("Native tool call detected: $tool_name (should use precision equivalent)")
   fi
 done
@@ -77,7 +77,7 @@ if [[ $SEQUENTIAL_WRITES -ge 3 ]]; then
 fi
 
 echo ""
-echo "="=================================================================""
+echo "================================================================="
 
 # Report results
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then

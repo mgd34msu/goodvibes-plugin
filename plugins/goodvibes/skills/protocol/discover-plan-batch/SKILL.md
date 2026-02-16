@@ -55,7 +55,7 @@ discover:
       type: symbols
       query: "use"
       kinds: ["function"]
-  output_mode: files_only
+  verbosity: files_only
 ```
 
 **When to use each query type:**
@@ -180,14 +180,14 @@ discover:
     - id: component_count
       type: glob
       patterns: ["src/components/**/*.tsx"]
-  output_mode: count_only
+  verbosity: count_only
 ```
 
 If you discover 5 files, full reads are feasible. If you discover 500 files, you need a more targeted approach (grep for specific patterns first, narrow the scope).
 
 ### Discovery Anti-Patterns
 
-**❌ Reading entire files when outline would suffice**
+**[BAD] Reading entire files when outline would suffice**
 
 ```yaml
 # BAD: Consuming 5000 tokens for 50-line outline
@@ -205,7 +205,7 @@ precision_read:
       extract: outline
 ```
 
-**❌ Sequential discovery queries**
+**[BAD] Sequential discovery queries**
 
 ```yaml
 # BAD: 3 separate tool calls
@@ -217,8 +217,10 @@ precision_grep:
   pattern: "export function"
   
 # Then later...
-precision_symbols:
-  query: "use"
+precision_read:
+  files:
+    - path: "src/hooks/"
+      extract: symbols
 ```
 
 ```yaml
@@ -236,7 +238,7 @@ discover:
       query: "use"
 ```
 
-**❌ Skipping memory checks**
+**[BAD] Skipping memory checks**
 
 Starting implementation without checking failures.json, patterns.json, decisions.json leads to:
 - Repeating past mistakes
@@ -330,7 +332,7 @@ If your plan contains 3 or more sequential calls to the same precision tool, you
 
 **Example: Creating multiple files**
 
-❌ **BAD PLAN:**
+[BAD] **BAD PLAN:**
 ```
 1. precision_write - create types.ts
 2. precision_write - create hooks.ts
@@ -338,21 +340,21 @@ If your plan contains 3 or more sequential calls to the same precision tool, you
 4. precision_write - create utils.ts
 ```
 
-✅ **GOOD PLAN:**
+[GOOD] **GOOD PLAN:**
 ```
 1. precision_write - create types.ts, hooks.ts, index.ts, utils.ts (batched)
 ```
 
 **Example: Running validation commands**
 
-❌ **BAD PLAN:**
+[BAD] **BAD PLAN:**
 ```
 1. precision_exec - npm run typecheck
 2. precision_exec - npm run lint
 3. precision_exec - npm run test
 ```
 
-✅ **GOOD PLAN:**
+[GOOD] **GOOD PLAN:**
 ```
 1. precision_exec - run typecheck, lint, test (batched)
 ```
@@ -416,7 +418,7 @@ If your estimate exceeds your token budget, revise the plan to be more targeted.
 
 ### Planning Anti-Patterns
 
-**❌ Vague plans without specific files**
+**[BAD] Vague plans without specific files**
 
 ```
 BAD:
@@ -432,13 +434,13 @@ GOOD:
 3. Run npm run test -- auth.test.ts
 ```
 
-**❌ Plans without dependency analysis**
+**[BAD] Plans without dependency analysis**
 
 Leads to:
 - Sequential execution when parallelism is possible
 - Parallel execution when dependencies exist (causing errors)
 
-**❌ Plans without batch opportunities identified**
+**[BAD] Plans without batch opportunities identified**
 
 Leads to:
 - One tool call per operation (10x+ token waste)
@@ -465,7 +467,7 @@ batch:
         type: glob
         patterns: ["src/features/**/*.ts"]
         output:
-          mode: files_only
+          format: files_only
     
     write:
       - id: create-files
@@ -554,7 +556,7 @@ precision_grep:
       pattern: "import.*from"
       glob: "src/**/*.ts"
   output:
-    mode: files_only
+    format: files_only
 ```
 
 **Batch edits:**
@@ -588,11 +590,10 @@ precision_read:
 
 # Step 2: Edit based on what was read
 precision_edit:
-  files:
+  edits:
     - path: "src/config/routes.ts"
-      edits:
-        - old_string: "const routes = [];"
-          new_string: "const routes = ['/auth', '/profile'];"
+      find: "const routes = [];"
+      replace: "const routes = ['/auth', '/profile'];"
   verbosity: minimal
 
 # Step 3: Verify edit succeeded
@@ -625,15 +626,13 @@ precision_exec:
     - cmd: "npm run typecheck"
       expect:
         exit_code: 0
-        stderr_empty: true
     - cmd: "npm run lint"
       expect:
         exit_code: 0
     - cmd: "npm run build"
       expect:
         exit_code: 0
-  output:
-    mode: minimal
+  verbosity: minimal
 ```
 
 **If validation fails:**
@@ -644,7 +643,7 @@ precision_exec:
 
 ### Batching Anti-Patterns
 
-**❌ One operation per tool call**
+**[BAD] One operation per tool call**
 
 ```yaml
 # BAD: 3 tool calls
@@ -676,7 +675,7 @@ precision_write:
       content: "..."
 ```
 
-**❌ Using verbose output when minimal suffices**
+**[BAD] Using verbose output when minimal suffices**
 
 ```yaml
 # BAD: 10x token cost
@@ -696,7 +695,7 @@ precision_write:
   verbosity: minimal  # Just confirms success
 ```
 
-**❌ Falling back to native tools**
+**[BAD] Falling back to native tools**
 
 The PreToolUse hook blocks native tools and redirects to precision_engine. Don't fight it — use precision tools from the start.
 
@@ -780,7 +779,7 @@ discover:
       type: symbols
       query: "use"
       kinds: ["function"]
-  output_mode: files_only
+  verbosity: files_only
 
 # Check memory
 precision_read:
@@ -874,13 +873,12 @@ precision_write:
 
 # Step 3: Modify existing file
 precision_edit:
-  files:
+  edits:
     - path: "src/app/profile/page.tsx"
-      edits:
-        - old_string: "export default function ProfilePage() {"
-          new_string: |
-            import { ProfileCard } from '@/components/ProfileCard';
-            export default function ProfilePage() {
+      find: "export default function ProfilePage() {"
+      replace: |
+        import { ProfileCard } from '@/components/ProfileCard';
+        export default function ProfilePage() {
   verbosity: minimal
 
 # Step 4: Validate
@@ -900,7 +898,7 @@ precision_exec:
 
 #### LOOP Check
 
-✅ Results match plan:
+[GOOD] Results match plan:
 - All files created successfully
 - All validations pass
 - No unexpected errors
@@ -911,51 +909,51 @@ precision_exec:
 
 ### Diving In Without Discovery
 
-❌ Starting with `precision_write` before understanding the codebase
+[BAD] Starting with `precision_write` before understanding the codebase
 
-✅ Always run `discover` first to understand landscape
+[GOOD] Always run `discover` first to understand landscape
 
 ### Unstructured Plans
 
-❌ "I'll add some files and see what happens"
+[BAD] "I'll add some files and see what happens"
 
-✅ Explicit list of files to create/modify, commands to run, dependencies
+[GOOD] Explicit list of files to create/modify, commands to run, dependencies
 
 ### Missing Batch Opportunities
 
-❌ 5 separate `precision_write` calls for 5 files
+[BAD] 5 separate `precision_write` calls for 5 files
 
-✅ 1 `precision_write` call with 5 files in the `files` array
+[GOOD] 1 `precision_write` call with 5 files in the `files` array
 
 ### Skipping Memory Checks
 
-❌ Implementing without checking failures.json, patterns.json, decisions.json
+[BAD] Implementing without checking failures.json, patterns.json, decisions.json
 
-✅ Check memory files during discovery phase
+[GOOD] Check memory files during discovery phase
 
 ### Over-Reading Files
 
-❌ Using `extract: content` when `extract: outline` would suffice
+[BAD] Using `extract: content` when `extract: outline` would suffice
 
-✅ Use minimal extraction needed (outline → symbols → content)
+[GOOD] Use minimal extraction needed (outline → symbols → content)
 
 ### Verbose Output Everywhere
 
-❌ `verbosity: verbose` for all operations
+[BAD] `verbosity: verbose` for all operations
 
-✅ `verbosity: minimal` unless you need detailed output
+[GOOD] `verbosity: minimal` unless you need detailed output
 
 ### Sequential When Parallel Works
 
-❌ Reading files one at a time when they're independent
+[BAD] Reading files one at a time when they're independent
 
-✅ Batch reads in single call or use `discover` for parallel queries
+[GOOD] Batch reads in single call or use `discover` for parallel queries
 
 ### Not Looping When Needed
 
-❌ Continuing with outdated plan when discovery reveals new information
+[BAD] Continuing with outdated plan when discovery reveals new information
 
-✅ Loop back to discovery when assumptions change
+[GOOD] Loop back to discovery when assumptions change
 
 ## Quick Reference
 

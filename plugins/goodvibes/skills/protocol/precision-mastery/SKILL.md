@@ -18,16 +18,16 @@ Use the lowest verbosity that meets your needs. Verbosity directly impacts token
 | Operation | Default | Recommended | Why |
 |----------|---------|-------------|-----|
 | `precision_write` | standard | **count_only** | You provided the content; just confirm success |
-| `precision_edit` | standard | **minimal** | Confirm applied; skip diffs unless debugging |
+| `precision_edit` | with_diff | **minimal** | Confirm applied; skip diffs unless debugging |
 | `precision_read` | standard | **standard** | You need the content |
-| `precision_grep` (discovery) | standard | **files_only** | Discovery phase, not content phase |
-| `precision_grep` (content) | standard | **matches** | Need actual matched lines |
-| `precision_glob` | standard | **files_only** | You need file paths, not stats |
+| `precision_grep` (discovery) | standard | **files_only** via output.format | Discovery phase, not content phase |
+| `precision_grep` (content) | standard | **matches** via output.format | Need actual matched lines |
+| `precision_glob` | standard | **paths_only** via output.format | You need file paths, not stats |
 | `precision_exec` (verify) | standard | **minimal** | Unless you need full stdout/stderr |
 | `precision_exec` (debug) | standard | **standard** | Need output to diagnose |
 | `precision_fetch` | standard | **standard** | You need the content |
-| `discover` | standard | **files_only** | Discovery phase, not content phase |
-| `precision_symbols` | standard | **locations** | File:line is usually enough |
+| `discover` | files_only (verbosity param) | **files_only** | Discovery phase, not content phase |
+| `precision_symbols` | locations (verbosity param) | **locations** | File:line is usually enough |
 
 **Token Multipliers**:
 - `count_only`: ~0.05x tokens
@@ -129,14 +129,14 @@ Apply multiple edits across files in one `precision_edit` call with atomic trans
 ```yaml
 precision_edit:
   edits:
-    - file: "src/components/Button.tsx"
+    - path: "src/components/Button.tsx"
       find: "export default Button"
       replace: "export { Button as default }"
-    - file: "src/components/index.ts"
+    - path: "src/components/index.ts"
       find: "export { default as Button } from './Button'"
       replace: "export { Button } from './Button'"
   transaction:
-    enabled: true
+    mode: "atomic"
   verbosity: minimal
 ```
 
@@ -245,7 +245,7 @@ The `discover` tool is a meta-tool that runs multiple queries (grep, glob, symbo
 
 ```yaml
 # Step 1: Discover
-db�cover:
+discover:
   queries:
     - id: existing_files
       type: glob
@@ -292,7 +292,7 @@ precision_exec:
   commands:
     - cmd: "npm install"
       retry:
-        max_attempts: 3
+        max: 3
         delay_ms: 1000
   verbosity: minimal
 ```
@@ -306,10 +306,8 @@ precision_exec:
   commands:
     - cmd: "curl http://localhost:3000/api/health"
       until:
-        condition: "stdout_contains"
-        value: "ok"
+        pattern: "ok"
         timeout_ms: 30000
-        interval_ms: 1000
   verbosity: minimal
 ```
 
@@ -336,7 +334,7 @@ Extract specific data from JSON responses.
 precision_fetch:
   urls:
     - url: "https://api.example.com/users"
-      extract: "$.data[*].name"  # JSONPath
+      extract: "json"  # Extract mode: raw, text, json, markdown, structured, etc.
   verbosity: standard
 ```
 
@@ -354,7 +352,7 @@ precision_fetch:
 
 ## Anti-Patterns (NEVER DO THESE)
 
-1. **Using native tools**: Read, Edit, Write, Glob, Grep, WebFetch are blocked by PreToolUse hook. Use precision equivalents.
+1. **Using native tools**: Read, Edit, Write, Glob, Grep, WebFetch should be avoided. Use precision equivalents.
 
 2. **Setting verbosity to "verbose" for writes/edits**: Wastes tokens. You just wrote the content, why read it back?
 
@@ -384,7 +382,7 @@ If a precision tool fails:
 
 3. **Return to precision tools**: For the next operation.
 
-4. **Log the failure**: To `]goodvibes/memory/failures.json`.
+4. **Log the failure**: To `.goodvibes/memory/failures.json`.
 
 **Example**:
 - `precision_read` fails on a specific file => Use `Read` for that file only, return to `precision_read` for other files.
@@ -451,9 +449,9 @@ precision_write:
 # 4. Batch edits with atomic transaction
 precision_edit:
   edits:
-    - { file: "f1.ts", find: "...", replace: "..." }
-    - { file: "f2.ts", find: "...", replace: "..." }
-  transaction: { enabled: true }
+    - { path: "f1.ts", find: "...", replace: "..." }
+    - { path: "f2.ts", find: "...", replace: "..." }
+  transaction: { mode: "atomic" }
   verbosity: minimal
 
 # 5. Verify with minimal output

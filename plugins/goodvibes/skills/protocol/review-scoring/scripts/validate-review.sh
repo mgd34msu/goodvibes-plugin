@@ -26,12 +26,12 @@ fi
 ERRORS=()
 
 # Check 1: Overall numeric score present (X.X/10 format)
-if ! grep -qE '^- \*\*Overall Score\*\*: [0-9]+\.[0-9]+/10' "$REVIEW_FILE"; then
+if ! grep -qE '^- \*\*Overall Score\*\*: [0-9]+\.[0-9]+/10' -- "$REVIEW_FILE"; then
     ERRORS+=("Missing or malformed Overall Score (expected format: X.X/10)")
 fi
 
 # Check 2: Verdict present and valid
-if ! grep -qE '^- \*\*Verdict\*\*: (PASS|CONDITIONAL PASS|FAIL)' "$REVIEW_FILE"; then
+if ! grep -qE '^- \*\*Verdict\*\*: (PASS|CONDITIONAL PASS|FAIL)' -- "$REVIEW_FILE"; then
     ERRORS+=("Missing or invalid Verdict (must be: PASS, CONDITIONAL PASS, or FAIL)")
 fi
 
@@ -53,14 +53,14 @@ DIMENSIONS=(
 # | Dimension Name | Score/10 | Notes |
 # with single spaces around pipe delimiters
 for dimension in "${DIMENSIONS[@]}"; do
-    if ! grep -qE "^\| $dimension \| [0-9]+/10 \|" "$REVIEW_FILE"; then
+    if ! grep -qE "^\| $dimension \| [0-9]+/10 \|" -- "$REVIEW_FILE"; then
         ERRORS+=("Missing or malformed dimension score for: $dimension")
     fi
 done
 
 # Check critical dimension rule (SKILL.md line 236)
 # Extract verdict for later comparison
-VERDICT=$(grep -oE '^- \*\*Verdict\*\*: (PASS|CONDITIONAL PASS|FAIL)' "$REVIEW_FILE" | grep -oE '(PASS|CONDITIONAL PASS|FAIL)$' || echo "UNKNOWN")
+VERDICT=$(grep -oE '^- \*\*Verdict\*\*: (PASS|CONDITIONAL PASS|FAIL)' -- "$REVIEW_FILE" | grep -oE '(PASS|CONDITIONAL PASS|FAIL)$' || echo "UNKNOWN")
 
 for dimension in "${DIMENSIONS[@]}"; do
     # Extract dimension score (just the number, not /10)
@@ -74,21 +74,21 @@ for dimension in "${DIMENSIONS[@]}"; do
 done
 
 # Check 4: Issue categories present (Critical, Major, Minor)
-if ! grep -qE '^### Critical \(must fix\)' "$REVIEW_FILE"; then
+if ! grep -qE '^### Critical \(must fix\)' -- "$REVIEW_FILE"; then
     ERRORS+=("Missing 'Critical (must fix)' section")
 fi
 
-if ! grep -qE '^### Major \(should fix\)' "$REVIEW_FILE"; then
+if ! grep -qE '^### Major \(should fix\)' -- "$REVIEW_FILE"; then
     ERRORS+=("Missing 'Major (should fix)' section")
 fi
 
-if ! grep -qE '^### Minor \(nice to fix\)' "$REVIEW_FILE"; then
+if ! grep -qE '^### Minor \(nice to fix\)' -- "$REVIEW_FILE"; then
     ERRORS+=("Missing 'Minor (nice to fix)' section")
 fi
 
 # Check 5: Issues have FILE:LINE references and fix suggestions
 # Extract issue lines (those starting with '- [' after category headers)
-ISSUE_LINES=$(grep -E -A 100 '^### Critical|^### Major|^### Minor' "$REVIEW_FILE" | grep '^- \[' || true)
+ISSUE_LINES=$(sed -En '/^### Critical|^### Major|^### Minor/,/^## /p' -- "$REVIEW_FILE" | grep '^- \[' || true)
 
 if [ -n "$ISSUE_LINES" ]; then
     # Check each issue line has FILE:LINE format
@@ -105,12 +105,12 @@ if [ -n "$ISSUE_LINES" ]; then
 fi
 
 # Check 6: "What Was Done Well" section exists
-if ! grep -qE '^## What Was Done Well' "$REVIEW_FILE"; then
+if ! grep -qE '^## What Was Done Well' -- "$REVIEW_FILE"; then
     ERRORS+=("Missing 'What Was Done Well' section")
 fi
 
 # Check 7: Verdict matches score thresholds
-SCORE=$(grep -oE '^- \*\*Overall Score\*\*: [0-9]+\.[0-9]+' "$REVIEW_FILE" | grep -oE '[0-9]+\.[0-9]+' || echo "0.0")
+SCORE=$(grep -oE '^- \*\*Overall Score\*\*: [0-9]+\.[0-9]+' -- "$REVIEW_FILE" | grep -oE '[0-9]+\.[0-9]+' || echo "0.0")
 # Note: VERDICT already extracted above for critical dimension check
 
 # Convert score to integer (multiply by 10 to avoid float comparison)
