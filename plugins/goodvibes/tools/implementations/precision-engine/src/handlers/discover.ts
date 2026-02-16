@@ -19,6 +19,7 @@ import { validateDirectoryPath } from '../utils/path-validation.js';
 import fg from 'fast-glob';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { getDiscoverSymbolTimeout } from '../runtime-config.js';
+import { ProjectIndex } from '../state/project-index.js';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
@@ -45,7 +46,7 @@ function getAstGrep(): AstGrepCore {
 
 interface QuerySpec {
   id: string;
-  type: 'grep' | 'glob' | 'symbols' | 'structural';
+  type: 'grep' | 'glob' | 'symbols' | 'structural' | 'index';
   // For grep:
   pattern?: string;
   pattern_base64?: string;
@@ -60,6 +61,10 @@ interface QuerySpec {
   structural_pattern?: string;
   structural_pattern_base64?: string;
   language?: string;
+  // For index:
+  filter?: string;
+  file_types?: string[];
+  detail?: 'count_only' | 'summary' | 'paths_only' | 'full';
 }
 
 interface DiscoverInput {
@@ -76,10 +81,12 @@ interface LocationInfo {
 }
 
 interface QueryResult {
-  type?: 'grep' | 'glob' | 'symbols' | 'structural';
+  type?: 'grep' | 'glob' | 'symbols' | 'structural' | 'index';
   count: number;
-  files?: string[];
+  files?: string[] | Array<{ path: string; size: number; modified: number; type?: string }>;
   locations?: LocationInfo[];
+  stats?: any;
+  type_counts?: Record<string, number>;
   error?: string;
 }
 
@@ -453,6 +460,46 @@ async function executeStructuralQuery(
   }
 }
 
+async function executeIndexQuery(
+  query: QuerySpec,
+  outputMode: DiscoverOutputMode,
+  searchRoot: string
+): Promise<QueryResult> {
+  const projectIndex = ProjectIndex.getInstance();
+  const index = await projectIndex.getIndexLoaded();
+  
+  if (!index) {
+    return { count: 0, error: 'Project index not available. Will be created on next session start.' };
+  }
+
+  let files = index.files;
+  
+  // Apply filters
+  if (query.filter) {
+    files = files.filter(f => f.p.startsWith(query.filter!));
+  }
+  if (query.file_types && query.file_types.length > 0) {
+    const types = new Set(query.file_types);
+    files = files.filter(f => f.t && types.has(f.t));
+  }
+
+  const detail = query.detail || 'summary';
+  
+  // Return appropriate detail level
+  switch (detail) {
+    case 'count_only':
+      return { type: 'index', count: files.length, stats: index.stats };
+    case 'summary':
+      return { type: 'index', count: files.length, stats: index.stats, type_counts: projectIndex.getTypeCounts() };
+    case 'paths_only':
+      return { type: 'index', count: files.length, files: files.map(f => f.p) };
+    case 'full':
+      return { type: 'index', count: files.length, files: files.map(f => ({ path: f.p, size: f.s, modified: f.m, type: f.t })) };
+    default:
+      return { type: 'index', count: files.length, stats: index.stats, type_counts: projectIndex.getTypeCounts() };
+  }
+}
+
 async function executeQuery(
   query: QuerySpec,
   outputMode: DiscoverOutputMode,
@@ -468,6 +515,8 @@ async function executeQuery(
       return executeSymbolsQuery(query, outputMode, searchRoot);
     case 'structural':
       return executeStructuralQuery(query, outputMode, searchRoot);
+    case 'index':
+      return executeIndexQuery(query, outputMode, searchRoot);
     default:
       return { count: 0, error: `Unknown query type: ${query.type}` };
   }

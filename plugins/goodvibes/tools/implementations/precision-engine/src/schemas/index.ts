@@ -218,7 +218,7 @@ export const discoverSchema: Tool = {
           type: 'object',
           properties: {
             id: { type: 'string', description: 'Unique ID for this query' },
-            type: { type: 'string', enum: ['grep', 'glob', 'symbols', 'structural'], description: 'Query type' },
+            type: { type: 'string', enum: ['grep', 'glob', 'symbols', 'structural', 'index'], description: 'Query type' },
             pattern: { type: 'string', description: 'Regex pattern (for grep)' },
             pattern_base64: { type: 'string', description: 'Base64-encoded regex pattern. REQUIRED when pattern contains: single quotes, backticks, or ${} patterns. Encode with: echo -n "pattern" | base64 -w0' },
             glob: { type: 'string', description: 'File filter (for grep)' },
@@ -229,6 +229,9 @@ export const discoverSchema: Tool = {
             structural_pattern: { type: 'string', description: 'AST pattern to search for (e.g., "console.log($$$ARGS)") (for structural)' },
             structural_pattern_base64: { type: 'string', description: 'Base64-encoded structural pattern (for structural)' },
             language: { type: 'string', description: 'Language hint for structural queries' },
+            filter: { type: 'string', description: 'Path prefix filter (for index, e.g., "src/components")' },
+            file_types: { type: 'array', items: { type: 'string' }, description: 'File type filter (for index, e.g., ["ts", "tsx"])' },
+            detail: { type: 'string', enum: ['count_only', 'summary', 'paths_only', 'full'], description: 'Detail level for index queries (default: summary)' },
           },
           required: ['id', 'type'],
         },
