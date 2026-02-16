@@ -57,10 +57,12 @@ fi
 
 if [[ "$MIDDLEWARE_FOUND" == true ]]; then
   printf '  %sPASS%s Auth middleware found\n' "$GREEN" "$NC"
+  printf '[PASS] Auth middleware exists\n'
 else
   VIOLATIONS+=("No auth middleware found (middleware.ts, src/middleware.ts, or auth.middleware.ts)")
   PASS=false
   printf '  %sFAIL%s Auth middleware not found\n' "$RED" "$NC"
+  printf '[FAIL] Auth middleware not found\n'
 fi
 printf '\n'
 
@@ -75,10 +77,12 @@ fi
 
 if [[ "$PROTECTED_ROUTES_FOUND" == true ]]; then
   printf '  %sPASS%s Protected route patterns found\n' "$GREEN" "$NC"
+  printf '[PASS] Protected routes configured\n'
 else
   VIOLATIONS+=("No protected route patterns found (requireAuth, withAuth, etc.)")
   PASS=false
   printf '  %sFAIL%s Protected route patterns not found\n' "$RED" "$NC"
+  printf '[FAIL] Protected routes not configured\n'
 fi
 printf '\n'
 
@@ -108,8 +112,10 @@ if [[ "$SECRETS_FOUND" == true ]]; then
   VIOLATIONS+=("Potential hardcoded secrets found in source code")
   PASS=false
   printf '  %sFAIL%s Potential secrets found in source code\n' "$RED" "$NC"
+  printf '[FAIL] Hardcoded secrets detected\n'
 else
   printf '  %sPASS%s No hardcoded secrets detected\n' "$GREEN" "$NC"
+  printf '[PASS] No hardcoded secrets\n'
 fi
 printf '\n'
 
@@ -132,12 +138,15 @@ if [[ "$ENV_EXAMPLE_FOUND" == false ]]; then
   VIOLATIONS+=("No .env.example or .env.template file found")
   PASS=false
   printf '  %sFAIL%s No .env.example file found\n' "$RED" "$NC"
+  printf '[FAIL] No .env.example file\n'
 elif [[ "$AUTH_VARS_DOCUMENTED" == false ]]; then
   VIOLATIONS+=("Auth environment variables not documented in .env.example")
   PASS=false
   printf '  %sFAIL%s Auth env vars not documented\n' "$RED" "$NC"
+  printf '[FAIL] Auth env vars not documented\n'
 else
   printf '  %sPASS%s Auth env vars documented in .env.example\n' "$GREEN" "$NC"
+  printf '[PASS] Auth env vars documented\n'
 fi
 printf '\n'
 
@@ -153,10 +162,12 @@ fi
 
 if [[ "$SESSION_CONFIG_FOUND" == true ]]; then
   printf '  %sPASS%s Session/token configuration found\n' "$GREEN" "$NC"
+  printf '[PASS] Session/token configuration present\n'
 else
   VIOLATIONS+=("No session or token configuration found")
   PASS=false
   printf '  %sFAIL%s Session/token configuration not found\n' "$RED" "$NC"
+  printf '[FAIL] Session/token configuration missing\n'
 fi
 printf '\n'
 
@@ -171,6 +182,7 @@ fi
 
 if [[ "$HASHING_FOUND" == true ]]; then
   printf '  %sPASS%s Password hashing found\n' "$GREEN" "$NC"
+  printf '[PASS] Password hashing implemented\n'
 else
   # This might be OK for OAuth-only or managed auth
   printf '  %sWARN%s No password hashing found (OK if using OAuth/managed auth)\n' "$YELLOW" "$NC"

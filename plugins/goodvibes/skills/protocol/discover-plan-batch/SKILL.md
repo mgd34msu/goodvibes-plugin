@@ -358,8 +358,8 @@ Identify operations that can be combined:
 
 ```
 Batch opportunities:
-- Steps 1-3 (create files) → single precision_write call with 3 files
-- Steps 5-7 (run commands) → single precision_exec call with 3 commands
+- Steps 1-3 (create files) -> single precision_write call with 3 files
+- Steps 5-7 (run commands) -> single precision_exec call with 3 commands
 ```
 
 ### The "3+ Sequential Calls" Rule
@@ -400,9 +400,9 @@ If your plan contains 3 or more sequential calls to the same precision tool, you
 Identify which operations must be sequential vs parallel:
 
 **Sequential dependencies:**
-- Read file → Edit file (need content before editing)
-- Create types → Create code using types (need types to exist)
-- Edit files → Run typecheck (need files saved before checking)
+- Read file -> Edit file (need content before editing)
+- Create types -> Create code using types (need types to exist)
+- Edit files -> Run typecheck (need files saved before checking)
 
 **Parallel opportunities:**
 - Create multiple independent files
@@ -647,7 +647,7 @@ precision_exec:
 ```
 
 **When sequential is acceptable:**
-- Read → Edit → Verify workflows
+- Read -> Edit -> Verify workflows
 - Operations where output of one determines input of next
 - Error handling between steps
 
@@ -791,7 +791,7 @@ If discovery reveals the situation is different than expected:
 ```
 Expected: Create new auth system from scratch
 Discovered: Auth system already exists, just needs extension
-→ LOOP: Re-discover existing auth patterns before planning
+-> LOOP: Re-discover existing auth patterns before planning
 ```
 
 ### Results Don't Match Plan
@@ -802,7 +802,7 @@ If execution produces unexpected output:
 ```
 Expected: Typecheck passes after adding types
 Actual: Typecheck fails with "module not found"
-→ LOOP: Discover import structure, re-plan file organization
+-> LOOP: Discover import structure, re-plan file organization
 ```
 
 ### New Information
@@ -813,7 +813,7 @@ If task requirements are clarified during execution:
 ```
 Original task: Add user authentication
 Clarification: Must integrate with existing Clerk setup
-→ LOOP: Discover Clerk integration patterns before continuing
+-> LOOP: Discover Clerk integration patterns before continuing
 ```
 
 ### Looping Pattern
@@ -845,7 +845,7 @@ discover:
 ```
 Plan: Create auth/hooks.ts using User type
 Execution: Typecheck fails - User type not exported from expected location
-→ LOOP: Discover where User type actually lives
+-> LOOP: Discover where User type actually lives
 ```
 
 ```yaml

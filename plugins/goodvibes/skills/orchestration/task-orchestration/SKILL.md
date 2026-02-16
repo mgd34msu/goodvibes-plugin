@@ -213,7 +213,7 @@ Use this format when reporting completion:
 - Chose X over Y: [rationale]
 
 ### Issues Encountered
-- [Issue] → [resolution or "unresolved"]
+- [Issue] -> [resolution or "unresolved"]
 
 ### Uncertainties
 - [Items for orchestrator to verify with user]
@@ -421,7 +421,7 @@ tasks:
 8. Wait for tests to complete
 9. Aggregate results and return to user
 
-**Parallelism:** 4 waves (types solo → API + UI parallel → review solo → tests solo)
+**Parallelism:** 4 waves (types solo -> API + UI parallel -> review solo -> tests solo)
 
 ### Example 2: Bug Fix
 
@@ -470,7 +470,7 @@ tasks:
 6. Wait for verification to complete
 7. Return to user
 
-**Parallelism:** None (fully sequential: diagnose → fix → verify)
+**Parallelism:** None (fully sequential: diagnose -> fix -> verify)
 
 ### Example 3: Refactoring
 
@@ -539,7 +539,7 @@ tasks:
 8. Wait for both to complete
 9. Return to user
 
-**Parallelism:** 4 waves (planning → analysis → hooks → 2 refactors parallel)
+**Parallelism:** 4 waves (planning -> analysis -> hooks -> 2 refactors parallel)
 
 ## Escalation Criteria
 
@@ -574,7 +574,7 @@ Escalate to user immediately when:
 4. Assign agents and skills (use decision table)
 5. Spawn agents with structured prompts (include WRFC guidance)
 6. Monitor active agents (up to 6 concurrent)
-7. Coordinate WRFC loops (WRITE → REPORT → FIX → CONTINUE)
+7. Coordinate WRFC loops (WRITE -> REPORT -> FIX -> CONTINUE)
 8. Aggregate results and return to user
 
 **Key principles:**

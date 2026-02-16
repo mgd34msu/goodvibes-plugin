@@ -24,7 +24,7 @@ This guide provides the complete agent-skill assignment decision tables and exam
 | Manage application state | integrator-state | State management, data flow | discover-plan-batch, precision-mastery |
 | Coordinate workflows | planner | High-level orchestration, planning | discover-plan-batch, precision-mastery |
 
-## Technology Stack → Skills Mapping
+## Technology Stack -> Skills Mapping
 
 ### Backend
 

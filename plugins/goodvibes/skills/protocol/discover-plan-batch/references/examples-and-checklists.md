@@ -149,7 +149,7 @@ precision_exec:
 - All validations pass
 - No unexpected errors
 
-→ No loop needed. Report success to orchestrator.
+-> No loop needed. Report success to orchestrator.
 
 **[BAD] Example: Validation fails**
 
@@ -216,7 +216,7 @@ precision_exec:
 
 **[BAD]** Using `extract: content` when `extract: outline` would suffice
 
-**[GOOD]** Use minimal extraction needed (outline → symbols → content)
+**[GOOD]** Use minimal extraction needed (outline -> symbols -> content)
 
 ### Verbose Output Everywhere
 
@@ -274,7 +274,7 @@ precision_exec:
 - [ ] Scope matches expectations?
 - [ ] Results match plan?
 - [ ] New information revealed?
-- [ ] If any "no" → loop back to DISCOVER
+- [ ] If any "no" -> loop back to DISCOVER
 
 ---
 

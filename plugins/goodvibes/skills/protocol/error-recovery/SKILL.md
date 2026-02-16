@@ -93,8 +93,8 @@ When an error occurs during task execution:
 3. Read the test file to understand what it's testing
 4. Read the implementation to see if it matches the test expectations
 5. Determine if the test is wrong or the implementation is wrong:
-   - If implementation changed intentionally → update the test
-   - If implementation broke → fix the implementation
+   - If implementation changed intentionally -> update the test
+   - If implementation broke -> fix the implementation
 6. For async issues, check for missing `await`, improper use of `done()`, or race conditions
 7. For environment issues, check test setup files (vitest.config, jest.setup.js)
 
@@ -287,9 +287,9 @@ Use structured format in your response:
 [ERROR_CATEGORY] Brief description
 
 ### Attempts Made
-1. **Attempt 1**: What was tried → Result
-2. **Attempt 2**: What was tried → Result
-3. **Attempt 3**: What was tried → Result
+1. **Attempt 1**: What was tried -> Result
+2. **Attempt 2**: What was tried -> Result
+3. **Attempt 3**: What was tried -> Result
 
 ### Root Cause Analysis
 Best guess at why this is failing based on investigation.

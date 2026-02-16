@@ -95,10 +95,13 @@ WRITE_LINE=$(get_line_number "precision_write|precision_edit")
 if [[ -n "$WRITE_LINE" ]]; then
   if [[ -z "$DISCOVER_LINE" ]]; then
     add_violation "No discovery phase found before write/edit operations (line $WRITE_LINE)"
+    printf '[FAIL] No discovery phase before writes\n'
   elif [[ "$WRITE_LINE" -lt "$DISCOVER_LINE" ]]; then
     add_violation "Write/edit operation (line $WRITE_LINE) before discovery (line $DISCOVER_LINE)"
+    printf '[FAIL] Write before discovery\n'
   else
     echo -e "  ${GREEN}✓${NC} Discovery phase found before write operations"
+    printf '[PASS] Discovery phase before writes\n'
   fi
 else
   echo -e "  ${YELLOW}⊘${NC} No write/edit operations found (nothing to validate)"
@@ -128,12 +131,14 @@ for indicator in "${PLAN_INDICATORS[@]}"; do
   if has_literal "$indicator"; then
     PLAN_FOUND=true
     echo -e "  ${GREEN}✓${NC} Plan step found: '$indicator'"
+    printf '[PASS] Plan step found\n'
     break
   fi
 done
 
 if [[ "$PLAN_FOUND" == false ]]; then
   add_violation "No plan step found. Expected structured list of files to create/modify, commands to run, etc."
+  printf '[FAIL] No plan step found\n'
 fi
 
 # ============================================================================
@@ -159,6 +164,7 @@ BATCH_ISSUES=false
 if [[ "$WRITE_COUNT" -ge 3 ]]; then
   # Pattern-based detection - if we see 3+ writes, flag as potentially batchable
   add_violation "Found $WRITE_COUNT precision_write calls (pattern-based detection). Consider batching into 1 call with multiple files."
+  printf '[FAIL] Multiple writes should be batched\n'
   BATCH_ISSUES=true
 fi
 
@@ -166,6 +172,7 @@ fi
 if [[ "$EXEC_COUNT" -ge 3 ]]; then
   # Pattern-based detection - if we see 3+ execs, flag as potentially batchable
   add_violation "Found $EXEC_COUNT precision_exec calls (pattern-based detection). Consider batching into 1 call with multiple commands."
+  printf '[FAIL] Multiple execs should be batched\n'
   BATCH_ISSUES=true
 fi
 
@@ -173,17 +180,20 @@ fi
 if [[ "$READ_COUNT" -ge 3 ]]; then
   # Pattern-based detection - if we see 3+ reads, flag as potentially batchable
   add_violation "Found $READ_COUNT precision_read calls (pattern-based detection). Consider batching into 1 call with multiple files."
+  printf '[FAIL] Multiple reads should be batched\n'
   BATCH_ISSUES=true
 fi
 
 # Check if multiple grep calls could be batched
 if [[ "$GREP_COUNT" -ge 3 ]]; then
   add_violation "Found $GREP_COUNT precision_grep calls. Consider using discover tool or batching queries."
+  printf '[FAIL] Multiple greps should be batched\n'
   BATCH_ISSUES=true
 fi
 
 if [[ "$BATCH_ISSUES" == false ]]; then
   echo -e "  ${GREEN}✓${NC} Batch operations used appropriately"
+  printf '[PASS] Batch operations appropriate\n'
 fi
 
 # ============================================================================
@@ -203,12 +213,14 @@ MEMORY_CHECKED=false
 for mem_file in "${MEMORY_FILES[@]}"; do
   if has_literal "$mem_file"; then
     echo -e "  ${GREEN}✓${NC} Memory file checked: $mem_file"
+    printf '[PASS] Memory file checked: %s\n' "$mem_file"
     MEMORY_CHECKED=true
   fi
 done
 
 if [[ "$MEMORY_CHECKED" == false ]]; then
   add_violation "No memory files checked. Expected reads of .goodvibes/memory/{failures,patterns,decisions}.json before implementation."
+  printf '[FAIL] No memory files checked\n'
 fi
 
 # ============================================================================
@@ -222,6 +234,7 @@ if grep -qE "verbosity:[[:space:]]*verbose" -- "$TRANSCRIPT" 2>/dev/null; then
   add_warning "verbose verbosity mode detected. Consider using minimal/standard for token efficiency."
 else
   echo -e "  ${GREEN}✓${NC} No excessive verbosity detected"
+  printf '[PASS] Verbosity appropriate\n'
 fi
 
 # ============================================================================
@@ -249,6 +262,7 @@ fi
 
 if [[ "$ORDERING_OK" == true ]]; then
   echo -e "  ${GREEN}✓${NC} Operation ordering follows DPB pattern"
+  printf '[PASS] Operation ordering correct\n'
 fi
 
 # ============================================================================
@@ -267,6 +281,7 @@ if [[ -n "$WRITE_LINE" ]]; then
   
   if [[ -n "$EXEC_LINE" && -n "$VALIDATION_KEYWORDS" && "$EXEC_LINE" -gt "$WRITE_LINE" ]]; then
     echo -e "  ${GREEN}✓${NC} Post-batch validation detected (precision_exec + typecheck/lint/test after writes)"
+    printf '[PASS] Post-batch validation present\n'
   else
     add_warning "No post-batch validation found after write operations. Consider running typecheck/lint/test."
   fi

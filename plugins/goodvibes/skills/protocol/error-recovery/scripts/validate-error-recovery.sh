@@ -83,8 +83,10 @@ fi
 
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then
   printf '  %s✓%s All errors were categorized\n' "$GREEN" "$NC"
+  printf '[PASS] All errors categorized\n'
 else
   printf '  %s✗%s Found uncategorized errors\n' "$RED" "$NC"
+  printf '[FAIL] Uncategorized errors found\n'
 fi
 echo ""
 
@@ -98,8 +100,10 @@ if [[ -n "$ERROR_LINES" ]] && [[ -z "$FAILURES_CHECKED" ]]; then
   VIOLATIONS+=("Errors occurred but failures.json was not checked for known patterns")
   PASS=false
   printf '  %s✗%s failures.json was not checked\n' "$RED" "$NC"
+  printf '[FAIL] failures.json not checked\n'
 else
   printf '  %s✓%s failures.json was checked\n' "$GREEN" "$NC"
+  printf '[PASS] failures.json checked\n'
 fi
 echo ""
 
@@ -117,8 +121,10 @@ if [[ $RESOLVED_COUNT -gt 0 ]] && [[ -z "$RESOLUTION_LOGGED" ]]; then
   VIOLATIONS+=("Errors were resolved but not logged to failures.json")
   PASS=false
   printf '  %s✗%s Resolutions were not logged\n' "$RED" "$NC"
+  printf '[FAIL] Resolutions not logged\n'
 else
   printf '  %s✓%s Resolutions were logged or no resolutions needed\n' "$GREEN" "$NC"
+  printf '[PASS] Resolutions logged\n'
 fi
 echo ""
 
@@ -136,8 +142,10 @@ if [[ -n "$MAX_ATTEMPTS" ]] && [[ -n "$MARKED_INCOMPLETE" ]] && [[ -z "$ESCALATI
   VIOLATIONS+=("Max attempts reached and task marked incomplete, but no escalation to orchestrator")
   PASS=false
   printf '  %s✗%s Failed to escalate after max attempts\n' "$RED" "$NC"
+  printf '[FAIL] No escalation after max attempts\n'
 else
   printf '  %s✓%s Proper escalation or no max attempts reached\n' "$GREEN" "$NC"
+  printf '[PASS] Proper escalation\n'
 fi
 echo ""
 

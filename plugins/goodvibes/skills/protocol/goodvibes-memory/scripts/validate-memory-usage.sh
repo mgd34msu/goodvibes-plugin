@@ -89,29 +89,37 @@ echo "[CHECK 1] Verifying memory files read at task start..."
 # Check for precision_read of failures.json
 if ! pattern_exists 'precision_read.*failures\.json' "$TRANSCRIPT_FILE"; then
   add_violation "failures.json not read at task start (no precision_read call found)"
+  printf '[FAIL] failures.json not read\n'
 else
   echo -e "${GREEN}✓${NC} failures.json read"
+  printf '[PASS] failures.json read\n'
 fi
 
 # Check for precision_read of patterns.json
 if ! pattern_exists 'precision_read.*patterns\.json' "$TRANSCRIPT_FILE"; then
   add_violation "patterns.json not read at task start (no precision_read call found)"
+  printf '[FAIL] patterns.json not read\n'
 else
   echo -e "${GREEN}✓${NC} patterns.json read"
+  printf '[PASS] patterns.json read\n'
 fi
 
 # Check for precision_read of decisions.json
 if ! pattern_exists 'precision_read.*decisions\.json' "$TRANSCRIPT_FILE"; then
   add_violation "decisions.json not read at task start (no precision_read call found)"
+  printf '[FAIL] decisions.json not read\n'
 else
   echo -e "${GREEN}✓${NC} decisions.json read"
+  printf '[PASS] decisions.json read\n'
 fi
 
 # Check for precision_read of preferences.json
 if ! pattern_exists 'precision_read.*preferences\.json' "$TRANSCRIPT_FILE"; then
   add_violation "preferences.json not read at task start (no precision_read call found)"
+  printf '[FAIL] preferences.json not read\n'
 else
   echo -e "${GREEN}✓${NC} preferences.json read"
+  printf '[PASS] preferences.json read\n'
 fi
 
 # Check 2: Activity logged after task completion
@@ -123,8 +131,10 @@ if pattern_exists '(task.*complete|implementation.*done|review.*pass)' "$TRANSCR
   # Task was completed, check for activity.md write
   if ! pattern_exists 'activity\.md' "$TRANSCRIPT_FILE"; then
     add_violation "Task completed but no write to activity.md found"
+    printf '[FAIL] activity.md not updated\n'
   else
     echo -e "${GREEN}✓${NC} activity.md updated after task completion"
+    printf '[PASS] activity.md updated\n'
   fi
 else
   echo -e "${YELLOW}⊘${NC} No task completion detected (skipping activity.md check)"
@@ -141,15 +151,19 @@ if pattern_exists '(TOOL_FAILURE|BUILD_ERROR|TEST_FAILURE|Error:|failed with exi
     # Error was resolved, check for failures.json write
     if ! pattern_exists 'precision_edit.*failures\.json|precision_write.*failures\.json' "$TRANSCRIPT_FILE"; then
       add_violation "Error encountered and resolved but no write to failures.json found"
+      printf '[FAIL] failures.json not updated\n'
     else
       echo -e "${GREEN}✓${NC} failures.json updated after error resolution"
+      printf '[PASS] failures.json updated\n'
     fi
     
     # Also check for errors.md write
     if ! pattern_exists 'errors\.md' "$TRANSCRIPT_FILE"; then
       add_violation "Error encountered and resolved but no write to errors.md found"
+      printf '[FAIL] errors.md not updated\n'
     else
       echo -e "${GREEN}✓${NC} errors.md updated after error resolution"
+      printf '[PASS] errors.md updated\n'
     fi
   else
     echo -e "${YELLOW}⊘${NC} Error encountered but not resolved (skipping failure logging check)"
@@ -175,6 +189,7 @@ if pattern_exists '(pattern|approach|reusable|abstraction)' "$TRANSCRIPT_FILE"; 
     echo -e "${YELLOW}⚠${NC} Pattern-related work detected but no write to patterns.json (may be intentional)"
   else
     echo -e "${GREEN}✓${NC} patterns.json updated when pattern discovered"
+    printf '[PASS] patterns.json updated\n'
   fi
 else
   echo -e "${YELLOW}⊘${NC} No pattern discovery detected (skipping pattern logging check)"
@@ -189,6 +204,7 @@ if pattern_exists '(chose|selected|decided|option)' "$TRANSCRIPT_FILE"; then
   # Decision may have been made
   if pattern_exists 'precision_edit.*decisions\.json|precision_write.*decisions\.json' "$TRANSCRIPT_FILE"; then
     echo -e "${GREEN}✓${NC} decisions.json updated when choice made"
+    printf '[PASS] decisions.json updated\n'
   else
     # Soft warning - not all choices are architectural decisions
     echo -e "${YELLOW}⊘${NC} Decision-making detected but no write to decisions.json (may be intentional)"

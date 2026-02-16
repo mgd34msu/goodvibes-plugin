@@ -83,11 +83,13 @@ echo "================================================================="
 
 # Report results
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then
+  printf '[PASS] No precision tool violations\n'
   echo "RESULT: PASS"
   echo "No precision tool usage violations found."
   exit 0
 else
   echo "RESULT: FAIL"
+  printf '[FAIL] Precision tool violations found\n'
   echo "Found ${#VIOLATIONS[@]} violation(s):"
   echo ""
   for i in "${!VIOLATIONS[@]}"; do

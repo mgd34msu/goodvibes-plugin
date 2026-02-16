@@ -54,7 +54,7 @@ None
 [YES] **Actionable fixes**: Each fix suggestion is specific and implementable
 [YES] **Balanced**: Highlights both issues and strengths
 [YES] **Format compliance**: Follows required structure exactly
-[YES] **Verdict matches score**: 9.75 → PASS (correct threshold)
+[YES] **Verdict matches score**: 9.75 -> PASS (correct threshold)
 
 ---
 

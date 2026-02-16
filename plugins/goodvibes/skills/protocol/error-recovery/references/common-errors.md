@@ -287,12 +287,12 @@ Retry-After: 60
 ### Step 1: Categorize Error
 
 ```
-Is it a tool failure? → TOOL_FAILURE
-Is it a build/compile error? → BUILD_ERROR  
-Is it a test failure? → TEST_FAILURE
-Is it a TypeScript type error? → TYPE_ERROR
-Is it a runtime error? → RUNTIME_ERROR
-Is it a network/API error? → EXTERNAL_ERROR
+Is it a tool failure? -> TOOL_FAILURE
+Is it a build/compile error? -> BUILD_ERROR  
+Is it a test failure? -> TEST_FAILURE
+Is it a TypeScript type error? -> TYPE_ERROR
+Is it a runtime error? -> RUNTIME_ERROR
+Is it a network/API error? -> EXTERNAL_ERROR
 ```
 
 ### Step 2: Check Known Patterns
@@ -304,11 +304,11 @@ Search failures.json for:
   3. Similar diagnostic patterns
 
 If known pattern found:
-  → Apply documented resolution
-  → Proceed to Step 4
+  -> Apply documented resolution
+  -> Proceed to Step 4
   
 If no match:
-  → Proceed to Step 3
+  -> Proceed to Step 3
 ```
 
 ### Step 3: Apply Category-Specific Strategy
@@ -377,34 +377,34 @@ If no match:
 
 ```
 Apply fix using precision tools:
-  → precision_edit for code changes
-  → precision_write for new files
-  → precision_exec to validate fix
+  -> precision_edit for code changes
+  -> precision_write for new files
+  -> precision_exec to validate fix
 
 Expect validation to pass:
-  → Build succeeds
-  → Tests pass
-  → Types check
+  -> Build succeeds
+  -> Tests pass
+  -> Types check
 ```
 
 ### Step 5: Validate Recovery
 
 ```
 Run validation commands:
-  → npm run typecheck (TYPE_ERROR)
-  → npm run test (TEST_FAILURE)
-  → npm run build (BUILD_ERROR)
-  → Re-run failed operation (TOOL_FAILURE, RUNTIME_ERROR)
-  → curl/ping test (EXTERNAL_ERROR)
+  -> npm run typecheck (TYPE_ERROR)
+  -> npm run test (TEST_FAILURE)
+  -> npm run build (BUILD_ERROR)
+  -> Re-run failed operation (TOOL_FAILURE, RUNTIME_ERROR)
+  -> curl/ping test (EXTERNAL_ERROR)
 
 If validation passes:
-  → Log to failures.json with resolution
-  → Mark task complete
+  -> Log to failures.json with resolution
+  -> Mark task complete
   
 If validation fails:
-  → Increment attempt counter
-  → If attempts < 3: return to Step 3 with new approach
-  → If attempts >= 3: Escalate (Step 6)
+  -> Increment attempt counter
+  -> If attempts < 3: return to Step 3 with new approach
+  -> If attempts >= 3: Escalate (Step 6)
 ```
 
 ### Step 6: Escalation (Max Attempts Reached)

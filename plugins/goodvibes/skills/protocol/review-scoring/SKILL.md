@@ -329,20 +329,20 @@ After applying fixes, the fix agent must produce:
 ## Fixes Applied
 
 ### Critical Issues Addressed
-- [FILE:LINE] [Original issue] → Fixed by: [what was changed]
-- [FILE:LINE] [Original issue] → Fixed by: [what was changed]
+- [FILE:LINE] [Original issue] -> Fixed by: [what was changed]
+- [FILE:LINE] [Original issue] -> Fixed by: [what was changed]
 
 ### Major Issues Addressed
-- [FILE:LINE] [Original issue] → Fixed by: [what was changed]
+- [FILE:LINE] [Original issue] -> Fixed by: [what was changed]
 
 ### Minor Issues Addressed
-- [FILE:LINE] [Original issue] → Fixed by: [what was changed]
+- [FILE:LINE] [Original issue] -> Fixed by: [what was changed]
 
 ### Issues Not Fixed
-- [FILE:LINE] [Original issue] → Reason: [why it wasn't fixed]
+- [FILE:LINE] [Original issue] -> Reason: [why it wasn't fixed]
 
 **Example**:
-- [src/api/legacy.ts:45] Complex refactoring of legacy code → Reason: Out of scope for this PR, tracked in ticket #1234
+- [src/api/legacy.ts:45] Complex refactoring of legacy code -> Reason: Out of scope for this PR, tracked in ticket #1234
 ```
 
 ### Prohibited Behaviors
@@ -364,7 +364,7 @@ After fixes are applied, a re-reviewer must:
 2. **Re-score all dimensions**
    - Do NOT just copy previous scores
    - Evaluate current state from scratch: (a) read modified files, (b) apply rubric criteria, (c) score based on current state
-   - Document score changes ("Security: 6 → 9")
+   - Document score changes ("Security: 6 -> 9")
 
 3. **Identify new issues**
    - Issues found during re-review are NEW findings
@@ -390,14 +390,14 @@ After fixes are applied, a re-reviewer must:
 ## Previous Issues - Resolution Status
 
 ### Critical Issues
-- [RESOLVED] [FILE:LINE] [Original issue] → RESOLVED
-- [NOT FIXED] [FILE:LINE] [Original issue] → NOT FIXED: [reason]
+- [RESOLVED] [FILE:LINE] [Original issue] -> RESOLVED
+- [NOT FIXED] [FILE:LINE] [Original issue] -> NOT FIXED: [reason]
 
 ### Major Issues
-- [RESOLVED] [FILE:LINE] [Original issue] → RESOLVED
+- [RESOLVED] [FILE:LINE] [Original issue] -> RESOLVED
 
 ### Minor Issues
-- [RESOLVED] [FILE:LINE] [Original issue] → RESOLVED
+- [RESOLVED] [FILE:LINE] [Original issue] -> RESOLVED
 
 ## New Issues Found
 [Use standard Critical/Major/Minor format]
@@ -408,9 +408,9 @@ After fixes are applied, a re-reviewer must:
 This skill is a critical component of the Work-Review-Fix-Check loop:
 
 1. **Work**: Engineer implements feature
-2. **Review**: Reviewer applies this scoring rubric → produces scored review
-3. **Fix**: Fix agent addresses all Critical/Major issues → produces fix report
-4. **Check**: Re-reviewer verifies fixes → re-scores → determines if another loop needed
+2. **Review**: Reviewer applies this scoring rubric -> produces scored review
+3. **Fix**: Fix agent addresses all Critical/Major issues -> produces fix report
+4. **Check**: Re-reviewer verifies fixes -> re-scores -> determines if another loop needed
 
 The orchestrator uses the numeric score and verdict to make decisions:
 - **PASS (9.5+)**: Exit loop, mark complete
@@ -441,7 +441,7 @@ The orchestrator uses the numeric score and verdict to make decisions:
 
 ### Verdict Mismatch
 **Wrong**: Overall score 7.2/10 with verdict "PASS"
-**Right**: Score 7.2 → Verdict FAIL (threshold is 8.0 for conditional, 9.5 for pass)
+**Right**: Score 7.2 -> Verdict FAIL (threshold is 8.0 for conditional, 9.5 for pass)
 
 ## Validation Scripts
 
@@ -470,15 +470,15 @@ Integration:       5%
 
 ### Verdict Thresholds
 ```
-9.5+ → PASS
-8.0-9.49 → CONDITIONAL PASS
-6.0-7.9 → FAIL
-<6.0 → FAIL (major rework)
+9.5+ -> PASS
+8.0-9.49 -> CONDITIONAL PASS
+6.0-7.9 -> FAIL
+<6.0 -> FAIL (major rework)
 ```
 
 ### Issue Severity
 ```
-Critical: Security, crashes, data corruption → MUST FIX
-Major: Performance, missing features, poor practices → SHOULD FIX
-Minor: Style, optimization opportunities → NICE TO FIX
+Critical: Security, crashes, data corruption -> MUST FIX
+Major: Performance, missing features, poor practices -> SHOULD FIX
+Minor: Style, optimization opportunities -> NICE TO FIX
 ```
