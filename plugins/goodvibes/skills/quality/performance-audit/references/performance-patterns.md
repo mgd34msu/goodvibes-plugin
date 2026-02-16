@@ -205,7 +205,7 @@ function Parent() {
   const config = useMemo(() => ({ theme: 'dark' }), []);
   
   const handleClick = useCallback(() => {
-    console.log('clicked');
+    console.log('clicked'); // Placeholder - use actual handler in production
   }, []);
   
   return <Child config={config} onClick={handleClick} />;
@@ -331,9 +331,9 @@ async function loadDashboard() {
 ```typescript
 async function loadDashboard(userId: string) {
   const [user, posts, comments] = await Promise.all([
-    fetch(`/api/user/${userId}`).then(r => r.json()),
-    fetch(`/api/posts?userId=${userId}`).then(r => r.json()),
-    fetch(`/api/comments?userId=${userId}`).then(r => r.json()),
+    fetch(`/api/user/${userId}`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+    fetch(`/api/posts?userId=${userId}`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+    fetch(`/api/comments?userId=${userId}`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
   ]);
   
   // Total time: max(300ms, 200ms, 150ms) = 300ms
@@ -356,7 +356,7 @@ export async function GET(req: Request) {
 }
 
 // Client makes 1 request instead of 3
-const data = await fetch(`/api/dashboard?userId=${userId}`).then(r => r.json());
+const data = await fetch(`/api/dashboard?userId=${userId}`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 ```
 
 ### Anti-Pattern: No Caching Headers

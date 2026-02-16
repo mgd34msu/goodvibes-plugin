@@ -760,7 +760,7 @@ const userService = new UserService(userRepo);
 
 ```typescript
 function sendEmail(to: string, subject: string, body: string) {
-  const client = new SendGridClient(process.env.SENDGRID_API_KEY!);
+  const client = new SendGridClient(process.env.SENDGRID_API_KEY!);  // BAD: Non-null assertion bypasses runtime validation
   client.send({ to, subject, body });
 }
 ```
@@ -1250,7 +1250,7 @@ Track improvement over time.
 precision_exec:
   commands:
     - cmd: "find src -not -path '*/node_modules/*' -not -path '*/dist/*' -name '*.ts' -exec wc -l {} + | tail -1"
-    - cmd: "grep -r --include='*.ts' --exclude-dir=node_modules --exclude-dir=dist -- 'any' src | wc -l"
+    - cmd: "grep -r --include='*.ts' --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git --exclude-dir=.next -- 'any' src | wc -l"
   verbosity: standard
 ```
 

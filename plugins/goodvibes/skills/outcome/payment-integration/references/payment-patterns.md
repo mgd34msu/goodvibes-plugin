@@ -192,7 +192,12 @@ if (!webhookSecret) {
 
 export async function POST(request: Request) {
   const body = await request.text();
-  const signature = headers().get('stripe-signature')!;
+  const headersList = await headers();
+  const signature = headersList.get('stripe-signature');
+  
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
+  }
   
   let event: Stripe.Event;
   
@@ -202,7 +207,9 @@ export async function POST(request: Request) {
       signature,
       webhookSecret
     );
-  } catch (err) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Webhook signature verification failed:', message);
     return new Response('Webhook signature verification failed', {
       status: 400,
     });
@@ -281,7 +288,9 @@ export async function POST(request: Request) {
     
     // Process event
     return new Response(JSON.stringify({ received: true }));
-  } catch (err) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Paddle webhook processing failed:', message);
     return new Response('Invalid signature', { status: 400 });
   }
 }
@@ -456,7 +465,7 @@ export async function POST(request: Request) {
 export async function POST(request: Request) {
   try {
     await handleWebhook(request);
-  } catch (error) {
+  } catch (error: unknown) {
     // Silent failure - webhook will retry
   }
   return new Response('OK');
@@ -467,8 +476,9 @@ export async function POST(request: Request) {
   try {
     await handleWebhook(request);
     return new Response('OK', { status: 200 });
-  } catch (error) {
-    console.error('Webhook processing failed:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Webhook processing failed:', message);
     // Return 500 to trigger retry
     return new Response('Processing failed', { status: 500 });
   }
@@ -553,9 +563,10 @@ setImmediate(async () => {
   try {
     await sendConfirmationEmail(customer);
     await updateAnalytics(event);
-  } catch (error) {
+  } catch (error: unknown) {
     // Log error but don't throw - webhook already acknowledged
-    console.error('Async webhook processing failed:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Async webhook processing failed:', message);
   }
 });
 

@@ -13,6 +13,9 @@ Comprehensive reference for integrating external services into applications.
 | **Mailgun** | None | $15/mo for 10K | Developers | Powerful API, email validation |
 
 *Note: AWS SES pricing may have changed. Check current AWS pricing documentation.
+
+| Marketing Tool | Free Tier | Paid Tier | Best For | Key Features |
+|---|---|---|---|---|
 | **ConvertKit** | None | $29/mo for 1K subs | Creators, marketing | Landing pages, automation, forms |
 | **Mailchimp** | 500 contacts | $13/mo for 500 | Marketing campaigns | All-in-one platform, CRM features |
 | **Loops** | None | $49/mo for 2K subs | Product updates | Developer-friendly, event-based |
@@ -188,8 +191,8 @@ export async function withRetry<T>(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
-    } catch (error) {
-      lastError = error as Error;
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
       
       // Don't retry non-retryable errors
       if (!retryableErrors(lastError)) {
@@ -253,8 +256,8 @@ export async function withLinearRetry<T>(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
-    } catch (error) {
-      lastError = error as Error;
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
       
       if (attempt < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
@@ -288,8 +291,8 @@ export async function withFibonacciRetry<T>(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
-    } catch (error) {
-      lastError = error as Error;
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
       
       if (attempt < maxAttempts) {
         const delayMs = fibonacci(attempt) * baseDelayMs;
@@ -327,10 +330,10 @@ export class CircuitBreaker<T = unknown> {
   
   async execute(fn: () => Promise<T>): Promise<T> {
     if (this.state === CircuitState.OPEN) {
-      if (Date.now() - this.lastFailureTime! > this.resetTimeoutMs) {
+      if (Date.now() - (this.lastFailureTime ?? 0) > this.resetTimeoutMs) {
         this.state = CircuitState.HALF_OPEN;
         this.successCount = 0;
-        console.log('[CircuitBreaker] Transitioning to half-open state');
+        console.log('[CircuitBreaker] Transitioning to half-open state'); // Note: Use structured logger in production
       } else {
         throw new Error('Circuit breaker is open');
       }
@@ -340,7 +343,7 @@ export class CircuitBreaker<T = unknown> {
       const result = await fn();
       this.onSuccess();
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       this.onFailure();
       throw error;
     }
@@ -395,8 +398,8 @@ try {
   const result = await emailCircuit.execute(() => 
     resend.emails.send(emailOptions)
   );
-} catch (error) {
-  if (error.message === 'Circuit breaker is open') {
+} catch (error: unknown) {
+  if (error instanceof Error && error.message === 'Circuit breaker is open') {
     // Fallback: queue email for later
     await queueEmail(emailOptions);
   } else {
@@ -451,7 +454,7 @@ export async function POST(request: NextRequest) {
   const isValid = verifyWebhookSignature(
     rawBody,
     signature,
-    process.env.WEBHOOK_SECRET!
+    process.env.WEBHOOK_SECRET! // Validated via env check - see Environment Variable Management section
   );
   
   if (!isValid) {
@@ -475,19 +478,30 @@ import { Webhook } from 'svix';
 
 export async function POST(request: NextRequest) {
   const payload = await request.text();
+  const svixId = request.headers.get('svix-id');
+  const svixTimestamp = request.headers.get('svix-timestamp');
+  const svixSignature = request.headers.get('svix-signature');
+  
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    return NextResponse.json(
+      { error: 'Missing Svix headers' },
+      { status: 400 }
+    );
+  }
+  
   const headers = {
-    'svix-id': request.headers.get('svix-id')!,
-    'svix-timestamp': request.headers.get('svix-timestamp')!,
-    'svix-signature': request.headers.get('svix-signature')!,
+    'svix-id': svixId,
+    'svix-timestamp': svixTimestamp,
+    'svix-signature': svixSignature,
   };
   
-  const wh = new Webhook(process.env.WEBHOOK_SECRET!);
+  const wh = new Webhook(process.env.WEBHOOK_SECRET!); // Validated via env check - see Environment Variable Management section
   
   try {
     const body = wh.verify(payload, headers);
     // Process webhook...
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Webhook] Verification failed:', error);
     return NextResponse.json(
       { error: 'Invalid signature' },
@@ -502,22 +516,29 @@ export async function POST(request: NextRequest) {
 ```typescript
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!); // Validated via env check - see Environment Variable Management section
 
 export async function POST(request: NextRequest) {
   const payload = await request.text();
-  const signature = request.headers.get('stripe-signature')!;
+  const signature = request.headers.get('stripe-signature');
+  
+  if (!signature) {
+    return NextResponse.json(
+      { error: 'Missing Stripe signature' },
+      { status: 400 }
+    );
+  }
   
   try {
     const event = stripe.webhooks.constructEvent(
       payload,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET! // Validated via env check - see Environment Variable Management section
     );
     
     // Process event...
     return NextResponse.json({ received: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Stripe] Webhook verification failed:', error);
     return NextResponse.json(
       { error: 'Invalid signature' },
@@ -580,7 +601,7 @@ try {
   }
   
   return data;
-} catch (error) {
+} catch (error: unknown) {
   console.error('[Email] Unexpected error:', error);
   throw error;
 }

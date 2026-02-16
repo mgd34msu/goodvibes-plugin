@@ -195,8 +195,9 @@ precision_write:
       content: |
         import { NextRequest, NextResponse } from 'next/server';
         import Stripe from 'stripe';
-        import { z } from 'zod';
         import { getServerSession } from 'next-auth';
+        import { authOptions } from '@/lib/auth';
+        import { z } from 'zod';
         
         const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
         if (!stripeSecretKey) {
@@ -267,8 +268,9 @@ precision_write:
             });
             
             return NextResponse.json({ sessionId: stripeSession.id });
-          } catch (error) {
-            console.error('Checkout error:', error);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Checkout error:', message);
             return NextResponse.json(
               { error: 'Failed to create checkout session' },
               { status: 500 }
@@ -286,6 +288,8 @@ precision_write:
       content: |
         import { NextRequest, NextResponse } from 'next/server';
         import { lemonSqueezySetup, createCheckout } from '@lemonsqueezy/lemonsqueezy.js';
+        import { getServerSession } from 'next-auth';
+        import { authOptions } from '@/lib/auth';
         
         const lemonSqueezyApiKey = process.env.LEMONSQUEEZY_API_KEY;
         if (!lemonSqueezyApiKey) {
@@ -325,8 +329,9 @@ precision_write:
             }
             
             return NextResponse.json({ checkoutUrl: data.attributes.url });
-          } catch (error) {
-            console.error('Checkout error:', error);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Checkout error:', message);
             return NextResponse.json(
               { error: 'Failed to create checkout' },
               { status: 500 }
@@ -381,13 +386,23 @@ precision_write:
       content: |
         import { NextRequest, NextResponse } from 'next/server';
         import Stripe from 'stripe';
+        import { z } from 'zod';
         import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
+        import { getServerSession } from 'next-auth';
+        import { authOptions } from '@/lib/auth';
         
-        // Validated above in checkout route
+        // Validate required environment variables
         const secretKey = process.env.STRIPE_SECRET_KEY;
         if (!secretKey) throw new Error('STRIPE_SECRET_KEY is required');
         const stripe = new Stripe(secretKey, {
           apiVersion: '2024-11-20.acacia',
+        });
+        
+        const subscribeSchema = z.object({
+          planId: z.string().min(1),
+          customerId: z.string().min(1),
+          successUrl: z.string().url(),
+          cancelUrl: z.string().url(),
         });
         
         export async function POST(request: NextRequest) {
@@ -397,14 +412,24 @@ precision_write:
               return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             
-            const { planId, customerId, successUrl, cancelUrl } = await request.json();
+            const body = await request.json();
+            const result = subscribeSchema.safeParse(body);
+            
+            if (!result.success) {
+              return NextResponse.json(
+                { error: result.error.flatten() },
+                { status: 400 }
+              );
+            }
+            
+            const { planId, customerId, successUrl, cancelUrl } = result.data;
             
             const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
             if (!plan) {
               return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
             }
             
-            const session = await stripe.checkout.sessions.create({
+            const stripeSession = await stripe.checkout.sessions.create({
               mode: 'subscription',
               customer: customerId,
               line_items: [
@@ -420,9 +445,10 @@ precision_write:
               },
             });
             
-            return NextResponse.json({ sessionId: session.id });
-          } catch (error) {
-            console.error('Subscription error:', error);
+            return NextResponse.json({ sessionId: stripeSession.id });
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Subscription error:', message);
             return NextResponse.json(
               { error: 'Failed to create subscription' },
               { status: 500 }
@@ -440,6 +466,8 @@ precision_write:
       content: |
         import { NextRequest, NextResponse } from 'next/server';
         import Stripe from 'stripe';
+        import { getServerSession } from 'next-auth';
+        import { authOptions } from '@/lib/auth';
         
         const secretKey = process.env.STRIPE_SECRET_KEY;
         if (!secretKey) throw new Error('STRIPE_SECRET_KEY is required');
@@ -462,8 +490,9 @@ precision_write:
             });
             
             return NextResponse.json({ subscription });
-          } catch (error) {
-            console.error('Cancel error:', error);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Cancel error:', message);
             return NextResponse.json(
               { error: 'Failed to cancel subscription' },
               { status: 500 }
@@ -494,8 +523,9 @@ precision_write:
             });
             
             return NextResponse.json({ subscription: updated });
-          } catch (error) {
-            console.error('Update error:', error);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Update error:', message);
             return NextResponse.json(
               { error: 'Failed to update subscription' },
               { status: 500 }
@@ -548,8 +578,9 @@ precision_write:
           try {
             // Verify webhook signature
             event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-          } catch (error) {
-            console.error('Webhook signature verification failed:', error);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Webhook signature verification failed:', message);
             return NextResponse.json(
               { error: 'Invalid signature' },
               { status: 400 }
@@ -593,8 +624,9 @@ precision_write:
             }
             
             return NextResponse.json({ received: true });
-          } catch (error) {
-            console.error('Webhook handler error:', error);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Webhook handler error:', message);
             return NextResponse.json(
               { error: 'Webhook handler failed' },
               { status: 500 }
@@ -688,6 +720,7 @@ precision_write:
       content: |
         import { NextRequest, NextResponse } from 'next/server';
         import crypto from 'crypto';
+        import { db } from '@/lib/db';
         
         const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
         if (!webhookSecret) {
@@ -738,12 +771,14 @@ precision_write:
                 break;
                 
               default:
+                // Replace with structured logger in production
                 console.log(`Unhandled event: ${event.meta.event_name}`);
             }
             
             return NextResponse.json({ received: true });
-          } catch (error) {
-            console.error('Webhook handler error:', error);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Webhook handler error:', message);
             return NextResponse.json(
               { error: 'Webhook handler failed' },
               { status: 500 }

@@ -225,7 +225,7 @@ function Modal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => 
   useEffect(() => {
     if (!isOpen) return;
 
-    const focusableElements = modalRef.current.querySelectorAll(
+    const focusableElements = modalRef.current?.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
 
@@ -234,7 +234,7 @@ function Modal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => 
 
     firstElement?.focus();
 
-    const handleTab = (e) => {
+    const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
 
       if (e.shiftKey && document.activeElement === firstElement) {
@@ -509,7 +509,7 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (v
 
 **Good:**
 ```tsx
-function Tabs({ tabs, activeTab, onChange }: { tabs: Array<{ id: string; label: string }>; activeTab: string; onChange: (id: string) => void }) {
+function Tabs({ tabs, activeTab, onChange }: { tabs: Array<{ id: string; label: string; content: React.ReactNode }>; activeTab: string; onChange: (id: string) => void }) {
   return (
     <div>
       <div role="tablist" aria-label="Content sections">

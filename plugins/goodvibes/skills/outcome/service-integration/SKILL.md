@@ -207,7 +207,7 @@ precision_write:
           to: string | string[];
           subject: string;
           html?: string;
-          react?: React.ReactElement;
+          react?: ReactElement;
           from?: string;
         }
         
@@ -230,7 +230,7 @@ precision_write:
             
             console.log('[Email] Sent successfully:', data?.id);
             return { success: true, id: data?.id };
-          } catch (error) {
+          } catch (error: unknown) {
             console.error('[Email] Unexpected error:', error);
             throw error;
           }
@@ -371,7 +371,7 @@ precision_write:
           try {
             const result = await sanityClient.fetch<T>(query, params);
             return result;
-          } catch (error) {
+          } catch (error: unknown) {
             console.error('[Sanity] Query failed:', error);
             throw new Error('Failed to fetch from Sanity');
           }
@@ -420,9 +420,9 @@ precision_write:
               revalidateTag('pages');
             }
             
-            console.log('[Webhook] Sanity content updated:', _type);
+            console.log('[Webhook] Sanity content updated:', _type); // Note: Use structured logger in production
             return NextResponse.json({ revalidated: true });
-          } catch (error) {
+          } catch (error: unknown) {
             console.error('[Webhook] Failed to process Sanity webhook:', error);
             return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
           }
@@ -577,7 +577,7 @@ precision_write:
         import type { ReactNode } from 'react';
         import posthog from 'posthog-js';
         
-        export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
+        export function AnalyticsProvider({ children }: { children: ReactNode }) {
           useEffect(() => {
             if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
               posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
@@ -639,8 +639,8 @@ precision_write:
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
               return await fn();
-            } catch (error) {
-              lastError = error as Error;
+            } catch (error: unknown) {
+              lastError = error instanceof Error ? error : new Error(String(error));
               
               if (attempt === maxAttempts) {
                 break;
@@ -651,7 +651,7 @@ precision_write:
                 maxDelayMs
               );
               
-              console.log(`[Retry] Attempt ${attempt}/${maxAttempts} failed, retrying in ${delayMs}ms`);
+              console.log(`[Retry] Attempt ${attempt}/${maxAttempts} failed, retrying in ${delayMs}ms`); // Note: Use structured logger in production
               await new Promise(resolve => setTimeout(resolve, delayMs));
             }
           }
@@ -684,7 +684,7 @@ precision_write:
           
           async execute<T>(fn: () => Promise<T>): Promise<T> {
             if (this.state === 'open') {
-              if (Date.now() - this.lastFailureTime! > this.resetTimeoutMs) {
+              if (Date.now() - (this.lastFailureTime ?? 0) > this.resetTimeoutMs) {
                 this.state = 'half-open';
               } else {
                 throw new Error('Circuit breaker is open');
@@ -695,7 +695,7 @@ precision_write:
               const result = await fn();
               this.onSuccess();
               return result;
-            } catch (error) {
+            } catch (error: unknown) {
               this.onFailure();
               throw error;
             }

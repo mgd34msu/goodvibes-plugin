@@ -70,7 +70,7 @@ function processOrder(order: Order): number {
   const shipping = calculateShipping(subtotal);
   const total = subtotal + tax + shipping;
 
-  console.log(`Order total: ${total}`);
+  console.log(`Order total: ${total}`);  // Note: Use structured logger in production
   return total;
 }
 ```
@@ -791,7 +791,7 @@ class SendGridEmailService implements IEmailService {
 
 class MockEmailService implements IEmailService {
   async send(to: string, subject: string, body: string): Promise<void> {
-    console.log('Mock email sent');
+    console.log('Mock email sent');  // Test-only mock implementation
   }
 }
 

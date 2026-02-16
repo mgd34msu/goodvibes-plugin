@@ -438,6 +438,7 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
   }
+  throw new Error('Retry attempts exhausted');
 }
 ```
 

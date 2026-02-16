@@ -182,7 +182,7 @@ ERROR_HANDLING_ISSUES=false
 
 # Check if files with service calls also have try-catch or error checking
 for pattern in "${UNSAFE_PATTERNS[@]}"; do
-  FILES_WITH_CALLS=$(grep -r -l -E --include="*.ts" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next "$pattern" -- "$PROJECT_ROOT" 2>/dev/null || true)
+  FILES_WITH_CALLS=$(grep -r -l -E --include="*.ts" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.next -- "$pattern" "$PROJECT_ROOT" 2>/dev/null || true)
   
   if [[ -n "$FILES_WITH_CALLS" ]]; then
     while IFS= read -r file; do

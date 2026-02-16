@@ -946,14 +946,14 @@ Use `discover` to find multiple error patterns at once.
 discover:
   queries:
     # Type safety issues
-    - { id: any_usage, type: grep, pattern: ':\\s*any' }
-    - { id: type_assertions, type: grep, pattern: 'as (any|unknown)' }
+    - { id: any_usage, type: grep, pattern: ':\\s*any', glob: '**/*.{ts,tsx}' }
+    - { id: type_assertions, type: grep, pattern: 'as (any|unknown)', glob: '**/*.{ts,tsx}' }
     # Runtime safety
-    - { id: unsafe_access, type: grep, pattern: '\\.[a-zA-Z]+(?!\\?)' }
-    - { id: unhandled_promises, type: grep, pattern: 'await.*(?!try)' }
+    - { id: unsafe_access, type: grep, pattern: '\\.[a-zA-Z]+(?!\\?)', glob: '**/*.{ts,tsx}' }
+    - { id: unhandled_promises, type: grep, pattern: 'await.*(?!try)', glob: '**/*.{ts,tsx}' }
     # Performance
-    - { id: n_plus_one, type: grep, pattern: 'for.*await.*prisma' }
-    - { id: inline_objects, type: grep, pattern: 'onClick=\\{\\{' }
+    - { id: n_plus_one, type: grep, pattern: 'for.*await.*prisma', glob: '**/*.{ts,tsx}' }
+    - { id: inline_objects, type: grep, pattern: 'onClick=\\{\\{', glob: '**/*.{tsx,jsx}' }
   verbosity: locations
 ```
 
@@ -999,12 +999,15 @@ discover:
     - id: error_sites
       type: grep
       pattern: "throw new"
+      glob: '**/*.{ts,tsx,js,jsx}'
     - id: catch_blocks
       type: grep
       pattern: "catch\\s*\\("
+      glob: '**/*.{ts,tsx,js,jsx}'
     - id: console_logs
       type: grep
       pattern: "console\\.(log|error|warn)"
+      glob: '**/*.{ts,tsx,js,jsx}'
   verbosity: locations
 ```
 
