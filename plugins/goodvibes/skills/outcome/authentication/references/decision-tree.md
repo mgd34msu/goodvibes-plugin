@@ -205,9 +205,13 @@ Answer these questions to guide your choice:
 
 ---
 
-### Lucia
+### Lucia (Deprecated)
 
-**Best for:**
+**Note:** Lucia has been deprecated by its author. Consider these alternatives:
+- **arctic** and **oslo/auth** (by the same author) - Lightweight auth utilities
+- **Better Auth** - Modern alternative with similar philosophy
+
+**Best for (historical reference):**
 - Framework-agnostic auth
 - TypeScript-first projects
 - Want minimal abstraction over auth primitives
@@ -364,12 +368,12 @@ Answer these questions to guide your choice:
 
 | Framework | Best Choice | Alternative |
 |-----------|-------------|-------------|
-| **Next.js (App Router)** | Clerk | NextAuth, Lucia |
+| **Next.js (App Router)** | Clerk | NextAuth, Better Auth |
 | **Next.js (Pages Router)** | NextAuth | Clerk |
-| **Remix** | Lucia | Supabase Auth |
-| **Astro** | Lucia | Auth0 |
-| **Express/Fastify** | Passport.js | Lucia |
-| **tRPC** | Clerk (with Next.js) | Lucia |
+| **Remix** | Better Auth | Supabase Auth |
+| **Astro** | Better Auth | Auth0 |
+| **Express/Fastify** | Passport.js | arctic/oslo |
+| **tRPC** | Clerk (with Next.js) | Better Auth |
 | **GraphQL** | Auth0 | Custom JWT |
 | **Mobile (React Native)** | Supabase Auth | Clerk |
 
@@ -379,11 +383,11 @@ Answer these questions to guide your choice:
 
 | Provider | Monthly Cost | Notes |
 |----------|--------------|-------|
-| **Clerk** | $25 (Pro) | Includes all features |
-| **Auth0** | $240 (Essentials) | Free tier ends at 7k MAU |
+| **Clerk** | $25 (Pro) | Includes all features (check current pricing) |
+| **Auth0** | $240 (Essentials) | Free tier ends at 7k MAU (check current pricing) |
 | **Supabase** | Free | Up to 50k MAU |
 | **NextAuth** | $0 | Infrastructure costs only |
-| **Lucia** | $0 | Infrastructure costs only |
+| **Better Auth** | $0 | Infrastructure costs only |
 | **Firebase Auth** | Free | Up to 50k MAU |
 
 **At 100k MAU:**
@@ -404,7 +408,7 @@ Do you need SSO (SAML, Okta, AD)?
 └─ NO → Continue
    ↓
    Is budget a concern?
-   ├─ YES → NextAuth, Lucia, or Supabase
+   ├─ YES → NextAuth, Better Auth, or Supabase
    └─ NO → Continue
       ↓
       Do you need pre-built UI?
@@ -412,7 +416,7 @@ Do you need SSO (SAML, Okta, AD)?
       └─ NO → Continue
          ↓
          Strong backend team?
-         ├─ YES → Lucia or NextAuth
+         ├─ YES → Better Auth or NextAuth
          └─ NO → Supabase or Clerk
 ```
 
@@ -426,7 +430,7 @@ Do you need SSO (SAML, Okta, AD)?
 - Small team, limited backend expertise
 - Budget allows per-user pricing
 
-**Choose Self-Hosted (NextAuth/Lucia) if:**
+**Choose Self-Hosted (NextAuth/Better Auth) if:**
 - Full control over user data required
 - High user volume (cost savings)
 - Strong backend/security team
@@ -438,4 +442,4 @@ Do you need SSO (SAML, Okta, AD)?
 - Budget-conscious with moderate scale
 - Comfortable with serverless architecture
 
-For most modern web apps with moderate scale, **Clerk** or **NextAuth** are the best starting points. For high-scale or privacy-first apps, **Lucia** or **Supabase** offer more control.
+For most modern web apps with moderate scale, **Clerk** or **NextAuth** are the best starting points. For high-scale or privacy-first apps, **Better Auth** or **Supabase** offer more control.

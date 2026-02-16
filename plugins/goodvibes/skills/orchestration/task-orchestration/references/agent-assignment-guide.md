@@ -12,12 +12,17 @@ This guide provides the complete agent-skill assignment decision tables and exam
 | Implement authentication | engineer | Auth integration, security | discover-plan-batch, precision-mastery, clerk/nextauth/lucia |
 | Create type definitions | engineer | TypeScript types, validation | discover-plan-batch, precision-mastery |
 | Review code quality | reviewer | Standards enforcement | review-scoring, type-safety, error-handling, async-patterns |
-| Analyze patterns | engineer | Discovery, research | discover-plan-batch, precision-mastery |
+| Analyze patterns | architect | Discovery, analysis, planning | discover-plan-batch, precision-mastery |
 | Plan architecture | architect | High-level design | (architect-specific skills) |
 | Fix bugs | engineer | Debugging, root cause analysis | discover-plan-batch, precision-mastery, error-recovery |
 | Refactor code | engineer | Code restructuring | discover-plan-batch, precision-mastery |
-| Write tests | engineer | Test creation, coverage | discover-plan-batch, precision-mastery |
-| Research solutions | engineer | Discovery, documentation | discover-plan-batch, precision-mastery |
+| Write tests | tester | Test creation, coverage, validation | discover-plan-batch, precision-mastery, error-recovery |
+| Research solutions | architect | Discovery, documentation, analysis | discover-plan-batch, precision-mastery |
+| Deploy application | deployer | Deployment, infrastructure setup | discover-plan-batch, precision-mastery |
+| Integrate AI/ML services | integrator-ai | AI/ML service integration | discover-plan-batch, precision-mastery |
+| Integrate external APIs | integrator-services | External service integration | discover-plan-batch, precision-mastery |
+| Manage application state | integrator-state | State management, data flow | discover-plan-batch, precision-mastery |
+| Coordinate workflows | planner | High-level orchestration, planning | discover-plan-batch, precision-mastery |
 
 ## Technology Stack → Skills Mapping
 
@@ -508,7 +513,7 @@ Every agent prompt must include:
 **Bad:**
 ```yaml
 task_id: create-api
-sskills: [trpc, prisma]
+skills: [trpc, prisma]
 ```
 
 **Good:**

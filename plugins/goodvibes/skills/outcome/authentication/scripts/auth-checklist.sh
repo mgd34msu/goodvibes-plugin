@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Requires: bash 4+ (uses arrays, [[ ]])
 
 # auth-checklist.sh
 # Validates authentication implementation completeness and security
@@ -49,16 +50,17 @@ if [[ -f "middleware.ts" ]] || [[ -f "middleware.js" ]]; then
   MIDDLEWARE_FOUND=true
 elif [[ -f "src/middleware.ts" ]] || [[ -f "src/middleware.js" ]]; then
   MIDDLEWARE_FOUND=true
+# Pipeline pattern: find returns matches, grep -q checks if any exist (safe with pipefail)
 elif find . -type f \( -name "auth.middleware.ts" -o -name "auth.middleware.js" \) | grep -q .; then
   MIDDLEWARE_FOUND=true
 fi
 
 if [[ "$MIDDLEWARE_FOUND" == true ]]; then
-  printf '  %s✓%s Auth middleware found\n' "$GREEN" "$NC"
+  printf '  %sPASS%s Auth middleware found\n' "$GREEN" "$NC"
 else
   VIOLATIONS+=("No auth middleware found (middleware.ts, src/middleware.ts, or auth.middleware.ts)")
   PASS=false
-  printf '  %s✗%s Auth middleware not found\n' "$RED" "$NC"
+  printf '  %sFAIL%s Auth middleware not found\n' "$RED" "$NC"
 fi
 printf '\n'
 
@@ -67,16 +69,16 @@ printf '[CHECK 2] Verifying protected routes configured...\n'
 PROTECTED_ROUTES_FOUND=false
 
 if grep -rq --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-  -e "requireAuth" -e "withAuth" -e "protected" -e "authenticate" .; then
+  -e "requireAuth" -e "withAuth" -e "protectedRoute" -e "isAuthenticated" -e "authMiddleware" -e "authenticate" .; then
   PROTECTED_ROUTES_FOUND=true
 fi
 
 if [[ "$PROTECTED_ROUTES_FOUND" == true ]]; then
-  printf '  %s✓%s Protected route patterns found\n' "$GREEN" "$NC"
+  printf '  %sPASS%s Protected route patterns found\n' "$GREEN" "$NC"
 else
   VIOLATIONS+=("No protected route patterns found (requireAuth, withAuth, etc.)")
   PASS=false
-  printf '  %s✗%s Protected route patterns not found\n' "$RED" "$NC"
+  printf '  %sFAIL%s Protected route patterns not found\n' "$RED" "$NC"
 fi
 printf '\n'
 
@@ -94,7 +96,8 @@ SECRET_PATTERNS=(
 
 for pattern in "${SECRET_PATTERNS[@]}"; do
   if grep -riq --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-    --exclude-dir="node_modules" --exclude-dir=".next" --exclude-dir="dist" \
+    --exclude-dir="node_modules" --exclude-dir=".next" --exclude-dir="dist" --exclude-dir="__tests__" \
+    --exclude="*.test.*" --exclude="*.spec.*" \
     -E "$pattern" .; then
     SECRETS_FOUND=true
     break
@@ -104,9 +107,9 @@ done
 if [[ "$SECRETS_FOUND" == true ]]; then
   VIOLATIONS+=("Potential hardcoded secrets found in source code")
   PASS=false
-  printf '  %s✗%s Potential secrets found in source code\n' "$RED" "$NC"
+  printf '  %sFAIL%s Potential secrets found in source code\n' "$RED" "$NC"
 else
-  printf '  %s✓%s No hardcoded secrets detected\n' "$GREEN" "$NC"
+  printf '  %sPASS%s No hardcoded secrets detected\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -128,13 +131,13 @@ fi
 if [[ "$ENV_EXAMPLE_FOUND" == false ]]; then
   VIOLATIONS+=("No .env.example or .env.template file found")
   PASS=false
-  printf '  %s✗%s No .env.example file found\n' "$RED" "$NC"
+  printf '  %sFAIL%s No .env.example file found\n' "$RED" "$NC"
 elif [[ "$AUTH_VARS_DOCUMENTED" == false ]]; then
   VIOLATIONS+=("Auth environment variables not documented in .env.example")
   PASS=false
-  printf '  %s✗%s Auth env vars not documented\n' "$RED" "$NC"
+  printf '  %sFAIL%s Auth env vars not documented\n' "$RED" "$NC"
 else
-  printf '  %s✓%s Auth env vars documented in .env.example\n' "$GREEN" "$NC"
+  printf '  %sPASS%s Auth env vars documented in .env.example\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -149,11 +152,11 @@ if grep -rq --include="*.ts" --include="*.js" \
 fi
 
 if [[ "$SESSION_CONFIG_FOUND" == true ]]; then
-  printf '  %s✓%s Session/token configuration found\n' "$GREEN" "$NC"
+  printf '  %sPASS%s Session/token configuration found\n' "$GREEN" "$NC"
 else
   VIOLATIONS+=("No session or token configuration found")
   PASS=false
-  printf '  %s✗%s Session/token configuration not found\n' "$RED" "$NC"
+  printf '  %sFAIL%s Session/token configuration not found\n' "$RED" "$NC"
 fi
 printf '\n'
 
@@ -162,15 +165,15 @@ printf '[CHECK 6] Verifying password hashing implementation...\n'
 HASHING_FOUND=false
 
 if grep -rq --include="*.ts" --include="*.js" \
-  -e "bcrypt" -e "argon2" -e "hash" .; then
+  -e "bcrypt" -e "argon2" -e "hashPassword" -e "pbkdf2" -e "scrypt" -e "createHash" .; then
   HASHING_FOUND=true
 fi
 
 if [[ "$HASHING_FOUND" == true ]]; then
-  printf '  %s✓%s Password hashing found\n' "$GREEN" "$NC"
+  printf '  %sPASS%s Password hashing found\n' "$GREEN" "$NC"
 else
   # This might be OK for OAuth-only or managed auth
-  printf '  %s⚠%s No password hashing found (OK if using OAuth/managed auth)\n' "$YELLOW" "$NC"
+  printf '  %sWARN%s No password hashing found (OK if using OAuth/managed auth)\n' "$YELLOW" "$NC"
 fi
 printf '\n'
 
@@ -185,7 +188,7 @@ else
   printf '\n'
   printf 'Authentication violations found:\n'
   for violation in "${VIOLATIONS[@]}"; do
-    printf '  %s✗%s %s\n' "$RED" "$NC" "${violation}"
+    printf '  %sFAIL%s %s\n' "$RED" "$NC" "${violation}"
   done
   printf '\n'
   printf 'Review the implementation and ensure:\n'

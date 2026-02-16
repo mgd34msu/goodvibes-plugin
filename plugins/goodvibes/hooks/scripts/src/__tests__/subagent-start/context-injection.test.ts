@@ -309,13 +309,13 @@ describe('context-injection', () => {
         );
       });
 
-      it('should add backend reminder for agent types containing "backend" substring', async () => {
+      it('should add backend reminder for agent types containing "engineer" substring', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
-          'senior-backend-developer',
+          'senior-engineer',
           'session-123'
         );
 
@@ -390,13 +390,13 @@ describe('context-injection', () => {
     });
 
     describe('combined agent types', () => {
-      it('should add both backend and test reminders when both are in agentType', async () => {
+      it('should add both engineer and test reminders when both are in agentType', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
-          'backend-test-agent',
+          'engineer-test-agent',
           'session-123'
         );
 
@@ -414,7 +414,7 @@ describe('context-injection', () => {
 
         const result = await buildSubagentContext(
           '/test/project',
-          'backend-test-brutal-reviewer',
+          'engineer-test-brutal-reviewer',
           'session-123'
         );
 
@@ -429,13 +429,13 @@ describe('context-injection', () => {
         );
       });
 
-      it('should add backend and brutal-reviewer reminders when both are in agentType', async () => {
+      it('should add engineer and brutal-reviewer reminders when both are in agentType', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
 
         const result = await buildSubagentContext(
           '/test/project',
-          'backend-brutal-reviewer',
+          'engineer-brutal-reviewer',
           'session-123'
         );
 
@@ -574,7 +574,7 @@ describe('context-injection', () => {
 
         const result = await buildSubagentContext(
           '/test/project',
-          'backend-agent',
+          'engineer-agent',
           'session-123'
         );
 
@@ -697,6 +697,186 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain('Mode: vibecoding');
+      });
+    });
+
+    describe('skill injection', () => {
+      it('should include protocol skills for all agents', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:engineer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain(
+          'Available protocol skills'
+        );
+        expect(result.additionalContext).toContain('precision-mastery');
+        expect(result.additionalContext).toContain('review-scoring');
+        expect(result.additionalContext).toContain('discover-plan-batch');
+        expect(result.additionalContext).toContain('goodvibes-memory');
+        expect(result.additionalContext).toContain('error-recovery');
+      });
+
+      it('should inject engineer skills for goodvibes:engineer', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:engineer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('authentication');
+        expect(result.additionalContext).toContain('database-layer');
+        expect(result.additionalContext).toContain('api-design');
+        expect(result.additionalContext).toContain(
+          'component-architecture'
+        );
+      });
+
+      it('should inject reviewer skills for goodvibes:reviewer', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:reviewer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('code-review');
+        expect(result.additionalContext).toContain('security-audit');
+        expect(result.additionalContext).toContain('performance-audit');
+        expect(result.additionalContext).toContain('accessibility-audit');
+      });
+
+      it('should inject tester skills for goodvibes:tester', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:tester',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('testing-strategy');
+      });
+
+      it('should inject architect skills for goodvibes:architect', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:architect',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('project-onboarding');
+      });
+
+      it('should inject deployer skills for goodvibes:deployer', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:deployer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('deployment');
+      });
+
+      it('should inject generic integrator skills for goodvibes:integrator', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:integrator',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('ai-integration');
+        expect(result.additionalContext).toContain('payment-integration');
+        expect(result.additionalContext).toContain('service-integration');
+        expect(result.additionalContext).toContain('state-management');
+        expect(result.additionalContext).toContain('authentication');
+      });
+
+      it('should inject planner skills for goodvibes:planner', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:planner',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('task-orchestration');
+        expect(result.additionalContext).toContain('fullstack-feature');
+      });
+
+      it('should show fallback for meta-agents (agent-factory)', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:agent-factory',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('none — load as needed');
+      });
+
+      it('should show fallback for meta-agents (skill-factory)', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:skill-factory',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('none — load as needed');
+      });
+
+      it('should show fallback for unknown agent types', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'unknown-agent',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain('none — load as needed');
+      });
+
+      it('should include skill loading instructions', async () => {
+        const { buildSubagentContext } =
+          await import('../../subagent-start/context-injection.js');
+
+        const result = await buildSubagentContext(
+          '/test/project',
+          'goodvibes:engineer',
+          'session-123'
+        );
+
+        expect(result.additionalContext).toContain(
+          'Load skills with: search_skills or get_skill_content from the registry engine'
+        );
       });
     });
   });

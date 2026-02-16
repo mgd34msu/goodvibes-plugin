@@ -32,10 +32,13 @@ export const AGENT_SKILL_MAP: Record<string, string[]> = {
   'tester': ['testing-strategy'],
   'architect': ['project-onboarding'], // Loads outcome skills as needed per task; project-onboarding is the primary quality skill
   'deployer': ['deployment'],
+  'integrator': ['ai-integration', 'payment-integration', 'service-integration', 'state-management', 'authentication'], // Generic integrator
   'integrator-ai': ['ai-integration'],
   'integrator-services': ['payment-integration', 'service-integration', 'authentication'],
   'integrator-state': ['state-management'],
   'planner': ['task-orchestration', 'fullstack-feature'],
+  'agent-factory': [], // Meta-agent, loads skills as needed
+  'skill-factory': [], // Meta-agent, loads skills as needed
 };
 
 /** Context to inject into a subagent session */
@@ -89,7 +92,7 @@ export async function buildSubagentContext(
   );
 
   // Add agent-specific reminders based on type
-  if (agentType.includes('backend')) {
+  if (agentType.includes('engineer')) {
     contextParts.push(
       'Remember: Write-local only. All changes must be in the project root or directories within the project root.\n\n'
     );

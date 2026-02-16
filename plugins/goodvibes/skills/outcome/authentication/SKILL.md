@@ -1,6 +1,6 @@
 ---
 name: authentication
-description: "Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, session management, JWT, OAuth, protected routes, middleware auth, or role-based access control. Orchestrates discovery, implementation, security verification, and testing."
+description: "Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery, implementation, security verification, and testing."
 metadata:
   version: 1.0.0
   category: outcome
@@ -168,7 +168,7 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
+  const token = req.headers.authorization?.replace(/^bearer\s+/i, '');
   
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -288,14 +288,23 @@ env_audit:
 **3. Validate Implementation:**
 
 ```yaml
-validate_implementation:
-  reference_file: "lib/auth.ts"
-  criteria:
-    - "Password hashing with bcrypt or argon2"
-    - "Session tokens are httpOnly cookies"
-    - "CSRF protection enabled"
-    - "Input validation on all endpoints"
-    - "Proper error messages (no info leakage)"
+# Use precision_grep to validate critical security patterns
+precision_grep:
+  queries:
+    - id: password_hashing
+      pattern: "bcrypt|argon2|hashPassword"
+      path: "lib"
+      glob: "**/*.ts"
+    - id: httpOnly_cookies
+      pattern: "httpOnly.*true|httpOnly:\s*true"
+      path: "."
+      glob: "**/*.ts"
+    - id: csrf_protection
+      pattern: "csrf|CsrfToken|verifyCsrfToken"
+      path: "."
+      glob: "**/*.ts"
+  output:
+    format: "count_only"
 ```
 
 ### Step 7: Protected Routes Implementation
@@ -349,7 +358,7 @@ export function useAuth(options?: { redirectTo?: string }) {
         }
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [options?.redirectTo, router]);
   
   return { user, loading };
 }

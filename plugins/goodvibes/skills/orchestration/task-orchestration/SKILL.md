@@ -90,7 +90,7 @@ For each parallelizable work stream, define a task with:
 **Task structure:**
 ```yaml
 task_id: unique-task-identifier
-agent_type: engineer | reviewer | researcher | planner
+agent: engineer | reviewer | tester | architect | deployer | integrator-ai | integrator-services | integrator-state | planner
 skills: [skill-1, skill-2]
 description: Brief description of what this task accomplishes
 scope:
@@ -107,8 +107,8 @@ expected_outcome: What success looks like
 **Example:**
 ```yaml
 task_id: create-user-types
-agent_type: engineer
-skills: [discover-plan-batch, precision-mastery]
+agent: engineer
+skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
 description: Create TypeScript type definitions for User domain
 scope:
   files: [src/types/user.ts, src/types/auth.ts]
@@ -131,8 +131,13 @@ For each task, assign the appropriate agent type and skills using this decision 
 |-----------|------------|------------|
 | Implement API, components, features | engineer | Code creation and implementation |
 | Review code quality, standards | reviewer | Code quality and standards enforcement |
-| Analyze patterns, research solutions | researcher | Discovery and analysis |
+| Write tests, test coverage | tester | Testing and validation |
 | Plan architecture, design decisions | architect | High-level design and planning |
+| Deploy applications, infrastructure | deployer | Deployment and infrastructure |
+| Integrate AI/ML services | integrator-ai | AI/ML integration |
+| Integrate external services | integrator-services | External service integration |
+| Manage state and data flow | integrator-state | State management |
+| Coordinate complex workflows | planner | High-level orchestration |
 
 **Skills Assignment:**
 
@@ -361,7 +366,7 @@ In justvibes mode, the orchestrator asks before acting:
 tasks:
   - task_id: create-profile-types
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
     description: Create Profile and ProfileUpdate types
     scope:
       files: [src/types/profile.ts]
@@ -370,7 +375,7 @@ tasks:
     
   - task_id: create-profile-api
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, trpc, prisma]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
     description: Implement tRPC routes for profile CRUD
     scope:
       files: [src/server/routers/profile.ts]
@@ -379,12 +384,30 @@ tasks:
     
   - task_id: create-profile-ui
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, react, tailwindcss, shadcn-ui]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react, tailwindcss, shadcn-ui]
     description: Build profile page with edit form
     scope:
       files: [src/app/profile/page.tsx, src/components/ProfileForm.tsx]
+    blocking: [review-profile-implementation]
+    blocked_by: [create-profile-types]
+    
+  - task_id: review-profile-implementation
+    agent: reviewer
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling]
+    description: Review all profile implementation for code quality
+    scope:
+      files: [src/types/profile.ts, src/server/routers/profile.ts, src/app/profile/page.tsx, src/components/ProfileForm.tsx]
+    blocking: [test-profile-feature]
+    blocked_by: [create-profile-api, create-profile-ui]
+    
+  - task_id: test-profile-feature
+    agent: tester
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    description: Create tests for profile feature
+    scope:
+      files: [src/server/routers/profile.test.ts, src/components/ProfileForm.test.tsx]
     blocking: []
-    blocked_by: [create-profile-types, create-profile-api]
+    blocked_by: [review-profile-implementation]
 ```
 
 **Execution plan:**
@@ -392,9 +415,13 @@ tasks:
 2. Wait for types to complete
 3. Spawn create-profile-api and create-profile-ui in parallel (both unblocked)
 4. Wait for both to complete
-5. Aggregate results and return to user
+5. Spawn review-profile-implementation (blocked by API + UI)
+6. Wait for review to complete
+7. Spawn test-profile-feature (blocked by review)
+8. Wait for tests to complete
+9. Aggregate results and return to user
 
-**Parallelism:** 2 waves (types solo, then API + UI together)
+**Parallelism:** 4 waves (types solo → API + UI parallel → review solo → tests solo)
 
 ### Example 2: Bug Fix
 
@@ -408,7 +435,7 @@ tasks:
 tasks:
   - task_id: diagnose-redirect-loop
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, nextauth]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
     description: Identify root cause of redirect loop
     scope:
       files: [src/middleware.ts, src/app/dashboard/page.tsx, src/lib/auth.ts]
@@ -417,12 +444,21 @@ tasks:
     
   - task_id: fix-redirect-loop
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, nextjs, nextauth]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
     description: Apply fix based on diagnosis
     scope:
       files: [determined by diagnosis]
-    blocking: []
+    blocking: [verify-fix]
     blocked_by: [diagnose-redirect-loop]
+    
+  - task_id: verify-fix
+    agent: reviewer
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, async-patterns, error-handling]
+    description: Verify the fix resolves the redirect loop and doesn't introduce regressions
+    scope:
+      files: [determined by fix task]
+    blocking: []
+    blocked_by: [fix-redirect-loop]
 ```
 
 **Execution plan:**
@@ -430,9 +466,11 @@ tasks:
 2. Wait for diagnosis with root cause analysis
 3. Spawn fix-redirect-loop with diagnosis context
 4. Wait for fix to complete
-5. Return to user
+5. Spawn verify-fix (blocked by fix)
+6. Wait for verification to complete
+7. Return to user
 
-**Parallelism:** None (sequential diagnosis then fix)
+**Parallelism:** None (fully sequential: diagnose → fix → verify)
 
 ### Example 3: Refactoring
 
@@ -444,18 +482,27 @@ tasks:
 
 ```yaml
 tasks:
+  - task_id: plan-refactoring-approach
+    agent: architect
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    description: Design the refactoring strategy and hook API
+    scope:
+      directories: [src/components, src/app]
+    blocking: [analyze-auth-patterns]
+    blocked_by: []
+    
   - task_id: analyze-auth-patterns
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
     description: Discover all auth usage patterns in components
     scope:
       directories: [src/components, src/app]
     blocking: [create-auth-hooks]
-    blocked_by: []
+    blocked_by: [plan-refactoring-approach]
     
   - task_id: create-auth-hooks
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Create hooks based on discovered patterns
     scope:
       files: [src/hooks/useAuth.ts, src/hooks/useRequireAuth.ts]
@@ -464,7 +511,7 @@ tasks:
     
   - task_id: refactor-components-1
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Refactor components in src/app to use hooks
     scope:
       directories: [src/app]
@@ -473,7 +520,7 @@ tasks:
     
   - task_id: refactor-components-2
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, react]
+    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Refactor components in src/components to use hooks
     scope:
       directories: [src/components]
@@ -482,15 +529,17 @@ tasks:
 ```
 
 **Execution plan:**
-1. Spawn analyze-auth-patterns
-2. Wait for pattern analysis
-3. Spawn create-auth-hooks
-4. Wait for hooks to complete
-5. Spawn refactor-components-1 and refactor-components-2 in parallel
-6. Wait for both to complete
-7. Return to user
+1. Spawn plan-refactoring-approach (architect)
+2. Wait for planning to complete
+3. Spawn analyze-auth-patterns (blocked by planning)
+4. Wait for pattern analysis
+5. Spawn create-auth-hooks (blocked by analysis)
+6. Wait for hooks to complete
+7. Spawn refactor-components-1 and refactor-components-2 in parallel
+8. Wait for both to complete
+9. Return to user
 
-**Parallelism:** 3 waves (analysis solo, hooks solo, then 2 refactors together)
+**Parallelism:** 4 waves (planning → analysis → hooks → 2 refactors parallel)
 
 ## Escalation Criteria
 

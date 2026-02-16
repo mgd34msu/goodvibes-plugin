@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Requires: bash 4+ (uses arrays, [[ ]])
 
 # validate-orchestration.sh
 # Validates that orchestrator sessions follow the task orchestration protocol
@@ -44,7 +45,7 @@ AGENT_SPAWN_PATTERNS="(spawn.*agent|create.*agent|agent.*task|batch.*agent)"
 DECOMPOSITION_PATTERNS="(task_id|blocking|blocked_by|decompose|parallel.*task|task.*breakdown)"
 
 # Find first agent spawn line
-FIRST_SPAWN_LINE=$(grep -n -m 1 -i -E "$AGENT_SPAWN_PATTERNS" -- "$TRANSCRIPT" | cut -d: -f1 || echo "0")
+FIRST_SPAWN_LINE=$(grep -n -m 1 -i -E "$AGENT_SPAWN_PATTERNS" -- "$TRANSCRIPT" | cut -d: -f1 || printf '0')
 
 if [[ "$FIRST_SPAWN_LINE" -gt 0 ]]; then
   # Check if decomposition appears before first spawn
@@ -53,12 +54,12 @@ if [[ "$FIRST_SPAWN_LINE" -gt 0 ]]; then
   if [[ -z "$DECOMPOSITION_BEFORE" ]]; then
     VIOLATIONS+=("Agent spawned without prior task decomposition")
     PASS=false
-    printf '  %s✗%s No decomposition before agent spawn\n' "$RED" "$NC"
+    printf '  %s[FAIL]%s No decomposition before agent spawn\n' "$RED" "$NC"
   else
-    printf '  %s✓%s Task decomposition found before agent spawn\n' "$GREEN" "$NC"
+    printf '  %s[PASS]%s Task decomposition found before agent spawn\n' "$GREEN" "$NC"
   fi
 else
-  printf '  %s✓%s No agent spawns detected (not applicable)\n' "$GREEN" "$NC"
+  printf '  %s[PASS]%s No agent spawns detected (not applicable)\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -73,7 +74,7 @@ if [[ "$FIRST_SPAWN_LINE" -gt 0 ]]; then
   if [[ -z "$AGENT_PROMPTS" ]]; then
     VIOLATIONS+=("Agent prompts missing skill references")
     PASS=false
-    printf '  %s✗%s No skill references in agent prompts\n' "$RED" "$NC"
+    printf '  %s[FAIL]%s No skill references in agent prompts\n' "$RED" "$NC"
   else
     # Check if protocol skills are included (look in context around skill sections)
     SKILL_SECTION_LINES=$(grep -n -i -E "$AGENT_PROMPT_PATTERNS" -- "$TRANSCRIPT" | cut -d: -f1 || true)
@@ -97,13 +98,13 @@ if [[ "$FIRST_SPAWN_LINE" -gt 0 ]]; then
     if [[ "$PROTOCOL_SKILLS_FOUND" == "false" ]]; then
       VIOLATIONS+=("Agent prompts missing protocol skills (discover-plan-batch, precision-mastery, etc.)")
       PASS=false
-      printf '  %s✗%s Protocol skills not referenced in prompts\n' "$RED" "$NC"
+      printf '  %s[FAIL]%s Protocol skills not referenced in prompts\n' "$RED" "$NC"
     else
-      printf '  %s✓%s Agent prompts include skill references\n' "$GREEN" "$NC"
+      printf '  %s[PASS]%s Agent prompts include skill references\n' "$GREEN" "$NC"
     fi
   fi
 else
-  printf '  %s✓%s No agent spawns detected (not applicable)\n' "$GREEN" "$NC"
+  printf '  %s[PASS]%s No agent spawns detected (not applicable)\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -126,14 +127,14 @@ if [[ "$FIRST_SPAWN_LINE" -gt 0 ]]; then
   if [[ "$WRITE_FOUND" -gt 0 ]] && [[ "$REPORT_FOUND" -eq 0 ]]; then
     VIOLATIONS+=("WRITE phase detected but no REPORT phase found")
     PASS=false
-    printf '  %s✗%s Incomplete WRFC loop (missing REPORT)\n' "$RED" "$NC"
+    printf '  %s[FAIL]%s Incomplete WRFC loop (missing REPORT)\n' "$RED" "$NC"
   elif [[ "$WRITE_FOUND" -gt 0 ]] && [[ "$REPORT_FOUND" -gt 0 ]]; then
-    printf '  %s✓%s WRFC loop phases present\n' "$GREEN" "$NC"
+    printf '  %s[PASS]%s WRFC loop phases present\n' "$GREEN" "$NC"
   else
-    printf '  %s✓%s No WRFC loop detected (simple task)\n' "$GREEN" "$NC"
+    printf '  %s[PASS]%s No WRFC loop detected (simple task)\n' "$GREEN" "$NC"
   fi
 else
-  printf '  %s✓%s No agent spawns detected (not applicable)\n' "$GREEN" "$NC"
+  printf '  %s[PASS]%s No agent spawns detected (not applicable)\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -146,17 +147,17 @@ CONCURRENT_MENTIONS=$(grep -i -E "$CONCURRENT_PATTERNS" -- "$TRANSCRIPT" || true
 
 if [[ -n "$CONCURRENT_MENTIONS" ]]; then
   # Check for counts > 6
-  OVER_LIMIT=$(printf '%s' "$CONCURRENT_MENTIONS" | grep -E "([7-9]|[0-9]{2,}).*agent|agent.*([7-9]|[0-9]{2,})" || true)
+  OVER_LIMIT=$(printf '%s' "$CONCURRENT_MENTIONS" | grep -E "(concurrent|parallel|active).*([7-9]|[1-9][0-9]+).*agent" || true)
   
   if [[ -n "$OVER_LIMIT" ]]; then
     VIOLATIONS+=("More than 6 concurrent agents detected")
     PASS=false
-    printf '  %s✗%s Concurrent agent limit exceeded\n' "$RED" "$NC"
+    printf '  %s[FAIL]%s Concurrent agent limit exceeded\n' "$RED" "$NC"
   else
-    printf '  %s✓%s Concurrent agent limit respected\n' "$GREEN" "$NC"
+    printf '  %s[PASS]%s Concurrent agent limit respected\n' "$GREEN" "$NC"
   fi
 else
-  printf '  %s✓%s No concurrent agent tracking detected (likely ≤6)\n' "$GREEN" "$NC"
+  printf '  %s[PASS]%s No concurrent agent tracking detected (likely ≤6)\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -172,12 +173,12 @@ if [[ "$FIRST_SPAWN_LINE" -gt 0 ]] && [[ "$REPORT_FOUND" -gt 0 ]]; then
   if [[ "$STRUCTURED_OUTPUT" -lt 3 ]]; then
     VIOLATIONS+=("Agent reports missing structured output format")
     PASS=false
-    printf '  %s✗%s Structured output format not used\n' "$RED" "$NC"
+    printf '  %s[FAIL]%s Structured output format not used\n' "$RED" "$NC"
   else
-    printf '  %s✓%s Agents use structured output format\n' "$GREEN" "$NC"
+    printf '  %s[PASS]%s Agents use structured output format\n' "$GREEN" "$NC"
   fi
 else
-  printf '  %s✓%s No agent reports detected (not applicable)\n' "$GREEN" "$NC"
+  printf '  %s[PASS]%s No agent reports detected (not applicable)\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -192,7 +193,7 @@ else
   printf '\n'
   printf 'Protocol violations found:\n'
   for violation in "${VIOLATIONS[@]}"; do
-    printf '  %s✗%s %s\n' "$RED" "$NC" "${violation}"
+    printf '  %s[FAIL]%s %s\n' "$RED" "$NC" "${violation}"
   done
   printf '\n'
   printf 'Review the orchestrator transcript and ensure:\n'
