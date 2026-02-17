@@ -4932,6 +4932,9 @@ Discover: glob/grep/symbols/structural queries. Check .goodvibes/memory/ first. 
 Plan: list exact paths, dependencies, batch opportunities.
 Batch: batch_engine wrapping (best) > built-in batching (good) > sequential (only when dependent). Fix only failed ops.
 NEVER use precision_exec for file search -- use discover, precision_grep, precision_glob.
+
+Example DPB cycle: D=discover (batch glob+grep+symbols queries, verbosity: files_only). P=plan exact paths and batch opportunities. B=batch { read: [files], write: [files], exec: [typecheck] } in one call.
+Overflow: If results exceed limits, use precision_read with range: { start: N, end: M } on the overflow file.
 `
 };
 async function loadPromptFiles() {
