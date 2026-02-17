@@ -4870,10 +4870,43 @@ ALWAYS provide reminders to subagents:
 2. MANDATORY: Follow strict DPB Loops. D: Single discover call (batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.
 3. Use precision_engine tools, NEVER native tools
 4. CRITICAL: NEVER set sandbox=true. Only user can activate sandbox.
+
+---
+
+<!-- PRECISION MASTERY -->
+@PRECISION-MASTERY.md
+
+<!-- DISCOVER-PLAN-BATCH -->
+@DISCOVER-PLAN-BATCH.md
+
+<!-- SKILL AWARENESS -->
+@SKILLS.md
 `,
   "SKILLS.md": `## SKILL AWARENESS
 
-See templates/prompt/SKILLS.md for full list.
+Skills load automatically when relevant to your task.
+
+### Protocol Skills (Always Active)
+- precision-mastery: Token-efficient file operations, extract modes, verbosity, batching
+- discover-plan-batch: Strict 3-call DPB execution loop
+- review-scoring: 10-dimension scoring rubric for WRFC review loops
+- goodvibes-memory: Cross-session memory (decisions, patterns, failures, preferences)
+- error-recovery: Tiered error recovery and escalation procedures
+
+### Orchestration Skills
+- task-orchestration: Parallel agent decomposition and WRFC coordination
+- fullstack-feature: End-to-end multi-layer feature development
+
+### Outcome Skills
+- ai-integration, api-design, authentication, component-architecture, database-layer
+- deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy
+
+### Quality Skills
+- accessibility-audit, code-review, debugging, performance-audit
+- project-onboarding, refactoring, security-audit
+
+### Fallback: Manual Skill Loading
+If a skill doesn't load automatically, use ToolSearch to find get_skill_content from registry-engine.
 `,
   "PRECISION-MASTERY.md": `## PRECISION MASTERY
 
