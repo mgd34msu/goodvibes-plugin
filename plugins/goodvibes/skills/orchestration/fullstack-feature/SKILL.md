@@ -1,11 +1,19 @@
 ---
 name: fullstack-feature
-description: "Load PROACTIVELY when coordinating multiple agents or planning multi-step work. End-to-end feature development workflow that orchestrates multiple agents across the full stack. Use when the user requests a complete feature that spans backend, frontend, and testing. Sequences work across database, API, UI, tests, and review."
+description: "Load PROACTIVELY when task involves building a complete feature across multiple layers. Use when user says \"build a feature\", \"add user profiles\", \"create a dashboard\", or any request spanning database, API, UI, and tests. Orchestrates multi-agent work sequentially: schema and migrations, API endpoints, UI components, tests, and review. Handles dependency ordering and cross-layer type sharing."
 metadata:
   version: 1.0.0
   category: orchestration
   tags: [fullstack, feature, end-to-end, workflow, multi-agent]
 ---
+
+## Resources
+```
+scripts/
+  validate-feature-workflow.sh
+references/
+  phase-templates.md
+```
 
 # Fullstack Feature Orchestration
 

@@ -1,11 +1,19 @@
 ---
 name: testing-strategy
-description: "Load PROACTIVELY when task involves test, coverage, Vitest, Jest, Playwright, mock, or fixture. Comprehensive testing patterns for Vitest/Jest unit tests, React Testing Library component tests, Playwright E2E tests, and MSW API mocking. Covers test organization, coverage targets, fixture management, and CI integration."
+description: "Load PROACTIVELY when task involves writing tests, improving coverage, or test infrastructure. Use when user says \"add tests\", \"write unit tests\", \"set up E2E testing\", \"improve coverage\", or \"add mocks\". Covers Vitest/Jest unit tests, React Testing Library component tests, Playwright E2E tests, MSW API mocking, test organization and naming, fixture management, coverage targets and thresholds, snapshot testing, and CI integration."
 metadata:
   version: "1.0.0"
   category: outcome
   tags: [testing, vitest, jest, playwright, coverage, tdd]
 ---
+
+## Resources
+```
+scripts/
+  validate-tests.sh
+references/
+  testing-patterns.md
+```
 
 # Testing Strategy
 

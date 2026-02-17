@@ -1,11 +1,19 @@
 ---
 name: accessibility-audit
-description: "Load PROACTIVELY when performing accessibility, a11y, WCAG, ARIA, or keyboard nav audit. WCAG 2.1 AA compliance audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen reader support, color contrast, forms, and media accessibility. Includes precision tool workflows for automated pattern detection and structured reporting."
+description: "Load PROACTIVELY when task involves accessibility compliance or inclusive design. Use when user says \"check accessibility\", \"audit for WCAG\", \"fix screen reader issues\", \"add keyboard navigation\", or \"check color contrast\". Covers WCAG 2.1 AA compliance across semantic HTML, ARIA patterns, keyboard navigation, screen reader support, color contrast ratios, form accessibility, media alternatives, and focus management. Produces structured audit reports with severity ratings."
 metadata:
   version: "1.0.0"
   category: quality
   tags: [accessibility, a11y, wcag, aria, semantic-html, keyboard-navigation, screen-reader]
 ---
+
+## Resources
+```
+scripts/
+  validate-accessibility-audit.sh
+references/
+  accessibility-patterns.md
+```
 
 # Accessibility Audit
 

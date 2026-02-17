@@ -1,11 +1,19 @@
 ---
 name: api-design
-description: "Load PROACTIVELY when task involves API, endpoint, route, REST, GraphQL, tRPC, or middleware. API endpoint design and implementation workflow using GoodVibes precision tools. Use when building REST endpoints, GraphQL resolvers, tRPC procedures, API middleware, request validation, or response formatting. Covers route design, error handling, and documentation."
+description: "Load PROACTIVELY when task involves building or modifying API endpoints. Use when user says \"build an API\", \"add an endpoint\", \"create a REST route\", \"set up GraphQL\", or \"add tRPC procedures\". Covers route design and file organization, request validation with Zod, response formatting, error handling patterns, middleware composition, authentication guards, rate limiting, pagination, and API documentation generation."
 metadata:
   version: 1.0.0
   category: outcome
   tags: [api, rest, graphql, trpc, endpoint, route, middleware, validation]
 ---
+
+## Resources
+```
+scripts/
+  api-checklist.sh
+references/
+  api-style-guide.md
+```
 
 # API Design
 

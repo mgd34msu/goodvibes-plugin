@@ -1,11 +1,19 @@
 ---
 name: code-review
-description: "Load PROACTIVELY when performing review, audit, PR, or quality assessment. Systematic code review methodology using precision tools. Use when reviewing PRs, validating implementations, or performing quality audits. Covers security, performance, architecture, testing, and accessibility reviews with automated pattern detection and the 10-dimension weighted scoring rubric."
+description: "Load PROACTIVELY when task involves reviewing code, auditing quality, or validating implementations. Use when user says \"review this code\", \"check this PR\", \"audit the codebase\", or \"score this implementation\". Covers the 10-dimension weighted scoring rubric (correctness, security, performance, architecture, testing, error handling, type safety, maintainability, accessibility, documentation), automated pattern detection for anti-patterns, and structured review output with actionable findings."
 metadata:
   version: 1.0.0
   category: quality
   tags: [review, quality, security, performance, testing, architecture, accessibility, scoring]
 ---
+
+## Resources
+```
+scripts/
+  validate-code-review.sh
+references/
+  review-patterns.md
+```
 
 # Code Review Quality Skill
 

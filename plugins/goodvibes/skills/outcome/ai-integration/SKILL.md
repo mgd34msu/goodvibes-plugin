@@ -1,11 +1,19 @@
 ---
 name: ai-integration
-description: "Load PROACTIVELY when task involves AI, LLM, chat, streaming, RAG, embeddings, or OpenAI. AI and LLM integration workflow using GoodVibes precision tools. Use when implementing chat interfaces, streaming responses, RAG pipelines, embeddings, vector search, or tool/function calling. Covers Vercel AI SDK, OpenAI, Anthropic, and local model patterns."
+description: "Load PROACTIVELY when task involves AI, LLM, or machine learning features. Use when user says \"add AI chat\", \"implement streaming responses\", \"build a RAG pipeline\", \"add embeddings\", or \"integrate OpenAI\". Covers chat interfaces, streaming with Vercel AI SDK, retrieval-augmented generation, vector search, embeddings pipelines, tool/function calling, and provider abstraction for OpenAI, Anthropic, and local models."
 metadata:
   version: 1.0.0
   category: outcome
   tags: [ai, llm, chat, streaming, rag, embeddings, vector-search, function-calling]
 ---
+
+## Resources
+```
+scripts/
+  validate-ai-integration.sh
+references/
+  ai-patterns.md
+```
 
 # AI Integration Implementation
 

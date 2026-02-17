@@ -1,11 +1,20 @@
 ---
 name: review-scoring
-description: 'ALWAYS load before starting any task. Defines the quantified scoring rubric and review format for WRFC loops. Use when reviewing code, scoring implementations, or validating that work meets quality standards. Includes deterministic validation scripts for review output.'
+description: "ALWAYS load before starting any task. Provides the 10-dimension weighted scoring rubric (0-10 scale) used to evaluate all implementations in WRFC loops. Dimensions include correctness, completeness, error handling, type safety, security, performance, maintainability, testing, accessibility, and documentation. Includes deterministic validation scripts and score thresholds for pass/revise/reject decisions."
 metadata:
   version: 1.0.0
   category: protocol
   tags: [review, scoring, rubric, wrfc, quality, validation]
 ---
+
+## Resources
+```
+scripts/
+  validate-review.sh
+  validate-fix.sh
+references/
+  scoring-examples.md
+```
 
 # Review Scoring Protocol
 

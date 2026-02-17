@@ -1,11 +1,19 @@
 ---
 name: refactoring
-description: "Load PROACTIVELY when performing refactor, cleanup, dead code removal, reorganize, or extract operations. Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename, simplify conditionals, type improvements, dependency inversion, and database refactoring with automated safety validation."
+description: "Load PROACTIVELY when task involves improving code structure without changing behavior. Use when user says \"refactor this\", \"clean up this code\", \"remove dead code\", \"reduce duplication\", \"reorganize the files\", or \"extract this into a function\". Covers extract function/component, rename symbol, simplify conditionals, improve type safety, dependency inversion, dead code removal, circular dependency resolution, and database query refactoring with automated safety validation (typecheck, tests) at each step."
 metadata:
   version: 1.0.0
   category: quality
   tags: [refactoring, code-quality, maintainability, type-safety, architecture, design-patterns]
 ---
+
+## Resources
+```
+scripts/
+  validate-refactoring.sh
+references/
+  refactoring-patterns.md
+```
 
 # Refactoring Quality Skill
 

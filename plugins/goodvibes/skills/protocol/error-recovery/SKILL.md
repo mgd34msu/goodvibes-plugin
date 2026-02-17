@@ -1,11 +1,19 @@
 ---
 name: error-recovery
-description: "ALWAYS load before starting any task. Defines error recovery procedures for all GoodVibes agents. Use when encountering tool failures, build errors, test failures, or unexpected results during task execution. Covers systematic error recovery, memory-informed diagnostics, and when to escalate to the orchestrator."
+description: "ALWAYS load before starting any task. Defines systematic recovery procedures when things go wrong during execution. Covers tool failures, build errors, test failures, type errors, and unexpected runtime results. Includes tiered escalation (retry, fallback, memory-informed diagnosis, orchestrator escalation) and post-recovery logging to prevent recurrence."
 metadata:
   version: 1.0.0
   category: protocol
   tags: [error, recovery, escalation, debugging, failure, retry]
 ---
+
+## Resources
+```
+scripts/
+  validate-error-recovery.sh
+references/
+  common-errors.md
+```
 
 # Error Recovery Protocol
 

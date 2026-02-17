@@ -1,11 +1,19 @@
 ---
 name: deployment
-description: "Load PROACTIVELY when task involves deploy, CI/CD, Docker, Vercel, Railway, or production. Deployment patterns for Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD pipelines, preview deployments, health checks, rollback strategies, and monitoring setup."
+description: "Load PROACTIVELY when task involves deploying, hosting, or CI/CD pipelines. Use when user says \"deploy this\", \"set up CI/CD\", \"add Docker\", \"configure Vercel\", or \"set up monitoring\". Covers platform-specific deployment (Vercel, Railway, Fly.io, AWS), Dockerfile creation, environment variable management, CI/CD pipeline configuration (GitHub Actions), preview deployments, health checks, rollback strategies, and production monitoring setup."
 metadata:
   version: "1.0.0"
   category: outcome
   tags: [deployment, devops, ci-cd, docker, vercel, monitoring]
 ---
+
+## Resources
+```
+scripts/
+  validate-deployment.sh
+references/
+  deployment-platforms.md
+```
 
 # Deployment
 

@@ -1,11 +1,19 @@
 ---
 name: styling-system
-description: "Load PROACTIVELY when task involves CSS, Tailwind, styling, theme, dark mode, or responsive design. Guides CSS architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark mode implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design systems, or choosing between styling approaches."
+description: "Load PROACTIVELY when task involves CSS architecture, theming, or visual design systems. Use when user says \"set up Tailwind\", \"add dark mode\", \"create a design system\", \"make it responsive\", or \"configure the theme\". Covers Tailwind configuration and custom plugins, design token systems, responsive breakpoint strategies, dark mode implementation, component variant patterns (CVA/class-variance-authority), CSS-in-JS alternatives, and animation patterns."
 metadata:
   version: 1.0.0
   category: outcome
   tags: [css, tailwind, styling, theme, dark-mode, responsive, design-tokens]
 ---
+
+## Resources
+```
+scripts/
+  validate-styling.sh
+references/
+  styling-comparison.md
+```
 
 # Styling System
 

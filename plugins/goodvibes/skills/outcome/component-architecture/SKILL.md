@@ -1,11 +1,19 @@
 ---
 name: component-architecture
-description: "Load PROACTIVELY when task involves component, UI, React, Vue, Svelte, page, layout, or form. Component design workflow using GoodVibes precision tools. Use when building UI components, designing component hierarchies, optimizing render performance, or organizing component files. Covers composition patterns, state management, render optimization, and file organization for React/Vue/Svelte."
+description: "Load PROACTIVELY when task involves designing or building UI components. Use when user says \"build a component\", \"create a form\", \"add a modal\", \"design the layout\", or \"refactor this page\". Covers component composition and hierarchy, prop design and typing, render optimization (memo, useMemo, useCallback), compound component patterns, controlled vs uncontrolled forms, file organization, and accessibility for React, Vue, and Svelte."
 metadata:
   version: 1.0.0
   category: outcome
   tags: [components, react, vue, svelte, composition, rendering, architecture, ui]
 ---
+
+## Resources
+```
+scripts/
+  validate-components.sh
+references/
+  component-patterns.md
+```
 
 # Component Architecture
 

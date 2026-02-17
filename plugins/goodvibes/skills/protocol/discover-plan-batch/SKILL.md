@@ -1,11 +1,19 @@
 ---
 name: discover-plan-batch
-description: "MANDATORY before starting any task. Defines the strict 3-call-per-cycle Discover-Plan-Batch loop. D: Single discover call with all queries batched. P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle."
+description: "MANDATORY before starting any task. Enforces the strict 3-call-per-cycle execution loop that prevents tool call sprawl. D: Single discover call with all queries batched. P: Plan in text with zero tool calls. B: Single batched precision call. Every DPB cycle targets exactly 3 tool calls. Covers dependency analysis, batch opportunities, scope estimation, and loop-back triggers."
 metadata:
   version: 2.0.0
   category: protocol
   tags: [dpb, discover, plan, batch, workflow, token-efficiency, strict-workflow]
 ---
+
+## Resources
+```
+scripts/
+  validate-dpb-compliance.sh
+references/
+  examples-and-checklists.md
+```
 
 # Discover-Plan-Batch Protocol (Strict 3-Call Workflow)
 

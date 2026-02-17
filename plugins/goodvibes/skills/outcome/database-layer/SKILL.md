@@ -1,11 +1,19 @@
 ---
 name: database-layer
-description: "Load PROACTIVELY when task involves database, schema, migration, ORM, Prisma, Drizzle, or SQL. Database and ORM setup workflow using GoodVibes precision tools. Use when creating schemas, running migrations, setting up database connections, defining models, writing queries, or optimizing database performance. Covers relational and document databases."
+description: "Load PROACTIVELY when task involves database design, schemas, or data access. Use when user says \"set up the database\", \"create a schema\", \"add a migration\", \"write a query\", or \"set up Prisma\". Covers schema design and normalization, ORM setup (Prisma, Drizzle), migration workflows, connection pooling, query optimization, indexing strategies, seeding, and transaction patterns for PostgreSQL, MySQL, SQLite, and MongoDB."
 metadata:
   version: 1.0.0
   category: outcome
   tags: [database, orm, schema, migration, query, prisma, drizzle, sql]
 ---
+
+## Resources
+```
+scripts/
+  database-checklist.sh
+references/
+  orm-comparison.md
+```
 
 # Database Layer Implementation
 

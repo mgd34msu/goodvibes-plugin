@@ -1,11 +1,19 @@
 ---
 name: performance-audit
-description: "Load PROACTIVELY when performing performance, bundle, re-render, N+1, or optimization audit. Systematic performance audit methodology covering bundle analysis, database optimization, rendering performance, network optimization, memory management, server-side performance, and Core Web Vitals. Includes precision tool workflows for automated performance checks."
+description: "Load PROACTIVELY when task involves optimizing speed, reducing bundle size, or improving responsiveness. Use when user says \"make it faster\", \"reduce bundle size\", \"fix slow queries\", \"optimize rendering\", or \"check Core Web Vitals\". Covers bundle analysis and tree-shaking, database query optimization (N+1, indexing), React rendering performance (re-renders, memoization), network waterfall optimization, memory leak detection, server-side performance, and Core Web Vitals (LCP, FID, CLS) improvement."
 metadata:
   version: "1.0.0"
   category: quality
   tags: [performance, audit, optimization, bundle, database, rendering, web-vitals]
 ---
+
+## Resources
+```
+scripts/
+  validate-performance-audit.sh
+references/
+  performance-patterns.md
+```
 
 # Performance Audit
 

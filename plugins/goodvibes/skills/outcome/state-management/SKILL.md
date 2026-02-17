@@ -1,11 +1,19 @@
 ---
 name: state-management
-description: "Load PROACTIVELY when task involves state, store, Zustand, React Query, or form validation. Guides state architecture decisions including server state (TanStack Query), client state (Zustand), form state (React Hook Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data fetching, or managing complex form state."
+description: "Load PROACTIVELY when task involves application state, data fetching, or form handling. Use when user says \"manage state\", \"add data fetching\", \"set up Zustand\", \"handle form validation\", or \"add React Query\". Covers server state (TanStack Query with caching, optimistic updates), client state (Zustand stores), form state (React Hook Form with Zod validation), URL state (search params, routing), and choosing between state solutions."
 metadata:
   version: 1.0.0
   category: outcome
   tags: [state, zustand, tanstack-query, react-hook-form, zod, url-state, forms]
 ---
+
+## Resources
+```
+scripts/
+  validate-state.sh
+references/
+  state-patterns.md
+```
 
 # State Management
 

@@ -1,26 +1,45 @@
 ## SKILL AWARENESS
 
-### Protocol Skills (Load before starting work)
-- precision-mastery: Optimal usage of precision engine tools for maximum token efficiency
-- review-scoring: Quantified scoring rubric and review format for WRFC loops
-- discover-plan-batch: Discover-Plan-Batch loop for all agents
-- goodvibes-memory: Reading/writing persistent memory and logging system
-- error-recovery: Error recovery procedures with escalation tiers
+Skills load automatically when relevant to your task. The frontmatter descriptions below tell Claude when each skill applies.
+
+### Protocol Skills (Always Active)
+- precision-mastery: Token-efficient file operations, extract modes, verbosity, batching
+- discover-plan-batch: Strict 3-call DPB execution loop
+- review-scoring: 10-dimension scoring rubric for WRFC review loops
+- goodvibes-memory: Cross-session memory (decisions, patterns, failures, preferences)
+- error-recovery: Tiered error recovery and escalation procedures
 
 ### Orchestration Skills
-- task-orchestration: Decomposing requests into parallel agent tasks with WRFC coordination
-- fullstack-feature: End-to-end feature development across full stack
+- task-orchestration: Parallel agent decomposition and WRFC coordination
+- fullstack-feature: End-to-end multi-layer feature development
 
-### Outcome Skills (Assign to agents by role)
-- ai-integration, api-design, authentication, component-architecture, database-layer
-- deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy
+### Outcome Skills
+- ai-integration: AI/LLM chat, streaming, RAG, embeddings
+- api-design: REST/GraphQL/tRPC endpoint design and validation
+- authentication: Login, OAuth, JWT, sessions, RBAC
+- component-architecture: UI component composition, rendering, accessibility
+- database-layer: Schema design, ORM setup, migrations, query optimization
+- deployment: CI/CD, Docker, Vercel/Railway/Fly.io/AWS
+- payment-integration: Stripe/LemonSqueezy/Paddle checkout and subscriptions
+- service-integration: Email, CMS, file uploads, analytics
+- state-management: Server/client/form/URL state patterns
+- styling-system: Tailwind, design tokens, dark mode, responsive
+- testing-strategy: Vitest/Jest, Testing Library, Playwright, MSW
 
-### Quality Skills (Assign to agents by role)
-- accessibility-audit, code-review, debugging, performance-audit
-- project-onboarding, refactoring, security-audit
+### Quality Skills
+- accessibility-audit: WCAG 2.1 AA compliance audit
+- code-review: 10-dimension weighted code review
+- debugging: Error analysis, runtime debugging, root cause analysis
+- performance-audit: Bundle, database, rendering, Core Web Vitals
+- project-onboarding: Codebase analysis and architecture mapping
+- refactoring: Safe structural improvements with validation
+- security-audit: Auth, input validation, dependencies, infrastructure
 
-### How to Use Skills
-1. Load full skill: get_skill_content from registry-engine
-2. Follow the workflow in SKILL.md body
-3. After work, validate: bash plugins/goodvibes/skills/{tier}/{name}/scripts/{script}
-   Example: bash plugins/goodvibes/skills/outcome/api-design/scripts/api-checklist.sh
+### Validation
+After completing work, validate with the skill's script:
+```
+bash plugins/goodvibes/skills/{tier}/{name}/scripts/{script}
+```
+
+### Fallback: Manual Skill Loading
+If a skill doesn't load automatically, use ToolSearch to find `get_skill_content` from registry-engine, then call it with the skill name.

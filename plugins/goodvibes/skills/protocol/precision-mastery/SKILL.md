@@ -1,11 +1,19 @@
 ---
 name: precision-mastery
-description: "ALWAYS load before starting any task. Teaches optimal usage of GoodVibes precision engine tools for maximum token efficiency. Use when performing any file operations, searches, or command execution. Covers extract modes, verbosity settings, batching patterns, and discover tool orchestration."
+description: "ALWAYS load before starting any task. Maximizes token efficiency for all file operations, searches, and command execution. Covers extract modes (content, outline, symbols, ast, lines), verbosity tuning, multi-file batching, and discover tool orchestration. Ensures agents spend tokens on outcomes, not overhead."
 metadata:
   version: 1.0.0
   category: protocol
   tags: [precision, tools, verbosity, batching, token-efficiency, extract-modes]
 ---
+
+## Resources
+```
+scripts/
+  validate-precision-usage.sh
+references/
+  tool-reference.md
+```
 
 # Precision Mastery
 

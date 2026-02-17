@@ -1,11 +1,19 @@
 ---
 name: debugging
-description: "Load PROACTIVELY when performing debug, error, stack trace, type error, or build failure investigation. Systematic debugging methodology using precision tools. Use when investigating errors, tracing issues, analyzing runtime behavior, or diagnosing performance problems. Covers error analysis, runtime debugging, network inspection, state debugging, and root cause analysis with automated pattern detection."
+description: "Load PROACTIVELY when task involves investigating errors, diagnosing failures, or tracing unexpected behavior. Use when user says \"debug this\", \"fix this error\", \"why is this failing\", \"trace this issue\", or \"it's not working\". Covers error message and stack trace analysis, runtime debugging, network request inspection, state debugging, performance profiling, type error diagnosis, build failure resolution, and root cause analysis with memory-informed pattern matching against past failures."
 metadata:
   version: 1.0.0
   category: quality
   tags: [debugging, errors, runtime, network, state, performance, analysis]
 ---
+
+## Resources
+```
+scripts/
+  validate-debugging.sh
+references/
+  debugging-patterns.md
+```
 
 # Debugging Quality Skill
 

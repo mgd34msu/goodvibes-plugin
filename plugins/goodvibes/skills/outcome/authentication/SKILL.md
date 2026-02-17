@@ -1,11 +1,19 @@
 ---
 name: authentication
-description: "Load PROACTIVELY when task involves login, auth, JWT, OAuth, sessions, RBAC, or protected routes. Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery, implementation, security verification, and testing."
+description: "Load PROACTIVELY when task involves user identity, login, or access control. Use when user says \"add authentication\", \"set up login\", \"add OAuth\", \"protect these routes\", \"implement RBAC\", or \"add sign-up\". Covers session management, JWT tokens, OAuth2 flows, password reset, email verification, protected route middleware, role-based access control, and security hardening (CSRF, rate limiting, token rotation)."
 metadata:
   version: 1.0.0
   category: outcome
   tags: [auth, login, sign-up, session, jwt, oauth, middleware, rbac]
 ---
+
+## Resources
+```
+scripts/
+  auth-checklist.sh
+references/
+  decision-tree.md
+```
 
 # Authentication Implementation Workflow
 

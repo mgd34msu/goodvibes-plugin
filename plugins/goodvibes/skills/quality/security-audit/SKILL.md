@@ -1,11 +1,19 @@
 ---
 name: security-audit
-description: "Load PROACTIVELY when performing security, vulnerability, secrets, or OWASP audit. Comprehensive security audit methodology covering authentication, authorization, input validation, data protection, dependency scanning, API security, and infrastructure hardening. Includes precision tool workflows for automated vulnerability detection."
+description: "Load PROACTIVELY when task involves security review, vulnerability assessment, or hardening. Use when user says \"check for security issues\", \"audit for vulnerabilities\", \"scan for secrets\", \"review auth security\", or \"check OWASP compliance\". Covers authentication and session security, authorization and access control, input validation and injection prevention, data protection and encryption, dependency vulnerability scanning, API security (CORS, rate limiting, headers), and infrastructure hardening. Produces structured reports with severity ratings."
 metadata:
   version: "1.0.0"
   category: quality
   tags: [security, audit, authentication, authorization, owasp, vulnerabilities]
 ---
+
+## Resources
+```
+scripts/
+  validate-security-audit.sh
+references/
+  security-patterns.md
+```
 
 # Security Audit
 

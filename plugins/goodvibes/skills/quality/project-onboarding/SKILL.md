@@ -1,11 +1,19 @@
 ---
 name: project-onboarding
-description: "Load PROACTIVELY when performing onboard, new project, codebase analysis, or setup. Guides systematic project onboarding through codebase analysis, architecture mapping, dependency auditing, convention detection, and developer environment setup for rapid productive contribution"
+description: "Load PROACTIVELY when starting work on an unfamiliar codebase or setting up a new project. Use when user says \"help me understand this codebase\", \"onboard me\", \"what does this project do\", \"set up my environment\", or \"map the architecture\". Covers codebase structure analysis, architecture mapping, dependency auditing, convention and pattern detection, developer environment setup, and documentation of findings for rapid productive contribution."
 metadata:
   version: 1.0.0
   category: quality
   tags: [onboarding, architecture, dependencies, conventions, environment, documentation]
 ---
+
+## Resources
+```
+scripts/
+  validate-onboarding.sh
+references/
+  onboarding-patterns.md
+```
 
 # Project Onboarding Quality Skill
 
