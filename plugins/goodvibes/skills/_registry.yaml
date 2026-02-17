@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-02-16T22:13:09.022Z'
+generated: '2026-02-17T02:50:42.190Z'
 total: 25
 categories:
   orchestration:
@@ -518,36 +518,35 @@ categories:
       - name: discover-plan-batch
         path: protocol/discover-plan-batch
         description: >-
-          ALWAYS load before starting any task. Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use
-          before starting any development task. Covers discovery patterns using the discover tool, work planning for
-          token efficiency, and batch execution strategies.
+          MANDATORY before starting any task. Defines the strict 3-call-per-cycle Discover-Plan-Batch loop. D: Single
+          discover call with all queries batched. P: Plan in text (zero tool calls). B: Single batched precision call.
+          Target: 3 tool calls per DPB cycle.
         triggers: &ref_13
           - discover
           - plan
           - batch
-          - always
-          - load
+          - mandatory
           - before
           - starting
           - any
           - task
           - defines
+          - strict
+          - call
+          - per
+          - cycle
           - loop
+          - single
           - all
-          - goodvibes
-          - agents
-          - development
-          - covers
-          - discovery
-          - patterns
-          - using
+          - queries
+          - batched
+          - text
+          - zero
           - tool
-          - work
-          - planning
-          - token
-          - efficiency
-          - execution
-          - strategies
+          - calls
+          - precision
+          - target
+          - dpb
       - name: error-recovery
         path: protocol/error-recovery
         description: >-
@@ -1080,9 +1079,9 @@ search_index:
     keywords: *ref_13
     path: protocol/discover-plan-batch
     description: >-
-      ALWAYS load before starting any task. Defines the Discover-Plan-Batch loop for all GoodVibes agents. Use before
-      starting any development task. Covers discovery patterns using the discover tool, work planning for token
-      efficiency, and batch execution strategies.
+      MANDATORY before starting any task. Defines the strict 3-call-per-cycle Discover-Plan-Batch loop. D: Single
+      discover call with all queries batched. P: Plan in text (zero tool calls). B: Single batched precision call.
+      Target: 3 tool calls per DPB cycle.
   - name: error-recovery
     keywords: *ref_14
     path: protocol/error-recovery
