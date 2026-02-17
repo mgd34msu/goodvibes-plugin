@@ -117,6 +117,7 @@ When looping, re-discover with refined queries targeting the new information.
 - Don't re-run successful operations after partial failure — fix only what failed
 - Don't skip memory checks — repeats past mistakes and violates architectural decisions
 - Don't use separate precision_glob/precision_grep for discovery — always use `discover`
+- NEVER use precision_exec to search files (grep, find, rg) — use discover, precision_grep, precision_glob
 
 ## Examples and Reference
 

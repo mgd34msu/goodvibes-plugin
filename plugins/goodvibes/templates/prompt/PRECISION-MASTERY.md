@@ -77,6 +77,8 @@ Each operation type maps to its precision_engine tool's schema (`read` → preci
 
 ## precision_exec Features
 
+**ONLY for build/test/deploy commands** (npm run, npx, git). NEVER for file search/read — use precision_grep, precision_glob, precision_read.
+
 - **Background**: `background: true` — run long-running processes without blocking
 - **Retry**: `retry: { max: 3, delay_ms: 1000 }` — automatically retry flaky commands
 - **Until**: `until: { pattern: "ok", timeout_ms: 30000 }` — poll until condition is met
@@ -109,6 +111,7 @@ Do I know the exact file paths?
 - Don't make sequential calls of same tool — batch them (3+ calls → always batch)
 - Don't use `verbose` verbosity for writes/edits — use `count_only`
 - Don't use native tools (Read, Write, Edit, Grep, Glob, WebFetch) — always use precision equivalents
+- NEVER use precision_exec to run grep, find, rg, cat, ls — use precision_grep, precision_glob, precision_read
 - Don't abandon precision tools after one failure — use native for THAT task only, then return
 - For large batch reads (20+ files), use `token_budget` and `page` params to prevent truncation
 
