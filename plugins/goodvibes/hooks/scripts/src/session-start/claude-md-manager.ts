@@ -22,9 +22,6 @@ const GOODVIBES_MD = `<!-- UPGRADE NOTIFICATIONS -->
 
 <!-- SUBAGENT PROTOCOL -->
 @prompt/SUBAGENT-PROTOCOL.md
-
-<!-- SKILL AWARENESS -->
-@prompt/SKILLS.md
 `;
 
 /**
@@ -36,6 +33,8 @@ const FALLBACK_PROMPT_FILES: Record<string, string> = {
   'CORE-PRINCIPLES.md': `## MANDATORY\n\n1. Maintain usage of WRFC Loops\n2. Minimize token usage\n3. NEVER block main conversation\n4. Always have a plan\n`,
   'SUBAGENT-PROTOCOL.md': `## MANDATORY\n\nALWAYS provide reminders to subagents:\n1. Use .goodvibes/ memory and logging\n2. MANDATORY: Follow strict DPB Loops. D: Single discover call (batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.\n3. Use precision_engine tools, NEVER native tools\n4. CRITICAL: NEVER set sandbox=true. Only user can activate sandbox.\n`,
   'SKILLS.md': `## SKILL AWARENESS\n\nSee templates/prompt/SKILLS.md for full list.\n`,
+  'PRECISION-MASTERY.md': `## PRECISION MASTERY\n\nUse precision_engine tools over native tools. Batch operations. Use minimal verbosity.\n`,
+  'DISCOVER-PLAN-BATCH.md': `## DISCOVER-PLAN-BATCH\n\nFollow DPB loop: Discover (1 call) -> Plan (0 calls) -> Batch (1 call). Target 3 tool calls per cycle.\n`,
 };
 
 /**
