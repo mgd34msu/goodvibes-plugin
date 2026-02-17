@@ -8,7 +8,7 @@
  * tools for fast file lookups without hitting the filesystem repeatedly.
  */
 
-import { readdir, readFile, stat, writeFile, mkdir, rename } from 'fs/promises';
+import { readdir, readFile, writeFile, mkdir, rename } from 'fs/promises';
 import path from 'path';
 import { debug, logError } from '../shared/index.js';
 
@@ -105,37 +105,21 @@ const EXCLUDED_FILENAMES = new Set([
 ]);
 
 /**
- * File entry in the project index.
- * Compact format to minimize index size.
- */
-interface FileEntry {
-  /** Relative path from project root */
-  p: string;
-  /** Size in bytes */
-  s: number;
-  /** Modified time as Unix timestamp (ms) */
-  m: number;
-  /** File type category (optional) */
-  t?: string;
-}
-
-/**
- * Project file index structure.
+ * Project file index structure (version 2).
  * Must match the format expected by precision-engine's ProjectIndex class.
  */
 interface ProjectFileIndex {
-  version: 1;
+  version: 2;
   created_at: string;
   updated_at: string;
   project_root: string;
   stats: {
     total_files: number;
     total_dirs: number;
-    total_size_bytes: number;
     index_duration_ms: number;
     partial?: boolean;
   };
-  files: FileEntry[];
+  tree: Record<string, string[]>;
 }
 
 /**
@@ -151,6 +135,13 @@ interface GitignorePattern {
   /** The raw pattern string (normalized) */
   raw: string;
 }
+
+/**
+ * Cache for compiled glob regexes to avoid recompilation.
+ * Single-segment patterns store RegExp directly.
+ * Double-star patterns use 'dstar:' prefix key and store [fullMatch, prefixMatch] tuples (cast via unknown).
+ */
+const globRegexCache = new Map<string, RegExp>();
 
 /**
  * Parse a .gitignore file into pattern entries.
@@ -196,20 +187,26 @@ function parseGitignore(content: string): GitignorePattern[] {
  * @returns true if the name matches
  */
 function matchGlob(pattern: string, name: string): boolean {
-  // Convert glob pattern to regex
-  let regexStr = '';
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i];
-    if (ch === '*') {
-      regexStr += '[^/]*';
-    } else if (ch === '?') {
-      regexStr += '[^/]';
-    } else {
-      // Escape regex special chars
-      regexStr += ch.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  // Check cache first
+  let regex = globRegexCache.get(pattern);
+  if (!regex) {
+    // Convert glob pattern to regex
+    let regexStr = '';
+    for (let i = 0; i < pattern.length; i++) {
+      const ch = pattern[i];
+      if (ch === '*') {
+        regexStr += '[^/]*';
+      } else if (ch === '?') {
+        regexStr += '[^/]';
+      } else {
+        // Escape regex special chars
+        regexStr += ch.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+      }
     }
+    regex = new RegExp(`^${regexStr}$`);
+    globRegexCache.set(pattern, regex);
   }
-  return new RegExp(`^${regexStr}$`).test(name);
+  return regex.test(name);
 }
 
 /**
@@ -237,16 +234,19 @@ function isGitignored(
 
     if (p.raw.includes('/')) {
       // Pattern with slash: match against full relative path
-      // Use ** for double-star patterns
-      const patternWithDoublestar = p.raw.replace(/\*\*/g, '**');
-      if (patternWithDoublestar.includes('**')) {
-        // Simple ** handling: convert to regex
-        const regexStr = patternWithDoublestar
-          .split('**')
-          .map(part => part.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]'))
-          .join('.*');
-        matches = new RegExp(`^${regexStr}$`).test(relativePath) ||
-                  new RegExp(`^${regexStr}(/.*)?$`).test(relativePath);
+      if (p.raw.includes('**')) {
+        // Simple ** handling: convert to regex (cached by p.raw)
+        const cacheKey = `dstar:${p.raw}`;
+        let cached = globRegexCache.get(cacheKey) as unknown as [RegExp, RegExp] | undefined;
+        if (!cached) {
+          const regexStr = p.raw
+            .split('**')
+            .map(part => part.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]'))
+            .join('.*');
+          cached = [new RegExp(`^${regexStr}$`), new RegExp(`^${regexStr}(/.*)?$`)];
+          globRegexCache.set(cacheKey, cached as unknown as RegExp);
+        }
+        matches = cached[0].test(relativePath) || cached[1].test(relativePath);
       } else if (p.anchored) {
         // Anchored to root
         matches = matchGlob(p.raw, relativePath) ||
@@ -349,79 +349,23 @@ function shouldExclude(
 }
 
 /**
- * Categorize a file by its extension.
- * Must match precision-engine's file type categories.
+ * Build a lean project file index.
  *
- * @param filePath - Path to the file
- * @returns File type category string
- */
-function categorizeFileType(filePath: string): string | undefined {
-  const ext = path.extname(filePath).toLowerCase();
-
-  switch (ext) {
-    case '.ts':
-    case '.tsx':
-      return 'ts';
-    case '.js':
-    case '.jsx':
-    case '.mjs':
-    case '.cjs':
-      return 'js';
-    case '.json':
-      return 'json';
-    case '.md':
-    case '.mdx':
-      return 'md';
-    case '.css':
-    case '.scss':
-    case '.less':
-      return 'css';
-    case '.html':
-    case '.htm':
-      return 'html';
-    case '.py':
-      return 'py';
-    case '.go':
-      return 'go';
-    case '.rs':
-      return 'rs';
-    case '.yaml':
-    case '.yml':
-      return 'yaml';
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Count unique directories from file paths.
+ * Recursively scans the project directory, groups files by directory, and writes
+ * a sorted tree index to .goodvibes/project-index.json.
  *
- * @param entries - Array of file entries
- * @returns Number of unique directories
- */
-function countUniqueDirs(entries: FileEntry[]): number {
-  const dirs = new Set<string>();
-  for (const entry of entries) {
-    const dir = path.dirname(entry.p);
-    if (dir && dir !== '.') {
-      dirs.add(dir);
-    }
-  }
-  return dirs.size;
-}
-
-/**
- * Build the project file index.
- *
- * Recursively scans the project directory, categorizes files, and writes
- * a sorted index to .goodvibes/project-index.json.
+ * Excludes: test files (*.test.*, *.spec.*, __tests__/), generated files (*.d.ts, *.map),
+ * media/binary files, lock files, IDE directories, and .gitignore'd paths.
+ * This keeps the index lean for token-efficient context injection.
  *
  * @param projectDir - Absolute path to the project root
  */
 export async function buildProjectIndex(projectDir: string): Promise<void> {
   const startMs = Date.now();
-  const entries: FileEntry[] = [];
+  // tree: directory path (relative, empty string = root) -> sorted filenames
+  const tree: Record<string, string[]> = {};
   let isPartial = false;
+  let totalFiles = 0;
 
   try {
     debug('Building project file index', { projectDir });
@@ -435,9 +379,6 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
       recursive: true,
       withFileTypes: true,
     });
-
-    // Collect all file entries first (avoid N+1 stat calls)
-    const pendingFiles: Array<{ name: string; relativePath: string; fullPath: string }> = [];
 
     for (const entry of dirEntries) {
       // Check timeout (30 seconds max)
@@ -465,52 +406,38 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
         continue;
       }
 
-      const fullPath = path.join(projectDir, relativePath);
-      pendingFiles.push({ name: entry.name, relativePath, fullPath });
-    }
+      // Group files by directory
+      const dirPart = path.dirname(relativePath);
+      const treeKey = dirPart === '.' ? '' : dirPart.split(path.sep).join('/');
+      const filename = entry.name;
 
-    // Batch stat calls with controlled concurrency
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
-      const batch = pendingFiles.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(
-        batch.map((f) =>
-          stat(f.fullPath)
-            .then((s) => ({ ...f, size: s.size, mtimeMs: s.mtimeMs }))
-            .catch(() => null)
-        )
-      );
-      for (const result of results) {
-        if (result) {
-          const type = categorizeFileType(result.relativePath);
-          const entry: FileEntry = {
-            p: result.relativePath,
-            s: result.size,
-            m: Math.floor(result.mtimeMs),
-          };
-          if (type) entry.t = type;
-          entries.push(entry);
-        }
+      if (!tree[treeKey]) {
+        tree[treeKey] = [];
       }
+      tree[treeKey].push(filename);
+      totalFiles++;
     }
 
-    // Sort by path for binary search compatibility
-    entries.sort((a, b) => a.p.localeCompare(b.p));
+    // Sort filenames within each directory for determinism
+    for (const key of Object.keys(tree)) {
+      tree[key].sort();
+    }
+
+    const totalDirs = Object.keys(tree).length;
 
     // Build index
     const index: ProjectFileIndex = {
-      version: 1,
+      version: 2,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       project_root: projectDir,
       stats: {
-        total_files: entries.length,
-        total_dirs: countUniqueDirs(entries),
-        total_size_bytes: entries.reduce((sum, e) => sum + e.s, 0),
+        total_files: totalFiles,
+        total_dirs: totalDirs,
         index_duration_ms: Date.now() - startMs,
         ...(isPartial && { partial: true }),
       },
-      files: entries,
+      tree,
     };
 
     // Write atomically: temp file + rename
@@ -523,9 +450,8 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
     await rename(tempPath, indexPath);
 
     debug('Project index created', {
-      files: entries.length,
-      dirs: index.stats.total_dirs,
-      size_mb: (index.stats.total_size_bytes / 1024 / 1024).toFixed(2),
+      files: totalFiles,
+      dirs: totalDirs,
       duration_ms: index.stats.index_duration_ms,
       partial: isPartial,
     });
