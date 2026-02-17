@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-02-17T02:50:42.190Z'
+generated: '2026-02-17T05:05:02.515Z'
 total: 25
 categories:
   orchestration:
@@ -7,95 +7,109 @@ categories:
       - name: fullstack-feature
         path: orchestration/fullstack-feature
         description: >-
-          Load PROACTIVELY when coordinating multiple agents or planning multi-step work. End-to-end feature development
-          workflow that orchestrates multiple agents across the full stack. Use when the user requests a complete
-          feature that spans backend, frontend, and testing. Sequences work across database, API, UI, tests, and review.
+          Load PROACTIVELY when task involves building a complete feature across multiple layers. Use when user says
+          "build a feature", "add user profiles", "create a dashboard", or any request spanning database, API, UI, and
+          tests. Orchestrates multi-agent work sequentially: schema and migrations, API endpoints, UI components, tests,
+          and review. Handles dependency ordering and cross-layer type sharing.
         triggers: &ref_0
           - fullstack
           - feature
           - load
           - proactively
-          - coordinating
-          - multiple
-          - agents
-          - planning
-          - multi
-          - step
-          - work
-          - end
-          - development
-          - workflow
-          - that
-          - orchestrates
-          - across
-          - full
-          - stack
-          - user
-          - requests
+          - task
+          - involves
+          - building
           - complete
-          - spans
-          - backend
-          - frontend
-          - testing
-          - sequences
+          - across
+          - multiple
+          - layers
+          - user
+          - says
+          - build
+          - add
+          - profiles
+          - create
+          - dashboard
+          - any
+          - request
+          - spanning
           - database
           - api
           - tests
+          - orchestrates
+          - multi
+          - agent
+          - work
+          - sequentially
+          - schema
+          - migrations
+          - endpoints
+          - components
           - review
+          - handles
+          - dependency
+          - ordering
+          - cross
+          - layer
+          - type
+          - sharing
       - name: task-orchestration
         path: orchestration/task-orchestration
         description: >-
-          Load PROACTIVELY when coordinating multiple agents or planning multi-step work. Guides the GoodVibes
-          orchestrator in decomposing feature requests into parallel agent tasks, assigning appropriate agents and
-          skills, managing dependencies, and coordinating WRFC loops across up to 6 concurrent agent chains. Use when
-          receiving a new user request that requires multiple agents.
+          Load PROACTIVELY when decomposing a user request into parallel agent work. Use when user says "build this",
+          "implement this feature", or any request requiring multiple agents working concurrently. Guides task
+          decomposition into parallelizable units, agent assignment with skill matching, dependency graph construction,
+          WRFC loop coordination across up to 6 concurrent agent chains, and result aggregation.
         triggers: &ref_1
           - task
           - orchestration
           - load
           - proactively
-          - coordinating
-          - multiple
-          - agents
-          - planning
-          - multi
-          - step
-          - work
-          - guides
-          - goodvibes
-          - orchestrator
           - decomposing
-          - feature
-          - requests
+          - user
+          - request
           - into
           - parallel
           - agent
-          - tasks
-          - assigning
-          - appropriate
-          - skills
-          - managing
-          - dependencies
+          - work
+          - says
+          - build
+          - this
+          - implement
+          - feature
+          - any
+          - requiring
+          - multiple
+          - agents
+          - working
+          - concurrently
+          - guides
+          - decomposition
+          - parallelizable
+          - units
+          - assignment
+          - skill
+          - matching
+          - dependency
+          - graph
+          - construction
           - wrfc
-          - loops
+          - loop
+          - coordination
           - across
           - concurrent
           - chains
-          - receiving
-          - new
-          - user
-          - request
-          - that
-          - requires
+          - result
+          - aggregation
   outcome:
     _items:
       - name: ai-integration
         path: outcome/ai-integration
         description: >-
-          Load PROACTIVELY when task involves AI, LLM, chat, streaming, RAG, embeddings, or OpenAI. AI and LLM
-          integration workflow using GoodVibes precision tools. Use when implementing chat interfaces, streaming
-          responses, RAG pipelines, embeddings, vector search, or tool/function calling. Covers Vercel AI SDK, OpenAI,
-          Anthropic, and local model patterns.
+          Load PROACTIVELY when task involves AI, LLM, or machine learning features. Use when user says "add AI chat",
+          "implement streaming responses", "build a RAG pipeline", "add embeddings", or "integrate OpenAI". Covers chat
+          interfaces, streaming with Vercel AI SDK, retrieval-augmented generation, vector search, embeddings pipelines,
+          tool/function calling, and provider abstraction for OpenAI, Anthropic, and local models.
         triggers: &ref_2
           - ai
           - integration
@@ -104,39 +118,47 @@ categories:
           - task
           - involves
           - llm
+          - machine
+          - learning
+          - features
+          - user
+          - says
+          - add
           - chat
+          - implement
           - streaming
-          - rag
-          - embeddings
-          - openai
-          - workflow
-          - using
-          - goodvibes
-          - precision
-          - tools
-          - implementing
-          - interfaces
           - responses
-          - pipelines
+          - build
+          - rag
+          - pipeline
+          - embeddings
+          - integrate
+          - openai
+          - covers
+          - interfaces
+          - vercel
+          - sdk
+          - retrieval
+          - augmented
+          - generation
           - vector
           - search
+          - pipelines
           - tool
           - function
           - calling
-          - covers
-          - vercel
-          - sdk
+          - provider
+          - abstraction
           - anthropic
           - local
-          - model
-          - patterns
+          - models
       - name: api-design
         path: outcome/api-design
         description: >-
-          Load PROACTIVELY when task involves API, endpoint, route, REST, GraphQL, tRPC, or middleware. API endpoint
-          design and implementation workflow using GoodVibes precision tools. Use when building REST endpoints, GraphQL
-          resolvers, tRPC procedures, API middleware, request validation, or response formatting. Covers route design,
-          error handling, and documentation.
+          Load PROACTIVELY when task involves building or modifying API endpoints. Use when user says "build an API",
+          "add an endpoint", "create a REST route", "set up GraphQL", or "add tRPC procedures". Covers route design and
+          file organization, request validation with Zod, response formatting, error handling patterns, middleware
+          composition, authentication guards, rate limiting, pagination, and API documentation generation.
         triggers: &ref_3
           - api
           - design
@@ -144,77 +166,100 @@ categories:
           - proactively
           - task
           - involves
+          - building
+          - modifying
+          - endpoints
+          - user
+          - says
+          - build
+          - add
           - endpoint
-          - route
+          - create
           - rest
+          - route
+          - set
           - graphql
           - trpc
-          - middleware
-          - implementation
-          - workflow
-          - using
-          - goodvibes
-          - precision
-          - tools
-          - building
-          - endpoints
-          - resolvers
           - procedures
+          - covers
+          - file
+          - organization
           - request
           - validation
+          - zod
           - response
           - formatting
-          - covers
           - error
           - handling
+          - patterns
+          - middleware
+          - composition
+          - authentication
+          - guards
+          - rate
+          - limiting
+          - pagination
           - documentation
+          - generation
       - name: authentication
         path: outcome/authentication
         description: >-
-          Load PROACTIVELY when task involves login, auth, JWT, OAuth, sessions, RBAC, or protected routes.
-          Authentication setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password
-          reset, session management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery,
-          implementation, security verification, and testing.
+          Load PROACTIVELY when task involves user identity, login, or access control. Use when user says "add
+          authentication", "set up login", "add OAuth", "protect these routes", "implement RBAC", or "add sign-up".
+          Covers session management, JWT tokens, OAuth2 flows, password reset, email verification, protected route
+          middleware, role-based access control, and security hardening (CSRF, rate limiting, token rotation).
         triggers: &ref_4
           - authentication
           - load
           - proactively
           - task
           - involves
+          - user
+          - identity
           - login
-          - auth
-          - jwt
+          - access
+          - control
+          - says
+          - add
+          - set
           - oauth
-          - sessions
-          - rbac
-          - protected
+          - protect
+          - these
           - routes
-          - setup
-          - workflow
-          - using
-          - goodvibes
-          - precision
-          - tools
-          - implementing
+          - implement
+          - rbac
           - sign
-          - password
-          - reset
+          - covers
           - session
           - management
-          - middleware
-          - orchestrates
-          - discovery
-          - implementation
-          - security
+          - jwt
+          - tokens
+          - oauth2
+          - flows
+          - password
+          - reset
+          - email
           - verification
-          - testing
+          - protected
+          - route
+          - middleware
+          - role
+          - based
+          - security
+          - hardening
+          - csrf
+          - rate
+          - limiting
+          - token
+          - rotation
       - name: component-architecture
         path: outcome/component-architecture
         description: >-
-          Load PROACTIVELY when task involves component, UI, React, Vue, Svelte, page, layout, or form. Component design
-          workflow using GoodVibes precision tools. Use when building UI components, designing component hierarchies,
-          optimizing render performance, or organizing component files. Covers composition patterns, state management,
-          render optimization, and file organization for React/Vue/Svelte.
+          Load PROACTIVELY when task involves designing or building UI components. Use when user says "build a
+          component", "create a form", "add a modal", "design the layout", or "refactor this page". Covers component
+          composition and hierarchy, prop design and typing, render optimization (memo, useMemo, useCallback), compound
+          component patterns, controlled vs uncontrolled forms, file organization, and accessibility for React, Vue, and
+          Svelte.
         triggers: &ref_5
           - component
           - architecture
@@ -222,42 +267,49 @@ categories:
           - proactively
           - task
           - involves
+          - designing
+          - building
+          - components
+          - user
+          - says
+          - build
+          - create
+          - form
+          - add
+          - modal
+          - design
+          - layout
+          - refactor
+          - this
+          - page
+          - covers
+          - composition
+          - hierarchy
+          - prop
+          - typing
+          - render
+          - optimization
+          - memo
+          - usememo
+          - usecallback
+          - compound
+          - patterns
+          - controlled
+          - uncontrolled
+          - forms
+          - file
+          - organization
+          - accessibility
           - react
           - vue
           - svelte
-          - page
-          - layout
-          - form
-          - design
-          - workflow
-          - using
-          - goodvibes
-          - precision
-          - tools
-          - building
-          - components
-          - designing
-          - hierarchies
-          - optimizing
-          - render
-          - performance
-          - organizing
-          - files
-          - covers
-          - composition
-          - patterns
-          - state
-          - management
-          - optimization
-          - file
-          - organization
       - name: database-layer
         path: outcome/database-layer
         description: >-
-          Load PROACTIVELY when task involves database, schema, migration, ORM, Prisma, Drizzle, or SQL. Database and
-          ORM setup workflow using GoodVibes precision tools. Use when creating schemas, running migrations, setting up
-          database connections, defining models, writing queries, or optimizing database performance. Covers relational
-          and document databases.
+          Load PROACTIVELY when task involves database design, schemas, or data access. Use when user says "set up the
+          database", "create a schema", "add a migration", "write a query", or "set up Prisma". Covers schema design and
+          normalization, ORM setup (Prisma, Drizzle), migration workflows, connection pooling, query optimization,
+          indexing strategies, seeding, and transaction patterns for PostgreSQL, MySQL, SQLite, and MongoDB.
         triggers: &ref_6
           - database
           - layer
@@ -265,73 +317,95 @@ categories:
           - proactively
           - task
           - involves
-          - schema
-          - migration
-          - orm
-          - prisma
-          - drizzle
-          - sql
-          - setup
-          - workflow
-          - using
-          - goodvibes
-          - precision
-          - tools
-          - creating
+          - design
           - schemas
-          - running
-          - migrations
-          - setting
-          - connections
-          - defining
-          - models
-          - writing
-          - queries
-          - optimizing
-          - performance
+          - data
+          - access
+          - user
+          - says
+          - set
+          - create
+          - schema
+          - add
+          - migration
+          - write
+          - query
+          - prisma
           - covers
-          - relational
-          - document
-          - databases
+          - normalization
+          - orm
+          - setup
+          - drizzle
+          - workflows
+          - connection
+          - pooling
+          - optimization
+          - indexing
+          - strategies
+          - seeding
+          - transaction
+          - patterns
+          - postgresql
+          - mysql
+          - sqlite
+          - mongodb
       - name: deployment
         path: outcome/deployment
         description: >-
-          Load PROACTIVELY when task involves deploy, CI/CD, Docker, Vercel, Railway, or production. Deployment patterns
-          for Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD pipelines, preview
-          deployments, health checks, rollback strategies, and monitoring setup.
+          Load PROACTIVELY when task involves deploying, hosting, or CI/CD pipelines. Use when user says "deploy this",
+          "set up CI/CD", "add Docker", "configure Vercel", or "set up monitoring". Covers platform-specific deployment
+          (Vercel, Railway, Fly.io, AWS), Dockerfile creation, environment variable management, CI/CD pipeline
+          configuration (GitHub Actions), preview deployments, health checks, rollback strategies, and production
+          monitoring setup.
         triggers: &ref_7
           - deployment
           - load
           - proactively
           - task
           - involves
+          - deploying
+          - hosting
+          - pipelines
+          - user
+          - says
           - deploy
+          - this
+          - set
+          - add
           - docker
+          - configure
           - vercel
+          - monitoring
+          - covers
+          - platform
+          - specific
           - railway
-          - production
-          - patterns
           - fly
           - aws
-          - covers
+          - dockerfile
+          - creation
           - environment
+          - variable
+          - management
+          - pipeline
           - configuration
-          - pipelines
+          - github
+          - actions
           - preview
           - deployments
           - health
           - checks
           - rollback
           - strategies
-          - monitoring
+          - production
           - setup
       - name: payment-integration
         path: outcome/payment-integration
         description: >-
-          Load PROACTIVELY when task involves payment, Stripe, checkout, subscription, or billing. Payment processing
-          integration workflow using GoodVibes precision tools. Use when implementing Stripe, LemonSqueezy, or Paddle
-          checkout flows, subscription billing, webhook handling, or payment security. Covers setup, testing, and PCI
-          compliance.
+          Load PROACTIVELY when task involves payments, billing, or subscriptions. Use when user says "add payments",
+          "integrate Stripe", "set up subscriptions", "add a checkout flow", or "handle billing webhooks". Covers
+          Stripe, LemonSqueezy, and Paddle integration, checkout sessions, subscription lifecycle management, webhook
+          verification and handling, customer portal, metered billing, refunds, and PCI compliance considerations.
         triggers: &ref_8
           - payment
           - integration
@@ -339,35 +413,43 @@ categories:
           - proactively
           - task
           - involves
-          - stripe
-          - checkout
-          - subscription
+          - payments
           - billing
-          - processing
-          - workflow
-          - using
-          - goodvibes
-          - precision
-          - tools
-          - implementing
+          - subscriptions
+          - user
+          - says
+          - add
+          - integrate
+          - stripe
+          - set
+          - checkout
+          - flow
+          - handle
+          - webhooks
+          - covers
           - lemonsqueezy
           - paddle
-          - flows
+          - sessions
+          - subscription
+          - lifecycle
+          - management
           - webhook
+          - verification
           - handling
-          - security
-          - covers
-          - setup
-          - testing
+          - customer
+          - portal
+          - metered
+          - refunds
           - pci
           - compliance
+          - considerations
       - name: service-integration
         path: outcome/service-integration
         description: >-
-          Load PROACTIVELY when task involves email, CMS, upload, Resend, Sanity, S3, or Cloudinary. External service
-          integration workflow using GoodVibes precision tools. Use when integrating email services (Resend, SendGrid),
-          CMS platforms (Sanity, Contentful, Payload), file uploads (UploadThing, Cloudinary, S3), or analytics. Covers
-          setup, error handling, and testing.
+          Load PROACTIVELY when task involves connecting external services or third-party APIs. Use when user says "add
+          email sending", "integrate a CMS", "set up file uploads", "add analytics", or "connect to S3". Covers email
+          services (Resend, SendGrid), CMS platforms (Sanity, Contentful, Payload), file upload solutions (UploadThing,
+          Cloudinary, S3), analytics integration, webhook handling, error recovery, and credential management.
         triggers: &ref_9
           - service
           - integration
@@ -375,40 +457,49 @@ categories:
           - proactively
           - task
           - involves
-          - email
-          - cms
-          - upload
-          - resend
-          - sanity
-          - cloudinary
+          - connecting
           - external
-          - workflow
-          - using
-          - goodvibes
-          - precision
-          - tools
-          - integrating
           - services
-          - sendgrid
-          - platforms
-          - contentful
-          - payload
+          - third
+          - party
+          - apis
+          - user
+          - says
+          - add
+          - email
+          - sending
+          - integrate
+          - cms
+          - set
           - file
           - uploads
-          - uploadthing
           - analytics
+          - connect
           - covers
-          - setup
-          - error
+          - resend
+          - sendgrid
+          - platforms
+          - sanity
+          - contentful
+          - payload
+          - upload
+          - solutions
+          - uploadthing
+          - cloudinary
+          - webhook
           - handling
-          - testing
+          - error
+          - recovery
+          - credential
+          - management
       - name: state-management
         path: outcome/state-management
         description: >-
-          Load PROACTIVELY when task involves state, store, Zustand, React Query, or form validation. Guides state
-          architecture decisions including server state (TanStack Query), client state (Zustand), form state (React Hook
-          Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data fetching, or
-          managing complex form state.
+          Load PROACTIVELY when task involves application state, data fetching, or form handling. Use when user says
+          "manage state", "add data fetching", "set up Zustand", "handle form validation", or "add React Query". Covers
+          server state (TanStack Query with caching, optimistic updates), client state (Zustand stores), form state
+          (React Hook Form with Zod validation), URL state (search params, routing), and choosing between state
+          solutions.
         triggers: &ref_10
           - state
           - management
@@ -416,37 +507,46 @@ categories:
           - proactively
           - task
           - involves
-          - store
+          - application
+          - data
+          - fetching
+          - form
+          - handling
+          - user
+          - says
+          - manage
+          - add
+          - set
           - zustand
+          - handle
+          - validation
           - react
           - query
-          - form
-          - validation
-          - guides
-          - architecture
-          - decisions
-          - including
+          - covers
           - server
           - tanstack
+          - caching
+          - optimistic
+          - updates
           - client
+          - stores
           - hook
           - zod
           - url
-          - patterns
+          - search
+          - params
+          - routing
           - choosing
+          - between
           - solutions
-          - implementing
-          - data
-          - fetching
-          - managing
-          - complex
       - name: styling-system
         path: outcome/styling-system
         description: >-
-          Load PROACTIVELY when task involves CSS, Tailwind, styling, theme, dark mode, or responsive design. Guides CSS
-          architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark mode
-          implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design
-          systems, or choosing between styling approaches.
+          Load PROACTIVELY when task involves CSS architecture, theming, or visual design systems. Use when user says
+          "set up Tailwind", "add dark mode", "create a design system", "make it responsive", or "configure the theme".
+          Covers Tailwind configuration and custom plugins, design token systems, responsive breakpoint strategies, dark
+          mode implementation, component variant patterns (CVA/class-variance-authority), CSS-in-JS alternatives, and
+          animation patterns.
         triggers: &ref_11
           - styling
           - system
@@ -455,34 +555,48 @@ categories:
           - task
           - involves
           - css
+          - architecture
+          - theming
+          - visual
+          - design
+          - systems
+          - user
+          - says
+          - set
           - tailwind
-          - theme
+          - add
           - dark
           - mode
+          - create
+          - make
           - responsive
-          - design
-          - guides
-          - architecture
-          - decisions
-          - including
+          - configure
+          - theme
+          - covers
           - configuration
-          - tokens
-          - patterns
+          - custom
+          - plugins
+          - token
+          - breakpoint
+          - strategies
           - implementation
+          - component
+          - variant
+          - patterns
+          - cva
+          - class
+          - variance
+          - authority
           - alternatives
-          - setting
-          - infrastructure
-          - creating
-          - systems
-          - choosing
-          - between
-          - approaches
+          - animation
       - name: testing-strategy
         path: outcome/testing-strategy
         description: >-
-          Load PROACTIVELY when task involves test, coverage, Vitest, Jest, Playwright, mock, or fixture. Comprehensive
-          testing patterns for Vitest/Jest unit tests, React Testing Library component tests, Playwright E2E tests, and
-          MSW API mocking. Covers test organization, coverage targets, fixture management, and CI integration.
+          Load PROACTIVELY when task involves writing tests, improving coverage, or test infrastructure. Use when user
+          says "add tests", "write unit tests", "set up E2E testing", "improve coverage", or "add mocks". Covers
+          Vitest/Jest unit tests, React Testing Library component tests, Playwright E2E tests, MSW API mocking, test
+          organization and naming, fixture management, coverage targets and thresholds, snapshot testing, and CI
+          integration.
         triggers: &ref_12
           - testing
           - strategy
@@ -490,37 +604,48 @@ categories:
           - proactively
           - task
           - involves
-          - test
+          - writing
+          - tests
+          - improving
           - coverage
+          - test
+          - infrastructure
+          - user
+          - says
+          - add
+          - write
+          - unit
+          - set
+          - e2e
+          - improve
+          - mocks
+          - covers
           - vitest
           - jest
-          - playwright
-          - mock
-          - fixture
-          - comprehensive
-          - patterns
-          - unit
-          - tests
           - react
           - library
           - component
-          - e2e
+          - playwright
           - msw
           - api
           - mocking
-          - covers
           - organization
-          - targets
+          - naming
+          - fixture
           - management
+          - targets
+          - thresholds
+          - snapshot
           - integration
   protocol:
     _items:
       - name: discover-plan-batch
         path: protocol/discover-plan-batch
         description: >-
-          MANDATORY before starting any task. Defines the strict 3-call-per-cycle Discover-Plan-Batch loop. D: Single
-          discover call with all queries batched. P: Plan in text (zero tool calls). B: Single batched precision call.
-          Target: 3 tool calls per DPB cycle.
+          MANDATORY before starting any task. Enforces the strict 3-call-per-cycle execution loop that prevents tool
+          call sprawl. D: Single discover call with all queries batched. P: Plan in text with zero tool calls. B: Single
+          batched precision call. Every DPB cycle targets exactly 3 tool calls. Covers dependency analysis, batch
+          opportunities, scope estimation, and loop-back triggers.
         triggers: &ref_13
           - discover
           - plan
@@ -530,29 +655,44 @@ categories:
           - starting
           - any
           - task
-          - defines
+          - enforces
           - strict
           - call
           - per
           - cycle
+          - execution
           - loop
+          - that
+          - prevents
+          - tool
+          - sprawl
           - single
           - all
           - queries
           - batched
           - text
           - zero
-          - tool
           - calls
           - precision
-          - target
+          - every
           - dpb
+          - targets
+          - exactly
+          - covers
+          - dependency
+          - analysis
+          - opportunities
+          - scope
+          - estimation
+          - back
+          - triggers
       - name: error-recovery
         path: protocol/error-recovery
         description: >-
-          ALWAYS load before starting any task. Defines error recovery procedures for all GoodVibes agents. Use when
-          encountering tool failures, build errors, test failures, or unexpected results during task execution. Covers
-          systematic error recovery, memory-informed diagnostics, and when to escalate to the orchestrator.
+          ALWAYS load before starting any task. Defines systematic recovery procedures when things go wrong during
+          execution. Covers tool failures, build errors, test failures, type errors, and unexpected runtime results.
+          Includes tiered escalation (retry, fallback, memory-informed diagnosis, orchestrator escalation) and
+          post-recovery logging to prevent recurrence.
         triggers: &ref_14
           - error
           - recovery
@@ -563,33 +703,42 @@ categories:
           - any
           - task
           - defines
+          - systematic
           - procedures
-          - all
-          - goodvibes
-          - agents
-          - encountering
+          - things
+          - wrong
+          - during
+          - execution
+          - covers
           - tool
           - failures
           - build
           - errors
           - test
+          - type
           - unexpected
+          - runtime
           - results
-          - during
-          - execution
-          - covers
-          - systematic
+          - includes
+          - tiered
+          - escalation
+          - retry
+          - fallback
           - memory
           - informed
-          - diagnostics
-          - escalate
+          - diagnosis
           - orchestrator
+          - post
+          - logging
+          - prevent
+          - recurrence
       - name: goodvibes-memory
         path: protocol/goodvibes-memory
         description: >-
-          ALWAYS load before starting any task. Defines how all GoodVibes agents read from and write to the persistent
-          memory and logging system. Use at the start of any task (read) and after completing any task (write). Covers
-          decisions.json, patterns.json, failures.json, preferences.json, and session logs.
+          ALWAYS load before starting any task. Provides persistent cross-session memory for learning from past work.
+          Read memory at task start to avoid repeating mistakes; write memory at task end to record what worked. Covers
+          decisions.json (architectural choices), patterns.json (proven approaches), failures.json (past errors and
+          fixes), preferences.json (project conventions), and session activity logs.
         triggers: &ref_15
           - goodvibes
           - memory
@@ -599,33 +748,46 @@ categories:
           - starting
           - any
           - task
-          - defines
-          - how
-          - all
-          - agents
-          - read
-          - from
-          - write
+          - provides
           - persistent
-          - logging
-          - system
+          - cross
+          - session
+          - learning
+          - from
+          - past
+          - work
+          - read
           - start
-          - after
-          - completing
+          - avoid
+          - repeating
+          - mistakes
+          - write
+          - end
+          - record
+          - what
+          - worked
           - covers
           - decisions
           - json
+          - architectural
+          - choices
           - patterns
+          - proven
+          - approaches
           - failures
+          - errors
+          - fixes
           - preferences
-          - session
+          - project
+          - conventions
+          - activity
           - logs
       - name: precision-mastery
         path: protocol/precision-mastery
         description: >-
-          ALWAYS load before starting any task. Teaches optimal usage of GoodVibes precision engine tools for maximum
-          token efficiency. Use when performing any file operations, searches, or command execution. Covers extract
-          modes, verbosity settings, batching patterns, and discover tool orchestration.
+          ALWAYS load before starting any task. Maximizes token efficiency for all file operations, searches, and
+          command execution. Covers extract modes (content, outline, symbols, ast, lines), verbosity tuning, multi-file
+          batching, and discover tool orchestration. Ensures agents spend tokens on outcomes, not overhead.
         triggers: &ref_16
           - precision
           - mastery
@@ -635,16 +797,10 @@ categories:
           - starting
           - any
           - task
-          - teaches
-          - optimal
-          - usage
-          - goodvibes
-          - engine
-          - tools
-          - maximum
+          - maximizes
           - token
           - efficiency
-          - performing
+          - all
           - file
           - operations
           - searches
@@ -653,19 +809,32 @@ categories:
           - covers
           - extract
           - modes
+          - content
+          - outline
+          - symbols
+          - ast
+          - lines
           - verbosity
-          - settings
+          - tuning
+          - multi
           - batching
-          - patterns
           - discover
           - tool
           - orchestration
+          - ensures
+          - agents
+          - spend
+          - tokens
+          - outcomes
+          - not
+          - overhead
       - name: review-scoring
         path: protocol/review-scoring
         description: >-
-          ALWAYS load before starting any task. Defines the quantified scoring rubric and review format for WRFC loops.
-          Use when reviewing code, scoring implementations, or validating that work meets quality standards. Includes
-          deterministic validation scripts for review output.
+          ALWAYS load before starting any task. Provides the 10-dimension weighted scoring rubric (0-10 scale) used to
+          evaluate all implementations in WRFC loops. Dimensions include correctness, completeness, error handling, type
+          safety, security, performance, maintainability, testing, accessibility, and documentation. Includes
+          deterministic validation scripts and score thresholds for pass/revise/reject decisions.
         triggers: &ref_17
           - review
           - scoring
@@ -675,492 +844,624 @@ categories:
           - starting
           - any
           - task
-          - defines
-          - quantified
+          - provides
+          - dimension
+          - weighted
           - rubric
-          - format
+          - scale
+          - used
+          - evaluate
+          - all
+          - implementations
           - wrfc
           - loops
-          - reviewing
-          - code
-          - implementations
-          - validating
-          - that
-          - work
-          - meets
-          - quality
-          - standards
+          - dimensions
+          - include
+          - correctness
+          - completeness
+          - error
+          - handling
+          - type
+          - safety
+          - security
+          - performance
+          - maintainability
+          - testing
+          - accessibility
+          - documentation
           - includes
           - deterministic
           - validation
           - scripts
-          - output
+          - score
+          - thresholds
+          - pass
+          - revise
+          - reject
+          - decisions
   quality:
     _items:
       - name: accessibility-audit
         path: quality/accessibility-audit
         description: >-
-          Load PROACTIVELY when performing accessibility, a11y, WCAG, ARIA, or keyboard nav audit. WCAG 2.1 AA
-          compliance audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen reader
-          support, color contrast, forms, and media accessibility. Includes precision tool workflows for automated
-          pattern detection and structured reporting.
+          Load PROACTIVELY when task involves accessibility compliance or inclusive design. Use when user says "check
+          accessibility", "audit for WCAG", "fix screen reader issues", "add keyboard navigation", or "check color
+          contrast". Covers WCAG 2.1 AA compliance across semantic HTML, ARIA patterns, keyboard navigation, screen
+          reader support, color contrast ratios, form accessibility, media alternatives, and focus management. Produces
+          structured audit reports with severity ratings.
         triggers: &ref_18
           - accessibility
           - audit
           - load
           - proactively
-          - performing
-          - a11y
-          - wcag
-          - aria
-          - keyboard
-          - nav
+          - task
+          - involves
           - compliance
-          - methodology
-          - covering
-          - semantic
-          - html
-          - patterns
-          - navigation
+          - inclusive
+          - design
+          - user
+          - says
+          - check
+          - wcag
+          - fix
           - screen
           - reader
-          - support
+          - issues
+          - add
+          - keyboard
+          - navigation
           - color
           - contrast
-          - forms
+          - covers
+          - across
+          - semantic
+          - html
+          - aria
+          - patterns
+          - support
+          - ratios
+          - form
           - media
-          - includes
-          - precision
-          - tool
-          - workflows
-          - automated
-          - pattern
-          - detection
+          - alternatives
+          - focus
+          - management
+          - produces
           - structured
-          - reporting
+          - reports
+          - severity
+          - ratings
       - name: code-review
         path: quality/code-review
         description: >-
-          Load PROACTIVELY when performing review, audit, PR, or quality assessment. Systematic code review methodology
-          using precision tools. Use when reviewing PRs, validating implementations, or performing quality audits.
-          Covers security, performance, architecture, testing, and accessibility reviews with automated pattern
-          detection and the 10-dimension weighted scoring rubric.
+          Load PROACTIVELY when task involves reviewing code, auditing quality, or validating implementations. Use when
+          user says "review this code", "check this PR", "audit the codebase", or "score this implementation". Covers
+          the 10-dimension weighted scoring rubric (correctness, security, performance, architecture, testing, error
+          handling, type safety, maintainability, accessibility, documentation), automated pattern detection for
+          anti-patterns, and structured review output with actionable findings.
         triggers: &ref_19
           - code
           - review
           - load
           - proactively
-          - performing
-          - audit
-          - quality
-          - assessment
-          - systematic
-          - methodology
-          - using
-          - precision
-          - tools
+          - task
+          - involves
           - reviewing
-          - prs
+          - auditing
+          - quality
           - validating
           - implementations
-          - audits
+          - user
+          - says
+          - this
+          - check
+          - audit
+          - codebase
+          - score
+          - implementation
           - covers
-          - security
-          - performance
-          - architecture
-          - testing
-          - accessibility
-          - reviews
-          - automated
-          - pattern
-          - detection
           - dimension
           - weighted
           - scoring
           - rubric
+          - correctness
+          - security
+          - performance
+          - architecture
+          - testing
+          - error
+          - handling
+          - type
+          - safety
+          - maintainability
+          - accessibility
+          - documentation
+          - automated
+          - pattern
+          - detection
+          - anti
+          - patterns
+          - structured
+          - output
+          - actionable
+          - findings
       - name: debugging
         path: quality/debugging
         description: >-
-          Load PROACTIVELY when performing debug, error, stack trace, type error, or build failure investigation.
-          Systematic debugging methodology using precision tools. Use when investigating errors, tracing issues,
-          analyzing runtime behavior, or diagnosing performance problems. Covers error analysis, runtime debugging,
-          network inspection, state debugging, and root cause analysis with automated pattern detection.
+          Load PROACTIVELY when task involves investigating errors, diagnosing failures, or tracing unexpected behavior.
+          Use when user says "debug this", "fix this error", "why is this failing", "trace this issue", or "it's not
+          working". Covers error message and stack trace analysis, runtime debugging, network request inspection, state
+          debugging, performance profiling, type error diagnosis, build failure resolution, and root cause analysis with
+          memory-informed pattern matching against past failures.
         triggers: &ref_20
           - debugging
           - load
           - proactively
-          - performing
-          - debug
-          - error
-          - stack
-          - trace
-          - type
-          - build
-          - failure
-          - investigation
-          - systematic
-          - methodology
-          - using
-          - precision
-          - tools
+          - task
+          - involves
           - investigating
           - errors
-          - tracing
-          - issues
-          - analyzing
-          - runtime
-          - behavior
           - diagnosing
-          - performance
-          - problems
+          - failures
+          - tracing
+          - unexpected
+          - behavior
+          - user
+          - says
+          - debug
+          - this
+          - fix
+          - error
+          - why
+          - failing
+          - trace
+          - issue
+          - not
+          - working
           - covers
+          - message
+          - stack
           - analysis
+          - runtime
           - network
+          - request
           - inspection
           - state
+          - performance
+          - profiling
+          - type
+          - diagnosis
+          - build
+          - failure
+          - resolution
           - root
           - cause
-          - automated
+          - memory
+          - informed
           - pattern
-          - detection
+          - matching
+          - against
+          - past
       - name: performance-audit
         path: quality/performance-audit
         description: >-
-          Load PROACTIVELY when performing performance, bundle, re-render, N+1, or optimization audit. Systematic
-          performance audit methodology covering bundle analysis, database optimization, rendering performance, network
-          optimization, memory management, server-side performance, and Core Web Vitals. Includes precision tool
-          workflows for automated performance checks.
+          Load PROACTIVELY when task involves optimizing speed, reducing bundle size, or improving responsiveness. Use
+          when user says "make it faster", "reduce bundle size", "fix slow queries", "optimize rendering", or "check
+          Core Web Vitals". Covers bundle analysis and tree-shaking, database query optimization (N+1, indexing), React
+          rendering performance (re-renders, memoization), network waterfall optimization, memory leak detection,
+          server-side performance, and Core Web Vitals (LCP, FID, CLS) improvement.
         triggers: &ref_21
           - performance
           - audit
           - load
           - proactively
-          - performing
+          - task
+          - involves
+          - optimizing
+          - speed
+          - reducing
           - bundle
-          - render
-          - optimization
-          - systematic
-          - methodology
-          - covering
-          - analysis
-          - database
+          - size
+          - improving
+          - responsiveness
+          - user
+          - says
+          - make
+          - faster
+          - reduce
+          - fix
+          - slow
+          - queries
+          - optimize
           - rendering
-          - network
-          - memory
-          - management
-          - server
-          - side
+          - check
           - core
           - web
           - vitals
-          - includes
-          - precision
-          - tool
-          - workflows
-          - automated
-          - checks
+          - covers
+          - analysis
+          - tree
+          - shaking
+          - database
+          - query
+          - optimization
+          - indexing
+          - react
+          - renders
+          - memoization
+          - network
+          - waterfall
+          - memory
+          - leak
+          - detection
+          - server
+          - side
+          - lcp
+          - fid
+          - cls
+          - improvement
       - name: project-onboarding
         path: quality/project-onboarding
         description: >-
-          Load PROACTIVELY when performing onboard, new project, codebase analysis, or setup. Guides systematic project
-          onboarding through codebase analysis, architecture mapping, dependency auditing, convention detection, and
-          developer environment setup for rapid productive contribution
+          Load PROACTIVELY when starting work on an unfamiliar codebase or setting up a new project. Use when user says
+          "help me understand this codebase", "onboard me", "what does this project do", "set up my environment", or
+          "map the architecture". Covers codebase structure analysis, architecture mapping, dependency auditing,
+          convention and pattern detection, developer environment setup, and documentation of findings for rapid
+          productive contribution.
         triggers: &ref_22
           - project
           - onboarding
           - load
           - proactively
-          - performing
-          - onboard
-          - new
+          - starting
+          - work
+          - unfamiliar
           - codebase
-          - analysis
-          - setup
-          - guides
-          - systematic
-          - through
+          - setting
+          - new
+          - user
+          - says
+          - help
+          - understand
+          - this
+          - onboard
+          - what
+          - does
+          - set
+          - environment
+          - map
           - architecture
+          - covers
+          - structure
+          - analysis
           - mapping
           - dependency
           - auditing
           - convention
+          - pattern
           - detection
           - developer
-          - environment
+          - setup
+          - documentation
+          - findings
           - rapid
           - productive
           - contribution
       - name: refactoring
         path: quality/refactoring
         description: >-
-          Load PROACTIVELY when performing refactor, cleanup, dead code removal, reorganize, or extract operations.
-          Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing
-          duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename,
-          simplify conditionals, type improvements, dependency inversion, and database refactoring with automated safety
-          validation.
+          Load PROACTIVELY when task involves improving code structure without changing behavior. Use when user says
+          "refactor this", "clean up this code", "remove dead code", "reduce duplication", "reorganize the files", or
+          "extract this into a function". Covers extract function/component, rename symbol, simplify conditionals,
+          improve type safety, dependency inversion, dead code removal, circular dependency resolution, and database
+          query refactoring with automated safety validation (typecheck, tests) at each step.
         triggers: &ref_23
           - refactoring
           - load
           - proactively
-          - performing
-          - refactor
-          - cleanup
-          - dead
-          - code
-          - removal
-          - reorganize
-          - extract
-          - operations
-          - systematic
-          - methodology
-          - using
-          - precision
-          - tools
+          - task
+          - involves
           - improving
+          - code
           - structure
-          - reducing
+          - without
+          - changing
+          - behavior
+          - user
+          - says
+          - refactor
+          - this
+          - clean
+          - remove
+          - dead
+          - reduce
           - duplication
-          - enhancing
-          - type
-          - safety
-          - reorganizing
-          - codebases
-          - covers
+          - reorganize
+          - files
+          - extract
+          - into
           - function
+          - covers
           - component
           - rename
+          - symbol
           - simplify
           - conditionals
-          - improvements
+          - improve
+          - type
+          - safety
           - dependency
           - inversion
+          - removal
+          - circular
+          - resolution
           - database
+          - query
           - automated
           - validation
+          - typecheck
+          - tests
+          - each
+          - step
       - name: security-audit
         path: quality/security-audit
         description: >-
-          Load PROACTIVELY when performing security, vulnerability, secrets, or OWASP audit. Comprehensive security
-          audit methodology covering authentication, authorization, input validation, data protection, dependency
-          scanning, API security, and infrastructure hardening. Includes precision tool workflows for automated
-          vulnerability detection.
+          Load PROACTIVELY when task involves security review, vulnerability assessment, or hardening. Use when user
+          says "check for security issues", "audit for vulnerabilities", "scan for secrets", "review auth security", or
+          "check OWASP compliance". Covers authentication and session security, authorization and access control, input
+          validation and injection prevention, data protection and encryption, dependency vulnerability scanning, API
+          security (CORS, rate limiting, headers), and infrastructure hardening. Produces structured reports with
+          severity ratings.
         triggers: &ref_24
           - security
           - audit
           - load
           - proactively
-          - performing
+          - task
+          - involves
+          - review
           - vulnerability
+          - assessment
+          - hardening
+          - user
+          - says
+          - check
+          - issues
+          - vulnerabilities
+          - scan
           - secrets
+          - auth
           - owasp
-          - comprehensive
-          - methodology
-          - covering
+          - compliance
+          - covers
           - authentication
+          - session
           - authorization
+          - access
+          - control
           - input
           - validation
+          - injection
+          - prevention
           - data
           - protection
+          - encryption
           - dependency
           - scanning
           - api
+          - cors
+          - rate
+          - limiting
+          - headers
           - infrastructure
-          - hardening
-          - includes
-          - precision
-          - tool
-          - workflows
-          - automated
-          - detection
+          - produces
+          - structured
+          - reports
+          - severity
+          - ratings
 search_index:
   - name: fullstack-feature
     keywords: *ref_0
     path: orchestration/fullstack-feature
     description: >-
-      Load PROACTIVELY when coordinating multiple agents or planning multi-step work. End-to-end feature development
-      workflow that orchestrates multiple agents across the full stack. Use when the user requests a complete feature
-      that spans backend, frontend, and testing. Sequences work across database, API, UI, tests, and review.
+      Load PROACTIVELY when task involves building a complete feature across multiple layers. Use when user says "build
+      a feature", "add user profiles", "create a dashboard", or any request spanning database, API, UI, and tests.
+      Orchestrates multi-agent work sequentially: schema and migrations, API endpoints, UI components, tests, and
+      review. Handles dependency ordering and cross-layer type sharing.
   - name: task-orchestration
     keywords: *ref_1
     path: orchestration/task-orchestration
     description: >-
-      Load PROACTIVELY when coordinating multiple agents or planning multi-step work. Guides the GoodVibes orchestrator
-      in decomposing feature requests into parallel agent tasks, assigning appropriate agents and skills, managing
-      dependencies, and coordinating WRFC loops across up to 6 concurrent agent chains. Use when receiving a new user
-      request that requires multiple agents.
+      Load PROACTIVELY when decomposing a user request into parallel agent work. Use when user says "build this",
+      "implement this feature", or any request requiring multiple agents working concurrently. Guides task decomposition
+      into parallelizable units, agent assignment with skill matching, dependency graph construction, WRFC loop
+      coordination across up to 6 concurrent agent chains, and result aggregation.
   - name: ai-integration
     keywords: *ref_2
     path: outcome/ai-integration
     description: >-
-      Load PROACTIVELY when task involves AI, LLM, chat, streaming, RAG, embeddings, or OpenAI. AI and LLM integration
-      workflow using GoodVibes precision tools. Use when implementing chat interfaces, streaming responses, RAG
-      pipelines, embeddings, vector search, or tool/function calling. Covers Vercel AI SDK, OpenAI, Anthropic, and local
-      model patterns.
+      Load PROACTIVELY when task involves AI, LLM, or machine learning features. Use when user says "add AI chat",
+      "implement streaming responses", "build a RAG pipeline", "add embeddings", or "integrate OpenAI". Covers chat
+      interfaces, streaming with Vercel AI SDK, retrieval-augmented generation, vector search, embeddings pipelines,
+      tool/function calling, and provider abstraction for OpenAI, Anthropic, and local models.
   - name: api-design
     keywords: *ref_3
     path: outcome/api-design
     description: >-
-      Load PROACTIVELY when task involves API, endpoint, route, REST, GraphQL, tRPC, or middleware. API endpoint design
-      and implementation workflow using GoodVibes precision tools. Use when building REST endpoints, GraphQL resolvers,
-      tRPC procedures, API middleware, request validation, or response formatting. Covers route design, error handling,
-      and documentation.
+      Load PROACTIVELY when task involves building or modifying API endpoints. Use when user says "build an API", "add
+      an endpoint", "create a REST route", "set up GraphQL", or "add tRPC procedures". Covers route design and file
+      organization, request validation with Zod, response formatting, error handling patterns, middleware composition,
+      authentication guards, rate limiting, pagination, and API documentation generation.
   - name: authentication
     keywords: *ref_4
     path: outcome/authentication
     description: >-
-      Load PROACTIVELY when task involves login, auth, JWT, OAuth, sessions, RBAC, or protected routes. Authentication
-      setup workflow using GoodVibes precision tools. Use when implementing login, sign-up, password reset, session
-      management, JWT, OAuth, protected routes, middleware auth, or RBAC. Orchestrates discovery, implementation,
-      security verification, and testing.
+      Load PROACTIVELY when task involves user identity, login, or access control. Use when user says "add
+      authentication", "set up login", "add OAuth", "protect these routes", "implement RBAC", or "add sign-up". Covers
+      session management, JWT tokens, OAuth2 flows, password reset, email verification, protected route middleware,
+      role-based access control, and security hardening (CSRF, rate limiting, token rotation).
   - name: component-architecture
     keywords: *ref_5
     path: outcome/component-architecture
     description: >-
-      Load PROACTIVELY when task involves component, UI, React, Vue, Svelte, page, layout, or form. Component design
-      workflow using GoodVibes precision tools. Use when building UI components, designing component hierarchies,
-      optimizing render performance, or organizing component files. Covers composition patterns, state management,
-      render optimization, and file organization for React/Vue/Svelte.
+      Load PROACTIVELY when task involves designing or building UI components. Use when user says "build a component",
+      "create a form", "add a modal", "design the layout", or "refactor this page". Covers component composition and
+      hierarchy, prop design and typing, render optimization (memo, useMemo, useCallback), compound component patterns,
+      controlled vs uncontrolled forms, file organization, and accessibility for React, Vue, and Svelte.
   - name: database-layer
     keywords: *ref_6
     path: outcome/database-layer
     description: >-
-      Load PROACTIVELY when task involves database, schema, migration, ORM, Prisma, Drizzle, or SQL. Database and ORM
-      setup workflow using GoodVibes precision tools. Use when creating schemas, running migrations, setting up database
-      connections, defining models, writing queries, or optimizing database performance. Covers relational and document
-      databases.
+      Load PROACTIVELY when task involves database design, schemas, or data access. Use when user says "set up the
+      database", "create a schema", "add a migration", "write a query", or "set up Prisma". Covers schema design and
+      normalization, ORM setup (Prisma, Drizzle), migration workflows, connection pooling, query optimization, indexing
+      strategies, seeding, and transaction patterns for PostgreSQL, MySQL, SQLite, and MongoDB.
   - name: deployment
     keywords: *ref_7
     path: outcome/deployment
     description: >-
-      Load PROACTIVELY when task involves deploy, CI/CD, Docker, Vercel, Railway, or production. Deployment patterns for
-      Vercel, Railway, Fly.io, Docker, and AWS. Covers environment configuration, CI/CD pipelines, preview deployments,
-      health checks, rollback strategies, and monitoring setup.
+      Load PROACTIVELY when task involves deploying, hosting, or CI/CD pipelines. Use when user says "deploy this", "set
+      up CI/CD", "add Docker", "configure Vercel", or "set up monitoring". Covers platform-specific deployment (Vercel,
+      Railway, Fly.io, AWS), Dockerfile creation, environment variable management, CI/CD pipeline configuration (GitHub
+      Actions), preview deployments, health checks, rollback strategies, and production monitoring setup.
   - name: payment-integration
     keywords: *ref_8
     path: outcome/payment-integration
     description: >-
-      Load PROACTIVELY when task involves payment, Stripe, checkout, subscription, or billing. Payment processing
-      integration workflow using GoodVibes precision tools. Use when implementing Stripe, LemonSqueezy, or Paddle
-      checkout flows, subscription billing, webhook handling, or payment security. Covers setup, testing, and PCI
-      compliance.
+      Load PROACTIVELY when task involves payments, billing, or subscriptions. Use when user says "add payments",
+      "integrate Stripe", "set up subscriptions", "add a checkout flow", or "handle billing webhooks". Covers Stripe,
+      LemonSqueezy, and Paddle integration, checkout sessions, subscription lifecycle management, webhook verification
+      and handling, customer portal, metered billing, refunds, and PCI compliance considerations.
   - name: service-integration
     keywords: *ref_9
     path: outcome/service-integration
     description: >-
-      Load PROACTIVELY when task involves email, CMS, upload, Resend, Sanity, S3, or Cloudinary. External service
-      integration workflow using GoodVibes precision tools. Use when integrating email services (Resend, SendGrid), CMS
-      platforms (Sanity, Contentful, Payload), file uploads (UploadThing, Cloudinary, S3), or analytics. Covers setup,
-      error handling, and testing.
+      Load PROACTIVELY when task involves connecting external services or third-party APIs. Use when user says "add
+      email sending", "integrate a CMS", "set up file uploads", "add analytics", or "connect to S3". Covers email
+      services (Resend, SendGrid), CMS platforms (Sanity, Contentful, Payload), file upload solutions (UploadThing,
+      Cloudinary, S3), analytics integration, webhook handling, error recovery, and credential management.
   - name: state-management
     keywords: *ref_10
     path: outcome/state-management
     description: >-
-      Load PROACTIVELY when task involves state, store, Zustand, React Query, or form validation. Guides state
-      architecture decisions including server state (TanStack Query), client state (Zustand), form state (React Hook
-      Form with Zod), and URL state patterns. Use when choosing state solutions, implementing data fetching, or managing
-      complex form state.
+      Load PROACTIVELY when task involves application state, data fetching, or form handling. Use when user says "manage
+      state", "add data fetching", "set up Zustand", "handle form validation", or "add React Query". Covers server state
+      (TanStack Query with caching, optimistic updates), client state (Zustand stores), form state (React Hook Form with
+      Zod validation), URL state (search params, routing), and choosing between state solutions.
   - name: styling-system
     keywords: *ref_11
     path: outcome/styling-system
     description: >-
-      Load PROACTIVELY when task involves CSS, Tailwind, styling, theme, dark mode, or responsive design. Guides CSS
-      architecture decisions including Tailwind configuration, design tokens, responsive patterns, dark mode
-      implementation, and CSS-in-JS alternatives. Use when setting up styling infrastructure, creating design systems,
-      or choosing between styling approaches.
+      Load PROACTIVELY when task involves CSS architecture, theming, or visual design systems. Use when user says "set
+      up Tailwind", "add dark mode", "create a design system", "make it responsive", or "configure the theme". Covers
+      Tailwind configuration and custom plugins, design token systems, responsive breakpoint strategies, dark mode
+      implementation, component variant patterns (CVA/class-variance-authority), CSS-in-JS alternatives, and animation
+      patterns.
   - name: testing-strategy
     keywords: *ref_12
     path: outcome/testing-strategy
     description: >-
-      Load PROACTIVELY when task involves test, coverage, Vitest, Jest, Playwright, mock, or fixture. Comprehensive
-      testing patterns for Vitest/Jest unit tests, React Testing Library component tests, Playwright E2E tests, and MSW
-      API mocking. Covers test organization, coverage targets, fixture management, and CI integration.
+      Load PROACTIVELY when task involves writing tests, improving coverage, or test infrastructure. Use when user says
+      "add tests", "write unit tests", "set up E2E testing", "improve coverage", or "add mocks". Covers Vitest/Jest unit
+      tests, React Testing Library component tests, Playwright E2E tests, MSW API mocking, test organization and naming,
+      fixture management, coverage targets and thresholds, snapshot testing, and CI integration.
   - name: discover-plan-batch
     keywords: *ref_13
     path: protocol/discover-plan-batch
     description: >-
-      MANDATORY before starting any task. Defines the strict 3-call-per-cycle Discover-Plan-Batch loop. D: Single
-      discover call with all queries batched. P: Plan in text (zero tool calls). B: Single batched precision call.
-      Target: 3 tool calls per DPB cycle.
+      MANDATORY before starting any task. Enforces the strict 3-call-per-cycle execution loop that prevents tool call
+      sprawl. D: Single discover call with all queries batched. P: Plan in text with zero tool calls. B: Single batched
+      precision call. Every DPB cycle targets exactly 3 tool calls. Covers dependency analysis, batch opportunities,
+      scope estimation, and loop-back triggers.
   - name: error-recovery
     keywords: *ref_14
     path: protocol/error-recovery
     description: >-
-      ALWAYS load before starting any task. Defines error recovery procedures for all GoodVibes agents. Use when
-      encountering tool failures, build errors, test failures, or unexpected results during task execution. Covers
-      systematic error recovery, memory-informed diagnostics, and when to escalate to the orchestrator.
+      ALWAYS load before starting any task. Defines systematic recovery procedures when things go wrong during
+      execution. Covers tool failures, build errors, test failures, type errors, and unexpected runtime results.
+      Includes tiered escalation (retry, fallback, memory-informed diagnosis, orchestrator escalation) and post-recovery
+      logging to prevent recurrence.
   - name: goodvibes-memory
     keywords: *ref_15
     path: protocol/goodvibes-memory
     description: >-
-      ALWAYS load before starting any task. Defines how all GoodVibes agents read from and write to the persistent
-      memory and logging system. Use at the start of any task (read) and after completing any task (write). Covers
-      decisions.json, patterns.json, failures.json, preferences.json, and session logs.
+      ALWAYS load before starting any task. Provides persistent cross-session memory for learning from past work. Read
+      memory at task start to avoid repeating mistakes; write memory at task end to record what worked. Covers
+      decisions.json (architectural choices), patterns.json (proven approaches), failures.json (past errors and fixes),
+      preferences.json (project conventions), and session activity logs.
   - name: precision-mastery
     keywords: *ref_16
     path: protocol/precision-mastery
     description: >-
-      ALWAYS load before starting any task. Teaches optimal usage of GoodVibes precision engine tools for maximum token
-      efficiency. Use when performing any file operations, searches, or command execution. Covers extract modes,
-      verbosity settings, batching patterns, and discover tool orchestration.
+      ALWAYS load before starting any task. Maximizes token efficiency for all file operations, searches, and command
+      execution. Covers extract modes (content, outline, symbols, ast, lines), verbosity tuning, multi-file batching,
+      and discover tool orchestration. Ensures agents spend tokens on outcomes, not overhead.
   - name: review-scoring
     keywords: *ref_17
     path: protocol/review-scoring
     description: >-
-      ALWAYS load before starting any task. Defines the quantified scoring rubric and review format for WRFC loops. Use
-      when reviewing code, scoring implementations, or validating that work meets quality standards. Includes
-      deterministic validation scripts for review output.
+      ALWAYS load before starting any task. Provides the 10-dimension weighted scoring rubric (0-10 scale) used to
+      evaluate all implementations in WRFC loops. Dimensions include correctness, completeness, error handling, type
+      safety, security, performance, maintainability, testing, accessibility, and documentation. Includes deterministic
+      validation scripts and score thresholds for pass/revise/reject decisions.
   - name: accessibility-audit
     keywords: *ref_18
     path: quality/accessibility-audit
     description: >-
-      Load PROACTIVELY when performing accessibility, a11y, WCAG, ARIA, or keyboard nav audit. WCAG 2.1 AA compliance
-      audit methodology covering semantic HTML, ARIA patterns, keyboard navigation, screen reader support, color
-      contrast, forms, and media accessibility. Includes precision tool workflows for automated pattern detection and
-      structured reporting.
+      Load PROACTIVELY when task involves accessibility compliance or inclusive design. Use when user says "check
+      accessibility", "audit for WCAG", "fix screen reader issues", "add keyboard navigation", or "check color
+      contrast". Covers WCAG 2.1 AA compliance across semantic HTML, ARIA patterns, keyboard navigation, screen reader
+      support, color contrast ratios, form accessibility, media alternatives, and focus management. Produces structured
+      audit reports with severity ratings.
   - name: code-review
     keywords: *ref_19
     path: quality/code-review
     description: >-
-      Load PROACTIVELY when performing review, audit, PR, or quality assessment. Systematic code review methodology
-      using precision tools. Use when reviewing PRs, validating implementations, or performing quality audits. Covers
-      security, performance, architecture, testing, and accessibility reviews with automated pattern detection and the
-      10-dimension weighted scoring rubric.
+      Load PROACTIVELY when task involves reviewing code, auditing quality, or validating implementations. Use when user
+      says "review this code", "check this PR", "audit the codebase", or "score this implementation". Covers the
+      10-dimension weighted scoring rubric (correctness, security, performance, architecture, testing, error handling,
+      type safety, maintainability, accessibility, documentation), automated pattern detection for anti-patterns, and
+      structured review output with actionable findings.
   - name: debugging
     keywords: *ref_20
     path: quality/debugging
     description: >-
-      Load PROACTIVELY when performing debug, error, stack trace, type error, or build failure investigation. Systematic
-      debugging methodology using precision tools. Use when investigating errors, tracing issues, analyzing runtime
-      behavior, or diagnosing performance problems. Covers error analysis, runtime debugging, network inspection, state
-      debugging, and root cause analysis with automated pattern detection.
+      Load PROACTIVELY when task involves investigating errors, diagnosing failures, or tracing unexpected behavior. Use
+      when user says "debug this", "fix this error", "why is this failing", "trace this issue", or "it's not working".
+      Covers error message and stack trace analysis, runtime debugging, network request inspection, state debugging,
+      performance profiling, type error diagnosis, build failure resolution, and root cause analysis with
+      memory-informed pattern matching against past failures.
   - name: performance-audit
     keywords: *ref_21
     path: quality/performance-audit
     description: >-
-      Load PROACTIVELY when performing performance, bundle, re-render, N+1, or optimization audit. Systematic
-      performance audit methodology covering bundle analysis, database optimization, rendering performance, network
-      optimization, memory management, server-side performance, and Core Web Vitals. Includes precision tool workflows
-      for automated performance checks.
+      Load PROACTIVELY when task involves optimizing speed, reducing bundle size, or improving responsiveness. Use when
+      user says "make it faster", "reduce bundle size", "fix slow queries", "optimize rendering", or "check Core Web
+      Vitals". Covers bundle analysis and tree-shaking, database query optimization (N+1, indexing), React rendering
+      performance (re-renders, memoization), network waterfall optimization, memory leak detection, server-side
+      performance, and Core Web Vitals (LCP, FID, CLS) improvement.
   - name: project-onboarding
     keywords: *ref_22
     path: quality/project-onboarding
     description: >-
-      Load PROACTIVELY when performing onboard, new project, codebase analysis, or setup. Guides systematic project
-      onboarding through codebase analysis, architecture mapping, dependency auditing, convention detection, and
-      developer environment setup for rapid productive contribution
+      Load PROACTIVELY when starting work on an unfamiliar codebase or setting up a new project. Use when user says
+      "help me understand this codebase", "onboard me", "what does this project do", "set up my environment", or "map
+      the architecture". Covers codebase structure analysis, architecture mapping, dependency auditing, convention and
+      pattern detection, developer environment setup, and documentation of findings for rapid productive contribution.
   - name: refactoring
     keywords: *ref_23
     path: quality/refactoring
     description: >-
-      Load PROACTIVELY when performing refactor, cleanup, dead code removal, reorganize, or extract operations.
-      Systematic code refactoring methodology using precision tools. Use when improving code structure, reducing
-      duplication, enhancing type safety, or reorganizing codebases. Covers extract function/component, rename, simplify
-      conditionals, type improvements, dependency inversion, and database refactoring with automated safety validation.
+      Load PROACTIVELY when task involves improving code structure without changing behavior. Use when user says
+      "refactor this", "clean up this code", "remove dead code", "reduce duplication", "reorganize the files", or
+      "extract this into a function". Covers extract function/component, rename symbol, simplify conditionals, improve
+      type safety, dependency inversion, dead code removal, circular dependency resolution, and database query
+      refactoring with automated safety validation (typecheck, tests) at each step.
   - name: security-audit
     keywords: *ref_24
     path: quality/security-audit
     description: >-
-      Load PROACTIVELY when performing security, vulnerability, secrets, or OWASP audit. Comprehensive security audit
-      methodology covering authentication, authorization, input validation, data protection, dependency scanning, API
-      security, and infrastructure hardening. Includes precision tool workflows for automated vulnerability detection.
+      Load PROACTIVELY when task involves security review, vulnerability assessment, or hardening. Use when user says
+      "check for security issues", "audit for vulnerabilities", "scan for secrets", "review auth security", or "check
+      OWASP compliance". Covers authentication and session security, authorization and access control, input validation
+      and injection prevention, data protection and encryption, dependency vulnerability scanning, API security (CORS,
+      rate limiting, headers), and infrastructure hardening. Produces structured reports with severity ratings.
