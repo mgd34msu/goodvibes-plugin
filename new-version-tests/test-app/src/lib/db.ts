@@ -23,8 +23,9 @@ export const db = {
       return rows as T;
     } catch (error) {
       logger.error('Database query error', {
+        method: 'QUERY',
+        path: sql,
         error: error instanceof Error ? error.message : 'Unknown error',
-        sql,
       });
       throw error;
     }

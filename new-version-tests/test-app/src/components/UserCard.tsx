@@ -51,8 +51,8 @@ export function UserCard({ user, onDelete, className = '' }: UserCardProps) {
         let errorMessage = `Failed to delete user: ${res.statusText}`;
         try {
           const errorData = await res.json();
-          if (errorData.message) {
-            errorMessage = errorData.message;
+          if (errorData.error) {
+            errorMessage = errorData.error;
           }
         } catch {
           // If response isn't JSON, use status text
@@ -113,6 +113,7 @@ export function UserCard({ user, onDelete, className = '' }: UserCardProps) {
       )}
       
       <button
+        type="button"
         onClick={handleDelete}
         disabled={loading}
         aria-busy={loading}

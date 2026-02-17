@@ -10,8 +10,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'react': path.resolve(__dirname, './node_modules/react/cjs/react.development.js'),
-      'react-dom': path.resolve(__dirname, './node_modules/react-dom/cjs/react-dom.development.js'),
     },
   },
   test: {

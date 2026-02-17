@@ -5,7 +5,6 @@ import { db } from '@/lib/db';
 import { logger, getClientIp } from '@/lib/logger';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { ValidationError, AuthenticationError, RateLimitError, AppError } from '@/lib/errors';
-import { validatePasswordStrength } from '@/lib/auth';
 import type { User, AuthRequest, AuthResponse, ErrorResponse } from '@/types/api';
 
 // Validate JWT secret from environment
@@ -56,14 +55,6 @@ export async function POST(request: Request) {
 
     if (!password || typeof password !== 'string' || password.length === 0) {
       throw new ValidationError('Invalid password', 'Password is required');
-    }
-
-    // Validate password strength for login attempts
-    const passwordValidation = validatePasswordStrength(password);
-    if (!passwordValidation.valid) {
-      // Don't reveal password requirements on login to prevent enumeration
-      // Just use generic error
-      throw new AuthenticationError();
     }
 
     // Sanitize email

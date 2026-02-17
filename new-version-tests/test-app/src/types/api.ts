@@ -34,6 +34,7 @@ export interface AuthResponse {
 
 export interface ErrorResponse {
   error: string;
+  code?: string;
   details?: string;
 }
 

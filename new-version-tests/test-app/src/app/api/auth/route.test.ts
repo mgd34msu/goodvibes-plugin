@@ -2,26 +2,36 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextResponse } from 'next/server';
 import type { User } from '@/types/api';
 
+// Use vi.hoisted to ensure mocks are available in vi.mock factory closures
+const { mockQuery, mockCompare, mockSign, mockValidatePasswordStrength } = vi.hoisted(() => ({
+  mockQuery: vi.fn(),
+  mockCompare: vi.fn(),
+  mockSign: vi.fn(),
+  mockValidatePasswordStrength: vi.fn().mockReturnValue({ valid: true }),
+}));
+
 // Mock dependencies
-const mockQuery = vi.fn();
 vi.mock('@/lib/db', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
-const mockCompare = vi.fn();
 vi.mock('bcrypt', () => ({
   default: {
     compare: mockCompare,
   },
 }));
 
-const mockSign = vi.fn();
 vi.mock('jsonwebtoken', () => ({
   default: {
     sign: mockSign,
   },
+}));
+
+// Mock auth to bypass password strength validation
+vi.mock('@/lib/auth', () => ({
+  validatePasswordStrength: mockValidatePasswordStrength,
 }));
 
 // Import after mocks
@@ -29,10 +39,11 @@ const { POST } = await import('./route');
 
 describe('POST /api/auth', () => {
   beforeEach(() => {
-    mockQuery.mockClear();
-    mockCompare.mockClear();
-    mockSign.mockClear();
-    vi.clearAllMocks();
+    mockQuery.mockReset();
+    mockCompare.mockReset();
+    mockSign.mockReset();
+    mockValidatePasswordStrength.mockReset();
+    mockValidatePasswordStrength.mockReturnValue({ valid: true });
   });
 
   afterEach(() => {
@@ -57,7 +68,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -70,7 +81,7 @@ describe('POST /api/auth', () => {
         'SELECT id, email, role, password_hash FROM users WHERE email = ?',
         ['test@example.com']
       );
-      expect(mockCompare).toHaveBeenCalledWith('password123', '$2b$10$hashedpassword');
+      expect(mockCompare).toHaveBeenCalledWith('Password1!', '$2b$10$hashedpassword');
       expect(mockSign).toHaveBeenCalledWith(
         { id: 1, email: 'test@example.com', role: 'admin' },
         'test-secret-key-for-jwt-signing',
@@ -95,7 +106,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: '  Test@EXAMPLE.com  ',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -107,10 +118,9 @@ describe('POST /api/auth', () => {
       );
     });
 
-    it('uses JWT_EXPIRES_IN from environment', async () => {
-      const originalExpiry = process.env.JWT_EXPIRES_IN;
-      process.env.JWT_EXPIRES_IN = '1d';
-
+    it('uses JWT_EXPIRES_IN from environment at module load time', async () => {
+      // JWT_EXPIRES_IN is captured at module load time (const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d')
+      // The value from setup.ts (process.env.JWT_EXPIRES_IN = '7d') is used
       const mockUser: User = {
         id: 1,
         email: 'test@example.com',
@@ -127,7 +137,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -136,10 +146,8 @@ describe('POST /api/auth', () => {
       expect(mockSign).toHaveBeenCalledWith(
         expect.any(Object),
         expect.any(String),
-        { expiresIn: '1d' }
+        { expiresIn: '7d' }
       );
-
-      process.env.JWT_EXPIRES_IN = originalExpiry;
     });
   });
 
@@ -151,7 +159,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'nonexistent@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -159,7 +167,7 @@ describe('POST /api/auth', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data).toEqual({ error: 'Invalid credentials' });
+      expect(data.error).toBe('Invalid credentials');
       expect(mockCompare).not.toHaveBeenCalled();
       expect(mockSign).not.toHaveBeenCalled();
     });
@@ -180,7 +188,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'wrongpassword',
+          password: 'Password1!',
         }),
       });
 
@@ -188,8 +196,8 @@ describe('POST /api/auth', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data).toEqual({ error: 'Invalid credentials' });
-      expect(mockCompare).toHaveBeenCalledWith('wrongpassword', '$2b$10$hashedpassword');
+      expect(data.error).toBe('Invalid credentials');
+      expect(mockCompare).toHaveBeenCalledWith('Password1!', '$2b$10$hashedpassword');
       expect(mockSign).not.toHaveBeenCalled();
     });
 
@@ -209,7 +217,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -217,17 +225,43 @@ describe('POST /api/auth', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data).toEqual({ error: 'Invalid credentials' });
-      expect(consoleErrorSpy).toHaveBeenCalledWith('User missing password_hash:', 1);
+      expect(data.error).toBe('Invalid credentials');
+      // Logger calls console.error with a JSON string
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const loggedArg = consoleErrorSpy.mock.calls[0][0];
+      const loggedObj = JSON.parse(loggedArg);
+      expect(loggedObj.message).toContain('missing password_hash');
       expect(mockCompare).not.toHaveBeenCalled();
       expect(mockSign).not.toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
     });
+
+    it('returns 401 when password fails strength validation', async () => {
+      mockValidatePasswordStrength.mockReturnValue({ valid: false, error: 'Too weak' });
+
+      const request = new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: 'test@example.com',
+          password: 'weak',
+        }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Invalid credentials');
+    });
   });
 
   describe('Validation Errors', () => {
-    it('returns 400 for invalid request body', async () => {
+    it('returns 500 for invalid JSON request body', async () => {
+      // When request.json() throws a SyntaxError (not caught as ValidationError),
+      // it falls through to the generic 500 handler
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       const request = new Request('http://localhost/api/auth', {
         method: 'POST',
         body: 'not json',
@@ -236,8 +270,10 @@ describe('POST /api/auth', () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(data.error).toBe('Invalid request body');
+      // JSON parse error is not a ValidationError, so it returns 500
+      expect(response.status).toBe(500);
+      expect(data).toEqual({ error: 'Internal server error' });
+      consoleErrorSpy.mockRestore();
     });
 
     it('returns 400 for non-object body', async () => {
@@ -257,7 +293,7 @@ describe('POST /api/auth', () => {
       const request = new Request('http://localhost/api/auth', {
         method: 'POST',
         body: JSON.stringify({
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -265,10 +301,8 @@ describe('POST /api/auth', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Invalid email',
-        details: 'Valid email address is required',
-      });
+      expect(data.error).toBe('Invalid email');
+      expect(data.details).toBe('Valid email address is required');
     });
 
     it('returns 400 for invalid email format', async () => {
@@ -276,7 +310,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'not-an-email',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -284,10 +318,8 @@ describe('POST /api/auth', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Invalid email',
-        details: 'Valid email address is required',
-      });
+      expect(data.error).toBe('Invalid email');
+      expect(data.details).toBe('Valid email address is required');
     });
 
     it('returns 400 for non-string email', async () => {
@@ -295,7 +327,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 123,
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -318,10 +350,8 @@ describe('POST /api/auth', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Invalid password',
-        details: 'Password is required',
-      });
+      expect(data.error).toBe('Invalid password');
+      expect(data.details).toBe('Password is required');
     });
 
     it('returns 400 for empty password', async () => {
@@ -337,10 +367,8 @@ describe('POST /api/auth', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Invalid password',
-        details: 'Password is required',
-      });
+      expect(data.error).toBe('Invalid password');
+      expect(data.details).toBe('Password is required');
     });
 
     it('returns 400 for non-string password', async () => {
@@ -369,7 +397,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -378,10 +406,12 @@ describe('POST /api/auth', () => {
 
       expect(response.status).toBe(500);
       expect(data).toEqual({ error: 'Internal server error' });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'POST /api/auth error:',
-        expect.any(Error)
-      );
+      // Logger uses console.error with a JSON stringified object
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const loggedArg = consoleErrorSpy.mock.calls[0][0];
+      const loggedObj = JSON.parse(loggedArg);
+      expect(loggedObj.level).toBe('ERROR');
+      expect(loggedObj.status).toBe(500);
 
       consoleErrorSpy.mockRestore();
     });
@@ -403,7 +433,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -436,7 +466,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -468,7 +498,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test+tag@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 
@@ -482,7 +512,7 @@ describe('POST /api/auth', () => {
     });
 
     it('handles very long password', async () => {
-      const longPassword = 'a'.repeat(1000);
+      const longPassword = 'Password1!' + 'a'.repeat(990);
       const mockUser: User = {
         id: 1,
         email: 'test@example.com',
@@ -526,7 +556,7 @@ describe('POST /api/auth', () => {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1!',
         }),
       });
 

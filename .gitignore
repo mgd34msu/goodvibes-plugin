@@ -70,5 +70,9 @@ logs/
 
 # Release
 RELEASE.md
+
+# More Tests
 test-auto-encode/
 new_pe_tests/
+new-version-tests/
+tests/

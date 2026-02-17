@@ -123,7 +123,12 @@ describe('db module', () => {
 
       await expect(db.query('INVALID SQL')).rejects.toThrow();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Database query error:', dbError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const loggedArg = consoleErrorSpy.mock.calls[0][0];
+      const loggedObj = JSON.parse(loggedArg);
+      expect(loggedObj.level).toBe('ERROR');
+      expect(loggedObj.message).toBe('Database query error');
+      expect(loggedObj.error).toBe('Syntax error');
       consoleErrorSpy.mockRestore();
     });
 

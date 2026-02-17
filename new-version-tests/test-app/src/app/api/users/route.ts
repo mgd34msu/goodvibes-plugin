@@ -181,6 +181,10 @@ export async function POST(request: Request) {
       throw new ValidationError('Invalid name', 'Name is required and must be a non-empty string');
     }
 
+    if (name.trim().length > 255) {
+      throw new ValidationError('Invalid name', 'Name must not exceed 255 characters');
+    }
+
     if (!email || typeof email !== 'string' || !isValidEmail(email)) {
       throw new ValidationError('Invalid email', 'Valid email address is required');
     }
@@ -204,7 +208,7 @@ export async function POST(request: Request) {
     }
 
     // Insert new user using parameterized query
-    const result: any = await db.query(
+    const result = await db.query<{ insertId: number }>(
       'INSERT INTO users (name, email, role) VALUES (?, ?, ?)',
       [sanitizedName, sanitizedEmail, role]
     );
