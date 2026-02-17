@@ -1272,8 +1272,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
         try {
           const projectIndex = ProjectIndex.getInstance();
           const relativePath = path.relative(process.cwd(), filePath);
-          const stats = await fs.stat(filePath);
-          projectIndex.touchFile(relativePath, stats.size);
+          projectIndex.touchFile(relativePath);
         } catch {
           // Index update is non-critical — don't fail the edit
         }

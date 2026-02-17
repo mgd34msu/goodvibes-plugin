@@ -19,7 +19,7 @@ import { validateDirectoryPath } from '../utils/path-validation.js';
 import fg from 'fast-glob';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { getDiscoverSymbolTimeout } from '../runtime-config.js';
-import { ProjectIndex } from '../state/project-index.js';
+import { ProjectIndex, categorizeFileType } from '../state/project-index.js';
 
 type DiscoverOutputMode = 'count_only' | 'files_only' | 'locations';
 
@@ -83,7 +83,7 @@ interface LocationInfo {
 interface QueryResult {
   type?: 'grep' | 'glob' | 'symbols' | 'structural' | 'index';
   count: number;
-  files?: string[] | Array<{ path: string; size: number; modified: number; type?: string }>;
+  files?: string[] | Array<{ path: string; type?: string }>;
   locations?: LocationInfo[];
   stats?: any;
   type_counts?: Record<string, number>;
@@ -467,13 +467,13 @@ async function executeIndexQuery(
 ): Promise<QueryResult> {
   const projectIndex = ProjectIndex.getInstance();
   const index = await projectIndex.getIndexLoaded();
-  
+
   if (!index) {
     return { count: 0, error: 'Project index not available. Will be created on next session start.' };
   }
 
-  let files = index.files;
-  
+  let files = projectIndex.getFiles();
+
   // Apply filters
   if (query.filter) {
     // Note: filter matches path PREFIX, not directory boundary.
@@ -483,12 +483,12 @@ async function executeIndexQuery(
   }
   if (query.file_types && query.file_types.length > 0) {
     const types = new Set(query.file_types);
-    files = files.filter(f => f.t && types.has(f.t));
+    files = files.filter(f => types.has(categorizeFileType(f.p)));
   }
 
   const detail = query.detail || 'summary';
   const isFiltered = !!(query.filter || (query.file_types && query.file_types.length > 0));
-  
+
   // Return appropriate detail level
   switch (detail) {
     case 'count_only':
@@ -498,7 +498,7 @@ async function executeIndexQuery(
     case 'paths_only':
       return { type: 'index', count: files.length, files: files.map(f => f.p) };
     case 'full':
-      return { type: 'index', count: files.length, files: files.map(f => ({ path: f.p, size: f.s, modified: f.m, type: f.t })) };
+      return { type: 'index', count: files.length, files: files.map(f => ({ path: f.p, type: categorizeFileType(f.p) })) };
     default:
       return { type: 'index', count: files.length, ...(isFiltered ? {} : { stats: index.stats }), type_counts: projectIndex.getTypeCounts() };
   }

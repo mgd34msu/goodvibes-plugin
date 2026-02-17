@@ -5029,7 +5029,7 @@ async function ensureClaudeMdImports(projectDir) {
 }
 
 // src/session-start/project-indexer.ts
-import { readdir as readdir3, readFile as readFile10, stat, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
+import { readdir as readdir3, readFile as readFile10, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
 import path16 from "path";
 var INDEX_EXCLUSION_DIRS = /* @__PURE__ */ new Set([
   "node_modules",
@@ -5109,6 +5109,7 @@ var EXCLUDED_FILENAMES = /* @__PURE__ */ new Set([
   ".DS_Store",
   "Thumbs.db"
 ]);
+var globRegexCache = /* @__PURE__ */ new Map();
 function parseGitignore(content) {
   const patterns = [];
   for (const line of content.split("\n")) {
@@ -5128,18 +5129,23 @@ function parseGitignore(content) {
   return patterns;
 }
 function matchGlob(pattern, name) {
-  let regexStr = "";
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i];
-    if (ch === "*") {
-      regexStr += "[^/]*";
-    } else if (ch === "?") {
-      regexStr += "[^/]";
-    } else {
-      regexStr += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  let regex = globRegexCache.get(pattern);
+  if (!regex) {
+    let regexStr = "";
+    for (let i = 0; i < pattern.length; i++) {
+      const ch = pattern[i];
+      if (ch === "*") {
+        regexStr += "[^/]*";
+      } else if (ch === "?") {
+        regexStr += "[^/]";
+      } else {
+        regexStr += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+      }
     }
+    regex = new RegExp(`^${regexStr}$`);
+    globRegexCache.set(pattern, regex);
   }
-  return new RegExp(`^${regexStr}$`).test(name);
+  return regex.test(name);
 }
 function isGitignored(patterns, relativePath, isDir) {
   const segments = relativePath.split("/");
@@ -5149,10 +5155,15 @@ function isGitignored(patterns, relativePath, isDir) {
     if (p.dirOnly && !isDir) continue;
     let matches = false;
     if (p.raw.includes("/")) {
-      const patternWithDoublestar = p.raw.replace(/\*\*/g, "**");
-      if (patternWithDoublestar.includes("**")) {
-        const regexStr = patternWithDoublestar.split("**").map((part) => part.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]")).join(".*");
-        matches = new RegExp(`^${regexStr}$`).test(relativePath) || new RegExp(`^${regexStr}(/.*)?$`).test(relativePath);
+      if (p.raw.includes("**")) {
+        const cacheKey = `dstar:${p.raw}`;
+        let cached = globRegexCache.get(cacheKey);
+        if (!cached) {
+          const regexStr = p.raw.split("**").map((part) => part.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]")).join(".*");
+          cached = [new RegExp(`^${regexStr}$`), new RegExp(`^${regexStr}(/.*)?$`)];
+          globRegexCache.set(cacheKey, cached);
+        }
+        matches = cached[0].test(relativePath) || cached[1].test(relativePath);
       } else if (p.anchored) {
         matches = matchGlob(p.raw, relativePath) || relativePath.startsWith(p.raw + "/");
       } else {
@@ -5210,56 +5221,11 @@ function shouldExclude(name, relativePath, gitignorePatterns, isDir) {
   }
   return false;
 }
-function categorizeFileType(filePath) {
-  const ext = path16.extname(filePath).toLowerCase();
-  switch (ext) {
-    case ".ts":
-    case ".tsx":
-      return "ts";
-    case ".js":
-    case ".jsx":
-    case ".mjs":
-    case ".cjs":
-      return "js";
-    case ".json":
-      return "json";
-    case ".md":
-    case ".mdx":
-      return "md";
-    case ".css":
-    case ".scss":
-    case ".less":
-      return "css";
-    case ".html":
-    case ".htm":
-      return "html";
-    case ".py":
-      return "py";
-    case ".go":
-      return "go";
-    case ".rs":
-      return "rs";
-    case ".yaml":
-    case ".yml":
-      return "yaml";
-    default:
-      return void 0;
-  }
-}
-function countUniqueDirs(entries) {
-  const dirs = /* @__PURE__ */ new Set();
-  for (const entry of entries) {
-    const dir = path16.dirname(entry.p);
-    if (dir && dir !== ".") {
-      dirs.add(dir);
-    }
-  }
-  return dirs.size;
-}
 async function buildProjectIndex(projectDir) {
   const startMs = Date.now();
-  const entries = [];
+  const tree = {};
   let isPartial = false;
+  let totalFiles = 0;
   try {
     debug("Building project file index", { projectDir });
     const gitignorePatterns = await loadGitignore(projectDir);
@@ -5268,7 +5234,6 @@ async function buildProjectIndex(projectDir) {
       recursive: true,
       withFileTypes: true
     });
-    const pendingFiles = [];
     for (const entry of dirEntries) {
       if (Date.now() - startMs > 3e4) {
         debug("Project indexing timeout - writing partial index");
@@ -5284,44 +5249,31 @@ async function buildProjectIndex(projectDir) {
       if (!entry.isFile()) {
         continue;
       }
-      const fullPath = path16.join(projectDir, relativePath);
-      pendingFiles.push({ name: entry.name, relativePath, fullPath });
-    }
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
-      const batch = pendingFiles.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(
-        batch.map(
-          (f) => stat(f.fullPath).then((s) => ({ ...f, size: s.size, mtimeMs: s.mtimeMs })).catch(() => null)
-        )
-      );
-      for (const result of results) {
-        if (result) {
-          const type2 = categorizeFileType(result.relativePath);
-          const entry = {
-            p: result.relativePath,
-            s: result.size,
-            m: Math.floor(result.mtimeMs)
-          };
-          if (type2) entry.t = type2;
-          entries.push(entry);
-        }
+      const dirPart = path16.dirname(relativePath);
+      const treeKey = dirPart === "." ? "" : dirPart.split(path16.sep).join("/");
+      const filename = entry.name;
+      if (!tree[treeKey]) {
+        tree[treeKey] = [];
       }
+      tree[treeKey].push(filename);
+      totalFiles++;
     }
-    entries.sort((a, b) => a.p.localeCompare(b.p));
+    for (const key of Object.keys(tree)) {
+      tree[key].sort();
+    }
+    const totalDirs = Object.keys(tree).length;
     const index = {
-      version: 1,
+      version: 2,
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString(),
       project_root: projectDir,
       stats: {
-        total_files: entries.length,
-        total_dirs: countUniqueDirs(entries),
-        total_size_bytes: entries.reduce((sum, e) => sum + e.s, 0),
+        total_files: totalFiles,
+        total_dirs: totalDirs,
         index_duration_ms: Date.now() - startMs,
         ...isPartial && { partial: true }
       },
-      files: entries
+      tree
     };
     const indexDir = path16.join(projectDir, ".goodvibes");
     const indexPath = path16.join(indexDir, "project-index.json");
@@ -5330,9 +5282,8 @@ async function buildProjectIndex(projectDir) {
     await writeFile7(tempPath, JSON.stringify(index) + "\n", "utf-8");
     await rename2(tempPath, indexPath);
     debug("Project index created", {
-      files: entries.length,
-      dirs: index.stats.total_dirs,
-      size_mb: (index.stats.total_size_bytes / 1024 / 1024).toFixed(2),
+      files: totalFiles,
+      dirs: totalDirs,
       duration_ms: index.stats.index_duration_ms,
       partial: isPartial
     });

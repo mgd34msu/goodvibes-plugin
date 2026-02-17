@@ -351,8 +351,7 @@ async function writeFile(
       try {
         const projectIndex = ProjectIndex.getInstance();
         const relativePath = path.relative(process.cwd(), validatedPath);
-        const stats = await fs.stat(validatedPath);
-        projectIndex.upsertFile(relativePath, stats.size);
+        projectIndex.upsertFile(relativePath);
       } catch {
         // Index update is non-critical — don't fail the write
       }

@@ -8,30 +8,45 @@ import * as path from 'path';
 import { existsSync } from 'fs';
 
 /**
- * Index format stored in .goodvibes/project-index.json
+ * Index format stored in .goodvibes/project-index.json (version 2)
  */
 export interface ProjectFileIndex {
-  version: 1;
+  version: 2;
   created_at: string;           // ISO timestamp
   updated_at: string;           // ISO timestamp
   project_root: string;         // Absolute path
   stats: {
     total_files: number;
     total_dirs: number;
-    total_size_bytes: number;
     index_duration_ms: number;
   };
-  files: FileEntry[];           // Sorted by path
+  /** Directory tree: maps directory paths to filename arrays. Empty string key ('') holds root-level files. */
+  tree: Record<string, string[]>;
 }
 
 /**
- * Individual file entry in the index.
+ * Legacy index format (version 1) for backward compatibility.
+ */
+interface LegacyProjectFileIndex {
+  version: 1;
+  created_at: string;
+  updated_at: string;
+  project_root: string;
+  stats: {
+    total_files: number;
+    total_dirs: number;
+    total_size_bytes: number;
+    index_duration_ms: number;
+  };
+  files: Array<{ p: string; s: number; m: number; t?: string }>;
+}
+
+/**
+ * Individual file entry in the in-memory index.
+ * Only path is stored — type is derived on-demand from extension.
  */
 export interface FileEntry {
   p: string;    // Relative path from project root
-  s: number;    // Size in bytes
-  m: number;    // Modified time (Unix ms)
-  t?: string;   // File type category
 }
 
 /**
@@ -40,6 +55,8 @@ export interface FileEntry {
 export class ProjectIndex {
   private static instance: ProjectIndex | null = null;
   private index: ProjectFileIndex | null = null;
+  // Internal flat list for efficient binary search operations
+  private files: FileEntry[] = [];
   private loaded = false;
   private dirty = false;
   private flushTimer: NodeJS.Timeout | null = null;
@@ -70,6 +87,40 @@ export class ProjectIndex {
   }
 
   /**
+   * Flatten a tree object into a sorted FileEntry array.
+   */
+  private static flattenTree(tree: Record<string, string[]>): FileEntry[] {
+    const entries: FileEntry[] = [];
+    for (const [dir, filenames] of Object.entries(tree)) {
+      for (const name of filenames) {
+        const p = dir ? `${dir}/${name}` : name;
+        entries.push({ p });
+      }
+    }
+    entries.sort((a, b) => a.p.localeCompare(b.p));
+    return entries;
+  }
+
+  /**
+   * Convert an internal FileEntry array back to tree format for disk write.
+   */
+  private static entriesToTree(entries: FileEntry[]): Record<string, string[]> {
+    const tree: Record<string, string[]> = {};
+    for (const entry of entries) {
+      const slashIdx = entry.p.lastIndexOf('/');
+      const dir = slashIdx === -1 ? '' : entry.p.substring(0, slashIdx);
+      const name = slashIdx === -1 ? entry.p : entry.p.substring(slashIdx + 1);
+      if (!tree[dir]) tree[dir] = [];
+      tree[dir].push(name);
+    }
+    // Sort filenames within each directory
+    for (const key of Object.keys(tree)) {
+      tree[key].sort();
+    }
+    return tree;
+  }
+
+  /**
    * Load index from disk if not already loaded.
    */
   public async load(): Promise<void> {
@@ -79,22 +130,48 @@ export class ProjectIndex {
       if (existsSync(this.indexPath)) {
         const content = await readFile(this.indexPath, 'utf-8');
         const parsed = JSON.parse(content);
-        
-        // Validate version before accepting the index
-        if (!parsed || parsed.version !== 1) {
+
+        if (!parsed) {
+          this.index = null;
+          this.files = [];
+        } else if (parsed.version === 2) {
+          // Current format: tree-based
+          this.index = parsed as ProjectFileIndex;
+          this.files = ProjectIndex.flattenTree(parsed.tree || {});
+        } else if (parsed.version === 1) {
+          // Legacy format: flat files array — convert to v2
+          const legacy = parsed as LegacyProjectFileIndex;
+          const tree = ProjectIndex.entriesToTree(
+            (legacy.files || []).map((f) => ({ p: f.p }))
+          );
+          this.index = {
+            version: 2,
+            created_at: legacy.created_at,
+            updated_at: legacy.updated_at,
+            project_root: legacy.project_root,
+            stats: {
+              total_files: legacy.stats.total_files,
+              total_dirs: legacy.stats.total_dirs,
+              index_duration_ms: legacy.stats.index_duration_ms,
+            },
+            tree,
+          };
+          this.files = ProjectIndex.flattenTree(tree);
+        } else {
           console.error(`[ProjectIndex] Unsupported index version: ${parsed?.version}`);
           this.index = null;
-        } else {
-          this.index = parsed as ProjectFileIndex;
+          this.files = [];
         }
       } else {
         // Index doesn't exist yet - will be created on first session start
         this.index = null;
+        this.files = [];
       }
     } catch (error) {
       // Corrupt or unreadable index - reset to null
       console.error('[ProjectIndex] Failed to load index:', error);
       this.index = null;
+      this.files = [];
     }
 
     this.loaded = true;
@@ -116,6 +193,13 @@ export class ProjectIndex {
   }
 
   /**
+   * Get the internal flat files list (for queries).
+   */
+  public getFiles(): FileEntry[] {
+    return this.files;
+  }
+
+  /**
    * Get summary statistics from the index.
    */
   public getStats(): ProjectFileIndex['stats'] | null {
@@ -126,31 +210,19 @@ export class ProjectIndex {
   /**
    * Add or update a file entry in the index.
    */
-  public upsertFile(relativePath: string, sizeBytes: number): void {
+  public upsertFile(relativePath: string): void {
     if (!this.index) return;
 
-    // Unix ms timestamp for FileEntry.m
-    const now = Date.now();
-    const fileType = categorizeFileType(relativePath);
-    const newEntry: FileEntry = {
-      p: relativePath,
-      s: sizeBytes,
-      m: now,
-      t: fileType,
-    };
+    const newEntry: FileEntry = { p: relativePath };
 
     const existingIndex = this.findEntryIndex(relativePath);
     if (existingIndex >= 0) {
       // Update existing entry
-      const oldEntry = this.index.files[existingIndex];
-      const sizeDelta = sizeBytes - oldEntry.s;
-      this.index.files[existingIndex] = newEntry;
-      this.index.stats.total_size_bytes += sizeDelta;
+      this.files[existingIndex] = newEntry;
     } else {
       // Insert new entry maintaining sort order
       this.insertSorted(newEntry);
       this.index.stats.total_files++;
-      this.index.stats.total_size_bytes += sizeBytes;
     }
 
     // ISO string for ProjectFileIndex.updated_at
@@ -161,43 +233,39 @@ export class ProjectIndex {
   /**
    * Alias for upsertFile (used after edits).
    */
-  public touchFile(relativePath: string, sizeBytes: number): void {
-    this.upsertFile(relativePath, sizeBytes);
+  public touchFile(relativePath: string): void {
+    this.upsertFile(relativePath);
   }
 
   /**
    * Remove a file from the index.
+   * Note: stats.total_dirs may be stale until the next flush (500ms debounce).
    */
   public removeFile(relativePath: string): void {
     if (!this.index) return;
 
     const idx = this.findEntryIndex(relativePath);
     if (idx >= 0) {
-      const entry = this.index.files[idx];
-      this.index.files.splice(idx, 1);
+      this.files.splice(idx, 1);
       this.index.stats.total_files--;
-      this.index.stats.total_size_bytes -= entry.s;
       this.index.updated_at = new Date().toISOString();
       this.markDirty();
     }
   }
 
   /**
-   * Get files filtered by type.
+   * Get files filtered by type (derived from extension).
    */
   public getFilesByType(type: string): FileEntry[] {
-    if (!this.index) return [];
-    return this.index.files.filter((f) => f.t === type);
+    return this.files.filter((f) => categorizeFileType(f.p) === type);
   }
 
   /**
    * Get files matching a path prefix.
    */
   public getFilesByPrefix(prefix: string): FileEntry[] {
-    if (!this.index) return [];
-
     // Binary search for the start of the range
-    const files = this.index.files;
+    const files = this.files;
     let left = 0;
     let right = files.length;
 
@@ -221,17 +289,14 @@ export class ProjectIndex {
   }
 
   /**
-   * Get file type breakdown.
+   * Get file type breakdown (derived from extension).
    */
   public getTypeCounts(): Record<string, number> {
-    if (!this.index) return {};
-
     const counts: Record<string, number> = {};
-    for (const file of this.index.files) {
-      const type = file.t || 'other';
+    for (const file of this.files) {
+      const type = categorizeFileType(file.p);
       counts[type] = (counts[type] || 0) + 1;
     }
-
     return counts;
   }
 
@@ -240,9 +305,7 @@ export class ProjectIndex {
    * Returns -1 if not found.
    */
   private findEntryIndex(p: string): number {
-    if (!this.index) return -1;
-
-    const files = this.index.files;
+    const files = this.files;
     let left = 0;
     let right = files.length - 1;
 
@@ -267,9 +330,7 @@ export class ProjectIndex {
    * Insert an entry maintaining sorted order.
    */
   private insertSorted(entry: FileEntry): void {
-    if (!this.index) return;
-
-    const files = this.index.files;
+    const files = this.files;
     let left = 0;
     let right = files.length;
 
@@ -315,9 +376,20 @@ export class ProjectIndex {
       // Ensure directory exists
       await mkdir(path.dirname(this.indexPath), { recursive: true });
 
+      // Rebuild tree from current files list
+      const tree = ProjectIndex.entriesToTree(this.files);
+      const indexToWrite: ProjectFileIndex = {
+        ...this.index,
+        stats: {
+          ...this.index.stats,
+          total_dirs: Object.keys(tree).length,
+        },
+        tree,
+      };
+
       // Atomic write: temp file + rename
       const tempPath = this.indexPath + '.tmp';
-      await writeFile(tempPath, JSON.stringify(this.index), 'utf-8');
+      await writeFile(tempPath, JSON.stringify(indexToWrite) + '\n', 'utf-8');
       await rename(tempPath, this.indexPath);
 
       this.dirty = false;
