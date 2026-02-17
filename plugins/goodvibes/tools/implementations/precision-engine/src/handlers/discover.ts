@@ -538,6 +538,12 @@ export const handleDiscover: ToolHandler = async (args: unknown) => {
       return toCallToolResult(createErrorResult(formatMissingParamError('discover', 'queries', 'array of query objects'), { output_mode: 'standard', execution_ms: getElapsed() }));
     }
 
+    // Auto-inject project index query if not already present
+    const hasIndexQuery = input.queries.some(q => q.type === 'index');
+    if (!hasIndexQuery) {
+      input.queries.push({ id: '_project_index', type: 'index', detail: 'summary' });
+    }
+
     // Validate and resolve base_path if provided
     const searchRoot = input.base_path
       ? await validateDirectoryPath(input.base_path, projectRoot)
@@ -558,6 +564,8 @@ export const handleDiscover: ToolHandler = async (args: unknown) => {
 
     for (const { id, result } of queryResults) {
       results[id] = result;
+      // _project_index is auto-injected and should not affect user-visible counts
+      if (id === '_project_index') continue;
       if (result.error) {
         failed++;
       } else {
@@ -565,9 +573,12 @@ export const handleDiscover: ToolHandler = async (args: unknown) => {
       }
     }
 
+    // total_queries reflects only user-submitted queries (not the auto-injected _project_index)
+    const userQueryCount = input.queries.filter(q => q.id !== '_project_index').length;
+
     const data = {
       results,
-      total_queries: input.queries.length,
+      total_queries: userQueryCount,
       successful,
       failed,
     };

@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { logger } from './logger';
 
 // Validate environment variables
 if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
@@ -21,7 +22,10 @@ export const db = {
       const [rows] = await pool.execute(sql, params);
       return rows as T;
     } catch (error) {
-      console.error('Database query error:', error);
+      logger.error('Database query error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        sql,
+      });
       throw error;
     }
   },

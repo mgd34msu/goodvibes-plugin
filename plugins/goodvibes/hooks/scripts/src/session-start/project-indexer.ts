@@ -8,15 +8,15 @@
  * tools for fast file lookups without hitting the filesystem repeatedly.
  */
 
-import { readdir, stat, writeFile, mkdir, rename } from 'fs/promises';
+import { readdir, readFile, stat, writeFile, mkdir, rename } from 'fs/promises';
 import path from 'path';
 import { debug, logError } from '../shared/index.js';
 
 /**
- * Directories and patterns to exclude from the index.
+ * Directories to exclude from the index.
  * These are typically build artifacts, dependencies, and cache directories.
  */
-const INDEX_EXCLUSIONS = [
+const INDEX_EXCLUSION_DIRS = new Set([
   'node_modules',
   '.git',
   '.goodvibes',
@@ -39,28 +39,70 @@ const INDEX_EXCLUSIONS = [
   'venv',
   '.venv',
   'target',
-];
-
-const INDEX_EXCLUSIONS_SET = new Set(INDEX_EXCLUSIONS);
+  // Test directories
+  '__tests__',
+  '__mocks__',
+  '__fixtures__',
+  '__snapshots__',
+  // IDE/editor
+  '.vscode',
+  '.idea',
+]);
 
 /**
- * File extensions to exclude (typically minified or generated files).
+ * File suffixes/extensions to exclude (typically generated, compiled, or binary).
+ * Order matters for multi-part extensions — check longest first.
  */
-const EXCLUDED_EXTENSIONS = [
+const EXCLUDED_SUFFIXES = [
+  // Multi-part extensions (check before single-part)
+  '.test.ts',
+  '.spec.ts',
+  '.test.tsx',
+  '.spec.tsx',
+  '.test.js',
+  '.spec.js',
+  '.test.jsx',
+  '.spec.jsx',
+  '.d.ts',
+  '.d.mts',
+  '.d.cts',
+  '.stories.ts',
+  '.stories.tsx',
+  '.stories.js',
+  '.stories.jsx',
+  '.stories.mdx',
   '.min.js',
   '.min.css',
+  '.tsbuildinfo',
+  // Single-part extensions
   '.map',
-  '.lock',
+  // Media/binary
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.ico',
+  '.svg',
+  '.mp4',
+  '.mp3',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
 ];
 
 /**
- * Specific filenames to exclude (lock files).
+ * Specific filenames to exclude (lock files, OS artifacts).
  */
-const EXCLUDED_FILENAMES = [
+const EXCLUDED_FILENAMES = new Set([
   'package-lock.json',
+  'yarn.lock',
   'pnpm-lock.yaml',
   'bun.lockb',
-];
+  '.DS_Store',
+  'Thumbs.db',
+]);
 
 /**
  * File entry in the project index.
@@ -97,29 +139,208 @@ interface ProjectFileIndex {
 }
 
 /**
+ * A parsed .gitignore pattern entry.
+ */
+interface GitignorePattern {
+  /** Whether this is a negation pattern (!) */
+  negated: boolean;
+  /** Whether the pattern is anchored to the root (starts with /) */
+  anchored: boolean;
+  /** Whether the pattern matches only directories (ends with /) */
+  dirOnly: boolean;
+  /** The raw pattern string (normalized) */
+  raw: string;
+}
+
+/**
+ * Parse a .gitignore file into pattern entries.
+ * Ignores comment lines and blank lines.
+ *
+ * @param content - Raw .gitignore file content
+ * @returns Array of parsed pattern entries
+ */
+function parseGitignore(content: string): GitignorePattern[] {
+  const patterns: GitignorePattern[] = [];
+  for (const line of content.split('\n')) {
+    let raw = line;
+    // Strip trailing spaces (not escaped ones)
+    raw = raw.replace(/(?<!\\) +$/, '');
+    // Skip empty lines and comments
+    if (!raw || raw.startsWith('#')) continue;
+
+    const negated = raw.startsWith('!');
+    if (negated) raw = raw.slice(1);
+
+    // A backslash before a # is a literal #
+    if (raw.startsWith('\\#')) raw = raw.slice(1);
+
+    const anchored = raw.startsWith('/');
+    if (anchored) raw = raw.slice(1);
+
+    const dirOnly = raw.endsWith('/');
+    if (dirOnly) raw = raw.slice(0, -1);
+
+    if (!raw) continue;
+
+    patterns.push({ negated, anchored, dirOnly, raw });
+  }
+  return patterns;
+}
+
+/**
+ * Test whether a path component matches a gitignore pattern segment.
+ * Supports * and ? wildcards but not **.
+ *
+ * @param pattern - Single pattern segment
+ * @param name - File/directory name to test
+ * @returns true if the name matches
+ */
+function matchGlob(pattern: string, name: string): boolean {
+  // Convert glob pattern to regex
+  let regexStr = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    if (ch === '*') {
+      regexStr += '[^/]*';
+    } else if (ch === '?') {
+      regexStr += '[^/]';
+    } else {
+      // Escape regex special chars
+      regexStr += ch.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    }
+  }
+  return new RegExp(`^${regexStr}$`).test(name);
+}
+
+/**
+ * Check if a relative path matches any gitignore pattern.
+ *
+ * @param patterns - Parsed gitignore patterns
+ * @param relativePath - Path relative to project root (forward slashes)
+ * @param isDir - Whether the path is a directory
+ * @returns true if the path is ignored
+ */
+function isGitignored(
+  patterns: GitignorePattern[],
+  relativePath: string,
+  isDir: boolean
+): boolean {
+  const segments = relativePath.split('/');
+  const name = segments[segments.length - 1];
+  let ignored = false;
+
+  for (const p of patterns) {
+    // Skip dir-only patterns for files
+    if (p.dirOnly && !isDir) continue;
+
+    let matches = false;
+
+    if (p.raw.includes('/')) {
+      // Pattern with slash: match against full relative path
+      // Use ** for double-star patterns
+      const patternWithDoublestar = p.raw.replace(/\*\*/g, '**');
+      if (patternWithDoublestar.includes('**')) {
+        // Simple ** handling: convert to regex
+        const regexStr = patternWithDoublestar
+          .split('**')
+          .map(part => part.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]'))
+          .join('.*');
+        matches = new RegExp(`^${regexStr}$`).test(relativePath) ||
+                  new RegExp(`^${regexStr}(/.*)?$`).test(relativePath);
+      } else if (p.anchored) {
+        // Anchored to root
+        matches = matchGlob(p.raw, relativePath) ||
+                  relativePath.startsWith(p.raw + '/');
+      } else {
+        // Match at any depth
+        matches = matchGlob(p.raw, relativePath) ||
+                  relativePath === p.raw ||
+                  relativePath.startsWith(p.raw + '/');
+      }
+    } else {
+      // No slash: match against filename (basename) only
+      matches = matchGlob(p.raw, name);
+      // Also check if any parent segment matches (for directory-only patterns or name matches)
+      if (!matches && isDir) {
+        // For directories, check if this dir name matches at any level
+        for (const seg of segments) {
+          if (matchGlob(p.raw, seg)) {
+            matches = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (matches) {
+      ignored = !p.negated;
+    }
+  }
+
+  return ignored;
+}
+
+/**
+ * Load and parse .gitignore from the project root.
+ * Returns empty array if .gitignore doesn't exist.
+ *
+ * @param projectDir - Absolute path to the project root
+ * @returns Parsed gitignore patterns
+ */
+async function loadGitignore(projectDir: string): Promise<GitignorePattern[]> {
+  try {
+    const gitignorePath = path.join(projectDir, '.gitignore');
+    const content = await readFile(gitignorePath, 'utf-8');
+    return parseGitignore(content);
+  } catch {
+    // No .gitignore found or unreadable
+    return [];
+  }
+}
+
+/**
  * Check if a file or directory should be excluded from the index.
  *
  * @param name - File or directory name
- * @param relativePath - Path relative to project root
+ * @param relativePath - Path relative to project root (uses platform separators)
+ * @param gitignorePatterns - Parsed .gitignore patterns
+ * @param isDir - Whether this entry is a directory
  * @returns true if the file/directory should be excluded
  */
-function shouldExclude(name: string, relativePath: string): boolean {
-  // Check if any path segment matches exclusion list
+function shouldExclude(
+  name: string,
+  relativePath: string,
+  gitignorePatterns: GitignorePattern[],
+  isDir: boolean
+): boolean {
+  // Check if any path segment matches the exclusion dir list
   const segments = relativePath.split(path.sep);
   for (const segment of segments) {
-    if (INDEX_EXCLUSIONS_SET.has(segment)) {
+    if (INDEX_EXCLUSION_DIRS.has(segment)) {
       return true;
     }
   }
 
-  // Check excluded filenames
-  if (EXCLUDED_FILENAMES.includes(name)) {
-    return true;
+  // For files only: check excluded filenames and suffixes
+  if (!isDir) {
+    if (EXCLUDED_FILENAMES.has(name)) {
+      return true;
+    }
+
+    // Check excluded suffixes (multi-part first, then single-part)
+    const lowerName = name.toLowerCase();
+    for (const suffix of EXCLUDED_SUFFIXES) {
+      if (lowerName.endsWith(suffix)) {
+        return true;
+      }
+    }
   }
 
-  // Check excluded extensions
-  for (const ext of EXCLUDED_EXTENSIONS) {
-    if (name.endsWith(ext)) {
+  // Check .gitignore patterns
+  if (gitignorePatterns.length > 0) {
+    // Normalize to forward slashes for gitignore matching
+    const normalizedPath = relativePath.split(path.sep).join('/');
+    if (isGitignored(gitignorePatterns, normalizedPath, isDir)) {
       return true;
     }
   }
@@ -205,6 +426,10 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
   try {
     debug('Building project file index', { projectDir });
 
+    // Load .gitignore patterns
+    const gitignorePatterns = await loadGitignore(projectDir);
+    debug('Loaded gitignore patterns', { count: gitignorePatterns.length });
+
     // Use Node.js built-in recursive readdir (Node 20+)
     const dirEntries = await readdir(projectDir, {
       recursive: true,
@@ -222,19 +447,21 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
         break;
       }
 
-      // Skip directories
-      if (!entry.isFile()) {
-        continue;
-      }
-
       // Build relative path with Node 20.0-20.11 compatibility
       const parent = entry.parentPath ?? (entry as any).path;
       const relativePath = parent
         ? path.relative(projectDir, path.join(parent, entry.name))
         : entry.name;
 
-      // Check if should be excluded
-      if (shouldExclude(entry.name, relativePath)) {
+      const isDir = entry.isDirectory();
+
+      // Check if should be excluded (dirs and files)
+      if (shouldExclude(entry.name, relativePath, gitignorePatterns, isDir)) {
+        continue;
+      }
+
+      // Skip non-files after exclusion check
+      if (!entry.isFile()) {
         continue;
       }
 

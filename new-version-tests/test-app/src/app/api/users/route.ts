@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { logger, getClientIp } from '@/lib/logger';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { ValidationError, NotFoundError, ConflictError, RateLimitError, AppError } from '@/lib/errors';
+import { verifyToken, requireRole } from '@/lib/auth';
 import type { User, CreateUserRequest, CreateUserResponse, ErrorResponse, PaginatedResponse } from '@/types/api';
 
 /**
@@ -30,6 +31,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
 
   try {
+    // Authentication required
+    const user = verifyToken(request);
+
     // Rate limiting
     if (rateLimiter.check(ip, RATE_LIMITS.api)) {
       const info = rateLimiter.getInfo(ip, RATE_LIMITS.api);
@@ -152,6 +156,10 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
 
   try {
+    // Authentication required - only admins can create users
+    const currentUser = verifyToken(request);
+    requireRole(currentUser, ['admin']);
+
     // Rate limiting
     if (rateLimiter.check(ip, RATE_LIMITS.api)) {
       const info = rateLimiter.getInfo(ip, RATE_LIMITS.api);
@@ -266,6 +274,10 @@ export async function DELETE(request: Request) {
   const url = new URL(request.url);
 
   try {
+    // Authentication required - only admins can delete users
+    const currentUser = verifyToken(request);
+    requireRole(currentUser, ['admin']);
+
     // Rate limiting
     if (rateLimiter.check(ip, RATE_LIMITS.api)) {
       const info = rateLimiter.getInfo(ip, RATE_LIMITS.api);
@@ -293,6 +305,11 @@ export async function DELETE(request: Request) {
 
     if (existingUsers.length === 0) {
       throw new NotFoundError('User');
+    }
+
+    // Prevent users from deleting themselves
+    if (userId === currentUser.id) {
+      throw new ValidationError('Cannot delete yourself', 'Use a different admin account to delete this user');
     }
 
     // Delete user using parameterized query

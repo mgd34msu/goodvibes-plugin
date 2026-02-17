@@ -196,6 +196,7 @@ describe('discover handler', () => {
       });
 
       const parsed = expectSuccess(result);
+      // total_queries reflects only user-submitted queries (not auto-injected _project_index)
       expect(parsed.data.total_queries).toBe(3);
       expect(parsed.data.results['grep-func']).toBeDefined();
       expect(parsed.data.results['glob-ts']).toBeDefined();
@@ -211,8 +212,46 @@ describe('discover handler', () => {
       });
 
       const parsed = expectSuccess(result);
+      // 1 successful (good grep), 1 failed (bad grep). _project_index is soft and not counted.
       expect(parsed.data.successful).toBe(1);
       expect(parsed.data.failed).toBe(1);
+    });
+
+    it('should auto-inject _project_index query when no index query is submitted', async () => {
+      const result = await handleDiscover({
+        queries: [
+          { id: 'grep-func', type: 'grep', pattern: 'function' },
+        ],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.results['_project_index']).toBeDefined();
+    });
+
+    it('should NOT inject duplicate _project_index when a type: index query is already submitted', async () => {
+      const result = await handleDiscover({
+        queries: [
+          { id: 'my-index', type: 'index', detail: 'summary' },
+        ],
+      });
+
+      const parsed = expectSuccess(result);
+      // Only 1 query: the user-provided index query (no auto-inject)
+      expect(parsed.data.total_queries).toBe(1);
+      expect(parsed.data.results['my-index']).toBeDefined();
+      expect(parsed.data.results['_project_index']).toBeUndefined();
+    });
+
+    it('should count auto-injected query in total_queries', async () => {
+      const result = await handleDiscover({
+        queries: [
+          { id: 'grep-func', type: 'grep', pattern: 'function' },
+        ],
+      });
+
+      const parsed = expectSuccess(result);
+      // total_queries reflects only user-submitted queries (1), not auto-injected _project_index
+      expect(parsed.data.total_queries).toBe(1);
     });
   });
 
@@ -324,6 +363,7 @@ describe('discover handler', () => {
       });
 
       const parsed = expectSuccess(result);
+      // total_queries reflects only user-submitted queries (2), not auto-injected _project_index
       expect(parsed.data.total_queries).toBe(2);
     });
 
@@ -335,6 +375,7 @@ describe('discover handler', () => {
       });
 
       const parsed = expectSuccess(result);
+      // 1 successful user query; _project_index is soft and not counted
       expect(parsed.data.successful).toBe(1);
     });
 

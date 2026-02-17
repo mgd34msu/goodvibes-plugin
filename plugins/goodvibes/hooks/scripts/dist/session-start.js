@@ -4845,9 +4845,6 @@ var GOODVIBES_MD = `<!-- UPGRADE NOTIFICATIONS -->
 
 <!-- SUBAGENT PROTOCOL -->
 @prompt/SUBAGENT-PROTOCOL.md
-
-<!-- SKILL AWARENESS -->
-@prompt/SKILLS.md
 `;
 var FALLBACK_PROMPT_FILES = {
   "UPGRADE-NOTIFICATIONS.md": `## IMPORTANT!
@@ -4877,6 +4874,14 @@ ALWAYS provide reminders to subagents:
   "SKILLS.md": `## SKILL AWARENESS
 
 See templates/prompt/SKILLS.md for full list.
+`,
+  "PRECISION-MASTERY.md": `## PRECISION MASTERY
+
+Use precision_engine tools over native tools. Batch operations. Use minimal verbosity.
+`,
+  "DISCOVER-PLAN-BATCH.md": `## DISCOVER-PLAN-BATCH
+
+Follow DPB loop: Discover (1 call) -> Plan (0 calls) -> Batch (1 call). Target 3 tool calls per cycle.
 `
 };
 async function loadPromptFiles() {
@@ -5024,9 +5029,9 @@ async function ensureClaudeMdImports(projectDir) {
 }
 
 // src/session-start/project-indexer.ts
-import { readdir as readdir3, stat, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
+import { readdir as readdir3, readFile as readFile10, stat, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
 import path16 from "path";
-var INDEX_EXCLUSIONS = [
+var INDEX_EXCLUSION_DIRS = /* @__PURE__ */ new Set([
   "node_modules",
   ".git",
   ".goodvibes",
@@ -5048,32 +5053,158 @@ var INDEX_EXCLUSIONS = [
   ".tox",
   "venv",
   ".venv",
-  "target"
-];
-var INDEX_EXCLUSIONS_SET = new Set(INDEX_EXCLUSIONS);
-var EXCLUDED_EXTENSIONS = [
+  "target",
+  // Test directories
+  "__tests__",
+  "__mocks__",
+  "__fixtures__",
+  "__snapshots__",
+  // IDE/editor
+  ".vscode",
+  ".idea"
+]);
+var EXCLUDED_SUFFIXES = [
+  // Multi-part extensions (check before single-part)
+  ".test.ts",
+  ".spec.ts",
+  ".test.tsx",
+  ".spec.tsx",
+  ".test.js",
+  ".spec.js",
+  ".test.jsx",
+  ".spec.jsx",
+  ".d.ts",
+  ".d.mts",
+  ".d.cts",
+  ".stories.ts",
+  ".stories.tsx",
+  ".stories.js",
+  ".stories.jsx",
+  ".stories.mdx",
   ".min.js",
   ".min.css",
+  ".tsbuildinfo",
+  // Single-part extensions
   ".map",
-  ".lock"
+  // Media/binary
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".ico",
+  ".svg",
+  ".mp4",
+  ".mp3",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot"
 ];
-var EXCLUDED_FILENAMES = [
+var EXCLUDED_FILENAMES = /* @__PURE__ */ new Set([
   "package-lock.json",
+  "yarn.lock",
   "pnpm-lock.yaml",
-  "bun.lockb"
-];
-function shouldExclude(name, relativePath) {
+  "bun.lockb",
+  ".DS_Store",
+  "Thumbs.db"
+]);
+function parseGitignore(content) {
+  const patterns = [];
+  for (const line of content.split("\n")) {
+    let raw = line;
+    raw = raw.replace(/(?<!\\) +$/, "");
+    if (!raw || raw.startsWith("#")) continue;
+    const negated = raw.startsWith("!");
+    if (negated) raw = raw.slice(1);
+    if (raw.startsWith("\\#")) raw = raw.slice(1);
+    const anchored = raw.startsWith("/");
+    if (anchored) raw = raw.slice(1);
+    const dirOnly = raw.endsWith("/");
+    if (dirOnly) raw = raw.slice(0, -1);
+    if (!raw) continue;
+    patterns.push({ negated, anchored, dirOnly, raw });
+  }
+  return patterns;
+}
+function matchGlob(pattern, name) {
+  let regexStr = "";
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    if (ch === "*") {
+      regexStr += "[^/]*";
+    } else if (ch === "?") {
+      regexStr += "[^/]";
+    } else {
+      regexStr += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    }
+  }
+  return new RegExp(`^${regexStr}$`).test(name);
+}
+function isGitignored(patterns, relativePath, isDir) {
+  const segments = relativePath.split("/");
+  const name = segments[segments.length - 1];
+  let ignored = false;
+  for (const p of patterns) {
+    if (p.dirOnly && !isDir) continue;
+    let matches = false;
+    if (p.raw.includes("/")) {
+      const patternWithDoublestar = p.raw.replace(/\*\*/g, "**");
+      if (patternWithDoublestar.includes("**")) {
+        const regexStr = patternWithDoublestar.split("**").map((part) => part.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]")).join(".*");
+        matches = new RegExp(`^${regexStr}$`).test(relativePath) || new RegExp(`^${regexStr}(/.*)?$`).test(relativePath);
+      } else if (p.anchored) {
+        matches = matchGlob(p.raw, relativePath) || relativePath.startsWith(p.raw + "/");
+      } else {
+        matches = matchGlob(p.raw, relativePath) || relativePath === p.raw || relativePath.startsWith(p.raw + "/");
+      }
+    } else {
+      matches = matchGlob(p.raw, name);
+      if (!matches && isDir) {
+        for (const seg of segments) {
+          if (matchGlob(p.raw, seg)) {
+            matches = true;
+            break;
+          }
+        }
+      }
+    }
+    if (matches) {
+      ignored = !p.negated;
+    }
+  }
+  return ignored;
+}
+async function loadGitignore(projectDir) {
+  try {
+    const gitignorePath = path16.join(projectDir, ".gitignore");
+    const content = await readFile10(gitignorePath, "utf-8");
+    return parseGitignore(content);
+  } catch {
+    return [];
+  }
+}
+function shouldExclude(name, relativePath, gitignorePatterns, isDir) {
   const segments = relativePath.split(path16.sep);
   for (const segment of segments) {
-    if (INDEX_EXCLUSIONS_SET.has(segment)) {
+    if (INDEX_EXCLUSION_DIRS.has(segment)) {
       return true;
     }
   }
-  if (EXCLUDED_FILENAMES.includes(name)) {
-    return true;
+  if (!isDir) {
+    if (EXCLUDED_FILENAMES.has(name)) {
+      return true;
+    }
+    const lowerName = name.toLowerCase();
+    for (const suffix of EXCLUDED_SUFFIXES) {
+      if (lowerName.endsWith(suffix)) {
+        return true;
+      }
+    }
   }
-  for (const ext of EXCLUDED_EXTENSIONS) {
-    if (name.endsWith(ext)) {
+  if (gitignorePatterns.length > 0) {
+    const normalizedPath = relativePath.split(path16.sep).join("/");
+    if (isGitignored(gitignorePatterns, normalizedPath, isDir)) {
       return true;
     }
   }
@@ -5131,6 +5262,8 @@ async function buildProjectIndex(projectDir) {
   let isPartial = false;
   try {
     debug("Building project file index", { projectDir });
+    const gitignorePatterns = await loadGitignore(projectDir);
+    debug("Loaded gitignore patterns", { count: gitignorePatterns.length });
     const dirEntries = await readdir3(projectDir, {
       recursive: true,
       withFileTypes: true
@@ -5142,12 +5275,13 @@ async function buildProjectIndex(projectDir) {
         isPartial = true;
         break;
       }
-      if (!entry.isFile()) {
-        continue;
-      }
       const parent = entry.parentPath ?? entry.path;
       const relativePath = parent ? path16.relative(projectDir, path16.join(parent, entry.name)) : entry.name;
-      if (shouldExclude(entry.name, relativePath)) {
+      const isDir = entry.isDirectory();
+      if (shouldExclude(entry.name, relativePath, gitignorePatterns, isDir)) {
+        continue;
+      }
+      if (!entry.isFile()) {
         continue;
       }
       const fullPath = path16.join(projectDir, relativePath);
