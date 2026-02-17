@@ -1,1 +1,1 @@
-SEARCHTERM here
+const value = [42];

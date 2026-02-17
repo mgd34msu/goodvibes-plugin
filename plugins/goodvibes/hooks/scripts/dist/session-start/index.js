@@ -150,8 +150,13 @@ async function runSessionStartHook() {
         });
         // Step 5: Save state
         await savePluginState(projectDir, state);
-        // Step 5.25: Build project file index (fire-and-forget - must NOT block session start)
-        buildProjectIndex(projectDir).catch((err) => logError('Project indexer failed', err instanceof Error ? err : new Error(String(err))));
+        // Step 5.25: Build project file index (must complete before respond() calls process.exit)
+        try {
+            await buildProjectIndex(projectDir);
+        }
+        catch (err) {
+            logError('Project indexer failed', err instanceof Error ? err : new Error(String(err)));
+        }
         // Step 5.5: Ensure CLAUDE.md import architecture is installed
         await ensureClaudeMdImports(projectDir);
         // Step 6: Initialize analytics

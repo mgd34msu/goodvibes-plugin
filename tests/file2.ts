@@ -1,1 +1,1 @@
-foo baz
+content 2

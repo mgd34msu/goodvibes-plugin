@@ -5471,9 +5471,11 @@ async function runSessionStartHook() {
       startedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     await savePluginState(projectDir, state);
-    buildProjectIndex(projectDir).catch(
-      (err) => logError("Project indexer failed", err instanceof Error ? err : new Error(String(err)))
-    );
+    try {
+      await buildProjectIndex(projectDir);
+    } catch (err) {
+      logError("Project indexer failed", err instanceof Error ? err : new Error(String(err)));
+    }
     await ensureClaudeMdImports(projectDir);
     initializeAnalytics(sessionId, contextResult);
     const versionCheck = await checkForUpdates();
