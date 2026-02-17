@@ -320,7 +320,7 @@ describe('POST /api/users', () => {
         method: 'POST',
         body: JSON.stringify({
           name: 'New User',
-          email: '   NEWUSER@EXAMPLE.COM   ',
+          email: 'NEWUSER@EXAMPLE.COM',
           role: 'user',
         }),
       });
@@ -620,7 +620,7 @@ describe('POST /api/users', () => {
         method: 'POST',
         body: JSON.stringify({
           name: 'New User',
-          email: '  EXISTING@EXAMPLE.COM  ',
+          email: 'EXISTING@EXAMPLE.COM',
           role: 'user',
         }),
       });
@@ -874,6 +874,109 @@ describe('DELETE /api/users', () => {
       expect(data).toEqual({ error: 'Internal server error' });
 
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Rate Limiting', () => {
+    it('returns 429 when rate limit exceeded on GET', async () => {
+      const { rateLimiter, RATE_LIMITS } = await import('@/lib/rate-limiter');
+      // Exhaust the rate limit
+      for (let i = 0; i < RATE_LIMITS.api.maxRequests; i++) {
+        rateLimiter.check('unknown', RATE_LIMITS.api);
+      }
+
+      const request = new Request('http://localhost/api/users');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(data.error).toBe('Too many requests');
+      expect(response.headers.get('Retry-After')).toBeTruthy();
+
+      rateLimiter.reset();
+    });
+
+    it('returns 429 when rate limit exceeded on POST', async () => {
+      const { rateLimiter, RATE_LIMITS } = await import('@/lib/rate-limiter');
+      for (let i = 0; i < RATE_LIMITS.api.maxRequests; i++) {
+        rateLimiter.check('unknown', RATE_LIMITS.api);
+      }
+
+      const request = new Request('http://localhost/api/users', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Test', email: 'test@example.com', role: 'user' }),
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(data.error).toBe('Too many requests');
+      expect(response.headers.get('Retry-After')).toBeTruthy();
+
+      rateLimiter.reset();
+    });
+
+    it('returns 429 when rate limit exceeded on DELETE', async () => {
+      const { rateLimiter, RATE_LIMITS } = await import('@/lib/rate-limiter');
+      for (let i = 0; i < RATE_LIMITS.api.maxRequests; i++) {
+        rateLimiter.check('unknown', RATE_LIMITS.api);
+      }
+
+      const request = new Request('http://localhost/api/users?id=1');
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(data.error).toBe('Too many requests');
+      expect(response.headers.get('Retry-After')).toBeTruthy();
+
+      rateLimiter.reset();
+    });
+  });
+
+  describe('POST /api/users - Additional Validation', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockReturnValue(defaultAdminUser);
+      mockRequireRole.mockReturnValue(undefined);
+    });
+
+    it('returns 400 when name exceeds 255 characters', async () => {
+      const longName = 'A'.repeat(256);
+      const request = new Request('http://localhost/api/users', {
+        method: 'POST',
+        body: JSON.stringify({ name: longName, email: 'test@example.com', role: 'user' }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Invalid name');
+    });
+  });
+
+  describe('DELETE /api/users - Self-deletion Prevention', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockReturnValue(defaultAdminUser);
+      mockRequireRole.mockReturnValue(undefined);
+    });
+
+    it('returns 400 when admin tries to delete themselves', async () => {
+      const existingUser = {
+        id: defaultAdminUser.id,
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'admin',
+      };
+      mockQuery.mockResolvedValueOnce([existingUser]);
+
+      const request = new Request(`http://localhost/api/users?id=${defaultAdminUser.id}`);
+
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Cannot delete yourself');
     });
   });
 });

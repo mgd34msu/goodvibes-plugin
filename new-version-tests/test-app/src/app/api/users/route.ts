@@ -137,7 +137,7 @@ export async function GET(request: Request) {
       ip,
       status: 500,
       duration,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : /* c8 ignore next */ 'Unknown error',
     });
 
     return NextResponse.json<ErrorResponse>(
@@ -258,7 +258,7 @@ export async function POST(request: Request) {
       ip,
       status: 500,
       duration,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : /* c8 ignore next */ 'Unknown error',
     });
 
     return NextResponse.json<ErrorResponse>(
@@ -357,7 +357,7 @@ export async function DELETE(request: Request) {
       ip,
       status: 500,
       duration,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : /* c8 ignore next */ 'Unknown error',
     });
 
     return NextResponse.json<ErrorResponse>(

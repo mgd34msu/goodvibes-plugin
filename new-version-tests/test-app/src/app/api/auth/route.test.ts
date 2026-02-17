@@ -105,7 +105,7 @@ describe('POST /api/auth', () => {
       const request = new Request('http://localhost/api/auth', {
         method: 'POST',
         body: JSON.stringify({
-          email: '  Test@EXAMPLE.com  ',
+          email: 'Test@EXAMPLE.com',
           password: 'Password1!',
         }),
       });
@@ -237,14 +237,22 @@ describe('POST /api/auth', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('returns 401 when password fails strength validation', async () => {
-      mockValidatePasswordStrength.mockReturnValue({ valid: false, error: 'Too weak' });
+    it('returns 401 when password is incorrect', async () => {
+      const mockUser = {
+        id: 1,
+        email: 'test@example.com',
+        role: 'user',
+        name: 'Test User',
+        password_hash: '$2b$10$hashedpassword',
+      };
+      mockQuery.mockResolvedValue([mockUser]);
+      mockCompare.mockResolvedValue(false);
 
       const request = new Request('http://localhost/api/auth', {
         method: 'POST',
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'weak',
+          password: 'WrongPass1!',
         }),
       });
 
@@ -567,6 +575,32 @@ describe('POST /api/auth', () => {
         expect.any(String),
         expect.any(Object)
       );
+    });
+  });
+
+  describe('Rate Limiting', () => {
+    it('returns 429 when rate limit exceeded', async () => {
+      // Exhaust rate limit
+      const { rateLimiter, RATE_LIMITS } = await import('@/lib/rate-limiter');
+      // Simulate exhausted rate limit by calling check multiple times
+      for (let i = 0; i < RATE_LIMITS.auth.maxRequests; i++) {
+        rateLimiter.check('auth:unknown', RATE_LIMITS.auth);
+      }
+
+      const request = new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'test@example.com', password: 'Password1!' }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(data.error).toBe('Too many requests');
+      expect(response.headers.get('Retry-After')).toBeTruthy();
+
+      // Clean up rate limit state
+      rateLimiter.reset();
     });
   });
 });

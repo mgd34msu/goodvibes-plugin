@@ -4868,8 +4868,9 @@ SECONDARY DIRECTIVE: Be token-efficient.
 ALWAYS provide reminders to subagents:
 1. Use .goodvibes/ memory and logging
 2. MANDATORY: Follow strict DPB Loops. D: Single discover call (batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.
-3. Use precision_engine tools, NEVER native tools
-4. CRITICAL: NEVER set sandbox=true. Only user can activate sandbox.
+3. precision_exec is for build/test/deploy ONLY (npm run, npx, git). NEVER use it to search files or read content
+4. NEVER use Bash cat, echo, heredoc workarounds unless precision tools have failed multiple attempts
+5. CRITICAL: NEVER set sandbox=true. Only user can activate sandbox.
 
 ---
 
@@ -4917,7 +4918,7 @@ Token multipliers: count_only ~0.05x | minimal ~0.2x | standard ~0.6x | verbose 
 
 Extract modes: outline (structure, 60-80% savings), symbols (exports, 70-90%), lines (ranges, 80-95%), content (full file, 0%).
 
-Common mistakes: Don't read outline then re-read content. Don't skip memory checks. Don't make sequential same-tool calls. Don't use verbose for writes.
+Common mistakes: Don't read outline then re-read content. Don't skip memory checks. Don't make sequential same-tool calls. Don't use verbose for writes. NEVER use precision_exec to run grep, find, rg, cat, ls.
 
 Escalation: Check error -> native tool for THAT task only -> return to precision -> log to failures.json.
 `,
@@ -4930,6 +4931,7 @@ Key rules: discover batches ALL queries into 1 call. Plan steps = zero tool call
 Discover: glob/grep/symbols/structural queries. Check .goodvibes/memory/ first. Skip only for 1-2 known files.
 Plan: list exact paths, dependencies, batch opportunities.
 Batch: batch_engine wrapping (best) > built-in batching (good) > sequential (only when dependent). Fix only failed ops.
+NEVER use precision_exec for file search -- use discover, precision_grep, precision_glob.
 `
 };
 async function loadPromptFiles() {
@@ -5200,7 +5202,26 @@ function isGitignored(patterns, relativePath, isDir) {
   const name = segments[segments.length - 1];
   let ignored = false;
   for (const p of patterns) {
-    if (p.dirOnly && !isDir) continue;
+    if (p.dirOnly && !isDir) {
+      let parentMatch = false;
+      for (let s = 0; s < segments.length - 1; s++) {
+        const parentPath = segments.slice(0, s + 1).join("/");
+        const parentName = segments[s];
+        if (p.raw.includes("/")) {
+          if (p.anchored) {
+            parentMatch = matchGlob(p.raw, parentPath);
+          } else {
+            parentMatch = matchGlob(p.raw, parentPath) || parentPath === p.raw;
+          }
+        } else {
+          parentMatch = matchGlob(p.raw, parentName);
+        }
+        if (parentMatch) break;
+      }
+      if (!parentMatch) continue;
+      ignored = !p.negated;
+      continue;
+    }
     let matches = false;
     if (p.raw.includes("/")) {
       if (p.raw.includes("**")) {

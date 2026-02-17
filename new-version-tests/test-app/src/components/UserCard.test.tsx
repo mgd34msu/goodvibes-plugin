@@ -439,5 +439,23 @@ describe('UserCard', () => {
 
       expect(screen.queryByText(/failed/i)).not.toBeInTheDocument();
     });
+
+    it('uses error message from JSON response body when available', async () => {
+      const user = userEvent.setup();
+      (global.fetch as any).mockResolvedValue({
+        ok: false,
+        statusText: 'Bad Request',
+        json: () => Promise.resolve({ error: 'Custom server error message' }),
+      });
+
+      render(<UserCard user={mockUser} onDelete={mockOnDelete} />);
+
+      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      await user.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Custom server error message')).toBeInTheDocument();
+      });
+    });
   });
 });

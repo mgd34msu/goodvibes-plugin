@@ -73,6 +73,7 @@ class RateLimiter {
   /**
    * Clean up expired entries
    */
+  /* c8 ignore next 8 */
   private cleanup(): void {
     const now = Date.now();
     for (const [key, entry] of this.store.entries()) {

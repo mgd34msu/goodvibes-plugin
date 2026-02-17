@@ -227,8 +227,27 @@ function isGitignored(
   let ignored = false;
 
   for (const p of patterns) {
-    // Skip dir-only patterns for files
-    if (p.dirOnly && !isDir) continue;
+    // For dirOnly patterns and files, check if file is inside a matching directory
+    if (p.dirOnly && !isDir) {
+      let parentMatch = false;
+      for (let s = 0; s < segments.length - 1; s++) {
+        const parentPath = segments.slice(0, s + 1).join('/');
+        const parentName = segments[s];
+        if (p.raw.includes('/')) {
+          if (p.anchored) {
+            parentMatch = matchGlob(p.raw, parentPath);
+          } else {
+            parentMatch = matchGlob(p.raw, parentPath) || parentPath === p.raw;
+          }
+        } else {
+          parentMatch = matchGlob(p.raw, parentName);
+        }
+        if (parentMatch) break;
+      }
+      if (!parentMatch) continue;
+      ignored = !p.negated;
+      continue;
+    }
 
     let matches = false;
 

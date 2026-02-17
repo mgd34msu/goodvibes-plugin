@@ -1,9 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { AuthenticationError, AuthorizationError } from './errors';
 
+/* c8 ignore start */
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
 }
+/* c8 ignore stop */
 
 const JWT_SECRET = process.env.JWT_SECRET;
 

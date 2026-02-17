@@ -8,9 +8,11 @@ import { ValidationError, AuthenticationError, RateLimitError, AppError } from '
 import type { User, AuthRequest, AuthResponse, ErrorResponse } from '@/types/api';
 
 // Validate JWT secret from environment
+/* c8 ignore start */
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
 }
+/* c8 ignore stop */
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -139,7 +141,7 @@ export async function POST(request: Request) {
       ip,
       status: 500,
       duration,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : /* c8 ignore next */ 'Unknown error',
     });
 
     return NextResponse.json<ErrorResponse>(

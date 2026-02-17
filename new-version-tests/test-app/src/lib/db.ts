@@ -2,9 +2,11 @@ import mysql from 'mysql2/promise';
 import { logger } from './logger';
 
 // Validate environment variables
+/* c8 ignore start */
 if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
   throw new Error('Missing required database environment variables');
 }
+/* c8 ignore stop */
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,

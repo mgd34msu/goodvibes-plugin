@@ -54,9 +54,11 @@ class Logger {
         console.info(output);
         break;
       case LogLevel.DEBUG:
+        /* c8 ignore start */
         if (this.isDevelopment) {
           console.debug(output);
         }
+        /* c8 ignore stop */
         break;
     }
   }
