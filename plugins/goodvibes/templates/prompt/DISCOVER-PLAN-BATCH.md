@@ -101,6 +101,67 @@ precision_exec:
   verbosity: minimal
 ```
 
+## Full DPB Cycle Example
+
+**D — Discover** (1 call, all queries batched):
+```yaml
+discover:
+  queries:
+    - id: components
+      type: glob
+      patterns: ["src/components/**/*.tsx", "src/ui/**/*.tsx"]
+    - id: api_routes
+      type: glob
+      patterns: ["src/app/api/**/*.ts", "src/pages/api/**/*.ts"]
+    - id: auth_usage
+      type: grep
+      pattern: "useAuth|getSession|withAuth"
+      glob: "src/**/*.{ts,tsx}"
+    - id: db_queries
+      type: grep
+      pattern: "prisma\\.|db\\."
+      glob: "src/**/*.ts"
+    - id: exported_hooks
+      type: symbols
+      query: "use"
+      kinds: ["function"]
+  verbosity: files_only
+```
+
+**P — Plan** (0 calls, cognitive only):
+"Found 5 components, 3 API routes, auth in 8 files. I'll read the 3 API routes + auth config in one call, then create the new endpoint + update barrel export + typecheck in one batch call."
+
+**B — Batch** (1 call, read + write + exec combined):
+```yaml
+batch:
+  operations:
+    read:
+      - files:
+          - { path: "src/app/api/users/route.ts", extract: content }
+          - { path: "src/app/api/auth/route.ts", extract: content }
+          - { path: "src/lib/auth.ts", extract: symbols }
+    write:
+      - files:
+          - { path: "src/app/api/profile/route.ts", content: "..." }
+          - { path: "src/app/api/index.ts", content: "..." }
+    exec:
+      - commands:
+          - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
+  config:
+    transaction: { mode: atomic }
+  verbosity: minimal
+```
+
+**Handling large results:** If discover or precision_grep returns too many matches, the output is truncated and full results are written to an overflow file. Use precision_read with line ranges to paginate:
+```yaml
+precision_read:
+  files:
+    - path: ".goodvibes/.overflow/discover_result.txt"
+      range: { start: 1, end: 100 }
+  verbosity: standard
+```
+Increment the range for subsequent pages: `{ start: 101, end: 200 }`, etc. To avoid overflow, start with `verbosity: count_only` to gauge scope, then narrow queries with more specific patterns.
+
 ## LOOP: When to Return to Discovery
 
 - **Scope changed** — discovery reveals situation differs from expected (e.g., feature already exists)
