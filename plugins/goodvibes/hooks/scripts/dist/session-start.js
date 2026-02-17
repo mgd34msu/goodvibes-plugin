@@ -4908,13 +4908,28 @@ Skills load automatically when relevant to your task.
 ### Fallback: Manual Skill Loading
 If a skill doesn't load automatically, use ToolSearch to find get_skill_content from registry-engine.
 `,
-  "PRECISION-MASTERY.md": `## PRECISION MASTERY
+  "PRECISION-MASTERY.md": `## PRECISION MASTERY (Auto-loaded for all subagents)
 
-Use precision_engine tools over native tools. Batch operations. Use minimal verbosity.
+Use precision_engine tools instead of native tools. Saves 75-95% tokens.
+
+Verbosity: write/edit=count_only, read=standard, grep(discovery)=files_only, grep(content)=matches, glob=paths_only, exec=minimal.
+Token multipliers: count_only ~0.05x | minimal ~0.2x | standard ~0.6x | verbose 1.0x
+
+Extract modes: outline (structure, 60-80% savings), symbols (exports, 70-90%), lines (ranges, 80-95%), content (full file, 0%).
+
+Common mistakes: Don't read outline then re-read content. Don't skip memory checks. Don't make sequential same-tool calls. Don't use verbose for writes.
+
+Escalation: Check error -> native tool for THAT task only -> return to precision -> log to failures.json.
 `,
-  "DISCOVER-PLAN-BATCH.md": `## DISCOVER-PLAN-BATCH
+  "DISCOVER-PLAN-BATCH.md": `## DISCOVER-PLAN-BATCH (Auto-loaded for all subagents)
 
-Follow DPB loop: Discover (1 call) -> Plan (0 calls) -> Batch (1 call). Target 3 tool calls per cycle.
+MANDATORY 3-call cycle: D (1 discover call, all queries batched) -> P (0 calls, plan in text) -> B (1 precision call, batched) -> P (0 calls) -> B (1 precision call) -> LOOP if needed.
+
+Key rules: discover batches ALL queries into 1 call. Plan steps = zero tool calls. Never sequential same-tool calls. ToolSearch not part of DPB.
+
+Discover: glob/grep/symbols/structural queries. Check .goodvibes/memory/ first. Skip only for 1-2 known files.
+Plan: list exact paths, dependencies, batch opportunities.
+Batch: batch_engine wrapping (best) > built-in batching (good) > sequential (only when dependent). Fix only failed ops.
 `
 };
 async function loadPromptFiles() {
