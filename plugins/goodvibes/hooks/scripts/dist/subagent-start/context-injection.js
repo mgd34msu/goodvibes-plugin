@@ -39,34 +39,34 @@ export const AGENT_SKILL_MAP = {
 /** Skill catalog with descriptions and validation scripts */
 export const SKILL_CATALOG = {
     // Protocol
-    'precision-mastery': { description: 'Optimal usage of precision engine tools for maximum token efficiency', path: 'protocol/precision-mastery', scripts: ['validate-precision-usage.sh'] },
-    'review-scoring': { description: 'Quantified scoring rubric and review format for WRFC loops', path: 'protocol/review-scoring', scripts: ['validate-review.sh', 'validate-fix.sh'] },
-    'discover-plan-batch': { description: 'Discover-Plan-Batch loop for all agents', path: 'protocol/discover-plan-batch', scripts: ['validate-dpb-compliance.sh'] },
-    'goodvibes-memory': { description: 'Reading/writing persistent memory and logging system', path: 'protocol/goodvibes-memory', scripts: ['validate-memory-usage.sh'] },
-    'error-recovery': { description: 'Error recovery procedures with escalation tiers', path: 'protocol/error-recovery', scripts: ['validate-error-recovery.sh'] },
+    'precision-mastery': { description: 'Token-efficient file operations, extract modes, verbosity, batching', path: 'protocol/precision-mastery', scripts: ['validate-precision-usage.sh'] },
+    'review-scoring': { description: '10-dimension scoring rubric for WRFC review loops', path: 'protocol/review-scoring', scripts: ['validate-review.sh', 'validate-fix.sh'] },
+    'discover-plan-batch': { description: 'Strict 3-call DPB execution loop', path: 'protocol/discover-plan-batch', scripts: ['validate-dpb-compliance.sh'] },
+    'goodvibes-memory': { description: 'Cross-session memory (decisions, patterns, failures, preferences)', path: 'protocol/goodvibes-memory', scripts: ['validate-memory-usage.sh'] },
+    'error-recovery': { description: 'Tiered error recovery and escalation procedures', path: 'protocol/error-recovery', scripts: ['validate-error-recovery.sh'] },
     // Orchestration
-    'fullstack-feature': { description: 'End-to-end feature development across full stack', path: 'orchestration/fullstack-feature', scripts: ['validate-feature-workflow.sh'] },
-    'task-orchestration': { description: 'Decomposing requests into parallel agent tasks with WRFC coordination', path: 'orchestration/task-orchestration', scripts: ['validate-orchestration.sh'] },
+    'fullstack-feature': { description: 'End-to-end multi-layer feature development', path: 'orchestration/fullstack-feature', scripts: ['validate-feature-workflow.sh'] },
+    'task-orchestration': { description: 'Parallel agent decomposition and WRFC coordination', path: 'orchestration/task-orchestration', scripts: ['validate-orchestration.sh'] },
     // Outcome
-    'ai-integration': { description: 'AI/LLM integration: chat, streaming, RAG, embeddings, tool calling', path: 'outcome/ai-integration', scripts: ['validate-ai-integration.sh'] },
-    'api-design': { description: 'API endpoint design: REST, GraphQL, tRPC, validation, error handling', path: 'outcome/api-design', scripts: ['api-checklist.sh'] },
-    'authentication': { description: 'Auth setup: login, JWT, OAuth, sessions, RBAC, protected routes', path: 'outcome/authentication', scripts: ['auth-checklist.sh'] },
-    'component-architecture': { description: 'Component design: composition, state, render optimization, file organization', path: 'outcome/component-architecture', scripts: ['validate-components.sh'] },
-    'database-layer': { description: 'Database/ORM setup: schema, migrations, queries, connection pooling', path: 'outcome/database-layer', scripts: ['database-checklist.sh'] },
-    'deployment': { description: 'Deployment patterns: Vercel, Railway, Fly.io, Docker, AWS', path: 'outcome/deployment', scripts: ['validate-deployment.sh'] },
-    'payment-integration': { description: 'Payment processing: Stripe, LemonSqueezy, subscriptions, webhooks', path: 'outcome/payment-integration', scripts: ['validate-payments.sh'] },
-    'service-integration': { description: 'External service integration: email, CMS, file uploads', path: 'outcome/service-integration', scripts: ['validate-services.sh'] },
-    'state-management': { description: 'State architecture: server state, client state, form state, URL state', path: 'outcome/state-management', scripts: ['validate-state.sh'] },
-    'styling-system': { description: 'CSS architecture: Tailwind, design tokens, responsive, dark mode', path: 'outcome/styling-system', scripts: ['validate-styling.sh'] },
-    'testing-strategy': { description: 'Testing patterns: Vitest/Jest, RTL, Playwright E2E, MSW mocking', path: 'outcome/testing-strategy', scripts: ['validate-tests.sh'] },
+    'ai-integration': { description: 'AI/LLM chat, streaming, RAG, embeddings', path: 'outcome/ai-integration', scripts: ['validate-ai-integration.sh'] },
+    'api-design': { description: 'REST/GraphQL/tRPC endpoint design and validation', path: 'outcome/api-design', scripts: ['api-checklist.sh'] },
+    'authentication': { description: 'Login, OAuth, JWT, sessions, RBAC', path: 'outcome/authentication', scripts: ['auth-checklist.sh'] },
+    'component-architecture': { description: 'UI component composition, rendering, accessibility', path: 'outcome/component-architecture', scripts: ['validate-components.sh'] },
+    'database-layer': { description: 'Schema design, ORM setup, migrations, query optimization', path: 'outcome/database-layer', scripts: ['database-checklist.sh'] },
+    'deployment': { description: 'CI/CD, Docker, Vercel/Railway/Fly.io/AWS', path: 'outcome/deployment', scripts: ['validate-deployment.sh'] },
+    'payment-integration': { description: 'Stripe/LemonSqueezy/Paddle checkout and subscriptions', path: 'outcome/payment-integration', scripts: ['validate-payments.sh'] },
+    'service-integration': { description: 'Email, CMS, file uploads, analytics', path: 'outcome/service-integration', scripts: ['validate-services.sh'] },
+    'state-management': { description: 'Server/client/form/URL state patterns', path: 'outcome/state-management', scripts: ['validate-state.sh'] },
+    'styling-system': { description: 'Tailwind, design tokens, dark mode, responsive', path: 'outcome/styling-system', scripts: ['validate-styling.sh'] },
+    'testing-strategy': { description: 'Vitest/Jest, Testing Library, Playwright, MSW', path: 'outcome/testing-strategy', scripts: ['validate-tests.sh'] },
     // Quality
-    'accessibility-audit': { description: 'WCAG 2.1 AA audit: semantic HTML, ARIA, keyboard, screen reader, contrast', path: 'quality/accessibility-audit', scripts: ['validate-accessibility-audit.sh'] },
-    'code-review': { description: 'Systematic code review methodology with precision tools', path: 'quality/code-review', scripts: ['validate-code-review.sh'] },
-    'debugging': { description: 'Systematic debugging methodology with precision tools', path: 'quality/debugging', scripts: ['validate-debugging.sh'] },
-    'performance-audit': { description: 'Performance audit: bundle, database, rendering, network, Core Web Vitals', path: 'quality/performance-audit', scripts: ['validate-performance-audit.sh'] },
-    'project-onboarding': { description: 'Codebase analysis, architecture mapping, dependency audit, convention detection', path: 'quality/project-onboarding', scripts: ['validate-onboarding.sh'] },
-    'refactoring': { description: 'Systematic refactoring methodology with precision tools', path: 'quality/refactoring', scripts: ['validate-refactoring.sh'] },
-    'security-audit': { description: 'Security audit: auth, input validation, data protection, dependency scanning', path: 'quality/security-audit', scripts: ['validate-security-audit.sh'] },
+    'accessibility-audit': { description: 'WCAG 2.1 AA compliance audit', path: 'quality/accessibility-audit', scripts: ['validate-accessibility-audit.sh'] },
+    'code-review': { description: '10-dimension weighted code review', path: 'quality/code-review', scripts: ['validate-code-review.sh'] },
+    'debugging': { description: 'Error analysis, runtime debugging, root cause analysis', path: 'quality/debugging', scripts: ['validate-debugging.sh'] },
+    'performance-audit': { description: 'Bundle, database, rendering, Core Web Vitals', path: 'quality/performance-audit', scripts: ['validate-performance-audit.sh'] },
+    'project-onboarding': { description: 'Codebase analysis and architecture mapping', path: 'quality/project-onboarding', scripts: ['validate-onboarding.sh'] },
+    'refactoring': { description: 'Safe structural improvements with validation', path: 'quality/refactoring', scripts: ['validate-refactoring.sh'] },
+    'security-audit': { description: 'Auth, input validation, dependencies, infrastructure', path: 'quality/security-audit', scripts: ['validate-security-audit.sh'] },
 };
 /**
  * Builds context for a subagent based on agent type and project.
@@ -123,17 +123,18 @@ export async function buildSubagentContext(cwd, agentType, _sessionId) {
     };
     // Build protocol skills section
     const protocolSection = [
-        'Protocol skills (MUST load before starting work):',
+        'Protocol skills (Always Active):',
         formatSkillList(PROTOCOL_SKILLS)
     ].join('\n');
     // Build role-specific skills section
     const roleSkillsSection = outcomeSkills.length > 0
         ? ['Skills for your role:', formatSkillList(outcomeSkills)].join('\n')
         : 'Skills for your role: none — load as needed';
-    // Build mandatory load instruction
+    // Build progressive disclosure load instruction
     const loadInstruction = [
-        'MANDATORY: Load assigned skills using get_skill_content from registry-engine BEFORE starting work.',
-        'Skills contain workflows, checklists, and validation scripts that define quality standards.'
+        'Your assigned skills load automatically based on task relevance. Protocol skills (precision-mastery, discover-plan-batch, review-scoring, goodvibes-memory, error-recovery) are always active.',
+        'Skills contain workflows, checklists, and validation scripts that define quality standards.',
+        'Fallback: If a skill does not load automatically, use ToolSearch to find get_skill_content from registry-engine.'
     ].join('\n');
     // Build script validation instruction
     const validationInstruction = [
