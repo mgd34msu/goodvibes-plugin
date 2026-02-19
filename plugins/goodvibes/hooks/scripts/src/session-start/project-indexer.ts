@@ -105,22 +105,11 @@ const EXCLUDED_FILENAMES = new Set([
 ]);
 
 /**
- * A file entry in the v3 tree format with size and token estimates.
- * NOTE: This interface must match precision-engine/src/state/project-index.ts ProjectFileEntry.
- * Different packages prevent direct import — keep in sync manually.
- */
-interface ProjectFileEntry {
-  name: string;
-  size: number;
-  tokens: number;
-}
-
-/**
- * Project file index structure (version 3).
+ * Project file index structure (version 4).
  * Must match the format expected by precision-engine's ProjectIndex class.
  */
 interface ProjectFileIndex {
-  version: 3;
+  version: 4;
   created_at: string;
   updated_at: string;
   project_root: string;
@@ -130,7 +119,7 @@ interface ProjectFileIndex {
     index_duration_ms: number;
     partial?: boolean;
   };
-  tree: Record<string, ProjectFileEntry[]>;
+  tree: Record<string, Record<string, number>>;
 }
 
 /**
@@ -388,12 +377,15 @@ function shouldExclude(
  * media/binary files, lock files, IDE directories, and .gitignore'd paths.
  * This keeps the index lean for token-efficient context injection.
  *
+ * The output uses the v4 tree format: each directory maps to an object of
+ * filename -> token count (Math.ceil(fileSize / 4)).
+ *
  * @param projectDir - Absolute path to the project root
  */
 export async function buildProjectIndex(projectDir: string): Promise<void> {
   const startMs = Date.now();
-  // tree: directory path (relative, empty string = root) -> sorted file entries with size/tokens
-  const tree: Record<string, ProjectFileEntry[]> = {};
+  // tree: directory path (relative, empty string = root) -> { filename: tokenCount }
+  const tree: Record<string, Record<string, number>> = {};
   let isPartial = false;
   let totalFiles = 0;
 
@@ -436,7 +428,7 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
         continue;
       }
 
-      // Group files by directory with size and token estimates
+      // Group files by directory with token estimates
       const dirPart = path.dirname(relativePath);
       const treeKey = dirPart === '.' ? '' : dirPart.split(path.sep).join('/');
       const filename = entry.name;
@@ -451,22 +443,26 @@ export async function buildProjectIndex(projectDir: string): Promise<void> {
       }
 
       if (!tree[treeKey]) {
-        tree[treeKey] = [];
+        tree[treeKey] = {};
       }
-      tree[treeKey].push({ name: filename, size: fileSize, tokens: Math.ceil(fileSize / 4) });
+      tree[treeKey][filename] = Math.ceil(fileSize / 4);
       totalFiles++;
     }
 
     // Sort file entries by name within each directory for determinism
     for (const key of Object.keys(tree)) {
-      tree[key].sort((a, b) => a.name.localeCompare(b.name));
+      const sorted: Record<string, number> = {};
+      for (const name of Object.keys(tree[key]).sort()) {
+        sorted[name] = tree[key][name];
+      }
+      tree[key] = sorted;
     }
 
     const totalDirs = Object.keys(tree).length;
 
     // Build index
     const index: ProjectFileIndex = {
-      version: 3,
+      version: 4,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       project_root: projectDir,

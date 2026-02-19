@@ -1,6 +1,6 @@
 /**
  * precision_write handler - Create/write files with encoding support
- * SPEC-v2 Section 13.1.6 compliant
+ * Handles file creation and overwrite with atomic writes.
  *
  * Features:
  * - Template engine support (handlebars, ejs, none)
@@ -351,7 +351,7 @@ async function writeFile(
       try {
         const projectIndex = ProjectIndex.getInstance();
         const relativePath = path.relative(process.cwd(), validatedPath);
-        projectIndex.upsertFile(relativePath);
+        projectIndex.upsertFile(relativePath, Math.ceil(content.length / 4));
       } catch {
         // Index update is non-critical — don't fail the write
       }

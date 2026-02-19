@@ -5339,17 +5339,21 @@ async function buildProjectIndex(projectDir) {
       } catch {
       }
       if (!tree[treeKey]) {
-        tree[treeKey] = [];
+        tree[treeKey] = {};
       }
-      tree[treeKey].push({ name: filename, size: fileSize, tokens: Math.ceil(fileSize / 4) });
+      tree[treeKey][filename] = Math.ceil(fileSize / 4);
       totalFiles++;
     }
     for (const key of Object.keys(tree)) {
-      tree[key].sort((a, b) => a.name.localeCompare(b.name));
+      const sorted = {};
+      for (const name of Object.keys(tree[key]).sort()) {
+        sorted[name] = tree[key][name];
+      }
+      tree[key] = sorted;
     }
     const totalDirs = Object.keys(tree).length;
     const index = {
-      version: 3,
+      version: 4,
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString(),
       project_root: projectDir,

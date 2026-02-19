@@ -22,7 +22,7 @@
  */
 
 import { exec } from 'child_process';
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import * as path from 'path';
 import { logger } from '../logging.js';
@@ -722,7 +722,13 @@ export class HooksManager {
             : filePath;
 
           if (context.tool_name === 'write') {
-            index.upsertFile(relativePath);
+            // Stat the file to get accurate token estimate
+            try {
+              const fileStat = await stat(path.resolve(process.cwd(), relativePath));
+              index.upsertFile(relativePath, Math.ceil(fileStat.size / 4));
+            } catch {
+              index.upsertFile(relativePath);
+            }
           } else {
             index.touchFile(relativePath);
           }

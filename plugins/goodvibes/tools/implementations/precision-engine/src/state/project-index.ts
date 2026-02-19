@@ -8,19 +8,10 @@ import * as path from 'path';
 import { existsSync } from 'fs';
 
 /**
- * A file entry in the v3 tree format with size and token estimates.
- */
-export interface ProjectFileEntry {
-  name: string;    // Filename only (no directory)
-  size: number;    // File size in bytes
-  tokens: number;  // Estimated token count (Math.ceil(size / 4))
-}
-
-/**
- * Index format stored in .goodvibes/project-index.json (version 3)
+ * Index format stored in .goodvibes/project-index.json (version 4)
  */
 export interface ProjectFileIndex {
-  version: 3;
+  version: 4;
   created_at: string;           // ISO timestamp
   updated_at: string;           // ISO timestamp
   project_root: string;         // Absolute path
@@ -30,8 +21,25 @@ export interface ProjectFileIndex {
     index_duration_ms: number;
     partial?: boolean;
   };
-  /** Directory tree: maps directory paths to file entry arrays. Empty string key ('') holds root-level files. */
-  tree: Record<string, ProjectFileEntry[]>;
+  /** Directory tree: maps directory paths to filename→tokens maps. Empty string key ('') holds root-level files. */
+  tree: Record<string, Record<string, number>>;
+}
+
+/**
+ * V3 index format (array-of-objects tree) for migration.
+ */
+interface ProjectFileIndexV3 {
+  version: 3;
+  created_at: string;
+  updated_at: string;
+  project_root: string;
+  stats: {
+    total_files: number;
+    total_dirs: number;
+    index_duration_ms: number;
+    partial?: boolean;
+  };
+  tree: Record<string, Array<{ name: string; size: number; tokens: number }>>;
 }
 
 /**
@@ -69,11 +77,10 @@ interface LegacyProjectFileIndex {
 
 /**
  * Individual file entry in the in-memory index.
- * Path, size and tokens are stored for efficient lookup and planning.
+ * Path and tokens are stored for efficient lookup and planning.
  */
 export interface FileEntry {
   p: string;      // Relative path from project root
-  size: number;   // File size in bytes
   tokens: number; // Estimated token count
 }
 
@@ -115,14 +122,30 @@ export class ProjectIndex {
   }
 
   /**
-   * Flatten a v3 tree object into a sorted FileEntry array.
+   * Flatten a v4 tree object into a sorted FileEntry array.
    */
-  private static flattenTree(tree: Record<string, ProjectFileEntry[]>): FileEntry[] {
+  private static flattenTree(tree: Record<string, Record<string, number>>): FileEntry[] {
+    const entries: FileEntry[] = [];
+    for (const [dir, files] of Object.entries(tree)) {
+      for (const [name, tokens] of Object.entries(files)) {
+        const p = dir ? `${dir}/${name}` : name;
+        entries.push({ p, tokens });
+      }
+    }
+    entries.sort((a, b) => a.p.localeCompare(b.p));
+    return entries;
+  }
+
+  /**
+   * Flatten a v3 tree (array-of-objects) into a sorted FileEntry array.
+   * Used during v3→v4 migration.
+   */
+  private static flattenTreeV3(tree: Record<string, Array<{ name: string; size: number; tokens: number }>>): FileEntry[] {
     const entries: FileEntry[] = [];
     for (const [dir, fileEntries] of Object.entries(tree)) {
       for (const entry of fileEntries) {
         const p = dir ? `${dir}/${entry.name}` : entry.name;
-        entries.push({ p, size: entry.size, tokens: entry.tokens });
+        entries.push({ p, tokens: entry.tokens });
       }
     }
     entries.sort((a, b) => a.p.localeCompare(b.p));
@@ -131,14 +154,14 @@ export class ProjectIndex {
 
   /**
    * Flatten a v2 tree (string arrays) into a sorted FileEntry array.
-   * Used during v2→v3 migration where no size data is available.
+   * Used during v2→v4 migration where no token data is available.
    */
   private static flattenTreeV2(tree: Record<string, string[]>): FileEntry[] {
     const entries: FileEntry[] = [];
     for (const [dir, filenames] of Object.entries(tree)) {
       for (const name of filenames) {
         const p = dir ? `${dir}/${name}` : name;
-        entries.push({ p, size: 0, tokens: 0 });
+        entries.push({ p, tokens: 0 });
       }
     }
     entries.sort((a, b) => a.p.localeCompare(b.p));
@@ -146,20 +169,24 @@ export class ProjectIndex {
   }
 
   /**
-   * Convert an internal FileEntry array back to v3 tree format for disk write.
+   * Convert an internal FileEntry array back to v4 tree format for disk write.
    */
-  private static entriesToTree(entries: FileEntry[]): Record<string, ProjectFileEntry[]> {
-    const tree: Record<string, ProjectFileEntry[]> = {};
+  private static entriesToTree(entries: FileEntry[]): Record<string, Record<string, number>> {
+    const tree: Record<string, Record<string, number>> = {};
     for (const entry of entries) {
       const slashIdx = entry.p.lastIndexOf('/');
       const dir = slashIdx === -1 ? '' : entry.p.substring(0, slashIdx);
       const name = slashIdx === -1 ? entry.p : entry.p.substring(slashIdx + 1);
-      if (!tree[dir]) tree[dir] = [];
-      tree[dir].push({ name, size: entry.size, tokens: entry.tokens });
+      if (!tree[dir]) tree[dir] = {};
+      tree[dir][name] = entry.tokens;
     }
-    // Sort filenames within each directory
+    // Sort keys within each directory for determinism
     for (const key of Object.keys(tree)) {
-      tree[key].sort((a, b) => a.name.localeCompare(b.name));
+      const sorted: Record<string, number> = {};
+      for (const name of Object.keys(tree[key]).sort()) {
+        sorted[name] = tree[key][name];
+      }
+      tree[key] = sorted;
     }
     return tree;
   }
@@ -178,18 +205,33 @@ export class ProjectIndex {
         if (!parsed) {
           this.index = null;
           this.files = [];
-        } else if (parsed.version === 3) {
-          // Current format: v3 tree with size/tokens
+        } else if (parsed.version === 4) {
+          // Current format: v4 tree with filename→tokens maps
           this.index = parsed as ProjectFileIndex;
           this.files = ProjectIndex.flattenTree(parsed.tree || {});
+        } else if (parsed.version === 3) {
+          // V3 format: tree with array-of-objects — migrate to v4
+          const v3 = parsed as ProjectFileIndexV3;
+          const v3tree = v3.tree || {};
+          this.files = ProjectIndex.flattenTreeV3(v3tree);
+          const v4tree = ProjectIndex.entriesToTree(this.files);
+          this.index = {
+            version: 4,
+            created_at: v3.created_at,
+            updated_at: v3.updated_at,
+            project_root: v3.project_root,
+            stats: v3.stats,
+            tree: v4tree,
+          };
+          this.markDirty(); // auto-flush to v4
         } else if (parsed.version === 2) {
-          // V2 format: tree with string arrays — migrate to v3 (size/tokens unknown, set to 0)
+          // V2 format: tree with string arrays — migrate to v4 (tokens unknown, set to 0)
           const v2 = parsed as ProjectFileIndexV2;
           const v2tree = v2.tree || {};
           this.files = ProjectIndex.flattenTreeV2(v2tree);
-          const v3tree = ProjectIndex.entriesToTree(this.files);
+          const v4tree = ProjectIndex.entriesToTree(this.files);
           this.index = {
-            version: 3,
+            version: 4,
             created_at: v2.created_at,
             updated_at: v2.updated_at,
             project_root: v2.project_root,
@@ -198,16 +240,17 @@ export class ProjectIndex {
               total_dirs: v2.stats.total_dirs,
               index_duration_ms: v2.stats.index_duration_ms,
             },
-            tree: v3tree,
+            tree: v4tree,
           };
+          this.markDirty(); // auto-flush to v4
         } else if (parsed.version === 1) {
-          // Legacy format: flat files array — convert to v3
+          // Legacy format: flat files array — migrate to v4
           const legacy = parsed as LegacyProjectFileIndex;
-          this.files = (legacy.files || []).map((f) => ({ p: f.p, size: 0, tokens: 0 }));
+          this.files = (legacy.files || []).map((f) => ({ p: f.p, tokens: 0 }));
           this.files.sort((a, b) => a.p.localeCompare(b.p));
           const tree = ProjectIndex.entriesToTree(this.files);
           this.index = {
-            version: 3,
+            version: 4,
             created_at: legacy.created_at,
             updated_at: legacy.updated_at,
             project_root: legacy.project_root,
@@ -218,6 +261,7 @@ export class ProjectIndex {
             },
             tree,
           };
+          this.markDirty(); // auto-flush to v4
         } else {
           console.error(`[ProjectIndex] Unsupported index version: ${parsed?.version}`);
           this.index = null;
@@ -271,13 +315,12 @@ export class ProjectIndex {
   /**
    * Add or update a file entry in the index.
    * @param relativePath - Path relative to project root
-   * @param size - File size in bytes (optional; 0 if unknown)
+   * @param tokens - Estimated token count (optional; 0 if unknown)
    */
-  public upsertFile(relativePath: string, size = 0): void {
+  public upsertFile(relativePath: string, tokens = 0): void {
     if (!this.index) return;
 
-    const tokens = Math.ceil(size / 4);
-    const newEntry: FileEntry = { p: relativePath, size, tokens };
+    const newEntry: FileEntry = { p: relativePath, tokens };
 
     const existingIndex = this.findEntryIndex(relativePath);
     if (existingIndex >= 0) {
@@ -295,13 +338,13 @@ export class ProjectIndex {
   }
 
   /**
-   * Alias for upsertFile (used after edits — size unknown, keeps existing or sets 0).
+   * Alias for upsertFile (used after edits — tokens unknown, keeps existing or sets 0).
    */
   public touchFile(relativePath: string): void {
-    // Preserve existing size/tokens if entry already exists
+    // Preserve existing tokens if entry already exists
     const existingIdx = this.findEntryIndex(relativePath);
-    const existingSize = existingIdx >= 0 ? this.files[existingIdx].size : 0;
-    this.upsertFile(relativePath, existingSize);
+    const existingTokens = existingIdx >= 0 ? this.files[existingIdx].tokens : 0;
+    this.upsertFile(relativePath, existingTokens);
   }
 
   /**
@@ -447,7 +490,7 @@ export class ProjectIndex {
       const tree = ProjectIndex.entriesToTree(this.files);
       const indexToWrite: ProjectFileIndex = {
         ...this.index,
-        version: 3,
+        version: this.index.version,
         stats: {
           ...this.index.stats,
           total_dirs: Object.keys(tree).length,

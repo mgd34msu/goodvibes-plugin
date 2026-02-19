@@ -50,8 +50,8 @@ function makeMockIndex(overrides: Partial<{
 }
 
 /** Build sample FileEntry objects. */
-function makeFileEntry(p: string, tokens = 100, size = 1000): FileEntry {
-  return { p, size, tokens };
+function makeFileEntry(p: string, tokens = 100): FileEntry {
+  return { p, tokens };
 }
 
 /** Sample decisions JSON content. */
