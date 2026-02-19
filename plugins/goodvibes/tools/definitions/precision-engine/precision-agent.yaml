@@ -38,7 +38,7 @@ inputSchema:
           description: Model override — provider-specific (e.g. "sonnet", "opus", "gemini-2.5-pro").
         cli_flags:
           type: object
-          description: Provider-specific CLI flags passed through as-is (e.g. { "disallowedTools": "Write,Edit" }).
+          description: 'Provider-specific CLI flags passed through as-is (e.g. { "disallowedTools": "Write,Edit" }).'
           additionalProperties: true
         max_cost:
           type: ["number", "null"]

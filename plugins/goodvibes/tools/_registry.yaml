@@ -1,9 +1,9 @@
 version: 2.0.0
-generated: '2026-02-17T07:57:25.289Z'
-total: 76
+generated: '2026-02-19T06:08:12.014Z'
+total: 71
 servers:
   - name: precision-engine
-    count: 11
+    count: 12
     tools:
       - name: precision_write
         path: precision-engine/precision-write.yaml
@@ -14,7 +14,7 @@ servers:
         path: precision-engine/precision-exec.yaml
         description: >-
           Execute shell commands with batch support, timeout, and expectations checking. ' + 'Captures stdout, stderr,
-          and exit code.
+          and exit code. ' + 'Supports file_ops (copy, move, delete) that execute BEFORE commands.
       - name: precision_fetch
         path: precision-engine/precision-fetch.yaml
         description: >-
@@ -64,6 +64,12 @@ servers:
         description: >-
           Token-efficient file editing with atomic transactions, ' + 'conflict detection, and validation. Supports
           exact, fuzzy, regex, and AST matching formats.
+      - name: precision_agent
+        path: precision-engine/precision-agent.yaml
+        description: >-
+          Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' + 'Supports background
+          (non-blocking) and foreground (blocking) execution. ' + 'Optionally injects context files and a project
+          dossier into the agent prompt.
   - name: registry-engine
     count: 7
     tools:
@@ -480,10 +486,17 @@ search_index:
       - stderr
       - exit
       - code
+      - supports
+      - file_ops
+      - copy
+      - move
+      - delete
+      - that
+      - before
     path: precision-engine/precision-exec.yaml
     description: >-
       Execute shell commands with batch support, timeout, and expectations checking. ' + 'Captures stdout, stderr, and
-      exit code.
+      exit code. ' + 'Supports file_ops (copy, move, delete) that execute BEFORE commands.
     server: precision-engine
   - name: precision_fetch
     keywords:
@@ -745,6 +758,39 @@ search_index:
     description: >-
       Token-efficient file editing with atomic transactions, ' + 'conflict detection, and validation. Supports exact,
       fuzzy, regex, and AST matching formats.
+    server: precision-engine
+  - name: precision_agent
+    keywords:
+      - precision
+      - agent
+      - spawn
+      - headless
+      - session
+      - across
+      - multiple
+      - providers
+      - claude
+      - gemini
+      - codex
+      - supports
+      - background
+      - non
+      - blocking
+      - foreground
+      - execution
+      - optionally
+      - injects
+      - context
+      - files
+      - project
+      - dossier
+      - into
+      - prompt
+    path: precision-engine/precision-agent.yaml
+    description: >-
+      Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' + 'Supports background
+      (non-blocking) and foreground (blocking) execution. ' + 'Optionally injects context files and a project dossier
+      into the agent prompt.
     server: precision-engine
   - name: search_skills
     keywords:
