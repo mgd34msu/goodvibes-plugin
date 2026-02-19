@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-02-19T07:41:41.722Z'
+generated: '2026-02-19T18:29:54.699Z'
 total: 25
 categories:
   orchestration:
@@ -639,53 +639,6 @@ categories:
           - integration
   protocol:
     _items:
-      - name: gather-plan-apply
-        path: protocol/gather-plan-apply
-        description: >-
-          MANDATORY before starting any task. Enforces the strict 3-call-per-cycle execution loop that prevents tool
-          call sprawl. G: Single discover call with all queries batched. P: Plan in text with zero tool calls. A: Single
-          batched precision call. Every GPA cycle targets exactly 3 tool calls. Covers dependency analysis, batch
-          opportunities, scope estimation, and loop-back triggers.
-        triggers: &ref_13
-          - discover
-          - plan
-          - batch
-          - mandatory
-          - before
-          - starting
-          - any
-          - task
-          - enforces
-          - strict
-          - call
-          - per
-          - cycle
-          - execution
-          - loop
-          - that
-          - prevents
-          - tool
-          - sprawl
-          - single
-          - all
-          - queries
-          - batched
-          - text
-          - zero
-          - calls
-          - precision
-          - every
-          - gpa
-          - targets
-          - exactly
-          - covers
-          - dependency
-          - analysis
-          - opportunities
-          - scope
-          - estimation
-          - back
-          - triggers
       - name: error-recovery
         path: protocol/error-recovery
         description: >-
@@ -693,7 +646,7 @@ categories:
           execution. Covers tool failures, build errors, test failures, type errors, and unexpected runtime results.
           Includes tiered escalation (retry, fallback, memory-informed diagnosis, orchestrator escalation) and
           post-recovery logging to prevent recurrence.
-        triggers: &ref_14
+        triggers: &ref_13
           - error
           - recovery
           - always
@@ -732,6 +685,62 @@ categories:
           - logging
           - prevent
           - recurrence
+      - name: gather-plan-apply
+        path: protocol/gather-plan-apply
+        description: >-
+          MANDATORY before starting any task. Enforces the GPA execution loop that prevents tool call sprawl. G: GATHER
+          phase combines discover queries + memory reads + file reads into one phase. P: Plan in text with zero tool
+          calls. A: APPLY all writes/edits/verification in one phase. One call per tool type per phase — batch all
+          same-type operations together. Covers dependency analysis, batch opportunities, scope estimation, and
+          loop-back triggers.
+        triggers: &ref_14
+          - gather
+          - plan
+          - apply
+          - mandatory
+          - before
+          - starting
+          - any
+          - task
+          - enforces
+          - gpa
+          - execution
+          - loop
+          - that
+          - prevents
+          - tool
+          - call
+          - sprawl
+          - phase
+          - combines
+          - discover
+          - queries
+          - memory
+          - reads
+          - file
+          - into
+          - one
+          - text
+          - zero
+          - calls
+          - all
+          - writes
+          - edits
+          - verification
+          - per
+          - type
+          - batch
+          - same
+          - operations
+          - together
+          - covers
+          - dependency
+          - analysis
+          - opportunities
+          - scope
+          - estimation
+          - back
+          - triggers
       - name: goodvibes-memory
         path: protocol/goodvibes-memory
         description: >-
@@ -1364,22 +1373,22 @@ search_index:
       "add tests", "write unit tests", "set up E2E testing", "improve coverage", or "add mocks". Covers Vitest/Jest unit
       tests, React Testing Library component tests, Playwright E2E tests, MSW API mocking, test organization and naming,
       fixture management, coverage targets and thresholds, snapshot testing, and CI integration.
-  - name: gather-plan-apply
-    keywords: *ref_13
-    path: protocol/gather-plan-apply
-    description: >-
-      MANDATORY before starting any task. Enforces the strict 3-call-per-cycle execution loop that prevents tool call
-      sprawl. G: Single discover call with all queries batched. P: Plan in text with zero tool calls. A: Single batched
-      precision call. Every GPA cycle targets exactly 3 tool calls. Covers dependency analysis, batch opportunities,
-      scope estimation, and loop-back triggers.
   - name: error-recovery
-    keywords: *ref_14
+    keywords: *ref_13
     path: protocol/error-recovery
     description: >-
       ALWAYS load before starting any task. Defines systematic recovery procedures when things go wrong during
       execution. Covers tool failures, build errors, test failures, type errors, and unexpected runtime results.
       Includes tiered escalation (retry, fallback, memory-informed diagnosis, orchestrator escalation) and post-recovery
       logging to prevent recurrence.
+  - name: gather-plan-apply
+    keywords: *ref_14
+    path: protocol/gather-plan-apply
+    description: >-
+      MANDATORY before starting any task. Enforces the GPA execution loop that prevents tool call sprawl. G: GATHER
+      phase combines discover queries + memory reads + file reads into one phase. P: Plan in text with zero tool calls.
+      A: APPLY all writes/edits/verification in one phase. One call per tool type per phase — batch all same-type
+      operations together. Covers dependency analysis, batch opportunities, scope estimation, and loop-back triggers.
   - name: goodvibes-memory
     keywords: *ref_15
     path: protocol/goodvibes-memory

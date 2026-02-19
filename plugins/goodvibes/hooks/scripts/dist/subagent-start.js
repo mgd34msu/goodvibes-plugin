@@ -829,7 +829,7 @@ function getDefaultConfig() {
 var PROTOCOL_SKILLS = [
   "precision-mastery",
   "review-scoring",
-  "discover-plan-batch",
+  "gather-plan-apply",
   "goodvibes-memory",
   "error-recovery"
 ];
@@ -855,7 +855,7 @@ var SKILL_CATALOG = {
   // Protocol
   "precision-mastery": { description: "Token-efficient file operations, extract modes, verbosity, batching", path: "protocol/precision-mastery", scripts: ["validate-precision-usage.sh"] },
   "review-scoring": { description: "10-dimension scoring rubric for WRFC review loops", path: "protocol/review-scoring", scripts: ["validate-review.sh", "validate-fix.sh"] },
-  "discover-plan-batch": { description: "Strict 3-call DPB execution loop", path: "protocol/discover-plan-batch", scripts: ["validate-dpb-compliance.sh"] },
+  "gather-plan-apply": { description: "Strict 3-call GPA execution loop", path: "protocol/gather-plan-apply", scripts: ["validate-gpa-compliance.sh"] },
   "goodvibes-memory": { description: "Cross-session memory (decisions, patterns, failures, preferences)", path: "protocol/goodvibes-memory", scripts: ["validate-memory-usage.sh"] },
   "error-recovery": { description: "Tiered error recovery and escalation procedures", path: "protocol/error-recovery", scripts: ["validate-error-recovery.sh"] },
   // Orchestration
@@ -924,7 +924,7 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
   ].join("\n");
   const roleSkillsSection = outcomeSkills.length > 0 ? ["Skills for your role:", formatSkillList(outcomeSkills)].join("\n") : "Skills for your role: none \u2014 load as needed";
   const loadInstruction = [
-    "Your assigned skills load automatically based on task relevance. Protocol skills (precision-mastery, discover-plan-batch, review-scoring, goodvibes-memory, error-recovery) are always active.",
+    "Your assigned skills load automatically based on task relevance. Protocol skills (precision-mastery, gather-plan-apply, review-scoring, goodvibes-memory, error-recovery) are always active.",
     "Skills contain workflows, checklists, and validation scripts that define quality standards.",
     "Fallback: If a skill does not load automatically, use ToolSearch to find get_skill_content from registry-engine."
   ].join("\n");
