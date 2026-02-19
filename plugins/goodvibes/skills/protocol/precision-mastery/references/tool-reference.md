@@ -350,6 +350,31 @@ Available keys: `sandbox`, `cache_mode`, `cache_max_mb`, `safe_overwrite`, `back
 
 ---
 
+## `precision_agent`
+
+Spawn headless Claude sessions with dossier-based context injection.
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|---------|---------|-------------|
+| `prompt` | string | Yes | - | The task prompt for the spawned agent |
+| `dossier` | object | No | - | Structured context supplement |
+| `dossier.context_files` | array | No | - | File paths to inject as context |
+| `dossier.memory_injection` | object | No | - | Memory entries to inject (decisions, patterns, failures) |
+| `dossier.output_format` | object | No | - | Expected response structure |
+| `model` | string | No | `sonnet` | Model to use: `opus`, `sonnet`, `haiku` |
+| `cli_flags` | array | No | - | Additional CLI flags (security-critical flags are blocked) |
+| `background` | boolean | No | `true` | Run in background (recommended) |
+| `cwd` | string | No | process.cwd() | Working directory for the agent |
+| `verbosity` | enum | No | `standard` | Response verbosity |
+
+### Blocked CLI Flags
+
+For security, these flags cannot be passed via `cli_flags`: `--model`, `-m`, `--dangerously-skip-permissions`, `--print`, `-p`, `--stdin`.
+
+---
+
 ## Quick Reference Table
 
 | Tool | Primary Use Case | Key Parameters |
@@ -365,3 +390,4 @@ Available keys: `sandbox`, `cache_mode`, `cache_max_mb`, `safe_overwrite`, `back
 | `precision_symbols` | Extract code symbols | `mode`, `kinds`, `output.format: locations` |
 | `precision_notebook` | Edit Jupyter cells | `path`, `operations` |
 | `precision_config` | Manage configuration | `action`, `key`, `value` |
+| `precision_agent` | Spawn headless Claude sessions | `prompt`, `dossier`, `model`, `cli_flags` |

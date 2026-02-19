@@ -252,7 +252,7 @@ describe('context-injection', () => {
         expect(result.additionalContext).toContain('mcp__plugin_goodvibes_precision-engine__discover');
       });
 
-      it('should mention batch for batch operations', async () => {
+      it('should mention GPA loops for batch operations', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
 
@@ -262,8 +262,7 @@ describe('context-injection', () => {
           'session-123'
         );
 
-        expect(result.additionalContext).toContain('batch');
-        expect(result.additionalContext).toContain('mcp__plugin_goodvibes_batch-engine__batch');
+        expect(result.additionalContext).toContain('GPA loops');
       });
 
       it('should include batch processing reminder for all agent types', async () => {

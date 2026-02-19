@@ -490,6 +490,10 @@ precision_config:
   action: get | set | reload, key?, value?
   Useful keys: sandbox, cache_mode, verbosity_defaults, exec_default_timeout_ms
 
+precision_agent:
+  prompt, dossier?: {context_files?, memory_injection?, output_format?}, model?, cli_flags?
+  Spawns headless Claude sessions with dossier-based context injection. Background execution.
+
 ### Additional Tool Information
 
 #### precision_fetch

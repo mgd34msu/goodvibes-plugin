@@ -415,6 +415,11 @@ Do I know the exact file paths?
             +-- No -- Use discover with multiple query types
 ```
 
+**Special-purpose tools** (not in tree above):
+- `precision_notebook` — Jupyter notebook cell operations (replace/insert/delete with cell_id targeting)
+- `precision_agent` — Spawn headless Claude sessions with dossier-based context injection
+- `precision_config` — Runtime configuration (get/set/reload)
+
 ## Performance Benchmarks
 
 **Token Savings**:

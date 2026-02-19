@@ -6,7 +6,7 @@
 
 > Plug in. Receive good vibes.
 
-A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 75 MCP tools across 6 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
+A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 71 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
 
 ## At a Glance
 
@@ -14,7 +14,7 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 |-----------|-------|-------------|
 | Agents | 11 | Specialized roles (Opus/Sonnet) for engineering, review, testing, architecture, deployment, integration, planning |
 | Skills | 173 | Technology-specific knowledge modules covering modern web stacks |
-| MCP Tools | 75 | Token-efficient tools across 6 specialized engines |
+| MCP Tools | 71 | Token-efficient tools across 5 specialized engines |
 | Hooks | 10 | Lifecycle automation (tool redirection, context injection, error recovery) |
 | Output Styles | 2 | Interactive (vibecoding) or fully autonomous (justvibes) |
 | Templates | 3 | Production scaffolds for Next.js and React |
@@ -77,9 +77,9 @@ Set your output style:
 /output-style goodvibes:justvibes    # Autonomous mode
 ```
 
-## Precision Engine - 10 Tools
+## Precision Engine - 12 Tools
 
-The core of GoodVibes. 10 tools that replace Claude Code's native tools with enhanced, token-efficient alternatives.
+The core of GoodVibes. 12 tools that replace Claude Code's native tools with enhanced, token-efficient alternatives.
 
 ### Tool Overview
 
@@ -95,6 +95,8 @@ The core of GoodVibes. 10 tools that replace Claude Code's native tools with enh
 | discover | (unique) | Parallel multi-query: run grep + glob + symbol + structural queries simultaneously, results keyed by query ID |
 | precision_symbols | (unique) | Workspace-wide or per-file symbol search, kind filtering, export filtering, signature extraction, grouping by file/kind |
 | precision_config | (unique) | Runtime configuration for precision engine (get/set/reload) |
+| precision_notebook | NotebookEdit | Jupyter notebook cell operations (replace/insert/delete), cell_id targeting (nbformat 4.5+), batch operations |
+| precision_agent | (unique) | Spawn headless Claude sessions with dossier-based context injection, background execution, output capture |
 
 ### Batch Operations
 

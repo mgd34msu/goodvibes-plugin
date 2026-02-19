@@ -156,6 +156,10 @@ GoodVibes provides 5 specialized MCP servers:
 - `precision_exec` - Execute commands with expectations and output control
 - `precision_fetch` - Web fetching with caching and extraction
 - `precision_symbols` - Workspace symbol search
+- `precision_notebook` - Jupyter notebook cell operations with cell_id targeting
+- `precision_config` - Runtime configuration (get/set/reload)
+- `discover` - Parallel multi-query discovery (grep + glob + symbols + structural)
+- `precision_agent` - Spawn headless Claude sessions with dossier-based context
 
 **Configuration**:
 ```json
