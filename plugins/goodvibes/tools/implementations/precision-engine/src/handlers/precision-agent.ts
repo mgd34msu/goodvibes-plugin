@@ -543,6 +543,12 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
   // ─── Timeout ─────────────────────────────────────────────────────────────
   const timeoutMs = options.timeout_ms ?? DEFAULT_AGENT_TIMEOUT_MS;
 
+  // Build a clean environment without CLAUDECODE vars to prevent nested-session
+  // detection errors when spawning child Claude CLI processes.
+  const cleanEnv: Record<string, string> = { ...process.env } as Record<string, string>;
+  delete cleanEnv['CLAUDECODE'];
+  delete cleanEnv['CLAUDE_PARENT_SESSION_ID'];
+
   if (runInBackground) {
     // Background mode: spawn via ProcessManager, return immediately.
     // Prompt is written to a temp file and passed via shell stdin redirect
@@ -555,6 +561,7 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
       const bgResult = processManager.spawn(executable, cmdArgs, {
         cwd: process.cwd(),
         stdinFile: promptTmpFile,
+        env: cleanEnv,
       });
 
       // Schedule temp file cleanup after spawn succeeds.
@@ -598,6 +605,7 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
         shell: false,
         timeout: timeoutMs,
         input: finalPrompt, // Pass prompt via stdin, not as CLI arg
+        env: cleanEnv,
       });
 
       const duration = Date.now() - startTime;

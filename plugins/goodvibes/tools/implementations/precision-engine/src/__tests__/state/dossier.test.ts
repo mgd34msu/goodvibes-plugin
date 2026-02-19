@@ -730,8 +730,8 @@ describe('DossierGenerator — generate', () => {
       task: { description: 'Task' },
       include_memory: false,
     });
-    // fs.readFile should not have been called
-    expect(vi.mocked(fsPromises.readFile)).not.toHaveBeenCalled();
+    // fs.readFile is called once for package.json (stack detection), but NOT for memory files
+    expect(vi.mocked(fsPromises.readFile)).toHaveBeenCalledTimes(1);
     expect(dossier.context.decisions).toEqual([]);
     expect(dossier.context.patterns).toEqual([]);
     expect(dossier.context.failures).toEqual([]);
@@ -758,7 +758,8 @@ describe('DossierGenerator — generate', () => {
       task: { description: 'Task' },
       include_memory: true,
     });
-    expect(vi.mocked(fsPromises.readFile)).toHaveBeenCalledTimes(3);
+    // 3 memory files (decisions, patterns, failures) + 1 package.json for stack detection
+    expect(vi.mocked(fsPromises.readFile)).toHaveBeenCalledTimes(4);
   });
 
   it('produces a valid JSON-serializable dossier', async () => {

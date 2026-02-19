@@ -17,7 +17,7 @@ async function build() {
       format: 'cjs',
       outfile: join(__dirname, 'dist/index.cjs'),
       sourcemap: true,
-      external: ['@ast-grep/napi', '@vscode/ripgrep'],
+      external: ['@ast-grep/napi', '@vscode/ripgrep', 'better-sqlite3'],
       minify: false,
       keepNames: true,
     });
