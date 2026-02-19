@@ -129,7 +129,10 @@ export const TOOL_SPECIFIC_DEFAULTS: Record<string, { verbosity?: OutputMode }> 
 
 /**
  * Merge defaults into input, with input values taking precedence.
- * Renamed from applyDefaults to avoid confusion with ModeManager.applyDefaults().
+ * Renamed from applyDefaults for clarity — distinct from ModeManager.applyDefaults()
+ * which has different semantics (class method with per-tool dispatch logic).
+ *
+ * @public Generic utility for handlers and future external consumers.
  * @template T - The input type (must be a record)
  * @param input - The input object to apply defaults to
  * @param defaults - The defaults to apply (will not override existing values)

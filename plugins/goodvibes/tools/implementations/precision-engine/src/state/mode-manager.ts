@@ -148,6 +148,13 @@ const DEFAULT_MODE: ModeConfig = {
   },
 };
 
+/**
+ * Result type for getModeConfig().
+ * When the requested mode is unknown, returns a fallback config with `fallback: true`
+ * to allow callers to distinguish between a configured mode and a fallback.
+ */
+export type ModeConfigResult = ModeConfig | (ModeConfig & { fallback: true });
+
 /** All built-in modes, keyed by name. */
 const BUILT_IN_MODES: Record<string, ModeConfig> = {
   vibecoding: VIBECODING_MODE,
@@ -273,7 +280,7 @@ export class ModeManager {
    * When falling back, the returned config's `name` reflects the actual
    * config used ('default'), not the requested unknown mode name.
    */
-  getModeConfig(): ModeConfig & { fallback?: true } {
+  getModeConfig(): ModeConfigResult {
     const resolved = this.resolveModeConfig(this.currentModeName);
     if (resolved) return resolved;
     return { ...DEFAULT_MODE, fallback: true };
