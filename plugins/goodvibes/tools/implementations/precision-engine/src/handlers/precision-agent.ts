@@ -425,8 +425,8 @@ async function generateDossierText(
  * Handle precision_agent tool calls.
  *
  * Spawns a headless AI session with the configured provider, optionally
- * injecting context files and a dossier into the prompt. Supports both
- * background (non-blocking) and foreground (blocking) execution modes.
+ * injecting context files and a dossier into the prompt. Always runs in
+ * background (non-blocking) mode — returns immediately with agent_id.
  */
 export const handlePrecisionAgent: ToolHandler = async (args) => {
   const elapsed = startTimer();

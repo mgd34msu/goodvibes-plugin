@@ -1,7 +1,7 @@
 /**
  * Tests for precision_agent handler.
  *
- * Uses vi.mock to stub child_process and ProcessManager so no actual
+ * Uses vi.mock to stub ProcessManager so no actual
  * AI agents are spawned during the test suite.
  */
 
@@ -14,11 +14,6 @@ import { expectSuccess, expectError } from '../test-utils.js';
 
 const { mockProcessManagerSpawn } = vi.hoisted(() => ({
   mockProcessManagerSpawn: vi.fn(),
-}));
-
-// Mock child_process module (spawn kept for completeness; execFile no longer used)
-vi.mock('child_process', () => ({
-  spawn: vi.fn(),
 }));
 
 // Mock ProcessManager singleton used by the handler
