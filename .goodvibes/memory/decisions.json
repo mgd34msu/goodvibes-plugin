@@ -248,5 +248,15 @@
     "scope": ["precision-engine/src/state/precision-runtime.ts", "precision-engine/src/index.ts"],
     "confidence": "high",
     "status": "active"
+  },
+  {
+    "id": "dec_20260218_210000",
+    "date": "2026-02-18T21:00:00Z",
+    "category": "architecture",
+    "what": "4 unified hook events (PrePrecisionTool, PostPrecisionTool, OnPrecisionError, OnPrecisionMutation) with filter-based tool scoping",
+    "why": "CamelCase matches Claude Code convention. Filter by tool_name instead of per-tool events. Adding new tools never requires new hook events. Built-in hooks active by default even without config.",
+    "scope": ["precision-engine/src/state/hooks.ts", "precision-engine/src/index.ts"],
+    "confidence": "high",
+    "status": "active"
   }
 ]

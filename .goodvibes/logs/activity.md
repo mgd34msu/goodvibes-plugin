@@ -1,3 +1,39 @@
+## 2026-02-18: Precision Engine v2 — Phase 4G Hooks System
+
+**Task**: Implement 4 unified hook events with filter-based tool scoping, 3 hook types, 4 built-in hooks, and config management
+
+**Plan**: precision-engine-v2-design.md Section 6 (lines 494-586)
+
+**Status**: COMPLETE
+
+**Completed Items**:
+- HooksManager singleton with PrePrecisionTool, PostPrecisionTool, OnPrecisionError, OnPrecisionMutation events
+- Built-in hooks: record_telemetry, update_index, invalidate_cache, log_failure (active by default)
+- Script hooks via child_process.exec with shellEscape template substitution
+- MCP hook type (placeholder with warning log)
+- Filter-based tool scoping (filter.tool array)
+- Deep clone of default hooks to prevent cross-instance mutation
+- Integration with PrecisionRuntime and executeHandler dispatch wrapper
+- precision_config action=hooks with list/enable/disable/add/remove operations
+- persistToConfig saves only user-modified hooks (filters out defaults)
+- isHookEnabled gates telemetry recording in executeHandler
+- 64 new tests (1110 total across 39 files)
+
+**Files Modified**:
+- src/state/hooks.ts (new)
+- src/__tests__/state/hooks.test.ts (new)
+- src/state/precision-runtime.ts
+- src/index.ts
+- src/handlers/precision-config.ts
+- src/schemas/index.ts
+- src/state/index.ts
+
+**Review Score**: 10/10 (7.2 -> 9.4 -> 9.9 -> 10/10 after 2 fix cycles)
+
+**Commit**: 223a33c
+
+---
+
 ## 2026-02-18: Precision Engine v2 — Phase 3 Implementation
 
 **Task**: Implement Phase 3 of precision engine v2: PrecisionRuntime architecture (3F)
