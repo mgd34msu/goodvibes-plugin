@@ -287,6 +287,7 @@ interface FileOpResult {
   error?: string;
   dry_run?: boolean;
   affected_paths?: string[];
+  skipped_paths?: string[];
 }
 
 /**
@@ -1198,7 +1199,7 @@ function computeRelativeImport(importingFile: string, targetFile: string, origin
  * @param projectRoot - Absolute project root path (restricts file scanning)
  * @returns List of absolute paths for files that were modified
  */
-async function updateImports(oldPath: string, newPath: string, projectRoot: string): Promise<string[]> {
+async function updateImports(oldPath: string, newPath: string, projectRoot: string): Promise<{ modified: string[]; skipped: string[] }> {
   // Normalize: strip extensions for comparison
   const oldPathNoExt = normalizeImportPath(oldPath);
   const oldPathNoExtNormalized = oldPathNoExt.split(path.sep).join('/');
@@ -1236,6 +1237,7 @@ async function updateImports(oldPath: string, newPath: string, projectRoot: stri
   const callLineRegex = /\b(?:require|import)\s*\(\s*(['"])([^'"]+)\1\s*\)/;
 
   const modifiedFiles: string[] = [];
+  const skippedFiles: string[] = [];
 
   for (const filePath of files) {
     // Skip the moved file itself
@@ -1245,6 +1247,7 @@ async function updateImports(oldPath: string, newPath: string, projectRoot: stri
     try {
       content = await fs.readFile(filePath, 'utf-8');
     } catch {
+      skippedFiles.push(filePath);
       continue;
     }
 
@@ -1305,12 +1308,13 @@ async function updateImports(oldPath: string, newPath: string, projectRoot: stri
         await fs.writeFile(filePath, newContent, 'utf-8');
         modifiedFiles.push(filePath);
       } catch {
-        // Best-effort: skip files we cannot write
+        // Best-effort: track files we cannot write
+        skippedFiles.push(filePath);
       }
     }
   }
 
-  return modifiedFiles;
+  return { modified: modifiedFiles, skipped: skippedFiles };
 }
 
 /**
@@ -1406,11 +1410,15 @@ async function handleFileOps(fileOps: FileOpSpec[]): Promise<FileOpResult[]> {
         if (opts.update_imports) {
           // Rewrite import paths in all TS/JS files that reference the old path
           if (!cachedProjectRoot) cachedProjectRoot = await getProjectRoot();
-          result.affected_paths = await updateImports(
+          const importUpdate = await updateImports(
             path.resolve(op.source),
             path.resolve(op.destination),
             cachedProjectRoot,
           );
+          result.affected_paths = importUpdate.modified;
+          if (importUpdate.skipped.length > 0) {
+            result.skipped_paths = importUpdate.skipped;
+          }
         }
         result.success = true;
       } else if (op.op === 'delete') {
