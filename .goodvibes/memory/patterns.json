@@ -1,5 +1,21 @@
 [
   {
+    "id": "pat_20260219_003000",
+    "name": "WasmSqliteBundling",
+    "description": "Use sql.js instead of better-sqlite3 for SQLite in esbuild-bundled projects. sql.js is pure WASM, bundles cleanly. Requires async initialize(), locateFile guard for bundled context, and manual persist (debounced).",
+    "when_to_use": "Any esbuild/webpack-bundled Node.js project needing SQLite without native addons",
+    "example_files": ["precision-engine/src/state/telemetry.ts", "precision-engine/build.mjs"],
+    "keywords": ["sql.js", "sqlite", "wasm", "esbuild", "bundle", "native", "better-sqlite3"]
+  },
+  {
+    "id": "pat_20260219_004500",
+    "name": "EnvPassthroughNotMerge",
+    "description": "When spawning child processes with a pre-constructed env object, use options.env ?? process.env (nullish coalescing) instead of { ...process.env, ...options.env } (spread merge). Spread re-introduces deleted keys.",
+    "when_to_use": "Any child_process.spawn where the caller has intentionally removed env vars",
+    "example_files": ["precision-engine/src/state/process-manager.ts"],
+    "keywords": ["process.env", "spawn", "env", "nullish", "coalescing", "CLAUDECODE"]
+  },
+  {
     "id": "pat_20260218_235800",
     "name": "LazyGetterSingleton",
     "description": "Export a function that returns the singleton instead of exporting the instance directly. Prevents module-level initialization race conditions.",

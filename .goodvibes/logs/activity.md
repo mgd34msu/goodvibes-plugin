@@ -1,5 +1,39 @@
 # Activity Log
 
+## 2026-02-19: Replace better-sqlite3 with sql.js + Fix Env Variable Leaks
+
+**Task**: Replace better-sqlite3 native addon with sql.js WASM SQLite for marketplace compatibility. Fix env variable merge bugs in process-manager.ts and precision-exec.ts.
+
+**Plan**: N/A (orchestrator coordination)
+
+**Status**: COMPLETE
+
+**Completed Items**:
+- Rewrote telemetry.ts from better-sqlite3 to sql.js (async init, debounced persist, corrupt DB recovery)
+- Fixed process-manager.ts env merge bug (options.env ?? process.env)
+- Fixed precision-exec.ts background spawn missing process.env base
+- Added locateFile guard for WASM resolution in bundled context
+- Zero-copy Buffer export for persist()
+- Updated tests (1264/1264 pass)
+- Removed TEMPORARY-FIX.md
+
+**Files Modified**:
+- telemetry.ts (full rewrite)
+- precision-runtime.ts (async init)
+- telemetry.test.ts (async patterns)
+- process-manager.ts (env fix)
+- precision-exec.ts (bg env fix)
+- build.mjs (WASM copy step)
+- package.json (dep swap)
+- TEMPORARY-FIX.md (deleted)
+- dist/sql-wasm.wasm (new)
+
+**Review Score**: 10/10 (all 3 chains)
+
+**Commit**: 3bd5eed
+
+---
+
 ## 2026-02-18: Phase 6J — Gap Analysis & Fix Cycle
 
 **Task**: Comprehensive gap analysis comparing precision-engine-v2-design.md against actual implementation, fixing all discrepancies to 10/10 across 5 WRFC streams.

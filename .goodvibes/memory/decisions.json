@@ -1,5 +1,25 @@
 [
   {
+    "id": "dec_20260219_003000",
+    "date": "2026-02-19T00:30:00Z",
+    "category": "library",
+    "what": "Replace better-sqlite3 with sql.js for telemetry",
+    "why": "Native C++ addon cannot be bundled by esbuild; marketplace installs lack node_modules. sql.js is pure WASM and bundles cleanly.",
+    "scope": ["precision-engine/src/state/telemetry.ts", "precision-engine/build.mjs", "precision-engine/package.json"],
+    "confidence": "high",
+    "status": "active"
+  },
+  {
+    "id": "dec_20260219_004500",
+    "date": "2026-02-19T00:45:00Z",
+    "category": "pattern",
+    "what": "Use nullish coalescing for env passthrough in spawn",
+    "why": "Spread merge ({ ...process.env, ...options.env }) restores deleted keys. Use options.env ?? process.env to trust caller's env as-is.",
+    "scope": ["precision-engine/src/state/process-manager.ts"],
+    "confidence": "high",
+    "status": "active"
+  },
+  {
     "id": "dec_20260215_180000",
     "date": "2026-02-15T18:00:00Z",
     "category": "architecture",

@@ -1,3 +1,26 @@
+## 2026-02-19: Replace better-sqlite3 with sql.js for Telemetry
+
+**Context**: better-sqlite3 is a native C++ addon with a compiled .node binary that cannot be bundled by esbuild. When externalized, it requires node_modules at runtime. Marketplace installs gitignore node_modules, causing the MCP server to fail to start.
+
+**Options Considered**:
+1. **Keep better-sqlite3 external** — Ship node_modules with plugin
+   - Pros: No code changes
+   - Cons: Bloats plugin, fragile cross-platform
+2. **sql.js (WASM SQLite)** — Pure WebAssembly, bundles cleanly
+   - Pros: No native deps, works everywhere, same SQL API
+   - Cons: Async init, no WAL mode, manual persist
+3. **Flat file JSON** — Simple key-value store
+   - Pros: Zero deps
+   - Cons: Loses SQL query capabilities, poor performance at scale
+
+**Decision**: sql.js (Option 2)
+
+**Rationale**: Maintains full SQLite query capabilities while eliminating the native binding problem. WASM bundles cleanly with esbuild. Async init is a one-time cost.
+
+**Implications**: Telemetry.initialize() must be awaited before getInstance(). Persistence is debounced (5s) rather than WAL-based.
+
+---
+
 ## 2026-02-18: Precision Engine v2 — Absorb Batch Engine
 
 **Context**: Batch engine reimplements everything independently (raw fs.readFile, child_process.exec) instead of delegating to precision engine. Zero production usage (batches_completed: 0). Discovery phase handler NOT implemented.
