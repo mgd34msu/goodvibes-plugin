@@ -547,7 +547,7 @@ precision_edit:
 
 - **precision-mastery**: Use precision_read/precision_edit for memory file operations
 - **error-recovery**: Check failures.json as first step in error recovery
-- **discover-plan-batch**: Include memory read in discovery phase
+- **gather-plan-apply**: Include memory read in discovery phase
 - **review-scoring**: Reviewers check if memory was consulted before work started
 
 ---

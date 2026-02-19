@@ -6,23 +6,23 @@ This guide provides the complete agent-skill assignment decision tables and exam
 
 | Work Type | Agent Type | Rationale | Required Skills |
 |-----------|------------|-----------|------------------|
-| Implement API endpoints | engineer | Code creation, database integration | discover-plan-batch, precision-mastery, trpc/rest-api-design, prisma |
-| Implement UI components | engineer | Component creation, styling | discover-plan-batch, precision-mastery, react, nextjs, tailwindcss |
-| Create database schema | engineer | Schema design, migrations | discover-plan-batch, precision-mastery, prisma/drizzle, postgresql |
-| Implement authentication | engineer | Auth integration, security | discover-plan-batch, precision-mastery, clerk/nextauth/lucia |
-| Create type definitions | engineer | TypeScript types, validation | discover-plan-batch, precision-mastery |
+| Implement API endpoints | engineer | Code creation, database integration | gather-plan-apply, precision-mastery, trpc/rest-api-design, prisma |
+| Implement UI components | engineer | Component creation, styling | gather-plan-apply, precision-mastery, react, nextjs, tailwindcss |
+| Create database schema | engineer | Schema design, migrations | gather-plan-apply, precision-mastery, prisma/drizzle, postgresql |
+| Implement authentication | engineer | Auth integration, security | gather-plan-apply, precision-mastery, clerk/nextauth/lucia |
+| Create type definitions | engineer | TypeScript types, validation | gather-plan-apply, precision-mastery |
 | Review code quality | reviewer | Standards enforcement | review-scoring, type-safety, error-handling, async-patterns |
-| Analyze patterns | architect | Discovery, analysis, planning | discover-plan-batch, precision-mastery |
+| Analyze patterns | architect | Discovery, analysis, planning | gather-plan-apply, precision-mastery |
 | Plan architecture | architect | High-level design | (architect-specific skills) |
-| Fix bugs | engineer | Debugging, root cause analysis | discover-plan-batch, precision-mastery, error-recovery |
-| Refactor code | engineer | Code restructuring | discover-plan-batch, precision-mastery |
-| Write tests | tester | Test creation, coverage, validation | discover-plan-batch, precision-mastery, error-recovery |
-| Research solutions | architect | Discovery, documentation, analysis | discover-plan-batch, precision-mastery |
-| Deploy application | deployer | Deployment, infrastructure setup | discover-plan-batch, precision-mastery |
-| Integrate AI/ML services | integrator-ai | AI/ML service integration | discover-plan-batch, precision-mastery |
-| Integrate external APIs | integrator-services | External service integration | discover-plan-batch, precision-mastery |
-| Manage application state | integrator-state | State management, data flow | discover-plan-batch, precision-mastery |
-| Coordinate workflows | planner | High-level orchestration, planning | discover-plan-batch, precision-mastery |
+| Fix bugs | engineer | Debugging, root cause analysis | gather-plan-apply, precision-mastery, error-recovery |
+| Refactor code | engineer | Code restructuring | gather-plan-apply, precision-mastery |
+| Write tests | tester | Test creation, coverage, validation | gather-plan-apply, precision-mastery, error-recovery |
+| Research solutions | architect | Discovery, documentation, analysis | gather-plan-apply, precision-mastery |
+| Deploy application | deployer | Deployment, infrastructure setup | gather-plan-apply, precision-mastery |
+| Integrate AI/ML services | integrator-ai | AI/ML service integration | gather-plan-apply, precision-mastery |
+| Integrate external APIs | integrator-services | External service integration | gather-plan-apply, precision-mastery |
+| Manage application state | integrator-state | State management, data flow | gather-plan-apply, precision-mastery |
+| Coordinate workflows | planner | High-level orchestration, planning | gather-plan-apply, precision-mastery |
 
 ## Technology Stack -> Skills Mapping
 
@@ -75,7 +75,7 @@ This guide provides the complete agent-skill assignment decision tables and exam
 tasks:
   - task_id: setup-nextauth-config
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextauth, nextjs]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextauth, nextjs]
     description: Configure NextAuth with GitHub provider
     scope:
       files:
@@ -88,7 +88,7 @@ tasks:
 
   - task_id: add-session-wrapper
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, react]
     description: Wrap app with SessionProvider
     scope:
       files:
@@ -99,7 +99,7 @@ tasks:
 
   - task_id: protect-routes
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
     description: Add middleware to protect authenticated routes
     scope:
       files:
@@ -110,7 +110,7 @@ tasks:
 
   - task_id: add-auth-components
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, shadcn-ui]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, shadcn-ui]
     description: Create login/logout buttons and user profile display
     scope:
       files:
@@ -123,7 +123,7 @@ tasks:
 
   - task_id: review-auth-implementation
     agent: reviewer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling, async-patterns]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling, async-patterns]
     description: Review authentication implementation for security and best practices
     scope:
       files:
@@ -154,7 +154,7 @@ tasks:
 tasks:
   - task_id: create-post-schema
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, prisma, postgresql]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, prisma, postgresql]
     description: Add Post model to Prisma schema
     scope:
       files:
@@ -165,7 +165,7 @@ tasks:
 
   - task_id: create-post-types
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory]
     description: Create TypeScript types and Zod schemas for Post
     scope:
       files:
@@ -176,7 +176,7 @@ tasks:
 
   - task_id: create-post-api
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
     description: Implement tRPC router for post CRUD operations
     scope:
       files:
@@ -202,7 +202,7 @@ tasks:
 tasks:
   - task_id: create-dashboard-layout
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react, tailwindcss]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, react, tailwindcss]
     description: Create dashboard page with grid layout
     scope:
       files:
@@ -213,7 +213,7 @@ tasks:
 
   - task_id: create-stats-widget
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui, trpc]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui, trpc]
     description: Build user stats widget (posts count, views, etc.)
     scope:
       files:
@@ -224,7 +224,7 @@ tasks:
 
   - task_id: create-activity-widget
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui, trpc]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui, trpc]
     description: Build recent activity widget (latest posts, comments)
     scope:
       files:
@@ -235,7 +235,7 @@ tasks:
 
   - task_id: create-actions-widget
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react, tailwindcss, shadcn-ui]
     description: Build quick actions widget (create post, view profile)
     scope:
       files:
@@ -246,7 +246,7 @@ tasks:
 
   - task_id: test-dashboard-widgets
     agent: tester
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react, nextjs]
     description: Write integration tests for dashboard widgets
     scope:
       files:
@@ -274,7 +274,7 @@ tasks:
 tasks:
   - task_id: update-user-schema
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, prisma, postgresql]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, prisma, postgresql]
     description: Add emailVerified and verificationToken fields to User model
     scope:
       files:
@@ -285,7 +285,7 @@ tasks:
 
   - task_id: create-verification-api
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
     description: Add API endpoints for sending and verifying email tokens
     scope:
       files:
@@ -296,7 +296,7 @@ tasks:
 
   - task_id: update-signup-flow
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, trpc]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, trpc]
     description: Update signup to send verification email
     scope:
       files:
@@ -308,7 +308,7 @@ tasks:
 
   - task_id: create-verify-page
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, trpc]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react, nextjs, trpc]
     description: Create email verification page
     scope:
       files:
@@ -334,7 +334,7 @@ tasks:
 tasks:
   - task_id: analyze-data-fetching
     agent: architect
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory]
     description: Discover all data fetching patterns in components
     scope:
       directories:
@@ -346,7 +346,7 @@ tasks:
 
   - task_id: create-server-actions
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, prisma]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, prisma]
     description: Create server actions based on discovered patterns
     scope:
       files:
@@ -359,7 +359,7 @@ tasks:
 
   - task_id: refactor-pages
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, react]
     description: Update app pages to use server actions
     scope:
       directories:
@@ -370,7 +370,7 @@ tasks:
 
   - task_id: refactor-components
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Update components to use server actions
     scope:
       directories:
@@ -484,7 +484,7 @@ blocked_by: [analyze-patterns]
 ### Always Include (Protocol Skills)
 
 Every agent task must include:
-- discover-plan-batch
+- gather-plan-apply
 - precision-mastery
 - error-recovery
 - goodvibes-memory
@@ -551,7 +551,7 @@ skills: [trpc, prisma]
 **Good:**
 ```yaml
 task_id: create-api
-skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
+skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
 ```
 
 ### Mistake 2: Vague Scope
@@ -601,7 +601,7 @@ agent: engineer
 ```yaml
 task_id: review-code
 agent: reviewer
-skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling]
+skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling]
 ```
 
 ### Mistake 5: Over-Parallelization

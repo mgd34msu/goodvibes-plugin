@@ -66,7 +66,7 @@ printf '\n'
 # Check 2: Agent prompts include skill references
 printf '[CHECK 2] Verifying agent prompts include skill references...\n'
 AGENT_PROMPT_PATTERNS="(## Skills Available|skills:|Skills to use)"
-SKILL_LIST_PATTERNS="(discover-plan-batch|precision-mastery|error-recovery|goodvibes-memory)"
+SKILL_LIST_PATTERNS="(gather-plan-apply|precision-mastery|error-recovery|goodvibes-memory)"
 
 AGENT_PROMPTS=$(grep -n -i -E "$AGENT_PROMPT_PATTERNS" -- "$TRANSCRIPT" || true)
 
@@ -96,7 +96,7 @@ if [[ "$FIRST_SPAWN_LINE" -gt 0 ]]; then
     fi
     
     if [[ "$PROTOCOL_SKILLS_FOUND" == "false" ]]; then
-      VIOLATIONS+=("Agent prompts missing protocol skills (discover-plan-batch, precision-mastery, etc.)")
+      VIOLATIONS+=("Agent prompts missing protocol skills (gather-plan-apply, precision-mastery, etc.)")
       PASS=false
       printf '  %s[FAIL]%s Protocol skills not referenced in prompts\n' "$RED" "$NC"
     else

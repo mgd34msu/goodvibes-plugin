@@ -4,7 +4,7 @@ Skills load automatically when relevant to your task. The frontmatter descriptio
 
 ### Protocol Skills (Always Active)
 - precision-mastery: Token-efficient file operations, extract modes, verbosity, batching
-- discover-plan-batch: Strict 3-call DPB execution loop
+- gather-plan-apply: GPA execution loop — GATHER, PLAN, APPLY
 - review-scoring: 10-dimension scoring rubric for WRFC review loops
 - goodvibes-memory: Cross-session memory (decisions, patterns, failures, preferences)
 - error-recovery: Tiered error recovery and escalation procedures

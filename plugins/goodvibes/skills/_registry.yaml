@@ -639,12 +639,12 @@ categories:
           - integration
   protocol:
     _items:
-      - name: discover-plan-batch
-        path: protocol/discover-plan-batch
+      - name: gather-plan-apply
+        path: protocol/gather-plan-apply
         description: >-
           MANDATORY before starting any task. Enforces the strict 3-call-per-cycle execution loop that prevents tool
-          call sprawl. D: Single discover call with all queries batched. P: Plan in text with zero tool calls. B: Single
-          batched precision call. Every DPB cycle targets exactly 3 tool calls. Covers dependency analysis, batch
+          call sprawl. G: Single discover call with all queries batched. P: Plan in text with zero tool calls. A: Single
+          batched precision call. Every GPA cycle targets exactly 3 tool calls. Covers dependency analysis, batch
           opportunities, scope estimation, and loop-back triggers.
         triggers: &ref_13
           - discover
@@ -675,7 +675,7 @@ categories:
           - calls
           - precision
           - every
-          - dpb
+          - gpa
           - targets
           - exactly
           - covers
@@ -1364,13 +1364,13 @@ search_index:
       "add tests", "write unit tests", "set up E2E testing", "improve coverage", or "add mocks". Covers Vitest/Jest unit
       tests, React Testing Library component tests, Playwright E2E tests, MSW API mocking, test organization and naming,
       fixture management, coverage targets and thresholds, snapshot testing, and CI integration.
-  - name: discover-plan-batch
+  - name: gather-plan-apply
     keywords: *ref_13
-    path: protocol/discover-plan-batch
+    path: protocol/gather-plan-apply
     description: >-
       MANDATORY before starting any task. Enforces the strict 3-call-per-cycle execution loop that prevents tool call
-      sprawl. D: Single discover call with all queries batched. P: Plan in text with zero tool calls. B: Single batched
-      precision call. Every DPB cycle targets exactly 3 tool calls. Covers dependency analysis, batch opportunities,
+      sprawl. G: Single discover call with all queries batched. P: Plan in text with zero tool calls. A: Single batched
+      precision call. Every GPA cycle targets exactly 3 tool calls. Covers dependency analysis, batch opportunities,
       scope estimation, and loop-back triggers.
   - name: error-recovery
     keywords: *ref_14

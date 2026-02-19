@@ -38,7 +38,7 @@ if { grep -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(writ
   VIOLATIONS+=("Verbose verbosity detected on write/edit operation (should use count_only or minimal)")
 fi
 
-# Check 3: Discover tool used before implementation (DPB compliance)
+# Check 3: Discover tool used before implementation (GPA compliance)
 echo "[3/4] Checking for discover usage before implementation..."
 # Look for precision_write or precision_edit calls
 HAS_IMPLEMENTATION=$(grep -c -E '"name":"(mcp__plugin_goodvibes_precision-engine__)?precision_(write|edit)"' -- "$TRANSCRIPT_FILE" || true)
@@ -52,7 +52,7 @@ if [[ $HAS_IMPLEMENTATION -gt 0 ]]; then
     BEFORE_WRITE=$(head -n "$FIRST_WRITE_LINE" "$TRANSCRIPT_FILE")
     
     if ! echo "$BEFORE_WRITE" | grep -q '"name":".*discover"'; then
-      VIOLATIONS+=("No discover call before implementation (DPB violation: should discover before implementing)")
+      VIOLATIONS+=("No discover call before implementation (GPA violation: should discover before implementing)")
     fi
   fi
 fi

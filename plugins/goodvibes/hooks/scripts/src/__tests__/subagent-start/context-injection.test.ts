@@ -697,7 +697,7 @@ describe('context-injection', () => {
         );
         expect(result.additionalContext).toContain('precision-mastery');
         expect(result.additionalContext).toContain('review-scoring');
-        expect(result.additionalContext).toContain('discover-plan-batch');
+        expect(result.additionalContext).toContain('gather-plan-apply');
         expect(result.additionalContext).toContain('goodvibes-memory');
         expect(result.additionalContext).toContain('error-recovery');
       });

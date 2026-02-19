@@ -32,7 +32,7 @@ export interface DossierTask {
  * How the agent must work — tool constraints, quality bar, budget limits.
  */
 export interface DossierConstraints {
-  /** Tool usage mandate (e.g. "precision_engine only, DPB pattern mandatory"). */
+  /** Tool usage mandate (e.g. "precision_engine only, GPA pattern mandatory"). */
   tools: string;
   /** Quality bar description. */
   quality: string;
@@ -159,7 +159,7 @@ export interface DossierOptions {
 // ───────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_CONSTRAINTS: DossierConstraints = {
-  tools: 'precision_engine only, DPB pattern mandatory',
+  tools: 'precision_engine only, GPA pattern mandatory',
   quality: 'Enterprise-grade, no mocks, no placeholders',
   budget: {
     max_tokens: null,
@@ -171,14 +171,14 @@ const DEFAULT_CONSTRAINTS: DossierConstraints = {
  * Standard SUBAGENT-PROTOCOL reminders included in every dossier.
  */
 const BASE_REMINDERS = [
-  'Use precision_engine tools, not native (Read, Write, Edit, Grep, Glob, WebFetch)',
-  'Follow strict DPB loops: D (single discover call) → P (plan, zero calls) → B (single batched call)',
+  'Always use precision tools — native equivalents (Read, Write, Edit, Grep, Glob, WebFetch) are deprecated',
+  'Follow the GPA loop: GATHER (discover + reads) → PLAN (zero calls) → APPLY (writes/edits/verification)',
   'precision_exec is for build/test/deploy ONLY (npm run, npx, git) — NEVER for file search/read',
   'Check .goodvibes/memory/ for patterns, decisions, and failures before implementing',
   'Always use .js extensions for ESM imports',
   'NEVER enable sandbox mode — only explicit user authorization can activate it',
   'Sandbox mode is OFF by default — precision tools can access any path',
-  'Batch independent operations together — target 3 tool calls per DPB cycle',
+  'One call per tool type per phase — batch all same-type operations into single calls',
 ] as const;
 
 // ───────────────────────────────────────────────────────────────────────────

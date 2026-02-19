@@ -72,7 +72,7 @@ Ensure you have complete clarity on what to build before spawning work agents. T
 3. **Load relevant outcome skills**:
    - Backend: `trpc`, `prisma`, `postgresql`, `clerk`, `nextauth`, `graphql`, `rest-api-design`
    - Frontend: `nextjs`, `react`, `tailwindcss`, `shadcn-ui`, `framer-motion`
-   - Protocol: `discover-plan-batch`, `review-scoring`, `goodvibes-memory`
+   - Protocol: `gather-plan-apply`, `review-scoring`, `goodvibes-memory`
 
 4. **Check goodvibes memory**:
    - `.goodvibes/memory/decisions.json` - Architectural choices
@@ -127,9 +127,9 @@ Establish the data model and type foundation before building any upstream code. 
 
 **Database agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 - Follow existing schema patterns (check memory/decisions.json)
 - Add appropriate indexes for query performance
 - Add foreign key constraints
@@ -138,7 +138,7 @@ Protocol skills (required for all agents): discover-plan-batch, precision-master
 
 **Engineer agent (type generation)**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Run type generation command
 - Verify types are correct (spot check generated code)
@@ -174,7 +174,7 @@ These sub-phases run in parallel:
 
 **API agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Implement endpoints using existing patterns (check decisions.json for API style)
 - Add input validation (use Zod or similar)
@@ -182,28 +182,28 @@ Protocol skills (required for all agents): discover-plan-batch, precision-master
 - Add authentication/authorization checks
 - Use ORM for database access
 - Add logging at appropriate levels
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 **UI agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Create components using existing patterns (check decisions.json for UI libraries)
 - Follow accessibility best practices (ARIA attributes, keyboard navigation)
 - Implement responsive design
 - Add loading and error states
 - Optimize performance (`useMemo`, `useCallback`)
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 **State agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Implement state management using existing patterns (Zustand, Redux, etc)
 - Define state shape and actions
 - Add selectors for derived state
 - Add persistence if required (localStorage, sessionStorage)
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 ### Clear Definition of Done
 
@@ -254,14 +254,14 @@ Connect UI to API, wire state to UI, and verify data flows end-to-end. This phas
 
 **Integration agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Read both API and UI code to understand interfaces
 - Add API client calls in correct lifecycle hooks (`useEffect`, event handlers)
 - Ensure error handling is present
 - Ensure loading states are displayed
 - Test each integration point manually
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 ### Clear Definition of Done
 
@@ -296,18 +296,18 @@ These sub-phases run in parallel:
 
 **Tester agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Write unit tests for API endpoints
 - Write component tests for UI
 - Write integration tests for data flow
 - Target >=80% coverage for new code
 - Test both happy path and edge cases
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 **Security agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Check for input validation on all endpoints
 - Check for authentication/authorization checks
@@ -315,18 +315,18 @@ Protocol skills (required for all agents): discover-plan-batch, precision-master
 - Check for XSS vulnerabilities
 - Check for exposed secrets
 - Check for CORS configuration
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 **A11y agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Check for ARIA attributes on interactive elements
 - Check for keyboard navigation support
 - Check for color contrast (WCAG AA)
 - Check for focus indicators
 - Check for alt text on images
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 ### Clear Definition of Done
 
@@ -372,7 +372,7 @@ Ensure all code meets production standards through systematic review and fix. Us
 
 **Reviewer agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Use `review-scoring` skill
 - Score objectively, use the rubric literally
@@ -382,17 +382,17 @@ Protocol skills (required for all agents): discover-plan-batch, precision-master
 
 **Fix agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Address all Critical and Major issues
 - Document fixes applied
 - Document issues not fixed (with reasons)
 - Do not claim fixed without actual changes
-- Use `discover-plan-batch` protocol
+- Use `gather-plan-apply` protocol
 
 **Re-reviewer agent**:
 
-Protocol skills (required for all agents): discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory
+Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
 
 - Verify each previously flagged issue was fixed
 - Re-score from scratch (DO NOT copy previous scores)
@@ -510,16 +510,16 @@ Agents should NOT communicate directly. Instead:
 
 ## Integration with Other Protocols
 
-### Discover-Plan-Batch (DPB)
+### Gather-Plan-Apply (GPA)
 
-All work agents must follow the DPB loop:
+All work agents must follow the GPA loop:
 
 1. **Discover**: Use `discover` tool to run parallel grep/glob/symbol queries
 2. **Plan**: Identify files to create/modify, order of operations, batch opportunities
 3. **Batch**: Group operations into batched precision_engine calls
 4. **Loop**: Return to discovery if assumptions change
 
-See `discover-plan-batch` skill for details.
+See `gather-plan-apply` skill for details.
 
 ### Review-Scoring (WRFC)
 

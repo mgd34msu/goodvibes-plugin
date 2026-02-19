@@ -1,17 +1,24 @@
-# DPB Examples and Checklists
+# GPA Examples and Checklists
 
-Reference material extracted from the main Discover-Plan-Batch skill documentation. Use these examples and checklists to guide your DPB implementation.
+Reference material extracted from the main Gather-Plan-Apply skill documentation. Use these examples and checklists to guide your GPA implementation.
 
 ---
 
-## Complete DPB Example
+## Complete GPA Example
 
 ### Task: Implement user profile feature
 
-#### DISCOVER Phase
+#### GATHER Phase
 
 ```yaml
-# Discovery: Understand landscape
+# Check memory first
+precision_read:
+  files:
+    - path: ".goodvibes/memory/patterns.json"
+    - path: ".goodvibes/memory/decisions.json"
+  verbosity: minimal
+
+# Discover landscape
 discover:
   queries:
     - id: existing_features
@@ -27,14 +34,7 @@ discover:
       kinds: ["function"]
   verbosity: files_only
 
-# Check memory
-precision_read:
-  files:
-    - path: ".goodvibes/memory/patterns.json"
-    - path: ".goodvibes/memory/decisions.json"
-  verbosity: minimal
-
-# Understand key files
+# Read key files (batched in one call)
 precision_read:
   files:
     - path: "src/types/user.ts"
@@ -44,7 +44,7 @@ precision_read:
   verbosity: minimal
 ```
 
-**Discovery Results:**
+**Gather Results:**
 - User type already exists in src/types/user.ts
 - Features follow pattern: features/<name>/{types.ts, hooks.ts, index.ts}
 - Memory shows: "Use Zustand for state, not Context API"
@@ -61,40 +61,21 @@ Files to create:
 Files to modify:
 - src/app/profile/page.tsx - Use new ProfileCard component
 
-Files to read:
-- src/types/user.ts - Need full User interface
-- src/features/auth/hooks.ts - Reference Zustand pattern
-
 Commands:
 - npm run typecheck (expect: exit 0)
 - npm run lint (expect: exit 0)
 - npm run build (expect: exit 0)
 
-Order:
-1. Read user.ts and auth/hooks.ts (parallel)
-2. Create types.ts, hooks.ts, index.ts, ProfileCard.tsx (batched)
-3. Modify profile/page.tsx
-4. Run typecheck, lint, build (batched)
-
-Batch opportunities:
-- Step 1: batch reads (2 files)
-- Step 2: batch writes (4 files)
-- Step 4: batch commands (3 commands)
+Apply batch plan:
+- Apply Call 1: precision_write with 4 new files
+- Apply Call 2: precision_edit with 1 modification
+- Apply Call 3: precision_exec with 3 validation commands
 ```
 
-#### BATCH Phase
+#### APPLY Phase
 
 ```yaml
-# Step 1: Read for context
-precision_read:
-  files:
-    - path: "src/types/user.ts"
-      extract: content
-    - path: "src/features/auth/hooks.ts"
-      extract: content
-  verbosity: minimal
-
-# Step 2: Create files
+# Apply Call 1: Create new files
 precision_write:
   files:
     - path: "src/features/profile/types.ts"
@@ -115,9 +96,9 @@ precision_write:
       content: |
         import { useProfile } from '@/features/profile';
         export function ProfileCard() {...}
-  verbosity: minimal
+  verbosity: count_only
 
-# Step 3: Modify existing file
+# Apply Call 2: Modify existing file
 precision_edit:
   edits:
     - path: "src/app/profile/page.tsx"
@@ -127,7 +108,7 @@ precision_edit:
         export default function ProfilePage() {
   verbosity: minimal
 
-# Step 4: Validate
+# Apply Call 3: Validate
 precision_exec:
   commands:
     - cmd: "npm run typecheck"
@@ -156,7 +137,7 @@ precision_exec:
 If typecheck failed with "Cannot find module '@/features/profile'", you would:
 
 ```yaml
-# LOOP: Re-discover module resolution config
+# LOOP Gather: Re-discover module resolution config
 precision_read:
   files:
     - path: "tsconfig.json"
@@ -165,7 +146,7 @@ precision_read:
       extract: content
   verbosity: minimal
 
-# Fix based on discovery (e.g., missing barrel export)
+# LOOP Apply: Fix and re-validate
 precision_edit:
   edits:
     - path: "src/features/profile/index.ts"
@@ -175,7 +156,6 @@ precision_edit:
         export * from './hooks';  // Was missing
   verbosity: minimal
 
-# Re-validate
 precision_exec:
   commands:
     - cmd: "npm run typecheck"
@@ -188,17 +168,23 @@ precision_exec:
 
 ## Anti-Patterns Summary
 
-### Diving In Without Discovery
+### Diving In Without Gathering
 
 **[BAD]** Starting with `precision_write` before understanding the codebase
 
-**[GOOD]** Always run `discover` first to understand landscape
+**[GOOD]** Always run `discover` + check memory first in the GATHER phase
+
+### Skipping Memory Checks
+
+**[BAD]** Implementing without checking failures.json, patterns.json, decisions.json
+
+**[GOOD]** Check memory files at the start of every GATHER phase
 
 ### Unstructured Plans
 
 **[BAD]** "I'll add some files and see what happens"
 
-**[GOOD]** Explicit list of files to create/modify, commands to run, dependencies
+**[GOOD]** Explicit list of files to create/modify, commands to run, batch opportunities
 
 ### Missing Batch Opportunities
 
@@ -206,11 +192,11 @@ precision_exec:
 
 **[GOOD]** 1 `precision_write` call with 5 files in the `files` array
 
-### Skipping Memory Checks
+### Same-Type Calls in Same Phase
 
-**[BAD]** Implementing without checking failures.json, patterns.json, decisions.json
+**[BAD]** Two `precision_read` calls in the GATHER phase
 
-**[GOOD]** Check memory files during discovery phase
+**[GOOD]** One `precision_read` call with all files batched in the `files` array
 
 ### Over-Reading Files
 
@@ -222,7 +208,7 @@ precision_exec:
 
 **[BAD]** `verbosity: verbose` for all operations
 
-**[GOOD]** `verbosity: minimal` unless you need detailed output
+**[GOOD]** `verbosity: minimal` or `count_only` unless you need detailed output
 
 ### Sequential When Parallel Works
 
@@ -234,39 +220,38 @@ precision_exec:
 
 **[BAD]** Continuing with outdated plan when discovery reveals new information
 
-**[GOOD]** Loop back to discovery when assumptions change
+**[GOOD]** Loop back to GATHER when assumptions change
 
 ---
 
 ## Quick Reference
 
-### Discovery Checklist
+### Gather Checklist
 
-- [ ] Run `discover` with parallel queries (glob + grep + symbols)
 - [ ] Check `.goodvibes/memory/failures.json`
 - [ ] Check `.goodvibes/memory/patterns.json`
 - [ ] Check `.goodvibes/memory/decisions.json`
-- [ ] Use `extract: outline` or `extract: symbols` for key files
+- [ ] Run `discover` with parallel queries (glob + grep + symbols)
+- [ ] Batch key file reads in one `precision_read` call
+- [ ] Use `extract: outline` or `extract: symbols` for large files
 - [ ] Estimate scope (count_only mode)
 
 ### Planning Checklist
 
 - [ ] List files to create
 - [ ] List files to modify
-- [ ] List files to read (full content)
 - [ ] List commands to run
 - [ ] Identify order of operations
-- [ ] Identify batch opportunities
-- [ ] Apply "3+ sequential calls" rule
+- [ ] Identify batch opportunities (same-type ops → one call)
 - [ ] Estimate token budget
 
-### Batching Checklist
+### Apply Checklist
 
-- [ ] Batch reads when possible
-- [ ] Batch writes when possible
-- [ ] Batch commands when possible
-- [ ] Use minimal verbosity
-- [ ] Validate after execution
+- [ ] Batch writes into one `precision_write` call
+- [ ] Batch edits into one `precision_edit` call
+- [ ] Batch commands into one `precision_exec` call
+- [ ] Use minimal verbosity (count_only for writes, minimal for edits)
+- [ ] Validate after applying
 - [ ] Check results match plan
 
 ### Loop Checklist
@@ -274,20 +259,20 @@ precision_exec:
 - [ ] Scope matches expectations?
 - [ ] Results match plan?
 - [ ] New information revealed?
-- [ ] If any "no" -> loop back to DISCOVER
+- [ ] If any "no" -> loop back to GATHER
 
 ---
 
 ## Implementation Tips
 
-The DPB loop is not optional -- it's the foundation of efficient agent execution. Every task, from adding a single function to implementing a complete feature, should follow this pattern:
+The GPA loop is not optional -- it's the foundation of efficient agent execution. Every task, from adding a single function to implementing a complete feature, should follow this pattern:
 
-1. **DISCOVER** - Understand before acting
-2. **PLAN** - Structure before executing
-3. **BATCH** - Group operations for efficiency
+1. **GATHER** - Understand before acting (check memory, discover, read key files)
+2. **PLAN** - Structure before executing (identify all batch opportunities)
+3. **APPLY** - Group operations by type (one call per tool type)
 4. **LOOP** - Adapt when assumptions change
 
-Following DPB consistently results in:
+Following GPA consistently results in:
 - 50-90% token savings vs. ad-hoc execution
 - Higher quality implementations (fewer mistakes)
 - Faster iteration (less rework)

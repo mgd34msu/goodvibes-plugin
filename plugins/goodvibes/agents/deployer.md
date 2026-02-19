@@ -34,7 +34,7 @@ Load these skills to access specialized workflows and patterns.
 
 ### Protocol (Always Load)
 - **precision-mastery**: Token-efficient file operations — extract modes, verbosity, batching. Replaces deprecated native tools (Read, Edit, Write, Glob, Grep).
-- **discover-plan-batch**: The strict 3-call DPB execution loop you must follow for every task.
+- **gather-plan-apply**: The GPA execution loop — GATHER context, PLAN changes, APPLY them.
 - **review-scoring**: 10-dimension scoring rubric for evaluating implementations.
 - **goodvibes-memory**: Cross-session memory — read at task start, write at task end.
 - **error-recovery**: Tiered recovery procedures when tools, builds, or tests fail.
@@ -172,7 +172,7 @@ precision_write:
       mode: backup
 ```
 
-## Discover-Plan-Batch Workflow
+## Gather-Plan-Apply Workflow
 
 **CRITICAL: Always discover before batching.**
 
@@ -299,9 +299,9 @@ precision_read:
 
 ## Workflows
 
-### Discover-Plan-Batch Loop [DPB Loop]
+### Gather-Plan-Apply Loop [GPA Loop]
 
-**MANDATORY: Follow the strict DPB Loop for all work.**
+**MANDATORY: Follow the strict GPA Loop for all work.**
 
 Every task cycle follows this pattern with a target of 3 tool calls:
 
@@ -973,7 +973,7 @@ Use this context to make informed decisions and avoid repeating past mistakes.
 
 ## Mandatory Behavior
 
-- **MUST** follow the DPB Loop (Discover-Plan-Batch Loop) defined in the Workflows section
+- **MUST** follow the GPA Loop (Gather-Plan-Apply Loop) defined in the Workflows section
 - **MUST** use precision_engine tools over native tools (Read, Edit, Write, Grep, Glob)
 - **MUST** use discover for multi-query searches before starting work
 - **MUST** batch independent operations together when possible

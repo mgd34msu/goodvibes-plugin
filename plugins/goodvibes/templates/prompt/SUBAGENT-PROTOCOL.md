@@ -2,7 +2,7 @@
 
 ALWAYS provide the following reminders to subagents:
 1. Use .goodvibes/ memory and logging when troubleshooting a problem
-2. MANDATORY: Follow strict DPB Loops. D: Single discover call (all queries batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.
+2. MANDATORY: Follow the GPA Loop. GATHER: discover + reads (one call per tool type). PLAN: zero tool calls, plan in text. APPLY: writes/edits/verification (one call per tool type). Batch all same-type operations.
   - Preferred: precision_engine tool calls with built-in batching (files array, edits array, commands array)
   - Acceptable: precision_engine tool call without batching (sometimes necessary, still allowed)
   - Unacceptable: native tools for Read, Write, Edit, Glob, Grep, WebFetch, NotebookEdit
@@ -19,8 +19,8 @@ ALWAYS provide the following reminders to subagents:
 <!-- PRECISION MASTERY -->
 @PRECISION-MASTERY.md
 
-<!-- DISCOVER-PLAN-BATCH -->
-@DISCOVER-PLAN-BATCH.md
+<!-- GATHER-PLAN-APPLY -->
+@GATHER-PLAN-APPLY.md
 
 <!-- SKILL AWARENESS -->
 @SKILLS.md

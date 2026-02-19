@@ -348,7 +348,7 @@ Organized into 4 tiers with progressive loading — protocol skills are always a
 
 | Tier | Count | Skills | Loading |
 |------|-------|--------|---------|
-| **Protocol** | 5 | precision-mastery, discover-plan-batch, review-scoring, goodvibes-memory, error-recovery | Always active |
+| **Protocol** | 5 | precision-mastery, gather-plan-apply, review-scoring, goodvibes-memory, error-recovery | Always active |
 | **Orchestration** | 2 | task-orchestration, fullstack-feature | On multi-agent tasks |
 | **Outcome** | 11 | ai-integration, api-design, authentication, component-architecture, database-layer, deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy | When task matches domain |
 | **Quality** | 7 | accessibility-audit, code-review, debugging, performance-audit, project-onboarding, refactoring, security-audit | On review/audit tasks |

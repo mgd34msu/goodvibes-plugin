@@ -71,9 +71,9 @@ const SAMPLE_PATTERNS_JSON = JSON.stringify({
   patterns: [
     {
       id: 'pat-1',
-      name: 'DPB Loop',
-      description: 'Discover-Plan-Batch execution pattern',
-      keywords: ['discover', 'batch', 'plan'],
+      name: 'GPA Loop',
+      description: 'Gather-Plan-Apply execution pattern',
+      keywords: ['gather', 'plan', 'apply'],
       applies_to: ['tooling', 'orchestration'],
     },
     {
@@ -160,16 +160,16 @@ describe('DossierGenerator — getDefaultReminders', () => {
     }
   });
 
-  it('includes DPB loop reminder', () => {
+  it('includes GPA loop reminder', () => {
     const gen = new DossierGenerator(makeMockIndex());
     const reminders = gen.getDefaultReminders();
-    expect(reminders.some((r) => r.toLowerCase().includes('dpb'))).toBe(true);
+    expect(reminders.some((r) => r.toLowerCase().includes('gpa'))).toBe(true);
   });
 
-  it('includes precision_engine reminder', () => {
+  it('includes precision tools reminder', () => {
     const gen = new DossierGenerator(makeMockIndex());
     const reminders = gen.getDefaultReminders();
-    expect(reminders.some((r) => r.toLowerCase().includes('precision_engine'))).toBe(true);
+    expect(reminders.some((r) => r.toLowerCase().includes('precision tools'))).toBe(true);
   });
 
   it('includes precision_exec restriction reminder', () => {
@@ -371,16 +371,16 @@ describe('DossierGenerator — injectMemory (scope-based filtering)', () => {
 
   it('filters patterns by keyword match against task description', async () => {
     const gen = new DossierGenerator(makeMockIndex(), '/memory');
-    const ctx = await gen.injectMemory([], 'implement batch discover orchestration');
+    const ctx = await gen.injectMemory([], 'implement gather apply orchestration');
     const names = ctx.patterns.map((p) => p.name);
-    // 'DPB Loop' has keywords 'discover', 'batch', 'plan' — matches 'batch' and 'discover'
-    expect(names).toContain('DPB Loop');
+    // 'GPA Loop' has keywords 'gather', 'plan', 'apply' — matches 'gather' and 'apply'
+    expect(names).toContain('GPA Loop');
   });
 
   it('caps patterns at 3', async () => {
     const gen = new DossierGenerator(makeMockIndex(), '/memory');
     // Match all patterns by using generic description
-    const ctx = await gen.injectMemory([], 'singleton registry null degradation fallback discover batch');
+    const ctx = await gen.injectMemory([], 'singleton registry null degradation fallback gather apply');
     expect(ctx.patterns.length).toBeLessThanOrEqual(3);
   });
 
@@ -410,7 +410,7 @@ describe('DossierGenerator — injectMemory (scope-based filtering)', () => {
 
   it('maps patterns to name/description shape', async () => {
     const gen = new DossierGenerator(makeMockIndex(), '/memory');
-    const ctx = await gen.injectMemory([], 'batch discover plan');
+    const ctx = await gen.injectMemory([], 'gather plan apply');
     for (const p of ctx.patterns) {
       expect(typeof p.name).toBe('string');
       expect(typeof p.description).toBe('string');

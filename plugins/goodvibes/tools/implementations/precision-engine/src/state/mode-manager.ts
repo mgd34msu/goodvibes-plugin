@@ -59,8 +59,8 @@ export interface ModeConfig {
   };
   /** Enforcement rules applied on top of tool inputs. */
   enforcement: {
-    /** Warn or error if tools are called outside DPB loop structure. */
-    require_dpb: boolean;
+    /** Warn or error if tools are called outside GPA loop structure. */
+    require_gpa: boolean;
     /** Warn or error if native tools are used instead of precision equivalents. */
     require_precision_tools: boolean;
     /**
@@ -77,14 +77,14 @@ export interface ModeConfig {
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
- * vibecoding: Production mode — enforces DPB loop and precision tools.
+ * vibecoding: Production mode — enforces GPA loop and precision tools.
  * Writes/edits use count_only (you just wrote the content, no need to re-read).
  * Read verbosity capped at 'standard' to prevent runaway token usage.
  */
 const VIBECODING_MODE: ModeConfig = {
   name: 'vibecoding',
   description:
-    'Production mode — enforces DPB loop, precision tools, and token-efficient defaults. ' +
+    'Production mode — enforces GPA loop, precision tools, and token-efficient defaults. ' +
     'Write/edit verbosity defaults to count_only. Read verbosity capped at standard.',
   defaults: {
     verbosity: 'standard',
@@ -95,7 +95,7 @@ const VIBECODING_MODE: ModeConfig = {
     exec_verbosity: 'minimal',
   },
   enforcement: {
-    require_dpb: true,
+    require_gpa: true,
     require_precision_tools: true,
     max_read_verbosity: 'standard',
   },
@@ -119,7 +119,7 @@ const JUSTVIBES_MODE: ModeConfig = {
     exec_verbosity: 'minimal',
   },
   enforcement: {
-    require_dpb: false,
+    require_gpa: false,
     require_precision_tools: false,
     max_read_verbosity: null,
   },
@@ -143,7 +143,7 @@ const DEFAULT_MODE: ModeConfig = {
     exec_verbosity: 'standard',
   },
   enforcement: {
-    require_dpb: false,
+    require_gpa: false,
     require_precision_tools: false,
     max_read_verbosity: null,
   },

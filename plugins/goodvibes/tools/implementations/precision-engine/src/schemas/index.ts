@@ -663,7 +663,7 @@ export const precisionConfigSchema: Tool = {
         type: 'string',
         description:
           'For action=mode, operation=set: the mode name to activate. ' +
-          'Built-in modes: vibecoding (enforce DPB + precision tools, token-efficient defaults), ' +
+          'Built-in modes: vibecoding (enforce GPA + precision tools, token-efficient defaults), ' +
           'justvibes (same defaults, minimal enforcement), ' +
           'default (no enforcement, standard defaults). ' +
           'Custom modes can be registered at runtime via ModeManager.registerMode().',

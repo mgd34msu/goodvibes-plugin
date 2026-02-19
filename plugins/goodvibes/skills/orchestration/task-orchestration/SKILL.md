@@ -116,7 +116,7 @@ expected_outcome: What success looks like
 ```yaml
 task_id: create-user-types
 agent: engineer
-skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory]
 description: Create TypeScript type definitions for User domain
 scope:
   files: [src/types/user.ts, src/types/auth.ts]
@@ -150,7 +150,7 @@ For each task, assign the appropriate agent type and skills using this decision 
 **Skills Assignment:**
 
 All agents receive protocol skills by default:
-- discover-plan-batch (DPB loop)
+- gather-plan-apply (GPA loop)
 - precision-mastery (tool usage)
 - error-recovery (error handling)
 - goodvibes-memory (memory integration)
@@ -374,7 +374,7 @@ In justvibes mode, the orchestrator asks before acting:
 tasks:
   - task_id: create-profile-types
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory]
     description: Create Profile and ProfileUpdate types
     scope:
       files: [src/types/profile.ts]
@@ -383,7 +383,7 @@ tasks:
     
   - task_id: create-profile-api
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, trpc, prisma]
     description: Implement tRPC routes for profile CRUD
     scope:
       files: [src/server/routers/profile.ts]
@@ -392,7 +392,7 @@ tasks:
     
   - task_id: create-profile-ui
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, react, tailwindcss, shadcn-ui]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, react, tailwindcss, shadcn-ui]
     description: Build profile page with edit form
     scope:
       files: [src/app/profile/page.tsx, src/components/ProfileForm.tsx]
@@ -401,7 +401,7 @@ tasks:
     
   - task_id: review-profile-implementation
     agent: reviewer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling]
     description: Review all profile implementation for code quality
     scope:
       files: [src/types/profile.ts, src/server/routers/profile.ts, src/app/profile/page.tsx, src/components/ProfileForm.tsx]
@@ -410,7 +410,7 @@ tasks:
     
   - task_id: test-profile-feature
     agent: tester
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory]
     description: Create tests for profile feature
     scope:
       files: [src/server/routers/profile.test.ts, src/components/ProfileForm.test.tsx]
@@ -443,7 +443,7 @@ tasks:
 tasks:
   - task_id: diagnose-redirect-loop
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
     description: Identify root cause of redirect loop
     scope:
       files: [src/middleware.ts, src/app/dashboard/page.tsx, src/lib/auth.ts]
@@ -452,7 +452,7 @@ tasks:
     
   - task_id: fix-redirect-loop
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, nextjs, nextauth]
     description: Apply fix based on diagnosis
     scope:
       files: [determined by diagnosis]
@@ -461,7 +461,7 @@ tasks:
     
   - task_id: verify-fix
     agent: reviewer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, review-scoring, async-patterns, error-handling]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, review-scoring, async-patterns, error-handling]
     description: Verify the fix resolves the redirect loop and doesn't introduce regressions
     scope:
       files: [determined by fix task]
@@ -492,7 +492,7 @@ tasks:
 tasks:
   - task_id: plan-refactoring-approach
     agent: architect
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory]
     description: Design the refactoring strategy and hook API
     scope:
       directories: [src/components, src/app]
@@ -501,7 +501,7 @@ tasks:
     
   - task_id: analyze-auth-patterns
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory]
     description: Discover all auth usage patterns in components
     scope:
       directories: [src/components, src/app]
@@ -510,7 +510,7 @@ tasks:
     
   - task_id: create-auth-hooks
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Create hooks based on discovered patterns
     scope:
       files: [src/hooks/useAuth.ts, src/hooks/useRequireAuth.ts]
@@ -519,7 +519,7 @@ tasks:
     
   - task_id: refactor-components-1
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Refactor components in src/app to use hooks
     scope:
       directories: [src/app]
@@ -528,7 +528,7 @@ tasks:
     
   - task_id: refactor-components-2
     agent: engineer
-    skills: [discover-plan-batch, precision-mastery, error-recovery, goodvibes-memory, react]
+    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, react]
     description: Refactor components in src/components to use hooks
     scope:
       directories: [src/components]
