@@ -313,75 +313,59 @@ export class ModeManager {
    */
   applyDefaults(toolName: string, input: Record<string, unknown>): Record<string, unknown> {
     const defaults = this.getDefaults();
-    const result = { ...input };
+
+    // Determine verbosity default for this specific tool
+    const verbosityDefault: VerbosityLevel = (() => {
+      switch (toolName) {
+        case 'precision_write': return defaults.write_verbosity;
+        case 'precision_edit':  return defaults.edit_verbosity;
+        case 'precision_exec':  return defaults.exec_verbosity;
+        default:                return defaults.verbosity;
+      }
+    })();
+
+    // Use mergeDefaults to apply base verbosity — input values win over defaults
+    let result = mergeDefaults(input, { verbosity: verbosityDefault });
 
     switch (toolName) {
       case 'precision_read': {
-        // Apply verbosity default if not set
-        if (result.verbosity === undefined) {
-          result.verbosity = defaults.verbosity;
-        }
         // Apply extract default to each file entry if not set
         if (Array.isArray(result.files)) {
-          result.files = (result.files as Record<string, unknown>[]).map((f) => {
-            if (f.extract === undefined) {
-              return { ...f, extract: defaults.read_extract };
-            }
-            return f;
-          });
+          result = {
+            ...result,
+            files: (result.files as Record<string, unknown>[]).map((f) =>
+              mergeDefaults(f, { extract: defaults.read_extract })
+            ),
+          };
         }
         // Apply top-level extract default if not set
-        if (result.extract === undefined) {
-          result.extract = defaults.read_extract;
-        }
+        result = mergeDefaults(result, { extract: defaults.read_extract });
         break;
       }
 
       case 'precision_grep': {
-        if (result.verbosity === undefined) {
-          result.verbosity = defaults.verbosity;
-        }
         // Apply grep output format default
         if (result.output === undefined) {
-          result.output = { format: defaults.grep_format };
+          result = mergeDefaults(result, { output: { format: defaults.grep_format } });
         } else if (
           typeof result.output === 'object' &&
           result.output !== null &&
           (result.output as Record<string, unknown>).format === undefined
         ) {
-          result.output = { ...(result.output as Record<string, unknown>), format: defaults.grep_format };
+          result = {
+            ...result,
+            output: mergeDefaults(
+              result.output as Record<string, unknown>,
+              { format: defaults.grep_format }
+            ),
+          };
         }
         break;
       }
 
-      case 'precision_write': {
-        if (result.verbosity === undefined) {
-          result.verbosity = defaults.write_verbosity;
-        }
+      default:
+        // verbosity already applied via mergeDefaults above
         break;
-      }
-
-      case 'precision_edit': {
-        if (result.verbosity === undefined) {
-          result.verbosity = defaults.edit_verbosity;
-        }
-        break;
-      }
-
-      case 'precision_exec': {
-        if (result.verbosity === undefined) {
-          result.verbosity = defaults.exec_verbosity;
-        }
-        break;
-      }
-
-      default: {
-        // For all other tools, apply general verbosity default
-        if (result.verbosity === undefined) {
-          result.verbosity = defaults.verbosity;
-        }
-        break;
-      }
     }
 
     // Apply read verbosity cap if enforcement is active
