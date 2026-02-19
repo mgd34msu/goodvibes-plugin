@@ -1,3 +1,33 @@
+## 2026-02-18: Precision Engine v2 — Phase 5H Agent Dossier Format
+
+**Task**: Implement DossierGenerator with memory injection, project summary, and prompt formatting
+
+**Plan**: precision-engine-v2-design.md Section 8 (lines 686-828)
+
+**Status**: COMPLETE
+
+**Completed Items**:
+- DossierGenerator class with generate(), injectMemory(), getProjectSummary(), formatForPrompt()
+- Memory injection: decisions (scope overlap, recent 5), patterns (keyword match, top 3), failures (keyword match, recent 3)
+- Project summary: stack detection, index_summary string, key_files sorted by tokens
+- SUBAGENT-PROTOCOL reminders as BASE_REMINDERS constant
+- Optional output_format for structured response schemas
+- Graceful degradation for missing memory files and project index
+- Path-safe scopesOverlap with path.sep, path.resolve on memoryDir
+- 58 new tests (1168 total across 40 files)
+
+**Files Modified**:
+- src/state/dossier.ts (new)
+- src/__tests__/state/dossier.test.ts (new)
+- src/state/precision-runtime.ts
+- src/state/index.ts
+
+**Review Score**: 10/10 (8.7 -> 9.5 -> 10/10 after 1.5 fix cycles)
+
+**Commit**: a90d6ff
+
+---
+
 ## 2026-02-18: Precision Engine v2 — Phase 4G Hooks System
 
 **Task**: Implement 4 unified hook events with filter-based tool scoping, 3 hook types, 4 built-in hooks, and config management
