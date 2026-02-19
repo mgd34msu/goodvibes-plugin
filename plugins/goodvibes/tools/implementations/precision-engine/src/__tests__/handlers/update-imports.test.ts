@@ -421,4 +421,116 @@ describe('update_imports via file_ops move', () => {
     // skipped_paths should be absent (no skipped files)
     expect(parsed.data.file_ops[0].skipped_paths).toBeUndefined();
   });
+
+  // -------------------------------------------------------------------------
+  // 17. skipped_paths is populated when a file cannot be read
+  //
+  // Uses chmod 000 to make a file unreadable so fs.readFile throws, which
+  // should cause updateImports to add it to skipped and NOT to affected.
+  // -------------------------------------------------------------------------
+  it('populates skipped_paths when a file cannot be read during updateImports', async () => {
+    // Skip this test on platforms where file permission enforcement is unreliable
+    // (e.g. when running as root in CI containers)
+    if (process.getuid?.() === 0) return;
+
+    const srcFile = path.join(testSubdir, 'target.ts');
+    const destFile = path.join(testSubdir, 'target-v2.ts');
+    const readableConsumer = path.join(testSubdir, 'readable-consumer.ts');
+    const unreadableFile = path.join(testSubdir, 'unreadable-consumer.ts');
+
+    await fs.writeFile(srcFile, 'export const x = 1;');
+    // This file imports the moved module and should be processed normally
+    await fs.writeFile(readableConsumer, "import { x } from './target';");
+    // This file also imports the moved module but will be made unreadable
+    await fs.writeFile(unreadableFile, "import { x } from './target';");
+
+    // Make the file unreadable so fs.readFile throws EACCES
+    await fs.chmod(unreadableFile, 0o000);
+
+    try {
+      const result = await handlePrecisionExec({
+        file_ops: [
+          {
+            op: 'move',
+            source: srcFile,
+            destination: destFile,
+            options: { update_imports: true },
+          },
+        ],
+        commands: [{ cmd: 'true' }],
+      });
+      const parsed = expectSuccess(result);
+      const fileOp = parsed.data.file_ops[0];
+
+      // The unreadable file must appear in skipped_paths
+      expect(fileOp.skipped_paths).toBeDefined();
+      expect(fileOp.skipped_paths).toContain(unreadableFile);
+
+      // The unreadable file must NOT appear in affected_paths
+      const affected = (fileOp.affected_paths ?? []) as string[];
+      expect(affected).not.toContain(unreadableFile);
+
+      // The readable consumer should have been rewritten successfully
+      expect(affected).toContain(readableConsumer);
+    } finally {
+      // Restore permissions so afterEach cleanup can remove the temp dir
+      await fs.chmod(unreadableFile, 0o644).catch(() => {});
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 18. skipped_paths is populated when a file cannot be written
+  //
+  // Uses chmod 444 (read-only) so the file can be read (and a match found)
+  // but fs.writeFile throws, causing updateImports to add it to skipped.
+  // -------------------------------------------------------------------------
+  it('populates skipped_paths when a matched file cannot be written during updateImports', async () => {
+    // Skip this test on platforms where file permission enforcement is unreliable
+    // (e.g. when running as root in CI containers)
+    if (process.getuid?.() === 0) return;
+
+    const srcFile = path.join(testSubdir, 'lib.ts');
+    const destFile = path.join(testSubdir, 'lib-v2.ts');
+    const readableConsumer = path.join(testSubdir, 'writable-consumer.ts');
+    const readOnlyConsumer = path.join(testSubdir, 'readonly-consumer.ts');
+
+    await fs.writeFile(srcFile, 'export const y = 2;');
+    // Writable consumer — should be successfully rewritten
+    await fs.writeFile(readableConsumer, "import { y } from './lib';");
+    // Read-only consumer — can be read but not written
+    await fs.writeFile(readOnlyConsumer, "import { y } from './lib';");
+
+    // Make the consumer read-only: readable but not writable
+    await fs.chmod(readOnlyConsumer, 0o444);
+
+    try {
+      const result = await handlePrecisionExec({
+        file_ops: [
+          {
+            op: 'move',
+            source: srcFile,
+            destination: destFile,
+            options: { update_imports: true },
+          },
+        ],
+        commands: [{ cmd: 'true' }],
+      });
+      const parsed = expectSuccess(result);
+      const fileOp = parsed.data.file_ops[0];
+
+      // The read-only consumer must appear in skipped_paths (write failed)
+      expect(fileOp.skipped_paths).toBeDefined();
+      expect(fileOp.skipped_paths).toContain(readOnlyConsumer);
+
+      // The read-only consumer must NOT appear in affected_paths (write was not committed)
+      const affected = (fileOp.affected_paths ?? []) as string[];
+      expect(affected).not.toContain(readOnlyConsumer);
+
+      // The writable consumer should have been successfully rewritten
+      expect(affected).toContain(readableConsumer);
+    } finally {
+      // Restore permissions so afterEach cleanup can remove the temp dir
+      await fs.chmod(readOnlyConsumer, 0o644).catch(() => {});
+    }
+  });
 });
