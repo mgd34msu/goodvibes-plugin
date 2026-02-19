@@ -25,7 +25,6 @@ import {
   type TaskType,
 } from "../core/index.js";
 
-import { BatchEngine, type TransactionResult, type Operation } from "../engines/index.js";
 
 /**
  * Configuration for the GoodVibes runtime.
@@ -105,7 +104,6 @@ export class GoodVibesRuntime {
   public readonly telemetry: Telemetry;
   public readonly modeSystem: ModeSystem;
   public readonly contextInjector: ContextInjector;
-  public readonly batchEngine: BatchEngine;
 
   private config: GoodVibesConfig;
   private events: RuntimeEvents;
@@ -132,7 +130,6 @@ export class GoodVibesRuntime {
     this.telemetry = new Telemetry({ tracing_enabled: config.telemetryEnabled ?? true });
     this.modeSystem = new ModeSystem({ current_mode: config.mode || "vibecoding" });
     this.contextInjector = new ContextInjector();
-    this.batchEngine = new BatchEngine();
 
     // Wire up event handlers
     this.wireEvents();
@@ -550,36 +547,6 @@ export class GoodVibesRuntime {
     return this.contextInjector.suggestAgent(taskDescription);
   }
 
-  // ============ Batch Engine Wiring ============
-
-  /**
-   * Executes a batch transaction.
-   */
-  async executeBatch(
-    operations: Operation[],
-    name: string,
-    atomic: boolean = true
-  ): Promise<TransactionResult> {
-    const span = this.telemetry.startSpan("batch_transaction", { attributes: { name, atomic } });
-
-    try {
-      const result = await this.batchEngine.executeTransaction(operations, { name, atomic });
-
-      // Track in telemetry
-      this.telemetry.incrementCounter("batch_transactions", 1);
-      this.telemetry.incrementCounter(
-        result.success ? "batch_succeeded" : "batch_failed",
-        1
-      );
-
-      this.telemetry.endSpan(span.id);
-      return result;
-    } catch (error) {
-      this.telemetry.errorSpan(span.id, error instanceof Error ? error.message : String(error));
-      throw error;
-    }
-  }
-
   // ============ Status ============
 
   /**
@@ -630,6 +597,4 @@ export type {
   PerformanceMetrics,
   AssembledContext,
   TaskType,
-  TransactionResult,
-  Operation,
 };

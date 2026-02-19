@@ -220,7 +220,6 @@ function scanSkills(): RegistryEntry[] {
  */
 const MCP_SERVERS = [
   'precision-engine',
-  'batch-engine',
   'registry-engine',
   'analysis-engine',
   'project-engine',
@@ -244,7 +243,7 @@ function parseTypeScriptSchemas(): Map<string, { name: string; description: stri
     if (fs.existsSync(schemasDir)) {
       schemaFiles = fs.readdirSync(schemasDir).filter(f => f.endsWith('.ts'));
     } else if (fs.existsSync(handlersIndexPath)) {
-      // Some servers (like batch-engine) define schemas in handlers/index.ts
+      // Some servers define schemas in handlers/index.ts
       schemaFiles = ['index.ts'];
       baseDir = path.dirname(handlersIndexPath);
     } else {

@@ -8,14 +8,6 @@
         "NODE_ENV": "production"
       }
     },
-    "batch-engine": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/batch-engine/dist/index.cjs"],
-      "env": {
-        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "NODE_ENV": "production"
-      }
-    },
     "registry-engine": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/registry-engine/dist/index.cjs"],
