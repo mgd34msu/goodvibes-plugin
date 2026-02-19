@@ -89,7 +89,7 @@ export const precisionExecSchema: Tool = {
               properties: {
                 recursive: { type: 'boolean', default: false, description: 'Copy/delete directories recursively (default: false)' },
                 overwrite: { type: 'boolean', default: false, description: 'Overwrite existing destination (default: false)' },
-                update_imports: { type: 'boolean', default: false, description: 'Rewrite TS/JS import paths after move (default: false; stub — future enhancement)' },
+                update_imports: { type: 'boolean', default: false, description: 'Rewrite TS/JS import paths after move (default: false)' },
                 dry_run: { type: 'boolean', default: false, description: 'Preview what would be deleted without deleting (default: false)' },
               },
             },

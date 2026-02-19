@@ -5,10 +5,9 @@
  * affect default verbosity, extract modes, and enforcement of best practices.
  *
  * Mode detection priority:
- *   1. Runtime setMode() call
- *   2. GOODVIBES_MODE environment variable
- *   3. `.goodvibes/goodvibes.json` `mode` key
- *   4. Fallback: 'default'
+ *   1. GOODVIBES_MODE environment variable
+ *   2. `.goodvibes/goodvibes.json` `mode` key
+ *   3. Fallback: 'default'
  */
 
 import * as fs from 'fs';
@@ -271,9 +270,13 @@ export class ModeManager {
   /**
    * Get the full ModeConfig for the current mode.
    * Falls back to DEFAULT_MODE if the current mode name is unknown.
+   * When falling back, the returned config's `name` reflects the actual
+   * config used ('default'), not the requested unknown mode name.
    */
-  getModeConfig(): ModeConfig {
-    return this.resolveModeConfig(this.currentModeName) ?? DEFAULT_MODE;
+  getModeConfig(): ModeConfig & { fallback?: true } {
+    const resolved = this.resolveModeConfig(this.currentModeName);
+    if (resolved) return resolved;
+    return { ...DEFAULT_MODE, fallback: true };
   }
 
   /**

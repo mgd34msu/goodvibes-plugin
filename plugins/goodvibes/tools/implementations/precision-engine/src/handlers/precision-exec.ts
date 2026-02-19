@@ -1142,9 +1142,10 @@ function resolveImportToAbsolute(importingFile: string, importSpecifier: string)
  * @param importingFile - Absolute path of the importing file
  * @param targetFile - Absolute path of the target module file (may have extension)
  * @param originalSpecifier - Original specifier to preserve extension style
+ * @param isIndexFile - When true and original specifier omitted '/index', strip it from result
  * @returns The new relative specifier
  */
-function computeRelativeImport(importingFile: string, targetFile: string, originalSpecifier: string): string {
+function computeRelativeImport(importingFile: string, targetFile: string, originalSpecifier: string, isIndexFile = false): string {
   const importDir = path.dirname(importingFile);
   // Preserve extension if the original specifier had one
   const originalExt = path.extname(originalSpecifier);
@@ -1166,6 +1167,15 @@ function computeRelativeImport(importingFile: string, targetFile: string, origin
   if (originalExt && RESOLVABLE_EXTENSIONS.includes(originalExt)) {
     // Use the original extension (the user may use .js for ESM compat)
     rel = rel + originalExt;
+  }
+
+  // If this is an index file and the original specifier was directory-style
+  // (i.e. didn't include '/index'), strip the trailing '/index' from the result
+  // so the rewritten import stays directory-style as well.
+  if (isIndexFile && !originalSpecifier.includes('/index')) {
+    if (rel.endsWith('/index')) {
+      rel = rel.slice(0, -'/index'.length);
+    }
   }
 
   return rel;
@@ -1219,10 +1229,11 @@ async function updateImports(oldPath: string, newPath: string, projectRoot: stri
     dot: false,
   });
 
-  // Regex that matches import/export/require/dynamic-import specifiers
-  // Captures: (keyword/context)(quote)(specifier)(quote)
-  // Groups: [full match, quote char, specifier]
-  const importRegex = /(?:(?:^|[\s;])(?:import|export)\s+(?:[\w*{}\s,$]+\s+from\s+)?|(?:^|[\s;])(?:require|import)\s*\()(['"])([^'"]+)\1/gm;
+  // Regexes for line-by-line matching of import source lines
+  // Matches: from 'specifier' or from "specifier" (static import/export)
+  const fromLineRegex = /\bfrom\s+(['"])([^'"]+)\1/;
+  // Matches: require('specifier') or require("specifier") and import('specifier') or import("specifier")
+  const callLineRegex = /\b(?:require|import)\s*\(\s*(['"])([^'"]+)\1\s*\)/;
 
   const modifiedFiles: string[] = [];
 
@@ -1238,44 +1249,56 @@ async function updateImports(oldPath: string, newPath: string, projectRoot: stri
     }
 
     let modified = false;
-    const newContent = content.replace(
-      importRegex,
-      (fullMatch: string, quote: string, specifier: string) => {
-        // Only process relative imports
-        if (!specifier.startsWith('.')) return fullMatch;
+    const lines = content.split('\n');
 
-        // Resolve this specifier to an absolute path (without extension)
-        const resolved = resolveImportToAbsolute(filePath, specifier);
-        if (!resolved) return fullMatch;
+    const newLines = lines.map((line) => {
+      // Try to find an import specifier on this line
+      const fromMatch = fromLineRegex.exec(line);
+      const callMatch = callLineRegex.exec(line);
+      const match = fromMatch ?? callMatch;
+      if (!match) return line;
 
-        // Normalize to forward slashes for comparison
-        const resolvedNormalized = resolved.split(path.sep).join('/');
+      const quote = match[1];
+      const specifier = match[2];
 
-        let isMatch = false;
+      // Only process relative imports
+      if (!specifier.startsWith('.')) return line;
 
-        // Direct match: resolved path matches old file (with or without extension)
-        if (resolvedNormalized === oldPathNoExtNormalized) {
+      // Resolve this specifier to an absolute path (without extension)
+      const resolved = resolveImportToAbsolute(filePath, specifier);
+      if (!resolved) return line;
+
+      // Normalize to forward slashes for comparison
+      const resolvedNormalized = resolved.split(path.sep).join('/');
+
+      let isMatch = false;
+      let isDirStyleMatch = false;
+
+      // Direct match: resolved path matches old file (with or without extension)
+      if (resolvedNormalized === oldPathNoExtNormalized) {
+        isMatch = true;
+      }
+
+      // Index file match: import of directory that resolves to an index file
+      if (!isMatch && isIndexFile && oldDirPath) {
+        const oldDirNormalized = oldDirPath.split(path.sep).join('/');
+        if (resolvedNormalized === oldDirNormalized) {
           isMatch = true;
+          isDirStyleMatch = true;
         }
+      }
 
-        // Index file match: import of directory that resolves to an index file
-        if (!isMatch && isIndexFile && oldDirPath) {
-          const oldDirNormalized = oldDirPath.split(path.sep).join('/');
-          if (resolvedNormalized === oldDirNormalized) {
-            isMatch = true;
-          }
-        }
+      if (!isMatch) return line;
 
-        if (!isMatch) return fullMatch;
+      // Compute new relative path from this file to the new location.
+      // Pass isIndexFile so directory-style imports stay directory-style.
+      const newSpecifier = computeRelativeImport(filePath, newPath, specifier, isIndexFile && isDirStyleMatch);
 
-        // Compute new relative path from this file to the new location
-        const newSpecifier = computeRelativeImport(filePath, newPath, specifier);
+      modified = true;
+      return line.replace(quote + specifier + quote, quote + newSpecifier + quote);
+    });
 
-        // Reconstruct the full match with the new specifier
-        modified = true;
-        return fullMatch.replace(quote + specifier + quote, quote + newSpecifier + quote);
-      },
-    );
+    const newContent = newLines.join('\n');
 
     if (modified) {
       try {

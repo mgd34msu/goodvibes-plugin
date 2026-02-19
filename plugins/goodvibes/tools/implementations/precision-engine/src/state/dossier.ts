@@ -503,13 +503,13 @@ export class DossierGenerator {
     const allFiles = this.index.getFiles().map((f) => f.p.toLowerCase());
     const hasFile = (pattern: RegExp) => allFiles.some((f) => pattern.test(f));
 
-    if (hasFile(/\/tailwind\.config\.[^/]+$/)) stack.add('tailwind');
-    if (hasFile(/\/next\.config\.[^/]+$/)) stack.add('nextjs');
-    if (hasFile(/\/nuxt\.config\.[^/]+$/)) stack.add('nuxt');
-    if (hasFile(/\/astro\.config\.[^/]+$/)) stack.add('astro');
-    if (hasFile(/\/prisma\/schema\.prisma$/)) stack.add('prisma');
-    if (hasFile(/\/drizzle\.config\.[^/]+$/)) stack.add('drizzle');
-    if (hasFile(/(^|\/)(docker-compose\.[^/]+|dockerfile)$/)) stack.add('docker');
+    if (hasFile(/(^|\/)tailwind\.config\.[^/]+$/)) stack.add('tailwind');
+    if (hasFile(/(^|\/)next\.config\.[^/]+$/)) stack.add('nextjs');
+    if (hasFile(/(^|\/)nuxt\.config\.[^/]+$/)) stack.add('nuxt');
+    if (hasFile(/(^|\/)astro\.config\.[^/]+$/)) stack.add('astro');
+    if (hasFile(/(^|\/)prisma\/schema\.prisma$/)) stack.add('prisma');
+    if (hasFile(/(^|\/)drizzle\.config\.[^/]+$/)) stack.add('drizzle');
+    if (hasFile(/(^|\/)(docker-compose\.[^/]+|dockerfile|compose\.(yaml|yml))$/)) stack.add('docker');
 
     // ── 3. Frameworks and tooling from package.json deps ─────────────────────
     const pkgJson = await this.readPackageJson();

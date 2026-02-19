@@ -11,7 +11,7 @@
  * Design principles:
  * 1. Does NOT replace existing singletons — wraps/references them.
  * 2. `static get()` returns null if not initialized — tools degrade gracefully.
- * 3. Hooks and Mode are Phase 4/5 — placeholder interfaces only.
+ * 3. HooksManager (Phase 4) and ModeManager (Phase 5, implemented) are integrated.
  * 4. Every tool checks PrecisionRuntime.get() and falls back if null.
  */
 
