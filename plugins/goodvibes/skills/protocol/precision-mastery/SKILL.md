@@ -174,9 +174,9 @@ precision_write:
   verbosity: count_only
 ```
 
-### 5. Batch Engine Wrapping Precision Tools (Optimal)
+### 5. Batching Precision Tools (Optimal)
 
-The highest form of batching: wrap multiple precision calls in a single batch engine transaction.
+The highest form of batching: wrap multiple precision calls in a single transaction.
 
 Each operation type (read, write, exec, query) uses the corresponding precision_engine tool's schema. For example:
 - `read` operations use precision_read schema (with `files` array)

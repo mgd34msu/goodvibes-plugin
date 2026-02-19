@@ -23,14 +23,6 @@ The `.mcp.json` file configures Model Context Protocol servers that provide addi
         "NODE_ENV": "production"
       }
     },
-    "batch-engine": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/batch-engine/dist/index.cjs"],
-      "env": {
-        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "NODE_ENV": "production"
-      }
-    },
     "registry-engine": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/registry-engine/dist/index.cjs"],
@@ -134,9 +126,9 @@ The following variables are automatically substituted at runtime:
   - Locating configuration files
 - **Example**:
   ```json
-  "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/batch-engine/dist/index.cjs"]
+  "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/precision-engine/dist/index.cjs"]
   ```
-  Resolves to (Windows): `C:\Users\username\AppData\Roaming\Claude\plugins\goodvibes\.claude-plugin\tools\implementations\batch-engine\dist\index.cjs`
+  Resolves to (Windows): `C:\Users\username\AppData\Roaming\Claude\plugins\goodvibes\.claude-plugin\tools\implementations\precision-engine\dist\index.cjs`
 
 ### `${HOME}`, `${USER}`, etc.
 - **Description**: Standard environment variables
@@ -150,7 +142,7 @@ The following variables are automatically substituted at runtime:
 
 ## GoodVibes MCP Servers
 
-GoodVibes provides 6 specialized MCP servers:
+GoodVibes provides 5 specialized MCP servers:
 
 ### 1. precision-engine
 **Purpose**: Token-efficient file operations with precision output control
@@ -177,30 +169,7 @@ GoodVibes provides 6 specialized MCP servers:
 }
 ```
 
-### 2. batch-engine
-**Purpose**: Orchestrate multi-operation workflows with dependencies
-
-**Tools Provided**:
-- `batch` - Execute batches of operations with dependency resolution
-- `batch_status` - Get status of running batches
-- `batch_list` - List all batches
-- `batch_recover` - Recover from batch failures
-- `batch_checkpoints` - Manage batch checkpoints
-- `batch_state` - Query batch state
-
-**Configuration**:
-```json
-"batch-engine": {
-  "command": "node",
-  "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/batch-engine/dist/index.cjs"],
-  "env": {
-    "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-    "NODE_ENV": "production"
-  }
-}
-```
-
-### 3. registry-engine
+### 2. registry-engine
 **Purpose**: Search and discover skills, agents, and tools
 
 **Tools Provided**:
@@ -224,7 +193,7 @@ GoodVibes provides 6 specialized MCP servers:
 }
 ```
 
-### 4. frontend-engine
+### 3. frontend-engine
 **Purpose**: Analyze and debug frontend component hierarchies
 
 **Tools Provided**:
@@ -252,7 +221,7 @@ GoodVibes provides 6 specialized MCP servers:
 }
 ```
 
-### 5. analysis-engine
+### 4. analysis-engine
 **Purpose**: Codebase analysis, pattern detection, and validation
 
 **Tools Provided**:
@@ -288,7 +257,7 @@ GoodVibes provides 6 specialized MCP servers:
 }
 ```
 
-### 6. project-engine
+### 5. project-engine
 **Purpose**: Project scaffolding, management, and operations
 
 **Tools Provided**:
@@ -383,8 +352,7 @@ With this configuration:
 ```json
 {
   "mcpServers": {
-    "precision-engine": { /* ... */ },
-    "batch-engine": { /* ... */ }
+    "precision-engine": { /* ... */ }
   }
 }
 ```
@@ -392,8 +360,6 @@ With this configuration:
 Tools are accessed as:
 - `precision-engine/precision_read`
 - `precision-engine/precision_write`
-- `batch-engine/batch`
-- `batch-engine/batch_status`
 
 ## Troubleshooting
 
@@ -470,6 +436,5 @@ Tools are accessed as:
 ## See Also
 
 - [plugin.json Reference](./plugin-json.md) - Plugin configuration
-- [Batch Configuration Reference](./batch-config.md) - Batch operation configuration
 - [SPEC-v2.md](../../../../SPEC-v2.md) - Complete specification
 - [MCP Protocol Specification](https://modelcontextprotocol.io) - Official MCP docs

@@ -1159,7 +1159,7 @@ WORK (engineer) -> REVIEW (reviewer) -> FIX (engineer) -> CHECK (reviewer)
 
 ## Context Injection
 
-When spawned by the batch engine, you receive:
+When spawned by the orchestrator, you receive:
 
 - **task**: The planning task to accomplish
 - **scope**: Directories/files in scope

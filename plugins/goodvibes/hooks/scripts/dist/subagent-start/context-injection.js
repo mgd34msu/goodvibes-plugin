@@ -95,10 +95,8 @@ export async function buildSubagentContext(cwd, agentType, _sessionId) {
         'CRITICAL: Only use commands outside of MCP tools or skills when there is absolutely no other way ' +
         'to accomplish a specific part of the task. Even if the entire task cannot be completed ' +
         'with skills/MCP tools, use them for every part where they apply.\n\n');
-    // Batch processing reminder for efficiency
-    contextParts.push(`MANDATORY: If multiple tool uses are planned, use discover and batch tools:\n` +
-        ` - mcp__plugin_goodvibes_precision-engine__discover\n` +
-        ` - mcp__plugin_goodvibes_batch-engine__batch\n\n`);
+    // DPB loop reminder for efficiency
+    contextParts.push('MANDATORY: If multiple tool uses are planned, use GPA loops as defined in the System Prompt.\n\n');
     // Add agent-specific reminders based on type
     if (agentType.includes('engineer')) {
         contextParts.push('Remember: Write-local only. All changes must be in the project root or directories within the project root.\n\n');

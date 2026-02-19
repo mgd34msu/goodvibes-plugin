@@ -392,7 +392,7 @@ Telemetry:
 
 **Format**:
 ```markdown
-## 2024-01-15 14:32:45 - Batch refactor-api
+## 2024-01-15 14:32:45 - Refactor API
 
 ### Error: TypeScript Compilation Failed
 **File**: src/api.ts
@@ -401,8 +401,8 @@ Telemetry:
 
 **Stack**:
 ```
-at refactorFunction (batch-engine:123)
-at executeBatch (batch-engine:456)
+at refactorFunction (precision-engine:123)
+at executeEdit (precision-engine:456)
 ```
 
 **Resolution**: Fixed type annotation

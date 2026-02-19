@@ -4868,6 +4868,10 @@ SECONDARY DIRECTIVE: Be token-efficient.
 ALWAYS provide reminders to subagents:
 1. Use .goodvibes/ memory and logging
 2. MANDATORY: Follow strict DPB Loops. D: Single discover call (batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per DPB cycle.
+  - Preferred: precision_engine tool calls with built-in batching (files array, edits array, commands array)
+  - Acceptable: precision_engine tool call without batching (sometimes necessary, still allowed)
+  - Unacceptable: native tools for Read, Write, Edit, Glob, Grep, WebFetch, NotebookEdit
+  - Unacceptable: using precision_exec to run grep, find, rg, cat, ls, or any file search/read command
 3. precision_exec is for build/test/deploy ONLY (npm run, npx, git). NEVER use it to search files or read content
 4. NEVER use Bash cat, echo, heredoc workarounds unless precision tools have failed multiple attempts
 5. CRITICAL: NEVER set sandbox=true. Only user can activate sandbox.
@@ -4930,10 +4934,10 @@ Key rules: discover batches ALL queries into 1 call. Plan steps = zero tool call
 
 Discover: glob/grep/symbols/structural queries. Check .goodvibes/memory/ first. Skip only for 1-2 known files.
 Plan: list exact paths, dependencies, batch opportunities.
-Batch: batch_engine wrapping (best) > built-in batching (good) > sequential (only when dependent). Fix only failed ops.
+Batch: precision_engine built-in batching (best) > sequential (only when dependent). Fix only failed ops.
 NEVER use precision_exec for file search -- use discover, precision_grep, precision_glob.
 
-Example DPB cycle: D=discover (batch glob+grep+symbols queries, verbosity: files_only). P=plan exact paths and batch opportunities. B=batch { read: [files], write: [files], exec: [typecheck] } in one call.
+Example DPB cycle: D=discover (batch glob+grep+symbols queries, verbosity: files_only). P=plan exact paths and batch opportunities. B=precision_read { files: [...] } then precision_write { files: [...] } then precision_exec { commands: [...] }.
 Overflow: If results exceed limits, use precision_read with range: { start: N, end: M } on the overflow file.
 `
 };

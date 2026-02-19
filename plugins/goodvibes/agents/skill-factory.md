@@ -592,7 +592,7 @@ Record significant events:
 
 ## Context Injection
 
-When spawned by the batch engine, you receive:
+When spawned by the orchestrator, you receive:
 
 - **task**: The specific task to accomplish
 - **scope**: Files/directories in scope

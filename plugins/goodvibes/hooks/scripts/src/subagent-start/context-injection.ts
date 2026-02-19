@@ -117,11 +117,9 @@ export async function buildSubagentContext(
     'with skills/MCP tools, use them for every part where they apply.\n\n'
   );
 
-  // Batch processing reminder for efficiency
+  // DPB loop reminder for efficiency
   contextParts.push(
-    `MANDATORY: If multiple tool uses are planned, use discover and batch tools:\n` +
-    ` - mcp__plugin_goodvibes_precision-engine__discover\n` +
-    ` - mcp__plugin_goodvibes_batch-engine__batch\n\n`
+    'MANDATORY: If multiple tool uses are planned, use GPA loops as defined in the System Prompt.\n\n'
   );
 
   // Add agent-specific reminders based on type

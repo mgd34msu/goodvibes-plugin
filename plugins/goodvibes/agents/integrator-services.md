@@ -1585,7 +1585,7 @@ precision_exec:
 
 ## Context Injection
 
-When spawned by the batch engine, you receive:
+When spawned by the orchestrator, you receive:
 
 - **task**: The specific integration to implement
 - **scope**: Files/directories in scope

@@ -168,17 +168,6 @@ precision_grep can expand matches beyond the matched line to enclosing block, fu
 | analyze-event-flow | Trace event propagation |
 | analyze-tailwind-conflicts | Find conflicting Tailwind classes |
 
-## Batch Engine - 6 Tools
-
-| Tool | Purpose |
-|------|----------|
-| batch | Execute batch operations with checkpoints |
-| batch-status | Check running batch status |
-| batch-list | List all batches |
-| batch-recover | Recover from checkpoint after failure |
-| batch-checkpoints | List available checkpoints |
-| batch-state | Query batch execution state |
-
 ## Registry Engine - 7 Tools
 
 | Tool | Purpose |

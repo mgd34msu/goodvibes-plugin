@@ -149,7 +149,7 @@ Two-tier system: **logs/** for session details (Markdown), **memory/** for cross
 
 **Usage Notes:**
 - Orchestrator writes directly to files using `precision_write` and `precision_edit` tools
-- Memory/LogsManager classes are for hooks and batch-engine internal use
+- Memory/LogsManager classes are for hooks internal use
 - ID format: Use `YYYYMMDD_HHMMSS` suffix (e.g., `dec_20260125_143052`) to avoid needing to read existing entries
 - Before first write to a file, check if it exists; if not, create with appropriate header
 
