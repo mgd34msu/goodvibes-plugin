@@ -792,7 +792,7 @@ export const precisionAgentSchema: Tool = {
   name: 'precision_agent',
   description:
     'Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' +
-    'Supports background (non-blocking) and foreground (blocking) execution. ' +
+    'Always runs in background (non-blocking) — returns immediately with agent_id and process_id. ' +
     'Optionally injects context files and a project dossier into the agent prompt.',
   inputSchema: {
     type: 'object',
@@ -844,20 +844,6 @@ export const precisionAgentSchema: Tool = {
           max_tokens: {
             type: ['integer', 'null'],
             description: 'Maximum tokens — placeholder for future budget engine.',
-          },
-          background: {
-            type: 'boolean',
-            description:
-              'Run in background (non-blocking). ' +
-              'Default: true in main conversation, false in subagent context.',
-          },
-          timeout_ms: {
-            type: 'integer',
-            minimum: 1,
-            default: 1800000,
-            description:
-              'Timeout in milliseconds for blocking mode execution. ' +
-              'Default: 1800000 (30 minutes). Has no effect in background mode.',
           },
           dossier: {
             type: 'object',

@@ -4,14 +4,12 @@
  *
  * Supports:
  * - Multiple AI providers: claude, gemini, codex
- * - Background (non-blocking) and foreground (blocking) execution
+ * - Background-only (non-blocking) execution via ProcessManager
  * - Context file injection into agent prompt
  * - Dossier integration (project context, memory, decisions)
- * - Structured response with agent_id, status, result
+ * - Structured response with agent_id, status, process_id
  */
 
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
@@ -23,17 +21,12 @@ import { ProjectIndex } from '../state/project-index.js';
 import { PrecisionRuntime } from '../state/precision-runtime.js';
 import { startTimer, logger } from '../logging.js';
 
-const execFileAsync = promisify(execFile);
-
 /**
  * Default output mode for this tool.
  * Note: This intentionally does NOT use the global verbosity system because agent
  * output is AI-generated text, not structured file data. Standard is always appropriate.
  */
 const DEFAULT_OUTPUT_MODE = 'standard' as const;
-
-/** Default blocking timeout for AI agent execution (30 minutes). */
-const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 
 /** Delay in ms before cleaning up the prompt temp file after background spawn.
  * Shell reads the redirect file immediately on startup; 2 seconds is generous. */
@@ -91,10 +84,6 @@ export interface AgentOptions {
   max_cost?: number | null;
   /** Maximum tokens — placeholder for future budget engine. */
   max_tokens?: number | null;
-  /** Run in background (non-blocking). Defaults: main conversation = true, subagent = false. */
-  background?: boolean;
-  /** Timeout in ms for blocking mode. Default: 1800000 (30 minutes). */
-  timeout_ms?: number;
   /** Dossier integration options. */
   dossier?: AgentDossierOptions;
 }
@@ -127,21 +116,6 @@ export interface AgentRunningResponse {
   process_id: string;
   log_file: string;
   hint: string;
-}
-
-/**
- * Response when agent completes (blocking mode).
- */
-export interface AgentCompletedResponse {
-  agent_id: string;
-  status: 'completed' | 'failed';
-  provider: Provider;
-  model: string;
-  result: string;
-  tokens_used: number | null;
-  cost: number | null;
-  duration_ms: number;
-  exit_code: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -485,28 +459,11 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
   const dossierOptions = options.dossier ?? { include: true };
   const includeDossier = dossierOptions.include !== false; // default true
 
-  // ─── Background default resolution ──────────────────────────────────────
-  // Design rule: main conversation defaults to background: true,
-  // subagent defaults to background: false.
-  // We detect subagent context by checking if CLAUDE_SUBAGENT_MODE env var is set,
-  // or fall back to explicit option or the safer default of false (blocking).
-  let runInBackground: boolean;
-  if (options.background !== undefined) {
-    runInBackground = options.background;
-  } else {
-    // Heuristic: if running as a subagent, default to blocking
-    const isSubagent =
-      process.env.CLAUDE_SUBAGENT_MODE === 'true' ||
-      process.env.PRECISION_ENGINE_SUBAGENT === 'true';
-    runInBackground = !isSubagent;
-  }
-
   // ─── Session/Agent ID ───────────────────────────────────────────────────
   const runtime = PrecisionRuntime.get();
   const sessionId = runtime?.getSessionId();
   const agentId = generateAgentId(sessionId);
   const startedAt = new Date().toISOString();
-  const startTime = Date.now();
 
   // ─── Context Files ───────────────────────────────────────────────────────
   const contextContent = await readContextFiles(input.context_files ?? []);
@@ -534,14 +491,10 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
     agentId,
     provider,
     model,
-    background: runInBackground,
     promptLength: finalPrompt.length,
   });
 
-  // ─── Execution ───────────────────────────────────────────────────────────
-
-  // ─── Timeout ─────────────────────────────────────────────────────────────
-  const timeoutMs = options.timeout_ms ?? DEFAULT_AGENT_TIMEOUT_MS;
+  // ─── Execution (always background) ───────────────────────────────────────
 
   // Build a clean environment without CLAUDECODE vars to prevent nested-session
   // detection errors when spawning child Claude CLI processes.
@@ -549,139 +502,49 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
   delete cleanEnv['CLAUDECODE'];
   delete cleanEnv['CLAUDE_PARENT_SESSION_ID'];
 
-  if (runInBackground) {
-    // Background mode: spawn via ProcessManager, return immediately.
-    // Prompt is written to a temp file and passed via shell stdin redirect
-    // to avoid ARG_MAX OS limits on large prompts.
-    let promptTmpFile: string | null = null;
-    try {
-      promptTmpFile = path.join(os.tmpdir(), `precision-agent-${agentId}.txt`);
-      await fs.writeFile(promptTmpFile, finalPrompt, 'utf-8');
+  // Spawn via ProcessManager and return immediately.
+  // Prompt is written to a temp file and passed via shell stdin redirect
+  // to avoid ARG_MAX OS limits on large prompts.
+  let promptTmpFile: string | null = null;
+  try {
+    promptTmpFile = path.join(os.tmpdir(), `precision-agent-${agentId}.txt`);
+    await fs.writeFile(promptTmpFile, finalPrompt, 'utf-8');
 
-      const bgResult = processManager.spawn(executable, cmdArgs, {
-        cwd: process.cwd(),
-        stdinFile: promptTmpFile,
-        env: cleanEnv,
-      });
+    const bgResult = processManager.spawn(executable, cmdArgs, {
+      cwd: process.cwd(),
+      stdinFile: promptTmpFile,
+      env: cleanEnv,
+    });
 
-      // Schedule temp file cleanup after spawn succeeds.
-      // The shell reads the redirect file immediately on startup, so a short
-      // delay is more than sufficient before cleanup.
-      const tmpFileToClean = promptTmpFile;
-      setTimeout(() => {
-        fs.unlink(tmpFileToClean).catch(() => {});
-      }, STDIN_FILE_CLEANUP_DELAY_MS);
+    // Schedule temp file cleanup after spawn succeeds.
+    // The shell reads the redirect file immediately on startup, so a short
+    // delay is more than sufficient before cleanup.
+    const tmpFileToClean = promptTmpFile;
+    setTimeout(() => {
+      fs.unlink(tmpFileToClean).catch(() => {});
+    }, STDIN_FILE_CLEANUP_DELAY_MS);
 
-      const response: AgentRunningResponse = {
-        agent_id: agentId,
-        status: 'running',
-        provider,
-        model,
-        started_at: startedAt,
-        process_id: bgResult.process_id,
-        log_file: bgResult.log_file,
-        hint: bgResult.hint,
-      };
+    const response: AgentRunningResponse = {
+      agent_id: agentId,
+      status: 'running',
+      provider,
+      model,
+      started_at: startedAt,
+      process_id: bgResult.process_id,
+      log_file: bgResult.log_file,
+      hint: bgResult.hint,
+    };
 
-      return toCallToolResult(successResult(response, DEFAULT_OUTPUT_MODE, elapsed()));
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logger.error('[precision_agent] Failed to spawn background agent', { agentId, err: errMsg });
-      // Clean up temp file on failure
-      if (promptTmpFile) {
-        await fs.unlink(promptTmpFile).catch(() => {});
-      }
-      return toCallToolResult(
-        errorResult(`Failed to spawn agent '${agentId}': ${errMsg}`, DEFAULT_OUTPUT_MODE, elapsed())
-      );
+    return toCallToolResult(successResult(response, DEFAULT_OUTPUT_MODE, elapsed()));
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    logger.error('[precision_agent] Failed to spawn background agent', { agentId, err: errMsg });
+    // Clean up temp file on failure
+    if (promptTmpFile) {
+      await fs.unlink(promptTmpFile).catch(() => {});
     }
-  } else {
-    // Blocking mode: execute and wait for result.
-    // Prompt is passed via stdin to avoid ARG_MAX OS limits on large prompts.
-    try {
-      const { stdout, stderr } = await execFileAsync(executable, cmdArgs, {
-        cwd: process.cwd(),
-        maxBuffer: 50 * 1024 * 1024, // 50MB buffer for long-running agents
-        shell: false,
-        timeout: timeoutMs,
-        input: finalPrompt, // Pass prompt via stdin, not as CLI arg
-        env: cleanEnv,
-      });
-
-      const duration = Date.now() - startTime;
-      const resultText = stdout.trim();
-
-      if (stderr && stderr.trim()) {
-        logger.debug('[precision_agent] Agent stderr', { agentId, stderr: stderr.slice(0, 500) });
-      }
-
-      const response: AgentCompletedResponse = {
-        agent_id: agentId,
-        status: 'completed',
-        provider,
-        model,
-        result: resultText,
-        tokens_used: null, // Future: parse from stderr/stdout telemetry
-        cost: null, // Future: budget engine
-        duration_ms: duration,
-        exit_code: 0,
-      };
-
-      return toCallToolResult(successResult(response, DEFAULT_OUTPUT_MODE, elapsed()));
-    } catch (err: unknown) {
-      const duration = Date.now() - startTime;
-
-      // execFile rejects with an ExecFileException that includes stdout/stderr
-      const execErr = err as NodeJS.ErrnoException & {
-        stdout?: string;
-        stderr?: string;
-        code?: number | string;
-      };
-
-      // Map signal names to conventional exit codes (128 + signal number)
-      let exitCode: number;
-      if (typeof execErr.code === 'number') {
-        exitCode = execErr.code;
-      } else if (typeof execErr.code === 'string' && execErr.code in os.constants.signals) {
-        exitCode = 128 + (os.constants.signals as Record<string, number>)[execErr.code];
-      } else {
-        exitCode = 1;
-      }
-
-      const resultText = (execErr.stdout ?? '').trim();
-      const errMsg = (execErr.stderr ?? execErr.message ?? String(err)).trim();
-
-      logger.warn('[precision_agent] Agent exited with non-zero code', {
-        agentId,
-        exitCode,
-        err: errMsg.slice(0, 500),
-      });
-
-      const response: AgentCompletedResponse = {
-        agent_id: agentId,
-        status: 'failed',
-        provider,
-        model,
-        result: resultText || errMsg,
-        tokens_used: null,
-        cost: null,
-        duration_ms: duration,
-        exit_code: exitCode,
-      };
-
-      // Return success: false so MCP callers can detect failure via isError flag.
-      // Include structured response in data for callers that need exit_code, result, etc.
-      const jsonStr = JSON.stringify(response);
-      return toCallToolResult({
-        success: false,
-        data: response,
-        error: `Agent failed with exit code ${exitCode}: ${errMsg.slice(0, 200)}`,
-        meta: {
-          output_mode: DEFAULT_OUTPUT_MODE,
-          token_estimate: Math.ceil(jsonStr.length / 4),
-          execution_ms: elapsed(),
-        },
-      });
-    }
+    return toCallToolResult(
+      errorResult(`Failed to spawn agent '${agentId}': ${errMsg}`, DEFAULT_OUTPUT_MODE, elapsed())
+    );
   }
 };

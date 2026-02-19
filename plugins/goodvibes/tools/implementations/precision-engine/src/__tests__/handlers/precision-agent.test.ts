@@ -12,15 +12,13 @@ import { expectSuccess, expectError } from '../test-utils.js';
 // Use vi.hoisted() so these variables are available inside vi.mock() factories
 // which are hoisted to the top of the file by Vitest's transform.
 
-const { mockProcessManagerSpawn, mockExecFile } = vi.hoisted(() => ({
+const { mockProcessManagerSpawn } = vi.hoisted(() => ({
   mockProcessManagerSpawn: vi.fn(),
-  mockExecFile: vi.fn(),
 }));
 
-// Mock child_process module
+// Mock child_process module (spawn kept for completeness; execFile no longer used)
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
-  execFile: mockExecFile,
 }));
 
 // Mock ProcessManager singleton used by the handler
@@ -410,7 +408,7 @@ describe('handlePrecisionAgent input validation', () => {
   it('should return error for invalid provider', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'test task',
-      options: { provider: 'openai' as never, background: false },
+      options: { provider: 'openai' as never },
     });
     const parsed = expectError(result);
     expect(parsed.error).toContain("Invalid provider 'openai'");
@@ -435,7 +433,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should return running status in background mode', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'analyze code',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.status).toBe('running');
@@ -444,7 +442,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should include agent_id in background response', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'analyze code',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.agent_id).toMatch(/^agent_([a-f0-9]{8}|xxxxxxxx)_[a-f0-9]{8}$/);
@@ -453,7 +451,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should include provider in background response', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'analyze code',
-      options: { provider: 'claude', background: true, dossier: { include: false } },
+      options: { provider: 'claude', dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.provider).toBe('claude');
@@ -462,7 +460,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should include started_at timestamp', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'analyze code',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(typeof parsed.data.started_at).toBe('string');
@@ -473,7 +471,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should include process_id and log_file from ProcessManager', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.process_id).toBe('bg-1');
@@ -487,7 +485,7 @@ describe('handlePrecisionAgent background mode', () => {
 
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectError(result);
     expect(parsed.error).toContain('Failed to spawn agent');
@@ -496,7 +494,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should default to claude provider', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.provider).toBe('claude');
@@ -505,7 +503,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should pass model to response', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { model: 'sonnet', background: true, dossier: { include: false } },
+      options: { model: 'sonnet', dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.model).toBe('sonnet');
@@ -514,7 +512,7 @@ describe('handlePrecisionAgent background mode', () => {
   it('should pass resolved model and prompt via stdin (not positional arg) to ProcessManager.spawn', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'analyze security vulnerabilities in the codebase',
-      options: { provider: 'claude', model: 'opus', background: true, dossier: { include: false } },
+      options: { provider: 'claude', model: 'opus', dossier: { include: false } },
     });
     expectSuccess(result);
     expect(mockProcessManagerSpawn).toHaveBeenCalledOnce();
@@ -530,191 +528,11 @@ describe('handlePrecisionAgent background mode', () => {
   it('should include hint in response', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(typeof parsed.data.hint).toBe('string');
     expect(parsed.data.hint.length).toBeGreaterThan(0);
-  });
-});
-
-describe('handlePrecisionAgent blocking mode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should return completed status when agent succeeds', async () => {
-    // Mock execFile with callback-style API (promisify wraps this)
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'Agent completed successfully', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.status).toBe('completed');
-    expect(parsed.data.result).toBe('Agent completed successfully');
-  });
-
-  it('should include duration_ms in blocking response', async () => {
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'done', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(typeof parsed.data.duration_ms).toBe('number');
-    expect(parsed.data.duration_ms).toBeGreaterThanOrEqual(0);
-  });
-
-  it('should return failed status (as error) when agent exits non-zero', async () => {
-    const execError = Object.assign(new Error('Command failed'), {
-      stdout: 'partial output',
-      stderr: 'error: something went wrong',
-      code: 1,
-    });
-    mockExecFile.mockImplementation(
-      (_exe: string, _args: string[], _options: object, callback: (err: Error) => void) => {
-        callback(execError);
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    // Failed agents now return errorResult (isError: true) so callers detect failure
-    const parsed = expectError(result);
-    expect(parsed.data?.status).toBe('failed');
-    expect(parsed.data?.exit_code).toBe(1);
-  });
-
-  it('should map SIGTERM signal name to exit code 143 (128+15)', async () => {
-    const execError = Object.assign(new Error('Command killed'), {
-      stdout: '',
-      stderr: '',
-      code: 'SIGTERM',
-    });
-    mockExecFile.mockImplementation(
-      (_exe: string, _args: string[], _options: object, callback: (err: Error) => void) => {
-        callback(execError);
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectError(result);
-    expect(parsed.data?.exit_code).toBe(143); // 128 + 15 (SIGTERM)
-  });
-
-  it('should include agent_id in blocking response', async () => {
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'done', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'test',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.agent_id).toMatch(/^agent_([a-f0-9]{8}|xxxxxxxx)_[a-f0-9]{8}$/);
-  });
-
-  it('should set exit_code 0 on success', async () => {
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'ok', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.exit_code).toBe(0);
-  });
-
-  it('should trim whitespace from stdout result', async () => {
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: '  trimmed output  \n', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.result).toBe('trimmed output');
-  });
-
-  it('should set tokens_used and cost to null (not yet implemented)', async () => {
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'done', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.tokens_used).toBeNull();
-    expect(parsed.data.cost).toBeNull();
   });
 });
 
@@ -737,7 +555,7 @@ describe('handlePrecisionAgent dossier integration', () => {
     // DossierGenerator is mocked to return empty string — no error expected.
     const result = await handlePrecisionAgent({
       prompt: 'analyze code',
-      options: { background: true },
+      // no options — dossier defaults to true
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.status).toBe('running');
@@ -746,7 +564,7 @@ describe('handlePrecisionAgent dossier integration', () => {
   it('should skip dossier when dossier.include is false', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'analyze code',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.status).toBe('running');
@@ -756,7 +574,6 @@ describe('handlePrecisionAgent dossier integration', () => {
     const result = await handlePrecisionAgent({
       prompt: 'analyze code',
       options: {
-        background: true,
         dossier: { include: true, extra_reminders: ['Focus on auth bypass vectors'] },
       },
     });
@@ -781,7 +598,7 @@ describe('handlePrecisionAgent provider variants', () => {
   it('should use gemini provider when specified', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { provider: 'gemini', background: true, dossier: { include: false } },
+      options: { provider: 'gemini', dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.provider).toBe('gemini');
@@ -790,7 +607,7 @@ describe('handlePrecisionAgent provider variants', () => {
   it('should use codex provider when specified', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { provider: 'codex', background: true, dossier: { include: false } },
+      options: { provider: 'codex', dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.provider).toBe('codex');
@@ -799,7 +616,7 @@ describe('handlePrecisionAgent provider variants', () => {
   it('should call ProcessManager.spawn for gemini (placeholder) without error', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
-      options: { provider: 'gemini', background: true, dossier: { include: false } },
+      options: { provider: 'gemini', dossier: { include: false } },
     });
     expectSuccess(result);
     expect(mockProcessManagerSpawn).toHaveBeenCalledOnce();
@@ -827,7 +644,7 @@ describe('handlePrecisionAgent stdinFile and temp file cleanup', () => {
   it('should pass stdinFile in options to ProcessManager.spawn', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'test prompt for stdin',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     expectSuccess(result);
     expect(mockProcessManagerSpawn).toHaveBeenCalledOnce();
@@ -843,7 +660,7 @@ describe('handlePrecisionAgent stdinFile and temp file cleanup', () => {
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     await handlePrecisionAgent({
       prompt: 'cleanup test',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     // setTimeout should be called for temp file cleanup
     expect(setTimeoutSpy).toHaveBeenCalled();
@@ -857,7 +674,7 @@ describe('handlePrecisionAgent stdinFile and temp file cleanup', () => {
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     await handlePrecisionAgent({
       prompt: 'cleanup test',
-      options: { background: true, dossier: { include: false } },
+      options: { dossier: { include: false } },
     });
     // setTimeout should NOT be called when spawn fails (cleanup happens in catch)
     expect(setTimeoutSpy).not.toHaveBeenCalled();
@@ -865,7 +682,7 @@ describe('handlePrecisionAgent stdinFile and temp file cleanup', () => {
   });
 });
 
-describe('handlePrecisionAgent background default detection', () => {
+describe('handlePrecisionAgent background-only execution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockProcessManagerSpawn.mockReturnValue({
@@ -886,9 +703,8 @@ describe('handlePrecisionAgent background default detection', () => {
     delete process.env.PRECISION_ENGINE_SUBAGENT;
   });
 
-  it('should default to background when not in subagent context', async () => {
-    // Without subagent env var, background defaults to true
-    // ProcessManager.spawn should be called (background mode)
+  it('should always run in background regardless of env vars', async () => {
+    // Agents always run in background — no blocking mode
     const result = await handlePrecisionAgent({
       prompt: 'task',
       options: { dossier: { include: false } },
@@ -898,84 +714,24 @@ describe('handlePrecisionAgent background default detection', () => {
     expect(mockProcessManagerSpawn).toHaveBeenCalled();
   });
 
-  it('should default to blocking when CLAUDE_SUBAGENT_MODE=true', async () => {
+  it('should still run in background when CLAUDE_SUBAGENT_MODE=true', async () => {
     process.env.CLAUDE_SUBAGENT_MODE = 'true';
-
-    // Set up execFile mock for blocking mode
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'done', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
 
     const result = await handlePrecisionAgent({
       prompt: 'task',
       options: { dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
-    expect(parsed.data.status).toBe('completed');
-    expect(mockProcessManagerSpawn).not.toHaveBeenCalled();
+    expect(parsed.data.status).toBe('running');
+    expect(mockProcessManagerSpawn).toHaveBeenCalled();
   });
 
-  it('should default to blocking when PRECISION_ENGINE_SUBAGENT=true', async () => {
+  it('should still run in background when PRECISION_ENGINE_SUBAGENT=true', async () => {
     process.env.PRECISION_ENGINE_SUBAGENT = 'true';
 
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'done', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
     const result = await handlePrecisionAgent({
       prompt: 'task',
       options: { dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.status).toBe('completed');
-    expect(mockProcessManagerSpawn).not.toHaveBeenCalled();
-  });
-
-  it('should respect explicit background: false override in subagent context', async () => {
-    process.env.CLAUDE_SUBAGENT_MODE = 'true';
-
-    mockExecFile.mockImplementation(
-      (
-        _exe: string,
-        _args: string[],
-        _options: object,
-        callback: (err: null, result: { stdout: string; stderr: string }) => void
-      ) => {
-        callback(null, { stdout: 'done', stderr: '' });
-        return { pid: 9999 };
-      }
-    );
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: false, dossier: { include: false } },
-    });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.status).toBe('completed');
-  });
-
-  it('should respect explicit background: true even in subagent context', async () => {
-    process.env.CLAUDE_SUBAGENT_MODE = 'true';
-
-    const result = await handlePrecisionAgent({
-      prompt: 'task',
-      options: { background: true, dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
     expect(parsed.data.status).toBe('running');
