@@ -1,1 +1,0 @@
-Testing count_only verbosity mode

@@ -1,8 +1,0 @@
-// Some code above
-function myFunc() {
-  let x = 42;
-}
-// More code
-function otherFunc() {
-  let y = TARGET_VALUE;
-}

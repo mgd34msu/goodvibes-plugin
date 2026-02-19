@@ -1,5 +1,0 @@
-DONE: task 1
-DONE: task 2
-DONE: task 3
-DONE: task 4
-DONE: task 5

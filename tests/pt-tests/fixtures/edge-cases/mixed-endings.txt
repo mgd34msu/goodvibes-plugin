@@ -1,4 +1,0 @@
-Line 1 with CRLF
-Line 2 with LF
-Line 3 with CRLF
-Line 4 with LF

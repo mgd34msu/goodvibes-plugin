@@ -1,1 +1,0 @@
-const greeting = `Hi ${user}!`;
