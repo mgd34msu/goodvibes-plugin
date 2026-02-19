@@ -35,6 +35,10 @@ const DEFAULT_OUTPUT_MODE = 'standard' as const;
 /** Default blocking timeout for AI agent execution (30 minutes). */
 const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 
+/** Delay in ms before cleaning up the prompt temp file after background spawn.
+ * Shell reads the redirect file immediately on startup; 2 seconds is generous. */
+const STDIN_FILE_CLEANUP_DELAY_MS = 2000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,9 +56,10 @@ type Provider = typeof SUPPORTED_PROVIDERS[number];
  */
 const FORBIDDEN_CLI_FLAGS = new Set([
   'model',
+  'm', // short alias for --model
   'dangerously-skip-permissions',
   'print',
-  'p',
+  'p', // short alias for --print
   'stdin',
 ]);
 
@@ -549,7 +554,7 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
       const tmpFileToClean = promptTmpFile;
       setTimeout(() => {
         fs.unlink(tmpFileToClean).catch(() => {});
-      }, 2000);
+      }, STDIN_FILE_CLEANUP_DELAY_MS);
 
       const response: AgentRunningResponse = {
         agent_id: agentId,
