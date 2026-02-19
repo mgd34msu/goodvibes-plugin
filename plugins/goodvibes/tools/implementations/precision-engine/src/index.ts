@@ -190,17 +190,17 @@ function toShortToolName(toolName: string): string {
  * Used to populate HookContext.paths_affected for OnPrecisionMutation.
  */
 function extractPathsAffected(toolName: string, args: unknown, result: unknown): string[] {
-  const input = args as Record<string, unknown>;
+  const toolInput = args as Record<string, unknown>;
   const paths: string[] = [];
 
   switch (toolName) {
     case 'precision_write': {
-      const files = input.files as Array<{ path: string }> | undefined;
+      const files = toolInput.files as Array<{ path: string }> | undefined;
       if (files) paths.push(...files.map((f) => f.path).filter(Boolean));
       break;
     }
     case 'precision_edit': {
-      const edits = input.edits as Array<{ path?: string; file?: string }> | undefined;
+      const edits = toolInput.edits as Array<{ path?: string; file?: string }> | undefined;
       if (edits) {
         const unique = new Set(
           edits.map((e) => e.path ?? e.file ?? '').filter(Boolean),
@@ -211,7 +211,7 @@ function extractPathsAffected(toolName: string, args: unknown, result: unknown):
     }
     case 'precision_exec': {
       // Extract paths from file_ops
-      const fileOps = input.file_ops as Array<{ source?: string; destination?: string }> | undefined;
+      const fileOps = toolInput.file_ops as Array<{ source?: string; destination?: string }> | undefined;
       if (fileOps) {
         for (const op of fileOps) {
           if (op.source) paths.push(op.source);
@@ -221,7 +221,7 @@ function extractPathsAffected(toolName: string, args: unknown, result: unknown):
       break;
     }
     case 'precision_notebook': {
-      const nb = input as { path?: string };
+      const nb = toolInput as { path?: string };
       if (nb.path) paths.push(nb.path);
       break;
     }
@@ -334,13 +334,16 @@ async function executeHandler(
         const stateKeys = ['session.tokens_used', 'session.files_modified', 'session.commands_run', 'session.agents_spawned'];
         const prev = await runtime.state.get(stateKeys);
 
+        // Helper: read a numeric counter from prev with 0 fallback.
+        // Required because the fire-and-forget init in PrecisionRuntime.initialize()
+        // may not have settled before the first tool call arrives.
+        const readCounter = (key: string): number =>
+          typeof prev[key] === 'number' ? (prev[key] as number) : 0;
+
         // Increment session.tokens_used
         const tokensIn = Telemetry.estimateTokens(args);
         const tokensOut = Telemetry.estimateTokens(result);
-        const currentTokens = typeof prev['session.tokens_used'] === 'number'
-          ? prev['session.tokens_used'] as number
-          : 0;
-        updates['session.tokens_used'] = currentTokens + tokensIn + tokensOut;
+        updates['session.tokens_used'] = readCounter('session.tokens_used') + tokensIn + tokensOut;
 
         // Track session.files_modified for write and edit operations
         if (toolName === 'precision_write' || toolName === 'precision_edit') {
@@ -357,21 +360,15 @@ async function executeHandler(
 
         // Increment session.commands_run for exec operations
         if (toolName === 'precision_exec') {
-          const currentCmds = typeof prev['session.commands_run'] === 'number'
-            ? prev['session.commands_run'] as number
-            : 0;
           const toolInput = args as Record<string, unknown>;
           const cmdCount = Array.isArray(toolInput.commands) ? toolInput.commands.length : 1;
-          updates['session.commands_run'] = currentCmds + cmdCount;
+          updates['session.commands_run'] = readCounter('session.commands_run') + cmdCount;
         }
 
         // Increment session.agents_spawned for precision_agent calls
         // Counter is initialized to 0 in PrecisionRuntime.initialize().
         if (toolName === 'precision_agent') {
-          const currentAgents = typeof prev['session.agents_spawned'] === 'number'
-            ? prev['session.agents_spawned'] as number
-            : 0;
-          updates['session.agents_spawned'] = currentAgents + 1;
+          updates['session.agents_spawned'] = readCounter('session.agents_spawned') + 1;
         }
 
         await runtime.state.set(updates);

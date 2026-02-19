@@ -192,6 +192,9 @@ export class PrecisionRuntime {
 
     // KVState session metrics — initialize counters once at startup so that
     // per-call auto-tracking never needs to handle the "undefined" case.
+    // Fire-and-forget: consumers in index.ts MUST provide fallback defaults
+    // when reading session counters, since this set() may not have settled
+    // before the first tool call arrives. See executeHandler() typeof guards.
     state.set({ 'session.agents_spawned': 0 }).catch((err: unknown) => {
       logger.warn('[PrecisionRuntime] KVState agents_spawned init failed (non-fatal)', { err: String(err) });
     });
