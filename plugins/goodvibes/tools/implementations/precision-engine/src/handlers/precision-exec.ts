@@ -14,7 +14,10 @@
  */
 
 import { spawn, execFile, type ChildProcess } from 'child_process';
+import { promisify } from 'util';
 import { homedir } from 'os';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, interpretExitCode, detectIssue, createProgressCollector } from '../utils/index.js';
@@ -245,10 +248,53 @@ interface OutputConfig {
 }
 
 /**
+ * Options for file operations.
+ */
+interface FileOpOptions {
+  /** Copy/move: whether to recursively copy directories (default: false) */
+  recursive?: boolean;
+  /** Copy/move: whether to overwrite existing destination (default: false) */
+  overwrite?: boolean;
+  /** Move: whether to rewrite import paths in affected TS/JS files (default: false — stub) */
+  update_imports?: boolean;
+  /** Preview what would be deleted without actually deleting (default: false) */
+  dry_run?: boolean;
+}
+
+/**
+ * Specification for a single file operation.
+ */
+interface FileOpSpec {
+  /** Operation type */
+  op: 'copy' | 'move' | 'delete';
+  /** Source path (absolute) */
+  source: string;
+  /** Destination path (required for copy/move) */
+  destination?: string;
+  /** Operation options */
+  options?: FileOpOptions;
+}
+
+/**
+ * Result of a single file operation.
+ */
+interface FileOpResult {
+  op: string;
+  source: string;
+  destination?: string;
+  success: boolean;
+  error?: string;
+  dry_run?: boolean;
+  affected_paths?: string[];
+}
+
+/**
  * Input specification for precision_exec tool.
  * Defines batch command execution with global settings and output configuration.
  */
 interface PrecisionExecInput {
+  /** File operations to execute BEFORE commands */
+  file_ops?: FileOpSpec[];
   /** Array of commands to execute */
   commands: CommandSpec[];
   /** Execute commands in parallel (default: sequential) */
@@ -1049,6 +1095,154 @@ function mapCommandResults(
   });
 }
 
+const execFileAsync = promisify(execFile);
+
+/**
+ * Get project root via git, falling back to process.cwd().
+ * @returns Absolute path to project root
+ */
+async function getProjectRoot(): Promise<string> {
+  try {
+    const { stdout } = await execFileAsync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf-8' });
+    return stdout.trim();
+  } catch {
+    return process.cwd();
+  }
+}
+
+/**
+ * Execute file operations sequentially.
+ * copy and move are unrestricted. delete is restricted to the project root.
+ * @param fileOps - Array of file operation specs
+ * @returns Array of file operation results
+ */
+async function handleFileOps(fileOps: FileOpSpec[]): Promise<FileOpResult[]> {
+  const results: FileOpResult[] = [];
+
+  // Cache project root once for the entire batch (Issue 4: avoid spawning git per delete)
+  let cachedProjectRoot: string | null = null;
+
+  for (const op of fileOps) {
+    const result: FileOpResult = { op: op.op, source: op.source, success: false };
+    if (op.destination) result.destination = op.destination;
+
+    try {
+      const opts = op.options ?? {};
+
+      if (op.op === 'copy') {
+        if (!op.destination) {
+          result.error = 'copy requires destination';
+          results.push(result);
+          continue;
+        }
+        // Issue 5: Validate source exists before attempting copy
+        try {
+          await fs.access(op.source);
+        } catch {
+          result.error = `Source does not exist: ${op.source}`;
+          results.push(result);
+          continue;
+        }
+        const recursive = opts.recursive ?? false;
+        const overwrite = opts.overwrite ?? false;
+        // Ensure parent directory exists
+        await fs.mkdir(path.dirname(op.destination), { recursive: true });
+        await fs.cp(op.source, op.destination, { recursive, force: overwrite, errorOnExist: !overwrite });
+        result.success = true;
+      } else if (op.op === 'move') {
+        if (!op.destination) {
+          result.error = 'move requires destination';
+          results.push(result);
+          continue;
+        }
+        // Issue 5: Validate source exists before attempting move
+        try {
+          await fs.access(op.source);
+        } catch {
+          result.error = `Source does not exist: ${op.source}`;
+          results.push(result);
+          continue;
+        }
+        const overwrite = opts.overwrite ?? false;
+        if (!overwrite) {
+          try {
+            await fs.access(op.destination);
+            result.error = `Destination already exists: ${op.destination}. Set overwrite: true to override.`;
+            results.push(result);
+            continue;
+          } catch {
+            // Destination does not exist — OK to proceed
+          }
+        }
+        // Ensure parent directory exists
+        await fs.mkdir(path.dirname(op.destination), { recursive: true });
+        try {
+          await fs.rename(op.source, op.destination);
+        } catch (renameErr) {
+          // Cross-device rename — fallback to copy + delete
+          if ((renameErr as NodeJS.ErrnoException).code === 'EXDEV') {
+            await fs.cp(op.source, op.destination, { recursive: true, force: overwrite });
+            await fs.rm(op.source, { recursive: true, force: true });
+          } else {
+            throw renameErr;
+          }
+        }
+        if (opts.update_imports) {
+          // Stub: import path rewriting is a future enhancement
+          result.affected_paths = [];
+        }
+        result.success = true;
+      } else if (op.op === 'delete') {
+        // Safety: restrict delete to project root (Issue 4: cache projectRoot)
+        if (!cachedProjectRoot) cachedProjectRoot = await getProjectRoot();
+        const projectRoot = cachedProjectRoot;
+        const resolvedPath = path.resolve(op.source);
+        const rootWithSep = projectRoot.endsWith(path.sep) ? projectRoot : projectRoot + path.sep;
+        // Issue 6: Resolve symlinks before boundary check to prevent symlink escapes
+        const realPath = await fs.realpath(resolvedPath).catch(() => resolvedPath);
+        // Issue 2: Only allow paths WITHIN root (never the root itself)
+        if (!realPath.startsWith(rootWithSep)) {
+          result.error = `Delete restricted to project root (${projectRoot}). Use Bash rm for paths outside project.`;
+          results.push(result);
+          continue;
+        }
+        const recursive = opts.recursive ?? false;
+        const dryRun = opts.dry_run ?? false;
+        if (dryRun) {
+          // Collect what would be deleted without actually deleting
+          result.dry_run = true;
+          try {
+            const stat = await fs.stat(resolvedPath);
+            if (stat.isDirectory() && recursive) {
+              // Issue 11: Remove unnecessary 'as string[]' cast
+              const entries = await fs.readdir(resolvedPath, { recursive: true, encoding: 'utf-8' });
+              result.affected_paths = entries.map(e => path.join(resolvedPath, e));
+            } else {
+              result.affected_paths = [resolvedPath];
+            }
+          } catch {
+            result.affected_paths = [];
+          }
+          result.success = true;
+        } else {
+          // Issue 3: Only use force when recursive (to handle non-empty dirs), not for single files
+          await fs.rm(resolvedPath, { recursive, force: recursive });
+          result.success = true;
+        }
+      } else {
+        // Issue 10: op is already typed as FileOpSpec, remove unnecessary cast
+        result.error = `Unknown op: ${op.op}`;
+      }
+    } catch (err) {
+      result.error = (err as Error).message;
+    }
+
+    results.push(result);
+  }
+
+  return results;
+}
+
 /**
  * Main handler for precision_exec tool.
  * Executes shell commands with child_process, supporting batch execution,
@@ -1204,9 +1398,33 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const captureStderr = input.output?.capture_stderr ?? true;
   const maxOutputLines = input.output?.max_output_lines;
 
+  // Execute file_ops FIRST (before commands)
+  let fileOpResults: FileOpResult[] = [];
+  if (input.file_ops && Array.isArray(input.file_ops) && input.file_ops.length > 0) {
+    try {
+      fileOpResults = await handleFileOps(input.file_ops);
+    } catch (err) {
+      return toCallToolResult(errorResult(`file_ops error: ${(err as Error).message}`, outputMode, getElapsed()));
+    }
+  }
+
   try {
-    if (!input.commands || !Array.isArray(input.commands) || input.commands.length === 0) {
+    const hasCommands = input.commands && Array.isArray(input.commands) && input.commands.length > 0;
+    const hasFileOps = fileOpResults.length > 0;
+    if (!hasCommands && !hasFileOps) {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_exec', 'commands', 'array of command objects'), { output_mode: outputMode, execution_ms: getElapsed() }));
+    }
+    // If only file_ops with no commands, return file_ops results directly
+    if (!hasCommands) {
+      const succeeded = fileOpResults.filter(r => r.success).length;
+      const failed = fileOpResults.filter(r => !r.success).length;
+      const data: Record<string, unknown> = {
+        file_ops: fileOpResults,
+        summary: { total: fileOpResults.length, succeeded, failed },
+      };
+      const responseJson = JSON.stringify(data);
+      data.tokens_used = estimateTokens(responseJson);
+      return toCallToolResult(successResult(data, outputMode, getElapsed()));
     }
 
     // Check for previous runs and add inline context hints
@@ -1478,6 +1696,11 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
           },
         };
         break;
+    }
+
+    // Include file_ops results in response if any were executed
+    if (fileOpResults.length > 0) {
+      data.file_ops = fileOpResults;
     }
 
     // Add session metadata

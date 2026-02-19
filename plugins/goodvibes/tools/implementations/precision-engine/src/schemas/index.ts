@@ -70,10 +70,33 @@ export const precisionExecSchema: Tool = {
   name: 'precision_exec',
   description:
     'Execute shell commands with batch support, timeout, and expectations checking. ' +
-    'Captures stdout, stderr, and exit code.',
+    'Captures stdout, stderr, and exit code. ' +
+    'Supports file_ops (copy, move, delete) that execute BEFORE commands.',
   inputSchema: {
     type: 'object',
     properties: {
+      file_ops: {
+        type: 'array',
+        description: 'File operations to execute BEFORE commands. Runs sequentially. copy/move are unrestricted; delete is restricted to project root.',
+        items: {
+          type: 'object',
+          properties: {
+            op: { type: 'string', enum: ['copy', 'move', 'delete'], description: 'Operation type' },
+            source: { type: 'string', description: 'Absolute source path (file or directory)' },
+            destination: { type: 'string', description: 'Absolute destination path (required for copy and move)' },
+            options: {
+              type: 'object',
+              properties: {
+                recursive: { type: 'boolean', default: false, description: 'Copy/delete directories recursively (default: false)' },
+                overwrite: { type: 'boolean', default: false, description: 'Overwrite existing destination (default: false)' },
+                update_imports: { type: 'boolean', default: false, description: 'Rewrite TS/JS import paths after move (default: false; stub — future enhancement)' },
+                dry_run: { type: 'boolean', default: false, description: 'Preview what would be deleted without deleting (default: false)' },
+              },
+            },
+          },
+          required: ['op', 'source'],
+        },
+      },
       commands: {
         type: 'array',
         description: 'Array of commands to execute',
@@ -135,7 +158,6 @@ export const precisionExecSchema: Tool = {
       stop_on_error: { type: 'boolean', default: true, description: 'DEPRECATED: Use fail_fast. Stop on first error (sequential only)' },
       verbosity: verbositySchema,
     },
-    required: ['commands'],
   },
 };
 

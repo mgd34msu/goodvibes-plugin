@@ -2,9 +2,12 @@
  * Tests for precision_exec handler.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { handlePrecisionExec } from '../../handlers/precision-exec.js';
 import { expectSuccess, expectError } from '../test-utils.js';
+import * as fs from 'fs/promises';
+import * as os from 'os';
+import * as path from 'path';
 
 describe('precision_exec handler', () => {
   describe('input validation', () => {
@@ -447,6 +450,236 @@ describe('precision_exec handler', () => {
       const parsed = expectSuccess(result);
       // Command should complete quickly, not timeout
       expect(parsed.data.commands[0].exit_code).toBe(0);
+    });
+  });
+});
+
+describe('precision_exec file_ops', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'precision-exec-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  describe('copy', () => {
+    it('should copy a file', async () => {
+      const src = path.join(tmpDir, 'source.txt');
+      const dst = path.join(tmpDir, 'dest.txt');
+      await fs.writeFile(src, 'hello');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'copy', source: src, destination: dst }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(true);
+      const content = await fs.readFile(dst, 'utf-8');
+      expect(content).toBe('hello');
+    });
+
+    it('should fail copy when destination exists and overwrite is false', async () => {
+      const src = path.join(tmpDir, 'source.txt');
+      const dst = path.join(tmpDir, 'dest.txt');
+      await fs.writeFile(src, 'hello');
+      await fs.writeFile(dst, 'existing');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'copy', source: src, destination: dst, options: { overwrite: false } }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(false);
+      expect(parsed.data.file_ops[0].error).toBeDefined();
+    });
+
+    it('should copy with overwrite: true', async () => {
+      const src = path.join(tmpDir, 'source.txt');
+      const dst = path.join(tmpDir, 'dest.txt');
+      await fs.writeFile(src, 'new content');
+      await fs.writeFile(dst, 'old content');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'copy', source: src, destination: dst, options: { overwrite: true } }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(true);
+      const content = await fs.readFile(dst, 'utf-8');
+      expect(content).toBe('new content');
+    });
+
+    it('should return error when destination is missing', async () => {
+      const src = path.join(tmpDir, 'source.txt');
+      await fs.writeFile(src, 'hello');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'copy', source: src }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(false);
+      expect(parsed.data.file_ops[0].error).toContain('destination');
+    });
+  });
+
+  describe('move', () => {
+    it('should move a file', async () => {
+      const src = path.join(tmpDir, 'source.txt');
+      const dst = path.join(tmpDir, 'moved.txt');
+      await fs.writeFile(src, 'move me');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'move', source: src, destination: dst }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(true);
+      const content = await fs.readFile(dst, 'utf-8');
+      expect(content).toBe('move me');
+      // Source should be gone
+      await expect(fs.access(src)).rejects.toThrow();
+    });
+
+    it('should fail move when destination exists and overwrite is false', async () => {
+      const src = path.join(tmpDir, 'source.txt');
+      const dst = path.join(tmpDir, 'dest.txt');
+      await fs.writeFile(src, 'hello');
+      await fs.writeFile(dst, 'existing');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'move', source: src, destination: dst, options: { overwrite: false } }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(false);
+      expect(parsed.data.file_ops[0].error).toContain('already exists');
+    });
+  });
+
+  describe('delete', () => {
+    it('should delete a file within project root', async () => {
+      // Use process.cwd() based path (project root)
+      const projectRoot = process.cwd();
+      const testFile = path.join(projectRoot, `.test-delete-${Date.now()}.tmp`);
+      await fs.writeFile(testFile, 'delete me');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'delete', source: testFile }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(true);
+      await expect(fs.access(testFile)).rejects.toThrow();
+    });
+
+    it('should reject delete outside project root', async () => {
+      const outsidePath = path.join(os.tmpdir(), `test-${Date.now()}.tmp`);
+      await fs.writeFile(outsidePath, 'outside');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'delete', source: outsidePath }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(false);
+      expect(parsed.data.file_ops[0].error).toContain('project root');
+
+      // Cleanup outside file
+      await fs.rm(outsidePath, { force: true });
+    });
+
+    it('should support dry_run mode', async () => {
+      const projectRoot = process.cwd();
+      const testFile = path.join(projectRoot, `.test-dryrun-${Date.now()}.tmp`);
+      await fs.writeFile(testFile, 'dry run');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'delete', source: testFile, options: { dry_run: true } }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(true);
+      expect(parsed.data.file_ops[0].dry_run).toBe(true);
+      // File should still exist
+      await expect(fs.access(testFile)).resolves.toBeUndefined();
+
+      // Cleanup
+      await fs.rm(testFile, { force: true });
+    });
+  });
+
+  describe('file_ops only (no commands)', () => {
+    it('should work with file_ops and no commands', async () => {
+      const src = path.join(tmpDir, 'only-ops.txt');
+      const dst = path.join(tmpDir, 'only-ops-dest.txt');
+      await fs.writeFile(src, 'ops only');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'copy', source: src, destination: dst }],
+        commands: [],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(true);
+    });
+  });
+
+  describe('copy recursive directory', () => {
+    it('should copy a directory recursively and preserve all files', async () => {
+      // Issue 8: Test directory recursive copy
+      const srcDir = path.join(tmpDir, 'src-dir');
+      const dstDir = path.join(tmpDir, 'dst-dir');
+      await fs.mkdir(srcDir);
+      await fs.writeFile(path.join(srcDir, 'a.txt'), 'file a');
+      await fs.writeFile(path.join(srcDir, 'b.txt'), 'file b');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'copy', source: srcDir, destination: dstDir, options: { recursive: true } }],
+        commands: [{ cmd: 'echo', args: ['ok'] }],
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.file_ops[0].success).toBe(true);
+
+      // Destination directory should contain both files
+      const aContent = await fs.readFile(path.join(dstDir, 'a.txt'), 'utf-8');
+      expect(aContent).toBe('file a');
+      const bContent = await fs.readFile(path.join(dstDir, 'b.txt'), 'utf-8');
+      expect(bContent).toBe('file b');
+    });
+  });
+
+  describe('mixed file_ops and commands execution order', () => {
+    it('should execute file_ops before commands so commands can observe the result', async () => {
+      // Issue 9: Test that file_ops run before commands
+      const src = path.join(tmpDir, 'order-source.txt');
+      const dst = path.join(tmpDir, 'order-dest.txt');
+      await fs.writeFile(src, 'order test');
+
+      const result = await handlePrecisionExec({
+        file_ops: [{ op: 'copy', source: src, destination: dst }],
+        commands: [{ cmd: 'ls', args: [tmpDir] }],
+        output_mode: 'verbose',
+      });
+
+      const parsed = expectSuccess(result);
+      // file_ops must have succeeded
+      expect(parsed.data.file_ops[0].success).toBe(true);
+      // command stdout should list the destination file (proving it existed when ls ran)
+      expect(parsed.data.commands[0].stdout).toContain('order-dest.txt');
     });
   });
 });
