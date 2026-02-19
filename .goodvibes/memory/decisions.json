@@ -258,5 +258,35 @@
     "scope": ["precision-engine/src/state/hooks.ts", "precision-engine/src/index.ts"],
     "confidence": "high",
     "status": "active"
+  },
+  {
+    "id": "dec_20260218_220000",
+    "date": "2026-02-18T22:00:00Z",
+    "category": "architecture",
+    "what": "precision_agent uses stdin (temp file + shell redirect) for prompt delivery, not CLI positional args",
+    "why": "CLI positional args have OS ARG_MAX limits (~128KB-2MB). Prompts with dossier + context files can easily exceed this. Shell redirect `< file` avoids the limit entirely.",
+    "scope": ["precision-engine/src/handlers/precision-agent.ts", "precision-engine/src/state/process-manager.ts"],
+    "confidence": "high",
+    "status": "active"
+  },
+  {
+    "id": "dec_20260218_220100",
+    "date": "2026-02-18T22:01:00Z",
+    "category": "convention",
+    "what": "FORBIDDEN_CLI_FLAGS blocklist prevents user override of security-critical flags in precision_agent",
+    "why": "cli_flags is a pass-through escape hatch. Without blocklist, users could override --model, --dangerously-skip-permissions, --print, --stdin. Blocklist includes short aliases (m, p).",
+    "scope": ["precision-engine/src/handlers/precision-agent.ts"],
+    "confidence": "high",
+    "status": "active"
+  },
+  {
+    "id": "dec_20260218_220200",
+    "date": "2026-02-18T22:02:00Z",
+    "category": "convention",
+    "what": "DPB naming retained, not renamed to GPA — precision_apply was not built",
+    "why": "GPA (Gather-Plan-Apply) required precision_apply tool. precision_apply deferred to future work. DPB naming is established across all docs and agent files.",
+    "scope": ["plugins/goodvibes/templates/prompt/", "plugins/goodvibes/agents/"],
+    "confidence": "high",
+    "status": "active"
   }
 ]

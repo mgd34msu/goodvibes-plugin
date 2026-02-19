@@ -1,3 +1,70 @@
+## 2026-02-18: Precision Engine v2 — Phase 6J Documentation Update
+
+**Task**: Remove all batch_engine references from plugin documentation, update DPB hierarchy
+
+**Plan**: precision-engine-v2-design.md Section 11 (lines 922-968)
+
+**Status**: COMPLETE
+
+**Completed Items**:
+- Removed batch_engine from all 12 agent .md DPB workflow tables
+- Updated SUBAGENT-PROTOCOL.md hierarchy (Preferred → precision_engine batching)
+- Updated DISCOVER-PLAN-BATCH.md template and skill
+- Updated output styles (vibecoding.md, justvibes.md)
+- Updated claude-md-manager.ts fallback content + test
+- Updated PRECISION-MASTERY.md batch_engine examples
+- Kept DPB naming (precision_apply not built)
+
+**Files Modified**:
+- plugins/goodvibes/agents/*.md (12 files)
+- plugins/goodvibes/templates/prompt/DISCOVER-PLAN-BATCH.md
+- plugins/goodvibes/templates/prompt/SUBAGENT-PROTOCOL.md
+- plugins/goodvibes/templates/prompt/PRECISION-MASTERY.md
+- plugins/goodvibes/skills/protocol/discover-plan-batch/SKILL.md
+- plugins/goodvibes/output-styles/vibecoding.md
+- plugins/goodvibes/output-styles/justvibes.md
+- plugins/goodvibes/hooks/scripts/src/session-start/claude-md-manager.ts
+
+**Review Score**: Pending
+
+**Commit**: dcf1a3a (remaining changes after checkpoint)
+
+---
+
+## 2026-02-18: Precision Engine v2 — Phase 5I precision_agent
+
+**Task**: Implement precision_agent MCP tool for spawning headless AI sessions across providers
+
+**Plan**: precision-engine-v2-design.md Section 3 (lines 161-284)
+
+**Status**: COMPLETE
+
+**Completed Items**:
+- Handler: precision-agent.ts (~670 lines) with Claude/Gemini/Codex provider support
+- Background mode via ProcessManager.spawn with stdinFile shell redirect
+- Blocking mode via execFile with stdin pipe and 30-min configurable timeout
+- Context file injection (parallel reads via Promise.allSettled)
+- Dossier integration (best-effort, graceful degradation)
+- FORBIDDEN_CLI_FLAGS security blocklist (model, m, dangerously-skip-permissions, print, p, stdin)
+- Signal-to-exit-code mapping via os.constants.signals
+- Failed agents return isError: true with structured data
+- ProcessManager: added stdinFile support via shell redirect
+- Schema: added timeout_ms option
+- 78 tests covering unit, integration, edge cases, stdinFile
+
+**Files Modified**:
+- src/handlers/precision-agent.ts (new)
+- src/__tests__/handlers/precision-agent.test.ts (new)
+- src/handlers/index.ts
+- src/schemas/index.ts
+- src/state/process-manager.ts
+
+**Review Score**: 10/10 (after 3 review rounds: 8.2 → 8.2 → 9.6 → 10/10)
+
+**Commit**: 3ece672 (final fixes), d6f9de1 (checkpoint with bulk changes)
+
+---
+
 ## 2026-02-18: Precision Engine v2 — Phase 5H Agent Dossier Format
 
 **Task**: Implement DossierGenerator with memory injection, project summary, and prompt formatting

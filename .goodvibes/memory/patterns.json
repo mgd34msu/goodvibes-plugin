@@ -246,5 +246,21 @@
     "when_to_use": "When encountering batch_engine references in docs or prompts — redirect to precision engine",
     "example_files": ["precision-engine-v2-design.md"],
     "keywords": ["batch_engine", "deprecated", "removed", "precision_apply", "migration"]
+  },
+  {
+    "id": "pat_20260218_220000",
+    "name": "StdinFileShellRedirect",
+    "description": "Use temp file + shell redirect (< file) for large stdin delivery to spawned processes. ProcessManager.spawn accepts stdinFile option, appends redirect to command. Works with shell: true because shell opens file independently of Node stdio.",
+    "when_to_use": "When passing large text (prompts, configs) to child processes that would exceed ARG_MAX as positional args",
+    "example_files": ["precision-agent.ts", "process-manager.ts"],
+    "keywords": ["stdinFile", "shell redirect", "ARG_MAX", "stdin", "temp file", "ProcessManager", "spawn"]
+  },
+  {
+    "id": "pat_20260218_220100",
+    "name": "ForbiddenFlagBlocklist",
+    "description": "When exposing CLI flags as pass-through parameters, maintain a Set of forbidden keys that are silently stripped with a warning log. Include both long and short aliases (e.g., model + m, print + p).",
+    "when_to_use": "When building MCP tools that wrap CLI tools with user-supplied flag overrides",
+    "example_files": ["precision-agent.ts"],
+    "keywords": ["FORBIDDEN_CLI_FLAGS", "blocklist", "security", "cli_flags", "filter"]
   }
 ]
