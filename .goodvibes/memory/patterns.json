@@ -1,0 +1,250 @@
+[
+  {
+    "id": "pat_20260216_200000",
+    "name": "SubagentSkillDelivery",
+    "description": "Agent .md files are the PRIMARY skill delivery mechanism for subagents. SubagentStart hook never fires for Task-spawned agents. Skill catalog + role-specific assignments must be in agent .md files. SUBAGENT-PROTOCOL.md template includes full precision-mastery + DPB content.",
+    "when_to_use": "When updating skill catalog, adding new skills, or modifying how agents discover skills",
+    "example_files": ["plugins/goodvibes/agents/engineer.md", "plugins/goodvibes/templates/prompt/SUBAGENT-PROTOCOL.md"],
+    "keywords": ["skill-delivery", "subagent", "agent-md", "template", "SubagentStart", "context-injection"]
+  },
+  {
+    "id": "pat_20260216_200100",
+    "name": "TemplateBasedPromptDeployment",
+    "description": "claude-md-manager.ts reads prompt files from plugins/goodvibes/templates/prompt/ at runtime. Falls back to minimal hardcoded defaults if templates missing. Prevents session-start hook from overwriting expanded content.",
+    "when_to_use": "When modifying prompt files or session-start behavior",
+    "example_files": ["plugins/goodvibes/hooks/scripts/src/session-start/claude-md-manager.ts", "plugins/goodvibes/templates/prompt/"],
+    "keywords": ["template", "prompt", "claude-md-manager", "session-start", "SUBAGENT-PROTOCOL"]
+  },
+  {
+    "id": "pat_20260215_180000",
+    "name": "SkillStructure",
+    "description": "Every skill has SKILL.md (instructions, <5000 words), scripts/ (POSIX bash validators), references/ (detailed material). Body teaches behavior, references hold data.",
+    "when_to_use": "Creating or reviewing any GoodVibes skill",
+    "example_files": ["plugins/goodvibes/skills/protocol/error-recovery/SKILL.md"],
+    "keywords": ["skill", "anthropic", "progressive-disclosure", "SKILL.md", "references"]
+  },
+  {
+    "id": "pat_20260215_180100",
+    "name": "BatchEnginePhaseGroupedSchema",
+    "description": "batch_engine operations use phase-grouped format: {read: [], write: [], exec: [], query: [], state: []} NOT flat array of {tool, input}",
+    "when_to_use": "Writing batch_engine examples or documentation",
+    "example_files": ["plugins/goodvibes/skills/protocol/discover-plan-batch/SKILL.md"],
+    "keywords": ["batch_engine", "schema", "operations", "phase-grouped"]
+  },
+  {
+    "id": "pat_20260215_180200",
+    "name": "POSIXPortableScripts",
+    "description": "Use printf over echo -e, grep -n over GNU sed ranges, -- before filename args, [[:space:]] over literal spaces, set -euo pipefail",
+    "when_to_use": "Writing any bash validation script for skills",
+    "example_files": ["plugins/goodvibes/skills/protocol/review-scoring/scripts/validate-review.sh"],
+    "keywords": ["bash", "POSIX", "portable", "validation", "script"]
+  },
+  {
+    "id": "pat_20260210_160000",
+    "name": "ServiceRegistryNestedConfig",
+    "description": "Service registry reads config.fetch.services (nested object). Always use addService() function or precision_config set key=fetch with full nested object. Never use flat dot-notation keys like 'fetch.services.OpenAI'.",
+    "when_to_use": "When adding/modifying services in goodvibes.json via precision_config or direct editing",
+    "example_files": ["src/fetch/auth/service-registry.ts", ".goodvibes/goodvibes.json"],
+    "keywords": ["service-registry", "config", "nested", "flat-keys", "precision_config", "addService"]
+  },
+  {
+    "id": "pat_20260210_160001",
+    "name": "GeminiV1InternalModelNames",
+    "description": "Gemini v1internal API expects model names WITHOUT 'models/' prefix. Use 'gemini-2.5-pro' not 'models/gemini-2.5-pro'. Only the standard v1 API uses the full prefix format.",
+    "when_to_use": "When making API calls to Gemini's v1internal endpoints (generateContent, etc)",
+    "example_files": [".goodvibes/GeminiCLI.api.json"],
+    "keywords": ["gemini", "v1internal", "model-name", "prefix", "api"]
+  },
+  {
+    "id": "pat_20260210_160002",
+    "name": "PrecisionFetchRelativeURLBug",
+    "description": "precision_fetch validates URLs before resolving service base_url, rejecting relative URLs even when service parameter is provided. WORKAROUND: Always use absolute URLs with service parameter.",
+    "when_to_use": "When using precision_fetch with service parameter - avoid relative URLs",
+    "example_files": ["src/handlers/precision-fetch.ts"],
+    "keywords": ["precision_fetch", "relative-url", "validation", "service", "workaround", "bug"]
+  },
+  {
+    "id": "pat_20260211_050300",
+    "name": "OpenAI_ChatGPT_Backend_API",
+    "description": "ChatGPT Product API at chatgpt.com/backend-api/codex/ requires specific headers and constraints: ChatGPT-Account-ID, originator header, stream=true, store=false, instructions field required, input as array",
+    "when_to_use": "When making API calls to OpenAI using ChatGPT OAuth tokens (not sk-... API keys)",
+    "example_files": [".goodvibes/OpenAI.api.json"],
+    "keywords": ["openai", "codex", "chatgpt", "backend-api", "oauth2", "streaming", "responses"]
+  },
+  {
+    "id": "pat_20260208_060500",
+    "name": "GrepPathNotGlob",
+    "description": "Use path parameter instead of glob for directory-scoped grep searches",
+    "when_to_use": "When searching for patterns within a specific directory subtree",
+    "example_files": [],
+    "keywords": ["precision_grep", "path", "glob", "directory", "search"]
+  },
+  {
+    "id": "pat_20260208_060501",
+    "name": "ForceReadAfterEdit",
+    "description": "Use force:true on precision_read after editing a file to bypass stale cache",
+    "when_to_use": "Immediately after using precision_edit on a file, before reading it",
+    "example_files": [],
+    "keywords": ["precision_read", "precision_edit", "cache", "force", "stale"]
+  },
+  {
+    "id": "pat_20260208_060502",
+    "name": "AvoidImageRead",
+    "description": "Do not read image files with precision_read - ImageContent blocks crash the API",
+    "when_to_use": "When working with directories containing image files",
+    "example_files": ["pt-tests/fixtures/media/"],
+    "keywords": ["precision_read", "image", "png", "jpg", "crash", "avoid"]
+  },
+  {
+    "id": "pat_20260208_060503",
+    "name": "PrecisionExecFullyReliable",
+    "description": "precision_exec is 100% reliable including background mode, parallel, timeouts, env vars, expectations",
+    "when_to_use": "When choosing between precision_exec and native Bash for command execution",
+    "example_files": [],
+    "keywords": ["precision_exec", "reliable", "background", "parallel"]
+  },
+  {
+    "id": "pat_20260208_060504",
+    "name": "PrecisionWriteFullyReliable",
+    "description": "precision_write is 100% reliable for all scenarios: batch (18+ files), deep nesting, base64, 512KB+ files, all modes, dry_run, unicode",
+    "when_to_use": "When choosing between precision_write and native Write for file creation",
+    "example_files": [],
+    "keywords": ["precision_write", "reliable", "batch", "large", "base64"]
+  },
+  {
+    "id": "pat_20260209_081200",
+    "name": "TimerLeakInPromiseRace",
+    "description": "Always store setTimeout handle and clearTimeout in finally block when using Promise.race for timeouts",
+    "when_to_use": "When wrapping async operations with timeout via Promise.race pattern",
+    "example_files": ["precision-symbols.ts"],
+    "keywords": ["setTimeout", "clearTimeout", "Promise.race", "timer", "leak", "finally"]
+  },
+  {
+    "id": "pat_20260209_081201",
+    "name": "GrepFirstStrategy",
+    "description": "Use RipgrepCore.filesWithMatches() to narrow file list before expensive per-file processing like symbol extraction",
+    "when_to_use": "When processing many files but only a subset will match a query string",
+    "example_files": ["precision-symbols.ts"],
+    "keywords": ["ripgrep", "filesWithMatches", "pre-filter", "performance", "workspace"]
+  },
+  {
+    "id": "pat_20260209_081202",
+    "name": "CacheInvalidateNotUpdate",
+    "description": "After writing/editing files, use cache.invalidate() not cache.update() to ensure next read returns fresh content",
+    "when_to_use": "When precision_write or precision_edit modifies a file that may be cached by FileStateCache",
+    "example_files": ["precision-edit.ts", "precision-write.ts", "precision-notebook.ts"],
+    "keywords": ["cache", "invalidate", "update", "FileStateCache", "stale"]
+  },
+  {
+    "id": "pat_20260209_081203",
+    "name": "RegexWhitespaceMatching",
+    "description": "For whitespace-insensitive matching, split pattern into tokens, escape for regex, join with \\\\s+ - more reliable than character scanning",
+    "when_to_use": "When implementing whitespace-flexible text matching",
+    "example_files": ["precision-edit.ts"],
+    "keywords": ["whitespace", "regex", "matching", "insensitive", "tokens"]
+  },
+  {
+    "id": "pat_20260209_084500",
+    "name": "CJSESMCallableGuard",
+    "description": "When dynamically importing a module in a CJS bundle, use typeof guard chain: typeof mod.default === 'function' ? mod.default : typeof mod === 'function' ? mod : null",
+    "when_to_use": "Any dynamic import() in code that gets bundled as CJS (esbuild, webpack with CJS target)",
+    "example_files": ["precision-read.ts", "pdf-routing.ts"],
+    "keywords": ["CJS", "ESM", "dynamic import", "callable guard", "typeof", "esbuild"]
+  },
+  {
+    "id": "pat_20260209_084501",
+    "name": "NormalizeBeforeSimilarity",
+    "description": "Always normalize whitespace before computing Levenshtein similarity for code matching - prevents false rejections from whitespace-only differences",
+    "when_to_use": "When using fuzzy/similarity matching for source code text",
+    "example_files": ["precision-edit.ts"],
+    "keywords": ["normalizeWhitespace", "calculateSimilarity", "Levenshtein", "fuzzy", "threshold"]
+  },
+  {
+    "id": "pat_20260209_084502",
+    "name": "OutputModeFieldCoverage",
+    "description": "When mapping output modes between tools, verify the target mode includes all fields the consumer needs. E.g., names_only has no file field but discover needs file paths.",
+    "when_to_use": "When one tool delegates to another with output mode translation",
+    "example_files": ["discover.ts"],
+    "keywords": ["output mode", "mapping", "field coverage", "discover", "precision_symbols"]
+  },
+  {
+    "id": "pat_20260209_120000",
+    "name": "NbformatVersionCheck",
+    "description": "For nbformat 4.5+ features, use (nbformat > 4 || (nbformat === 4 && nbformat_minor >= 5)) — NOT (nbformat >= 4 && nbformat_minor >= 5) which fails for nbformat 5.0 where minor=0",
+    "when_to_use": "When gating features on Jupyter notebook format version (e.g., cell IDs introduced in 4.5)",
+    "example_files": ["precision-notebook.ts"],
+    "keywords": ["nbformat", "version check", "notebook", "cell_id", "4.5"]
+  },
+  {
+    "id": "pat_20260209_120001",
+    "name": "CellIdTargeting",
+    "description": "Use cell_id for stable notebook cell targeting: check cell.id first, then cell.metadata.id as fallback. cell_id takes precedence over index when both provided.",
+    "when_to_use": "When targeting specific cells in Jupyter notebooks, especially in batch operations where index shifts would break subsequent operations",
+    "example_files": ["precision-notebook.ts"],
+    "keywords": ["cell_id", "notebook", "stable targeting", "metadata.id", "precedence"]
+  },
+  {
+    "id": "pat_20260209_120002",
+    "name": "CollisionResistantIdGeneration",
+    "description": "When generating IDs for notebook cells or similar, collect existing IDs into a Set and loop until a unique one is generated. 8-char alphanumeric gives ~2.8 trillion combinations.",
+    "when_to_use": "When inserting new cells into notebooks with nbformat >= 4.5 that require unique cell IDs",
+    "example_files": ["precision-notebook.ts"],
+    "keywords": ["generateCellId", "collision", "uniqueness", "Set", "notebook"]
+  },
+  {
+    "id": "pat_20260210_170500",
+    "name": "IncludeHiddenDefault",
+    "description": "When adding file search params that toggle hidden/dot file inclusion, default to true (widest net). Apply ?? true in handlers, add exclude patterns when false.",
+    "when_to_use": "When adding include_hidden or similar toggle params to file search tools",
+    "example_files": ["precision-glob.ts", "precision-grep.ts", "ripgrep.ts"],
+    "keywords": ["include_hidden", "dot", "hidden", "fast-glob", "ripgrep", "--hidden"]
+  },
+  {
+    "id": "pat_20260210_170501",
+    "name": "YAMLSchemaSync",
+    "description": "YAML tool definitions must match TS schemas exactly. Use TS schema as source of truth. Check: property names, types, enums, defaults, required arrays. Common drift: output.mode vs output.format, output_mode vs verbosity.",
+    "when_to_use": "When modifying tool schemas or adding new parameters to precision-engine tools",
+    "example_files": ["precision-grep.yaml", "precision-glob.yaml", "discover.yaml", "schemas/index.ts"],
+    "keywords": ["yaml", "schema", "sync", "definition", "mismatch", "verbosity", "output_mode"]
+  },
+  {
+    "id": "pat_20260216_174800",
+    "name": "ProjectFileIndex",
+    "description": "Disk-shared project file index at .goodvibes/project-index.json. Built by session-start hook, read lazily by precision-engine MCP server, updated incrementally by write/edit handlers, queried via discover type:index.",
+    "when_to_use": "When working with project file discovery, adding new file operations, or modifying the discover handler",
+    "example_files": ["src/state/project-index.ts", "src/handlers/discover.ts", "session-start/project-indexer.ts"],
+    "keywords": ["index", "project", "file", "discover", "singleton", "binary-search", "debounce"]
+  },
+  {
+    "id": "pat_20260216_174801",
+    "name": "CrossProcessDiskCommunication",
+    "description": "Session-start hooks run in a different process than MCP server. Communication via disk files (JSON). Use atomic writes (temp+rename) and lazy loading with version validation.",
+    "when_to_use": "When adding new cross-process data sharing between hooks and MCP server",
+    "example_files": ["src/state/project-index.ts", "session-start/project-indexer.ts"],
+    "keywords": ["cross-process", "atomic-write", "lazy-load", "session-start", "hook"]
+  },
+  {
+    "id": "pat_20260216_174802",
+    "name": "FireAndForgetHookIntegration",
+    "description": "Non-critical session-start tasks should be fire-and-forget (no await) with .catch() error handling. This prevents blocking session startup while still performing useful background work.",
+    "when_to_use": "When adding new non-critical tasks to session-start hooks",
+    "example_files": ["session-start/index.ts", "session-start/project-indexer.ts"],
+    "keywords": ["fire-and-forget", "session-start", "non-blocking", "async"]
+  },
+  {
+    "id": "pat_20260218_150000",
+    "name": "PrecisionEngineV2Architecture",
+    "description": "Precision engine v2 absorbs batch engine concepts: file_ops in exec, precision_agent for multi-provider AI, SQLite telemetry, 4 unified hooks, PrecisionRuntime singleton, agent dossier. Design doc: precision-engine-v2-design.md",
+    "when_to_use": "When adding new features to precision engine or referencing the v2 architecture",
+    "example_files": ["precision-engine-v2-design.md", "batch-and-precision-notes.md"],
+    "keywords": ["v2", "batch-engine", "file_ops", "precision_agent", "telemetry", "hooks", "runtime", "dossier"]
+  },
+  {
+    "id": "pat_20260218_150100",
+    "name": "BatchEnginePhaseGroupedSchemaDeprecated",
+    "description": "DEPRECATED: batch_engine has been removed. Use precision_engine built-in batching (files array, edits array, commands array) or future precision_apply for unified output.",
+    "when_to_use": "When encountering batch_engine references in docs or prompts — redirect to precision engine",
+    "example_files": ["precision-engine-v2-design.md"],
+    "keywords": ["batch_engine", "deprecated", "removed", "precision_apply", "migration"]
+  }
+]
