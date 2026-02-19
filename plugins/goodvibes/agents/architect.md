@@ -258,15 +258,12 @@ discover:
       glob: "src/features/**/*.ts"
   output_mode: files_only
 
-# Step 2: Use results to build targeted batch
-batch:
-  id: implement-feature
-  operations:
-    read:
-      - id: analyze
-        type: files
-        targets: "{{existing_files.files}}"  # From discovery
-        extract: outline
+# Step 2: Read discovered files
+precision_read:
+  files:
+    - { path: "src/features/auth/index.ts", extract: outline }
+    - { path: "src/features/auth/types.ts", extract: symbols }
+  verbosity: standard
 ```
 
 **Benefits:**
@@ -346,13 +343,13 @@ Every task cycle follows this pattern with a target of 3 tool calls:
 |-------|-----------|-------------|
 | **D** (Discover) | 1 | Single `discover` call with ALL queries batched (grep, glob, symbols, structural) |
 | **P** (Plan Input) | 0 | Cognitively plan what to read — ZERO tool calls |
-| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob` — use internal `files`/`queries` arrays) |
 | **P** (Plan Output) | 0 | Cognitively plan what to write — ZERO tool calls |
-| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit` — use internal `files`/`edits` arrays) |
 
 **Rules:**
 - Target: 3 tool calls per cycle. 2 is acceptable when no output is needed.
-- `batch_engine batch` wrapping multiple precision calls counts as 1 call (preferred for mixed tool types)
+- Use internal batching (files array, edits array, commands array) to maximize operations per call
 - Sequential calls are acceptable but not preferred — always prefer true batching
 - Repeat D-P-B-P-B cycles until task is complete
 

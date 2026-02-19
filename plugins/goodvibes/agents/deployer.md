@@ -228,15 +228,12 @@ discover:
       glob: "src/features/**/*.ts"
   output_mode: files_only
 
-# Step 2: Use results to build targeted batch
-batch:
-  id: implement-feature
-  operations:
-    read:
-      - id: analyze
-        type: files
-        targets: "{{existing_files.files}}"  # From discovery
-        extract: outline
+# Step 2: Read discovered files
+precision_read:
+  files:
+    - { path: "src/features/auth/index.ts", extract: outline }
+    - { path: "src/features/auth/types.ts", extract: symbols }
+  verbosity: standard
 ```
 
 **Benefits:**
@@ -312,90 +309,50 @@ Every task cycle follows this pattern with a target of 3 tool calls:
 |-------|-----------|-------------|
 | **D** (Discover) | 1 | Single `discover` call with ALL queries batched (grep, glob, symbols, structural) |
 | **P** (Plan Input) | 0 | Cognitively plan what to read — ZERO tool calls |
-| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob` — use internal `files`/`queries` arrays) |
 | **P** (Plan Output) | 0 | Cognitively plan what to write — ZERO tool calls |
-| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit` — use internal `files`/`edits` arrays) |
 
 **Rules:**
 - Target: 3 tool calls per cycle. 2 is acceptable when no output is needed.
-- `batch_engine batch` wrapping multiple precision calls counts as 1 call (preferred for mixed tool types)
+- Use internal batching (files array, edits array, commands array) to maximize operations per call
 - Sequential calls are acceptable but not preferred — always prefer true batching
 - Repeat D-P-B-P-B cycles until task is complete
 
 ### 1. Initialize Deployment Configuration
 
-**Batch operation to analyze project and create deployment configs.**
-
-Use the `mcp__plugin_goodvibes_batch-engine__batch` tool directly.
+**Use precision tools to analyze project and create deployment configs.**
 
 ```yaml
-batch:
-  id: initialize-deployment
+# Phase 1: Find existing configs (batch read)
+precision_read:
+  files:
+    - { path: "package.json", extract: content }
+    - { path: "tsconfig.json", extract: content }
+  verbosity: standard
 
-  operations:
-    # Phase 1: Analyze project
-    query:
-      - id: detect-stack
-        type: analysis
-        kind: stack
+# Phase 2: Create deployment configs (batch write)
+precision_write:
+  files:
+    - path: Dockerfile
+      content: "..."
+    - path: .github/workflows/deploy.yml
+      content: "..."
+    - path: .dockerignore
+      content: |
+        node_modules
+        .next
+        .git
+        dist
+        coverage
+        *.log
+  verbosity: count_only
 
-      - id: find-configs
-        type: glob
-        patterns: ["package.json", "next.config.*", "vite.config.*", "tsconfig.json"]
-        output:
-          mode: paths_only
-
-    # Phase 2: Create deployment configs
-    write:
-      - id: create-dockerfile
-        type: create
-        depends_on: [detect-stack]
-        files:
-          - path: Dockerfile
-            content: "{{generate_dockerfile(detect-stack.results)}}"
-            validate: dockerfile
-
-      - id: create-ci
-        type: create
-        depends_on: [detect-stack]
-        files:
-          - path: .github/workflows/deploy.yml
-            content: "{{generate_ci_config(detect-stack.results)}}"
-            validate: yaml
-
-      - id: create-dockerignore
-        type: create
-        files:
-          - path: .dockerignore
-            content: |
-              node_modules
-              .next
-              .git
-              dist
-              coverage
-              *.log
-
-    # Phase 3: Validate configs
-    exec:
-      - id: validate-docker
-        type: command
-        depends_on: [create-dockerfile]
-        commands:
-          - cmd: "docker build --dry-run -t test ."
-            expect: { exit_code: 0 }
-
-  config:
-    transaction:
-      mode: atomic
-      rollback_on_fail: true
-
-    checkpoint:
-      enabled: true
-      before: [write]
-      after: [validate-docker]
-
-    output:
-      mode: standard
+# Phase 3: Validate configs (batch exec)
+precision_exec:
+  commands:
+    - { cmd: "docker build --dry-run -t test .", expect: { exit_code: 0 } }
+  verbosity: minimal
 ```
 
 ### Analysis-Engine Integration for Deployment

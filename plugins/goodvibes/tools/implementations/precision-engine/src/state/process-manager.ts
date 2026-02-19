@@ -253,7 +253,7 @@ export class ProcessManager {
   spawn(
     command: string,
     args: string[],
-    options: { cwd?: string; env?: Record<string, string> } = {}
+    options: { cwd?: string; env?: Record<string, string>; stdinFile?: string } = {}
   ): BgStartResult {
     this.enforceProcessLimit();
 
@@ -272,9 +272,17 @@ export class ProcessManager {
       // Spawn detached process
       // When shell: true, concatenate command and escaped args into a single string.
       // This matches the foreground execution path's escaping strategy.
-      const fullCommand = args.length > 0 
+      let fullCommand = args.length > 0 
         ? `${command} ${args.map(shellEscape).join(' ')}`.trim()
         : command;
+
+      // If a stdin file is provided, append a shell redirect so the shell feeds
+      // the file into the process's stdin. With shell: true, the redirect is
+      // handled at the shell level — Node's stdio['ignore'] is for the shell
+      // process itself, but the < redirect opens the file independently.
+      if (options.stdinFile) {
+        fullCommand += ` < ${shellEscape(options.stdinFile)}`;
+      }
 
       const child: ChildProcess = spawn(fullCommand, [], {
         detached: true,

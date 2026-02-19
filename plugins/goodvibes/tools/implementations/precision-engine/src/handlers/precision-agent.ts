@@ -13,6 +13,7 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
+import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { toCallToolResult, ToolHandler, successResult, errorResult } from '../utils/index.js';
@@ -24,8 +25,15 @@ import { startTimer, logger } from '../logging.js';
 
 const execFileAsync = promisify(execFile);
 
-/** Default output mode for this tool. */
+/**
+ * Default output mode for this tool.
+ * Note: This intentionally does NOT use the global verbosity system because agent
+ * output is AI-generated text, not structured file data. Standard is always appropriate.
+ */
 const DEFAULT_OUTPUT_MODE = 'standard' as const;
+
+/** Default blocking timeout for AI agent execution (30 minutes). */
+const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -37,6 +45,18 @@ const CLAUDE_DEFAULT_MAX_TURNS = 30;
 /** Supported provider identifiers. */
 const SUPPORTED_PROVIDERS = ['claude', 'gemini', 'codex'] as const;
 type Provider = typeof SUPPORTED_PROVIDERS[number];
+
+/**
+ * CLI flag keys that must never be overridden by user-supplied cli_flags.
+ * These control security-critical behaviour or headless operation.
+ */
+const FORBIDDEN_CLI_FLAGS = new Set([
+  'model',
+  'dangerously-skip-permissions',
+  'print',
+  'p',
+  'stdin',
+]);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces
@@ -68,6 +88,8 @@ export interface AgentOptions {
   max_tokens?: number | null;
   /** Run in background (non-blocking). Defaults: main conversation = true, subagent = false. */
   background?: boolean;
+  /** Timeout in ms for blocking mode. Default: 1800000 (30 minutes). */
+  timeout_ms?: number;
   /** Dossier integration options. */
   dossier?: DossierOptions;
 }
@@ -135,6 +157,7 @@ export function generateAgentId(sessionId?: string): string {
 
 /**
  * Read context files and format them for injection into the agent prompt.
+ * Uses Promise.allSettled for parallel reads with per-file error isolation.
  * Silently skips files that cannot be read, logging warnings for each failure.
  * @param files - Absolute or relative file paths to read
  * @returns Formatted context string, or empty string if no files are readable
@@ -142,18 +165,24 @@ export function generateAgentId(sessionId?: string): string {
 export async function readContextFiles(files: string[]): Promise<string> {
   if (!files || files.length === 0) return '';
 
+  const resolvedPaths = files.map((filePath) =>
+    path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
+  );
+
+  const results = await Promise.allSettled(
+    resolvedPaths.map((resolvedPath) => fs.readFile(resolvedPath, 'utf-8'))
+  );
+
   const parts: string[] = [];
-  for (const filePath of files) {
-    try {
-      const resolvedPath = path.isAbsolute(filePath)
-        ? filePath
-        : path.resolve(process.cwd(), filePath);
-      const content = await fs.readFile(resolvedPath, 'utf-8');
-      parts.push(`--- File: ${resolvedPath} ---\n${content}\n--- End File ---`);
-    } catch (err) {
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    const resolvedPath = resolvedPaths[i];
+    if (result.status === 'fulfilled') {
+      parts.push(`--- File: ${resolvedPath} ---\n${result.value}\n--- End File ---`);
+    } else {
       logger.warn('[precision_agent] Failed to read context file', {
-        file: filePath,
-        err: String(err),
+        file: files[i],
+        err: String(result.reason),
       });
     }
   }
@@ -197,140 +226,139 @@ export function assembleFinalPrompt(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Filter user-supplied cli_flags, removing any keys that are in the forbidden
+ * list (security-critical flags that must not be user-overridden).
+ * @param cliFlags - Raw user-supplied flags
+ * @returns Filtered copy of the flags
+ */
+function filterCliFlags(cliFlags: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(cliFlags)) {
+    if (FORBIDDEN_CLI_FLAGS.has(key)) {
+      logger.warn('[precision_agent] Ignoring forbidden cli_flag', { key });
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * Append CLI flags to an args array. Shared helper for all provider command builders.
+ * Boolean values become --flag, other truthy values become --key value.
+ * @param args - Mutable args array to append to
+ * @param cliFlags - Filtered CLI flags to append
+ */
+function appendCliFlags(args: string[], cliFlags: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(cliFlags)) {
+    if (value === true) {
+      args.push(`--${key}`);
+    } else if (value !== false && value !== null && value !== undefined) {
+      args.push(`--${key}`, String(value));
+    }
+  }
+}
+
+/**
+ * Build a generic CLI command for providers that follow the same pattern.
+ * Prompt is NOT included in the args — it must be passed via stdin.
+ * @param executable - CLI executable name
+ * @param model - Model override
+ * @param cliFlags - Additional (filtered) CLI flags
+ * @param baseArgs - Provider-specific base args (e.g. ['--print'] for Claude)
+ * @returns [executable, args[]] tuple (prompt passed separately via stdin)
+ */
+export function buildGenericCommand(
+  executable: string,
+  model: string | undefined,
+  cliFlags: Record<string, unknown> | undefined,
+  baseArgs: string[]
+): [string, string[]] {
+  const args: string[] = [...baseArgs];
+
+  if (model) {
+    args.push('--model', model);
+  }
+
+  if (cliFlags) {
+    appendCliFlags(args, filterCliFlags(cliFlags));
+  }
+
+  return [executable, args];
+}
+
+/**
  * Build the Claude CLI command and arguments array.
  * Requires --print for headless mode, --dangerously-skip-permissions to prevent stalling.
- * @param prompt - The assembled final prompt
+ * Prompt is NOT included in args — pass via stdin to avoid ARG_MAX limits.
  * @param model - Model override (e.g. "sonnet", "opus")
  * @param cliFlags - Additional CLI flags
  * @returns [executable, args[]] tuple
  */
 export function buildClaudeCommand(
-  prompt: string,
   model?: string,
   cliFlags?: Record<string, unknown>
 ): [string, string[]] {
-  const args: string[] = [
+  return buildGenericCommand('claude', model, cliFlags, [
     '--print',
     '--dangerously-skip-permissions',
     '--max-turns',
     String(CLAUDE_DEFAULT_MAX_TURNS),
-  ];
-
-  if (model) {
-    args.push('--model', model);
-  }
-
-  if (cliFlags) {
-    // Process cli_flags as key-value CLI arguments
-    for (const [key, value] of Object.entries(cliFlags)) {
-      if (value === true) {
-        // Boolean flag (e.g. { "no-markdown": true } → --no-markdown)
-        args.push(`--${key}`);
-      } else if (value !== false && value !== null && value !== undefined) {
-        // Key-value flag (e.g. { "disallowedTools": "Write,Edit" } → --disallowedTools "Write,Edit")
-        args.push(`--${key}`, String(value));
-      }
-    }
-  }
-
-  args.push(prompt);
-
-  return ['claude', args];
+  ]);
 }
 
 /**
  * Build the Gemini CLI command and arguments array.
  * Placeholder implementation — logs a warning and returns best-effort command.
- * @param prompt - The assembled final prompt
+ * Prompt is NOT included in args — pass via stdin to avoid ARG_MAX limits.
  * @param model - Model override
  * @param cliFlags - Additional CLI flags
  * @returns [executable, args[]] tuple
  */
 export function buildGeminiCommand(
-  prompt: string,
   model?: string,
   cliFlags?: Record<string, unknown>
 ): [string, string[]] {
   logger.warn('[precision_agent] Gemini provider is a TBD placeholder — command may not work correctly');
-
-  const args: string[] = [];
-
-  if (model) {
-    args.push('--model', model);
-  }
-
-  if (cliFlags) {
-    for (const [key, value] of Object.entries(cliFlags)) {
-      if (value === true) {
-        args.push(`--${key}`);
-      } else if (value !== false && value !== null && value !== undefined) {
-        args.push(`--${key}`, String(value));
-      }
-    }
-  }
-
-  args.push(prompt);
-
-  return ['gemini', args];
+  return buildGenericCommand('gemini', model, cliFlags, []);
 }
 
 /**
  * Build the Codex CLI command and arguments array.
  * Placeholder implementation — logs a warning and returns best-effort command.
- * @param prompt - The assembled final prompt
+ * Prompt is NOT included in args — pass via stdin to avoid ARG_MAX limits.
  * @param model - Model override
  * @param cliFlags - Additional CLI flags
  * @returns [executable, args[]] tuple
  */
 export function buildCodexCommand(
-  prompt: string,
   model?: string,
   cliFlags?: Record<string, unknown>
 ): [string, string[]] {
   logger.warn('[precision_agent] Codex provider is a TBD placeholder — command may not work correctly');
-
-  const args: string[] = [];
-
-  if (model) {
-    args.push('--model', model);
-  }
-
-  if (cliFlags) {
-    for (const [key, value] of Object.entries(cliFlags)) {
-      if (value === true) {
-        args.push(`--${key}`);
-      } else if (value !== false && value !== null && value !== undefined) {
-        args.push(`--${key}`, String(value));
-      }
-    }
-  }
-
-  args.push(prompt);
-
-  return ['codex', args];
+  return buildGenericCommand('codex', model, cliFlags, []);
 }
 
 /**
  * Build the CLI command for the given provider.
+ * Prompt is NOT included in args — it must be passed via stdin to avoid ARG_MAX limits.
  * @param provider - Provider identifier
- * @param prompt - The assembled final prompt
  * @param model - Optional model override
  * @param cliFlags - Optional passthrough CLI flags
  * @returns [executable, args[]] tuple
  */
 export function buildCommand(
   provider: Provider,
-  prompt: string,
   model?: string,
   cliFlags?: Record<string, unknown>
 ): [string, string[]] {
   switch (provider) {
     case 'claude':
-      return buildClaudeCommand(prompt, model, cliFlags);
+      return buildClaudeCommand(model, cliFlags);
     case 'gemini':
-      return buildGeminiCommand(prompt, model, cliFlags);
+      return buildGeminiCommand(model, cliFlags);
     case 'codex':
-      return buildCodexCommand(prompt, model, cliFlags);
+      return buildCodexCommand(model, cliFlags);
     default: {
       // TypeScript exhaustiveness guard — should never reach here
       const _exhaustive: never = provider;
@@ -345,20 +373,21 @@ export function buildCommand(
 
 /**
  * Get the default model identifier for a provider.
+ * Returns the actual model name so it can be passed explicitly to the CLI.
  * @param provider - Provider to look up
- * @returns Default model string for display/logging
+ * @returns Default model string
  */
 export function getDefaultModel(provider: Provider): string {
   switch (provider) {
     case 'claude':
-      return 'default';
+      return 'sonnet';
     case 'gemini':
-      return 'default';
+      return 'gemini-2.5-pro';
     case 'codex':
-      return 'default';
+      return 'codex-mini';
     default: {
       const _exhaustive: never = provider;
-      return `default`;
+      return 'sonnet';
     }
   }
 }
@@ -483,7 +512,9 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
   const finalPrompt = assembleFinalPrompt(input.prompt, contextContent, dossierText);
 
   // ─── Build Provider Command ──────────────────────────────────────────────
-  const [executable, cmdArgs] = buildCommand(provider, finalPrompt, options.model, cliFlags);
+  // Pass the resolved `model` (not raw options.model) so --model is always set explicitly.
+  // Prompt is passed via stdin to avoid ARG_MAX OS limits on large prompts.
+  const [executable, cmdArgs] = buildCommand(provider, model, cliFlags);
 
   logger.debug('[precision_agent] Spawning agent', {
     agentId,
@@ -495,12 +526,30 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
 
   // ─── Execution ───────────────────────────────────────────────────────────
 
+  // ─── Timeout ─────────────────────────────────────────────────────────────
+  const timeoutMs = options.timeout_ms ?? DEFAULT_AGENT_TIMEOUT_MS;
+
   if (runInBackground) {
-    // Background mode: spawn via ProcessManager, return immediately
+    // Background mode: spawn via ProcessManager, return immediately.
+    // Prompt is written to a temp file and passed via shell stdin redirect
+    // to avoid ARG_MAX OS limits on large prompts.
+    let promptTmpFile: string | null = null;
     try {
+      promptTmpFile = path.join(os.tmpdir(), `precision-agent-${agentId}.txt`);
+      await fs.writeFile(promptTmpFile, finalPrompt, 'utf-8');
+
       const bgResult = processManager.spawn(executable, cmdArgs, {
         cwd: process.cwd(),
+        stdinFile: promptTmpFile,
       });
+
+      // Schedule temp file cleanup after spawn succeeds.
+      // The shell reads the redirect file immediately on startup, so a short
+      // delay is more than sufficient before cleanup.
+      const tmpFileToClean = promptTmpFile;
+      setTimeout(() => {
+        fs.unlink(tmpFileToClean).catch(() => {});
+      }, 2000);
 
       const response: AgentRunningResponse = {
         agent_id: agentId,
@@ -517,18 +566,24 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       logger.error('[precision_agent] Failed to spawn background agent', { agentId, err: errMsg });
+      // Clean up temp file on failure
+      if (promptTmpFile) {
+        await fs.unlink(promptTmpFile).catch(() => {});
+      }
       return toCallToolResult(
         errorResult(`Failed to spawn agent '${agentId}': ${errMsg}`, DEFAULT_OUTPUT_MODE, elapsed())
       );
     }
   } else {
-    // Blocking mode: execute and wait for result
+    // Blocking mode: execute and wait for result.
+    // Prompt is passed via stdin to avoid ARG_MAX OS limits on large prompts.
     try {
       const { stdout, stderr } = await execFileAsync(executable, cmdArgs, {
         cwd: process.cwd(),
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer for long-running agents
         shell: false,
-        timeout: 0, // No timeout — AI agents are non-deterministic
+        timeout: timeoutMs,
+        input: finalPrompt, // Pass prompt via stdin, not as CLI arg
       });
 
       const duration = Date.now() - startTime;
@@ -561,8 +616,16 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
         code?: number | string;
       };
 
-      const exitCode =
-        typeof execErr.code === 'number' ? execErr.code : 1;
+      // Map signal names to conventional exit codes (128 + signal number)
+      let exitCode: number;
+      if (typeof execErr.code === 'number') {
+        exitCode = execErr.code;
+      } else if (typeof execErr.code === 'string' && execErr.code in os.constants.signals) {
+        exitCode = 128 + (os.constants.signals as Record<string, number>)[execErr.code];
+      } else {
+        exitCode = 1;
+      }
+
       const resultText = (execErr.stdout ?? '').trim();
       const errMsg = (execErr.stderr ?? execErr.message ?? String(err)).trim();
 
@@ -584,7 +647,19 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
         exit_code: exitCode,
       };
 
-      return toCallToolResult(successResult(response, DEFAULT_OUTPUT_MODE, elapsed()));
+      // Return success: false so MCP callers can detect failure via isError flag.
+      // Include structured response in data for callers that need exit_code, result, etc.
+      const jsonStr = JSON.stringify(response);
+      return toCallToolResult({
+        success: false,
+        data: response,
+        error: `Agent failed with exit code ${exitCode}: ${errMsg.slice(0, 200)}`,
+        meta: {
+          output_mode: DEFAULT_OUTPUT_MODE,
+          token_estimate: Math.ceil(jsonStr.length / 4),
+          execution_ms: elapsed(),
+        },
+      });
     }
   }
 };

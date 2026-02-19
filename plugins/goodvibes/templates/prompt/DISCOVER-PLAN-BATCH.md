@@ -79,13 +79,10 @@ Phase 4 (Blocked by Phase 3): run typecheck + lint
 
 Minimize tool calls by grouping operations. Ranked by efficiency:
 
-1. **batch_engine wrapping precision_engine** (best) — Single call, atomic transaction, rollback support, all operation types in one
-2. **precision_engine built-in batching** (good) — Multiple files/edits/commands in one precision tool call
-3. **Sequential precision_engine** (acceptable only when dependent) — read→edit→verify chains where output determines next input
+1. **precision_engine built-in batching** (best) — Multiple files/edits/commands in one precision tool call
+2. **Sequential precision_engine** (acceptable only when dependent) — read→edit→verify chains where output determines next input
 
 **Failure handling:**
-- `batch_engine` atomic mode: all ops roll back on any failure
-- `batch_engine` partial mode: successful ops kept, failed ops reported
 - `precision_engine`: successful ops complete, failures reported per file/edit
 - Fix only the failed operations — never re-run successful ones
 - If root cause was bad assumptions, LOOP back to DISCOVER
@@ -131,24 +128,28 @@ discover:
 **P — Plan** (0 calls, cognitive only):
 "Found 5 components, 3 API routes, auth in 8 files. I'll read the 3 API routes + auth config in one call, then create the new endpoint + update barrel export + typecheck in one batch call."
 
-**B — Batch** (1 call, read + write + exec combined):
+**B — Batch Input** (1 call, read multiple files at once):
 ```yaml
-batch:
-  operations:
-    read:
-      - files:
-          - { path: "src/app/api/users/route.ts", extract: content }
-          - { path: "src/app/api/auth/route.ts", extract: content }
-          - { path: "src/lib/auth.ts", extract: symbols }
-    write:
-      - files:
-          - { path: "src/app/api/profile/route.ts", content: "..." }
-          - { path: "src/app/api/index.ts", content: "..." }
-    exec:
-      - commands:
-          - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
-  config:
-    transaction: { mode: atomic }
+precision_read:
+  files:
+    - { path: "src/app/api/users/route.ts", extract: content }
+    - { path: "src/app/api/auth/route.ts", extract: content }
+    - { path: "src/lib/auth.ts", extract: symbols }
+  verbosity: standard
+```
+
+**B — Batch Output** (1 call, write + exec combined via precision_write then precision_exec, or use precision_edit for edits):
+```yaml
+precision_write:
+  files:
+    - { path: "src/app/api/profile/route.ts", content: "..." }
+    - { path: "src/app/api/index.ts", content: "..." }
+  verbosity: count_only
+```
+```yaml
+precision_exec:
+  commands:
+    - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
   verbosity: minimal
 ```
 

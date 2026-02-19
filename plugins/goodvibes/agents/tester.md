@@ -173,15 +173,12 @@ discover:
       glob: "src/features/**/*.ts"
   output_mode: files_only
 
-# Step 2: Use results to build targeted batch
-batch:
-  id: implement-feature
-  operations:
-    read:
-      - id: analyze
-        type: files
-        targets: "{{existing_files.files}}"  # From discovery
-        extract: outline
+# Step 2: Read discovered files
+precision_read:
+  files:
+    - { path: "src/features/auth/index.ts", extract: outline }
+    - { path: "src/features/auth/types.ts", extract: symbols }
+  verbosity: standard
 ```
 
 **Benefits:**
@@ -357,13 +354,13 @@ Every task cycle follows this pattern with a target of 3 tool calls:
 |-------|-----------|-------------|
 | **D** (Discover) | 1 | Single `discover` call with ALL queries batched (grep, glob, symbols, structural) |
 | **P** (Plan Input) | 0 | Cognitively plan what to read — ZERO tool calls |
-| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob` — use internal `files`/`queries` arrays) |
 | **P** (Plan Output) | 0 | Cognitively plan what to write — ZERO tool calls |
-| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit` — use internal `files`/`edits` arrays) |
 
 **Rules:**
 - Target: 3 tool calls per cycle. 2 is acceptable when no output is needed.
-- `batch_engine batch` wrapping multiple precision calls counts as 1 call (preferred for mixed tool types)
+- Use internal batching (files array, edits array, commands array) to maximize operations per call
 - Sequential calls are acceptable but not preferred — always prefer true batching
 - Repeat D-P-B-P-B cycles until task is complete
 
@@ -616,68 +613,35 @@ it('displays user list', () => {
 });
 ```
 
-## Batch Operations
+## Precision Tool Batching for Tests
 
 ### Batch Test Creation and Execution
 
-Use batch tool for comprehensive test workflows.
-
-Access via MCP: `mcp__plugin_goodvibes_batch-engine__batch`
+Use precision tools with built-in batching for comprehensive test workflows.
 
 ```yaml
-# Complete test workflow batch
-batch:
-  id: test-workflow
+# Phase 1: Analyze code to test (batch read)
+precision_read:
+  files:
+    - { path: "src/utils/validation.ts", extract: symbols }
+    - { path: "src/utils/format.ts", extract: symbols }
+  verbosity: standard
 
-  operations:
-    # Phase 1: Analyze code to test
-    read:
-      - id: get-code-structure
-        type: files
-        targets: ["src/utils/*.ts"]
-        extract: symbols
-        output:
-          mode: standard
+# Phase 2: Create missing test files (batch write)
+precision_write:
+  files:
+    - path: "src/utils/validation.test.ts"
+      content: "..."
+    - path: "src/utils/format.test.ts"
+      content: "..."
+  verbosity: count_only
 
-      - id: find-existing-tests
-        type: glob
-        patterns: ["src/utils/*.test.ts", "src/utils/*.spec.ts"]
-        output:
-          mode: paths_only
-
-    # Phase 2: Create missing test files
-    write:
-      - id: create-test-files
-        type: create
-        depends_on: [get-code-structure, find-existing-tests]
-        files:
-          - path: "src/utils/validation.test.ts"
-            content: "{{generate_test_file(get-code-structure.symbols)}}"
-
-    # Phase 3: Run tests
-    exec:
-      - id: run-unit-tests
-        type: command
-        depends_on: [create-test-files]
-        commands:
-          - cmd: "npm run test:unit -- --run"
-            expect: { exit_code: 0 }
-            timeout_ms: 120000
-
-      - id: run-coverage
-        type: command
-        depends_on: [run-unit-tests]
-        commands:
-          - cmd: "npm run test -- --coverage --run"
-            expect: { exit_code: 0 }
-            timeout_ms: 180000
-
-    # Phase 4: Analyze coverage
-    query:
-      - id: check-coverage
-        type: analysis
-        kind: coverage
-        depends_on: [run-coverage]
+# Phase 3: Run tests (batch exec)
+precision_exec:
+  commands:
+    - { cmd: "npm run test:unit -- --run", expect: { exit_code: 0 }, timeout_ms: 120000 }
+    - { cmd: "npm run test -- --coverage --run", expect: { exit_code: 0 }, timeout_ms: 180000 }
+  verbosity: minimal
         targets: ["src/utils/*.ts"]
 
   config:

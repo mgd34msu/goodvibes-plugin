@@ -240,15 +240,12 @@ discover:
       glob: "src/features/**/*.ts"
   output_mode: files_only
 
-# Step 2: Use results to build targeted batch
-batch:
-  id: implement-feature
-  operations:
-    read:
-      - id: analyze
-        type: files
-        targets: "{{existing_files.files}}"  # From discovery
-        extract: outline
+# Step 2: Read discovered files
+precision_read:
+  files:
+    - { path: "src/features/auth/index.ts", extract: outline }
+    - { path: "src/features/auth/types.ts", extract: symbols }
+  verbosity: standard
 ```
 
 **Benefits:**
@@ -267,13 +264,13 @@ Every task cycle follows this pattern with a target of 3 tool calls:
 |-------|-----------|-------------|
 | **D** (Discover) | 1 | Single `discover` call with ALL queries batched (grep, glob, symbols, structural) |
 | **P** (Plan Input) | 0 | Cognitively plan what to read — ZERO tool calls |
-| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob` — use internal `files`/`queries` arrays) |
 | **P** (Plan Output) | 0 | Cognitively plan what to write — ZERO tool calls |
-| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit` — use internal `files`/`edits` arrays) |
 
 **Rules:**
 - Target: 3 tool calls per cycle. 2 is acceptable when no output is needed.
-- `batch_engine batch` wrapping multiple precision calls counts as 1 call (preferred for mixed tool types)
+- Use internal batching (files array, edits array, commands array) to maximize operations per call
 - Sequential calls are acceptable but not preferred — always prefer true batching
 - Repeat D-P-B-P-B cycles until task is complete
 
@@ -343,91 +340,48 @@ batch:
 - Reduces token usage by targeting exactly what's needed
 - Enables informed decisions about integration approach
 
-## Batch Operations
+## Precision Tool Batching for Integrations
 
-**For multi-file integrations, ALWAYS use batch tool to execute operations efficiently.**
-
-Access via MCP tool: `mcp__plugin_goodvibes_batch-engine__batch`
-
-### Batch Tool Usage
+**For multi-file integrations, use precision tools with built-in batching arrays.**
 
 ```yaml
-# Example: Setup Stripe payment integration
-batch:
-  id: integrate-stripe-payments
+# Phase 1: Read existing code (batch read)
+precision_read:
+  files:
+    - { path: ".env.example", extract: content }
+    - { path: "lib/stripe.ts", extract: symbols }
+  verbosity: standard
 
-  operations:
-    # Phase 1: Read existing code
-    read:
-      - id: find-api-routes
-        type: glob
-        patterns: ["app/api/**/*.ts", "src/api/**/*.ts"]
-        output:
-          mode: paths_only
+# Phase 2: Create integration files (batch write)
+precision_write:
+  files:
+    - path: "lib/stripe.ts"
+      content: |
+        import Stripe from 'stripe';
 
-      - id: check-env
-        type: files
-        targets: [".env.example", ".env.local"]
-        extract: content
+        export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+          apiVersion: '2024-12-18.acacia',
+          typescript: true,
+        });
+    - path: "app/api/webhooks/stripe/route.ts"
+      content: "..."
+  verbosity: count_only
 
-    # Phase 2: Create integration files
-    write:
-      - id: create-stripe-client
-        type: create
-        files:
-          - path: "lib/stripe.ts"
-            content: |
-              import Stripe from 'stripe';
-
-              export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-                apiVersion: '2024-12-18.acacia',
-                typescript: true,
-              });
-
-      - id: create-webhook-handler
-        type: create
-        files:
-          - path: "app/api/webhooks/stripe/route.ts"
-            content_base64: "{{base64_encoded_webhook_handler}}"
-
-    # Phase 3: Install dependencies
-    exec:
-      - id: install-stripe
-        type: command
-        commands:
-          - cmd: "npm install stripe @stripe/stripe-js"
-            expect: { exit_code: 0 }
-
-      - id: validate
-        type: command
-        depends_on: [install-stripe]
-        commands:
-          - cmd: "npm run typecheck"
-            expect: { exit_code: 0 }
-
-  config:
-    transaction:
-      mode: atomic
-      rollback_on_fail: true
-
-    execution:
-      mode: mixed  # Read parallel, write sequential
-
-    checkpoint:
-      enabled: true
-      after: [create-webhook-handler, install-stripe]
-
-    output:
-      mode: standard
+# Phase 3: Install and validate (batch exec)
+precision_exec:
+  commands:
+    - { cmd: "npm install stripe @stripe/stripe-js", expect: { exit_code: 0 } }
+    - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
+  verbosity: minimal
 ```
 
-### Batch Operation Types
+### Operation Types
 
-| Type | Use For | Example |
+| Tool | Use For | Example |
 |------|---------|----------|
-| `read` | Gather context from files | Read existing integrations |
-| `write` | Create/edit files atomically | Create webhook handlers, configs |
-| `exec` | Run commands (install, validate) | Install packages, run typecheck |
+| `precision_read` | Gather context from files | Read existing integrations |
+| `precision_write` | Create/edit files | Create webhook handlers, configs |
+| `precision_exec` | Run commands (install, validate) | Install packages, run typecheck |
 | `query` | Search/analyze code | Find existing webhooks |
 
 ### Output Format

@@ -244,15 +244,12 @@ discover:
       glob: "src/features/**/*.ts"
   output_mode: files_only
 
-# Step 2: Use results to build targeted batch
-batch:
-  id: implement-feature
-  operations:
-    read:
-      - id: analyze
-        type: files
-        targets: "{{existing_files.files}}"  # From discovery
-        extract: outline
+# Step 2: Read discovered files
+precision_read:
+  files:
+    - { path: "src/features/auth/index.ts", extract: outline }
+    - { path: "src/features/auth/types.ts", extract: symbols }
+  verbosity: standard
 ```
 
 **Benefits:**
@@ -261,94 +258,49 @@ batch:
 - Reduces token usage by targeting exactly what's needed
 - Enables informed decisions about implementation approach
 
-## Batch Operations
+## Precision Tool Batching
 
-**For multi-file operations, ALWAYS use batch tool to execute operations efficiently.**
+**For multi-file operations, ALWAYS use precision tools with built-in batching arrays.**
 
-Access via MCP tool: `mcp__plugin_goodvibes_batch-engine__batch`
-
-### Batch Tool Usage
+### Batch Read
 
 ```yaml
-# Example: Implement a feature across multiple files
-batch:
-  id: implement-user-feature
-
-  operations:
-    # Phase 1: Read existing patterns
-    read:
-      - id: patterns
-        type: glob
-        patterns: ["src/features/**/*.ts"]
-        output:
-          mode: minimal
-
-    # Phase 2: Create files atomically
-    write:
-      - id: create-files
-        type: create
-        files:
-          - path: "src/features/user/index.ts"
-            content: |
-              export * from './types';
-              export * from './api';
-              export * from './hooks';
-          - path: "src/features/user/types.ts"
-            content: |
-              export interface User {
-                id: string;
-                email: string;
-                name: string;
-              }
-
-    # Phase 3: Validate
-    exec:
-      - id: validate
-        type: command
-        commands:
-          - cmd: "npm run typecheck"
-            expect:
-              exit_code: 0
-
-  config:
-    transaction:
-      mode: atomic
-    execution:
-      mode: parallel
-
-    checkpoint:
-      enabled: true
-      before: ["write"]
-      after: ["validate"]
+precision_read:
+  files:
+    - { path: "src/features/user/types.ts", extract: symbols }
+    - { path: "src/features/user/api.ts", extract: content }
+    - { path: "src/features/user/hooks.ts", extract: outline }
+  verbosity: standard
 ```
 
-### Batch Operation Types
+### Batch Write
 
-| Type | Use For | Example |
-|------|---------|---------|
-| `read` | Gather context from files | Read existing code patterns |
-| `write` | Create/edit files atomically | Write new components, configs |
-| `exec` | Run commands (build, test, lint) | Validate changes |
-| `query` | Search/analyze code | Find usage, check patterns |
+```yaml
+precision_write:
+  files:
+    - path: "src/features/user/index.ts"
+      content: |
+        export * from './types';
+        export * from './api';
+        export * from './hooks';
+    - path: "src/features/user/types.ts"
+      content: |
+        export interface User {
+          id: string;
+          email: string;
+          name: string;
+        }
+  verbosity: count_only
+```
 
-### Output Format
+### Batch Exec
 
-Batch operations return structured results:
-
-```typescript
-interface BatchResult {
-  batch_id: string;
-  status: 'completed' | 'failed' | 'partial';
-  operations: {
-    [id: string]: {
-      status: 'success' | 'failed' | 'skipped';
-      output: any;
-      error?: string;
-    };
-  };
-  checkpoint_id?: string;
-  elapsed_ms: number;
-}
+```yaml
+precision_exec:
+  commands:
+    - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
+    - { cmd: "npm run lint", expect: { exit_code: 0 } }
+  verbosity: minimal
 ```
 
 ## Capabilities
@@ -461,13 +413,13 @@ Every task cycle follows this pattern with a target of 3 tool calls:
 |-------|-----------|-------------|
 | **D** (Discover) | 1 | Single `discover` call with ALL queries batched (grep, glob, symbols, structural) |
 | **P** (Plan Input) | 0 | Cognitively plan what to read — ZERO tool calls |
-| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Input) | 1 | Single batched precision call (`precision_read`, `precision_grep`, `precision_glob` — use internal `files`/`queries` arrays) |
 | **P** (Plan Output) | 0 | Cognitively plan what to write — ZERO tool calls |
-| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit`, or `batch_engine batch` wrapping multiple tool types) |
+| **B** (Batch Output) | 1 | Single batched precision call (`precision_write`, `precision_edit` — use internal `files`/`edits` arrays) |
 
 **Rules:**
 - Target: 3 tool calls per cycle. 2 is acceptable when no output is needed.
-- `batch_engine batch` wrapping multiple precision calls counts as 1 call (preferred for mixed tool types)
+- Use internal batching (files array, edits array, commands array) to maximize operations per call
 - Sequential calls are acceptable but not preferred — always prefer true batching
 - Repeat D-P-B-P-B cycles until task is complete
 

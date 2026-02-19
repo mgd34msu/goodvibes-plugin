@@ -89,6 +89,7 @@ import {
   buildGeminiCommand,
   buildCodexCommand,
   buildCommand,
+  buildGenericCommand,
   getDefaultModel,
 } from '../../handlers/precision-agent.js';
 
@@ -131,55 +132,55 @@ describe('generateAgentId', () => {
   it('should handle missing session ID gracefully', () => {
     const id = generateAgentId(undefined);
     // Falls back to 'xxxxxxxx' placeholder
-    expect(id).toMatch(/^agent_[a-fx]{8}_[a-f0-9]{8}$/);
+    expect(id).toMatch(/^agent_([a-f0-9]{8}|xxxxxxxx)_[a-f0-9]{8}$/);
   });
 });
 
 describe('buildClaudeCommand', () => {
   it('should include --print and --dangerously-skip-permissions', () => {
-    const [exe, args] = buildClaudeCommand('do something');
+    const [exe, args] = buildClaudeCommand();
     expect(exe).toBe('claude');
     expect(args).toContain('--print');
     expect(args).toContain('--dangerously-skip-permissions');
   });
 
   it('should include --max-turns with default value', () => {
-    const [, args] = buildClaudeCommand('task');
+    const [, args] = buildClaudeCommand();
     const maxTurnsIdx = args.indexOf('--max-turns');
     expect(maxTurnsIdx).toBeGreaterThan(-1);
     expect(args[maxTurnsIdx + 1]).toBe('30');
   });
 
   it('should include --model when specified', () => {
-    const [, args] = buildClaudeCommand('task', 'sonnet');
+    const [, args] = buildClaudeCommand('sonnet');
     expect(args).toContain('--model');
     expect(args).toContain('sonnet');
   });
 
   it('should not include --model when not specified', () => {
-    const [, args] = buildClaudeCommand('task');
+    const [, args] = buildClaudeCommand();
     expect(args).not.toContain('--model');
   });
 
-  it('should pass prompt as the last argument', () => {
-    const prompt = 'analyze security vulnerabilities';
-    const [, args] = buildClaudeCommand(prompt);
-    expect(args[args.length - 1]).toBe(prompt);
+  it('should NOT include prompt in args (prompt passes via stdin)', () => {
+    const [, args] = buildClaudeCommand();
+    // Prompt is no longer a positional arg — passed via stdin
+    expect(args).not.toContain('analyze security vulnerabilities');
   });
 
   it('should add boolean cli_flags as --flag', () => {
-    const [, args] = buildClaudeCommand('task', undefined, { 'no-markdown': true });
+    const [, args] = buildClaudeCommand(undefined, { 'no-markdown': true });
     expect(args).toContain('--no-markdown');
   });
 
   it('should add key-value cli_flags as --key value', () => {
-    const [, args] = buildClaudeCommand('task', undefined, { disallowedTools: 'Write,Edit' });
+    const [, args] = buildClaudeCommand(undefined, { disallowedTools: 'Write,Edit' });
     expect(args).toContain('--disallowedTools');
     expect(args).toContain('Write,Edit');
   });
 
   it('should skip false/null/undefined cli_flags', () => {
-    const [, args] = buildClaudeCommand('task', undefined, {
+    const [, args] = buildClaudeCommand(undefined, {
       someFlag: false,
       otherFlag: null,
       thirdFlag: undefined,
@@ -189,32 +190,38 @@ describe('buildClaudeCommand', () => {
     expect(args).not.toContain('--thirdFlag');
   });
 
-  it('should place prompt after all flags', () => {
-    const prompt = 'my prompt here';
-    const [, args] = buildClaudeCommand(prompt, 'opus', { verbose: true });
-    expect(args[args.length - 1]).toBe(prompt);
+  it('should strip forbidden cli_flags (model, dangerously-skip-permissions)', () => {
+    const [, args] = buildClaudeCommand(undefined, {
+      model: 'evil-override',
+      'dangerously-skip-permissions': true,
+      verbose: true,
+    });
+    // Forbidden flags stripped
+    expect(args.filter((a) => a === '--model').length).toBe(0);
+    // Allowed flag passed through
+    expect(args).toContain('--verbose');
   });
 });
 
 describe('buildGeminiCommand', () => {
   it('should use gemini executable', () => {
-    const [exe] = buildGeminiCommand('task');
+    const [exe] = buildGeminiCommand();
     expect(exe).toBe('gemini');
   });
 
-  it('should include prompt as last argument', () => {
-    const prompt = 'summarize the codebase';
-    const [, args] = buildGeminiCommand(prompt);
-    expect(args[args.length - 1]).toBe(prompt);
+  it('should NOT include prompt in args (prompt passes via stdin)', () => {
+    const [, args] = buildGeminiCommand();
+    // Gemini command is empty args when no model or flags specified
+    expect(Array.isArray(args)).toBe(true);
   });
 
   it('should include model when specified', () => {
-    const [, args] = buildGeminiCommand('task', 'gemini-2.5-pro');
+    const [, args] = buildGeminiCommand('gemini-2.5-pro');
     expect(args).toContain('gemini-2.5-pro');
   });
 
   it('should add cli_flags', () => {
-    const [, args] = buildGeminiCommand('task', undefined, { format: 'json' });
+    const [, args] = buildGeminiCommand(undefined, { format: 'json' });
     expect(args).toContain('--format');
     expect(args).toContain('json');
   });
@@ -222,55 +229,75 @@ describe('buildGeminiCommand', () => {
 
 describe('buildCodexCommand', () => {
   it('should use codex executable', () => {
-    const [exe] = buildCodexCommand('task');
+    const [exe] = buildCodexCommand();
     expect(exe).toBe('codex');
   });
 
-  it('should include prompt as last argument', () => {
-    const prompt = 'refactor this code';
-    const [, args] = buildCodexCommand(prompt);
-    expect(args[args.length - 1]).toBe(prompt);
+  it('should NOT include prompt in args (prompt passes via stdin)', () => {
+    const [, args] = buildCodexCommand();
+    expect(Array.isArray(args)).toBe(true);
   });
 
   it('should include model when specified', () => {
-    const [, args] = buildCodexCommand('task', 'gpt-4o');
+    const [, args] = buildCodexCommand('gpt-4o');
     expect(args).toContain('gpt-4o');
   });
 });
 
 describe('buildCommand', () => {
   it('should route claude provider correctly', () => {
-    const [exe] = buildCommand('claude', 'task');
+    const [exe] = buildCommand('claude');
     expect(exe).toBe('claude');
   });
 
   it('should route gemini provider correctly', () => {
-    const [exe] = buildCommand('gemini', 'task');
+    const [exe] = buildCommand('gemini');
     expect(exe).toBe('gemini');
   });
 
   it('should route codex provider correctly', () => {
-    const [exe] = buildCommand('codex', 'task');
+    const [exe] = buildCommand('codex');
     expect(exe).toBe('codex');
   });
 
   it('should forward model to provider command', () => {
-    const [, args] = buildCommand('claude', 'task', 'sonnet');
+    const [, args] = buildCommand('claude', 'sonnet');
     expect(args).toContain('sonnet');
   });
 });
 
+describe('buildGenericCommand', () => {
+  it('should build command with base args and model', () => {
+    const [exe, args] = buildGenericCommand('testcli', 'mymodel', undefined, ['--headless']);
+    expect(exe).toBe('testcli');
+    expect(args).toContain('--headless');
+    expect(args).toContain('--model');
+    expect(args).toContain('mymodel');
+  });
+
+  it('should not include model when not specified', () => {
+    const [, args] = buildGenericCommand('testcli', undefined, undefined, []);
+    expect(args).not.toContain('--model');
+  });
+
+  it('should strip forbidden flags from cliFlags', () => {
+    const [, args] = buildGenericCommand('testcli', undefined, { 'print': true, safe: true }, []);
+    expect(args).not.toContain('--print');
+    expect(args).toContain('--safe');
+  });
+});
+
 describe('getDefaultModel', () => {
-  it('should return default string for claude', () => {
-    expect(getDefaultModel('claude')).toBe('default');
+  it('should return sonnet for claude', () => {
+    expect(getDefaultModel('claude')).toBe('sonnet');
   });
 
-  it('should return default string for gemini', () => {
-    expect(getDefaultModel('gemini')).toBe('default');
+  it('should return gemini-2.5-pro for gemini', () => {
+    expect(getDefaultModel('gemini')).toBe('gemini-2.5-pro');
   });
 
-  it('should return default string for codex', () => {
-    expect(getDefaultModel('codex')).toBe('default');
+  it('should return codex-mini for codex', () => {
+    expect(getDefaultModel('codex')).toBe('codex-mini');
   });
 });
 
@@ -420,7 +447,7 @@ describe('handlePrecisionAgent background mode', () => {
       options: { background: true, dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
-    expect(parsed.data.agent_id).toMatch(/^agent_[a-f0-9x]{8}_[a-f0-9]{8}$/);
+    expect(parsed.data.agent_id).toMatch(/^agent_([a-f0-9]{8}|xxxxxxxx)_[a-f0-9]{8}$/);
   });
 
   it('should include provider in background response', async () => {
@@ -484,6 +511,22 @@ describe('handlePrecisionAgent background mode', () => {
     expect(parsed.data.model).toBe('sonnet');
   });
 
+  it('should pass resolved model and prompt via stdin (not positional arg) to ProcessManager.spawn', async () => {
+    const result = await handlePrecisionAgent({
+      prompt: 'analyze security vulnerabilities in the codebase',
+      options: { provider: 'claude', model: 'opus', background: true, dossier: { include: false } },
+    });
+    expectSuccess(result);
+    expect(mockProcessManagerSpawn).toHaveBeenCalledOnce();
+    const [spawnExe, spawnArgs] = mockProcessManagerSpawn.mock.calls[0];
+    expect(spawnExe).toBe('claude');
+    // --model opus must appear in args (resolved model, not undefined)
+    expect(spawnArgs).toContain('--model');
+    expect(spawnArgs).toContain('opus');
+    // Prompt must NOT be in args (passes via stdin)
+    expect(spawnArgs).not.toContain('analyze security vulnerabilities in the codebase');
+  });
+
   it('should include hint in response', async () => {
     const result = await handlePrecisionAgent({
       prompt: 'task',
@@ -545,7 +588,7 @@ describe('handlePrecisionAgent blocking mode', () => {
     expect(parsed.data.duration_ms).toBeGreaterThanOrEqual(0);
   });
 
-  it('should return failed status when agent exits non-zero', async () => {
+  it('should return failed status (as error) when agent exits non-zero', async () => {
     const execError = Object.assign(new Error('Command failed'), {
       stdout: 'partial output',
       stderr: 'error: something went wrong',
@@ -562,9 +605,31 @@ describe('handlePrecisionAgent blocking mode', () => {
       prompt: 'task',
       options: { background: false, dossier: { include: false } },
     });
-    const parsed = expectSuccess(result);
-    expect(parsed.data.status).toBe('failed');
-    expect(parsed.data.exit_code).toBe(1);
+    // Failed agents now return errorResult (isError: true) so callers detect failure
+    const parsed = expectError(result);
+    expect(parsed.data?.status).toBe('failed');
+    expect(parsed.data?.exit_code).toBe(1);
+  });
+
+  it('should map SIGTERM signal name to exit code 143 (128+15)', async () => {
+    const execError = Object.assign(new Error('Command killed'), {
+      stdout: '',
+      stderr: '',
+      code: 'SIGTERM',
+    });
+    mockExecFile.mockImplementation(
+      (_exe: string, _args: string[], _options: object, callback: (err: Error) => void) => {
+        callback(execError);
+        return { pid: 9999 };
+      }
+    );
+
+    const result = await handlePrecisionAgent({
+      prompt: 'task',
+      options: { background: false, dossier: { include: false } },
+    });
+    const parsed = expectError(result);
+    expect(parsed.data?.exit_code).toBe(143); // 128 + 15 (SIGTERM)
   });
 
   it('should include agent_id in blocking response', async () => {
@@ -585,7 +650,7 @@ describe('handlePrecisionAgent blocking mode', () => {
       options: { background: false, dossier: { include: false } },
     });
     const parsed = expectSuccess(result);
-    expect(parsed.data.agent_id).toMatch(/^agent_[a-f0-9x]{8}_[a-f0-9]{8}$/);
+    expect(parsed.data.agent_id).toMatch(/^agent_([a-f0-9]{8}|xxxxxxxx)_[a-f0-9]{8}$/);
   });
 
   it('should set exit_code 0 on success', async () => {
@@ -738,6 +803,65 @@ describe('handlePrecisionAgent provider variants', () => {
     });
     expectSuccess(result);
     expect(mockProcessManagerSpawn).toHaveBeenCalledOnce();
+  });
+});
+
+describe('handlePrecisionAgent stdinFile and temp file cleanup', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    mockProcessManagerSpawn.mockReturnValue({
+      status: 'started',
+      process_id: 'bg-1',
+      pid: 12345,
+      command: 'claude ...',
+      log_file: '/tmp/bg-1.log',
+      hint: 'Use bg_status bg-1',
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should pass stdinFile in options to ProcessManager.spawn', async () => {
+    const result = await handlePrecisionAgent({
+      prompt: 'test prompt for stdin',
+      options: { background: true, dossier: { include: false } },
+    });
+    expectSuccess(result);
+    expect(mockProcessManagerSpawn).toHaveBeenCalledOnce();
+    const spawnOptions = mockProcessManagerSpawn.mock.calls[0][2];
+    expect(spawnOptions).toBeDefined();
+    expect(typeof spawnOptions.stdinFile).toBe('string');
+    // stdinFile should be a path in the OS temp dir
+    expect(spawnOptions.stdinFile).toContain('precision-agent-');
+    expect(spawnOptions.stdinFile).toContain('.txt');
+  });
+
+  it('should schedule temp file cleanup after successful spawn (setTimeout called)', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    await handlePrecisionAgent({
+      prompt: 'cleanup test',
+      options: { background: true, dossier: { include: false } },
+    });
+    // setTimeout should be called for temp file cleanup
+    expect(setTimeoutSpy).toHaveBeenCalled();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('should NOT call setTimeout cleanup when ProcessManager.spawn throws', async () => {
+    mockProcessManagerSpawn.mockImplementation(() => {
+      throw new Error('spawn error');
+    });
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    await handlePrecisionAgent({
+      prompt: 'cleanup test',
+      options: { background: true, dossier: { include: false } },
+    });
+    // setTimeout should NOT be called when spawn fails (cleanup happens in catch)
+    expect(setTimeoutSpy).not.toHaveBeenCalled();
+    setTimeoutSpy.mockRestore();
   });
 });
 

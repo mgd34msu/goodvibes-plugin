@@ -50,30 +50,34 @@ The precision engine replaces native tools (Read, Edit, Write, Grep, Glob, WebFe
 
 **Progressive Disclosure**: `count_only` → `files_only` → `matches` (only go deeper as needed)
 
-## batch_engine Pattern (Optimal Batching)
+## Precision Tool Batching (Optimal Pattern)
 
-Wraps multiple precision operations in one atomic transaction — the highest efficiency pattern:
+Use built-in batching arrays to maximize operations per call:
 
 ```yaml
-batch:
-  operations:
-    read:
-      - files:
-          - { path: "src/types.ts", extract: symbols }
-    write:
-      - files:
-          - { path: "src/auth/types.ts", content: "export interface User { id: string; }" }
-          - { path: "src/auth/index.ts", content: "export * from './types';" }
-    exec:
-      - commands:
-          - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
-  config:
-    transaction:
-      mode: atomic
+# Batch read: multiple files in one call
+precision_read:
+  files:
+    - { path: "src/types.ts", extract: symbols }
+    - { path: "src/auth/config.ts", extract: content }
+  verbosity: standard
+
+# Batch write: multiple files in one call
+precision_write:
+  files:
+    - { path: "src/auth/types.ts", content: "export interface User { id: string; }" }
+    - { path: "src/auth/index.ts", content: "export * from './types';" }
+  verbosity: count_only
+
+# Batch exec: multiple commands in one call
+precision_exec:
+  commands:
+    - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
+    - { cmd: "npm run lint", expect: { exit_code: 0 } }
   verbosity: minimal
 ```
 
-Each operation type maps to its precision_engine tool's schema (`read` → precision_read `files` array, `write` → precision_write `files` array, `exec` → precision_exec `commands` array).
+Each tool accepts arrays: `precision_read` uses `files` array, `precision_write` uses `files` array, `precision_edit` uses `edits` array, `precision_exec` uses `commands` array.
 
 ## precision_exec Features
 

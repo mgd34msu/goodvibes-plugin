@@ -829,6 +829,14 @@ export const precisionAgentSchema: Tool = {
               'Run in background (non-blocking). ' +
               'Default: true in main conversation, false in subagent context.',
           },
+          timeout_ms: {
+            type: 'integer',
+            minimum: 1,
+            default: 1800000,
+            description:
+              'Timeout in milliseconds for blocking mode execution. ' +
+              'Default: 1800000 (30 minutes). Has no effect in background mode.',
+          },
           dossier: {
             type: 'object',
             description: 'Dossier integration options.',
