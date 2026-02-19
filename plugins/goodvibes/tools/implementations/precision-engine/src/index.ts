@@ -31,6 +31,8 @@ import { allSchemas } from './schemas/index.js';
 import { getHandler, hasHandler, listHandlers } from './handlers/index.js';
 import { FileStateCache } from './state/file-cache.js';
 import { sessionState } from './state/index.js';
+import { PrecisionRuntime, extractMetadata, extractCacheHit } from './state/precision-runtime.js';
+import { Telemetry } from './state/telemetry.js';
 
 /**
  * PrecisionEngineServer - MCP server for token-efficient file operations.
@@ -74,8 +76,9 @@ class PrecisionEngineServer {
       }
 
       try {
-        return await handler(args);
+        return await executeHandler(name, handler, args);
       } catch (error) {
+        if (error instanceof McpError) throw error;
         const message = error instanceof Error ? error.message : String(error);
         logger.error(`Tool ${name} failed`, { error: message, args });
         throw new McpError(ErrorCode.InternalError, `Tool ${name} failed: ${message}`);
@@ -104,6 +107,13 @@ class PrecisionEngineServer {
     await this.server.connect(transport);
     logger.info(`${SERVER_NAME} v${SERVER_VERSION} started`);
     logger.info(`Tools: ${listHandlers().join(', ')}`);
+
+    // Initialize the PrecisionRuntime (non-blocking on failure)
+    PrecisionRuntime.initialize().catch((err) => {
+      logger.warn('PrecisionRuntime initialization failed — operating in degraded mode', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    });
   }
 
   async stop(): Promise<void> {
@@ -134,7 +144,107 @@ class PrecisionEngineServer {
       // Process manager may not have been initialized
     }
 
+    // Shut down PrecisionRuntime (flushes index, closes telemetry DB)
+    try {
+      const runtime = PrecisionRuntime.get();
+      if (runtime) {
+        await runtime.shutdown();
+      }
+    } catch {
+      // Runtime may not have been initialized
+    }
+
     await this.server.close();
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Handler dispatch wrapper
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Execute a tool handler with optional PrecisionRuntime instrumentation.
+ *
+ * When PrecisionRuntime is initialized:
+ * - Generates a precision_id and prepends it to the response
+ * - Records telemetry (tool name, status, tokens, duration)
+ * - Increments session.toolCalls counter
+ *
+ * When PrecisionRuntime is NOT initialized (degraded mode):
+ * - Calls the handler directly with no overhead
+ * - No precision_id, no telemetry recording
+ *
+ * Errors from the handler propagate unchanged — callers handle McpError wrapping.
+ */
+async function executeHandler(
+  toolName: string,
+  handler: (args: unknown) => Promise<unknown>,
+  args: unknown,
+): Promise<unknown> {
+  const runtime = PrecisionRuntime.get();
+  const startMs = Date.now();
+  let precisionId: string | undefined;
+
+  if (runtime) {
+    precisionId = runtime.generateId(toolName);
+    runtime.session.toolCalls++;
+  }
+
+  try {
+    const result = await handler(args);
+
+    // Record successful telemetry (zero LLM token cost — server-side only)
+    if (runtime && precisionId) {
+      try {
+        runtime.telemetry.record({
+          id: precisionId,
+          tool: toolName,
+          status: 'success',
+          tokens_in: Telemetry.estimateTokens(args),
+          tokens_out: Telemetry.estimateTokens(result),
+          duration_ms: Date.now() - startMs,
+          cache_hit: extractCacheHit(result),
+          metadata: extractMetadata(toolName, args),
+        });
+      } catch (telErr) {
+        // Telemetry failure must never affect the tool response
+        logger.warn(`Telemetry record failed for ${toolName}`, {
+          err: telErr instanceof Error ? telErr.message : String(telErr),
+        });
+      }
+
+      // Prepend precision_id as the first line of the first text content block
+      // This adds ~1 token overhead per call, visible to the LLM for correlation
+      const resultObj = result as Record<string, unknown>;
+      if (resultObj && Array.isArray(resultObj.content)) {
+        const firstText = (resultObj.content as Array<{ type: string; text?: string }>).find(
+          (c) => c.type === 'text',
+        );
+        if (firstText && typeof firstText.text === 'string') {
+          firstText.text = `[${precisionId}]\n${firstText.text}`;
+        }
+      }
+    }
+
+    return result;
+  } catch (error) {
+    // Record failed telemetry
+    if (runtime && precisionId) {
+      try {
+        runtime.telemetry.record({
+          id: precisionId,
+          tool: toolName,
+          status: 'failed',
+          tokens_in: Telemetry.estimateTokens(args),
+          duration_ms: Date.now() - startMs,
+          error: error instanceof Error ? error.message : String(error),
+          metadata: extractMetadata(toolName, args),
+        });
+      } catch {
+        // Telemetry failure must never shadow the original error
+      }
+    }
+    throw error;
   }
 }
 
