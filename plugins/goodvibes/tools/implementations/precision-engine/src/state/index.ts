@@ -9,5 +9,6 @@ export { searchCache, SearchCache, type SearchCacheEntry, type RefinementContext
 export { projectIndex, ProjectIndex, type ProjectFileIndex, type FileEntry } from './project-index.js';
 export { kvState, KVState, type SessionStateData } from './kv-state.js';
 export { getTelemetry, Telemetry, type TelemetryRecord, type SessionSummary, type ToolStats, type TelemetryQueryFilter } from './telemetry.js';
-// HooksPlaceholder and ModePlaceholder are Phase 4/5 stubs — exported for type-safe forward references
-export { PrecisionRuntime, type SessionInfo, type HooksPlaceholder, type ModePlaceholder, extractMetadata, extractCacheHit } from './precision-runtime.js';
+// HooksManager is the Phase 4G hooks implementation. ModePlaceholder is Phase 5 stub.
+export { HooksManager, HookAbortError, type HookEvent, type HookType, type HookConfig, type HookContext, type HookResult, type HookFilter } from './hooks.js';
+export { PrecisionRuntime, type SessionInfo, type ModePlaceholder, extractMetadata, extractCacheHit } from './precision-runtime.js';

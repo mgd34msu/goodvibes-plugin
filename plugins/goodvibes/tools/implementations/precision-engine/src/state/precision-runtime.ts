@@ -18,6 +18,7 @@
 import { Telemetry } from './telemetry.js';
 import { KVState } from './kv-state.js';
 import { ProjectIndex } from './project-index.js';
+import { HooksManager } from './hooks.js';
 import { getConfig } from '../runtime-config.js';
 import type { PrecisionEngineConfig } from '../runtime-config.js';
 import { logger } from '../logging.js';
@@ -37,14 +38,6 @@ export interface SessionInfo {
   readonly startedAt: string;
   /** Running count of tool calls dispatched through the runtime wrapper. */
   toolCalls: number;  // intentionally mutable
-}
-
-/**
- * Placeholder for the Phase 4 hooks system.
- * Not implemented — defined here so callers can reference the type.
- */
-export interface HooksPlaceholder {
-  _phase: 4;
 }
 
 /**
@@ -102,6 +95,11 @@ export class PrecisionRuntime {
   readonly index: ProjectIndex;
 
   /**
+   * HooksManager singleton — Phase 4G hooks system.
+   */
+  readonly hooks: HooksManager;
+
+  /**
    * Lightweight session metadata for this server startup.
    */
   readonly session: SessionInfo;
@@ -116,11 +114,13 @@ export class PrecisionRuntime {
     state: KVState,
     telemetry: Telemetry,
     index: ProjectIndex,
+    hooks: HooksManager,
   ) {
     this.config = config;
     this.state = state;
     this.telemetry = telemetry;
     this.index = index;
+    this.hooks = hooks;
     this.session = {
       id: telemetry.getSessionId(),
       startedAt: new Date().toISOString(),
@@ -170,7 +170,13 @@ export class PrecisionRuntime {
       logger.warn('[PrecisionRuntime] ProjectIndex background load failed', { err: String(err) });
     });
 
-    PrecisionRuntime.instance = new PrecisionRuntime(config, state, telemetry, index);
+    // HooksManager — load config (non-blocking on failure)
+    const hooks = HooksManager.getInstance();
+    hooks.loadFromConfig().catch((err: unknown) => {
+      logger.warn('[PrecisionRuntime] HooksManager config load failed — using built-in hooks only', { err: String(err) });
+    });
+
+    PrecisionRuntime.instance = new PrecisionRuntime(config, state, telemetry, index, hooks);
     logger.info('[PrecisionRuntime] Initialized', {
       sessionId: PrecisionRuntime.instance.session.id,
       startedAt: PrecisionRuntime.instance.session.startedAt,

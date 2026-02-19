@@ -598,14 +598,15 @@ export const precisionConfigSchema: Tool = {
     properties: {
       action: {
         type: 'string',
-        enum: ['get', 'set', 'reload', 'telemetry', 'state'],
+        enum: ['get', 'set', 'reload', 'telemetry', 'state', 'hooks'],
         description:
           'Action to perform: ' +
           'get (read config), ' +
           'set (update config), ' +
           'reload (reload from file), ' +
           'telemetry (query usage telemetry), ' +
-          'state (per-session KV store: get/set/list/clear)',
+          'state (per-session KV store: get/set/list/clear), ' +
+          'hooks (manage precision tool hooks: list/enable/disable/add/remove)',
       },
       key: {
         type: 'string',
@@ -617,10 +618,11 @@ export const precisionConfigSchema: Tool = {
       },
       operation: {
         type: 'string',
-        enum: ['get', 'set', 'list', 'clear', 'summary', 'query'],
+        enum: ['get', 'set', 'list', 'clear', 'summary', 'query', 'enable', 'disable', 'add', 'remove'],
         description:
-          'Sub-operation for action=state (get/set/list/clear) or action=telemetry (summary/query). ' +
+          'Sub-operation for action=state (get/set/list/clear), action=telemetry (summary/query), or action=hooks (list/enable/disable/add/remove). ' +
           'For action=state: get, set, list, clear. For action=telemetry: summary, query. ' +
+          'For action=hooks: list (all hooks), enable/disable (toggle by name), add (new hook), remove (by name). ' +
           'Invalid combinations (e.g. action=state with operation=summary) return a runtime error. ' +
           'state/get: retrieve values for specified keys. ' +
           'state/set: store key-value pairs in session state. ' +
@@ -655,6 +657,23 @@ export const precisionConfigSchema: Tool = {
           since: { type: 'string', description: 'ISO 8601 timestamp — only return records at or after this time' },
           limit: { type: 'integer', minimum: 1, description: 'Maximum number of records to return' },
         },
+      },
+      event: {
+        type: 'string',
+        enum: ['PrePrecisionTool', 'PostPrecisionTool', 'OnPrecisionError', 'OnPrecisionMutation'],
+        description:
+          'For action=hooks: the hook event to operate on. ' +
+          'PrePrecisionTool: runs before any tool call (can abort). ' +
+          'PostPrecisionTool: runs after successful tool call. ' +
+          'OnPrecisionError: runs on tool failure. ' +
+          'OnPrecisionMutation: runs after write/edit/exec/file_op.',
+      },
+      hook: {
+        description:
+          'For action=hooks: the hook identifier (string name/cmd) for enable/disable/remove operations, ' +
+          'or a HookConfig object for the add operation. ' +
+          'HookConfig: { type: "builtin"|"script"|"mcp", name?: string, cmd?: string, mcp_tool?: string, ' +
+          'filter?: { tool?: string[] }, enabled?: boolean, timeout_ms?: number }',
       },
     },
     required: ['action'],

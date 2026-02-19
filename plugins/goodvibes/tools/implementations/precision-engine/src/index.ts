@@ -32,6 +32,8 @@ import { getHandler, hasHandler, listHandlers } from './handlers/index.js';
 import { FileStateCache } from './state/file-cache.js';
 import { sessionState } from './state/index.js';
 import { PrecisionRuntime, extractMetadata, extractCacheHit } from './state/precision-runtime.js';
+import { HooksManager, HookAbortError } from './state/hooks.js';
+import type { HookContext } from './state/hooks.js';
 import { Telemetry } from './state/telemetry.js';
 
 /**
@@ -163,16 +165,87 @@ class PrecisionEngineServer {
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
+ * Extract the short tool name from a full tool name.
+ * Matches the mapping used by Telemetry.generateId.
+ */
+function toShortToolName(toolName: string): string {
+  const MAP: Record<string, string> = {
+    precision_read: 'read',
+    precision_write: 'write',
+    precision_edit: 'edit',
+    precision_exec: 'exec',
+    precision_grep: 'grep',
+    precision_glob: 'glob',
+    precision_fetch: 'fetch',
+    precision_symbols: 'symbols',
+    precision_config: 'config',
+    precision_notebook: 'notebook',
+    discover: 'discover',
+  };
+  return MAP[toolName] ?? toolName.slice(0, 12);
+}
+
+/**
+ * Extract the list of file paths affected by a successful tool call.
+ * Used to populate HookContext.paths_affected for OnPrecisionMutation.
+ */
+function extractPathsAffected(toolName: string, args: unknown, result: unknown): string[] {
+  const input = args as Record<string, unknown>;
+  const paths: string[] = [];
+
+  switch (toolName) {
+    case 'precision_write': {
+      const files = input.files as Array<{ path: string }> | undefined;
+      if (files) paths.push(...files.map((f) => f.path).filter(Boolean));
+      break;
+    }
+    case 'precision_edit': {
+      const edits = input.edits as Array<{ path?: string; file?: string }> | undefined;
+      if (edits) {
+        const unique = new Set(
+          edits.map((e) => e.path ?? e.file ?? '').filter(Boolean),
+        );
+        paths.push(...unique);
+      }
+      break;
+    }
+    case 'precision_exec': {
+      // Extract paths from file_ops
+      const fileOps = input.file_ops as Array<{ source?: string; destination?: string }> | undefined;
+      if (fileOps) {
+        for (const op of fileOps) {
+          if (op.source) paths.push(op.source);
+          if (op.destination) paths.push(op.destination);
+        }
+      }
+      break;
+    }
+    case 'precision_notebook': {
+      const nb = input as { path?: string };
+      if (nb.path) paths.push(nb.path);
+      break;
+    }
+    default:
+      break;
+  }
+
+  return paths;
+}
+
+/**
  * Execute a tool handler with optional PrecisionRuntime instrumentation.
  *
  * When PrecisionRuntime is initialized:
+ * - Runs PrePrecisionTool hooks (may abort the call)
  * - Generates a precision_id and prepends it to the response
  * - Records telemetry (tool name, status, tokens, duration)
  * - Increments session.toolCalls counter
+ * - Runs PostPrecisionTool hooks (telemetry, index updates)
+ * - Runs OnPrecisionMutation hooks for write/edit/exec
  *
  * When PrecisionRuntime is NOT initialized (degraded mode):
  * - Calls the handler directly with no overhead
- * - No precision_id, no telemetry recording
+ * - No precision_id, no telemetry, no hooks
  *
  * Errors from the handler propagate unchanged — callers handle McpError wrapping.
  */
@@ -184,17 +257,41 @@ async function executeHandler(
   const runtime = PrecisionRuntime.get();
   const startMs = Date.now();
   let precisionId: string | undefined;
+  const shortName = toShortToolName(toolName);
 
   if (runtime) {
     precisionId = runtime.generateId(toolName);
     runtime.session.toolCalls++;
   }
 
+  // Build the base hook context (result/error filled in later)
+  const hookContext: HookContext = {
+    precision_id: precisionId ?? `${shortName}_degraded_${Date.now()}`,
+    tool_name: shortName,
+    full_tool_name: toolName,
+    input: args,
+  };
+
+  // --- PrePrecisionTool hooks ---
+  const hooks = HooksManager.getInstance();
+  try {
+    const preResult = await hooks.runPreHooks(hookContext);
+    if (preResult.abort) {
+      throw new HookAbortError(preResult.reason);
+    }
+  } catch (err) {
+    if (err instanceof HookAbortError) throw err;
+    // Other pre-hook errors must not block execution
+    logger.warn(`Pre-hooks error for ${toolName} (non-fatal)`, {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   try {
     const result = await handler(args);
 
     // Record successful telemetry (zero LLM token cost — server-side only)
-    if (runtime && precisionId) {
+    if (runtime && precisionId && (!hooks || hooks.isHookEnabled('PostPrecisionTool', 'record_telemetry'))) {
       try {
         runtime.telemetry.record({
           id: precisionId,
@@ -226,10 +323,49 @@ async function executeHandler(
       }
     }
 
+    // --- PostPrecisionTool hooks ---
+    const postContext: HookContext = { ...hookContext, result };
+    try {
+      await hooks.runPostHooks(postContext);
+    } catch (err) {
+      logger.warn(`Post-hooks error for ${toolName} (non-fatal)`, {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    // --- OnPrecisionMutation hooks (for write/edit/exec/notebook) ---
+    if (hooks.isMutationTool(shortName)) {
+      const pathsAffected = extractPathsAffected(toolName, args, result);
+      const mutContext: HookContext = { ...hookContext, result, paths_affected: pathsAffected };
+      try {
+        await hooks.runMutationHooks(mutContext);
+      } catch (err) {
+        logger.warn(`Mutation hooks error for ${toolName} (non-fatal)`, {
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     return result;
   } catch (error) {
+    // Don't run error hooks for HookAbortError — that's not a tool failure
+    if (error instanceof HookAbortError) throw error;
+
+    // --- OnPrecisionError hooks ---
+    const errorContext: HookContext = {
+      ...hookContext,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+    try {
+      await hooks.runErrorHooks(errorContext);
+    } catch (hookErr) {
+      logger.warn(`Error-hooks error for ${toolName} (non-fatal)`, {
+        err: hookErr instanceof Error ? hookErr.message : String(hookErr),
+      });
+    }
+
     // Record failed telemetry
-    if (runtime && precisionId) {
+    if (runtime && precisionId && (!hooks || hooks.isHookEnabled('PostPrecisionTool', 'record_telemetry'))) {
       try {
         runtime.telemetry.record({
           id: precisionId,

@@ -238,5 +238,15 @@
     "scope": ["precision-engine/src/state/telemetry.ts"],
     "confidence": "high",
     "status": "active"
+  },
+  {
+    "id": "dec_20260218_190000",
+    "date": "2026-02-18T19:00:00Z",
+    "category": "architecture",
+    "what": "PrecisionRuntime singleton coordinates all subsystems: config, state, telemetry, index, session",
+    "why": "Scattered singletons needed unified lifecycle management. Handler dispatch wrapper generates precision_id, records telemetry, and prepends ID to responses. Graceful degradation ensures tools work without runtime.",
+    "scope": ["precision-engine/src/state/precision-runtime.ts", "precision-engine/src/index.ts"],
+    "confidence": "high",
+    "status": "active"
   }
 ]

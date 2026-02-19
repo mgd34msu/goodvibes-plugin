@@ -11,6 +11,8 @@ import { startTimer, logger } from '../logging.js';
 import { getConfig, getConfigValue, setConfigValue, loadConfig } from '../runtime-config.js';
 import { getFetchServices } from '../utils/fetch/service-registry.js';
 import { KVState } from '../state/kv-state.js';
+import { HooksManager } from '../state/hooks.js';
+import type { HookEvent, HookConfig } from '../state/hooks.js';
 
 export const handlePrecisionConfig: ToolHandler = async (args: unknown) => {
   const elapsed = startTimer();
@@ -202,8 +204,141 @@ export const handlePrecisionConfig: ToolHandler = async (args: unknown) => {
       }
     }
 
+    if (action === 'hooks') {
+      const operation = params.operation as string | undefined;
+      const hooks = HooksManager.getInstance();
+
+      if (!operation || operation === 'list') {
+        const event = params.event as HookEvent | undefined;
+        const hooksList = hooks.listHooks(event);
+        return toCallToolResult(successResult({ hooks: hooksList }, 'standard', elapsed()));
+      }
+
+      if (operation === 'enable' || operation === 'disable') {
+        const event = params.event as HookEvent | undefined;
+        const hookName = params.hook as string | undefined;
+
+        if (!event) {
+          return toCallToolResult(errorResult(
+            `'${operation}' requires 'event' field (PrePrecisionTool, PostPrecisionTool, OnPrecisionError, OnPrecisionMutation).`,
+            'standard',
+            elapsed()
+          ));
+        }
+        if (!hookName) {
+          return toCallToolResult(errorResult(
+            `'${operation}' requires 'hook' field (the hook name or cmd to ${operation}).`,
+            'standard',
+            elapsed()
+          ));
+        }
+
+        const found = operation === 'enable'
+          ? hooks.enableHook(event, hookName)
+          : hooks.disableHook(event, hookName);
+
+        if (!found) {
+          return toCallToolResult(errorResult(
+            `Hook '${hookName}' not found in event '${event}'.`,
+            'standard',
+            elapsed()
+          ));
+        }
+
+        // Persist the change so it survives server restarts
+        await hooks.persistToConfig();
+
+        return toCallToolResult(successResult(
+          { operation, event, hook: hookName, success: true },
+          'standard',
+          elapsed()
+        ));
+      }
+
+      if (operation === 'add') {
+        const event = params.event as HookEvent | undefined;
+        const hookCfg = params.hook as HookConfig | undefined;
+
+        if (!event) {
+          return toCallToolResult(errorResult(
+            `'add' requires 'event' field.`,
+            'standard',
+            elapsed()
+          ));
+        }
+        if (!hookCfg || typeof hookCfg !== 'object' || !('type' in hookCfg)) {
+          return toCallToolResult(errorResult(
+            `'add' requires 'hook' field (a HookConfig object with type, name/cmd, etc.).`,
+            'standard',
+            elapsed()
+          ));
+        }
+
+        try {
+          hooks.addHook(event, hookCfg);
+          // Persist the change so it survives server restarts
+          await hooks.persistToConfig();
+          return toCallToolResult(successResult(
+            { operation: 'add', event, hook: hookCfg, success: true },
+            'standard',
+            elapsed()
+          ));
+        } catch (addErr) {
+          return toCallToolResult(errorResult(
+            addErr instanceof Error ? addErr.message : String(addErr),
+            'standard',
+            elapsed()
+          ));
+        }
+      }
+
+      if (operation === 'remove') {
+        const event = params.event as HookEvent | undefined;
+        const hookName = params.hook as string | undefined;
+
+        if (!event) {
+          return toCallToolResult(errorResult(
+            `'remove' requires 'event' field.`,
+            'standard',
+            elapsed()
+          ));
+        }
+        if (!hookName) {
+          return toCallToolResult(errorResult(
+            `'remove' requires 'hook' field (the hook name or cmd to remove).`,
+            'standard',
+            elapsed()
+          ));
+        }
+
+        const found = hooks.removeHook(event, hookName);
+        if (!found) {
+          return toCallToolResult(errorResult(
+            `Hook '${hookName}' not found in event '${event}'.`,
+            'standard',
+            elapsed()
+          ));
+        }
+
+        // Persist the change so it survives server restarts
+        await hooks.persistToConfig();
+
+        return toCallToolResult(successResult(
+          { operation: 'remove', event, hook: hookName, success: true },
+          'standard',
+          elapsed()
+        ));
+      }
+
+      return toCallToolResult(errorResult(
+        `Unknown hooks operation: '${operation}'. Use 'list', 'enable', 'disable', 'add', or 'remove'.`,
+        'standard',
+        elapsed()
+      ));
+    }
+
     return toCallToolResult(errorResult(
-      `Unknown action: '${action}'. Use 'get', 'set', 'reload', 'telemetry', or 'state'.`,
+      `Unknown action: '${action}'. Use 'get', 'set', 'reload', 'telemetry', 'state', or 'hooks'.`,
       'standard',
       elapsed()
     ));
