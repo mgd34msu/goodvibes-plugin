@@ -171,8 +171,15 @@ export class PrecisionRuntime {
     }
     const config = getConfig();
 
-    // Telemetry — synchronous SQLite init
-    const telemetry = Telemetry.getInstance();
+    // Telemetry — synchronous SQLite init (may fail if native binding unavailable)
+    let telemetry: Telemetry;
+    try {
+      telemetry = Telemetry.getInstance();
+    } catch (err) {
+      logger.warn('[PrecisionRuntime] Telemetry init failed (non-fatal) — telemetry disabled', { err: String(err) });
+      // Create a minimal stub that generates IDs but does not persist
+      telemetry = { generateId: (tool: string) => `${tool}_none_${Date.now().toString(16)}`, getSessionId: () => '00000000', record: () => {}, query: () => [], getSummary: () => ({ session_id: '00000000', total_calls: 0, by_tool: {}, total_tokens: 0, total_cache_hits: 0, total_duration_ms: 0, success_rate: 1 }), close: () => {} } as unknown as Telemetry;
+    }
 
     // KVState — initialize with the Telemetry session ID so both subsystems
     // share the same session identifier. Must be called before getInstance().
