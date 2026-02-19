@@ -309,111 +309,70 @@ discover:
 ### Discover-Plan-Batch Flow
 
 ```yaml
-# Step 1: Discover what needs changing
+# D — Discover: Find what needs changing
 discover:
   queries:
     - id: targets
       type: grep
       pattern: "oldFunction"
       glob: "src/**/*.ts"
-  output_mode: files_only
+  verbosity: files_only
+```
 
-# Step 2: Build batch using discovery results
-batch:
-  id: refactor-old-function
-  discovery:
-    queries:
-      - id: targets
-        type: grep
-        pattern: "oldFunction"
-        glob: "src/**/*.ts"
-    inject_results: true
+```yaml
+# B — Batch Input: Read discovered files
+precision_read:
+  files:
+    - { path: "src/utils/helpers.ts", extract: outline }
+    - { path: "src/services/api.ts", extract: outline }
+  output:
+    format: minimal
+```
 
-  operations:
-    read:
-      - id: analyze
-        type: files
-        targets: "{{targets.files}}"
-        extract: outline
+```yaml
+# B — Batch Output: Apply edits + verify
+precision_edit:
+  edits:
+    - { path: "src/utils/helpers.ts", find: "oldFunction", replace: "newFunction" }
+    - { path: "src/services/api.ts", find: "oldFunction", replace: "newFunction" }
+  verbosity: count_only
+```
 
-    write:
-      - id: update
-        type: edit
-        depends_on: [analyze]
-        edits:
-          - file: "{{targets.files}}"
-            find: "oldFunction"
-            replace: "newFunction"
-
-    exec:
-      - id: verify
-        depends_on: [update]
-        commands:
-          - cmd: npm run typecheck
+```yaml
+precision_exec:
+  commands:
+    - { cmd: "npm run typecheck", expect: { exit_code: 0 } }
+  verbosity: minimal
 ```
 
 ---
 
-## Batch Engine Reference
+## Precision Tool Reference
 
-### Phase Order (MANDATORY)
+### Tool Selection
 
-```
-discovery -> read -> write -> exec -> query -> state
-```
+| Task | Tool | Key Parameter |
+|------|------|---------------|
+| Find files | `discover` (glob query) | `patterns` array |
+| Search content | `discover` (grep query) | `pattern` + `glob` |
+| Read files | `precision_read` | `files` array with `extract` mode |
+| Write files | `precision_write` | `files` array |
+| Edit files | `precision_edit` | `edits` array |
+| Run commands | `precision_exec` | `commands` array |
 
-Phases execute in this order. Operations within a phase can run in parallel if no dependencies.
+### Verbosity Guide
 
-### Transaction Modes
+| Operation | Verbosity | Why |
+|-----------|-----------|-----|
+| `precision_write` | `count_only` | You provided content; just confirm success |
+| `precision_edit` | `count_only` | Same — you wrote the edits |
+| `precision_read` | `standard` | You need to see the content |
+| `precision_exec` | `minimal` | Confirm exit code; skip stdout unless debugging |
+| `discover` | `files_only` | Discovery phase; paths not content |
 
-| Mode | Behavior | Use When |
-|------|----------|----------|
-| `atomic` | All succeed or all rollback | Critical changes, need consistency |
-| `partial` | Apply successes, report failures | Tolerant of partial progress |
-| `none` | No transaction protection | Read-only operations |
+### Atomic Edits
 
-### Execution Modes
-
-| Mode | Behavior | Use When |
-|------|----------|----------|
-| `parallel` | Independent ops run concurrently | Fast, no dependencies |
-| `sequential` | Ops run one at a time | Order matters |
-| `adaptive` | Parallel where possible, sequential where needed | Mixed workloads |
-
-### Checkpoint System
-
-| Frequency | Checkpoints At | Use When |
-|-----------|----------------|----------|
-| `per_batch` | Batch start only | Fast execution needed |
-| `per_phase` | Each phase boundary | Balanced safety |
-| `per_operation` | Every operation | Maximum safety |
-
-### Fix Loop Integration
-
-The batch engine supports automatic fix loops for validation failures.
-
-```yaml
-config:
-  fix_loop:
-    enabled: true
-    max_attempts: 3
-    on_failure: [typecheck, lint, test]
-```
-
-**Fix Loop Flow:**
-
-```
-1. Execute batch operations
-2. Run validation (typecheck, lint, test)
-3. If validation fails:
-   a. Analyze error
-   b. Attempt fix
-   c. Re-run validation
-   d. Repeat up to max_attempts
-4. If still failing after max_attempts:
-   a. Rollback to checkpoint
-   b. Report failure with diagnostics
-```
+All `precision_edit` calls default to `transaction.mode: atomic` — if any edit in the `edits` array fails, all are rolled back. For intentional partial application use `transaction.mode: partial`.
 
 ### Recovery Commands
 

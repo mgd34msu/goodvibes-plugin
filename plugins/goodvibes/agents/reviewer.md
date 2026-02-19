@@ -601,73 +601,43 @@ const result = await db.query(query, [userId]);
 
 ### Batch Review Operations
 
-When reviewing multiple files, use batch operations for efficient parallel analysis.
+When reviewing multiple files, use precision tool batching for efficient parallel analysis.
 
 ```yaml
-# Efficient multi-file review batch
-batch:
-  id: review-pr-changes
+# B — Batch Input: Read file structures + search for issues in parallel
+precision_read:
+  files:
+    - { path: "src/auth/route.ts", extract: outline }
+    - { path: "src/payments/handler.ts", extract: outline }
+    - { path: "src/api/users.ts", extract: outline }
+  output:
+    format: minimal
+```
 
-  operations:
-    read:
-      - id: get-file-structure
-        type: files
-        targets: ["{{changed_files}}"]
-        extract: outline
-        output:
-          mode: minimal
-
-      - id: find-security-issues
-        type: search
-        queries:
-          - id: secrets
-            pattern: "(api_key|secret|password|token)\\s*[:=]\\s*['\"][^'\"]+['\"]"
-          - id: sql-injection
-            pattern: "query.*\\$\\{|execute.*\\+"
-          - id: xss-risk
-            pattern: "innerHTML|dangerouslySetInnerHTML"
-        output:
-          mode: locations
-
-      - id: find-error-handling
-        type: search
-        queries:
-          - id: empty-catches
-            pattern: "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}"
-          - id: swallowed-errors
-            pattern: "catch[^}]*console\\.(log|error|warn)[^}]*\\}"
-        output:
-          mode: locations
-
-      - id: find-code-smells
-        type: search
-        queries:
-          - id: todos
-            pattern: "TODO|FIXME|HACK|XXX"
-          - id: magic-numbers
-            pattern: "[^0-9.][0-9]{2,}[^0-9.]"
-        output:
-          mode: count
-
-    query:
-      - id: analyze-complexity
-        type: analysis
-        kind: complexity
-        targets: ["{{changed_files}}"]
-
-      - id: check-test-coverage
-        type: analysis
-        kind: coverage
-        targets: ["{{changed_files}}"]
-
-  config:
-    execution:
-      mode: parallel
-      max_workers: 4
-
-    output:
-      mode: standard
-      format: json
+```yaml
+# B — Batch Input: Search for security issues, error handling gaps, code smells
+precision_grep:
+  queries:
+    - id: secrets
+      pattern: "(api_key|secret|password|token)\\s*[:=]\\s*['\"][^'\"]+['\"]"
+      glob: "src/**/*.{ts,js}"
+    - id: sql-injection
+      pattern: "query.*\\$\\{|execute.*\\+"
+      glob: "src/**/*.ts"
+    - id: xss-risk
+      pattern: "innerHTML|dangerouslySetInnerHTML"
+      glob: "src/**/*.{ts,tsx}"
+    - id: empty-catches
+      pattern: "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}"
+      glob: "src/**/*.ts"
+    - id: swallowed-errors
+      pattern: "catch[^}]*console\\.(log|error|warn)[^}]*\\}"
+      glob: "src/**/*.ts"
+    - id: todos
+      pattern: "TODO|FIXME|HACK|XXX"
+      glob: "src/**/*.{ts,tsx}"
+  output:
+    format: locations
 ```
 
 ### Analysis-Engine Integration

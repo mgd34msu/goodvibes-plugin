@@ -372,7 +372,7 @@ describe('ensureClaudeMdImports', () => {
       
       expect(content).toContain('## MANDATORY');
       expect(content).toContain('DPB Loops');
-      expect(content).toContain('batch_engine');
+      expect(content).toContain('precision_engine');
     });
 
     it('SKILLS.md has correct content', async () => {

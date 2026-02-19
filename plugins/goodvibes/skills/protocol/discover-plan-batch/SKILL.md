@@ -41,7 +41,6 @@ The DPB loop enforces a strict **3-call-per-cycle** workflow that eliminates tok
 3. B — BATCH INPUT (1 tool call)
    - Single precision_read with multiple files batched internally
    - OR single precision_grep with multiple queries batched internally  
-   - OR batch_engine batch wrapping multiple precision_* tools if DIFFERENT tool types needed
    - Key: 1 call, everything batched inside it
 
 4. P — PLAN (0 tool calls, cognitive only)
@@ -53,7 +52,6 @@ The DPB loop enforces a strict **3-call-per-cycle** workflow that eliminates tok
 5. B — BATCH OUTPUT (1 tool call)
    - Single precision_write with multiple files batched internally
    - OR single precision_edit with multiple edits batched internally
-   - OR batch_engine batch wrapping precision_write + precision_edit if both needed
    - Key: 1 call, everything batched inside it
 
 6. LOOP — Back to D if:
@@ -75,16 +73,14 @@ The DPB loop enforces a strict **3-call-per-cycle** workflow that eliminates tok
 
 Validation (`precision_exec`) is OPTIONAL and happens AFTER the cycle completes, not during.
 
-**Note on batch_engine:** A `batch_engine batch` call wrapping multiple precision_* tools counts as 1 call because overhead is produced once. This is the PREFERRED pattern when you need different tool types in the same phase.
-
-**Note on sequential calls:** Sequential calls are acceptable but not preferred. Always prefer true batching via batched precision calls or batch_engine batch.
+**Note on sequential calls:** Sequential calls are acceptable but not preferred. Always prefer true batching via internal precision tool arrays (files array, edits array, commands array).
 
 ## KEY RULES (NON-NEGOTIABLE)
 
 1. **`discover` batches ALL discovery queries into 1 call** — NEVER use separate `precision_glob`, `precision_grep`, `precision_read` for discovery
 2. **Plan steps produce ZERO tool calls** — they are cognitive (agent thinks in text)
-3. **Batch input = 1 call** — use internal batching (`files` array, `queries` array) or `batch_engine`
-4. **Batch output = 1 call** — use internal batching (`files` array, `edits` array) or `batch_engine`
+3. **Batch input = 1 call** — use internal batching (`files` array, `queries` array)
+4. **Batch output = 1 call** — use internal batching (`files` array, `edits` array)
 5. **NEVER make sequential calls of the same tool type** — if you need 3 files read, batch them in 1 `precision_read` call
 6. **ToolSearch is NOT part of DPB** — load tools once at start, don't search mid-cycle
 
@@ -283,21 +279,23 @@ precision_grep:
   verbosity: minimal
 ```
 
-**OR batch_engine wrapping different tool types:**
+**OR use precision_read with files array + precision_grep with queries array as 2 batched calls:**
 
 ```yaml
-batch:
-  operations:
-    read:
-      - files:
-          - path: "src/types/user.ts"
-            extract: symbols
-    query:
-      - type: grep
-        queries:
-          - id: exports
-            pattern: "export function"
-            glob: "src/**/*.ts"
+precision_read:
+  files:
+    - { path: "src/types/user.ts", extract: symbols }
+  verbosity: minimal
+```
+
+```yaml
+precision_grep:
+  queries:
+    - id: exports
+      pattern: "export function"
+      glob: "src/**/*.ts"
+  output:
+    format: files_only
 ```
 
 ### [BAD] vs [GOOD] Input Batching
@@ -398,22 +396,23 @@ precision_edit:
   verbosity: minimal
 ```
 
-**OR batch_engine wrapping both writes and edits:**
+**OR use precision_write for new files + precision_edit for edits as 2 separate batched calls:**
 
 ```yaml
-batch:
-  operations:
-    write:
-      - files:
-          - path: "src/features/auth/types.ts"
-            content: "..."
-          - path: "src/features/auth/hooks.ts"
-            content: "..."
-    edit:
-      - edits:
-          - path: "src/app/layout.tsx"
-            find: "<App />"
-            replace: "<AuthProvider><App /></AuthProvider>"
+precision_write:
+  files:
+    - { path: "src/features/auth/types.ts", content: "..." }
+    - { path: "src/features/auth/hooks.ts", content: "..." }
+  verbosity: count_only
+```
+
+```yaml
+precision_edit:
+  edits:
+    - path: "src/app/layout.tsx"
+      find: "<App />"
+      replace: "<AuthProvider><App /></AuthProvider>"
+  verbosity: count_only
 ```
 
 ### [BAD] vs [GOOD] Output Batching
