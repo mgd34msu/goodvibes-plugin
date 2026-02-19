@@ -70,7 +70,7 @@ const FORBIDDEN_CLI_FLAGS = new Set([
 /**
  * Dossier inclusion options for agent context injection.
  */
-export interface DossierOptions {
+export interface AgentDossierOptions {
   /** Whether to include dossier context (default: true). */
   include?: boolean;
   /** Extra reminder strings appended to dossier reminders. */
@@ -96,7 +96,7 @@ export interface AgentOptions {
   /** Timeout in ms for blocking mode. Default: 1800000 (30 minutes). */
   timeout_ms?: number;
   /** Dossier integration options. */
-  dossier?: DossierOptions;
+  dossier?: AgentDossierOptions;
 }
 
 /**
@@ -107,6 +107,10 @@ export interface PrecisionAgentInput {
   prompt: string;
   /** File paths whose content is read and injected into the prompt. */
   context_files?: string[];
+  /** File/directory paths that define the task scope. Passed to dossier generation for memory relevance matching. */
+  scope?: string[];
+  /** Specific criteria the task must meet. Passed to dossier generation for agent focus. */
+  acceptance_criteria?: string[];
   /** Execution and provider options. */
   options?: AgentOptions;
 }
@@ -410,7 +414,9 @@ export function getDefaultModel(provider: Provider): string {
  */
 async function generateDossierText(
   prompt: string,
-  extraReminders?: string[]
+  extraReminders?: string[],
+  scope?: string[],
+  acceptanceCriteria?: string[]
 ): Promise<string> {
   try {
     const runtime = PrecisionRuntime.get();
@@ -420,7 +426,8 @@ async function generateDossierText(
     const dossier = await generator.generate({
       task: {
         description: prompt,
-        scope: '',
+        scope: scope ?? [],
+        acceptance_criteria: acceptanceCriteria ?? [],
       },
       extra_reminders: extraReminders,
       include_memory: true,
@@ -509,7 +516,9 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
   if (includeDossier) {
     dossierText = await generateDossierText(
       input.prompt,
-      dossierOptions.extra_reminders
+      dossierOptions.extra_reminders,
+      input.scope,
+      input.acceptance_criteria
     );
   }
 

@@ -235,6 +235,7 @@ GoodVibes provides 5 specialized MCP servers:
 - `read_config` - Parse configuration files
 - `get_conventions` - Extract codebase conventions
 - `find_dead_code` - Find unused code
+- `identify_tech_debt` - Identify technical debt patterns
 - `get_api_surface` - Extract API definitions
 - `safe_delete_check` - Check if deletion is safe
 - `detect_breaking_changes` - Find breaking changes

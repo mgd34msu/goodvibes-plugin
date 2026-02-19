@@ -206,6 +206,15 @@ interface PatternsJson {
   }>;
 }
 
+/**
+ * Minimal shape of package.json for dependency detection.
+ */
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  [key: string]: unknown;
+}
+
 interface FailuresJson {
   failures?: Array<{
     error?: string;
@@ -283,7 +292,7 @@ export class DossierGenerator {
     // Build project summary
     const includeProject = options.include_project !== false;
     const project = includeProject
-      ? this.getProjectSummary(scope)
+      ? await this.getProjectSummary(scope)
       : emptyProject();
 
     // Combine reminders
@@ -385,8 +394,8 @@ export class DossierGenerator {
    *
    * Gracefully degrades if the index is not loaded (returns empty summary).
    */
-  getProjectSummary(scope: string[]): DossierProject {
-    const stack = this.detectStack();
+  async getProjectSummary(scope: string[]): Promise<DossierProject> {
+    const stack = await this.detectStack();
     const typeCounts = this.index.getTypeCounts();
     const allFiles = this.index.getFiles();
 
@@ -471,18 +480,77 @@ export class DossierGenerator {
   }
 
   /**
-   * Detect the project stack from type counts in the project index.
-   * Returns an array of stack identifiers (e.g. ["typescript", "react"]).
+   * Detect the project stack from:
+   * 1. File type counts in the project index (base languages)
+   * 2. Config files present in the project index (frameworks)
+   * 3. package.json dependencies (framework/tooling packages)
+   *
+   * Returns a deduplicated array of stack identifiers
+   * (e.g. ["typescript", "react", "nextjs", "tailwind", "prisma"]).
    */
-  private detectStack(): string[] {
+  private async detectStack(): Promise<string[]> {
     const typeCounts = this.index.getTypeCounts();
-    const stack: string[] = [];
-    if (typeCounts['ts'] || typeCounts['tsx']) stack.push('typescript');
-    if (typeCounts['tsx']) stack.push('react');
-    if (typeCounts['py']) stack.push('python');
-    if (typeCounts['go']) stack.push('go');
-    if (typeCounts['rs']) stack.push('rust');
-    return stack;
+    const stack = new Set<string>();
+
+    // ── 1. Base languages from file type counts ──────────────────────────────
+    if (typeCounts['ts'] || typeCounts['tsx']) stack.add('typescript');
+    if (typeCounts['tsx'] || typeCounts['jsx']) stack.add('react');
+    if (typeCounts['py']) stack.add('python');
+    if (typeCounts['go']) stack.add('go');
+    if (typeCounts['rs']) stack.add('rust');
+
+    // ── 2. Frameworks from config files in the project index ─────────────────
+    const allFiles = this.index.getFiles().map((f) => f.p.toLowerCase());
+    const hasFile = (pattern: RegExp) => allFiles.some((f) => pattern.test(f));
+
+    if (hasFile(/\/tailwind\.config\.[^/]+$/)) stack.add('tailwind');
+    if (hasFile(/\/next\.config\.[^/]+$/)) stack.add('nextjs');
+    if (hasFile(/\/nuxt\.config\.[^/]+$/)) stack.add('nuxt');
+    if (hasFile(/\/astro\.config\.[^/]+$/)) stack.add('astro');
+    if (hasFile(/\/prisma\/schema\.prisma$/)) stack.add('prisma');
+    if (hasFile(/\/drizzle\.config\.[^/]+$/)) stack.add('drizzle');
+    if (hasFile(/(^|\/)(docker-compose\.[^/]+|dockerfile)$/)) stack.add('docker');
+
+    // ── 3. Frameworks and tooling from package.json deps ─────────────────────
+    const pkgJson = await this.readPackageJson();
+    if (pkgJson) {
+      const deps = {
+        ...pkgJson.dependencies,
+        ...pkgJson.devDependencies,
+      };
+
+      const depMap: Array<[string, string]> = [
+        ['next', 'nextjs'],
+        ['nuxt', 'nuxt'],
+        ['astro', 'astro'],
+        ['vue', 'vue'],
+        ['svelte', 'svelte'],
+        ['express', 'express'],
+        ['fastify', 'fastify'],
+        ['@trpc/server', 'trpc'],
+        ['drizzle-orm', 'drizzle'],
+        ['@prisma/client', 'prisma'],
+        ['prisma', 'prisma'],
+        ['tailwindcss', 'tailwind'],
+        ['vitest', 'vitest'],
+        ['jest', 'jest'],
+        ['playwright', 'playwright'],
+        ['@playwright/test', 'playwright'],
+      ];
+
+      for (const [pkg, identifier] of depMap) {
+        if (deps[pkg] !== undefined) stack.add(identifier);
+      }
+    }
+
+    return Array.from(stack);
+  }
+
+  /**
+   * Read and parse package.json from process.cwd(), returning null on any error.
+   */
+  private async readPackageJson(): Promise<PackageJson | null> {
+    return this.readJsonFile<PackageJson>(path.join(process.cwd(), 'package.json'));
   }
 }
 

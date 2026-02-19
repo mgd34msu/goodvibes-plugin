@@ -13,6 +13,7 @@ import { getFetchServices } from '../utils/fetch/service-registry.js';
 import { KVState } from '../state/kv-state.js';
 import { HooksManager } from '../state/hooks.js';
 import type { HookEvent, HookConfig } from '../state/hooks.js';
+import { ModeManager } from '../state/mode-manager.js';
 
 export const handlePrecisionConfig: ToolHandler = async (args: unknown) => {
   const elapsed = startTimer();
@@ -337,8 +338,56 @@ export const handlePrecisionConfig: ToolHandler = async (args: unknown) => {
       ));
     }
 
+    if (action === 'mode') {
+      const operation = (params.operation as string | undefined) ?? 'get';
+      const modeManager = ModeManager.getInstance();
+
+      if (operation === 'get') {
+        const name = modeManager.getMode();
+        const config = modeManager.getModeConfig();
+        return toCallToolResult(successResult(
+          { mode: name, config },
+          'standard',
+          elapsed()
+        ));
+      }
+
+      if (operation === 'set') {
+        const modeName = params.mode as string | undefined;
+        if (!modeName) {
+          return toCallToolResult(errorResult(
+            `'set' requires a 'mode' field (e.g. 'vibecoding', 'justvibes', 'default').`,
+            'standard',
+            elapsed()
+          ));
+        }
+        modeManager.setMode(modeName);
+        const config = modeManager.getModeConfig();
+        return toCallToolResult(successResult(
+          { mode: modeManager.getMode(), config, changed: true },
+          'standard',
+          elapsed()
+        ));
+      }
+
+      if (operation === 'list') {
+        const modes = modeManager.listModes();
+        return toCallToolResult(successResult(
+          { modes },
+          'standard',
+          elapsed()
+        ));
+      }
+
+      return toCallToolResult(errorResult(
+        `Unknown mode operation: '${operation}'. Use 'get', 'set', or 'list'.`,
+        'standard',
+        elapsed()
+      ));
+    }
+
     return toCallToolResult(errorResult(
-      `Unknown action: '${action}'. Use 'get', 'set', 'reload', 'telemetry', 'state', or 'hooks'.`,
+      `Unknown action: '${action}'. Use 'get', 'set', 'reload', 'telemetry', 'state', 'hooks', or 'mode'.`,
       'standard',
       elapsed()
     ));

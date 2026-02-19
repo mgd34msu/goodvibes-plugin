@@ -18,6 +18,7 @@ import { promisify } from 'util';
 import { homedir } from 'os';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import fg from 'fast-glob';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
 import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, interpretExitCode, detectIssue, createProgressCollector } from '../utils/index.js';
@@ -255,7 +256,7 @@ interface FileOpOptions {
   recursive?: boolean;
   /** Copy/move: whether to overwrite existing destination (default: false) */
   overwrite?: boolean;
-  /** Move: whether to rewrite import paths in affected TS/JS files (default: false — stub) */
+  /** Move: whether to rewrite import paths in affected TS/JS files (default: false) */
   update_imports?: boolean;
   /** Preview what would be deleted without actually deleting (default: false) */
   dry_run?: boolean;
@@ -1097,6 +1098,198 @@ function mapCommandResults(
 
 const execFileAsync = promisify(execFile);
 
+// TS/JS/TSX/JSX file extensions that may contain import statements
+const IMPORT_FILE_EXTENSIONS = ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.mts', '**/*.cts', '**/*.mjs', '**/*.cjs'];
+
+// Extensions to strip when comparing import paths (TypeScript/JavaScript resolvable extensions)
+const RESOLVABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'];
+
+// Index file names (without extension) that a directory import resolves to
+const INDEX_BASENAMES = ['index', 'index.ts', 'index.tsx', 'index.js', 'index.jsx', 'index.mts', 'index.cts', 'index.mjs', 'index.cjs'];
+
+/**
+ * Normalize an import path for comparison by stripping known resolvable extensions.
+ * e.g. './session.ts' -> './session', './session' -> './session'
+ * @param importPath - The raw import path from source code
+ * @returns The import path without extension
+ */
+function normalizeImportPath(importPath: string): string {
+  const ext = path.extname(importPath);
+  if (RESOLVABLE_EXTENSIONS.includes(ext)) {
+    return importPath.slice(0, -ext.length);
+  }
+  return importPath;
+}
+
+/**
+ * Given an importing file's absolute path and a relative import specifier,
+ * resolve the absolute path of the imported module (without extension).
+ * @param importingFile - Absolute path of the file containing the import
+ * @param importSpecifier - The raw specifier from the source code (e.g. './session', '../auth/session')
+ * @returns Absolute path without extension, or null if not a relative import
+ */
+function resolveImportToAbsolute(importingFile: string, importSpecifier: string): string | null {
+  if (!importSpecifier.startsWith('.')) return null;
+  const importDir = path.dirname(importingFile);
+  const resolved = path.resolve(importDir, importSpecifier);
+  return normalizeImportPath(resolved);
+}
+
+/**
+ * Compute the relative import path from an importing file to a target file.
+ * The result mirrors Node/TS module resolution: starts with './' or '../',
+ * and strips the extension unless the original specifier had one.
+ * @param importingFile - Absolute path of the importing file
+ * @param targetFile - Absolute path of the target module file (may have extension)
+ * @param originalSpecifier - Original specifier to preserve extension style
+ * @returns The new relative specifier
+ */
+function computeRelativeImport(importingFile: string, targetFile: string, originalSpecifier: string): string {
+  const importDir = path.dirname(importingFile);
+  // Preserve extension if the original specifier had one
+  const originalExt = path.extname(originalSpecifier);
+  const targetExt = path.extname(targetFile);
+  // Strip extension from targetFile for path calculation, then re-add if needed
+  const targetBase = targetExt && RESOLVABLE_EXTENSIONS.includes(targetExt)
+    ? targetFile.slice(0, -targetExt.length)
+    : targetFile;
+
+  let rel = path.relative(importDir, targetBase);
+  // Ensure relative path starts with ./ or ../
+  if (!rel.startsWith('.')) {
+    rel = './' + rel;
+  }
+  // Normalize path separators to forward slashes (important on Windows)
+  rel = rel.split(path.sep).join('/');
+
+  // Re-add extension if original had one
+  if (originalExt && RESOLVABLE_EXTENSIONS.includes(originalExt)) {
+    // Use the original extension (the user may use .js for ESM compat)
+    rel = rel + originalExt;
+  }
+
+  return rel;
+}
+
+/**
+ * Rewrite all import/require/export statements in all TS/JS files that reference
+ * the old file path so they point to the new file path.
+ *
+ * Handles:
+ * - `import ... from './path'`
+ * - `export ... from './path'` (named re-exports and barrel exports)
+ * - `require('./path')`
+ * - `import('./path')` (dynamic imports)
+ * - With and without extensions (.ts, .js, .tsx, .jsx)
+ * - Index file resolution (directory import resolving to dir/index.ts)
+ *
+ * @param oldPath - Absolute path of the file BEFORE the move
+ * @param newPath - Absolute path of the file AFTER the move
+ * @param projectRoot - Absolute project root path (restricts file scanning)
+ * @returns List of absolute paths for files that were modified
+ */
+async function updateImports(oldPath: string, newPath: string, projectRoot: string): Promise<string[]> {
+  // Normalize: strip extensions for comparison
+  const oldPathNoExt = normalizeImportPath(oldPath);
+  const oldPathNoExtNormalized = oldPathNoExt.split(path.sep).join('/');
+
+  // Also track the 'index' variant: if the file IS an index file, imports may use the directory
+  const oldBasename = path.basename(oldPathNoExt);
+  const isIndexFile = oldBasename === 'index';
+  const oldDirPath = isIndexFile ? path.dirname(oldPath) : null;
+
+  // Build ignore list matching DEFAULT_EXCLUDES
+  const ignorePatterns = [
+    '**/node_modules/**',
+    '**/.git/**',
+    '**/dist/**',
+    '**/build/**',
+    '**/coverage/**',
+    '**/.next/**',
+    '**/.nuxt/**',
+    '**/.cache/**',
+  ];
+
+  // Discover all TS/JS/TSX/JSX files in the project root
+  const files = await fg(IMPORT_FILE_EXTENSIONS, {
+    cwd: projectRoot,
+    absolute: true,
+    ignore: ignorePatterns,
+    followSymbolicLinks: false,
+    dot: false,
+  });
+
+  // Regex that matches import/export/require/dynamic-import specifiers
+  // Captures: (keyword/context)(quote)(specifier)(quote)
+  // Groups: [full match, quote char, specifier]
+  const importRegex = /(?:(?:^|[\s;])(?:import|export)\s+(?:[\w*{}\s,$]+\s+from\s+)?|(?:^|[\s;])(?:require|import)\s*\()(['"])([^'"]+)\1/gm;
+
+  const modifiedFiles: string[] = [];
+
+  for (const filePath of files) {
+    // Skip the moved file itself
+    if (filePath === oldPath || filePath === newPath) continue;
+
+    let content: string;
+    try {
+      content = await fs.readFile(filePath, 'utf-8');
+    } catch {
+      continue;
+    }
+
+    let modified = false;
+    const newContent = content.replace(
+      importRegex,
+      (fullMatch: string, quote: string, specifier: string) => {
+        // Only process relative imports
+        if (!specifier.startsWith('.')) return fullMatch;
+
+        // Resolve this specifier to an absolute path (without extension)
+        const resolved = resolveImportToAbsolute(filePath, specifier);
+        if (!resolved) return fullMatch;
+
+        // Normalize to forward slashes for comparison
+        const resolvedNormalized = resolved.split(path.sep).join('/');
+
+        let isMatch = false;
+
+        // Direct match: resolved path matches old file (with or without extension)
+        if (resolvedNormalized === oldPathNoExtNormalized) {
+          isMatch = true;
+        }
+
+        // Index file match: import of directory that resolves to an index file
+        if (!isMatch && isIndexFile && oldDirPath) {
+          const oldDirNormalized = oldDirPath.split(path.sep).join('/');
+          if (resolvedNormalized === oldDirNormalized) {
+            isMatch = true;
+          }
+        }
+
+        if (!isMatch) return fullMatch;
+
+        // Compute new relative path from this file to the new location
+        const newSpecifier = computeRelativeImport(filePath, newPath, specifier);
+
+        // Reconstruct the full match with the new specifier
+        modified = true;
+        return fullMatch.replace(quote + specifier + quote, quote + newSpecifier + quote);
+      },
+    );
+
+    if (modified) {
+      try {
+        await fs.writeFile(filePath, newContent, 'utf-8');
+        modifiedFiles.push(filePath);
+      } catch {
+        // Best-effort: skip files we cannot write
+      }
+    }
+  }
+
+  return modifiedFiles;
+}
+
 /**
  * Get project root via git, falling back to process.cwd().
  * @returns Absolute path to project root
@@ -1188,8 +1381,13 @@ async function handleFileOps(fileOps: FileOpSpec[]): Promise<FileOpResult[]> {
           }
         }
         if (opts.update_imports) {
-          // Stub: import path rewriting is a future enhancement
-          result.affected_paths = [];
+          // Rewrite import paths in all TS/JS files that reference the old path
+          if (!cachedProjectRoot) cachedProjectRoot = await getProjectRoot();
+          result.affected_paths = await updateImports(
+            path.resolve(op.source),
+            path.resolve(op.destination),
+            cachedProjectRoot,
+          );
         }
         result.success = true;
       } else if (op.op === 'delete') {

@@ -265,11 +265,13 @@ async function executeHandler(
   }
 
   // Build the base hook context (result/error filled in later)
+  // Populate session and runtime fields when PrecisionRuntime is available
   const hookContext: HookContext = {
     precision_id: precisionId ?? `${shortName}_degraded_${Date.now()}`,
     tool_name: shortName,
     full_tool_name: toolName,
     input: args,
+    ...(runtime ? { session: runtime.session, runtime } : {}),
   };
 
   // --- PrePrecisionTool hooks ---
@@ -320,6 +322,64 @@ async function executeHandler(
         if (firstText && typeof firstText.text === 'string') {
           firstText.text = `[${precisionId}]\n${firstText.text}`;
         }
+      }
+    }
+
+    // --- Auto-populate KVState with session metrics ---
+    if (runtime) {
+      try {
+        const updates: Record<string, unknown> = {};
+
+        // Batch-read all metrics in a single KVState call to avoid N+1 reads.
+        const stateKeys = ['session.tokens_used', 'session.files_modified', 'session.commands_run', 'session.agents_spawned'];
+        const prev = await runtime.state.get(stateKeys);
+
+        // Increment session.tokens_used
+        const tokensIn = Telemetry.estimateTokens(args);
+        const tokensOut = Telemetry.estimateTokens(result);
+        const currentTokens = typeof prev['session.tokens_used'] === 'number'
+          ? prev['session.tokens_used'] as number
+          : 0;
+        updates['session.tokens_used'] = currentTokens + tokensIn + tokensOut;
+
+        // Track session.files_modified for write and edit operations
+        if (toolName === 'precision_write' || toolName === 'precision_edit') {
+          const pathsAffectedForState = extractPathsAffected(toolName, args, result);
+          if (pathsAffectedForState.length > 0) {
+            const currentFiles = Array.isArray(prev['session.files_modified'])
+              ? prev['session.files_modified'] as string[]
+              : [];
+            // Deduplicate: only add paths not already tracked
+            const merged = [...new Set([...currentFiles, ...pathsAffectedForState])];
+            updates['session.files_modified'] = merged;
+          }
+        }
+
+        // Increment session.commands_run for exec operations
+        if (toolName === 'precision_exec') {
+          const currentCmds = typeof prev['session.commands_run'] === 'number'
+            ? prev['session.commands_run'] as number
+            : 0;
+          const toolInput = args as Record<string, unknown>;
+          const cmdCount = Array.isArray(toolInput.commands) ? toolInput.commands.length : 1;
+          updates['session.commands_run'] = currentCmds + cmdCount;
+        }
+
+        // Increment session.agents_spawned for precision_agent calls
+        // Counter is initialized to 0 in PrecisionRuntime.initialize().
+        if (toolName === 'precision_agent') {
+          const currentAgents = typeof prev['session.agents_spawned'] === 'number'
+            ? prev['session.agents_spawned'] as number
+            : 0;
+          updates['session.agents_spawned'] = currentAgents + 1;
+        }
+
+        await runtime.state.set(updates);
+      } catch (stateErr) {
+        // State update failure must never affect the tool response
+        logger.warn(`KVState auto-populate failed for ${toolName} (non-fatal)`, {
+          err: stateErr instanceof Error ? stateErr.message : String(stateErr),
+        });
       }
     }
 

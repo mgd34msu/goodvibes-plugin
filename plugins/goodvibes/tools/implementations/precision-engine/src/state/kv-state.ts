@@ -55,8 +55,8 @@ export class KVState {
   /** Whether the data has been loaded from disk at least once. */
   private loaded = false;
 
-  private constructor() {
-    this.sessionId = randomBytes(4).toString('hex');
+  private constructor(externalSessionId?: string) {
+    this.sessionId = externalSessionId ?? randomBytes(4).toString('hex');
     this.stateDir = path.join(process.cwd(), '.goodvibes', 'state');
     this.sessionFile = path.join(this.stateDir, `session_${this.sessionId}.json`);
     this.data = {
@@ -72,6 +72,27 @@ export class KVState {
     if (!KVState.instance) {
       KVState.instance = new KVState();
     }
+    return KVState.instance;
+  }
+
+  /**
+   * Initialize the singleton with a specific session ID.
+   *
+   * Must be called BEFORE the first `getInstance()` call. If the singleton
+   * already exists, logs a warning and returns the existing instance so that
+   * the Telemetry-sourced ID is used whenever possible.
+   *
+   * Typical caller: PrecisionRuntime.initialize() — passes the Telemetry
+   * session ID so both subsystems share the same session identifier.
+   *
+   * @param sessionId - 8-character hex session ID from Telemetry.
+   */
+  static initWithSessionId(sessionId: string): KVState {
+    if (KVState.instance) {
+      // Already initialized — cannot change session ID, return existing instance
+      return KVState.instance;
+    }
+    KVState.instance = new KVState(sessionId);
     return KVState.instance;
   }
 
@@ -276,7 +297,15 @@ export class KVState {
 }
 
 /**
- * Singleton KVState instance for managing per-session key-value state.
- * Use this export for application-level access.
+ * Lazy getter for the KVState singleton.
+ *
+ * Returns the singleton KVState instance. Using a getter function (rather than
+ * a module-level `const`) ensures that KVState.initWithSessionId() called by
+ * PrecisionRuntime.initialize() always runs BEFORE the first getInstance() call,
+ * so the session ID is correctly synced between Telemetry and KVState.
+ *
+ * @returns The KVState singleton instance.
  */
-export const kvState = KVState.getInstance();
+export function getKvState(): KVState {
+  return KVState.getInstance();
+}

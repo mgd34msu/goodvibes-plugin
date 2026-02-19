@@ -598,7 +598,7 @@ export const precisionConfigSchema: Tool = {
     properties: {
       action: {
         type: 'string',
-        enum: ['get', 'set', 'reload', 'telemetry', 'state', 'hooks'],
+        enum: ['get', 'set', 'reload', 'telemetry', 'state', 'hooks', 'mode'],
         description:
           'Action to perform: ' +
           'get (read config), ' +
@@ -606,7 +606,8 @@ export const precisionConfigSchema: Tool = {
           'reload (reload from file), ' +
           'telemetry (query usage telemetry), ' +
           'state (per-session KV store: get/set/list/clear), ' +
-          'hooks (manage precision tool hooks: list/enable/disable/add/remove)',
+          'hooks (manage precision tool hooks: list/enable/disable/add/remove), ' +
+          'mode (manage output mode: get/set/list — modes: vibecoding, justvibes, default)',
       },
       key: {
         type: 'string',
@@ -657,6 +658,15 @@ export const precisionConfigSchema: Tool = {
           since: { type: 'string', description: 'ISO 8601 timestamp — only return records at or after this time' },
           limit: { type: 'integer', minimum: 1, description: 'Maximum number of records to return' },
         },
+      },
+      mode: {
+        type: 'string',
+        description:
+          'For action=mode, operation=set: the mode name to activate. ' +
+          'Built-in modes: vibecoding (enforce DPB + precision tools, token-efficient defaults), ' +
+          'justvibes (same defaults, minimal enforcement), ' +
+          'default (no enforcement, standard defaults). ' +
+          'Custom modes can be registered at runtime via ModeManager.registerMode().',
       },
       event: {
         type: 'string',
@@ -794,6 +804,18 @@ export const precisionAgentSchema: Tool = {
       context_files: {
         type: 'array',
         description: 'File paths whose content is read and injected into the prompt.',
+        items: { type: 'string' },
+      },
+      scope: {
+        type: 'array',
+        description:
+          'File/directory paths that define the task scope (e.g. ["src/auth/", "src/middleware/"]). ' +
+          'Injected into dossier for context-relevant memory matching.',
+        items: { type: 'string' },
+      },
+      acceptance_criteria: {
+        type: 'array',
+        description: 'Specific criteria the task must meet. Injected into dossier to guide agent focus.',
         items: { type: 'string' },
       },
       options: {

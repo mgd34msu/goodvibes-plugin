@@ -24,14 +24,6 @@
     "keywords": ["skill", "anthropic", "progressive-disclosure", "SKILL.md", "references"]
   },
   {
-    "id": "pat_20260215_180100",
-    "name": "BatchEnginePhaseGroupedSchema",
-    "description": "batch_engine operations use phase-grouped format: {read: [], write: [], exec: [], query: [], state: []} NOT flat array of {tool, input}",
-    "when_to_use": "Writing batch_engine examples or documentation",
-    "example_files": ["plugins/goodvibes/skills/protocol/discover-plan-batch/SKILL.md"],
-    "keywords": ["batch_engine", "schema", "operations", "phase-grouped"]
-  },
-  {
     "id": "pat_20260215_180200",
     "name": "POSIXPortableScripts",
     "description": "Use printf over echo -e, grep -n over GNU sed ranges, -- before filename args, [[:space:]] over literal spaces, set -euo pipefail",

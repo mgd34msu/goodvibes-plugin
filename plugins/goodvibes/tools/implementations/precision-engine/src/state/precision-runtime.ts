@@ -20,6 +20,7 @@ import { KVState } from './kv-state.js';
 import { ProjectIndex } from './project-index.js';
 import { HooksManager } from './hooks.js';
 import { DossierGenerator } from './dossier.js';
+import { ModeManager } from './mode-manager.js';
 import { getConfig } from '../runtime-config.js';
 import type { PrecisionEngineConfig } from '../runtime-config.js';
 import { logger } from '../logging.js';
@@ -42,12 +43,9 @@ export interface SessionInfo {
 }
 
 /**
- * Placeholder for the Phase 5 mode manager.
- * Not implemented — defined here so callers can reference the type.
+ * Re-export ModeManager for consumers of precision-runtime.
  */
-export interface ModePlaceholder {
-  _phase: 5;
-}
+export { ModeManager } from './mode-manager.js';
 
 // ───────────────────────────────────────────────────────────────────────────
 // PrecisionRuntime
@@ -106,6 +104,11 @@ export class PrecisionRuntime {
   readonly dossier: DossierGenerator;
 
   /**
+   * ModeManager — Phase 5 mode-specific defaults and enforcement.
+   */
+  readonly modeManager: ModeManager;
+
+  /**
    * Lightweight session metadata for this server startup.
    */
   readonly session: SessionInfo;
@@ -122,6 +125,7 @@ export class PrecisionRuntime {
     index: ProjectIndex,
     hooks: HooksManager,
     dossier: DossierGenerator,
+    modeManager: ModeManager,
   ) {
     this.config = config;
     this.state = state;
@@ -129,6 +133,7 @@ export class PrecisionRuntime {
     this.index = index;
     this.hooks = hooks;
     this.dossier = dossier;
+    this.modeManager = modeManager;
     this.session = {
       id: telemetry.getSessionId(),
       startedAt: new Date().toISOString(),
@@ -169,8 +174,9 @@ export class PrecisionRuntime {
     // Telemetry — synchronous SQLite init
     const telemetry = Telemetry.getInstance();
 
-    // KVState — lazy loader, no blocking async needed at init
-    const state = KVState.getInstance();
+    // KVState — initialize with the Telemetry session ID so both subsystems
+    // share the same session identifier. Must be called before getInstance().
+    const state = KVState.initWithSessionId(telemetry.getSessionId());
 
     // ProjectIndex — trigger background load (non-blocking)
     const index = ProjectIndex.getInstance();
@@ -184,10 +190,19 @@ export class PrecisionRuntime {
       logger.warn('[PrecisionRuntime] HooksManager config load failed — using built-in hooks only', { err: String(err) });
     });
 
+    // KVState session metrics — initialize counters once at startup so that
+    // per-call auto-tracking never needs to handle the "undefined" case.
+    state.set({ 'session.agents_spawned': 0 }).catch((err: unknown) => {
+      logger.warn('[PrecisionRuntime] KVState agents_spawned init failed (non-fatal)', { err: String(err) });
+    });
+
     // DossierGenerator — Phase 5H agent context package generator
     const dossier = new DossierGenerator(index);
 
-    PrecisionRuntime.instance = new PrecisionRuntime(config, state, telemetry, index, hooks, dossier);
+    // ModeManager — Phase 5 mode defaults and enforcement
+    const modeManager = ModeManager.getInstance();
+
+    PrecisionRuntime.instance = new PrecisionRuntime(config, state, telemetry, index, hooks, dossier, modeManager);
     logger.info('[PrecisionRuntime] Initialized', {
       sessionId: PrecisionRuntime.instance.session.id,
       startedAt: PrecisionRuntime.instance.session.startedAt,
@@ -306,6 +321,7 @@ export class PrecisionRuntime {
     }
 
     PrecisionRuntime.instance = null;
+    ModeManager.resetInstance();
     logger.info('[PrecisionRuntime] Shutdown complete');
   }
 }

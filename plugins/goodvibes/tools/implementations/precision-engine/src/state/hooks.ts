@@ -74,6 +74,19 @@ export interface HookConfig {
 }
 
 /**
+ * Minimal interface for the PrecisionRuntime reference passed through HookContext.
+ * Defined here (rather than imported) to avoid circular dependencies between
+ * hooks.ts and precision-runtime.ts.
+ */
+export interface IPrecisionRuntime {
+  readonly session: { id: string; startedAt: string; toolCalls: number };
+  generateId(tool: string): string;
+  getSessionId(): string;
+  getState(keys: string[]): Promise<Record<string, unknown>>;
+  setState(values: Record<string, unknown>): Promise<void>;
+}
+
+/**
  * Runtime context passed to every hook invocation.
  */
 export interface HookContext {
@@ -91,6 +104,10 @@ export interface HookContext {
   error?: Error;
   /** Files affected by a mutation (OnPrecisionMutation only). */
   paths_affected?: string[];
+  /** Active session metadata — optional, absent in degraded mode. */
+  session?: { id: string; startedAt: string; toolCalls: number };
+  /** PrecisionRuntime reference — optional, absent in degraded mode. */
+  runtime?: IPrecisionRuntime;
 }
 
 /**
