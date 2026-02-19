@@ -6,7 +6,7 @@
 
 > Plug in. Receive good vibes.
 
-A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 71 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
+A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 72 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
 
 ## At a Glance
 
@@ -14,7 +14,7 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 |-----------|-------|-------------|
 | Agents | 11 | Specialized roles (Opus/Sonnet) for engineering, review, testing, architecture, deployment, integration, planning |
 | Skills | 173 | Technology-specific knowledge modules covering modern web stacks |
-| MCP Tools | 71 | Token-efficient tools across 5 specialized engines |
+| MCP Tools | 72 | Token-efficient tools across 5 specialized engines |
 | Hooks | 10 | Lifecycle automation (tool redirection, context injection, error recovery) |
 | Output Styles | 2 | Interactive (vibecoding) or fully autonomous (justvibes) |
 | Templates | 3 | Production scaffolds for Next.js and React |
@@ -131,7 +131,7 @@ precision_exec includes a safe mode that blocks destructive commands matching pa
 
 precision_grep can expand matches beyond the matched line to enclosing block, function, or class scope using Tree-Sitter AST analysis.
 
-## Analysis Engine - 19 Tools
+## Analysis Engine - 20 Tools
 
 | Category | Tools |
 |----------|-------|
@@ -139,6 +139,7 @@ precision_grep can expand matches beyond the matched line to enclosing block, fu
 | Code Quality | find-dead-code, get-api-surface, safe-delete-check, identify-tech-debt |
 | Validation | detect-breaking-changes, semantic-diff, validate-implementation, validate-edits-preview, validate-api-contract |
 | Security | env-audit, scan-for-secrets, check-permissions |
+| Dependencies | find-circular-deps |
 | Debugging | parse-error-stack, explain-type-error |
 
 ## Project Engine - 22 Tools
