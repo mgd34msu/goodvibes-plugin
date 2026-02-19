@@ -775,6 +775,84 @@ export const precisionEditSchema: Tool = {
 };
 
 /**
+ * precision_agent - Spawn headless AI sessions across providers.
+ * Phase 5I: Orchestration-level agent spawning from MCP tool layer.
+ */
+export const precisionAgentSchema: Tool = {
+  name: 'precision_agent',
+  description:
+    'Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' +
+    'Supports background (non-blocking) and foreground (blocking) execution. ' +
+    'Optionally injects context files and a project dossier into the agent prompt.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      prompt: {
+        type: 'string',
+        description: 'Task prompt for the agent. Required.',
+      },
+      context_files: {
+        type: 'array',
+        description: 'File paths whose content is read and injected into the prompt.',
+        items: { type: 'string' },
+      },
+      options: {
+        type: 'object',
+        description: 'Execution and provider options.',
+        properties: {
+          provider: {
+            type: 'string',
+            enum: ['claude', 'gemini', 'codex'],
+            default: 'claude',
+            description: 'AI provider to use.',
+          },
+          model: {
+            type: 'string',
+            description: 'Model override — provider-specific (e.g. "sonnet", "opus", "gemini-2.5-pro").',
+          },
+          cli_flags: {
+            type: 'object',
+            description: 'Provider-specific CLI flags passed through as-is (e.g. { "disallowedTools": "Write,Edit" }).',
+            additionalProperties: true,
+          },
+          max_cost: {
+            type: ['number', 'null'],
+            description: 'Maximum cost in USD — placeholder for future budget engine.',
+          },
+          max_tokens: {
+            type: ['integer', 'null'],
+            description: 'Maximum tokens — placeholder for future budget engine.',
+          },
+          background: {
+            type: 'boolean',
+            description:
+              'Run in background (non-blocking). ' +
+              'Default: true in main conversation, false in subagent context.',
+          },
+          dossier: {
+            type: 'object',
+            description: 'Dossier integration options.',
+            properties: {
+              include: {
+                type: 'boolean',
+                default: true,
+                description: 'Whether to generate and inject a project dossier into the prompt.',
+              },
+              extra_reminders: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Extra reminder strings appended to the dossier reminders section.',
+              },
+            },
+          },
+        },
+      },
+    },
+    required: ['prompt'],
+  },
+};
+
+/**
  * All tool schemas - SPEC-v2 tools only.
  */
 export const allSchemas: Tool[] = [
@@ -789,4 +867,5 @@ export const allSchemas: Tool[] = [
   precisionEditSchema,
   precisionConfigSchema,
   precisionNotebookSchema,
+  precisionAgentSchema,
 ];
