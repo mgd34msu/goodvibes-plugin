@@ -598,8 +598,14 @@ export const precisionConfigSchema: Tool = {
     properties: {
       action: {
         type: 'string',
-        enum: ['get', 'set', 'reload'],
-        description: 'Action to perform: get (read config), set (update config), reload (reload from file)',
+        enum: ['get', 'set', 'reload', 'telemetry', 'state'],
+        description:
+          'Action to perform: ' +
+          'get (read config), ' +
+          'set (update config), ' +
+          'reload (reload from file), ' +
+          'telemetry (query usage telemetry), ' +
+          'state (per-session KV store: get/set/list/clear)',
       },
       key: {
         type: 'string',
@@ -608,6 +614,47 @@ export const precisionConfigSchema: Tool = {
       value: {
         // Intentionally no type constraint - accepts any JSON value (boolean, string, number)
         description: 'Value to set (for set action). Type depends on the key.',
+      },
+      operation: {
+        type: 'string',
+        enum: ['get', 'set', 'list', 'clear', 'summary', 'query'],
+        description:
+          'Sub-operation for action=state (get/set/list/clear) or action=telemetry (summary/query). ' +
+          'For action=state: get, set, list, clear. For action=telemetry: summary, query. ' +
+          'Invalid combinations (e.g. action=state with operation=summary) return a runtime error. ' +
+          'state/get: retrieve values for specified keys. ' +
+          'state/set: store key-value pairs in session state. ' +
+          'state/list: list all keys, optionally filtered by prefix. ' +
+          'state/clear: remove specified keys.',
+      },
+      keys: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'For action=state, operation=get or clear: array of key names to retrieve or delete.',
+      },
+      values: {
+        type: 'object',
+        description:
+          'For action=state, operation=set: key-value pairs to store in session state. ' +
+          'Keys "id" and "started_at" are protected and silently ignored.',
+      },
+      prefix: {
+        type: 'string',
+        description:
+          'For action=state, operation=list: only return keys starting with this prefix. ' +
+          'Omit to return all session state.',
+      },
+      filter: {
+        type: 'object',
+        description: 'Filter parameters for action=telemetry operation=query.',
+        properties: {
+          tool: { type: 'string', description: 'Filter by tool name (e.g. "read", "write", "precision_grep")' },
+          status: { type: 'string', enum: ['success', 'failed', 'partial'], description: 'Filter by call status' },
+          session_id: { type: 'string', description: 'Filter by session ID (8-char hex). Defaults to current session.' },
+          since: { type: 'string', description: 'ISO 8601 timestamp — only return records at or after this time' },
+          limit: { type: 'integer', minimum: 1, description: 'Maximum number of records to return' },
+        },
       },
     },
     required: ['action'],

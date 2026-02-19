@@ -7,3 +7,5 @@ export { commandHistory, CommandHistory, type CommandHistoryEntry } from './comm
 export { processManager, ProcessManager, type BackgroundProcess, type BgStartResult } from './process-manager.js';
 export { searchCache, SearchCache, type SearchCacheEntry, type RefinementContext } from './search-cache.js';
 export { projectIndex, ProjectIndex, type ProjectFileIndex, type FileEntry } from './project-index.js';
+export { kvState, KVState, type SessionStateData } from './kv-state.js';
+export { getTelemetry, Telemetry, type TelemetryRecord, type SessionSummary, type ToolStats, type TelemetryQueryFilter } from './telemetry.js';

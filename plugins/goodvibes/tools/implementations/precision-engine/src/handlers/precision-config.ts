@@ -6,9 +6,11 @@
  */
 
 import { toCallToolResult, successResult, errorResult, ToolHandler } from '../utils/index.js';
+import { Telemetry } from '../state/telemetry.js';
 import { startTimer, logger } from '../logging.js';
 import { getConfig, getConfigValue, setConfigValue, loadConfig } from '../runtime-config.js';
 import { getFetchServices } from '../utils/fetch/service-registry.js';
+import { KVState } from '../state/kv-state.js';
 
 export const handlePrecisionConfig: ToolHandler = async (args: unknown) => {
   const elapsed = startTimer();
@@ -102,8 +104,106 @@ export const handlePrecisionConfig: ToolHandler = async (args: unknown) => {
       return toCallToolResult(successResult({ config, reloaded: true }, 'standard', elapsed()));
     }
 
+    if (action === 'telemetry') {
+      const operation = (params.operation as string | undefined) ?? 'summary';
+      const tel = Telemetry.getInstance();
+
+      if (operation === 'summary') {
+        const summary = tel.getSummary();
+        return toCallToolResult(successResult({ summary }, 'standard', elapsed()));
+      }
+
+      if (operation === 'query') {
+        const rawFilter = params.filter as Record<string, unknown> | undefined;
+        const filter = rawFilter
+          ? {
+              tool: rawFilter['tool'] as string | undefined,
+              status: rawFilter['status'] as string | undefined,
+              session_id: rawFilter['session_id'] as string | undefined,
+              since: rawFilter['since'] as string | undefined,
+              limit: rawFilter['limit'] !== undefined ? Number(rawFilter['limit']) : undefined,
+            }
+          : undefined;
+        const records = tel.query(filter);
+        return toCallToolResult(successResult({ records, count: records.length }, 'standard', elapsed()));
+      }
+
+      return toCallToolResult(errorResult(
+        `Unknown telemetry operation: '${operation}'. Use 'summary' or 'query'.`,
+        'standard',
+        elapsed()
+      ));
+    }
+
+    if (action === 'state') {
+      const state = KVState.getInstance();
+      const operation = params.operation as string;
+
+      if (!operation) {
+        return toCallToolResult(errorResult(
+          `Missing required field: operation. Use 'get', 'set', 'list', or 'clear'.`,
+          'standard',
+          elapsed()
+        ));
+      }
+
+      switch (operation) {
+        case 'get': {
+          const keys = params.keys as string[] | undefined;
+          if (!keys || !Array.isArray(keys) || keys.length === 0) {
+            return toCallToolResult(errorResult(
+              `'get' operation requires a non-empty 'keys' array.`,
+              'standard',
+              elapsed()
+            ));
+          }
+          const result = await state.get(keys);
+          return toCallToolResult(successResult({ state: result }, 'standard', elapsed()));
+        }
+
+        case 'set': {
+          const values = params.values as Record<string, unknown> | undefined;
+          if (!values || typeof values !== 'object' || Array.isArray(values)) {
+            return toCallToolResult(errorResult(
+              `'set' operation requires a 'values' object.`,
+              'standard',
+              elapsed()
+            ));
+          }
+          await state.set(values);
+          return toCallToolResult(successResult({ success: true, operation: 'set' }, 'standard', elapsed()));
+        }
+
+        case 'list': {
+          const prefix = params.prefix as string | undefined;
+          const result = await state.list(prefix);
+          return toCallToolResult(successResult({ state: result }, 'standard', elapsed()));
+        }
+
+        case 'clear': {
+          const keys = params.keys as string[] | undefined;
+          if (!keys || !Array.isArray(keys) || keys.length === 0) {
+            return toCallToolResult(errorResult(
+              `'clear' operation requires a non-empty 'keys' array.`,
+              'standard',
+              elapsed()
+            ));
+          }
+          await state.clear(keys);
+          return toCallToolResult(successResult({ success: true, operation: 'clear' }, 'standard', elapsed()));
+        }
+
+        default:
+          return toCallToolResult(errorResult(
+            `Unknown state operation: '${operation}'. Use 'get', 'set', 'list', or 'clear'.`,
+            'standard',
+            elapsed()
+          ));
+      }
+    }
+
     return toCallToolResult(errorResult(
-      `Unknown action: '${action}'. Use 'get', 'set', or 'reload'.`,
+      `Unknown action: '${action}'. Use 'get', 'set', 'reload', 'telemetry', or 'state'.`,
       'standard',
       elapsed()
     ));
