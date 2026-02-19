@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-02-19T07:11:13.025Z'
+generated: '2026-02-19T07:41:41.740Z'
 total: 71
 servers:
   - name: precision-engine
@@ -67,9 +67,9 @@ servers:
       - name: precision_agent
         path: precision-engine/precision-agent.yaml
         description: >-
-          Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' + 'Supports background
-          (non-blocking) and foreground (blocking) execution. ' + 'Optionally injects context files and a project
-          dossier into the agent prompt.
+          Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' + 'Always runs in background
+          (non-blocking) — returns immediately with agent_id and process_id. ' + 'Optionally injects context files and a
+          project dossier into the agent prompt.
   - name: registry-engine
     count: 7
     tools:
@@ -772,12 +772,15 @@ search_index:
       - claude
       - gemini
       - codex
-      - supports
+      - always
+      - runs
       - background
       - non
       - blocking
-      - foreground
-      - execution
+      - returns
+      - immediately
+      - agent_id
+      - process_id
       - optionally
       - injects
       - context
@@ -788,9 +791,9 @@ search_index:
       - prompt
     path: precision-engine/precision-agent.yaml
     description: >-
-      Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' + 'Supports background
-      (non-blocking) and foreground (blocking) execution. ' + 'Optionally injects context files and a project dossier
-      into the agent prompt.
+      Spawn a headless AI session across multiple providers (Claude, Gemini, Codex). ' + 'Always runs in background
+      (non-blocking) — returns immediately with agent_id and process_id. ' + 'Optionally injects context files and a
+      project dossier into the agent prompt.
     server: precision-engine
   - name: search_skills
     keywords:
