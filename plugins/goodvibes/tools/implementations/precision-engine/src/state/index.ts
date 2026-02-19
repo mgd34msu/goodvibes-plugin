@@ -12,3 +12,18 @@ export { getTelemetry, Telemetry, type TelemetryRecord, type SessionSummary, typ
 // HooksManager is the Phase 4G hooks implementation. ModePlaceholder is Phase 5 stub.
 export { HooksManager, HookAbortError, type HookEvent, type HookType, type HookConfig, type HookContext, type HookResult, type HookFilter } from './hooks.js';
 export { PrecisionRuntime, type SessionInfo, type ModePlaceholder, extractMetadata, extractCacheHit } from './precision-runtime.js';
+// Phase 5H: Agent dossier types
+export {
+  DossierGenerator,
+  type AgentDossier,
+  type DossierOptions,
+  type DossierTask,
+  type DossierConstraints,
+  type DossierContext,
+  type DossierProject,
+  type DossierOutputFormat,
+  type DossierDecision,
+  type DossierPattern,
+  type DossierFailure,
+  type DossierKeyFile,
+} from './dossier.js';

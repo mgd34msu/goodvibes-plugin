@@ -19,6 +19,7 @@ import { Telemetry } from './telemetry.js';
 import { KVState } from './kv-state.js';
 import { ProjectIndex } from './project-index.js';
 import { HooksManager } from './hooks.js';
+import { DossierGenerator } from './dossier.js';
 import { getConfig } from '../runtime-config.js';
 import type { PrecisionEngineConfig } from '../runtime-config.js';
 import { logger } from '../logging.js';
@@ -100,6 +101,11 @@ export class PrecisionRuntime {
   readonly hooks: HooksManager;
 
   /**
+   * DossierGenerator — Phase 5H agent context package generator.
+   */
+  readonly dossier: DossierGenerator;
+
+  /**
    * Lightweight session metadata for this server startup.
    */
   readonly session: SessionInfo;
@@ -115,12 +121,14 @@ export class PrecisionRuntime {
     telemetry: Telemetry,
     index: ProjectIndex,
     hooks: HooksManager,
+    dossier: DossierGenerator,
   ) {
     this.config = config;
     this.state = state;
     this.telemetry = telemetry;
     this.index = index;
     this.hooks = hooks;
+    this.dossier = dossier;
     this.session = {
       id: telemetry.getSessionId(),
       startedAt: new Date().toISOString(),
@@ -176,7 +184,10 @@ export class PrecisionRuntime {
       logger.warn('[PrecisionRuntime] HooksManager config load failed — using built-in hooks only', { err: String(err) });
     });
 
-    PrecisionRuntime.instance = new PrecisionRuntime(config, state, telemetry, index, hooks);
+    // DossierGenerator — Phase 5H agent context package generator
+    const dossier = new DossierGenerator(index);
+
+    PrecisionRuntime.instance = new PrecisionRuntime(config, state, telemetry, index, hooks, dossier);
     logger.info('[PrecisionRuntime] Initialized', {
       sessionId: PrecisionRuntime.instance.session.id,
       startedAt: PrecisionRuntime.instance.session.startedAt,
