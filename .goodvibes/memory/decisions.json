@@ -208,5 +208,35 @@
     "scope": ["precision-engine/src/handlers/precision-config.ts"],
     "confidence": "high",
     "status": "active"
+  },
+  {
+    "id": "dec_20260218_180000",
+    "date": "2026-02-18T18:00:00Z",
+    "category": "architecture",
+    "what": "Telemetry uses SQLite via better-sqlite3, not JSON files",
+    "why": "Append-only structured data with query capabilities, zero overhead for synchronous writes, WAL mode for concurrent reads",
+    "scope": ["precision-engine/src/state/telemetry.ts"],
+    "confidence": "high",
+    "status": "active"
+  },
+  {
+    "id": "dec_20260218_180100",
+    "date": "2026-02-18T18:01:00Z",
+    "category": "architecture",
+    "what": "Session state stored in separate files (.goodvibes/state/), not in goodvibes.json",
+    "why": "Keeps goodvibes.json for configuration only. Ephemeral session data in isolated files prevents config bloat and cross-session interference.",
+    "scope": ["precision-engine/src/state/kv-state.ts"],
+    "confidence": "high",
+    "status": "active"
+  },
+  {
+    "id": "dec_20260218_180200",
+    "date": "2026-02-18T18:02:00Z",
+    "category": "convention",
+    "what": "precision_id format: {tool}_{session_short}_{unique_id} with 8-char hex components",
+    "why": "Human-readable correlation IDs. Tool prefix for quick filtering, session for grouping, unique for dedup. Zero LLM token cost — server-side only.",
+    "scope": ["precision-engine/src/state/telemetry.ts"],
+    "confidence": "high",
+    "status": "active"
   }
 ]
