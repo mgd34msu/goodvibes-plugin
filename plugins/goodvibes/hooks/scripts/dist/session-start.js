@@ -5082,7 +5082,7 @@ async function ensureClaudeMdImports(projectDir) {
 }
 
 // src/session-start/project-indexer.ts
-import { readdir as readdir3, readFile as readFile10, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
+import { readdir as readdir3, readFile as readFile10, stat, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
 import path16 from "path";
 var INDEX_EXCLUSION_DIRS = /* @__PURE__ */ new Set([
   "node_modules",
@@ -5324,18 +5324,24 @@ async function buildProjectIndex(projectDir) {
       const dirPart = path16.dirname(relativePath);
       const treeKey = dirPart === "." ? "" : dirPart.split(path16.sep).join("/");
       const filename = entry.name;
+      let fileSize = 0;
+      try {
+        const fileStat = await stat(path16.join(parent, entry.name));
+        fileSize = fileStat.size;
+      } catch {
+      }
       if (!tree[treeKey]) {
         tree[treeKey] = [];
       }
-      tree[treeKey].push(filename);
+      tree[treeKey].push({ name: filename, size: fileSize, tokens: Math.ceil(fileSize / 4) });
       totalFiles++;
     }
     for (const key of Object.keys(tree)) {
-      tree[key].sort();
+      tree[key].sort((a, b) => a.name.localeCompare(b.name));
     }
     const totalDirs = Object.keys(tree).length;
     const index = {
-      version: 2,
+      version: 3,
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString(),
       project_root: projectDir,

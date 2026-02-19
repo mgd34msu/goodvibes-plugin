@@ -499,7 +499,7 @@ async function executeIndexQuery(
     case 'paths_only':
       return { type: 'index', count: files.length, files: files.map(f => f.p) };
     case 'full':
-      return { type: 'index', count: files.length, files: files.map(f => ({ path: f.p, type: categorizeFileType(f.p) })) };
+      return { type: 'index', count: files.length, files: files.map(f => ({ path: f.p, type: categorizeFileType(f.p), size: f.size, tokens: f.tokens })) };
     default:
       return { type: 'index', count: files.length, ...(isFiltered ? {} : { stats: index.stats }), type_counts: projectIndex.getTypeCounts(), dirs: Object.keys(index.tree).sort() };
   }

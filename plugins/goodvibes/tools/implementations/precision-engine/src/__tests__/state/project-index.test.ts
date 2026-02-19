@@ -18,6 +18,20 @@ import { ProjectIndex, categorizeFileType } from '../../state/project-index.js';
 // Helpers
 // ──────────────────────────────────────────────
 
+/** Build a v3 index JSON string (new format with size/tokens per entry). */
+function makeV3Index(tree: Record<string, Array<{name: string; size: number; tokens: number}>>, extra?: object) {
+  return JSON.stringify({
+    version: 3,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2024-01-01T00:00:00.000Z',
+    project_root: '/test/project',
+    stats: { total_files: 3, total_dirs: 2, index_duration_ms: 10 },
+    tree,
+    ...extra,
+  });
+}
+
+/** Build a legacy v2 index JSON string (string arrays per directory). */
 function makeV2Index(tree: Record<string, string[]>, extra?: object) {
   return JSON.stringify({
     version: 2,
@@ -63,18 +77,18 @@ afterEach(() => {
 });
 
 // ──────────────────────────────────────────────
-// load() — v2 tree format
+// load() — v3 tree format (current)
 // ──────────────────────────────────────────────
 
-describe('load() — v2 tree format', () => {
-  it('loads v2 tree with nested dirs and root-level files', async () => {
+describe('load() — v3 tree format (current)', () => {
+  it('loads v3 tree with nested dirs and root-level files', async () => {
     const tree = {
-      '': ['README.md', 'package.json'],
-      'src': ['index.ts'],
-      'src/utils': ['helper.ts'],
+      '': [{name: 'README.md', size: 500, tokens: 125}, {name: 'package.json', size: 800, tokens: 200}],
+      'src': [{name: 'index.ts', size: 1200, tokens: 300}],
+      'src/utils': [{name: 'helper.ts', size: 400, tokens: 100}],
     };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
@@ -87,12 +101,16 @@ describe('load() — v2 tree format', () => {
       'src/index.ts',
       'src/utils/helper.ts',
     ]);
+    // Verify size/tokens are preserved
+    const indexTs = files.find((f) => f.p === 'src/index.ts')!;
+    expect(indexTs.size).toBe(1200);
+    expect(indexTs.tokens).toBe(300);
   });
 
-  it('loads v2 tree with only root-level files (empty string key)', async () => {
-    const tree = { '': ['a.ts', 'b.ts'] };
+  it('loads v3 tree with only root-level files (empty string key)', async () => {
+    const tree = { '': [{name: 'a.ts', size: 100, tokens: 25}, {name: 'b.ts', size: 200, tokens: 50}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
@@ -101,14 +119,14 @@ describe('load() — v2 tree format', () => {
     expect(files.map((f) => f.p)).toEqual(['a.ts', 'b.ts']);
   });
 
-  it('loads v2 tree with deeply nested paths', async () => {
+  it('loads v3 tree with deeply nested paths', async () => {
     const tree = {
-      'a/b/c': ['deep.ts'],
-      'a/b': ['mid.ts'],
-      '': ['root.ts'],
+      'a/b/c': [{name: 'deep.ts', size: 0, tokens: 0}],
+      'a/b': [{name: 'mid.ts', size: 0, tokens: 0}],
+      '': [{name: 'root.ts', size: 0, tokens: 0}],
     };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
@@ -120,28 +138,83 @@ describe('load() — v2 tree format', () => {
   });
 
   it('returns loaded index via getIndexLoaded()', async () => {
-    const tree = { 'src': ['index.ts'] };
+    const tree = { 'src': [{name: 'index.ts', size: 1240, tokens: 310}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     const result = await idx.getIndexLoaded();
 
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(2);
-    expect(result!.tree).toEqual(tree);
+    expect(result!.version).toBe(3);
   });
 
   it('does not reload if already loaded (idempotent)', async () => {
-    const tree = { '': ['once.ts'] };
+    const tree = { '': [{name: 'once.ts', size: 0, tokens: 0}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
     await idx.load();
 
     expect(fs.readFile).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ──────────────────────────────────────────────
+// load() — v2 tree format migration (v2→v3)
+// ──────────────────────────────────────────────
+
+describe('load() — v2 tree format migration (v2→v3)', () => {
+  it('migrates v2 string arrays to v3 object entries with size=0 tokens=0', async () => {
+    const tree = {
+      'src': ['index.ts', 'auth.ts'],
+      '': ['README.md'],
+    };
+    vi.mocked(fsSync.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+
+    const idx = ProjectIndex.getInstance();
+    await idx.load();
+
+    const result = await idx.getIndexLoaded();
+    expect(result).not.toBeNull();
+    expect(result!.version).toBe(3);
+
+    const files = idx.getFiles();
+    expect(files.map((f) => f.p)).toContain('src/index.ts');
+    expect(files.map((f) => f.p)).toContain('README.md');
+    // Size/tokens should be 0 (unknown during migration)
+    const indexFile = files.find((f) => f.p === 'src/index.ts')!;
+    expect(indexFile.size).toBe(0);
+    expect(indexFile.tokens).toBe(0);
+  });
+
+  it('preserves created_at and project_root from v2 during migration', async () => {
+    const tree = { 'src': ['app.ts'] };
+    vi.mocked(fsSync.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+
+    const idx = ProjectIndex.getInstance();
+    const result = await idx.getIndexLoaded();
+
+    expect(result!.created_at).toBe('2024-01-01T00:00:00.000Z');
+    expect(result!.project_root).toBe('/test/project');
+  });
+
+  it('v2 migration does not trigger automatic flush', async () => {
+    // By design: v2→v3 migration marks the index dirty but does NOT auto-flush.
+    // The next indexer run will rebuild from scratch with correct size/token data.
+    const tree = { 'src': ['index.ts', 'utils.ts'], '': ['README.md'] };
+    vi.mocked(fsSync.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+
+    const idx = ProjectIndex.getInstance();
+    await idx.load();
+
+    // writeFile should NOT have been called after load() — no auto-flush on migration
+    expect(fs.writeFile).not.toHaveBeenCalled();
   });
 });
 
@@ -163,7 +236,7 @@ describe('load() — v1 legacy format', () => {
 
     const result = await idx.getIndexLoaded();
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(2);
+    expect(result!.version).toBe(3);
 
     const paths = idx.getFiles().map((f) => f.p);
     expect(paths).toContain('src/index.ts');
@@ -249,11 +322,11 @@ describe('load() — error handling', () => {
 
 describe('upsertFile()', () => {
   async function loadedIndex() {
-    const tree = { 'src': ['existing.ts'] };
+    const tree = { 'src': [{name: 'existing.ts', size: 500, tokens: 125}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
     // Use correct total_files matching actual tree contents (1 file)
     vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
-      version: 2,
+      version: 3,
       created_at: '2024-01-01T00:00:00.000Z',
       updated_at: '2024-01-01T00:00:00.000Z',
       project_root: '/test/project',
@@ -272,6 +345,25 @@ describe('upsertFile()', () => {
     const paths = idx.getFiles().map((f) => f.p);
     expect(paths).toContain('src/new.ts');
     expect(idx.getStats()!.total_files).toBe(2);
+  });
+
+  it('inserts a new file with size and computes tokens', async () => {
+    const idx = await loadedIndex();
+    idx.upsertFile('src/sized.ts', 4000);
+
+    const entry = idx.getFiles().find((f) => f.p === 'src/sized.ts')!;
+    expect(entry).toBeDefined();
+    expect(entry.size).toBe(4000);
+    expect(entry.tokens).toBe(1000); // Math.ceil(4000 / 4)
+  });
+
+  it('computes tokens via Math.ceil for non-round sizes', async () => {
+    const idx = await loadedIndex();
+    idx.upsertFile('src/odd.ts', 401);
+
+    const entry = idx.getFiles().find((f) => f.p === 'src/odd.ts')!;
+    expect(entry.size).toBe(401);
+    expect(entry.tokens).toBe(101); // Math.ceil(401 / 4)
   });
 
   it('updates an existing file without changing total_files', async () => {
@@ -316,9 +408,9 @@ describe('upsertFile()', () => {
 
 describe('touchFile()', () => {
   it('delegates to upsertFile', async () => {
-    const tree = { 'src': ['app.ts'] };
+    const tree = { 'src': [{name: 'app.ts', size: 1000, tokens: 250}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
     const idx = ProjectIndex.getInstance();
     await idx.load();
 
@@ -328,6 +420,20 @@ describe('touchFile()', () => {
     expect(idx.getFiles().map((f) => f.p)).toContain('src/new.ts');
     expect(idx.getStats()!.total_files).toBe(before + 1);
   });
+
+  it('preserves existing size when touching an existing file', async () => {
+    const tree = { 'src': [{name: 'app.ts', size: 2048, tokens: 512}] };
+    vi.mocked(fsSync.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
+    const idx = ProjectIndex.getInstance();
+    await idx.load();
+
+    idx.touchFile('src/app.ts');
+
+    const entry = idx.getFiles().find((f) => f.p === 'src/app.ts')!;
+    expect(entry.size).toBe(2048);
+    expect(entry.tokens).toBe(512);
+  });
 });
 
 // ──────────────────────────────────────────────
@@ -336,11 +442,14 @@ describe('touchFile()', () => {
 
 describe('removeFile()', () => {
   async function loadedIndex() {
-    const tree = { 'src': ['a.ts', 'b.ts'], '': ['root.ts'] };
+    const tree = {
+      'src': [{name: 'a.ts', size: 0, tokens: 0}, {name: 'b.ts', size: 0, tokens: 0}],
+      '': [{name: 'root.ts', size: 0, tokens: 0}],
+    };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
     // Build correct total_files count
     const raw = JSON.stringify({
-      version: 2,
+      version: 3,
       created_at: '2024-01-01T00:00:00.000Z',
       updated_at: '2024-01-01T00:00:00.000Z',
       project_root: '/test/project',
@@ -390,12 +499,12 @@ describe('removeFile()', () => {
 describe('getFilesByPrefix()', () => {
   beforeEach(async () => {
     const tree = {
-      'src/components': ['Button.tsx', 'Input.tsx'],
-      'src/utils': ['helper.ts'],
-      'test': ['app.test.ts'],
+      'src/components': [{name: 'Button.tsx', size: 0, tokens: 0}, {name: 'Input.tsx', size: 0, tokens: 0}],
+      'src/utils': [{name: 'helper.ts', size: 0, tokens: 0}],
+      'test': [{name: 'app.test.ts', size: 0, tokens: 0}],
     };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
     const idx = ProjectIndex.getInstance();
     await idx.load();
   });
@@ -431,11 +540,11 @@ describe('getFilesByPrefix()', () => {
 describe('getFilesByType()', () => {
   beforeEach(async () => {
     const tree = {
-      'src': ['index.ts', 'app.tsx', 'utils.js'],
-      '': ['README.md', 'config.json'],
+      'src': [{name: 'index.ts', size: 0, tokens: 0}, {name: 'app.tsx', size: 0, tokens: 0}, {name: 'utils.js', size: 0, tokens: 0}],
+      '': [{name: 'README.md', size: 0, tokens: 0}, {name: 'config.json', size: 0, tokens: 0}],
     };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
     const idx = ProjectIndex.getInstance();
     await idx.load();
   });
@@ -480,11 +589,11 @@ describe('getFilesByType()', () => {
 describe('getTypeCounts()', () => {
   it('returns correct counts by derived type', async () => {
     const tree = {
-      'src': ['a.ts', 'b.tsx', 'c.js'],
-      '': ['README.md'],
+      'src': [{name: 'a.ts', size: 0, tokens: 0}, {name: 'b.tsx', size: 0, tokens: 0}, {name: 'c.js', size: 0, tokens: 0}],
+      '': [{name: 'README.md', size: 0, tokens: 0}],
     };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
     const idx = ProjectIndex.getInstance();
     await idx.load();
 
@@ -504,20 +613,20 @@ describe('getTypeCounts()', () => {
 });
 
 // ──────────────────────────────────────────────
-// flush() — v2 tree format output + round-trip
+// flush() — v3 tree format output (current) + round-trip
 // ──────────────────────────────────────────────
 
 describe('flush() via forceFlush()', () => {
-  it('produces correct v2 tree format on disk', async () => {
-    const tree = { 'src': ['a.ts'], '': ['root.md'] };
+  it('produces correct v3 tree format on disk', async () => {
+    const tree = { 'src': [{name: 'a.ts', size: 1000, tokens: 250}], '': [{name: 'root.md', size: 200, tokens: 50}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
 
     // Trigger dirty
-    idx.upsertFile('src/b.ts');
+    idx.upsertFile('src/b.ts', 800);
 
     let writtenContent = '';
     vi.mocked(fs.writeFile).mockImplementation(async (_path: any, content: any) => {
@@ -533,19 +642,23 @@ describe('flush() via forceFlush()', () => {
     expect(writtenContent.endsWith('\n')).toBe(true);
 
     const parsed = JSON.parse(writtenContent);
-    expect(parsed.version).toBe(2);
+    expect(parsed.version).toBe(3);
     expect(typeof parsed.tree).toBe('object');
+    // Entries should be objects with name/size/tokens
+    const srcEntries = parsed.tree['src'] as Array<{name: string; size: number; tokens: number}>;
+    expect(srcEntries.find((e) => e.name === 'b.ts')!.size).toBe(800);
+    expect(srcEntries.find((e) => e.name === 'b.ts')!.tokens).toBe(200);
   });
 
   it('produces round-trip correct tree after upsert', async () => {
-    const tree = { 'src': ['index.ts'] };
+    const tree = { 'src': [{name: 'index.ts', size: 1240, tokens: 310}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
-    idx.upsertFile('src/new.ts');
-    idx.upsertFile('lib/util.ts');
+    idx.upsertFile('src/new.ts', 400);
+    idx.upsertFile('lib/util.ts', 600);
 
     let writtenContent = '';
     vi.mocked(fs.writeFile).mockImplementation(async (_path: any, content: any) => {
@@ -555,16 +668,18 @@ describe('flush() via forceFlush()', () => {
     await idx.forceFlush();
 
     const parsed = JSON.parse(writtenContent);
-    // src dir should contain both files sorted
-    expect(parsed.tree['src']).toEqual(['index.ts', 'new.ts']);
+    // src dir should contain both files sorted by name
+    const srcEntries = parsed.tree['src'] as Array<{name: string}>;
+    expect(srcEntries.map((e) => e.name)).toEqual(['index.ts', 'new.ts']);
     // lib dir should have its file
-    expect(parsed.tree['lib']).toEqual(['util.ts']);
+    const libEntries = parsed.tree['lib'] as Array<{name: string}>;
+    expect(libEntries.map((e) => e.name)).toEqual(['util.ts']);
   });
 
   it('does not flush when not dirty', async () => {
-    const tree = { 'src': ['a.ts'] };
+    const tree = { 'src': [{name: 'a.ts', size: 0, tokens: 0}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
@@ -576,9 +691,9 @@ describe('flush() via forceFlush()', () => {
   });
 
   it('places root-level files under empty string key', async () => {
-    const tree = { '': ['root.ts'] };
+    const tree = { '': [{name: 'root.ts', size: 0, tokens: 0}] };
     vi.mocked(fsSync.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readFile).mockResolvedValue(makeV2Index(tree) as any);
+    vi.mocked(fs.readFile).mockResolvedValue(makeV3Index(tree) as any);
 
     const idx = ProjectIndex.getInstance();
     await idx.load();
@@ -592,9 +707,10 @@ describe('flush() via forceFlush()', () => {
     await idx.forceFlush();
 
     const parsed = JSON.parse(writtenContent);
-    expect(Array.isArray(parsed.tree[''])).toBe(true);
-    expect(parsed.tree['']).toContain('root.ts');
-    expect(parsed.tree['']).toContain('another-root.md');
+    const rootEntries = parsed.tree[''] as Array<{name: string}>;
+    expect(Array.isArray(rootEntries)).toBe(true);
+    expect(rootEntries.map((e) => e.name)).toContain('root.ts');
+    expect(rootEntries.map((e) => e.name)).toContain('another-root.md');
   });
 });
 
