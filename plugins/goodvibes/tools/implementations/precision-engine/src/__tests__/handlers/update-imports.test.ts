@@ -23,18 +23,21 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 describe('update_imports via file_ops move', () => {
-  // Create test files inside cwd so getProjectRoot / fast-glob can find them
-  const testRoot = path.join(process.cwd(), 'src/__tests__/tmp-update-imports');
+  // testSubdir is set inside beforeEach AFTER setup.ts has done process.chdir(testDir).
+  // process.cwd() at that point is the vitest temp dir (e.g., /tmp/precision-engine-test-XXX).
+  // getProjectRoot() falls back to process.cwd() when outside a git repo, so fast-glob
+  // scans the same temp dir — and our test files are found.
   let testSubdir: string;
 
   beforeEach(async () => {
-    // Unique subdirectory per test to avoid collisions
-    testSubdir = path.join(testRoot, `run-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    // Create a subdirectory inside the vitest temp dir (process.cwd() after chdir)
+    testSubdir = path.join(process.cwd(), `update-imports-${Date.now()}`);
     await fs.mkdir(testSubdir, { recursive: true });
   });
 
   afterEach(async () => {
-    await fs.rm(testRoot, { recursive: true, force: true });
+    // Cleanup is handled by setup.ts which removes the entire temp dir
+    // No additional cleanup needed here
   });
 
   // -------------------------------------------------------------------------

@@ -13,6 +13,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../logging.js';
+import { mergeDefaults } from '../utils/index.js';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Public interfaces
