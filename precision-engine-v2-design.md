@@ -209,13 +209,16 @@ Enable the precision engine to spawn headless AI sessions across multiple provid
 | Subagent | background: false | Blocks until result returns |
 | Explicit override | As specified | Respects the flag regardless of context |
 
-### No Timeout
+### Timeout
 
-AI calls are non-deterministic — no fixed timeout. The agent runs until:
+AI calls are non-deterministic. A 30-minute default timeout is applied to prevent runaway agents (configurable via `timeout_ms` parameter). Agent execution halts on:
 - Task completes (agent returns result)
+- Timeout reached (30 minutes default, or `timeout_ms` if specified)
 - Budget limit reached (when budget engine is active)
 - Explicit cancellation (via precision_exec background management)
 - Provider-side timeout (provider's own limits)
+
+Previously — no fixed timeout was enforced.
 
 ### Provider CLI Mappings
 
@@ -298,7 +301,7 @@ Absorb batch_state functionality and become the central hub for configuration, s
 | `reload` | Reload config from disk (existing) | — |
 | `state` | Session state operations (NEW) | `operation=get, keys=["session.tokens_used"]` |
 | `telemetry` | Query telemetry data (NEW) | `operation=summary` or `operation=query, filter={tool: "read"}` |
-| `hooks` | Manage precision hooks (NEW) | `operation=list` or `operation=enable, hook=after_write.format` |
+| `hooks` | Manage precision hooks (NEW) | `operation=list` or `operation=enable, event=PostPrecisionTool, hook=auto_format` |
 
 ### State Action Schema
 
@@ -605,7 +608,7 @@ SessionStart hook fires
        ├── Load config from .goodvibes/goodvibes.json
        ├── Restore state from config state key
        ├── Generate session ID (8-char hex)
-       ├── Initialize telemetry (open calls.jsonl for append)
+       ├── Initialize telemetry (open SQLite database at .goodvibes/telemetry/telemetry.db)
        ├── Register precision hooks (built-in + configured)
        └── Set runtime_ready = true
 ```
@@ -654,11 +657,11 @@ Tool call arrives
   ↓
 Generate precision_id → runtime.generateId("read")
   ↓
-Fire before hooks → runtime.hooks.fire("before_read", context)
+PLACEHOLDER_BEFORE → runtime.hooks.fire("PrePrecisionTool", context)
   ↓ (abort if any hook returns abort: true)
 Execute tool handler (existing precision_* logic)
   ↓
-Fire after hooks → runtime.hooks.fire("after_read", context)
+PLACEHOLDER_AFTER → runtime.hooks.fire("PostPrecisionTool", context)
   ↓
 Record telemetry → runtime.telemetry.record(callData)
   ↓
@@ -978,3 +981,4 @@ Compare: batch engine was ~5000+ lines. We're replacing it with ~2000-2500 lines
 3. **precision_apply** — still a candidate for Phase 5 (unified write+edit+exec output call). Design is ready in batch-and-precision-notes.md. Implementation deferred until runtime + hooks are in place to properly support it.
 4. **Budget engine** — future work. precision_agent max_cost/max_tokens are optional placeholders. Telemetry token counts feed into it when ready.
 5. **Mode enforcement** — precision_config mode action. Lower priority. Modes currently work via prompt; config enforcement adds guarantees.
+6. **ModeManager** — being implemented in v2. Tracks current mode (normal/creative/performance), enforces tool allow/deny lists per mode, integrates with PrecisionRuntime. See precision_config mode action in Section 5.
