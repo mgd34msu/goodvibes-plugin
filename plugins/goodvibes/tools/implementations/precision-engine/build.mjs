@@ -48,6 +48,16 @@ async function build() {
       console.warn('Warning: Could not copy tree-sitter.wasm (core):', e.message);
     }
     
+    // Copy sql.js WASM to dist so it can be loaded at runtime
+    const sqlJsWasmSrc = join(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm');
+    const sqlJsWasmDest = join(__dirname, 'dist/sql-wasm.wasm');
+    try {
+      await copyFile(sqlJsWasmSrc, sqlJsWasmDest);
+      console.log('Copied: sql-wasm.wasm');
+    } catch (e) {
+      console.warn('Warning: Could not copy sql-wasm.wasm:', e.message);
+    }
+
     console.log('Build completed: dist/index.cjs');
   } catch (error) {
     console.error('Build failed:', error);

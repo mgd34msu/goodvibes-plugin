@@ -1,15 +1,20 @@
 /**
- * Telemetry - Session-scoped singleton for call tracking via SQLite.
+ * Telemetry - Session-scoped singleton for call tracking via SQLite (sql.js / WASM).
  *
  * Provides zero-LLM-token telemetry: precision_ids are generated server-side,
- * calls are recorded to SQLite synchronously, and only the precision_id is
- * returned to the LLM (~1 token). The LLM never sees telemetry data unless
- * it explicitly queries via precision_config action='telemetry'.
+ * calls are recorded to SQLite synchronously (after async WASM init), and only
+ * the precision_id is returned to the LLM (~1 token). The LLM never sees
+ * telemetry data unless it explicitly queries via precision_config action='telemetry'.
+ *
+ * Lifecycle:
+ *   1. Call `await Telemetry.initialize()` once at server startup.
+ *   2. All subsequent calls to `Telemetry.getInstance()` are synchronous.
  */
 
-import Database from 'better-sqlite3';
+import initSqlJs from 'sql.js';
+import type { Database as SqlJsDatabase, SqlJsStatic } from 'sql.js';
 import { randomBytes } from 'crypto';
-import { mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,6 +117,13 @@ const CREATE_IDX_SESSION = `CREATE INDEX IF NOT EXISTS idx_calls_session ON call
 const CREATE_IDX_TOOL = `CREATE INDEX IF NOT EXISTS idx_calls_tool ON calls(tool);`;
 const CREATE_IDX_STATUS = `CREATE INDEX IF NOT EXISTS idx_calls_status ON calls(status);`;
 
+// Column order must match SELECT order in all queries
+const COLUMNS = [
+  'id', 'session_id', 'tool', 'status',
+  'tokens_in', 'tokens_out', 'cache_hit', 'cache_bytes_saved',
+  'duration_ms', 'error', 'metadata', 'created_at',
+] as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Singleton
 // ─────────────────────────────────────────────────────────────────────────────
@@ -120,58 +132,47 @@ export class Telemetry {
   private static instance: Telemetry | null = null;
   private static initializedDbPath: string | null = null;
 
-  private readonly db: Database.Database;
+  private readonly db: SqlJsDatabase;
   private readonly sessionId: string;
+  private readonly dbPath: string;
 
-  // Prepared statements (compiled once, reused for performance)
-  private readonly stmtInsert: Database.Statement;
-  private readonly stmtQueryAll: Database.Statement;
-  private readonly stmtQueryBySession: Database.Statement;
+  /** Timer handle for debounced persistence (null when idle) */
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  /** True when in-memory DB has unpersisted writes */
+  private dirty = false;
 
-  private constructor(dbPath: string) {
+  private constructor(SQL: SqlJsStatic, dbPath: string) {
     // Generate a new session ID (8-char hex = 4 random bytes)
     this.sessionId = randomBytes(4).toString('hex');
+    this.dbPath = dbPath;
 
-    // Ensure the directory exists (mkdirSync is a no-op if dir already exists)
+    // Ensure the directory exists
     const dbDir = path.dirname(dbPath);
     mkdirSync(dbDir, { recursive: true });
 
-    // Open (or create) the SQLite database
-    this.db = new Database(dbPath);
+    // Load from file if it exists, otherwise create in-memory.
+    // Wrap the load in a try/catch so a corrupt file falls back to a fresh DB
+    // rather than crashing the MCP server.
+    if (existsSync(dbPath)) {
+      try {
+        const fileBuffer = readFileSync(dbPath);
+        this.db = new SQL.Database(fileBuffer);
+      } catch (err) {
+        console.warn('[Telemetry] Corrupt DB file, starting fresh:', String(err));
+        this.db = new SQL.Database();
+      }
+    } else {
+      this.db = new SQL.Database();
+    }
 
-    // WAL mode for better concurrent write performance
-    this.db.pragma('journal_mode = WAL');
+    // Create schema (idempotent — IF NOT EXISTS)
+    this.db.run(CREATE_TABLE_SQL);
+    this.db.run(CREATE_IDX_SESSION);
+    this.db.run(CREATE_IDX_TOOL);
+    this.db.run(CREATE_IDX_STATUS);
 
-    // Create schema
-    this.db.exec(CREATE_TABLE_SQL);
-    this.db.exec(CREATE_IDX_SESSION);
-    this.db.exec(CREATE_IDX_TOOL);
-    this.db.exec(CREATE_IDX_STATUS);
-
-    // Prepare reusable statements
-    this.stmtInsert = this.db.prepare(`
-      INSERT OR IGNORE INTO calls
-        (id, session_id, tool, status, tokens_in, tokens_out,
-         cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at)
-      VALUES
-        (@id, @session_id, @tool, @status, @tokens_in, @tokens_out,
-         @cache_hit, @cache_bytes_saved, @duration_ms, @error, @metadata, @created_at)
-    `);
-
-    this.stmtQueryAll = this.db.prepare(`
-      SELECT id, session_id, tool, status, tokens_in, tokens_out,
-             cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at
-      FROM calls
-      ORDER BY created_at ASC
-    `);
-
-    this.stmtQueryBySession = this.db.prepare(`
-      SELECT id, session_id, tool, status, tokens_in, tokens_out,
-             cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at
-      FROM calls
-      WHERE session_id = @session_id
-      ORDER BY created_at ASC
-    `);
+    // Persist initial state (creates the file if it did not exist)
+    this.persist();
   }
 
   /**
@@ -182,15 +183,53 @@ export class Telemetry {
   }
 
   /**
-   * Get (or create) the singleton Telemetry instance.
-   * Uses the default database path unless dbPath is provided (for testing).
+   * Initialize the Telemetry singleton.
+   *
+   * Loads the sql.js WASM module (one async operation), then opens or creates
+   * the SQLite database synchronously. Safe to call multiple times — returns
+   * early if already initialized.
+   *
+   * Must be called once before any call to getInstance().
+   */
+  public static async initialize(dbPath?: string): Promise<void> {
+    if (Telemetry.instance) {
+      // Already initialized — ignore (handles repeated calls gracefully)
+      return;
+    }
+
+    const resolvedPath = dbPath ?? Telemetry.defaultDbPath();
+    Telemetry.initializedDbPath = resolvedPath;
+
+    // Load the WASM module — this is the only async step.
+    // In the CJS bundle (dist/index.cjs), sql-wasm.wasm is copied next to the bundle
+    // by build.mjs. Use locateFile to point sql.js there so it does not search cwd.
+    // In the test environment (source files via Vitest), the WASM is resolved from
+    // node_modules by sql.js defaults — so only activate locateFile when the file
+    // actually exists beside __dirname (i.e. in the bundle).
+    const wasmBesideBundle = path.join(__dirname, 'sql-wasm.wasm');
+    const sqlConfig = existsSync(wasmBesideBundle)
+      ? { locateFile: (file: string) => path.join(__dirname, file) }
+      : {};
+    const SQL = await initSqlJs(sqlConfig);
+
+    Telemetry.instance = new Telemetry(SQL, resolvedPath);
+  }
+
+  /**
+   * Get the singleton Telemetry instance.
+   *
+   * Throws if initialize() has not been called. In production, initialize()
+   * is called during PrecisionRuntime.initialize(). In tests, call
+   * await Telemetry.initialize(dbPath) in beforeEach.
    */
   public static getInstance(dbPath?: string): Telemetry {
     if (!Telemetry.instance) {
-      const resolvedPath = dbPath ?? Telemetry.defaultDbPath();
-      Telemetry.initializedDbPath = resolvedPath;
-      Telemetry.instance = new Telemetry(resolvedPath);
-    } else if (dbPath !== undefined && dbPath !== Telemetry.initializedDbPath) {
+      throw new Error(
+        '[Telemetry] getInstance() called before initialize(). ' +
+        'Call await Telemetry.initialize() first.',
+      );
+    }
+    if (dbPath !== undefined && dbPath !== Telemetry.initializedDbPath) {
       console.warn(
         `[Telemetry] getInstance() called with dbPath "${dbPath}" but instance already initialized at "${Telemetry.initializedDbPath}". Using existing instance.`,
       );
@@ -199,13 +238,13 @@ export class Telemetry {
   }
 
   /**
-   * Destroy the singleton instance and close the database connection.
+   * Destroy the singleton instance, persist, and close the database.
    * Intended for use in tests and graceful shutdown.
    */
   public static resetInstance(): void {
     if (Telemetry.instance) {
       try {
-        Telemetry.instance.db.close();
+        Telemetry.instance.close();
       } catch {
         // Ignore close errors during reset
       }
@@ -244,28 +283,31 @@ export class Telemetry {
   public record(
     entry: Omit<TelemetryRecord, 'session_id' | 'created_at'>,
   ): void {
-    const row = {
-      id: entry.id,
-      session_id: this.sessionId,
-      tool: entry.tool,
-      status: entry.status,
-      tokens_in: entry.tokens_in ?? null,
-      tokens_out: entry.tokens_out ?? null,
-      // SQLite stores booleans as 0/1
-      cache_hit: entry.cache_hit === undefined ? null : entry.cache_hit ? 1 : 0,
-      cache_bytes_saved: entry.cache_bytes_saved ?? null,
-      duration_ms: entry.duration_ms ?? null,
-      error: entry.error ?? null,
-      metadata: entry.metadata !== undefined ? JSON.stringify(entry.metadata) : null,
-      created_at: new Date().toISOString(),
-    };
-
     try {
-      this.stmtInsert.run(row);
+      this.db.run(
+        `INSERT OR IGNORE INTO calls
+           (id, session_id, tool, status, tokens_in, tokens_out,
+            cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          entry.id,
+          this.sessionId,
+          entry.tool,
+          entry.status,
+          entry.tokens_in ?? null,
+          entry.tokens_out ?? null,
+          // SQLite stores booleans as 0/1
+          entry.cache_hit === undefined ? null : entry.cache_hit ? 1 : 0,
+          entry.cache_bytes_saved ?? null,
+          entry.duration_ms ?? null,
+          entry.error ?? null,
+          entry.metadata !== undefined ? JSON.stringify(entry.metadata) : null,
+          new Date().toISOString(),
+        ],
+      );
+      this.schedulePersist();
     } catch (err) {
       // Telemetry must never crash the caller — swallow and log.
-      // Using console.error directly to avoid a circular dependency with the
-      // project logger (which may itself use telemetry in the future).
       console.error('[Telemetry] Failed to record entry:', err);
     }
   }
@@ -283,58 +325,51 @@ export class Telemetry {
    * Returns records in ascending chronological order.
    */
   public query(filter?: TelemetryQueryFilter): TelemetryRecord[] {
-    // Fast path: no filter — use the pre-compiled statement
+    const selectCols = `SELECT id, session_id, tool, status, tokens_in, tokens_out,
+             cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at
+      FROM calls`;
+
+    // Fast path: no filter
     if (!filter || (!filter.tool && !filter.status && !filter.session_id && !filter.since && !filter.limit)) {
-      const rows = this.stmtQueryAll.all() as Array<Record<string, unknown>>;
-      return rows.map(Telemetry.rowToRecord);
+      const results = this.db.exec(`${selectCols} ORDER BY created_at ASC`);
+      return this.resultsToRecords(results);
     }
 
-    // Fast path: session_id-only filter (used by getSummary) — use pre-compiled statement
-    if (filter.session_id && !filter.tool && !filter.status && !filter.since && !filter.limit) {
-      const rows = this.stmtQueryBySession.all({ session_id: filter.session_id }) as Array<Record<string, unknown>>;
-      return rows.map(Telemetry.rowToRecord);
-    }
-
-    // General path: build dynamic SQL with bound parameters (no string interpolation for values)
+    // Build dynamic SQL with positional ? params
     const conditions: string[] = [];
-    const params: Record<string, unknown> = {};
+    const params: (string | number | null)[] = [];
 
     if (filter.tool) {
-      conditions.push('tool = @tool');
-      params['tool'] = filter.tool;
+      conditions.push('tool = ?');
+      params.push(filter.tool);
     }
     if (filter.status) {
-      conditions.push('status = @status');
-      params['status'] = filter.status;
+      conditions.push('status = ?');
+      params.push(filter.status);
     }
     if (filter.session_id) {
-      conditions.push('session_id = @session_id');
-      params['session_id'] = filter.session_id;
+      conditions.push('session_id = ?');
+      params.push(filter.session_id);
     }
     if (filter.since) {
-      conditions.push('created_at >= @since');
-      params['since'] = filter.since;
+      conditions.push('created_at >= ?');
+      params.push(filter.since);
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const hasLimit = filter.limit !== undefined && filter.limit !== null;
 
-    const sql = `
-      SELECT id, session_id, tool, status, tokens_in, tokens_out,
-             cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at
-      FROM calls
+    const sql = `${selectCols}
       ${where}
       ORDER BY created_at ASC
-      ${hasLimit ? 'LIMIT @_limit' : ''}
-    `;
+      ${hasLimit ? 'LIMIT ?' : ''}`;
 
     if (hasLimit) {
-      params['_limit'] = Math.max(1, Math.floor(filter.limit!));
+      params.push(Math.max(1, Math.floor(filter.limit!)));
     }
 
-    const stmt = this.db.prepare(sql);
-    const rows = stmt.all(params) as Array<Record<string, unknown>>;
-    return rows.map(Telemetry.rowToRecord);
+    const results = this.db.exec(sql, params);
+    return this.resultsToRecords(results);
   }
 
   /**
@@ -401,45 +436,116 @@ export class Telemetry {
     };
   }
 
+  /**
+   * Persist the in-memory database to disk.
+   * Called after every write operation.
+   */
+  public persist(): void {
+    try {
+      const data = this.db.export();
+      // Zero-copy: reuse the underlying ArrayBuffer instead of copying
+      const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+      writeFileSync(this.dbPath, buf);
+    } catch (err) {
+      console.error('[Telemetry] Failed to persist database:', err);
+    }
+  }
+
+  /**
+   * Schedule a debounced persist — at most once every 5 seconds.
+   * Avoids blocking record() with a full db.export() + writeFileSync on each call.
+   */
+  private schedulePersist(): void {
+    this.dirty = true;
+    if (!this.persistTimer) {
+      this.persistTimer = setTimeout(() => {
+        this.persistTimer = null;
+        if (this.dirty) {
+          this.persist();
+          this.dirty = false;
+        }
+      }, 5000);
+    }
+  }
+
+  /**
+   * Close the database (persist first, then close).
+   */
+  public close(): void {
+    // Cancel any pending debounced persist and flush immediately
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    if (this.dirty) {
+      this.persist();
+      this.dirty = false;
+    } else {
+      // Always persist on close to ensure the latest state is on disk
+      this.persist();
+    }
+    try {
+      this.db.close();
+    } catch {
+      // Ignore close errors
+    }
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Internal helpers
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * Convert a raw SQLite row to a typed TelemetryRecord.
+   * Convert sql.js exec() results (array of { columns, values }) to TelemetryRecord[].
+   * sql.js returns rows as arrays, not objects.
    */
-  private static rowToRecord(row: Record<string, unknown>): TelemetryRecord {
+  private resultsToRecords(
+    results: ReturnType<SqlJsDatabase['exec']>,
+  ): TelemetryRecord[] {
+    if (!results || results.length === 0) return [];
+    const { values } = results[0];
+    return values.map((row) => Telemetry.rowArrayToRecord(row as (string | number | null)[]));
+  }
+
+  /**
+   * Convert a raw sql.js row array to a typed TelemetryRecord.
+   * Column order must match COLUMNS constant and SELECT order.
+   */
+  private static rowArrayToRecord(row: (string | number | null)[]): TelemetryRecord {
+    // Indices match COLUMNS: id(0), session_id(1), tool(2), status(3),
+    // tokens_in(4), tokens_out(5), cache_hit(6), cache_bytes_saved(7),
+    // duration_ms(8), error(9), metadata(10), created_at(11)
     const rec: TelemetryRecord = {
-      id: row['id'] as string,
-      session_id: row['session_id'] as string,
-      tool: row['tool'] as string,
-      status: row['status'] as 'success' | 'failed' | 'partial',
-      created_at: row['created_at'] as string,
+      id: row[0] as string,
+      session_id: row[1] as string,
+      tool: row[2] as string,
+      status: row[3] as 'success' | 'failed' | 'partial',
+      created_at: row[11] as string,
     };
 
-    if (row['tokens_in'] !== null && row['tokens_in'] !== undefined) {
-      rec.tokens_in = row['tokens_in'] as number;
+    if (row[4] !== null && row[4] !== undefined) {
+      rec.tokens_in = row[4] as number;
     }
-    if (row['tokens_out'] !== null && row['tokens_out'] !== undefined) {
-      rec.tokens_out = row['tokens_out'] as number;
+    if (row[5] !== null && row[5] !== undefined) {
+      rec.tokens_out = row[5] as number;
     }
-    if (row['cache_hit'] !== null && row['cache_hit'] !== undefined) {
-      rec.cache_hit = (row['cache_hit'] as number) !== 0;
+    if (row[6] !== null && row[6] !== undefined) {
+      rec.cache_hit = (row[6] as number) !== 0;
     }
-    if (row['cache_bytes_saved'] !== null && row['cache_bytes_saved'] !== undefined) {
-      rec.cache_bytes_saved = row['cache_bytes_saved'] as number;
+    if (row[7] !== null && row[7] !== undefined) {
+      rec.cache_bytes_saved = row[7] as number;
     }
-    if (row['duration_ms'] !== null && row['duration_ms'] !== undefined) {
-      rec.duration_ms = row['duration_ms'] as number;
+    if (row[8] !== null && row[8] !== undefined) {
+      rec.duration_ms = row[8] as number;
     }
-    if (row['error'] !== null && row['error'] !== undefined) {
-      rec.error = row['error'] as string;
+    if (row[9] !== null && row[9] !== undefined) {
+      rec.error = row[9] as string;
     }
-    if (row['metadata'] !== null && row['metadata'] !== undefined) {
+    if (row[10] !== null && row[10] !== undefined) {
       try {
-        rec.metadata = JSON.parse(row['metadata'] as string);
+        rec.metadata = JSON.parse(row[10] as string);
       } catch {
-        rec.metadata = { raw: row['metadata'] };
+        rec.metadata = { raw: row[10] };
       }
     }
 
@@ -449,7 +555,7 @@ export class Telemetry {
 
 /**
  * Convenience getter for the Telemetry singleton.
- * Returns the existing instance (or creates one with the default path).
+ * Returns the existing instance (throws if not initialized — call initialize() first).
  * Matches the pattern of other state modules that export singleton getters.
  */
 export const getTelemetry = () => Telemetry.getInstance();

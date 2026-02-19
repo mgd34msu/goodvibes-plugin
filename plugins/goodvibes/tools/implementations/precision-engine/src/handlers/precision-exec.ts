@@ -1743,7 +1743,7 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
         try {
           const bgResult = processManager.spawn(command, args, {
             cwd,
-            env: { ...globalEnv, ...cmd.env },
+            env: { ...process.env, ...globalEnv, ...cmd.env },
           });
           
           // Record in command history with background: true

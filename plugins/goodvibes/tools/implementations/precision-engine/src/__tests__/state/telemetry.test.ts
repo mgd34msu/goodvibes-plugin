@@ -2,17 +2,15 @@
  * Tests for Telemetry singleton — precision_id generation, SQLite persistence,
  * getSummary aggregation, query filters, and resetInstance cleanup.
  *
- * Uses a real SQLite database in a temporary directory (no mocks for DB layer)
- * so that we validate actual SQL behaviour. Only the filesystem mkdirSync and
- * existsSync calls are left un-mocked because better-sqlite3 handles its own
- * file creation.
+ * Uses a real sql.js in-memory/file database in a temporary directory (no mocks
+ * for DB layer) so that we validate actual SQL behaviour.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import initSqlJs from 'sql.js';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import Database from 'better-sqlite3';
 import { Telemetry } from '../../state/telemetry.js';
 import type { TelemetryRecord } from '../../state/telemetry.js';
 
@@ -54,9 +52,10 @@ function recordCall(
 // Setup / teardown
 // ───────────────────────────────────────────────────────────────────────────
 
-beforeEach(() => {
+beforeEach(async () => {
   Telemetry.resetInstance();
   dbPath = makeTempDb();
+  await Telemetry.initialize(dbPath);
 });
 
 afterEach(() => {
@@ -70,14 +69,14 @@ afterEach(() => {
 
 describe('generateId()', () => {
   it('returns id in {tool}_{session}_{unique} format', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = tel.generateId('precision_read');
     // Format: read_{8hex}_{8hex}
     expect(id).toMatch(/^read_[0-9a-f]{8}_[0-9a-f]{8}$/);
   });
 
   it('uses mapped short name for known tools', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const cases: Array<[string, string]> = [
       ['precision_read', 'read'],
       ['precision_write', 'write'],
@@ -100,21 +99,21 @@ describe('generateId()', () => {
   });
 
   it('falls back gracefully for unknown tool names', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = tel.generateId('some_unknown_tool');
     // Should be sanitized to at most 12 chars of the tool name, plus session + unique
     expect(id).toMatch(/^[a-z0-9_]{1,12}_[0-9a-f]{8}_[0-9a-f]{8}$/);
   });
 
   it('generates unique IDs on every call', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const ids = new Set(Array.from({ length: 100 }, () => tel.generateId('precision_read')));
     // All 100 IDs should be unique (collision probability ~2^-64)
     expect(ids.size).toBe(100);
   });
 
   it('embeds the session ID in every generated ID', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const sessionId = tel.getSessionId();
     const id = tel.generateId('precision_write');
     expect(id).toContain(sessionId);
@@ -127,23 +126,24 @@ describe('generateId()', () => {
 
 describe('getSessionId()', () => {
   it('returns an 8-character hex string', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = tel.getSessionId();
     expect(id).toMatch(/^[0-9a-f]{8}$/);
   });
 
   it('returns the same session ID on repeated calls', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     expect(tel.getSessionId()).toBe(tel.getSessionId());
   });
 
-  it('generates a different session ID after resetInstance', () => {
-    const tel1 = Telemetry.getInstance(dbPath);
+  it('generates a different session ID after resetInstance', async () => {
+    const tel1 = Telemetry.getInstance();
     const id1 = tel1.getSessionId();
 
     Telemetry.resetInstance();
     const dbPath2 = path.join(tmpDir, 'telemetry2.db');
-    const tel2 = Telemetry.getInstance(dbPath2);
+    await Telemetry.initialize(dbPath2);
+    const tel2 = Telemetry.getInstance();
     const id2 = tel2.getSessionId();
 
     // Statistically impossible to collide (2^32 space)
@@ -157,34 +157,31 @@ describe('getSessionId()', () => {
 
 describe('database creation', () => {
   it('creates the database file at the given path', () => {
-    expect(fs.existsSync(dbPath)).toBe(false);
-    Telemetry.getInstance(dbPath);
+    // File is created by initialize() in beforeEach
     expect(fs.existsSync(dbPath)).toBe(true);
   });
 
-  it('creates parent directories if they do not exist', () => {
+  it('creates parent directories if they do not exist', async () => {
+    Telemetry.resetInstance();
     const nestedPath = path.join(tmpDir, 'a', 'b', 'c', 'telemetry.db');
-    Telemetry.getInstance(nestedPath);
+    await Telemetry.initialize(nestedPath);
     expect(fs.existsSync(nestedPath)).toBe(true);
   });
 
   it('creates the calls table on first open', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     // Recording should not throw if the table was created correctly
     expect(() => recordCall(tel, 'precision_read')).not.toThrow();
   });
 
-  it('enables WAL journal mode', () => {
-    // We verify WAL is set by checking the -wal file exists after a write
-    const tel = Telemetry.getInstance(dbPath);
+  it('persists data to the database file', () => {
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read');
-    // WAL mode creates a <db>-wal file during active transactions
-    const walPath = dbPath + '-wal';
-    // The WAL file may or may not exist depending on checkpoint timing,
-    // but we can verify no error was thrown and the DB is readable.
-    expect(tel.query()).toHaveLength(1);
-    // Additionally, verify that the WAL pragma was applied by checking the database still works.
+    // After record(), persist() is called automatically — file should be non-empty
     expect(fs.existsSync(dbPath)).toBe(true);
+    expect(fs.statSync(dbPath).size).toBeGreaterThan(0);
+    // DB is readable
+    expect(tel.query()).toHaveLength(1);
   });
 });
 
@@ -194,7 +191,7 @@ describe('database creation', () => {
 
 describe('record() + query() round-trip', () => {
   it('persists a minimal record and retrieves it', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = recordCall(tel, 'precision_read');
 
     const records = tel.query();
@@ -207,7 +204,7 @@ describe('record() + query() round-trip', () => {
   });
 
   it('persists all optional fields correctly', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = tel.generateId('precision_grep');
     tel.record({
       id,
@@ -234,7 +231,7 @@ describe('record() + query() round-trip', () => {
   });
 
   it('persists cache_hit=false as false (not null)', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = tel.generateId('precision_read');
     tel.record({ id, tool: 'precision_read', status: 'success', cache_hit: false });
 
@@ -243,7 +240,7 @@ describe('record() + query() round-trip', () => {
   });
 
   it('persists error records correctly', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = tel.generateId('precision_write');
     tel.record({
       id,
@@ -258,7 +255,7 @@ describe('record() + query() round-trip', () => {
   });
 
   it('records do not conflict for concurrent insertions', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     // Insert 50 records in rapid succession
     for (let i = 0; i < 50; i++) {
       const id = tel.generateId('precision_read');
@@ -273,7 +270,7 @@ describe('record() + query() round-trip', () => {
   });
 
   it('query() with no filter returns all records', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read');
     recordCall(tel, 'precision_write');
     recordCall(tel, 'precision_edit');
@@ -282,7 +279,7 @@ describe('record() + query() round-trip', () => {
   });
 
   it('returns records in ascending chronological order', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read');
     recordCall(tel, 'precision_write');
     recordCall(tel, 'precision_edit');
@@ -294,7 +291,7 @@ describe('record() + query() round-trip', () => {
   });
 
   it('duplicate IDs are ignored (INSERT OR IGNORE)', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const id = tel.generateId('precision_read');
     tel.record({ id, tool: 'precision_read', status: 'success', tokens_in: 10 });
     // Try to insert same ID again — should be silently ignored
@@ -316,7 +313,7 @@ describe('query() filters', () => {
   let tel: Telemetry;
 
   beforeEach(() => {
-    tel = Telemetry.getInstance(dbPath);
+    tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read', 'success', { tokens_in: 100, duration_ms: 10 });
     recordCall(tel, 'precision_read', 'success', { tokens_in: 200, duration_ms: 20 });
     recordCall(tel, 'precision_write', 'failed', { error: 'disk full' });
@@ -383,7 +380,7 @@ describe('query() filters', () => {
 
 describe('getSummary()', () => {
   it('returns correct counts with no records', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const summary = tel.getSummary();
 
     expect(summary.total_calls).toBe(0);
@@ -395,13 +392,13 @@ describe('getSummary()', () => {
   });
 
   it('reports correct session_id in summary', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     const summary = tel.getSummary();
     expect(summary.session_id).toBe(tel.getSessionId());
   });
 
   it('aggregates calls by tool correctly', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read', 'success', { tokens_in: 100, tokens_out: 50, duration_ms: 10 });
     recordCall(tel, 'precision_read', 'success', { tokens_in: 200, tokens_out: 100, duration_ms: 30 });
     recordCall(tel, 'precision_write', 'success', { tokens_in: 50, tokens_out: 10, duration_ms: 5 });
@@ -423,7 +420,7 @@ describe('getSummary()', () => {
   });
 
   it('counts cache hits correctly', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read', 'success', { cache_hit: true });
     recordCall(tel, 'precision_read', 'success', { cache_hit: true });
     recordCall(tel, 'precision_read', 'success', { cache_hit: false });
@@ -436,7 +433,7 @@ describe('getSummary()', () => {
   });
 
   it('computes success_rate correctly', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read', 'success');
     recordCall(tel, 'precision_read', 'success');
     recordCall(tel, 'precision_read', 'success');
@@ -447,7 +444,7 @@ describe('getSummary()', () => {
   });
 
   it('accumulates total_duration_ms across all calls', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read', 'success', { duration_ms: 10 });
     recordCall(tel, 'precision_write', 'success', { duration_ms: 20 });
     recordCall(tel, 'precision_edit', 'success', { duration_ms: 30 });
@@ -456,46 +453,61 @@ describe('getSummary()', () => {
     expect(summary.total_duration_ms).toBe(60);
   });
 
-  it('only includes current session\'s records in summary', () => {
-    const tel = Telemetry.getInstance(dbPath);
+  it('only includes current session\'s records in summary', async () => {
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read', 'success');
 
-    // Directly insert a record with a foreign session_id using a second DB connection
-    const foreignDb = new Database(dbPath);
-    foreignDb
-      .prepare(
-        `INSERT OR IGNORE INTO calls
-          (id, session_id, tool, status, tokens_in, tokens_out,
-           cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at)
-         VALUES
-          (@id, @session_id, @tool, @status, @tokens_in, @tokens_out,
-           @cache_hit, @cache_bytes_saved, @duration_ms, @error, @metadata, @created_at)`,
-      )
-      .run({
-        id: 'read_deadbeef_cafebabe',
-        session_id: 'deadbeef',
-        tool: 'precision_read',
-        status: 'success',
-        tokens_in: null,
-        tokens_out: null,
-        cache_hit: null,
-        cache_bytes_saved: null,
-        duration_ms: null,
-        error: null,
-        metadata: null,
-        created_at: new Date().toISOString(),
-      });
+    // Persist current state so the foreign session record lands in the same file
+    tel.persist();
+
+    // Reset the Telemetry instance BEFORE writing foreign data to disk,
+    // so that resetInstance()'s close()+persist() does not overwrite our foreign data.
+    Telemetry.resetInstance();
+
+    // Insert a record with a foreign session_id using a separate sql.js connection
+    const SQL = await initSqlJs();
+    const fileBuffer = fs.readFileSync(dbPath);
+    const foreignDb = new SQL.Database(fileBuffer);
+    foreignDb.run(
+      `INSERT OR IGNORE INTO calls
+        (id, session_id, tool, status, tokens_in, tokens_out,
+         cache_hit, cache_bytes_saved, duration_ms, error, metadata, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'read_deadbeef_cafebabe',
+        'deadbeef',
+        'precision_read',
+        'success',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        new Date().toISOString(),
+      ],
+    );
+    // Write the 2-record db (original + foreign) to disk
+    const exportedData = foreignDb.export();
+    fs.writeFileSync(dbPath, Buffer.from(exportedData));
     foreignDb.close();
 
-    // getSummary() must only aggregate the current session's records
-    const summary = tel.getSummary();
-    expect(summary.total_calls).toBe(1);
+    // Reload the Telemetry instance from the updated 2-record file
+    await Telemetry.initialize(dbPath);
+    const tel2 = Telemetry.getInstance();
 
-    // Verify the foreign record is in the DB (query without filter)
-    const allRecords = tel.query();
+    // query() without session filter returns all records (including the foreign one)
+    // Note: new instance has fresh session_id, so the original record also appears as "foreign"
+    const allRecords = tel2.query();
     expect(allRecords).toHaveLength(2);
+
     const foreignRecord = allRecords.find((r) => r.session_id === 'deadbeef');
     expect(foreignRecord).toBeDefined();
+
+    // getSummary() must only aggregate the new session's records (0, since we reloaded)
+    const summary = tel2.getSummary();
+    expect(summary.total_calls).toBe(0);
   });
 });
 
@@ -532,37 +544,39 @@ describe('estimateTokens()', () => {
 
 describe('resetInstance()', () => {
   it('closes the database on reset', () => {
-    const tel = Telemetry.getInstance(dbPath);
+    const tel = Telemetry.getInstance();
     recordCall(tel, 'precision_read');
 
     // Reset should close the DB without error
     expect(() => Telemetry.resetInstance()).not.toThrow();
   });
 
-  it('allows creating a new instance after reset', () => {
-    Telemetry.getInstance(dbPath);
+  it('allows creating a new instance after reset', async () => {
     Telemetry.resetInstance();
 
     const dbPath2 = path.join(tmpDir, 'telemetry2.db');
-    const tel2 = Telemetry.getInstance(dbPath2);
+    await Telemetry.initialize(dbPath2);
+    const tel2 = Telemetry.getInstance();
     expect(tel2).toBeDefined();
     expect(fs.existsSync(dbPath2)).toBe(true);
   });
 
-  it('new instance after reset gets a fresh session ID', () => {
-    const tel1 = Telemetry.getInstance(dbPath);
+  it('new instance after reset gets a fresh session ID', async () => {
+    const tel1 = Telemetry.getInstance();
     const sid1 = tel1.getSessionId();
     Telemetry.resetInstance();
 
     const dbPath2 = path.join(tmpDir, 'tel2.db');
-    const tel2 = Telemetry.getInstance(dbPath2);
+    await Telemetry.initialize(dbPath2);
+    const tel2 = Telemetry.getInstance();
     const sid2 = tel2.getSessionId();
 
     expect(sid1).not.toBe(sid2);
   });
 
   it('is idempotent when called with no instance', () => {
-    // Already reset in beforeEach, call again — should not throw
+    // Reset in afterEach, call again — should not throw
+    Telemetry.resetInstance();
     expect(() => Telemetry.resetInstance()).not.toThrow();
   });
 });
@@ -573,15 +587,15 @@ describe('resetInstance()', () => {
 
 describe('singleton identity', () => {
   it('returns the same instance on repeated calls', () => {
-    const tel1 = Telemetry.getInstance(dbPath);
+    const tel1 = Telemetry.getInstance();
     const tel2 = Telemetry.getInstance();
     expect(tel1).toBe(tel2);
   });
 
   it('ignores dbPath argument if already initialized', () => {
-    const tel1 = Telemetry.getInstance(dbPath);
+    const tel1 = Telemetry.getInstance();
     const tel2 = Telemetry.getInstance('/some/other/path.db');
-    // Same instance — second call's path is ignored
+    // Same instance — second call's path is ignored (with a console.warn)
     expect(tel1).toBe(tel2);
     expect(tel2.getSessionId()).toBe(tel1.getSessionId());
   });

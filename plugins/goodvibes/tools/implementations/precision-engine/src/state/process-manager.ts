@@ -288,7 +288,7 @@ export class ProcessManager {
         detached: true,
         stdio: ['ignore', logFd, logFd],
         cwd: resolvedCwd,
-        env: options.env ? { ...process.env, ...options.env } : process.env,
+        env: options.env ?? process.env,
         shell: true,
       });
 
