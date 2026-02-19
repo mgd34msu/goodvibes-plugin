@@ -15,7 +15,7 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 | Agents | 11 | Specialized roles (Opus/Sonnet) for engineering, review, testing, architecture, deployment, integration, planning |
 | Skills | 25 | Tiered knowledge modules: protocol, orchestration, outcome, quality |
 | MCP Tools | 70 | Token-efficient tools across 5 specialized engines |
-| Hooks | 10 | Lifecycle automation (tool redirection, context injection, error recovery) |
+| Hooks | 11 | Lifecycle automation (tool redirection, context injection, error recovery, setup) |
 | Output Styles | 2 | Interactive (vibecoding) or fully autonomous (justvibes) |
 | Templates | 3 | Production scaffolds |
 
@@ -182,11 +182,16 @@ claude plugin marketplace add mgd34msu/goodvibes-plugin
 claude plugin install goodvibes@goodvibes-market
 ```
 
-On first session, the SessionStart hook:
+After installation, run the Setup hook to pre-write CLAUDE.md chain files:
+```bash
+claude --init-only
+```
+
+This ensures all GoodVibes instruction files are in place before your first session. On each session start, the SessionStart hook:
 - Detects your project stack (frameworks, languages, tools)
 - Analyzes git status (branch, uncommitted changes)
 - Checks project health (missing dependencies, build issues)
-- Creates or updates CLAUDE.md with GoodVibes instructions
+- Verifies CLAUDE.md chain files (writes any that are missing)
 - Injects project context into Claude's system message
 
 Set your output style:
@@ -359,12 +364,13 @@ Organized into 4 tiers with progressive loading — protocol skills are always a
 
 **Fallback**: If a skill doesn't load automatically, the registry engine's `get_skill_content` tool serves as an escape hatch.
 
-## Hooks - 10 Types
+## Hooks - 11 Types
 
 Lifecycle hooks run transparently on every session. They're the mechanism behind tool redirection, context injection, and automatic error recovery.
 
 | Hook | Trigger | What It Does |
 |------|---------|-------------|
+| Setup | `claude --init` / `claude --init-only` | Pre-writes CLAUDE.md chain files (import directives + prompt files) so they exist before any session starts. Matches `init` trigger. Avoids race conditions where SessionStart isn't fast enough to write files before Claude reads them |
 | PreToolUse (Bash) | Before Bash execution | Platform path mapping (Windows/Linux), shell safety analysis, git commit quality gates |
 | PreToolUse (Native) | Before Read/Edit/Write/Glob/Grep | Blocks native tool, redirects to precision-engine equivalent |
 | PostToolUseFailure | After Bash failure | 3-phase progressive fix loop: Phase 1 (internal knowledge) -> Phase 2 (official docs hints) -> Phase 3 (community docs hints). Logs failures to `.goodvibes/memory/failures.json` after all phases exhausted |
