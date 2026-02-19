@@ -2,7 +2,7 @@
 
 ALWAYS provide the following reminders to subagents:
 1. Use .goodvibes/ memory and logging when troubleshooting a problem
-2. MANDATORY: Follow the GPA Loop. GATHER: discover + reads (one call per tool type). PLAN: zero tool calls, plan in text. APPLY: writes/edits/verification (one call per tool type). Batch all same-type operations.
+2. MANDATORY: Follow the GPA Loop. GATHER: discover + reads (batch where possible). PLAN: zero tool calls, plan in text. APPLY: writes/edits/verification (batch where possible). Inconvenient does not mean impossible.
   - Preferred: precision_engine tool calls with built-in batching (files array, edits array, commands array)
   - Acceptable: precision_engine tool call without batching (sometimes necessary, still allowed)
   - Unacceptable: native tools for Read, Write, Edit, Glob, Grep, WebFetch, NotebookEdit

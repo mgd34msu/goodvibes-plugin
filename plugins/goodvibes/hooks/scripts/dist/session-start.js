@@ -4867,7 +4867,7 @@ SECONDARY DIRECTIVE: Be token-efficient.
 
 ALWAYS provide reminders to subagents:
 1. Use .goodvibes/ memory and logging
-2. MANDATORY: Follow strict GPA Loops. D: Single discover call (batched). P: Plan in text (zero tool calls). B: Single batched precision call. Target: 3 tool calls per GPA cycle.
+2. MANDATORY: Follow GPA Loops. GATHER: discover + reads (batch where possible). PLAN: zero tool calls, plan in text. APPLY: writes/edits/verification (batch where possible). Inconvenient does not mean impossible.
   - Preferred: precision_engine tool calls with built-in batching (files array, edits array, commands array)
   - Acceptable: precision_engine tool call without batching (sometimes necessary, still allowed)
   - Unacceptable: native tools for Read, Write, Edit, Glob, Grep, WebFetch, NotebookEdit
@@ -4893,7 +4893,7 @@ Skills load automatically when relevant to your task.
 
 ### Protocol Skills (Always Active)
 - precision-mastery: Token-efficient file operations, extract modes, verbosity, batching
-- gather-plan-apply: Strict 3-call GPA execution loop
+- gather-plan-apply: GPA execution loop (gather, plan, apply, batch aggressively)
 - review-scoring: 10-dimension scoring rubric for WRFC review loops
 - goodvibes-memory: Cross-session memory (decisions, patterns, failures, preferences)
 - error-recovery: Tiered error recovery and escalation procedures
@@ -4928,17 +4928,21 @@ Escalation: Check error -> native tool for THAT task only -> return to precision
 `,
   "GATHER-PLAN-APPLY.md": `## GATHER-PLAN-APPLY (Auto-loaded for all subagents)
 
-MANDATORY 3-call cycle: D (1 discover call, all queries batched) -> P (0 calls, plan in text) -> B (1 precision call, batched) -> P (0 calls) -> B (1 precision call) -> LOOP if needed.
+GATHER -> PLAN -> APPLY -> loop if needed. Batch where possible (inconvenient does not mean impossible).
 
-Key rules: discover batches ALL queries into 1 call. Plan steps = zero tool calls. Never sequential same-tool calls. ToolSearch not part of GPA.
+GATHER: Collect context. Batch reads/greps into arrays. Use cheapest extract mode (see Precision Mastery). Check .goodvibes/memory/ first. Skip only for 1-2 known files.
+PLAN: Zero tool calls. List exact paths, changes, dependencies, batch opportunities. Scale depth to task.
+APPLY: precision_write (count_only), precision_edit (minimal), precision_exec (minimal). Fix only failed ops.
 
-Discover: glob/grep/symbols/structural queries. Check .goodvibes/memory/ first. Skip only for 1-2 known files.
-Plan: list exact paths, dependencies, batch opportunities.
-Batch: precision_engine built-in batching (best) > sequential (only when dependent). Fix only failed ops.
-NEVER use precision_exec for file search -- use discover, precision_grep, precision_glob.
+Hard Rules:
+- Always check .goodvibes/memory/ before starting
+- Never use deprecated native tools when precision equivalents work
+- Never use precision_exec for file search -- use discover, precision_grep, precision_glob
+- Never use verbose/standard verbosity for writes/edits
+- Never make sequential single-item calls when arrays are available -- batch them
+- Never re-read content you just wrote
 
-Example GPA cycle: D=discover (batch glob+grep+symbols queries, verbosity: files_only). P=plan exact paths and batch opportunities. B=precision_read { files: [...] } then precision_write { files: [...] } then precision_exec { commands: [...] }.
-Overflow: If results exceed limits, use precision_read with range: { start: N, end: M } on the overflow file.
+Overflow: truncated results go to .goodvibes/.overflow/ -- paginate with precision_read line ranges.
 `
 };
 async function loadPromptFiles() {
