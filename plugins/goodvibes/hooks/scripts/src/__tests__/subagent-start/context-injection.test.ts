@@ -238,20 +238,6 @@ describe('context-injection', () => {
         expect(result.additionalContext).toContain('MANDATORY: If multiple tool uses');
       });
 
-      it('should mention discover for batch operations', async () => {
-        const { buildSubagentContext } =
-          await import('../../subagent-start/context-injection.js');
-
-        const result = await buildSubagentContext(
-          '/test/project',
-          'backend-engineer',
-          'session-123'
-        );
-
-        expect(result.additionalContext).toContain('discover');
-        expect(result.additionalContext).toContain('mcp__plugin_goodvibes_precision-engine__discover');
-      });
-
       it('should mention GPA loops for batch operations', async () => {
         const { buildSubagentContext } =
           await import('../../subagent-start/context-injection.js');
@@ -707,7 +693,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'Protocol skills (MUST load before starting work):'
+          'Protocol skills (Always Active):'
         );
         expect(result.additionalContext).toContain('precision-mastery');
         expect(result.additionalContext).toContain('review-scoring');
@@ -911,7 +897,7 @@ describe('context-injection', () => {
         );
 
         expect(result.additionalContext).toContain(
-          'MANDATORY: Load assigned skills using get_skill_content from registry-engine BEFORE starting work.'
+          'Fallback: If a skill does not load automatically, use ToolSearch to find get_skill_content from registry-engine.'
         );
       });
     });
