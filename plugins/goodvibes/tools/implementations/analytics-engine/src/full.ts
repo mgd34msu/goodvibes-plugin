@@ -52,8 +52,8 @@ async function main(): Promise<void> {
   // Subscribe to state changes — re-render on each update
   aggregator.onStateChange(renderApp);
 
-  process.on('SIGINT', () => { void shutdown(); });
-  process.on('SIGTERM', () => { void shutdown(); });
+  process.on('SIGINT', () => { shutdown().catch((e) => console.error('[shutdown]', e)); });
+  process.on('SIGTERM', () => { shutdown().catch((e) => console.error('[shutdown]', e)); });
 }
 
 main().catch((err: unknown) => {

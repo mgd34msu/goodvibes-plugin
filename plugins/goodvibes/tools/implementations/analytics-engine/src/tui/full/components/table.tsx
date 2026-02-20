@@ -16,6 +16,17 @@ export interface TableProps {
   columnWidths?: number[];
 }
 
+/** Build a horizontal border line from a set of column widths. */
+function borderLine(
+  widths: number[],
+  left: string,
+  middle: string,
+  right: string,
+  fill: string,
+): string {
+  return left + widths.map((w) => fill.repeat(w + 2)).join(middle) + right;
+}
+
 /** Pad or truncate a cell string to a fixed column width. */
 function cell(text: string, width: number): string {
   if (text.length > width) return text.slice(0, width - 1) + '…';
@@ -69,21 +80,14 @@ export function Table({ headers, rows, columnWidths }: TableProps): React.ReactE
     return Math.max(headerLen, maxDataLen, 4);
   });
 
-  /** Build a horizontal border line. */
-  function borderLine(
-    left: string,
-    middle: string,
-    right: string,
-    fill: string,
-  ): string {
-    return left + widths.map((w) => fill.repeat(w + 2)).join(middle) + right;
-  }
+  const topBorder = borderLine(widths, '┌', '┬', '┐', '─');
+  const midBorder = borderLine(widths, '├', '┼', '┤', '─');
+  const btmBorder = borderLine(widths, '└', '┴', '┘', '─');
 
-  const topBorder = borderLine('┌', '┬', '┐', '─');
-  const midBorder = borderLine('├', '┼', '┤', '─');
-  const btmBorder = borderLine('└', '┴', '┘', '─');
-
-  /** Render a data row between `│` characters. */
+  /**
+   * Render a data row between `│` characters.
+   * Defined inside the component because it closes over `widths` and `cell`.
+   */
   function dataRow(cells: string[], isHeader = false): React.ReactElement {
     return (
       <Box flexDirection="row">
@@ -101,6 +105,9 @@ export function Table({ headers, rows, columnWidths }: TableProps): React.ReactE
     );
   }
 
+  // Total inner width: each column has width + 2 padding + 1 separator, minus trailing separator
+  const totalInnerWidth = widths.reduce((s, w) => s + w + 3, -1);
+
   return (
     <Box flexDirection="column">
       <Text color="gray">{topBorder}</Text>
@@ -109,7 +116,7 @@ export function Table({ headers, rows, columnWidths }: TableProps): React.ReactE
       {rows.length === 0 ? (
         <Box>
           <Text color="gray">{'\u2502'}</Text>
-          <Text color="gray" dimColor>{` ${'No data'.padEnd(widths.reduce((s, w) => s + w + 3, -1))} `}</Text>
+          <Text color="gray" dimColor>{` ${'No data'.padEnd(totalInnerWidth)} `}</Text>
           <Text color="gray">{'\u2502'}</Text>
         </Box>
       ) : (

@@ -77,7 +77,7 @@ export const App: React.FC<AppProps> = ({ state, onQuit }) => {
       {/* Page content */}
       <Box flexGrow={1}>
         {showHelp ? (
-          <HelpOverlay onClose={() => setShowHelp(false)} />
+          <HelpOverlay />
         ) : (
           <>
             {page === 1 && <SessionOverview state={state} />}
@@ -118,7 +118,7 @@ export const App: React.FC<AppProps> = ({ state, onQuit }) => {
 /**
  * Help overlay showing all keyboard shortcuts.
  */
-const HelpOverlay: React.FC<{ onClose: () => void }> = ({ onClose: _onClose }) => (
+const HelpOverlay: React.FC = () => (
   <Box flexDirection="column" padding={2} gap={1}>
     <Text bold color="cyan">Analytics Dashboard — Keyboard Shortcuts</Text>
     <Box flexDirection="column" gap={0} marginTop={1}>

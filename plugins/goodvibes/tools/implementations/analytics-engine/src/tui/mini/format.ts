@@ -5,7 +5,7 @@
  * Handles NaN, Infinity, and negative values.
  */
 export function formatNumber(n: number): string {
-  if (!isFinite(n) || isNaN(n)) return '0';
+  if (!isFinite(n)) return '0'; // NaN is already non-finite
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
   if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1)}B`;
@@ -18,7 +18,7 @@ export function formatNumber(n: number): string {
  * Format bytes to human readable (B, KB, MB, GB).
  */
 export function formatBytes(bytes: number): string {
-  if (!isFinite(bytes) || isNaN(bytes) || bytes < 0) return '0 B';
+  if (!isFinite(bytes) || bytes < 0) return '0 B'; // NaN is already non-finite
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
   if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
   if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
@@ -30,7 +30,7 @@ export function formatBytes(bytes: number): string {
  * e.g. 61500 -> "1m 1s", 3661000 -> "1h 1m"
  */
 export function formatDuration(ms: number): string {
-  if (!isFinite(ms) || isNaN(ms) || ms < 0) return '0ms';
+  if (!isFinite(ms) || ms < 0) return '0ms'; // NaN is already non-finite
   if (ms < 1_000) return `${Math.round(ms)}ms`;
   const totalSeconds = Math.floor(ms / 1_000);
   const hours = Math.floor(totalSeconds / 3_600);
@@ -55,9 +55,8 @@ export function formatPercent(ratio: number): string {
  * e.g. 0.00153 -> "$0.0015", 1.5 -> "$1.50"
  */
 export function formatDollars(amount: number): string {
-  if (!isFinite(amount) || isNaN(amount)) return '$0.00';
+  if (!isFinite(amount)) return '$0.00'; // NaN is already non-finite
   if (amount < 0) return `-$${Math.abs(amount).toFixed(4)}`;
-  if (amount < 0.01) return `$${amount.toFixed(4)}`;
   if (amount < 1) return `$${amount.toFixed(4)}`;
   return `$${amount.toFixed(2)}`;
 }
@@ -72,7 +71,7 @@ const EMPTY_CHAR = '\u2591'; // ░
  * e.g. formatBar(8, 12, 12) -> "████████░░░░"
  */
 export function formatBar(value: number, max: number, width: number): string {
-  if (!isFinite(value) || !isFinite(max) || isNaN(value) || isNaN(max) || width <= 0) {
+  if (!isFinite(value) || !isFinite(max) || width <= 0) { // NaN is already non-finite
     return EMPTY_CHAR.repeat(Math.max(0, width));
   }
   if (max <= 0) return EMPTY_CHAR.repeat(width);
@@ -101,7 +100,7 @@ export function formatTime(iso: string): string {
  * e.g. 3661000 -> "1h 1m 1s"
  */
 export function formatUptime(ms: number): string {
-  if (!isFinite(ms) || isNaN(ms) || ms < 0) return '0s';
+  if (!isFinite(ms) || ms < 0) return '0s'; // NaN is already non-finite
   const totalSeconds = Math.floor(ms / 1_000);
   const hours = Math.floor(totalSeconds / 3_600);
   const minutes = Math.floor((totalSeconds % 3_600) / 60);
@@ -176,7 +175,7 @@ export function colorForHealth(status: 'healthy' | 'warning' | 'alert'): string 
     case 'healthy': return ansi.green;
     case 'warning': return ansi.yellow;
     case 'alert':   return ansi.red;
-    default:        return ansi.reset;
+    default:        status satisfies never; return ansi.reset;
   }
 }
 
@@ -188,7 +187,7 @@ export function colorForHealth(status: 'healthy' | 'warning' | 'alert'): string 
  * Stable threshold: absolute percentage < 1%.
  */
 export function formatDelta(current: number, baseline: number): string {
-  if (!isFinite(current) || !isFinite(baseline) || isNaN(current) || isNaN(baseline)) {
+  if (!isFinite(current) || !isFinite(baseline)) { // NaN is already non-finite
     return '~0.0% ─';
   }
   if (baseline === 0 && current === 0) return '~0.0% ─';

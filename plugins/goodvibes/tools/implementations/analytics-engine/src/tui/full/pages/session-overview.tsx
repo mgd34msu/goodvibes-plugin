@@ -11,6 +11,7 @@ import {
   formatNumber,
   formatDollars,
   formatPercent,
+  formatDuration,
   formatUptime,
   formatTime,
   truncate,
@@ -73,6 +74,7 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
             { label: 'Hit Rate', value: formatPercent(cache.hit_rate) },
             { label: 'Hits', value: formatNumber(cache.hits) },
             { label: 'Misses', value: formatNumber(cache.misses) },
+            // formatNumber rounds to integers; toFixed(1) preserves decimal precision for MB
             { label: 'Peak MB', value: `${cache.memory_peak_mb.toFixed(1)} MB` },
             { label: 'Evictions', value: formatNumber(cache.evictions) },
           ]}
@@ -97,7 +99,7 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
             { label: 'Total', value: formatNumber(commands.total) },
             { label: 'Failures', value: formatNumber(commands.failures) },
             { label: 'Success', value: formatPercent(commands.success_rate) },
-            { label: 'Avg ms', value: `${Math.round(commands.avg_duration_ms)} ms` },
+            { label: 'Avg ms', value: formatDuration(commands.avg_duration_ms) },
           ]}
         />
 

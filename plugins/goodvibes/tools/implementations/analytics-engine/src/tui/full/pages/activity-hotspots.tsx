@@ -34,7 +34,7 @@ export const ActivityHotspots: React.FC<ActivityHotspotsProps> = ({ state }) => 
   const { recent_activity, file_hotspots, agent_profiles, anomalies } = state;
 
   // Build agent bar-chart items sorted by tokens descending
-  const agentItems = agent_profiles
+  const agentItems = [...agent_profiles]
     .sort((a, b) => b.tokens_in + b.tokens_out - (a.tokens_in + a.tokens_out))
     .slice(0, 10)
     .map((ap) => ({

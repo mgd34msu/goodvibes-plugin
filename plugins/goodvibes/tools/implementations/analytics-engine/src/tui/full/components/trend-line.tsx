@@ -26,7 +26,7 @@ const LABEL_COL = 18;
 const VALUE_COL = 10;
 const TREND_COL = 10;
 const SEPARATOR = 3; // " | " separator between value and trend
-const PADDING = 4; // two " " gaps
+const PADDING = 4; // two 2-space gaps ("  " before bar and "  " after bar)
 
 /** Character used for the filled portion of the sparkline bar. */
 const FILL_CHAR = '█';

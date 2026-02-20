@@ -98,15 +98,14 @@ export function BarChart({
         const ratio = max > 0 ? Math.min(item.value / max, 1) : 0;
         const filled = Math.round(ratio * barAreaWidth);
         const empty = barAreaWidth - filled;
-        const bar = barChar.repeat(filled) + emptyChar.repeat(empty);
         const valueStr = valueStrings[idx];
 
         return (
           <Box key={idx} flexDirection="row" width={width}>
             <Text color="white">{fixedLabel(item.label, labelColWidth)}</Text>
             <Text>{'  '}</Text>
-            <Text color="green">{bar.slice(0, filled)}</Text>
-            <Text color="gray" dimColor>{bar.slice(filled)}</Text>
+            <Text color="green">{barChar.repeat(filled)}</Text>
+            <Text color="gray" dimColor>{emptyChar.repeat(empty)}</Text>
             <Text>{'  '}</Text>
             <Text color="yellow" bold>{valueStr.padStart(valueColWidth)}</Text>
           </Box>

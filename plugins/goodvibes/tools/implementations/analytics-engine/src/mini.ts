@@ -31,8 +31,8 @@ async function main(): Promise<void> {
     process.exit(0);
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => { shutdown().catch(console.error); });
+  process.on('SIGTERM', () => { shutdown().catch(console.error); });
 }
 
 main().catch((err: unknown) => {

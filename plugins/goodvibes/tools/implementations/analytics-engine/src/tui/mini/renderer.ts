@@ -124,23 +124,20 @@ export class MiniRenderer {
     const sessionId = state.session_id
       ? truncate(state.session_id, 16)
       : 'no-session';
-    const uptime = formatUptime(state.uptime_ms ?? 0);
-    const calls = state.metrics.tokens.total > 0
-      ? formatNumber(state.metrics.tokens.total / 1000) + 'K'
-      : '0';
+    const uptime = formatUptime(state.uptime_ms);
     // Use tool call count if available via commands + agents
     const toolCalls = formatNumber(
-      (state.metrics.commands.total ?? 0) +
-      (state.metrics.agents.spawned ?? 0),
+      state.metrics.commands.total +
+      state.metrics.agents.spawned,
     );
-    const successRate = formatPercent(state.metrics.commands.success_rate ?? 1);
+    const successRate = formatPercent(state.metrics.commands.success_rate);
 
     const tokensUsed = formatNumber(state.metrics.tokens.total);
     const tokensSaved = formatNumber(state.metrics.tokens.saved);
     const savings = formatDollars(state.metrics.cost.saved);
     const cacheRate = formatPercent(state.metrics.cache.hit_rate);
-    const agentsActive = state.metrics.agents.active ?? 0;
-    const agentsMax = state.metrics.agents.max_concurrent ?? 0;
+    const agentsActive = state.metrics.agents.active;
+    const agentsMax = state.metrics.agents.max_concurrent;
 
     const filesRead = formatNumber(state.metrics.files.unique_read);
     const filesWritten = formatNumber(
@@ -203,7 +200,7 @@ export class MiniRenderer {
 
     // ── Line 3: Files / commands / net cost ───────────────────────────────────
     const conflictStr = conflicts > 0
-      ? `${conflicts}\u26a1`  // ⚡
+      ? `${ansi.yellow}${conflicts}\u26a1${ansi.reset}`  // ⚡ highlighted
       : `${conflicts}\u26a1`;
     const row3Content =
       ` files ${filesRead}r ${filesWritten}w ${conflictStr}` +
