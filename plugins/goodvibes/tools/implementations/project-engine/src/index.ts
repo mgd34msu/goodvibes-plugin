@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 /**
- * Project Engine MCP Server
+ * Project Engine MCP Server v2.0.0
  *
- * Project operations for GoodVibes - scaffolding, database, API, dependencies, tests.
+ * Consolidated project operations and code analysis server for GoodVibes.
+ * Merges former project-engine and analysis-engine into a single server
+ * with domain-based organization and project_* naming convention.
  *
- * Tool Categories (22 tools):
- * - Scaffolding (2): scaffold_project, list_templates
- * - Project Info (3): plugin_status, project_issues, explain_codebase
- * - Database & API (5): get_database_schema, get_api_routes, get_prisma_operations, query_database, generate_openapi
- * - Dependencies (3): analyze_dependencies, find_circular_deps, upgrade_package
- * - Build (1): analyze_bundle
- * - Types & Fixtures (3): generate_types, generate_fixture, sync_api_types
- * - Tests (3): find_tests_for_file, get_test_coverage, suggest_test_cases
- * - Git (2): create_pull_request, resolve_merge_conflict
+ * Domains (29 tools):
+ * - Code Intelligence (6): project_code_dead, project_code_safe_delete, project_code_preview_edits,
+ *   project_code_breaking, project_code_semantic_diff, project_code_surface
+ * - API (4): project_api_routes, project_api_spec, project_api_validate, project_api_sync
+ * - Security (3): project_security_secrets, project_security_permissions, project_security_env
+ * - Database (3): project_db_schema, project_db_query, project_db_prisma
+ * - Dependencies (3): project_deps_analyze, project_deps_circular, project_deps_upgrade
+ * - Testing (2): project_test_coverage, project_test_find
+ * - Runtime (3): project_runtime_memory, project_runtime_profile, project_runtime_logs
+ * - Standalone (2): scaffold, bundle_analyze
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -22,6 +25,7 @@ import {
   ListToolsRequestSchema,
   ErrorCode,
   McpError,
+  type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { SERVER_NAME, SERVER_VERSION } from './config.js';
@@ -30,7 +34,7 @@ import { allSchemas } from './schemas/index.js';
 import { getHandler, hasHandler, listHandlers } from './handlers/index.js';
 
 /**
- * ProjectEngineServer - MCP server for project operations.
+ * ProjectEngineServer - MCP server for project operations and code analysis.
  */
 class ProjectEngineServer {
   private server: Server;
@@ -53,7 +57,7 @@ class ProjectEngineServer {
     });
 
     // Handle tool calls
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
       const { name, arguments: args } = request.params;
 
       logger.tool(name, args);
@@ -71,7 +75,7 @@ class ProjectEngineServer {
       }
 
       try {
-        return await handler(args);
+        return await handler(args) as CallToolResult;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.error(`Tool ${name} failed`, { error: message, args });

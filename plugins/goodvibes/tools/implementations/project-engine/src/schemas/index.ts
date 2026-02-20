@@ -1,34 +1,16 @@
 /**
- * Schema aggregator for project-engine MCP server.
+ * Schema aggregator for project-engine v2.0.0.
  *
- * Combines all schema modules into a single export for the server.
+ * Combines all domain schema modules into a single export.
+ * Populated in Phase 10 after all domain schemas are created.
  */
-
-import { PROJECT_SCHEMAS } from './project-schemas.js';
-import { TEST_SCHEMAS } from './test-schemas.js';
-import { TYPES_SCHEMAS } from './types-schemas.js';
-import { GIT_SCHEMAS } from './git-schemas.js';
-import { BUILD_SCHEMAS } from './build-schemas.js';
-import { DEPS_SCHEMAS } from './deps-schemas.js';
 
 /**
- * All tool schemas provided by project-engine.
+ * All tool schemas provided by project-engine v2.0.0.
+ * Will contain 29 schemas when fully populated.
  */
-export const allSchemas = [
-  ...PROJECT_SCHEMAS,
-  ...TEST_SCHEMAS,
-  ...TYPES_SCHEMAS,
-  ...GIT_SCHEMAS,
-  ...BUILD_SCHEMAS,
-  ...DEPS_SCHEMAS,
-];
-
-// Re-export individual schema groups
-export {
-  PROJECT_SCHEMAS,
-  TEST_SCHEMAS,
-  TYPES_SCHEMAS,
-  GIT_SCHEMAS,
-  BUILD_SCHEMAS,
-  DEPS_SCHEMAS,
-};
+export const allSchemas: Array<{
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}> = [];

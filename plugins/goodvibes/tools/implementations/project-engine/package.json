@@ -1,7 +1,7 @@
 {
   "name": "project-engine",
-  "version": "1.0.0",
-  "description": "Project operations MCP server for GoodVibes - scaffolding, database, API, dependencies, tests",
+  "version": "2.0.0",
+  "description": "Consolidated project operations and code analysis MCP server for GoodVibes",
   "type": "module",
   "main": "dist/index.cjs",
   "scripts": {
@@ -13,13 +13,13 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.25.1",
     "fast-glob": "^3.3.2",
-    "fuse.js": "^7.0.0",
     "js-yaml": "^4.1.1",
     "sql.js": "^1.13.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.10.0",
     "@vitest/coverage-v8": "^2.0.0",
     "esbuild": "^0.20.0",
