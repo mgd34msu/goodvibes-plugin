@@ -42,6 +42,10 @@ Parse the subcommand from $ARGUMENTS. If $ARGUMENTS is empty, default to the sum
 Analytics engine is not available. Ensure the GoodVibes plugin is installed and the analytics-engine MCP server is running.
 ```
 
+## Overview
+
+The analytics engine tracks everything that happens in your Claude session: token usage and cost, cache performance (cache hits reduce cost), file operations (reads, writes, edits), command execution (shell commands via precision_exec), and agent activity (subagent spawns and completions). Use this command to monitor spend, diagnose performance, and export session history.
+
 ### (no arguments) — Session Summary
 
 Call `mcp__plugin_goodvibes_analytics-engine__analytics_query` with:
@@ -49,7 +53,10 @@ Call `mcp__plugin_goodvibes_analytics-engine__analytics_query` with:
 {"scope": "all"}
 ```
 
-Present the results in a readable summary format showing token usage, cache stats, cost, and health metrics.
+Present the results in a readable summary format showing token usage, cache stats, cost, and health metrics. If the query returns empty data (no session activity recorded yet), inform the user:
+```
+No analytics data yet. Start working and check back after a few tool calls.
+```
 
 ### `dashboard` / `mini` — Launch Mini Dashboard
 
@@ -61,7 +68,7 @@ Call `mcp__plugin_goodvibes_analytics-engine__analytics_dashboard` with:
 }
 ```
 
-Report whether the mini dashboard launched successfully. The mini dashboard is a 4-line always-on tmux pane showing live session metrics.
+Report whether the mini dashboard launched successfully. The mini dashboard is a 4-line always-on tmux pane showing live session metrics. It auto-detects terminal width and re-renders instantly on resize — no restart needed.
 
 ### `full` — Launch Full TUI Dashboard
 
@@ -73,7 +80,7 @@ Call `mcp__plugin_goodvibes_analytics-engine__analytics_dashboard` with:
 }
 ```
 
-Report whether the full TUI dashboard launched successfully. The full TUI is a multi-page interactive dashboard with detailed analytics.
+Report whether the full TUI dashboard launched successfully. The full TUI is a multi-page interactive dashboard with detailed analytics. It has 3 pages — Session Overview, Activity Hotspots, and Historical — navigable with arrow keys or `Tab`/`Shift+Tab`.
 
 ### `stop [mini|full|both]` — Stop Dashboard(s)
 
@@ -212,6 +219,8 @@ If both key and value are provided, call with:
 
 Present config values in a readable format. Settings include refresh rates, cost rates, webhook URLs, and anomaly detection thresholds.
 
+When setting a value, coerce the type based on the input: if it looks like a number (e.g., `0.5`, `100`), pass it as a number. If it looks like a boolean (`true` or `false`), pass it as a boolean. Otherwise pass it as a string.
+
 ### Unknown subcommand
 
 If the subcommand is not recognized, show available subcommands:
@@ -232,6 +241,12 @@ Available subcommands:
   tag rename <name>   - Rename the current session tag
   config [key] [val]  - Get or set analytics config
 ```
+
+## Tips
+
+- **Track spend from the start**: Run `/goodvibes:analytics budget 5` at the beginning of a session to set a spending limit and get alerts before you exceed it.
+- **Mini dashboard in a tmux pane**: The mini dashboard works best pinned to a small bottom tmux pane (3-4 lines). Launch it once and it stays live for the whole session.
+- **Export at session end**: Use `/goodvibes:analytics export markdown` to capture a formatted summary of your session's token usage, cost, and activity before closing.
 
 ## Arguments
 
