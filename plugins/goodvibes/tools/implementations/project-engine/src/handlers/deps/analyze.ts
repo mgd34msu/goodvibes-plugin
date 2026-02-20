@@ -10,9 +10,13 @@
 
 import * as path from 'path';
 import * as fsPromises from 'fs/promises';
-import { ToolResponse } from '../../types.js';
 import { PROJECT_ROOT } from '../../config.js';
-import { readJsonFile, fileExists, safeExec } from '../../utils.js';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  type ToolResponse,
+} from '../../shared/response.js';
+import { readJsonFile, fileExists, safeExec } from '../../shared/utils.js';
 
 /**
  * Arguments for the analyze_dependencies MCP tool.
@@ -247,140 +251,130 @@ function isOutdated(installed: string, latest: string): boolean {
 export async function handleAnalyzeDependencies(
   args: AnalyzeDependenciesArgs
 ): Promise<ToolResponse> {
-  const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
-  const includeDevDeps = args.include_dev !== false;
-  const checkUpdates = args.check_updates === true;
-
-  // Read package.json
-  const pkg = (await readJsonFile(path.join(projectPath, 'package.json'))) as Record<
-    string,
-    Record<string, string>
-  > | null;
-
-  if (!pkg) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ error: 'package.json not found' }),
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  // Collect all declared dependencies
-  const declaredDeps: Record<string, string> = {
-    ...(pkg.dependencies || {}),
-    ...(includeDevDeps ? pkg.devDependencies || {} : {}),
-  };
-
-  // Find all source files
-  const srcDirs = ['src', 'app', 'pages', 'lib', 'components', 'utils', 'hooks'];
-  let sourceFiles: string[] = [];
-
-  for (const dir of srcDirs) {
-    const dirPath = path.join(projectPath, dir);
-    if (await fileExists(dirPath)) {
-      const files = await findSourceFiles(dirPath);
-      sourceFiles.push(...files);
-    }
-  }
-
-  // Also check root-level files
-  const rootPath = projectPath;
   try {
-    const rootEntries = await fsPromises.readdir(rootPath, { withFileTypes: true });
-    for (const entry of rootEntries) {
-      if (entry.isFile()) {
-        const ext = path.extname(entry.name).toLowerCase();
-        if (['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(ext)) {
-          sourceFiles.push(path.join(rootPath, entry.name));
-        }
-      }
-    }
-  } catch {
-    // Root directory read failed
-  }
+    const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
+    const includeDevDeps = args.include_dev !== false;
+    const checkUpdates = args.check_updates === true;
 
-  // Aggregate imports across all files
-  const allImports = new Map<string, number>();
+    // Read package.json
+    const pkg = (await readJsonFile(path.join(projectPath, 'package.json'))) as Record<
+      string,
+      Record<string, string>
+    > | null;
 
-  for (const file of sourceFiles) {
-    try {
-      const content = await fsPromises.readFile(file, 'utf-8');
-      const fileImports = extractImports(content);
-
-      fileImports.forEach((count, pkg) => {
-        allImports.set(pkg, (allImports.get(pkg) || 0) + count);
-      });
-    } catch {
-      // File read failed, skip
-    }
-  }
-
-  // Analyze each declared dependency
-  const dependencies: DependencyInfo[] = [];
-  let usedCount = 0;
-  let outdatedCount = 0;
-
-  const depNames = Object.keys(declaredDeps);
-
-  for (const name of depNames) {
-    const declaredVersion = declaredDeps[name];
-    const importCount = allImports.get(name) || 0;
-    const used = importCount > 0;
-
-    if (used) {
-      usedCount++;
+    if (!pkg) {
+      return createErrorResponse('package.json not found');
     }
 
-    const depInfo: DependencyInfo = {
-      name,
-      declared_version: declaredVersion,
-      used,
-      import_count: importCount,
+    // Collect all declared dependencies
+    const declaredDeps: Record<string, string> = {
+      ...(pkg.dependencies || {}),
+      ...(includeDevDeps ? pkg.devDependencies || {} : {}),
     };
 
-    // Check for updates if requested
-    if (checkUpdates) {
-      const latestVersion = await fetchLatestVersion(name);
-      if (latestVersion) {
-        depInfo.latest_version = latestVersion;
-        depInfo.outdated = isOutdated(declaredVersion, latestVersion);
-        if (depInfo.outdated) {
-          outdatedCount++;
-        }
+    // Find all source files
+    const srcDirs = ['src', 'app', 'pages', 'lib', 'components', 'utils', 'hooks'];
+    let sourceFiles: string[] = [];
+
+    for (const dir of srcDirs) {
+      const dirPath = path.join(projectPath, dir);
+      if (await fileExists(dirPath)) {
+        const files = await findSourceFiles(dirPath);
+        sourceFiles.push(...files);
       }
     }
 
-    dependencies.push(depInfo);
-  }
-
-  // Sort: unused first, then by import count descending
-  dependencies.sort((a, b) => {
-    if (a.used !== b.used) {
-      return a.used ? 1 : -1; // Unused first
+    // Also check root-level files
+    const rootPath = projectPath;
+    try {
+      const rootEntries = await fsPromises.readdir(rootPath, { withFileTypes: true });
+      for (const entry of rootEntries) {
+        if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(ext)) {
+            sourceFiles.push(path.join(rootPath, entry.name));
+          }
+        }
+      }
+    } catch {
+      // Root directory read failed
     }
-    return b.import_count - a.import_count;
-  });
 
-  const result: AnalysisResult = {
-    dependencies,
-    summary: {
-      total: depNames.length,
-      used: usedCount,
-      unused: depNames.length - usedCount,
-      outdated: outdatedCount,
-    },
-  };
+    // Aggregate imports across all files
+    const allImports = new Map<string, number>();
 
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(result, null, 2),
+    for (const file of sourceFiles) {
+      try {
+        const content = await fsPromises.readFile(file, 'utf-8');
+        const fileImports = extractImports(content);
+
+        fileImports.forEach((count, pkg) => {
+          allImports.set(pkg, (allImports.get(pkg) || 0) + count);
+        });
+      } catch {
+        // File read failed, skip
+      }
+    }
+
+    // Analyze each declared dependency
+    const dependencies: DependencyInfo[] = [];
+    let usedCount = 0;
+    let outdatedCount = 0;
+
+    const depNames = Object.keys(declaredDeps);
+
+    for (const name of depNames) {
+      const declaredVersion = declaredDeps[name];
+      const importCount = allImports.get(name) || 0;
+      const used = importCount > 0;
+
+      if (used) {
+        usedCount++;
+      }
+
+      const depInfo: DependencyInfo = {
+        name,
+        declared_version: declaredVersion,
+        used,
+        import_count: importCount,
+      };
+
+      // Check for updates if requested
+      if (checkUpdates) {
+        const latestVersion = await fetchLatestVersion(name);
+        if (latestVersion) {
+          depInfo.latest_version = latestVersion;
+          depInfo.outdated = isOutdated(declaredVersion, latestVersion);
+          if (depInfo.outdated) {
+            outdatedCount++;
+          }
+        }
+      }
+
+      dependencies.push(depInfo);
+    }
+
+    // Sort: unused first, then by import count descending
+    dependencies.sort((a, b) => {
+      if (a.used !== b.used) {
+        return a.used ? 1 : -1; // Unused first
+      }
+      return b.import_count - a.import_count;
+    });
+
+    const result: AnalysisResult = {
+      dependencies,
+      summary: {
+        total: depNames.length,
+        used: usedCount,
+        unused: depNames.length - usedCount,
+        outdated: outdatedCount,
       },
-    ],
-  };
+    };
+
+    return createSuccessResponse(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return createErrorResponse(`Failed to analyze dependencies: ${message}`);
+  }
 }

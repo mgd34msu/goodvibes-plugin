@@ -1,18 +1,12 @@
 /**
- * Security handlers
+ * Security domain handlers.
  *
- * Provides MCP tools for security analysis including:
- * - Secrets and credentials detection
- * - Permission and access pattern analysis
- * - Security vulnerability scanning
- *
- * @module handlers/security
+ * Provides 3 tools for security analysis:
+ * - project_security_secrets: Detect secrets and credentials in code
+ * - project_security_permissions: Analyze file/network/system access patterns
+ * - project_security_env: Comprehensive environment variable audit
  */
 
-// Secrets scanning
-export { handleScanForSecrets } from './secrets-scanner.js';
-export type { ScanForSecretsArgs, SecretSeverity } from './secrets-scanner.js';
-
-// Permission checking
+export { handleScanForSecrets } from './secrets.js';
 export { handleCheckPermissions } from './permissions.js';
-export type { CheckPermissionsArgs, PermissionType, RiskLevel } from './permissions.js';
+export { handleEnvAudit } from './env-audit.js';

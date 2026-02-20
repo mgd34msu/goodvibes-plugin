@@ -2,8 +2,6 @@
 
 A new MCP server (separate from precision-engine) that surfaces session analytics, token savings, cache statistics, and performance metrics. It consumes data from precision-engine's state singletons and provides both real-time queries and end-of-session summaries.
 
-> **This is its own project.** Referenced from `precision-tool-updates.md` but designed, built, and deployed independently. It depends on precision-engine's state modules but runs as a separate MCP server process.
-
 ## Design Principle
 
 **Make the invisible visible.**
@@ -375,4 +373,3 @@ Token cost estimates use configurable per-1K rates so savings calculations stay 
 - **Read-only relationship**: Analytics-engine never modifies precision-engine state. It only reads and aggregates.
 - **Low token cost**: Analytics responses are compact (100-500 tokens for a full summary). The data justifies the cost.
 - **Session-scoped**: All analytics reset on server restart. Historical data persists only in `.goodvibes/` logs and memory.
-- **Should be built AFTER precision-engine Items 1, 8, 10 are implemented** — those create the state singletons that analytics-engine reads from.

@@ -1,17 +1,12 @@
 /**
- * Dependency analysis handlers
+ * Dependencies domain handlers.
  *
- * Provides tools for analyzing npm dependencies and import relationships:
- * - analyze_dependencies: Find unused, missing, and outdated packages
- * - find_circular_deps: Detect circular import dependencies
- *
- * @module handlers/deps
+ * Provides 3 tools for dependency analysis:
+ * - project_deps_analyze: Analyze project dependencies for security, updates, and issues
+ * - project_deps_circular: Detect circular import dependencies using DFS coloring
+ * - project_deps_upgrade: Upgrade packages with breaking change detection
  */
 
-// NPM dependency analysis
 export { handleAnalyzeDependencies } from './analyze.js';
-export type { AnalyzeDependenciesArgs } from './analyze.js';
-
-// Circular dependency detection
 export { handleFindCircularDeps } from './circular.js';
-export type { FindCircularDepsArgs } from './circular.js';
+export { handleUpgradePackage } from './upgrade.js';

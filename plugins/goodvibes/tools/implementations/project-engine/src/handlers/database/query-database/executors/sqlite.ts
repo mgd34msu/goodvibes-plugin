@@ -6,7 +6,7 @@
  */
 
 import type { DatabaseConnectionInfo, ColumnInfo, SqliteExecutionResult } from '../types.js';
-import { withConnection, type SqliteConnectionOptions } from '../../sqlite-connection.js';
+import { withConnection, type SqliteConnectionOptions } from '../../shared/sqlite-connection.js';
 import { isSelectQuery } from '../query-analysis.js';
 
 /**

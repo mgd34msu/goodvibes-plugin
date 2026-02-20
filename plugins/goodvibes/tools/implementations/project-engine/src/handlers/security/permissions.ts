@@ -9,9 +9,9 @@
 
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
-import { ToolResponse } from '../../types.js';
+import { ToolResponse } from '../../shared/response.js';
 import { PROJECT_ROOT } from '../../config.js';
-import { fileExists } from '../../utils.js';
+import { fileExists } from '../../shared/utils.js';
 
 /**
  * Permission types

@@ -14,7 +14,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
   type ToolResponse,
-} from '../response-utils.js';
+} from '../../shared/response.js';
 
 // =============================================================================
 // Types

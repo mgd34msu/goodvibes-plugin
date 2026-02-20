@@ -1,55 +1,12 @@
 /**
- * Database tool handlers
+ * Database domain handlers.
  *
- * Provides database query execution capabilities:
- * - query_database: Execute SQL queries against PostgreSQL, MySQL, and SQLite databases
- *
- * SQLite-specific features:
- * - Connection pooling for better performance
- * - Parameterized queries for SQL injection prevention
- * - Write operation support (INSERT, UPDATE, DELETE)
- * - In-memory database support (:memory:)
- * - Schema introspection (list tables, describe structure)
- *
- * Database drivers (pg, mysql2, better-sqlite3) are optional dependencies.
- * The handlers gracefully handle missing drivers with informative error messages.
+ * Provides 3 tools for database operations:
+ * - project_db_schema: Detect and parse database schemas (Prisma, Drizzle, TypeORM, raw SQL)
+ * - project_db_query: Execute read-only database queries (PostgreSQL, MySQL, SQLite)
+ * - project_db_prisma: Analyze Prisma schema operations and relationships
  */
 
-export {
-  handleQueryDatabase,
-  type QueryDatabaseArgs,
-  type QueryDatabaseResult,
-  type ColumnInfo,
-  type DatabaseType,
-} from './query-database/index.js';
-
-// SQLite-specific exports
-export {
-  withConnection,
-  getConnectionPool,
-  shutdownConnectionPool,
-  type SqliteDatabase,
-  type SqliteStatement,
-  type SqliteConnectionOptions,
-  type SqliteRunResult,
-  type SqliteColumnInfo,
-} from './sqlite-connection.js';
-
-export {
-  listTables,
-  listViews,
-  getTableColumns,
-  getTableIndexes,
-  getTableForeignKeys,
-  getTableTriggers,
-  getCreateStatement,
-  getRowCount,
-  getTableSchema,
-  getDatabaseSchema,
-  type SqliteColumn,
-  type SqliteIndex,
-  type SqliteForeignKey,
-  type SqliteTrigger,
-  type SqliteTableSchema,
-  type SqliteDatabaseSchema,
-} from './sqlite-schema.js';
+export { handleGetDatabaseSchema } from './schema.js';
+export { handleQueryDatabase } from './query-database/index.js';
+export { handleGetPrismaOperations } from './prisma.js';
