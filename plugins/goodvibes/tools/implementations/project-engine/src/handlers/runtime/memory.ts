@@ -13,7 +13,7 @@
 import { spawn, execSync, ChildProcess } from 'child_process';
 import * as path from 'path';
 
-import { createSuccessResponse, createErrorResponse } from '../../shared/response.js';
+import { createSuccessResponse, createErrorResponse, ToolResponse } from '../../shared/response.js';
 import { PROJECT_ROOT } from '../../config.js';
 
 /**
@@ -383,7 +383,7 @@ function spawnCommand(command: string, cwd: string): ChildProcess {
 
   return spawn(cmd, args, {
     cwd,
-    shell: isWindows ? true : false,
+    shell: isWindows,
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: !isWindows,
   });
@@ -418,7 +418,7 @@ function spawnCommand(command: string, cwd: string): ChildProcess {
  *   duration_seconds: 30
  * });
  */
-export async function handleDetectMemoryLeaks(args: DetectMemoryLeaksArgs) {
+export async function handleDetectMemoryLeaks(args: DetectMemoryLeaksArgs): Promise<ToolResponse> {
   const {
     target,
     pid: inputPid,

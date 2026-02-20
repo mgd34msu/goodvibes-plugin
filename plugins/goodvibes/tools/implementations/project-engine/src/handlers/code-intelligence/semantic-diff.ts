@@ -8,7 +8,7 @@
  * @module handlers/code-intelligence/semantic-diff
  */
 
-import { execSync, spawn } from 'child_process';
+import { execFileSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
@@ -90,11 +90,12 @@ function getChangedFilesWithContent(
 ): ChangedFileInfo[] {
   try {
     // Get list of changed files
-    const cmd = fileFilter
-      ? `git diff --name-status ${beforeRef}..${afterRef} -- "${fileFilter}"`
-      : `git diff --name-status ${beforeRef}..${afterRef}`;
+    const diffArgs = ['diff', '--name-status', `${beforeRef}..${afterRef}`];
+    if (fileFilter) {
+      diffArgs.push('--', fileFilter);
+    }
 
-    const filesOutput = execSync(cmd, {
+    const filesOutput = execFileSync('git', diffArgs, {
       cwd: PROJECT_ROOT,
       encoding: 'utf-8',
       maxBuffer: 10 * 1024 * 1024,
@@ -115,7 +116,7 @@ function getChangedFilesWithContent(
       // Get diff
       let diff = '';
       try {
-        diff = execSync(`git diff ${beforeRef}..${afterRef} -- "${file}"`, {
+        diff = execFileSync('git', ['diff', `${beforeRef}..${afterRef}`, '--', file], {
           cwd: PROJECT_ROOT,
           encoding: 'utf-8',
           maxBuffer: 10 * 1024 * 1024,
@@ -128,7 +129,7 @@ function getChangedFilesWithContent(
       let beforeContent: string | null = null;
       if (status !== 'A') {
         try {
-          beforeContent = execSync(`git show ${beforeRef}:"${file}"`, {
+          beforeContent = execFileSync('git', ['show', `${beforeRef}:${file}`], {
             cwd: PROJECT_ROOT,
             encoding: 'utf-8',
             maxBuffer: 10 * 1024 * 1024,
@@ -142,7 +143,7 @@ function getChangedFilesWithContent(
       let afterContent: string | null = null;
       if (status !== 'D') {
         try {
-          afterContent = execSync(`git show ${afterRef}:"${file}"`, {
+          afterContent = execFileSync('git', ['show', `${afterRef}:${file}`], {
             cwd: PROJECT_ROOT,
             encoding: 'utf-8',
             maxBuffer: 10 * 1024 * 1024,
@@ -541,8 +542,8 @@ export async function handleSemanticDiff(
   try {
     // Verify git is available and refs exist
     try {
-      execSync(`git rev-parse ${beforeRef}`, { cwd: PROJECT_ROOT, stdio: 'pipe' });
-      execSync(`git rev-parse ${afterRef}`, { cwd: PROJECT_ROOT, stdio: 'pipe' });
+      execFileSync('git', ['rev-parse', beforeRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
+      execFileSync('git', ['rev-parse', afterRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
     } catch {
       return createErrorResponse(`Invalid git refs: ${beforeRef} or ${afterRef}`);
     }
