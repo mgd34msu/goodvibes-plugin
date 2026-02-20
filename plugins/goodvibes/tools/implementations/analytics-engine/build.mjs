@@ -16,7 +16,7 @@ const sharedOptions = {
   sourcemap: true,
   minify: false,
   keepNames: true,
-  external: ['sql.js', 'ink', 'react', 'react-devtools-core', 'yoga-wasm-web', 'chokidar', 'zod', '@modelcontextprotocol/sdk'],
+  external: ['sql.js', 'ink', 'react', 'react-devtools-core', 'yoga-wasm-web', 'zod', '@modelcontextprotocol/sdk'],
 };
 
 async function build() {
@@ -43,7 +43,7 @@ async function build() {
     });
     console.log('Build completed: dist/server.cjs');
 
-    // Build mini dashboard standalone
+    // Build mini dashboard standalone (ESM, for dev with node_modules)
     await esbuild.build({
       ...sharedOptions,
       banner: binBanner,
@@ -52,7 +52,7 @@ async function build() {
     });
     console.log('Build completed: dist/mini.js');
 
-    // Build full TUI standalone
+    // Build full TUI standalone (ESM, for dev with node_modules)
     await esbuild.build({
       ...sharedOptions,
       banner: binBanner,
@@ -60,6 +60,31 @@ async function build() {
       outfile: join(__dirname, 'dist/full.js'),
     });
     console.log('Build completed: dist/full.js');
+
+    // Build mini dashboard CJS (all deps bundled for plugin installs — no node_modules)
+    await esbuild.build({
+      ...sharedOptions,
+      format: 'cjs',
+      banner: {},
+      external: ['react-devtools-core'],
+      entryPoints: [join(__dirname, 'src/mini.ts')],
+      outfile: join(__dirname, 'dist/mini.cjs'),
+    });
+    console.log('Build completed: dist/mini.cjs');
+
+    // Build full TUI standalone (ESM, all deps bundled for plugin installs — no node_modules)
+    // ESM format required: ink + yoga-layout use top-level await (incompatible with CJS).
+    // createRequire banner: sql.js internally uses require('node:fs') which fails in ESM
+    // bundles — the shim makes require() available.
+    await esbuild.build({
+      ...sharedOptions,
+      format: 'esm',
+      banner: { js: "import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);" },
+      external: ['react-devtools-core'],
+      entryPoints: [join(__dirname, 'src/full.ts')],
+      outfile: join(__dirname, 'dist/full.mjs'),
+    });
+    console.log('Build completed: dist/full.mjs');
 
     // Copy sql.js WASM to dist so it can be loaded at runtime
     const sqlJsWasmSrc = join(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm');

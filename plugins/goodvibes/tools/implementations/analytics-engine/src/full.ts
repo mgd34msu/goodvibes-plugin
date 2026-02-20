@@ -2,10 +2,10 @@
 /**
  * Full TUI entry point.
  * Launches the interactive analytics dashboard in a terminal pane.
- * Built as dist/full.js, intended to run inside a tmux pane.
+ * Built as dist/full.mjs, intended to run inside a tmux pane.
  *
  * Usage:
- *   GOODVIBES_DIR=.goodvibes node dist/full.js
+ *   GOODVIBES_DIR=.goodvibes node dist/full.mjs
  */
 import React from 'react';
 import { render } from 'ink';

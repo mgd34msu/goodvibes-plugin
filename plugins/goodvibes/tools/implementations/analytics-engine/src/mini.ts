@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Entry point for the mini analytics dashboard.
- * Launched by: tmux split-window -v -l 4 "node analytics-engine/dist/mini.js"
+ * Launched by: tmux split-window -v -l 4 "node analytics-engine/dist/mini.cjs"
  *
  * Reads GOODVIBES_DIR from env (default: ".goodvibes"), initialises the
  * Aggregator, and starts the MiniRenderer loop at the configured refresh rate.

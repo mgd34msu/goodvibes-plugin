@@ -9573,43 +9573,42 @@ var init_manager = __esm({
             `TmuxManager.createPane: invalid size value "${sizeStr}". Must match /^\\d+%?$/.`
           );
         }
-        let splitSucceeded = false;
-        let rawId;
         try {
-          (0, import_node_child_process2.execFileSync)("tmux", ["split-window", ...dirFlags, "-l", sizeStr, command], {
-            stdio: "pipe"
-          });
-          splitSucceeded = true;
-          rawId = (0, import_node_child_process2.execFileSync)(
-            "tmux",
-            ["display-message", "-p", "-t", "!", "#{pane_id}"],
-            { stdio: "pipe", encoding: "utf-8" }
-          ).trim();
+          const raw = (0, import_node_child_process2.execFileSync)("tmux", [
+            "split-window",
+            ...dirFlags,
+            "-l",
+            sizeStr,
+            "-P",
+            "-F",
+            "#{pane_id} #{pane_pid}",
+            command
+          ], { stdio: "pipe", encoding: "utf-8" }).trim();
+          const parts = raw.split(/\s+/);
+          const rawId = parts[0] ?? "";
+          const rawPid = parts[1] ?? "";
           if (!/^%\d+$/.test(rawId)) {
             throw new Error(
               `TmuxManager.createPane: unexpected pane ID format "${rawId}". Expected /^%\\d+$/.`
             );
           }
-          const rawPid = (0, import_node_child_process2.execFileSync)(
-            "tmux",
-            ["display-message", "-p", "-t", rawId, "#{pane_pid}"],
-            { stdio: "pipe", encoding: "utf-8" }
-          ).trim();
           const pid = parseInt(rawPid, 10);
           if (Number.isNaN(pid)) {
             throw new Error(
               `TmuxManager.createPane: tmux returned non-numeric PID "${rawPid}" for pane ${rawId}.`
             );
           }
+          try {
+            (0, import_node_child_process2.execFileSync)("tmux", ["select-pane", "-t", "{last}"], { stdio: "pipe" });
+          } catch {
+          }
           const paneInfo = { paneId: rawId, target, pid };
           this.panes.set(target, paneInfo);
           return paneInfo;
         } catch (err) {
-          if (splitSucceeded) {
-            try {
-              (0, import_node_child_process2.execFileSync)("tmux", ["kill-pane", "-t", "!"], { stdio: "pipe" });
-            } catch {
-            }
+          try {
+            (0, import_node_child_process2.execFileSync)("tmux", ["kill-pane", "-t", "{last}"], { stdio: "pipe" });
+          } catch {
           }
           throw err;
         }
@@ -9753,7 +9752,15 @@ function getManager() {
   return _manager;
 }
 function buildCommand(target) {
-  return `node dist/${target}.js`;
+  let distDir;
+  if (typeof __dirname !== "undefined") {
+    distDir = __dirname;
+  } else {
+    const pluginRoot = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || "";
+    distDir = (0, import_node_path5.join)(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
+  }
+  const ext = target === "full" ? "mjs" : "cjs";
+  return `node "${(0, import_node_path5.join)(distDir, `${target}.${ext}`)}"`;
 }
 function handleStart(input) {
   const detection = detectTmux();
@@ -9846,10 +9853,11 @@ function resolveTargets(target) {
     }
   }
 }
-var _manager, handleDashboard;
+var import_node_path5, _manager, handleDashboard;
 var init_dashboard = __esm({
   "src/handlers/dashboard.ts"() {
     "use strict";
+    import_node_path5 = require("node:path");
     init_manager();
     init_detect();
     init_config();

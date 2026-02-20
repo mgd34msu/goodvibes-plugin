@@ -93,36 +93,25 @@ export class TmuxManager {
     // Split the current window and run the command. Wrap all three execFileSync
     // calls in a single try/catch so that if ID or PID capture fails after a
     // successful split, we attempt to kill the orphaned pane before throwing.
-    let splitSucceeded = false;
-    let rawId: string;
-
     try {
-      // Split the current window and run the command.
-      execFileSync('tmux', ['split-window', ...dirFlags, '-l', sizeStr, command], {
-        stdio: 'pipe',
-      });
-      splitSucceeded = true;
+      // Split window and capture new pane's ID and PID in one shot.
+      // -P prints pane info, -F sets the format string.
+      const raw = execFileSync('tmux', [
+        'split-window', ...dirFlags, '-l', sizeStr,
+        '-P', '-F', '#{pane_id} #{pane_pid}',
+        command,
+      ], { stdio: 'pipe', encoding: 'utf-8' }).trim();
 
-      // Capture the ID of the most-recently created pane.
-      rawId = execFileSync(
-        'tmux',
-        ['display-message', '-p', '-t', '!', '#{pane_id}'],
-        { stdio: 'pipe', encoding: 'utf-8' },
-      ).trim();
+      const parts = raw.split(/\s+/);
+      const rawId = parts[0] ?? '';
+      const rawPid = parts[1] ?? '';
 
-      // Validate pane ID format before using it in subsequent commands.
+      // Validate pane ID format.
       if (!/^%\d+$/.test(rawId)) {
         throw new Error(
           `TmuxManager.createPane: unexpected pane ID format "${rawId}". Expected /^%\\d+$/.`,
         );
       }
-
-      // Capture the PID of the process running in that pane.
-      const rawPid = execFileSync(
-        'tmux',
-        ['display-message', '-p', '-t', rawId, '#{pane_pid}'],
-        { stdio: 'pipe', encoding: 'utf-8' },
-      ).trim();
 
       const pid = parseInt(rawPid, 10);
       if (Number.isNaN(pid)) {
@@ -131,17 +120,23 @@ export class TmuxManager {
         );
       }
 
+      // split-window with -P doesn't switch focus, but ensure Claude Code
+      // retains focus by selecting the previous pane.
+      try {
+        execFileSync('tmux', ['select-pane', '-t', '{last}'], { stdio: 'pipe' });
+      } catch {
+        // Best effort — focus may already be correct.
+      }
+
       const paneInfo: PaneInfo = { paneId: rawId, target, pid };
       this.panes.set(target, paneInfo);
       return paneInfo;
     } catch (err) {
-      // If split succeeded but a subsequent step failed, kill the orphaned pane.
-      if (splitSucceeded) {
-        try {
-          execFileSync('tmux', ['kill-pane', '-t', '!'], { stdio: 'pipe' });
-        } catch {
-          // Best-effort cleanup; original error is still thrown below.
-        }
+      // If something failed, try to clean up any orphaned pane.
+      try {
+        execFileSync('tmux', ['kill-pane', '-t', '{last}'], { stdio: 'pipe' });
+      } catch {
+        // Best-effort cleanup; original error is still thrown below.
       }
       throw err;
     }

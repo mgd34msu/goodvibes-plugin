@@ -6,6 +6,7 @@
  * handler invocations so that start/stop/status are consistent.
  */
 
+import { join } from 'node:path';
 import type { AnalyticsDashboardInput } from '../schemas/tools.js';
 import type { Aggregator } from '../daemon/aggregator.js';
 import { TmuxManager } from '../tmux/manager.js';
@@ -47,11 +48,22 @@ function getManager(): TmuxManager {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Build a dist/ script path for the given target.
- * mini → node dist/mini.js, full → node dist/full.js
+ * Build an absolute path to the bundled dist script for the given target.
+ * mini → node <dist>/mini.cjs, full → node <dist>/full.mjs
  */
 function buildCommand(target: 'mini' | 'full'): string {
-  return `node dist/${target}.js`;
+  // Resolve absolute path to the CJS dist file.
+  // In CJS bundle (server.cjs), __dirname points to dist/.
+  // Fallback: derive from PLUGIN_ROOT env var set in .mcp.json.
+  let distDir: string;
+  if (typeof __dirname !== 'undefined') {
+    distDir = __dirname;
+  } else {
+    const pluginRoot = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || '';
+    distDir = join(pluginRoot, 'tools', 'implementations', 'analytics-engine', 'dist');
+  }
+  const ext = target === 'full' ? 'mjs' : 'cjs';
+  return `node "${join(distDir, `${target}.${ext}`)}"`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
