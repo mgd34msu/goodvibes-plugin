@@ -59,7 +59,12 @@ if ! claude plugin install goodvibes@goodvibes-market 2>/dev/null; then
     exit 1
 fi
 echo -e "${GREEN}  Plugin installed${NC}"
-
+echo ""
+echo -e "${GREEN}  Running GoodVibes Setup for Claude Code..."
+if claude --init-only 2>/dev/null; then
+    echo -e "${GREEN}  Setup Complete!${NC}"
+else
+    echo -e "${YELLOW}  Setup Failed - Open and Close Claude Code to Autofix.${NC}"
 echo ""
 echo -e "${GREEN}Done! GoodVibes plugin installed successfully.${NC}"
 echo ""

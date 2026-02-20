@@ -45,6 +45,10 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   Plugin installed
 
+echo Running Goodvibes Plugin Setup for Claude...
+claude --init-only
+echo Setup Complete!
+echo.
 echo.
 echo Done! GoodVibes plugin installed successfully.
 echo.

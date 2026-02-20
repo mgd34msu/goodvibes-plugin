@@ -11,6 +11,8 @@ import { existsSync } from 'fs';
  * Index format stored in .goodvibes/project-index.json (version 4)
  */
 export interface ProjectFileIndex {
+  /** Human/LLM-readable description of the tree format */
+  _format?: string;
   version: 4;
   created_at: string;           // ISO timestamp
   updated_at: string;           // ISO timestamp
@@ -87,7 +89,16 @@ export interface FileEntry {
 /**
  * ProjectIndex singleton manages the in-memory index with lazy persistence.
  */
+/**
+ * Self-documenting format hint written to disk so agents can parse the index without prior knowledge.
+ * Exported as a standalone constant to avoid bundling the full ProjectIndex class in build-index.cjs.
+ */
+export const FORMAT_HINT = 'tree: { "directory/": { "file.ext": token_count } }';
+
 export class ProjectIndex {
+  /** Self-documenting format hint written to disk so agents can parse the index without prior knowledge. */
+  public static readonly FORMAT_HINT = FORMAT_HINT;
+
   private static instance: ProjectIndex | null = null;
   private index: ProjectFileIndex | null = null;
   // Internal flat list for efficient binary search operations
@@ -209,6 +220,11 @@ export class ProjectIndex {
           // Current format: v4 tree with filename→tokens maps
           this.index = parsed as ProjectFileIndex;
           this.files = ProjectIndex.flattenTree(parsed.tree || {});
+          // Backfill _format if missing (pre-format indexes)
+          if (!this.index._format) {
+            this.index._format = ProjectIndex.FORMAT_HINT;
+            this.markDirty();
+          }
         } else if (parsed.version === 3) {
           // V3 format: tree with array-of-objects — migrate to v4
           const v3 = parsed as ProjectFileIndexV3;
@@ -216,6 +232,7 @@ export class ProjectIndex {
           this.files = ProjectIndex.flattenTreeV3(v3tree);
           const v4tree = ProjectIndex.entriesToTree(this.files);
           this.index = {
+            _format: ProjectIndex.FORMAT_HINT,
             version: 4,
             created_at: v3.created_at,
             updated_at: v3.updated_at,
@@ -231,6 +248,7 @@ export class ProjectIndex {
           this.files = ProjectIndex.flattenTreeV2(v2tree);
           const v4tree = ProjectIndex.entriesToTree(this.files);
           this.index = {
+            _format: ProjectIndex.FORMAT_HINT,
             version: 4,
             created_at: v2.created_at,
             updated_at: v2.updated_at,
@@ -250,6 +268,7 @@ export class ProjectIndex {
           this.files.sort((a, b) => a.p.localeCompare(b.p));
           const tree = ProjectIndex.entriesToTree(this.files);
           this.index = {
+            _format: ProjectIndex.FORMAT_HINT,
             version: 4,
             created_at: legacy.created_at,
             updated_at: legacy.updated_at,

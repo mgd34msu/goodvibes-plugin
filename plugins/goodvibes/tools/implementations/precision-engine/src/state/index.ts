@@ -28,3 +28,4 @@ export {
   type DossierFailure,
   type DossierKeyFile,
 } from './dossier.js';
+export { buildProjectIndex, type IndexerLogger } from './project-indexer.js';

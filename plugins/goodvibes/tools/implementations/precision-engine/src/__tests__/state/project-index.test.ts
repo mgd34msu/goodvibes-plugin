@@ -21,6 +21,7 @@ import { ProjectIndex, categorizeFileType } from '../../state/project-index.js';
 /** Build a v4 index JSON string (current format: filename→tokens dict per dir). */
 function makeV4Index(tree: Record<string, Record<string, number>>, extra?: object) {
   return JSON.stringify({
+    _format: 'tree: { "directory/": { "file.ext": token_count } }',
     version: 4,
     created_at: '2024-01-01T00:00:00.000Z',
     updated_at: '2024-01-01T00:00:00.000Z',
