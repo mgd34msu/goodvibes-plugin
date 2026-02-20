@@ -14,8 +14,8 @@
  * entries with the same id are replaced if the new data is more specific.
  */
 
-import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
-import * as path from 'node:path';
+import { readFileSync, writeFileSync, renameSync, mkdirSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
 import type { DashboardState } from '../types.js';
 
 // ---------------------------------------------------------------------------
@@ -47,16 +47,6 @@ export interface PreferenceUpdate {
   /** Human-readable explanation for the preference. */
   reason: string;
 }
-
-// ---------------------------------------------------------------------------
-// Internal types
-// ---------------------------------------------------------------------------
-
-/** Shape stored in patterns.json (superset of PatternUpdate). */
-type StoredPattern = PatternUpdate & Record<string, unknown>;
-
-/** Shape stored in preferences.json. */
-type StoredPreference = PreferenceUpdate & Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 // Detection thresholds
@@ -211,23 +201,24 @@ export class MemoryUpdater {
     // Ensure memory directory exists.
     try {
       mkdirSync(this.memoryDir, { recursive: true });
-    } catch {
-      // Already exists or permission error — proceed and let the write fail
-      // with a more informative error if the directory is truly inaccessible.
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code !== 'EEXIST') {
+        throw err;
+      }
     }
 
     if (updates.patterns.length > 0) {
-      this.mergeAndWrite<StoredPattern>(
-        path.join(this.memoryDir, 'patterns.json'),
-        updates.patterns,
+      this.mergeAndWrite(
+        join(this.memoryDir, 'patterns.json'),
+        updates.patterns as Array<PatternUpdate & Record<string, unknown>>,
         'id',
       );
     }
 
     if (updates.preferences.length > 0) {
-      this.mergeAndWrite<StoredPreference>(
-        path.join(this.memoryDir, 'preferences.json'),
-        updates.preferences,
+      this.mergeAndWrite(
+        join(this.memoryDir, 'preferences.json'),
+        updates.preferences as Array<PreferenceUpdate & Record<string, unknown>>,
         'key',
       );
     }
@@ -264,9 +255,9 @@ export class MemoryUpdater {
       byKey.set(update[mergeKey], { ...byKey.get(update[mergeKey]), ...update });
     }
 
-    // Preserve insertion order: existing first (in original order), then new.
+    // Preserve insertion order: existing entries first (in original order),
+    // then brand-new entries not previously in the file.
     const merged: T[] = [];
-    const updatedKeys = new Set(updates.map((u) => u[mergeKey]));
 
     for (const entry of existing) {
       const key = entry[mergeKey];
@@ -280,12 +271,9 @@ export class MemoryUpdater {
     const existingKeys = new Set(existing.map((e) => e[mergeKey]));
     for (const update of updates) {
       if (!existingKeys.has(update[mergeKey])) {
-        merged.push({ ...update } as T);
+        merged.push(update);
       }
     }
-
-    // Suppress unused variable warning — updatedKeys is used to determine merge priority.
-    void updatedKeys;
 
     // Atomic write.
     this.atomicWriteJson(filePath, merged);
@@ -316,9 +304,14 @@ export class MemoryUpdater {
    * @throws If the write or rename fails.
    */
   private atomicWriteJson(filePath: string, data: unknown): void {
-    const tmpPath = filePath + '.tmp';
+    const tmpPath = `${filePath}.${process.pid}.tmp`;
     const content = JSON.stringify(data, null, 2) + '\n';
-    writeFileSync(tmpPath, content, { encoding: 'utf-8' });
-    renameSync(tmpPath, filePath);
+    try {
+      writeFileSync(tmpPath, content, { encoding: 'utf-8' });
+      renameSync(tmpPath, filePath);
+    } catch (err) {
+      try { unlinkSync(tmpPath); } catch { /* best-effort cleanup */ }
+      throw err;
+    }
   }
 }

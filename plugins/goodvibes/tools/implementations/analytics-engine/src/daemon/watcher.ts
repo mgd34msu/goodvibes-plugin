@@ -19,7 +19,7 @@
 import { EventEmitter } from 'node:events';
 import { watch, existsSync, statSync } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
-import * as path from 'node:path';
+import { join, dirname, basename } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,7 +66,7 @@ export class DataWatcher extends EventEmitter {
   private readonly pollIntervalMs: number;
 
   /** Active FSWatcher handles, keyed by the logical target path. */
-  private watchers: Map<string, FSWatcher> = new Map();
+  private watchers: Map<string, FSWatcher | { close(): void }> = new Map();
 
   /** Debounce timer handles, keyed by event name. */
   private debounceTimers: Map<WatcherEventName, ReturnType<typeof setTimeout>> = new Map();
@@ -117,7 +117,7 @@ export class DataWatcher extends EventEmitter {
       try {
         watcher.close();
       } catch {
-        // Ignore errors during teardown.
+        /* best-effort cleanup — ignore errors during teardown */
       }
     }
     this.watchers.clear();
@@ -141,17 +141,17 @@ export class DataWatcher extends EventEmitter {
 
   /** Type-safe on. */
   on<K extends WatcherEventName>(event: K, listener: WatcherEvents[K]): this {
-    return super.on(event, listener as (...args: unknown[]) => void);
+    return super.on(event, listener as () => void);
   }
 
   /** Type-safe once. */
   once<K extends WatcherEventName>(event: K, listener: WatcherEvents[K]): this {
-    return super.once(event, listener as (...args: unknown[]) => void);
+    return super.once(event, listener as () => void);
   }
 
   /** Type-safe off. */
   off<K extends WatcherEventName>(event: K, listener: WatcherEvents[K]): this {
-    return super.off(event, listener as (...args: unknown[]) => void);
+    return super.off(event, listener as () => void);
   }
 
   // -------------------------------------------------------------------------
@@ -165,19 +165,19 @@ export class DataWatcher extends EventEmitter {
   private attachWatchers(): void {
     const entries: Array<{ targetPath: string; event: WatcherEventName }> = [
       {
-        targetPath: path.join(this.goodvibesDir, 'telemetry', 'telemetry.db'),
+        targetPath: join(this.goodvibesDir, 'telemetry', 'telemetry.db'),
         event: 'telemetry-change',
       },
       {
-        targetPath: path.join(this.goodvibesDir, 'state'),
+        targetPath: join(this.goodvibesDir, 'state'),
         event: 'session-change',
       },
       {
-        targetPath: path.join(this.goodvibesDir, 'project-index.json'),
+        targetPath: join(this.goodvibesDir, 'project-index.json'),
         event: 'index-change',
       },
       {
-        targetPath: path.join(this.goodvibesDir, 'goodvibes.json'),
+        targetPath: join(this.goodvibesDir, 'goodvibes.json'),
         event: 'config-change',
       },
     ];
@@ -201,16 +201,15 @@ export class DataWatcher extends EventEmitter {
    * @param event      - Watcher event name to emit on change.
    */
   private watchPath(targetPath: string, event: WatcherEventName): void {
-    const targetExists = existsSync(targetPath);
-    const targetBasename = path.basename(targetPath);
-    const isDir = targetExists && this.pathIsDirectory(targetPath);
+    const targetBasename = basename(targetPath);
+    const isDir = this.pathIsDirectory(targetPath);
 
     // If the target doesn't exist, watch the parent directory for its creation.
-    const watchTarget = targetExists ? targetPath : path.dirname(targetPath);
+    const watchTarget = existsSync(targetPath) ? targetPath : dirname(targetPath);
 
     const handler = (_eventType: string, filename: string | null): void => {
-      if (targetExists) {
-        // Watching the target directly.
+      if (existsSync(targetPath)) {
+        // Watching the target directly (or target now exists).
         // For file targets, any change is relevant.
         // For directory targets (state/), any filename change is relevant.
         if (!isDir && filename !== null && filename !== targetBasename) {
@@ -231,17 +230,15 @@ export class DataWatcher extends EventEmitter {
     };
 
     try {
-      const watcher = watch(watchTarget, { persistent: false }, handler);
-      watcher.on('error', (err: Error) => {
+      const watcher = watch(watchTarget, { persistent: false /* watcher won't keep the Node.js process alive */ }, handler);
+      watcher.on('error', (_err: Error) => {
         // On error, close this watcher and attempt mtime polling.
-        void err; // already surfaced by the error event
-        try { watcher.close(); } catch { /* ignore */ }
+        try { watcher.close(); } catch { /* best-effort cleanup */ }
         this.watchers.delete(targetPath);
         this.attachPollingFallback(targetPath, event);
       });
       this.watchers.set(targetPath, watcher);
-    } catch {
-      // fs.watch not supported on this filesystem; fall back to mtime polling.
+    } catch { /* best-effort — fs.watch not supported on this filesystem; fall back to mtime polling */
       this.attachPollingFallback(targetPath, event);
     }
   }
@@ -256,7 +253,7 @@ export class DataWatcher extends EventEmitter {
   private rewatchPath(targetPath: string, event: WatcherEventName): void {
     const existing = this.watchers.get(targetPath);
     if (existing) {
-      try { existing.close(); } catch { /* ignore */ }
+      try { existing.close(); } catch { /* best-effort cleanup */ }
       this.watchers.delete(targetPath);
     }
     // Fire the event for the creation itself.
@@ -277,6 +274,7 @@ export class DataWatcher extends EventEmitter {
     if (this.watchers.has(targetPath)) return;
 
     let lastMtime = 0;
+    try { lastMtime = statSync(targetPath).mtimeMs; } catch { /* file may not exist yet */ }
     const interval = setInterval(() => {
       if (!this.running) {
         clearInterval(interval);
@@ -288,16 +286,15 @@ export class DataWatcher extends EventEmitter {
           lastMtime = stat.mtimeMs;
           this.debounceEmit(event);
         }
-      } catch {
-        // File does not exist yet — poll again next interval.
+      } catch { /* best-effort — file does not exist yet; poll again next interval */
       }
     }, this.pollIntervalMs);
 
     // Store a close()-compatible object so stop() can clean it up uniformly.
-    const mockWatcher = {
+    const closeableInterval: { close(): void } = {
       close: () => { clearInterval(interval); },
-    } as unknown as FSWatcher;
-    this.watchers.set(targetPath, mockWatcher);
+    };
+    this.watchers.set(targetPath, closeableInterval);
   }
 
   /**
@@ -306,7 +303,7 @@ export class DataWatcher extends EventEmitter {
   private pathIsDirectory(targetPath: string): boolean {
     try {
       return statSync(targetPath).isDirectory();
-    } catch {
+    } catch { /* best-effort — path may not exist */
       return false;
     }
   }

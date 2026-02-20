@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import type { TmuxConfig } from '../types.js';
 import { detectTmux } from './detect.js';
 
@@ -16,23 +16,26 @@ export interface PaneInfo {
   pid: number;
 }
 
-/** Map a position string to the tmux split-window direction flags. */
-function _positionFlags(position: TmuxConfig['mini_position']): string {
+/** Map a position string to the tmux split-window direction flag arguments. */
+function _positionFlags(position: TmuxConfig['mini_position']): string[] {
   switch (position) {
-    case 'bottom': return '-v';
-    case 'top':    return '-v -b';
-    case 'right':  return '-h';
-    case 'left':   return '-h -b';
+    case 'bottom': return ['-v'];
+    case 'top':    return ['-v', '-b'];
+    case 'right':  return ['-h'];
+    case 'left':   return ['-h', '-b'];
+    default: {
+      const _exhaustive: never = position;
+      throw new Error(`Unknown position: ${_exhaustive}`);
+    }
   }
 }
 
 /**
  * Manages the lifecycle of analytics tmux panes (mini and full).
  *
- * All tmux commands are executed synchronously and wrapped in individual
- * try/catch blocks. Failures are logged to stderr but never propagate as
- * thrown exceptions, ensuring the analytics daemon remains stable even when
- * tmux is unavailable or misbehaves.
+ * Non-critical operations (close, resize, status) are wrapped in try/catch
+ * and never throw. createPane throws when tmux is unavailable or pane
+ * creation fails.
  */
 export class TmuxManager {
   private readonly config: TmuxConfig;
@@ -79,32 +82,69 @@ export class TmuxManager {
     const size = isMini ? this.config.mini_pane_size : this.config.full_pane_size;
     const dirFlags = _positionFlags(position);
 
-    // Split the current window and run the command.
-    execSync(
-      `tmux split-window ${dirFlags} -l ${size} "${command.replace(/"/g, '\\"')}"`,
-      { stdio: 'pipe' },
-    );
+    // Validate size before use.
+    const sizeStr = String(size);
+    if (!/^\d+%?$/.test(sizeStr)) {
+      throw new Error(
+        `TmuxManager.createPane: invalid size value "${sizeStr}". Must match /^\\d+%?$/.`,
+      );
+    }
 
-    // Capture the ID of the most-recently created pane.
-    const rawId = execSync(
-      "tmux display-message -p -t '!' '#{pane_id}'",
-      { stdio: 'pipe', encoding: 'utf-8' },
-    ).trim();
+    // Split the current window and run the command. Wrap all three execFileSync
+    // calls in a single try/catch so that if ID or PID capture fails after a
+    // successful split, we attempt to kill the orphaned pane before throwing.
+    let splitSucceeded = false;
+    let rawId: string;
 
-    // Capture the PID of the process running in that pane.
-    const rawPid = execSync(
-      `tmux display-message -p -t '${rawId}' '#{pane_pid}'`,
-      { stdio: 'pipe', encoding: 'utf-8' },
-    ).trim();
+    try {
+      // Split the current window and run the command.
+      execFileSync('tmux', ['split-window', ...dirFlags, '-l', sizeStr, command], {
+        stdio: 'pipe',
+      });
+      splitSucceeded = true;
 
-    const paneInfo: PaneInfo = {
-      paneId: rawId,
-      target,
-      pid: parseInt(rawPid, 10),
-    };
+      // Capture the ID of the most-recently created pane.
+      rawId = execFileSync(
+        'tmux',
+        ['display-message', '-p', '-t', '!', '#{pane_id}'],
+        { stdio: 'pipe', encoding: 'utf-8' },
+      ).trim();
 
-    this.panes.set(target, paneInfo);
-    return paneInfo;
+      // Validate pane ID format before using it in subsequent commands.
+      if (!/^%\d+$/.test(rawId)) {
+        throw new Error(
+          `TmuxManager.createPane: unexpected pane ID format "${rawId}". Expected /^%\\d+$/.`,
+        );
+      }
+
+      // Capture the PID of the process running in that pane.
+      const rawPid = execFileSync(
+        'tmux',
+        ['display-message', '-p', '-t', rawId, '#{pane_pid}'],
+        { stdio: 'pipe', encoding: 'utf-8' },
+      ).trim();
+
+      const pid = parseInt(rawPid, 10);
+      if (Number.isNaN(pid)) {
+        throw new Error(
+          `TmuxManager.createPane: tmux returned non-numeric PID "${rawPid}" for pane ${rawId}.`,
+        );
+      }
+
+      const paneInfo: PaneInfo = { paneId: rawId, target, pid };
+      this.panes.set(target, paneInfo);
+      return paneInfo;
+    } catch (err) {
+      // If split succeeded but a subsequent step failed, kill the orphaned pane.
+      if (splitSucceeded) {
+        try {
+          execFileSync('tmux', ['kill-pane', '-t', '!'], { stdio: 'pipe' });
+        } catch {
+          // Best-effort cleanup; original error is still thrown below.
+        }
+      }
+      throw err;
+    }
   }
 
   /**
@@ -121,7 +161,7 @@ export class TmuxManager {
     if (!info) return;
 
     try {
-      execSync(`tmux kill-pane -t ${info.paneId}`, { stdio: 'pipe' });
+      execFileSync('tmux', ['kill-pane', '-t', info.paneId], { stdio: 'pipe' });
     } catch (err) {
       // Pane may have already exited — best-effort teardown.
       const message = err instanceof Error ? err.message : String(err);
@@ -160,8 +200,9 @@ export class TmuxManager {
     if (!info) return false;
 
     try {
-      const raw = execSync(
-        "tmux list-panes -F '#{pane_id}'",
+      const raw = execFileSync(
+        'tmux',
+        ['list-panes', '-F', '#{pane_id}'],
         { stdio: 'pipe', encoding: 'utf-8' },
       );
       const ids = raw.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -176,7 +217,9 @@ export class TmuxManager {
    * Resize the pane for a given target slot.
    *
    * Uses `tmux resize-pane` with the `-x` flag for horizontal splits and
-   * `-y` for vertical splits. Failures are logged but never propagate.
+   * `-y` for vertical splits. If the pane is no longer alive the internal
+   * state is cleaned up and the method returns early without error.
+   * Failures are logged but never propagate.
    *
    * @param target - Which slot to resize: `'mini'` or `'full'`.
    * @param size   - New size in lines/columns (number) or a percentage string (e.g. `'40%'`).
@@ -184,6 +227,20 @@ export class TmuxManager {
   resizePane(target: 'mini' | 'full', size: number | string): void {
     const info = this.panes.get(target);
     if (!info) return;
+
+    // If the pane is no longer alive, clean up state and return early.
+    if (!this.isPaneAlive(target)) {
+      this.panes.delete(target);
+      return;
+    }
+
+    const sizeStr = String(size);
+    if (!/^\d+%?$/.test(sizeStr)) {
+      process.stderr.write(
+        `[TmuxManager] warn: resize-pane skipped — invalid size "${sizeStr}". Must match /^\\d+%?$/.\n`,
+      );
+      return;
+    }
 
     const position =
       target === 'mini' ? this.config.mini_position : this.config.full_position;
@@ -193,8 +250,9 @@ export class TmuxManager {
       position === 'top' || position === 'bottom' ? '-y' : '-x';
 
     try {
-      execSync(
-        `tmux resize-pane -t ${info.paneId} ${flag} ${size}`,
+      execFileSync(
+        'tmux',
+        ['resize-pane', '-t', info.paneId, flag, sizeStr],
         { stdio: 'pipe' },
       );
     } catch (err) {

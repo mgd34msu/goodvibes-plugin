@@ -8,7 +8,7 @@
  * Design notes:
  *   - Stateless computation: takes metrics as input, emits state as output.
  *   - No file I/O — reads config from constructor, metrics from update().
- *   - Thread-safe in a single-threaded Node.js context (no async code).
+ *   - Stateful — callers should not share instances across workers.
  */
 
 import type { BudgetState, SessionMetrics, AnalyticsConfig } from '../types.js';
@@ -61,7 +61,7 @@ export class BudgetTracker {
   setBudget(amount: number, unit: 'dollars' | 'tokens'): void {
     this.budgetAmount = amount;
     this.budgetUnit = unit;
-    this.crossedThresholds = new Set();
+    this.crossedThresholds.clear();
     this.currentState = null;
   }
 
@@ -71,7 +71,7 @@ export class BudgetTracker {
   clearBudget(): void {
     this.budgetAmount = null;
     this.budgetUnit = null;
-    this.crossedThresholds = new Set();
+    this.crossedThresholds.clear();
     this.currentState = null;
   }
 
@@ -155,7 +155,7 @@ export class BudgetTracker {
    * Apply budget and threshold settings from a config object.
    */
   private applyConfig(config: AnalyticsConfig): void {
-    if (config.budget !== null) {
+    if (config.budget) {
       this.budgetAmount = config.budget.amount;
       this.budgetUnit = config.budget.unit;
     }

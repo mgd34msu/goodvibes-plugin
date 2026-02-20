@@ -13,7 +13,7 @@
  * non-critical reporting paths.
  */
 
-import { writeFileSync, renameSync, mkdirSync } from 'node:fs';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type {
   DashboardState,
@@ -30,8 +30,44 @@ import {
   formatPercent,
   formatDuration,
   formatUptime,
-  formatDelta,
 } from '../tui/mini/format.js';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Maximum character length for path display in reports. */
+const MAX_PATH_DISPLAY_LENGTH = 60;
+
+/**
+ * Map a token efficiency rate (0–1) to a human-readable label.
+ */
+function getEfficiencyLabel(rate: number): string {
+  if (!Number.isFinite(rate) || rate <= 0) return '0.0%';
+  if (rate >= 1) return '100.0%';
+  return `${(rate * 100).toFixed(1)}%`;
+}
+
+/**
+ * Format a pre-computed delta object into a display string with arrow indicator.
+ * Mirrors the output format of `formatDelta()` from format.ts.
+ */
+function formatPrecomputedDelta(delta: { value: number; percentage: number; direction: 'up' | 'down' | 'stable' }): string {
+  const { percentage, direction } = delta;
+  if (direction === 'stable') return `~${Math.abs(percentage).toFixed(1)}% \u2500`;
+  if (direction === 'up') return `+${percentage.toFixed(1)}% \u25b2`;
+  return `${percentage.toFixed(1)}% \u25bc`;
+}
+
+/** Minimal structured logger interface. */
+interface Logger {
+  warn(message: string, context?: Record<string, unknown>): void;
+}
+
+/** Default logger: prefixed console.warn. */
+const DEFAULT_LOGGER: Logger = {
+  warn: (msg) => console.warn(`[analytics] ${msg}`),
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ReportGenerator
@@ -53,14 +89,17 @@ import {
  */
 export class ReportGenerator {
   private readonly logsDir: string;
+  private readonly logger: Logger;
 
   /**
    * @param logsDir - Directory where session report files are written.
    *                  Typically `.goodvibes/logs`. Created automatically if it
    *                  does not exist.
+   * @param logger  - Optional structured logger; defaults to prefixed console.warn.
    */
-  constructor(logsDir: string) {
+  constructor(logsDir: string, logger: Logger = DEFAULT_LOGGER) {
     this.logsDir = logsDir;
+    this.logger = logger;
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -109,9 +148,11 @@ export class ReportGenerator {
   /**
    * Render and persist a session report to disk.
    *
-   * Writes the report atomically: content is first written to a temporary
-   * file, then renamed into place. This prevents partial reads if the process
-   * is interrupted mid-write.
+   * Writes the report atomically: content is first written to a unique
+   * temporary file (suffixed with PID and timestamp to prevent concurrent
+   * write races), then renamed into place. This prevents partial reads if
+   * the process is interrupted mid-write. If the rename fails the temp file
+   * is cleaned up on a best-effort basis.
    *
    * @param sessionId  - Session identifier, used for the output filename.
    * @param state      - Aggregated dashboard state to report on.
@@ -119,33 +160,36 @@ export class ReportGenerator {
    * @returns Absolute path of the written report file, or an empty string if
    *          writing failed.
    */
-  generate(
+  async generate(
     sessionId: string,
     state: DashboardState,
     comparison?: HistoricalComparison,
-  ): string {
+  ): Promise<string> {
     const markdown = this.render(sessionId, state, comparison);
     const outPath = path.join(this.logsDir, `session-report-${sessionId}.md`);
-    const tmpPath = `${outPath}.tmp`;
+    // Unique temp path prevents concurrent generate() calls from racing.
+    const tmpPath = `${outPath}.${process.pid}.${Date.now()}.tmp`;
 
     try {
-      mkdirSync(this.logsDir, { recursive: true });
+      await fs.promises.mkdir(this.logsDir, { recursive: true });
     } catch (err) {
-      console.warn('[ReportGenerator] Failed to create logs directory:', String(err));
+      this.logger.warn(`Failed to create logs directory: ${String(err)}`);
       return '';
     }
 
     try {
-      writeFileSync(tmpPath, markdown, 'utf-8');
+      await fs.promises.writeFile(tmpPath, markdown, 'utf-8');
     } catch (err) {
-      console.warn('[ReportGenerator] Failed to write temporary report file:', String(err));
+      this.logger.warn(`Failed to write temporary report file: ${String(err)}`);
       return '';
     }
 
     try {
-      renameSync(tmpPath, outPath);
+      await fs.promises.rename(tmpPath, outPath);
     } catch (err) {
-      console.warn('[ReportGenerator] Failed to rename report file:', String(err));
+      this.logger.warn(`Failed to rename report file: ${String(err)}`);
+      // Best-effort cleanup of orphaned temp file.
+      try { await fs.promises.unlink(tmpPath); } catch { /* ignore */ }
       return '';
     }
 
@@ -181,9 +225,9 @@ export class ReportGenerator {
 
   private renderTokenUsage(metrics: SessionMetrics): string {
     const { tokens } = metrics;
-    const efficiencyLabel = Number.isFinite(tokens.efficiency) && tokens.total + tokens.saved > 0
-      ? `${(tokens.efficiency * 100).toFixed(1)}%`
-      : '0.0%';
+    const efficiencyLabel = getEfficiencyLabel(
+      tokens.total + tokens.saved > 0 ? tokens.efficiency : 0,
+    );
 
     return [
       '## Token Usage',
@@ -293,7 +337,7 @@ export class ReportGenerator {
     ];
 
     for (const h of top10) {
-      const shortPath = h.path.length > 60 ? `...${h.path.slice(-57)}` : h.path;
+      const shortPath = h.path.length > MAX_PATH_DISPLAY_LENGTH ? `...${h.path.slice(-(MAX_PATH_DISPLAY_LENGTH - 3))}` : h.path;
       lines.push(
         `| ${shortPath} | ${formatNumber(h.reads)} | ${formatNumber(h.writes)} | ${formatNumber(h.conflicts)} | ${formatNumber(h.tokens_saved)} |`,
       );
@@ -367,25 +411,25 @@ export class ReportGenerator {
     // Token row
     const tokenDelta = deltas['tokens.total'];
     lines.push(
-      `| Total Tokens | ${formatNumber(current.tokens.total)} | ${formatNumber(avg.tokens.total)} | ${tokenDelta ? formatDelta(current.tokens.total, avg.tokens.total) : 'N/A'} |`,
+      `| Total Tokens | ${formatNumber(current.tokens.total)} | ${formatNumber(avg.tokens.total)} | ${tokenDelta ? formatPrecomputedDelta(tokenDelta) : 'N/A'} |`,
     );
 
     // Cost row
     const costDelta = deltas['cost.total'];
     lines.push(
-      `| Net Cost | ${formatDollars(current.cost.total)} | ${formatDollars(avg.cost.total)} | ${costDelta ? formatDelta(current.cost.total, avg.cost.total) : 'N/A'} |`,
+      `| Net Cost | ${formatDollars(current.cost.total)} | ${formatDollars(avg.cost.total)} | ${costDelta ? formatPrecomputedDelta(costDelta) : 'N/A'} |`,
     );
 
     // Cache row
     const cacheDelta = deltas['cache.hit_rate'];
     lines.push(
-      `| Cache Hit Rate | ${formatPercent(current.cache.hit_rate)} | ${formatPercent(avg.cache.hit_rate)} | ${cacheDelta ? formatDelta(current.cache.hit_rate, avg.cache.hit_rate) : 'N/A'} |`,
+      `| Cache Hit Rate | ${formatPercent(current.cache.hit_rate)} | ${formatPercent(avg.cache.hit_rate)} | ${cacheDelta ? formatPrecomputedDelta(cacheDelta) : 'N/A'} |`,
     );
 
     // Commands row
     const cmdDelta = deltas['commands.success_rate'];
     lines.push(
-      `| Command Success | ${formatPercent(current.commands.success_rate)} | ${formatPercent(avg.commands.success_rate)} | ${cmdDelta ? formatDelta(current.commands.success_rate, avg.commands.success_rate) : 'N/A'} |`,
+      `| Command Success | ${formatPercent(current.commands.success_rate)} | ${formatPercent(avg.commands.success_rate)} | ${cmdDelta ? formatPrecomputedDelta(cmdDelta) : 'N/A'} |`,
     );
 
     return lines.join('\n');

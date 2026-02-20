@@ -25,6 +25,20 @@ import type {
 import type { TelemetryReader } from '../data/telemetry-reader.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Logger
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Minimal structured logger interface. */
+interface Logger {
+  warn(message: string, context?: Record<string, unknown>): void;
+}
+
+/** Default logger: prefixed console.warn. */
+const DEFAULT_LOGGER: Logger = {
+  warn: (msg) => console.warn(`[analytics] ${msg}`),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Public types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -68,9 +82,11 @@ const BUILD_CMD_RE = /npm\s+run\s+(build|test|lint|typecheck)|npx\s+tsc|jest|vit
  * Build a stable deduplication key for a rule within a time window.
  * Two calls with the same type that fall into the same window bucket produce
  * the same key and the anomaly will not fire again.
+ *
+ * @param now - Optional timestamp override (defaults to Date.now()) for testability.
  */
-function windowKey(type: AnomalyType, windowMs: number): string {
-  const bucket = Math.floor(Date.now() / windowMs);
+function windowKey(type: AnomalyType, windowMs: number, now: number = Date.now()): string {
+  const bucket = Math.floor(now / windowMs);
   return `${type}:${bucket}`;
 }
 
@@ -190,8 +206,12 @@ const tokenBurnRule: AnomalyRule = {
       (sum, r) => sum + (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
       0,
     );
-    // Rate: tokens per millisecond in the window
-    const windowRate = windowTokens / WINDOW_5_MIN;
+    // Rate: tokens per millisecond over the actual recorded span, not the full
+    // window duration — avoids artificially deflating the rate when records
+    // only cover a fraction of the window.
+    const earliest = Math.min(...windowRecords.map((r) => new Date(r.created_at).getTime()));
+    const span = Math.max(Date.now() - earliest, 1);
+    const windowRate = windowTokens / span;
 
     const sessionTotalTokens = state.metrics.tokens.total;
     const sessionUptimeMs = state.uptime_ms;
@@ -381,8 +401,9 @@ const agentStallRule: AnomalyRule = {
  */
 function isBuildCommand(metadata: string): boolean {
   try {
-    const parsed = JSON.parse(metadata) as Record<string, unknown>;
-    const cmd = typeof parsed['cmd'] === 'string' ? parsed['cmd'] : '';
+    const parsed: unknown = JSON.parse(metadata);
+    const meta = typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {};
+    const cmd = typeof meta['cmd'] === 'string' ? meta['cmd'] : '';
     return BUILD_CMD_RE.test(cmd);
   } catch {
     return BUILD_CMD_RE.test(metadata);
@@ -397,11 +418,12 @@ function isConflictRecord(record: TelemetryRecord): boolean {
   if (record.tool === 'conflict') return true;
   if (!record.metadata) return false;
   try {
-    const parsed = JSON.parse(record.metadata) as Record<string, unknown>;
+    const parsed: unknown = JSON.parse(record.metadata);
+    const meta = typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {};
     return (
-      parsed['conflict'] === true ||
-      parsed['type'] === 'conflict' ||
-      typeof parsed['conflict_file'] === 'string'
+      meta['conflict'] === true ||
+      meta['type'] === 'conflict' ||
+      typeof meta['conflict_file'] === 'string'
     );
   } catch {
     return false;
@@ -440,10 +462,11 @@ export class AnomalyDetector {
   private readonly telemetry: TelemetryReader;
   private readonly config: AnalyticsConfig;
   private readonly rules: AnomalyRule[];
+  private readonly logger: Logger;
 
   /**
    * In-memory list of detected anomalies (newest last).
-   * Pruned on demand via `prune()`.
+   * Pruned on demand via `pruneStale()`.
    */
   private anomalies: Anomaly[] = [];
 
@@ -456,11 +479,13 @@ export class AnomalyDetector {
   /**
    * @param telemetry - Initialized TelemetryReader (may be unavailable).
    * @param config    - Analytics configuration (detection can be disabled).
+   * @param logger    - Optional structured logger; defaults to prefixed console.warn.
    */
-  constructor(telemetry: TelemetryReader, config: AnalyticsConfig) {
+  constructor(telemetry: TelemetryReader, config: AnalyticsConfig, logger: Logger = DEFAULT_LOGGER) {
     this.telemetry = telemetry;
     this.config = config;
     this.rules = BUILT_IN_RULES;
+    this.logger = logger;
   }
 
   /**
@@ -486,11 +511,14 @@ export class AnomalyDetector {
     const allRecords = this.telemetry.getRecords();
     if (allRecords.length < MIN_RECORDS_THRESHOLD) return [];
 
+    // Prune stale dedup entries on every cycle to bound Map growth.
+    this.pruneStale(30 * 60 * 1_000);
+
     const newAnomalies: Anomaly[] = [];
     const now = Date.now();
 
     for (const rule of this.rules) {
-      const key = windowKey(rule.type, rule.windowMs);
+      const key = windowKey(rule.type, rule.windowMs, now);
       if (this.fired.has(key)) {
         // Already fired in this window bucket
         continue;
@@ -501,10 +529,7 @@ export class AnomalyDetector {
         anomaly = rule.check(this.telemetry, state);
       } catch (err) {
         // Rule evaluation errors must not crash the detection loop
-        console.warn(
-          `[AnomalyDetector] Rule '${rule.type}' threw an error:`,
-          String(err),
-        );
+        this.logger.warn(`Rule '${rule.type}' threw an error: ${String(err)}`);
         continue;
       }
 
@@ -521,7 +546,7 @@ export class AnomalyDetector {
   /**
    * Return all anomalies currently held in memory.
    *
-   * The list includes all anomalies since the last `prune()` call.
+   * The list includes all anomalies since the last `pruneStale()` call.
    * Ordered chronologically (oldest first).
    *
    * @returns Shallow copy of the active anomaly list.
@@ -534,21 +559,24 @@ export class AnomalyDetector {
    * Remove anomalies older than `maxAgeMs` milliseconds from the in-memory
    * list, and clean up stale deduplication entries.
    *
+   * Safe to call during or between `detect()` cycles. Keys to delete are
+   * collected first to avoid mutating the Map during iteration.
+   *
    * @param maxAgeMs - Maximum age in milliseconds. Anomalies older than this
    *                   are discarded.
    */
-  prune(maxAgeMs: number): void {
+  pruneStale(maxAgeMs: number): void {
     const cutoff = Date.now() - maxAgeMs;
 
     this.anomalies = this.anomalies.filter(
       (a) => new Date(a.timestamp).getTime() > cutoff,
     );
 
-    // Also prune stale deduplication keys whose window bucket has expired
+    // Collect stale keys first, then delete — avoids mutating Map during iteration.
+    const toDelete: string[] = [];
     for (const [key, ts] of this.fired.entries()) {
-      if (ts < cutoff) {
-        this.fired.delete(key);
-      }
+      if (ts < cutoff) toDelete.push(key);
     }
+    for (const key of toDelete) this.fired.delete(key);
   }
 }

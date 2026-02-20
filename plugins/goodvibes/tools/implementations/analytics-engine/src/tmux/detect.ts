@@ -29,13 +29,24 @@ export type FallbackMode = 'file' | 'terminal' | 'none';
 let _cachedDetection: TmuxDetection | null = null;
 
 /**
+ * Reset the module-level tmux detection cache.
+ *
+ * Primarily intended for testing — allows tests to re-probe the environment
+ * without module-level mocking.
+ */
+export function resetTmuxCache(): void {
+  _cachedDetection = null;
+}
+
+/**
  * Probe the tmux environment and return detection results.
  *
  * Results are cached after the first call: subsequent calls are free.
+ * Pass `force = true` to bypass the cache and re-probe.
  * All subprocess invocations are wrapped in try/catch and will never throw.
  */
-export function detectTmux(): TmuxDetection {
-  if (_cachedDetection !== null) {
+export function detectTmux(force = false): TmuxDetection {
+  if (_cachedDetection !== null && !force) {
     return _cachedDetection;
   }
 
@@ -47,7 +58,7 @@ export function detectTmux(): TmuxDetection {
 
   // Check for tmux binary on PATH.
   try {
-    execSync('which tmux', { stdio: 'pipe' });
+    execSync('command -v tmux', { stdio: 'pipe' });
     available = true;
   } catch {
     // Binary not found — leave available as false.
@@ -89,8 +100,9 @@ export function detectTmux(): TmuxDetection {
  *
  * Decision table:
  * - In a tmux session                  → pane mode is available; no fallback needed (`'none'`)
- * - tmux available but not in session  → `'none'` (launching a pane is not meaningful)
- * - tmux unavailable                   → `'file'` (write output to disk)
+ * - tmux available but not in session  → `'file'` (write output to disk; session launch not meaningful)
+ * - tmux unavailable, stdout is a TTY  → `'terminal'` (render directly to terminal)
+ * - tmux unavailable, no TTY           → `'none'` (non-interactive; skip display entirely)
  */
 export function getFallbackMode(): FallbackMode {
   const { available, inSession } = detectTmux();
@@ -101,10 +113,14 @@ export function getFallbackMode(): FallbackMode {
   }
 
   if (available) {
-    // tmux exists but we're not inside a session — can't split panes.
-    return 'none';
+    // tmux exists but we're not inside a session — write to file.
+    return 'file';
   }
 
-  // No tmux at all — degrade to file-based output.
-  return 'file';
+  // No tmux at all — fall back to terminal if interactive, otherwise skip.
+  if (process.stdout.isTTY) {
+    return 'terminal';
+  }
+
+  return 'none';
 }
