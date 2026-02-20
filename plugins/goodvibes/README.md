@@ -1,45 +1,136 @@
 # GoodVibes Plugin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.1.11-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
+[![Version](https://img.shields.io/badge/version-1.2.30-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://claude.com/claude-code)
 
 > Plug in. Receive good vibes.
 
-A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 72 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
+A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 70 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
 
 ## At a Glance
 
 | Component | Count | What You Get |
-|-----------|-------|-------------|
+|-----------|-------|--------------|
 | Agents | 11 | Specialized roles (Opus/Sonnet) for engineering, review, testing, architecture, deployment, integration, planning |
-| Skills | 173 | Technology-specific knowledge modules covering modern web stacks |
-| MCP Tools | 72 | Token-efficient tools across 5 specialized engines |
-| Hooks | 10 | Lifecycle automation (tool redirection, context injection, error recovery) |
+| Skills | 25 | Tiered knowledge modules: protocol, orchestration, outcome, quality |
+| MCP Tools | 70 | Token-efficient tools across 5 specialized engines |
+| Hooks | 11 | Lifecycle automation (tool redirection, context injection, error recovery, setup) |
 | Output Styles | 2 | Interactive (vibecoding) or fully autonomous (justvibes) |
-| Templates | 3 | Production scaffolds for Next.js and React |
+| Templates | 3 | Production scaffolds |
 
 ## Why GoodVibes?
 
 ### Token Efficiency
 
-Native Claude Code tools are all-or-nothing. `Read` returns the entire file. `Grep` returns every match with full context. There's no way to say "just give me the count" or "just give me the file paths." Every operation consumes the maximum amount of tokens whether you need that information or not.
+Token consumption in AI coding sessions follows a layered pattern: individual operations add tokens, round trips resend conversation context, sessions accumulate state, and knowledge either persists or gets rediscovered. GoodVibes optimizes all seven layers.
 
-Precision tools fix this. Every tool lets the AI request exactly the amount of information needed to fulfill a task:
+#### Layer 1: Per-Operation Savings
 
-- **Need a file count?** `precision_glob` with `count_only` returns just the number — not hundreds of file paths
-- **Need file paths?** `paths_only` returns paths without file contents or metadata
-- **Need a function signature?** `precision_read` with `symbols` extract mode returns signatures without reading the entire file
-- **Need specific lines?** Read a range instead of the whole document
-- **Need to check if a pattern exists?** `precision_grep` with `count_only` tells you how many matches without returning any content
+Native tools return maximum output regardless of need. Precision tools let you request exactly the detail level required.
 
-This adds up fast. A `count_only` operation averages ~95% fewer tokens than its verbose equivalent. For API users paying per token, that's direct cost savings. For Pro/Max users, it means fewer tokens consuming less of their allotted weekly usage.
+*Note: Token estimates below are for typical small-to-medium files (~50-100 lines). Savings scale linearly with file size (e.g., a 500-line file would be ~5,000 tokens native vs. the same low precision overhead).*
 
-Batch operations compound the savings further: `precision_read` can read 10 or more files in one call instead of 10+ separate `Read` calls. `discover` runs grep + glob + symbol queries in parallel, returning all results in a single response. `precision_edit` applies multiple edits across multiple files atomically.
+| Operation | Native Tool | Precision Tool | Savings |
+|-----------|-------------|----------------|---------|
+| Check if a file exists | `Read` returns full content (~500+ tokens) | `precision_read` with `count_only` (~15 tokens) | ~97% |
+| Count files matching a pattern | `Glob` returns all paths (~200+ tokens) | `precision_glob` with `count_only` (~15 tokens) | ~92% |
+| Check if a pattern exists in code | `Grep` returns all matches with context (~300+ tokens) | `precision_grep` with `count_only` (~15 tokens) | ~95% |
+| Re-read an unchanged file | `Read` returns full content again (~500+ tokens) | `precision_read` returns cache hit (~20 tokens) | ~96% |
+| Get function signatures from a file | `Read` returns entire file (~500+ tokens) | `precision_read` with `symbols` extract (~50 tokens) | ~90% |
+
+**Mechanisms:**
+- **Verbosity levels** (4-6 per tool): `count_only`, `files_only`, `minimal`, `standard`, `verbose`. Tools default to minimal output automatically — `precision_edit` defaults to `minimal`, `precision_grep` to `files_only`, `precision_glob` to `paths_only`. Savings are automatic even without explicit requests.
+- **Extract modes** (`precision_read`): `content`, `outline`, `symbols`, `ast`, `lines`. Get function signatures (~50 tokens) instead of full file content (~500+ tokens). 75-95% savings.
+- **Token budget pagination**: Large results auto-paginate to stay within a specified token limit. Prevents single responses from consuming disproportionate context.
+- **AST pattern matching** (`precision_edit`): More precise than regex, fewer false positives, fewer failed edits requiring retry.
+
+#### Layer 2: Per-Round-Trip Savings
+
+Every API call resends the entire conversation (system prompt + tool definitions + all messages). Fewer calls = less overhead.
+
+- **Batch operations**: Read 10 files, edit 5 files, run 3 commands, fetch 5 URLs — each in a single tool call. Eliminates N-1 round trips.
+- **discover tool**: Runs grep + glob + symbol queries simultaneously in one call. Results keyed by query ID. 5 searches in 1 round trip instead of 5.
+- **Atomic transactions**: `precision_edit` and `precision_write` in atomic mode. If any operation fails, all roll back. Prevents partial failures that require re-investigation (which costs more round trips).
+
+Quick example:
+```
+Reading 10 files:
+  Native: 10 calls x (full conversation prefix resent each time)
+  Precision: 1 call x (conversation prefix sent once)
+  = 9 fewer prefix resends
+```
+
+#### Layer 3: Per-Session Savings
+
+State tracked within a session avoids redundant work.
+
+- **File state caching**: SHA256 hash-based. Re-reading an unchanged file returns ~20 tokens instead of full content. In edit-verify-edit cycles, this compounds rapidly.
+- **Search cache**: Last 20 grep results stored by query ID. Enables incremental refinement without re-running expensive searches.
+- **Stack detection caching**: `detect_stack` results cached to `.goodvibes/detected-stack.json`. Re-detection skipped within session.
+- **Context injection at session start**: SessionStart hook gathers context types in parallel (stack, git, environment, TODOs, health, folder structure, memory, ports) and injects them upfront. Agents skip discovery.
+- **Conditional context sections**: Context builder omits healthy sections entirely. If no health warnings exist, no health section is injected. Saves 200-500 tokens on healthy projects.
+- **Subagent context pre-loading**: SubagentStart hook injects project name, git branch, and stack info into every subagent at spawn. No per-agent discovery needed.
+
+#### Layer 4: Cross-Session Savings
+
+Knowledge persists across conversations. Same problem next week? Already documented.
+
+- **Memory system**: `.goodvibes/memory/` stores decisions, patterns, failures, and preferences in structured JSON. Agents read memory before acting. An agent that would spend 5K+ tokens debugging a known issue instead reads a 200-token failure record.
+- **PostToolUseFailure logging**: Failed tool attempts are logged with root cause and prevention guidance. Future sessions inherit this knowledge automatically.
+- **Learn-and-abandon pattern**: Fix attempts are capped. If the issue is upstream (in a package you can't change), you don't burn tokens trying to fix it again — every future session reads the failure record and skips the investigation entirely.
+
+#### Layer 5: Infrastructure Savings (Dual-Layer Caching)
+
+Precision engine's local file cache and Anthropic's remote prompt cache operate at different layers and compound:
+
+| Layer | What It Does | Impact |
+|-------|--------------|--------|
+| **Local (MCP)** | Caches file state by content hash | Shrinks token volume added to conversation |
+| **Remote (Anthropic)** | Caches conversation prefix | Discounts per-token cost for cached turns |
+
+Without local caching, re-reading a file adds full content to the conversation every time. With local caching, only the first read adds full content; subsequent reads return cache hits (~20 tokens each). This keeps the conversation prefix smaller.
+
+Since Anthropic's prompt cache pricing uses multipliers (cache reads at ~10% of base input price), a smaller prefix means cheaper cache operations on every turn.
+
+```
+Re-reading a 500-line file 3 times during a session:
+  Native tools:  5,000 + 5,000 + 5,000 = 15,000 tokens added to conversation
+  Precision:     5,000 + 20 + 20       = 5,040 tokens added
+
+Over 20 files read multiple times:
+  Native:    ~100K+ tokens x cache rates = expensive prefix
+  Precision: ~20K tokens x cache rates   = 80% reduction in cache cost
+```
+
+**Context window longevity:** Slower conversation growth delays context compaction. Compaction rewrites the conversation prefix, which means the remote cache no longer matches, requiring a new cache write. Precision caching keeps the remote cache hot longer, avoiding repeated cold starts.
+
+#### Layer 6: Prevention Savings
+
+Structured error handling prevents expensive failure cascades.
+
+- **3-phase fix loop**: Systematic escalation (internal -> docs -> community -> internet) with capped attempts instead of random debugging that burns tokens.
+- **Blocker classification**: Output style classifies blockers by type (issue/error/other) with specific recovery strategies. Structured response = targeted fix = fewer wasted tokens.
+- **Atomic transactions with rollback**: Failed batch operations roll back cleanly. No partial corruption requiring manual investigation.
+
+#### Layer 7: Orchestration Savings
+
+The output style enforces patterns that keep the entire agent tree efficient.
+
+- **Orchestrator stays lean**: "You ARE the orchestrator. Coordination, NOT implementation." The main context — the most expensive one because it persists across the whole session — never bloats with file contents or grep results. All implementation happens in subagent contexts that are discarded after completion.
+- **Mandatory precision tools for all agents**: The output style and PreToolUse hook force precision tools across the entire agent tree. One rogue subagent using native `Read` in a loop would burn thousands of tokens. This prevents it.
+- **Planned execution**: "Plan all work" instruction means agents execute targeted operations instead of speculative exploration. Pre-meditated work = fewer wasted reads and searches.
+- **Parallel agents with background execution**: Up to 6 agents run concurrently in background. Parallel execution plus explicit instructions not to monitor agents via Task Output unless absolutely necessary (and even then to use the non-blocking version), and to wait for a Task Completion notification means fewer wasted tokens and the ability to keep conversing and planning in the main conversation context while work is done in the background.
+
+#### Summary
+
+These seven layers compound: per-operation savings reduce round-trip overhead, which shrinks per-session context growth, which delays compaction, which keeps the remote cache hot, while cross-session memory prevents rediscovering solved problems, and orchestration patterns ensure the entire agent tree operates efficiently. For API users paying per token, this directly reduces cost. For Pro/Max subscribers, it means less of your weekly allocation consumed per session, allowing more work before hitting limits.
 
 ### Transparent Tool Upgrade
 
 A PreToolUse hook intercepts Claude's native Read, Edit, Write, Glob, and Grep calls and redirects them to precision equivalents. The hook fires on every tool call — Claude requests `Read`, the hook blocks it and tells Claude to use `precision_read` instead. This happens for all agents including subagents.
+
+This means the efficiency gains are automatic — Claude uses precision tools without configuration.
 
 ### 11 Specialized Agents
 
@@ -51,7 +142,34 @@ A two-tier memory system stores decisions, patterns, failures, and preferences i
 
 ### Quality Loops
 
-WRFC (Write-Review-Fix-Check) loops ensure code is reviewed before commit. The orchestrator spawns a reviewer after implementation, fixes issues, and re-reviews until verified, then creates a commit.
+WRFC (Write-Review-Fix-Check) loops enforce a mandatory review cycle on every unit of work. No code reaches a commit without passing review.
+
+**The loop:**
+
+```
+1. WORK   ->  Spawn agent to implement the task (background)
+2. REVIEW ->  Spawn reviewer to check the work (background)
+3. Evaluate:
+   |  PASS -> Proceed to step 5
+   |  FAIL -> Enter Fix-Check cycle:
+   |         FIX   ->  Spawn agent to address all issues (background)
+   |         CHECK ->  Spawn reviewer to re-check (background)
+   |         Repeat until PASS (or max attempts reached)
+4. COMMIT ->  Git commit the verified work
+5. LOG    ->  Update .goodvibes/ memory and logs
+6. REPORT ->  Report complete, loop for next task
+```
+
+**Key properties:**
+
+- **Per-task, not per-batch.** Each unit of work gets its own WRFC cycle. A phase with 4 tasks runs 4 independent loops.
+- **All agents run in background.** The orchestrator coordinates; it never implements. Up to 6 agents run concurrently.
+- **No issue is too minor.** Reviewers flag everything — major, minor, nitpick. All must be addressed before the loop passes.
+- **Fix-Check is iterative.** If the fix introduces new issues, the reviewer catches them. The loop continues until the reviewer returns zero issues.
+- **Failures are logged.** If max fix attempts are exhausted, the failure is recorded in `.goodvibes/memory/failures.json` with root cause and prevention guidance.
+- **Commit gates on review.** Code is only committed after the reviewer confirms zero issues. No exceptions.
+
+The orchestrator maintains WRFC loops across concurrent tasks — when one task's reviewer returns PASS, the orchestrator commits that work and checks for newly unblocked tasks, keeping agent utilization high.
 
 ### Two Execution Modes
 
@@ -64,11 +182,16 @@ claude plugin marketplace add mgd34msu/goodvibes-plugin
 claude plugin install goodvibes@goodvibes-market
 ```
 
-On first session, the SessionStart hook:
+After installation, run the Setup hook to pre-write CLAUDE.md chain files:
+```bash
+claude --init-only
+```
+
+This ensures all GoodVibes instruction files are in place before your first session. On each session start, the SessionStart hook:
 - Detects your project stack (frameworks, languages, tools)
 - Analyzes git status (branch, uncommitted changes)
 - Checks project health (missing dependencies, build issues)
-- Creates or updates CLAUDE.md with GoodVibes instructions
+- Verifies CLAUDE.md chain files (writes any that are missing)
 - Injects project context into Claude's system message
 
 Set your output style:
@@ -85,22 +208,22 @@ The core of GoodVibes. 12 tools that replace Claude Code's native tools with enh
 
 | Tool | Replaces | Key Enhancements |
 |------|----------|------------------|
-| precision_read | Read | Batch reads, extract modes (content/outline/symbols/ast/lines), image viewing (PNG/JPG/GIF/WebP/SVG as visual blocks), PDF text extraction with page ranges, Jupyter notebook cells |
-| precision_write | Write | Batch writes, fail_if_exists/overwrite/backup modes, atomic transactions with rollback, Handlebars/EJS templates, dry run |
-| precision_edit | Edit | Batch edits, match modes (exact/fuzzy/regex/AST/AST-Grep), occurrence selection, context hints (near_line/in_function/in_class), atomic transactions with rollback, dry run |
-| precision_grep | Grep | Batch queries with parallel execution, output modes (count_only/files_only/locations/matches/context), context expansion (line/block/function/class), whole word matching |
-| precision_glob | Glob | Presets (typescript/javascript/styles/config/tests), size/date/content filters, output modes (count_only/paths_only/with_stats/with_preview), backend selection (fast-glob/ripgrep) |
-| precision_exec | Bash | Batch commands with parallel execution, expectation checking (exit code/stdout/stderr), safe mode (blocks rm -rf, dd, etc.), timeout per command |
-| precision_fetch | WebFetch | Batch fetching, extract modes (raw/text/json/markdown/structured/summary), CSS selector extraction, 15-min TTL cache, HTTP method support |
-| discover | (unique) | Parallel multi-query: run grep + glob + symbol + structural queries simultaneously, results keyed by query ID |
-| precision_symbols | (unique) | Workspace-wide or per-file symbol search, kind filtering, export filtering, signature extraction, grouping by file/kind |
-| precision_config | (unique) | Runtime configuration for precision engine (get/set/reload) |
-| precision_notebook | NotebookEdit | Jupyter notebook cell operations (replace/insert/delete), cell_id targeting (nbformat 4.5+), batch operations |
-| precision_agent | (unique) | Spawn headless Claude sessions with dossier-based context injection, background execution, output capture |
+| precision_read | Read | Batch reads, extract modes (content/outline/symbols/ast/lines), image viewing (PNG/JPG/GIF/WebP/BMP/ICO/TIFF/AVIF/SVG as visual blocks with magic byte validation), PDF text extraction with page ranges, Jupyter notebook cells, token budgets with pagination, file state caching |
+| precision_write | Write | Batch writes, fail_if_exists/overwrite/backup modes, atomic transactions with rollback, dry run, auto directory creation, base64 content support |
+| precision_edit | Edit | Batch edits, match modes (exact/fuzzy/regex/ast_pattern with AST-Grep captures), occurrence selection (first/last/Nth/all), context hints (near_line/in_function/in_class/after/before), atomic transactions with rollback, dry run, whitespace/case sensitivity toggles |
+| precision_grep | Grep | Batch queries with parallel execution, output modes (count_only/files_only/locations/matches/context), context expansion (line/block/function/class), negation search, find-replace preview with backreference support, relevance ranking, cross-file relationship tracing, whole word matching |
+| precision_glob | Glob | Presets (typescript/javascript/styles/config/tests), size/date/content filters, output modes (count_only/paths_only/with_stats/with_preview), backend selection (fast-glob/ripgrep), symlink following |
+| precision_exec | Bash | Batch commands with parallel execution, expectation checking (exit code/stdout/stderr), retry engine (configurable backoff for transient failures), pattern-based termination, safe mode (blocks rm -rf, dd, etc.), background process lifecycle management |
+| precision_fetch | WebFetch | Full HTTP client: 7 methods (GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS), service registry with auto-auth, per-request auth (none/bearer/basic/api-key/custom-headers), 12 extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), body encoding (json/form/multipart/raw), query params, CSS selectors, response headers/cookies/redirect chains/timing, 15-min TTL cache |
+| precision_notebook | NotebookEdit | Batch operations with auto-index adjustment, cell targeting by cell_id (with metadata.id fallback), output clearing per cell, auto cell_id generation for nbformat 4.5+ |
+| precision_agent | (unique) | Spawn headless Claude sessions with dossier-based context injection. Background-only execution, multi-provider support (Claude, Gemini, Codex), project context auto-injection, scope/acceptance criteria definition, model override per call |
+| discover | (unique) | Parallel multi-query: run grep + glob + symbol + structural (AST pattern) queries simultaneously, results keyed by query ID |
+| precision_symbols | (unique) | Workspace-wide or per-file symbol search, kind filtering (10 kinds), export/private filtering, signature extraction with JSDoc/docstrings, grouping by file/kind, multi-language (TypeScript, JavaScript, Python, Rust, Go) |
+| precision_config | (unique) | Runtime configuration for precision engine (get/set/reload), sandbox mode, cache tuning, execution defaults, session state KV store, telemetry queries, hook management |
 
 ### Batch Operations
 
-Read 10 files, edit 5 files, run 3 commands — each in a single tool call. Reduces round trips and context overhead.
+Read 10 files, edit 5 files, run 3 commands, fetch 5 URLs — each in a single tool call. Reduces round trips and context overhead.
 
 ### Atomic Transactions
 
@@ -108,12 +231,11 @@ precision_edit and precision_write support transaction modes (atomic/partial/non
 
 ### Advanced Matching
 
-precision_edit supports 5 match modes:
+precision_edit supports 4 match modes:
 - **exact**: literal string match (default)
-- **fuzzy**: Levenshtein distance-based with configurable similarity threshold (default 70%)
-- **regex**: full regex with multiline support
-- **ast**: AST structure matching for JavaScript and TypeScript (.js, .jsx, .ts, .tsx)
-- **ast_pattern**: AST-Grep structural patterns across 18 languages (JavaScript, TypeScript, Python, Rust, Go, C, C++, Java, Kotlin, Swift, Ruby, PHP, C#, Scala, Bash, HTML, CSS)
+- **fuzzy**: whitespace-insensitive matching
+- **regex**: full regex with capture group support ($1-$9, $$, $&, $`, $')
+- **ast_pattern**: AST-Grep structural patterns with captures ($VAR for single nodes, $$$VAR for sequences) across 18 languages (JavaScript, TypeScript, Python, Rust, Go, C, C++, Java, Kotlin, Swift, Ruby, PHP, C#, Scala, Bash, HTML, CSS, Lua)
 
 ### Multi-Format Reading
 
@@ -131,57 +253,81 @@ precision_exec includes a safe mode that blocks destructive commands matching pa
 
 precision_grep can expand matches beyond the matched line to enclosing block, function, or class scope using Tree-Sitter AST analysis.
 
+### HTTP Client & Authentication
+
+precision_fetch operates as a full HTTP client, not just a page fetcher:
+- **Service registry**: Named API services with stored base URLs and credentials. Auto-auth resolves service name to authenticated requests without passing credentials each time
+- **Per-request auth**: 5 auth types (none, bearer, basic, api-key, custom-headers) configurable per URL
+- **Body encoding**: 4 body types (json, form, multipart, raw) with automatic content-type headers
+- **Query parameters**: Key-value params auto-appended to URLs
+- **Response inspection**: Response headers, cookies (with domain/path/expiry), redirect chains, and request timing (DNS/connect/TTFB/total)
+- **401 retry**: Automatic token refresh and retry on authentication failures
+
 ## Analysis Engine - 20 Tools
 
 | Category | Tools |
 |----------|-------|
-| Detection | detect-stack, check-versions, scan-patterns, read-config, get-conventions |
-| Code Quality | find-dead-code, get-api-surface, safe-delete-check, identify-tech-debt |
-| Validation | detect-breaking-changes, semantic-diff, validate-implementation, validate-edits-preview, validate-api-contract |
-| Security | env-audit, scan-for-secrets, check-permissions |
-| Dependencies | find-circular-deps |
-| Debugging | parse-error-stack, explain-type-error |
+| Detection | detect_stack, check_versions, scan_patterns, read_config, get_conventions |
+| Code Quality | find_dead_code, get_api_surface, safe_delete_check, find_circular_deps |
+| Validation | detect_breaking_changes, semantic_diff, validate_implementation, validate_edits_preview, validate_api_contract |
+| Security | env_audit, scan_for_secrets, check_permissions |
+| Debugging | parse_error_stack, explain_type_error |
 
-## Project Engine - 22 Tools
+Key capabilities:
+- **TypeScript Language Service** for precise reference tracking, dead code detection, and breaking change analysis
+- **40+ secret patterns** covering AWS, Azure, Google, GitHub, Stripe, Slack, private keys, and database connection strings
+- **LLM-powered analysis** for convention detection, breaking change assessment, and type error explanation
+- **Virtual snapshot validation** — preview edit impact without modifying files
+
+## Project Engine - 20 Tools
 
 | Category | Tools |
 |----------|-------|
-| Scaffolding | scaffold-project, list-templates |
-| Status | plugin-status, project-issues |
-| API | generate-openapi, get-api-routes |
-| Database | get-database-schema, get-prisma-operations, query-database |
-| Maintenance | upgrade-package, analyze-bundle, analyze-dependencies, find-circular-deps |
-| Testing | find-tests-for-file, get-test-coverage, suggest-test-cases, generate-fixture |
-| TypeScript | generate-types, sync-api-types, explain-codebase |
-| Git | create-pull-request, resolve-merge-conflict |
+| Scaffolding | scaffold_project, list_templates |
+| Status | plugin_status, project_issues |
+| API | generate_openapi, get_api_routes |
+| Database | get_database_schema, get_prisma_operations, query_database |
+| Maintenance | upgrade_package, analyze_bundle, analyze_dependencies, find_circular_deps |
+| Testing | find_tests_for_file, get_test_coverage, suggest_test_cases, generate_fixture |
+| Types | generate_types, sync_api_types |
+| Git | create_pull_request, resolve_merge_conflict |
+
+Key capabilities:
+- **Multi-ORM schema parsing**: Prisma, Drizzle, TypeORM, and raw SQL
+- **Multi-database query execution**: PostgreSQL, MySQL, SQLite with safety guards (readonly mode, auto-LIMIT, EXPLAIN plans)
+- **Route extraction**: Next.js, Express, Fastify, Hono
+- **Coverage report parsing**: lcov and istanbul formats
+- **Bundle analysis**: size analysis, duplicate detection, tree-shaking impact, optimization suggestions
+- **OpenAPI 3.0.3 generation** from discovered API routes
+
 
 ## Frontend Engine - 11 Tools
 
 | Tool | Purpose |
-|------|----------|
-| get-react-component-tree | Extract component hierarchy |
-| analyze-stacking-context | Debug z-index issues |
-| analyze-responsive-breakpoints | Audit responsive design |
-| trace-component-state | Trace state flow through components |
-| analyze-render-triggers | Find unnecessary re-renders |
-| analyze-layout-hierarchy | Debug layout issues |
-| diagnose-overflow | Find overflow causes |
-| get-accessibility-tree | Generate accessibility tree |
-| get-sizing-strategy | Analyze CSS sizing approach |
-| analyze-event-flow | Trace event propagation |
-| analyze-tailwind-conflicts | Find conflicting Tailwind classes |
+|------|---------|
+| get_react_component_tree | Extract component hierarchy with props and parent-child relationships |
+| analyze_stacking_context | Debug z-index issues and stacking context creation |
+| analyze_responsive_breakpoints | Audit Tailwind responsive classes across breakpoints |
+| trace_component_state | Trace state and props through component trees, detect prop drilling |
+| analyze_render_triggers | Find unnecessary re-renders, missing memoization, unstable references |
+| analyze_layout_hierarchy | Debug CSS layout with sizing constraints and Tailwind class parsing |
+| diagnose_overflow | Find overflow causes with constraint chain analysis |
+| get_accessibility_tree | Generate accessibility tree with WCAG 2.1 AA compliance checking |
+| get_sizing_strategy | Analyze how element size is determined (fixed, flex, grid, content) |
+| analyze_event_flow | Trace event propagation, detect nested clickable conflicts |
+| analyze_tailwind_conflicts | Find conflicting and redundant Tailwind classes |
 
 ## Registry Engine - 7 Tools
 
 | Tool | Purpose |
-|------|----------|
-| search-skills | Search skills by query and category |
-| search-agents | Search agents by capability |
-| search-tools | Search MCP tools |
-| recommend-skills | Context-aware skill recommendations |
-| get-skill-content | Load skill content into context |
-| get-agent-content | Load agent definition |
-| skill-dependencies | Resolve skill dependency chain |
+|------|---------|
+| search_skills | Search skills by query and category |
+| search_agents | Search agents by capability |
+| search_tools | Search MCP tools |
+| recommend_skills | Context-aware skill recommendations |
+| get_skill_content | Load skill content into context |
+| get_agent_content | Load agent definition |
+| skill_dependencies | Resolve skill dependency chain |
 
 ## Agents
 
@@ -201,43 +347,39 @@ precision_grep can expand matches beyond the matched line to enclosing block, fu
 | agent-factory | Opus | Create new specialized agents |
 | skill-factory | Opus | Create new skills and slash commands |
 
-## Skills - 173 Total
+## Skills - 25 Total
 
-| Category | Count | Coverage |
-|----------|-------|----------|
-| Common | 29 | Development, quality, review, tooling, workflow |
-| WebDev | 138 | 20+ subcategories covering modern web stack |
-| Creation | 5 | Agent SDK, hooks, scripts, workflow patterns |
-| Special | 1 | goodvibes-codebase-review (full audit with parallel remediation) |
+Organized into 4 tiers with progressive loading — protocol skills are always active, others load when relevant to the task.
 
-### WebDev Breakdown (Selected Subcategories)
+| Tier | Count | Skills | Loading |
+|------|-------|--------|---------|
+| **Protocol** | 5 | precision-mastery, gather-plan-apply, review-scoring, goodvibes-memory, error-recovery | Always active |
+| **Orchestration** | 2 | task-orchestration, fullstack-feature | On multi-agent tasks |
+| **Outcome** | 11 | ai-integration, api-design, authentication, component-architecture, database-layer, deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy | When task matches domain |
+| **Quality** | 7 | accessibility-audit, code-review, debugging, performance-audit, project-onboarding, refactoring, security-audit | On review/audit tasks |
 
-- **API Layer** (8): tRPC, GraphQL, REST, Express, Fastify, Hono, Apollo, OpenAPI
-- **Authentication** (7): Clerk, NextAuth, Lucia, Auth0, Firebase Auth, Supabase Auth, Passport
-- **Databases & ORMs** (10): Prisma, Drizzle, Kysely, PostgreSQL, MongoDB, Redis, Supabase, PlanetScale, Turso, SQLite
-- **Frontend Core** (10): React, Vue, Svelte, TypeScript, SolidJS, Preact, htmx, Alpine.js, Web Components
-- **Meta Frameworks** (8): Next.js, Remix, Nuxt, Astro, SvelteKit, Qwik, SolidStart, Gatsby
-- **State Management** (7): Zustand, Jotai, Redux Toolkit, TanStack Query, Valtio, Nanostores, Pinia
-- **Styling** (8): Tailwind, Styled Components, CSS Modules, Sass, Panda CSS, Vanilla Extract, UnoCSS
-- **Testing** (8): Vitest, Playwright, Jest, Testing Library, Cypress, Storybook, MSW, Chromatic
-- **Plus 50+ specialized skills**: Stripe, Resend, Sentry, Socket.IO, MDX, Framer Motion, and more
+**Protocol skills** are embedded in every agent's context via the subagent protocol chain — they're too critical for token efficiency and execution patterns to depend on lazy loading.
 
-## Hooks - 10 Types
+**Outcome and quality skills** load proactively when Claude detects a matching task. Each skill includes a `## Resources` tree pointing to scripts and reference materials the agent can navigate as needed.
+
+**Fallback**: If a skill doesn't load automatically, the registry engine's `get_skill_content` tool serves as an escape hatch.
+
+## Hooks - 11 Types
 
 Lifecycle hooks run transparently on every session. They're the mechanism behind tool redirection, context injection, and automatic error recovery.
 
 | Hook | Trigger | What It Does |
 |------|---------|-------------|
+| Setup | `claude --init` / `claude --init-only` | Pre-writes CLAUDE.md chain files (import directives + prompt files) so they exist before any session starts. Matches `init` trigger. Avoids race conditions where SessionStart isn't fast enough to write files before Claude reads them |
 | PreToolUse (Bash) | Before Bash execution | Platform path mapping (Windows/Linux), shell safety analysis, git commit quality gates |
 | PreToolUse (Native) | Before Read/Edit/Write/Glob/Grep | Blocks native tool, redirects to precision-engine equivalent |
 | PostToolUseFailure | After Bash failure | 3-phase progressive fix loop: Phase 1 (internal knowledge) -> Phase 2 (official docs hints) -> Phase 3 (community docs hints). Logs failures to `.goodvibes/memory/failures.json` after all phases exhausted |
-| SessionStart | Session begins | Detects project stack, analyzes git status, checks project health, creates/updates CLAUDE.md, injects context into system message |
+| SessionStart | Session begins | Detects project stack, analyzes git status, checks project health, creates/updates CLAUDE.md, injects context into system message, builds project file index |
 | SessionEnd | Session ends | Persists session state |
 | SubagentStart | Agent spawns | Injects context for GoodVibes agents (stack info, git branch, project name), tracks agent telemetry |
 | SubagentStop | Agent completes | Cleans up agent tracking, updates analytics |
-| PreCompact | Before context compaction | Creates checkpoint commit if uncommitted changes exist, generates session summary, backs up analytics |
+| PreCompact | Before context compaction | Creates checkpoint commit if uncommitted changes exist, generates session summary |
 | Stop | Stop button pressed | Saves current state |
-| Notification | External event | Processes notifications |
 | UserPromptSubmit | User sends message | Processes user input |
 
 ## Output Styles
@@ -282,13 +424,9 @@ Two-tier persistent memory. Session logs track the current session. Cross-sessio
 
 Agents read memory before acting. The PostToolUseFailure hook automatically records failures after its 3-phase fix loop is exhausted.
 
-## Templates
+## Telemetry
 
-| Template | Stack | Use Case |
-|----------|-------|----------|
-| next-saas | Next.js 15, NextAuth, Prisma, Stripe, shadcn/ui, Tailwind, Resend, Sentry | Full SaaS starter |
-| next-app | Next.js 15, TypeScript, Tailwind, ESLint | Minimal App Router starter |
-| vite-react | Vite, React, TypeScript, Tailwind | Client-side React app |
+Built-in telemetry tracks tool usage, session activity, and performance metrics in a local SQLite database (sql.js WASM). Query via `precision_config action=telemetry` with filters for tool, status, session_id, and date range. All data stays local — nothing is sent externally.
 
 ## Configuration
 
@@ -303,6 +441,16 @@ Controls whether precision tools can access files outside the project root. Disa
 /goodvibes:sandbox false   # Disable (allow external paths, default)
 ```
 
+### Service Registry
+
+Named API services with stored credentials for precision_fetch auto-auth:
+
+```bash
+/goodvibes:services add OpenAI    # Configure a new API service
+/goodvibes:services list           # Show registered services
+/goodvibes:services test OpenAI    # Test service connectivity
+```
+
 ### Output Style
 
 Switch execution modes:
@@ -315,10 +463,11 @@ Switch execution modes:
 ## Slash Commands
 
 | Command | Purpose |
-|---------|----------|
+|---------|---------|
 | `/goodvibes:sandbox` | Toggle path sandboxing (true/false) |
 | `/goodvibes:plugin` | Plugin management (update, status, config) |
 | `/goodvibes:search` | Search skills, agents, or tools |
+| `/goodvibes:services` | Manage precision_fetch service registry (add, remove, test, auth) |
 | `/goodvibes:load-skill` | Load a skill's content into context |
 | `/goodvibes:codebase-review` | Full codebase audit with parallel agent remediation |
 
