@@ -4400,7 +4400,12 @@ function colorForHealth(status) {
 __name(colorForHealth, "colorForHealth");
 
 // src/tui/mini/renderer.ts
+var MIN_WIDTH = 60;
 var DEFAULT_WIDTH = 80;
+function getTerminalWidth() {
+  return Math.max(MIN_WIDTH, process.stdout.columns || DEFAULT_WIDTH);
+}
+__name(getTerminalWidth, "getTerminalWidth");
 function visibleLength(str) {
   return str.replace(/\x1b\[[0-9;]*m/g, "").length;
 }
@@ -4443,18 +4448,13 @@ var MiniRenderer = class {
   static {
     __name(this, "MiniRenderer");
   }
-  width;
   loopHandle = null;
-  /**
-   * Create a new MiniRenderer.
-   * @param width - Box width in terminal columns (default: 80)
-   */
-  constructor(width = DEFAULT_WIDTH) {
-    this.width = width;
+  /** Create a new MiniRenderer. Zero-config — width auto-detects from terminal. */
+  constructor() {
   }
   /**
    * Render the mini dashboard to a 4-line ANSI string.
-   * Pure function — no side effects, no I/O.
+   * Reads process.stdout.columns on each call for auto-width sizing.
    *
    * @param state - Current aggregated dashboard state
    * @returns 4-line string with ANSI color codes
@@ -4462,7 +4462,7 @@ var MiniRenderer = class {
   render(state) {
     const health = determineHealth(state);
     const borderColor = colorForHealth(health);
-    const w = this.width;
+    const w = getTerminalWidth();
     const innerWidth = w - 2;
     const sessionId = state.session_id ? truncate(state.session_id, 16) : "no-session";
     const uptime = formatUptime(state.uptime_ms);
@@ -4501,8 +4501,7 @@ var MiniRenderer = class {
     const dashCount = Math.max(0, innerWidth - headerVisible);
     const dashes = ansi.box.horizontal.repeat(dashCount);
     const line1 = `${borderColor}${ansi.box.topLeft}${ansi.reset}` + headerContent + `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
-    const costOrRemaining = state.budget !== null ? `remaining: ${formatDollars(state.budget.remaining)}` : `cost $${(state.metrics.cost.total - state.metrics.cost.saved).toFixed(4)}`;
-    const row2Content = ` tokens ${ansi.bold}${tokensUsed}${ansi.reset} used ${ansi.dim}\u2502${ansi.reset} ${tokensSaved} saved (${savings}) ${ansi.dim}\u2502${ansi.reset} cache ${cacheRate} ${ansi.dim}\u2502${ansi.reset} agents ${agentsActive}/${agentsMax} ${ansi.dim}\u2502${ansi.reset} ${costOrRemaining} `;
+    const row2Content = ` tokens ${ansi.bold}${tokensUsed}${ansi.reset} used  ${ansi.dim}\u2502${ansi.reset}  ${tokensSaved} saved (${savings})  ${ansi.dim}\u2502${ansi.reset}  cache ${cacheRate}  ${ansi.dim}\u2502${ansi.reset}  agents ${agentsActive}/${agentsMax} `;
     const line2 = buildRow(row2Content, borderColor, w);
     const conflictStr = conflicts > 0 ? `${ansi.yellow}${conflicts}\u26A1${ansi.reset}` : `${conflicts}\u26A1`;
     const row3Content = ` files ${filesRead}r ${filesWritten}w ${conflictStr} ${ansi.dim}\u2502${ansi.reset} cmds ${cmdTotal} (${cmdFails}\u2717 ${cmdAvgSec}s avg) ${ansi.dim}\u2502${ansi.reset} cost ${netCost} `;

@@ -1,12 +1,13 @@
 /**
- * Mini dashboard renderer — 4-line, 80-char-wide ANSI box.
+ * Mini dashboard renderer — 4-line, auto-width ANSI box.
  *
  * Renders a compact analytics summary using raw ANSI escape codes.
  * Designed to run in a tmux pane refreshing every 2 seconds.
+ * Auto-detects terminal width on each render tick.
  *
  * Layout:
  *   Line 1 (header): session ID, uptime, call count, success rate (or budget)
- *   Line 2: token usage, savings, dollar savings, cache rate, agent concurrency
+ *   Line 2: token usage, saved tokens (with dollar savings), cache rate, agent concurrency
  *   Line 3: file ops, command stats, net cost
  *   Line 4 (footer): bottom border
  */
@@ -22,8 +23,16 @@ import {
   truncate,
 } from './format.js';
 
-/** Width of the rendered box (characters). */
+/** Minimum width of the rendered box (characters). */
+const MIN_WIDTH = 60;
+
+/** Fallback terminal width when process.stdout.columns is unavailable. */
 const DEFAULT_WIDTH = 80;
+
+/** Get the current terminal width, with a minimum floor. */
+function getTerminalWidth(): number {
+  return Math.max(MIN_WIDTH, process.stdout.columns || DEFAULT_WIDTH);
+}
 
 /**
  * Compute the visible length of a string, stripping ANSI escape sequences.
@@ -88,7 +97,7 @@ function determineHealth(
 }
 
 /**
- * Compact 4-line, 80-char ANSI mini dashboard renderer.
+ * Compact 4-line, auto-width ANSI mini dashboard renderer.
  *
  * @example
  * const renderer = new MiniRenderer();
@@ -96,20 +105,14 @@ function determineHealth(
  * process.stdout.write(output);
  */
 export class MiniRenderer {
-  private readonly width: number;
   private loopHandle: ReturnType<typeof setInterval> | null = null;
 
-  /**
-   * Create a new MiniRenderer.
-   * @param width - Box width in terminal columns (default: 80)
-   */
-  constructor(width: number = DEFAULT_WIDTH) {
-    this.width = width;
-  }
+  /** Create a new MiniRenderer. Zero-config — width auto-detects from terminal. */
+  constructor() {}
 
   /**
    * Render the mini dashboard to a 4-line ANSI string.
-   * Pure function — no side effects, no I/O.
+   * Reads process.stdout.columns on each call for auto-width sizing.
    *
    * @param state - Current aggregated dashboard state
    * @returns 4-line string with ANSI color codes
@@ -117,7 +120,7 @@ export class MiniRenderer {
   render(state: DashboardState): string {
     const health = determineHealth(state);
     const borderColor = colorForHealth(health);
-    const w = this.width;
+    const w = getTerminalWidth();
     const innerWidth = w - 2;
 
     // ── Derived values ────────────────────────────────────────────────────────
@@ -182,20 +185,14 @@ export class MiniRenderer {
       `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
 
     // ── Line 2: Tokens / cache / agents ───────────────────────────────────────
-    const costOrRemaining = state.budget !== null
-      ? `remaining: ${formatDollars(state.budget.remaining)}`
-      : `cost $${(state.metrics.cost.total - state.metrics.cost.saved).toFixed(4)}`;
-
     const row2Content =
       ` tokens ${ansi.bold}${tokensUsed}${ansi.reset} used` +
-      ` ${ansi.dim}│${ansi.reset}` +
-      ` ${tokensSaved} saved (${savings})` +
-      ` ${ansi.dim}│${ansi.reset}` +
-      ` cache ${cacheRate}` +
-      ` ${ansi.dim}│${ansi.reset}` +
-      ` agents ${agentsActive}/${agentsMax}` +
-      ` ${ansi.dim}│${ansi.reset}` +
-      ` ${costOrRemaining} `;
+      `  ${ansi.dim}│${ansi.reset}` +
+      `  ${tokensSaved} saved (${savings})` +
+      `  ${ansi.dim}│${ansi.reset}` +
+      `  cache ${cacheRate}` +
+      `  ${ansi.dim}│${ansi.reset}` +
+      `  agents ${agentsActive}/${agentsMax} `;
     const line2 = buildRow(row2Content, borderColor, w);
 
     // ── Line 3: Files / commands / net cost ───────────────────────────────────
