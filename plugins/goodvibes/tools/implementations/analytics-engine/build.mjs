@@ -23,13 +23,22 @@ async function build() {
   try {
     await mkdir(join(__dirname, 'dist'), { recursive: true });
 
-    // Build main daemon + MCP server
+    // Build library entry point
     await esbuild.build({
       ...sharedOptions,
       entryPoints: [join(__dirname, 'src/index.ts')],
       outfile: join(__dirname, 'dist/index.js'),
     });
     console.log('Build completed: dist/index.js');
+
+    // Build MCP server entry point (stdio transport)
+    // No shebang banner — invoked via `node` in .mcp.json, not directly
+    await esbuild.build({
+      ...sharedOptions,
+      entryPoints: [join(__dirname, 'src/server.ts')],
+      outfile: join(__dirname, 'dist/server.js'),
+    });
+    console.log('Build completed: dist/server.js');
 
     // Build mini dashboard standalone
     await esbuild.build({
