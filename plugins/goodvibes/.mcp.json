@@ -31,6 +31,14 @@
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"
       }
+    },
+    "analytics-engine": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/analytics-engine/dist/index.js"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
     }
   }
 }

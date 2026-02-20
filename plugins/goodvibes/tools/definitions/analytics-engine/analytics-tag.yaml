@@ -1,0 +1,56 @@
+name: analytics_tag
+version: "1.0.0"
+description: |
+  Tag or rename the current session for meaningful historical
+  grouping and comparison.
+
+mcp:
+  server: analytics-engine
+  method: analytics_tag
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: ["tag", "rename"]
+      description: "Whether to set a new tag or rename the session"
+    value:
+      type: string
+      minLength: 1
+      maxLength: 100
+      description: "Tag or name value"
+  required: ["action", "value"]
+
+output_schema:
+  type: object
+  properties:
+    content:
+      type: array
+      items:
+        type: object
+        properties:
+          type: { type: string }
+          text: { type: string }
+    isError:
+      type: boolean
+
+examples:
+  - description: "Tag the session"
+    input:
+      action: "tag"
+      value: "analytics-engine-phase-4"
+    output:
+      content:
+        - type: "text"
+          text: "Session tagged: analytics-engine-phase-4"
+
+  - description: "Rename the session"
+    input:
+      action: "rename"
+      value: "Feature: Analytics Dashboard"
+    output:
+      content:
+        - type: "text"
+          text: "Session renamed: Feature: Analytics Dashboard"

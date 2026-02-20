@@ -1,0 +1,78 @@
+name: analytics_query
+version: "1.0.0"
+description: |
+  Ad-hoc queries against session data. Query tokens, cache, commands,
+  agents, files, cost, health, or project metrics.
+  Supports time ranges, grouping, and filtering.
+
+mcp:
+  server: analytics-engine
+  method: analytics_query
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    scope:
+      type: string
+      enum: ["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"]
+      description: "What data to query"
+    time_range:
+      type: string
+      enum: ["session", "last_5m", "last_30m", "last_1h"]
+      description: "Time range to query over"
+      default: "session"
+    group_by:
+      type: string
+      enum: ["tool", "agent", "file", "status"]
+      description: "Optional grouping dimension"
+    filters:
+      type: object
+      properties:
+        tool:
+          type: string
+          description: "Filter by tool name"
+        status:
+          type: string
+          enum: ["success", "failed", "partial"]
+          description: "Filter by status"
+        agent:
+          type: string
+          description: "Filter by agent name"
+    format:
+      type: string
+      enum: ["standard", "minimal", "verbose"]
+      description: "Output verbosity"
+      default: "standard"
+  required: ["scope"]
+
+output_schema:
+  type: object
+  properties:
+    content:
+      type: array
+      items:
+        type: object
+        properties:
+          type: { type: string }
+          text: { type: string }
+    isError:
+      type: boolean
+
+examples:
+  - description: "Query token usage for session"
+    input:
+      scope: "tokens"
+    output:
+      content:
+        - type: "text"
+          text: "Token Usage (session)\nInput: 125,432 | Output: 43,210 | Cache Read: 89,100"
+
+  - description: "Query cost grouped by agent"
+    input:
+      scope: "cost"
+      group_by: "agent"
+    output:
+      content:
+        - type: "text"
+          text: "Cost by Agent\nengineer: $0.42 | reviewer: $0.18 | tester: $0.09"

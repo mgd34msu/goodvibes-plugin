@@ -1,0 +1,67 @@
+name: analytics_dashboard
+version: "1.0.0"
+description: |
+  Launch, stop, or check status of the analytics TUI and mini dashboard.
+  The mini dashboard is a 4-line always-on tmux pane showing session metrics.
+  The full TUI is a 3-page interactive dashboard.
+
+mcp:
+  server: analytics-engine
+  method: analytics_dashboard
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: ["start", "stop", "status"]
+      description: "Action to perform on the dashboard"
+    target:
+      type: string
+      enum: ["mini", "full", "both"]
+      description: "Which dashboard to target"
+      default: "both"
+    options:
+      type: object
+      properties:
+        pane_position:
+          type: string
+          enum: ["bottom", "top", "left", "right"]
+          description: "Tmux pane position for mini dashboard"
+        pane_size:
+          oneOf:
+            - type: number
+            - type: string
+          description: "Tmux pane size (number of lines or percentage)"
+  required: ["action"]
+
+output_schema:
+  type: object
+  properties:
+    content:
+      type: array
+      items:
+        type: object
+        properties:
+          type: { type: string }
+          text: { type: string }
+    isError:
+      type: boolean
+
+examples:
+  - description: "Start both dashboards"
+    input:
+      action: "start"
+    output:
+      content:
+        - type: "text"
+          text: "Started mini dashboard and full TUI"
+
+  - description: "Check dashboard status"
+    input:
+      action: "status"
+    output:
+      content:
+        - type: "text"
+          text: "Mini: running (pane %3) | Full: stopped"
