@@ -694,6 +694,31 @@ function shouldExclude(name, relativePath, gitignorePatterns, isDir) {
   return false;
 }
 __name(shouldExclude, "shouldExclude");
+async function batchStat(paths, chunkSize = 64, startMs) {
+  const sizes = [];
+  let timedOut = false;
+  for (let i = 0; i < paths.length; i += chunkSize) {
+    if (Date.now() - startMs > 3e4) {
+      timedOut = true;
+      for (let j = i; j < paths.length; j++)
+        sizes.push(0);
+      break;
+    }
+    const chunk = paths.slice(i, i + chunkSize);
+    const results = await Promise.all(
+      chunk.map(async (p) => {
+        try {
+          return (await (0, import_promises2.stat)(p)).size;
+        } catch {
+          return 0;
+        }
+      })
+    );
+    sizes.push(...results);
+  }
+  return { sizes, timedOut };
+}
+__name(batchStat, "batchStat");
 async function buildProjectIndex(projectDir2, logger2 = defaultLogger) {
   globRegexCache = /* @__PURE__ */ new Map();
   globDstarCache = /* @__PURE__ */ new Map();
@@ -709,6 +734,7 @@ async function buildProjectIndex(projectDir2, logger2 = defaultLogger) {
       recursive: true,
       withFileTypes: true
     });
+    const fileEntries = [];
     for (const entry of dirEntries) {
       if (Date.now() - startMs > 3e4) {
         logger2.debug("Project indexing timeout - writing partial index");
@@ -727,12 +753,16 @@ async function buildProjectIndex(projectDir2, logger2 = defaultLogger) {
       const dirPart = import_path.default.dirname(relativePath);
       const treeKey = dirPart === "." ? "" : dirPart.split(import_path.default.sep).join("/");
       const filename = entry.name;
-      let fileSize = 0;
-      try {
-        const fileStat = await (0, import_promises2.stat)(import_path.default.join(parent, entry.name));
-        fileSize = fileStat.size;
-      } catch {
-      }
+      const fullPath = import_path.default.join(parent, entry.name);
+      fileEntries.push({ fullPath, treeKey, filename });
+    }
+    const fullPaths = fileEntries.map((e) => e.fullPath);
+    const { sizes, timedOut } = await batchStat(fullPaths, 64, startMs);
+    if (timedOut)
+      isPartial = true;
+    for (let i = 0; i < fileEntries.length; i++) {
+      const { treeKey, filename } = fileEntries[i];
+      const fileSize = sizes[i] ?? 0;
       if (!tree[treeKey]) {
         tree[treeKey] = {};
       }

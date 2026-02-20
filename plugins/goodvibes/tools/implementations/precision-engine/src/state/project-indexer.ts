@@ -397,6 +397,47 @@ function shouldExclude(
  * @param projectDir - Absolute path to the project root
  * @param logger - Optional logger; defaults to writing debug/error to stderr
  */
+/**
+ * Stat a list of file paths in parallel, processing them in chunks to stay within
+ * file-descriptor limits. Bails out early if the 30-second indexing budget is exceeded.
+ *
+ * @param paths     - Absolute file paths to stat.
+ * @param chunkSize - Number of concurrent stat calls per chunk (default: 64).
+ * @param startMs   - Epoch milliseconds when the overall indexing run started, used for timeout.
+ * @returns An object containing the byte sizes for each path (0 on error or timeout) and
+ *          a `timedOut` flag that is `true` when the budget was exceeded before all paths
+ *          were processed.
+ */
+async function batchStat(
+  paths: string[],
+  chunkSize = 64,
+  startMs: number
+): Promise<{ sizes: number[]; timedOut: boolean }> {
+  const sizes: number[] = [];
+  let timedOut = false;
+  for (let i = 0; i < paths.length; i += chunkSize) {
+    // Check timeout between chunks
+    if (Date.now() - startMs > 30000) {
+      timedOut = true;
+      // Fill remaining with 0
+      for (let j = i; j < paths.length; j++) sizes.push(0);
+      break;
+    }
+    const chunk = paths.slice(i, i + chunkSize);
+    const results = await Promise.all(
+      chunk.map(async (p) => {
+        try {
+          return (await stat(p)).size;
+        } catch {
+          return 0;
+        }
+      })
+    );
+    sizes.push(...results);
+  }
+  return { sizes, timedOut };
+}
+
 export async function buildProjectIndex(
   projectDir: string,
   logger: IndexerLogger = defaultLogger
@@ -424,6 +465,8 @@ export async function buildProjectIndex(
       withFileTypes: true,
     });
 
+    // First pass: filter entries and collect metadata (no I/O)
+    const fileEntries: { fullPath: string; treeKey: string; filename: string }[] = [];
     for (const entry of dirEntries) {
       // Check timeout (30 seconds max)
       if (Date.now() - startMs > 30000) {
@@ -454,16 +497,20 @@ export async function buildProjectIndex(
       const dirPart = path.dirname(relativePath);
       const treeKey = dirPart === '.' ? '' : dirPart.split(path.sep).join('/');
       const filename = entry.name;
+      const fullPath = path.join(parent, entry.name);
 
-      // Get file size via stat
-      let fileSize = 0;
-      try {
-        const fileStat = await stat(path.join(parent, entry.name));
-        fileSize = fileStat.size;
-      } catch {
-        // If stat fails, size stays 0
-      }
+      fileEntries.push({ fullPath, treeKey, filename });
+    }
 
+    // Second pass: batch stat all files in parallel (chunked to stay within fd limits)
+    const fullPaths = fileEntries.map((e) => e.fullPath);
+    const { sizes, timedOut } = await batchStat(fullPaths, 64, startMs);
+    if (timedOut) isPartial = true;
+
+    // Third pass: build tree from results
+    for (let i = 0; i < fileEntries.length; i++) {
+      const { treeKey, filename } = fileEntries[i];
+      const fileSize = sizes[i] ?? 0;
       if (!tree[treeKey]) {
         tree[treeKey] = {};
       }
