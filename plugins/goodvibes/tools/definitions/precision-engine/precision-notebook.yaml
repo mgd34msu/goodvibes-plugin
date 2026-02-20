@@ -1,0 +1,50 @@
+name: precision_notebook
+description: |
+  Edit Jupyter notebook (.ipynb) cells with batch operations.
+  Supports replace, insert, and delete with index or cell_id targeting and automatic index adjustment.
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Path to the .ipynb notebook file
+    operations:
+      type: array
+      description: Array of cell operations to apply in order
+      items:
+        type: object
+        properties:
+          op:
+            type: string
+            enum: [replace, insert, delete]
+            description: Operation type
+          cell:
+            type: integer
+            minimum: 0
+            description: Cell index (0-based). Required for replace and delete (unless cell_id is provided).
+          cell_id:
+            type: string
+            description: Cell ID (from notebook metadata). Alternative to index-based targeting. If both cell/after and cell_id are provided, cell_id takes precedence.
+          after:
+            type: integer
+            minimum: -1
+            description: Insert after this cell index (-1 for beginning). Required for insert (unless cell_id is provided).
+          source:
+            type: string
+            description: New cell source content. Required for replace and insert.
+          cell_type:
+            type: string
+            enum: [code, markdown, raw]
+            description: Cell type. Required for insert, optional for replace.
+          clear_outputs:
+            type: boolean
+            description: Clear cell outputs on replace (default false)
+        required:
+          - op
+    verbosity:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      description: Response verbosity level
+  required:
+    - path
+    - operations
