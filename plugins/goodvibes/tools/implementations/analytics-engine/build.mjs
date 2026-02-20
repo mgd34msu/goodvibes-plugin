@@ -66,7 +66,7 @@ async function build() {
       ...sharedOptions,
       format: 'cjs',
       banner: {},
-      external: ['react-devtools-core'],
+      external: [],
       entryPoints: [join(__dirname, 'src/mini.ts')],
       outfile: join(__dirname, 'dist/mini.cjs'),
     });
@@ -80,7 +80,7 @@ async function build() {
       ...sharedOptions,
       format: 'esm',
       banner: { js: "import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);" },
-      external: ['react-devtools-core'],
+      external: [],
       entryPoints: [join(__dirname, 'src/full.ts')],
       outfile: join(__dirname, 'dist/full.mjs'),
     });
