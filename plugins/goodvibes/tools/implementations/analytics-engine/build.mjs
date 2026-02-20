@@ -32,13 +32,16 @@ async function build() {
     console.log('Build completed: dist/index.js');
 
     // Build MCP server entry point (stdio transport)
-    // No shebang banner — invoked via `node` in .mcp.json, not directly
+    // CJS format (like other engines) — avoids ESM dynamic-require issues with sql.js.
+    // Bundles ALL deps (no node_modules in plugin installs). Only TUI deps stay external.
     await esbuild.build({
       ...sharedOptions,
+      format: 'cjs',
+      external: ['ink', 'react', 'react-devtools-core', 'yoga-wasm-web'],
       entryPoints: [join(__dirname, 'src/server.ts')],
-      outfile: join(__dirname, 'dist/server.js'),
+      outfile: join(__dirname, 'dist/server.cjs'),
     });
-    console.log('Build completed: dist/server.js');
+    console.log('Build completed: dist/server.cjs');
 
     // Build mini dashboard standalone
     await esbuild.build({
