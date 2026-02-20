@@ -1,0 +1,142 @@
+/**
+ * Page 1 — Session Overview.
+ * Displays current session metrics, token/cost/cache breakdown,
+ * and a tools-usage bar chart.
+ */
+import React from 'react';
+import { Box, Text } from 'ink';
+import type { DashboardState } from '../../../types.js';
+import { MetricBox, BarChart } from '../components/index.js';
+import {
+  formatNumber,
+  formatDollars,
+  formatPercent,
+  formatUptime,
+  formatTime,
+  truncate,
+} from '../../mini/format.js';
+
+export interface SessionOverviewProps {
+  /** Aggregated dashboard state. */
+  state: DashboardState;
+}
+
+/**
+ * Session Overview page — Page 1 of the full TUI dashboard.
+ *
+ * Layout:
+ *   Row 1: TOKENS | CACHE | COST
+ *   Row 2: COMMANDS | AGENTS | FILES
+ *   Row 3: TOOLS BREAKDOWN (full-width bar chart)
+ */
+export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
+  const { metrics, tools_breakdown, session_id, started_at, uptime_ms } = state;
+  const { tokens, cache, cost, commands, agents, files } = metrics;
+
+  // Build tools bar-chart items sorted by call count descending
+  const toolItems = Object.entries(tools_breakdown)
+    .map(([name, tb]) => ({
+      label: truncate(name.replace(/^mcp__plugin_goodvibes_/, '').replace(/__/g, '.'), 32),
+      value: tb.calls,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 12);
+
+  const maxToolCalls = toolItems.reduce((m, i) => Math.max(m, i.value), 0);
+
+  return (
+    <Box flexDirection="column" paddingX={1} paddingY={1} gap={1}>
+      {/* Session header */}
+      <Box gap={3}>
+        <Text bold color="cyan">SESSION OVERVIEW</Text>
+        <Text dimColor>ID: {truncate(session_id, 24)}</Text>
+        <Text dimColor>Started: {formatTime(started_at)}</Text>
+        <Text dimColor>Up: {formatUptime(uptime_ms)}</Text>
+      </Box>
+
+      {/* Metric boxes — row 1: tokens / cache / cost */}
+      <Box gap={1} flexWrap="wrap">
+        <MetricBox
+          title="TOKENS"
+          rows={[
+            { label: 'Total', value: formatNumber(tokens.total) },
+            { label: 'Input', value: formatNumber(tokens.input) },
+            { label: 'Output', value: formatNumber(tokens.output) },
+            { label: 'Saved', value: formatNumber(tokens.saved) },
+            { label: 'Efficiency', value: formatPercent(tokens.efficiency) },
+          ]}
+        />
+
+        <MetricBox
+          title="CACHE"
+          rows={[
+            { label: 'Hit Rate', value: formatPercent(cache.hit_rate) },
+            { label: 'Hits', value: formatNumber(cache.hits) },
+            { label: 'Misses', value: formatNumber(cache.misses) },
+            { label: 'Peak MB', value: `${cache.memory_peak_mb.toFixed(1)} MB` },
+            { label: 'Evictions', value: formatNumber(cache.evictions) },
+          ]}
+        />
+
+        <MetricBox
+          title="COST"
+          rows={[
+            { label: 'Total', value: formatDollars(cost.total) },
+            { label: 'Input', value: formatDollars(cost.input) },
+            { label: 'Output', value: formatDollars(cost.output) },
+            { label: 'Saved', value: formatDollars(cost.saved) },
+          ]}
+        />
+      </Box>
+
+      {/* Metric boxes — row 2: commands / agents / files */}
+      <Box gap={1} flexWrap="wrap">
+        <MetricBox
+          title="COMMANDS"
+          rows={[
+            { label: 'Total', value: formatNumber(commands.total) },
+            { label: 'Failures', value: formatNumber(commands.failures) },
+            { label: 'Success', value: formatPercent(commands.success_rate) },
+            { label: 'Avg ms', value: `${Math.round(commands.avg_duration_ms)} ms` },
+          ]}
+        />
+
+        <MetricBox
+          title="AGENTS"
+          rows={[
+            { label: 'Spawned', value: formatNumber(agents.spawned) },
+            { label: 'Active', value: formatNumber(agents.active) },
+            { label: 'Done', value: formatNumber(agents.completed) },
+            { label: 'Max Conc', value: formatNumber(agents.max_concurrent) },
+            { label: 'Tokens', value: formatNumber(agents.total_tokens) },
+          ]}
+        />
+
+        <MetricBox
+          title="FILES"
+          rows={[
+            { label: 'Read', value: formatNumber(files.unique_read) },
+            { label: 'Modified', value: formatNumber(files.modified) },
+            { label: 'Created', value: formatNumber(files.created) },
+            { label: 'Conflicts', value: formatNumber(files.conflicts) },
+          ]}
+        />
+      </Box>
+
+      {/* Tools breakdown bar chart */}
+      {toolItems.length > 0 && (
+        <Box flexDirection="column" gap={0}>
+          <Text bold color="yellow">TOOLS BREAKDOWN</Text>
+          <BarChart
+            items={toolItems.map((i) => ({
+              label: i.label,
+              value: i.value,
+              maxValue: maxToolCalls,
+              suffix: 'calls',
+            }))}
+          />
+        </Box>
+      )}
+    </Box>
+  );
+};

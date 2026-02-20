@@ -161,6 +161,11 @@ export const ansi = {
   },
 } as const;
 
+/**
+ * Box-drawing character set, aliased from `ansi.box` for named imports.
+ */
+export const BOX_CHARS = ansi.box;
+
 // === Health Color ===
 
 /**
