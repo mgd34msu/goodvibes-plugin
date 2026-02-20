@@ -1,0 +1,54 @@
+name: project_security_env
+version: "2.0.0"
+description: |
+  Audit .env files for missing, inconsistent, or undocumented environment variables.
+
+category: security
+tags:
+  - security
+  - environment
+  - configuration
+  - audit
+
+mcp:
+  server: project-engine
+  method: project_security_env
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Project root path. Defaults to current working directory."
+    env_file:
+      type: string
+      description: "Path to the .env file. Auto-detected if not specified."
+    example_file:
+      type: string
+      description: "Path to the .env.example file. Auto-detected if not specified."
+    ignore:
+      type: array
+      items:
+        type: string
+      description: "Variable names to ignore in the audit."
+    check_values:
+      type: boolean
+      description: "Validate variable value formats (URLs, booleans, numbers). Defaults to false."
+    scan_code:
+      type: boolean
+      description: "Scan source code for used env variables. Defaults to true."
+  required: []
+
+examples:
+  - description: "Audit environment variables for the entire project"
+    input: {}
+  - description: "Audit with explicit file paths, ignoring CI-only variables, and validating value formats"
+    input:
+      env_file: ".env.production"
+      example_file: ".env.example"
+      ignore:
+        - "CI"
+        - "GITHUB_TOKEN"
+      check_values: true
+      scan_code: true

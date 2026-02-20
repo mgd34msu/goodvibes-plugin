@@ -1,0 +1,37 @@
+name: project_test_find
+version: "2.0.0"
+description: |
+  Find test files associated with a given source file, including indirect test relationships.
+
+category: testing
+tags:
+  - testing
+  - test-files
+  - discovery
+  - coverage
+
+mcp:
+  server: project-engine
+  method: project_test_find
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "Path to the source file to find tests for."
+    include_indirect:
+      type: boolean
+      description: "Include tests that indirectly import the source file. Defaults to false."
+  required:
+    - file
+
+examples:
+  - description: "Find direct tests for a source file"
+    input:
+      file: "src/lib/auth.ts"
+  - description: "Find all tests including indirect imports"
+    input:
+      file: "src/lib/auth.ts"
+      include_indirect: true

@@ -1,0 +1,40 @@
+name: project_code_safe_delete
+version: "2.0.0"
+description: |
+  Check if code at a specific location can be safely deleted without breaking any external references.
+
+category: code-intelligence
+tags:
+  - dead-code
+  - refactoring
+  - typescript
+  - safety
+
+mcp:
+  server: project-engine
+  method: project_code_safe_delete
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "Absolute path to the file containing the symbol to check."
+    line:
+      type: number
+      description: "Line number of the symbol (1-indexed)."
+    column:
+      type: number
+      description: "Column number of the symbol (1-indexed)."
+  required:
+    - file
+    - line
+    - column
+
+examples:
+  - description: "Check if a function at a specific location can be safely deleted"
+    input:
+      file: "/home/user/project/src/utils/helpers.ts"
+      line: 42
+      column: 1

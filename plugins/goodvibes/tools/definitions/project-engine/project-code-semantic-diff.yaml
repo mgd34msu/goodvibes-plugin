@@ -1,0 +1,53 @@
+name: project_code_semantic_diff
+version: "2.0.0"
+description: |
+  LLM-powered semantic diff with impact analysis — understand what changed, not just the raw diff.
+
+category: code-intelligence
+tags:
+  - diff
+  - semantic
+  - git
+  - llm
+  - analysis
+
+mcp:
+  server: project-engine
+  method: project_code_semantic_diff
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    before_ref:
+      type: string
+      description: "Git ref (commit hash, branch, tag) for the \"before\" state."
+    after_ref:
+      type: string
+      description: "Git ref for the \"after\" state. Defaults to current working tree."
+    file:
+      type: string
+      description: "Specific file path to diff. If omitted, diffs all changed files."
+    timeout:
+      type: number
+      description: "Timeout in seconds for LLM analysis. Defaults to 120."
+    model:
+      type: string
+      enum:
+        - haiku
+        - sonnet
+        - opus
+      description: "LLM model to use for semantic analysis."
+  required:
+    - before_ref
+
+examples:
+  - description: "Get a semantic summary of all changes since the last commit"
+    input:
+      before_ref: "HEAD~1"
+  - description: "Understand what changed in a specific file between two commits"
+    input:
+      before_ref: "abc1234"
+      after_ref: "def5678"
+      file: "src/auth/middleware.ts"
+      model: "sonnet"

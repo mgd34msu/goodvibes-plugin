@@ -1,0 +1,64 @@
+name: project_runtime_profile
+version: "2.0.0"
+description: |
+  Profile a function execution for performance bottlenecks, measuring timing and memory statistics.
+
+category: runtime
+tags:
+  - runtime
+  - profiling
+  - performance
+  - benchmarking
+  - timing
+
+mcp:
+  server: project-engine
+  method: project_runtime_profile
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "Path to the file containing the function to profile."
+    function_name:
+      type: string
+      description: "Name of the exported function to profile."
+    inputs:
+      type: array
+      description: "Input arguments to pass to the function."
+      items: {}
+    iterations:
+      type: number
+      description: "Number of times to run the function for timing. Defaults to 100."
+    warmup:
+      type: number
+      description: "Number of warmup runs before timing. Defaults to 10."
+    capture_memory:
+      type: boolean
+      description: "Also capture heap memory delta. Defaults to false."
+    timeout:
+      type: number
+      description: "Timeout per invocation in milliseconds. Defaults to 5000."
+  required:
+    - file
+    - function_name
+    - inputs
+
+examples:
+  - description: "Profile a parser function with 200 iterations"
+    input:
+      file: "src/utils/parse.ts"
+      function_name: "parseMarkdown"
+      inputs:
+        - "## Hello\nWorld"
+      iterations: 200
+      warmup: 20
+  - description: "Profile with memory capture enabled"
+    input:
+      file: "src/lib/transform.ts"
+      function_name: "transformData"
+      inputs:
+        - {"key": "value"}
+      capture_memory: true

@@ -1,0 +1,43 @@
+name: project_api_sync
+version: "2.0.0"
+description: |
+  Sync TypeScript types between API backend and client, detecting type drift.
+
+category: api
+tags:
+  - api
+  - typescript
+  - types
+  - sync
+  - drift-detection
+
+mcp:
+  server: project-engine
+  method: project_api_sync
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    backend_path:
+      type: string
+      description: "Path to the backend API directory. Auto-detected if not specified."
+    frontend_path:
+      type: string
+      description: "Path to the frontend source directory. Auto-detected if not specified."
+    api_pattern:
+      type: string
+      description: "Regex pattern to match API call expressions in frontend code."
+    auto_fix:
+      type: boolean
+      description: "Automatically generate type imports to fix drift. Defaults to false."
+  required: []
+
+examples:
+  - description: "Detect type drift between auto-detected backend and frontend"
+    input: {}
+  - description: "Sync types in a monorepo with explicit paths and auto-fix enabled"
+    input:
+      backend_path: "./apps/api/src"
+      frontend_path: "./apps/web/src"
+      auto_fix: true

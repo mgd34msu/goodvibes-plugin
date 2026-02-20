@@ -1,0 +1,33 @@
+name: project_db_schema
+version: "2.0.0"
+description: |
+  Get the database schema from ORM definitions (Prisma, Drizzle, TypeORM) or raw SQL files.
+
+category: database
+tags:
+  - database
+  - schema
+  - prisma
+  - drizzle
+  - typeorm
+  - sql
+
+mcp:
+  server: project-engine
+  method: project_db_schema
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Path to schema file or project root. Auto-detected if not specified."
+  required: []
+
+examples:
+  - description: "Auto-detect and return the database schema for the current project"
+    input: {}
+  - description: "Load schema from a specific Prisma schema file"
+    input:
+      path: "./prisma/schema.prisma"

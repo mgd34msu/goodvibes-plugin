@@ -1,0 +1,38 @@
+name: project_test_coverage
+version: "2.0.0"
+description: |
+  Get test coverage report for the project by parsing LCOV, Istanbul, or c8 coverage files.
+
+category: testing
+tags:
+  - testing
+  - coverage
+  - lcov
+  - istanbul
+  - c8
+
+mcp:
+  server: project-engine
+  method: project_test_coverage
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: "Specific source file to get coverage for."
+    coverage_path:
+      type: string
+      description: "Path to the coverage report file. Auto-detected if not specified."
+    path:
+      type: string
+      description: "Project root path. Defaults to current working directory."
+  required: []
+
+examples:
+  - description: "Get overall project test coverage"
+    input: {}
+  - description: "Get coverage for a specific source file"
+    input:
+      file: "src/utils/format.ts"

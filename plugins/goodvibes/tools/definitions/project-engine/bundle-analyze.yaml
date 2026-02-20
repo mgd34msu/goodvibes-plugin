@@ -1,0 +1,41 @@
+name: bundle_analyze
+version: "2.0.0"
+description: |
+  Analyze JavaScript bundle size and composition, detecting large modules, duplicates, and tree-shaking issues.
+
+category: standalone
+tags:
+  - bundle
+  - performance
+  - webpack
+  - vite
+  - tree-shaking
+  - optimization
+
+mcp:
+  server: project-engine
+  method: bundle_analyze
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Project root or build output directory. Auto-detected if not specified."
+    format:
+      type: string
+      enum:
+        - summary
+        - detailed
+      description: 'Detail level of the analysis report. Defaults to "summary".'
+  required: []
+
+examples:
+  - description: "Get a summary bundle analysis for the current project"
+    input:
+      format: "summary"
+  - description: "Get a detailed bundle breakdown for a specific build output"
+    input:
+      path: "/home/user/my-project/dist"
+      format: "detailed"

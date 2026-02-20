@@ -1,0 +1,58 @@
+name: project_api_spec
+version: "2.0.0"
+description: |
+  Generate OpenAPI specification from code and route definitions.
+
+category: api
+tags:
+  - api
+  - openapi
+  - spec
+  - generation
+  - documentation
+
+mcp:
+  server: project-engine
+  method: project_api_spec
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    output_path:
+      type: string
+      description: "File path to write the generated spec. If omitted, returns inline."
+    title:
+      type: string
+      description: "API title for the OpenAPI info block."
+    version:
+      type: string
+      description: "API version string."
+    description:
+      type: string
+      description: "API description for the OpenAPI info block."
+    server_url:
+      type: string
+      description: "Base URL for the API server."
+    include_examples:
+      type: boolean
+      description: "Generate example values for request/response schemas."
+    format:
+      type: string
+      enum: [json, yaml]
+      description: "Output format for the spec. Defaults to \"json\"."
+  required: []
+
+examples:
+  - description: "Generate OpenAPI spec inline in JSON format"
+    input:
+      title: "My API"
+      version: "1.0.0"
+      server_url: "https://api.example.com"
+  - description: "Generate and write OpenAPI spec as YAML with examples"
+    input:
+      output_path: "./openapi.yaml"
+      title: "My API"
+      version: "2.0.0"
+      format: "yaml"
+      include_examples: true
