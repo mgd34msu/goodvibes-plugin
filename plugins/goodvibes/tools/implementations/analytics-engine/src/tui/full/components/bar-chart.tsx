@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { fixedWidth } from './text-utils.js';
 
 /**
  * A single item in the BarChart dataset.
@@ -30,12 +31,6 @@ export interface BarChartProps {
   barChar?: string;
   /** Character used for the empty portion of the bar. Defaults to '░'. */
   emptyChar?: string;
-}
-
-/** Truncate or pad a label to an exact column width. */
-function fixedLabel(text: string, width: number): string {
-  if (text.length > width) return text.slice(0, width - 1) + '…';
-  return text.padEnd(width, ' ');
 }
 
 /**
@@ -102,7 +97,7 @@ export function BarChart({
 
         return (
           <Box key={idx} flexDirection="row" width={width}>
-            <Text color="white">{fixedLabel(item.label, labelColWidth)}</Text>
+            <Text color="white">{fixedWidth(item.label, labelColWidth)}</Text>
             <Text>{'  '}</Text>
             <Text color="green">{barChar.repeat(filled)}</Text>
             <Text color="gray" dimColor>{emptyChar.repeat(empty)}</Text>

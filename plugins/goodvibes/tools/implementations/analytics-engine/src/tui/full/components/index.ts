@@ -22,5 +22,7 @@ export type { TimelineFeedProps } from './timeline-feed.js';
 export { Heatmap } from './heatmap.js';
 export type { HeatmapProps } from './heatmap.js';
 
+export { fixedWidth } from './text-utils.js';
+
 export { TrendLine } from './trend-line.js';
 export type { TrendLineProps } from './trend-line.js';

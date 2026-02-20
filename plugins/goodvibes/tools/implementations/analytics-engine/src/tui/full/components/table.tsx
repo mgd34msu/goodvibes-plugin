@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { fixedWidth } from './text-utils.js';
 
 /**
  * Props for the Table component.
@@ -25,12 +26,6 @@ function borderLine(
   fill: string,
 ): string {
   return left + widths.map((w) => fill.repeat(w + 2)).join(middle) + right;
-}
-
-/** Pad or truncate a cell string to a fixed column width. */
-function cell(text: string, width: number): string {
-  if (text.length > width) return text.slice(0, width - 1) + '…';
-  return text.padEnd(width, ' ');
 }
 
 /**
@@ -86,7 +81,7 @@ export function Table({ headers, rows, columnWidths }: TableProps): React.ReactE
 
   /**
    * Render a data row between `│` characters.
-   * Defined inside the component because it closes over `widths` and `cell`.
+   * Defined inside the component because it closes over `widths`.
    */
   function dataRow(cells: string[], isHeader = false): React.ReactElement {
     return (
@@ -97,7 +92,7 @@ export function Table({ headers, rows, columnWidths }: TableProps): React.ReactE
             <Text
               bold={isHeader}
               color={isHeader ? 'cyan' : 'white'}
-            >{` ${cell(cells[ci] ?? '', w)} `}</Text>
+            >{` ${fixedWidth(cells[ci] ?? '', w)} `}</Text>
             <Text color="gray">{'\u2502'}</Text>
           </React.Fragment>
         ))}

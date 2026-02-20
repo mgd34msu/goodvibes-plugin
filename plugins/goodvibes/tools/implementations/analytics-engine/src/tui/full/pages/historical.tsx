@@ -90,9 +90,9 @@ export const Historical: React.FC<HistoricalProps> = ({ state }) => {
   const efficiencyPct = Math.round(tokens.efficiency * 100);
   const cacheHitPct = Math.round(cache.hit_rate * 100);
   const successPct = Math.round(commands.success_rate * 100);
-  const costSavedPct =
+  const costSavedRatio =
     cost.total + cost.saved > 0
-      ? Math.round((cost.saved / (cost.total + cost.saved)) * 100)
+      ? cost.saved / (cost.total + cost.saved)
       : 0;
 
   return (
@@ -144,9 +144,9 @@ export const Historical: React.FC<HistoricalProps> = ({ state }) => {
           />
           <TrendLine
             label="Cost Savings"
-            value={formatPercent(costSavedPct / 100)}
-            trend={formatDelta(costSavedPct / 100, 0.3)}
-            barValue={costSavedPct}
+            value={formatPercent(costSavedRatio)}
+            trend={formatDelta(costSavedRatio, 0.3)}
+            barValue={costSavedRatio}
           />
         </Box>
       </Box>
