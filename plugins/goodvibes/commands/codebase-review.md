@@ -18,14 +18,8 @@ Comprehensive codebase analysis with automated parallel remediation using goodvi
 **STOP. Before doing ANYTHING, run these tools:**
 
 ```bash
-# 1. Understand the project
-mcp-cli call plugin_goodvibes_analysis-engine/detect_stack '{}'
-
-# 2. Find relevant skills for review
+# 1. Find relevant skills for review
 mcp-cli call plugin_goodvibes_registry-engine/recommend_skills '{"task":"codebase review and quality audit"}'
-
-# 3. Identify existing issues
-mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
 ```
 
 **THE LAW: If a goodvibes tool can do it, USE THE TOOL. No bash fallbacks without checking first.**
@@ -38,19 +32,19 @@ mcp-cli call plugin_goodvibes_project-engine/project_issues '{}'
 
 ```bash
 # Find circular dependencies
-mcp-cli call plugin_goodvibes_analysis-engine/find_circular_deps '{}'
+mcp-cli call plugin_goodvibes_project-engine/project_deps_circular '{}'
 
 # Scan for secrets
-mcp-cli call plugin_goodvibes_analysis-engine/scan_for_secrets '{}'
+mcp-cli call plugin_goodvibes_project-engine/project_security_secrets '{}'
 
 # Analyze dependencies
-mcp-cli call plugin_goodvibes_project-engine/analyze_dependencies '{}'
+mcp-cli call plugin_goodvibes_project-engine/project_deps_analyze '{}'
 
 # Find dead code
-mcp-cli call plugin_goodvibes_analysis-engine/find_dead_code '{}'
+mcp-cli call plugin_goodvibes_project-engine/project_code_dead '{}'
 
 # Get test coverage
-mcp-cli call plugin_goodvibes_project-engine/get_test_coverage '{}'
+mcp-cli call plugin_goodvibes_project-engine/project_test_coverage '{}'
 ```
 
 ### Review Categories
@@ -59,16 +53,16 @@ Analyze ALL code for these 10 dimensions (no area skipped):
 
 | Category | MCP Tools to Use | Check For |
 |----------|------------------|-----------|
-| **Quality** | `plugin_goodvibes_analysis-engine/find_dead_code`, `plugin_goodvibes_analysis-engine/scan_patterns` | Anti-patterns, dead code, duplication, cognitive complexity |
-| **Architecture** | `plugin_goodvibes_analysis-engine/find_circular_deps` | Coupling, cohesion, module boundaries, dependency violations |
-| **Security** | `plugin_goodvibes_analysis-engine/scan_for_secrets`, `plugin_goodvibes_analysis-engine/check_permissions` | Hardcoded secrets, injection vectors, auth gaps, input validation |
-| **Performance** | `plugin_goodvibes_project-engine/get_prisma_operations` | N+1 queries, memory leaks, algorithm efficiency |
+| **Quality** | `plugin_goodvibes_project-engine/project_code_dead` | Anti-patterns, dead code, duplication, cognitive complexity |
+| **Architecture** | `plugin_goodvibes_project-engine/project_deps_circular` | Coupling, cohesion, module boundaries, dependency violations |
+| **Security** | `plugin_goodvibes_project-engine/project_security_secrets`, `plugin_goodvibes_project-engine/project_security_permissions` | Hardcoded secrets, injection vectors, auth gaps, input validation |
+| **Performance** | `plugin_goodvibes_project-engine/project_db_prisma` | N+1 queries, memory leaks, algorithm efficiency |
 | **Documentation** | `plugin_goodvibes_project-engine/explain_codebase` | Missing docs, stale comments, API coverage |
-| **Testing** | `plugin_goodvibes_project-engine/get_test_coverage`, `plugin_goodvibes_project-engine/find_tests_for_file` | Coverage gaps, missing edge cases, fragile tests |
-| **Config** | `plugin_goodvibes_analysis-engine/env_audit` | Hardcoded values, env drift, missing vars |
-| **Dependencies** | `plugin_goodvibes_project-engine/analyze_dependencies` | Outdated, unused, security vulnerabilities |
-| **Errors** | `plugin_goodvibes_analysis-engine/parse_error_stack` | Unhandled exceptions, empty catches, logging gaps |
-| **Style** | `plugin_goodvibes_analysis-engine/scan_patterns`, `plugin_goodvibes_analysis-engine/get_conventions` | Naming violations, formatting, organization |
+| **Testing** | `plugin_goodvibes_project-engine/project_test_coverage`, `plugin_goodvibes_project-engine/project_test_find` | Coverage gaps, missing edge cases, fragile tests |
+| **Config** | `plugin_goodvibes_project-engine/project_security_env` | Hardcoded values, env drift, missing vars |
+| **Dependencies** | `plugin_goodvibes_project-engine/project_deps_analyze` | Outdated, unused, security vulnerabilities |
+| **Errors** | precision_grep (search for unhandled patterns) | Unhandled exceptions, empty catches, logging gaps |
+| **Style** | precision_grep (scan for conventions) | Naming violations, formatting, organization |
 
 ---
 
@@ -79,7 +73,7 @@ Generate `codebase-review-report.md` with this structure:
 ```markdown
 # Codebase Review Report
 
-**Project**: [name from detect_stack]
+**Project**: [project name]
 **Generated**: [ISO timestamp]
 **Overall Score**: [X/10]
 
@@ -226,13 +220,12 @@ Each spawned engineer agent receives:
 
 Before ANY edit:
 ```bash
-mcp-cli call plugin_goodvibes_analysis-engine/scan_patterns '{}'
-mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file":"TARGET_FILE"}'
+mcp-cli call plugin_goodvibes_project-engine/project_test_find '{"file":"TARGET_FILE"}'
 ```
 
 After EVERY edit:
 ```bash
-mcp-cli call plugin_goodvibes_analysis-engine/validate_edits_preview '{"files":["EDITED_FILE"]}'
+mcp-cli call plugin_goodvibes_project-engine/project_code_preview_edits '{"files":["EDITED_FILE"]}'
 ```
 
 ## Assignment
@@ -295,8 +288,8 @@ Each spawned reviewer agent receives:
 ## MCP Tool Checklist (MANDATORY)
 
 ```bash
-mcp-cli call plugin_goodvibes_analysis-engine/validate_implementation '{"files":{FILES_MODIFIED},"requirements":{REQUIREMENTS}}'
-mcp-cli call plugin_goodvibes_project-engine/find_tests_for_file '{"file":"CHANGED_FILE"}'
+mcp-cli call plugin_goodvibes_project-engine/project_code_preview_edits '{"files":{FILES_MODIFIED}}'
+mcp-cli call plugin_goodvibes_project-engine/project_test_find '{"file":"CHANGED_FILE"}'
 ```
 
 ## Completion

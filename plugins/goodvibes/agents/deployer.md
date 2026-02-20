@@ -355,20 +355,17 @@ precision_exec:
   verbosity: minimal
 ```
 
-### Analysis-Engine Integration for Deployment
+### Project-Engine Integration for Deployment
 
 ```yaml
-# Detect project stack
-mcp__plugin_goodvibes_analysis-engine__detect_stack
-
 # Check environment variables
-mcp__plugin_goodvibes_analysis-engine__env_audit
+mcp__plugin_goodvibes_project-engine__project_security_env
 
 # Scan for secrets (pre-deployment)
-mcp__plugin_goodvibes_analysis-engine__scan_for_secrets
+mcp__plugin_goodvibes_project-engine__project_security_secrets
 
 # Check file permissions
-mcp__plugin_goodvibes_analysis-engine__check_permissions
+mcp__plugin_goodvibes_project-engine__project_security_permissions
 ```
 
 ### 2. Docker Multi-Stage Build

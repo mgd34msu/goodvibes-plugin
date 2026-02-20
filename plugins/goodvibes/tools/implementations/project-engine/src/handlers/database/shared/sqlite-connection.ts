@@ -114,7 +114,8 @@ async function getSqlJs(): Promise<SqlJsStatic> {
 
   try {
     // Dynamic import of sql.js
-    const initSqlJs = (await import('sql.js')).default;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const initSqlJs = ((await import('sql.js' as any)) as any).default as (opts: { locateFile: (file: string) => string }) => Promise<SqlJsStatic>;
     sqlJsInstance = await initSqlJs({
       locateFile: (file: string) => {
         // WASM file is in same directory as the bundle
@@ -122,7 +123,7 @@ async function getSqlJs(): Promise<SqlJsStatic> {
         return path.join(__dirname, file);
       }
     });
-    return sqlJsInstance;
+    return sqlJsInstance!;
   } catch (error) {
     throw new Error(
       `SQLite driver (sql.js) failed to initialize: ${error instanceof Error ? error.message : String(error)}`

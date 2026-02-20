@@ -17,11 +17,13 @@ import { PROJECT_ROOT } from '../../config.js';
 import {
   createSuccessResponse,
   createErrorResponse,
+  type ToolResponse,
+} from '../../shared/response.js';
+import {
   normalizeFilePath,
   makeRelativePath,
   resolveFilePath,
-  type ToolResponse,
-} from '../lsp/utils.js';
+} from '../code-intelligence/shared/lsp-utils.js';
 
 // =============================================================================
 // Types

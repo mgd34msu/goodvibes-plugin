@@ -640,15 +640,14 @@ precision_grep:
     format: locations
 ```
 
-### Analysis-Engine Integration
+### Project-Engine Integration
 
-Use analysis-engine tools for deeper code quality checks:
+Use project-engine tools for deeper code quality checks:
 
-Use analysis-engine tools for deeper code quality checks:
-
-- `mcp__plugin_goodvibes_analysis-engine__detect_breaking_changes` - Check for breaking changes
-- `mcp__plugin_goodvibes_analysis-engine__scan_patterns` - Scan for patterns
-- `mcp__plugin_goodvibes_analysis-engine__validate_implementation` - Validate implementation
+- `mcp__plugin_goodvibes_project-engine__project_code_breaking` - Check for breaking changes
+- `mcp__plugin_goodvibes_project-engine__project_code_preview_edits` - Validate proposed changes
+- `mcp__plugin_goodvibes_project-engine__project_security_secrets` - Scan for secrets
+- `mcp__plugin_goodvibes_project-engine__project_code_dead` - Find dead code
 
 ### Quick Checks
 

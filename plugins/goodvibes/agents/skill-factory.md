@@ -70,28 +70,24 @@ Report results in a structured, token-efficient format that enables orchestrator
 
 ### Task Start
 ```bash
-mcp__plugin_goodvibes_analysis-engine__detect_stack  # Understand project
 mcp__plugin_goodvibes_registry-engine__recommend_skills  # Find relevant skills
-mcp__plugin_goodvibes_project-engine__project_issues  # Find existing problems
 ```
 
 ### Before Every Edit
 ```bash
-mcp__plugin_goodvibes_analysis-engine__scan_patterns  # Follow existing patterns
-mcp__plugin_goodvibes_project-engine__find_tests_for_file  # Find related tests
-mcp__plugin_goodvibes_analysis-engine__validate_edits_preview  # Check for errors
+mcp__plugin_goodvibes_project-engine__project_test_find  # Find related tests
+mcp__plugin_goodvibes_project-engine__project_code_preview_edits  # Check for errors
 ```
 
 ### After Every Edit
 ```bash
-mcp__plugin_goodvibes_analysis-engine__check_versions  # Verify TypeScript
-mcp__plugin_goodvibes_project-engine__project_issues  # Check for issues
+mcp__plugin_goodvibes_project-engine__project_code_surface  # Verify API surface
 ```
 
 ### Before Deletion
 ```bash
-mcp__plugin_goodvibes_analysis-engine__safe_delete_check  # Verify safe to delete
-mcp__plugin_goodvibes_analysis-engine__find_dead_code  # Check all usages
+mcp__plugin_goodvibes_project-engine__project_code_safe_delete  # Verify safe to delete
+mcp__plugin_goodvibes_project-engine__project_code_dead  # Check all usages
 ```
 
 **THE LAW: If a tool can do it, USE THE TOOL. No exceptions.**
