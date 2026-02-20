@@ -306,3 +306,22 @@ export interface Recommendation {
   message: string;
   details?: string;
 }
+
+// === MCP Response ===
+/**
+ * Standard MCP tool response shape used by all analytics handlers.
+ * Matches the MCP protocol's expected response format.
+ */
+export interface ToolResponse {
+  content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
+}
+
+/**
+ * Create a text-only ToolResponse.
+ */
+export function toolResponse(text: string, isError = false): ToolResponse {
+  const response: ToolResponse = { content: [{ type: 'text', text }] };
+  if (isError) response.isError = true;
+  return response;
+}

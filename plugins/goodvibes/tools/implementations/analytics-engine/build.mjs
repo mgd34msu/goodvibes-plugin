@@ -16,7 +16,7 @@ const sharedOptions = {
   sourcemap: true,
   minify: false,
   keepNames: true,
-  external: ['sql.js', 'ink', 'react', 'react-devtools-core', 'yoga-wasm-web'],
+  external: ['sql.js', 'ink', 'react', 'react-devtools-core', 'yoga-wasm-web', 'chokidar', 'zod', '@modelcontextprotocol/sdk'],
 };
 
 async function build() {
@@ -35,7 +35,7 @@ async function build() {
     await esbuild.build({
       ...sharedOptions,
       banner: binBanner,
-      entryPoints: [join(__dirname, 'src/tui/mini/renderer.ts')],
+      entryPoints: [join(__dirname, 'src/mini.ts')],
       outfile: join(__dirname, 'dist/mini.js'),
     });
     console.log('Build completed: dist/mini.js');
@@ -44,7 +44,7 @@ async function build() {
     await esbuild.build({
       ...sharedOptions,
       banner: binBanner,
-      entryPoints: [join(__dirname, 'src/tui/full/app.tsx')],
+      entryPoints: [join(__dirname, 'src/full.ts')],
       outfile: join(__dirname, 'dist/full.js'),
     });
     console.log('Build completed: dist/full.js');
@@ -55,13 +55,13 @@ async function build() {
     try {
       await copyFile(sqlJsWasmSrc, sqlJsWasmDest);
       console.log('Copied: sql-wasm.wasm');
-    } catch (e) {
-      console.warn('Warning: Could not copy sql-wasm.wasm:', e.message);
+    } catch (err) {
+      console.warn('Warning: Could not copy sql-wasm.wasm:', err instanceof Error ? err.message : String(err));
     }
 
     console.log('All builds completed successfully.');
-  } catch (error) {
-    console.error('Build failed:', error);
+  } catch (err) {
+    console.error('Build failed:', err);
     process.exit(1);
   }
 }

@@ -10,18 +10,19 @@
 
 import { Aggregator } from './daemon/aggregator.js';
 import { MiniRenderer } from './tui/mini/renderer.js';
-import { DEFAULT_CONFIG } from './types.js';
+import { loadConfig } from './config.js';
 
 const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
 
 async function main(): Promise<void> {
-  const aggregator = new Aggregator(goodvibesDir, DEFAULT_CONFIG);
+  const config = loadConfig(goodvibesDir);
+  const aggregator = new Aggregator(goodvibesDir, config);
   await aggregator.initialize();
 
   const renderer = new MiniRenderer();
   renderer.startLoop(
     () => aggregator.getState(),
-    DEFAULT_CONFIG.refresh_rate_ms,
+    config.refresh_rate_ms,
   );
 
   // Graceful shutdown

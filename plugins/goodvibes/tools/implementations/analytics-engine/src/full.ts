@@ -11,7 +11,7 @@ import React from 'react';
 import { render } from 'ink';
 import { Aggregator } from './daemon/aggregator.js';
 import { App } from './tui/full/app.js';
-import { DEFAULT_CONFIG } from './types.js';
+import { loadConfig } from './config.js';
 
 const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
 
@@ -20,7 +20,8 @@ const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
  * to state changes for live re-rendering.
  */
 async function main(): Promise<void> {
-  const aggregator = new Aggregator(goodvibesDir, DEFAULT_CONFIG);
+  const config = loadConfig(goodvibesDir);
+  const aggregator = new Aggregator(goodvibesDir, config);
   await aggregator.initialize();
 
   let inkInstance: ReturnType<typeof render> | null = null;
@@ -52,8 +53,8 @@ async function main(): Promise<void> {
   // Subscribe to state changes — re-render on each update
   aggregator.onStateChange(renderApp);
 
-  process.on('SIGINT', () => { shutdown().catch((e) => console.error('[shutdown]', e)); });
-  process.on('SIGTERM', () => { shutdown().catch((e) => console.error('[shutdown]', e)); });
+  process.on('SIGINT', () => { shutdown().catch((err) => console.error('[shutdown]', err)); });
+  process.on('SIGTERM', () => { shutdown().catch((err) => console.error('[shutdown]', err)); });
 }
 
 main().catch((err: unknown) => {

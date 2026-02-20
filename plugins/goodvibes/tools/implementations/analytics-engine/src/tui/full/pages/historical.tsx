@@ -87,9 +87,7 @@ export const Historical: React.FC<HistoricalProps> = ({ state }) => {
 
   // Health trend lines derived from current session data
   // These represent current-session point-in-time values.
-  const efficiencyPct = Math.round(tokens.efficiency * 100);
-  const cacheHitPct = Math.round(cache.hit_rate * 100);
-  const successPct = Math.round(commands.success_rate * 100);
+
   const costSavedRatio =
     cost.total + cost.saved > 0
       ? cost.saved / (cost.total + cost.saved)
@@ -128,19 +126,19 @@ export const Historical: React.FC<HistoricalProps> = ({ state }) => {
             label="Token Efficiency"
             value={formatPercent(tokens.efficiency)}
             trend={formatDelta(tokens.efficiency, 0.5)}
-            barValue={efficiencyPct}
+            barValue={tokens.efficiency}
           />
           <TrendLine
             label="Cache Hit Rate"
             value={formatPercent(cache.hit_rate)}
             trend={formatDelta(cache.hit_rate, 0.7)}
-            barValue={cacheHitPct}
+            barValue={cache.hit_rate}
           />
           <TrendLine
             label="Command Success"
             value={formatPercent(commands.success_rate)}
             trend={formatDelta(commands.success_rate, 0.95)}
-            barValue={successPct}
+            barValue={commands.success_rate}
           />
           <TrendLine
             label="Cost Savings"
