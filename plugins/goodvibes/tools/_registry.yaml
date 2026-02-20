@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-02-20T04:35:03.067Z'
-total: 71
+generated: '2026-02-20T07:40:26.151Z'
+total: 56
 servers:
   - name: precision-engine
     count: 12
@@ -112,121 +112,92 @@ servers:
           Show which skills work together and their dependencies.
           Identifies prerequisite skills, complementary skills, and conflicts.
           Helps build complete skill sets for complex tasks.
+  - name: analysis-engine
+    count: 0
+    tools: []
   - name: project-engine
     count: 26
     tools:
-      # Code Intelligence
-      - name: project_code_dead
-        path: project-engine/project-code-dead.yaml
-        description: >-
-          Find unused exports and functions. Identifies dead code that can be safely removed.
-      - name: project_code_safe_delete
-        path: project-engine/project-code-safe-delete.yaml
-        description: >-
-          Confirm a symbol has zero external usages before deleting.
-      - name: project_code_preview_edits
-        path: project-engine/project-code-preview-edits.yaml
-        description: >-
-          Preview the impact of proposed edits before applying them. Runs TypeScript diagnostics on virtual snapshot.
-      - name: project_code_breaking
-        path: project-engine/project-code-breaking.yaml
-        description: >-
-          Detect breaking API changes between git refs. Compares type signatures and identifies migration-required changes.
-      - name: project_code_semantic_diff
-        path: project-engine/project-code-semantic-diff.yaml
-        description: >-
-          LLM-powered type-aware diff with semantic impact explanation beyond text-based diff.
-      - name: project_code_surface
-        path: project-engine/project-code-surface.yaml
-        description: >-
-          Analyze the public vs internal API surface of a module or package.
-      # Security
-      - name: project_security_secrets
-        path: project-engine/project-security-secrets.yaml
-        description: >-
-          Scan source files for potential secrets, credentials, and sensitive data.
-      - name: project_security_permissions
-        path: project-engine/project-security-permissions.yaml
-        description: >-
-          Analyze file, network, and system access patterns in code. Categorizes findings by risk level.
-      - name: project_security_env
-        path: project-engine/project-security-env.yaml
-        description: >-
-          Comprehensive environment variable audit. Scans for usages, compares .env files, identifies drift.
-      # Database
-      - name: project_db_schema
-        path: project-engine/project-db-schema.yaml
-        description: >-
-          Auto-detect and extract database schema from Prisma, Drizzle, and SQL schema files.
-      - name: project_db_query
-        path: project-engine/project-db-query.yaml
-        description: >-
-          Execute SQL queries against PostgreSQL, MySQL, or SQLite databases with readonly mode.
-      - name: project_db_prisma
-        path: project-engine/project-db-prisma.yaml
-        description: >-
-          Find all Prisma client usages and detect N+1 query patterns.
-      # API
       - name: project_api_routes
-        path: project-engine/project-api-routes.yaml
-        description: >-
-          Extract API routes from Next.js, Express, Fastify, and Hono. Returns method, path, and handler info.
+        path: project-engine/project_api_routes
+        description: Discover API routes from framework files (Express, Next.js, Fastify, Hono).
       - name: project_api_spec
-        path: project-engine/project-api-spec.yaml
-        description: >-
-          Generate OpenAPI 3.0.3 specification from detected API routes.
+        path: project-engine/project_api_spec
+        description: Generate OpenAPI specification from code and route definitions.
       - name: project_api_validate
-        path: project-engine/project-api-validate.yaml
-        description: >-
-          Validate API responses against OpenAPI spec. Reports violations with JSON paths.
+        path: project-engine/project_api_validate
+        description: Validate API implementation against its OpenAPI contract/spec by making live requests.
       - name: project_api_sync
-        path: project-engine/project-api-sync.yaml
-        description: >-
-          Detect type drift between backend API routes and frontend API calls.
-      # Dependencies
+        path: project-engine/project_api_sync
+        description: Sync TypeScript types between API backend and client, detecting type drift.
+      - name: project_code_dead
+        path: project-engine/project_code_dead
+        description: Find dead/unused code (exports, functions, variables) in the project using TypeScript language service.
+      - name: project_code_safe_delete
+        path: project-engine/project_code_safe_delete
+        description: Check if code at a specific location can be safely deleted without breaking any external references.
+      - name: project_code_preview_edits
+        path: project-engine/project_code_preview_edits
+        description: Preview and validate code edits before applying them, checking for TypeScript errors introduced by each edit.
+      - name: project_code_breaking
+        path: project-engine/project_code_breaking
+        description: Detect breaking changes between two git refs by comparing exported TypeScript API signatures.
+      - name: project_code_semantic_diff
+        path: project-engine/project_code_semantic_diff
+        description: LLM-powered semantic diff with impact analysis — understand what changed, not just the raw diff.
+      - name: project_code_surface
+        path: project-engine/project_code_surface
+        description: Get the public API surface (exports) of files or modules, distinguishing public from internal APIs.
+      - name: project_db_schema
+        path: project-engine/project_db_schema
+        description: Get the database schema from ORM definitions (Prisma, Drizzle, TypeORM) or raw SQL files.
+      - name: project_db_query
+        path: project-engine/project_db_query
+        description: Execute read-only database queries against PostgreSQL, MySQL, or SQLite databases.
+      - name: project_db_prisma
+        path: project-engine/project_db_prisma
+        description: Analyze Prisma schema and list available operations, detecting N+1 query patterns.
       - name: project_deps_analyze
-        path: project-engine/project-deps-analyze.yaml
-        description: >-
-          Analyze npm dependencies to find unused, missing, and outdated packages.
+        path: project-engine/project_deps_analyze
+        description: Analyze project dependencies for outdated packages, unused imports, and duplicate versions.
       - name: project_deps_circular
-        path: project-engine/project-deps-circular.yaml
-        description: >-
-          Detect circular import dependencies in the codebase using DFS on the import graph.
+        path: project-engine/project_deps_circular
+        description: Find circular dependency chains in the codebase using depth-first search.
       - name: project_deps_upgrade
-        path: project-engine/project-deps-upgrade.yaml
-        description: >-
-          Upgrade an npm package with comprehensive breaking change detection and dry run support.
-      # Testing
-      - name: project_test_coverage
-        path: project-engine/project-test-coverage.yaml
-        description: >-
-          Parse test coverage reports and map coverage data to functions. Returns uncovered lines and functions.
-      - name: project_test_find
-        path: project-engine/project-test-find.yaml
-        description: >-
-          Find test files that cover a given source file using naming patterns and import graphs.
-      # Runtime
+        path: project-engine/project_deps_upgrade
+        description: Upgrade a specific package with compatibility checks, changelog analysis, and optional test execution.
       - name: project_runtime_memory
-        path: project-engine/project-runtime-memory.yaml
-        description: >-
-          Analyze memory usage patterns and detect potential memory leaks.
+        path: project-engine/project_runtime_memory
+        description: Detect potential memory leaks in a running Node.js process by monitoring heap growth over time.
       - name: project_runtime_profile
-        path: project-engine/project-runtime-profile.yaml
-        description: >-
-          Profile runtime performance and identify bottlenecks.
+        path: project-engine/project_runtime_profile
+        description: Profile a function execution for performance bottlenecks, measuring timing and memory statistics.
       - name: project_runtime_logs
-        path: project-engine/project-runtime-logs.yaml
+        path: project-engine/project_runtime_logs
+        description: Analyze application logs for patterns, anomalies, error frequency, and rate changes.
+      - name: project_security_secrets
+        path: project-engine/project_security_secrets
+        description: Scan files for hardcoded secrets, API keys, tokens, and other sensitive credentials.
+      - name: project_security_permissions
+        path: project-engine/project_security_permissions
         description: >-
-          Analyze application logs to identify errors, patterns, and anomalies.
-      # Standalone
+          Check files for dangerous permission patterns — filesystem access, network calls, process execution, and
+          crypto usage.
+      - name: project_security_env
+        path: project-engine/project_security_env
+        description: Audit .env files for missing, inconsistent, or undocumented environment variables.
       - name: scaffold
-        path: project-engine/scaffold-project.yaml
-        description: >-
-          Create a new project from a template with variable substitutions and post-create commands.
+        path: project-engine/scaffold
+        description: Scaffold a new project from templates with variable substitution and optional git/npm initialization.
       - name: bundle_analyze
-        path: project-engine/analyze-bundle.yaml
-        description: >-
-          Analyze bundle size, duplicates, and tree-shaking issues in build output.
+        path: project-engine/bundle_analyze
+        description: Analyze JavaScript bundle size and composition, detecting large modules, duplicates, and tree-shaking issues.
+      - name: project_test_coverage
+        path: project-engine/project_test_coverage
+        description: Get test coverage report for the project by parsing LCOV, Istanbul, or c8 coverage files.
+      - name: project_test_find
+        path: project-engine/project_test_find
+        description: Find test files associated with a given source file, including indirect test relationships.
   - name: frontend-engine
     count: 11
     tools:
@@ -819,695 +790,451 @@ search_index:
       Identifies prerequisite skills, complementary skills, and conflicts.
       Helps build complete skill sets for complex tasks.
     server: registry-engine
-  - name: find_circular_deps
+  - name: project_api_routes
     keywords:
-      - find
-      - circular
-      - deps
-      - detect
-      - import
-      - dependencies
-      - codebase
-      - builds
-      - graph
-      - parsing
-      - all
-      - source
-      - files
-      - uses
-      - dfs
-      - cycles
-      - returns
-      - found
-      - full
-      - file
-      - paths
-      - involved
-    path: project-engine/project-deps-circular.yaml
-    description: >-
-      Detect circular import dependencies in the codebase. Builds an import graph by parsing all source files and uses
-      DFS to detect cycles. Returns all cycles found with the full file paths involved.
-    server: project-engine
-  - name: analyze_bundle
-    keywords:
-      - analyze
-      - bundle
-      - size
-      - duplicates
-      - tree
-      - shaking
-      - issues
-      - build
-      - output
-      - scans
-      - dist
-      - next
-      - directories
-      - files
-      - reports
-      - total
-      - chunk
-      - breakdown
-      - largest
-      - modules
-      - duplicate
-      - dependencies
-      - optimization
-      - recommendations
-    path: project-engine/analyze-bundle.yaml
-    description: >-
-      Analyze bundle size, duplicates, and tree-shaking issues in build output. Scans dist/, .next/, or build/
-      directories for bundle files and reports total size, chunk breakdown, largest modules, duplicate dependencies, and
-      optimization recommendations.
-    server: project-engine
-  - name: analyze_dependencies
-    keywords:
-      - analyze
-      - dependencies
-      - npm
-      - find
-      - unused
-      - missing
-      - outdated
-      - packages
-      - compares
-      - declared
-      - package
-      - json
-      - against
-      - actual
-      - imports
-      - source
-      - files
-    path: project-engine/analyze-dependencies.yaml
-    description: >-
-      Analyze npm dependencies to find unused, missing, and outdated packages. Compares declared dependencies in
-      package.json against actual imports in source files.
-    server: project-engine
-  - name: create_pull_request
-    keywords:
-      - create
-      - pull
-      - request
-      - github
-      - auto
-      - generated
-      - description
-      - using
-      - llm
-      - analysis
-      - handles
-      - git
-      - state
-      - detection
-      - branch
-      - pushing
-      - creation
-      - via
-      - cli
-      - requires
-      - installed
-      - authenticated
-    path: project-engine/create_pull_request
-    description: >-
-      Create a GitHub pull request with auto-generated description using LLM analysis. Handles git state detection,
-      branch pushing, and PR creation via gh CLI. Requires gh CLI to be installed and authenticated.
-    server: project-engine
-  - name: resolve_merge_conflict
-    keywords:
-      - resolve
-      - merge
-      - conflict
-      - analyze
-      - suggest
-      - resolutions
-      - git
-      - conflicts
-      - parses
-      - markers
-      - analyzes
-      - both
-      - versions
-      - recommends
-      - resolution
-      - strategy
-      - ours
-      - theirs
-      - combined
-      - can
-      - auto
-      - simple
-    path: project-engine/resolve-merge-conflict.yaml
-    description: >-
-      Analyze and suggest resolutions for git merge conflicts. Parses conflict markers, analyzes both versions, and
-      recommends resolution strategy (ours, theirs, or combined). Can auto-resolve simple conflicts.
-    server: project-engine
-  - name: scaffold_project
-    keywords:
-      - scaffold
       - project
-      - create
-      - new
+      - api
+      - routes
+      - discover
       - from
-      - template
-      - copies
+      - framework
       - files
-      - applies
-      - variable
-      - substitutions
-      - runs
-      - post
-      - commands
-      - lists
-      - recommended
-      - skills
-      - based
-      - stack
-    path: project-engine/scaffold-project.yaml
-    description: |
-      Create a new project from a template. Copies template files,
-      applies variable substitutions, and runs post-create commands.
-      Lists recommended skills based on the template stack.
+      - express
+      - next
+      - fastify
+      - hono
+    path: project-engine/project_api_routes
+    description: Discover API routes from framework files (Express, Next.js, Fastify, Hono).
     server: project-engine
-  - name: list_templates
-    keywords:
-      - list
-      - templates
-      - available
-      - project
-      - their
-      - descriptions
-      - tech
-      - stacks
-      - complexity
-      - levels
-      - filter
-      - category
-    path: project-engine/list-templates.yaml
-    description: |
-      List available project templates with their descriptions,
-      tech stacks, and complexity levels. Filter by category.
-    server: project-engine
-  - name: plugin_status
-    keywords:
-      - plugin
-      - status
-      - check
-      - goodvibes
-      - health
-      - verifies
-      - manifest
-      - registries
-      - hooks
-      - config
-      - script
-      - files
-      - returns
-      - issues
-      - overall
-    path: project-engine/plugin-status.yaml
-    description: |
-      Check GoodVibes plugin health status.
-      Verifies manifest, registries, hooks config, and script files.
-      Returns issues and overall health status.
-    server: project-engine
-  - name: project_issues
+  - name: project_api_spec
     keywords:
       - project
-      - issues
-      - get
-      - detailed
-      - high
-      - priority
-      - todos
-      - file
-      - line
-      - health
-      - warnings
-      - environment
-      - scans
-      - codebase
-      - actionable
-      - returns
-      - them
-      - structured
-      - format
-      - locations
-      - severity
-      - levels
-    path: project-engine/project-issues.yaml
-    description: |
-      Get detailed project issues: high-priority TODOs with file:line,
-      health warnings, environment issues.
-      Scans the codebase for actionable issues and returns them
-      in a structured format with locations and severity levels.
-    server: project-engine
-  - name: generate_openapi
-    keywords:
+      - api
+      - spec
       - generate
       - openapi
       - specification
       - from
-      - detected
-      - api
-      - routes
-      - supports
-      - next
-      - app
-      - router
-      - pages
-      - express
-      - fastify
-      - hono
-      - extracts
-      - path
-      - parameters
-      - attempts
-      - parse
-      - request
-      - response
-      - types
-      - handlers
-      - generates
-      - examples
-    path: project-engine/generate-openapi.yaml
-    description: >-
-      Generate OpenAPI 3.0.3 specification from detected API routes. Supports Next.js (App Router & Pages Router),
-      Express, Fastify, and Hono. Extracts path parameters, attempts to parse request/response types from handlers, and
-      generates examples.
+      - code
+      - route
+      - definitions
+    path: project-engine/project_api_spec
+    description: Generate OpenAPI specification from code and route definitions.
     server: project-engine
-  - name: get_database_schema
+  - name: project_api_validate
     keywords:
+      - project
+      - api
+      - validate
+      - implementation
+      - against
+      - its
+      - openapi
+      - contract
+      - spec
+      - making
+      - live
+      - requests
+    path: project-engine/project_api_validate
+    description: Validate API implementation against its OpenAPI contract/spec by making live requests.
+    server: project-engine
+  - name: project_api_sync
+    keywords:
+      - project
+      - api
+      - sync
+      - typescript
+      - types
+      - between
+      - backend
+      - client
+      - detecting
+      - type
+      - drift
+    path: project-engine/project_api_sync
+    description: Sync TypeScript types between API backend and client, detecting type drift.
+    server: project-engine
+  - name: project_code_dead
+    keywords:
+      - project
+      - code
+      - dead
+      - find
+      - unused
+      - exports
+      - functions
+      - variables
+      - using
+      - typescript
+      - language
+      - service
+    path: project-engine/project_code_dead
+    description: Find dead/unused code (exports, functions, variables) in the project using TypeScript language service.
+    server: project-engine
+  - name: project_code_safe_delete
+    keywords:
+      - project
+      - code
+      - safe
+      - delete
+      - check
+      - specific
+      - location
+      - can
+      - safely
+      - deleted
+      - without
+      - breaking
+      - any
+      - external
+      - references
+    path: project-engine/project_code_safe_delete
+    description: Check if code at a specific location can be safely deleted without breaking any external references.
+    server: project-engine
+  - name: project_code_preview_edits
+    keywords:
+      - project
+      - code
+      - preview
+      - edits
+      - validate
+      - before
+      - applying
+      - them
+      - checking
+      - typescript
+      - errors
+      - introduced
+      - each
+      - edit
+    path: project-engine/project_code_preview_edits
+    description: Preview and validate code edits before applying them, checking for TypeScript errors introduced by each edit.
+    server: project-engine
+  - name: project_code_breaking
+    keywords:
+      - project
+      - code
+      - breaking
+      - detect
+      - changes
+      - between
+      - two
+      - git
+      - refs
+      - comparing
+      - exported
+      - typescript
+      - api
+      - signatures
+    path: project-engine/project_code_breaking
+    description: Detect breaking changes between two git refs by comparing exported TypeScript API signatures.
+    server: project-engine
+  - name: project_code_semantic_diff
+    keywords:
+      - project
+      - code
+      - semantic
+      - diff
+      - llm
+      - powered
+      - impact
+      - analysis
+      - understand
+      - what
+      - changed
+      - not
+      - just
+      - raw
+    path: project-engine/project_code_semantic_diff
+    description: LLM-powered semantic diff with impact analysis — understand what changed, not just the raw diff.
+    server: project-engine
+  - name: project_code_surface
+    keywords:
+      - project
+      - code
+      - surface
+      - get
+      - public
+      - api
+      - exports
+      - files
+      - modules
+      - distinguishing
+      - from
+      - internal
+      - apis
+    path: project-engine/project_code_surface
+    description: Get the public API surface (exports) of files or modules, distinguishing public from internal APIs.
+    server: project-engine
+  - name: project_db_schema
+    keywords:
+      - project
+      - db
+      - schema
       - get
       - database
-      - schema
-      - auto
-      - detect
-      - extract
       - from
-      - project
-      - files
-      - checks
+      - orm
+      - definitions
       - prisma
       - drizzle
+      - typeorm
+      - raw
       - sql
-      - returns
-      - unified
-      - tables
-      - columns
-      - indexes
-      - relations
-    path: project-engine/get-database-schema.yaml
-    description: >-
-      Auto-detect and extract database schema from project files. Checks for Prisma, Drizzle, and SQL schema files.
-      Returns unified schema with tables, columns, indexes, and relations.
+      - files
+    path: project-engine/project_db_schema
+    description: Get the database schema from ORM definitions (Prisma, Drizzle, TypeORM) or raw SQL files.
     server: project-engine
-  - name: get_api_routes
+  - name: project_db_query
     keywords:
-      - get
-      - api
-      - routes
-      - extract
-      - from
-      - web
-      - frameworks
-      - supports
-      - next
-      - app
-      - router
-      - pages
-      - express
-      - fastify
-      - hono
-      - returns
-      - http
-      - method
-      - path
-      - handler
-      - location
-      - middleware
-      - information
-    path: project-engine/get-api-routes.yaml
-    description: >-
-      Extract API routes from web frameworks. Supports Next.js (App Router & Pages Router), Express, Fastify, and Hono.
-      Returns HTTP method, path, handler location, and middleware information.
-    server: project-engine
-  - name: get_prisma_operations
-    keywords:
-      - get
-      - prisma
-      - operations
-      - find
-      - all
-      - client
-      - usages
-      - codebase
-      - detect
+      - project
+      - db
       - query
-      - patterns
-      - scans
-      - model
-      - operation
-      - calls
-      - identifies
-      - which
-      - models
-      - are
-      - used
-      - most
-      - detects
-      - queries
-      - inside
-      - loops
-      - that
-      - may
-      - cause
-      - performance
-      - issues
-    path: project-engine/get-prisma-operations.yaml
-    description: >-
-      Find all Prisma client usages in the codebase and detect N+1 query patterns. Scans for prisma.model.operation()
-      calls, identifies which models are used most, and detects queries inside loops that may cause performance issues.
-    server: project-engine
-  - name: query_database
-    keywords:
-      - query
-      - database
       - execute
-      - sql
+      - read
+      - only
+      - database
       - queries
       - against
       - postgresql
       - mysql
       - sqlite
       - databases
-      - supports
-      - readonly
-      - mode
-      - default
-      - prevent
-      - accidental
-      - writes
-      - auto
-      - limit
-      - select
-      - explain
-      - output
-      - both
-      - json
-      - table
-      - formats
-      - parameterized
-      - memory
-      - connection
-      - pooling
-      - returns
-      - affected
-      - row
-      - count
-      - write
-      - operations
-      - drivers
-      - mysql2
-      - better
-      - sqlite3
-      - are
-      - optional
-      - install
-      - only
-      - ones
-      - you
-      - need
-    path: project-engine/query-database.yaml
-    description: >-
-      Execute SQL queries against PostgreSQL, MySQL, or SQLite databases. Supports readonly mode (default) to prevent
-      accidental writes, auto-LIMIT for SELECT queries, EXPLAIN output, and both JSON and table output formats. For
-      SQLite: supports parameterized queries (?), in-memory databases (:memory:), connection pooling, and returns
-      affected row count for write operations. Database drivers (pg, mysql2, better-sqlite3) are optional - install only
-      the ones you need.
+    path: project-engine/project_db_query
+    description: Execute read-only database queries against PostgreSQL, MySQL, or SQLite databases.
     server: project-engine
-  - name: upgrade_package
+  - name: project_db_prisma
     keywords:
-      - upgrade
-      - package
-      - npm
-      - comprehensive
-      - breaking
-      - change
-      - detection
-      - analyzes
-      - changelog
-      - changes
-      - checks
-      - which
-      - packages
-      - depend
-      - this
-      - one
-      - optionally
-      - runs
-      - tests
-      - after
-      - supports
-      - dry
-      - run
-      - mode
-      - safe
-      - preview
-      - before
-      - making
-    path: project-engine/upgrade-package.yaml
-    description: >-
-      Upgrade an npm package with comprehensive breaking change detection. Analyzes changelog for breaking changes,
-      checks which packages depend on this one, and optionally runs tests after upgrade. Supports dry run mode for safe
-      preview before making changes.
-    server: project-engine
-  - name: explain_codebase
-    keywords:
-      - explain
-      - codebase
-      - generate
-      - high
-      - level
-      - explanation
-      - using
-      - llm
-      - analysis
-      - gathers
-      - information
-      - from
-      - stack
-      - detection
-      - api
-      - routes
-      - conventions
-      - directory
-      - structure
-      - produce
-      - comprehensive
-      - overview
-      - including
-      - architecture
-      - diagrams
-      - key
-      - files
-      - entry
-      - points
-      - potential
-      - concerns
-    path: project-engine/explain-codebase.yaml
-    description: >-
-      Generate a high-level explanation of a codebase using LLM analysis. Gathers information from stack detection, API
-      routes, conventions, and directory structure to produce a comprehensive overview including architecture diagrams,
-      key files, entry points, and potential concerns.
-    server: project-engine
-  - name: find_tests_for_file
-    keywords:
-      - find
-      - tests
-      - for
-      - file
-      - test
-      - files
-      - that
-      - cover
-      - given
-      - source
-      - analyzes
-      - naming
-      - patterns
-      - import
-      - graphs
-      - related
-      - returns
-      - ranked
+      - project
+      - db
+      - prisma
+      - analyze
+      - schema
       - list
-      - confidence
-      - scores
-    path: project-engine/find-tests-for-file.yaml
-    description: >-
-      Find test files that cover a given source file. Analyzes test file naming patterns and import graphs to find
-      related tests. Returns a ranked list of test files with confidence scores.
+      - available
+      - operations
+      - detecting
+      - query
+      - patterns
+    path: project-engine/project_db_prisma
+    description: Analyze Prisma schema and list available operations, detecting N+1 query patterns.
     server: project-engine
-  - name: get_test_coverage
+  - name: project_deps_analyze
     keywords:
-      - get
+      - project
+      - deps
+      - analyze
+      - dependencies
+      - outdated
+      - packages
+      - unused
+      - imports
+      - duplicate
+      - versions
+    path: project-engine/project_deps_analyze
+    description: Analyze project dependencies for outdated packages, unused imports, and duplicate versions.
+    server: project-engine
+  - name: project_deps_circular
+    keywords:
+      - project
+      - deps
+      - circular
+      - find
+      - dependency
+      - chains
+      - codebase
+      - using
+      - depth
+      - first
+      - search
+    path: project-engine/project_deps_circular
+    description: Find circular dependency chains in the codebase using depth-first search.
+    server: project-engine
+  - name: project_deps_upgrade
+    keywords:
+      - project
+      - deps
+      - upgrade
+      - specific
+      - package
+      - compatibility
+      - checks
+      - changelog
+      - analysis
+      - optional
+      - test
+      - execution
+    path: project-engine/project_deps_upgrade
+    description: Upgrade a specific package with compatibility checks, changelog analysis, and optional test execution.
+    server: project-engine
+  - name: project_runtime_memory
+    keywords:
+      - project
+      - runtime
+      - memory
+      - detect
+      - potential
+      - leaks
+      - running
+      - node
+      - process
+      - monitoring
+      - heap
+      - growth
+      - over
+      - time
+    path: project-engine/project_runtime_memory
+    description: Detect potential memory leaks in a running Node.js process by monitoring heap growth over time.
+    server: project-engine
+  - name: project_runtime_profile
+    keywords:
+      - project
+      - runtime
+      - profile
+      - function
+      - execution
+      - performance
+      - bottlenecks
+      - measuring
+      - timing
+      - memory
+      - statistics
+    path: project-engine/project_runtime_profile
+    description: Profile a function execution for performance bottlenecks, measuring timing and memory statistics.
+    server: project-engine
+  - name: project_runtime_logs
+    keywords:
+      - project
+      - runtime
+      - logs
+      - analyze
+      - application
+      - patterns
+      - anomalies
+      - error
+      - frequency
+      - rate
+      - changes
+    path: project-engine/project_runtime_logs
+    description: Analyze application logs for patterns, anomalies, error frequency, and rate changes.
+    server: project-engine
+  - name: project_security_secrets
+    keywords:
+      - project
+      - security
+      - secrets
+      - scan
+      - files
+      - hardcoded
+      - api
+      - keys
+      - tokens
+      - other
+      - sensitive
+      - credentials
+    path: project-engine/project_security_secrets
+    description: Scan files for hardcoded secrets, API keys, tokens, and other sensitive credentials.
+    server: project-engine
+  - name: project_security_permissions
+    keywords:
+      - project
+      - security
+      - permissions
+      - check
+      - files
+      - dangerous
+      - permission
+      - patterns
+      - filesystem
+      - access
+      - network
+      - calls
+      - process
+      - execution
+      - crypto
+      - usage
+    path: project-engine/project_security_permissions
+    description: >-
+      Check files for dangerous permission patterns — filesystem access, network calls, process execution, and crypto
+      usage.
+    server: project-engine
+  - name: project_security_env
+    keywords:
+      - project
+      - security
+      - env
+      - audit
+      - files
+      - missing
+      - inconsistent
+      - undocumented
+      - environment
+      - variables
+    path: project-engine/project_security_env
+    description: Audit .env files for missing, inconsistent, or undocumented environment variables.
+    server: project-engine
+  - name: scaffold
+    keywords:
+      - scaffold
+      - new
+      - project
+      - from
+      - templates
+      - variable
+      - substitution
+      - optional
+      - git
+      - npm
+      - initialization
+    path: project-engine/scaffold
+    description: Scaffold a new project from templates with variable substitution and optional git/npm initialization.
+    server: project-engine
+  - name: bundle_analyze
+    keywords:
+      - bundle
+      - analyze
+      - javascript
+      - size
+      - composition
+      - detecting
+      - large
+      - modules
+      - duplicates
+      - tree
+      - shaking
+      - issues
+    path: project-engine/bundle_analyze
+    description: Analyze JavaScript bundle size and composition, detecting large modules, duplicates, and tree-shaking issues.
+    server: project-engine
+  - name: project_test_coverage
+    keywords:
+      - project
       - test
       - coverage
-      - parse
-      - reports
-      - map
-      - data
-      - functions
-      - finds
-      - files
+      - get
+      - report
+      - parsing
       - lcov
-      - info
-      - final
-      - json
-      - etc
-      - extracts
-      - line
-      - branch
-      - function
-      - statement
-      - percentages
-      - returns
-      - uncovered
-      - lines
-      - targeted
-      - writing
-    path: project-engine/get-test-coverage.yaml
-    description: >-
-      Parse test coverage reports and map coverage data to functions. Finds coverage files (lcov.info,
-      coverage-final.json, etc.) and extracts line, branch, function, and statement coverage percentages. Returns
-      uncovered lines and functions for targeted test writing.
+      - istanbul
+      - files
+    path: project-engine/project_test_coverage
+    description: Get test coverage report for the project by parsing LCOV, Istanbul, or c8 coverage files.
     server: project-engine
-  - name: suggest_test_cases
+  - name: project_test_find
     keywords:
-      - suggest
+      - project
       - test
-      - cases
-      - analyze
-      - function
-      - comprehensive
-      - uses
-      - llm
-      - powered
-      - analysis
-      - identify
-      - edge
-      - error
-      - conditions
-      - boundary
-      - values
-      - happy
-      - path
-      - scenarios
-      - finds
-      - existing
-      - tests
-      - context
-      - suggests
-      - new
-      - rationale
-    path: project-engine/suggest-test-cases.yaml
-    description: >-
-      Analyze a function and suggest comprehensive test cases. Uses LLM-powered analysis to identify edge cases, error
-      conditions, boundary values, and happy path scenarios. Finds existing tests for context and suggests new test
-      cases with rationale.
-    server: project-engine
-  - name: generate_types
-    keywords:
-      - generate
-      - types
-      - typescript
-      - from
-      - various
-      - sources
-      - json
-      - data
-      - api
-      - responses
-      - database
-      - schemas
-      - runtime
-      - values
-      - infers
-      - sample
-      - generates
-      - interface
-      - definitions
-    path: project-engine/generate-types.yaml
-    description: >-
-      Generate TypeScript types from various sources: JSON data, API responses, database schemas, or runtime values.
-      Infers types from sample data and generates .d.ts or interface definitions.
-    server: project-engine
-  - name: generate_fixture
-    keywords:
-      - generate
-      - fixture
-      - test
-      - fixtures
-      - from
-      - prisma
-      - typescript
-      - schemas
-      - smart
-      - data
-      - generation
-      - supports
-      - optional
-      - faker
-      - integration
-      - realistic
-      - can
-      - multiple
-      - output
-      - formats
+      - find
+      - files
+      - associated
+      - given
+      - source
+      - file
       - including
-      - json
-      - constants
-      - seed
-      - scripts
-    path: project-engine/generate-fixture.yaml
-    description: >-
-      Generate test fixtures from Prisma/TypeScript schemas with smart data generation. Supports optional
-      @faker-js/faker integration for realistic data. Can generate multiple output formats including JSON, TypeScript
-      constants, and Prisma seed scripts.
-    server: project-engine
-  - name: sync_api_types
-    keywords:
-      - sync
-      - api
-      - types
-      - detect
-      - type
-      - drift
-      - between
-      - backend
-      - routes
-      - frontend
-      - calls
-      - compares
-      - defined
-      - route
-      - handlers
-      - used
-      - fetch
-      - axios
-      - identify
-      - mismatches
-      - missing
-      - endpoints
-      - that
-      - don
-      - exist
-    path: project-engine/sync-api-types.yaml
-    description: >-
-      Detect type drift between backend API routes and frontend API calls. Compares types defined in backend route
-      handlers with types used in frontend fetch/axios calls to identify mismatches, missing types, and endpoints that
-      don't exist.
+      - indirect
+      - relationships
+    path: project-engine/project_test_find
+    description: Find test files associated with a given source file, including indirect test relationships.
     server: project-engine
   - name: get_react_component_tree
     keywords:
