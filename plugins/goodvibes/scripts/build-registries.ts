@@ -216,12 +216,12 @@ function scanSkills(): RegistryEntry[] {
 }
 
 /**
- * MCP Server configurations for the 6 focused servers
+ * MCP Server configurations for the 5 focused servers
  */
 const MCP_SERVERS = [
   'precision-engine',
   'registry-engine',
-  'analysis-engine',
+  'analytics-engine',
   'project-engine',
   'frontend-engine',
 ] as const;
@@ -296,7 +296,7 @@ function parseTypeScriptSchemas(): Map<string, { name: string; description: stri
 
 /**
  * Scan YAML definitions and build a map of tool metadata (for enrichment).
- * YAML definitions are now organized by server: registry-engine/, analysis-engine/, etc.
+ * YAML definitions are now organized by server: registry-engine/, analytics-engine/, etc.
  */
 function scanYamlDefinitions(): Map<string, { path: string; description: string; deferLoading: boolean; server: string }> {
   const toolsDir = path.join(PLUGIN_ROOT, 'tools', 'definitions');

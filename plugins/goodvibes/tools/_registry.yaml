@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-02-20T09:35:13.822Z'
-total: 56
+generated: '2026-02-20T09:40:45.162Z'
+total: 62
 servers:
   - name: precision-engine
     count: 12
@@ -112,9 +112,35 @@ servers:
           Show which skills work together and their dependencies.
           Identifies prerequisite skills, complementary skills, and conflicts.
           Helps build complete skill sets for complex tasks.
-  - name: analysis-engine
-    count: 0
-    tools: []
+  - name: analytics-engine
+    count: 6
+    tools:
+      - name: analytics_dashboard
+        path: analytics-engine/analytics-dashboard.yaml
+        description: >-
+          Launch, stop, or check status of the analytics TUI and mini dashboard. The mini dashboard is a 4-line
+          always-on tmux pane showing session metrics. The full TUI is a 3-page interactive dashboard.
+      - name: analytics_query
+        path: analytics-engine/analytics-query.yaml
+        description: >-
+          Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, or project
+          metrics. Supports time ranges, grouping, and filtering.
+      - name: analytics_budget
+        path: analytics-engine/analytics-budget.yaml
+        description: >-
+          Set, check, or clear a session budget (in dollars or tokens). When set, the mini dashboard shows remaining
+          budget with color-coded thresholds.
+      - name: analytics_tag
+        path: analytics-engine/analytics-tag.yaml
+        description: Tag or rename the current session for meaningful historical grouping and comparison.
+      - name: analytics_export
+        path: analytics-engine/analytics-export.yaml
+        description: >-
+          Export session data in JSON, CSV, or markdown format. Can export current session, a specific historical
+          session, or all historical data.
+      - name: analytics_config
+        path: analytics-engine/analytics-config.yaml
+        description: View or update analytics engine settings like refresh rates, cost rates, webhook URLs, and anomaly detection.
   - name: project-engine
     count: 26
     tools:
@@ -790,6 +816,134 @@ search_index:
       Identifies prerequisite skills, complementary skills, and conflicts.
       Helps build complete skill sets for complex tasks.
     server: registry-engine
+  - name: analytics_dashboard
+    keywords:
+      - analytics
+      - dashboard
+      - launch
+      - stop
+      - check
+      - status
+      - tui
+      - mini
+      - line
+      - always
+      - tmux
+      - pane
+      - showing
+      - session
+      - metrics
+      - full
+      - page
+      - interactive
+    path: analytics-engine/analytics-dashboard.yaml
+    description: >-
+      Launch, stop, or check status of the analytics TUI and mini dashboard. The mini dashboard is a 4-line always-on
+      tmux pane showing session metrics. The full TUI is a 3-page interactive dashboard.
+    server: analytics-engine
+  - name: analytics_query
+    keywords:
+      - analytics
+      - query
+      - hoc
+      - queries
+      - against
+      - session
+      - data
+      - tokens
+      - cache
+      - commands
+      - agents
+      - files
+      - cost
+      - health
+      - project
+      - metrics
+      - supports
+      - time
+      - ranges
+      - grouping
+      - filtering
+    path: analytics-engine/analytics-query.yaml
+    description: >-
+      Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, or project
+      metrics. Supports time ranges, grouping, and filtering.
+    server: analytics-engine
+  - name: analytics_budget
+    keywords:
+      - analytics
+      - budget
+      - set
+      - check
+      - clear
+      - session
+      - dollars
+      - tokens
+      - mini
+      - dashboard
+      - shows
+      - remaining
+      - color
+      - coded
+      - thresholds
+    path: analytics-engine/analytics-budget.yaml
+    description: >-
+      Set, check, or clear a session budget (in dollars or tokens). When set, the mini dashboard shows remaining budget
+      with color-coded thresholds.
+    server: analytics-engine
+  - name: analytics_tag
+    keywords:
+      - analytics
+      - tag
+      - rename
+      - current
+      - session
+      - meaningful
+      - historical
+      - grouping
+      - comparison
+    path: analytics-engine/analytics-tag.yaml
+    description: Tag or rename the current session for meaningful historical grouping and comparison.
+    server: analytics-engine
+  - name: analytics_export
+    keywords:
+      - analytics
+      - export
+      - session
+      - data
+      - json
+      - csv
+      - markdown
+      - format
+      - can
+      - current
+      - specific
+      - historical
+      - all
+    path: analytics-engine/analytics-export.yaml
+    description: >-
+      Export session data in JSON, CSV, or markdown format. Can export current session, a specific historical session,
+      or all historical data.
+    server: analytics-engine
+  - name: analytics_config
+    keywords:
+      - analytics
+      - config
+      - view
+      - update
+      - engine
+      - settings
+      - like
+      - refresh
+      - rates
+      - cost
+      - webhook
+      - urls
+      - anomaly
+      - detection
+    path: analytics-engine/analytics-config.yaml
+    description: View or update analytics engine settings like refresh rates, cost rates, webhook URLs, and anomaly detection.
+    server: analytics-engine
   - name: project_api_routes
     keywords:
       - project
