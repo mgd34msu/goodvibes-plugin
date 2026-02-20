@@ -72,7 +72,8 @@ function extractArchiveSections(
   if (sections.includes('timeline')) {
     result['timeline'] = {
       session_id:       archive.session_id,
-      tag:              archive.tag,
+      tags:             archive.tags,
+      tag:              archive.tags[0],
       name:             archive.name,
       started_at:       archive.started_at,
       ended_at:         archive.ended_at,
@@ -214,7 +215,7 @@ export async function handleExport(
         };
       }
       data = extractArchiveSections(archive, sections);
-      title = `Session Export — ${archive.tag ?? archive.name ?? sessionId}`;
+      title = `Session Export — ${archive.tags[0] ?? archive.name ?? sessionId}`;
     }
 
     // === Render format ===

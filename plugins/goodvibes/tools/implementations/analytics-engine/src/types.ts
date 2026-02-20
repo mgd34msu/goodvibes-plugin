@@ -2,26 +2,37 @@
 export interface AnalyticsConfig {
   enabled: boolean;
   auto_start_mini: boolean;
+  /** @deprecated Use auto_start_dashboard */
   auto_start_full: boolean;
+  auto_start_dashboard: boolean;
   refresh_rate_ms: number;
+  /** @deprecated Use dashboard_refresh_rate_ms */
   full_tui_refresh_rate_ms: number;
+  dashboard_refresh_rate_ms: number;
   cost_per_1k_input_tokens: number;
   cost_per_1k_output_tokens: number;
-  historical_sessions: number;
   budget: { amount: number; unit: 'dollars' | 'tokens' } | null;
   budget_warn_thresholds: number[];
   anomaly_detection: boolean;
   auto_report_on_shutdown: boolean;
   webhook_url: string | null;
   webhook_events: WebhookEvent[];
+  /** Absolute path to the global analytics SQLite database. */
+  global_db_path: string;
+  /** Base path for Claude JSONL session files (default: ~/.claude/projects). */
+  jsonl_base_path: string;
   tmux: TmuxConfig;
 }
 
 export interface TmuxConfig {
   mini_pane_size: number;
   mini_position: 'bottom' | 'top' | 'left' | 'right';
+  /** @deprecated Use dashboard_pane_size */
   full_pane_size: string;
+  dashboard_pane_size: string;
+  /** @deprecated Use dashboard_position */
   full_position: 'bottom' | 'top' | 'left' | 'right';
+  dashboard_position: 'bottom' | 'top' | 'left' | 'right';
 }
 
 export type WebhookEvent = 'session_end' | 'budget_warning' | 'anomaly_detected';
@@ -30,22 +41,27 @@ export const DEFAULT_CONFIG: Readonly<AnalyticsConfig> = {
   enabled: true,
   auto_start_mini: true,
   auto_start_full: false,
+  auto_start_dashboard: false,
   refresh_rate_ms: 2000,
   full_tui_refresh_rate_ms: 5000,
+  dashboard_refresh_rate_ms: 5000,
   cost_per_1k_input_tokens: 0.003,
   cost_per_1k_output_tokens: 0.015,
-  historical_sessions: 10,
   budget: null,
   budget_warn_thresholds: [0.5, 0.8, 1.0],
   anomaly_detection: true,
   auto_report_on_shutdown: true,
   webhook_url: null,
   webhook_events: ['session_end'],
+  global_db_path: '~/.claude/.goodvibes/analytics/analytics.db',
+  jsonl_base_path: '~/.claude/projects',
   tmux: {
     mini_pane_size: 5,
     mini_position: 'bottom',
     full_pane_size: '60%',
+    dashboard_pane_size: '60%',
     full_position: 'right',
+    dashboard_position: 'right',
   },
 } as const;
 
@@ -56,6 +72,14 @@ export interface TokenMetrics {
   total: number;
   saved: number;
   efficiency: number; // saved / total ratio
+  /** Claude API input tokens (from usage events). */
+  api_input: number;
+  /** Claude API output tokens (from usage events). */
+  api_output: number;
+  /** Cache read tokens from the API. */
+  cache_read: number;
+  /** Cache write tokens from the API. */
+  cache_write: number;
 }
 
 export interface CacheMetrics {
@@ -201,7 +225,10 @@ export interface DashboardState {
 // === Session Archive (persisted to disk) ===
 export interface SessionArchive {
   session_id: string;
+  /** @deprecated Use tags array instead. */
   tag?: string;
+  tags: string[];
+  project_hash: string;
   name?: string;
   started_at: string;
   ended_at: string;
@@ -325,3 +352,94 @@ export function toolResponse(text: string, isError = false): ToolResponse {
   if (isError) response.isError = true;
   return response;
 }
+
+// === Global Analytics DB Record Types ===
+
+/** A session record stored in the global analytics SQLite database. */
+export interface GlobalSession {
+  session_id: string;
+  project_hash: string;
+  project_path?: string;
+  started_at: string;
+  ended_at?: string;
+  model: string;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cache_read_tokens: number;
+  total_cache_write_tokens: number;
+  total_cost_usd: number;
+  total_api_calls: number;
+  total_tool_calls: number;
+  total_native_tool_calls: number;
+  total_precision_tool_calls: number;
+  total_agent_spawns: number;
+  tags: string[];
+  status: 'active' | 'completed' | 'archived';
+}
+
+/** A single Claude API call record. */
+export interface ApiCallRecord {
+  session_id: string;
+  timestamp: string;
+  model?: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  cost_usd: number;
+  duration_ms: number;
+  stop_reason?: string;
+}
+
+/** Per-session per-tool aggregate statistics. */
+export interface ToolSummaryRecord {
+  session_id: string;
+  tool_name: string;
+  call_count: number;
+  success_count: number;
+  error_count: number;
+  total_duration_ms: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+}
+
+/** A spawned agent record. */
+export interface AgentRecord {
+  session_id: string;
+  agent_id: string;
+  agent_type?: string;
+  parent_session_id?: string;
+  model?: string;
+  spawned_at: string;
+  completed_at?: string;
+  total_tokens: number;
+  duration_ms: number;
+  exit_code?: number;
+}
+
+/** A tag entry linking a session to a tag string. */
+export interface TagEntry {
+  tag: string;
+  session_id: string;
+  created_at: string;
+  source: 'manual' | 'auto';
+}
+
+/** Tracks which JSONL files have been processed by the sync layer. */
+export interface SyncStateRecord {
+  jsonl_path: string;
+  session_id: string;
+  last_offset: number;
+  last_synced_at: string;
+}
+
+/**
+ * Describes the scope of a query against the analytics database.
+ * Used by query handlers to target the right set of sessions.
+ */
+export type QueryScope =
+  | { type: 'current_session' }
+  | { type: 'current_project'; project_hash: string }
+  | { type: 'all_projects' }
+  | { type: 'tagged'; tags: string[] }
+  | { type: 'time_range'; start: string; end: string };

@@ -77,7 +77,7 @@ const MAX_ANOMALIES = 50;
 /** Build an empty SessionMetrics value. */
 function emptySessionMetrics(): SessionMetrics {
   return {
-    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0 },
+    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
     cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
     cost: { input: 0, output: 0, total: 0, saved: 0 },
     commands: { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
@@ -417,13 +417,25 @@ export class Aggregator {
     const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
 
     // ── Token metrics ─────────────────────────────────────────────────────
-    const tokens: TokenMetrics = tokenMetrics ?? {
-      input: 0,
-      output: 0,
-      total: 0,
-      saved: 0,
-      efficiency: 0,
-    };
+    const tokens: TokenMetrics = tokenMetrics
+      ? {
+          ...tokenMetrics,
+          api_input:   tokenMetrics.api_input   ?? 0,
+          api_output:  tokenMetrics.api_output  ?? 0,
+          cache_read:  tokenMetrics.cache_read  ?? 0,
+          cache_write: tokenMetrics.cache_write ?? 0,
+        }
+      : {
+          input: 0,
+          output: 0,
+          total: 0,
+          saved: 0,
+          efficiency: 0,
+          api_input: 0,
+          api_output: 0,
+          cache_read: 0,
+          cache_write: 0,
+        };
 
     // ── Cache metrics ─────────────────────────────────────────────────────
     const cache: CacheMetrics = this.buildCacheMetrics(telemetrySummary);

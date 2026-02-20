@@ -12,6 +12,8 @@ import type { AnalyticsConfig, ToolResponse } from './types.js';
 import { toolResponse } from './types.js';
 import { loadConfig } from './config.js';
 import { Aggregator } from './daemon/aggregator.js';
+import { GlobalDB } from './data/global-db.js';
+import { initializeGlobalDb } from './data/db-init.js';
 import {
   TOOL_DEFINITIONS,
   AnalyticsDashboardInput,
@@ -90,6 +92,7 @@ export class AnalyticsEngine {
   private readonly config: AnalyticsConfig;
   private readonly goodvibesDir: string;
   private initialized = false;
+  private globalDb: GlobalDB | null = null;
 
   /**
    * @param goodvibesDir - Path to the .goodvibes directory (absolute or
@@ -108,6 +111,9 @@ export class AnalyticsEngine {
    * @throws If the aggregator fails to initialize.
    */
   async initialize(): Promise<void> {
+    // Initialize global analytics database
+    this.globalDb = await initializeGlobalDb();
+
     await this.aggregator.initialize();
     this.initialized = true;
   }
@@ -166,6 +172,8 @@ export class AnalyticsEngine {
    */
   async shutdown(): Promise<void> {
     await this.aggregator.shutdown();
+    this.globalDb?.close();
+    this.globalDb = null;
     this.initialized = false;
   }
 
@@ -175,6 +183,18 @@ export class AnalyticsEngine {
    */
   getAggregator(): Aggregator {
     return this.aggregator;
+  }
+
+  /**
+   * Return the global analytics database instance.
+   *
+   * @throws {Error} If the engine has not been initialized.
+   */
+  getGlobalDb(): GlobalDB {
+    if (!this.globalDb) {
+      throw new Error('AnalyticsEngine: not initialized. Call initialize() first.');
+    }
+    return this.globalDb;
   }
 
   /**

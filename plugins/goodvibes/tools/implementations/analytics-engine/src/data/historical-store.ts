@@ -239,6 +239,8 @@ export class HistoricalStore {
     const archive = this.load(sessionId);
     if (!archive) return false;
     archive.tag = tag;
+    // Keep tags array in sync with deprecated tag field
+    archive.tags = archive.tags ? [...new Set([...archive.tags, tag])] : [tag];
     this._writeArchive(sessionId, archive);
     return true;
   }
@@ -288,7 +290,7 @@ export class HistoricalStore {
 
 function _emptyMetrics(): SessionMetrics {
   return {
-    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0 },
+    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
     cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
     cost: { input: 0, output: 0, total: 0, saved: 0 },
     commands: {

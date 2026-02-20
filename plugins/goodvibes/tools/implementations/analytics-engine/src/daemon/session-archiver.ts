@@ -63,6 +63,8 @@ export class SessionArchiver {
 
     const archive: SessionArchive = {
       session_id: sessionId,
+      tags: [],
+      project_hash: '',
       started_at: startedAt ?? now,
       ended_at: now,
       duration_minutes: durationMinutes,
@@ -76,7 +78,12 @@ export class SessionArchiver {
 
     // Tag with the most severe anomaly type for quick session categorization
     if (anomalies.length > 0) {
-      archive.tag = anomalies[0]?.type ?? undefined;
+      const anomalyTag = anomalies[0]?.type;
+      if (anomalyTag) {
+        archive.tags = [anomalyTag];
+        // Keep deprecated field in sync for backward compatibility
+        archive.tag = anomalyTag;
+      }
     }
 
     this.store.save(archive);

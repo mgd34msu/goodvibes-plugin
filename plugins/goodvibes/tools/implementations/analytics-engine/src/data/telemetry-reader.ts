@@ -320,6 +320,10 @@ export class TelemetryReader {
       total: 0,
       saved: 0,
       efficiency: 0,
+      api_input: 0,
+      api_output: 0,
+      cache_read: 0,
+      cache_write: 0,
     };
 
     if (!this.db) return empty;
@@ -356,6 +360,11 @@ export class TelemetryReader {
         total,
         saved,
         efficiency: Math.round(efficiency * 10000) / 10000, // 4 decimal places
+        // API-level token counts (Phase 2 will populate from JSONL sync)
+        api_input: 0,
+        api_output: 0,
+        cache_read: 0,
+        cache_write: 0,
       };
     } catch (err) {
       console.warn('[TelemetryReader] getTokenMetrics error:', String(err));

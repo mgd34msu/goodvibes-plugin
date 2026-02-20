@@ -79,70 +79,106 @@ IndexReader --------+       v                  |
 ### New Types
 
 ```typescript
-// --- JSONL Record Types ---
+// --- JSONL Record Types (ACTUAL FORMAT) ---
+// NOTE: The actual Claude JSONL format differs significantly from initial assumptions.
+// Types are: 'assistant' | 'user' | 'progress' | 'file-history-snapshot'
+// There are NO separate api_request/api_response/tool_use/agent_spawn records.
 
-/** Parsed record from a Claude session JSONL file */
-export interface JSONLRecord {
-  type: 'api_request' | 'api_response' | 'tool_use' | 'tool_result' |
-        'agent_spawn' | 'agent_complete' | 'system' | 'error';
+/** Common fields on every JSONL record */
+export interface JSONLRecordBase {
+  type: 'assistant' | 'user' | 'progress' | 'file-history-snapshot';
+  sessionId: string;           // Session UUID
+  uuid: string;                // Record UUID
+  parentUuid: string | null;   // Parent record UUID
   timestamp: string;           // ISO 8601
-  session_id: string;
-  parent_session_id?: string;  // For subagent JSONL attribution
-  data: JSONLApiRequest | JSONLApiResponse | JSONLToolUse |
-        JSONLToolResult | JSONLAgentSpawn | JSONLAgentComplete | JSONLSystem;
+  cwd: string;                 // Working directory
+  version: string;             // Claude version
+  gitBranch: string;
 }
 
-export interface JSONLApiRequest {
-  model: string;
-  input_tokens: number;
-  messages_count: number;
-  turn_number: number;
+/** Assistant turn — contains API token usage and tool calls */
+export interface JSONLAssistantRecord extends JSONLRecordBase {
+  type: 'assistant';
+  message: {
+    model: string;             // e.g. 'claude-opus-4-6'
+    usage: {
+      input_tokens: number;
+      output_tokens: number;
+      cache_creation_input_tokens: number;
+      cache_read_input_tokens: number;
+      cache_creation: {
+        ephemeral_5m_input_tokens: number;
+        ephemeral_1h_input_tokens: number;
+      };
+    };
+    /** Array of content blocks: thinking, text, or tool_use */
+    content: Array<
+      | { type: 'thinking'; thinking: string }
+      | { type: 'text'; text: string }
+      | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+    >;
+    stop_reason: string;
+  };
+  requestId: string;
 }
 
-export interface JSONLApiResponse {
-  model: string;
-  input_tokens: number;
-  output_tokens: number;
-  cache_read_tokens?: number;
-  cache_write_tokens?: number;
-  cost_usd?: number;
-  duration_ms: number;
-  stop_reason: string;
+/** User turn — plain message or tool results */
+export interface JSONLUserRecord extends JSONLRecordBase {
+  type: 'user';
+  message: {
+    role: 'user';
+    /** Either a plain string message or an array of tool_result blocks */
+    content: string | Array<{
+      tool_use_id: string;
+      type: 'tool_result';
+      content: unknown;
+    }>;
+  };
 }
 
-export interface JSONLToolUse {
-  tool_name: string;           // e.g. 'Read', 'Write', 'Bash', 'mcp__*'
-  tool_id: string;
-  input_tokens_estimate?: number;
-  is_native: boolean;          // true for Read/Write/Bash/etc, false for MCP
-  is_precision: boolean;       // true for precision_* tools
+/** MCP/hook tool progress event */
+export interface JSONLProgressRecord extends JSONLRecordBase {
+  type: 'progress';
+  data: {
+    type: 'hook_progress' | 'mcp_progress';
+    status: 'started' | 'completed';
+    serverName: string;        // e.g. 'plugin:goodvibes:precision-engine'
+    toolName: string;          // e.g. 'precision_read'
+    elapsedTimeMs?: number;    // Present on 'completed' records
+  };
+  toolUseID: string;
 }
 
-export interface JSONLToolResult {
-  tool_id: string;
-  output_tokens_estimate?: number;
-  duration_ms?: number;
-  is_error: boolean;
+/** File snapshot (for undo/history) — skip or use for file tracking */
+export interface JSONLFileHistoryRecord extends JSONLRecordBase {
+  type: 'file-history-snapshot';
+  messageId: string;
+  snapshot: {
+    trackedFileBackups: Record<string, unknown>;
+    timestamp: string;
+  };
 }
 
-export interface JSONLAgentSpawn {
-  agent_id: string;
-  agent_type: string;
-  parent_session_id: string;
-  model: string;
-}
+export type JSONLRecord =
+  | JSONLAssistantRecord
+  | JSONLUserRecord
+  | JSONLProgressRecord
+  | JSONLFileHistoryRecord;
 
-export interface JSONLAgentComplete {
-  agent_id: string;
-  exit_code?: number;
-  total_tokens?: number;
-  duration_ms: number;
-}
-
-export interface JSONLSystem {
-  event: string;               // 'session_start', 'session_end', 'compact', etc.
-  details: Record<string, unknown>;
-}
+/**
+ * KEY DIFFERENCES FROM INITIAL ASSUMPTIONS:
+ * - Token usage is on assistant records in message.usage, NOT separate api_request/api_response records
+ * - cost_usd is NOT in the JSONL — must be calculated from token counts + config rates
+ * - Tool calls are embedded in assistant.message.content as {type: 'tool_use'} blocks
+ * - Tool results are in user.message.content as {type: 'tool_result'} blocks
+ * - Agent spawns are inferred from Task tool_use calls (tool name === 'Task'), not explicit records
+ * - Subagent JSONL files live at <session-id>/subagents/agent-<id>.jsonl
+ *
+ * PRECISION TOOL TRACEABILITY:
+ * Precision tool uses have named IDs like [grep_907c42dc_a1b2c3d4] in tool results.
+ * Format: {tool}_{session_short}_{unique_id}. These can be traced from JSONL tool_result
+ * content → specific precision tool call → specific agent → specific user session.
+ */
 
 // --- Global Analytics DB Schema ---
 
@@ -408,11 +444,18 @@ CREATE TABLE sync_state (
 - `src/daemon/watcher.ts` -- Add `jsonl-change` event, integrate JSONLWatcher
 
 **Details:**
-- JSONL format: Each line is a JSON object with `type`, `timestamp`, and type-specific fields
-- Must handle: API requests/responses, tool use/results, agent spawn/complete, system events
+- JSONL format: Each line is a JSON object. Actual record types (VERIFIED): `assistant`, `user`, `progress`, `file-history-snapshot`
+- **IMPORTANT**: The JSONLReader MUST be built against the actual format, NOT the originally assumed format (which had `api_request`, `api_response`, `tool_use`, `agent_spawn`, `agent_complete`, `system` types -- these do NOT exist)
+- Parser must handle:
+  - `assistant` records: extract `message.usage` (input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, cache_creation.ephemeral_*), `message.content` tool_use blocks, `message.model`, `requestId`
+  - `user` records: extract `message.content` tool_result blocks (matched to tool_use by `tool_use_id`); plain string content = human turn
+  - `progress` records: extract MCP tool timing from `data.elapsedTimeMs` (precision tool performance); `data.serverName` and `data.toolName` identify the tool
+  - `file-history-snapshot` records: skip (or use for file tracking if needed)
+- Agent spawns are inferred from `assistant` records containing `tool_use` blocks with `name === 'Task'`; NOT from explicit agent records
+- `cost_usd` is NOT present in JSONL -- always calculate from token counts + configured rates
 - Watcher uses `fs.watch` + polling fallback (same pattern as existing DataWatcher)
 - Active JSONL identified by: most recently modified `.jsonl` in `~/.claude/projects/<current-project>/`
-- Subagent JSONL files are identified by path pattern and attributed to parent session
+- Subagent JSONL files live at `<session-id>/subagents/agent-<id>.jsonl`; attributed to parent session
 - Incremental parsing: track file offset to avoid re-reading entire file on each change
 - Backpressure: batch parsed records and emit at configurable interval (default: 1s)
 
@@ -881,14 +924,14 @@ Phase 8 (Hooks) ──── depends on 0 ────────────�
 
 ---
 
-## 9. Open Questions
+## 9. Resolved Decisions (formerly Open Questions)
 
-1. **JSONL format**: Need to inspect actual JSONL file structure to confirm field names and record types. The types above are based on expected Claude Code JSONL format -- must verify against a real session file.
+1. **JSONL format**: RESOLVED. Actual format verified and documented in Section 2. Record types are: `assistant`, `user`, `progress`, `file-history-snapshot`. Token usage is in `assistant.message.usage`. There is no `cost_usd` field -- must be calculated. Tool calls are embedded in `assistant.message.content` as `{type: 'tool_use'}` blocks. Tool results are in `user.message.content` as `{type: 'tool_result'}` blocks. The types originally documented (`api_request`, `api_response`, `tool_use` as top-level records, `agent_spawn`, `agent_complete`, `system`) do NOT exist.
 
-2. **Budget enforcement**: Requirements say "needs discussion" on whether budget should halt/warn. Current plan: informational-only with clear warnings. Enforcement (blocking tool calls) is a future consideration.
+2. **Budget enforcement**: RESOLVED. Informational only. Shows warnings at configured thresholds but never blocks tool calls or halts operation. User decides when to stop based on warnings.
 
-3. **Auto-tagging implementation**: Should auto-tag use a local heuristic engine (regex + file analysis) or call Claude API for inference? Heuristic is cheaper and faster; API inference is more accurate but costs tokens.
+3. **Auto-tagging implementation**: RESOLVED. Hybrid approach. Local heuristics first (regex + file analysis + `package.json` dependencies). Escalate to `precision_agent` (not Claude API directly) for higher quality tag suggestions when heuristic confidence is low. User always confirms before tags are applied.
 
-4. **Status subcommand content**: Requirements say "show meaningful analytics info" -- need to define exactly what `status` shows vs. the no-args summary. Proposal: `status` shows health + anomalies + budget, no-args summary shows full metrics.
+4. **Status subcommand content**: RESOLVED. Split approach: `status` shows health + anomalies + budget alerts. No-args summary shows full session metrics (tokens, cost, tools, agents). These are distinct views serving different needs.
 
-5. **Config hot-reload mechanism**: FileWatcher on global config file? Or explicit `config reload` command? FileWatcher is automatic but adds complexity. Recommend: watch the file, debounce reloads at 1s.
+5. **Config hot-reload mechanism**: RESOLVED. Both mechanisms. File watcher auto-reloads global config on change (debounced 1s). Additionally expose an explicit `config reload` command for forced refresh. File watcher handles the common case; explicit command handles edge cases where watcher misses events.

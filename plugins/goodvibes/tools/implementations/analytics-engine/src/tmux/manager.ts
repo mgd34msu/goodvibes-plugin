@@ -78,8 +78,8 @@ export class TmuxManager {
     }
 
     const isMini = target === 'mini';
-    const position = isMini ? this.config.mini_position : this.config.full_position;
-    const size = isMini ? this.config.mini_pane_size : this.config.full_pane_size;
+    const position = isMini ? this.config.mini_position : (this.config.dashboard_position ?? this.config.full_position);
+    const size = isMini ? this.config.mini_pane_size : (this.config.dashboard_pane_size ?? this.config.full_pane_size);
     const dirFlags = _positionFlags(position);
 
     // Validate size before use.
@@ -238,7 +238,7 @@ export class TmuxManager {
     }
 
     const position =
-      target === 'mini' ? this.config.mini_position : this.config.full_position;
+      target === 'mini' ? this.config.mini_position : (this.config.dashboard_position ?? this.config.full_position);
 
     // Vertical splits (top/bottom) → resize rows (-y); horizontal → resize columns (-x).
     const flag =
