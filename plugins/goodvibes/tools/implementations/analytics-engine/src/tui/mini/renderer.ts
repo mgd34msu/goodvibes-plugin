@@ -1,5 +1,5 @@
 /**
- * Mini dashboard renderer — 4-line, auto-width ANSI box.
+ * Mini dashboard renderer — 4-line, auto-width ANSI box (default pane height: 5 lines for margin).
  *
  * Renders a compact analytics summary using raw ANSI escape codes.
  * Designed to run in a tmux pane refreshing every 2 seconds.
@@ -356,7 +356,9 @@ export class MiniRenderer {
         const output = this.render(state);
         // Move cursor to top-left, clear screen, write 4 lines
         process.stdout.write('\x1b[H\x1b[2J' + output);
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`[analytics-mini] render error: ${msg}\n`);
         const w = getTerminalWidth();
         process.stdout.write('\x1b[H\x1b[2J' + renderFallback(w));
       }

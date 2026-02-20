@@ -4600,7 +4600,10 @@ var MiniRenderer = class {
         const state = getState();
         const output = this.render(state);
         process.stdout.write("\x1B[H\x1B[2J" + output);
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`[analytics-mini] render error: ${msg}
+`);
         const w = getTerminalWidth();
         process.stdout.write("\x1B[H\x1B[2J" + renderFallback(w));
       }
