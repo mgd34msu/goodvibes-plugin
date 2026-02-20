@@ -5090,295 +5090,33 @@ async function ensureClaudeMdImports(projectDir) {
 }
 
 // src/session-start/project-indexer.ts
-import { readdir as readdir3, readFile as readFile10, stat, writeFile as writeFile7, mkdir as mkdir6, rename as rename2 } from "fs/promises";
-import path16 from "path";
-var INDEX_EXCLUSION_DIRS = /* @__PURE__ */ new Set([
-  "node_modules",
-  ".git",
-  ".goodvibes",
-  "dist",
-  "build",
-  "out",
-  ".next",
-  ".nuxt",
-  ".svelte-kit",
-  "__pycache__",
-  ".cache",
-  ".turbo",
-  ".vercel",
-  ".netlify",
-  "coverage",
-  ".nyc_output",
-  ".pytest_cache",
-  ".mypy_cache",
-  ".tox",
-  "venv",
-  ".venv",
-  "target",
-  // Test directories
-  "__tests__",
-  "__mocks__",
-  "__fixtures__",
-  "__snapshots__",
-  // IDE/editor
-  ".vscode",
-  ".idea"
-]);
-var EXCLUDED_SUFFIXES = [
-  // Multi-part extensions (check before single-part)
-  ".test.ts",
-  ".spec.ts",
-  ".test.tsx",
-  ".spec.tsx",
-  ".test.js",
-  ".spec.js",
-  ".test.jsx",
-  ".spec.jsx",
-  ".d.ts",
-  ".d.mts",
-  ".d.cts",
-  ".stories.ts",
-  ".stories.tsx",
-  ".stories.js",
-  ".stories.jsx",
-  ".stories.mdx",
-  ".min.js",
-  ".min.css",
-  ".tsbuildinfo",
-  // Single-part extensions
-  ".map",
-  // Media/binary
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".webp",
-  ".ico",
-  ".svg",
-  ".mp4",
-  ".mp3",
-  ".woff",
-  ".woff2",
-  ".ttf",
-  ".eot"
-];
-var EXCLUDED_FILENAMES = /* @__PURE__ */ new Set([
-  "package-lock.json",
-  "yarn.lock",
-  "pnpm-lock.yaml",
-  "bun.lockb",
-  ".DS_Store",
-  "Thumbs.db"
-]);
-var globRegexCache = /* @__PURE__ */ new Map();
-function parseGitignore(content) {
-  const patterns = [];
-  for (const line of content.split("\n")) {
-    let raw = line;
-    raw = raw.replace(/(?<!\\) +$/, "");
-    if (!raw || raw.startsWith("#")) continue;
-    const negated = raw.startsWith("!");
-    if (negated) raw = raw.slice(1);
-    if (raw.startsWith("\\#")) raw = raw.slice(1);
-    const anchored = raw.startsWith("/");
-    if (anchored) raw = raw.slice(1);
-    const dirOnly = raw.endsWith("/");
-    if (dirOnly) raw = raw.slice(0, -1);
-    if (!raw) continue;
-    patterns.push({ negated, anchored, dirOnly, raw });
-  }
-  return patterns;
-}
-function matchGlob(pattern, name) {
-  let regex = globRegexCache.get(pattern);
-  if (!regex) {
-    let regexStr = "";
-    for (let i = 0; i < pattern.length; i++) {
-      const ch = pattern[i];
-      if (ch === "*") {
-        regexStr += "[^/]*";
-      } else if (ch === "?") {
-        regexStr += "[^/]";
-      } else {
-        regexStr += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-      }
-    }
-    regex = new RegExp(`^${regexStr}$`);
-    globRegexCache.set(pattern, regex);
-  }
-  return regex.test(name);
-}
-function isGitignored(patterns, relativePath, isDir) {
-  const segments = relativePath.split("/");
-  const name = segments[segments.length - 1];
-  let ignored = false;
-  for (const p of patterns) {
-    if (p.dirOnly && !isDir) {
-      let parentMatch = false;
-      for (let s = 0; s < segments.length - 1; s++) {
-        const parentPath = segments.slice(0, s + 1).join("/");
-        const parentName = segments[s];
-        if (p.raw.includes("/")) {
-          if (p.anchored) {
-            parentMatch = matchGlob(p.raw, parentPath);
-          } else {
-            parentMatch = matchGlob(p.raw, parentPath) || parentPath === p.raw;
-          }
-        } else {
-          parentMatch = matchGlob(p.raw, parentName);
-        }
-        if (parentMatch) break;
-      }
-      if (!parentMatch) continue;
-      ignored = !p.negated;
-      continue;
-    }
-    let matches = false;
-    if (p.raw.includes("/")) {
-      if (p.raw.includes("**")) {
-        const cacheKey = `dstar:${p.raw}`;
-        let cached = globRegexCache.get(cacheKey);
-        if (!cached) {
-          const regexStr = p.raw.split("**").map((part) => part.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]")).join(".*");
-          cached = [new RegExp(`^${regexStr}$`), new RegExp(`^${regexStr}(/.*)?$`)];
-          globRegexCache.set(cacheKey, cached);
-        }
-        matches = cached[0].test(relativePath) || cached[1].test(relativePath);
-      } else if (p.anchored) {
-        matches = matchGlob(p.raw, relativePath) || relativePath.startsWith(p.raw + "/");
-      } else {
-        matches = matchGlob(p.raw, relativePath) || relativePath === p.raw || relativePath.startsWith(p.raw + "/");
-      }
-    } else {
-      matches = matchGlob(p.raw, name);
-      if (!matches && isDir) {
-        for (const seg of segments) {
-          if (matchGlob(p.raw, seg)) {
-            matches = true;
-            break;
-          }
-        }
-      }
-    }
-    if (matches) {
-      ignored = !p.negated;
-    }
-  }
-  return ignored;
-}
-async function loadGitignore(projectDir) {
-  try {
-    const gitignorePath = path16.join(projectDir, ".gitignore");
-    const content = await readFile10(gitignorePath, "utf-8");
-    return parseGitignore(content);
-  } catch {
-    return [];
-  }
-}
-function shouldExclude(name, relativePath, gitignorePatterns, isDir) {
-  const segments = relativePath.split(path16.sep);
-  for (const segment of segments) {
-    if (INDEX_EXCLUSION_DIRS.has(segment)) {
-      return true;
-    }
-  }
-  if (!isDir) {
-    if (EXCLUDED_FILENAMES.has(name)) {
-      return true;
-    }
-    const lowerName = name.toLowerCase();
-    for (const suffix of EXCLUDED_SUFFIXES) {
-      if (lowerName.endsWith(suffix)) {
-        return true;
-      }
-    }
-  }
-  if (gitignorePatterns.length > 0) {
-    const normalizedPath = relativePath.split(path16.sep).join("/");
-    if (isGitignored(gitignorePatterns, normalizedPath, isDir)) {
-      return true;
-    }
-  }
-  return false;
-}
+import { execFile } from "node:child_process";
+import { promisify as promisify5 } from "node:util";
+import path16 from "node:path";
+import { access as access4 } from "node:fs/promises";
+var execFileAsync = promisify5(execFile);
 async function buildProjectIndex(projectDir) {
-  const startMs = Date.now();
-  const tree = {};
-  let isPartial = false;
-  let totalFiles = 0;
+  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path16.resolve(projectDir, ".claude", "plugins", "goodvibes");
+  const cli = path16.join(
+    pluginRoot,
+    "tools",
+    "implementations",
+    "precision-engine",
+    "dist",
+    "build-index.cjs"
+  );
   try {
-    debug("Building project file index", { projectDir });
-    const gitignorePatterns = await loadGitignore(projectDir);
-    debug("Loaded gitignore patterns", { count: gitignorePatterns.length });
-    const dirEntries = await readdir3(projectDir, {
-      recursive: true,
-      withFileTypes: true
+    await access4(cli);
+    const { stderr } = await execFileAsync("node", [cli, projectDir], {
+      timeout: 35e3,
+      env: { ...process.env, NODE_NO_WARNINGS: "1" }
     });
-    for (const entry of dirEntries) {
-      if (Date.now() - startMs > 3e4) {
-        debug("Project indexing timeout - writing partial index");
-        isPartial = true;
-        break;
-      }
-      const parent = entry.parentPath ?? entry.path;
-      const relativePath = parent ? path16.relative(projectDir, path16.join(parent, entry.name)) : entry.name;
-      const isDir = entry.isDirectory();
-      if (shouldExclude(entry.name, relativePath, gitignorePatterns, isDir)) {
-        continue;
-      }
-      if (!entry.isFile()) {
-        continue;
-      }
-      const dirPart = path16.dirname(relativePath);
-      const treeKey = dirPart === "." ? "" : dirPart.split(path16.sep).join("/");
-      const filename = entry.name;
-      let fileSize = 0;
-      try {
-        const fileStat = await stat(path16.join(parent, entry.name));
-        fileSize = fileStat.size;
-      } catch {
-      }
-      if (!tree[treeKey]) {
-        tree[treeKey] = {};
-      }
-      tree[treeKey][filename] = Math.ceil(fileSize / 4);
-      totalFiles++;
+    if (stderr) {
+      debug("Indexer output", { stderr: stderr.slice(0, 500) });
     }
-    for (const key of Object.keys(tree)) {
-      const sorted = {};
-      for (const name of Object.keys(tree[key]).sort()) {
-        sorted[name] = tree[key][name];
-      }
-      tree[key] = sorted;
-    }
-    const totalDirs = Object.keys(tree).length;
-    const index = {
-      version: 4,
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-      project_root: projectDir,
-      stats: {
-        total_files: totalFiles,
-        total_dirs: totalDirs,
-        index_duration_ms: Date.now() - startMs,
-        ...isPartial && { partial: true }
-      },
-      tree
-    };
-    const indexDir = path16.join(projectDir, ".goodvibes");
-    const indexPath = path16.join(indexDir, "project-index.json");
-    const tempPath = indexPath + ".tmp";
-    await mkdir6(indexDir, { recursive: true });
-    await writeFile7(tempPath, JSON.stringify(index) + "\n", "utf-8");
-    await rename2(tempPath, indexPath);
-    debug("Project index created", {
-      files: totalFiles,
-      dirs: totalDirs,
-      duration_ms: index.stats.index_duration_ms,
-      partial: isPartial
-    });
-  } catch (error) {
-    throw error;
+  } catch (err) {
+    logError("Project indexer CLI failed", err instanceof Error ? err : new Error(String(err)));
+    throw err;
   }
 }
 
