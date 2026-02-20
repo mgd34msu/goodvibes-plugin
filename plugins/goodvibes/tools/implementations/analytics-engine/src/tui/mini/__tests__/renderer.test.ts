@@ -619,5 +619,19 @@ describe('MiniRenderer', () => {
       renderer.stopLoop(); // no error when no loop running
       renderer.stopLoop(); // still no error
     });
+
+    it('re-renders immediately on stdout resize event', () => {
+      vi.useFakeTimers();
+      const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      renderer.startLoop(() => createMockState(), 5000);
+      expect(writeSpy).toHaveBeenCalledTimes(1); // immediate
+      process.stdout.emit('resize');
+      expect(writeSpy).toHaveBeenCalledTimes(2); // resize-triggered
+      renderer.stopLoop();
+      process.stdout.emit('resize');
+      expect(writeSpy).toHaveBeenCalledTimes(2); // no more after stop
+      writeSpy.mockRestore();
+      vi.useRealTimers();
+    });
   });
 });

@@ -146,6 +146,9 @@ function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
   for (const target of targets) {
     try {
       const paneInfo = manager.createPane(target, buildCommand(target));
+      if (input.options?.pane_size != null) {
+        manager.resizePane(target, input.options.pane_size);
+      }
       lines.push(
         `Started ${target} dashboard in pane ${paneInfo.paneId} (PID ${paneInfo.pid}).`,
       );

@@ -251,6 +251,7 @@ function renderFallback(width: number): string {
  */
 export class MiniRenderer {
   private loopHandle: ReturnType<typeof setInterval> | null = null;
+  private resizeHandler: (() => void) | null = null;
 
   /** Create a new MiniRenderer. Zero-config — width auto-detects from terminal. */
   constructor() {}
@@ -354,16 +355,20 @@ export class MiniRenderer {
         const state = getState();
         const output = this.render(state);
         // Move cursor to top-left, clear screen, write 4 lines
-        process.stdout.write('\x1b[H\x1b[2J' + output + '\n');
+        process.stdout.write('\x1b[H\x1b[2J' + output);
       } catch {
         const w = getTerminalWidth();
-        process.stdout.write('\x1b[H\x1b[2J' + renderFallback(w) + '\n');
+        process.stdout.write('\x1b[H\x1b[2J' + renderFallback(w));
       }
     };
 
     // Draw immediately, then on interval
     draw();
     this.loopHandle = setInterval(draw, intervalMs);
+
+    // Re-render immediately on terminal resize (SIGWINCH)
+    this.resizeHandler = draw;
+    process.stdout.on('resize', this.resizeHandler);
   }
 
   /**
@@ -371,6 +376,10 @@ export class MiniRenderer {
    * Safe to call even if the loop is not running.
    */
   stopLoop(): void {
+    if (this.resizeHandler !== null) {
+      process.stdout.removeListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
     if (this.loopHandle !== null) {
       clearInterval(this.loopHandle);
       this.loopHandle = null;

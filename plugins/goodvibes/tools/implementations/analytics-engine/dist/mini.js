@@ -2323,6 +2323,7 @@ var MiniRenderer = class {
     __name(this, "MiniRenderer");
   }
   loopHandle = null;
+  resizeHandler = null;
   /** Create a new MiniRenderer. Zero-config — width auto-detects from terminal. */
   constructor() {
   }
@@ -2392,20 +2393,26 @@ var MiniRenderer = class {
       try {
         const state = getState();
         const output = this.render(state);
-        process.stdout.write("\x1B[H\x1B[2J" + output + "\n");
+        process.stdout.write("\x1B[H\x1B[2J" + output);
       } catch {
         const w = getTerminalWidth();
-        process.stdout.write("\x1B[H\x1B[2J" + renderFallback(w) + "\n");
+        process.stdout.write("\x1B[H\x1B[2J" + renderFallback(w));
       }
     }, "draw");
     draw();
     this.loopHandle = setInterval(draw, intervalMs);
+    this.resizeHandler = draw;
+    process.stdout.on("resize", this.resizeHandler);
   }
   /**
    * Stop the render loop.
    * Safe to call even if the loop is not running.
    */
   stopLoop() {
+    if (this.resizeHandler !== null) {
+      process.stdout.removeListener("resize", this.resizeHandler);
+      this.resizeHandler = null;
+    }
     if (this.loopHandle !== null) {
       clearInterval(this.loopHandle);
       this.loopHandle = null;
@@ -2434,7 +2441,7 @@ var DEFAULT_CONFIG = {
   webhook_url: null,
   webhook_events: ["session_end"],
   tmux: {
-    mini_pane_size: 4,
+    mini_pane_size: 5,
     mini_position: "bottom",
     full_pane_size: "60%",
     full_position: "right"

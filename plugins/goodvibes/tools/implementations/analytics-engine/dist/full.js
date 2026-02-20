@@ -2994,7 +2994,7 @@ var DEFAULT_CONFIG = {
   webhook_url: null,
   webhook_events: ["session_end"],
   tmux: {
-    mini_pane_size: 4,
+    mini_pane_size: 5,
     mini_position: "bottom",
     full_pane_size: "60%",
     full_position: "right"

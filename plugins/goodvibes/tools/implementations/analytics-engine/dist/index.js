@@ -35,7 +35,7 @@ var init_types = __esm({
       webhook_url: null,
       webhook_events: ["session_end"],
       tmux: {
-        mini_pane_size: 4,
+        mini_pane_size: 5,
         mini_position: "bottom",
         full_pane_size: "60%",
         full_position: "right"
@@ -419,6 +419,9 @@ Fallback mode: ${fallback}.
   for (const target of targets) {
     try {
       const paneInfo = manager.createPane(target, buildCommand(target));
+      if (input.options?.pane_size != null) {
+        manager.resizePane(target, input.options.pane_size);
+      }
       lines.push(
         `Started ${target} dashboard in pane ${paneInfo.paneId} (PID ${paneInfo.pid}).`
       );
