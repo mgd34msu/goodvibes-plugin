@@ -80,7 +80,7 @@ Call `mcp__plugin_goodvibes_analytics-engine__analytics_dashboard` with:
 }
 ```
 
-Report whether the full TUI dashboard launched successfully. The full TUI is a multi-page interactive dashboard with detailed analytics. It has 3 pages — Session Overview, Activity Hotspots, and Historical — navigable with arrow keys or `Tab`/`Shift+Tab`.
+Report whether the full TUI dashboard launched successfully. The full TUI is a multi-page interactive dashboard with detailed analytics. It has 3 pages — Session Overview, Activity Hotspots, and Historical — navigable with `1`/`2`/`3` number keys, left/right arrows, or `?` for a help overlay.
 
 ### `stop [mini|full|both]` — Stop Dashboard(s)
 
