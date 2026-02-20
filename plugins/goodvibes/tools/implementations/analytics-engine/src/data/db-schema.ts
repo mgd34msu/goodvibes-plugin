@@ -52,7 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_status  ON sessions(status);
 -- Tags: many-to-many session ↔ tag relationship
 CREATE TABLE IF NOT EXISTS tags (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id  TEXT NOT NULL REFERENCES sessions(session_id),
+  session_id  TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
   tag         TEXT NOT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   source      TEXT NOT NULL DEFAULT 'manual',
@@ -64,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_tags_session ON tags(session_id);
 -- Tool summaries: per-session per-tool aggregates
 CREATE TABLE IF NOT EXISTS tool_summaries (
   id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id           TEXT    NOT NULL REFERENCES sessions(session_id),
+  session_id           TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
   tool_name            TEXT    NOT NULL,
   call_count           INTEGER DEFAULT 0,
   success_count        INTEGER DEFAULT 0,
@@ -79,7 +79,7 @@ CREATE INDEX IF NOT EXISTS idx_tool_summaries_session ON tool_summaries(session_
 -- API calls: individual records for trend analysis and cost breakdown
 CREATE TABLE IF NOT EXISTS api_calls (
   id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id          TEXT    NOT NULL REFERENCES sessions(session_id),
+  session_id          TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
   timestamp           TEXT    NOT NULL,
   model               TEXT,
   input_tokens        INTEGER DEFAULT 0,
@@ -96,7 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_api_calls_timestamp ON api_calls(timestamp);
 -- Agent activity: spawned subagents with timing and token usage
 CREATE TABLE IF NOT EXISTS agents (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id        TEXT NOT NULL REFERENCES sessions(session_id),
+  session_id        TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
   agent_id          TEXT NOT NULL,
   agent_type        TEXT,
   parent_session_id TEXT,

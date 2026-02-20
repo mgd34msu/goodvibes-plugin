@@ -248,7 +248,11 @@ var TelemetryReader = class _TelemetryReader {
       output: 0,
       total: 0,
       saved: 0,
-      efficiency: 0
+      efficiency: 0,
+      api_input: 0,
+      api_output: 0,
+      cache_read: 0,
+      cache_write: 0
     };
     if (!this.db) return empty;
     try {
@@ -275,8 +279,13 @@ var TelemetryReader = class _TelemetryReader {
         output: totalOut,
         total,
         saved,
-        efficiency: Math.round(efficiency * 1e4) / 1e4
+        efficiency: Math.round(efficiency * 1e4) / 1e4,
         // 4 decimal places
+        // API-level token counts (Phase 2 will populate from JSONL sync)
+        api_input: 0,
+        api_output: 0,
+        cache_read: 0,
+        cache_write: 0
       };
     } catch (err) {
       console.warn("[TelemetryReader] getTokenMetrics error:", String(err));
@@ -1640,7 +1649,7 @@ var MAX_HOTSPOTS = 20;
 var MAX_ANOMALIES = 50;
 function emptySessionMetrics() {
   return {
-    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0 },
+    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
     cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
     cost: { input: 0, output: 0, total: 0, saved: 0 },
     commands: { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
@@ -1903,12 +1912,22 @@ var Aggregator = class {
     const sessionId = this.telemetry?.getCurrentSessionId() ?? this.session?.readCurrentSession()?.id ?? "unknown";
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
     const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
-    const tokens = tokenMetrics ?? {
+    const tokens = tokenMetrics ? {
+      ...tokenMetrics,
+      api_input: tokenMetrics.api_input ?? 0,
+      api_output: tokenMetrics.api_output ?? 0,
+      cache_read: tokenMetrics.cache_read ?? 0,
+      cache_write: tokenMetrics.cache_write ?? 0
+    } : {
       input: 0,
       output: 0,
       total: 0,
       saved: 0,
-      efficiency: 0
+      efficiency: 0,
+      api_input: 0,
+      api_output: 0,
+      cache_read: 0,
+      cache_write: 0
     };
     const cache = this.buildCacheMetrics(telemetrySummary);
     const cost = {
@@ -2974,48 +2993,77 @@ var HelpOverlay = /* @__PURE__ */ __name(() => /* @__PURE__ */ jsxs10(Box10, { f
 ] }), "HelpOverlay");
 
 // src/config.ts
-import { readFileSync as readFileSync5, existsSync as existsSync4 } from "node:fs";
+import {
+  readFileSync as readFileSync5,
+  writeFileSync as writeFileSync2,
+  existsSync as existsSync4,
+  watchFile,
+  unwatchFile
+} from "node:fs";
 import { join as join7 } from "node:path";
+import { homedir } from "node:os";
 
 // src/types.ts
 var DEFAULT_CONFIG = {
   enabled: true,
   auto_start_mini: true,
   auto_start_full: false,
+  auto_start_dashboard: false,
   refresh_rate_ms: 2e3,
   full_tui_refresh_rate_ms: 5e3,
+  dashboard_refresh_rate_ms: 5e3,
   cost_per_1k_input_tokens: 3e-3,
   cost_per_1k_output_tokens: 0.015,
-  historical_sessions: 10,
   budget: null,
   budget_warn_thresholds: [0.5, 0.8, 1],
   anomaly_detection: true,
   auto_report_on_shutdown: true,
   webhook_url: null,
   webhook_events: ["session_end"],
+  global_db_path: "~/.claude/.goodvibes/analytics/analytics.db",
+  jsonl_base_path: "~/.claude/projects",
   tmux: {
     mini_pane_size: 5,
     mini_position: "bottom",
     full_pane_size: "60%",
-    full_position: "right"
+    dashboard_pane_size: "60%",
+    full_position: "right",
+    dashboard_position: "right"
   }
 };
 
 // src/config.ts
-function loadConfig(goodvibesDir2) {
+var GLOBAL_CONFIG_PATH = join7(
+  homedir(),
+  ".claude",
+  ".goodvibes",
+  "analytics",
+  "analytics.json"
+);
+function tryLoadFile(filePath) {
+  if (!existsSync4(filePath)) return null;
   try {
-    const raw = readFileSync5(join7(goodvibesDir2, "analytics.json"), "utf-8");
+    const raw = readFileSync5(filePath, "utf-8");
     const parsed = JSON.parse(raw);
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
       return { ...DEFAULT_CONFIG, ...parsed };
     }
     return { ...DEFAULT_CONFIG };
   } catch (err) {
-    if (existsSync4(join7(goodvibesDir2, "analytics.json"))) {
-      console.warn("[analytics] Config load failed, using defaults:", err instanceof Error ? err.message : String(err));
-    }
-    return { ...DEFAULT_CONFIG };
+    console.warn(
+      `[analytics] Config load failed for ${filePath}, using defaults:`,
+      err instanceof Error ? err.message : String(err)
+    );
+    return null;
   }
+}
+__name(tryLoadFile, "tryLoadFile");
+function loadConfig(goodvibesDir2) {
+  const globalConfig = tryLoadFile(GLOBAL_CONFIG_PATH);
+  if (globalConfig) return globalConfig;
+  const projectConfig = tryLoadFile(join7(goodvibesDir2, "analytics.json"));
+  if (projectConfig) return projectConfig;
+  return { ...DEFAULT_CONFIG };
 }
 __name(loadConfig, "loadConfig");
 

@@ -15,7 +15,7 @@ import { GlobalDB } from './global-db.js';
 // Path constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Root goodvibes directory inside ~./claude. */
+/** Root goodvibes directory inside ~/.claude. */
 const GOODVIBES_BASE = join(homedir(), '.claude', '.goodvibes');
 
 /** Global analytics directory (shared across all projects). */

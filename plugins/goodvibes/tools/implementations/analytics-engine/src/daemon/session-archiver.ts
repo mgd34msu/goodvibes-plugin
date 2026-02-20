@@ -110,7 +110,8 @@ export class SessionArchiver {
    * be used to categorize sessions in reports.
    *
    * @param sessionId - Session to tag.
-   * @param tags      - Array of tag strings; the first element is applied.
+   * @param tags      - Array of tag strings; the first element is applied to the legacy
+   *                    per-project archive store. Multi-tag support is handled by GlobalDB.
    * @throws {Error} If the session does not exist in the archive.
    */
   tagSession(sessionId: string, tags: string[]): void {

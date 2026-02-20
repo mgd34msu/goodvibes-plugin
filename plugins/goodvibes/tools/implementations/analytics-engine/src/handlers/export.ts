@@ -73,7 +73,7 @@ function extractArchiveSections(
     result['timeline'] = {
       session_id:       archive.session_id,
       tags:             archive.tags,
-      tag:              archive.tags[0],
+      tag:              archive.tags?.[0] ?? null,
       name:             archive.name,
       started_at:       archive.started_at,
       ended_at:         archive.ended_at,
@@ -215,7 +215,7 @@ export async function handleExport(
         };
       }
       data = extractArchiveSections(archive, sections);
-      title = `Session Export — ${archive.tags[0] ?? archive.name ?? sessionId}`;
+      title = `Session Export — ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
     }
 
     // === Render format ===

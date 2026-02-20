@@ -8,12 +8,12 @@
  * Architecture notes:
  * - sql.js operates in-memory; `saveToDisk()` flushes the in-memory state to
  *   the file. This is called after every write, debounced to avoid excessive I/O.
- * - WAL mode is enabled for concurrent read access (mini dashboard + MCP server).
- * - Prepared statements are cached for hot query paths.
+ * - WAL mode configured (no-op in sql.js, effective if migrated to native SQLite).
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import type { SqlJsStatic, Database, Statement } from 'sql.js';
+import { join, resolve } from 'node:path';
+import type { SqlJsStatic, Database } from 'sql.js';
 import type {
   GlobalSession,
   ApiCallRecord,
@@ -152,9 +152,6 @@ export class GlobalDB {
   private SQL: SqlJsStatic | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Prepared statement cache
-  private stmts: Map<string, Statement> = new Map();
-
   /**
    * @param dbPath - Absolute path to the SQLite database file.
    */
@@ -192,7 +189,8 @@ export class GlobalDB {
       this.db = new this.SQL.Database();
     }
 
-    // Enable WAL mode for concurrent read access
+    // WAL mode is a no-op in sql.js (in-memory), but retained for documentation
+    // and effective if migrated to native SQLite in the future.
     this.db.run('PRAGMA journal_mode=WAL;');
     this.db.run('PRAGMA synchronous=NORMAL;');
     this.db.run('PRAGMA foreign_keys=ON;');
@@ -204,11 +202,6 @@ export class GlobalDB {
     const currentVersion = getSchemaVersion(this.db);
     if (currentVersion < SCHEMA_VERSION) {
       applyMigrations(this.db, currentVersion);
-    } else if (currentVersion === 0) {
-      // Fresh database: record baseline version
-      this.db.run(
-        `INSERT OR IGNORE INTO schema_version (version, description) VALUES (${SCHEMA_VERSION}, 'initial schema')`,
-      );
     }
 
     // Persist the initialized database
@@ -224,12 +217,6 @@ export class GlobalDB {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
-    // Finalize all cached prepared statements
-    for (const stmt of this.stmts.values()) {
-      try { stmt.free(); } catch { /* ignore */ }
-    }
-    this.stmts.clear();
-
     if (this.db) {
       this.saveToDisk();
       this.db.close();
@@ -360,9 +347,11 @@ export class GlobalDB {
     const rows = rowsToObjects(
       db.exec('SELECT * FROM sessions WHERE project_hash = ? ORDER BY started_at DESC', [projectHash]),
     );
+    const sessionIds = rows.map((row) => String(row['session_id'] ?? ''));
+    const tagsMap = this._batchGetTags(sessionIds);
     return rows.map((row) => {
-      const tags = this.getTagsForSession(String(row['session_id'] ?? ''));
-      return rowToSession(row, tags.map((t) => t.tag));
+      const sid = String(row['session_id'] ?? '');
+      return rowToSession(row, tagsMap.get(sid) ?? []);
     });
   }
 
@@ -387,9 +376,11 @@ export class GlobalDB {
         [...tags, tags.length],
       ),
     );
+    const sessionIds = rows.map((row) => String(row['session_id'] ?? ''));
+    const tagsMap = this._batchGetTags(sessionIds);
     return rows.map((row) => {
-      const sessionTags = this.getTagsForSession(String(row['session_id'] ?? ''));
-      return rowToSession(row, sessionTags.map((t) => t.tag));
+      const sid = String(row['session_id'] ?? '');
+      return rowToSession(row, tagsMap.get(sid) ?? []);
     });
   }
 
@@ -421,9 +412,11 @@ export class GlobalDB {
         params,
       ),
     );
+    const sessionIds = rows.map((row) => String(row['session_id'] ?? ''));
+    const tagsMap = this._batchGetTags(sessionIds);
     return rows.map((row) => {
-      const tags = this.getTagsForSession(String(row['session_id'] ?? ''));
-      return rowToSession(row, tags.map((t) => t.tag));
+      const sid = String(row['session_id'] ?? '');
+      return rowToSession(row, tagsMap.get(sid) ?? []);
     });
   }
 
@@ -769,6 +762,7 @@ export class GlobalDB {
           ON CONFLICT(session_id) DO UPDATE SET
             project_hash              = COALESCE(excluded.project_hash, project_hash),
             project_path              = COALESCE(excluded.project_path, project_path),
+            started_at                = COALESCE(excluded.started_at, started_at),
             ended_at                  = COALESCE(excluded.ended_at, ended_at),
             model                     = COALESCE(excluded.model, model),
             total_input_tokens        = COALESCE(excluded.total_input_tokens, total_input_tokens),
@@ -858,6 +852,36 @@ export class GlobalDB {
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
+   * Batch-fetch tags for multiple sessions in a single query, eliminating N+1.
+   *
+   * @param sessionIds - Array of session IDs to fetch tags for.
+   * @returns Map of session_id to array of tag strings.
+   */
+  private _batchGetTags(sessionIds: string[]): Map<string, string[]> {
+    const result = new Map<string, string[]>();
+    if (sessionIds.length === 0) return result;
+    const db = this.getDb();
+    const placeholders = sessionIds.map(() => '?').join(',');
+    const rows = rowsToObjects(
+      db.exec(
+        `SELECT session_id, tag FROM tags WHERE session_id IN (${placeholders}) ORDER BY created_at ASC`,
+        sessionIds,
+      ),
+    );
+    for (const row of rows) {
+      const sid = String(row['session_id'] ?? '');
+      const tag = String(row['tag'] ?? '');
+      const existing = result.get(sid);
+      if (existing) {
+        existing.push(tag);
+      } else {
+        result.set(sid, [tag]);
+      }
+    }
+    return result;
+  }
+
+  /**
    * Schedule a debounced disk save.
    *
    * Multiple writes within `SAVE_DEBOUNCE_MS` will be coalesced into a
@@ -885,7 +909,7 @@ export class GlobalDB {
       const mod = await import('sql.js') as { default: typeof import('sql.js') };
       return mod.default as unknown as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
     } catch {
-      // CJS fallback
+      // CJS fallback — safe because esbuild bundles to CJS format
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = require('sql.js') as { default?: unknown };
       const initFn = (mod.default ?? mod) as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
@@ -913,16 +937,6 @@ export class GlobalDB {
       // ESM: use process.cwd() as fallback
       baseDir = process.cwd();
     }
-
-    const { resolve, join } = (() => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        return require('node:path') as typeof import('node:path');
-      } catch {
-        // Should always succeed in Node.js environments
-        return { resolve: (p: string) => p, join: (...p: string[]) => p.join('/') };
-      }
-    })();
 
     // Option 1: dist/ sibling (plugin install)
     const distWasm = resolve(join(baseDir, 'sql-wasm.wasm'));

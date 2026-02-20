@@ -36,6 +36,10 @@ function createMockState(overrides: Partial<DashboardState> = {}): DashboardStat
         total: 7_500,
         saved: 3_000,
         efficiency: 0.4,
+        api_input: 0,
+        api_output: 0,
+        cache_read: 0,
+        cache_write: 0,
       },
       cache: {
         hit_rate: 0.68,
@@ -416,7 +420,7 @@ describe('MiniRenderer', () => {
     it('renders without crashing when all metrics are zero', () => {
       const state = createMockState({
         metrics: {
-          tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0 },
+          tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
           cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
           cost: { input: 0, output: 0, total: 0, saved: 0 },
           commands: { total: 0, success_rate: 0, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
@@ -431,7 +435,7 @@ describe('MiniRenderer', () => {
 
     it('formats large token counts with K suffix', () => {
       const state = createMockState({
-        metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 30_000, efficiency: 0.4 } },
+        metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 30_000, efficiency: 0.4, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
       expect(stripAnsi(output)).toContain('75.0K');
@@ -439,7 +443,7 @@ describe('MiniRenderer', () => {
 
     it('formats very large token counts with M suffix', () => {
       const state = createMockState({
-        metrics: { tokens: { input: 0, output: 0, total: 2_500_000, saved: 0, efficiency: 0 } },
+        metrics: { tokens: { input: 0, output: 0, total: 2_500_000, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
       expect(stripAnsi(output)).toContain('2.5M');
@@ -447,7 +451,7 @@ describe('MiniRenderer', () => {
 
     it('formats billion-scale numbers with B suffix', () => {
       const state = createMockState({
-        metrics: { tokens: { input: 0, output: 0, total: 3_000_000_000, saved: 0, efficiency: 0 } },
+        metrics: { tokens: { input: 0, output: 0, total: 3_000_000_000, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
       expect(stripAnsi(output)).toContain('3.0B');
@@ -456,7 +460,7 @@ describe('MiniRenderer', () => {
     it('renders without crashing when metrics contain negative values', () => {
       const state = createMockState({
         metrics: {
-          tokens: { input: -100, output: -50, total: -150, saved: -30, efficiency: -0.2 },
+          tokens: { input: -100, output: -50, total: -150, saved: -30, efficiency: -0.2, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
           cost: { input: -0.005, output: -0.001, total: -0.006, saved: -0.002 },
         },
       });

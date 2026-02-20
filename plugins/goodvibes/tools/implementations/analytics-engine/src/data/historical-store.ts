@@ -129,6 +129,10 @@ export class HistoricalStore {
       avg.tokens.total += m.tokens.total;
       avg.tokens.saved += m.tokens.saved;
       avg.tokens.efficiency += m.tokens.efficiency;
+      avg.tokens.api_input += m.tokens.api_input;
+      avg.tokens.api_output += m.tokens.api_output;
+      avg.tokens.cache_read += m.tokens.cache_read;
+      avg.tokens.cache_write += m.tokens.cache_write;
       // cache
       avg.cache.hit_rate += m.cache.hit_rate;
       avg.cache.hits += m.cache.hits;
@@ -165,6 +169,10 @@ export class HistoricalStore {
     avg.tokens.total /= n;
     avg.tokens.saved /= n;
     avg.tokens.efficiency /= n;
+    avg.tokens.api_input /= n;
+    avg.tokens.api_output /= n;
+    avg.tokens.cache_read /= n;
+    avg.tokens.cache_write /= n;
     avg.cache.hit_rate /= n;
     avg.cache.hits /= n;
     avg.cache.misses /= n;
@@ -313,6 +321,10 @@ function _flattenMetrics(m: SessionMetrics): Record<string, number> {
     'tokens.total': m.tokens.total,
     'tokens.saved': m.tokens.saved,
     'tokens.efficiency': m.tokens.efficiency,
+    'tokens.api_input': m.tokens.api_input,
+    'tokens.api_output': m.tokens.api_output,
+    'tokens.cache_read': m.tokens.cache_read,
+    'tokens.cache_write': m.tokens.cache_write,
     'cache.hit_rate': m.cache.hit_rate,
     'cache.hits': m.cache.hits,
     'cache.misses': m.cache.misses,
