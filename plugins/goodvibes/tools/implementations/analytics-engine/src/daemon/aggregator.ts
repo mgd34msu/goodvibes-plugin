@@ -382,6 +382,10 @@ export class Aggregator {
   // Accumulated JSONL records from the current file, merged in batches.
   private jsonlRecords: JSONLRecord[] = [];
 
+  // Cumulative command counters — never decrease even when sliding window drops old records.
+  private cumulativeCmdTotal = 0;
+  private cumulativeCmdFailures = 0;
+
   // Resolved path to the active JSONL file (null if not found).
   private activeJsonlPath: string | null = null;
 
@@ -1068,21 +1072,30 @@ export class Aggregator {
         }
       }
 
-      if (jsonlCmdTotal > 0) {
+      // High-water mark: cumulative counters never decrease when sliding window loses records.
+      if (jsonlCmdTotal >= this.cumulativeCmdTotal) {
+        this.cumulativeCmdTotal = jsonlCmdTotal;
+        this.cumulativeCmdFailures = jsonlCmdFailures;
+      }
+      // Use whichever is higher — protects against window truncation causing count to drop.
+      const effectiveCmdTotal = Math.max(jsonlCmdTotal, this.cumulativeCmdTotal);
+      const effectiveCmdFailures = Math.min(this.cumulativeCmdFailures, effectiveCmdTotal);
+
+      if (effectiveCmdTotal > 0) {
         // JSONL-derived: accurate tool call counts.
-        const successRate = (jsonlCmdTotal - jsonlCmdFailures) / jsonlCmdTotal;
+        const successRate = (effectiveCmdTotal - effectiveCmdFailures) / effectiveCmdTotal;
         // Get avg_duration_ms from telemetry if available, else 0.
         const execBreakdown = telemetrySummary?.by_tool['exec'];
         const avgDuration = execBreakdown?.avg_ms ?? 0;
         return {
-          total: jsonlCmdTotal,
+          total: effectiveCmdTotal,
           success_rate: successRate,
           avg_duration_ms: avgDuration,
           // total_duration_ms is approximate: telemetry avg_ms (all exec calls) × JSONL
           // command count (may differ from telemetry count). No per-call duration sum is
           // exposed by ToolBreakdown, so this is the best available estimate.
-          total_duration_ms: avgDuration * jsonlCmdTotal,
-          failures: jsonlCmdFailures,
+          total_duration_ms: avgDuration * effectiveCmdTotal,
+          failures: effectiveCmdFailures,
           slowest: null,
         };
       }

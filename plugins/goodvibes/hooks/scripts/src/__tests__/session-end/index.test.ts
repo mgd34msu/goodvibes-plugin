@@ -14,6 +14,24 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock node:fs module (used by cleanupDashboardPanes)
+const mockExistsSync = vi.fn();
+const mockReadFileSync = vi.fn();
+const mockWriteFileSync = vi.fn();
+
+vi.mock('node:fs', () => ({
+  existsSync: (...args: unknown[]) => mockExistsSync(...args),
+  readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
+  writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
+}));
+
+// Mock node:child_process (used by cleanupDashboardPanes)
+const mockExecFileSync = vi.fn();
+
+vi.mock('node:child_process', () => ({
+  execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
+}));
+
 // Mock fs/promises module
 const mockWriteFile = vi.fn();
 
@@ -30,6 +48,8 @@ const mockDebug = vi.fn();
 const mockLogError = vi.fn();
 const mockCreateResponse = vi.fn();
 
+const mockEnsureGlobalAnalyticsDir = vi.fn();
+
 vi.mock('../../shared/index.js', () => ({
   respond: (...args: unknown[]) => mockRespond(...args),
   readHookInput: () => mockReadHookInput(),
@@ -40,6 +60,7 @@ vi.mock('../../shared/index.js', () => ({
   createResponse: (...args: unknown[]) => mockCreateResponse(...args),
   isTestEnvironment: () => false,
   CACHE_DIR: '/mock/cache/dir',
+  ensureGlobalAnalyticsDir: () => mockEnsureGlobalAnalyticsDir(),
 }));
 
 describe('session-end/index', () => {
@@ -50,6 +71,13 @@ describe('session-end/index', () => {
     // Use fake timers for consistent date handling
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2025-01-15T12:30:00Z'));
+
+    // Default: node:fs operations (cleanupDashboardPanes needs these)
+    mockExistsSync.mockReturnValue(false); // state file does not exist by default
+    mockReadFileSync.mockReturnValue('{}');
+    mockWriteFileSync.mockReturnValue(undefined);
+    mockExecFileSync.mockReturnValue(undefined);
+    mockEnsureGlobalAnalyticsDir.mockReturnValue(undefined);
 
     // Default mock implementations
     mockReadHookInput.mockResolvedValue({
@@ -455,6 +483,193 @@ describe('session-end/index', () => {
 
       // Verify createResponse was called (could be with or without args)
       expect(mockCreateResponse).toHaveBeenCalled();
+    });
+  });
+
+  describe('cleanupDashboardPanes session ID derivation', () => {
+    // Helper: set up an active-panes.json so cleanupDashboardPanes
+    // has something to read and look up.
+    function setupActivePanesFile(
+      state: Record<string, { mini: { paneId: string; pid: number } | null; full: { paneId: string; pid: number } | null }>,
+    ): void {
+      mockExistsSync.mockReturnValue(true);
+      mockReadFileSync.mockReturnValue(JSON.stringify(state));
+    }
+
+    it('uses basename of transcript_path (strips .jsonl extension) as lookup key', async () => {
+      // The transcript path contains a UUID filename that becomes the session key.
+      const jsonlUuid = '47ab2b8d-8e6c-4e0b-8dc7-c1ef55c40da4';
+      const transcriptPath = `/home/user/.claude/projects/foo/${jsonlUuid}.jsonl`;
+
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'claude-internal-session-id-different',
+        cwd: '/test/cwd',
+        hook_event_name: 'SessionEnd',
+        transcript_path: transcriptPath,
+        permission_mode: 'default',
+      });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      // Provide a pane entry keyed by the JSONL UUID (not by session_id).
+      setupActivePanesFile({
+        [jsonlUuid]: {
+          mini: { paneId: '%42', pid: 1234 },
+          full: null,
+        },
+        'claude-internal-session-id-different': {
+          mini: { paneId: '%99', pid: 9999 },
+          full: null,
+        },
+      });
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      // cleanupDashboardPanes must have killed the pane for the JSONL-derived ID,
+      // NOT the claude-internal session_id pane.
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        'tmux',
+        ['kill-pane', '-t', '%42'],
+        expect.any(Object),
+      );
+      // The internal session_id pane (%99) must NOT have been killed.
+      expect(mockExecFileSync).not.toHaveBeenCalledWith(
+        'tmux',
+        ['kill-pane', '-t', '%99'],
+        expect.anything(),
+      );
+
+      // The written-back state must have the JSONL UUID entry removed.
+      expect(mockWriteFileSync).toHaveBeenCalled();
+      const writtenState = JSON.parse(
+        mockWriteFileSync.mock.calls[0][1] as string,
+      ) as Record<string, unknown>;
+      expect(writtenState).not.toHaveProperty(jsonlUuid);
+      // The unrelated internal-session entry is preserved.
+      expect(writtenState).toHaveProperty('claude-internal-session-id-different');
+    });
+
+    it('uses input.session_id as fallback when transcript_path is undefined', async () => {
+      const sessionId = 'fallback-session-uuid';
+
+      mockReadHookInput.mockResolvedValue({
+        session_id: sessionId,
+        cwd: '/test/cwd',
+        hook_event_name: 'SessionEnd',
+        transcript_path: undefined,
+        permission_mode: 'default',
+      });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      // Provide a pane entry keyed by session_id.
+      setupActivePanesFile({
+        [sessionId]: {
+          mini: { paneId: '%10', pid: 5678 },
+          full: { paneId: '%11', pid: 5679 },
+        },
+      });
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      // Both panes for the session_id must be killed.
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        'tmux',
+        ['kill-pane', '-t', '%10'],
+        expect.any(Object),
+      );
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        'tmux',
+        ['kill-pane', '-t', '%11'],
+        expect.any(Object),
+      );
+    });
+
+    it('uses input.session_id as fallback when transcript_path is empty string', async () => {
+      const sessionId = 'empty-path-fallback';
+
+      mockReadHookInput.mockResolvedValue({
+        session_id: sessionId,
+        cwd: '/test/cwd',
+        hook_event_name: 'SessionEnd',
+        transcript_path: '',
+        permission_mode: 'default',
+      });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      setupActivePanesFile({
+        [sessionId]: {
+          mini: { paneId: '%20', pid: 1111 },
+          full: null,
+        },
+      });
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      // Empty string is falsy — should fall back to session_id.
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        'tmux',
+        ['kill-pane', '-t', '%20'],
+        expect.any(Object),
+      );
+    });
+
+    it('does not kill panes when active-panes.json does not exist', async () => {
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'no-state-file',
+        cwd: '/test/cwd',
+        hook_event_name: 'SessionEnd',
+        transcript_path: '/home/user/.claude/projects/foo/no-state-file.jsonl',
+        permission_mode: 'default',
+      });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      // existsSync returns false (default)
+      mockExistsSync.mockReturnValue(false);
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      expect(mockExecFileSync).not.toHaveBeenCalled();
+      expect(mockWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it('extracts basename correctly from nested path with .jsonl extension', async () => {
+      // Verify basename logic: basename('/a/b/c/MY-UUID.jsonl', '.jsonl') === 'MY-UUID'
+      const uuid = 'abcdef12-3456-7890-abcd-ef1234567890';
+      const transcriptPath = `/home/user/.claude/projects/my-project/subdir/${uuid}.jsonl`;
+
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'different-id',
+        cwd: '/test/cwd',
+        hook_event_name: 'SessionEnd',
+        transcript_path: transcriptPath,
+        permission_mode: 'default',
+      });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      setupActivePanesFile({
+        [uuid]: {
+          mini: { paneId: '%77', pid: 7777 },
+          full: null,
+        },
+      });
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      // Must look up by the stripped UUID, not the full path or 'different-id'.
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        'tmux',
+        ['kill-pane', '-t', '%77'],
+        expect.any(Object),
+      );
     });
   });
 });

@@ -6633,6 +6633,9 @@ var Aggregator = class _Aggregator {
   jsonlReader = null;
   // Accumulated JSONL records from the current file, merged in batches.
   jsonlRecords = [];
+  // Cumulative command counters — never decrease even when sliding window drops old records.
+  cumulativeCmdTotal = 0;
+  cumulativeCmdFailures = 0;
   // Resolved path to the active JSONL file (null if not found).
   activeJsonlPath = null;
   // Session ID resolved from the active JSONL filename.
@@ -7156,19 +7159,25 @@ var Aggregator = class _Aggregator {
           if (tc.isError) jsonlCmdFailures++;
         }
       }
-      if (jsonlCmdTotal > 0) {
-        const successRate = (jsonlCmdTotal - jsonlCmdFailures) / jsonlCmdTotal;
+      if (jsonlCmdTotal >= this.cumulativeCmdTotal) {
+        this.cumulativeCmdTotal = jsonlCmdTotal;
+        this.cumulativeCmdFailures = jsonlCmdFailures;
+      }
+      const effectiveCmdTotal = Math.max(jsonlCmdTotal, this.cumulativeCmdTotal);
+      const effectiveCmdFailures = Math.min(this.cumulativeCmdFailures, effectiveCmdTotal);
+      if (effectiveCmdTotal > 0) {
+        const successRate = (effectiveCmdTotal - effectiveCmdFailures) / effectiveCmdTotal;
         const execBreakdown2 = telemetrySummary?.by_tool["exec"];
         const avgDuration = execBreakdown2?.avg_ms ?? 0;
         return {
-          total: jsonlCmdTotal,
+          total: effectiveCmdTotal,
           success_rate: successRate,
           avg_duration_ms: avgDuration,
           // total_duration_ms is approximate: telemetry avg_ms (all exec calls) × JSONL
           // command count (may differ from telemetry count). No per-call duration sum is
           // exposed by ToolBreakdown, so this is the best available estimate.
-          total_duration_ms: avgDuration * jsonlCmdTotal,
-          failures: jsonlCmdFailures,
+          total_duration_ms: avgDuration * effectiveCmdTotal,
+          failures: effectiveCmdFailures,
           slowest: null
         };
       }

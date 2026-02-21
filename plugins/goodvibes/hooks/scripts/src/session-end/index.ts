@@ -8,7 +8,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import * as fs from 'fs/promises';
-import { join } from 'path';
+import { basename, join } from 'path';
 
 import {
   respond,
@@ -85,8 +85,14 @@ async function runSessionEndHook(): Promise<void> {
       session_id: input.session_id,
     });
 
-    // Clean up any analytics dashboard panes for this session
-    cleanupDashboardPanes(input.session_id);
+    // Clean up any analytics dashboard panes for this session.
+    // The dashboard handler keys panes by the JSONL-derived session ID
+    // (basename of transcript_path without .jsonl), which differs from
+    // input.session_id (Claude Code's internal UUID). Derive the matching key.
+    const jsonlSessionId = input.transcript_path
+      ? basename(input.transcript_path, '.jsonl')
+      : input.session_id;
+    cleanupDashboardPanes(jsonlSessionId);
 
     const analytics = await loadAnalytics();
 

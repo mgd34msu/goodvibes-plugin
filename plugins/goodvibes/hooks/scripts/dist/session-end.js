@@ -15,7 +15,7 @@ var init_gitignore = __esm({
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync as existsSync2 } from "node:fs";
 import * as fs3 from "fs/promises";
-import { join as join3 } from "path";
+import { basename, join as join3 } from "path";
 
 // src/shared/hook-io.ts
 import { stdin } from "process";
@@ -487,7 +487,8 @@ async function runSessionEndHook() {
     debug("SessionEnd received input", {
       session_id: input.session_id
     });
-    cleanupDashboardPanes(input.session_id);
+    const jsonlSessionId = input.transcript_path ? basename(input.transcript_path, ".jsonl") : input.session_id;
+    cleanupDashboardPanes(jsonlSessionId);
     const analytics = await loadAnalytics();
     if (analytics) {
       analytics.ended_at = (/* @__PURE__ */ new Date()).toISOString();
