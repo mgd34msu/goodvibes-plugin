@@ -112,9 +112,10 @@ function emptySessionMetrics(): SessionMetrics {
 }
 
 /** Build an empty DashboardState. */
-function emptyDashboardState(sessionId: string, startedAt: string): DashboardState {
+function emptyDashboardState(sessionId: string, projectHash: string, startedAt: string): DashboardState {
   return {
     session_id: sessionId,
+    project_hash: projectHash,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -348,7 +349,7 @@ export class Aggregator {
   private watcher!: DataWatcher;
 
   /** Cached current state. Updated on every refresh. */
-  private state: DashboardState = emptyDashboardState('', new Date().toISOString());
+  private state: DashboardState = emptyDashboardState('', '', new Date().toISOString());
 
   /** Timestamp when the aggregator was initialized. */
   private startedAt: string = new Date().toISOString();
@@ -929,6 +930,7 @@ export class Aggregator {
     // ── Anomaly detection ─────────────────────────────────────────────────
     const partialState: DashboardState = {
       session_id: sessionId,
+      project_hash: basename(dirname(this.goodvibesDir)),
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -965,6 +967,7 @@ export class Aggregator {
 
     return {
       session_id: sessionId,
+      project_hash: basename(dirname(this.goodvibesDir)),
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,

@@ -190,23 +190,33 @@ export class JSONLReader {
    * @param line - Single trimmed line of text from a JSONL file.
    * @returns Parsed record, or null if the line is malformed or unrecognised.
    */
+  /**
+   * Parse result: 'record' = recognized, 'skipped' = valid JSON but unknown type,
+   * 'error' = invalid JSON or not an object.
+   */
   parseLine(line: string): JSONLRecord | null {
+    const result = this.parseLineDetailed(line);
+    return result.kind === 'record' ? result.record : null;
+  }
+
+  /** Detailed parse with discrimination between unrecognized and malformed. */
+  parseLineDetailed(line: string): { kind: 'record'; record: JSONLRecord } | { kind: 'skipped' } | { kind: 'error' } {
     try {
       const parsed: unknown = JSON.parse(line);
-      if (typeof parsed !== 'object' || parsed === null) return null;
+      if (typeof parsed !== 'object' || parsed === null) return { kind: 'error' };
 
       const record = parsed as Record<string, unknown>;
       const type = record['type'];
 
-      if (type === 'assistant') return record as unknown as JSONLAssistantRecord;
-      if (type === 'user') return record as unknown as JSONLUserRecord;
-      if (type === 'progress') return record as unknown as JSONLProgressRecord;
-      if (type === 'file-history-snapshot') return record as unknown as JSONLFileHistoryRecord;
+      if (type === 'assistant') return { kind: 'record', record: record as unknown as JSONLAssistantRecord };
+      if (type === 'user') return { kind: 'record', record: record as unknown as JSONLUserRecord };
+      if (type === 'progress') return { kind: 'record', record: record as unknown as JSONLProgressRecord };
+      if (type === 'file-history-snapshot') return { kind: 'record', record: record as unknown as JSONLFileHistoryRecord };
 
-      // Unknown type — return null silently. Format may have evolved.
-      return null;
+      // Valid JSON but unrecognised record type — skip silently.
+      return { kind: 'skipped' };
     } catch {
-      return null;
+      return { kind: 'error' };
     }
   }
 

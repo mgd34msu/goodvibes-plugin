@@ -64,22 +64,21 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
   const { metrics } = state;
   const { tokens, cache, cost, commands, agents } = metrics;
 
-  // Pull project sessions from GlobalDB for comparison
+  // Pull project sessions from GlobalDB for comparison.
+  // Uses state.project_hash directly (set by the aggregator) instead of
+  // looking up the current session in GlobalDB, which may not exist yet.
   const projectSessions = useMemo(() => {
-    if (!globalDb || !state.session_id) return [];
+    if (!globalDb || !state.project_hash) return [];
     try {
-      const current = globalDb.getSession(state.session_id);
-      if (!current) return [];
-      // Fetch up to 50 completed/archived sessions for this project
       return globalDb
-        .getSessionsByProject(current.project_hash)
+        .getSessionsByProject(state.project_hash)
         .filter((s) => s.session_id !== state.session_id)
         .slice(0, 50);
     } catch {
       return [];
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalDb, state.session_id]);
+  }, [globalDb, state.project_hash, state.session_id]);
 
   // Pull recent sessions (across all projects) for the archive table
   const recentSessions = useMemo(() => {

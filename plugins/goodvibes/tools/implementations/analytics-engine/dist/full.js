@@ -2489,9 +2489,10 @@ function emptySessionMetrics() {
   };
 }
 __name(emptySessionMetrics, "emptySessionMetrics");
-function emptyDashboardState(sessionId, startedAt) {
+function emptyDashboardState(sessionId, projectHash, startedAt) {
   return {
     session_id: sessionId,
+    project_hash: projectHash,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -2618,7 +2619,7 @@ var Aggregator = class _Aggregator {
   memoryUpdater;
   watcher;
   /** Cached current state. Updated on every refresh. */
-  state = emptyDashboardState("", (/* @__PURE__ */ new Date()).toISOString());
+  state = emptyDashboardState("", "", (/* @__PURE__ */ new Date()).toISOString());
   /** Timestamp when the aggregator was initialized. */
   startedAt = (/* @__PURE__ */ new Date()).toISOString();
   /** Registered state-change callbacks. */
@@ -3075,6 +3076,7 @@ var Aggregator = class _Aggregator {
     const agentProfiles = this.buildAgentProfiles(agentActivities);
     const partialState = {
       session_id: sessionId,
+      project_hash: basename3(dirname3(this.goodvibesDir)),
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -3102,6 +3104,7 @@ var Aggregator = class _Aggregator {
     const healthStatus = computeHealthStatus(allAnomalies, metrics);
     return {
       session_id: sessionId,
+      project_hash: basename3(dirname3(this.goodvibesDir)),
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -4097,15 +4100,13 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const { metrics } = state;
   const { tokens, cache, cost, commands, agents } = metrics;
   const projectSessions = useMemo2(() => {
-    if (!globalDb || !state.session_id) return [];
+    if (!globalDb || !state.project_hash) return [];
     try {
-      const current = globalDb.getSession(state.session_id);
-      if (!current) return [];
-      return globalDb.getSessionsByProject(current.project_hash).filter((s) => s.session_id !== state.session_id).slice(0, 50);
+      return globalDb.getSessionsByProject(state.project_hash).filter((s) => s.session_id !== state.session_id).slice(0, 50);
     } catch {
       return [];
     }
-  }, [globalDb, state.session_id]);
+  }, [globalDb, state.project_hash, state.session_id]);
   const recentSessions = useMemo2(() => {
     if (!globalDb) return [];
     try {

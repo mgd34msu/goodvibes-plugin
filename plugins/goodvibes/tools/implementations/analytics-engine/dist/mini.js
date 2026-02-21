@@ -2485,9 +2485,10 @@ function emptySessionMetrics() {
   };
 }
 __name(emptySessionMetrics, "emptySessionMetrics");
-function emptyDashboardState(sessionId, startedAt) {
+function emptyDashboardState(sessionId, projectHash, startedAt) {
   return {
     session_id: sessionId,
+    project_hash: projectHash,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -2614,7 +2615,7 @@ var Aggregator = class _Aggregator {
   memoryUpdater;
   watcher;
   /** Cached current state. Updated on every refresh. */
-  state = emptyDashboardState("", (/* @__PURE__ */ new Date()).toISOString());
+  state = emptyDashboardState("", "", (/* @__PURE__ */ new Date()).toISOString());
   /** Timestamp when the aggregator was initialized. */
   startedAt = (/* @__PURE__ */ new Date()).toISOString();
   /** Registered state-change callbacks. */
@@ -3071,6 +3072,7 @@ var Aggregator = class _Aggregator {
     const agentProfiles = this.buildAgentProfiles(agentActivities);
     const partialState = {
       session_id: sessionId,
+      project_hash: basename3(dirname3(this.goodvibesDir)),
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -3098,6 +3100,7 @@ var Aggregator = class _Aggregator {
     const healthStatus = computeHealthStatus(allAnomalies, metrics);
     return {
       session_id: sessionId,
+      project_hash: basename3(dirname3(this.goodvibesDir)),
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,

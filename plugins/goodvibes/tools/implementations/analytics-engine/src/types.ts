@@ -213,6 +213,7 @@ export interface BudgetState {
 // === Dashboard State (aggregated view for renderers) ===
 export interface DashboardState {
   session_id: string;
+  project_hash: string;
   started_at: string;
   uptime_ms: number;
   metrics: SessionMetrics;
