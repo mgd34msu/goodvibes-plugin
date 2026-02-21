@@ -53984,7 +53984,11 @@ var Aggregator = class _Aggregator {
       cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
       cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
-    const cache3 = this.buildCacheMetrics(telemetrySummary);
+    const cache3 = this.buildCacheMetrics(
+      telemetrySummary,
+      tokens.cache_read,
+      tokens.api_input
+    );
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
         const rates = getModelRates(jsonl.model, this.pricingMap);
@@ -54521,14 +54525,11 @@ var Aggregator = class _Aggregator {
    * memory_peak_mb and evictions are not tracked in the telemetry DB;
    * they are reported as 0 until a richer data source is available.
    */
-  buildCacheMetrics(telemetrySummary) {
-    if (!telemetrySummary) {
-      return { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 };
-    }
-    const hits = telemetrySummary.total_cache_hits;
-    const total = telemetrySummary.total_calls;
+  buildCacheMetrics(telemetrySummary, cacheReadTokens, apiInputTokens) {
+    const hitRate = apiInputTokens > 0 ? cacheReadTokens / apiInputTokens : 0;
+    const hits = telemetrySummary?.total_cache_hits ?? 0;
+    const total = telemetrySummary?.total_calls ?? 0;
     const misses = total - hits;
-    const hitRate = total > 0 ? hits / total : 0;
     return {
       hit_rate: hitRate,
       hits,
@@ -54636,7 +54637,9 @@ function BarChart({
     Math.max(...items.map((i) => i.label.length), 4),
     20
   );
-  const valueStrings = items.map((i) => `${i.value}${i.suffix ?? ""}`);
+  const valueStrings = items.map(
+    (i) => i.formatValue ? i.formatValue(i.value) : `${i.value}${i.suffix ?? ""}`
+  );
   const valueColWidth = Math.max(...valueStrings.map((s) => s.length), 4);
   const barAreaWidth = Math.max(width - labelColWidth - valueColWidth - 4, 4);
   const globalMax = Math.max(...items.map((i) => i.value), 1);
@@ -55288,6 +55291,11 @@ function avgAgentSpawns(sessions) {
   return sessions.reduce((s, x) => s + x.total_agent_spawns, 0) / sessions.length;
 }
 __name(avgAgentSpawns, "avgAgentSpawns");
+function avgToolCalls(sessions) {
+  if (sessions.length === 0) return 0;
+  return sessions.reduce((s, x) => s + x.total_tool_calls, 0) / sessions.length;
+}
+__name(avgToolCalls, "avgToolCalls");
 var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const { metrics } = state;
   const { tokens, cache: cache3, cost, commands, agents } = metrics;
@@ -55316,6 +55324,7 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const histAvgInputTokens = avgInputTokens(projectSessions);
   const histAvgOutputTokens = avgOutputTokens(projectSessions);
   const histAvgAgentSpawns = avgAgentSpawns(projectSessions);
+  const histAvgToolCalls = avgToolCalls(projectSessions);
   const currentTotalTokens = tokens.input + tokens.output;
   const comparisonHeaders = ["Metric", "Current", "Proj Avg", "Delta"];
   const comparisonRows = [
@@ -55358,9 +55367,8 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
     [
       "Commands",
       formatNumber(commands.total),
-      "\u2014",
-      // GlobalDB tracks total_tool_calls (all tools), not commands specifically
-      "\u2014"
+      hasHistory ? formatNumber(Math.round(histAvgToolCalls)) : "\u2014",
+      hasHistory && histAvgToolCalls > 0 ? formatDelta(commands.total, histAvgToolCalls) : "\u2014"
     ],
     [
       "Success Rate",
@@ -55504,12 +55512,26 @@ function buildProjectSummaries(db) {
   }
 }
 __name(buildProjectSummaries, "buildProjectSummaries");
-function shortPath2(p) {
-  if (p.includes("/")) {
+function shortPath2(p, maxLen = 28) {
+  let name;
+  if (p.includes("-Projects-")) {
+    const idx = p.lastIndexOf("-Projects-");
+    name = p.slice(idx + "-Projects-".length);
+  } else if (p.includes("/")) {
     const parts = p.replace(/\/$/, "").split("/");
-    return truncate(parts.slice(-2).join("/"), 28);
+    name = parts[parts.length - 1] || parts[parts.length - 2] || p;
+  } else if (p.startsWith("-")) {
+    const segments = p.split("-").filter(Boolean);
+    name = segments[segments.length - 1] || p;
+  } else {
+    name = p;
   }
-  return truncate(p, 28);
+  name = name.replace(/^-+/, "");
+  if (!name) name = p;
+  if (name.length > maxLen) {
+    return name.slice(0, maxLen - 1) + "\u2026";
+  }
+  return name;
 }
 __name(shortPath2, "shortPath");
 function shortDate2(iso) {
@@ -55545,7 +55567,7 @@ var CrossProject = /* @__PURE__ */ __name(({ state, globalDb }) => {
     label: shortPath2(p.project_path),
     value: p.total_cost_usd,
     maxValue: Math.max(maxCost, 1e-3),
-    suffix: "usd"
+    formatValue: formatDollars
   }));
   const projectTableHeaders = ["Project", "Sessions", "Cost", "Tokens", "Last Active"];
   const projectTableRows = projects.slice(0, 8).map((p) => [
@@ -55566,7 +55588,7 @@ var CrossProject = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const sessionTableHeaders = ["Session ID", "Project", "Cost", "Tokens", "Date"];
   const sessionTableRows = recentSessions.map((s) => [
     truncate(s.session_id, 16),
-    truncate(s.project_path ?? s.project_hash.slice(0, 12), 16),
+    shortPath2(s.project_path ?? s.project_hash.slice(0, 12), 16),
     formatDollars(s.total_cost_usd),
     formatNumber(s.total_input_tokens + s.total_output_tokens),
     shortDate2(s.started_at)

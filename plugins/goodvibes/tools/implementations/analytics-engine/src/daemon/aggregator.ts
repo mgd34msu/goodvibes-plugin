@@ -843,7 +843,11 @@ export class Aggregator {
     // API data is shown separately in the "API TOKENS (JSONL)" dashboard section.
 
     // ── Cache metrics ─────────────────────────────────────────────────────
-    const cache: CacheMetrics = this.buildCacheMetrics(telemetrySummary);
+    const cache: CacheMetrics = this.buildCacheMetrics(
+      telemetrySummary,
+      tokens.cache_read,
+      tokens.api_input,
+    );
 
     // ── Cost metrics: prefer JSONL calculated cost (uses real API tokens) ──
     const cost: CostMetrics = (() => {
@@ -1537,14 +1541,19 @@ export class Aggregator {
    */
   private buildCacheMetrics(
     telemetrySummary: ReturnType<TelemetryReader['getSessionSummary']> | null,
+    cacheReadTokens: number,
+    apiInputTokens: number,
   ): CacheMetrics {
-    if (!telemetrySummary) {
-      return { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 };
-    }
-    const hits = telemetrySummary.total_cache_hits;
-    const total = telemetrySummary.total_calls;
+    // Compute hit rate as the fraction of API input tokens that were served
+    // from the prompt cache (cache_read_tokens / api_input_tokens).  This is
+    // the same formula used by historical.tsx avgCacheHitRate() and avoids the
+    // inflation that results from dividing raw precision-tool call counts.
+    const hitRate = apiInputTokens > 0 ? cacheReadTokens / apiInputTokens : 0;
+
+    // Fall back to telemetry-based hit/miss counts for the raw hit/miss display.
+    const hits   = telemetrySummary?.total_cache_hits ?? 0;
+    const total  = telemetrySummary?.total_calls      ?? 0;
     const misses = total - hits;
-    const hitRate = total > 0 ? hits / total : 0;
     return {
       hit_rate: hitRate,
       hits,

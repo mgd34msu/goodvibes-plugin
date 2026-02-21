@@ -3238,7 +3238,11 @@ var Aggregator = class _Aggregator {
       cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
       cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
-    const cache = this.buildCacheMetrics(telemetrySummary);
+    const cache = this.buildCacheMetrics(
+      telemetrySummary,
+      tokens.cache_read,
+      tokens.api_input
+    );
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
         const rates = getModelRates(jsonl.model, this.pricingMap);
@@ -3775,14 +3779,11 @@ var Aggregator = class _Aggregator {
    * memory_peak_mb and evictions are not tracked in the telemetry DB;
    * they are reported as 0 until a richer data source is available.
    */
-  buildCacheMetrics(telemetrySummary) {
-    if (!telemetrySummary) {
-      return { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 };
-    }
-    const hits = telemetrySummary.total_cache_hits;
-    const total = telemetrySummary.total_calls;
+  buildCacheMetrics(telemetrySummary, cacheReadTokens, apiInputTokens) {
+    const hitRate = apiInputTokens > 0 ? cacheReadTokens / apiInputTokens : 0;
+    const hits = telemetrySummary?.total_cache_hits ?? 0;
+    const total = telemetrySummary?.total_calls ?? 0;
     const misses = total - hits;
-    const hitRate = total > 0 ? hits / total : 0;
     return {
       hit_rate: hitRate,
       hits,

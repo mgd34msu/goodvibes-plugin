@@ -80,14 +80,47 @@ function buildProjectSummaries(db: GlobalDB): ProjectSummary[] {
   }
 }
 
-/** Format a short label from a full project path. */
-function shortPath(p: string): string {
-  // Use last 2 path segments or the raw hash if not a path
-  if (p.includes('/')) {
+/** Format a short label from a full project path.
+ *
+ * Project paths stored in the DB look like `-home-buzzkill-Projects-goodvibes-plugin`
+ * (hyphens replacing path separators). The meaningful part is the last segment.
+ *
+ * Strategy:
+ *  1. If contains `-Projects-`, take everything after the last `-Projects-`.
+ *  2. Else if contains `/`, take the last two slash-separated segments.
+ *  3. Else split on `-`, drop empty leading parts, take the last segment.
+ *  4. Remove any leading hyphens from the result.
+ *  5. Truncate from the end with ellipsis if still too long.
+ */
+function shortPath(p: string, maxLen = 28): string {
+  let name: string;
+
+  // Case 1: Claude internal hyphenated path with -Projects- marker
+  if (p.includes('-Projects-')) {
+    const idx = p.lastIndexOf('-Projects-');
+    name = p.slice(idx + '-Projects-'.length);
+  } else if (p.includes('/')) {
+    // Case 2: Real filesystem path
     const parts = p.replace(/\/$/, '').split('/');
-    return truncate(parts.slice(-2).join('/'), 28);
+    name = parts[parts.length - 1] || parts[parts.length - 2] || p;
+  } else if (p.startsWith('-')) {
+    // Case 3: Hyphenated path without -Projects- (e.g. `-home-buzzkill`)
+    // Split on `-`, filter empties, take last meaningful segment
+    const segments = p.split('-').filter(Boolean);
+    name = segments[segments.length - 1] || p;
+  } else {
+    name = p;
   }
-  return truncate(p, 28);
+
+  // Strip any residual leading hyphens
+  name = name.replace(/^-+/, '');
+  if (!name) name = p;
+
+  // Truncate from the end if too long
+  if (name.length > maxLen) {
+    return name.slice(0, maxLen - 1) + '\u2026';
+  }
+  return name;
 }
 
 /** Format an ISO date string to a short locale-aware date. */
@@ -137,7 +170,7 @@ export const CrossProject: React.FC<CrossProjectProps> = ({ state, globalDb }) =
     label: shortPath(p.project_path),
     value: p.total_cost_usd,
     maxValue: Math.max(maxCost, 0.001),
-    suffix: 'usd',
+    formatValue: formatDollars,
   }));
 
   // Project table (top 8)
@@ -164,7 +197,7 @@ export const CrossProject: React.FC<CrossProjectProps> = ({ state, globalDb }) =
   const sessionTableHeaders = ['Session ID', 'Project', 'Cost', 'Tokens', 'Date'];
   const sessionTableRows: string[][] = recentSessions.map((s) => [
     truncate(s.session_id, 16),
-    truncate(s.project_path ?? s.project_hash.slice(0, 12), 16),
+    shortPath(s.project_path ?? s.project_hash.slice(0, 12), 16),
     formatDollars(s.total_cost_usd),
     formatNumber(s.total_input_tokens + s.total_output_tokens),
     shortDate(s.started_at),

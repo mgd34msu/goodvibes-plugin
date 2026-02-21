@@ -83,6 +83,16 @@ function avgAgentSpawns(sessions: GlobalSession[]): number {
 }
 
 /**
+ * Compute the average total_tool_calls across sessions.
+ * Used as a proxy for "Commands" since GlobalDB tracks tool calls but not
+ * bash/exec commands specifically.
+ */
+function avgToolCalls(sessions: GlobalSession[]): number {
+  if (sessions.length === 0) return 0;
+  return sessions.reduce((s, x) => s + x.total_tool_calls, 0) / sessions.length;
+}
+
+/**
  * Historical & Trends page — Page 3 of the full TUI dashboard.
  *
  * Layout:
@@ -129,6 +139,7 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
   const histAvgInputTokens = avgInputTokens(projectSessions);
   const histAvgOutputTokens = avgOutputTokens(projectSessions);
   const histAvgAgentSpawns = avgAgentSpawns(projectSessions);
+  const histAvgToolCalls = avgToolCalls(projectSessions);
   // Precision tokens (input+output from precision tool tracking)
   const currentTotalTokens = tokens.input + tokens.output;
 
@@ -178,8 +189,8 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     [
       'Commands',
       formatNumber(commands.total),
-      '—', // GlobalDB tracks total_tool_calls (all tools), not commands specifically
-      '—',
+      hasHistory ? formatNumber(Math.round(histAvgToolCalls)) : '—',
+      hasHistory && histAvgToolCalls > 0 ? formatDelta(commands.total, histAvgToolCalls) : '—',
     ],
     [
       'Success Rate',

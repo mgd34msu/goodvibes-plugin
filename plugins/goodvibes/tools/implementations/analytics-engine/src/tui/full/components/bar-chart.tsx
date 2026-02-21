@@ -17,6 +17,8 @@ export interface BarChartItem {
   maxValue?: number;
   /** Optional suffix appended after the value, e.g. "ms" or "%". */
   suffix?: string;
+  /** Optional custom formatter for the displayed value. When provided, overrides `${value}${suffix}` rendering. */
+  formatValue?: (value: number) => string;
 }
 
 /**
@@ -77,7 +79,9 @@ export function BarChart({
   );
 
   // Compute value column width from the longest rendered value string.
-  const valueStrings = items.map((i) => `${i.value}${i.suffix ?? ''}`);
+  const valueStrings = items.map((i) =>
+    i.formatValue ? i.formatValue(i.value) : `${i.value}${i.suffix ?? ''}`,
+  );
   const valueColWidth = Math.max(...valueStrings.map((s) => s.length), 4);
 
   // Bar area: total width minus label col, two spaces of padding, value col, two spaces.
