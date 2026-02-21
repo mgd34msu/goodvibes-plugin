@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-02-21T01:32:27.147Z'
+generated: '2026-02-21T01:38:06.310Z'
 total: 63
 servers:
   - name: precision-engine
@@ -149,7 +149,7 @@ servers:
           View, update, or reload analytics engine settings. Supports dot-notation keys. ' + 'Use action="reload" to
           hot-reload configuration from disk without restarting.
       - name: analytics_sync
-        path: analytics-engine/analytics_sync
+        path: analytics-engine/analytics-sync.yaml
         description: >-
           Sync Claude JSONL session files into the global analytics SQLite database. ' + 'Use scope="current" to sync
           the current project, or scope="all" to sync all projects ' + 'discovered under ~/.claude/projects/. Supports
@@ -1034,7 +1034,7 @@ search_index:
       - byte
       - offset
       - tracking
-    path: analytics-engine/analytics_sync
+    path: analytics-engine/analytics-sync.yaml
     description: >-
       Sync Claude JSONL session files into the global analytics SQLite database. ' + 'Use scope="current" to sync the
       current project, or scope="all" to sync all projects ' + 'discovered under ~/.claude/projects/. Supports

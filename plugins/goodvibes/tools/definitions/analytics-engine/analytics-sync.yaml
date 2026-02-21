@@ -1,0 +1,52 @@
+name: analytics_sync
+version: "1.0.0"
+description: |
+  Sync Claude JSONL session files into the global analytics SQLite
+  database. Supports incremental sync via byte-offset tracking.
+
+mcp:
+  server: analytics-engine
+  method: analytics_sync
+  defer_loading: true
+
+input_schema:
+  type: object
+  properties:
+    scope:
+      type: string
+      enum: ["current", "all"]
+      default: "current"
+      description: |
+        Scope of the sync operation.
+        - "current": sync only the current project's JSONL files.
+        - "all": sync ALL projects discovered under ~/.claude/projects/.
+
+output_schema:
+  type: object
+  properties:
+    content:
+      type: array
+      items:
+        type: object
+        properties:
+          type: { type: string }
+          text: { type: string }
+    isError:
+      type: boolean
+
+examples:
+  - description: "Sync current project"
+    input:
+      scope: "current"
+    output:
+      content:
+        - type: "text"
+          text: "Sync complete: 5 sessions processed, 1,234 records synced."
+
+  - description: "Sync all projects"
+    input:
+      scope: "all"
+    output:
+      content:
+        - type: "text"
+          text: "Sync complete: 23 sessions across 4 projects processed, 8,901 records synced."

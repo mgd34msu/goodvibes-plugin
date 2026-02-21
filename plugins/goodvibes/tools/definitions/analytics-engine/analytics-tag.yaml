@@ -1,8 +1,9 @@
 name: analytics_tag
 version: "1.0.0"
 description: |
-  Tag or rename the current session for meaningful historical
-  grouping and comparison.
+  Add, remove, or list tags on the current session. Tags are persisted
+  in the global SQLite DB and support multi-tag arrays. Use action=auto
+  to get heuristic tag suggestions based on JSONL analysis.
 
 mcp:
   server: analytics-engine
@@ -14,14 +15,19 @@ input_schema:
   properties:
     action:
       type: string
-      enum: ["tag", "rename"]
-      description: "Whether to set a new tag or rename the session"
+      enum: ["add", "remove", "list", "auto"]
+      description: "Tag operation to perform"
     value:
       type: string
       minLength: 1
       maxLength: 100
-      description: "Tag or name value"
-  required: ["action", "value"]
+      description: "Tag value (required for add/remove, optional for list/auto)"
+    scope:
+      type: string
+      enum: ["session", "all"]
+      default: "session"
+      description: "Scope for list action (session or all tags)"
+  required: ["action"]
 
 output_schema:
   type: object
@@ -37,20 +43,36 @@ output_schema:
       type: boolean
 
 examples:
-  - description: "Tag the session"
+  - description: "Add a tag to the current session"
     input:
-      action: "tag"
-      value: "analytics-engine-phase-4"
+      action: "add"
+      value: "analytics-engine-rework"
     output:
       content:
         - type: "text"
-          text: "Session tagged: analytics-engine-phase-4"
+          text: "Tag added: analytics-engine-rework"
 
-  - description: "Rename the session"
+  - description: "Remove a tag"
     input:
-      action: "rename"
-      value: "Feature: Analytics Dashboard"
+      action: "remove"
+      value: "wip"
     output:
       content:
         - type: "text"
-          text: "Session renamed: Feature: Analytics Dashboard"
+          text: "Tag removed: wip"
+
+  - description: "List session tags"
+    input:
+      action: "list"
+    output:
+      content:
+        - type: "text"
+          text: "Session tags: analytics-engine-rework, phase-5"
+
+  - description: "Auto-suggest tags from JSONL analysis"
+    input:
+      action: "auto"
+    output:
+      content:
+        - type: "text"
+          text: "Suggested tags: refactoring, analytics, tui"
