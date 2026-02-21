@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-02-20T21:21:35.648Z'
-total: 62
+generated: '2026-02-21T01:32:27.147Z'
+total: 63
 servers:
   - name: precision-engine
     count: 12
@@ -114,18 +114,20 @@ servers:
           Identifies prerequisite skills, complementary skills, and conflicts.
           Helps build complete skill sets for complex tasks.
   - name: analytics-engine
-    count: 6
+    count: 7
     tools:
       - name: analytics_dashboard
         path: analytics-engine/analytics-dashboard.yaml
         description: >-
-          Launch, stop, or check status of the analytics TUI and mini dashboard. The mini dashboard is a 4-line
-          always-on tmux pane showing session metrics. The full TUI is a 3-page interactive dashboard.
+          Launch, stop, or check status of the analytics TUI and mini dashboard. ' + 'The mini dashboard is a 4-line
+          always-on tmux pane showing session metrics. ' + 'The full TUI (target="dashboard") is a 3-page interactive
+          dashboard. ' + 'Calling start on a running target toggles it off (stop); calling stop on a stopped target is a
+          no-op.
       - name: analytics_query
         path: analytics-engine/analytics-query.yaml
         description: >-
-          Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, or project
-          metrics. Supports time ranges, grouping, and filtering.
+          Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, ' + 'or
+          project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope.
       - name: analytics_budget
         path: analytics-engine/analytics-budget.yaml
         description: >-
@@ -133,15 +135,25 @@ servers:
           budget with color-coded thresholds.
       - name: analytics_tag
         path: analytics-engine/analytics-tag.yaml
-        description: Tag or rename the current session for meaningful historical grouping and comparison.
+        description: >-
+          Add, remove, or list tags on the current session. Tags are persisted in the global SQLite DB and support
+          multi-tag arrays. Use action=auto to get heuristic tag suggestions based on JSONL analysis.
       - name: analytics_export
         path: analytics-engine/analytics-export.yaml
         description: >-
-          Export session data in JSON, CSV, or markdown format. Can export current session, a specific historical
-          session, or all historical data.
+          Export session data in JSON, CSV, or markdown format. Supports current session, a specific historical ' +
+          'session, all historical data, or all projects (scope="all_projects"). Filter by tags.
       - name: analytics_config
         path: analytics-engine/analytics-config.yaml
-        description: View or update analytics engine settings like refresh rates, cost rates, webhook URLs, and anomaly detection.
+        description: >-
+          View, update, or reload analytics engine settings. Supports dot-notation keys. ' + 'Use action="reload" to
+          hot-reload configuration from disk without restarting.
+      - name: analytics_sync
+        path: analytics-engine/analytics_sync
+        description: >-
+          Sync Claude JSONL session files into the global analytics SQLite database. ' + 'Use scope="current" to sync
+          the current project, or scope="all" to sync all projects ' + 'discovered under ~/.claude/projects/. Supports
+          incremental sync via byte-offset tracking.
   - name: project-engine
     count: 26
     tools:
@@ -847,12 +859,21 @@ search_index:
       - session
       - metrics
       - full
+      - target
       - page
       - interactive
+      - calling
+      - start
+      - running
+      - toggles
+      - 'off'
+      - stopped
     path: analytics-engine/analytics-dashboard.yaml
     description: >-
-      Launch, stop, or check status of the analytics TUI and mini dashboard. The mini dashboard is a 4-line always-on
-      tmux pane showing session metrics. The full TUI is a 3-page interactive dashboard.
+      Launch, stop, or check status of the analytics TUI and mini dashboard. ' + 'The mini dashboard is a 4-line
+      always-on tmux pane showing session metrics. ' + 'The full TUI (target="dashboard") is a 3-page interactive
+      dashboard. ' + 'Calling start on a running target toggles it off (stop); calling stop on a stopped target is a
+      no-op.
     server: analytics-engine
   - name: analytics_query
     keywords:
@@ -877,10 +898,14 @@ search_index:
       - ranges
       - grouping
       - filtering
+      - cross
+      - scoping
+      - via
+      - data_scope
     path: analytics-engine/analytics-query.yaml
     description: >-
-      Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, or project
-      metrics. Supports time ranges, grouping, and filtering.
+      Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, ' + 'or project
+      metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope.
     server: analytics-engine
   - name: analytics_budget
     keywords:
@@ -908,15 +933,31 @@ search_index:
     keywords:
       - analytics
       - tag
-      - rename
+      - add
+      - remove
+      - list
+      - tags
       - current
       - session
-      - meaningful
-      - historical
-      - grouping
-      - comparison
+      - are
+      - persisted
+      - global
+      - sqlite
+      - support
+      - multi
+      - arrays
+      - action
+      - auto
+      - get
+      - heuristic
+      - suggestions
+      - based
+      - jsonl
+      - analysis
     path: analytics-engine/analytics-tag.yaml
-    description: Tag or rename the current session for meaningful historical grouping and comparison.
+    description: >-
+      Add, remove, or list tags on the current session. Tags are persisted in the global SQLite DB and support multi-tag
+      arrays. Use action=auto to get heuristic tag suggestions based on JSONL analysis.
     server: analytics-engine
   - name: analytics_export
     keywords:
@@ -928,15 +969,20 @@ search_index:
       - csv
       - markdown
       - format
-      - can
+      - supports
       - current
       - specific
       - historical
       - all
+      - projects
+      - scope
+      - all_projects
+      - filter
+      - tags
     path: analytics-engine/analytics-export.yaml
     description: >-
-      Export session data in JSON, CSV, or markdown format. Can export current session, a specific historical session,
-      or all historical data.
+      Export session data in JSON, CSV, or markdown format. Supports current session, a specific historical ' +
+      'session, all historical data, or all projects (scope="all_projects"). Filter by tags.
     server: analytics-engine
   - name: analytics_config
     keywords:
@@ -944,18 +990,55 @@ search_index:
       - config
       - view
       - update
+      - reload
       - engine
       - settings
-      - like
-      - refresh
-      - rates
-      - cost
-      - webhook
-      - urls
-      - anomaly
-      - detection
+      - supports
+      - dot
+      - notation
+      - keys
+      - action
+      - hot
+      - configuration
+      - from
+      - disk
+      - without
+      - restarting
     path: analytics-engine/analytics-config.yaml
-    description: View or update analytics engine settings like refresh rates, cost rates, webhook URLs, and anomaly detection.
+    description: >-
+      View, update, or reload analytics engine settings. Supports dot-notation keys. ' + 'Use action="reload" to
+      hot-reload configuration from disk without restarting.
+    server: analytics-engine
+  - name: analytics_sync
+    keywords:
+      - analytics
+      - sync
+      - claude
+      - jsonl
+      - session
+      - files
+      - into
+      - global
+      - sqlite
+      - database
+      - scope
+      - current
+      - project
+      - all
+      - projects
+      - discovered
+      - under
+      - supports
+      - incremental
+      - via
+      - byte
+      - offset
+      - tracking
+    path: analytics-engine/analytics_sync
+    description: >-
+      Sync Claude JSONL session files into the global analytics SQLite database. ' + 'Use scope="current" to sync the
+      current project, or scope="all" to sync all projects ' + 'discovered under ~/.claude/projects/. Supports
+      incremental sync via byte-offset tracking.
     server: analytics-engine
   - name: project_api_routes
     keywords:
