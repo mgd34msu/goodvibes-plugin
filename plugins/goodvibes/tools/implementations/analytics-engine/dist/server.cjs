@@ -27436,6 +27436,9 @@ var Aggregator = class _Aggregator {
    * @returns The current aggregated DashboardState.
    */
   getState() {
+    if (this.initialized) {
+      this.state = this.aggregate();
+    }
     return this.state;
   }
   /**
@@ -27638,7 +27641,7 @@ var Aggregator = class _Aggregator {
     const uptimeMs = now - startedAtMs;
     const sessionId = this.jsonlSessionId ?? this.safeCall(() => this.telemetry?.getCurrentSessionId(), null) ?? this.safeCall(() => this.session?.readCurrentSession()?.id, null) ?? "unknown";
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
     const jsonl = this.jsonlTotals;
     const hasJsonlData = this.jsonlRecords.length > 0;
     const tokens = {

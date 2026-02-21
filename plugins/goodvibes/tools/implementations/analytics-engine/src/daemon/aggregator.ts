@@ -838,7 +838,9 @@ export class Aggregator {
 
     // ── Telemetry summary (precision-engine data) ─────────────────────────
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
+    // Pass no session ID — let TelemetryReader resolve its own (8-char) session ID.
+    // The aggregator's sessionId may be a JSONL UUID which won't match the telemetry DB.
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
 
     // ── Token metrics: merge precision telemetry with JSONL API data ──────
     //

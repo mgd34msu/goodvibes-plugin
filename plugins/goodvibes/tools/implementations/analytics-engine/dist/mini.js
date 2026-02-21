@@ -1888,12 +1888,12 @@ var MemoryUpdater = class {
         reason: `${hotFiles.length} file(s) were read ${HIGH_READ_COUNT}+ times. Defaulting repeated reads to outline mode reduces token consumption.`
       });
     }
-    const { commands } = state.metrics;
-    if (commands.avg_duration_ms > SLOW_COMMAND_MS) {
+    const { commands: commands2 } = state.metrics;
+    if (commands2.avg_duration_ms > SLOW_COMMAND_MS) {
       patterns.push({
         id: "pat_analytics_slow_commands",
         name: "SlowCommandOptimisation",
-        description: `Commands averaged ${Math.round(commands.avg_duration_ms / 1e3)}s this session. Consider caching results, parallelising steps, or using incremental builds.`,
+        description: `Commands averaged ${Math.round(commands2.avg_duration_ms / 1e3)}s this session. Consider caching results, parallelising steps, or using incremental builds.`,
         when_to_use: "When command execution is a bottleneck in the development loop.",
         example_files: [],
         keywords: ["slow", "commands", "performance", "build", "optimisation"]
@@ -3019,6 +3019,9 @@ var Aggregator = class _Aggregator {
    * @returns The current aggregated DashboardState.
    */
   getState() {
+    if (this.initialized) {
+      this.state = this.aggregate();
+    }
     return this.state;
   }
   /**
@@ -3221,7 +3224,7 @@ var Aggregator = class _Aggregator {
     const uptimeMs = now - startedAtMs;
     const sessionId = this.jsonlSessionId ?? this.safeCall(() => this.telemetry?.getCurrentSessionId(), null) ?? this.safeCall(() => this.session?.readCurrentSession()?.id, null) ?? "unknown";
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
     const jsonl = this.jsonlTotals;
     const hasJsonlData = this.jsonlRecords.length > 0;
     const tokens = {
@@ -3366,7 +3369,7 @@ var Aggregator = class _Aggregator {
         }
       }
     }
-    const commands = (() => {
+    const commands2 = (() => {
       let jsonlCmdTotal = 0;
       let jsonlCmdFailures = 0;
       for (const tc of jsonlToolCalls) {
@@ -3413,7 +3416,7 @@ var Aggregator = class _Aggregator {
       created: createdFiles,
       conflicts: 0
     };
-    const metrics = { tokens, cache, cost, commands, agents, files };
+    const metrics = { tokens, cache, cost, commands: commands2, agents, files };
     const toolsBreakdown = telemetrySummary?.by_tool ?? {};
     const recentActivity = this.buildRecentActivity(jsonlToolCalls, agentActivities);
     const fileHotspots = this.buildFileHotspots(
@@ -3996,7 +3999,7 @@ function colorForHealth(status) {
 }
 __name(colorForHealth, "colorForHealth");
 function formatUptimeProgressive(ms) {
-  if (!isFinite(ms) || ms < 0) return "00h00m00s";
+  if (!isFinite(ms) || ms < 0) return "00h 00m 00s";
   const totalSeconds = Math.floor(ms / 1e3);
   const totalMinutes = Math.floor(totalSeconds / 60);
   const totalHours = Math.floor(totalMinutes / 60);
@@ -4008,11 +4011,11 @@ function formatUptimeProgressive(ms) {
   const mm = String(totalMinutes % 60).padStart(2, "0");
   const ss = String(totalSeconds % 60).padStart(2, "0");
   if (totalDays < 1) {
-    return `${hh}h${mm}m${ss}s`;
+    return `${hh}h ${mm}m ${ss}s`;
   }
   if (totalDays < 7) {
     const d = totalDays;
-    return `${d}d ${hh}h${mm}m`;
+    return `${d}d ${hh}h ${mm}m`;
   }
   if (totalDays < 30) {
     const w = totalWeeks;
@@ -4114,9 +4117,10 @@ function computeMetrics(state) {
   const cache = metrics.cache;
   const agents = metrics.agents;
   const files = metrics.files;
-  const commands = metrics.commands;
+  const commands2 = metrics.commands;
   const sessionId = state.session_id ? state.session_id.slice(0, SESSION_ID_LENGTH) : "no-session";
-  const uptime = formatUptimeProgressive(state.uptime_ms);
+  const startMs = state.started_at ? new Date(state.started_at).getTime() : Date.now();
+  const uptime = formatUptimeProgressive(Date.now() - startMs);
   const sessionCost = formatDollars(cost.total ?? 0);
   const apiInputTokens = formatNumber(tokens.api_input ?? 0);
   const apiOutputTokens = formatNumber(tokens.api_output ?? 0);
@@ -4130,10 +4134,11 @@ function computeMetrics(state) {
     (files.modified ?? 0) + (files.created ?? 0)
   );
   const conflicts = files.conflicts ?? 0;
-  const cmdTotal = formatNumber(commands.total ?? 0);
-  const cmdFails = formatNumber(commands.failures ?? 0);
-  const rawAvgMs = commands.avg_duration_ms ?? 0;
-  const cmdAvgSec = (rawAvgMs / 1e3).toFixed(1);
+  const rawTotal = commands2.total ?? 0;
+  const rawFails = commands2.failures ?? 0;
+  const cmdTotal = formatNumber(rawTotal);
+  const cmdPass = formatNumber(Math.max(0, rawTotal - rawFails));
+  const cmdFails = formatNumber(rawFails);
   const cacheHitRate = `${((cache.hit_rate ?? 0) * 100).toFixed(1)}%`;
   const rawCtx = state.context_percent ?? 0;
   const contextPercent = isFinite(rawCtx) ? Math.max(0, Math.min(100, rawCtx)) : 0;
@@ -4155,8 +4160,8 @@ function computeMetrics(state) {
     filesWritten,
     conflicts,
     cmdTotal,
+    cmdPass,
     cmdFails,
-    cmdAvgSec,
     cacheHitRate
   };
 }
@@ -4227,7 +4232,7 @@ var MiniRenderer = class {
     const borderColor = ansi.green;
     const innerWidth = w - 2;
     const m = computeMetrics(state);
-    const headerContent = ` GoodVibes Analytics ${ansi.dim}\u2500${ansi.reset} Session ID: ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} Uptime: ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${ansi.bold}${m.sessionCost}${ansi.reset} `;
+    const headerContent = ` GoodVibes Analytics ${ansi.dim}\u2500${ansi.reset} Session ID: ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} Uptime: ${m.uptime} `;
     const headerVisible = visibleLength(headerContent);
     const dashCount = Math.max(0, innerWidth - headerVisible);
     const dashes = `${ansi.dim}${ansi.box.horizontal.repeat(dashCount)}${ansi.reset}`;
@@ -4274,8 +4279,9 @@ var MiniRenderer = class {
       agentBarWidth,
       { thresholds: { warn: 0.5, alert: 0.84 } }
     );
+    const cmdsLabel = (commands.total ?? 0) >= 1e3 || (commands.failures ?? 0) >= 1e3 ? "Cmds: " : "Commands: ";
     const cmdsSection = padSection(
-      `Commands: ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
+      `${cmdsLabel}${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
       sectionWidth
     );
     const filesSection = padSection(
@@ -4291,7 +4297,7 @@ var MiniRenderer = class {
       sectionWidth
     );
     const cacheHitSection = padSection(
-      `GoodVibes Cache Hit: ${m.cacheHitRate}`,
+      `GoodVibes - Cache Hit: ${m.cacheHitRate}`,
       sectionWidth
     );
     const row3Content = buildSections([cmdsSection, filesSection, agentsSection, tokensSavedSection, cacheHitSection]);
