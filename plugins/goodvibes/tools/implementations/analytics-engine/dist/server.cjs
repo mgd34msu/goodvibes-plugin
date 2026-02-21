@@ -7214,8 +7214,8 @@ var init_types = __esm({
       refresh_rate_ms: 2e3,
       full_tui_refresh_rate_ms: 5e3,
       dashboard_refresh_rate_ms: 5e3,
-      cost_per_1k_input_tokens: 3e-3,
-      cost_per_1k_output_tokens: 0.015,
+      cost_per_1k_input_tokens: 0.015,
+      cost_per_1k_output_tokens: 0.075,
       budget: null,
       budget_warn_thresholds: [0.5, 0.8, 1],
       mini_budget_bar: false,
@@ -27488,12 +27488,6 @@ var Aggregator = class _Aggregator {
       cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
       cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
-    if (tokens.total === 0 && jsonl.api_input + jsonl.api_output > 0) {
-      const jsonlSum = jsonl.api_input + jsonl.api_output + jsonl.cache_read + jsonl.cache_write;
-      tokens.total = jsonlSum;
-      tokens.input = jsonl.api_input + jsonl.cache_read;
-      tokens.output = jsonl.api_output;
-    }
     const cache = this.buildCacheMetrics(telemetrySummary);
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
@@ -27543,17 +27537,28 @@ var Aggregator = class _Aggregator {
       start: a.spawnedAt,
       end: a.completedAt ?? nowIso
     }));
+    const events = [];
+    for (const w of agentWindows) {
+      events.push({ time: w.start, delta: 1 });
+      events.push({ time: w.end, delta: -1 });
+    }
+    events.sort((a, b) => {
+      const cmp = a.time.localeCompare(b.time);
+      if (cmp !== 0) return cmp;
+      return b.delta - a.delta;
+    });
     let maxConcurrent = 0;
-    for (const { start } of agentWindows) {
-      const concurrent = agentWindows.filter((w) => w.start <= start && w.end > start).length;
-      if (concurrent > maxConcurrent) maxConcurrent = concurrent;
+    let currentConcurrent = 0;
+    for (const { delta } of events) {
+      currentConcurrent += delta;
+      if (currentConcurrent > maxConcurrent) maxConcurrent = currentConcurrent;
     }
     const agents = {
       spawned: agentActivities.length > 0 ? agentActivities.length : sessionCounters?.agents_spawned ?? 0,
       max_concurrent: maxConcurrent,
       // peak overlap derived from spawn/complete timestamp windows
-      total_tokens: tokens.total,
-      // sum of all API tokens (input + output + cache)
+      total_tokens: 0,
+      // Per-agent token data requires subagent JSONL correlation (not yet implemented)
       active: activeAgents,
       completed: completedAgents
     };
@@ -27564,13 +27569,16 @@ var Aggregator = class _Aggregator {
     const uniqueReadFiles = /* @__PURE__ */ new Set();
     let createdFiles = 0;
     for (const tc of jsonlToolCalls) {
-      const toolName = (tc.name ?? "").toLowerCase();
+      const rawName = (tc.name ?? "").toLowerCase();
+      const toolName = rawName.includes("__") ? rawName.split("__").pop() : rawName;
       const inputPath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
       if (inputPath !== null) {
         if (toolName === "read" || toolName === "precision_read") {
           uniqueReadFiles.add(inputPath);
         } else if (toolName === "write" || toolName === "precision_write") {
           createdFiles++;
+        } else if (toolName === "edit" || toolName === "precision_edit") {
+          uniqueReadFiles.add(inputPath);
         }
       }
     }

@@ -6,7 +6,6 @@
 import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import type { DashboardState } from '../../../types.js';
-import { DEFAULT_CONFIG } from '../../../types.js';
 import type { GlobalDB } from '../../../data/global-db.js';
 import { MetricBox, BarChart } from '../components/index.js';
 import {
@@ -62,10 +61,8 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
 
   const maxToolCalls = toolItems.reduce((m, i) => Math.max(m, i.value), 0);
 
-  // API-level token cost (from JSONL data) — uses DEFAULT_CONFIG pricing constants
-  const apiInputCost = (tokens.api_input / 1000) * DEFAULT_CONFIG.cost_per_1k_input_tokens;
-  const apiOutputCost = (tokens.api_output / 1000) * DEFAULT_CONFIG.cost_per_1k_output_tokens;
-  const apiTotalCost = apiInputCost + apiOutputCost;
+  // Use aggregator-computed cost (respects config pricing and JSONL cost_usd).
+  const apiTotalCost = cost.total;
 
   return (
     <Box flexDirection="column" paddingX={1} paddingY={1} gap={1}>
@@ -152,7 +149,6 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
             { label: 'Active', value: formatNumber(agents.active) },
             { label: 'Done', value: formatNumber(agents.completed) },
             { label: 'Max Conc', value: formatNumber(agents.max_concurrent) },
-            { label: 'Tokens', value: formatNumber(agents.total_tokens) },
           ]}
         />
 
