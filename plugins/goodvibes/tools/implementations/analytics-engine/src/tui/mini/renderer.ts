@@ -415,8 +415,9 @@ export class MiniRenderer {
       { thresholds: { warn: 0.5, alert: 0.84 } },
     );
 
+    const cmdsLabel = (commands.total ?? 0) >= 1000 || (commands.failures ?? 0) >= 1000 ? 'Cmds: ' : 'Commands: ';
     const cmdsSection = padSection(
-      `Commands: ${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
+      `${cmdsLabel}${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
       sectionWidth,
     );
     const filesSection = padSection(
