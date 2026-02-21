@@ -135,25 +135,25 @@ describe('MiniRenderer', () => {
   // ── 1. Auto-width detection ─────────────────────────────────────────────────
 
   describe('auto-width detection', () => {
-    it('uses terminal width of 60 when process.stdout.columns is 60', () => {
+    it('uses MIN_WIDTH (160) when process.stdout.columns is 60 (below MIN_WIDTH)', () => {
       setColumns(60);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      expect(visibleWidth(lines[0]!)).toBe(60);
+      expect(visibleWidth(lines[0]!)).toBe(160);
     });
 
-    it('uses terminal width of 80 when process.stdout.columns is 80', () => {
+    it('uses MIN_WIDTH (160) when process.stdout.columns is 80 (below MIN_WIDTH)', () => {
       setColumns(80);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      expect(visibleWidth(lines[0]!)).toBe(80);
+      expect(visibleWidth(lines[0]!)).toBe(160);
     });
 
-    it('uses terminal width of 120 when process.stdout.columns is 120', () => {
-      setColumns(120);
+    it('uses terminal width of 160 when process.stdout.columns is 160 (at MIN_WIDTH)', () => {
+      setColumns(160);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      expect(visibleWidth(lines[0]!)).toBe(120);
+      expect(visibleWidth(lines[0]!)).toBe(160);
     });
 
     it('uses terminal width of 200 when process.stdout.columns is 200', () => {
@@ -163,32 +163,32 @@ describe('MiniRenderer', () => {
       expect(visibleWidth(lines[0]!)).toBe(200);
     });
 
-    it('falls back to DEFAULT_WIDTH (80) when process.stdout.columns is undefined', () => {
+    it('falls back to MIN_WIDTH (160) when process.stdout.columns is undefined', () => {
       setColumns(undefined);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      expect(visibleWidth(lines[0]!)).toBe(80);
+      expect(visibleWidth(lines[0]!)).toBe(160);
     });
 
-    it('falls back to DEFAULT_WIDTH (80) when process.stdout.columns is 0', () => {
+    it('falls back to MIN_WIDTH (160) when process.stdout.columns is 0', () => {
       setColumns(0);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      expect(visibleWidth(lines[0]!)).toBe(80);
+      expect(visibleWidth(lines[0]!)).toBe(160);
     });
 
-    it('uses MIN_WIDTH (60) when process.stdout.columns is less than MIN_WIDTH', () => {
+    it('uses MIN_WIDTH (160) when process.stdout.columns is less than MIN_WIDTH', () => {
       setColumns(40);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      expect(visibleWidth(lines[0]!)).toBe(60);
+      expect(visibleWidth(lines[0]!)).toBe(160);
     });
 
-    it('uses MIN_WIDTH (60) when process.stdout.columns is 1', () => {
+    it('uses MIN_WIDTH (160) when process.stdout.columns is 1', () => {
       setColumns(1);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      expect(visibleWidth(lines[0]!)).toBe(60);
+      expect(visibleWidth(lines[0]!)).toBe(160);
     });
   });
 
@@ -237,11 +237,11 @@ describe('MiniRenderer', () => {
       expect(widths[2]).toBe(widths[3]);
     });
 
-    it('all lines have visible width matching terminal width', () => {
+    it('all lines have visible width matching terminal width (MIN_WIDTH=160 clamps 80-col setting)', () => {
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
       lines.forEach((line) => {
-        expect(visibleWidth(line)).toBe(80);
+        expect(visibleWidth(line)).toBe(160);
       });
     });
   });
@@ -284,22 +284,22 @@ describe('MiniRenderer', () => {
     });
 
     it('line 3 contains "saved" (precision savings)', () => {
-      // Precision section (20-char width) may clip at 80 cols; use wider terminal to guarantee visibility
-      setColumns(120);
+      // All sections are visible at MIN_WIDTH=160
+      setColumns(160);
       const output = renderer.render(createMockState());
       expect(stripAnsi(output.split('\n')[2]!)).toContain('saved');
     });
 
     it('line 2 contains "API Cache:" (cache read tokens)', () => {
-      // API Cache section is clipped at 80 cols; use wider terminal
-      setColumns(120);
+      // All sections visible at MIN_WIDTH=160
+      setColumns(160);
       const output = renderer.render(createMockState());
       expect(stripAnsi(output.split('\n')[1]!)).toContain('API Cache:');
     });
 
     it('line 3 contains "Precision:" (precision savings label)', () => {
-      // Precision label may be clipped at 80 cols; use wider terminal
-      setColumns(120);
+      // All sections visible at MIN_WIDTH=160
+      setColumns(160);
       const output = renderer.render(createMockState());
       expect(stripAnsi(output.split('\n')[2]!)).toContain('Precision:');
     });
@@ -320,8 +320,8 @@ describe('MiniRenderer', () => {
     });
 
     it('line 2 contains "Cost:" (API-level session cost)', () => {
-      // Cost section is clipped at 80 cols; use wider terminal
-      setColumns(120);
+      // All 5 line-2 sections fit at 200 cols (5×32 + 4 separators×5 + 2 padding + 2 borders = 184 needed)
+      setColumns(200);
       const output = renderer.render(createMockState());
       expect(stripAnsi(output.split('\n')[1]!)).toContain('Cost:');
     });
@@ -491,8 +491,8 @@ describe('MiniRenderer', () => {
     });
 
     it('formats large token counts with K suffix', () => {
-      // Precision section (tokensSaved) clips at 80 cols — use wider terminal
-      setColumns(120);
+      // Precision section visible at MIN_WIDTH=160
+      setColumns(160);
       const state = createMockState({
         // saved tokens are shown in the Precision: section
         metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 75_000, efficiency: 0.4, api_input: 50_000, api_output: 25_000, cache_read: 0, cache_write: 0 } },
@@ -574,14 +574,14 @@ describe('MiniRenderer', () => {
     });
 
     it('fitToWidth truncates content that exceeds terminal width', () => {
-      // With MIN_WIDTH=60, even setColumns(1) produces width=60.
-      // Row content is wider than innerWidth (58), so fitToWidth truncation path runs.
+      // With MIN_WIDTH=160, even setColumns(1) produces width=160.
+      // Row content is wider than innerWidth (158), so fitToWidth truncation path runs.
       setColumns(1);
       const output = renderer.render(createMockState());
       const lines = output.split('\n');
-      // All lines must be exactly 60 visible chars (MIN_WIDTH)
+      // All lines must be exactly 160 visible chars (MIN_WIDTH)
       lines.forEach((line) => {
-        expect(visibleWidth(line)).toBe(60);
+        expect(visibleWidth(line)).toBe(160);
       });
     });
   });
@@ -618,12 +618,13 @@ describe('MiniRenderer', () => {
     });
 
     it('fallback box has correct width matching terminal columns', () => {
-      setColumns(100);
+      // MIN_WIDTH=160 clamps any width below 160; use 200 to test above MIN_WIDTH
+      setColumns(200);
       const output = renderer.render(null as any);
       const lines = output.split('\n');
       expect(lines).toHaveLength(4);
       lines.forEach((line) => {
-        expect(visibleWidth(line)).toBe(100);
+        expect(visibleWidth(line)).toBe(200);
       });
     });
   });
@@ -699,6 +700,39 @@ describe('MiniRenderer', () => {
       expect(writeSpy).toHaveBeenCalledTimes(2); // no more after stop
       writeSpy.mockRestore();
       vi.useRealTimers();
+    });
+  });
+
+  // ── 9. Config-driven dimensions ─────────────────────────────────────────────
+
+  describe('config-driven dimensions', () => {
+    it('respects custom mini_min_width from config', () => {
+      // Set terminal columns below the custom minimum
+      setColumns(100);
+      const customRenderer = new MiniRenderer({ mini_min_width: 180 } as any);
+      const output = customRenderer.render(createMockState());
+      const lines = output.split('\n');
+      // All lines should be clamped to the custom minimum of 180, not default 160
+      lines.forEach((line) => {
+        expect(visibleWidth(line)).toBe(180);
+      });
+    });
+
+    it('respects custom mini_section_width from config', () => {
+      // Use a wide terminal so content is not truncated
+      setColumns(200);
+      // section_width of 28 (non-default) means each padded section is 28 chars wide
+      const customRenderer = new MiniRenderer({ mini_section_width: 28 } as any);
+      const state = createMockState();
+      const output = customRenderer.render(state);
+      // The output should render without crashing and still produce 4 lines
+      expect(output.split('\n')).toHaveLength(4);
+      // Line 2 should still contain the section labels
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Context:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Input:');
+      // Line 3 should still contain its section labels
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Commands:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Files:');
     });
   });
 });

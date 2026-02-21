@@ -15,6 +15,10 @@ export interface AnalyticsConfig {
   budget_warn_thresholds: number[];
   /** When true, show the graphical budget progress bar in the mini dashboard header. Default: false. */
   mini_budget_bar?: boolean;
+  /** Minimum terminal width for mini dashboard rendering (default: 160). */
+  mini_min_width?: number;
+  /** Uniform width for each section column in mini dashboard lines 2-3 (default: 32). */
+  mini_section_width?: number;
   /**
    * Claude context window size in tokens used to compute context_percent.
    * Defaults to 200_000 (Claude's current context window).

@@ -3493,12 +3493,13 @@ function colorForHealth(status) {
 __name(colorForHealth, "colorForHealth");
 
 // src/tui/mini/renderer.ts
-var MIN_WIDTH = 60;
+var MIN_WIDTH = 160;
+var SECTION_WIDTH = 32;
 var DEFAULT_WIDTH = 80;
 var SESSION_ID_LENGTH = 8;
-function getTerminalWidth() {
+function getTerminalWidth(minWidth = MIN_WIDTH) {
   const cols = process.stdout?.columns;
-  return Math.max(MIN_WIDTH, cols != null && cols > 0 ? cols : DEFAULT_WIDTH);
+  return Math.max(minWidth, cols != null && cols > 0 ? cols : DEFAULT_WIDTH);
 }
 __name(getTerminalWidth, "getTerminalWidth");
 function visibleLength(str) {
@@ -3665,7 +3666,9 @@ var MiniRenderer = class {
    * @returns 4-line string with ANSI color codes
    */
   render(state) {
-    const w = getTerminalWidth();
+    const minWidth = this.config?.mini_min_width ?? MIN_WIDTH;
+    const sectionWidth = this.config?.mini_section_width ?? SECTION_WIDTH;
+    const w = getTerminalWidth(minWidth);
     if (!isValidState(state)) {
       return renderFallback(w);
     }
@@ -3697,28 +3700,23 @@ var MiniRenderer = class {
     const ctxColor = m.contextPercent >= 80 ? ansi.red : m.contextPercent >= 50 ? ansi.yellow : ansi.green;
     const ctxSection = padSection(
       `Context: ${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
-      14
-      // "Context: 25.0%" = 14 visible; fits all values without clipping
+      sectionWidth
     );
     const apiInSection = padSection(
       `API Input: ${ansi.bold}${m.apiInputTokens}${ansi.reset}`,
-      16
-      // "API Input: 1.2M" = 15 visible; 16 avoids clipping large values
+      sectionWidth
     );
     const apiOutSection = padSection(
       `API Output: ${ansi.bold}${m.apiOutputTokens}${ansi.reset}`,
-      15
-      // "API Output: 45k" = 15 visible
+      sectionWidth
     );
     const apiCacheSection = padSection(
       `API Cache: ${m.cacheReadTokens}`,
-      14
-      // "API Cache: 890k" = 15 visible; 14 clips rare overflow
+      sectionWidth
     );
     const costSection = padSection(
       `Cost: ${m.sessionCost}`,
-      11
-      // "Cost: $1.23" = 11 visible
+      sectionWidth
     );
     const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, apiCacheSection, costSection]);
     const line2 = buildRow(row2Content, borderColor, w);
@@ -3732,23 +3730,19 @@ var MiniRenderer = class {
     );
     const cmdsSection = padSection(
       `Commands: ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
-      17
-      // "Commands: 12 (1✗ 1.2s)" — reduced width for 80-col fit
+      sectionWidth
     );
     const filesSection = padSection(
       conflictStr ? `Files: ${m.filesRead}r ${m.filesWritten}w ${conflictStr}` : `Files: ${m.filesRead}r ${m.filesWritten}w`,
-      18
-      // "Files: 42r 5w 3⚡" = 17 visible; 18 accommodates conflict indicator
+      sectionWidth
     );
     const agentsSection = padSection(
       `Agents: ${agentBar} ${m.agentsActive}/${configuredMax}`,
-      16
-      // "Agents: [██░░░░] 2/6" — bar is 8 chars + label + fraction
+      sectionWidth
     );
     const precSection = padSection(
       `Precision: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
-      24
-      // "Precision: 3.0k saved" = 22 visible; 24 shows full savings at wider terminals
+      sectionWidth
     );
     const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);
     const line3 = buildRow(row3Content, borderColor, w);
