@@ -226,7 +226,7 @@ export class DataWatcher extends EventEmitter {
    * Paths that do not yet exist are watched via their parent directory.
    */
   private attachWatchers(): void {
-    const entries: Array<{ targetPath: string; event: WatcherEventName }> = [
+    const entries: Array<{ targetPath: string; event: Exclude<WatcherEventName, 'jsonl-records'> }> = [
       {
         targetPath: join(this.goodvibesDir, 'telemetry', 'telemetry.db'),
         event: 'telemetry-change',

@@ -198,10 +198,10 @@ export class JSONLReader {
       const record = parsed as Record<string, unknown>;
       const type = record['type'];
 
-      if (type === 'assistant') return record as JSONLAssistantRecord;
-      if (type === 'user') return record as JSONLUserRecord;
-      if (type === 'progress') return record as JSONLProgressRecord;
-      if (type === 'file-history-snapshot') return record as JSONLFileHistoryRecord;
+      if (type === 'assistant') return record as unknown as JSONLAssistantRecord;
+      if (type === 'user') return record as unknown as JSONLUserRecord;
+      if (type === 'progress') return record as unknown as JSONLProgressRecord;
+      if (type === 'file-history-snapshot') return record as unknown as JSONLFileHistoryRecord;
 
       // Unknown type — return null silently. Format may have evolved.
       return null;
