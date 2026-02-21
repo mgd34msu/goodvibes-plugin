@@ -12,6 +12,8 @@ var init_gitignore = __esm({
 });
 
 // src/session-end/index.ts
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync, existsSync as existsSync2 } from "node:fs";
 import * as fs3 from "fs/promises";
 import { join as join3 } from "path";
 
@@ -451,6 +453,32 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
 
 // src/session-end/index.ts
 var MS_PER_MINUTE = 6e4;
+function cleanupDashboardPanes(sessionId) {
+  try {
+    const goodvibesDir = process.env.GOODVIBES_DIR || join3(process.env.CLAUDE_PROJECT_DIR || process.cwd(), ".goodvibes");
+    const stateFile = join3(goodvibesDir, "active-panes.json");
+    if (!existsSync2(stateFile)) return;
+    let allState = {};
+    try {
+      allState = JSON.parse(readFileSync(stateFile, "utf-8"));
+    } catch {
+      return;
+    }
+    const entry = allState[sessionId];
+    if (!entry) return;
+    for (const pane of [entry.mini, entry.full]) {
+      if (pane !== null && pane !== void 0) {
+        try {
+          execFileSync("tmux", ["kill-pane", "-t", pane.paneId], { timeout: 5e3 });
+        } catch {
+        }
+      }
+    }
+    delete allState[sessionId];
+    writeFileSync(stateFile, JSON.stringify(allState, null, 2));
+  } catch {
+  }
+}
 async function runSessionEndHook() {
   try {
     debug("SessionEnd hook starting");
@@ -459,6 +487,7 @@ async function runSessionEndHook() {
     debug("SessionEnd received input", {
       session_id: input.session_id
     });
+    cleanupDashboardPanes(input.session_id);
     const analytics = await loadAnalytics();
     if (analytics) {
       analytics.ended_at = (/* @__PURE__ */ new Date()).toISOString();

@@ -5,6 +5,8 @@
  * Handles cleanup, logging, and saving session state.
  */
 
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import * as fs from 'fs/promises';
 import { join } from 'path';
 
@@ -24,6 +26,52 @@ import {
 /** Milliseconds per minute for duration calculation. */
 const MS_PER_MINUTE = 60000;
 
+/**
+ * Kill any tmux panes registered for this session in .goodvibes/active-panes.json.
+ * Best-effort: never throws. Removes the session entry after cleanup.
+ */
+function cleanupDashboardPanes(sessionId: string): void {
+  try {
+    const goodvibesDir = process.env.GOODVIBES_DIR
+      || join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.goodvibes');
+    const stateFile = join(goodvibesDir, 'active-panes.json');
+
+    if (!existsSync(stateFile)) return;
+
+    type PaneEntry = { paneId: string; pid: number } | null;
+    type PaneState = Record<string, { mini: PaneEntry; full: PaneEntry }>;
+
+    let allState: PaneState = {};
+    try {
+      allState = JSON.parse(readFileSync(stateFile, 'utf-8')) as PaneState;
+    } catch {
+      return; // Corrupt file — nothing to clean up
+    }
+
+    const entry = allState[sessionId];
+    if (!entry) return;
+
+    // Kill each tracked pane (best-effort per pane)
+    for (const pane of [entry.mini, entry.full]) {
+      if (pane !== null && pane !== undefined) {
+        try {
+          execFileSync('tmux', ['kill-pane', '-t', pane.paneId], { timeout: 5000 });
+        } catch {
+          // Pane already gone — ignore
+        }
+      }
+    }
+
+    // Remove this session entry
+    delete allState[sessionId];
+
+    // Always write back (even if empty) to avoid race with concurrent writers
+    writeFileSync(stateFile, JSON.stringify(allState, null, 2));
+  } catch {
+    // Best-effort — never throw from cleanup
+  }
+}
+
 /** Main entry point for session-end hook. Finalizes analytics and saves session summary. */
 async function runSessionEndHook(): Promise<void> {
   try {
@@ -36,6 +84,9 @@ async function runSessionEndHook(): Promise<void> {
     debug('SessionEnd received input', {
       session_id: input.session_id,
     });
+
+    // Clean up any analytics dashboard panes for this session
+    cleanupDashboardPanes(input.session_id);
 
     const analytics = await loadAnalytics();
 

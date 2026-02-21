@@ -458,11 +458,11 @@ export class MiniRenderer {
    * Clears the terminal and re-renders on each interval tick.
    *
    * @param getState - Callback that returns the latest dashboard state
-   * @param intervalMs - Refresh interval in milliseconds (default: 2000)
+   * @param intervalMs - Refresh interval in milliseconds (default: 1000)
    */
   startLoop(
     getState: () => DashboardState,
-    intervalMs: number = 2000,
+    intervalMs: number = 1000,
   ): void {
     if (this.loopHandle !== null) {
       this.stopLoop();

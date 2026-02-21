@@ -30,7 +30,7 @@ var init_types = __esm({
       auto_start_mini: true,
       auto_start_full: false,
       auto_start_dashboard: false,
-      refresh_rate_ms: 2e3,
+      refresh_rate_ms: 1e3,
       full_tui_refresh_rate_ms: 5e3,
       dashboard_refresh_rate_ms: 5e3,
       cost_per_1k_input_tokens: 3e-3,
@@ -2041,7 +2041,30 @@ var init_types2 = __esm({
 });
 
 // src/handlers/dashboard.ts
+import * as fs from "node:fs";
 import { join as join12, resolve as resolve4 } from "node:path";
+function persistPaneState(sessionId) {
+  try {
+    const goodvibesDir = resolve4(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+    const stateFile = join12(goodvibesDir, "active-panes.json");
+    let allState = {};
+    try {
+      const raw = fs.readFileSync(stateFile, "utf-8");
+      allState = JSON.parse(raw);
+    } catch {
+    }
+    const status = getManager().getStatus();
+    const mini = status.mini !== null ? { paneId: status.mini.paneId, pid: status.mini.pid } : null;
+    const full = status.full !== null ? { paneId: status.full.paneId, pid: status.full.pid } : null;
+    if (mini === null && full === null) {
+      delete allState[sessionId];
+    } else {
+      allState[sessionId] = { mini, full };
+    }
+    fs.writeFileSync(stateFile, JSON.stringify(allState, null, 2));
+  } catch {
+  }
+}
 function getManager() {
   if (_manager === null) {
     _manager = new TmuxManager(DEFAULT_CONFIG.tmux);
@@ -2068,7 +2091,7 @@ function buildCommand(target) {
   const safeDir = absGoodvibesDir.replace(/["\`$]/g, "$&");
   return `GOODVIBES_DIR="${safeDir}" node "${join12(distDir, `${target}.${ext}`)}"`;
 }
-function handleStart(input) {
+function handleStart(input, sessionId) {
   const detection = detectTmux();
   if (!detection.inSession) {
     const fallback = getFallbackMode();
@@ -2095,6 +2118,7 @@ Fallback mode: ${fallback}.
       if (manager.isPaneAlive(target)) {
         manager.closePane(target);
         lines.push(`Stopped ${target} dashboard (toggled off).`);
+        persistPaneState(sessionId);
         continue;
       }
       const paneInfo = manager.createPane(target, buildCommand(target));
@@ -2104,6 +2128,7 @@ Fallback mode: ${fallback}.
       lines.push(
         `Started ${target} dashboard in pane ${paneInfo.paneId} (PID ${paneInfo.pid}).`
       );
+      persistPaneState(sessionId);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       lines.push(`Failed to toggle ${target} dashboard: ${message}`);
@@ -2111,7 +2136,7 @@ Fallback mode: ${fallback}.
   }
   return text(lines.join("\n"));
 }
-function handleStop(input) {
+function handleStop(input, sessionId) {
   const manager = getManager();
   const targets = resolveTargets(input.target);
   const lines = [];
@@ -2124,6 +2149,7 @@ function handleStop(input) {
       lines.push(`${target} dashboard was not running.`);
     }
   }
+  persistPaneState(sessionId);
   return text(lines.join("\n"));
 }
 function handleStatus() {
@@ -2178,21 +2204,23 @@ var init_dashboard = __esm({
     init_detect();
     init_types();
     init_types2();
+    __name(persistPaneState, "persistPaneState");
     _manager = null;
     __name(getManager, "getManager");
     __name(normalizeTarget, "normalizeTarget");
     __name(buildCommand, "buildCommand");
-    handleDashboard = /* @__PURE__ */ __name(async (_aggregator, input) => {
+    handleDashboard = /* @__PURE__ */ __name(async (aggregator, input) => {
       try {
         const normalizedInput = {
           ...input,
           target: normalizeTarget(input.target)
         };
+        const sessionId = aggregator.getState().session_id;
         switch (normalizedInput.action) {
           case "start":
-            return handleStart(normalizedInput);
+            return handleStart(normalizedInput, sessionId);
           case "stop":
-            return handleStop(normalizedInput);
+            return handleStop(normalizedInput, sessionId);
           case "status":
             return handleStatus();
           default: {
@@ -2833,7 +2861,7 @@ var init_budget = __esm({
 });
 
 // src/data/tag-store.ts
-import { readFileSync as readFileSync8, existsSync as existsSync9, readdirSync as readdirSync3, statSync as statSync7 } from "node:fs";
+import { readFileSync as readFileSync9, existsSync as existsSync9, readdirSync as readdirSync3, statSync as statSync7 } from "node:fs";
 import { join as join13, resolve as resolve5 } from "node:path";
 import { homedir as homedir5 } from "node:os";
 function resolveJsonlPath(sessionId, jsonlBase = join13(homedir5(), ".claude", "projects")) {
@@ -3099,7 +3127,7 @@ ${tailText}`;
         if (!existsSync9(jsonlPath)) return null;
         let rawContent;
         try {
-          rawContent = readFileSync8(jsonlPath, "utf-8");
+          rawContent = readFileSync9(jsonlPath, "utf-8");
         } catch {
           return null;
         }
@@ -3292,7 +3320,7 @@ var init_tag = __esm({
 });
 
 // src/data/historical-store.ts
-import { existsSync as existsSync10, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync9, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import { existsSync as existsSync10, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync10, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync5 } from "node:fs";
 import * as path4 from "node:path";
 function _emptyMetrics() {
   return {
@@ -3378,7 +3406,7 @@ var init_historical_store = __esm({
         const filePath = path4.join(this.sessionsDir, `${archive.session_id}.json`);
         const content = JSON.stringify(archive, null, 2);
         const tmpPath = path4.join(this.sessionsDir, `.tmp-${archive.session_id}-${Date.now()}.json`);
-        writeFileSync4(tmpPath, content, "utf-8");
+        writeFileSync5(tmpPath, content, "utf-8");
         renameSync2(tmpPath, filePath);
         this.prune();
       }
@@ -3591,12 +3619,12 @@ var init_historical_store = __esm({
         this.ensureDir();
         const filePath = path4.join(this.sessionsDir, `${sessionId}.json`);
         const tmpPath = path4.join(this.sessionsDir, `.tmp-${sessionId}-${Date.now()}.json`);
-        writeFileSync4(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
+        writeFileSync5(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
         renameSync2(tmpPath, filePath);
       }
       _readFile(filePath) {
         try {
-          const raw = readFileSync9(filePath, "utf-8");
+          const raw = readFileSync10(filePath, "utf-8");
           const parsed = JSON.parse(raw);
           if (!parsed || typeof parsed.session_id !== "string" || typeof parsed.started_at !== "string") {
             return null;
@@ -3613,7 +3641,7 @@ var init_historical_store = __esm({
 });
 
 // src/handlers/export.ts
-import * as fs from "node:fs";
+import * as fs2 from "node:fs";
 import * as path5 from "node:path";
 function extractSections(state, sections) {
   const result = {};
@@ -3772,8 +3800,8 @@ async function handleExport(aggregator, input, goodvibesDir) {
     }
     if (input.output_path) {
       const absPath = path5.resolve(input.output_path);
-      await fs.promises.mkdir(path5.dirname(absPath), { recursive: true });
-      await fs.promises.writeFile(absPath, rendered, "utf-8");
+      await fs2.promises.mkdir(path5.dirname(absPath), { recursive: true });
+      await fs2.promises.writeFile(absPath, rendered, "utf-8");
       return text(
         `Export written to: ${absPath}
 
@@ -3803,7 +3831,7 @@ var init_export = __esm({
 });
 
 // src/handlers/config.ts
-import * as fs2 from "node:fs";
+import * as fs3 from "node:fs";
 import * as path6 from "node:path";
 function getByPath(obj, keyPath) {
   const segments = keyPath.split(".");
@@ -3831,8 +3859,8 @@ function setByPath(obj, keyPath, value) {
 }
 async function persistConfig(goodvibesDir, config) {
   const configPath = path6.join(goodvibesDir, CONFIG_FILENAME);
-  await fs2.promises.mkdir(goodvibesDir, { recursive: true });
-  await fs2.promises.writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
+  await fs3.promises.mkdir(goodvibesDir, { recursive: true });
+  await fs3.promises.writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
 async function handleConfig(aggregator, input, goodvibesDir) {
   try {
@@ -3918,7 +3946,7 @@ var init_config2 = __esm({
 });
 
 // src/data/jsonl-scanner.ts
-import * as fs3 from "node:fs";
+import * as fs4 from "node:fs";
 import * as path7 from "node:path";
 import { homedir as homedir6 } from "node:os";
 var JSONLScanner;
@@ -3955,7 +3983,7 @@ var init_jsonl_scanner = __esm({
         const files = [];
         let projectErrors = 0;
         try {
-          const entries = fs3.readdirSync(expanded, { withFileTypes: true });
+          const entries = fs4.readdirSync(expanded, { withFileTypes: true });
           for (const entry of entries) {
             if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
             const filePath = path7.join(expanded, entry.name);
@@ -3982,7 +4010,7 @@ var init_jsonl_scanner = __esm({
         let projectErrors = 0;
         let projectDirs;
         try {
-          const entries = fs3.readdirSync(expanded, { withFileTypes: true });
+          const entries = fs4.readdirSync(expanded, { withFileTypes: true });
           projectDirs = entries.filter((e) => e.isDirectory()).map((e) => path7.join(expanded, e.name));
         } catch {
           return { files: [], projectsScanned: 0, projectErrors: 1 };
@@ -4008,14 +4036,14 @@ var init_jsonl_scanner = __esm({
         const expanded = this.expandTilde(this.projectsBaseDir);
         let projectDirs;
         try {
-          const entries = fs3.readdirSync(expanded, { withFileTypes: true });
+          const entries = fs4.readdirSync(expanded, { withFileTypes: true });
           projectDirs = entries.filter((e) => e.isDirectory()).map((e) => path7.join(expanded, e.name));
         } catch {
           return null;
         }
         for (const dir of projectDirs) {
           try {
-            const files = fs3.readdirSync(dir);
+            const files = fs4.readdirSync(dir);
             const match = files.some(
               (f) => f === `${sessionId}.jsonl` || f.startsWith(sessionId)
             );
@@ -4036,7 +4064,7 @@ var init_jsonl_scanner = __esm({
       buildFileInfo(projectHash, filename, filePath) {
         let sizeBytes;
         try {
-          sizeBytes = fs3.statSync(filePath).size;
+          sizeBytes = fs4.statSync(filePath).size;
         } catch {
           return null;
         }

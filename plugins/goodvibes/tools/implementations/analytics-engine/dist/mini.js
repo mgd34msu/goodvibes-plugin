@@ -1208,7 +1208,7 @@ var DEFAULT_CONFIG = {
   auto_start_mini: true,
   auto_start_full: false,
   auto_start_dashboard: false,
-  refresh_rate_ms: 2e3,
+  refresh_rate_ms: 1e3,
   full_tui_refresh_rate_ms: 5e3,
   dashboard_refresh_rate_ms: 5e3,
   cost_per_1k_input_tokens: 3e-3,
@@ -4317,9 +4317,9 @@ var MiniRenderer = class {
    * Clears the terminal and re-renders on each interval tick.
    *
    * @param getState - Callback that returns the latest dashboard state
-   * @param intervalMs - Refresh interval in milliseconds (default: 2000)
+   * @param intervalMs - Refresh interval in milliseconds (default: 1000)
    */
-  startLoop(getState, intervalMs = 2e3) {
+  startLoop(getState, intervalMs = 1e3) {
     if (this.loopHandle !== null) {
       this.stopLoop();
     }

@@ -53,7 +53,7 @@ export const DEFAULT_CONFIG: Readonly<AnalyticsConfig> = {
   auto_start_mini: true,
   auto_start_full: false,
   auto_start_dashboard: false,
-  refresh_rate_ms: 2000,
+  refresh_rate_ms: 1000,
   full_tui_refresh_rate_ms: 5000,
   dashboard_refresh_rate_ms: 5000,
   cost_per_1k_input_tokens: 0.003,

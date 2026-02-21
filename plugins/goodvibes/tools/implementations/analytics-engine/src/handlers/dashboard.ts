@@ -11,6 +11,7 @@
  *   - 'dashboard' is the canonical target name; 'full' is a backward-compatible alias
  */
 
+import * as fs from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { AnalyticsDashboardInput } from '../schemas/tools.js';
 import type { Aggregator } from '../daemon/aggregator.js';
@@ -28,6 +29,46 @@ export type DashboardHandler = (
   aggregator: Aggregator,
   input: AnalyticsDashboardInput,
 ) => Promise<HandlerResponse>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pane state persistence
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Persist current pane state for the given session to .goodvibes/active-panes.json.
+ * Best-effort: never throws. Maps session IDs to their tracked pane info.
+ */
+function persistPaneState(sessionId: string): void {
+  try {
+    const goodvibesDir = resolve(process.env['GOODVIBES_DIR'] ?? '.goodvibes');
+    const stateFile = join(goodvibesDir, 'active-panes.json');
+
+    // Read existing state (other sessions may have entries)
+    let allState: Record<string, { mini: { paneId: string; pid: number } | null; full: { paneId: string; pid: number } | null }> = {};
+    try {
+      const raw = fs.readFileSync(stateFile, 'utf-8');
+      allState = JSON.parse(raw) as typeof allState;
+    } catch {
+      // File doesn't exist or invalid JSON — start fresh
+    }
+
+    // Get current pane status for this session
+    const status = getManager().getStatus();
+    const mini = status.mini !== null ? { paneId: status.mini.paneId, pid: status.mini.pid } : null;
+    const full = status.full !== null ? { paneId: status.full.paneId, pid: status.full.pid } : null;
+
+    if (mini === null && full === null) {
+      // No panes running — remove session entry
+      delete allState[sessionId];
+    } else {
+      allState[sessionId] = { mini, full };
+    }
+
+    fs.writeFileSync(stateFile, JSON.stringify(allState, null, 2));
+  } catch {
+    // Best-effort — never throw
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Module-level singleton
@@ -98,13 +139,13 @@ function buildCommand(target: 'mini' | 'full'): string {
  *   - stop   — kill tracked pane(s) and clear internal state.
  *   - status — report live / dead state for each target slot.
  *
- * @param _aggregator - Aggregator instance (unused for dashboard management;
- *                      included for consistent handler signature).
+ * @param aggregator - Aggregator instance (provides session_id for pane state
+ *                      persistence).
  * @param input       - Validated AnalyticsDashboardInput.
  * @returns MCP response with descriptive text.
  */
 export const handleDashboard: DashboardHandler = async (
-  _aggregator: Aggregator,
+  aggregator: Aggregator,
   input: AnalyticsDashboardInput,
 ): Promise<HandlerResponse> => {
   try {
@@ -114,11 +155,13 @@ export const handleDashboard: DashboardHandler = async (
       target: normalizeTarget(input.target),
     };
 
+    const sessionId = aggregator.getState().session_id;
+
     switch (normalizedInput.action) {
       case 'start':
-        return handleStart(normalizedInput);
+        return handleStart(normalizedInput, sessionId);
       case 'stop':
-        return handleStop(normalizedInput);
+        return handleStop(normalizedInput, sessionId);
       case 'status':
         return handleStatus();
       default: {
@@ -143,7 +186,7 @@ export const handleDashboard: DashboardHandler = async (
  * If it is not running, it is started (toggle on).
  * Checks tmux availability first; returns fallback guidance when unavailable.
  */
-function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
+function handleStart(input: AnalyticsDashboardInput, sessionId: string): HandlerResponse {
   const detection = detectTmux();
   if (!detection.inSession) {
     const fallback = getFallbackMode();
@@ -175,6 +218,7 @@ function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
       if (manager.isPaneAlive(target)) {
         manager.closePane(target);
         lines.push(`Stopped ${target} dashboard (toggled off).`);
+        persistPaneState(sessionId);
         continue;
       }
 
@@ -186,6 +230,7 @@ function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
       lines.push(
         `Started ${target} dashboard in pane ${paneInfo.paneId} (PID ${paneInfo.pid}).`,
       );
+      persistPaneState(sessionId);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       lines.push(`Failed to toggle ${target} dashboard: ${message}`);
@@ -198,7 +243,7 @@ function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
 /**
  * Stop one or both dashboard panes.
  */
-function handleStop(input: AnalyticsDashboardInput): HandlerResponse {
+function handleStop(input: AnalyticsDashboardInput, sessionId: string): HandlerResponse {
   const manager = getManager();
   const targets = resolveTargets(input.target);
   const lines: string[] = [];
@@ -212,6 +257,7 @@ function handleStop(input: AnalyticsDashboardInput): HandlerResponse {
       lines.push(`${target} dashboard was not running.`);
     }
   }
+  persistPaneState(sessionId);
 
   return text(lines.join('\n'));
 }

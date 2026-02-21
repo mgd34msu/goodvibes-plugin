@@ -1209,7 +1209,7 @@ var DEFAULT_CONFIG = {
   auto_start_mini: true,
   auto_start_full: false,
   auto_start_dashboard: false,
-  refresh_rate_ms: 2e3,
+  refresh_rate_ms: 1e3,
   full_tui_refresh_rate_ms: 5e3,
   dashboard_refresh_rate_ms: 5e3,
   cost_per_1k_input_tokens: 3e-3,
