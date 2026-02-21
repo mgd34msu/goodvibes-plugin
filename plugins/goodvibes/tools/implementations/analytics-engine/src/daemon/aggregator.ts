@@ -22,7 +22,7 @@
 
 import { join, dirname, basename } from 'node:path';
 import { homedir } from 'node:os';
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 
 import type {
   AnalyticsConfig,
@@ -111,11 +111,33 @@ function emptySessionMetrics(): SessionMetrics {
   };
 }
 
+/**
+ * Read `max_parallel_agent_chains` from project goodvibes.json, falling back
+ * to the global ~/.goodvibes/goodvibes.json, then to a default of 6.
+ */
+function readMaxAgentChains(goodvibesDir: string): number {
+  const DEFAULT = 6;
+  // Project-level overrides global.
+  for (const configPath of [
+    join(goodvibesDir, 'goodvibes.json'),
+    join(homedir(), '.goodvibes', 'goodvibes.json'),
+  ]) {
+    try {
+      const raw = readFileSync(configPath, 'utf8');
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const val = parsed['max_parallel_agent_chains'];
+      if (typeof val === 'number' && val > 0) return val;
+    } catch { /* file missing or unparseable — try next */ }
+  }
+  return DEFAULT;
+}
+
 /** Build an empty DashboardState. */
 function emptyDashboardState(sessionId: string, projectHash: string, startedAt: string): DashboardState {
   return {
     session_id: sessionId,
     project_hash: projectHash,
+    max_agent_chains: 6,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -928,9 +950,12 @@ export class Aggregator {
     const agentProfiles: AgentProfile[] = this.buildAgentProfiles(agentActivities);
 
     // ── Anomaly detection ─────────────────────────────────────────────────
+    const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
+
     const partialState: DashboardState = {
       session_id: sessionId,
       project_hash: basename(dirname(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -968,6 +993,7 @@ export class Aggregator {
     return {
       session_id: sessionId,
       project_hash: basename(dirname(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,

@@ -173,7 +173,7 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   const savings = formatDollars(cost.saved ?? 0);
   const cacheRate = formatPercent(cache.hit_rate ?? 0);
   const agentsActive = agents.active ?? 0;
-  const agentsMax = agents.max_concurrent ?? 0;
+  const agentsMax = agents.max_concurrent ?? 0;  // observed peak (for display only)
 
   const filesRead = formatNumber(files.unique_read ?? 0);
   const filesWritten = formatNumber(
@@ -373,15 +373,17 @@ export class MiniRenderer {
       { thresholds: { warn: 0.4, alert: 0.7 }, invertColor: true },
     );
     // Agent bar: 6 chars (one per slot), green <50%, yellow 50-83%, red >83%
+    // Use configured max_agent_chains for bar denominator, not observed peak.
+    const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
     const agentBar = renderBar(
-      m.agentsActive, Math.max(1, m.agentsMax), 6,
+      m.agentsActive, configuredMax, 6,
       { thresholds: { warn: 0.5, alert: 0.84 } },
     );
     const row2Content = buildSections([
       `api ${ansi.bold}${m.apiInputTokens}${ansi.reset}in ${ansi.bold}${m.apiOutputTokens}${ansi.reset}out`,
       `cache-read ${m.cacheReadTokens}`,
       showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
-      showBars ? `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}` : `agents ${m.agentsActive}/${m.agentsMax}`,
+      showBars ? `agents ${agentBar} ${m.agentsActive}/${configuredMax}` : `agents ${m.agentsActive}/${configuredMax}`,
     ]);
     const line2 = buildRow(row2Content, borderColor, w);
 

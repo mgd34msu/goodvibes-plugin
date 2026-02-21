@@ -10,7 +10,7 @@ import { render } from "ink";
 // src/daemon/aggregator.ts
 import { join as join8, dirname as dirname3, basename as basename3 } from "node:path";
 import { homedir } from "node:os";
-import { existsSync as existsSync5, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
+import { existsSync as existsSync5, readFileSync as readFileSync5, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
 
 // src/data/telemetry-reader.ts
 import initSqlJs from "sql.js";
@@ -2498,10 +2498,28 @@ function emptySessionMetrics() {
   };
 }
 __name(emptySessionMetrics, "emptySessionMetrics");
+function readMaxAgentChains(goodvibesDir2) {
+  const DEFAULT = 6;
+  for (const configPath of [
+    join8(goodvibesDir2, "goodvibes.json"),
+    join8(homedir(), ".goodvibes", "goodvibes.json")
+  ]) {
+    try {
+      const raw = readFileSync5(configPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const val = parsed["max_parallel_agent_chains"];
+      if (typeof val === "number" && val > 0) return val;
+    } catch {
+    }
+  }
+  return DEFAULT;
+}
+__name(readMaxAgentChains, "readMaxAgentChains");
 function emptyDashboardState(sessionId, projectHash, startedAt) {
   return {
     session_id: sessionId,
     project_hash: projectHash,
+    max_agent_chains: 6,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -3083,9 +3101,11 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
       project_hash: basename3(dirname3(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -3114,6 +3134,7 @@ var Aggregator = class _Aggregator {
     return {
       session_id: sessionId,
       project_hash: basename3(dirname3(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -4591,7 +4612,7 @@ var HelpOverlay = /* @__PURE__ */ __name(() => /* @__PURE__ */ jsxs11(Box11, { f
 
 // src/config.ts
 import {
-  readFileSync as readFileSync5,
+  readFileSync as readFileSync6,
   writeFileSync as writeFileSync2,
   existsSync as existsSync6,
   watchFile,
@@ -4609,7 +4630,7 @@ var GLOBAL_CONFIG_PATH = join9(
 function tryLoadFile(filePath) {
   if (!existsSync6(filePath)) return null;
   try {
-    const raw = readFileSync5(filePath, "utf-8");
+    const raw = readFileSync6(filePath, "utf-8");
     const parsed = JSON.parse(raw);
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
       return { ...DEFAULT_CONFIG, ...parsed };

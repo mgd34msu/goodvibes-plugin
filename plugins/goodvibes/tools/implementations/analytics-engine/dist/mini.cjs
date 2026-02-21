@@ -4700,10 +4700,28 @@ function emptySessionMetrics() {
   };
 }
 __name(emptySessionMetrics, "emptySessionMetrics");
+function readMaxAgentChains(goodvibesDir2) {
+  const DEFAULT = 6;
+  for (const configPath of [
+    (0, import_node_path5.join)(goodvibesDir2, "goodvibes.json"),
+    (0, import_node_path5.join)((0, import_node_os.homedir)(), ".goodvibes", "goodvibes.json")
+  ]) {
+    try {
+      const raw = (0, import_node_fs7.readFileSync)(configPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const val = parsed["max_parallel_agent_chains"];
+      if (typeof val === "number" && val > 0) return val;
+    } catch {
+    }
+  }
+  return DEFAULT;
+}
+__name(readMaxAgentChains, "readMaxAgentChains");
 function emptyDashboardState(sessionId, projectHash, startedAt) {
   return {
     session_id: sessionId,
     project_hash: projectHash,
+    max_agent_chains: 6,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -5285,9 +5303,11 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
       project_hash: (0, import_node_path5.basename)((0, import_node_path5.dirname)(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -5316,6 +5336,7 @@ var Aggregator = class _Aggregator {
     return {
       session_id: sessionId,
       project_hash: (0, import_node_path5.basename)((0, import_node_path5.dirname)(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -5870,9 +5891,10 @@ var MiniRenderer = class {
       10,
       { thresholds: { warn: 0.4, alert: 0.7 }, invertColor: true }
     );
+    const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
     const agentBar = renderBar(
       m.agentsActive,
-      Math.max(1, m.agentsMax),
+      configuredMax,
       6,
       { thresholds: { warn: 0.5, alert: 0.84 } }
     );
@@ -5880,7 +5902,7 @@ var MiniRenderer = class {
       `api ${ansi.bold}${m.apiInputTokens}${ansi.reset}in ${ansi.bold}${m.apiOutputTokens}${ansi.reset}out`,
       `cache-read ${m.cacheReadTokens}`,
       showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
-      showBars ? `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}` : `agents ${m.agentsActive}/${m.agentsMax}`
+      showBars ? `agents ${agentBar} ${m.agentsActive}/${configuredMax}` : `agents ${m.agentsActive}/${configuredMax}`
     ]);
     const line2 = buildRow(row2Content, borderColor, w);
     const conflictStr = m.conflicts > 0 ? `${ansi.yellow}${m.conflicts}\u26A1${ansi.reset}` : `${m.conflicts}\u26A1`;

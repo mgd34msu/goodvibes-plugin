@@ -26984,10 +26984,28 @@ function emptySessionMetrics() {
   };
 }
 __name(emptySessionMetrics, "emptySessionMetrics");
+function readMaxAgentChains(goodvibesDir) {
+  const DEFAULT = 6;
+  for (const configPath of [
+    (0, import_node_path6.join)(goodvibesDir, "goodvibes.json"),
+    (0, import_node_path6.join)((0, import_node_os3.homedir)(), ".goodvibes", "goodvibes.json")
+  ]) {
+    try {
+      const raw = (0, import_node_fs8.readFileSync)(configPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const val = parsed["max_parallel_agent_chains"];
+      if (typeof val === "number" && val > 0) return val;
+    } catch {
+    }
+  }
+  return DEFAULT;
+}
+__name(readMaxAgentChains, "readMaxAgentChains");
 function emptyDashboardState(sessionId, projectHash, startedAt) {
   return {
     session_id: sessionId,
     project_hash: projectHash,
+    max_agent_chains: 6,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -27569,9 +27587,11 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
       project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -27600,6 +27620,7 @@ var Aggregator = class _Aggregator {
     return {
       session_id: sessionId,
       project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,

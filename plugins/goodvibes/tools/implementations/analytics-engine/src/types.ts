@@ -214,6 +214,7 @@ export interface BudgetState {
 export interface DashboardState {
   session_id: string;
   project_hash: string;
+  max_agent_chains: number;
   started_at: string;
   uptime_ms: number;
   metrics: SessionMetrics;

@@ -22,6 +22,8 @@ type DashboardOverrides = Omit<Partial<DashboardState>, 'metrics'> & { metrics?:
 function createMockState(overrides: DashboardOverrides = {}): DashboardState {
   const base: DashboardState = {
     session_id: 'test-session-abc',
+    project_hash: 'test-project',
+    max_agent_chains: 6,
     started_at: '2026-02-20T10:00:00.000Z',
     uptime_ms: 65_000,
     health_status: 'healthy',

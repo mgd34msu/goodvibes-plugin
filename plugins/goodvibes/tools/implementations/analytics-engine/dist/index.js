@@ -696,7 +696,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 });
 
 // src/data/global-db.ts
-import { readFileSync as readFileSync6, writeFileSync as writeFileSync3, existsSync as existsSync7 } from "node:fs";
+import { readFileSync as readFileSync7, writeFileSync as writeFileSync3, existsSync as existsSync7 } from "node:fs";
 import { join as join10, resolve } from "node:path";
 function rowsToObjects(result) {
   if (!result.length) return [];
@@ -812,7 +812,7 @@ var init_global_db = __esm({
         const wasmPath = this.resolveWasmPath();
         this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
         if (existsSync7(this.dbPath)) {
-          const buffer = readFileSync6(this.dbPath);
+          const buffer = readFileSync7(this.dbPath);
           this.db = new this.SQL.Database(buffer);
         } else {
           this.db = new this.SQL.Database();
@@ -2683,7 +2683,7 @@ var init_budget = __esm({
 });
 
 // src/data/tag-store.ts
-import { readFileSync as readFileSync7, existsSync as existsSync9, readdirSync as readdirSync3, statSync as statSync7 } from "node:fs";
+import { readFileSync as readFileSync8, existsSync as existsSync9, readdirSync as readdirSync3, statSync as statSync7 } from "node:fs";
 import { join as join13, resolve as resolve3 } from "node:path";
 import { homedir as homedir5 } from "node:os";
 function resolveJsonlPath(sessionId, jsonlBase = join13(homedir5(), ".claude", "projects")) {
@@ -2949,7 +2949,7 @@ ${tailText}`;
         if (!existsSync9(jsonlPath)) return null;
         let rawContent;
         try {
-          rawContent = readFileSync7(jsonlPath, "utf-8");
+          rawContent = readFileSync8(jsonlPath, "utf-8");
         } catch {
           return null;
         }
@@ -3142,7 +3142,7 @@ var init_tag = __esm({
 });
 
 // src/data/historical-store.ts
-import { existsSync as existsSync10, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync8, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import { existsSync as existsSync10, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync9, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync4 } from "node:fs";
 import * as path4 from "node:path";
 function _emptyMetrics() {
   return {
@@ -3446,7 +3446,7 @@ var init_historical_store = __esm({
       }
       _readFile(filePath) {
         try {
-          const raw = readFileSync8(filePath, "utf-8");
+          const raw = readFileSync9(filePath, "utf-8");
           const parsed = JSON.parse(raw);
           if (!parsed || typeof parsed.session_id !== "string" || typeof parsed.started_at !== "string") {
             return null;
@@ -4241,7 +4241,7 @@ init_config();
 // src/daemon/aggregator.ts
 import { join as join9, dirname as dirname3, basename as basename3 } from "node:path";
 import { homedir as homedir3 } from "node:os";
-import { existsSync as existsSync6, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
+import { existsSync as existsSync6, readFileSync as readFileSync6, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
 
 // src/data/telemetry-reader.ts
 import initSqlJs from "sql.js";
@@ -6311,10 +6311,28 @@ function emptySessionMetrics() {
   };
 }
 __name(emptySessionMetrics, "emptySessionMetrics");
+function readMaxAgentChains(goodvibesDir) {
+  const DEFAULT = 6;
+  for (const configPath of [
+    join9(goodvibesDir, "goodvibes.json"),
+    join9(homedir3(), ".goodvibes", "goodvibes.json")
+  ]) {
+    try {
+      const raw = readFileSync6(configPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const val = parsed["max_parallel_agent_chains"];
+      if (typeof val === "number" && val > 0) return val;
+    } catch {
+    }
+  }
+  return DEFAULT;
+}
+__name(readMaxAgentChains, "readMaxAgentChains");
 function emptyDashboardState(sessionId, projectHash, startedAt) {
   return {
     session_id: sessionId,
     project_hash: projectHash,
+    max_agent_chains: 6,
     started_at: startedAt,
     uptime_ms: 0,
     metrics: emptySessionMetrics(),
@@ -6896,9 +6914,11 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
       project_hash: basename3(dirname3(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
@@ -6927,6 +6947,7 @@ var Aggregator = class _Aggregator {
     return {
       session_id: sessionId,
       project_hash: basename3(dirname3(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
       metrics,
