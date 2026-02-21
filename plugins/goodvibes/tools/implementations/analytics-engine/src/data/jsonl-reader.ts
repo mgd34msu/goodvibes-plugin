@@ -348,10 +348,26 @@ export class JSONLReader {
   extractAgentActivity(records: JSONLRecord[]): AgentActivityInfo[] {
     const taskCalls = this.extractToolCalls(records).filter(tc => tc.name === 'Task');
 
+    // Build map: tool_use_id -> user record timestamp (= agent completion time).
+    const resultTimestamps = new Map<string, string>();
+    for (const record of records) {
+      if (record.type !== 'user') continue;
+      const user = record as JSONLUserRecord;
+      const content = user.message?.content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        const b = block as ToolResultBlock;
+        if (b?.type === 'tool_result' && b.tool_use_id !== undefined && record.timestamp) {
+          resultTimestamps.set(b.tool_use_id, record.timestamp);
+        }
+      }
+    }
+
     return taskCalls.map(tc => ({
       agentId: tc.id,
       parentSessionId: tc.sessionId,
       spawnedAt: tc.timestamp,
+      completedAt: resultTimestamps.get(tc.id),
       taskInput: tc.input,
       completed: tc.resultContent !== undefined,
       exitStatus: tc.isError === true ? 'error' : (tc.resultContent !== undefined ? 'success' : undefined),

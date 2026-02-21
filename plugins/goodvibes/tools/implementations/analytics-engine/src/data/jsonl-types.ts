@@ -275,6 +275,8 @@ export interface AgentActivityInfo {
   parentSessionId: string;
   /** ISO 8601 timestamp of the Task tool_use record. */
   spawnedAt: string;
+  /** ISO 8601 timestamp of the tool_result record, if the agent has completed. */
+  completedAt?: string;
   /** Task tool input (may contain task description). */
   taskInput: Record<string, unknown>;
   /** Whether the agent has completed (tool_result received). */

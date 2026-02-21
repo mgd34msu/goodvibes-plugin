@@ -302,7 +302,7 @@ export class DataWatcher extends EventEmitter {
         this.attachPollingFallback(targetPath, event);
       });
       this.watchers.set(targetPath, watcher);
-    } catch { /* best-effort — fs.watch not supported on this filesystem; fall back to mtime polling */
+    } catch { /* fs.watch unsupported on this filesystem; fall back to mtime polling */
       this.attachPollingFallback(targetPath, event);
     }
   }

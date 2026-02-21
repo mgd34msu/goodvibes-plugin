@@ -92,6 +92,9 @@ const MAX_ANOMALIES = 50;
  */
 const GLOBAL_DB_DEBOUNCE_MS = 10_000;
 
+/** Divisor for converting raw token counts to thousands (for cost calculation). */
+const TOKENS_PER_K = 1000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -781,9 +784,9 @@ export class Aggregator {
     const cost: CostMetrics = (() => {
       if (jsonl.cost_usd > 0) {
         // Decompose total cost into input/output split from token counts.
-        const inputCost = (jsonl.api_input / 1000) * this.config.cost_per_1k_input_tokens;
-        const outputCost = (jsonl.api_output / 1000) * this.config.cost_per_1k_output_tokens;
-        const saved = (tokens.saved / 1000) * this.config.cost_per_1k_input_tokens;
+        const inputCost = (jsonl.api_input / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens;
+        const outputCost = (jsonl.api_output / TOKENS_PER_K) * this.config.cost_per_1k_output_tokens;
+        const saved = (tokens.saved / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens;
         return {
           input: inputCost,
           output: outputCost,
@@ -793,12 +796,12 @@ export class Aggregator {
       }
       // Fall back to precision telemetry cost estimate.
       return {
-        input: (tokens.input / 1000) * this.config.cost_per_1k_input_tokens,
-        output: (tokens.output / 1000) * this.config.cost_per_1k_output_tokens,
+        input: (tokens.input / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens,
+        output: (tokens.output / TOKENS_PER_K) * this.config.cost_per_1k_output_tokens,
         total:
-          (tokens.input / 1000) * this.config.cost_per_1k_input_tokens +
-          (tokens.output / 1000) * this.config.cost_per_1k_output_tokens,
-        saved: (tokens.saved / 1000) * this.config.cost_per_1k_input_tokens,
+          (tokens.input / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens +
+          (tokens.output / TOKENS_PER_K) * this.config.cost_per_1k_output_tokens,
+        saved: (tokens.saved / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens,
       };
     })();
 
@@ -832,12 +835,27 @@ export class Aggregator {
 
     // ── Agent metrics: merge JSONL and session-reader data ─────────────────
     const sessionCounters = this.safeCall(() => this.session.getSessionCounters(), null);
+
+    // Derive max_concurrent by scanning overlapping spawn/complete windows.
+    // An agent is "active" from its spawnedAt until its completedAt (or now if still active).
+    const nowIso = new Date().toISOString();
+    const agentWindows = agentActivities.map((a) => ({
+      start: a.spawnedAt,
+      end: a.completedAt ?? nowIso,
+    }));
+    // Collect all boundary timestamps and find peak overlap count.
+    let maxConcurrent = 0;
+    for (const { start } of agentWindows) {
+      const concurrent = agentWindows.filter((w) => w.start <= start && w.end > start).length;
+      if (concurrent > maxConcurrent) maxConcurrent = concurrent;
+    }
+
     const agents: AgentMetrics = {
       spawned: agentActivities.length > 0
         ? agentActivities.length
         : (sessionCounters?.agents_spawned ?? 0),
-      max_concurrent: 0,  // Requires active session-state tracking
-      total_tokens: 0,    // Not derivable without per-agent JSONL correlation
+      max_concurrent: maxConcurrent, // peak overlap derived from spawn/complete timestamp windows
+      total_tokens: tokens.total,      // sum of all API tokens (input + output + cache)
       active: activeAgents,
       completed: completedAgents,
     };
@@ -1092,18 +1110,30 @@ export class Aggregator {
    * @param agentActivities - Agent activity records extracted from JSONL.
    */
   private buildAgentProfiles(agentActivities: AgentActivityInfo[]): AgentProfile[] {
-    return agentActivities.map((a) => ({
-      agent_id: a.agentId,
-      agent_type: 'task', // All JSONL-derived agents are Task tool spawns
-      tokens_in: 0,       // Per-agent token counts require subagent JSONL correlation
-      tokens_out: 0,
-      tool_calls: 0,      // Not derivable without subagent session correlation
-      success_rate: 1,    // Default; no per-agent failure data available
-      duration_ms: 0,     // Not available without completed_at timestamps
-      status: a.completed
-        ? (a.exitStatus === 'error' ? 'failed' : 'completed')
-        : 'active',
-    }));
+    return agentActivities.map((a) => {
+      // Calculate duration from spawnedAt/completedAt timestamps when both are present.
+      let duration_ms = 0;
+      if (a.completedAt !== undefined) {
+        const spawnMs = new Date(a.spawnedAt).getTime();
+        const completeMs = new Date(a.completedAt).getTime();
+        if (!isNaN(spawnMs) && !isNaN(completeMs) && completeMs >= spawnMs) {
+          duration_ms = completeMs - spawnMs;
+        }
+      }
+
+      return {
+        agent_id: a.agentId,
+        agent_type: 'task', // All JSONL-derived agents are Task tool spawns
+        tokens_in: 0,       // Per-agent token counts require subagent JSONL correlation
+        tokens_out: 0,
+        tool_calls: 0,      // Not derivable without subagent session JSONL correlation
+        success_rate: 1,    // Default; no per-agent failure data available
+        duration_ms,
+        status: a.completed
+          ? (a.exitStatus === 'error' ? 'failed' : 'completed')
+          : 'active',
+      };
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────

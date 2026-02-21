@@ -954,10 +954,24 @@ var JSONLReader = class {
    */
   extractAgentActivity(records) {
     const taskCalls = this.extractToolCalls(records).filter((tc) => tc.name === "Task");
+    const resultTimestamps = /* @__PURE__ */ new Map();
+    for (const record of records) {
+      if (record.type !== "user") continue;
+      const user = record;
+      const content = user.message?.content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        const b = block;
+        if (b?.type === "tool_result" && b.tool_use_id !== void 0 && record.timestamp) {
+          resultTimestamps.set(b.tool_use_id, record.timestamp);
+        }
+      }
+    }
     return taskCalls.map((tc) => ({
       agentId: tc.id,
       parentSessionId: tc.sessionId,
       spawnedAt: tc.timestamp,
+      completedAt: resultTimestamps.get(tc.id),
       taskInput: tc.input,
       completed: tc.resultContent !== void 0,
       exitStatus: tc.isError === true ? "error" : tc.resultContent !== void 0 ? "success" : void 0
@@ -2463,6 +2477,7 @@ var MEMORY_UPDATER_INTERVAL = 5;
 var MAX_HOTSPOTS = 20;
 var MAX_ANOMALIES = 50;
 var GLOBAL_DB_DEBOUNCE_MS = 1e4;
+var TOKENS_PER_K = 1e3;
 function emptySessionMetrics() {
   return {
     tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
@@ -2952,9 +2967,9 @@ var Aggregator = class _Aggregator {
     const cache = this.buildCacheMetrics(telemetrySummary);
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
-        const inputCost = jsonl.api_input / 1e3 * this.config.cost_per_1k_input_tokens;
-        const outputCost = jsonl.api_output / 1e3 * this.config.cost_per_1k_output_tokens;
-        const saved = tokens.saved / 1e3 * this.config.cost_per_1k_input_tokens;
+        const inputCost = jsonl.api_input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens;
+        const outputCost = jsonl.api_output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens;
+        const saved = tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens;
         return {
           input: inputCost,
           output: outputCost,
@@ -2963,10 +2978,10 @@ var Aggregator = class _Aggregator {
         };
       }
       return {
-        input: tokens.input / 1e3 * this.config.cost_per_1k_input_tokens,
-        output: tokens.output / 1e3 * this.config.cost_per_1k_output_tokens,
-        total: tokens.input / 1e3 * this.config.cost_per_1k_input_tokens + tokens.output / 1e3 * this.config.cost_per_1k_output_tokens,
-        saved: tokens.saved / 1e3 * this.config.cost_per_1k_input_tokens
+        input: tokens.input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens,
+        output: tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
+        total: tokens.input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens + tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
+        saved: tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens
       };
     })();
     const commands = (() => {
@@ -2993,12 +3008,22 @@ var Aggregator = class _Aggregator {
     const completedAgents = agentActivities.filter((a) => a.completed).length;
     const activeAgents = agentActivities.length - completedAgents;
     const sessionCounters = this.safeCall(() => this.session.getSessionCounters(), null);
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const agentWindows = agentActivities.map((a) => ({
+      start: a.spawnedAt,
+      end: a.completedAt ?? nowIso
+    }));
+    let maxConcurrent = 0;
+    for (const { start } of agentWindows) {
+      const concurrent = agentWindows.filter((w) => w.start <= start && w.end > start).length;
+      if (concurrent > maxConcurrent) maxConcurrent = concurrent;
+    }
     const agents = {
       spawned: agentActivities.length > 0 ? agentActivities.length : sessionCounters?.agents_spawned ?? 0,
-      max_concurrent: 0,
-      // Requires active session-state tracking
-      total_tokens: 0,
-      // Not derivable without per-agent JSONL correlation
+      max_concurrent: maxConcurrent,
+      // peak overlap derived from spawn/complete timestamp windows
+      total_tokens: tokens.total,
+      // sum of all API tokens (input + output + cache)
       active: activeAgents,
       completed: completedAgents
     };
@@ -3184,21 +3209,30 @@ var Aggregator = class _Aggregator {
    * @param agentActivities - Agent activity records extracted from JSONL.
    */
   buildAgentProfiles(agentActivities) {
-    return agentActivities.map((a) => ({
-      agent_id: a.agentId,
-      agent_type: "task",
-      // All JSONL-derived agents are Task tool spawns
-      tokens_in: 0,
-      // Per-agent token counts require subagent JSONL correlation
-      tokens_out: 0,
-      tool_calls: 0,
-      // Not derivable without subagent session correlation
-      success_rate: 1,
-      // Default; no per-agent failure data available
-      duration_ms: 0,
-      // Not available without completed_at timestamps
-      status: a.completed ? a.exitStatus === "error" ? "failed" : "completed" : "active"
-    }));
+    return agentActivities.map((a) => {
+      let duration_ms = 0;
+      if (a.completedAt !== void 0) {
+        const spawnMs = new Date(a.spawnedAt).getTime();
+        const completeMs = new Date(a.completedAt).getTime();
+        if (!isNaN(spawnMs) && !isNaN(completeMs) && completeMs >= spawnMs) {
+          duration_ms = completeMs - spawnMs;
+        }
+      }
+      return {
+        agent_id: a.agentId,
+        agent_type: "task",
+        // All JSONL-derived agents are Task tool spawns
+        tokens_in: 0,
+        // Per-agent token counts require subagent JSONL correlation
+        tokens_out: 0,
+        tool_calls: 0,
+        // Not derivable without subagent session JSONL correlation
+        success_rate: 1,
+        // Default; no per-agent failure data available
+        duration_ms,
+        status: a.completed ? a.exitStatus === "error" ? "failed" : "completed" : "active"
+      };
+    });
   }
   // ───────────────────────────────────────────────────────────────────────────
   // Private: GlobalDB write-back
