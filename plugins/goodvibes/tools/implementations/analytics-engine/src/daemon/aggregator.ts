@@ -591,6 +591,10 @@ export class Aggregator {
    * @returns The current aggregated DashboardState.
    */
   getState(): DashboardState {
+    // Always re-aggregate so callers get live data (cost: ~1-5ms per call)
+    if (this.initialized) {
+      this.state = this.aggregate();
+    }
     return this.state;
   }
 
