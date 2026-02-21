@@ -2657,6 +2657,20 @@ var Aggregator = class _Aggregator {
     this.globalDb = db;
   }
   /**
+   * Return the current GlobalDB instance, or null if not initialized.
+   * Allows handlers to access cross-project data without unsafe casts.
+   */
+  getGlobalDb() {
+    return this.globalDb;
+  }
+  /**
+   * Return the current resolved analytics configuration.
+   * Allows handlers to read cost rates and other config without unsafe casts.
+   */
+  getConfig() {
+    return this.config;
+  }
+  /**
    * Reload configuration without restarting the aggregator.
    *
    * Updates the stored config (including token costs) and recreates the

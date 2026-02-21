@@ -2023,7 +2023,7 @@ var init_dashboard = __esm({
     "use strict";
     init_manager();
     init_detect();
-    init_config();
+    init_types();
     init_types2();
     _manager = null;
     __name(getManager, "getManager");
@@ -2159,30 +2159,29 @@ var init_format = __esm({
 // src/handlers/query.ts
 function buildDataScopeNote(aggregator, input) {
   try {
-    const agg = aggregator;
-    const db = agg.globalDb;
+    const db = aggregator.getGlobalDb();
     if (!db) return null;
     const tags = input.filters?.tags ?? [];
     const lines = [];
     if (input.data_scope === "all_projects") {
-      const sessions = db.getAllSessions?.() ?? [];
-      const totalCost = db.getTotalCostAllProjects?.() ?? 0;
+      const sessions = db.getAllSessions();
+      const totalCost = db.getTotalCostAllProjects();
       lines.push(
         "=== Cross-Project Summary (GlobalDB) ===",
         `Sessions: ${sessions.length}`,
         `Total cost (all projects): ${formatDollars(totalCost)}`
       );
     } else if (input.data_scope === "tagged" && tags.length > 0) {
-      const sessions = db.getSessionsByTags?.(tags) ?? [];
+      const sessions = db.getSessionsByTags(tags);
       lines.push(
         `=== Tagged Sessions (${tags.join(", ")}) ===`,
         `Sessions matching tags: ${sessions.length}`
       );
     } else if (input.data_scope === "current_project") {
       const state = aggregator.getState();
-      const projectHash = deriveProjectHash(state.session_id);
+      const projectHash = deriveProjectHash(db, state.session_id);
       if (projectHash) {
-        const sessions = db.getSessionsByProject?.(projectHash) ?? [];
+        const sessions = db.getSessionsByProject(projectHash);
         lines.push(
           "=== Current Project (GlobalDB) ===",
           `Sessions for this project: ${sessions.length}`
@@ -2194,8 +2193,13 @@ function buildDataScopeNote(aggregator, input) {
     return null;
   }
 }
-function deriveProjectHash(_sessionId) {
-  return null;
+function deriveProjectHash(db, sessionId) {
+  try {
+    const session = db.getSession(sessionId);
+    return session?.project_hash ?? null;
+  } catch {
+    return null;
+  }
 }
 function filterByTimeRange(events, timeRange) {
   if (timeRange === "session") return events;
@@ -3128,9 +3132,330 @@ var init_tag = __esm({
   }
 });
 
+// src/data/historical-store.ts
+import { existsSync as existsSync10, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync8, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import * as path4 from "node:path";
+function _emptyMetrics() {
+  return {
+    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
+    cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
+    cost: { input: 0, output: 0, total: 0, saved: 0 },
+    commands: {
+      total: 0,
+      success_rate: 0,
+      avg_duration_ms: 0,
+      total_duration_ms: 0,
+      failures: 0,
+      slowest: null
+    },
+    agents: { spawned: 0, max_concurrent: 0, total_tokens: 0, active: 0, completed: 0 },
+    files: { unique_read: 0, modified: 0, created: 0, conflicts: 0 }
+  };
+}
+function _flattenMetrics(m) {
+  return {
+    "tokens.input": m.tokens.input,
+    "tokens.output": m.tokens.output,
+    "tokens.total": m.tokens.total,
+    "tokens.saved": m.tokens.saved,
+    "tokens.efficiency": m.tokens.efficiency,
+    "tokens.api_input": m.tokens.api_input,
+    "tokens.api_output": m.tokens.api_output,
+    "tokens.cache_read": m.tokens.cache_read,
+    "tokens.cache_write": m.tokens.cache_write,
+    "cache.hit_rate": m.cache.hit_rate,
+    "cache.hits": m.cache.hits,
+    "cache.misses": m.cache.misses,
+    "cache.memory_peak_mb": m.cache.memory_peak_mb,
+    "cache.evictions": m.cache.evictions,
+    "cost.input": m.cost.input,
+    "cost.output": m.cost.output,
+    "cost.total": m.cost.total,
+    "cost.saved": m.cost.saved,
+    "commands.total": m.commands.total,
+    "commands.success_rate": m.commands.success_rate,
+    "commands.avg_duration_ms": m.commands.avg_duration_ms,
+    "commands.total_duration_ms": m.commands.total_duration_ms,
+    "commands.failures": m.commands.failures,
+    "agents.spawned": m.agents.spawned,
+    "agents.max_concurrent": m.agents.max_concurrent,
+    "agents.total_tokens": m.agents.total_tokens,
+    "agents.active": m.agents.active,
+    "agents.completed": m.agents.completed,
+    "files.unique_read": m.files.unique_read,
+    "files.modified": m.files.modified,
+    "files.created": m.files.created,
+    "files.conflicts": m.files.conflicts
+  };
+}
+var DEFAULT_MAX_SESSIONS, HistoricalStore;
+var init_historical_store = __esm({
+  "src/data/historical-store.ts"() {
+    "use strict";
+    DEFAULT_MAX_SESSIONS = 10;
+    HistoricalStore = class {
+      static {
+        __name(this, "HistoricalStore");
+      }
+      sessionsDir;
+      maxSessions;
+      constructor(goodvibesDir, maxSessions) {
+        this.sessionsDir = path4.join(goodvibesDir, "analytics", "sessions");
+        this.maxSessions = maxSessions ?? DEFAULT_MAX_SESSIONS;
+      }
+      /** Ensure the sessions directory exists, creating it if necessary. */
+      ensureDir() {
+        if (!existsSync10(this.sessionsDir)) {
+          mkdirSync3(this.sessionsDir, { recursive: true });
+        }
+      }
+      /**
+       * Persist a session archive to disk using an atomic write (write to a temp
+       * file in the same directory, then rename) to avoid partial writes.
+       * Prunes old sessions after saving.
+       */
+      save(archive) {
+        this.ensureDir();
+        const filePath = path4.join(this.sessionsDir, `${archive.session_id}.json`);
+        const content = JSON.stringify(archive, null, 2);
+        const tmpPath = path4.join(this.sessionsDir, `.tmp-${archive.session_id}-${Date.now()}.json`);
+        writeFileSync4(tmpPath, content, "utf-8");
+        renameSync2(tmpPath, filePath);
+        this.prune();
+      }
+      /**
+       * Load a session archive by session ID.
+       * Returns null if the file does not exist or cannot be parsed.
+       */
+      load(sessionId) {
+        const filePath = path4.join(this.sessionsDir, `${sessionId}.json`);
+        return this._readFile(filePath);
+      }
+      /**
+       * List all stored session archives, sorted newest first.
+       */
+      list() {
+        if (!existsSync10(this.sessionsDir)) {
+          return [];
+        }
+        let files;
+        try {
+          files = readdirSync4(this.sessionsDir).filter((f) => f.endsWith(".json") && !f.startsWith(".tmp-"));
+        } catch {
+          return [];
+        }
+        const archives = [];
+        for (const file of files) {
+          const archive = this._readFile(path4.join(this.sessionsDir, file));
+          if (archive !== null) {
+            archives.push(archive);
+          }
+        }
+        archives.sort(
+          (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+        );
+        return archives;
+      }
+      /**
+       * Return up to n most recent session archives.
+       */
+      getRecent(n) {
+        return this.list().slice(0, n);
+      }
+      /**
+       * Remove oldest sessions beyond maxSessions.
+       * Returns the number of sessions pruned.
+       * Call this explicitly when needed (e.g. on session-start startup).
+       */
+      prune() {
+        if (!existsSync10(this.sessionsDir)) {
+          return 0;
+        }
+        const archives = this.list();
+        if (archives.length <= this.maxSessions) {
+          return 0;
+        }
+        const toRemove = archives.slice(this.maxSessions);
+        let pruned = 0;
+        for (const archive of toRemove) {
+          const filePath = path4.join(this.sessionsDir, `${archive.session_id}.json`);
+          try {
+            unlinkSync2(filePath);
+            pruned++;
+          } catch {
+          }
+        }
+        return pruned;
+      }
+      /**
+       * Compute the average metrics across a set of sessions.
+       * Uses all stored sessions when sessions is not provided.
+       */
+      computeAverages(sessions) {
+        const src = sessions ?? this.list();
+        if (src.length === 0) {
+          return _emptyMetrics();
+        }
+        const avg = _emptyMetrics();
+        const n = src.length;
+        for (const s of src) {
+          const m = s.metrics;
+          avg.tokens.input += m.tokens.input;
+          avg.tokens.output += m.tokens.output;
+          avg.tokens.total += m.tokens.total;
+          avg.tokens.saved += m.tokens.saved;
+          avg.tokens.efficiency += m.tokens.efficiency;
+          avg.tokens.api_input += m.tokens.api_input;
+          avg.tokens.api_output += m.tokens.api_output;
+          avg.tokens.cache_read += m.tokens.cache_read;
+          avg.tokens.cache_write += m.tokens.cache_write;
+          avg.cache.hit_rate += m.cache.hit_rate;
+          avg.cache.hits += m.cache.hits;
+          avg.cache.misses += m.cache.misses;
+          avg.cache.memory_peak_mb += m.cache.memory_peak_mb;
+          avg.cache.evictions += m.cache.evictions;
+          avg.cost.input += m.cost.input;
+          avg.cost.output += m.cost.output;
+          avg.cost.total += m.cost.total;
+          avg.cost.saved += m.cost.saved;
+          avg.commands.total += m.commands.total;
+          avg.commands.success_rate += m.commands.success_rate;
+          avg.commands.avg_duration_ms += m.commands.avg_duration_ms;
+          avg.commands.total_duration_ms += m.commands.total_duration_ms;
+          avg.commands.failures += m.commands.failures;
+          avg.agents.spawned += m.agents.spawned;
+          avg.agents.max_concurrent += m.agents.max_concurrent;
+          avg.agents.total_tokens += m.agents.total_tokens;
+          avg.agents.active += m.agents.active;
+          avg.agents.completed += m.agents.completed;
+          avg.files.unique_read += m.files.unique_read;
+          avg.files.modified += m.files.modified;
+          avg.files.created += m.files.created;
+          avg.files.conflicts += m.files.conflicts;
+        }
+        avg.tokens.input /= n;
+        avg.tokens.output /= n;
+        avg.tokens.total /= n;
+        avg.tokens.saved /= n;
+        avg.tokens.efficiency /= n;
+        avg.tokens.api_input /= n;
+        avg.tokens.api_output /= n;
+        avg.tokens.cache_read /= n;
+        avg.tokens.cache_write /= n;
+        avg.cache.hit_rate /= n;
+        avg.cache.hits /= n;
+        avg.cache.misses /= n;
+        avg.cache.memory_peak_mb /= n;
+        avg.cache.evictions /= n;
+        avg.cost.input /= n;
+        avg.cost.output /= n;
+        avg.cost.total /= n;
+        avg.cost.saved /= n;
+        avg.commands.total /= n;
+        avg.commands.success_rate /= n;
+        avg.commands.avg_duration_ms /= n;
+        avg.commands.total_duration_ms /= n;
+        avg.commands.failures /= n;
+        avg.agents.spawned /= n;
+        avg.agents.max_concurrent /= n;
+        avg.agents.total_tokens /= n;
+        avg.agents.active /= n;
+        avg.agents.completed /= n;
+        avg.files.unique_read /= n;
+        avg.files.modified /= n;
+        avg.files.created /= n;
+        avg.files.conflicts /= n;
+        return avg;
+      }
+      /**
+       * Compare current session metrics against historical averages.
+       * Returns deltas, direction indicators, and the sessions used for averaging.
+       */
+      compare(current, sessions) {
+        const src = sessions ?? this.list();
+        const average2 = this.computeAverages(src);
+        const deltas = {};
+        const flatCurrent = _flattenMetrics(current);
+        const flatAverage = _flattenMetrics(average2);
+        for (const key of Object.keys(flatCurrent)) {
+          const cur = flatCurrent[key];
+          const avg = flatAverage[key];
+          if (avg === 0) {
+            deltas[key] = { value: cur - avg, percentage: 0, direction: "stable" };
+            continue;
+          }
+          const pct = (cur - avg) / Math.abs(avg);
+          const direction = Math.abs(pct) < 0.01 ? "stable" : pct > 0 ? "up" : "down";
+          deltas[key] = {
+            value: cur - avg,
+            percentage: pct * 100,
+            direction
+          };
+        }
+        return { current, average: average2, deltas, sessions: src };
+      }
+      /** Returns true when no sessions are stored. */
+      isEmpty() {
+        return this.list().length === 0;
+      }
+      /**
+       * Add or update the tag on a stored session.
+       * Writes directly to avoid triggering prune via save().
+       * Returns false when the session does not exist.
+       */
+      tagSession(sessionId, tag) {
+        const archive = this.load(sessionId);
+        if (!archive) return false;
+        archive.tag = tag;
+        archive.tags = archive.tags ? [.../* @__PURE__ */ new Set([...archive.tags, tag])] : [tag];
+        this._writeArchive(sessionId, archive);
+        return true;
+      }
+      /**
+       * Rename a stored session.
+       * Writes directly to avoid triggering prune via save().
+       * Returns false when the session does not exist.
+       */
+      renameSession(sessionId, name) {
+        const archive = this.load(sessionId);
+        if (!archive) return false;
+        archive.name = name;
+        this._writeArchive(sessionId, archive);
+        return true;
+      }
+      // --- Private helpers ---
+      /**
+       * Write an archive directly to disk without pruning.
+       * Used by tagSession/renameSession to avoid unintended side effects.
+       */
+      _writeArchive(sessionId, archive) {
+        this.ensureDir();
+        const filePath = path4.join(this.sessionsDir, `${sessionId}.json`);
+        const tmpPath = path4.join(this.sessionsDir, `.tmp-${sessionId}-${Date.now()}.json`);
+        writeFileSync4(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
+        renameSync2(tmpPath, filePath);
+      }
+      _readFile(filePath) {
+        try {
+          const raw = readFileSync8(filePath, "utf-8");
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed.session_id !== "string" || typeof parsed.started_at !== "string") {
+            return null;
+          }
+          return parsed;
+        } catch {
+          return null;
+        }
+      }
+    };
+    __name(_emptyMetrics, "_emptyMetrics");
+    __name(_flattenMetrics, "_flattenMetrics");
+  }
+});
+
 // src/handlers/export.ts
 import * as fs from "node:fs";
-import * as path4 from "node:path";
+import * as path5 from "node:path";
 function extractSections(state, sections) {
   const result = {};
   if (sections.includes("tokens")) {
@@ -3233,7 +3558,8 @@ function renderMarkdown(data, title) {
   }
   return lines.join("\n");
 }
-async function handleExport(aggregator, input, store) {
+async function handleExport(aggregator, input, goodvibesDir) {
+  const store = new HistoricalStore(goodvibesDir);
   try {
     const rawSections = input.sections;
     const sections = Array.isArray(rawSections) && rawSections.length > 0 ? rawSections.filter((s) => ALL_SECTIONS.includes(s)) : ALL_SECTIONS;
@@ -3251,9 +3577,7 @@ async function handleExport(aggregator, input, store) {
       ) : allArchives;
       if (archives.length === 0) {
         const tagNote = tags.length > 0 ? ` matching tags [${tags.join(", ")}]` : "";
-        return {
-          content: [{ type: "text", text: `No historical sessions found${tagNote}.` }]
-        };
+        return text(`No historical sessions found${tagNote}.`);
       }
       const entries = {};
       for (const archive of archives) {
@@ -3265,9 +3589,7 @@ async function handleExport(aggregator, input, store) {
       const sessionId = input.scope.replace(/^session:/, "");
       const archive = store.load(sessionId);
       if (!archive) {
-        return {
-          content: [{ type: "text", text: `Session not found: ${sessionId}` }]
-        };
+        return text(`Session not found: ${sessionId}`);
       }
       data = extractArchiveSections(archive, sections);
       title = `Session Export \u2014 ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
@@ -3290,32 +3612,27 @@ async function handleExport(aggregator, input, store) {
       }
     }
     if (input.output_path) {
-      const absPath = path4.resolve(input.output_path);
-      await fs.promises.mkdir(path4.dirname(absPath), { recursive: true });
+      const absPath = path5.resolve(input.output_path);
+      await fs.promises.mkdir(path5.dirname(absPath), { recursive: true });
       await fs.promises.writeFile(absPath, rendered, "utf-8");
-      return {
-        content: [{
-          type: "text",
-          text: `Export written to: ${absPath}
+      return text(
+        `Export written to: ${absPath}
 
 Format: ${input.format}  Scope: ${input.scope}  Sections: ${sections.join(", ")}`
-        }]
-      };
+      );
     }
-    return {
-      content: [{ type: "text", text: rendered }]
-    };
+    return text(rendered);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return {
-      content: [{ type: "text", text: `analytics_export error: ${message}` }]
-    };
+    return text(`analytics_export error: ${message}`);
   }
 }
 var ALL_SECTIONS;
 var init_export = __esm({
   "src/handlers/export.ts"() {
     "use strict";
+    init_historical_store();
+    init_types2();
     ALL_SECTIONS = ["tokens", "cache", "commands", "agents", "files", "cost", "timeline"];
     __name(extractSections, "extractSections");
     __name(extractArchiveSections, "extractArchiveSections");
@@ -3328,7 +3645,7 @@ var init_export = __esm({
 
 // src/handlers/config.ts
 import * as fs2 from "node:fs";
-import * as path5 from "node:path";
+import * as path6 from "node:path";
 function getByPath(obj, keyPath) {
   const segments = keyPath.split(".");
   let current = obj;
@@ -3354,39 +3671,26 @@ function setByPath(obj, keyPath, value) {
   current[lastSegment] = value;
 }
 async function persistConfig(goodvibesDir, config) {
-  const configPath = path5.join(goodvibesDir, CONFIG_FILENAME);
+  const configPath = path6.join(goodvibesDir, CONFIG_FILENAME);
   await fs2.promises.mkdir(goodvibesDir, { recursive: true });
   await fs2.promises.writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
-async function handleConfig(aggregator, input, config, goodvibesDir) {
+async function handleConfig(aggregator, input, goodvibesDir) {
   try {
+    const config = aggregator.getConfig();
     const configObj = config;
     if (input.action === "reload") {
       try {
         const newConfig = loadConfig(goodvibesDir);
-        if (typeof aggregator.reloadConfig === "function") {
-          aggregator.reloadConfig(newConfig);
-          return {
-            content: [{
-              type: "text",
-              text: `Config hot-reloaded from disk and applied to the running aggregator.
+        aggregator.reloadConfig(newConfig);
+        return text(
+          `Config hot-reloaded from disk and applied to the running aggregator.
 
 Loaded from: ${goodvibesDir}/analytics.json (or global config if present).`
-            }]
-          };
-        } else {
-          return {
-            content: [{
-              type: "text",
-              text: "Config reloaded from disk. Note: the running aggregator does not support hot-reload; restart to apply changes."
-            }]
-          };
-        }
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text", text: `Config reload failed: ${message}` }]
-        };
+        return text(`Config reload failed: ${message}`);
       }
     }
     if (input.action === "get") {
@@ -3394,64 +3698,39 @@ Loaded from: ${goodvibesDir}/analytics.json (or global config if present).`
         const resolvedKey2 = resolveKeyAlias(input.key);
         const value = getByPath(configObj, resolvedKey2);
         if (value === void 0) {
-          return {
-            content: [{
-              type: "text",
-              text: `Config key not found: "${input.key}"${resolvedKey2 !== input.key ? ` (resolved alias: "${resolvedKey2}")` : ""}.`
-            }]
-          };
+          return text(
+            `Config key not found: "${input.key}"${resolvedKey2 !== input.key ? ` (resolved alias: "${resolvedKey2}")` : ""}.`
+          );
         }
-        return {
-          content: [{
-            type: "text",
-            text: `${resolvedKey2} = ${JSON.stringify(value, null, 2)}`
-          }]
-        };
+        return text(`${resolvedKey2} = ${JSON.stringify(value, null, 2)}`);
       }
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(config, null, 2)
-        }]
-      };
+      return text(JSON.stringify(config, null, 2));
     }
     if (!input.key) {
-      return {
-        content: [{ type: "text", text: 'analytics_config set: "key" is required.' }]
-      };
+      return text('analytics_config set: "key" is required.');
     }
     if (input.value === void 0) {
-      return {
-        content: [{ type: "text", text: 'analytics_config set: "value" is required.' }]
-      };
+      return text('analytics_config set: "value" is required.');
     }
     const resolvedKey = resolveKeyAlias(input.key);
     const existing = getByPath(configObj, resolvedKey);
     if (existing === void 0) {
-      return {
-        content: [{
-          type: "text",
-          text: `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ""}. Use "get" (no key) to list all valid keys.`
-        }]
-      };
+      return text(
+        `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ""}. Use "get" (no key) to list all valid keys.`
+      );
     }
     const updated = JSON.parse(JSON.stringify(config));
     setByPath(updated, resolvedKey, input.value);
     await persistConfig(goodvibesDir, updated);
-    return {
-      content: [{
-        type: "text",
-        text: `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}
+    return text(
+      `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}
 
-Persisted to ${path5.join(goodvibesDir, CONFIG_FILENAME)}.
+Persisted to ${path6.join(goodvibesDir, CONFIG_FILENAME)}.
 Use action="reload" to apply changes to the running engine without restarting.`
-      }]
-    };
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return {
-      content: [{ type: "text", text: `analytics_config error: ${message}` }]
-    };
+    return text(`analytics_config error: ${message}`);
   }
 }
 function resolveKeyAlias(key) {
@@ -3461,6 +3740,7 @@ var CONFIG_FILENAME, KEY_ALIASES;
 var init_config2 = __esm({
   "src/handlers/config.ts"() {
     "use strict";
+    init_types2();
     init_config();
     CONFIG_FILENAME = "analytics.json";
     __name(getByPath, "getByPath");
@@ -3480,14 +3760,14 @@ var init_config2 = __esm({
 
 // src/handlers/sync.ts
 import * as fs3 from "node:fs";
-import * as path6 from "node:path";
+import * as path7 from "node:path";
 import { homedir as homedir6 } from "node:os";
 function listProjectDirs(baseDir) {
   try {
-    const expanded = baseDir.startsWith("~") ? path6.join(homedir6(), baseDir.slice(1)) : baseDir;
+    const expanded = baseDir.startsWith("~") ? path7.join(homedir6(), baseDir.slice(1)) : baseDir;
     if (!fs3.existsSync(expanded)) return [];
     const entries = fs3.readdirSync(expanded, { withFileTypes: true });
-    return entries.filter((e) => e.isDirectory()).map((e) => path6.join(expanded, e.name));
+    return entries.filter((e) => e.isDirectory()).map((e) => path7.join(expanded, e.name));
   } catch {
     return [];
   }
@@ -3508,7 +3788,7 @@ function findProjectDirForSession(baseDir, sessionId) {
 function listJsonlFiles(projectDir) {
   try {
     const entries = fs3.readdirSync(projectDir);
-    return entries.filter((f) => f.endsWith(".jsonl")).map((f) => path6.join(projectDir, f));
+    return entries.filter((f) => f.endsWith(".jsonl")).map((f) => path7.join(projectDir, f));
   } catch {
     return [];
   }
@@ -3523,7 +3803,7 @@ async function syncProjectDirs(db, reader, projectDirs) {
   };
   for (const dir of projectDirs) {
     const jsonlFiles = listJsonlFiles(dir);
-    const projectHash = path6.basename(dir);
+    const projectHash = path7.basename(dir);
     for (const filePath of jsonlFiles) {
       const fileResult = await syncSingleFile(db, reader, filePath, projectHash);
       results.files.push(fileResult);
@@ -3623,14 +3903,14 @@ function buildSyncReport(scope, projectCount, results) {
     lines.push("");
     lines.push("Errors:");
     for (const f of results.files.filter((r) => r.status === "error")) {
-      lines.push(`  ${path6.basename(f.filePath)}: ${f.errorMessage ?? "unknown error"}`);
+      lines.push(`  ${path7.basename(f.filePath)}: ${f.errorMessage ?? "unknown error"}`);
     }
   }
   if (results.totalSynced > 0 && results.files.length <= 20) {
     lines.push("");
     lines.push("Synced files:");
     for (const f of results.files.filter((r) => r.status === "synced")) {
-      lines.push(`  ${path6.basename(f.filePath)} \u2014 ${f.newRecords} new records`);
+      lines.push(`  ${path7.basename(f.filePath)} \u2014 ${f.newRecords} new records`);
     }
   } else if (results.totalSynced > 20) {
     lines.push(
@@ -3646,16 +3926,14 @@ var init_sync = __esm({
     "use strict";
     init_db_init();
     init_jsonl_reader();
-    init_types();
     init_types2();
     handleSync = /* @__PURE__ */ __name(async (aggregator, input) => {
       try {
         const db = await initializeGlobalDb();
-        const aggregatorAny = aggregator;
-        const config = aggregatorAny["config"] ?? {};
+        const config = aggregator.getConfig();
         const reader = new JSONLReader({
-          cost_per_1k_input_tokens: config.cost_per_1k_input_tokens ?? DEFAULT_CONFIG.cost_per_1k_input_tokens,
-          cost_per_1k_output_tokens: config.cost_per_1k_output_tokens ?? DEFAULT_CONFIG.cost_per_1k_output_tokens
+          cost_per_1k_input_tokens: config.cost_per_1k_input_tokens,
+          cost_per_1k_output_tokens: config.cost_per_1k_output_tokens
         });
         const projectsBaseDir = resolveProjectsBaseDir();
         let projectDirs;
@@ -5282,12 +5560,12 @@ var JSONLWatcher = class extends EventEmitter {
   async switchToSession(jsonlPath) {
     const newSessionId = sessionIdFromPath(jsonlPath);
     if (this.activeSessionPath !== null && this.activeSessionPath !== jsonlPath) {
-      for (const [path7, watched] of this.watchedFiles.entries()) {
+      for (const [path8, watched] of this.watchedFiles.entries()) {
         try {
           watched.handle.close();
         } catch {
         }
-        this.watchedFiles.delete(path7);
+        this.watchedFiles.delete(path8);
       }
       this.emit("session-change", newSessionId);
     }
@@ -5977,6 +6255,20 @@ var Aggregator = class _Aggregator {
     this.globalDb = db;
   }
   /**
+   * Return the current GlobalDB instance, or null if not initialized.
+   * Allows handlers to access cross-project data without unsafe casts.
+   */
+  getGlobalDb() {
+    return this.globalDb;
+  }
+  /**
+   * Return the current resolved analytics configuration.
+   * Allows handlers to read cost rates and other config without unsafe casts.
+   */
+  getConfig() {
+    return this.config;
+  }
+  /**
    * Reload configuration without restarting the aggregator.
    *
    * Updates the stored config (including token costs) and recreates the
@@ -6509,8 +6801,8 @@ var Aggregator = class _Aggregator {
         }
       }
     }
-    const hotspots = Array.from(fileStats.entries()).map(([path7, stat2]) => ({
-      path: path7,
+    const hotspots = Array.from(fileStats.entries()).map(([path8, stat2]) => ({
+      path: path8,
       reads: stat2.reads,
       writes: stat2.writes,
       conflicts: stat2.conflicts,
