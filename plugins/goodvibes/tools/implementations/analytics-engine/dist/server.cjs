@@ -27125,6 +27125,7 @@ var MAX_HOTSPOTS = 20;
 var MAX_ANOMALIES = 50;
 var GLOBAL_DB_DEBOUNCE_MS = 1e4;
 var TOKENS_PER_K = 1e3;
+var STATUSLINE_STALENESS_MS = 6e4;
 function emptySessionMetrics() {
   return {
     tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
@@ -27655,14 +27656,21 @@ var Aggregator = class _Aggregator {
       cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
       cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
+    const statuslineData = this.readStatuslineData();
+    if (statuslineData) {
+      tokens.api_input = statuslineData.apiInput;
+      tokens.api_output = statuslineData.apiOutput;
+      tokens.cache_read = statuslineData.cacheRead;
+      tokens.cache_write = statuslineData.cacheWrite;
+    }
     const cache = this.buildCacheMetrics(telemetrySummary);
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
         const rates = getModelRates(jsonl.model, this.pricingMap);
         const inputRate = rates.inputPrice / 1e6;
         const outputRate = rates.outputPrice / 1e6;
-        const rawInputCost = jsonl.api_input * inputRate;
-        const rawOutputCost = jsonl.api_output * outputRate;
+        const rawInputCost = tokens.api_input * inputRate;
+        const rawOutputCost = tokens.api_output * outputRate;
         const rawTotal = rawInputCost + rawOutputCost;
         const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
         const inputCost = rawInputCost * scale;
@@ -27683,6 +27691,15 @@ var Aggregator = class _Aggregator {
         saved: tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens
       };
     })();
+    if (statuslineData && statuslineData.costUsd > 0) {
+      const prevTotal = cost.total;
+      cost.total = statuslineData.costUsd;
+      if (prevTotal > 0) {
+        const rescale = statuslineData.costUsd / prevTotal;
+        cost.input *= rescale;
+        cost.output *= rescale;
+      }
+    }
     const agentActivities = this.safeCall(
       () => this.jsonlReader !== null ? this.jsonlReader.extractAgentActivity(this.jsonlRecords) : [],
       []
@@ -27821,16 +27838,20 @@ var Aggregator = class _Aggregator {
       jsonlToolCalls,
       sessionCounters
     );
-    const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
     let contextPercent = 0;
-    for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
-      const rec = this.jsonlRecords[i];
-      if (rec.type === "assistant") {
-        const assistantRec = rec;
-        const inputTok = assistantRec.message?.usage?.input_tokens;
-        if (inputTok != null && inputTok > 0) {
-          contextPercent = Math.min(100, inputTok / CONTEXT_WINDOW_SIZE * 100);
-          break;
+    if (statuslineData) {
+      contextPercent = Math.max(0, Math.min(100, statuslineData.contextPercent));
+    } else {
+      const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
+      for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
+        const rec = this.jsonlRecords[i];
+        if (rec.type === "assistant") {
+          const assistantRec = rec;
+          const inputTok = assistantRec.message?.usage?.input_tokens;
+          if (inputTok != null && inputTok > 0) {
+            contextPercent = Math.min(100, inputTok / CONTEXT_WINDOW_SIZE * 100);
+            break;
+          }
         }
       }
     }
@@ -28267,6 +28288,49 @@ var Aggregator = class _Aggregator {
     } catch (err) {
       this.logger.warn(`safeCall error: ${String(err)}`);
       return fallback;
+    }
+  }
+  /**
+   * Read authoritative context/cost data from Claude Code's statusline JSON file.
+   *
+   * Claude Code pipes statusline data to hook scripts via stdin. The user's
+   * statusline script dumps this JSON to ~/.claude/debug-statusline-input.json,
+   * making it available for polling by the analytics daemon.
+   *
+   * @returns Parsed statusline data, or null if the file doesn't exist,
+   *          is stale (>60s old), or cannot be parsed.
+   */
+  readStatuslineData() {
+    const filePath = (0, import_node_path6.join)((0, import_node_os3.homedir)(), ".claude", "debug-statusline-input.json");
+    try {
+      const stat2 = (0, import_node_fs8.statSync)(filePath);
+      const ageMs = Date.now() - stat2.mtimeMs;
+      if (ageMs > STATUSLINE_STALENESS_MS) {
+        return null;
+      }
+      const raw = (0, import_node_fs8.readFileSync)(filePath, "utf-8");
+      const json = JSON.parse(raw);
+      if (typeof json?.context_window?.used_percentage !== "number") {
+        return null;
+      }
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextPercent: Number(json.context_window.used_percentage) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextWindowSize: Number(json.context_window.context_window_size) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiInput: Number(json.context_window.total_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiOutput: Number(json.context_window.total_output_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheRead: Number(json.context_window.current_usage?.cache_read_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheWrite: Number(json.context_window.current_usage?.cache_creation_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        costUsd: Number(json.cost?.total_cost_usd) || 0
+      };
+    } catch {
+      return null;
     }
   }
   /**

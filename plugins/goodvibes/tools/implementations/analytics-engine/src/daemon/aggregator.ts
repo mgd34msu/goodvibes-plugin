@@ -62,6 +62,28 @@ import { DataWatcher } from './watcher.js';
 // Logger
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Data extracted from the Claude Code statusline JSON file.
+ * This file is written by Claude Code's statusline hook and contains
+ * the most authoritative real-time context window and cost values.
+ */
+interface StatuslineData {
+  /** Context window used percentage (0-100) */
+  contextPercent: number;
+  /** Total context window size in tokens */
+  contextWindowSize: number;
+  /** Total API input tokens for this session */
+  apiInput: number;
+  /** Total API output tokens for this session */
+  apiOutput: number;
+  /** Cache read (prompt cache hit) tokens */
+  cacheRead: number;
+  /** Cache write (prompt cache creation) tokens */
+  cacheWrite: number;
+  /** Accumulated session cost in USD */
+  costUsd: number;
+}
+
 /** Minimal structured logger interface. */
 interface Logger {
   warn(message: string, context?: Record<string, unknown>): void;
@@ -96,6 +118,9 @@ const GLOBAL_DB_DEBOUNCE_MS = 10_000;
 
 /** Divisor for converting raw token counts to thousands (for cost calculation). */
 const TOKENS_PER_K = 1000;
+
+/** Maximum age (ms) for the statusline JSON file before it's considered stale. */
+const STATUSLINE_STALENESS_MS = 60_000;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -843,10 +868,27 @@ export class Aggregator {
     // API fields (api_input, api_output, cache_read, cache_write) come from JSONL above.
     // These two caching systems are distinct and must NOT be conflated.
 
+    // ── Statusline data (authoritative source) ────────────────────────────────
+    // Read Claude Code's statusline JSON for the most up-to-date context %,
+    // API token counts, and cost. Overrides JSONL-derived values when available.
+    const statuslineData = this.readStatuslineData();
+    if (statuslineData) {
+      // Statusline values come directly from Claude Code's runtime state,
+      // making them more accurate than JSONL-accumulated totals.
+      // Apply token overrides BEFORE the cost IIFE so that cost decomposition
+      // uses the same authoritative token values (no input/output source mismatch).
+      tokens.api_input   = statuslineData.apiInput;
+      tokens.api_output  = statuslineData.apiOutput;
+      tokens.cache_read  = statuslineData.cacheRead;
+      tokens.cache_write = statuslineData.cacheWrite;
+    }
+
     // ── Cache metrics (precision engine only) ────────────────────────────
     const cache: CacheMetrics = this.buildCacheMetrics(telemetrySummary);
 
     // ── Cost metrics: prefer JSONL calculated cost (uses real API tokens) ──
+    // NOTE: tokens.api_input / tokens.api_output already reflect statusline overrides
+    // (applied above), so cost decomposition and token counts use the same source.
     const cost: CostMetrics = (() => {
       if (jsonl.cost_usd > 0) {
         // Decompose total cost proportionally using model-specific rates.
@@ -854,8 +896,9 @@ export class Aggregator {
         const rates = getModelRates(jsonl.model, this.pricingMap);
         const inputRate = rates.inputPrice / 1_000_000; // $/MTok to per-token
         const outputRate = rates.outputPrice / 1_000_000;
-        const rawInputCost = jsonl.api_input * inputRate;
-        const rawOutputCost = jsonl.api_output * outputRate;
+        // Use tokens.api_input/api_output (already statusline-overridden if available).
+        const rawInputCost = tokens.api_input * inputRate;
+        const rawOutputCost = tokens.api_output * outputRate;
         const rawTotal = rawInputCost + rawOutputCost;
         // Scale to match the accurate jsonl.cost_usd total (which includes cache + tiers).
         const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
@@ -881,6 +924,19 @@ export class Aggregator {
         saved: (tokens.saved / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens,
       };
     })();
+
+    // Override cost.total with statusline value if available (most accurate).
+    // Rescale cost.input and cost.output proportionally so the invariant
+    // cost.input + cost.output == cost.total is preserved.
+    if (statuslineData && statuslineData.costUsd > 0) {
+      const prevTotal = cost.total;
+      cost.total = statuslineData.costUsd;
+      if (prevTotal > 0) {
+        const rescale = statuslineData.costUsd / prevTotal;
+        cost.input *= rescale;
+        cost.output *= rescale;
+      }
+    }
 
     // ── Agent activity from JSONL ────────────────────────────────────────────
     const agentActivities = this.safeCall(
@@ -1069,19 +1125,27 @@ export class Aggregator {
     // agentProfiles already built above (before agents object creation).
 
     // ── Context window usage percentage ───────────────────────────────────
-    // Derived from the most recent assistant record's input_tokens.
-    // The full conversation history is sent as input each turn, so the
-    // most recent value approximates current context window fill level.
-    const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 200_000; // tokens (configurable; default = Claude context window)
+    // Prefer statusline data (authoritative real-time value from Claude Code).
+    // Fall back to deriving from the most recent assistant record's input_tokens.
     let contextPercent = 0;
-    for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
-      const rec = this.jsonlRecords[i]!;
-      if (rec.type === 'assistant') {
-        const assistantRec = rec as JSONLAssistantRecord;
-        const inputTok = assistantRec.message?.usage?.input_tokens;
-        if (inputTok != null && inputTok > 0) {
-          contextPercent = Math.min(100, (inputTok / CONTEXT_WINDOW_SIZE) * 100);
-          break;
+    if (statuslineData) {
+      // Statusline reports exact percentage directly from Claude Code's runtime.
+      // Clamp to [0, 100] to guard against out-of-range values in the JSON file.
+      contextPercent = Math.max(0, Math.min(100, statuslineData.contextPercent));
+    } else {
+      // Fallback: derive from JSONL records.
+      // The full conversation history is sent as input each turn, so the
+      // most recent value approximates current context window fill level.
+      const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 200_000; // tokens (configurable; default = Claude context window)
+      for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
+        const rec = this.jsonlRecords[i]!;
+        if (rec.type === 'assistant') {
+          const assistantRec = rec as JSONLAssistantRecord;
+          const inputTok = assistantRec.message?.usage?.input_tokens;
+          if (inputTok != null && inputTok > 0) {
+            contextPercent = Math.min(100, (inputTok / CONTEXT_WINDOW_SIZE) * 100);
+            break;
+          }
         }
       }
     }
@@ -1626,6 +1690,59 @@ export class Aggregator {
     } catch (err) {
       this.logger.warn(`safeCall error: ${String(err)}`);
       return fallback;
+    }
+  }
+
+  /**
+   * Read authoritative context/cost data from Claude Code's statusline JSON file.
+   *
+   * Claude Code pipes statusline data to hook scripts via stdin. The user's
+   * statusline script dumps this JSON to ~/.claude/debug-statusline-input.json,
+   * making it available for polling by the analytics daemon.
+   *
+   * @returns Parsed statusline data, or null if the file doesn't exist,
+   *          is stale (>60s old), or cannot be parsed.
+   */
+  private readStatuslineData(): StatuslineData | null {
+    const filePath = join(homedir(), '.claude', 'debug-statusline-input.json');
+    try {
+      const stat = statSync(filePath);
+      const ageMs = Date.now() - stat.mtimeMs;
+      // Treat the file as stale after STATUSLINE_STALENESS_MS — the daemon
+      // refreshes frequently, so stale data could mislead the dashboard.
+      if (ageMs > STATUSLINE_STALENESS_MS) {
+        return null;
+      }
+      const raw = readFileSync(filePath, 'utf-8');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const json = JSON.parse(raw);
+      // Validate required structure before extracting values.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (typeof json?.context_window?.used_percentage !== 'number') {
+        return null;
+      }
+      // Use Number() coercion with || 0 fallback to handle non-number values at
+      // runtime without relying on `as number ?? 0` (which is a TypeScript-only
+      // assertion — the ?? 0 never fires because `as number` always "succeeds").
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextPercent:    Number(json.context_window.used_percentage)                                     || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextWindowSize: Number(json.context_window.context_window_size)                                 || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiInput:          Number(json.context_window.total_input_tokens)                                   || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiOutput:         Number(json.context_window.total_output_tokens)                                  || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheRead:         Number(json.context_window.current_usage?.cache_read_input_tokens)               || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheWrite:        Number(json.context_window.current_usage?.cache_creation_input_tokens)           || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        costUsd:           Number(json.cost?.total_cost_usd)                                                || 0,
+      };
+    } catch {
+      // File doesn't exist or failed to parse — return null to use fallback.
+      return null;
     }
   }
 

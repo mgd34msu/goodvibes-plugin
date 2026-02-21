@@ -4,11 +4,12 @@
  * Renders a compact analytics summary using raw ANSI escape codes.
  * Designed to run in a tmux pane refreshing every 2 seconds.
  * Auto-detects terminal width on each render tick.
+ * Border is always green.
  *
  * Layout:
- *   Line 1 (header): session ID (8 chars), uptime, health status, budget
- *   Line 2: Claude API metrics — context %, tokens (In/Out/Cache), total cost
- *   Line 3: Precision + Operations — commands, file ops, agents, precision savings
+ *   Line 1 (header): session ID (8 chars), uptime, session cost
+ *   Line 2: context bar, API tokens (In/Out/CacheRead/CacheWrite), total cost
+ *   Line 3: commands, files, agents, tokens saved, cache hit rate
  *   Line 4 (footer): bottom border
  */
 
@@ -17,8 +18,9 @@ import {
   ansi,
   colorForHealth,
   formatNumber,
-  formatUptime,
+  formatUptimeProgressive,
   formatDollars,
+  formatTokensSaved,
 } from './format.js';
 
 /** Minimum width of the rendered box (characters). */
@@ -96,7 +98,7 @@ function buildSections(sections: string[]): string {
 /**
  * Build a single row for the box interior.
  * Format: "│ {content padded to width-2} │"
- * The border chars use the active health color.
+ * The border chars use the supplied border color.
  */
 function buildRow(content: string, borderColor: string, width: number): string {
   const innerWidth = width - 2; // subtract the two │ chars
@@ -141,10 +143,9 @@ interface ComputedMetrics {
   apiInputTokens: string;
   apiOutputTokens: string;
   cacheReadTokens: string;
+  cacheWriteTokens: string;
   // Precision tool token counts
-  tokensUsed: string;
   tokensSaved: string;
-  savings: string;
   agentsActive: number;
   agentsMax: number;
   filesRead: string;
@@ -173,20 +174,19 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     ? state.session_id.slice(0, SESSION_ID_LENGTH)
     : 'no-session';
 
-  const uptime = formatUptime(state.uptime_ms);
+  const uptime = formatUptimeProgressive(state.uptime_ms);
 
   // Session cost in dollars (from cost metrics)
   const sessionCost = formatDollars(cost.total ?? 0);
 
-  // API-level token counts from JSONL (api_input, api_output, cache_read)
+  // API-level token counts from JSONL (api_input, api_output, cache_read, cache_write)
   const apiInputTokens = formatNumber(tokens.api_input ?? 0);
   const apiOutputTokens = formatNumber(tokens.api_output ?? 0);
   const cacheReadTokens = formatNumber(tokens.cache_read ?? 0);
+  const cacheWriteTokens = formatNumber(tokens.cache_write ?? 0);
 
   // Precision tool token metrics
-  const tokensUsed = formatNumber(tokens.total ?? 0);
   const tokensSaved = formatNumber(tokens.saved ?? 0);
-  const savings = formatDollars(cost.saved ?? 0);
   const agentsActive = agents.active ?? 0;
   const agentsMax = agents.max_concurrent ?? 0;  // fallback from observed peak when configured max not available
 
@@ -201,8 +201,8 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   const rawAvgMs = commands.avg_duration_ms ?? 0;
   const cmdAvgSec = (rawAvgMs / 1000).toFixed(1);
 
-  // Precision engine cache hit rate (compact, no decimal)
-  const cacheHitRate = `${Math.round((cache.hit_rate ?? 0) * 100)}%`;
+  // Precision engine cache hit rate (one decimal place)
+  const cacheHitRate = `${((cache.hit_rate ?? 0) * 100).toFixed(1)}%`;
 
   // Context window usage
   const rawCtx = state.context_percent ?? 0;
@@ -218,9 +218,8 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     apiInputTokens,
     apiOutputTokens,
     cacheReadTokens,
-    tokensUsed,
+    cacheWriteTokens,
     tokensSaved,
-    savings,
     agentsActive,
     agentsMax,
     filesRead,
@@ -340,54 +339,28 @@ export class MiniRenderer {
       return renderFallback(w);
     }
 
-    const health = determineHealth(state);
-    const borderColor = colorForHealth(health);
+    const borderColor = ansi.green;
     const innerWidth = w - 2;
 
     // ── Derived values ────────────────────────────────────────────────────────────
     const m = computeMetrics(state);
 
-    // ── Line 1: Header — session ID, uptime, session cost, active agents ───────────
-    const showBudgetBar = (this.config?.mini_budget_bar ?? false);
-    let headerContent: string;
-    if (state.budget != null) {
-      const b = state.budget;
-      const budgetUsed = formatDollars(b.used ?? 0);
-      const budgetTotal = formatDollars(b.amount ?? 0);
-      const rawPct = b.percentage;
-      const budgetPct = rawPct != null && isFinite(rawPct) ? rawPct.toFixed(0) : '?';
-      if (showBudgetBar) {
-        // Budget bar: 10 chars wide, color escalates as usage rises
-        const budgetBar = renderBar(rawPct ?? 0, 100, 10);
-        headerContent =
-          ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
-          ` ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
-          ` budget ${budgetBar} ${budgetPct}% ${budgetUsed}/${budgetTotal} `;
-      } else {
-        headerContent =
-          ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
-          ` ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
-          ` budget: ${budgetUsed}/${budgetTotal} (${budgetPct}%) `;
-      }
-    } else {
-      // Show session cost prominently and active agent count
-      headerContent =
-        ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
-        ` ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
-        ` ${ansi.bold}${m.sessionCost}${ansi.reset} ${ansi.dim}\u2500${ansi.reset}` +
-        ` ${m.agentsActive} agent${m.agentsActive !== 1 ? 's' : ''} `;
-    }
+    // ── Line 1: Header — session ID, uptime, session cost ──────────────────────────
+    const headerContent =
+      ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
+      ` ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
+      ` ${ansi.bold}${m.sessionCost}${ansi.reset} `;
 
     // Build the header line: \u250c {content} {filler dashes} \u2510
     const headerVisible = visibleLength(headerContent);
     const dashCount = Math.max(0, innerWidth - headerVisible);
-    const dashes = ansi.box.horizontal.repeat(dashCount);
+    const dashes = `${ansi.dim}${ansi.box.horizontal.repeat(dashCount)}${ansi.reset}`;
     const line1 =
       `${borderColor}${ansi.box.topLeft}${ansi.reset}` +
       headerContent +
       `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
 
-    // ── Line 2: Claude API metrics — context %, tokens (3 separate sections), cost ─
+    // ── Line 2: Claude API metrics — context % (bar), tokens (4 sections), cost ────
     // Context percentage: color escalates green -> yellow -> red
     const ctxColor = m.contextPercent >= 80
       ? ansi.red
@@ -395,8 +368,13 @@ export class MiniRenderer {
         ? ansi.yellow
         : ansi.green;
 
+    // Context section: bar + percentage. Label = "Context: " (9 chars), percent = " XX.X%" (6 chars)
+    const ctxLabel = 'Context: ';
+    const ctxPercentDisplay = ` ${m.contextPercentStr}%`;
+    const ctxBarWidth = Math.max(1, sectionWidth - ctxLabel.length - ctxPercentDisplay.length);
+    const ctxBar = renderBar(m.contextPercent, 100, ctxBarWidth, { thresholds: { warn: 0.5, alert: 0.8 } });
     const ctxSection = padSection(
-      `Context: ${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
+      `${ctxLabel}${ctxBar}${ctxColor}${ctxPercentDisplay}${ansi.reset}`,
       sectionWidth,
     );
     const apiInSection = padSection(
@@ -407,8 +385,12 @@ export class MiniRenderer {
       `API Output: ${ansi.bold}${m.apiOutputTokens}${ansi.reset}`,
       sectionWidth,
     );
-    const apiCacheSection = padSection(
-      `API Cache: ${m.cacheReadTokens}`,
+    const cacheReadSection = padSection(
+      `Cache Read: ${m.cacheReadTokens}`,
+      sectionWidth,
+    );
+    const cacheWriteSection = padSection(
+      `Cache Write: ${m.cacheWriteTokens}`,
       sectionWidth,
     );
     const costSection = padSection(
@@ -416,7 +398,7 @@ export class MiniRenderer {
       sectionWidth,
     );
 
-    const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, apiCacheSection, costSection]);
+    const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, cacheReadSection, cacheWriteSection, costSection]);
     const line2 = buildRow(row2Content, borderColor, w);
 
     // ── Line 3: Precision + Operations — cmds, files, agents, prec savings ────────
@@ -444,12 +426,16 @@ export class MiniRenderer {
       `Agents: ${agentBar} ${m.agentsActive}/${configuredMax}`,
       sectionWidth,
     );
-    const precSection = padSection(
-      `Prec: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
+    const tokensSavedSection = padSection(
+      `Tokens Saved: ${formatTokensSaved(state.metrics.tokens.saved ?? 0)}`,
+      sectionWidth,
+    );
+    const cacheHitSection = padSection(
+      `Cache Hit: ${m.cacheHitRate}`,
       sectionWidth,
     );
 
-    const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);
+    const row3Content = buildSections([cmdsSection, filesSection, agentsSection, tokensSavedSection, cacheHitSection]);
     const line3 = buildRow(row3Content, borderColor, w);
 
     // ── Line 4: Footer ───────────────────────────────────────────────────────────

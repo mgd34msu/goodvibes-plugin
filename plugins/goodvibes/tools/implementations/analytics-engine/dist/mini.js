@@ -2708,6 +2708,7 @@ var MAX_HOTSPOTS = 20;
 var MAX_ANOMALIES = 50;
 var GLOBAL_DB_DEBOUNCE_MS = 1e4;
 var TOKENS_PER_K = 1e3;
+var STATUSLINE_STALENESS_MS = 6e4;
 function emptySessionMetrics() {
   return {
     tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
@@ -3238,14 +3239,21 @@ var Aggregator = class _Aggregator {
       cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
       cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
+    const statuslineData = this.readStatuslineData();
+    if (statuslineData) {
+      tokens.api_input = statuslineData.apiInput;
+      tokens.api_output = statuslineData.apiOutput;
+      tokens.cache_read = statuslineData.cacheRead;
+      tokens.cache_write = statuslineData.cacheWrite;
+    }
     const cache = this.buildCacheMetrics(telemetrySummary);
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
         const rates = getModelRates(jsonl.model, this.pricingMap);
         const inputRate = rates.inputPrice / 1e6;
         const outputRate = rates.outputPrice / 1e6;
-        const rawInputCost = jsonl.api_input * inputRate;
-        const rawOutputCost = jsonl.api_output * outputRate;
+        const rawInputCost = tokens.api_input * inputRate;
+        const rawOutputCost = tokens.api_output * outputRate;
         const rawTotal = rawInputCost + rawOutputCost;
         const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
         const inputCost = rawInputCost * scale;
@@ -3266,6 +3274,15 @@ var Aggregator = class _Aggregator {
         saved: tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens
       };
     })();
+    if (statuslineData && statuslineData.costUsd > 0) {
+      const prevTotal = cost.total;
+      cost.total = statuslineData.costUsd;
+      if (prevTotal > 0) {
+        const rescale = statuslineData.costUsd / prevTotal;
+        cost.input *= rescale;
+        cost.output *= rescale;
+      }
+    }
     const agentActivities = this.safeCall(
       () => this.jsonlReader !== null ? this.jsonlReader.extractAgentActivity(this.jsonlRecords) : [],
       []
@@ -3404,16 +3421,20 @@ var Aggregator = class _Aggregator {
       jsonlToolCalls,
       sessionCounters
     );
-    const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
     let contextPercent = 0;
-    for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
-      const rec = this.jsonlRecords[i];
-      if (rec.type === "assistant") {
-        const assistantRec = rec;
-        const inputTok = assistantRec.message?.usage?.input_tokens;
-        if (inputTok != null && inputTok > 0) {
-          contextPercent = Math.min(100, inputTok / CONTEXT_WINDOW_SIZE * 100);
-          break;
+    if (statuslineData) {
+      contextPercent = Math.max(0, Math.min(100, statuslineData.contextPercent));
+    } else {
+      const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
+      for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
+        const rec = this.jsonlRecords[i];
+        if (rec.type === "assistant") {
+          const assistantRec = rec;
+          const inputTok = assistantRec.message?.usage?.input_tokens;
+          if (inputTok != null && inputTok > 0) {
+            contextPercent = Math.min(100, inputTok / CONTEXT_WINDOW_SIZE * 100);
+            break;
+          }
         }
       }
     }
@@ -3853,6 +3874,49 @@ var Aggregator = class _Aggregator {
     }
   }
   /**
+   * Read authoritative context/cost data from Claude Code's statusline JSON file.
+   *
+   * Claude Code pipes statusline data to hook scripts via stdin. The user's
+   * statusline script dumps this JSON to ~/.claude/debug-statusline-input.json,
+   * making it available for polling by the analytics daemon.
+   *
+   * @returns Parsed statusline data, or null if the file doesn't exist,
+   *          is stale (>60s old), or cannot be parsed.
+   */
+  readStatuslineData() {
+    const filePath = join9(homedir2(), ".claude", "debug-statusline-input.json");
+    try {
+      const stat2 = statSync6(filePath);
+      const ageMs = Date.now() - stat2.mtimeMs;
+      if (ageMs > STATUSLINE_STALENESS_MS) {
+        return null;
+      }
+      const raw = readFileSync6(filePath, "utf-8");
+      const json = JSON.parse(raw);
+      if (typeof json?.context_window?.used_percentage !== "number") {
+        return null;
+      }
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextPercent: Number(json.context_window.used_percentage) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextWindowSize: Number(json.context_window.context_window_size) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiInput: Number(json.context_window.total_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiOutput: Number(json.context_window.total_output_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheRead: Number(json.context_window.current_usage?.cache_read_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheWrite: Number(json.context_window.current_usage?.cache_creation_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        costUsd: Number(json.cost?.total_cost_usd) || 0
+      };
+    } catch {
+      return null;
+    }
+  }
+  /**
    * Invoke all registered state-change callbacks with the current state.
    * Errors in callbacks are caught and logged to avoid cascade failures.
    */
@@ -3885,17 +3949,6 @@ function formatDollars(amount) {
   return `$${amount.toFixed(2)}`;
 }
 __name(formatDollars, "formatDollars");
-function formatUptime(ms) {
-  if (!isFinite(ms) || ms < 0) return "0s";
-  const totalSeconds = Math.floor(ms / 1e3);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor(totalSeconds % 3600 / 60);
-  const seconds = totalSeconds % 60;
-  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
-__name(formatUptime, "formatUptime");
 var ansi = {
   reset: "\x1B[0m",
   bold: "\x1B[1m",
@@ -3942,6 +3995,60 @@ function colorForHealth(status) {
   }
 }
 __name(colorForHealth, "colorForHealth");
+function formatUptimeProgressive(ms) {
+  if (!isFinite(ms) || ms < 0) return "00h00m00s";
+  const totalSeconds = Math.floor(ms / 1e3);
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const totalDays = Math.floor(totalHours / 24);
+  const totalWeeks = Math.floor(totalDays / 7);
+  const totalMonths = Math.floor(totalDays / 30);
+  const totalYears = Math.floor(totalDays / 365);
+  const hh = String(totalHours % 24).padStart(2, "0");
+  const mm = String(totalMinutes % 60).padStart(2, "0");
+  const ss = String(totalSeconds % 60).padStart(2, "0");
+  if (totalDays < 1) {
+    return `${hh}h${mm}m${ss}s`;
+  }
+  if (totalDays < 7) {
+    const d = totalDays;
+    return `${d}d ${hh}h${mm}m`;
+  }
+  if (totalDays < 30) {
+    const w = totalWeeks;
+    const d = totalDays % 7;
+    return `${w}w ${d}d ${hh}h`;
+  }
+  if (totalMonths < 12) {
+    const mo2 = totalMonths;
+    const remainingDays = totalDays - mo2 * 30;
+    const w = Math.floor(remainingDays / 7);
+    return `${mo2}mo ${w}w`;
+  }
+  const yr = totalYears;
+  const mo = totalMonths % 12;
+  return `${yr}yr ${mo}mo`;
+}
+__name(formatUptimeProgressive, "formatUptimeProgressive");
+function formatTokensSaved(n) {
+  if (!isFinite(n) || n < 0) return "0";
+  const v = Math.round(n);
+  if (v < 1e3) return String(v);
+  if (v < 1e5) {
+    const formatted = (v / 1e3).toFixed(1);
+    if (parseFloat(formatted) >= 100) return `${Math.floor(v / 1e3)}k`;
+    return `${formatted}k`;
+  }
+  if (v < 1e6) return `${Math.floor(v / 1e3)}k`;
+  if (v < 1e8) {
+    const formatted = (v / 1e6).toFixed(1);
+    if (parseFloat(formatted) >= 100) return `${Math.floor(v / 1e6)}M`;
+    return `${formatted}M`;
+  }
+  if (v < 1e9) return `${Math.floor(v / 1e6)}M`;
+  return `${(v / 1e9).toFixed(1)}B`;
+}
+__name(formatTokensSaved, "formatTokensSaved");
 
 // src/tui/mini/renderer.ts
 var MIN_WIDTH = 160;
@@ -3993,10 +4100,6 @@ function buildRow(content, borderColor, width) {
   return `${borderColor}${ansi.box.vertical}${ansi.reset}${inner}${borderColor}${ansi.box.vertical}${ansi.reset}`;
 }
 __name(buildRow, "buildRow");
-function determineHealth(state) {
-  return state.health_status;
-}
-__name(determineHealth, "determineHealth");
 function padSection(content, width) {
   const visible = visibleLength(content);
   if (visible === width) return content;
@@ -4013,14 +4116,13 @@ function computeMetrics(state) {
   const files = metrics.files;
   const commands = metrics.commands;
   const sessionId = state.session_id ? state.session_id.slice(0, SESSION_ID_LENGTH) : "no-session";
-  const uptime = formatUptime(state.uptime_ms);
+  const uptime = formatUptimeProgressive(state.uptime_ms);
   const sessionCost = formatDollars(cost.total ?? 0);
   const apiInputTokens = formatNumber(tokens.api_input ?? 0);
   const apiOutputTokens = formatNumber(tokens.api_output ?? 0);
   const cacheReadTokens = formatNumber(tokens.cache_read ?? 0);
-  const tokensUsed = formatNumber(tokens.total ?? 0);
+  const cacheWriteTokens = formatNumber(tokens.cache_write ?? 0);
   const tokensSaved = formatNumber(tokens.saved ?? 0);
-  const savings = formatDollars(cost.saved ?? 0);
   const agentsActive = agents.active ?? 0;
   const agentsMax = agents.max_concurrent ?? 0;
   const filesRead = formatNumber(files.unique_read ?? 0);
@@ -4032,7 +4134,7 @@ function computeMetrics(state) {
   const cmdFails = formatNumber(commands.failures ?? 0);
   const rawAvgMs = commands.avg_duration_ms ?? 0;
   const cmdAvgSec = (rawAvgMs / 1e3).toFixed(1);
-  const cacheHitRate = `${Math.round((cache.hit_rate ?? 0) * 100)}%`;
+  const cacheHitRate = `${((cache.hit_rate ?? 0) * 100).toFixed(1)}%`;
   const rawCtx = state.context_percent ?? 0;
   const contextPercent = isFinite(rawCtx) ? Math.max(0, Math.min(100, rawCtx)) : 0;
   const contextPercentStr = contextPercent.toFixed(1);
@@ -4045,9 +4147,8 @@ function computeMetrics(state) {
     apiInputTokens,
     apiOutputTokens,
     cacheReadTokens,
-    tokensUsed,
+    cacheWriteTokens,
     tokensSaved,
-    savings,
     agentsActive,
     agentsMax,
     filesRead,
@@ -4123,34 +4224,21 @@ var MiniRenderer = class {
     if (!isValidState(state)) {
       return renderFallback(w);
     }
-    const health = determineHealth(state);
-    const borderColor = colorForHealth(health);
+    const borderColor = ansi.green;
     const innerWidth = w - 2;
     const m = computeMetrics(state);
-    const showBudgetBar = this.config?.mini_budget_bar ?? false;
-    let headerContent;
-    if (state.budget != null) {
-      const b = state.budget;
-      const budgetUsed = formatDollars(b.used ?? 0);
-      const budgetTotal = formatDollars(b.amount ?? 0);
-      const rawPct = b.percentage;
-      const budgetPct = rawPct != null && isFinite(rawPct) ? rawPct.toFixed(0) : "?";
-      if (showBudgetBar) {
-        const budgetBar = renderBar(rawPct ?? 0, 100, 10);
-        headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} budget ${budgetBar} ${budgetPct}% ${budgetUsed}/${budgetTotal} `;
-      } else {
-        headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} budget: ${budgetUsed}/${budgetTotal} (${budgetPct}%) `;
-      }
-    } else {
-      headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${ansi.bold}${m.sessionCost}${ansi.reset} ${ansi.dim}\u2500${ansi.reset} ${m.agentsActive} agent${m.agentsActive !== 1 ? "s" : ""} `;
-    }
+    const headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${ansi.bold}${m.sessionCost}${ansi.reset} `;
     const headerVisible = visibleLength(headerContent);
     const dashCount = Math.max(0, innerWidth - headerVisible);
-    const dashes = ansi.box.horizontal.repeat(dashCount);
+    const dashes = `${ansi.dim}${ansi.box.horizontal.repeat(dashCount)}${ansi.reset}`;
     const line1 = `${borderColor}${ansi.box.topLeft}${ansi.reset}` + headerContent + `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
     const ctxColor = m.contextPercent >= 80 ? ansi.red : m.contextPercent >= 50 ? ansi.yellow : ansi.green;
+    const ctxLabel = "Context: ";
+    const ctxPercentDisplay = ` ${m.contextPercentStr}%`;
+    const ctxBarWidth = Math.max(1, sectionWidth - ctxLabel.length - ctxPercentDisplay.length);
+    const ctxBar = renderBar(m.contextPercent, 100, ctxBarWidth, { thresholds: { warn: 0.5, alert: 0.8 } });
     const ctxSection = padSection(
-      `Context: ${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
+      `${ctxLabel}${ctxBar}${ctxColor}${ctxPercentDisplay}${ansi.reset}`,
       sectionWidth
     );
     const apiInSection = padSection(
@@ -4161,15 +4249,19 @@ var MiniRenderer = class {
       `API Output: ${ansi.bold}${m.apiOutputTokens}${ansi.reset}`,
       sectionWidth
     );
-    const apiCacheSection = padSection(
-      `API Cache: ${m.cacheReadTokens}`,
+    const cacheReadSection = padSection(
+      `Cache Read: ${m.cacheReadTokens}`,
+      sectionWidth
+    );
+    const cacheWriteSection = padSection(
+      `Cache Write: ${m.cacheWriteTokens}`,
       sectionWidth
     );
     const costSection = padSection(
       `Cost: ${m.sessionCost}`,
       sectionWidth
     );
-    const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, apiCacheSection, costSection]);
+    const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, cacheReadSection, cacheWriteSection, costSection]);
     const line2 = buildRow(row2Content, borderColor, w);
     const conflictStr = m.conflicts > 0 ? `${ansi.yellow}${m.conflicts}\u26A1${ansi.reset}` : "";
     const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
@@ -4191,11 +4283,15 @@ var MiniRenderer = class {
       `Agents: ${agentBar} ${m.agentsActive}/${configuredMax}`,
       sectionWidth
     );
-    const precSection = padSection(
-      `Prec: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
+    const tokensSavedSection = padSection(
+      `Tokens Saved: ${formatTokensSaved(state.metrics.tokens.saved ?? 0)}`,
       sectionWidth
     );
-    const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);
+    const cacheHitSection = padSection(
+      `Cache Hit: ${m.cacheHitRate}`,
+      sectionWidth
+    );
+    const row3Content = buildSections([cmdsSection, filesSection, agentsSection, tokensSavedSection, cacheHitSection]);
     const line3 = buildRow(row3Content, borderColor, w);
     const footerDashes = ansi.box.horizontal.repeat(innerWidth);
     const line4 = `${borderColor}${ansi.box.bottomLeft}${footerDashes}${ansi.box.bottomRight}${ansi.reset}`;

@@ -264,8 +264,8 @@ describe('MiniRenderer', () => {
 
     it('line 1 contains uptime value', () => {
       const output = renderer.render(createMockState());
-      // uptime_ms: 65_000 -> "1m 5s"
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('1m 5s');
+      // uptime_ms: 65_000 -> "00h01m05s" (formatUptimeProgressive)
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('00h01m05s');
     });
 
     it('line 2 contains "Context:" (context window percentage)', () => {
@@ -284,24 +284,38 @@ describe('MiniRenderer', () => {
     });
 
     it('line 3 contains "saved" (precision savings)', () => {
-      // All sections are visible at MIN_WIDTH=160
-      setColumns(160);
+      // All sections are visible at 200 cols (5×32 + separators)
+      setColumns(200);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('saved');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Saved');
     });
 
-    it('line 2 contains "API Cache:" (cache read tokens)', () => {
+    it('line 2 contains "Cache Read:" (cache read tokens)', () => {
       // All sections visible at MIN_WIDTH=160
       setColumns(160);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Cache:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cache Read:');
     });
 
-    it('line 3 contains "Prec:" (precision savings label)', () => {
+    it('line 2 contains "Cache Write:" (cache write tokens)', () => {
+      // 6 sections on line 2 need 200+ cols to all be visible
+      setColumns(200);
+      const output = renderer.render(createMockState());
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cache Write:');
+    });
+
+    it('line 3 contains "Tokens Saved:" (precision savings label)', () => {
       // All sections visible at MIN_WIDTH=160
       setColumns(160);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('Prec:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Tokens Saved:');
+    });
+
+    it('line 3 contains "Cache Hit:" (cache hit rate)', () => {
+      // 5 sections on line 3 need 200+ cols to all be visible
+      setColumns(200);
+      const output = renderer.render(createMockState());
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Cache Hit:');
     });
 
     it('line 3 contains "Agents:"', () => {
@@ -338,25 +352,32 @@ describe('MiniRenderer', () => {
     beforeEach(() => setColumns(80));
 
     it('shows green context percent when below 50%', () => {
+      // Use 200 cols to ensure the context section is not truncated
+      setColumns(200);
       const state = createMockState({ context_percent: 25 });
       const output = renderer.render(state);
-      // Line 2 should contain green ANSI for context (\x1b[32m)
+      // Line 2 should contain green ANSI for context percentage (\x1b[32m)
+      // The format is: ctxColor + " " + percentStr + "%" (section may truncate the trailing %)
       const line2 = output.split('\n')[1]!;
-      expect(line2).toContain('\x1b[32m25.0%');
+      expect(line2).toContain('\x1b[32m 25');
     });
 
     it('shows yellow context percent between 50% and 80%', () => {
+      // Use 200 cols to ensure the context section is not truncated
+      setColumns(200);
       const state = createMockState({ context_percent: 65 });
       const output = renderer.render(state);
       const line2 = output.split('\n')[1]!;
-      expect(line2).toContain('\x1b[33m65.0%');
+      expect(line2).toContain('\x1b[33m 65');
     });
 
     it('shows red context percent at 80% or above', () => {
+      // Use 200 cols to ensure the context section is not truncated
+      setColumns(200);
       const state = createMockState({ context_percent: 85 });
       const output = renderer.render(state);
       const line2 = output.split('\n')[1]!;
-      expect(line2).toContain('\x1b[31m85.0%');
+      expect(line2).toContain('\x1b[31m 85');
     });
   });
 
@@ -379,30 +400,34 @@ describe('MiniRenderer', () => {
       expect(firstCode).toBe('\x1b[32m');
     });
 
-    it('warning state uses yellow border codes (\\x1b[33m)', () => {
+    it('warning state border is always green (border no longer health-dependent)', () => {
       const state = createMockState({ health_status: 'warning' });
       const output = renderer.render(state);
-      expect(output).toContain('\x1b[33m');
+      // Border is always green regardless of health status
+      const firstCode = output.match(/\x1b\[[0-9;]*m/)?.[0];
+      expect(firstCode).toBe('\x1b[32m');
     });
 
-    it('warning state first ANSI code is yellow', () => {
+    it('warning state first ANSI code is always green', () => {
       const state = createMockState({ health_status: 'warning' });
       const output = renderer.render(state);
       const firstCode = output.match(/\x1b\[[0-9;]*m/)?.[0];
-      expect(firstCode).toBe('\x1b[33m');
+      expect(firstCode).toBe('\x1b[32m');
     });
 
-    it('alert state uses red border codes (\\x1b[31m)', () => {
+    it('alert state border is always green (border no longer health-dependent)', () => {
       const state = createMockState({ health_status: 'alert' });
       const output = renderer.render(state);
-      expect(output).toContain('\x1b[31m');
+      // Border is always green regardless of health status
+      const firstCode = output.match(/\x1b\[[0-9;]*m/)?.[0];
+      expect(firstCode).toBe('\x1b[32m');
     });
 
-    it('alert state first ANSI code is red', () => {
+    it('alert state first ANSI code is always green', () => {
       const state = createMockState({ health_status: 'alert' });
       const output = renderer.render(state);
       const firstCode = output.match(/\x1b\[[0-9;]*m/)?.[0];
-      expect(firstCode).toBe('\x1b[31m');
+      expect(firstCode).toBe('\x1b[32m');
     });
   });
 
@@ -421,38 +446,24 @@ describe('MiniRenderer', () => {
       current_threshold: null,
     };
 
-    it('when budget is set, header shows "budget:"', () => {
+    it('when budget is set, header does not show "budget:" (budget removed from header)', () => {
       const state = createMockState({ budget });
       const output = renderer.render(state);
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('budget:');
+      // Budget display was removed from header; renderer still receives budget state
+      expect(stripAnsi(output.split('\n')[0]!)).not.toContain('budget:');
     });
 
-    it('when budget is set, header shows used/total amounts', () => {
+    it('when budget is set, header still shows session cost', () => {
       const state = createMockState({ budget });
       const output = renderer.render(state);
-      const line1 = stripAnsi(output.split('\n')[0]!);
-      // $2.50 / $5.00
-      expect(line1).toContain('$2.50');
-      expect(line1).toContain('$5.00');
+      // Cost is always in the header regardless of budget
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('$0.05');
     });
 
-    it('when budget is set, header shows percentage', () => {
+    it('when budget is set, header renders 4 lines without crashing', () => {
       const state = createMockState({ budget });
       const output = renderer.render(state);
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('50%');
-    });
-
-    it('when budget is set, header does not show "calls"', () => {
-      const state = createMockState({ budget });
-      const output = renderer.render(state);
-      expect(stripAnsi(output.split('\n')[0]!)).not.toContain('calls');
-    });
-
-    it('when budget is null, header shows agent count', () => {
-      const state = createMockState({ budget: null });
-      const output = renderer.render(state);
-      // agents.active: 1 -> "1 agent"
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('agent');
+      expect(output.split('\n')).toHaveLength(4);
     });
 
     it('when budget is null, header shows session cost', () => {
@@ -466,6 +477,13 @@ describe('MiniRenderer', () => {
       const state = createMockState({ budget: null });
       const output = renderer.render(state);
       expect(stripAnsi(output.split('\n')[0]!)).not.toContain('budget:');
+    });
+
+    it('when budget is null, header does not show agent count (agents removed from header)', () => {
+      const state = createMockState({ budget: null });
+      const output = renderer.render(state);
+      // Agent count was removed from header; only session ID, uptime, cost remain
+      expect(stripAnsi(output.split('\n')[0]!)).not.toContain('agent');
     });
   });
 
@@ -494,7 +512,7 @@ describe('MiniRenderer', () => {
       // Precision section visible at MIN_WIDTH=160
       setColumns(160);
       const state = createMockState({
-        // saved tokens are shown in the Prec: section
+        // saved tokens are shown in the Tokens Saved: section
         metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 75_000, efficiency: 0.4, api_input: 50_000, api_output: 25_000, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);

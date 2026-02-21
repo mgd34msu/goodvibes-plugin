@@ -201,3 +201,97 @@ export function formatDelta(current: number, baseline: number): string {
   }
   return `${pct.toFixed(1)}% ▼`;
 }
+
+// === Uptime Progressive Formatting ===
+
+/**
+ * Format uptime from milliseconds with progressive units.
+ * - Under 24 hours:  "01h05m30s", "00h00m45s", "23h59m59s"
+ * - 1–6 days:        "1d 02h30m"  (drop seconds)
+ * - 1–3 weeks:       "1w 2d 05h"  (drop minutes)
+ * - 1–11 months:     "1mo 2w"     (show months + weeks)
+ * - 1+ years:        "1yr 2mo"    (show years + months)
+ *
+ * Hours always have leading zero when < 10. Minutes and seconds always 2 digits.
+ */
+export function formatUptimeProgressive(ms: number): string {
+  if (!isFinite(ms) || ms < 0) return '00h00m00s';
+
+  const totalSeconds = Math.floor(ms / 1_000);
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const totalHours   = Math.floor(totalMinutes / 60);
+  const totalDays    = Math.floor(totalHours / 24);
+  const totalWeeks   = Math.floor(totalDays / 7);
+  const totalMonths  = Math.floor(totalDays / 30);
+  const totalYears   = Math.floor(totalDays / 365);
+
+  const hh = String(totalHours % 24).padStart(2, '0');
+  const mm = String(totalMinutes % 60).padStart(2, '0');
+  const ss = String(totalSeconds % 60).padStart(2, '0');
+
+  // Under 24 hours
+  if (totalDays < 1) {
+    return `${hh}h${mm}m${ss}s`;
+  }
+
+  // 1–6 days: show days + hours + minutes, drop seconds
+  if (totalDays < 7) {
+    const d  = totalDays;
+    return `${d}d ${hh}h${mm}m`;
+  }
+
+  // 1–3 weeks: show weeks + days + hours, drop minutes
+  if (totalDays < 30) {
+    const w = totalWeeks;
+    const d = totalDays % 7;
+    return `${w}w ${d}d ${hh}h`;
+  }
+
+  // 1–11 months: show months + weeks
+  if (totalMonths < 12) {
+    const mo = totalMonths;
+    const remainingDays = totalDays - (mo * 30);
+    const w = Math.floor(remainingDays / 7);
+    return `${mo}mo ${w}w`;
+  }
+
+  // 1+ years: show years + months
+  const yr = totalYears;
+  const mo = totalMonths % 12;
+  return `${yr}yr ${mo}mo`;
+}
+
+// === Token Savings Formatting ===
+
+/**
+ * Format a token-savings count with tier-specific precision.
+ * Unlike formatNumber, this uses uppercase suffixes and different
+ * thresholds for when to drop the decimal.
+ *
+ * - 0–999:              raw integer  ("0", "42", "999")
+ * - 1 000–99 999:       "1.0k"–"99.9k"  (one decimal)
+ * - 100 000–999 999:    "100k"–"999k"   (no decimal)
+ * - 1 000 000–99 999 999:  "1.0M"–"99.9M"  (one decimal)
+ * - 100 000 000–999 999 999: "100M"–"999M" (no decimal)
+ * - 1 000 000 000+:     "1.0B"+ (one decimal)
+ *
+ * Handles NaN, Infinity, and negative values (returns "0").
+ */
+export function formatTokensSaved(n: number): string {
+  if (!isFinite(n) || n < 0) return '0';
+  const v = Math.round(n);
+  if (v < 1_000) return String(v);
+  if (v < 100_000) {
+    const formatted = (v / 1_000).toFixed(1);
+    if (parseFloat(formatted) >= 100) return `${Math.floor(v / 1_000)}k`;
+    return `${formatted}k`;
+  }
+  if (v < 1_000_000) return `${Math.floor(v / 1_000)}k`;
+  if (v < 100_000_000) {
+    const formatted = (v / 1_000_000).toFixed(1);
+    if (parseFloat(formatted) >= 100) return `${Math.floor(v / 1_000_000)}M`;
+    return `${formatted}M`;
+  }
+  if (v < 1_000_000_000) return `${Math.floor(v / 1_000_000)}M`;
+  return `${(v / 1_000_000_000).toFixed(1)}B`;
+}

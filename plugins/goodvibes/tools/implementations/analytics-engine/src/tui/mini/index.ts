@@ -19,4 +19,6 @@ export {
   BOX_CHARS,
   colorForHealth,
   formatDelta,
+  formatUptimeProgressive,
+  formatTokensSaved,
 } from './format.js';
