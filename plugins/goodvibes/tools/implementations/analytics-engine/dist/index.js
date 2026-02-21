@@ -33,8 +33,8 @@ var init_types = __esm({
       refresh_rate_ms: 2e3,
       full_tui_refresh_rate_ms: 5e3,
       dashboard_refresh_rate_ms: 5e3,
-      cost_per_1k_input_tokens: 0.015,
-      cost_per_1k_output_tokens: 0.075,
+      cost_per_1k_input_tokens: 3e-3,
+      cost_per_1k_output_tokens: 0.015,
       budget: null,
       budget_warn_thresholds: [0.5, 0.8, 1],
       mini_budget_bar: false,
@@ -67,6 +67,43 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+function loadModelPricing() {
+  try {
+    if (existsSync(MODEL_PRICING_CACHE_PATH)) {
+      const content = readFileSync(MODEL_PRICING_CACHE_PATH, "utf-8");
+      const cache = JSON.parse(content);
+      if (cache.models && typeof cache.models === "object") {
+        return cache.models;
+      }
+    }
+  } catch {
+  }
+  return { ...FALLBACK_MODEL_PRICING };
+}
+function getModelRates(modelId, pricingMap) {
+  if (pricingMap[modelId]) return pricingMap[modelId];
+  const normalisedId = modelId.replace(/-/g, ".");
+  const dotKey = Object.keys(pricingMap).find(
+    (k) => k.replace(/-/g, ".") === normalisedId
+  );
+  if (dotKey) return pricingMap[dotKey];
+  const normalizedId = modelId.replace(/\./g, "-");
+  const prefixKey = Object.keys(pricingMap).find((k) => {
+    const normalizedKey = k.replace(/\./g, "-");
+    return normalizedId.startsWith(normalizedKey);
+  });
+  if (prefixKey) return pricingMap[prefixKey];
+  const opusKey = "claude-opus-4-5";
+  const opusPricing = pricingMap[opusKey];
+  if (opusPricing) return opusPricing;
+  return {
+    inputPrice: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3,
+    outputPrice: DEFAULT_CONFIG.cost_per_1k_output_tokens * 1e3,
+    cacheWrite5Min: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3 * 1.25,
+    cacheWrite1Hour: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3 * 2,
+    cacheHits: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3 * 0.1
+  };
+}
 function tryLoadFile(filePath) {
   if (!existsSync(filePath)) return null;
   try {
@@ -91,11 +128,56 @@ function loadConfig(goodvibesDir) {
   if (projectConfig) return projectConfig;
   return { ...DEFAULT_CONFIG };
 }
-var GLOBAL_CONFIG_PATH;
+var MODEL_PRICING_CACHE_PATH, FALLBACK_MODEL_PRICING, GLOBAL_CONFIG_PATH;
 var init_config = __esm({
   "src/config.ts"() {
     "use strict";
     init_types();
+    MODEL_PRICING_CACHE_PATH = join(homedir(), ".claude", "model-pricing.json");
+    FALLBACK_MODEL_PRICING = {
+      "claude-opus-4-5": {
+        name: "Claude Opus 4.5",
+        inputPrice: 15,
+        outputPrice: 75,
+        cacheWrite5Min: 18.75,
+        cacheWrite1Hour: 30,
+        cacheHits: 1.5
+      },
+      "claude-sonnet-4-5": {
+        name: "Claude Sonnet 4.5",
+        inputPrice: 3,
+        outputPrice: 15,
+        cacheWrite5Min: 3.75,
+        cacheWrite1Hour: 6,
+        cacheHits: 0.3
+      },
+      "claude-haiku-4-5": {
+        name: "Claude Haiku 4.5",
+        inputPrice: 1,
+        outputPrice: 5,
+        cacheWrite5Min: 1.25,
+        cacheWrite1Hour: 2,
+        cacheHits: 0.1
+      },
+      "claude-sonnet-4-6": {
+        name: "Claude Sonnet 4.6",
+        inputPrice: 3,
+        outputPrice: 15,
+        cacheWrite5Min: 3.75,
+        cacheWrite1Hour: 6,
+        cacheHits: 0.3
+      },
+      "claude-opus-4-6": {
+        name: "Claude Opus 4.6",
+        inputPrice: 15,
+        outputPrice: 75,
+        cacheWrite5Min: 18.75,
+        cacheWrite1Hour: 30,
+        cacheHits: 1.5
+      }
+    };
+    __name(loadModelPricing, "loadModelPricing");
+    __name(getModelRates, "getModelRates");
     GLOBAL_CONFIG_PATH = join(
       homedir(),
       ".claude",
@@ -114,6 +196,14 @@ import { stat, readdir } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { homedir as homedir2 } from "node:os";
 import { join as join5, basename } from "node:path";
+function calculateTieredInputCost(tokens, baseRatePerMtok) {
+  if (tokens <= TIER_BOUNDARY) {
+    return tokens / 1e6 * baseRatePerMtok;
+  }
+  const tier1Cost = TIER_BOUNDARY / 1e6 * baseRatePerMtok;
+  const tier2Cost = (tokens - TIER_BOUNDARY) / 1e6 * (baseRatePerMtok * 2);
+  return tier1Cost + tier2Cost;
+}
 async function findActiveJsonlFile(projectDir) {
   let entries;
   try {
@@ -146,26 +236,45 @@ function resolveProjectsBaseDir() {
   if (envDir !== void 0 && envDir !== "") return envDir;
   return join5(homedir2(), ".claude", "projects");
 }
-var CACHE_READ_COST_RATIO, CACHE_WRITE_COST_RATIO, JSONLReader;
+var TIER_BOUNDARY, JSONLReader;
 var init_jsonl_reader = __esm({
   "src/data/jsonl-reader.ts"() {
     "use strict";
-    CACHE_READ_COST_RATIO = 0.1;
-    CACHE_WRITE_COST_RATIO = 0.25;
+    TIER_BOUNDARY = 2e5;
+    __name(calculateTieredInputCost, "calculateTieredInputCost");
     JSONLReader = class {
       static {
         __name(this, "JSONLReader");
       }
       costPer1kInput;
       costPer1kOutput;
+      pricingMap;
       /**
        * @param config - Pricing config for cost calculation.
-       * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens.
-       * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens.
+       * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens (fallback).
+       * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens (fallback).
+       * @param pricingMap - Optional model pricing map for dynamic per-model pricing ($/MTok).
+       *                     When provided, takes precedence over flat cost_per_1k_* rates.
        */
-      constructor(config) {
+      constructor(config, pricingMap) {
         this.costPer1kInput = config.cost_per_1k_input_tokens;
         this.costPer1kOutput = config.cost_per_1k_output_tokens;
+        this.pricingMap = pricingMap ?? null;
+      }
+      /** Get pricing info for a model from the pricing map, or null if not available. */
+      getPricingForModel(modelId) {
+        if (!this.pricingMap || !modelId) return null;
+        if (this.pricingMap[modelId]) return this.pricingMap[modelId];
+        const normId = modelId.replace(/-/g, ".");
+        const dotKey = Object.keys(this.pricingMap).find(
+          (k) => k.replace(/-/g, ".") === normId
+        );
+        if (dotKey) return this.pricingMap[dotKey];
+        const prefixKey = Object.keys(this.pricingMap).find(
+          (k) => modelId.startsWith(k)
+        );
+        if (prefixKey) return this.pricingMap[prefixKey];
+        return null;
       }
       // -------------------------------------------------------------------------
       // Core parsing
@@ -314,20 +423,38 @@ var init_jsonl_reader = __esm({
           const assistant = record;
           const usage = assistant.message?.usage;
           if (usage === void 0) continue;
+          const modelId = assistant.message?.model;
           const inputTokens = usage.input_tokens ?? 0;
           const outputTokens = usage.output_tokens ?? 0;
           const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
-          const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+          const cache5mTokens = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0;
+          const cache1hTokens = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+          const cacheWriteTokens = cache5mTokens > 0 || cache1hTokens > 0 ? cache5mTokens + cache1hTokens : usage.cache_creation_input_tokens ?? 0;
           if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
-          const inputCost = inputTokens / 1e3 * this.costPer1kInput;
-          const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
-          const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
-          const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
-          const totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+          let totalCost;
+          const modelPricing = this.getPricingForModel(modelId);
+          if (modelPricing) {
+            const inputCost = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+            const outputCost = outputTokens / 1e6 * modelPricing.outputPrice;
+            let cacheWriteCost;
+            if (cache5mTokens > 0 || cache1hTokens > 0) {
+              cacheWriteCost = cache5mTokens / 1e6 * modelPricing.cacheWrite5Min + cache1hTokens / 1e6 * modelPricing.cacheWrite1Hour;
+            } else {
+              cacheWriteCost = cacheWriteTokens / 1e6 * modelPricing.cacheWrite5Min;
+            }
+            const cacheReadCost = cacheReadTokens / 1e6 * modelPricing.cacheHits;
+            totalCost = inputCost + outputCost + cacheWriteCost + cacheReadCost;
+          } else {
+            const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+            const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+            const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * 0.1;
+            const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * 0.25;
+            totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+          }
           results.push({
             session_id: assistant.sessionId ?? "",
             timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
-            model: assistant.message?.model,
+            model: modelId,
             input_tokens: inputTokens,
             output_tokens: outputTokens,
             cache_read_tokens: cacheReadTokens,
@@ -530,10 +657,22 @@ var init_jsonl_reader = __esm({
        * @returns Total estimated cost in USD.
        */
       calculateCost(usage) {
-        const inputCost = (usage.input_tokens ?? 0) / 1e3 * this.costPer1kInput;
-        const outputCost = (usage.output_tokens ?? 0) / 1e3 * this.costPer1kOutput;
-        const cacheReadCost = (usage.cache_read_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
-        const cacheWriteCost = (usage.cache_write_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+        const inputTokens = usage.input_tokens ?? 0;
+        const outputTokens = usage.output_tokens ?? 0;
+        const cacheReadTokens = usage.cache_read_tokens ?? 0;
+        const cacheWriteTokens = usage.cache_write_tokens ?? 0;
+        const modelPricing = this.getPricingForModel(usage.model);
+        if (modelPricing) {
+          const inputCost2 = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+          const outputCost2 = outputTokens / 1e6 * modelPricing.outputPrice;
+          const cacheReadCost2 = cacheReadTokens / 1e6 * modelPricing.cacheHits;
+          const cacheWriteCost2 = cacheWriteTokens / 1e6 * modelPricing.cacheWrite5Min;
+          return inputCost2 + outputCost2 + cacheReadCost2 + cacheWriteCost2;
+        }
+        const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+        const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+        const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * 0.1;
+        const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * 0.25;
         return inputCost + outputCost + cacheReadCost + cacheWriteCost;
       }
     };
@@ -4934,6 +5073,7 @@ __name(extToCategory, "extToCategory");
 
 // src/daemon/aggregator.ts
 init_jsonl_reader();
+init_config();
 
 // src/daemon/anomaly-detector.ts
 var DEFAULT_LOGGER = {
@@ -6440,6 +6580,8 @@ var Aggregator = class _Aggregator {
   telemetry;
   session;
   index;
+  // Model pricing map — loaded on initialize() from ~/.claude/model-pricing.json.
+  pricingMap = {};
   // JSONL reader — created in initialize() from config pricing.
   jsonlReader = null;
   // Accumulated JSONL records from the current file, merged in batches.
@@ -6450,6 +6592,10 @@ var Aggregator = class _Aggregator {
   jsonlSessionId = null;
   // Aggregated totals from JSONL records (recomputed after each accumulation).
   jsonlTotals = emptyJsonlTotals();
+  /** Cache for subagent file reads keyed by file path — avoids re-reading unchanged files. */
+  subagentCache = /* @__PURE__ */ new Map();
+  /** Cache for subagent directory listing — avoids re-reading unchanged directories. */
+  subagentDirCache = null;
   // GlobalDB instance — injected by AnalyticsEngine before initialize().
   globalDb = null;
   // Debounce timer for GlobalDB upserts.
@@ -6523,10 +6669,14 @@ var Aggregator = class _Aggregator {
    */
   reloadConfig(newConfig) {
     this.config = newConfig;
-    this.jsonlReader = new JSONLReader({
-      cost_per_1k_input_tokens: newConfig.cost_per_1k_input_tokens,
-      cost_per_1k_output_tokens: newConfig.cost_per_1k_output_tokens
-    });
+    this.pricingMap = loadModelPricing();
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: newConfig.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: newConfig.cost_per_1k_output_tokens
+      },
+      this.pricingMap
+    );
     this.recomputeJsonlTotals();
     void this.refresh();
   }
@@ -6545,10 +6695,14 @@ var Aggregator = class _Aggregator {
     this.session = new SessionReader(this.goodvibesDir);
     this.index = new IndexReader(this.goodvibesDir);
     await this.telemetry.initialize();
-    this.jsonlReader = new JSONLReader({
-      cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
-      cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens
-    });
+    this.pricingMap = loadModelPricing();
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens
+      },
+      this.pricingMap
+    );
     const jsonlProjectDir = resolveJsonlProjectDir(
       this.goodvibesDir,
       this.config.jsonl_base_path
@@ -6818,9 +6972,17 @@ var Aggregator = class _Aggregator {
     const cache = this.buildCacheMetrics(telemetrySummary);
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
-        const inputCost = jsonl.api_input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens;
-        const outputCost = jsonl.api_output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens;
-        const saved = tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens;
+        const rates = getModelRates(jsonl.model, this.pricingMap);
+        const inputRate = rates.inputPrice / 1e6;
+        const outputRate = rates.outputPrice / 1e6;
+        const rawInputCost = jsonl.api_input * inputRate;
+        const rawOutputCost = jsonl.api_output * outputRate;
+        const rawTotal = rawInputCost + rawOutputCost;
+        const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
+        const inputCost = rawInputCost * scale;
+        const outputCost = rawOutputCost * scale;
+        const savedRate = rates.inputPrice / 1e6;
+        const saved = tokens.saved * savedRate;
         return {
           input: inputCost,
           output: outputCost,
@@ -6833,23 +6995,6 @@ var Aggregator = class _Aggregator {
         output: tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
         total: tokens.input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens + tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
         saved: tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens
-      };
-    })();
-    const commands = (() => {
-      const execBreakdown = telemetrySummary?.by_tool["exec"];
-      if (!execBreakdown) {
-        return { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null };
-      }
-      const total = execBreakdown.calls;
-      const failures = Math.round(total * (1 - execBreakdown.success_rate));
-      return {
-        total,
-        success_rate: execBreakdown.success_rate,
-        avg_duration_ms: execBreakdown.avg_ms,
-        total_duration_ms: execBreakdown.avg_ms * total,
-        failures,
-        slowest: null
-        // would require scanning individual records
       };
     })();
     const agentActivities = this.safeCall(
@@ -6885,7 +7030,7 @@ var Aggregator = class _Aggregator {
       max_concurrent: maxConcurrent,
       // peak overlap derived from spawn/complete timestamp windows
       total_tokens: 0,
-      // Per-agent token data requires subagent JSONL correlation (not yet implemented)
+      // Updated to subagent sum after buildAgentProfiles populates profiles
       active: activeAgents,
       completed: completedAgents
     };
@@ -6896,8 +7041,7 @@ var Aggregator = class _Aggregator {
     const uniqueReadFiles = /* @__PURE__ */ new Set();
     let createdFiles = 0;
     for (const tc of jsonlToolCalls) {
-      const rawName = (tc.name ?? "").toLowerCase();
-      const toolName = rawName.includes("__") ? rawName.split("__").pop() : rawName;
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
       const inputPath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
       if (inputPath !== null) {
         if (toolName === "read" || toolName === "precision_read") {
@@ -6909,6 +7053,44 @@ var Aggregator = class _Aggregator {
         }
       }
     }
+    const commands = (() => {
+      let jsonlCmdTotal = 0;
+      let jsonlCmdFailures = 0;
+      for (const tc of jsonlToolCalls) {
+        const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+        if (toolName === "bash" || toolName === "precision_exec" || toolName === "exec") {
+          jsonlCmdTotal++;
+          if (tc.isError) jsonlCmdFailures++;
+        }
+      }
+      if (jsonlCmdTotal > 0) {
+        const successRate = (jsonlCmdTotal - jsonlCmdFailures) / jsonlCmdTotal;
+        const execBreakdown2 = telemetrySummary?.by_tool["exec"];
+        const avgDuration = execBreakdown2?.avg_ms ?? 0;
+        return {
+          total: jsonlCmdTotal,
+          success_rate: successRate,
+          avg_duration_ms: avgDuration,
+          total_duration_ms: avgDuration * jsonlCmdTotal,
+          failures: jsonlCmdFailures,
+          slowest: null
+        };
+      }
+      const execBreakdown = telemetrySummary?.by_tool["exec"];
+      if (!execBreakdown) {
+        return { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null };
+      }
+      const total = execBreakdown.calls;
+      const failures = Math.round(total * (1 - execBreakdown.success_rate));
+      return {
+        total,
+        success_rate: execBreakdown.success_rate,
+        avg_duration_ms: execBreakdown.avg_ms,
+        total_duration_ms: execBreakdown.avg_ms * total,
+        failures,
+        slowest: null
+      };
+    })();
     const files = {
       unique_read: uniqueReadFiles.size,
       modified: sessionCounters?.files_modified.length ?? 0,
@@ -6917,13 +7099,17 @@ var Aggregator = class _Aggregator {
     };
     const metrics = { tokens, cache, cost, commands, agents, files };
     const toolsBreakdown = telemetrySummary?.by_tool ?? {};
-    const recentActivity = this.buildRecentActivity();
+    const recentActivity = this.buildRecentActivity(jsonlToolCalls, agentActivities);
     const fileHotspots = this.buildFileHotspots(
       toolsBreakdown,
       jsonlToolCalls,
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    agents.total_tokens = agentProfiles.reduce(
+      (sum, p) => sum + p.tokens_in + p.tokens_out,
+      0
+    );
     const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
     let contextPercent = 0;
     for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
@@ -6988,26 +7174,68 @@ var Aggregator = class _Aggregator {
   /**
    * Build the recent activity list from the most recent telemetry records.
    */
-  buildRecentActivity() {
-    const records = this.safeCall(
+  buildRecentActivity(jsonlToolCalls, agentActivities) {
+    const events = [];
+    for (const tc of jsonlToolCalls) {
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+      events.push({
+        timestamp: tc.timestamp,
+        type: toolToActivityType(toolName),
+        tool: toolName,
+        description: tc.isError ? "error" : "ok",
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { status: tc.isError ? "error" : "success" }
+      });
+    }
+    for (const a of agentActivities) {
+      events.push({
+        timestamp: a.spawnedAt,
+        type: "agent_spawn",
+        tool: "Task",
+        description: "agent spawned",
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { agent_id: a.agentId }
+      });
+      if (a.completedAt !== void 0) {
+        events.push({
+          timestamp: a.completedAt,
+          type: "agent_complete",
+          tool: "Task",
+          description: a.exitStatus === "error" ? "error" : "completed",
+          duration_ms: 0,
+          cache_hit: false,
+          tokens: 0,
+          details: { agent_id: a.agentId, status: a.exitStatus }
+        });
+      }
+    }
+    const telemetryRecords = this.safeCall(
       () => this.telemetry.getRecentRecords(RECENT_ACTIVITY_LIMIT),
       []
     );
-    return records.map((r) => ({
-      timestamp: r.created_at,
-      type: toolToActivityType(r.tool),
-      tool: r.tool,
-      description: r.error ?? (r.status === "success" ? "ok" : r.status),
-      duration_ms: r.duration_ms,
-      cache_hit: r.cache_hit,
-      tokens: (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
-      details: {
-        status: r.status,
-        tokens_in: r.tokens_in,
-        tokens_out: r.tokens_out,
-        cache_bytes_saved: r.cache_bytes_saved
-      }
-    }));
+    for (const r of telemetryRecords) {
+      events.push({
+        timestamp: r.created_at,
+        type: toolToActivityType(r.tool),
+        tool: r.tool,
+        description: r.error ?? (r.status === "success" ? "ok" : r.status),
+        duration_ms: r.duration_ms,
+        cache_hit: r.cache_hit,
+        tokens: (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
+        details: {
+          status: r.status,
+          tokens_in: r.tokens_in,
+          tokens_out: r.tokens_out,
+          cache_bytes_saved: r.cache_bytes_saved
+        }
+      });
+    }
+    events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    return events.slice(0, RECENT_ACTIVITY_LIMIT);
   }
   /**
    * Build file hotspot data by merging JSONL tool call file access patterns
@@ -7024,7 +7252,7 @@ var Aggregator = class _Aggregator {
   buildFileHotspots(_breakdown, jsonlToolCalls, sessionCounters) {
     const fileStats = /* @__PURE__ */ new Map();
     for (const tc of jsonlToolCalls) {
-      const toolName = (tc.name ?? "").toLowerCase();
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
       const timestamp = tc.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
       const filePaths = [];
       const singlePath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
@@ -7094,6 +7322,7 @@ var Aggregator = class _Aggregator {
    * @param agentActivities - Agent activity records extracted from JSONL.
    */
   buildAgentProfiles(agentActivities) {
+    const sessionDir = this.findSessionDir();
     return agentActivities.map((a) => {
       let duration_ms = 0;
       if (a.completedAt !== void 0) {
@@ -7103,21 +7332,106 @@ var Aggregator = class _Aggregator {
           duration_ms = completeMs - spawnMs;
         }
       }
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+      if (sessionDir !== null) {
+        const subagentData = this.parseSubagentFile(sessionDir, a.agentId);
+        if (subagentData !== null) {
+          tokens_in = subagentData.tokens_in;
+          tokens_out = subagentData.tokens_out;
+          tool_calls = subagentData.tool_calls;
+        }
+      }
       return {
         agent_id: a.agentId,
         agent_type: "task",
-        // All JSONL-derived agents are Task tool spawns
-        tokens_in: 0,
-        // Per-agent token counts require subagent JSONL correlation
-        tokens_out: 0,
-        tool_calls: 0,
-        // Not derivable without subagent session JSONL correlation
+        tokens_in,
+        tokens_out,
+        tool_calls,
         success_rate: 1,
-        // Default; no per-agent failure data available
         duration_ms,
         status: a.completed ? a.exitStatus === "error" ? "failed" : "completed" : "active"
       };
     });
+  }
+  /**
+   * Determine the session directory (parent dir of the active JSONL file).
+   * Subagent files live at <session-dir>/subagents/agent-<id>.jsonl
+   */
+  findSessionDir() {
+    if (this.activeJsonlPath === null) return null;
+    return dirname3(this.activeJsonlPath);
+  }
+  /**
+   * Parse a subagent JSONL file and return aggregated token/tool counts.
+   *
+   * @param sessionDir - Session directory (parent of the main JSONL file).
+   * @param agentId    - Agent ID from the Task tool_use block (may be a prefix).
+   */
+  parseSubagentFile(sessionDir, agentId) {
+    const subagentsDir = join9(sessionDir, "subagents");
+    if (!existsSync6(subagentsDir)) return null;
+    let entries;
+    try {
+      const dirStat = statSync6(subagentsDir);
+      if (this.subagentDirCache !== null && this.subagentDirCache.mtime === dirStat.mtimeMs) {
+        entries = this.subagentDirCache.files;
+      } else {
+        entries = readdirSync2(subagentsDir);
+        this.subagentDirCache = { mtime: dirStat.mtimeMs, files: entries };
+      }
+    } catch {
+      return null;
+    }
+    let subagentFile = null;
+    for (const entry of entries) {
+      if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
+      const fileId = entry.slice("agent-".length, -".jsonl".length);
+      if (fileId === agentId || fileId.startsWith(agentId)) {
+        subagentFile = join9(subagentsDir, entry);
+        break;
+      }
+    }
+    if (subagentFile === null) return null;
+    try {
+      const fileStat = statSync6(subagentFile);
+      const cached = this.subagentCache.get(subagentFile);
+      if (cached !== void 0 && cached.mtime === fileStat.mtimeMs) {
+        return cached.data;
+      }
+      const content = readFileSync6(subagentFile, "utf8");
+      const lines = content.split("\n").filter((l) => l.trim() !== "");
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line);
+          if (entry["type"] !== "assistant") continue;
+          const msg = entry["message"];
+          if (msg?.["usage"]) {
+            const usage = msg["usage"];
+            tokens_in += usage["input_tokens"] ?? 0;
+            tokens_out += usage["output_tokens"] ?? 0;
+          }
+          const contentBlocks = msg?.["content"];
+          if (Array.isArray(contentBlocks)) {
+            for (const block of contentBlocks) {
+              if (typeof block === "object" && block !== null && block["type"] === "tool_use") {
+                tool_calls++;
+              }
+            }
+          }
+        } catch {
+        }
+      }
+      const result = { tokens_in, tokens_out, tool_calls };
+      this.subagentCache.set(subagentFile, { mtime: fileStat.mtimeMs, data: result });
+      return result;
+    } catch {
+      return null;
+    }
   }
   // ───────────────────────────────────────────────────────────────────────────
   // Private: GlobalDB write-back
@@ -7218,6 +7532,19 @@ var Aggregator = class _Aggregator {
    * @param fn       - Function to execute.
    * @param fallback - Value returned if fn throws.
    */
+  /**
+   * Extract the base tool name from a raw MCP tool name.
+   *
+   * Strips the MCP prefix (e.g. 'mcp__plugin_goodvibes_precision-engine__precision_read'
+   * becomes 'precision_read'). Also lowercases the result.
+   *
+   * @param rawName - Raw tool name from JSONL tool_use block.
+   * @returns Lowercased base tool name without MCP prefix.
+   */
+  static extractBaseToolName(rawName) {
+    const name = rawName.toLowerCase();
+    return name.includes("__") ? name.split("__").pop() : name;
+  }
   safeCall(fn, fallback) {
     try {
       return fn();

@@ -77,11 +77,6 @@ function avgOutputTokens(sessions: GlobalSession[]): number {
   return sessions.reduce((s, x) => s + x.total_output_tokens, 0) / sessions.length;
 }
 
-function avgToolCalls(sessions: GlobalSession[]): number {
-  if (sessions.length === 0) return 0;
-  return sessions.reduce((s, x) => s + x.total_tool_calls, 0) / sessions.length;
-}
-
 function avgAgentSpawns(sessions: GlobalSession[]): number {
   if (sessions.length === 0) return 0;
   return sessions.reduce((s, x) => s + x.total_agent_spawns, 0) / sessions.length;
@@ -133,7 +128,6 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
   const histAvgCacheHitRate = avgCacheHitRate(projectSessions);
   const histAvgInputTokens = avgInputTokens(projectSessions);
   const histAvgOutputTokens = avgOutputTokens(projectSessions);
-  const histAvgToolCalls = avgToolCalls(projectSessions);
   const histAvgAgentSpawns = avgAgentSpawns(projectSessions);
   // Precision tokens (input+output from precision tool tracking)
   const currentTotalTokens = tokens.input + tokens.output;
@@ -146,7 +140,7 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
       formatNumber(currentTotalTokens),
       hasHistory ? formatNumber(sessionAvgTokens) : '—',
       hasHistory && sessionAvgTokens > 0
-        ? formatDelta(currentTotalTokens / sessionAvgTokens - 1, 0)
+        ? formatDelta(currentTotalTokens, sessionAvgTokens)
         : '—',
     ],
     [
@@ -172,7 +166,7 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
       formatDollars(cost.total),
       hasHistory ? formatDollars(sessionAvgCost) : '—',
       hasHistory && sessionAvgCost > 0
-        ? formatDelta(cost.total / sessionAvgCost - 1, 0)
+        ? formatDelta(cost.total, sessionAvgCost)
         : '—',
     ],
     [
@@ -184,8 +178,8 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     [
       'Commands',
       formatNumber(commands.total),
-      hasHistory ? formatNumber(Math.round(histAvgToolCalls)) : '—',
-      hasHistory && histAvgToolCalls > 0 ? formatDelta(commands.total, histAvgToolCalls) : '—',
+      '—', // GlobalDB tracks total_tool_calls (all tools), not commands specifically
+      '—',
     ],
     [
       'Success Rate',

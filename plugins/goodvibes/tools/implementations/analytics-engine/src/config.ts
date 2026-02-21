@@ -47,7 +47,7 @@ const MODEL_PRICING_CACHE_PATH = join(homedir(), '.claude', 'model-pricing.json'
 
 /** Fallback pricing used when the cache file is absent or unreadable. */
 const FALLBACK_MODEL_PRICING: ModelPricingMap = {
-  'claude-opus-4.5': {
+  'claude-opus-4-5': {
     name: 'Claude Opus 4.5',
     inputPrice: 15.00,
     outputPrice: 75.00,
@@ -55,7 +55,7 @@ const FALLBACK_MODEL_PRICING: ModelPricingMap = {
     cacheWrite1Hour: 30.00,
     cacheHits: 1.50,
   },
-  'claude-sonnet-4.5': {
+  'claude-sonnet-4-5': {
     name: 'Claude Sonnet 4.5',
     inputPrice: 3.00,
     outputPrice: 15.00,
@@ -63,7 +63,7 @@ const FALLBACK_MODEL_PRICING: ModelPricingMap = {
     cacheWrite1Hour: 6.00,
     cacheHits: 0.30,
   },
-  'claude-haiku-4.5': {
+  'claude-haiku-4-5': {
     name: 'Claude Haiku 4.5',
     inputPrice: 1.00,
     outputPrice: 5.00,
@@ -136,15 +136,19 @@ export function getModelRates(
   );
   if (dotKey) return pricingMap[dotKey]!;
 
-  // Partial prefix match (e.g. 'claude-opus' matches first opus entry).
-  const prefixKey = Object.keys(pricingMap).find(
-    (k) => modelId.startsWith(k) || k.startsWith(modelId),
-  );
+  // Partial prefix match: model ID from JSONL is typically longer than the pricing key.
+  // Only match in one direction: normalizedId starts with the key (not the reverse).
+  const normalizedId = modelId.replace(/\./g, '-');
+  const prefixKey = Object.keys(pricingMap).find((k) => {
+    const normalizedKey = k.replace(/\./g, '-');
+    return normalizedId.startsWith(normalizedKey);
+  });
   if (prefixKey) return pricingMap[prefixKey]!;
 
-  // Final fallback: opus rates.
-  const opusKey = Object.keys(pricingMap).find((k) => k.includes('opus'));
-  if (opusKey) return pricingMap[opusKey]!;
+  // Final fallback: explicit opus key lookup.
+  const opusKey = 'claude-opus-4-5';
+  const opusPricing = pricingMap[opusKey];
+  if (opusPricing) return opusPricing;
 
   // Last-resort defaults ($/MTok equivalent of old $/1k config).
   return {

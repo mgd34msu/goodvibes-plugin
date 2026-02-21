@@ -2209,9 +2209,9 @@ var require_sql_wasm = __commonJS({
 });
 
 // src/daemon/aggregator.ts
-var import_node_path5 = require("node:path");
-var import_node_os = require("node:os");
-var import_node_fs7 = require("node:fs");
+var import_node_path6 = require("node:path");
+var import_node_os2 = require("node:os");
+var import_node_fs8 = require("node:fs");
 
 // src/data/telemetry-reader.ts
 var import_sql = __toESM(require_sql_wasm(), 1);
@@ -2908,22 +2908,49 @@ var import_node_fs3 = require("node:fs");
 var import_promises = require("node:fs/promises");
 var import_node_readline = require("node:readline");
 var import_node_path = require("node:path");
-var CACHE_READ_COST_RATIO = 0.1;
-var CACHE_WRITE_COST_RATIO = 0.25;
+var TIER_BOUNDARY = 2e5;
+function calculateTieredInputCost(tokens, baseRatePerMtok) {
+  if (tokens <= TIER_BOUNDARY) {
+    return tokens / 1e6 * baseRatePerMtok;
+  }
+  const tier1Cost = TIER_BOUNDARY / 1e6 * baseRatePerMtok;
+  const tier2Cost = (tokens - TIER_BOUNDARY) / 1e6 * (baseRatePerMtok * 2);
+  return tier1Cost + tier2Cost;
+}
+__name(calculateTieredInputCost, "calculateTieredInputCost");
 var JSONLReader = class {
   static {
     __name(this, "JSONLReader");
   }
   costPer1kInput;
   costPer1kOutput;
+  pricingMap;
   /**
    * @param config - Pricing config for cost calculation.
-   * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens.
-   * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens.
+   * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens (fallback).
+   * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens (fallback).
+   * @param pricingMap - Optional model pricing map for dynamic per-model pricing ($/MTok).
+   *                     When provided, takes precedence over flat cost_per_1k_* rates.
    */
-  constructor(config) {
+  constructor(config, pricingMap) {
     this.costPer1kInput = config.cost_per_1k_input_tokens;
     this.costPer1kOutput = config.cost_per_1k_output_tokens;
+    this.pricingMap = pricingMap ?? null;
+  }
+  /** Get pricing info for a model from the pricing map, or null if not available. */
+  getPricingForModel(modelId) {
+    if (!this.pricingMap || !modelId) return null;
+    if (this.pricingMap[modelId]) return this.pricingMap[modelId];
+    const normId = modelId.replace(/-/g, ".");
+    const dotKey = Object.keys(this.pricingMap).find(
+      (k) => k.replace(/-/g, ".") === normId
+    );
+    if (dotKey) return this.pricingMap[dotKey];
+    const prefixKey = Object.keys(this.pricingMap).find(
+      (k) => modelId.startsWith(k)
+    );
+    if (prefixKey) return this.pricingMap[prefixKey];
+    return null;
   }
   // -------------------------------------------------------------------------
   // Core parsing
@@ -3072,20 +3099,38 @@ var JSONLReader = class {
       const assistant = record;
       const usage = assistant.message?.usage;
       if (usage === void 0) continue;
+      const modelId = assistant.message?.model;
       const inputTokens = usage.input_tokens ?? 0;
       const outputTokens = usage.output_tokens ?? 0;
       const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
-      const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+      const cache5mTokens = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0;
+      const cache1hTokens = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+      const cacheWriteTokens = cache5mTokens > 0 || cache1hTokens > 0 ? cache5mTokens + cache1hTokens : usage.cache_creation_input_tokens ?? 0;
       if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
-      const inputCost = inputTokens / 1e3 * this.costPer1kInput;
-      const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
-      const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
-      const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
-      const totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      let totalCost;
+      const modelPricing = this.getPricingForModel(modelId);
+      if (modelPricing) {
+        const inputCost = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+        const outputCost = outputTokens / 1e6 * modelPricing.outputPrice;
+        let cacheWriteCost;
+        if (cache5mTokens > 0 || cache1hTokens > 0) {
+          cacheWriteCost = cache5mTokens / 1e6 * modelPricing.cacheWrite5Min + cache1hTokens / 1e6 * modelPricing.cacheWrite1Hour;
+        } else {
+          cacheWriteCost = cacheWriteTokens / 1e6 * modelPricing.cacheWrite5Min;
+        }
+        const cacheReadCost = cacheReadTokens / 1e6 * modelPricing.cacheHits;
+        totalCost = inputCost + outputCost + cacheWriteCost + cacheReadCost;
+      } else {
+        const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+        const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+        const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * 0.1;
+        const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * 0.25;
+        totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      }
       results.push({
         session_id: assistant.sessionId ?? "",
         timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
-        model: assistant.message?.model,
+        model: modelId,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
         cache_read_tokens: cacheReadTokens,
@@ -3288,10 +3333,22 @@ var JSONLReader = class {
    * @returns Total estimated cost in USD.
    */
   calculateCost(usage) {
-    const inputCost = (usage.input_tokens ?? 0) / 1e3 * this.costPer1kInput;
-    const outputCost = (usage.output_tokens ?? 0) / 1e3 * this.costPer1kOutput;
-    const cacheReadCost = (usage.cache_read_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
-    const cacheWriteCost = (usage.cache_write_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+    const inputTokens = usage.input_tokens ?? 0;
+    const outputTokens = usage.output_tokens ?? 0;
+    const cacheReadTokens = usage.cache_read_tokens ?? 0;
+    const cacheWriteTokens = usage.cache_write_tokens ?? 0;
+    const modelPricing = this.getPricingForModel(usage.model);
+    if (modelPricing) {
+      const inputCost2 = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+      const outputCost2 = outputTokens / 1e6 * modelPricing.outputPrice;
+      const cacheReadCost2 = cacheReadTokens / 1e6 * modelPricing.cacheHits;
+      const cacheWriteCost2 = cacheWriteTokens / 1e6 * modelPricing.cacheWrite5Min;
+      return inputCost2 + outputCost2 + cacheReadCost2 + cacheWriteCost2;
+    }
+    const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+    const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+    const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * 0.1;
+    const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * 0.25;
     return inputCost + outputCost + cacheReadCost + cacheWriteCost;
   }
 };
@@ -3324,6 +3381,158 @@ function sessionIdFromPath(jsonlPath) {
   return (0, import_node_path.basename)(jsonlPath, ".jsonl");
 }
 __name(sessionIdFromPath, "sessionIdFromPath");
+
+// src/config.ts
+var import_node_fs4 = require("node:fs");
+var import_node_path2 = require("node:path");
+var import_node_os = require("node:os");
+
+// src/types.ts
+var DEFAULT_CONFIG = {
+  enabled: true,
+  auto_start_mini: true,
+  auto_start_full: false,
+  auto_start_dashboard: false,
+  refresh_rate_ms: 2e3,
+  full_tui_refresh_rate_ms: 5e3,
+  dashboard_refresh_rate_ms: 5e3,
+  cost_per_1k_input_tokens: 3e-3,
+  cost_per_1k_output_tokens: 0.015,
+  budget: null,
+  budget_warn_thresholds: [0.5, 0.8, 1],
+  mini_budget_bar: false,
+  anomaly_detection: true,
+  auto_report_on_shutdown: true,
+  webhook_url: null,
+  webhook_events: ["session_end"],
+  global_db_path: "~/.claude/.goodvibes/analytics/analytics.db",
+  jsonl_base_path: "~/.claude/projects",
+  tmux: {
+    mini_pane_size: 5,
+    mini_position: "bottom",
+    full_pane_size: "60%",
+    dashboard_pane_size: "60%",
+    full_position: "right",
+    dashboard_position: "right"
+  }
+};
+
+// src/config.ts
+var MODEL_PRICING_CACHE_PATH = (0, import_node_path2.join)((0, import_node_os.homedir)(), ".claude", "model-pricing.json");
+var FALLBACK_MODEL_PRICING = {
+  "claude-opus-4-5": {
+    name: "Claude Opus 4.5",
+    inputPrice: 15,
+    outputPrice: 75,
+    cacheWrite5Min: 18.75,
+    cacheWrite1Hour: 30,
+    cacheHits: 1.5
+  },
+  "claude-sonnet-4-5": {
+    name: "Claude Sonnet 4.5",
+    inputPrice: 3,
+    outputPrice: 15,
+    cacheWrite5Min: 3.75,
+    cacheWrite1Hour: 6,
+    cacheHits: 0.3
+  },
+  "claude-haiku-4-5": {
+    name: "Claude Haiku 4.5",
+    inputPrice: 1,
+    outputPrice: 5,
+    cacheWrite5Min: 1.25,
+    cacheWrite1Hour: 2,
+    cacheHits: 0.1
+  },
+  "claude-sonnet-4-6": {
+    name: "Claude Sonnet 4.6",
+    inputPrice: 3,
+    outputPrice: 15,
+    cacheWrite5Min: 3.75,
+    cacheWrite1Hour: 6,
+    cacheHits: 0.3
+  },
+  "claude-opus-4-6": {
+    name: "Claude Opus 4.6",
+    inputPrice: 15,
+    outputPrice: 75,
+    cacheWrite5Min: 18.75,
+    cacheWrite1Hour: 30,
+    cacheHits: 1.5
+  }
+};
+function loadModelPricing() {
+  try {
+    if ((0, import_node_fs4.existsSync)(MODEL_PRICING_CACHE_PATH)) {
+      const content = (0, import_node_fs4.readFileSync)(MODEL_PRICING_CACHE_PATH, "utf-8");
+      const cache = JSON.parse(content);
+      if (cache.models && typeof cache.models === "object") {
+        return cache.models;
+      }
+    }
+  } catch {
+  }
+  return { ...FALLBACK_MODEL_PRICING };
+}
+__name(loadModelPricing, "loadModelPricing");
+function getModelRates(modelId, pricingMap) {
+  if (pricingMap[modelId]) return pricingMap[modelId];
+  const normalisedId = modelId.replace(/-/g, ".");
+  const dotKey = Object.keys(pricingMap).find(
+    (k) => k.replace(/-/g, ".") === normalisedId
+  );
+  if (dotKey) return pricingMap[dotKey];
+  const normalizedId = modelId.replace(/\./g, "-");
+  const prefixKey = Object.keys(pricingMap).find((k) => {
+    const normalizedKey = k.replace(/\./g, "-");
+    return normalizedId.startsWith(normalizedKey);
+  });
+  if (prefixKey) return pricingMap[prefixKey];
+  const opusKey = "claude-opus-4-5";
+  const opusPricing = pricingMap[opusKey];
+  if (opusPricing) return opusPricing;
+  return {
+    inputPrice: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3,
+    outputPrice: DEFAULT_CONFIG.cost_per_1k_output_tokens * 1e3,
+    cacheWrite5Min: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3 * 1.25,
+    cacheWrite1Hour: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3 * 2,
+    cacheHits: DEFAULT_CONFIG.cost_per_1k_input_tokens * 1e3 * 0.1
+  };
+}
+__name(getModelRates, "getModelRates");
+var GLOBAL_CONFIG_PATH = (0, import_node_path2.join)(
+  (0, import_node_os.homedir)(),
+  ".claude",
+  ".goodvibes",
+  "analytics",
+  "analytics.json"
+);
+function tryLoadFile(filePath) {
+  if (!(0, import_node_fs4.existsSync)(filePath)) return null;
+  try {
+    const raw = (0, import_node_fs4.readFileSync)(filePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return { ...DEFAULT_CONFIG, ...parsed };
+    }
+    return { ...DEFAULT_CONFIG };
+  } catch (err) {
+    console.warn(
+      `[analytics] Config load failed for ${filePath}, using defaults:`,
+      err instanceof Error ? err.message : String(err)
+    );
+    return null;
+  }
+}
+__name(tryLoadFile, "tryLoadFile");
+function loadConfig(goodvibesDir2) {
+  const globalConfig = tryLoadFile(GLOBAL_CONFIG_PATH);
+  if (globalConfig) return globalConfig;
+  const projectConfig = tryLoadFile((0, import_node_path2.join)(goodvibesDir2, "analytics.json"));
+  if (projectConfig) return projectConfig;
+  return { ...DEFAULT_CONFIG };
+}
+__name(loadConfig, "loadConfig");
 
 // src/daemon/anomaly-detector.ts
 var DEFAULT_LOGGER = {
@@ -3822,8 +4031,8 @@ var BudgetTracker = class {
 };
 
 // src/daemon/memory-updater.ts
-var import_node_fs4 = require("node:fs");
-var import_node_path2 = require("node:path");
+var import_node_fs5 = require("node:fs");
+var import_node_path3 = require("node:path");
 var HIGH_READ_COUNT = 5;
 var SLOW_COMMAND_MS = 2e4;
 var GOOD_CACHE_RATE = 0.7;
@@ -3924,7 +4133,7 @@ var MemoryUpdater = class {
    */
   apply(updates) {
     try {
-      (0, import_node_fs4.mkdirSync)(this.memoryDir, { recursive: true });
+      (0, import_node_fs5.mkdirSync)(this.memoryDir, { recursive: true });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code !== "EEXIST") {
         throw err;
@@ -3932,14 +4141,14 @@ var MemoryUpdater = class {
     }
     if (updates.patterns.length > 0) {
       this.mergeAndWrite(
-        (0, import_node_path2.join)(this.memoryDir, "patterns.json"),
+        (0, import_node_path3.join)(this.memoryDir, "patterns.json"),
         updates.patterns,
         "id"
       );
     }
     if (updates.preferences.length > 0) {
       this.mergeAndWrite(
-        (0, import_node_path2.join)(this.memoryDir, "preferences.json"),
+        (0, import_node_path3.join)(this.memoryDir, "preferences.json"),
         updates.preferences,
         "key"
       );
@@ -3986,7 +4195,7 @@ var MemoryUpdater = class {
    */
   readJsonArray(filePath) {
     try {
-      const raw = (0, import_node_fs4.readFileSync)(filePath, "utf-8");
+      const raw = (0, import_node_fs5.readFileSync)(filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         return parsed;
@@ -4008,11 +4217,11 @@ var MemoryUpdater = class {
     const tmpPath = `${filePath}.${process.pid}.tmp`;
     const content = JSON.stringify(data, null, 2) + "\n";
     try {
-      (0, import_node_fs4.writeFileSync)(tmpPath, content, { encoding: "utf-8" });
-      (0, import_node_fs4.renameSync)(tmpPath, filePath);
+      (0, import_node_fs5.writeFileSync)(tmpPath, content, { encoding: "utf-8" });
+      (0, import_node_fs5.renameSync)(tmpPath, filePath);
     } catch (err) {
       try {
-        (0, import_node_fs4.unlinkSync)(tmpPath);
+        (0, import_node_fs5.unlinkSync)(tmpPath);
       } catch {
       }
       throw err;
@@ -4022,13 +4231,13 @@ var MemoryUpdater = class {
 
 // src/daemon/watcher.ts
 var import_node_events2 = require("node:events");
-var import_node_fs6 = require("node:fs");
-var import_node_path4 = require("node:path");
+var import_node_fs7 = require("node:fs");
+var import_node_path5 = require("node:path");
 
 // src/data/jsonl-watcher.ts
 var import_node_events = require("node:events");
-var import_node_fs5 = require("node:fs");
-var import_node_path3 = require("node:path");
+var import_node_fs6 = require("node:fs");
+var import_node_path4 = require("node:path");
 var import_promises2 = require("node:fs/promises");
 var JSONLWatcher = class extends import_node_events.EventEmitter {
   static {
@@ -4215,7 +4424,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       });
     }, "onFileChange");
     try {
-      const fsWatcher = (0, import_node_fs5.watch)(filePath, { persistent: false }, onFileChange);
+      const fsWatcher = (0, import_node_fs6.watch)(filePath, { persistent: false }, onFileChange);
       fsWatcher.on("error", (_err) => {
         try {
           fsWatcher.close();
@@ -4245,7 +4454,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
   createPollingHandle(filePath, onChange) {
     let lastMtime = 0;
     try {
-      lastMtime = (0, import_node_fs5.statSync)(filePath).mtimeMs;
+      lastMtime = (0, import_node_fs6.statSync)(filePath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -4254,7 +4463,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
         return;
       }
       try {
-        const s = (0, import_node_fs5.statSync)(filePath);
+        const s = (0, import_node_fs6.statSync)(filePath);
         if (s.mtimeMs !== lastMtime) {
           lastMtime = s.mtimeMs;
           onChange();
@@ -4269,12 +4478,12 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    */
   watchDirectoryForNewSession() {
     const dirPath = this.projectDir;
-    if (!(0, import_node_fs5.existsSync)(dirPath)) return;
+    if (!(0, import_node_fs6.existsSync)(dirPath)) return;
     let handle;
     const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
       if (filename === null || !filename.endsWith(".jsonl")) return;
-      const fullPath = (0, import_node_path3.join)(dirPath, filename);
-      if (!(0, import_node_fs5.existsSync)(fullPath)) return;
+      const fullPath = (0, import_node_path4.join)(dirPath, filename);
+      if (!(0, import_node_fs6.existsSync)(fullPath)) return;
       this.switchToSession(fullPath).catch((err) => {
         this.emitError(err instanceof Error ? err : new Error(String(err)));
       });
@@ -4284,7 +4493,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       }
     }, "onDirChange");
     try {
-      handle = (0, import_node_fs5.watch)(dirPath, { persistent: false }, onDirChange);
+      handle = (0, import_node_fs6.watch)(dirPath, { persistent: false }, onDirChange);
     } catch {
       handle = { close() {
       } };
@@ -4301,8 +4510,8 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    * @param sessionId - The parent session ID.
    */
   async watchSubagentFiles(sessionId) {
-    const subagentDir = (0, import_node_path3.join)(this.projectDir, sessionId, "subagents");
-    if (!(0, import_node_fs5.existsSync)(subagentDir)) return;
+    const subagentDir = (0, import_node_path4.join)(this.projectDir, sessionId, "subagents");
+    if (!(0, import_node_fs6.existsSync)(subagentDir)) return;
     let entries;
     try {
       entries = await (0, import_promises2.readdir)(subagentDir);
@@ -4311,7 +4520,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
     }
     for (const entry of entries) {
       if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
-      const fullPath = (0, import_node_path3.join)(subagentDir, entry);
+      const fullPath = (0, import_node_path4.join)(subagentDir, entry);
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
       }
@@ -4330,15 +4539,15 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       if (this.activeSessionId !== sessionId) return;
       if (filename === null) return;
       if (!filename.startsWith("agent-") || !filename.endsWith(".jsonl")) return;
-      const fullPath = (0, import_node_path3.join)(subagentDir, filename);
-      if (!(0, import_node_fs5.existsSync)(fullPath)) return;
+      const fullPath = (0, import_node_path4.join)(subagentDir, filename);
+      if (!(0, import_node_fs6.existsSync)(fullPath)) return;
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
       }
     }, "onDirChange");
     let handle;
     try {
-      handle = (0, import_node_fs5.watch)(subagentDir, { persistent: false }, onDirChange);
+      handle = (0, import_node_fs6.watch)(subagentDir, { persistent: false }, onDirChange);
     } catch {
       handle = { close() {
       } };
@@ -4526,19 +4735,19 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
   attachWatchers() {
     const entries = [
       {
-        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
         event: "telemetry-change"
       },
       {
-        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "state"),
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "state"),
         event: "session-change"
       },
       {
-        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "project-index.json"),
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "project-index.json"),
         event: "index-change"
       },
       {
-        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "goodvibes.json"),
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "goodvibes.json"),
         event: "config-change"
       }
     ];
@@ -4560,17 +4769,17 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
    * @param event      - Watcher event name to emit on change.
    */
   watchPath(targetPath, event) {
-    const targetBasename = (0, import_node_path4.basename)(targetPath);
+    const targetBasename = (0, import_node_path5.basename)(targetPath);
     const isDir = this.pathIsDirectory(targetPath);
-    const watchTarget = (0, import_node_fs6.existsSync)(targetPath) ? targetPath : (0, import_node_path4.dirname)(targetPath);
+    const watchTarget = (0, import_node_fs7.existsSync)(targetPath) ? targetPath : (0, import_node_path5.dirname)(targetPath);
     const handler = /* @__PURE__ */ __name((_eventType, filename) => {
-      if ((0, import_node_fs6.existsSync)(targetPath)) {
+      if ((0, import_node_fs7.existsSync)(targetPath)) {
         if (!isDir && filename !== null && filename !== targetBasename) {
           return;
         }
       } else {
         if (filename !== targetBasename) return;
-        if ((0, import_node_fs6.existsSync)(targetPath)) {
+        if ((0, import_node_fs7.existsSync)(targetPath)) {
           this.rewatchPath(targetPath, event);
           return;
         }
@@ -4578,7 +4787,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
       this.debounceEmit(event);
     }, "handler");
     try {
-      const watcher = (0, import_node_fs6.watch)(watchTarget, {
+      const watcher = (0, import_node_fs7.watch)(watchTarget, {
         persistent: false
         /* watcher won't keep the Node.js process alive */
       }, handler);
@@ -4625,7 +4834,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
     if (this.watchers.has(targetPath)) return;
     let lastMtime = 0;
     try {
-      lastMtime = (0, import_node_fs6.statSync)(targetPath).mtimeMs;
+      lastMtime = (0, import_node_fs7.statSync)(targetPath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -4634,7 +4843,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
         return;
       }
       try {
-        const stat2 = (0, import_node_fs6.statSync)(targetPath);
+        const stat2 = (0, import_node_fs7.statSync)(targetPath);
         if (stat2.mtimeMs !== lastMtime) {
           lastMtime = stat2.mtimeMs;
           this.debounceEmit(event);
@@ -4654,7 +4863,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
    */
   pathIsDirectory(targetPath) {
     try {
-      return (0, import_node_fs6.statSync)(targetPath).isDirectory();
+      return (0, import_node_fs7.statSync)(targetPath).isDirectory();
     } catch {
       return false;
     }
@@ -4703,11 +4912,11 @@ __name(emptySessionMetrics, "emptySessionMetrics");
 function readMaxAgentChains(goodvibesDir2) {
   const DEFAULT = 6;
   for (const configPath of [
-    (0, import_node_path5.join)(goodvibesDir2, "goodvibes.json"),
-    (0, import_node_path5.join)((0, import_node_os.homedir)(), ".goodvibes", "goodvibes.json")
+    (0, import_node_path6.join)(goodvibesDir2, "goodvibes.json"),
+    (0, import_node_path6.join)((0, import_node_os2.homedir)(), ".goodvibes", "goodvibes.json")
   ]) {
     try {
-      const raw = (0, import_node_fs7.readFileSync)(configPath, "utf8");
+      const raw = (0, import_node_fs8.readFileSync)(configPath, "utf8");
       const parsed = JSON.parse(raw);
       const val = parsed["max_parallel_agent_chains"];
       if (typeof val === "number" && val > 0) return val;
@@ -4765,29 +4974,29 @@ function toolToActivityType(tool) {
 }
 __name(toolToActivityType, "toolToActivityType");
 function resolveJsonlProjectDir(goodvibesDir2, jsonlBasePath) {
-  const expandedBase = jsonlBasePath.startsWith("~") ? (0, import_node_path5.join)((0, import_node_os.homedir)(), jsonlBasePath.slice(1)) : jsonlBasePath;
-  if (!(0, import_node_fs7.existsSync)(expandedBase)) return null;
+  const expandedBase = jsonlBasePath.startsWith("~") ? (0, import_node_path6.join)((0, import_node_os2.homedir)(), jsonlBasePath.slice(1)) : jsonlBasePath;
+  if (!(0, import_node_fs8.existsSync)(expandedBase)) return null;
   let entries;
   try {
-    entries = (0, import_node_fs7.readdirSync)(expandedBase);
+    entries = (0, import_node_fs8.readdirSync)(expandedBase);
   } catch {
     return null;
   }
-  const projectParent = (0, import_node_path5.basename)((0, import_node_path5.dirname)(goodvibesDir2));
+  const projectParent = (0, import_node_path6.basename)((0, import_node_path6.dirname)(goodvibesDir2));
   for (const entry of entries) {
     if (entry === projectParent) {
-      const candidate = (0, import_node_path5.join)(expandedBase, entry);
-      if ((0, import_node_fs7.existsSync)(candidate)) return candidate;
+      const candidate = (0, import_node_path6.join)(expandedBase, entry);
+      if ((0, import_node_fs8.existsSync)(candidate)) return candidate;
     }
   }
   let latestMtime = 0;
   let latestDir = null;
   for (const entry of entries) {
-    const dirPath = (0, import_node_path5.join)(expandedBase, entry);
+    const dirPath = (0, import_node_path6.join)(expandedBase, entry);
     try {
-      const s = (0, import_node_fs7.statSync)(dirPath);
+      const s = (0, import_node_fs8.statSync)(dirPath);
       if (s.isDirectory() && s.mtimeMs > latestMtime) {
-        const subEntries = (0, import_node_fs7.readdirSync)(dirPath);
+        const subEntries = (0, import_node_fs8.readdirSync)(dirPath);
         if (subEntries.some((f) => f.endsWith(".jsonl"))) {
           latestMtime = s.mtimeMs;
           latestDir = dirPath;
@@ -4829,6 +5038,8 @@ var Aggregator = class _Aggregator {
   telemetry;
   session;
   index;
+  // Model pricing map — loaded on initialize() from ~/.claude/model-pricing.json.
+  pricingMap = {};
   // JSONL reader — created in initialize() from config pricing.
   jsonlReader = null;
   // Accumulated JSONL records from the current file, merged in batches.
@@ -4839,6 +5050,10 @@ var Aggregator = class _Aggregator {
   jsonlSessionId = null;
   // Aggregated totals from JSONL records (recomputed after each accumulation).
   jsonlTotals = emptyJsonlTotals();
+  /** Cache for subagent file reads keyed by file path — avoids re-reading unchanged files. */
+  subagentCache = /* @__PURE__ */ new Map();
+  /** Cache for subagent directory listing — avoids re-reading unchanged directories. */
+  subagentDirCache = null;
   // GlobalDB instance — injected by AnalyticsEngine before initialize().
   globalDb = null;
   // Debounce timer for GlobalDB upserts.
@@ -4912,10 +5127,14 @@ var Aggregator = class _Aggregator {
    */
   reloadConfig(newConfig) {
     this.config = newConfig;
-    this.jsonlReader = new JSONLReader({
-      cost_per_1k_input_tokens: newConfig.cost_per_1k_input_tokens,
-      cost_per_1k_output_tokens: newConfig.cost_per_1k_output_tokens
-    });
+    this.pricingMap = loadModelPricing();
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: newConfig.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: newConfig.cost_per_1k_output_tokens
+      },
+      this.pricingMap
+    );
     this.recomputeJsonlTotals();
     void this.refresh();
   }
@@ -4934,10 +5153,14 @@ var Aggregator = class _Aggregator {
     this.session = new SessionReader(this.goodvibesDir);
     this.index = new IndexReader(this.goodvibesDir);
     await this.telemetry.initialize();
-    this.jsonlReader = new JSONLReader({
-      cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
-      cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens
-    });
+    this.pricingMap = loadModelPricing();
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens
+      },
+      this.pricingMap
+    );
     const jsonlProjectDir = resolveJsonlProjectDir(
       this.goodvibesDir,
       this.config.jsonl_base_path
@@ -4947,7 +5170,7 @@ var Aggregator = class _Aggregator {
     }
     this.anomalyDetector = new AnomalyDetector(this.telemetry, this.config, this.logger);
     this.budgetTracker = new BudgetTracker(this.config);
-    this.memoryUpdater = new MemoryUpdater((0, import_node_path5.join)(this.goodvibesDir, "memory"));
+    this.memoryUpdater = new MemoryUpdater((0, import_node_path6.join)(this.goodvibesDir, "memory"));
     this.watcher = new DataWatcher(this.goodvibesDir, {
       jsonlProjectDir: jsonlProjectDir ?? void 0,
       jsonlCostConfig: {
@@ -5207,9 +5430,17 @@ var Aggregator = class _Aggregator {
     const cache = this.buildCacheMetrics(telemetrySummary);
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
-        const inputCost = jsonl.api_input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens;
-        const outputCost = jsonl.api_output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens;
-        const saved = tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens;
+        const rates = getModelRates(jsonl.model, this.pricingMap);
+        const inputRate = rates.inputPrice / 1e6;
+        const outputRate = rates.outputPrice / 1e6;
+        const rawInputCost = jsonl.api_input * inputRate;
+        const rawOutputCost = jsonl.api_output * outputRate;
+        const rawTotal = rawInputCost + rawOutputCost;
+        const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
+        const inputCost = rawInputCost * scale;
+        const outputCost = rawOutputCost * scale;
+        const savedRate = rates.inputPrice / 1e6;
+        const saved = tokens.saved * savedRate;
         return {
           input: inputCost,
           output: outputCost,
@@ -5222,23 +5453,6 @@ var Aggregator = class _Aggregator {
         output: tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
         total: tokens.input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens + tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
         saved: tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens
-      };
-    })();
-    const commands = (() => {
-      const execBreakdown = telemetrySummary?.by_tool["exec"];
-      if (!execBreakdown) {
-        return { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null };
-      }
-      const total = execBreakdown.calls;
-      const failures = Math.round(total * (1 - execBreakdown.success_rate));
-      return {
-        total,
-        success_rate: execBreakdown.success_rate,
-        avg_duration_ms: execBreakdown.avg_ms,
-        total_duration_ms: execBreakdown.avg_ms * total,
-        failures,
-        slowest: null
-        // would require scanning individual records
       };
     })();
     const agentActivities = this.safeCall(
@@ -5274,7 +5488,7 @@ var Aggregator = class _Aggregator {
       max_concurrent: maxConcurrent,
       // peak overlap derived from spawn/complete timestamp windows
       total_tokens: 0,
-      // Per-agent token data requires subagent JSONL correlation (not yet implemented)
+      // Updated to subagent sum after buildAgentProfiles populates profiles
       active: activeAgents,
       completed: completedAgents
     };
@@ -5285,8 +5499,7 @@ var Aggregator = class _Aggregator {
     const uniqueReadFiles = /* @__PURE__ */ new Set();
     let createdFiles = 0;
     for (const tc of jsonlToolCalls) {
-      const rawName = (tc.name ?? "").toLowerCase();
-      const toolName = rawName.includes("__") ? rawName.split("__").pop() : rawName;
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
       const inputPath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
       if (inputPath !== null) {
         if (toolName === "read" || toolName === "precision_read") {
@@ -5298,6 +5511,44 @@ var Aggregator = class _Aggregator {
         }
       }
     }
+    const commands = (() => {
+      let jsonlCmdTotal = 0;
+      let jsonlCmdFailures = 0;
+      for (const tc of jsonlToolCalls) {
+        const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+        if (toolName === "bash" || toolName === "precision_exec" || toolName === "exec") {
+          jsonlCmdTotal++;
+          if (tc.isError) jsonlCmdFailures++;
+        }
+      }
+      if (jsonlCmdTotal > 0) {
+        const successRate = (jsonlCmdTotal - jsonlCmdFailures) / jsonlCmdTotal;
+        const execBreakdown2 = telemetrySummary?.by_tool["exec"];
+        const avgDuration = execBreakdown2?.avg_ms ?? 0;
+        return {
+          total: jsonlCmdTotal,
+          success_rate: successRate,
+          avg_duration_ms: avgDuration,
+          total_duration_ms: avgDuration * jsonlCmdTotal,
+          failures: jsonlCmdFailures,
+          slowest: null
+        };
+      }
+      const execBreakdown = telemetrySummary?.by_tool["exec"];
+      if (!execBreakdown) {
+        return { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null };
+      }
+      const total = execBreakdown.calls;
+      const failures = Math.round(total * (1 - execBreakdown.success_rate));
+      return {
+        total,
+        success_rate: execBreakdown.success_rate,
+        avg_duration_ms: execBreakdown.avg_ms,
+        total_duration_ms: execBreakdown.avg_ms * total,
+        failures,
+        slowest: null
+      };
+    })();
     const files = {
       unique_read: uniqueReadFiles.size,
       modified: sessionCounters?.files_modified.length ?? 0,
@@ -5306,13 +5557,17 @@ var Aggregator = class _Aggregator {
     };
     const metrics = { tokens, cache, cost, commands, agents, files };
     const toolsBreakdown = telemetrySummary?.by_tool ?? {};
-    const recentActivity = this.buildRecentActivity();
+    const recentActivity = this.buildRecentActivity(jsonlToolCalls, agentActivities);
     const fileHotspots = this.buildFileHotspots(
       toolsBreakdown,
       jsonlToolCalls,
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    agents.total_tokens = agentProfiles.reduce(
+      (sum, p) => sum + p.tokens_in + p.tokens_out,
+      0
+    );
     const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
     let contextPercent = 0;
     for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
@@ -5329,7 +5584,7 @@ var Aggregator = class _Aggregator {
     const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
-      project_hash: (0, import_node_path5.basename)((0, import_node_path5.dirname)(this.goodvibesDir)),
+      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
       max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
@@ -5359,7 +5614,7 @@ var Aggregator = class _Aggregator {
     const healthStatus = computeHealthStatus(allAnomalies, metrics);
     return {
       session_id: sessionId,
-      project_hash: (0, import_node_path5.basename)((0, import_node_path5.dirname)(this.goodvibesDir)),
+      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
       max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
@@ -5377,26 +5632,68 @@ var Aggregator = class _Aggregator {
   /**
    * Build the recent activity list from the most recent telemetry records.
    */
-  buildRecentActivity() {
-    const records = this.safeCall(
+  buildRecentActivity(jsonlToolCalls, agentActivities) {
+    const events = [];
+    for (const tc of jsonlToolCalls) {
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+      events.push({
+        timestamp: tc.timestamp,
+        type: toolToActivityType(toolName),
+        tool: toolName,
+        description: tc.isError ? "error" : "ok",
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { status: tc.isError ? "error" : "success" }
+      });
+    }
+    for (const a of agentActivities) {
+      events.push({
+        timestamp: a.spawnedAt,
+        type: "agent_spawn",
+        tool: "Task",
+        description: "agent spawned",
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { agent_id: a.agentId }
+      });
+      if (a.completedAt !== void 0) {
+        events.push({
+          timestamp: a.completedAt,
+          type: "agent_complete",
+          tool: "Task",
+          description: a.exitStatus === "error" ? "error" : "completed",
+          duration_ms: 0,
+          cache_hit: false,
+          tokens: 0,
+          details: { agent_id: a.agentId, status: a.exitStatus }
+        });
+      }
+    }
+    const telemetryRecords = this.safeCall(
       () => this.telemetry.getRecentRecords(RECENT_ACTIVITY_LIMIT),
       []
     );
-    return records.map((r) => ({
-      timestamp: r.created_at,
-      type: toolToActivityType(r.tool),
-      tool: r.tool,
-      description: r.error ?? (r.status === "success" ? "ok" : r.status),
-      duration_ms: r.duration_ms,
-      cache_hit: r.cache_hit,
-      tokens: (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
-      details: {
-        status: r.status,
-        tokens_in: r.tokens_in,
-        tokens_out: r.tokens_out,
-        cache_bytes_saved: r.cache_bytes_saved
-      }
-    }));
+    for (const r of telemetryRecords) {
+      events.push({
+        timestamp: r.created_at,
+        type: toolToActivityType(r.tool),
+        tool: r.tool,
+        description: r.error ?? (r.status === "success" ? "ok" : r.status),
+        duration_ms: r.duration_ms,
+        cache_hit: r.cache_hit,
+        tokens: (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
+        details: {
+          status: r.status,
+          tokens_in: r.tokens_in,
+          tokens_out: r.tokens_out,
+          cache_bytes_saved: r.cache_bytes_saved
+        }
+      });
+    }
+    events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    return events.slice(0, RECENT_ACTIVITY_LIMIT);
   }
   /**
    * Build file hotspot data by merging JSONL tool call file access patterns
@@ -5413,7 +5710,7 @@ var Aggregator = class _Aggregator {
   buildFileHotspots(_breakdown, jsonlToolCalls, sessionCounters) {
     const fileStats = /* @__PURE__ */ new Map();
     for (const tc of jsonlToolCalls) {
-      const toolName = (tc.name ?? "").toLowerCase();
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
       const timestamp = tc.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
       const filePaths = [];
       const singlePath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
@@ -5483,6 +5780,7 @@ var Aggregator = class _Aggregator {
    * @param agentActivities - Agent activity records extracted from JSONL.
    */
   buildAgentProfiles(agentActivities) {
+    const sessionDir = this.findSessionDir();
     return agentActivities.map((a) => {
       let duration_ms = 0;
       if (a.completedAt !== void 0) {
@@ -5492,21 +5790,106 @@ var Aggregator = class _Aggregator {
           duration_ms = completeMs - spawnMs;
         }
       }
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+      if (sessionDir !== null) {
+        const subagentData = this.parseSubagentFile(sessionDir, a.agentId);
+        if (subagentData !== null) {
+          tokens_in = subagentData.tokens_in;
+          tokens_out = subagentData.tokens_out;
+          tool_calls = subagentData.tool_calls;
+        }
+      }
       return {
         agent_id: a.agentId,
         agent_type: "task",
-        // All JSONL-derived agents are Task tool spawns
-        tokens_in: 0,
-        // Per-agent token counts require subagent JSONL correlation
-        tokens_out: 0,
-        tool_calls: 0,
-        // Not derivable without subagent session JSONL correlation
+        tokens_in,
+        tokens_out,
+        tool_calls,
         success_rate: 1,
-        // Default; no per-agent failure data available
         duration_ms,
         status: a.completed ? a.exitStatus === "error" ? "failed" : "completed" : "active"
       };
     });
+  }
+  /**
+   * Determine the session directory (parent dir of the active JSONL file).
+   * Subagent files live at <session-dir>/subagents/agent-<id>.jsonl
+   */
+  findSessionDir() {
+    if (this.activeJsonlPath === null) return null;
+    return (0, import_node_path6.dirname)(this.activeJsonlPath);
+  }
+  /**
+   * Parse a subagent JSONL file and return aggregated token/tool counts.
+   *
+   * @param sessionDir - Session directory (parent of the main JSONL file).
+   * @param agentId    - Agent ID from the Task tool_use block (may be a prefix).
+   */
+  parseSubagentFile(sessionDir, agentId) {
+    const subagentsDir = (0, import_node_path6.join)(sessionDir, "subagents");
+    if (!(0, import_node_fs8.existsSync)(subagentsDir)) return null;
+    let entries;
+    try {
+      const dirStat = (0, import_node_fs8.statSync)(subagentsDir);
+      if (this.subagentDirCache !== null && this.subagentDirCache.mtime === dirStat.mtimeMs) {
+        entries = this.subagentDirCache.files;
+      } else {
+        entries = (0, import_node_fs8.readdirSync)(subagentsDir);
+        this.subagentDirCache = { mtime: dirStat.mtimeMs, files: entries };
+      }
+    } catch {
+      return null;
+    }
+    let subagentFile = null;
+    for (const entry of entries) {
+      if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
+      const fileId = entry.slice("agent-".length, -".jsonl".length);
+      if (fileId === agentId || fileId.startsWith(agentId)) {
+        subagentFile = (0, import_node_path6.join)(subagentsDir, entry);
+        break;
+      }
+    }
+    if (subagentFile === null) return null;
+    try {
+      const fileStat = (0, import_node_fs8.statSync)(subagentFile);
+      const cached = this.subagentCache.get(subagentFile);
+      if (cached !== void 0 && cached.mtime === fileStat.mtimeMs) {
+        return cached.data;
+      }
+      const content = (0, import_node_fs8.readFileSync)(subagentFile, "utf8");
+      const lines = content.split("\n").filter((l) => l.trim() !== "");
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line);
+          if (entry["type"] !== "assistant") continue;
+          const msg = entry["message"];
+          if (msg?.["usage"]) {
+            const usage = msg["usage"];
+            tokens_in += usage["input_tokens"] ?? 0;
+            tokens_out += usage["output_tokens"] ?? 0;
+          }
+          const contentBlocks = msg?.["content"];
+          if (Array.isArray(contentBlocks)) {
+            for (const block of contentBlocks) {
+              if (typeof block === "object" && block !== null && block["type"] === "tool_use") {
+                tool_calls++;
+              }
+            }
+          }
+        } catch {
+        }
+      }
+      const result = { tokens_in, tokens_out, tool_calls };
+      this.subagentCache.set(subagentFile, { mtime: fileStat.mtimeMs, data: result });
+      return result;
+    } catch {
+      return null;
+    }
   }
   // ───────────────────────────────────────────────────────────────────────────
   // Private: GlobalDB write-back
@@ -5541,7 +5924,7 @@ var Aggregator = class _Aggregator {
     try {
       const metrics = this.state.metrics;
       const jsonl = this.jsonlTotals;
-      const projectHash = (0, import_node_path5.basename)((0, import_node_path5.dirname)(this.goodvibesDir));
+      const projectHash = (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir));
       const jsonlToolCalls = this.jsonlReader !== null ? this.jsonlReader.extractToolCalls(this.jsonlRecords) : [];
       const precisionCalls = jsonlToolCalls.filter(
         (tc) => (tc.name ?? "").startsWith("mcp__plugin_goodvibes_precision")
@@ -5607,6 +5990,19 @@ var Aggregator = class _Aggregator {
    * @param fn       - Function to execute.
    * @param fallback - Value returned if fn throws.
    */
+  /**
+   * Extract the base tool name from a raw MCP tool name.
+   *
+   * Strips the MCP prefix (e.g. 'mcp__plugin_goodvibes_precision-engine__precision_read'
+   * becomes 'precision_read'). Also lowercases the result.
+   *
+   * @param rawName - Raw tool name from JSONL tool_use block.
+   * @returns Lowercased base tool name without MCP prefix.
+   */
+  static extractBaseToolName(rawName) {
+    const name = rawName.toLowerCase();
+    return name.includes("__") ? name.split("__").pop() : name;
+  }
   safeCall(fn, fallback) {
     try {
       return fn();
@@ -6008,76 +6404,6 @@ var MiniRenderer = class {
     }
   }
 };
-
-// src/config.ts
-var import_node_fs8 = require("node:fs");
-var import_node_path6 = require("node:path");
-var import_node_os2 = require("node:os");
-
-// src/types.ts
-var DEFAULT_CONFIG = {
-  enabled: true,
-  auto_start_mini: true,
-  auto_start_full: false,
-  auto_start_dashboard: false,
-  refresh_rate_ms: 2e3,
-  full_tui_refresh_rate_ms: 5e3,
-  dashboard_refresh_rate_ms: 5e3,
-  cost_per_1k_input_tokens: 0.015,
-  cost_per_1k_output_tokens: 0.075,
-  budget: null,
-  budget_warn_thresholds: [0.5, 0.8, 1],
-  mini_budget_bar: false,
-  anomaly_detection: true,
-  auto_report_on_shutdown: true,
-  webhook_url: null,
-  webhook_events: ["session_end"],
-  global_db_path: "~/.claude/.goodvibes/analytics/analytics.db",
-  jsonl_base_path: "~/.claude/projects",
-  tmux: {
-    mini_pane_size: 5,
-    mini_position: "bottom",
-    full_pane_size: "60%",
-    dashboard_pane_size: "60%",
-    full_position: "right",
-    dashboard_position: "right"
-  }
-};
-
-// src/config.ts
-var GLOBAL_CONFIG_PATH = (0, import_node_path6.join)(
-  (0, import_node_os2.homedir)(),
-  ".claude",
-  ".goodvibes",
-  "analytics",
-  "analytics.json"
-);
-function tryLoadFile(filePath) {
-  if (!(0, import_node_fs8.existsSync)(filePath)) return null;
-  try {
-    const raw = (0, import_node_fs8.readFileSync)(filePath, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return { ...DEFAULT_CONFIG, ...parsed };
-    }
-    return { ...DEFAULT_CONFIG };
-  } catch (err) {
-    console.warn(
-      `[analytics] Config load failed for ${filePath}, using defaults:`,
-      err instanceof Error ? err.message : String(err)
-    );
-    return null;
-  }
-}
-__name(tryLoadFile, "tryLoadFile");
-function loadConfig(goodvibesDir2) {
-  const globalConfig = tryLoadFile(GLOBAL_CONFIG_PATH);
-  if (globalConfig) return globalConfig;
-  const projectConfig = tryLoadFile((0, import_node_path6.join)(goodvibesDir2, "analytics.json"));
-  if (projectConfig) return projectConfig;
-  return { ...DEFAULT_CONFIG };
-}
-__name(loadConfig, "loadConfig");
 
 // src/mini.ts
 var goodvibesDir = process.env["GOODVIBES_DIR"] ?? ".goodvibes";

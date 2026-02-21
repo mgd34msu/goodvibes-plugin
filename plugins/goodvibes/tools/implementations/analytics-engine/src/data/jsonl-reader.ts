@@ -103,7 +103,7 @@ export class JSONLReader {
     if (dotKey) return this.pricingMap[dotKey]!;
     // Prefix match.
     const prefixKey = Object.keys(this.pricingMap).find(
-      (k) => modelId.startsWith(k) || k.startsWith(modelId),
+      (k) => modelId.startsWith(k),
     );
     if (prefixKey) return this.pricingMap[prefixKey]!;
     return null;
@@ -292,11 +292,14 @@ export class JSONLReader {
       const inputTokens = usage.input_tokens ?? 0;
       const outputTokens = usage.output_tokens ?? 0;
       const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
-      // Use total cache_creation_input_tokens for backward compat count
-      const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
       // Extended cache write breakdown for tiered write cost calculation
       const cache5mTokens = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0;
       const cache1hTokens = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+      // Use tiered breakdown for count when available, else fall back to aggregate.
+      // This ensures the count matches the cost calculation when breakdown is present.
+      const cacheWriteTokens = (cache5mTokens > 0 || cache1hTokens > 0)
+        ? cache5mTokens + cache1hTokens
+        : (usage.cache_creation_input_tokens ?? 0);
 
       // Skip records with no meaningful token data.
       if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
@@ -581,6 +584,9 @@ export class JSONLReader {
       const inputCost = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
       const outputCost = (outputTokens / 1_000_000) * modelPricing.outputPrice;
       const cacheReadCost = (cacheReadTokens / 1_000_000) * modelPricing.cacheHits;
+      // Cache write cost uses 5-minute rate as a conservative approximation.
+      // For accurate tiered pricing, use extractApiCalls() which handles
+      // ephemeral_5m and ephemeral_1h breakdowns separately.
       const cacheWriteCost = (cacheWriteTokens / 1_000_000) * modelPricing.cacheWrite5Min;
       return inputCost + outputCost + cacheReadCost + cacheWriteCost;
     }

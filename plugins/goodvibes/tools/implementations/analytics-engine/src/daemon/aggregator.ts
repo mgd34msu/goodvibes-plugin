@@ -50,7 +50,7 @@ import {
   sessionIdFromPath,
 } from '../data/jsonl-reader.js';
 import type { JSONLRecord, JSONLAssistantRecord, ToolCallInfo, AgentActivityInfo } from '../data/jsonl-types.js';
-import { loadModelPricing } from '../config.js';
+import { loadModelPricing, getModelRates } from '../config.js';
 import type { ModelPricingMap } from '../config.js';
 import type { GlobalDB } from '../data/global-db.js';
 import { AnomalyDetector } from './anomaly-detector.js';
@@ -363,6 +363,12 @@ export class Aggregator {
 
   // Aggregated totals from JSONL records (recomputed after each accumulation).
   private jsonlTotals: JsonlTotals = emptyJsonlTotals();
+
+  /** Cache for subagent file reads keyed by file path — avoids re-reading unchanged files. */
+  private subagentCache = new Map<string, { mtime: number; data: { tokens_in: number; tokens_out: number; tool_calls: number } }>();
+
+  /** Cache for subagent directory listing — avoids re-reading unchanged directories. */
+  private subagentDirCache: { mtime: number; files: string[] } | null = null;
 
   // GlobalDB instance — injected by AnalyticsEngine before initialize().
   private globalDb: GlobalDB | null = null;
@@ -838,10 +844,21 @@ export class Aggregator {
     // ── Cost metrics: prefer JSONL calculated cost (uses real API tokens) ──
     const cost: CostMetrics = (() => {
       if (jsonl.cost_usd > 0) {
-        // Decompose total cost into input/output split from token counts.
-        const inputCost = (jsonl.api_input / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens;
-        const outputCost = (jsonl.api_output / TOKENS_PER_K) * this.config.cost_per_1k_output_tokens;
-        const saved = (tokens.saved / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens;
+        // Decompose total cost proportionally using model-specific rates.
+        // Using flat config rates would cause input + output != total when dynamic pricing is active.
+        const rates = getModelRates(jsonl.model, this.pricingMap);
+        const inputRate = rates.inputPrice / 1_000_000; // $/MTok to per-token
+        const outputRate = rates.outputPrice / 1_000_000;
+        const rawInputCost = jsonl.api_input * inputRate;
+        const rawOutputCost = jsonl.api_output * outputRate;
+        const rawTotal = rawInputCost + rawOutputCost;
+        // Scale to match the accurate jsonl.cost_usd total (which includes cache + tiers).
+        const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
+        const inputCost = rawInputCost * scale;
+        const outputCost = rawOutputCost * scale;
+        // Saved tokens are input tokens — use input rate for cost saved.
+        const savedRate = rates.inputPrice / 1_000_000;
+        const saved = tokens.saved * savedRate;
         return {
           input: inputCost,
           output: outputCost,
@@ -859,9 +876,6 @@ export class Aggregator {
         saved: (tokens.saved / TOKENS_PER_K) * this.config.cost_per_1k_input_tokens,
       };
     })();
-
-    // ── Command metrics deferred — computed after jsonlToolCalls is extracted ──
-    const _commandsPlaceholder = null; // filled after jsonlToolCalls is available
 
     // ── Agent activity from JSONL ────────────────────────────────────────────
     const agentActivities = this.safeCall(
@@ -952,7 +966,7 @@ export class Aggregator {
 
       if (jsonlCmdTotal > 0) {
         // JSONL-derived: accurate tool call counts.
-        const successRate = jsonlCmdTotal > 0 ? (jsonlCmdTotal - jsonlCmdFailures) / jsonlCmdTotal : 1;
+        const successRate = (jsonlCmdTotal - jsonlCmdFailures) / jsonlCmdTotal;
         // Get avg_duration_ms from telemetry if available, else 0.
         const execBreakdown = telemetrySummary?.by_tool['exec'];
         const avgDuration = execBreakdown?.avg_ms ?? 0;
@@ -1357,26 +1371,42 @@ export class Aggregator {
     if (!existsSync(subagentsDir)) return null;
 
     // Find a matching file: exact match or agentId as prefix.
-    let subagentFile: string | null = null;
+    // Use cached directory listing when the directory mtime is unchanged.
+    let entries: string[];
     try {
-      const entries = readdirSync(subagentsDir);
-      for (const entry of entries) {
-        if (!entry.startsWith('agent-') || !entry.endsWith('.jsonl')) continue;
-        // The agentId is the tool_use id; the filename is agent-<id>.jsonl.
-        // Try exact match first, then prefix match.
-        const fileId = entry.slice('agent-'.length, -'.jsonl'.length);
-        if (fileId === agentId || fileId.startsWith(agentId) || agentId.startsWith(fileId)) {
-          subagentFile = join(subagentsDir, entry);
-          break;
-        }
+      const dirStat = statSync(subagentsDir);
+      if (this.subagentDirCache !== null && this.subagentDirCache.mtime === dirStat.mtimeMs) {
+        entries = this.subagentDirCache.files;
+      } else {
+        entries = readdirSync(subagentsDir);
+        this.subagentDirCache = { mtime: dirStat.mtimeMs, files: entries };
       }
     } catch {
       return null;
     }
 
+    let subagentFile: string | null = null;
+    for (const entry of entries) {
+      if (!entry.startsWith('agent-') || !entry.endsWith('.jsonl')) continue;
+      // The agentId is the tool_use id; the filename is agent-<id>.jsonl.
+      // Try exact match first, then prefix match.
+      const fileId = entry.slice('agent-'.length, -'.jsonl'.length);
+      if (fileId === agentId || fileId.startsWith(agentId)) {
+        subagentFile = join(subagentsDir, entry);
+        break;
+      }
+    }
+
     if (subagentFile === null) return null;
 
+    // Check file mtime cache before re-reading.
     try {
+      const fileStat = statSync(subagentFile);
+      const cached = this.subagentCache.get(subagentFile);
+      if (cached !== undefined && cached.mtime === fileStat.mtimeMs) {
+        return cached.data;
+      }
+
       const content = readFileSync(subagentFile, 'utf8');
       const lines = content.split('\n').filter((l) => l.trim() !== '');
       let tokens_in = 0;
@@ -1409,7 +1439,9 @@ export class Aggregator {
         }
       }
 
-      return { tokens_in, tokens_out, tool_calls };
+      const result = { tokens_in, tokens_out, tool_calls };
+      this.subagentCache.set(subagentFile, { mtime: fileStat.mtimeMs, data: result });
+      return result;
     } catch {
       return null;
     }
