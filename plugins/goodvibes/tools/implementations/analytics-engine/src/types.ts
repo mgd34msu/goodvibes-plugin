@@ -13,6 +13,8 @@ export interface AnalyticsConfig {
   cost_per_1k_output_tokens: number;
   budget: { amount: number; unit: 'dollars' | 'tokens' } | null;
   budget_warn_thresholds: number[];
+  /** When true, show the graphical budget progress bar in the mini dashboard header. Default: false. */
+  mini_budget_bar?: boolean;
   anomaly_detection: boolean;
   auto_report_on_shutdown: boolean;
   webhook_url: string | null;
@@ -49,6 +51,7 @@ export const DEFAULT_CONFIG: Readonly<AnalyticsConfig> = {
   cost_per_1k_output_tokens: 0.015,
   budget: null,
   budget_warn_thresholds: [0.5, 0.8, 1.0],
+  mini_budget_bar: false,
   anomaly_detection: true,
   auto_report_on_shutdown: true,
   webhook_url: null,

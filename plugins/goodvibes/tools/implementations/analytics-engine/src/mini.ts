@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   const aggregator = new Aggregator(goodvibesDir, config);
   await aggregator.initialize();
 
-  const renderer = new MiniRenderer();
+  const renderer = new MiniRenderer(config);
   renderer.startLoop(
     () => aggregator.getState(),
     config.refresh_rate_ms,

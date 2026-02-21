@@ -12,11 +12,10 @@
  *   Line 4 (footer): bottom border
  */
 
-import type { DashboardState } from '../../types.js';
+import type { AnalyticsConfig, DashboardState } from '../../types.js';
 import {
   ansi,
   colorForHealth,
-  formatBar,
   formatNumber,
   formatPercent,
   formatUptime,
@@ -256,29 +255,26 @@ function renderBar(
   value: number,
   max: number,
   width: number,
-  thresholds: { warn: number; alert: number } = { warn: 0.5, alert: 0.8 },
-  invertColor = false,
+  options?: { thresholds?: { warn: number; alert: number }; invertColor?: boolean },
 ): string {
   const ratio = (max > 0 && isFinite(value) && isFinite(max))
     ? Math.max(0, Math.min(1, value / max))
     : 0;
-  const bar = formatBar(value, max, width);
-  // Split into filled vs empty characters based on ratio
   const filledCount = Math.round(ratio * width);
-  const filled = bar.slice(0, filledCount);
-  const empty = bar.slice(filledCount);
-  // Choose color based on ratio and direction
+  const filled = '\u2588'.repeat(filledCount);
+  const empty = '\u2591'.repeat(width - filledCount);
+
+  const warn = options?.thresholds?.warn ?? 0.5;
+  const alert = options?.thresholds?.alert ?? 0.8;
+  const invert = options?.invertColor ?? false;
+
   let color: string;
-  if (invertColor) {
+  if (invert) {
     // High ratio = good (green); low = bad (red)
-    color = ratio >= thresholds.alert ? ansi.green
-      : ratio >= thresholds.warn     ? ansi.yellow
-      : ansi.red;
+    color = ratio >= alert ? ansi.green : ratio >= warn ? ansi.yellow : ansi.red;
   } else {
     // High ratio = bad (red); low = good (green)
-    color = ratio >= thresholds.alert ? ansi.red
-      : ratio >= thresholds.warn      ? ansi.yellow
-      : ansi.green;
+    color = ratio >= alert ? ansi.red : ratio >= warn ? ansi.yellow : ansi.green;
   }
   return `[${color}${filled}${ansi.reset}${empty}]`;
 }
@@ -294,9 +290,12 @@ function renderBar(
 export class MiniRenderer {
   private loopHandle: ReturnType<typeof setInterval> | null = null;
   private resizeHandler: (() => void) | null = null;
+  private config: AnalyticsConfig | undefined;
 
-  /** Create a new MiniRenderer. Zero-config — width auto-detects from terminal. */
-  constructor() {}
+  /** Create a new MiniRenderer. Optionally pass config for feature flags. */
+  constructor(config?: AnalyticsConfig) {
+    this.config = config;
+  }
 
   /**
    * Render the mini dashboard to a 4-line ANSI string.
@@ -321,7 +320,8 @@ export class MiniRenderer {
     const m = computeMetrics(state);
 
     // ── Line 1: Header ────────────────────────────────────────────────────────
-    // Budget header or standard header
+    // Budget header (with optional graphical bar) or standard header
+    const showBudgetBar = (this.config?.mini_budget_bar ?? false);
     let headerContent: string;
     if (state.budget !== null) {
       const b = state.budget;
@@ -329,13 +329,20 @@ export class MiniRenderer {
       const budgetTotal = formatDollars(b.amount ?? 0);
       const rawPct = b.percentage;
       const budgetPct = rawPct != null && isFinite(rawPct) ? rawPct.toFixed(0) : '?';
-      // Budget bar: 10 chars wide, color escalates as usage rises
-      const budgetRatio = (rawPct != null && isFinite(rawPct)) ? rawPct / 100 : 0;
-      const budgetBar = renderBar(budgetRatio, 1, 10);
-      headerContent =
-        ` analytics ${ansi.dim}─${ansi.reset} ${m.sessionId} ${ansi.dim}─${ansi.reset}` +
-        ` ${m.uptime} ${ansi.dim}─${ansi.reset}` +
-        ` budget ${budgetBar} ${budgetPct}% ${budgetUsed}/${budgetTotal} `;
+      if (showBudgetBar) {
+        // Budget bar: 10 chars wide, color escalates as usage rises
+        const budgetBar = renderBar(rawPct ?? 0, 100, 10);
+        headerContent =
+          ` analytics ${ansi.dim}─${ansi.reset} ${m.sessionId} ${ansi.dim}─${ansi.reset}` +
+          ` ${m.uptime} ${ansi.dim}─${ansi.reset}` +
+          ` budget ${budgetBar} ${budgetPct}% ${budgetUsed}/${budgetTotal} `;
+      } else {
+        // Text-only budget display
+        headerContent =
+          ` analytics ${ansi.dim}─${ansi.reset} ${m.sessionId} ${ansi.dim}─${ansi.reset}` +
+          ` ${m.uptime} ${ansi.dim}─${ansi.reset}` +
+          ` budget: ${budgetUsed}/${budgetTotal} (${budgetPct}%) `;
+      }
     } else {
       headerContent =
         ` analytics ${ansi.dim}─${ansi.reset} ${m.sessionId} ${ansi.dim}─${ansi.reset}` +
@@ -353,23 +360,24 @@ export class MiniRenderer {
       `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
 
     // ── Line 2: Tokens / cache / agents ───────────────────────────────────────
+    // Only render graphical bars when terminal is wide enough (≥80 cols)
+    const showBars = w >= 80;
     // Cache bar: 10 chars, inverted (high cache rate = good = green)
     const cacheRatio = state.metrics.cache.hit_rate ?? 0;
     const cacheBar = renderBar(
       isFinite(cacheRatio) ? cacheRatio : 0, 1, 10,
-      { warn: 0.4, alert: 0.7 },
-      true,
+      { thresholds: { warn: 0.4, alert: 0.7 }, invertColor: true },
     );
     // Agent bar: 6 chars (one per slot), green <50%, yellow 50-83%, red >83%
     const agentBar = renderBar(
       m.agentsActive, Math.max(1, m.agentsMax), 6,
-      { warn: 0.5, alert: 0.84 },
+      { thresholds: { warn: 0.5, alert: 0.84 } },
     );
     const row2Content = buildSections([
       `tokens ${ansi.bold}${m.tokensUsed}${ansi.reset} used`,
       `${m.tokensSaved} saved (${m.savings})`,
-      `cache ${cacheBar} ${m.cacheRate}`,
-      `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}`,
+      showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
+      showBars ? `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}` : `agents ${m.agentsActive}/${m.agentsMax}`,
     ]);
     const line2 = buildRow(row2Content, borderColor, w);
 

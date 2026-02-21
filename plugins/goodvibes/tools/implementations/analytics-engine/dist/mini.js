@@ -3324,18 +3324,6 @@ function formatDollars(amount) {
   return `$${amount.toFixed(2)}`;
 }
 __name(formatDollars, "formatDollars");
-var FILL_CHAR = "\u2588";
-var EMPTY_CHAR = "\u2591";
-function formatBar(value, max, width) {
-  if (!isFinite(value) || !isFinite(max) || width <= 0) {
-    return EMPTY_CHAR.repeat(Math.max(0, width));
-  }
-  if (max <= 0) return EMPTY_CHAR.repeat(width);
-  const ratio = Math.max(0, Math.min(1, value / max));
-  const filled = Math.round(ratio * width);
-  return FILL_CHAR.repeat(filled) + EMPTY_CHAR.repeat(width - filled);
-}
-__name(formatBar, "formatBar");
 function formatUptime(ms) {
   if (!isFinite(ms) || ms < 0) return "0s";
   const totalSeconds = Math.floor(ms / 1e3);
@@ -3526,17 +3514,19 @@ function renderFallback(width) {
   return [line1, line2, line3, line4].join("\n");
 }
 __name(renderFallback, "renderFallback");
-function renderBar(value, max, width, thresholds = { warn: 0.5, alert: 0.8 }, invertColor = false) {
+function renderBar(value, max, width, options) {
   const ratio = max > 0 && isFinite(value) && isFinite(max) ? Math.max(0, Math.min(1, value / max)) : 0;
-  const bar = formatBar(value, max, width);
   const filledCount = Math.round(ratio * width);
-  const filled = bar.slice(0, filledCount);
-  const empty = bar.slice(filledCount);
+  const filled = "\u2588".repeat(filledCount);
+  const empty = "\u2591".repeat(width - filledCount);
+  const warn = options?.thresholds?.warn ?? 0.5;
+  const alert = options?.thresholds?.alert ?? 0.8;
+  const invert = options?.invertColor ?? false;
   let color;
-  if (invertColor) {
-    color = ratio >= thresholds.alert ? ansi.green : ratio >= thresholds.warn ? ansi.yellow : ansi.red;
+  if (invert) {
+    color = ratio >= alert ? ansi.green : ratio >= warn ? ansi.yellow : ansi.red;
   } else {
-    color = ratio >= thresholds.alert ? ansi.red : ratio >= thresholds.warn ? ansi.yellow : ansi.green;
+    color = ratio >= alert ? ansi.red : ratio >= warn ? ansi.yellow : ansi.green;
   }
   return `[${color}${filled}${ansi.reset}${empty}]`;
 }
@@ -3547,8 +3537,10 @@ var MiniRenderer = class {
   }
   loopHandle = null;
   resizeHandler = null;
-  /** Create a new MiniRenderer. Zero-config — width auto-detects from terminal. */
-  constructor() {
+  config;
+  /** Create a new MiniRenderer. Optionally pass config for feature flags. */
+  constructor(config) {
+    this.config = config;
   }
   /**
    * Render the mini dashboard to a 4-line ANSI string.
@@ -3567,6 +3559,7 @@ var MiniRenderer = class {
     const borderColor = colorForHealth(health);
     const innerWidth = w - 2;
     const m = computeMetrics(state);
+    const showBudgetBar = this.config?.mini_budget_bar ?? false;
     let headerContent;
     if (state.budget !== null) {
       const b = state.budget;
@@ -3574,9 +3567,12 @@ var MiniRenderer = class {
       const budgetTotal = formatDollars(b.amount ?? 0);
       const rawPct = b.percentage;
       const budgetPct = rawPct != null && isFinite(rawPct) ? rawPct.toFixed(0) : "?";
-      const budgetRatio = rawPct != null && isFinite(rawPct) ? rawPct / 100 : 0;
-      const budgetBar = renderBar(budgetRatio, 1, 10);
-      headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} budget ${budgetBar} ${budgetPct}% ${budgetUsed}/${budgetTotal} `;
+      if (showBudgetBar) {
+        const budgetBar = renderBar(rawPct ?? 0, 100, 10);
+        headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} budget ${budgetBar} ${budgetPct}% ${budgetUsed}/${budgetTotal} `;
+      } else {
+        headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} budget: ${budgetUsed}/${budgetTotal} (${budgetPct}%) `;
+      }
     } else {
       headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${m.toolCalls} calls ${ansi.dim}\u2500${ansi.reset} ${m.successRate} `;
     }
@@ -3584,25 +3580,25 @@ var MiniRenderer = class {
     const dashCount = Math.max(0, innerWidth - headerVisible);
     const dashes = ansi.box.horizontal.repeat(dashCount);
     const line1 = `${borderColor}${ansi.box.topLeft}${ansi.reset}` + headerContent + `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
+    const showBars = w >= 80;
     const cacheRatio = state.metrics.cache.hit_rate ?? 0;
     const cacheBar = renderBar(
       isFinite(cacheRatio) ? cacheRatio : 0,
       1,
       10,
-      { warn: 0.4, alert: 0.7 },
-      true
+      { thresholds: { warn: 0.4, alert: 0.7 }, invertColor: true }
     );
     const agentBar = renderBar(
       m.agentsActive,
       Math.max(1, m.agentsMax),
       6,
-      { warn: 0.5, alert: 0.84 }
+      { thresholds: { warn: 0.5, alert: 0.84 } }
     );
     const row2Content = buildSections([
       `tokens ${ansi.bold}${m.tokensUsed}${ansi.reset} used`,
       `${m.tokensSaved} saved (${m.savings})`,
-      `cache ${cacheBar} ${m.cacheRate}`,
-      `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}`
+      showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
+      showBars ? `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}` : `agents ${m.agentsActive}/${m.agentsMax}`
     ]);
     const line2 = buildRow(row2Content, borderColor, w);
     const conflictStr = m.conflicts > 0 ? `${ansi.yellow}${m.conflicts}\u26A1${ansi.reset}` : `${m.conflicts}\u26A1`;
@@ -3686,6 +3682,7 @@ var DEFAULT_CONFIG = {
   cost_per_1k_output_tokens: 0.015,
   budget: null,
   budget_warn_thresholds: [0.5, 0.8, 1],
+  mini_budget_bar: false,
   anomaly_detection: true,
   auto_report_on_shutdown: true,
   webhook_url: null,
@@ -3743,7 +3740,7 @@ async function main() {
   const config = loadConfig(goodvibesDir);
   const aggregator = new Aggregator(goodvibesDir, config);
   await aggregator.initialize();
-  const renderer = new MiniRenderer();
+  const renderer = new MiniRenderer(config);
   renderer.startLoop(
     () => aggregator.getState(),
     config.refresh_rate_ms

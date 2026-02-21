@@ -54930,6 +54930,7 @@ var DEFAULT_CONFIG = {
   cost_per_1k_output_tokens: 0.015,
   budget: null,
   budget_warn_thresholds: [0.5, 0.8, 1],
+  mini_budget_bar: false,
   anomaly_detection: true,
   auto_report_on_shutdown: true,
   webhook_url: null,
