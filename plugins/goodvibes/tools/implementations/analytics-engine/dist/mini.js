@@ -1370,7 +1370,7 @@ var cacheDegradationRule = {
   type: "cache_degradation",
   severity: "warning",
   windowMs: WINDOW_5_MIN,
-  description: "Cache hit rate dropped >15% vs session average in a 5-min window",
+  description: "Precision cache hit rate dropped >15pp vs session average in a 5-min window",
   check(telemetry, state) {
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
     if (windowRecords.length === 0) return null;
@@ -4192,7 +4192,7 @@ var MiniRenderer = class {
       sectionWidth
     );
     const precSection = padSection(
-      `Precision: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
+      `Prec: ${m.tokensSaved} saved (${m.cacheHitRate} P$hit)`,
       sectionWidth
     );
     const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);

@@ -84,8 +84,9 @@ function avgAgentSpawns(sessions: GlobalSession[]): number {
 
 /**
  * Compute the average total_tool_calls across sessions.
- * Used as a proxy for "Commands" since GlobalDB tracks tool calls but not
- * bash/exec commands specifically.
+ * Note: total_tool_calls includes ALL tool calls (precision_read, precision_write,
+ * precision_exec, etc.), not just bash/exec commands. Used for tool-call comparison
+ * only — not comparable to current session's commands.total (bash+exec only).
  */
 function avgToolCalls(sessions: GlobalSession[]): number {
   if (sessions.length === 0) return 0;
@@ -196,8 +197,14 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     [
       'Commands',
       formatNumber(commands.total),
+      '—', // GlobalDB tracks all tool calls, not bash/exec commands specifically
+      '—',
+    ],
+    [
+      'Tool Calls (hist)',
+      '—', // current session tool calls not tracked per-session in same format
       hasHistory ? formatNumber(Math.round(histAvgToolCalls)) : '—',
-      hasHistory && histAvgToolCalls > 0 ? formatDelta(commands.total, histAvgToolCalls) : '—',
+      '—',
     ],
     [
       'Success Rate',

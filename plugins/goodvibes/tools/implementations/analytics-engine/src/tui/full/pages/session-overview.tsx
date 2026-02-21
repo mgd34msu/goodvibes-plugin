@@ -61,9 +61,6 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
 
   const maxToolCalls = toolItems.reduce((m, i) => Math.max(m, i.value), 0);
 
-  // Use aggregator-computed cost (respects config pricing and JSONL cost_usd).
-  const apiTotalCost = cost.total;
-
   return (
     <Box flexDirection="column" paddingX={1} paddingY={1} gap={1}>
       {/* Session header */}
@@ -98,7 +95,7 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
         />
 
         <MetricBox
-          title="CACHE"
+          title="PRECISION CACHE"
           rows={[
             { label: 'Hit Rate', value: formatPercent(cache.hit_rate) },
             { label: 'Hits', value: formatNumber(cache.hits) },
@@ -128,7 +125,7 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
             { label: 'Output', value: formatNumber(tokens.api_output) },
             { label: 'Cache Read', value: formatNumber(tokens.cache_read) },
             { label: 'Cache Write', value: formatNumber(tokens.cache_write) },
-            { label: 'API Cost', value: formatDollars(apiTotalCost) },
+            { label: 'Total', value: formatNumber(tokens.api_input + tokens.api_output) },
           ]}
         />
 

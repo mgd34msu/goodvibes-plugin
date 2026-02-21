@@ -52116,7 +52116,7 @@ var cacheDegradationRule = {
   type: "cache_degradation",
   severity: "warning",
   windowMs: WINDOW_5_MIN,
-  description: "Cache hit rate dropped >15% vs session average in a 5-min window",
+  description: "Precision cache hit rate dropped >15pp vs session average in a 5-min window",
   check(telemetry, state) {
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
     if (windowRecords.length === 0) return null;
@@ -55062,7 +55062,6 @@ var SessionOverview = /* @__PURE__ */ __name(({ state, globalDb }) => {
     value: tb.calls
   })).sort((a, b) => b.value - a.value).slice(0, 12);
   const maxToolCalls = toolItems.reduce((m, i) => Math.max(m, i.value), 0);
-  const apiTotalCost = cost.total;
   return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Box_default, { flexDirection: "column", paddingX: 1, paddingY: 1, gap: 1, children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Box_default, { gap: 3, children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { bold: true, color: "cyan", children: "SESSION OVERVIEW" }),
@@ -55104,7 +55103,7 @@ var SessionOverview = /* @__PURE__ */ __name(({ state, globalDb }) => {
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         MetricBox,
         {
-          title: "CACHE",
+          title: "PRECISION CACHE",
           rows: [
             { label: "Hit Rate", value: formatPercent(cache3.hit_rate) },
             { label: "Hits", value: formatNumber(cache3.hits) },
@@ -55137,7 +55136,7 @@ var SessionOverview = /* @__PURE__ */ __name(({ state, globalDb }) => {
             { label: "Output", value: formatNumber(tokens.api_output) },
             { label: "Cache Read", value: formatNumber(tokens.cache_read) },
             { label: "Cache Write", value: formatNumber(tokens.cache_write) },
-            { label: "API Cost", value: formatDollars(apiTotalCost) }
+            { label: "Total", value: formatNumber(tokens.api_input + tokens.api_output) }
           ]
         }
       ),
@@ -55402,8 +55401,16 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
     [
       "Commands",
       formatNumber(commands.total),
+      "\u2014",
+      // GlobalDB tracks all tool calls, not bash/exec commands specifically
+      "\u2014"
+    ],
+    [
+      "Tool Calls (hist)",
+      "\u2014",
+      // current session tool calls not tracked per-session in same format
       hasHistory ? formatNumber(Math.round(histAvgToolCalls)) : "\u2014",
-      hasHistory && histAvgToolCalls > 0 ? formatDelta(commands.total, histAvgToolCalls) : "\u2014"
+      "\u2014"
     ],
     [
       "Success Rate",
