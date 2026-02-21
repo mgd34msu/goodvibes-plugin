@@ -278,9 +278,9 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[1]!)).toContain('In:');
     });
 
-    it('line 2 contains "saved"', () => {
+    it('line 3 contains "saved" (precision savings)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('saved');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('saved');
     });
 
     it('line 2 contains "Cache:" (cache read tokens)', () => {
@@ -288,9 +288,9 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[1]!)).toContain('Cache:');
     });
 
-    it('line 2 contains "Hit:" (cache hit rate)', () => {
+    it('line 3 contains "prec" (precision savings label)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('Hit:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('prec');
     });
 
     it('line 3 contains "agents"', () => {
@@ -308,14 +308,14 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[2]!)).toContain('cmds');
     });
 
-    it('line 3 contains "cost"', () => {
+    it('line 2 contains "cost" (API-level session cost)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('cost');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('cost');
     });
 
-    it('line 2 does not contain "cost"', () => {
+    it('line 3 does not contain "cost"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).not.toContain('cost');
+      expect(stripAnsi(output.split('\n')[2]!)).not.toContain('cost');
     });
   });
 
@@ -533,12 +533,12 @@ describe('MiniRenderer', () => {
       expect(line1).toContain('no-session');
     });
 
-    it('does not crash with zero avg_duration_ms and shows 0.0s avg', () => {
+    it('does not crash with zero avg_duration_ms', () => {
       const state = createMockState({
         metrics: { commands: { total: 5, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null } },
       });
-      const output = renderer.render(state);
-      expect(stripAnsi(output)).toContain('0.0s');
+      expect(() => renderer.render(state)).not.toThrow();
+      expect(renderer.render(state).split('\n')).toHaveLength(4);
     });
 
     it('highlights conflicts in yellow when conflicts > 0', () => {

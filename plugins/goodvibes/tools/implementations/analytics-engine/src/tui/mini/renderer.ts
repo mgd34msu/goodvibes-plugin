@@ -7,8 +7,8 @@
  *
  * Layout:
  *   Line 1 (header): session ID (8 chars), uptime, health status, budget
- *   Line 2: context %, API tokens (In/Out/Cache), cache hit rate, precision savings
- *   Line 3: commands, file ops, session cost, active agents
+ *   Line 2: Claude API metrics — context %, tokens (In/Out/Cache), total cost
+ *   Line 3: Precision + Operations — commands, file ops, agents, precision savings
  *   Line 4 (footer): bottom border
  */
 
@@ -17,7 +17,6 @@ import {
   ansi,
   colorForHealth,
   formatNumber,
-  formatPercent,
   formatUptime,
   formatDollars,
 } from './format.js';
@@ -113,13 +112,16 @@ function determineHealth(
 }
 
 /**
- * Pad a section string to at least minWidth visible characters.
- * Used to ensure fixed-width columns in the dashboard.
+ * Pad/truncate a section string to EXACTLY `width` visible characters.
+ * Shorter content is padded with spaces; longer content is truncated via fitToWidth.
+ * Enforces fixed-width columns so sections never expand or misalign.
  */
-function padSection(content: string, minWidth: number): string {
+function padSection(content: string, width: number): string {
   const visible = visibleLength(content);
-  if (visible >= minWidth) return content;
-  return content + ' '.repeat(minWidth - visible);
+  if (visible === width) return content;
+  if (visible < width) return content + ' '.repeat(width - visible);
+  // Truncate to exact width — fitToWidth handles ANSI-aware truncation
+  return fitToWidth(content, width);
 }
 
 /**
@@ -140,7 +142,6 @@ interface ComputedMetrics {
   tokensUsed: string;
   tokensSaved: string;
   savings: string;
-  cacheRate: string;
   agentsActive: number;
   agentsMax: number;
   filesRead: string;
@@ -148,7 +149,6 @@ interface ComputedMetrics {
   conflicts: number;
   cmdTotal: string;
   cmdFails: string;
-  cmdAvgSec: string;
 }
 
 /**
@@ -182,7 +182,6 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   const tokensUsed = formatNumber(tokens.total ?? 0);
   const tokensSaved = formatNumber(tokens.saved ?? 0);
   const savings = formatDollars(cost.saved ?? 0);
-  const cacheRate = formatPercent(cache.hit_rate ?? 0);
   const agentsActive = agents.active ?? 0;
   const agentsMax = agents.max_concurrent ?? 0;  // observed peak (for display only)
 
@@ -194,12 +193,6 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
 
   const cmdTotal = formatNumber(commands.total ?? 0);
   const cmdFails = formatNumber(commands.failures ?? 0);
-
-  const rawAvgMs = commands.avg_duration_ms;
-  const cmdAvgSec =
-    rawAvgMs != null && isFinite(rawAvgMs) && rawAvgMs > 0
-      ? (rawAvgMs / 1000).toFixed(1)
-      : '0.0';
 
   // Context window usage
   const rawCtx = state.context_percent ?? 0;
@@ -218,7 +211,6 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     tokensUsed,
     tokensSaved,
     savings,
-    cacheRate,
     agentsActive,
     agentsMax,
     filesRead,
@@ -226,7 +218,6 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     conflicts,
     cmdTotal,
     cmdFails,
-    cmdAvgSec,
   };
 }
 
@@ -382,78 +373,59 @@ export class MiniRenderer {
       headerContent +
       `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
 
-    // ── Line 2: Context / API tokens / cache hit rate / precision savings ──────────
+    // ── Line 2: Claude API metrics — context %, tokens, cost ───────────────────────
     // Context percentage: color escalates green -> yellow -> red
     const ctxColor = m.contextPercent >= 80
       ? ansi.red
       : m.contextPercent >= 50
         ? ansi.yellow
         : ansi.green;
+    // Exact fixed widths for line 2 sections (inner width 78):
+    // 1 + 10 + 5 + 28 + 5 + 12 + 1 = 62 chars total — fits comfortably
     const ctxSection = padSection(
       `Ctx:${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
-      10, // "Ctx:100.0%" = 10 chars
+      10, // "Ctx:100.0%" = 10 visible chars
     );
-
-    // API tokens: In / Out / Cache breakdown (visible min 18 chars — ANSI bold doesn't count)
     const apiSection = padSection(
       `In:${ansi.bold}${m.apiInputTokens}${ansi.reset} Out:${ansi.bold}${m.apiOutputTokens}${ansi.reset} Cache:${m.cacheReadTokens}`,
-      18,
-    );
-
-    // Cache hit rate (fixed 10 char min)
-    const cacheRatio = state.metrics.cache.hit_rate ?? 0;
-    // Show progress bars only at wider terminals to prevent line overflow at 80 cols.
-    const showBars = w >= 90;
-    const cacheBar = renderBar(
-      isFinite(cacheRatio) ? cacheRatio : 0, 1, 10,
-      { thresholds: { warn: 0.4, alert: 0.7 }, invertColor: true },
-    );
-    const hitSection = padSection(
-      showBars ? `Hit:${cacheBar} ${m.cacheRate}` : `Hit:${m.cacheRate}`,
-      showBars ? 20 : 8, // "Hit:XX.X%" = 9 chars minimum without bars
-    );
-
-    // Precision savings (fixed 20 char min)
-    const precSection = padSection(
-      `Prec:${m.tokensSaved} saved (${m.savings})`,
-      20,
-    );
-
-    const row2Content = buildSections([ctxSection, apiSection, hitSection, precSection]);
-    const line2 = buildRow(row2Content, borderColor, w);
-
-    // ── Line 3: Commands / files / cost / agents ──────────────────────────────────
-    const conflictStr = m.conflicts > 0
-      ? `${ansi.yellow}${m.conflicts}\u26a1${ansi.reset}`  // \u26a1 highlighted
-      : `${m.conflicts}\u26a1`;
-
-    // Agent bar on line 3 when terminal is wide enough
-    const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
-    const agentBar = renderBar(
-      m.agentsActive, configuredMax, 6,
-      { thresholds: { warn: 0.5, alert: 0.84 } },
-    );
-    const agentsSection = padSection(
-      showBars
-        ? `agents ${agentBar} ${m.agentsActive}/${configuredMax}`
-        : `agents ${m.agentsActive}/${configuredMax}`,
-      showBars ? 20 : 10, // "agents X/Y" minimum
-    );
-
-    const cmdsSection = padSection(
-      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
-      14, // "cmds X (X✗ X.Xs)" minimum
-    );
-    const filesSection = padSection(
-      `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`,
-      14, // "files Xr Xw X⚡" minimum
+      28, // "In:X.XM Out:X.XM Cache:X.XM" — 28 chars covers all typical values
     );
     const costSection = padSection(
       `cost ${m.sessionCost}`,
-      10, // "cost $X.XX" minimum
+      12, // "cost $XX.XX" = 11 chars; 12 for breathing room
     );
 
-    const row3Content = buildSections([cmdsSection, filesSection, costSection, agentsSection]);
+    const row2Content = buildSections([ctxSection, apiSection, costSection]);
+    const line2 = buildRow(row2Content, borderColor, w);
+
+    // ── Line 3: Precision + Operations — cmds, files, agents, prec savings ────────
+    const conflictStr = m.conflicts > 0
+      ? `${ansi.yellow}${m.conflicts}\u26a1${ansi.reset}`  // \u26a1 highlighted
+      : '';
+
+    const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
+    const agentsSection = padSection(
+      `agents ${m.agentsActive}/${configuredMax}`,
+      10, // "agents 9/99" = 11 — clips gracefully if needed
+    );
+
+    // Exact fixed widths: 1 + 14 + 5 + 16 + 5 + 10 + 5 + 21 + 1 = 78 (fits in 78 inner)
+    const cmdsSection = padSection(
+      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717)`,
+      14, // "cmds 999 (99✗)" = 14 visible chars
+    );
+    const filesSection = padSection(
+      conflictStr
+        ? `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`
+        : `files ${m.filesRead}r ${m.filesWritten}w`,
+      16, // "files 99r 9w 9⚡" = 16 chars — accommodates conflict indicator
+    );
+    const precSection = padSection(
+      `prec ${m.tokensSaved} saved (${m.savings})`,
+      21, // "prec X.XK saved ($XX.XX)" — clips trailing chars if very long
+    );
+
+    const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);
     const line3 = buildRow(row3Content, borderColor, w);
 
     // ── Line 4: Footer ───────────────────────────────────────────────────────────
