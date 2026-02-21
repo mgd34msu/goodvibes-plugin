@@ -38,9 +38,13 @@ export const AnalyticsBudgetInput = z.object({
 );
 
 export const AnalyticsTagInput = z.object({
-  action: z.enum(['tag', 'rename']),
-  value: z.string().min(1).max(100),
-});
+  action: z.enum(['add', 'remove', 'list', 'auto']),
+  value: z.string().min(1).max(100).optional(),  // Required for add/remove, optional for list/auto
+  scope: z.enum(['session', 'all']).optional().default('session'), // For list action
+}).refine(
+  (data) => !['add', 'remove'].includes(data.action) || data.value !== undefined,
+  { message: 'value is required for add and remove actions', path: ['value'] },
+);
 
 export const AnalyticsExportInput = z.object({
   format: z.enum(['json', 'csv', 'markdown']),
@@ -92,7 +96,7 @@ export const TOOL_DEFINITIONS = {
   analytics_tag: {
     name: 'analytics_tag',
     description:
-      'Tag or rename the current session for meaningful historical grouping and comparison.',
+      'Add, remove, or list tags on the current session. Tags are persisted in the global SQLite DB and support multi-tag arrays. Use action=auto to get heuristic tag suggestions based on JSONL analysis.',
     inputSchema: AnalyticsTagInput,
   },
   analytics_export: {

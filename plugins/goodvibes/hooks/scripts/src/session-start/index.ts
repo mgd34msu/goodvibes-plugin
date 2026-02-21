@@ -28,6 +28,7 @@ import {
   logError,
   createResponse,
   PROJECT_ROOT,
+  ensureGlobalAnalyticsDir,
 } from '../shared/index.js';
 import {
   loadState,
@@ -130,10 +131,6 @@ async function savePluginState(
   }
 }
 
-
-
-
-
 /** Initializes analytics for the session */
 function initializeAnalytics(
   sessionId: string,
@@ -184,6 +181,9 @@ async function runSessionStartHook(): Promise<void> {
     // Ensure cache directory exists
     await ensureCacheDir();
     debug('Cache directory ensured');
+
+    // Ensure global analytics directory exists (lightweight check)
+    ensureGlobalAnalyticsDir();
 
     // NOTE: Hook injection removed - plugin.json -> hooks/hooks.json handles registration
 

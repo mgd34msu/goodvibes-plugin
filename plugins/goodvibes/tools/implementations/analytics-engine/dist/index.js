@@ -107,6 +107,1045 @@ var init_config = __esm({
   }
 });
 
+// src/data/db-schema.ts
+function getSchemaVersion(db) {
+  try {
+    const result = db.exec(
+      "SELECT MAX(version) AS v FROM schema_version"
+    );
+    const row = result[0]?.values[0];
+    if (!row || row[0] === null || row[0] === void 0) return 0;
+    const v = Number(row[0]);
+    return isNaN(v) ? 0 : v;
+  } catch {
+    return 0;
+  }
+}
+function applyMigrations(db, fromVersion) {
+  for (let v = fromVersion + 1; v <= SCHEMA_VERSION; v++) {
+    const sql = MIGRATIONS.get(v);
+    if (!sql) {
+      db.run(
+        `INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, 'baseline')`,
+        [v]
+      );
+      continue;
+    }
+    db.run(`SAVEPOINT migration_v${v}`);
+    try {
+      db.run(sql);
+      db.run(
+        "INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, ?)",
+        [v, `migration from v${v - 1} to v${v}`]
+      );
+      db.run(`RELEASE SAVEPOINT migration_v${v}`);
+    } catch (err) {
+      db.run(`ROLLBACK TO SAVEPOINT migration_v${v}`);
+      throw new Error(
+        `Schema migration to v${v} failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+}
+var SCHEMA_VERSION, SCHEMA_SQL, MIGRATIONS;
+var init_db_schema = __esm({
+  "src/data/db-schema.ts"() {
+    "use strict";
+    SCHEMA_VERSION = 1;
+    SCHEMA_SQL = `
+-- Sessions: one row per Claude session, all projects
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id                TEXT PRIMARY KEY,
+  project_hash              TEXT NOT NULL,
+  project_path              TEXT,
+  started_at                TEXT NOT NULL,
+  ended_at                  TEXT,
+  model                     TEXT DEFAULT 'unknown',
+  total_input_tokens        INTEGER DEFAULT 0,
+  total_output_tokens       INTEGER DEFAULT 0,
+  total_cache_read_tokens   INTEGER DEFAULT 0,
+  total_cache_write_tokens  INTEGER DEFAULT 0,
+  total_cost_usd            REAL DEFAULT 0,
+  total_api_calls           INTEGER DEFAULT 0,
+  total_tool_calls          INTEGER DEFAULT 0,
+  total_native_tool_calls   INTEGER DEFAULT 0,
+  total_precision_tool_calls INTEGER DEFAULT 0,
+  total_agent_spawns        INTEGER DEFAULT 0,
+  status                    TEXT DEFAULT 'active'
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_status  ON sessions(status);
+
+-- Tags: many-to-many session \u2194 tag relationship
+CREATE TABLE IF NOT EXISTS tags (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id  TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  tag         TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  source      TEXT NOT NULL DEFAULT 'manual',
+  UNIQUE(session_id, tag)
+);
+CREATE INDEX IF NOT EXISTS idx_tags_tag     ON tags(tag);
+CREATE INDEX IF NOT EXISTS idx_tags_session ON tags(session_id);
+
+-- Tool summaries: per-session per-tool aggregates
+CREATE TABLE IF NOT EXISTS tool_summaries (
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id           TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  tool_name            TEXT    NOT NULL,
+  call_count           INTEGER DEFAULT 0,
+  success_count        INTEGER DEFAULT 0,
+  error_count          INTEGER DEFAULT 0,
+  total_duration_ms    INTEGER DEFAULT 0,
+  total_input_tokens   INTEGER DEFAULT 0,
+  total_output_tokens  INTEGER DEFAULT 0,
+  UNIQUE(session_id, tool_name)
+);
+CREATE INDEX IF NOT EXISTS idx_tool_summaries_session ON tool_summaries(session_id);
+
+-- API calls: individual records for trend analysis and cost breakdown
+CREATE TABLE IF NOT EXISTS api_calls (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id          TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  timestamp           TEXT    NOT NULL,
+  model               TEXT,
+  input_tokens        INTEGER DEFAULT 0,
+  output_tokens       INTEGER DEFAULT 0,
+  cache_read_tokens   INTEGER DEFAULT 0,
+  cache_write_tokens  INTEGER DEFAULT 0,
+  cost_usd            REAL    DEFAULT 0,
+  duration_ms         INTEGER DEFAULT 0,
+  stop_reason         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_api_calls_session   ON api_calls(session_id);
+CREATE INDEX IF NOT EXISTS idx_api_calls_timestamp ON api_calls(timestamp);
+
+-- Agent activity: spawned subagents with timing and token usage
+CREATE TABLE IF NOT EXISTS agents (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id        TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  agent_id          TEXT NOT NULL,
+  agent_type        TEXT,
+  parent_session_id TEXT,
+  model             TEXT,
+  spawned_at        TEXT NOT NULL,
+  completed_at      TEXT,
+  total_tokens      INTEGER DEFAULT 0,
+  duration_ms       INTEGER DEFAULT 0,
+  exit_code         INTEGER,
+  UNIQUE(session_id, agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_agents_session ON agents(session_id);
+
+-- Sync state: tracks which JSONL files have been processed
+CREATE TABLE IF NOT EXISTS sync_state (
+  jsonl_path      TEXT PRIMARY KEY,
+  session_id      TEXT NOT NULL,
+  last_offset     INTEGER DEFAULT 0,
+  last_synced_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Schema version tracking for future migrations
+CREATE TABLE IF NOT EXISTS schema_version (
+  version     INTEGER PRIMARY KEY,
+  applied_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  description TEXT
+);
+`;
+    MIGRATIONS = /* @__PURE__ */ new Map();
+    __name(getSchemaVersion, "getSchemaVersion");
+    __name(applyMigrations, "applyMigrations");
+  }
+});
+
+// src/data/global-db.ts
+import { readFileSync as readFileSync6, writeFileSync as writeFileSync3, existsSync as existsSync6 } from "node:fs";
+import { join as join10, resolve } from "node:path";
+function rowsToObjects(result) {
+  if (!result.length) return [];
+  const { columns, values } = result[0];
+  return values.map((row) => {
+    const obj = {};
+    columns.forEach((col, i) => {
+      obj[col] = row[i] ?? null;
+    });
+    return obj;
+  });
+}
+function rowToSession(row, tags) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    project_hash: String(row["project_hash"] ?? ""),
+    project_path: row["project_path"] != null ? String(row["project_path"]) : void 0,
+    started_at: String(row["started_at"] ?? ""),
+    ended_at: row["ended_at"] != null ? String(row["ended_at"]) : void 0,
+    model: String(row["model"] ?? "unknown"),
+    total_input_tokens: Number(row["total_input_tokens"] ?? 0),
+    total_output_tokens: Number(row["total_output_tokens"] ?? 0),
+    total_cache_read_tokens: Number(row["total_cache_read_tokens"] ?? 0),
+    total_cache_write_tokens: Number(row["total_cache_write_tokens"] ?? 0),
+    total_cost_usd: Number(row["total_cost_usd"] ?? 0),
+    total_api_calls: Number(row["total_api_calls"] ?? 0),
+    total_tool_calls: Number(row["total_tool_calls"] ?? 0),
+    total_native_tool_calls: Number(row["total_native_tool_calls"] ?? 0),
+    total_precision_tool_calls: Number(row["total_precision_tool_calls"] ?? 0),
+    total_agent_spawns: Number(row["total_agent_spawns"] ?? 0),
+    tags,
+    status: String(row["status"] ?? "active")
+  };
+}
+function rowToApiCall(row) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    timestamp: String(row["timestamp"] ?? ""),
+    model: row["model"] != null ? String(row["model"]) : void 0,
+    input_tokens: Number(row["input_tokens"] ?? 0),
+    output_tokens: Number(row["output_tokens"] ?? 0),
+    cache_read_tokens: Number(row["cache_read_tokens"] ?? 0),
+    cache_write_tokens: Number(row["cache_write_tokens"] ?? 0),
+    cost_usd: Number(row["cost_usd"] ?? 0),
+    duration_ms: Number(row["duration_ms"] ?? 0),
+    stop_reason: row["stop_reason"] != null ? String(row["stop_reason"]) : void 0
+  };
+}
+function rowToToolSummary(row) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    tool_name: String(row["tool_name"] ?? ""),
+    call_count: Number(row["call_count"] ?? 0),
+    success_count: Number(row["success_count"] ?? 0),
+    error_count: Number(row["error_count"] ?? 0),
+    total_duration_ms: Number(row["total_duration_ms"] ?? 0),
+    total_input_tokens: Number(row["total_input_tokens"] ?? 0),
+    total_output_tokens: Number(row["total_output_tokens"] ?? 0)
+  };
+}
+function rowToAgent(row) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    agent_id: String(row["agent_id"] ?? ""),
+    agent_type: row["agent_type"] != null ? String(row["agent_type"]) : void 0,
+    parent_session_id: row["parent_session_id"] != null ? String(row["parent_session_id"]) : void 0,
+    model: row["model"] != null ? String(row["model"]) : void 0,
+    spawned_at: String(row["spawned_at"] ?? ""),
+    completed_at: row["completed_at"] != null ? String(row["completed_at"]) : void 0,
+    total_tokens: Number(row["total_tokens"] ?? 0),
+    duration_ms: Number(row["duration_ms"] ?? 0),
+    exit_code: row["exit_code"] != null ? Number(row["exit_code"]) : void 0
+  };
+}
+var SAVE_DEBOUNCE_MS, GlobalDB;
+var init_global_db = __esm({
+  "src/data/global-db.ts"() {
+    "use strict";
+    init_db_schema();
+    SAVE_DEBOUNCE_MS = 500;
+    __name(rowsToObjects, "rowsToObjects");
+    __name(rowToSession, "rowToSession");
+    __name(rowToApiCall, "rowToApiCall");
+    __name(rowToToolSummary, "rowToToolSummary");
+    __name(rowToAgent, "rowToAgent");
+    GlobalDB = class {
+      static {
+        __name(this, "GlobalDB");
+      }
+      dbPath;
+      db = null;
+      SQL = null;
+      saveTimer = null;
+      /**
+       * @param dbPath - Absolute path to the SQLite database file.
+       */
+      constructor(dbPath) {
+        this.dbPath = dbPath;
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Lifecycle
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Initialize the database: load sql.js WASM, open or create the DB file,
+       * apply the schema and any pending migrations, and enable WAL mode.
+       *
+       * Must be called before any other method.
+       *
+       * @throws {Error} If sql.js WASM cannot be loaded or schema application fails.
+       */
+      async initialize() {
+        const initSqlJs2 = await this.loadSqlJs();
+        const wasmPath = this.resolveWasmPath();
+        this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
+        if (existsSync6(this.dbPath)) {
+          const buffer = readFileSync6(this.dbPath);
+          this.db = new this.SQL.Database(buffer);
+        } else {
+          this.db = new this.SQL.Database();
+        }
+        this.db.run("PRAGMA journal_mode=WAL;");
+        this.db.run("PRAGMA synchronous=NORMAL;");
+        this.db.run("PRAGMA foreign_keys=ON;");
+        this.db.run(SCHEMA_SQL);
+        const currentVersion = getSchemaVersion(this.db);
+        if (currentVersion < SCHEMA_VERSION) {
+          applyMigrations(this.db, currentVersion);
+        }
+        this.saveToDisk();
+      }
+      /**
+       * Flush the in-memory database to disk and close it.
+       * Cancels any pending debounced save. Safe to call multiple times.
+       */
+      close() {
+        if (this.saveTimer) {
+          clearTimeout(this.saveTimer);
+          this.saveTimer = null;
+        }
+        if (this.db) {
+          this.saveToDisk();
+          this.db.close();
+          this.db = null;
+        }
+      }
+      /**
+       * Return the active Database handle.
+       *
+       * @throws {Error} If `initialize()` has not been called.
+       */
+      getDb() {
+        if (!this.db) {
+          throw new Error("GlobalDB: not initialized. Call initialize() first.");
+        }
+        return this.db;
+      }
+      /**
+       * Write the in-memory database to disk immediately.
+       *
+       * sql.js keeps the entire database in memory and exports a Uint8Array for
+       * persistence. This method performs a synchronous file write.
+       *
+       * Called automatically (debounced) after each write operation.
+       */
+      saveToDisk() {
+        if (!this.db) return;
+        try {
+          const data = this.db.export();
+          writeFileSync3(this.dbPath, Buffer.from(data));
+        } catch (err) {
+          console.error(
+            "[GlobalDB] saveToDisk failed:",
+            err instanceof Error ? err.message : String(err)
+          );
+        }
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Session CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert or update a session record.
+       *
+       * Uses `INSERT OR REPLACE` semantics so callers can pass partial updates;
+       * fields absent from `session` fall back to their SQL DEFAULT values on
+       * insert, or remain unchanged via a coalesce on replace.
+       *
+       * @param session - Session fields to persist. `session_id` is required.
+       */
+      upsertSession(session) {
+        const db = this.getDb();
+        const s = session;
+        db.run(
+          `INSERT INTO sessions (
+        session_id, project_hash, project_path, started_at, ended_at,
+        model, total_input_tokens, total_output_tokens,
+        total_cache_read_tokens, total_cache_write_tokens,
+        total_cost_usd, total_api_calls, total_tool_calls,
+        total_native_tool_calls, total_precision_tool_calls,
+        total_agent_spawns, status
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(session_id) DO UPDATE SET
+        project_hash              = COALESCE(excluded.project_hash, project_hash),
+        project_path              = COALESCE(excluded.project_path, project_path),
+        started_at                = COALESCE(excluded.started_at, started_at),
+        ended_at                  = COALESCE(excluded.ended_at, ended_at),
+        model                     = COALESCE(excluded.model, model),
+        total_input_tokens        = COALESCE(excluded.total_input_tokens, total_input_tokens),
+        total_output_tokens       = COALESCE(excluded.total_output_tokens, total_output_tokens),
+        total_cache_read_tokens   = COALESCE(excluded.total_cache_read_tokens, total_cache_read_tokens),
+        total_cache_write_tokens  = COALESCE(excluded.total_cache_write_tokens, total_cache_write_tokens),
+        total_cost_usd            = COALESCE(excluded.total_cost_usd, total_cost_usd),
+        total_api_calls           = COALESCE(excluded.total_api_calls, total_api_calls),
+        total_tool_calls          = COALESCE(excluded.total_tool_calls, total_tool_calls),
+        total_native_tool_calls   = COALESCE(excluded.total_native_tool_calls, total_native_tool_calls),
+        total_precision_tool_calls = COALESCE(excluded.total_precision_tool_calls, total_precision_tool_calls),
+        total_agent_spawns        = COALESCE(excluded.total_agent_spawns, total_agent_spawns),
+        status                    = COALESCE(excluded.status, status)`,
+          [
+            s.session_id,
+            s.project_hash ?? null,
+            s.project_path ?? null,
+            s.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
+            s.ended_at ?? null,
+            s.model ?? "unknown",
+            s.total_input_tokens ?? 0,
+            s.total_output_tokens ?? 0,
+            s.total_cache_read_tokens ?? 0,
+            s.total_cache_write_tokens ?? 0,
+            s.total_cost_usd ?? 0,
+            s.total_api_calls ?? 0,
+            s.total_tool_calls ?? 0,
+            s.total_native_tool_calls ?? 0,
+            s.total_precision_tool_calls ?? 0,
+            s.total_agent_spawns ?? 0,
+            s.status ?? "active"
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve a session by ID, with its tags joined.
+       *
+       * @param sessionId - The session identifier.
+       * @returns The session, or null if not found.
+       */
+      getSession(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(db.exec("SELECT * FROM sessions WHERE session_id = ?", [sessionId]));
+        if (!rows.length) return null;
+        const tags = this.getTagsForSession(sessionId).map((t) => t.tag);
+        return rowToSession(rows[0], tags);
+      }
+      /**
+       * List all sessions for a project, ordered by start time descending.
+       *
+       * @param projectHash - Hash identifying the project.
+       * @returns Array of GlobalSession objects with tags.
+       */
+      getSessionsByProject(projectHash) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM sessions WHERE project_hash = ? ORDER BY started_at DESC", [projectHash])
+        );
+        const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
+        const tagsMap = this._batchGetTags(sessionIds);
+        return rows.map((row) => {
+          const sid = String(row["session_id"] ?? "");
+          return rowToSession(row, tagsMap.get(sid) ?? []);
+        });
+      }
+      /**
+       * List sessions that have ALL of the specified tags.
+       *
+       * @param tags - Tag strings that must all be present.
+       * @returns Array of matching GlobalSession objects.
+       */
+      getSessionsByTags(tags) {
+        if (tags.length === 0) return [];
+        const db = this.getDb();
+        const placeholders = tags.map(() => "?").join(",");
+        const rows = rowsToObjects(
+          db.exec(
+            `SELECT s.* FROM sessions s
+         INNER JOIN tags t ON t.session_id = s.session_id
+         WHERE t.tag IN (${placeholders})
+         GROUP BY s.session_id
+         HAVING COUNT(DISTINCT t.tag) = ?
+         ORDER BY s.started_at DESC`,
+            [...tags, tags.length]
+          )
+        );
+        const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
+        const tagsMap = this._batchGetTags(sessionIds);
+        return rows.map((row) => {
+          const sid = String(row["session_id"] ?? "");
+          return rowToSession(row, tagsMap.get(sid) ?? []);
+        });
+      }
+      /**
+       * List all sessions with optional filtering and pagination.
+       *
+       * @param options.limit  - Max rows to return (default: 100).
+       * @param options.offset - Rows to skip for pagination (default: 0).
+       * @param options.status - Filter by session status (e.g. 'active', 'completed').
+       * @returns Array of GlobalSession objects.
+       */
+      getAllSessions(options) {
+        const db = this.getDb();
+        const limit = options?.limit ?? 100;
+        const offset = options?.offset ?? 0;
+        const status = options?.status;
+        const params = [];
+        let where = "";
+        if (status) {
+          where = "WHERE status = ?";
+          params.push(status);
+        }
+        params.push(limit, offset);
+        const rows = rowsToObjects(
+          db.exec(
+            `SELECT * FROM sessions ${where} ORDER BY started_at DESC LIMIT ? OFFSET ?`,
+            params
+          )
+        );
+        const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
+        const tagsMap = this._batchGetTags(sessionIds);
+        return rows.map((row) => {
+          const sid = String(row["session_id"] ?? "");
+          return rowToSession(row, tagsMap.get(sid) ?? []);
+        });
+      }
+      /**
+       * Update the status field of a session.
+       *
+       * @param sessionId - Session to update.
+       * @param status    - New status value ('active' | 'completed' | 'archived').
+       */
+      updateSessionStatus(sessionId, status) {
+        const db = this.getDb();
+        db.run("UPDATE sessions SET status = ? WHERE session_id = ?", [status, sessionId]);
+        this.scheduleSave();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // API Call Recording
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert a single API call record.
+       *
+       * @param call - API call data to persist.
+       */
+      insertApiCall(call) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO api_calls (
+        session_id, timestamp, model, input_tokens, output_tokens,
+        cache_read_tokens, cache_write_tokens, cost_usd, duration_ms, stop_reason
+      ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          [
+            call.session_id,
+            call.timestamp,
+            call.model ?? null,
+            call.input_tokens,
+            call.output_tokens,
+            call.cache_read_tokens,
+            call.cache_write_tokens,
+            call.cost_usd,
+            call.duration_ms,
+            call.stop_reason ?? null
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all API calls for a session, ordered by timestamp ascending.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of ApiCallRecord objects.
+       */
+      getApiCalls(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM api_calls WHERE session_id = ? ORDER BY timestamp ASC", [sessionId])
+        );
+        return rows.map(rowToApiCall);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Tool Summary CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert or update a tool summary record.
+       *
+       * On conflict (same session + tool), all numeric counters are added to
+       * the existing row (accumulate pattern).
+       *
+       * @param summary - Tool summary data to persist or accumulate.
+       */
+      upsertToolSummary(summary) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO tool_summaries (
+        session_id, tool_name, call_count, success_count, error_count,
+        total_duration_ms, total_input_tokens, total_output_tokens
+      ) VALUES (?,?,?,?,?,?,?,?)
+      ON CONFLICT(session_id, tool_name) DO UPDATE SET
+        call_count          = call_count + excluded.call_count,
+        success_count       = success_count + excluded.success_count,
+        error_count         = error_count + excluded.error_count,
+        total_duration_ms   = total_duration_ms + excluded.total_duration_ms,
+        total_input_tokens  = total_input_tokens + excluded.total_input_tokens,
+        total_output_tokens = total_output_tokens + excluded.total_output_tokens`,
+          [
+            summary.session_id,
+            summary.tool_name,
+            summary.call_count,
+            summary.success_count,
+            summary.error_count,
+            summary.total_duration_ms,
+            summary.total_input_tokens,
+            summary.total_output_tokens
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all tool summaries for a session.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of ToolSummaryRecord objects.
+       */
+      getToolSummaries(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM tool_summaries WHERE session_id = ?", [sessionId])
+        );
+        return rows.map(rowToToolSummary);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Agent CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert or update an agent record.
+       *
+       * @param agent - Agent data to persist.
+       */
+      upsertAgent(agent) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO agents (
+        session_id, agent_id, agent_type, parent_session_id, model,
+        spawned_at, completed_at, total_tokens, duration_ms, exit_code
+      ) VALUES (?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(session_id, agent_id) DO UPDATE SET
+        agent_type        = COALESCE(excluded.agent_type, agent_type),
+        parent_session_id = COALESCE(excluded.parent_session_id, parent_session_id),
+        model             = COALESCE(excluded.model, model),
+        completed_at      = COALESCE(excluded.completed_at, completed_at),
+        total_tokens      = COALESCE(excluded.total_tokens, total_tokens),
+        duration_ms       = COALESCE(excluded.duration_ms, duration_ms),
+        exit_code         = COALESCE(excluded.exit_code, exit_code)`,
+          [
+            agent.session_id,
+            agent.agent_id,
+            agent.agent_type ?? null,
+            agent.parent_session_id ?? null,
+            agent.model ?? null,
+            agent.spawned_at,
+            agent.completed_at ?? null,
+            agent.total_tokens,
+            agent.duration_ms,
+            agent.exit_code ?? null
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all agent records for a session.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of AgentRecord objects.
+       */
+      getAgents(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM agents WHERE session_id = ?", [sessionId])
+        );
+        return rows.map(rowToAgent);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Tag CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Add a tag to a session. Silently ignores duplicate tags.
+       *
+       * @param sessionId - Session to tag.
+       * @param tag       - Tag string to add.
+       * @param source    - Origin of the tag ('manual' | 'auto'). Defaults to 'manual'.
+       */
+      addTag(sessionId, tag, source = "manual") {
+        const db = this.getDb();
+        db.run(
+          `INSERT OR IGNORE INTO tags (session_id, tag, source) VALUES (?, ?, ?)`,
+          [sessionId, tag, source]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Remove a tag from a session.
+       *
+       * @param sessionId - Session to remove the tag from.
+       * @param tag       - Tag string to remove.
+       */
+      removeTag(sessionId, tag) {
+        const db = this.getDb();
+        db.run("DELETE FROM tags WHERE session_id = ? AND tag = ?", [sessionId, tag]);
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all tags for a session, ordered by creation time.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of TagEntry objects.
+       */
+      getTagsForSession(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec(
+            "SELECT tag, session_id, created_at, source FROM tags WHERE session_id = ? ORDER BY created_at ASC",
+            [sessionId]
+          )
+        );
+        return rows.map((row) => ({
+          tag: String(row["tag"] ?? ""),
+          session_id: String(row["session_id"] ?? ""),
+          created_at: String(row["created_at"] ?? ""),
+          source: String(row["source"] ?? "manual")
+        }));
+      }
+      /**
+       * Retrieve all session IDs associated with a tag.
+       *
+       * @param tag - Tag string to look up.
+       * @returns Array of session_id strings.
+       */
+      getSessionsByTag(tag) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT session_id FROM tags WHERE tag = ?", [tag])
+        );
+        return rows.map((row) => String(row["session_id"] ?? ""));
+      }
+      /**
+       * List all unique tags with their usage counts, ordered by count descending.
+       *
+       * @returns Array of `{ tag, count }` objects.
+       */
+      getAllTags() {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT tag, COUNT(*) AS count FROM tags GROUP BY tag ORDER BY count DESC")
+        );
+        return rows.map((row) => ({
+          tag: String(row["tag"] ?? ""),
+          count: Number(row["count"] ?? 0)
+        }));
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Sync State
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Retrieve sync state for a JSONL file path.
+       *
+       * @param jsonlPath - Absolute path to the JSONL file being tracked.
+       * @returns SyncStateRecord, or null if not yet tracked.
+       */
+      getSyncState(jsonlPath) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM sync_state WHERE jsonl_path = ?", [jsonlPath])
+        );
+        if (!rows.length) return null;
+        const row = rows[0];
+        return {
+          jsonl_path: String(row["jsonl_path"] ?? ""),
+          session_id: String(row["session_id"] ?? ""),
+          last_offset: Number(row["last_offset"] ?? 0),
+          last_synced_at: String(row["last_synced_at"] ?? "")
+        };
+      }
+      /**
+       * Insert or update sync state for a JSONL file.
+       *
+       * @param state - Sync state record to persist.
+       */
+      upsertSyncState(state) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO sync_state (jsonl_path, session_id, last_offset, last_synced_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(jsonl_path) DO UPDATE SET
+         session_id     = excluded.session_id,
+         last_offset    = excluded.last_offset,
+         last_synced_at = excluded.last_synced_at`,
+          [state.jsonl_path, state.session_id, state.last_offset, state.last_synced_at]
+        );
+        this.scheduleSave();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Batch Operations
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Bulk-insert API call records inside a single transaction.
+       *
+       * Significantly faster than individual `insertApiCall` calls for large
+       * batches (e.g. initial JSONL sync).
+       *
+       * @param calls - Array of API call records to insert.
+       */
+      batchInsertApiCalls(calls) {
+        if (calls.length === 0) return;
+        const db = this.getDb();
+        db.run("BEGIN");
+        try {
+          for (const call of calls) {
+            db.run(
+              `INSERT INTO api_calls (
+            session_id, timestamp, model, input_tokens, output_tokens,
+            cache_read_tokens, cache_write_tokens, cost_usd, duration_ms, stop_reason
+          ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+              [
+                call.session_id,
+                call.timestamp,
+                call.model ?? null,
+                call.input_tokens,
+                call.output_tokens,
+                call.cache_read_tokens,
+                call.cache_write_tokens,
+                call.cost_usd,
+                call.duration_ms,
+                call.stop_reason ?? null
+              ]
+            );
+          }
+          db.run("COMMIT");
+        } catch (err) {
+          db.run("ROLLBACK");
+          throw err;
+        }
+        this.scheduleSave();
+      }
+      /**
+       * Bulk-upsert session records inside a single transaction.
+       *
+       * @param sessions - Array of partial session objects to upsert.
+       */
+      batchUpsertSessions(sessions) {
+        if (sessions.length === 0) return;
+        const db = this.getDb();
+        db.run("BEGIN");
+        try {
+          for (const session of sessions) {
+            const s = session;
+            db.run(
+              `INSERT INTO sessions (
+            session_id, project_hash, project_path, started_at, ended_at,
+            model, total_input_tokens, total_output_tokens,
+            total_cache_read_tokens, total_cache_write_tokens,
+            total_cost_usd, total_api_calls, total_tool_calls,
+            total_native_tool_calls, total_precision_tool_calls,
+            total_agent_spawns, status
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(session_id) DO UPDATE SET
+            project_hash              = COALESCE(excluded.project_hash, project_hash),
+            project_path              = COALESCE(excluded.project_path, project_path),
+            started_at                = COALESCE(excluded.started_at, started_at),
+            ended_at                  = COALESCE(excluded.ended_at, ended_at),
+            model                     = COALESCE(excluded.model, model),
+            total_input_tokens        = COALESCE(excluded.total_input_tokens, total_input_tokens),
+            total_output_tokens       = COALESCE(excluded.total_output_tokens, total_output_tokens),
+            total_cache_read_tokens   = COALESCE(excluded.total_cache_read_tokens, total_cache_read_tokens),
+            total_cache_write_tokens  = COALESCE(excluded.total_cache_write_tokens, total_cache_write_tokens),
+            total_cost_usd            = COALESCE(excluded.total_cost_usd, total_cost_usd),
+            total_api_calls           = COALESCE(excluded.total_api_calls, total_api_calls),
+            total_tool_calls          = COALESCE(excluded.total_tool_calls, total_tool_calls),
+            total_native_tool_calls   = COALESCE(excluded.total_native_tool_calls, total_native_tool_calls),
+            total_precision_tool_calls = COALESCE(excluded.total_precision_tool_calls, total_precision_tool_calls),
+            total_agent_spawns        = COALESCE(excluded.total_agent_spawns, total_agent_spawns),
+            status                    = COALESCE(excluded.status, status)`,
+              [
+                s.session_id,
+                s.project_hash ?? null,
+                s.project_path ?? null,
+                s.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
+                s.ended_at ?? null,
+                s.model ?? "unknown",
+                s.total_input_tokens ?? 0,
+                s.total_output_tokens ?? 0,
+                s.total_cache_read_tokens ?? 0,
+                s.total_cache_write_tokens ?? 0,
+                s.total_cost_usd ?? 0,
+                s.total_api_calls ?? 0,
+                s.total_tool_calls ?? 0,
+                s.total_native_tool_calls ?? 0,
+                s.total_precision_tool_calls ?? 0,
+                s.total_agent_spawns ?? 0,
+                s.status ?? "active"
+              ]
+            );
+          }
+          db.run("COMMIT");
+        } catch (err) {
+          db.run("ROLLBACK");
+          throw err;
+        }
+        this.scheduleSave();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Aggregate Queries
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Sum total cost for all sessions belonging to a project.
+       *
+       * @param projectHash - Project identifier hash.
+       * @returns Total cost in USD as a number.
+       */
+      getTotalCostByProject(projectHash) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec(
+            "SELECT COALESCE(SUM(total_cost_usd), 0) AS total FROM sessions WHERE project_hash = ?",
+            [projectHash]
+          )
+        );
+        return Number(rows[0]?.["total"] ?? 0);
+      }
+      /**
+       * Sum total cost across all projects.
+       *
+       * @returns Total cost in USD as a number.
+       */
+      getTotalCostAllProjects() {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT COALESCE(SUM(total_cost_usd), 0) AS total FROM sessions")
+        );
+        return Number(rows[0]?.["total"] ?? 0);
+      }
+      /**
+       * Count the number of sessions for a project.
+       *
+       * @param projectHash - Project identifier hash.
+       * @returns Session count.
+       */
+      getSessionCountByProject(projectHash) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec(
+            "SELECT COUNT(*) AS cnt FROM sessions WHERE project_hash = ?",
+            [projectHash]
+          )
+        );
+        return Number(rows[0]?.["cnt"] ?? 0);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Private Helpers
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Batch-fetch tags for multiple sessions in a single query, eliminating N+1.
+       *
+       * @param sessionIds - Array of session IDs to fetch tags for.
+       * @returns Map of session_id to array of tag strings.
+       */
+      _batchGetTags(sessionIds) {
+        const result = /* @__PURE__ */ new Map();
+        if (sessionIds.length === 0) return result;
+        const db = this.getDb();
+        const placeholders = sessionIds.map(() => "?").join(",");
+        const rows = rowsToObjects(
+          db.exec(
+            `SELECT session_id, tag FROM tags WHERE session_id IN (${placeholders}) ORDER BY created_at ASC`,
+            sessionIds
+          )
+        );
+        for (const row of rows) {
+          const sid = String(row["session_id"] ?? "");
+          const tag = String(row["tag"] ?? "");
+          const existing = result.get(sid);
+          if (existing) {
+            existing.push(tag);
+          } else {
+            result.set(sid, [tag]);
+          }
+        }
+        return result;
+      }
+      /**
+       * Schedule a debounced disk save.
+       *
+       * Multiple writes within `SAVE_DEBOUNCE_MS` will be coalesced into a
+       * single disk write, reducing I/O pressure during bulk operations.
+       */
+      scheduleSave() {
+        if (this.saveTimer) clearTimeout(this.saveTimer);
+        this.saveTimer = setTimeout(() => {
+          this.saveTimer = null;
+          this.saveToDisk();
+        }, SAVE_DEBOUNCE_MS);
+      }
+      /**
+       * Dynamically load the sql.js module.
+       *
+       * Handles both ESM (import()) and CJS (require()) environments by trying
+       * dynamic import first, then falling back to require().
+       *
+       * @returns The initSqlJs function.
+       */
+      async loadSqlJs() {
+        try {
+          const mod = await import("sql.js");
+          return mod.default;
+        } catch {
+          const mod = __require("sql.js");
+          const initFn = mod.default ?? mod;
+          return initFn;
+        }
+      }
+      /**
+       * Resolve the path to the sql-wasm.wasm file.
+       *
+       * Search order:
+       *   1. Adjacent to this file in the dist/ directory (bundled plugin installs).
+       *   2. node_modules/sql.js/dist/ (development installs).
+       *
+       * @returns Absolute path to sql-wasm.wasm.
+       */
+      resolveWasmPath() {
+        let baseDir;
+        try {
+          baseDir = __dirname;
+        } catch {
+          baseDir = process.cwd();
+        }
+        const distWasm = resolve(join10(baseDir, "sql-wasm.wasm"));
+        if (existsSync6(distWasm)) return distWasm;
+        const nodeWasm = resolve(join10(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
+        if (existsSync6(nodeWasm)) return nodeWasm;
+        return resolve(join10(baseDir, "sql-wasm.wasm"));
+      }
+    };
+  }
+});
+
+// src/data/db-init.ts
+import { mkdirSync as mkdirSync2, existsSync as existsSync7 } from "node:fs";
+import { join as join11, resolve as resolve2 } from "node:path";
+import { homedir as homedir2 } from "node:os";
+function ensureGlobalAnalyticsDir() {
+  if (!existsSync7(ANALYTICS_DIR)) {
+    mkdirSync2(ANALYTICS_DIR, { recursive: true });
+  }
+  return ANALYTICS_DIR;
+}
+function getGlobalDbPath() {
+  return resolve2(join11(ANALYTICS_DIR, DB_FILENAME));
+}
+async function initializeGlobalDb(dbPath) {
+  ensureGlobalAnalyticsDir();
+  const resolvedPath = dbPath ?? getGlobalDbPath();
+  const db = new GlobalDB(resolvedPath);
+  await db.initialize();
+  return db;
+}
+var GOODVIBES_BASE, ANALYTICS_DIR, DB_FILENAME;
+var init_db_init = __esm({
+  "src/data/db-init.ts"() {
+    "use strict";
+    init_global_db();
+    GOODVIBES_BASE = join11(homedir2(), ".claude", ".goodvibes");
+    ANALYTICS_DIR = join11(GOODVIBES_BASE, "analytics");
+    DB_FILENAME = "analytics.db";
+    __name(ensureGlobalAnalyticsDir, "ensureGlobalAnalyticsDir");
+    __name(getGlobalDbPath, "getGlobalDbPath");
+    __name(initializeGlobalDb, "initializeGlobalDb");
+  }
+});
+
 // src/tmux/detect.ts
 import { execSync } from "node:child_process";
 function detectTmux(force = false) {
@@ -412,7 +1451,7 @@ var init_types2 = __esm({
 });
 
 // src/handlers/dashboard.ts
-import { join as join10 } from "node:path";
+import { join as join12 } from "node:path";
 function getManager() {
   if (_manager === null) {
     _manager = new TmuxManager(DEFAULT_CONFIG.tmux);
@@ -425,10 +1464,10 @@ function buildCommand(target) {
     distDir = __dirname;
   } else {
     const pluginRoot = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || "";
-    distDir = join10(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
+    distDir = join12(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
   }
   const ext = target === "full" ? "mjs" : "cjs";
-  return `node "${join10(distDir, `${target}.${ext}`)}"`;
+  return `node "${join12(distDir, `${target}.${ext}`)}"`;
 }
 function handleStart(input) {
   const detection = detectTmux();
@@ -1120,47 +2159,481 @@ var init_budget = __esm({
   }
 });
 
-// src/handlers/tag.ts
-function getCurrentTag() {
-  return _currentTag;
-}
-function getCurrentName() {
-  return _currentName;
-}
-function clearTagState() {
-  _currentTag = null;
-  _currentName = null;
-}
-async function handleTag(aggregator, input) {
+// src/data/tag-store.ts
+import { readFileSync as readFileSync7, existsSync as existsSync8, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
+import { join as join13, resolve as resolve3 } from "node:path";
+import { homedir as homedir3 } from "node:os";
+function resolveJsonlPath(sessionId, jsonlBase = join13(homedir3(), ".claude", "projects")) {
+  const targetFile = `${sessionId}.jsonl`;
+  if (!existsSync8(jsonlBase)) return null;
   try {
+    const projectDirs = readdirSync2(jsonlBase).filter((entry) => {
+      try {
+        return statSync6(join13(jsonlBase, entry)).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+    for (const projectDir of projectDirs) {
+      const candidate = resolve3(join13(jsonlBase, projectDir, targetFile));
+      if (existsSync8(candidate)) {
+        return candidate;
+      }
+    }
+  } catch {
+  }
+  return null;
+}
+var SCAN_HEAD_LINES, SCAN_TAIL_LINES, DOMAIN_PATTERNS, FRAMEWORK_PATTERNS, ACTIVITY_PATTERNS, TagStore;
+var init_tag_store = __esm({
+  "src/data/tag-store.ts"() {
+    "use strict";
+    SCAN_HEAD_LINES = 200;
+    SCAN_TAIL_LINES = 100;
+    DOMAIN_PATTERNS = [
+      {
+        tag: "authentication",
+        patterns: [/\bauth\b/i, /\blogin\b/i, /\boauth\b/i, /\bjwt\b/i, /\bpassport\b/i, /\bsession\b.*\bstore\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "payments",
+        patterns: [/\bstripe\b/i, /\bpayment\b/i, /\bcheckout\b/i, /\blemon.?squeezy\b/i, /\bpaddle\b/i, /\binvoice\b/i, /\bsubscription\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "analytics",
+        patterns: [/\banalytics\b/i, /\bdashboard\b/i, /\bmetrics\b/i, /\btelemetry\b/i, /\btracking\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "devops",
+        patterns: [/\bdocker\b/i, /\bkubernetes\b/i, /\bci\b/i, /\bpipeline\b/i, /\.github\/workflows/i, /\bdeploy\b/i, /\bterraform\b/i, /\bhelm\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "testing",
+        patterns: [/\.spec\./i, /\.test\./i, /\bvitest\b/i, /\bjest\b/i, /\bplaywright\b/i, /\bcypress\b/i, /\bcoverage\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "database",
+        patterns: [/\bprisma\b/i, /\bdrizzle\b/i, /\bmigration\b/i, /\/prisma\//i, /\bschema\.prisma\b/i, /\bsqlite\b/i, /\bpostgres\b/i, /\bmysql\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "multi-tenant",
+        patterns: [/\bmulti.?tenant\b/i, /\btenant\b/i, /\borganization\b.*\bslug\b/i, /\bworkspace\b.*\bmember\b/i],
+        confidence: "medium"
+      },
+      {
+        tag: "revops",
+        patterns: [/\brevenue\b/i, /\bbilling\b/i, /\bmrr\b/i, /\bchurn\b/i, /\bltv\b/i],
+        confidence: "medium"
+      },
+      {
+        tag: "api",
+        patterns: [/\btrpc\b/i, /\bgraphql\b/i, /\/api\//i, /\brest\b.*\bendpoint\b/i, /\bwebhook\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "infrastructure",
+        patterns: [/\bnginx\b/i, /\btraefik\b/i, /\.env\b/i, /\bconfig\b.*\bfile\b/i, /\bsecret\b/i],
+        confidence: "low"
+      }
+    ];
+    FRAMEWORK_PATTERNS = [
+      { tag: "react", patterns: [/\.tsx$/i, /\breact\b/i, /\bnext\.js\b/i, /\.jsx$/i] },
+      { tag: "vue", patterns: [/\.vue$/i, /\bvue\b/i, /\bnuxt\b/i] },
+      { tag: "typescript", patterns: [/\.ts$/i, /\btypescript\b/i, /tsconfig/i] },
+      { tag: "nextjs", patterns: [/\bnext\.config\b/i, /\/app\/.*page\.tsx/i, /next\.js/i] },
+      { tag: "prisma", patterns: [/\.prisma$/i, /prisma\/schema/i, /\bprisma\b/i] },
+      { tag: "tailwind", patterns: [/\btailwind\b/i, /tailwind\.config/i, /\bcn\b.*\bclsx\b/i] }
+    ];
+    ACTIVITY_PATTERNS = [
+      { tag: "feature-development", toolPatterns: [/precision_write|precision_edit/i], minCount: 10 },
+      { tag: "refactoring", toolPatterns: [/precision_edit/i], minCount: 20 },
+      { tag: "infrastructure", toolPatterns: [/precision_exec/i], minCount: 15 }
+    ];
+    TagStore = class {
+      constructor(db) {
+        this.db = db;
+      }
+      static {
+        __name(this, "TagStore");
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+      // Core CRUD
+      // ─────────────────────────────────────────────────────────────────────────
+      /**
+       * Add a single tag to a session.
+       *
+       * Silently ignores duplicate (sessionId, tag) pairs.
+       *
+       * @param sessionId - Target session identifier.
+       * @param tag       - Tag string to add (trimmed, lowercased).
+       * @param source    - Origin of the tag. Defaults to 'manual'.
+       */
+      addTag(sessionId, tag, source = "manual") {
+        const normalized = tag.trim().toLowerCase();
+        if (!normalized) return;
+        this.db.addTag(sessionId, normalized, source);
+      }
+      /**
+       * Add multiple tags to a session in a single operation.
+       *
+       * Duplicates are silently ignored. Empty strings are skipped.
+       *
+       * @param sessionId - Target session identifier.
+       * @param tags      - Array of tag strings to add.
+       * @param source    - Origin of the tags. Defaults to 'manual'.
+       */
+      addTags(sessionId, tags, source = "manual") {
+        for (const tag of tags) {
+          this.addTag(sessionId, tag, source);
+        }
+      }
+      /**
+       * Remove a tag from a session.
+       *
+       * No-op if the tag does not exist on the session.
+       *
+       * @param sessionId - Target session identifier.
+       * @param tag       - Tag string to remove.
+       */
+      removeTag(sessionId, tag) {
+        const normalized = tag.trim().toLowerCase();
+        if (!normalized) return;
+        this.db.removeTag(sessionId, normalized);
+      }
+      /**
+       * Retrieve all tags for a session, ordered by creation time.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of TagEntry objects.
+       */
+      getTagsForSession(sessionId) {
+        return this.db.getTagsForSession(sessionId);
+      }
+      /**
+       * Retrieve all session IDs that have the given tag.
+       *
+       * @param tag - Tag string to look up.
+       * @returns Array of session ID strings.
+       */
+      getSessionsByTag(tag) {
+        const normalized = tag.trim().toLowerCase();
+        return this.db.getSessionsByTag(normalized);
+      }
+      /**
+       * List all unique tags with their usage counts across all sessions.
+       *
+       * @returns Array of `{ tag, count, sessions }` objects, sorted by count descending.
+       */
+      getAllTags() {
+        const rows = this.db.getAllTags();
+        return rows.map((row) => ({
+          tag: row.tag,
+          count: row.count,
+          sessions: this.db.getSessionsByTag(row.tag)
+        }));
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+      // Auto-tagging heuristics
+      // ─────────────────────────────────────────────────────────────────────────
+      /**
+       * Suggest descriptive domain tags for a session by analyzing its JSONL file.
+       *
+       * Uses a local heuristic approach:
+       * 1. Reads the first N and last M lines of the JSONL file for efficiency.
+       * 2. Scans for framework/language signals in file paths and tool inputs.
+       * 3. Infers domain from keywords (auth, payments, analytics, etc.).
+       * 4. Detects activity type from tool usage patterns (write-heavy = feature dev).
+       *
+       * Returns deduplicated, sorted suggestions with confidence levels.
+       * Does NOT apply tags automatically — callers confirm before persisting.
+       *
+       * Note: For higher-quality inference on complex or ambiguous sessions,
+       * consider using precision_agent with LLM-based analysis. This heuristic
+       * approach is intentionally fast and local.
+       *
+       * @param sessionId  - Session identifier (used for deduplication against existing tags).
+       * @param jsonlPath  - Absolute path to the Claude session JSONL file.
+       * @returns Array of `{ tag, confidence }` suggestion objects, sorted by confidence.
+       */
+      async suggestTags(sessionId, jsonlPath) {
+        const existing = new Set(
+          this.db.getTagsForSession(sessionId).map((t) => t.tag)
+        );
+        const corpus = this._readJsonlCorpus(jsonlPath);
+        if (!corpus) {
+          return [];
+        }
+        const { headText, tailText, toolCounts } = corpus;
+        const fullText = `${headText}
+${tailText}`;
+        const suggestions = /* @__PURE__ */ new Map();
+        for (const { tag, patterns } of FRAMEWORK_PATTERNS) {
+          if (existing.has(tag)) continue;
+          const matchedPattern = patterns.find((p) => p.test(fullText));
+          if (matchedPattern) {
+            suggestions.set(tag, { confidence: "high", reason: `file paths match ${matchedPattern.source}` });
+          }
+        }
+        for (const { tag, patterns, confidence } of DOMAIN_PATTERNS) {
+          if (existing.has(tag)) continue;
+          const matchedPattern = patterns.find((p) => p.test(fullText));
+          if (matchedPattern) {
+            const existing_entry = suggestions.get(tag);
+            if (!existing_entry || this._confidenceRank(confidence) > this._confidenceRank(existing_entry.confidence)) {
+              suggestions.set(tag, { confidence, reason: `keyword match: ${matchedPattern.source}` });
+            }
+          }
+        }
+        for (const { tag, toolPatterns, minCount } of ACTIVITY_PATTERNS) {
+          if (existing.has(tag)) continue;
+          const totalMatchCount = toolPatterns.reduce((sum, p) => {
+            for (const [toolName, count] of toolCounts) {
+              if (p.test(toolName)) sum += count;
+            }
+            return sum;
+          }, 0);
+          if (totalMatchCount >= minCount) {
+            suggestions.set(tag, {
+              confidence: "medium",
+              reason: `${totalMatchCount} matching tool calls`
+            });
+          }
+        }
+        const sorted = [...suggestions.entries()].map(([tag, meta]) => ({ tag, ...meta })).sort((a, b) => {
+          const rankDiff = this._confidenceRank(b.confidence) - this._confidenceRank(a.confidence);
+          return rankDiff !== 0 ? rankDiff : a.tag.localeCompare(b.tag);
+        });
+        return sorted;
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+      // Private helpers
+      // ─────────────────────────────────────────────────────────────────────────
+      /**
+       * Read and parse a JSONL file, returning a text corpus from head + tail.
+       *
+       * Extracts file paths and tool names from tool_use events for pattern matching.
+       * Returns null if the file does not exist or cannot be read.
+       *
+       * @param jsonlPath - Absolute path to the JSONL file.
+       */
+      _readJsonlCorpus(jsonlPath) {
+        if (!existsSync8(jsonlPath)) return null;
+        let rawContent;
+        try {
+          rawContent = readFileSync7(jsonlPath, "utf-8");
+        } catch {
+          return null;
+        }
+        const lines = rawContent.split("\n").filter(Boolean);
+        const headLines = lines.slice(0, SCAN_HEAD_LINES);
+        const tailLines = lines.slice(-SCAN_TAIL_LINES);
+        const sampleLines = [.../* @__PURE__ */ new Set([...headLines, ...tailLines])];
+        const textParts = [];
+        const toolCounts = /* @__PURE__ */ new Map();
+        for (const line of sampleLines) {
+          let parsed;
+          try {
+            parsed = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          this._extractStrings(parsed, textParts);
+          const type = parsed["type"];
+          if (type === "tool_use" || type === "tool_result") {
+            const toolName = String(parsed["name"] ?? parsed["tool_name"] ?? "");
+            if (toolName) {
+              toolCounts.set(toolName, (toolCounts.get(toolName) ?? 0) + 1);
+            }
+          }
+        }
+        return {
+          headText: headLines.join("\n"),
+          tailText: tailLines.join("\n"),
+          toolCounts
+        };
+      }
+      /**
+       * Recursively extract all string values from an object into an array.
+       *
+       * Limits recursion depth to 4 to avoid excessive token consumption
+       * on deeply nested structures.
+       *
+       * @param obj   - Object to traverse.
+       * @param parts - Array to push string values into.
+       * @param depth - Current recursion depth.
+       */
+      _extractStrings(obj, parts, depth = 0) {
+        if (depth > 4) return;
+        if (typeof obj === "string") {
+          parts.push(obj);
+        } else if (Array.isArray(obj)) {
+          for (const item of obj) {
+            this._extractStrings(item, parts, depth + 1);
+          }
+        } else if (obj !== null && typeof obj === "object") {
+          for (const val of Object.values(obj)) {
+            this._extractStrings(val, parts, depth + 1);
+          }
+        }
+      }
+      /**
+       * Map confidence level to a numeric rank for sorting.
+       *
+       * @param confidence - Confidence string.
+       * @returns Numeric rank (higher = better).
+       */
+      _confidenceRank(confidence) {
+        switch (confidence) {
+          case "high":
+            return 3;
+          case "medium":
+            return 2;
+          case "low":
+            return 1;
+        }
+      }
+    };
+    __name(resolveJsonlPath, "resolveJsonlPath");
+  }
+});
+
+// src/handlers/tag.ts
+async function getGlobalDb() {
+  if (_globalDb) return _globalDb;
+  if (_initPromise) return _initPromise;
+  _initPromise = initializeGlobalDb().then((db) => {
+    _globalDb = db;
+    _initPromise = null;
+    return db;
+  });
+  return _initPromise;
+}
+async function handleTag(aggregator, input, _goodvibesDir) {
+  try {
+    const db = await getGlobalDb();
+    const store = new TagStore(db);
     const state = aggregator.getState();
     const sessionId = state.session_id;
-    if (input.action === "tag") {
-      _currentTag = input.value;
-      return text(`Session ${sessionId} tagged: "${input.value}"
-
-The tag will be applied when this session is archived.`);
+    switch (input.action) {
+      case "add":
+        return handleAdd(store, sessionId, input.value);
+      case "remove":
+        return handleRemove(store, sessionId, input.value);
+      case "list":
+        return handleList(store, sessionId, input.scope ?? "session");
+      case "auto":
+        return handleAuto(store, sessionId);
+      default: {
+        const _exhaustive = input.action;
+        return text(`analytics_tag: unknown action "${String(_exhaustive)}"`);
+      }
     }
-    _currentName = input.value;
-    return text(`Session ${sessionId} renamed: "${input.value}"
-
-The display name will be applied when this session is archived.`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return text(`analytics_tag error: ${message}`);
   }
 }
-var _currentTag, _currentName;
+function handleAdd(store, sessionId, tagValue) {
+  store.addTag(sessionId, tagValue, "manual");
+  const currentTags = store.getTagsForSession(sessionId);
+  const tagList = currentTags.length > 0 ? currentTags.map((t) => `  - ${t.tag}`).join("\n") : "  (none)";
+  return text(
+    `Tag added: "${tagValue.trim().toLowerCase()}"
+
+Current tags for session ${sessionId}:
+${tagList}`
+  );
+}
+function handleRemove(store, sessionId, tagValue) {
+  store.removeTag(sessionId, tagValue);
+  const remaining = store.getTagsForSession(sessionId);
+  const tagList = remaining.length > 0 ? remaining.map((t) => `  - ${t.tag}`).join("\n") : "  (none)";
+  return text(
+    `Tag removed: "${tagValue.trim().toLowerCase()}"
+
+Remaining tags for session ${sessionId}:
+${tagList}`
+  );
+}
+function handleList(store, sessionId, scope) {
+  if (scope === "all") {
+    const allTags = store.getAllTags();
+    if (allTags.length === 0) {
+      return text("No tags found across any sessions.");
+    }
+    const lines2 = allTags.map(
+      (t) => `  ${t.tag.padEnd(24)} (${t.count} session${t.count === 1 ? "" : "s"})`
+    );
+    return text(`All tags (${allTags.length} unique):
+${lines2.join("\n")}`);
+  }
+  const tags = store.getTagsForSession(sessionId);
+  if (tags.length === 0) {
+    return text(
+      `No tags on session ${sessionId}.
+
+Add tags with: analytics_tag { action: "add", value: "<tag>" }`
+    );
+  }
+  const lines = tags.map((t) => `  - ${t.tag}  [${t.source}]`);
+  return text(
+    `Tags for session ${sessionId} (${tags.length}):
+${lines.join("\n")}`
+  );
+}
+async function handleAuto(store, sessionId) {
+  const jsonlPath = resolveJsonlPath(sessionId);
+  if (!jsonlPath) {
+    return text(
+      `Could not locate JSONL file for session ${sessionId}.
+
+Expected location: ~/.claude/projects/<project-hash>/${sessionId}.jsonl
+Ensure the session file exists before using auto-tagging.`
+    );
+  }
+  const suggestions = await store.suggestTags(sessionId, jsonlPath);
+  if (suggestions.length === 0) {
+    return text(
+      `No tag suggestions found for session ${sessionId}.
+
+The session may be too short, or its content may not match known patterns.
+For higher-quality inference on complex sessions, precision_agent LLM analysis
+can provide better suggestions (not implemented in this heuristic layer).`
+    );
+  }
+  const lines = suggestions.map(
+    (s) => `  - ${s.tag.padEnd(24)} (${s.confidence} confidence: ${s.reason})`
+  );
+  const applyHints = suggestions.map((s) => `analytics_tag { action: "add", value: "${s.tag}" }`).join("\n");
+  return text(
+    `Suggested tags for session ${sessionId}:
+${lines.join("\n")}
+
+Apply with:
+${applyHints}`
+  );
+}
+var _globalDb, _initPromise;
 var init_tag = __esm({
   "src/handlers/tag.ts"() {
     "use strict";
     init_types2();
-    _currentTag = null;
-    _currentName = null;
-    __name(getCurrentTag, "getCurrentTag");
-    __name(getCurrentName, "getCurrentName");
-    __name(clearTagState, "clearTagState");
+    init_tag_store();
+    init_db_init();
+    _globalDb = null;
+    _initPromise = null;
+    __name(getGlobalDb, "getGlobalDb");
     __name(handleTag, "handleTag");
+    __name(handleAdd, "handleAdd");
+    __name(handleRemove, "handleRemove");
+    __name(handleList, "handleList");
+    __name(handleAuto, "handleAuto");
   }
 });
 
@@ -1471,9 +2944,6 @@ var init_config2 = __esm({
 var handlers_exports = {};
 __export(handlers_exports, {
   HANDLER_REGISTRY: () => HANDLER_REGISTRY,
-  clearTagState: () => clearTagState,
-  getCurrentName: () => getCurrentName,
-  getCurrentTag: () => getCurrentTag,
   handleBudget: () => handleBudget,
   handleConfig: () => handleConfig,
   handleDashboard: () => handleDashboard,
@@ -1507,7 +2977,7 @@ init_types();
 init_config();
 
 // src/daemon/aggregator.ts
-import { join as join7 } from "node:path";
+import { join as join9 } from "node:path";
 
 // src/data/telemetry-reader.ts
 import initSqlJs from "sql.js";
@@ -2894,11 +4364,802 @@ var MemoryUpdater = class {
 };
 
 // src/daemon/watcher.ts
+import { EventEmitter as EventEmitter2 } from "node:events";
+import { watch as watch2, existsSync as existsSync5, statSync as statSync5 } from "node:fs";
+import { join as join8, dirname as dirname2, basename as basename2 } from "node:path";
+
+// src/data/jsonl-watcher.ts
 import { EventEmitter } from "node:events";
-import { watch, existsSync as existsSync4, statSync as statSync3 } from "node:fs";
-import { join as join6, dirname as dirname2, basename } from "node:path";
+import { watch, existsSync as existsSync4, statSync as statSync4 } from "node:fs";
+import { join as join7 } from "node:path";
+import { readdir } from "node:fs/promises";
+
+// src/data/jsonl-reader.ts
+import { createReadStream, statSync as statSync3 } from "node:fs";
+import { stat } from "node:fs/promises";
+import { createInterface } from "node:readline";
+import { join as join6, basename } from "node:path";
+var CACHE_READ_COST_RATIO = 0.1;
+var CACHE_WRITE_COST_RATIO = 0.25;
+var JSONLReader = class {
+  static {
+    __name(this, "JSONLReader");
+  }
+  costPer1kInput;
+  costPer1kOutput;
+  /**
+   * @param config - Pricing config for cost calculation.
+   * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens.
+   * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens.
+   */
+  constructor(config) {
+    this.costPer1kInput = config.cost_per_1k_input_tokens;
+    this.costPer1kOutput = config.cost_per_1k_output_tokens;
+  }
+  // -------------------------------------------------------------------------
+  // Core parsing
+  // -------------------------------------------------------------------------
+  /**
+   * Parse a JSONL file from an optional byte offset.
+   *
+   * Uses readline for memory-efficient line-by-line reading. The byte offset
+   * enables incremental / tail-style reads: persist `result.newOffset` and
+   * pass it as `fromOffset` on the next call to read only new content.
+   *
+   * @param filePath   - Absolute path to the JSONL file.
+   * @param fromOffset - Byte offset to start reading from (default: 0).
+   * @returns Parsed records, new byte offset, and parse statistics.
+   */
+  async parseFile(filePath, fromOffset = 0) {
+    const errors = [];
+    const records = [];
+    let linesParsed = 0;
+    let linesSkipped = 0;
+    let byteOffset = fromOffset;
+    let fileSize;
+    try {
+      const fileStat = await stat(filePath);
+      fileSize = fileStat.size;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        records,
+        newOffset: fromOffset,
+        linesParsed: 0,
+        linesSkipped: 0,
+        errors: [`Failed to stat file "${filePath}": ${message}`]
+      };
+    }
+    if (fromOffset >= fileSize) {
+      return { records, newOffset: fromOffset, linesParsed: 0, linesSkipped: 0, errors };
+    }
+    const stream = createReadStream(filePath, { start: fromOffset, encoding: "utf8" });
+    const rl = createInterface({ input: stream, crlfDelay: Infinity });
+    let bytesConsumed = 0;
+    let lastValidOffset = fromOffset;
+    for await (const line of rl) {
+      const lineByteLength = Buffer.byteLength(line, "utf8") + 1;
+      const trimmed = line.trim();
+      if (trimmed === "") {
+        bytesConsumed += lineByteLength;
+        linesSkipped++;
+        continue;
+      }
+      linesParsed++;
+      const record = this.parseLine(trimmed);
+      if (record !== null) {
+        records.push(record);
+        bytesConsumed += lineByteLength;
+        lastValidOffset = fromOffset + bytesConsumed;
+      } else {
+        errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
+        bytesConsumed += lineByteLength;
+        linesSkipped++;
+      }
+    }
+    rl.close();
+    byteOffset = lastValidOffset;
+    return {
+      records,
+      newOffset: byteOffset,
+      linesParsed,
+      linesSkipped,
+      errors
+    };
+  }
+  /**
+   * Parse an array of pre-split text lines.
+   *
+   * Useful for testing or when the caller has already split content.
+   * Skips empty lines silently.
+   *
+   * @param lines - Array of raw text lines (not yet JSON.parse'd).
+   * @returns Successfully parsed records (malformed lines silently dropped).
+   */
+  parseLines(lines) {
+    const records = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed === "") continue;
+      const record = this.parseLine(trimmed);
+      if (record !== null) records.push(record);
+    }
+    return records;
+  }
+  /**
+   * Parse a single JSON line into a JSONLRecord.
+   *
+   * Returns null on any parse failure (invalid JSON, missing type field,
+   * or unrecognised type value) — never throws.
+   *
+   * @param line - Single trimmed line of text from a JSONL file.
+   * @returns Parsed record, or null if the line is malformed or unrecognised.
+   */
+  parseLine(line) {
+    try {
+      const parsed = JSON.parse(line);
+      if (typeof parsed !== "object" || parsed === null) return null;
+      const record = parsed;
+      const type = record["type"];
+      if (type === "assistant") return record;
+      if (type === "user") return record;
+      if (type === "progress") return record;
+      if (type === "file-history-snapshot") return record;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: ApiCallRecord
+  // -------------------------------------------------------------------------
+  /**
+   * Extract API call records from assistant JSONL records.
+   *
+   * Each assistant record represents one Claude API response. Token counts
+   * and cost are extracted from message.usage. Cost is calculated from
+   * configured rates (cost_usd is NOT present in the JSONL format).
+   *
+   * Cache tokens are costed at reduced rates:
+   *   - cache_read:  10% of input token cost (reading from cache is cheap)
+   *   - cache_write: 25% of input token cost (writing to cache has a premium)
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One ApiCallRecord per assistant record with usage data.
+   */
+  extractApiCalls(records) {
+    const results = [];
+    for (const record of records) {
+      if (record.type !== "assistant") continue;
+      const assistant = record;
+      const usage = assistant.message?.usage;
+      if (usage === void 0) continue;
+      const inputTokens = usage.input_tokens ?? 0;
+      const outputTokens = usage.output_tokens ?? 0;
+      const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+      const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+      if (inputTokens === 0 && outputTokens === 0) continue;
+      const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+      const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+      const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
+      const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+      const totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      results.push({
+        session_id: assistant.sessionId ?? "",
+        timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+        model: assistant.message?.model,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cache_read_tokens: cacheReadTokens,
+        cache_write_tokens: cacheWriteTokens,
+        cost_usd: totalCost,
+        duration_ms: 0,
+        // Not available in JSONL; may be filled in by progress record correlation.
+        stop_reason: assistant.message?.stop_reason
+      });
+    }
+    return results;
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: ToolCallInfo
+  // -------------------------------------------------------------------------
+  /**
+   * Extract tool call information by correlating assistant tool_use blocks
+   * with their corresponding user tool_result blocks.
+   *
+   * Correlation is by tool_use_id (present in both the tool_use block and
+   * the tool_result block).
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One ToolCallInfo per tool_use block found in assistant records.
+   */
+  extractToolCalls(records) {
+    const results = [];
+    const resultMap = /* @__PURE__ */ new Map();
+    for (const record of records) {
+      if (record.type !== "user") continue;
+      const user = record;
+      const content = user.message?.content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        const b = block;
+        if (b?.type === "tool_result" && b.tool_use_id !== void 0) {
+          resultMap.set(b.tool_use_id, b);
+        }
+      }
+    }
+    for (const record of records) {
+      if (record.type !== "assistant") continue;
+      const assistant = record;
+      const content = assistant.message?.content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        const b = block;
+        if (b?.type !== "tool_use") continue;
+        if (b.id === void 0 || b.name === void 0) continue;
+        const result = resultMap.get(b.id);
+        results.push({
+          id: b.id,
+          name: b.name,
+          input: b.input ?? {},
+          sessionId: assistant.sessionId ?? "",
+          timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+          assistantRecordUuid: assistant.uuid ?? "",
+          resultContent: result?.content,
+          isError: result?.is_error
+        });
+      }
+    }
+    return results;
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: AgentActivityInfo
+  // -------------------------------------------------------------------------
+  /**
+   * Infer agent activity from JSONL records.
+   *
+   * Agent spawns are NOT explicit record types. They are inferred from assistant
+   * records containing tool_use blocks with name === 'Task'. Completion is
+   * inferred by the presence of a tool_result block for the Task tool_use_id.
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One AgentActivityInfo per Task tool_use block found.
+   */
+  extractAgentActivity(records) {
+    const taskCalls = this.extractToolCalls(records).filter((tc) => tc.name === "Task");
+    return taskCalls.map((tc) => ({
+      agentId: tc.id,
+      parentSessionId: tc.sessionId,
+      spawnedAt: tc.timestamp,
+      taskInput: tc.input,
+      completed: tc.resultContent !== void 0,
+      exitStatus: tc.isError === true ? "error" : tc.resultContent !== void 0 ? "success" : void 0
+    }));
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: SessionInfo
+  // -------------------------------------------------------------------------
+  /**
+   * Extract session-level summary information from a set of JSONL records.
+   *
+   * Uses the first record for session ID, cwd, and git branch.
+   * Scans all records to find the earliest and latest timestamps.
+   * Model comes from the first assistant record.
+   *
+   * @param records - All parsed records for a session.
+   * @returns Session summary, or a stub with empty strings if no records are provided.
+   */
+  extractSessionInfo(records) {
+    if (records.length === 0) {
+      return {
+        sessionId: "",
+        model: "unknown",
+        startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        lastActivityAt: (/* @__PURE__ */ new Date()).toISOString(),
+        cwd: "",
+        gitBranch: "",
+        version: ""
+      };
+    }
+    const first = records[0];
+    let model = "unknown";
+    let startedAt = first.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
+    let lastActivityAt = startedAt;
+    for (const record of records) {
+      if (record.timestamp !== void 0 && record.timestamp < startedAt) {
+        startedAt = record.timestamp;
+      }
+      if (record.timestamp !== void 0 && record.timestamp > lastActivityAt) {
+        lastActivityAt = record.timestamp;
+      }
+      if (model === "unknown" && record.type === "assistant") {
+        const assistantRecord = record;
+        const m = assistantRecord.message?.model;
+        if (m !== void 0 && m !== "") model = m;
+      }
+    }
+    return {
+      sessionId: first.sessionId ?? "",
+      model,
+      startedAt,
+      lastActivityAt,
+      cwd: first.cwd ?? "",
+      gitBranch: first.gitBranch ?? "",
+      version: first.version ?? ""
+    };
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: PrecisionToolTiming
+  // -------------------------------------------------------------------------
+  /**
+   * Extract precision tool timing data from JSONL progress records.
+   *
+   * Only 'completed' progress records contain elapsedTimeMs — 'started'
+   * records are ignored since we only need the total duration.
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One PrecisionToolTiming per completed progress event.
+   */
+  extractPrecisionToolTimings(records) {
+    const results = [];
+    for (const record of records) {
+      if (record.type !== "progress") continue;
+      const progress = record;
+      const data = progress.data;
+      if (data?.status !== "completed") continue;
+      if (data.elapsedTimeMs === void 0) continue;
+      if (progress.toolUseID === void 0) continue;
+      results.push({
+        toolUseId: progress.toolUseID,
+        serverName: data.serverName ?? "",
+        toolName: data.toolName ?? "",
+        elapsedTimeMs: data.elapsedTimeMs,
+        sessionId: progress.sessionId ?? "",
+        timestamp: progress.timestamp ?? (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }
+    return results;
+  }
+  // -------------------------------------------------------------------------
+  // Cost calculation helper
+  // -------------------------------------------------------------------------
+  /**
+   * Calculate the USD cost for a given token breakdown.
+   *
+   * Uses configured per-1k rates with reduced rates for cache operations:
+   *   - Input tokens:       full input rate
+   *   - Output tokens:      full output rate
+   *   - Cache read tokens:  10% of input rate
+   *   - Cache write tokens: 25% of input rate
+   *
+   * @param usage - Token counts to calculate cost for.
+   * @returns Total estimated cost in USD.
+   */
+  calculateCost(usage) {
+    const inputCost = (usage.input_tokens ?? 0) / 1e3 * this.costPer1kInput;
+    const outputCost = (usage.output_tokens ?? 0) / 1e3 * this.costPer1kOutput;
+    const cacheReadCost = (usage.cache_read_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
+    const cacheWriteCost = (usage.cache_write_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+    return inputCost + outputCost + cacheReadCost + cacheWriteCost;
+  }
+};
+async function findActiveJsonlFile(projectDir) {
+  const { readdir: readdir2 } = await import("node:fs/promises");
+  let entries;
+  try {
+    entries = await readdir2(projectDir);
+  } catch {
+    return null;
+  }
+  const jsonlFiles = entries.filter((e) => e.endsWith(".jsonl"));
+  if (jsonlFiles.length === 0) return null;
+  let latestPath = null;
+  let latestMtime = 0;
+  for (const file of jsonlFiles) {
+    const fullPath = join6(projectDir, file);
+    try {
+      const s = statSync3(fullPath);
+      if (s.mtimeMs > latestMtime) {
+        latestMtime = s.mtimeMs;
+        latestPath = fullPath;
+      }
+    } catch {
+    }
+  }
+  return latestPath;
+}
+__name(findActiveJsonlFile, "findActiveJsonlFile");
+function sessionIdFromPath(jsonlPath) {
+  return basename(jsonlPath, ".jsonl");
+}
+__name(sessionIdFromPath, "sessionIdFromPath");
+
+// src/data/jsonl-watcher.ts
+var JSONLWatcher = class extends EventEmitter {
+  static {
+    __name(this, "JSONLWatcher");
+  }
+  projectDir;
+  batchIntervalMs;
+  pollIntervalMs;
+  reader;
+  /** Currently active session JSONL path. */
+  activeSessionPath = null;
+  /** Currently active session ID. */
+  activeSessionId = null;
+  /** All watched files (main session + subagents). */
+  watchedFiles = /* @__PURE__ */ new Map();
+  /** Pending records accumulated between batch flushes. */
+  pendingRecords = [];
+  /** Batch flush interval handle. */
+  batchTimer = null;
+  /** Active session rotation detection interval. */
+  rotationTimer = null;
+  /** Whether the watcher is running. */
+  running = false;
+  /**
+   * @param projectDir - Absolute path to the Claude project directory
+   *                     (e.g. ~/.claude/projects/<project-hash>/).
+   * @param options    - Optional configuration overrides.
+   */
+  constructor(projectDir, options) {
+    super();
+    this.projectDir = projectDir;
+    this.batchIntervalMs = options?.batchIntervalMs ?? 1e3;
+    this.pollIntervalMs = options?.pollIntervalMs ?? 2e3;
+    this.reader = new JSONLReader(
+      options?.costConfig ?? { cost_per_1k_input_tokens: 3e-3, cost_per_1k_output_tokens: 0.015 }
+    );
+  }
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
+  /**
+   * Start watching the project directory for JSONL activity.
+   *
+   * Finds the active session JSONL, begins watching it, sets up subagent
+   * watching, and starts the batch flush interval. Safe to call multiple
+   * times — subsequent calls are no-ops if already running.
+   */
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.initSessionWatch().catch((err) => {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    });
+    this.batchTimer = setInterval(() => {
+      this.flushPendingRecords();
+    }, this.batchIntervalMs);
+    this.rotationTimer = setInterval(() => {
+      this.checkSessionRotation().catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+    }, 5e3);
+  }
+  /**
+   * Stop all watchers, flush any pending records, and clean up timers.
+   * Safe to call multiple times.
+   */
+  stop() {
+    if (!this.running) return;
+    this.running = false;
+    if (this.batchTimer !== null) {
+      clearInterval(this.batchTimer);
+      this.batchTimer = null;
+    }
+    if (this.rotationTimer !== null) {
+      clearInterval(this.rotationTimer);
+      this.rotationTimer = null;
+    }
+    this.flushPendingRecords();
+    for (const watched of this.watchedFiles.values()) {
+      try {
+        watched.handle.close();
+      } catch {
+      }
+    }
+    this.watchedFiles.clear();
+    this.activeSessionPath = null;
+    this.activeSessionId = null;
+    this.pendingRecords = [];
+  }
+  /**
+   * Returns the currently active session ID, or null if none has been detected.
+   */
+  getActiveSessionId() {
+    return this.activeSessionId;
+  }
+  // -------------------------------------------------------------------------
+  // Typed emit overrides
+  // -------------------------------------------------------------------------
+  /** Type-safe emit. */
+  emit(event, ...args) {
+    return super.emit(event, ...args);
+  }
+  /** Type-safe on. */
+  on(event, listener) {
+    return super.on(event, listener);
+  }
+  /** Type-safe once. */
+  once(event, listener) {
+    return super.once(event, listener);
+  }
+  /** Type-safe off. */
+  off(event, listener) {
+    return super.off(event, listener);
+  }
+  // -------------------------------------------------------------------------
+  // Session initialisation
+  // -------------------------------------------------------------------------
+  /**
+   * Detect the active session JSONL file and begin watching it.
+   */
+  async initSessionWatch() {
+    const activePath = await findActiveJsonlFile(this.projectDir);
+    if (activePath === null) {
+      this.watchDirectoryForNewSession();
+      return;
+    }
+    await this.switchToSession(activePath);
+  }
+  /**
+   * Switch to watching a new session JSONL file.
+   * Stops watching the previous session file and subagents.
+   */
+  async switchToSession(jsonlPath) {
+    const newSessionId = sessionIdFromPath(jsonlPath);
+    if (this.activeSessionPath !== null && this.activeSessionPath !== jsonlPath) {
+      for (const [path6, watched] of this.watchedFiles.entries()) {
+        try {
+          watched.handle.close();
+        } catch {
+        }
+        this.watchedFiles.delete(path6);
+      }
+      this.emit("session-change", newSessionId);
+    }
+    this.activeSessionPath = jsonlPath;
+    this.activeSessionId = newSessionId;
+    if (!this.watchedFiles.has(jsonlPath)) {
+      this.attachFileWatcher(jsonlPath, false);
+    }
+    await this.watchSubagentFiles(newSessionId);
+  }
+  // -------------------------------------------------------------------------
+  // File watching
+  // -------------------------------------------------------------------------
+  /**
+   * Attach a watcher on a specific JSONL file.
+   * Uses fs.watch with a polling fallback.
+   *
+   * @param filePath   - Absolute path to the JSONL file.
+   * @param isSubagent - Whether this file belongs to a subagent.
+   */
+  attachFileWatcher(filePath, isSubagent) {
+    if (this.watchedFiles.has(filePath)) return;
+    let initialOffset = 0;
+    try {
+      const s = statSync4(filePath);
+      initialOffset = isSubagent ? 0 : 0;
+      void s;
+    } catch {
+      initialOffset = 0;
+    }
+    const watched = {
+      path: filePath,
+      offset: initialOffset,
+      handle: {},
+      // placeholder; replaced below
+      isSubagent
+    };
+    const onFileChange = /* @__PURE__ */ __name(() => {
+      this.readNewLines(watched).catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+    }, "onFileChange");
+    try {
+      const fsWatcher = watch(filePath, { persistent: false }, onFileChange);
+      fsWatcher.on("error", (_err) => {
+        try {
+          fsWatcher.close();
+        } catch {
+        }
+        if (this.watchedFiles.has(filePath)) {
+          const w = this.watchedFiles.get(filePath);
+          w.handle = this.createPollingHandle(filePath, onFileChange);
+        }
+      });
+      watched.handle = fsWatcher;
+    } catch {
+      watched.handle = this.createPollingHandle(filePath, onFileChange);
+    }
+    this.watchedFiles.set(filePath, watched);
+    this.readNewLines(watched).catch((err) => {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    });
+  }
+  /**
+   * Create a polling handle for filesystems that do not support inotify.
+   *
+   * @param filePath - Path to poll.
+   * @param onChange - Callback to invoke when mtime changes.
+   * @returns A { close() } compatible handle.
+   */
+  createPollingHandle(filePath, onChange) {
+    let lastMtime = 0;
+    try {
+      lastMtime = statSync4(filePath).mtimeMs;
+    } catch {
+    }
+    const interval = setInterval(() => {
+      if (!this.running) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const s = statSync4(filePath);
+        if (s.mtimeMs !== lastMtime) {
+          lastMtime = s.mtimeMs;
+          onChange();
+        }
+      } catch {
+      }
+    }, this.pollIntervalMs);
+    return { close: /* @__PURE__ */ __name(() => clearInterval(interval), "close") };
+  }
+  /**
+   * Watch the project directory itself for new JSONL files (before any session starts).
+   */
+  watchDirectoryForNewSession() {
+    const dirPath = this.projectDir;
+    if (!existsSync4(dirPath)) return;
+    let handle;
+    const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
+      if (filename === null || !filename.endsWith(".jsonl")) return;
+      const fullPath = join7(dirPath, filename);
+      if (!existsSync4(fullPath)) return;
+      this.switchToSession(fullPath).catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+      try {
+        handle.close();
+      } catch {
+      }
+    }, "onDirChange");
+    try {
+      handle = watch(dirPath, { persistent: false }, onDirChange);
+    } catch {
+      handle = { close() {
+      } };
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Subagent watching
+  // -------------------------------------------------------------------------
+  /**
+   * Discover and watch subagent JSONL files for a session.
+   *
+   * Subagent files live at: <projectDir>/<sessionId>/subagents/agent-*.jsonl
+   *
+   * @param sessionId - The parent session ID.
+   */
+  async watchSubagentFiles(sessionId) {
+    const subagentDir = join7(this.projectDir, sessionId, "subagents");
+    if (!existsSync4(subagentDir)) return;
+    let entries;
+    try {
+      entries = await readdir(subagentDir);
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
+      const fullPath = join7(subagentDir, entry);
+      if (!this.watchedFiles.has(fullPath)) {
+        this.attachFileWatcher(fullPath, true);
+      }
+    }
+    this.watchSubagentDirectory(subagentDir, sessionId);
+  }
+  /**
+   * Watch a subagent directory for newly created agent JSONL files.
+   *
+   * @param subagentDir - Absolute path to the subagents/ directory.
+   * @param sessionId   - Parent session ID (for validation).
+   */
+  watchSubagentDirectory(subagentDir, sessionId) {
+    if (this.watchedFiles.has(subagentDir)) return;
+    const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
+      if (this.activeSessionId !== sessionId) return;
+      if (filename === null) return;
+      if (!filename.startsWith("agent-") || !filename.endsWith(".jsonl")) return;
+      const fullPath = join7(subagentDir, filename);
+      if (!existsSync4(fullPath)) return;
+      if (!this.watchedFiles.has(fullPath)) {
+        this.attachFileWatcher(fullPath, true);
+      }
+    }, "onDirChange");
+    let handle;
+    try {
+      handle = watch(subagentDir, { persistent: false }, onDirChange);
+    } catch {
+      handle = { close() {
+      } };
+    }
+    this.watchedFiles.set(subagentDir, {
+      path: subagentDir,
+      offset: 0,
+      handle,
+      isSubagent: true
+    });
+  }
+  // -------------------------------------------------------------------------
+  // Incremental reading
+  // -------------------------------------------------------------------------
+  /**
+   * Read new lines from a watched file starting at its current offset.
+   * Parsed records are accumulated in pendingRecords for batch flush.
+   *
+   * @param watched - The watched file state to read from.
+   */
+  async readNewLines(watched) {
+    if (!this.running) return;
+    try {
+      const result = await this.reader.parseFile(watched.path, watched.offset);
+      watched.offset = result.newOffset;
+      if (result.records.length > 0) {
+        this.pendingRecords.push(...result.records);
+      }
+      for (const error of result.errors) {
+        this.emitError(new Error(`[JSONLWatcher] ${error}`));
+      }
+    } catch (err) {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Batch flush
+  // -------------------------------------------------------------------------
+  /**
+   * Emit and clear the accumulated pending records.
+   * Called by the batch interval timer and on stop().
+   */
+  flushPendingRecords() {
+    if (this.pendingRecords.length === 0) return;
+    const batch = this.pendingRecords.splice(0);
+    this.emit("records", batch);
+  }
+  // -------------------------------------------------------------------------
+  // Session rotation detection
+  // -------------------------------------------------------------------------
+  /**
+   * Check whether a newer JSONL file has appeared (new session started).
+   * Called periodically by the rotation timer.
+   */
+  async checkSessionRotation() {
+    if (!this.running) return;
+    const activePath = await findActiveJsonlFile(this.projectDir);
+    if (activePath === null) return;
+    if (activePath === this.activeSessionPath) return;
+    await this.switchToSession(activePath);
+  }
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+  /**
+   * Emit an error event. Per EventEmitter convention, error events must have
+   * a listener or they throw. We guard against this by checking listeners.
+   */
+  emitError(err) {
+    if (this.listenerCount("error") > 0) {
+      this.emit("error", err);
+    }
+  }
+};
+
+// src/daemon/watcher.ts
 var DEBOUNCE_MS = 100;
-var DataWatcher = class extends EventEmitter {
+var DataWatcher = class extends EventEmitter2 {
   static {
     __name(this, "DataWatcher");
   }
@@ -2906,18 +5167,31 @@ var DataWatcher = class extends EventEmitter {
   pollIntervalMs;
   /** Active FSWatcher handles, keyed by the logical target path. */
   watchers = /* @__PURE__ */ new Map();
-  /** Debounce timer handles, keyed by event name. */
+  /** Debounce timer handles, keyed by no-arg event names (all except 'jsonl-records'). */
   debounceTimers = /* @__PURE__ */ new Map();
   /** Whether the watcher is currently running. */
   running = false;
   /**
-   * @param goodvibesDir    - Absolute path to the .goodvibes directory.
-   * @param options.pollIntervalMs - Polling interval for fallback mode (default: 1000 ms).
+   * Embedded JSONLWatcher for live JSONL tailing.
+   * Created when jsonlProjectDir is provided in options.
+   * Null if no JSONL project directory is configured.
+   */
+  jsonlWatcher = null;
+  /**
+   * @param goodvibesDir - Absolute path to the .goodvibes directory.
+   * @param options      - Configuration options.
    */
   constructor(goodvibesDir, options) {
     super();
     this.goodvibesDir = goodvibesDir;
     this.pollIntervalMs = options?.pollIntervalMs ?? 1e3;
+    if (options?.jsonlProjectDir !== void 0) {
+      this.jsonlWatcher = new JSONLWatcher(options.jsonlProjectDir, {
+        batchIntervalMs: options.jsonlBatchIntervalMs,
+        pollIntervalMs: options.pollIntervalMs,
+        costConfig: options.jsonlCostConfig
+      });
+    }
   }
   // -------------------------------------------------------------------------
   // Public API
@@ -2930,6 +5204,14 @@ var DataWatcher = class extends EventEmitter {
     if (this.running) return;
     this.running = true;
     this.attachWatchers();
+    if (this.jsonlWatcher !== null) {
+      this.jsonlWatcher.on("records", (records) => {
+        if (this.running) this.emit("jsonl-records", records);
+      });
+      this.jsonlWatcher.on("error", (_err) => {
+      });
+      this.jsonlWatcher.start();
+    }
   }
   /**
    * Stop all active watchers and cancel pending debounce timers.
@@ -2938,6 +5220,12 @@ var DataWatcher = class extends EventEmitter {
   stop() {
     if (!this.running) return;
     this.running = false;
+    if (this.jsonlWatcher !== null) {
+      try {
+        this.jsonlWatcher.stop();
+      } catch {
+      }
+    }
     for (const timer of this.debounceTimers.values()) {
       clearTimeout(timer);
     }
@@ -2960,8 +5248,8 @@ var DataWatcher = class extends EventEmitter {
   // Typed emit overrides
   // -------------------------------------------------------------------------
   /** Type-safe emit. */
-  emit(event) {
-    return super.emit(event);
+  emit(event, ...args) {
+    return super.emit(event, ...args);
   }
   /** Type-safe on. */
   on(event, listener) {
@@ -2985,19 +5273,19 @@ var DataWatcher = class extends EventEmitter {
   attachWatchers() {
     const entries = [
       {
-        targetPath: join6(this.goodvibesDir, "telemetry", "telemetry.db"),
+        targetPath: join8(this.goodvibesDir, "telemetry", "telemetry.db"),
         event: "telemetry-change"
       },
       {
-        targetPath: join6(this.goodvibesDir, "state"),
+        targetPath: join8(this.goodvibesDir, "state"),
         event: "session-change"
       },
       {
-        targetPath: join6(this.goodvibesDir, "project-index.json"),
+        targetPath: join8(this.goodvibesDir, "project-index.json"),
         event: "index-change"
       },
       {
-        targetPath: join6(this.goodvibesDir, "goodvibes.json"),
+        targetPath: join8(this.goodvibesDir, "goodvibes.json"),
         event: "config-change"
       }
     ];
@@ -3019,17 +5307,17 @@ var DataWatcher = class extends EventEmitter {
    * @param event      - Watcher event name to emit on change.
    */
   watchPath(targetPath, event) {
-    const targetBasename = basename(targetPath);
+    const targetBasename = basename2(targetPath);
     const isDir = this.pathIsDirectory(targetPath);
-    const watchTarget = existsSync4(targetPath) ? targetPath : dirname2(targetPath);
+    const watchTarget = existsSync5(targetPath) ? targetPath : dirname2(targetPath);
     const handler = /* @__PURE__ */ __name((_eventType, filename) => {
-      if (existsSync4(targetPath)) {
+      if (existsSync5(targetPath)) {
         if (!isDir && filename !== null && filename !== targetBasename) {
           return;
         }
       } else {
         if (filename !== targetBasename) return;
-        if (existsSync4(targetPath)) {
+        if (existsSync5(targetPath)) {
           this.rewatchPath(targetPath, event);
           return;
         }
@@ -3037,7 +5325,7 @@ var DataWatcher = class extends EventEmitter {
       this.debounceEmit(event);
     }, "handler");
     try {
-      const watcher = watch(watchTarget, {
+      const watcher = watch2(watchTarget, {
         persistent: false
         /* watcher won't keep the Node.js process alive */
       }, handler);
@@ -3084,7 +5372,7 @@ var DataWatcher = class extends EventEmitter {
     if (this.watchers.has(targetPath)) return;
     let lastMtime = 0;
     try {
-      lastMtime = statSync3(targetPath).mtimeMs;
+      lastMtime = statSync5(targetPath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -3093,9 +5381,9 @@ var DataWatcher = class extends EventEmitter {
         return;
       }
       try {
-        const stat = statSync3(targetPath);
-        if (stat.mtimeMs !== lastMtime) {
-          lastMtime = stat.mtimeMs;
+        const stat2 = statSync5(targetPath);
+        if (stat2.mtimeMs !== lastMtime) {
+          lastMtime = stat2.mtimeMs;
           this.debounceEmit(event);
         }
       } catch {
@@ -3113,7 +5401,7 @@ var DataWatcher = class extends EventEmitter {
    */
   pathIsDirectory(targetPath) {
     try {
-      return statSync3(targetPath).isDirectory();
+      return statSync5(targetPath).isDirectory();
     } catch {
       return false;
     }
@@ -3261,7 +5549,7 @@ var Aggregator = class {
     await this.telemetry.initialize();
     this.anomalyDetector = new AnomalyDetector(this.telemetry, this.config, this.logger);
     this.budgetTracker = new BudgetTracker(this.config);
-    this.memoryUpdater = new MemoryUpdater(join7(this.goodvibesDir, "memory"));
+    this.memoryUpdater = new MemoryUpdater(join9(this.goodvibesDir, "memory"));
     this.watcher = new DataWatcher(this.goodvibesDir);
     this.watcher.on("telemetry-change", () => {
       void this.refresh();
@@ -3627,1028 +5915,8 @@ var Aggregator = class {
   }
 };
 
-// src/data/db-init.ts
-import { mkdirSync as mkdirSync2, existsSync as existsSync6 } from "node:fs";
-import { join as join9, resolve as resolve2 } from "node:path";
-import { homedir as homedir2 } from "node:os";
-
-// src/data/global-db.ts
-import { readFileSync as readFileSync6, writeFileSync as writeFileSync3, existsSync as existsSync5 } from "node:fs";
-import { join as join8, resolve } from "node:path";
-
-// src/data/db-schema.ts
-var SCHEMA_VERSION = 1;
-var SCHEMA_SQL = `
--- Sessions: one row per Claude session, all projects
-CREATE TABLE IF NOT EXISTS sessions (
-  session_id                TEXT PRIMARY KEY,
-  project_hash              TEXT NOT NULL,
-  project_path              TEXT,
-  started_at                TEXT NOT NULL,
-  ended_at                  TEXT,
-  model                     TEXT DEFAULT 'unknown',
-  total_input_tokens        INTEGER DEFAULT 0,
-  total_output_tokens       INTEGER DEFAULT 0,
-  total_cache_read_tokens   INTEGER DEFAULT 0,
-  total_cache_write_tokens  INTEGER DEFAULT 0,
-  total_cost_usd            REAL DEFAULT 0,
-  total_api_calls           INTEGER DEFAULT 0,
-  total_tool_calls          INTEGER DEFAULT 0,
-  total_native_tool_calls   INTEGER DEFAULT 0,
-  total_precision_tool_calls INTEGER DEFAULT 0,
-  total_agent_spawns        INTEGER DEFAULT 0,
-  status                    TEXT DEFAULT 'active'
-);
-CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_hash);
-CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
-CREATE INDEX IF NOT EXISTS idx_sessions_status  ON sessions(status);
-
--- Tags: many-to-many session \u2194 tag relationship
-CREATE TABLE IF NOT EXISTS tags (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id  TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
-  tag         TEXT NOT NULL,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  source      TEXT NOT NULL DEFAULT 'manual',
-  UNIQUE(session_id, tag)
-);
-CREATE INDEX IF NOT EXISTS idx_tags_tag     ON tags(tag);
-CREATE INDEX IF NOT EXISTS idx_tags_session ON tags(session_id);
-
--- Tool summaries: per-session per-tool aggregates
-CREATE TABLE IF NOT EXISTS tool_summaries (
-  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id           TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
-  tool_name            TEXT    NOT NULL,
-  call_count           INTEGER DEFAULT 0,
-  success_count        INTEGER DEFAULT 0,
-  error_count          INTEGER DEFAULT 0,
-  total_duration_ms    INTEGER DEFAULT 0,
-  total_input_tokens   INTEGER DEFAULT 0,
-  total_output_tokens  INTEGER DEFAULT 0,
-  UNIQUE(session_id, tool_name)
-);
-CREATE INDEX IF NOT EXISTS idx_tool_summaries_session ON tool_summaries(session_id);
-
--- API calls: individual records for trend analysis and cost breakdown
-CREATE TABLE IF NOT EXISTS api_calls (
-  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id          TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
-  timestamp           TEXT    NOT NULL,
-  model               TEXT,
-  input_tokens        INTEGER DEFAULT 0,
-  output_tokens       INTEGER DEFAULT 0,
-  cache_read_tokens   INTEGER DEFAULT 0,
-  cache_write_tokens  INTEGER DEFAULT 0,
-  cost_usd            REAL    DEFAULT 0,
-  duration_ms         INTEGER DEFAULT 0,
-  stop_reason         TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_api_calls_session   ON api_calls(session_id);
-CREATE INDEX IF NOT EXISTS idx_api_calls_timestamp ON api_calls(timestamp);
-
--- Agent activity: spawned subagents with timing and token usage
-CREATE TABLE IF NOT EXISTS agents (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id        TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
-  agent_id          TEXT NOT NULL,
-  agent_type        TEXT,
-  parent_session_id TEXT,
-  model             TEXT,
-  spawned_at        TEXT NOT NULL,
-  completed_at      TEXT,
-  total_tokens      INTEGER DEFAULT 0,
-  duration_ms       INTEGER DEFAULT 0,
-  exit_code         INTEGER,
-  UNIQUE(session_id, agent_id)
-);
-CREATE INDEX IF NOT EXISTS idx_agents_session ON agents(session_id);
-
--- Sync state: tracks which JSONL files have been processed
-CREATE TABLE IF NOT EXISTS sync_state (
-  jsonl_path      TEXT PRIMARY KEY,
-  session_id      TEXT NOT NULL,
-  last_offset     INTEGER DEFAULT 0,
-  last_synced_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Schema version tracking for future migrations
-CREATE TABLE IF NOT EXISTS schema_version (
-  version     INTEGER PRIMARY KEY,
-  applied_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  description TEXT
-);
-`;
-var MIGRATIONS = /* @__PURE__ */ new Map();
-function getSchemaVersion(db) {
-  try {
-    const result = db.exec(
-      "SELECT MAX(version) AS v FROM schema_version"
-    );
-    const row = result[0]?.values[0];
-    if (!row || row[0] === null || row[0] === void 0) return 0;
-    const v = Number(row[0]);
-    return isNaN(v) ? 0 : v;
-  } catch {
-    return 0;
-  }
-}
-__name(getSchemaVersion, "getSchemaVersion");
-function applyMigrations(db, fromVersion) {
-  for (let v = fromVersion + 1; v <= SCHEMA_VERSION; v++) {
-    const sql = MIGRATIONS.get(v);
-    if (!sql) {
-      db.run(
-        `INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, 'baseline')`,
-        [v]
-      );
-      continue;
-    }
-    db.run(`SAVEPOINT migration_v${v}`);
-    try {
-      db.run(sql);
-      db.run(
-        "INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, ?)",
-        [v, `migration from v${v - 1} to v${v}`]
-      );
-      db.run(`RELEASE SAVEPOINT migration_v${v}`);
-    } catch (err) {
-      db.run(`ROLLBACK TO SAVEPOINT migration_v${v}`);
-      throw new Error(
-        `Schema migration to v${v} failed: ${err instanceof Error ? err.message : String(err)}`
-      );
-    }
-  }
-}
-__name(applyMigrations, "applyMigrations");
-
-// src/data/global-db.ts
-var SAVE_DEBOUNCE_MS = 500;
-function rowsToObjects(result) {
-  if (!result.length) return [];
-  const { columns, values } = result[0];
-  return values.map((row) => {
-    const obj = {};
-    columns.forEach((col, i) => {
-      obj[col] = row[i] ?? null;
-    });
-    return obj;
-  });
-}
-__name(rowsToObjects, "rowsToObjects");
-function rowToSession(row, tags) {
-  return {
-    session_id: String(row["session_id"] ?? ""),
-    project_hash: String(row["project_hash"] ?? ""),
-    project_path: row["project_path"] != null ? String(row["project_path"]) : void 0,
-    started_at: String(row["started_at"] ?? ""),
-    ended_at: row["ended_at"] != null ? String(row["ended_at"]) : void 0,
-    model: String(row["model"] ?? "unknown"),
-    total_input_tokens: Number(row["total_input_tokens"] ?? 0),
-    total_output_tokens: Number(row["total_output_tokens"] ?? 0),
-    total_cache_read_tokens: Number(row["total_cache_read_tokens"] ?? 0),
-    total_cache_write_tokens: Number(row["total_cache_write_tokens"] ?? 0),
-    total_cost_usd: Number(row["total_cost_usd"] ?? 0),
-    total_api_calls: Number(row["total_api_calls"] ?? 0),
-    total_tool_calls: Number(row["total_tool_calls"] ?? 0),
-    total_native_tool_calls: Number(row["total_native_tool_calls"] ?? 0),
-    total_precision_tool_calls: Number(row["total_precision_tool_calls"] ?? 0),
-    total_agent_spawns: Number(row["total_agent_spawns"] ?? 0),
-    tags,
-    status: String(row["status"] ?? "active")
-  };
-}
-__name(rowToSession, "rowToSession");
-function rowToApiCall(row) {
-  return {
-    session_id: String(row["session_id"] ?? ""),
-    timestamp: String(row["timestamp"] ?? ""),
-    model: row["model"] != null ? String(row["model"]) : void 0,
-    input_tokens: Number(row["input_tokens"] ?? 0),
-    output_tokens: Number(row["output_tokens"] ?? 0),
-    cache_read_tokens: Number(row["cache_read_tokens"] ?? 0),
-    cache_write_tokens: Number(row["cache_write_tokens"] ?? 0),
-    cost_usd: Number(row["cost_usd"] ?? 0),
-    duration_ms: Number(row["duration_ms"] ?? 0),
-    stop_reason: row["stop_reason"] != null ? String(row["stop_reason"]) : void 0
-  };
-}
-__name(rowToApiCall, "rowToApiCall");
-function rowToToolSummary(row) {
-  return {
-    session_id: String(row["session_id"] ?? ""),
-    tool_name: String(row["tool_name"] ?? ""),
-    call_count: Number(row["call_count"] ?? 0),
-    success_count: Number(row["success_count"] ?? 0),
-    error_count: Number(row["error_count"] ?? 0),
-    total_duration_ms: Number(row["total_duration_ms"] ?? 0),
-    total_input_tokens: Number(row["total_input_tokens"] ?? 0),
-    total_output_tokens: Number(row["total_output_tokens"] ?? 0)
-  };
-}
-__name(rowToToolSummary, "rowToToolSummary");
-function rowToAgent(row) {
-  return {
-    session_id: String(row["session_id"] ?? ""),
-    agent_id: String(row["agent_id"] ?? ""),
-    agent_type: row["agent_type"] != null ? String(row["agent_type"]) : void 0,
-    parent_session_id: row["parent_session_id"] != null ? String(row["parent_session_id"]) : void 0,
-    model: row["model"] != null ? String(row["model"]) : void 0,
-    spawned_at: String(row["spawned_at"] ?? ""),
-    completed_at: row["completed_at"] != null ? String(row["completed_at"]) : void 0,
-    total_tokens: Number(row["total_tokens"] ?? 0),
-    duration_ms: Number(row["duration_ms"] ?? 0),
-    exit_code: row["exit_code"] != null ? Number(row["exit_code"]) : void 0
-  };
-}
-__name(rowToAgent, "rowToAgent");
-var GlobalDB = class {
-  static {
-    __name(this, "GlobalDB");
-  }
-  dbPath;
-  db = null;
-  SQL = null;
-  saveTimer = null;
-  /**
-   * @param dbPath - Absolute path to the SQLite database file.
-   */
-  constructor(dbPath) {
-    this.dbPath = dbPath;
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Lifecycle
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Initialize the database: load sql.js WASM, open or create the DB file,
-   * apply the schema and any pending migrations, and enable WAL mode.
-   *
-   * Must be called before any other method.
-   *
-   * @throws {Error} If sql.js WASM cannot be loaded or schema application fails.
-   */
-  async initialize() {
-    const initSqlJs2 = await this.loadSqlJs();
-    const wasmPath = this.resolveWasmPath();
-    this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
-    if (existsSync5(this.dbPath)) {
-      const buffer = readFileSync6(this.dbPath);
-      this.db = new this.SQL.Database(buffer);
-    } else {
-      this.db = new this.SQL.Database();
-    }
-    this.db.run("PRAGMA journal_mode=WAL;");
-    this.db.run("PRAGMA synchronous=NORMAL;");
-    this.db.run("PRAGMA foreign_keys=ON;");
-    this.db.run(SCHEMA_SQL);
-    const currentVersion = getSchemaVersion(this.db);
-    if (currentVersion < SCHEMA_VERSION) {
-      applyMigrations(this.db, currentVersion);
-    }
-    this.saveToDisk();
-  }
-  /**
-   * Flush the in-memory database to disk and close it.
-   * Cancels any pending debounced save. Safe to call multiple times.
-   */
-  close() {
-    if (this.saveTimer) {
-      clearTimeout(this.saveTimer);
-      this.saveTimer = null;
-    }
-    if (this.db) {
-      this.saveToDisk();
-      this.db.close();
-      this.db = null;
-    }
-  }
-  /**
-   * Return the active Database handle.
-   *
-   * @throws {Error} If `initialize()` has not been called.
-   */
-  getDb() {
-    if (!this.db) {
-      throw new Error("GlobalDB: not initialized. Call initialize() first.");
-    }
-    return this.db;
-  }
-  /**
-   * Write the in-memory database to disk immediately.
-   *
-   * sql.js keeps the entire database in memory and exports a Uint8Array for
-   * persistence. This method performs a synchronous file write.
-   *
-   * Called automatically (debounced) after each write operation.
-   */
-  saveToDisk() {
-    if (!this.db) return;
-    try {
-      const data = this.db.export();
-      writeFileSync3(this.dbPath, Buffer.from(data));
-    } catch (err) {
-      console.error(
-        "[GlobalDB] saveToDisk failed:",
-        err instanceof Error ? err.message : String(err)
-      );
-    }
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Session CRUD
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Insert or update a session record.
-   *
-   * Uses `INSERT OR REPLACE` semantics so callers can pass partial updates;
-   * fields absent from `session` fall back to their SQL DEFAULT values on
-   * insert, or remain unchanged via a coalesce on replace.
-   *
-   * @param session - Session fields to persist. `session_id` is required.
-   */
-  upsertSession(session) {
-    const db = this.getDb();
-    const s = session;
-    db.run(
-      `INSERT INTO sessions (
-        session_id, project_hash, project_path, started_at, ended_at,
-        model, total_input_tokens, total_output_tokens,
-        total_cache_read_tokens, total_cache_write_tokens,
-        total_cost_usd, total_api_calls, total_tool_calls,
-        total_native_tool_calls, total_precision_tool_calls,
-        total_agent_spawns, status
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-      ON CONFLICT(session_id) DO UPDATE SET
-        project_hash              = COALESCE(excluded.project_hash, project_hash),
-        project_path              = COALESCE(excluded.project_path, project_path),
-        started_at                = COALESCE(excluded.started_at, started_at),
-        ended_at                  = COALESCE(excluded.ended_at, ended_at),
-        model                     = COALESCE(excluded.model, model),
-        total_input_tokens        = COALESCE(excluded.total_input_tokens, total_input_tokens),
-        total_output_tokens       = COALESCE(excluded.total_output_tokens, total_output_tokens),
-        total_cache_read_tokens   = COALESCE(excluded.total_cache_read_tokens, total_cache_read_tokens),
-        total_cache_write_tokens  = COALESCE(excluded.total_cache_write_tokens, total_cache_write_tokens),
-        total_cost_usd            = COALESCE(excluded.total_cost_usd, total_cost_usd),
-        total_api_calls           = COALESCE(excluded.total_api_calls, total_api_calls),
-        total_tool_calls          = COALESCE(excluded.total_tool_calls, total_tool_calls),
-        total_native_tool_calls   = COALESCE(excluded.total_native_tool_calls, total_native_tool_calls),
-        total_precision_tool_calls = COALESCE(excluded.total_precision_tool_calls, total_precision_tool_calls),
-        total_agent_spawns        = COALESCE(excluded.total_agent_spawns, total_agent_spawns),
-        status                    = COALESCE(excluded.status, status)`,
-      [
-        s.session_id,
-        s.project_hash ?? null,
-        s.project_path ?? null,
-        s.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
-        s.ended_at ?? null,
-        s.model ?? "unknown",
-        s.total_input_tokens ?? 0,
-        s.total_output_tokens ?? 0,
-        s.total_cache_read_tokens ?? 0,
-        s.total_cache_write_tokens ?? 0,
-        s.total_cost_usd ?? 0,
-        s.total_api_calls ?? 0,
-        s.total_tool_calls ?? 0,
-        s.total_native_tool_calls ?? 0,
-        s.total_precision_tool_calls ?? 0,
-        s.total_agent_spawns ?? 0,
-        s.status ?? "active"
-      ]
-    );
-    this.scheduleSave();
-  }
-  /**
-   * Retrieve a session by ID, with its tags joined.
-   *
-   * @param sessionId - The session identifier.
-   * @returns The session, or null if not found.
-   */
-  getSession(sessionId) {
-    const db = this.getDb();
-    const rows = rowsToObjects(db.exec("SELECT * FROM sessions WHERE session_id = ?", [sessionId]));
-    if (!rows.length) return null;
-    const tags = this.getTagsForSession(sessionId).map((t) => t.tag);
-    return rowToSession(rows[0], tags);
-  }
-  /**
-   * List all sessions for a project, ordered by start time descending.
-   *
-   * @param projectHash - Hash identifying the project.
-   * @returns Array of GlobalSession objects with tags.
-   */
-  getSessionsByProject(projectHash) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT * FROM sessions WHERE project_hash = ? ORDER BY started_at DESC", [projectHash])
-    );
-    const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
-    const tagsMap = this._batchGetTags(sessionIds);
-    return rows.map((row) => {
-      const sid = String(row["session_id"] ?? "");
-      return rowToSession(row, tagsMap.get(sid) ?? []);
-    });
-  }
-  /**
-   * List sessions that have ALL of the specified tags.
-   *
-   * @param tags - Tag strings that must all be present.
-   * @returns Array of matching GlobalSession objects.
-   */
-  getSessionsByTags(tags) {
-    if (tags.length === 0) return [];
-    const db = this.getDb();
-    const placeholders = tags.map(() => "?").join(",");
-    const rows = rowsToObjects(
-      db.exec(
-        `SELECT s.* FROM sessions s
-         INNER JOIN tags t ON t.session_id = s.session_id
-         WHERE t.tag IN (${placeholders})
-         GROUP BY s.session_id
-         HAVING COUNT(DISTINCT t.tag) = ?
-         ORDER BY s.started_at DESC`,
-        [...tags, tags.length]
-      )
-    );
-    const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
-    const tagsMap = this._batchGetTags(sessionIds);
-    return rows.map((row) => {
-      const sid = String(row["session_id"] ?? "");
-      return rowToSession(row, tagsMap.get(sid) ?? []);
-    });
-  }
-  /**
-   * List all sessions with optional filtering and pagination.
-   *
-   * @param options.limit  - Max rows to return (default: 100).
-   * @param options.offset - Rows to skip for pagination (default: 0).
-   * @param options.status - Filter by session status (e.g. 'active', 'completed').
-   * @returns Array of GlobalSession objects.
-   */
-  getAllSessions(options) {
-    const db = this.getDb();
-    const limit = options?.limit ?? 100;
-    const offset = options?.offset ?? 0;
-    const status = options?.status;
-    const params = [];
-    let where = "";
-    if (status) {
-      where = "WHERE status = ?";
-      params.push(status);
-    }
-    params.push(limit, offset);
-    const rows = rowsToObjects(
-      db.exec(
-        `SELECT * FROM sessions ${where} ORDER BY started_at DESC LIMIT ? OFFSET ?`,
-        params
-      )
-    );
-    const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
-    const tagsMap = this._batchGetTags(sessionIds);
-    return rows.map((row) => {
-      const sid = String(row["session_id"] ?? "");
-      return rowToSession(row, tagsMap.get(sid) ?? []);
-    });
-  }
-  /**
-   * Update the status field of a session.
-   *
-   * @param sessionId - Session to update.
-   * @param status    - New status value ('active' | 'completed' | 'archived').
-   */
-  updateSessionStatus(sessionId, status) {
-    const db = this.getDb();
-    db.run("UPDATE sessions SET status = ? WHERE session_id = ?", [status, sessionId]);
-    this.scheduleSave();
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // API Call Recording
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Insert a single API call record.
-   *
-   * @param call - API call data to persist.
-   */
-  insertApiCall(call) {
-    const db = this.getDb();
-    db.run(
-      `INSERT INTO api_calls (
-        session_id, timestamp, model, input_tokens, output_tokens,
-        cache_read_tokens, cache_write_tokens, cost_usd, duration_ms, stop_reason
-      ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [
-        call.session_id,
-        call.timestamp,
-        call.model ?? null,
-        call.input_tokens,
-        call.output_tokens,
-        call.cache_read_tokens,
-        call.cache_write_tokens,
-        call.cost_usd,
-        call.duration_ms,
-        call.stop_reason ?? null
-      ]
-    );
-    this.scheduleSave();
-  }
-  /**
-   * Retrieve all API calls for a session, ordered by timestamp ascending.
-   *
-   * @param sessionId - Session identifier.
-   * @returns Array of ApiCallRecord objects.
-   */
-  getApiCalls(sessionId) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT * FROM api_calls WHERE session_id = ? ORDER BY timestamp ASC", [sessionId])
-    );
-    return rows.map(rowToApiCall);
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Tool Summary CRUD
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Insert or update a tool summary record.
-   *
-   * On conflict (same session + tool), all numeric counters are added to
-   * the existing row (accumulate pattern).
-   *
-   * @param summary - Tool summary data to persist or accumulate.
-   */
-  upsertToolSummary(summary) {
-    const db = this.getDb();
-    db.run(
-      `INSERT INTO tool_summaries (
-        session_id, tool_name, call_count, success_count, error_count,
-        total_duration_ms, total_input_tokens, total_output_tokens
-      ) VALUES (?,?,?,?,?,?,?,?)
-      ON CONFLICT(session_id, tool_name) DO UPDATE SET
-        call_count          = call_count + excluded.call_count,
-        success_count       = success_count + excluded.success_count,
-        error_count         = error_count + excluded.error_count,
-        total_duration_ms   = total_duration_ms + excluded.total_duration_ms,
-        total_input_tokens  = total_input_tokens + excluded.total_input_tokens,
-        total_output_tokens = total_output_tokens + excluded.total_output_tokens`,
-      [
-        summary.session_id,
-        summary.tool_name,
-        summary.call_count,
-        summary.success_count,
-        summary.error_count,
-        summary.total_duration_ms,
-        summary.total_input_tokens,
-        summary.total_output_tokens
-      ]
-    );
-    this.scheduleSave();
-  }
-  /**
-   * Retrieve all tool summaries for a session.
-   *
-   * @param sessionId - Session identifier.
-   * @returns Array of ToolSummaryRecord objects.
-   */
-  getToolSummaries(sessionId) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT * FROM tool_summaries WHERE session_id = ?", [sessionId])
-    );
-    return rows.map(rowToToolSummary);
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Agent CRUD
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Insert or update an agent record.
-   *
-   * @param agent - Agent data to persist.
-   */
-  upsertAgent(agent) {
-    const db = this.getDb();
-    db.run(
-      `INSERT INTO agents (
-        session_id, agent_id, agent_type, parent_session_id, model,
-        spawned_at, completed_at, total_tokens, duration_ms, exit_code
-      ) VALUES (?,?,?,?,?,?,?,?,?,?)
-      ON CONFLICT(session_id, agent_id) DO UPDATE SET
-        agent_type        = COALESCE(excluded.agent_type, agent_type),
-        parent_session_id = COALESCE(excluded.parent_session_id, parent_session_id),
-        model             = COALESCE(excluded.model, model),
-        completed_at      = COALESCE(excluded.completed_at, completed_at),
-        total_tokens      = COALESCE(excluded.total_tokens, total_tokens),
-        duration_ms       = COALESCE(excluded.duration_ms, duration_ms),
-        exit_code         = COALESCE(excluded.exit_code, exit_code)`,
-      [
-        agent.session_id,
-        agent.agent_id,
-        agent.agent_type ?? null,
-        agent.parent_session_id ?? null,
-        agent.model ?? null,
-        agent.spawned_at,
-        agent.completed_at ?? null,
-        agent.total_tokens,
-        agent.duration_ms,
-        agent.exit_code ?? null
-      ]
-    );
-    this.scheduleSave();
-  }
-  /**
-   * Retrieve all agent records for a session.
-   *
-   * @param sessionId - Session identifier.
-   * @returns Array of AgentRecord objects.
-   */
-  getAgents(sessionId) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT * FROM agents WHERE session_id = ?", [sessionId])
-    );
-    return rows.map(rowToAgent);
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Tag CRUD
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Add a tag to a session. Silently ignores duplicate tags.
-   *
-   * @param sessionId - Session to tag.
-   * @param tag       - Tag string to add.
-   * @param source    - Origin of the tag ('manual' | 'auto'). Defaults to 'manual'.
-   */
-  addTag(sessionId, tag, source = "manual") {
-    const db = this.getDb();
-    db.run(
-      `INSERT OR IGNORE INTO tags (session_id, tag, source) VALUES (?, ?, ?)`,
-      [sessionId, tag, source]
-    );
-    this.scheduleSave();
-  }
-  /**
-   * Remove a tag from a session.
-   *
-   * @param sessionId - Session to remove the tag from.
-   * @param tag       - Tag string to remove.
-   */
-  removeTag(sessionId, tag) {
-    const db = this.getDb();
-    db.run("DELETE FROM tags WHERE session_id = ? AND tag = ?", [sessionId, tag]);
-    this.scheduleSave();
-  }
-  /**
-   * Retrieve all tags for a session, ordered by creation time.
-   *
-   * @param sessionId - Session identifier.
-   * @returns Array of TagEntry objects.
-   */
-  getTagsForSession(sessionId) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec(
-        "SELECT tag, session_id, created_at, source FROM tags WHERE session_id = ? ORDER BY created_at ASC",
-        [sessionId]
-      )
-    );
-    return rows.map((row) => ({
-      tag: String(row["tag"] ?? ""),
-      session_id: String(row["session_id"] ?? ""),
-      created_at: String(row["created_at"] ?? ""),
-      source: String(row["source"] ?? "manual")
-    }));
-  }
-  /**
-   * Retrieve all session IDs associated with a tag.
-   *
-   * @param tag - Tag string to look up.
-   * @returns Array of session_id strings.
-   */
-  getSessionsByTag(tag) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT session_id FROM tags WHERE tag = ?", [tag])
-    );
-    return rows.map((row) => String(row["session_id"] ?? ""));
-  }
-  /**
-   * List all unique tags with their usage counts, ordered by count descending.
-   *
-   * @returns Array of `{ tag, count }` objects.
-   */
-  getAllTags() {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT tag, COUNT(*) AS count FROM tags GROUP BY tag ORDER BY count DESC")
-    );
-    return rows.map((row) => ({
-      tag: String(row["tag"] ?? ""),
-      count: Number(row["count"] ?? 0)
-    }));
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Sync State
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Retrieve sync state for a JSONL file path.
-   *
-   * @param jsonlPath - Absolute path to the JSONL file being tracked.
-   * @returns SyncStateRecord, or null if not yet tracked.
-   */
-  getSyncState(jsonlPath) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT * FROM sync_state WHERE jsonl_path = ?", [jsonlPath])
-    );
-    if (!rows.length) return null;
-    const row = rows[0];
-    return {
-      jsonl_path: String(row["jsonl_path"] ?? ""),
-      session_id: String(row["session_id"] ?? ""),
-      last_offset: Number(row["last_offset"] ?? 0),
-      last_synced_at: String(row["last_synced_at"] ?? "")
-    };
-  }
-  /**
-   * Insert or update sync state for a JSONL file.
-   *
-   * @param state - Sync state record to persist.
-   */
-  upsertSyncState(state) {
-    const db = this.getDb();
-    db.run(
-      `INSERT INTO sync_state (jsonl_path, session_id, last_offset, last_synced_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(jsonl_path) DO UPDATE SET
-         session_id     = excluded.session_id,
-         last_offset    = excluded.last_offset,
-         last_synced_at = excluded.last_synced_at`,
-      [state.jsonl_path, state.session_id, state.last_offset, state.last_synced_at]
-    );
-    this.scheduleSave();
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Batch Operations
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Bulk-insert API call records inside a single transaction.
-   *
-   * Significantly faster than individual `insertApiCall` calls for large
-   * batches (e.g. initial JSONL sync).
-   *
-   * @param calls - Array of API call records to insert.
-   */
-  batchInsertApiCalls(calls) {
-    if (calls.length === 0) return;
-    const db = this.getDb();
-    db.run("BEGIN");
-    try {
-      for (const call of calls) {
-        db.run(
-          `INSERT INTO api_calls (
-            session_id, timestamp, model, input_tokens, output_tokens,
-            cache_read_tokens, cache_write_tokens, cost_usd, duration_ms, stop_reason
-          ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-          [
-            call.session_id,
-            call.timestamp,
-            call.model ?? null,
-            call.input_tokens,
-            call.output_tokens,
-            call.cache_read_tokens,
-            call.cache_write_tokens,
-            call.cost_usd,
-            call.duration_ms,
-            call.stop_reason ?? null
-          ]
-        );
-      }
-      db.run("COMMIT");
-    } catch (err) {
-      db.run("ROLLBACK");
-      throw err;
-    }
-    this.scheduleSave();
-  }
-  /**
-   * Bulk-upsert session records inside a single transaction.
-   *
-   * @param sessions - Array of partial session objects to upsert.
-   */
-  batchUpsertSessions(sessions) {
-    if (sessions.length === 0) return;
-    const db = this.getDb();
-    db.run("BEGIN");
-    try {
-      for (const session of sessions) {
-        const s = session;
-        db.run(
-          `INSERT INTO sessions (
-            session_id, project_hash, project_path, started_at, ended_at,
-            model, total_input_tokens, total_output_tokens,
-            total_cache_read_tokens, total_cache_write_tokens,
-            total_cost_usd, total_api_calls, total_tool_calls,
-            total_native_tool_calls, total_precision_tool_calls,
-            total_agent_spawns, status
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-          ON CONFLICT(session_id) DO UPDATE SET
-            project_hash              = COALESCE(excluded.project_hash, project_hash),
-            project_path              = COALESCE(excluded.project_path, project_path),
-            started_at                = COALESCE(excluded.started_at, started_at),
-            ended_at                  = COALESCE(excluded.ended_at, ended_at),
-            model                     = COALESCE(excluded.model, model),
-            total_input_tokens        = COALESCE(excluded.total_input_tokens, total_input_tokens),
-            total_output_tokens       = COALESCE(excluded.total_output_tokens, total_output_tokens),
-            total_cache_read_tokens   = COALESCE(excluded.total_cache_read_tokens, total_cache_read_tokens),
-            total_cache_write_tokens  = COALESCE(excluded.total_cache_write_tokens, total_cache_write_tokens),
-            total_cost_usd            = COALESCE(excluded.total_cost_usd, total_cost_usd),
-            total_api_calls           = COALESCE(excluded.total_api_calls, total_api_calls),
-            total_tool_calls          = COALESCE(excluded.total_tool_calls, total_tool_calls),
-            total_native_tool_calls   = COALESCE(excluded.total_native_tool_calls, total_native_tool_calls),
-            total_precision_tool_calls = COALESCE(excluded.total_precision_tool_calls, total_precision_tool_calls),
-            total_agent_spawns        = COALESCE(excluded.total_agent_spawns, total_agent_spawns),
-            status                    = COALESCE(excluded.status, status)`,
-          [
-            s.session_id,
-            s.project_hash ?? null,
-            s.project_path ?? null,
-            s.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
-            s.ended_at ?? null,
-            s.model ?? "unknown",
-            s.total_input_tokens ?? 0,
-            s.total_output_tokens ?? 0,
-            s.total_cache_read_tokens ?? 0,
-            s.total_cache_write_tokens ?? 0,
-            s.total_cost_usd ?? 0,
-            s.total_api_calls ?? 0,
-            s.total_tool_calls ?? 0,
-            s.total_native_tool_calls ?? 0,
-            s.total_precision_tool_calls ?? 0,
-            s.total_agent_spawns ?? 0,
-            s.status ?? "active"
-          ]
-        );
-      }
-      db.run("COMMIT");
-    } catch (err) {
-      db.run("ROLLBACK");
-      throw err;
-    }
-    this.scheduleSave();
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Aggregate Queries
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Sum total cost for all sessions belonging to a project.
-   *
-   * @param projectHash - Project identifier hash.
-   * @returns Total cost in USD as a number.
-   */
-  getTotalCostByProject(projectHash) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec(
-        "SELECT COALESCE(SUM(total_cost_usd), 0) AS total FROM sessions WHERE project_hash = ?",
-        [projectHash]
-      )
-    );
-    return Number(rows[0]?.["total"] ?? 0);
-  }
-  /**
-   * Sum total cost across all projects.
-   *
-   * @returns Total cost in USD as a number.
-   */
-  getTotalCostAllProjects() {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec("SELECT COALESCE(SUM(total_cost_usd), 0) AS total FROM sessions")
-    );
-    return Number(rows[0]?.["total"] ?? 0);
-  }
-  /**
-   * Count the number of sessions for a project.
-   *
-   * @param projectHash - Project identifier hash.
-   * @returns Session count.
-   */
-  getSessionCountByProject(projectHash) {
-    const db = this.getDb();
-    const rows = rowsToObjects(
-      db.exec(
-        "SELECT COUNT(*) AS cnt FROM sessions WHERE project_hash = ?",
-        [projectHash]
-      )
-    );
-    return Number(rows[0]?.["cnt"] ?? 0);
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-  // Private Helpers
-  // ───────────────────────────────────────────────────────────────────────────
-  /**
-   * Batch-fetch tags for multiple sessions in a single query, eliminating N+1.
-   *
-   * @param sessionIds - Array of session IDs to fetch tags for.
-   * @returns Map of session_id to array of tag strings.
-   */
-  _batchGetTags(sessionIds) {
-    const result = /* @__PURE__ */ new Map();
-    if (sessionIds.length === 0) return result;
-    const db = this.getDb();
-    const placeholders = sessionIds.map(() => "?").join(",");
-    const rows = rowsToObjects(
-      db.exec(
-        `SELECT session_id, tag FROM tags WHERE session_id IN (${placeholders}) ORDER BY created_at ASC`,
-        sessionIds
-      )
-    );
-    for (const row of rows) {
-      const sid = String(row["session_id"] ?? "");
-      const tag = String(row["tag"] ?? "");
-      const existing = result.get(sid);
-      if (existing) {
-        existing.push(tag);
-      } else {
-        result.set(sid, [tag]);
-      }
-    }
-    return result;
-  }
-  /**
-   * Schedule a debounced disk save.
-   *
-   * Multiple writes within `SAVE_DEBOUNCE_MS` will be coalesced into a
-   * single disk write, reducing I/O pressure during bulk operations.
-   */
-  scheduleSave() {
-    if (this.saveTimer) clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => {
-      this.saveTimer = null;
-      this.saveToDisk();
-    }, SAVE_DEBOUNCE_MS);
-  }
-  /**
-   * Dynamically load the sql.js module.
-   *
-   * Handles both ESM (import()) and CJS (require()) environments by trying
-   * dynamic import first, then falling back to require().
-   *
-   * @returns The initSqlJs function.
-   */
-  async loadSqlJs() {
-    try {
-      const mod = await import("sql.js");
-      return mod.default;
-    } catch {
-      const mod = __require("sql.js");
-      const initFn = mod.default ?? mod;
-      return initFn;
-    }
-  }
-  /**
-   * Resolve the path to the sql-wasm.wasm file.
-   *
-   * Search order:
-   *   1. Adjacent to this file in the dist/ directory (bundled plugin installs).
-   *   2. node_modules/sql.js/dist/ (development installs).
-   *
-   * @returns Absolute path to sql-wasm.wasm.
-   */
-  resolveWasmPath() {
-    let baseDir;
-    try {
-      baseDir = __dirname;
-    } catch {
-      baseDir = process.cwd();
-    }
-    const distWasm = resolve(join8(baseDir, "sql-wasm.wasm"));
-    if (existsSync5(distWasm)) return distWasm;
-    const nodeWasm = resolve(join8(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
-    if (existsSync5(nodeWasm)) return nodeWasm;
-    return resolve(join8(baseDir, "sql-wasm.wasm"));
-  }
-};
-
-// src/data/db-init.ts
-var GOODVIBES_BASE = join9(homedir2(), ".claude", ".goodvibes");
-var ANALYTICS_DIR = join9(GOODVIBES_BASE, "analytics");
-var DB_FILENAME = "analytics.db";
-function ensureGlobalAnalyticsDir() {
-  if (!existsSync6(ANALYTICS_DIR)) {
-    mkdirSync2(ANALYTICS_DIR, { recursive: true });
-  }
-  return ANALYTICS_DIR;
-}
-__name(ensureGlobalAnalyticsDir, "ensureGlobalAnalyticsDir");
-function getGlobalDbPath() {
-  return resolve2(join9(ANALYTICS_DIR, DB_FILENAME));
-}
-__name(getGlobalDbPath, "getGlobalDbPath");
-async function initializeGlobalDb(dbPath) {
-  ensureGlobalAnalyticsDir();
-  const resolvedPath = dbPath ?? getGlobalDbPath();
-  const db = new GlobalDB(resolvedPath);
-  await db.initialize();
-  return db;
-}
-__name(initializeGlobalDb, "initializeGlobalDb");
+// src/index.ts
+init_db_init();
 
 // src/schemas/tools.ts
 import { z } from "zod";
@@ -4681,9 +5949,15 @@ var AnalyticsBudgetInput = z.object({
   { message: 'amount is required when action is "set"', path: ["amount"] }
 );
 var AnalyticsTagInput = z.object({
-  action: z.enum(["tag", "rename"]),
-  value: z.string().min(1).max(100)
-});
+  action: z.enum(["add", "remove", "list", "auto"]),
+  value: z.string().min(1).max(100).optional(),
+  // Required for add/remove, optional for list/auto
+  scope: z.enum(["session", "all"]).optional().default("session")
+  // For list action
+}).refine(
+  (data) => !["add", "remove"].includes(data.action) || data.value !== void 0,
+  { message: "value is required for add and remove actions", path: ["value"] }
+);
 var AnalyticsExportInput = z.object({
   format: z.enum(["json", "csv", "markdown"]),
   scope: z.string().regex(/^(current|historical|session:[a-f0-9]+)$/, 'Must be "current", "historical", or "session:<id>"').default("current"),
@@ -4715,7 +5989,7 @@ var TOOL_DEFINITIONS = {
   },
   analytics_tag: {
     name: "analytics_tag",
-    description: "Tag or rename the current session for meaningful historical grouping and comparison.",
+    description: "Add, remove, or list tags on the current session. Tags are persisted in the global SQLite DB and support multi-tag arrays. Use action=auto to get heuristic tag suggestions based on JSONL analysis.",
     inputSchema: AnalyticsTagInput
   },
   analytics_export: {

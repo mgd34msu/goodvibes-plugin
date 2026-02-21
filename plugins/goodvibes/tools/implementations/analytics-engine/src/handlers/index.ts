@@ -14,7 +14,7 @@
 import { handleDashboard }                                  from './dashboard.js';
 import { handleQuery }                                      from './query.js';
 import { handleBudget }                                     from './budget.js';
-import { handleTag, getCurrentTag, getCurrentName, clearTagState } from './tag.js';
+import { handleTag } from './tag.js';
 import { handleExport }                                     from './export.js';
 import { handleConfig }                                     from './config.js';
 
@@ -25,9 +25,6 @@ export {
   handleQuery,
   handleBudget,
   handleTag,
-  getCurrentTag,
-  getCurrentName,
-  clearTagState,
   handleExport,
   handleConfig,
 };

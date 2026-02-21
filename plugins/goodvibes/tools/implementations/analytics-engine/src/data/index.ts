@@ -9,3 +9,30 @@ export { SessionReader } from './session-reader.js';
 export type { SessionData } from './session-reader.js';
 export { IndexReader } from './index-reader.js';
 export { HistoricalStore } from './historical-store.js';
+export type {
+  JSONLRecord,
+  JSONLAssistantRecord,
+  JSONLUserRecord,
+  JSONLProgressRecord,
+  JSONLFileHistoryRecord,
+  JSONLParseResult,
+  JSONLRecordBase,
+  AssistantUsage,
+  ContentBlock,
+  ThinkingBlock,
+  TextBlock,
+  ToolUseBlock,
+  ToolResultBlock,
+  ToolCallInfo,
+  AgentActivityInfo,
+  SessionInfo,
+  PrecisionToolTiming,
+} from './jsonl-types.js';
+export {
+  JSONLReader,
+  findActiveJsonlFile,
+  sessionIdFromPath,
+  resolveProjectsBaseDir,
+} from './jsonl-reader.js';
+export { JSONLWatcher } from './jsonl-watcher.js';
+export type { JSONLWatcherOptions, JSONLWatcherEvents } from './jsonl-watcher.js';

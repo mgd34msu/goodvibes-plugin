@@ -6,7 +6,7 @@
  */
 
 import * as fs from 'fs/promises';
-import * as path from 'path';
+import { join } from 'path';
 
 import {
   respond,
@@ -18,6 +18,7 @@ import {
   CACHE_DIR,
   createResponse,
   isTestEnvironment,
+  ensureGlobalAnalyticsDir,
 } from '../shared/index.js';
 
 /** Milliseconds per minute for duration calculation. */
@@ -27,6 +28,9 @@ const MS_PER_MINUTE = 60000;
 async function runSessionEndHook(): Promise<void> {
   try {
     debug('SessionEnd hook starting');
+
+    // Ensure global analytics directory exists (lightweight, redundant safety check)
+    ensureGlobalAnalyticsDir();
 
     const input = await readHookInput();
     debug('SessionEnd received input', {
@@ -48,7 +52,7 @@ async function runSessionEndHook(): Promise<void> {
       await saveAnalytics(analytics);
 
       // Create session summary file
-      const summaryFile = path.join(
+      const summaryFile = join(
         CACHE_DIR,
         `session-${analytics.session_id}.json`
       );

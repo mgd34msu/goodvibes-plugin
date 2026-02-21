@@ -21,6 +21,9 @@ import { watch, existsSync, statSync } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 
+import { JSONLWatcher } from '../data/jsonl-watcher.js';
+import type { JSONLRecord } from '../data/jsonl-types.js';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -35,10 +38,35 @@ export interface WatcherEvents {
   'index-change': () => void;
   /** Fired when goodvibes.json (config) changes. */
   'config-change': () => void;
+  /** Fired when new JSONL records are parsed from the active session file. */
+  'jsonl-records': (records: JSONLRecord[]) => void;
 }
 
 /** Union of all event names emitted by DataWatcher. */
 export type WatcherEventName = keyof WatcherEvents;
+
+/** Options for configuring JSONL watching in DataWatcher. */
+export interface DataWatcherOptions {
+  /** Polling interval for fs.watch fallback (default: 1000 ms). */
+  pollIntervalMs?: number;
+  /**
+   * Project directory to watch for JSONL files.
+   * When provided, a JSONLWatcher is created and its 'records' events
+   * are forwarded as 'jsonl-records' events on this DataWatcher.
+   * Example: ~/.claude/projects/<project-hash>/
+   */
+  jsonlProjectDir?: string;
+  /**
+   * Pricing configuration for JSONL cost calculation.
+   * Passed to the underlying JSONLWatcher.
+   */
+  jsonlCostConfig?: {
+    cost_per_1k_input_tokens: number;
+    cost_per_1k_output_tokens: number;
+  };
+  /** Batch interval for JSONL record emission (default: 1000 ms). */
+  jsonlBatchIntervalMs?: number;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -68,20 +96,36 @@ export class DataWatcher extends EventEmitter {
   /** Active FSWatcher handles, keyed by the logical target path. */
   private watchers: Map<string, FSWatcher | { close(): void }> = new Map();
 
-  /** Debounce timer handles, keyed by event name. */
-  private debounceTimers: Map<WatcherEventName, ReturnType<typeof setTimeout>> = new Map();
+  /** Debounce timer handles, keyed by no-arg event names (all except 'jsonl-records'). */
+  private debounceTimers: Map<Exclude<WatcherEventName, 'jsonl-records'>, ReturnType<typeof setTimeout>> = new Map();
 
   /** Whether the watcher is currently running. */
   private running = false;
 
   /**
-   * @param goodvibesDir    - Absolute path to the .goodvibes directory.
-   * @param options.pollIntervalMs - Polling interval for fallback mode (default: 1000 ms).
+   * Embedded JSONLWatcher for live JSONL tailing.
+   * Created when jsonlProjectDir is provided in options.
+   * Null if no JSONL project directory is configured.
    */
-  constructor(goodvibesDir: string, options?: { pollIntervalMs?: number }) {
+  private jsonlWatcher: JSONLWatcher | null = null;
+
+  /**
+   * @param goodvibesDir - Absolute path to the .goodvibes directory.
+   * @param options      - Configuration options.
+   */
+  constructor(goodvibesDir: string, options?: DataWatcherOptions) {
     super();
     this.goodvibesDir = goodvibesDir;
     this.pollIntervalMs = options?.pollIntervalMs ?? 1000;
+
+    // Create the JSONLWatcher if a project directory was provided.
+    if (options?.jsonlProjectDir !== undefined) {
+      this.jsonlWatcher = new JSONLWatcher(options.jsonlProjectDir, {
+        batchIntervalMs: options.jsonlBatchIntervalMs,
+        pollIntervalMs: options.pollIntervalMs,
+        costConfig: options.jsonlCostConfig,
+      });
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -96,6 +140,19 @@ export class DataWatcher extends EventEmitter {
     if (this.running) return;
     this.running = true;
     this.attachWatchers();
+
+    // Start the JSONL watcher if configured.
+    if (this.jsonlWatcher !== null) {
+      this.jsonlWatcher.on('records', (records: JSONLRecord[]) => {
+        if (this.running) this.emit('jsonl-records', records);
+      });
+      this.jsonlWatcher.on('error', (_err: Error) => {
+        // JSONL errors are non-fatal; log to stderr and continue.
+        // Do not re-emit as 'error' since DataWatcher's error handling
+        // is wired to the fs.watch subsystem.
+      });
+      this.jsonlWatcher.start();
+    }
   }
 
   /**
@@ -105,6 +162,11 @@ export class DataWatcher extends EventEmitter {
   stop(): void {
     if (!this.running) return;
     this.running = false;
+
+    // Stop the JSONL watcher if active.
+    if (this.jsonlWatcher !== null) {
+      try { this.jsonlWatcher.stop(); } catch { /* best-effort */ }
+    }
 
     // Cancel all debounce timers.
     for (const timer of this.debounceTimers.values()) {
@@ -135,23 +197,23 @@ export class DataWatcher extends EventEmitter {
   // -------------------------------------------------------------------------
 
   /** Type-safe emit. */
-  emit<K extends WatcherEventName>(event: K): boolean {
-    return super.emit(event);
+  emit<K extends WatcherEventName>(event: K, ...args: Parameters<WatcherEvents[K]>): boolean {
+    return super.emit(event, ...args);
   }
 
   /** Type-safe on. */
   on<K extends WatcherEventName>(event: K, listener: WatcherEvents[K]): this {
-    return super.on(event, listener as () => void);
+    return super.on(event, listener as (...a: unknown[]) => void);
   }
 
   /** Type-safe once. */
   once<K extends WatcherEventName>(event: K, listener: WatcherEvents[K]): this {
-    return super.once(event, listener as () => void);
+    return super.once(event, listener as (...a: unknown[]) => void);
   }
 
   /** Type-safe off. */
   off<K extends WatcherEventName>(event: K, listener: WatcherEvents[K]): this {
-    return super.off(event, listener as () => void);
+    return super.off(event, listener as (...a: unknown[]) => void);
   }
 
   // -------------------------------------------------------------------------
@@ -200,7 +262,7 @@ export class DataWatcher extends EventEmitter {
    * @param targetPath - Logical path we care about (file or directory).
    * @param event      - Watcher event name to emit on change.
    */
-  private watchPath(targetPath: string, event: WatcherEventName): void {
+  private watchPath(targetPath: string, event: Exclude<WatcherEventName, 'jsonl-records'>): void {
     const targetBasename = basename(targetPath);
     const isDir = this.pathIsDirectory(targetPath);
 
@@ -250,7 +312,7 @@ export class DataWatcher extends EventEmitter {
    * @param targetPath - The path that now exists.
    * @param event      - Event name to emit.
    */
-  private rewatchPath(targetPath: string, event: WatcherEventName): void {
+  private rewatchPath(targetPath: string, event: Exclude<WatcherEventName, 'jsonl-records'>): void {
     const existing = this.watchers.get(targetPath);
     if (existing) {
       try { existing.close(); } catch { /* best-effort cleanup */ }
@@ -269,7 +331,7 @@ export class DataWatcher extends EventEmitter {
    * @param targetPath    - Path to poll.
    * @param event         - Event to emit on change.
    */
-  private attachPollingFallback(targetPath: string, event: WatcherEventName): void {
+  private attachPollingFallback(targetPath: string, event: Exclude<WatcherEventName, 'jsonl-records'>): void {
     // Guard against double-attach.
     if (this.watchers.has(targetPath)) return;
 
@@ -313,7 +375,7 @@ export class DataWatcher extends EventEmitter {
    *
    * @param event - Event name to emit after the debounce delay.
    */
-  private debounceEmit(event: WatcherEventName): void {
+  private debounceEmit(event: Exclude<WatcherEventName, 'jsonl-records'>): void {
     const existing = this.debounceTimers.get(event);
     if (existing !== undefined) {
       clearTimeout(existing);
@@ -321,7 +383,8 @@ export class DataWatcher extends EventEmitter {
     const timer = setTimeout(() => {
       this.debounceTimers.delete(event);
       if (this.running) {
-        this.emit(event);
+        // These events take no arguments.
+        (this.emit as (e: string) => boolean)(event);
       }
     }, DEBOUNCE_MS);
     this.debounceTimers.set(event, timer);

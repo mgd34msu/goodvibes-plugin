@@ -2209,7 +2209,7 @@ var require_sql_wasm = __commonJS({
 });
 
 // src/daemon/aggregator.ts
-var import_node_path3 = require("node:path");
+var import_node_path5 = require("node:path");
 
 // src/data/telemetry-reader.ts
 var import_sql = __toESM(require_sql_wasm(), 1);
@@ -3597,11 +3597,802 @@ var MemoryUpdater = class {
 };
 
 // src/daemon/watcher.ts
+var import_node_events2 = require("node:events");
+var import_node_fs6 = require("node:fs");
+var import_node_path4 = require("node:path");
+
+// src/data/jsonl-watcher.ts
 var import_node_events = require("node:events");
+var import_node_fs5 = require("node:fs");
+var import_node_path3 = require("node:path");
+var import_promises2 = require("node:fs/promises");
+
+// src/data/jsonl-reader.ts
 var import_node_fs4 = require("node:fs");
+var import_promises = require("node:fs/promises");
+var import_node_readline = require("node:readline");
 var import_node_path2 = require("node:path");
+var CACHE_READ_COST_RATIO = 0.1;
+var CACHE_WRITE_COST_RATIO = 0.25;
+var JSONLReader = class {
+  static {
+    __name(this, "JSONLReader");
+  }
+  costPer1kInput;
+  costPer1kOutput;
+  /**
+   * @param config - Pricing config for cost calculation.
+   * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens.
+   * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens.
+   */
+  constructor(config) {
+    this.costPer1kInput = config.cost_per_1k_input_tokens;
+    this.costPer1kOutput = config.cost_per_1k_output_tokens;
+  }
+  // -------------------------------------------------------------------------
+  // Core parsing
+  // -------------------------------------------------------------------------
+  /**
+   * Parse a JSONL file from an optional byte offset.
+   *
+   * Uses readline for memory-efficient line-by-line reading. The byte offset
+   * enables incremental / tail-style reads: persist `result.newOffset` and
+   * pass it as `fromOffset` on the next call to read only new content.
+   *
+   * @param filePath   - Absolute path to the JSONL file.
+   * @param fromOffset - Byte offset to start reading from (default: 0).
+   * @returns Parsed records, new byte offset, and parse statistics.
+   */
+  async parseFile(filePath, fromOffset = 0) {
+    const errors = [];
+    const records = [];
+    let linesParsed = 0;
+    let linesSkipped = 0;
+    let byteOffset = fromOffset;
+    let fileSize;
+    try {
+      const fileStat = await (0, import_promises.stat)(filePath);
+      fileSize = fileStat.size;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        records,
+        newOffset: fromOffset,
+        linesParsed: 0,
+        linesSkipped: 0,
+        errors: [`Failed to stat file "${filePath}": ${message}`]
+      };
+    }
+    if (fromOffset >= fileSize) {
+      return { records, newOffset: fromOffset, linesParsed: 0, linesSkipped: 0, errors };
+    }
+    const stream = (0, import_node_fs4.createReadStream)(filePath, { start: fromOffset, encoding: "utf8" });
+    const rl = (0, import_node_readline.createInterface)({ input: stream, crlfDelay: Infinity });
+    let bytesConsumed = 0;
+    let lastValidOffset = fromOffset;
+    for await (const line of rl) {
+      const lineByteLength = Buffer.byteLength(line, "utf8") + 1;
+      const trimmed = line.trim();
+      if (trimmed === "") {
+        bytesConsumed += lineByteLength;
+        linesSkipped++;
+        continue;
+      }
+      linesParsed++;
+      const record = this.parseLine(trimmed);
+      if (record !== null) {
+        records.push(record);
+        bytesConsumed += lineByteLength;
+        lastValidOffset = fromOffset + bytesConsumed;
+      } else {
+        errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
+        bytesConsumed += lineByteLength;
+        linesSkipped++;
+      }
+    }
+    rl.close();
+    byteOffset = lastValidOffset;
+    return {
+      records,
+      newOffset: byteOffset,
+      linesParsed,
+      linesSkipped,
+      errors
+    };
+  }
+  /**
+   * Parse an array of pre-split text lines.
+   *
+   * Useful for testing or when the caller has already split content.
+   * Skips empty lines silently.
+   *
+   * @param lines - Array of raw text lines (not yet JSON.parse'd).
+   * @returns Successfully parsed records (malformed lines silently dropped).
+   */
+  parseLines(lines) {
+    const records = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed === "") continue;
+      const record = this.parseLine(trimmed);
+      if (record !== null) records.push(record);
+    }
+    return records;
+  }
+  /**
+   * Parse a single JSON line into a JSONLRecord.
+   *
+   * Returns null on any parse failure (invalid JSON, missing type field,
+   * or unrecognised type value) — never throws.
+   *
+   * @param line - Single trimmed line of text from a JSONL file.
+   * @returns Parsed record, or null if the line is malformed or unrecognised.
+   */
+  parseLine(line) {
+    try {
+      const parsed = JSON.parse(line);
+      if (typeof parsed !== "object" || parsed === null) return null;
+      const record = parsed;
+      const type = record["type"];
+      if (type === "assistant") return record;
+      if (type === "user") return record;
+      if (type === "progress") return record;
+      if (type === "file-history-snapshot") return record;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: ApiCallRecord
+  // -------------------------------------------------------------------------
+  /**
+   * Extract API call records from assistant JSONL records.
+   *
+   * Each assistant record represents one Claude API response. Token counts
+   * and cost are extracted from message.usage. Cost is calculated from
+   * configured rates (cost_usd is NOT present in the JSONL format).
+   *
+   * Cache tokens are costed at reduced rates:
+   *   - cache_read:  10% of input token cost (reading from cache is cheap)
+   *   - cache_write: 25% of input token cost (writing to cache has a premium)
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One ApiCallRecord per assistant record with usage data.
+   */
+  extractApiCalls(records) {
+    const results = [];
+    for (const record of records) {
+      if (record.type !== "assistant") continue;
+      const assistant = record;
+      const usage = assistant.message?.usage;
+      if (usage === void 0) continue;
+      const inputTokens = usage.input_tokens ?? 0;
+      const outputTokens = usage.output_tokens ?? 0;
+      const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+      const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+      if (inputTokens === 0 && outputTokens === 0) continue;
+      const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+      const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+      const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
+      const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+      const totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      results.push({
+        session_id: assistant.sessionId ?? "",
+        timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+        model: assistant.message?.model,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cache_read_tokens: cacheReadTokens,
+        cache_write_tokens: cacheWriteTokens,
+        cost_usd: totalCost,
+        duration_ms: 0,
+        // Not available in JSONL; may be filled in by progress record correlation.
+        stop_reason: assistant.message?.stop_reason
+      });
+    }
+    return results;
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: ToolCallInfo
+  // -------------------------------------------------------------------------
+  /**
+   * Extract tool call information by correlating assistant tool_use blocks
+   * with their corresponding user tool_result blocks.
+   *
+   * Correlation is by tool_use_id (present in both the tool_use block and
+   * the tool_result block).
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One ToolCallInfo per tool_use block found in assistant records.
+   */
+  extractToolCalls(records) {
+    const results = [];
+    const resultMap = /* @__PURE__ */ new Map();
+    for (const record of records) {
+      if (record.type !== "user") continue;
+      const user = record;
+      const content = user.message?.content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        const b = block;
+        if (b?.type === "tool_result" && b.tool_use_id !== void 0) {
+          resultMap.set(b.tool_use_id, b);
+        }
+      }
+    }
+    for (const record of records) {
+      if (record.type !== "assistant") continue;
+      const assistant = record;
+      const content = assistant.message?.content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        const b = block;
+        if (b?.type !== "tool_use") continue;
+        if (b.id === void 0 || b.name === void 0) continue;
+        const result = resultMap.get(b.id);
+        results.push({
+          id: b.id,
+          name: b.name,
+          input: b.input ?? {},
+          sessionId: assistant.sessionId ?? "",
+          timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+          assistantRecordUuid: assistant.uuid ?? "",
+          resultContent: result?.content,
+          isError: result?.is_error
+        });
+      }
+    }
+    return results;
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: AgentActivityInfo
+  // -------------------------------------------------------------------------
+  /**
+   * Infer agent activity from JSONL records.
+   *
+   * Agent spawns are NOT explicit record types. They are inferred from assistant
+   * records containing tool_use blocks with name === 'Task'. Completion is
+   * inferred by the presence of a tool_result block for the Task tool_use_id.
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One AgentActivityInfo per Task tool_use block found.
+   */
+  extractAgentActivity(records) {
+    const taskCalls = this.extractToolCalls(records).filter((tc) => tc.name === "Task");
+    return taskCalls.map((tc) => ({
+      agentId: tc.id,
+      parentSessionId: tc.sessionId,
+      spawnedAt: tc.timestamp,
+      taskInput: tc.input,
+      completed: tc.resultContent !== void 0,
+      exitStatus: tc.isError === true ? "error" : tc.resultContent !== void 0 ? "success" : void 0
+    }));
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: SessionInfo
+  // -------------------------------------------------------------------------
+  /**
+   * Extract session-level summary information from a set of JSONL records.
+   *
+   * Uses the first record for session ID, cwd, and git branch.
+   * Scans all records to find the earliest and latest timestamps.
+   * Model comes from the first assistant record.
+   *
+   * @param records - All parsed records for a session.
+   * @returns Session summary, or a stub with empty strings if no records are provided.
+   */
+  extractSessionInfo(records) {
+    if (records.length === 0) {
+      return {
+        sessionId: "",
+        model: "unknown",
+        startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        lastActivityAt: (/* @__PURE__ */ new Date()).toISOString(),
+        cwd: "",
+        gitBranch: "",
+        version: ""
+      };
+    }
+    const first = records[0];
+    let model = "unknown";
+    let startedAt = first.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
+    let lastActivityAt = startedAt;
+    for (const record of records) {
+      if (record.timestamp !== void 0 && record.timestamp < startedAt) {
+        startedAt = record.timestamp;
+      }
+      if (record.timestamp !== void 0 && record.timestamp > lastActivityAt) {
+        lastActivityAt = record.timestamp;
+      }
+      if (model === "unknown" && record.type === "assistant") {
+        const assistantRecord = record;
+        const m = assistantRecord.message?.model;
+        if (m !== void 0 && m !== "") model = m;
+      }
+    }
+    return {
+      sessionId: first.sessionId ?? "",
+      model,
+      startedAt,
+      lastActivityAt,
+      cwd: first.cwd ?? "",
+      gitBranch: first.gitBranch ?? "",
+      version: first.version ?? ""
+    };
+  }
+  // -------------------------------------------------------------------------
+  // Extraction: PrecisionToolTiming
+  // -------------------------------------------------------------------------
+  /**
+   * Extract precision tool timing data from JSONL progress records.
+   *
+   * Only 'completed' progress records contain elapsedTimeMs — 'started'
+   * records are ignored since we only need the total duration.
+   *
+   * @param records - Parsed JSONL records to scan.
+   * @returns One PrecisionToolTiming per completed progress event.
+   */
+  extractPrecisionToolTimings(records) {
+    const results = [];
+    for (const record of records) {
+      if (record.type !== "progress") continue;
+      const progress = record;
+      const data = progress.data;
+      if (data?.status !== "completed") continue;
+      if (data.elapsedTimeMs === void 0) continue;
+      if (progress.toolUseID === void 0) continue;
+      results.push({
+        toolUseId: progress.toolUseID,
+        serverName: data.serverName ?? "",
+        toolName: data.toolName ?? "",
+        elapsedTimeMs: data.elapsedTimeMs,
+        sessionId: progress.sessionId ?? "",
+        timestamp: progress.timestamp ?? (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }
+    return results;
+  }
+  // -------------------------------------------------------------------------
+  // Cost calculation helper
+  // -------------------------------------------------------------------------
+  /**
+   * Calculate the USD cost for a given token breakdown.
+   *
+   * Uses configured per-1k rates with reduced rates for cache operations:
+   *   - Input tokens:       full input rate
+   *   - Output tokens:      full output rate
+   *   - Cache read tokens:  10% of input rate
+   *   - Cache write tokens: 25% of input rate
+   *
+   * @param usage - Token counts to calculate cost for.
+   * @returns Total estimated cost in USD.
+   */
+  calculateCost(usage) {
+    const inputCost = (usage.input_tokens ?? 0) / 1e3 * this.costPer1kInput;
+    const outputCost = (usage.output_tokens ?? 0) / 1e3 * this.costPer1kOutput;
+    const cacheReadCost = (usage.cache_read_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
+    const cacheWriteCost = (usage.cache_write_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+    return inputCost + outputCost + cacheReadCost + cacheWriteCost;
+  }
+};
+async function findActiveJsonlFile(projectDir) {
+  const { readdir: readdir2 } = await import("node:fs/promises");
+  let entries;
+  try {
+    entries = await readdir2(projectDir);
+  } catch {
+    return null;
+  }
+  const jsonlFiles = entries.filter((e) => e.endsWith(".jsonl"));
+  if (jsonlFiles.length === 0) return null;
+  let latestPath = null;
+  let latestMtime = 0;
+  for (const file of jsonlFiles) {
+    const fullPath = (0, import_node_path2.join)(projectDir, file);
+    try {
+      const s = (0, import_node_fs4.statSync)(fullPath);
+      if (s.mtimeMs > latestMtime) {
+        latestMtime = s.mtimeMs;
+        latestPath = fullPath;
+      }
+    } catch {
+    }
+  }
+  return latestPath;
+}
+__name(findActiveJsonlFile, "findActiveJsonlFile");
+function sessionIdFromPath(jsonlPath) {
+  return (0, import_node_path2.basename)(jsonlPath, ".jsonl");
+}
+__name(sessionIdFromPath, "sessionIdFromPath");
+
+// src/data/jsonl-watcher.ts
+var JSONLWatcher = class extends import_node_events.EventEmitter {
+  static {
+    __name(this, "JSONLWatcher");
+  }
+  projectDir;
+  batchIntervalMs;
+  pollIntervalMs;
+  reader;
+  /** Currently active session JSONL path. */
+  activeSessionPath = null;
+  /** Currently active session ID. */
+  activeSessionId = null;
+  /** All watched files (main session + subagents). */
+  watchedFiles = /* @__PURE__ */ new Map();
+  /** Pending records accumulated between batch flushes. */
+  pendingRecords = [];
+  /** Batch flush interval handle. */
+  batchTimer = null;
+  /** Active session rotation detection interval. */
+  rotationTimer = null;
+  /** Whether the watcher is running. */
+  running = false;
+  /**
+   * @param projectDir - Absolute path to the Claude project directory
+   *                     (e.g. ~/.claude/projects/<project-hash>/).
+   * @param options    - Optional configuration overrides.
+   */
+  constructor(projectDir, options) {
+    super();
+    this.projectDir = projectDir;
+    this.batchIntervalMs = options?.batchIntervalMs ?? 1e3;
+    this.pollIntervalMs = options?.pollIntervalMs ?? 2e3;
+    this.reader = new JSONLReader(
+      options?.costConfig ?? { cost_per_1k_input_tokens: 3e-3, cost_per_1k_output_tokens: 0.015 }
+    );
+  }
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
+  /**
+   * Start watching the project directory for JSONL activity.
+   *
+   * Finds the active session JSONL, begins watching it, sets up subagent
+   * watching, and starts the batch flush interval. Safe to call multiple
+   * times — subsequent calls are no-ops if already running.
+   */
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.initSessionWatch().catch((err) => {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    });
+    this.batchTimer = setInterval(() => {
+      this.flushPendingRecords();
+    }, this.batchIntervalMs);
+    this.rotationTimer = setInterval(() => {
+      this.checkSessionRotation().catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+    }, 5e3);
+  }
+  /**
+   * Stop all watchers, flush any pending records, and clean up timers.
+   * Safe to call multiple times.
+   */
+  stop() {
+    if (!this.running) return;
+    this.running = false;
+    if (this.batchTimer !== null) {
+      clearInterval(this.batchTimer);
+      this.batchTimer = null;
+    }
+    if (this.rotationTimer !== null) {
+      clearInterval(this.rotationTimer);
+      this.rotationTimer = null;
+    }
+    this.flushPendingRecords();
+    for (const watched of this.watchedFiles.values()) {
+      try {
+        watched.handle.close();
+      } catch {
+      }
+    }
+    this.watchedFiles.clear();
+    this.activeSessionPath = null;
+    this.activeSessionId = null;
+    this.pendingRecords = [];
+  }
+  /**
+   * Returns the currently active session ID, or null if none has been detected.
+   */
+  getActiveSessionId() {
+    return this.activeSessionId;
+  }
+  // -------------------------------------------------------------------------
+  // Typed emit overrides
+  // -------------------------------------------------------------------------
+  /** Type-safe emit. */
+  emit(event, ...args) {
+    return super.emit(event, ...args);
+  }
+  /** Type-safe on. */
+  on(event, listener) {
+    return super.on(event, listener);
+  }
+  /** Type-safe once. */
+  once(event, listener) {
+    return super.once(event, listener);
+  }
+  /** Type-safe off. */
+  off(event, listener) {
+    return super.off(event, listener);
+  }
+  // -------------------------------------------------------------------------
+  // Session initialisation
+  // -------------------------------------------------------------------------
+  /**
+   * Detect the active session JSONL file and begin watching it.
+   */
+  async initSessionWatch() {
+    const activePath = await findActiveJsonlFile(this.projectDir);
+    if (activePath === null) {
+      this.watchDirectoryForNewSession();
+      return;
+    }
+    await this.switchToSession(activePath);
+  }
+  /**
+   * Switch to watching a new session JSONL file.
+   * Stops watching the previous session file and subagents.
+   */
+  async switchToSession(jsonlPath) {
+    const newSessionId = sessionIdFromPath(jsonlPath);
+    if (this.activeSessionPath !== null && this.activeSessionPath !== jsonlPath) {
+      for (const [path4, watched] of this.watchedFiles.entries()) {
+        try {
+          watched.handle.close();
+        } catch {
+        }
+        this.watchedFiles.delete(path4);
+      }
+      this.emit("session-change", newSessionId);
+    }
+    this.activeSessionPath = jsonlPath;
+    this.activeSessionId = newSessionId;
+    if (!this.watchedFiles.has(jsonlPath)) {
+      this.attachFileWatcher(jsonlPath, false);
+    }
+    await this.watchSubagentFiles(newSessionId);
+  }
+  // -------------------------------------------------------------------------
+  // File watching
+  // -------------------------------------------------------------------------
+  /**
+   * Attach a watcher on a specific JSONL file.
+   * Uses fs.watch with a polling fallback.
+   *
+   * @param filePath   - Absolute path to the JSONL file.
+   * @param isSubagent - Whether this file belongs to a subagent.
+   */
+  attachFileWatcher(filePath, isSubagent) {
+    if (this.watchedFiles.has(filePath)) return;
+    let initialOffset = 0;
+    try {
+      const s = (0, import_node_fs5.statSync)(filePath);
+      initialOffset = isSubagent ? 0 : 0;
+      void s;
+    } catch {
+      initialOffset = 0;
+    }
+    const watched = {
+      path: filePath,
+      offset: initialOffset,
+      handle: {},
+      // placeholder; replaced below
+      isSubagent
+    };
+    const onFileChange = /* @__PURE__ */ __name(() => {
+      this.readNewLines(watched).catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+    }, "onFileChange");
+    try {
+      const fsWatcher = (0, import_node_fs5.watch)(filePath, { persistent: false }, onFileChange);
+      fsWatcher.on("error", (_err) => {
+        try {
+          fsWatcher.close();
+        } catch {
+        }
+        if (this.watchedFiles.has(filePath)) {
+          const w = this.watchedFiles.get(filePath);
+          w.handle = this.createPollingHandle(filePath, onFileChange);
+        }
+      });
+      watched.handle = fsWatcher;
+    } catch {
+      watched.handle = this.createPollingHandle(filePath, onFileChange);
+    }
+    this.watchedFiles.set(filePath, watched);
+    this.readNewLines(watched).catch((err) => {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    });
+  }
+  /**
+   * Create a polling handle for filesystems that do not support inotify.
+   *
+   * @param filePath - Path to poll.
+   * @param onChange - Callback to invoke when mtime changes.
+   * @returns A { close() } compatible handle.
+   */
+  createPollingHandle(filePath, onChange) {
+    let lastMtime = 0;
+    try {
+      lastMtime = (0, import_node_fs5.statSync)(filePath).mtimeMs;
+    } catch {
+    }
+    const interval = setInterval(() => {
+      if (!this.running) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const s = (0, import_node_fs5.statSync)(filePath);
+        if (s.mtimeMs !== lastMtime) {
+          lastMtime = s.mtimeMs;
+          onChange();
+        }
+      } catch {
+      }
+    }, this.pollIntervalMs);
+    return { close: /* @__PURE__ */ __name(() => clearInterval(interval), "close") };
+  }
+  /**
+   * Watch the project directory itself for new JSONL files (before any session starts).
+   */
+  watchDirectoryForNewSession() {
+    const dirPath = this.projectDir;
+    if (!(0, import_node_fs5.existsSync)(dirPath)) return;
+    let handle;
+    const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
+      if (filename === null || !filename.endsWith(".jsonl")) return;
+      const fullPath = (0, import_node_path3.join)(dirPath, filename);
+      if (!(0, import_node_fs5.existsSync)(fullPath)) return;
+      this.switchToSession(fullPath).catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+      try {
+        handle.close();
+      } catch {
+      }
+    }, "onDirChange");
+    try {
+      handle = (0, import_node_fs5.watch)(dirPath, { persistent: false }, onDirChange);
+    } catch {
+      handle = { close() {
+      } };
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Subagent watching
+  // -------------------------------------------------------------------------
+  /**
+   * Discover and watch subagent JSONL files for a session.
+   *
+   * Subagent files live at: <projectDir>/<sessionId>/subagents/agent-*.jsonl
+   *
+   * @param sessionId - The parent session ID.
+   */
+  async watchSubagentFiles(sessionId) {
+    const subagentDir = (0, import_node_path3.join)(this.projectDir, sessionId, "subagents");
+    if (!(0, import_node_fs5.existsSync)(subagentDir)) return;
+    let entries;
+    try {
+      entries = await (0, import_promises2.readdir)(subagentDir);
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
+      const fullPath = (0, import_node_path3.join)(subagentDir, entry);
+      if (!this.watchedFiles.has(fullPath)) {
+        this.attachFileWatcher(fullPath, true);
+      }
+    }
+    this.watchSubagentDirectory(subagentDir, sessionId);
+  }
+  /**
+   * Watch a subagent directory for newly created agent JSONL files.
+   *
+   * @param subagentDir - Absolute path to the subagents/ directory.
+   * @param sessionId   - Parent session ID (for validation).
+   */
+  watchSubagentDirectory(subagentDir, sessionId) {
+    if (this.watchedFiles.has(subagentDir)) return;
+    const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
+      if (this.activeSessionId !== sessionId) return;
+      if (filename === null) return;
+      if (!filename.startsWith("agent-") || !filename.endsWith(".jsonl")) return;
+      const fullPath = (0, import_node_path3.join)(subagentDir, filename);
+      if (!(0, import_node_fs5.existsSync)(fullPath)) return;
+      if (!this.watchedFiles.has(fullPath)) {
+        this.attachFileWatcher(fullPath, true);
+      }
+    }, "onDirChange");
+    let handle;
+    try {
+      handle = (0, import_node_fs5.watch)(subagentDir, { persistent: false }, onDirChange);
+    } catch {
+      handle = { close() {
+      } };
+    }
+    this.watchedFiles.set(subagentDir, {
+      path: subagentDir,
+      offset: 0,
+      handle,
+      isSubagent: true
+    });
+  }
+  // -------------------------------------------------------------------------
+  // Incremental reading
+  // -------------------------------------------------------------------------
+  /**
+   * Read new lines from a watched file starting at its current offset.
+   * Parsed records are accumulated in pendingRecords for batch flush.
+   *
+   * @param watched - The watched file state to read from.
+   */
+  async readNewLines(watched) {
+    if (!this.running) return;
+    try {
+      const result = await this.reader.parseFile(watched.path, watched.offset);
+      watched.offset = result.newOffset;
+      if (result.records.length > 0) {
+        this.pendingRecords.push(...result.records);
+      }
+      for (const error of result.errors) {
+        this.emitError(new Error(`[JSONLWatcher] ${error}`));
+      }
+    } catch (err) {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Batch flush
+  // -------------------------------------------------------------------------
+  /**
+   * Emit and clear the accumulated pending records.
+   * Called by the batch interval timer and on stop().
+   */
+  flushPendingRecords() {
+    if (this.pendingRecords.length === 0) return;
+    const batch = this.pendingRecords.splice(0);
+    this.emit("records", batch);
+  }
+  // -------------------------------------------------------------------------
+  // Session rotation detection
+  // -------------------------------------------------------------------------
+  /**
+   * Check whether a newer JSONL file has appeared (new session started).
+   * Called periodically by the rotation timer.
+   */
+  async checkSessionRotation() {
+    if (!this.running) return;
+    const activePath = await findActiveJsonlFile(this.projectDir);
+    if (activePath === null) return;
+    if (activePath === this.activeSessionPath) return;
+    await this.switchToSession(activePath);
+  }
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+  /**
+   * Emit an error event. Per EventEmitter convention, error events must have
+   * a listener or they throw. We guard against this by checking listeners.
+   */
+  emitError(err) {
+    if (this.listenerCount("error") > 0) {
+      this.emit("error", err);
+    }
+  }
+};
+
+// src/daemon/watcher.ts
 var DEBOUNCE_MS = 100;
-var DataWatcher = class extends import_node_events.EventEmitter {
+var DataWatcher = class extends import_node_events2.EventEmitter {
   static {
     __name(this, "DataWatcher");
   }
@@ -3609,18 +4400,31 @@ var DataWatcher = class extends import_node_events.EventEmitter {
   pollIntervalMs;
   /** Active FSWatcher handles, keyed by the logical target path. */
   watchers = /* @__PURE__ */ new Map();
-  /** Debounce timer handles, keyed by event name. */
+  /** Debounce timer handles, keyed by no-arg event names (all except 'jsonl-records'). */
   debounceTimers = /* @__PURE__ */ new Map();
   /** Whether the watcher is currently running. */
   running = false;
   /**
-   * @param goodvibesDir    - Absolute path to the .goodvibes directory.
-   * @param options.pollIntervalMs - Polling interval for fallback mode (default: 1000 ms).
+   * Embedded JSONLWatcher for live JSONL tailing.
+   * Created when jsonlProjectDir is provided in options.
+   * Null if no JSONL project directory is configured.
+   */
+  jsonlWatcher = null;
+  /**
+   * @param goodvibesDir - Absolute path to the .goodvibes directory.
+   * @param options      - Configuration options.
    */
   constructor(goodvibesDir2, options) {
     super();
     this.goodvibesDir = goodvibesDir2;
     this.pollIntervalMs = options?.pollIntervalMs ?? 1e3;
+    if (options?.jsonlProjectDir !== void 0) {
+      this.jsonlWatcher = new JSONLWatcher(options.jsonlProjectDir, {
+        batchIntervalMs: options.jsonlBatchIntervalMs,
+        pollIntervalMs: options.pollIntervalMs,
+        costConfig: options.jsonlCostConfig
+      });
+    }
   }
   // -------------------------------------------------------------------------
   // Public API
@@ -3633,6 +4437,14 @@ var DataWatcher = class extends import_node_events.EventEmitter {
     if (this.running) return;
     this.running = true;
     this.attachWatchers();
+    if (this.jsonlWatcher !== null) {
+      this.jsonlWatcher.on("records", (records) => {
+        if (this.running) this.emit("jsonl-records", records);
+      });
+      this.jsonlWatcher.on("error", (_err) => {
+      });
+      this.jsonlWatcher.start();
+    }
   }
   /**
    * Stop all active watchers and cancel pending debounce timers.
@@ -3641,6 +4453,12 @@ var DataWatcher = class extends import_node_events.EventEmitter {
   stop() {
     if (!this.running) return;
     this.running = false;
+    if (this.jsonlWatcher !== null) {
+      try {
+        this.jsonlWatcher.stop();
+      } catch {
+      }
+    }
     for (const timer of this.debounceTimers.values()) {
       clearTimeout(timer);
     }
@@ -3663,8 +4481,8 @@ var DataWatcher = class extends import_node_events.EventEmitter {
   // Typed emit overrides
   // -------------------------------------------------------------------------
   /** Type-safe emit. */
-  emit(event) {
-    return super.emit(event);
+  emit(event, ...args) {
+    return super.emit(event, ...args);
   }
   /** Type-safe on. */
   on(event, listener) {
@@ -3688,19 +4506,19 @@ var DataWatcher = class extends import_node_events.EventEmitter {
   attachWatchers() {
     const entries = [
       {
-        targetPath: (0, import_node_path2.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
+        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
         event: "telemetry-change"
       },
       {
-        targetPath: (0, import_node_path2.join)(this.goodvibesDir, "state"),
+        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "state"),
         event: "session-change"
       },
       {
-        targetPath: (0, import_node_path2.join)(this.goodvibesDir, "project-index.json"),
+        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "project-index.json"),
         event: "index-change"
       },
       {
-        targetPath: (0, import_node_path2.join)(this.goodvibesDir, "goodvibes.json"),
+        targetPath: (0, import_node_path4.join)(this.goodvibesDir, "goodvibes.json"),
         event: "config-change"
       }
     ];
@@ -3722,17 +4540,17 @@ var DataWatcher = class extends import_node_events.EventEmitter {
    * @param event      - Watcher event name to emit on change.
    */
   watchPath(targetPath, event) {
-    const targetBasename = (0, import_node_path2.basename)(targetPath);
+    const targetBasename = (0, import_node_path4.basename)(targetPath);
     const isDir = this.pathIsDirectory(targetPath);
-    const watchTarget = (0, import_node_fs4.existsSync)(targetPath) ? targetPath : (0, import_node_path2.dirname)(targetPath);
+    const watchTarget = (0, import_node_fs6.existsSync)(targetPath) ? targetPath : (0, import_node_path4.dirname)(targetPath);
     const handler = /* @__PURE__ */ __name((_eventType, filename) => {
-      if ((0, import_node_fs4.existsSync)(targetPath)) {
+      if ((0, import_node_fs6.existsSync)(targetPath)) {
         if (!isDir && filename !== null && filename !== targetBasename) {
           return;
         }
       } else {
         if (filename !== targetBasename) return;
-        if ((0, import_node_fs4.existsSync)(targetPath)) {
+        if ((0, import_node_fs6.existsSync)(targetPath)) {
           this.rewatchPath(targetPath, event);
           return;
         }
@@ -3740,7 +4558,7 @@ var DataWatcher = class extends import_node_events.EventEmitter {
       this.debounceEmit(event);
     }, "handler");
     try {
-      const watcher = (0, import_node_fs4.watch)(watchTarget, {
+      const watcher = (0, import_node_fs6.watch)(watchTarget, {
         persistent: false
         /* watcher won't keep the Node.js process alive */
       }, handler);
@@ -3787,7 +4605,7 @@ var DataWatcher = class extends import_node_events.EventEmitter {
     if (this.watchers.has(targetPath)) return;
     let lastMtime = 0;
     try {
-      lastMtime = (0, import_node_fs4.statSync)(targetPath).mtimeMs;
+      lastMtime = (0, import_node_fs6.statSync)(targetPath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -3796,9 +4614,9 @@ var DataWatcher = class extends import_node_events.EventEmitter {
         return;
       }
       try {
-        const stat = (0, import_node_fs4.statSync)(targetPath);
-        if (stat.mtimeMs !== lastMtime) {
-          lastMtime = stat.mtimeMs;
+        const stat2 = (0, import_node_fs6.statSync)(targetPath);
+        if (stat2.mtimeMs !== lastMtime) {
+          lastMtime = stat2.mtimeMs;
           this.debounceEmit(event);
         }
       } catch {
@@ -3816,7 +4634,7 @@ var DataWatcher = class extends import_node_events.EventEmitter {
    */
   pathIsDirectory(targetPath) {
     try {
-      return (0, import_node_fs4.statSync)(targetPath).isDirectory();
+      return (0, import_node_fs6.statSync)(targetPath).isDirectory();
     } catch {
       return false;
     }
@@ -3964,7 +4782,7 @@ var Aggregator = class {
     await this.telemetry.initialize();
     this.anomalyDetector = new AnomalyDetector(this.telemetry, this.config, this.logger);
     this.budgetTracker = new BudgetTracker(this.config);
-    this.memoryUpdater = new MemoryUpdater((0, import_node_path3.join)(this.goodvibesDir, "memory"));
+    this.memoryUpdater = new MemoryUpdater((0, import_node_path5.join)(this.goodvibesDir, "memory"));
     this.watcher = new DataWatcher(this.goodvibesDir);
     this.watcher.on("telemetry-change", () => {
       void this.refresh();
@@ -4649,8 +5467,8 @@ var MiniRenderer = class {
 };
 
 // src/config.ts
-var import_node_fs5 = require("node:fs");
-var import_node_path4 = require("node:path");
+var import_node_fs7 = require("node:fs");
+var import_node_path6 = require("node:path");
 var import_node_os = require("node:os");
 
 // src/types.ts
@@ -4683,7 +5501,7 @@ var DEFAULT_CONFIG = {
 };
 
 // src/config.ts
-var GLOBAL_CONFIG_PATH = (0, import_node_path4.join)(
+var GLOBAL_CONFIG_PATH = (0, import_node_path6.join)(
   (0, import_node_os.homedir)(),
   ".claude",
   ".goodvibes",
@@ -4691,9 +5509,9 @@ var GLOBAL_CONFIG_PATH = (0, import_node_path4.join)(
   "analytics.json"
 );
 function tryLoadFile(filePath) {
-  if (!(0, import_node_fs5.existsSync)(filePath)) return null;
+  if (!(0, import_node_fs7.existsSync)(filePath)) return null;
   try {
-    const raw = (0, import_node_fs5.readFileSync)(filePath, "utf-8");
+    const raw = (0, import_node_fs7.readFileSync)(filePath, "utf-8");
     const parsed = JSON.parse(raw);
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
       return { ...DEFAULT_CONFIG, ...parsed };
@@ -4711,7 +5529,7 @@ __name(tryLoadFile, "tryLoadFile");
 function loadConfig(goodvibesDir2) {
   const globalConfig = tryLoadFile(GLOBAL_CONFIG_PATH);
   if (globalConfig) return globalConfig;
-  const projectConfig = tryLoadFile((0, import_node_path4.join)(goodvibesDir2, "analytics.json"));
+  const projectConfig = tryLoadFile((0, import_node_path6.join)(goodvibesDir2, "analytics.json"));
   if (projectConfig) return projectConfig;
   return { ...DEFAULT_CONFIG };
 }

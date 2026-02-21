@@ -216,6 +216,22 @@ var STDIN_TIMEOUT_MS = parseInt(
 // src/shared/index.ts
 init_gitignore();
 
+// src/shared/analytics-dir.ts
+import { mkdirSync, existsSync } from "fs";
+import { join as join4 } from "path";
+import { homedir } from "os";
+function ensureGlobalAnalyticsDir() {
+  try {
+    const analyticsDir = join4(homedir(), ".claude", ".goodvibes", "analytics");
+    if (!existsSync(analyticsDir)) {
+      mkdirSync(analyticsDir, { recursive: true });
+      debug("Global analytics directory created");
+    }
+  } catch (err) {
+    logError("ensureGlobalAnalyticsDir", err);
+  }
+}
+
 // src/shared/analytics.ts
 import * as fs3 from "fs/promises";
 async function ensureCacheDir() {
@@ -4658,11 +4674,11 @@ async function checkForUpdates() {
 
 // src/session-start/pricing-fetcher.ts
 import { readFile as readFile9, writeFile as writeFile6, mkdir as mkdir5 } from "node:fs/promises";
-import { join as join15, dirname as dirname2 } from "node:path";
-import { existsSync } from "node:fs";
+import { join as join16, dirname as dirname2 } from "node:path";
+import { existsSync as existsSync2 } from "node:fs";
 var PLUGIN_ROOT2 = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
-var CONFIG_PATH = join15(PLUGIN_ROOT2, ".goodvibes", "config", "pricing.json");
-var CACHE_PATH = join15(PLUGIN_ROOT2, ".cache", "model-pricing.json");
+var CONFIG_PATH = join16(PLUGIN_ROOT2, ".goodvibes", "config", "pricing.json");
+var CACHE_PATH = join16(PLUGIN_ROOT2, ".cache", "model-pricing.json");
 async function loadConfig() {
   try {
     const content = await readFile9(CONFIG_PATH, "utf-8");
@@ -4677,7 +4693,7 @@ async function loadConfig() {
 }
 async function isCacheStale(ttlHours) {
   try {
-    if (!existsSync(CACHE_PATH)) {
+    if (!existsSync2(CACHE_PATH)) {
       debug("Cache file does not exist");
       return true;
     }
@@ -4798,7 +4814,7 @@ function toCacheFormat(models) {
 }
 async function saveCache(cache) {
   const dir = dirname2(CACHE_PATH);
-  if (!existsSync(dir)) {
+  if (!existsSync2(dir)) {
     await mkdir5(dir, { recursive: true });
   }
   await writeFile6(CACHE_PATH, JSON.stringify(cache, null, 2), "utf-8");
@@ -5204,6 +5220,7 @@ async function runSessionStartHook() {
     state = initializeSession(state, sessionId);
     await ensureCacheDir();
     debug("Cache directory ensured");
+    ensureGlobalAnalyticsDir();
     const { valid, missing } = await validateRegistries();
     debug("Registry validation", { valid, missing });
     if (!valid) {

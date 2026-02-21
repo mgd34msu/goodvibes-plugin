@@ -13,7 +13,7 @@ var init_gitignore = __esm({
 
 // src/session-end/index.ts
 import * as fs3 from "fs/promises";
-import * as path2 from "path";
+import { join as join3 } from "path";
 
 // src/shared/hook-io.ts
 import { stdin } from "process";
@@ -129,6 +129,22 @@ var STDIN_TIMEOUT_MS = parseInt(
 
 // src/shared/index.ts
 init_gitignore();
+
+// src/shared/analytics-dir.ts
+import { mkdirSync, existsSync } from "fs";
+import { join as join2 } from "path";
+import { homedir } from "os";
+function ensureGlobalAnalyticsDir() {
+  try {
+    const analyticsDir = join2(homedir(), ".claude", ".goodvibes", "analytics");
+    if (!existsSync(analyticsDir)) {
+      mkdirSync(analyticsDir, { recursive: true });
+      debug("Global analytics directory created");
+    }
+  } catch (err) {
+    logError("ensureGlobalAnalyticsDir", err);
+  }
+}
 
 // src/shared/analytics.ts
 import * as fs2 from "fs/promises";
@@ -438,6 +454,7 @@ var MS_PER_MINUTE = 6e4;
 async function runSessionEndHook() {
   try {
     debug("SessionEnd hook starting");
+    ensureGlobalAnalyticsDir();
     const input = await readHookInput();
     debug("SessionEnd received input", {
       session_id: input.session_id
@@ -449,7 +466,7 @@ async function runSessionEndHook() {
       const ended = new Date(analytics.ended_at).getTime();
       const durationMinutes = Math.round((ended - started) / MS_PER_MINUTE);
       await saveAnalytics(analytics);
-      const summaryFile = path2.join(
+      const summaryFile = join3(
         CACHE_DIR,
         `session-${analytics.session_id}.json`
       );

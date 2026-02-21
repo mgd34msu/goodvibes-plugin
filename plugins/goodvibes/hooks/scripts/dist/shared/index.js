@@ -22,6 +22,10 @@ export { SECURITY_GITIGNORE_PATTERNS } from './security-patterns.js';
 // Constants
 // =============================================================================
 export { LOCKFILES, PLUGIN_ROOT, PROJECT_ROOT, CACHE_DIR, ANALYTICS_FILE, } from './constants.js';
+// =============================================================================
+// Analytics Directory
+// =============================================================================
+export { ensureGlobalAnalyticsDir } from './analytics-dir.js';
 export { ensureCacheDir, loadAnalytics, saveAnalytics, getSessionId, logToolUsage, } from './analytics.js';
 // =============================================================================
 // File Utilities

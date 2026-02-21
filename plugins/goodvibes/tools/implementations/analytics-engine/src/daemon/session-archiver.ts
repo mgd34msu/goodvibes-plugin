@@ -4,9 +4,14 @@
  * Thin wrapper around HistoricalStore that coordinates session archival,
  * historical comparison, tagging, and renaming. All persistence is delegated
  * to HistoricalStore which handles atomic writes.
+ *
+ * Tags are read from the global SQLite database (via GlobalDB) when available,
+ * so that persistent multi-tags survive process restarts and replace the old
+ * module-level volatile state.
  */
 
 import { HistoricalStore } from '../data/historical-store.js';
+import type { GlobalDB } from '../data/global-db.js';
 import type {
   SessionMetrics,
   Anomaly,
@@ -30,13 +35,18 @@ import type {
  */
 export class SessionArchiver {
   private readonly store: HistoricalStore;
+  private readonly globalDb: GlobalDB | null;
 
   /**
    * @param goodvibesDir - Absolute path to the .goodvibes directory.
+   * @param globalDb     - Optional GlobalDB instance for tag lookups. When
+   *                       provided, tags are read from the persistent DB rather
+   *                       than relying on volatile module-level state.
    */
-  constructor(goodvibesDir: string) {
+  constructor(goodvibesDir: string, globalDb: GlobalDB | null = null) {
     this.store = new HistoricalStore(goodvibesDir);
     this.store.ensureDir();
+    this.globalDb = globalDb;
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -61,9 +71,15 @@ export class SessionArchiver {
     const now = new Date().toISOString();
     const durationMinutes = this.estimateDurationMinutes(metrics);
 
+    // Read persisted tags from GlobalDB when available (Phase 3: DB-backed tags).
+    // Falls back to empty array if GlobalDB is not available.
+    const persistedTags: string[] = this.globalDb
+      ? this.globalDb.getTagsForSession(sessionId).map((t) => t.tag)
+      : [];
+
     const archive: SessionArchive = {
       session_id: sessionId,
-      tags: [],
+      tags: [...persistedTags],
       project_hash: '',
       started_at: startedAt ?? now,
       ended_at: now,
@@ -76,13 +92,14 @@ export class SessionArchiver {
       },
     };
 
-    // Tag with the most severe anomaly type for quick session categorization
+    // Additionally tag with the most severe anomaly type for quick categorization.
+    // Anomaly tags are appended to any user-defined tags from the DB.
     if (anomalies.length > 0) {
       const anomalyTag = anomalies[0]?.type;
-      if (anomalyTag) {
-        archive.tags = [anomalyTag];
+      if (anomalyTag && !archive.tags.includes(anomalyTag)) {
+        archive.tags.push(anomalyTag);
         // Keep deprecated field in sync for backward compatibility
-        archive.tag = anomalyTag;
+        archive.tag = archive.tags[0];
       }
     }
 
