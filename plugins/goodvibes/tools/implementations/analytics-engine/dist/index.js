@@ -108,6 +108,432 @@ var init_config = __esm({
   }
 });
 
+// src/data/jsonl-reader.ts
+import { createReadStream, statSync as statSync3 } from "node:fs";
+import { stat, readdir } from "node:fs/promises";
+import { createInterface } from "node:readline";
+import { homedir as homedir2 } from "node:os";
+import { join as join5, basename } from "node:path";
+async function findActiveJsonlFile(projectDir) {
+  let entries;
+  try {
+    entries = await readdir(projectDir);
+  } catch {
+    return null;
+  }
+  const jsonlFiles = entries.filter((e) => e.endsWith(".jsonl"));
+  if (jsonlFiles.length === 0) return null;
+  let latestPath = null;
+  let latestMtime = 0;
+  for (const file of jsonlFiles) {
+    const fullPath = join5(projectDir, file);
+    try {
+      const s = statSync3(fullPath);
+      if (s.mtimeMs > latestMtime) {
+        latestMtime = s.mtimeMs;
+        latestPath = fullPath;
+      }
+    } catch {
+    }
+  }
+  return latestPath;
+}
+function sessionIdFromPath(jsonlPath) {
+  return basename(jsonlPath, ".jsonl");
+}
+function resolveProjectsBaseDir() {
+  const envDir = process.env["CLAUDE_PROJECTS_DIR"];
+  if (envDir !== void 0 && envDir !== "") return envDir;
+  return join5(homedir2(), ".claude", "projects");
+}
+var CACHE_READ_COST_RATIO, CACHE_WRITE_COST_RATIO, JSONLReader;
+var init_jsonl_reader = __esm({
+  "src/data/jsonl-reader.ts"() {
+    "use strict";
+    CACHE_READ_COST_RATIO = 0.1;
+    CACHE_WRITE_COST_RATIO = 0.25;
+    JSONLReader = class {
+      static {
+        __name(this, "JSONLReader");
+      }
+      costPer1kInput;
+      costPer1kOutput;
+      /**
+       * @param config - Pricing config for cost calculation.
+       * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens.
+       * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens.
+       */
+      constructor(config) {
+        this.costPer1kInput = config.cost_per_1k_input_tokens;
+        this.costPer1kOutput = config.cost_per_1k_output_tokens;
+      }
+      // -------------------------------------------------------------------------
+      // Core parsing
+      // -------------------------------------------------------------------------
+      /**
+       * Parse a JSONL file from an optional byte offset.
+       *
+       * Uses readline for memory-efficient line-by-line reading. The byte offset
+       * enables incremental / tail-style reads: persist `result.newOffset` and
+       * pass it as `fromOffset` on the next call to read only new content.
+       *
+       * @param filePath   - Absolute path to the JSONL file.
+       * @param fromOffset - Byte offset to start reading from (default: 0).
+       * @returns Parsed records, new byte offset, and parse statistics.
+       */
+      async parseFile(filePath, fromOffset = 0) {
+        const errors = [];
+        const records = [];
+        let linesParsed = 0;
+        let linesSkipped = 0;
+        let byteOffset = fromOffset;
+        let fileSize;
+        try {
+          const fileStat = await stat(filePath);
+          fileSize = fileStat.size;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return {
+            records,
+            newOffset: fromOffset,
+            linesParsed: 0,
+            linesSkipped: 0,
+            errors: [`Failed to stat file "${filePath}": ${message}`]
+          };
+        }
+        if (fromOffset >= fileSize) {
+          return { records, newOffset: fromOffset, linesParsed: 0, linesSkipped: 0, errors };
+        }
+        const stream = createReadStream(filePath, { start: fromOffset, encoding: "utf8" });
+        const rl = createInterface({ input: stream, crlfDelay: Infinity });
+        let bytesConsumed = 0;
+        let lastValidOffset = fromOffset;
+        for await (const line of rl) {
+          const lineByteLength = Buffer.byteLength(line, "utf8") + 1;
+          const trimmed = line.trim();
+          if (trimmed === "") {
+            bytesConsumed += lineByteLength;
+            linesSkipped++;
+            continue;
+          }
+          linesParsed++;
+          const record = this.parseLine(trimmed);
+          if (record !== null) {
+            records.push(record);
+            bytesConsumed += lineByteLength;
+            lastValidOffset = fromOffset + bytesConsumed;
+          } else {
+            errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
+            bytesConsumed += lineByteLength;
+            lastValidOffset = fromOffset + bytesConsumed;
+            linesSkipped++;
+          }
+        }
+        byteOffset = lastValidOffset;
+        return {
+          records,
+          newOffset: byteOffset,
+          linesParsed,
+          linesSkipped,
+          errors
+        };
+      }
+      /**
+       * Parse an array of pre-split text lines.
+       *
+       * Useful for testing or when the caller has already split content.
+       * Skips empty lines silently.
+       *
+       * @param lines - Array of raw text lines (not yet JSON.parse'd).
+       * @returns Successfully parsed records (malformed lines silently dropped).
+       */
+      parseLines(lines) {
+        const records = [];
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed === "") continue;
+          const record = this.parseLine(trimmed);
+          if (record !== null) records.push(record);
+        }
+        return records;
+      }
+      /**
+       * Parse a single JSON line into a JSONLRecord.
+       *
+       * Returns null on any parse failure (invalid JSON, missing type field,
+       * or unrecognised type value) — never throws.
+       *
+       * @param line - Single trimmed line of text from a JSONL file.
+       * @returns Parsed record, or null if the line is malformed or unrecognised.
+       */
+      parseLine(line) {
+        try {
+          const parsed = JSON.parse(line);
+          if (typeof parsed !== "object" || parsed === null) return null;
+          const record = parsed;
+          const type = record["type"];
+          if (type === "assistant") return record;
+          if (type === "user") return record;
+          if (type === "progress") return record;
+          if (type === "file-history-snapshot") return record;
+          return null;
+        } catch {
+          return null;
+        }
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: ApiCallRecord
+      // -------------------------------------------------------------------------
+      /**
+       * Extract API call records from assistant JSONL records.
+       *
+       * Each assistant record represents one Claude API response. Token counts
+       * and cost are extracted from message.usage. Cost is calculated from
+       * configured rates (cost_usd is NOT present in the JSONL format).
+       *
+       * Cache tokens are costed at reduced rates:
+       *   - cache_read:  10% of input token cost (reading from cache is cheap)
+       *   - cache_write: 25% of input token cost (writing to cache has a premium)
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One ApiCallRecord per assistant record with usage data.
+       */
+      extractApiCalls(records) {
+        const results = [];
+        for (const record of records) {
+          if (record.type !== "assistant") continue;
+          const assistant = record;
+          const usage = assistant.message?.usage;
+          if (usage === void 0) continue;
+          const inputTokens = usage.input_tokens ?? 0;
+          const outputTokens = usage.output_tokens ?? 0;
+          const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+          const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+          if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
+          const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+          const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+          const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
+          const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+          const totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+          results.push({
+            session_id: assistant.sessionId ?? "",
+            timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+            model: assistant.message?.model,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            cache_read_tokens: cacheReadTokens,
+            cache_write_tokens: cacheWriteTokens,
+            cost_usd: totalCost,
+            duration_ms: 0,
+            // Not available in JSONL; may be filled in by progress record correlation.
+            stop_reason: assistant.message?.stop_reason
+          });
+        }
+        return results;
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: ToolCallInfo
+      // -------------------------------------------------------------------------
+      /**
+       * Extract tool call information by correlating assistant tool_use blocks
+       * with their corresponding user tool_result blocks.
+       *
+       * Correlation is by tool_use_id (present in both the tool_use block and
+       * the tool_result block).
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One ToolCallInfo per tool_use block found in assistant records.
+       */
+      extractToolCalls(records) {
+        const results = [];
+        const resultMap = /* @__PURE__ */ new Map();
+        for (const record of records) {
+          if (record.type !== "user") continue;
+          const user = record;
+          const content = user.message?.content;
+          if (!Array.isArray(content)) continue;
+          for (const block of content) {
+            const b = block;
+            if (b?.type === "tool_result" && b.tool_use_id !== void 0) {
+              resultMap.set(b.tool_use_id, b);
+            }
+          }
+        }
+        for (const record of records) {
+          if (record.type !== "assistant") continue;
+          const assistant = record;
+          const content = assistant.message?.content;
+          if (!Array.isArray(content)) continue;
+          for (const block of content) {
+            const b = block;
+            if (b?.type !== "tool_use") continue;
+            if (b.id === void 0 || b.name === void 0) continue;
+            const result = resultMap.get(b.id);
+            results.push({
+              id: b.id,
+              name: b.name,
+              input: b.input ?? {},
+              sessionId: assistant.sessionId ?? "",
+              timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+              assistantRecordUuid: assistant.uuid ?? "",
+              resultContent: result?.content,
+              isError: result?.is_error
+            });
+          }
+        }
+        return results;
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: AgentActivityInfo
+      // -------------------------------------------------------------------------
+      /**
+       * Infer agent activity from JSONL records.
+       *
+       * Agent spawns are NOT explicit record types. They are inferred from assistant
+       * records containing tool_use blocks with name === 'Task'. Completion is
+       * inferred by the presence of a tool_result block for the Task tool_use_id.
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One AgentActivityInfo per Task tool_use block found.
+       */
+      extractAgentActivity(records) {
+        const taskCalls = this.extractToolCalls(records).filter((tc) => tc.name === "Task");
+        const resultTimestamps = /* @__PURE__ */ new Map();
+        for (const record of records) {
+          if (record.type !== "user") continue;
+          const user = record;
+          const content = user.message?.content;
+          if (!Array.isArray(content)) continue;
+          for (const block of content) {
+            const b = block;
+            if (b?.type === "tool_result" && b.tool_use_id !== void 0 && record.timestamp) {
+              resultTimestamps.set(b.tool_use_id, record.timestamp);
+            }
+          }
+        }
+        return taskCalls.map((tc) => ({
+          agentId: tc.id,
+          parentSessionId: tc.sessionId,
+          spawnedAt: tc.timestamp,
+          completedAt: resultTimestamps.get(tc.id),
+          taskInput: tc.input,
+          completed: tc.resultContent !== void 0,
+          exitStatus: tc.isError === true ? "error" : tc.resultContent !== void 0 ? "success" : void 0
+        }));
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: SessionInfo
+      // -------------------------------------------------------------------------
+      /**
+       * Extract session-level summary information from a set of JSONL records.
+       *
+       * Uses the first record for session ID, cwd, and git branch.
+       * Scans all records to find the earliest and latest timestamps.
+       * Model comes from the first assistant record.
+       *
+       * @param records - All parsed records for a session.
+       * @returns Session summary, or a stub with empty strings if no records are provided.
+       */
+      extractSessionInfo(records) {
+        if (records.length === 0) {
+          return {
+            sessionId: "",
+            model: "unknown",
+            startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+            lastActivityAt: (/* @__PURE__ */ new Date()).toISOString(),
+            cwd: "",
+            gitBranch: "",
+            version: ""
+          };
+        }
+        const first = records[0];
+        let model = "unknown";
+        let startedAt = first.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
+        let lastActivityAt = startedAt;
+        for (const record of records) {
+          if (record.timestamp !== void 0 && record.timestamp < startedAt) {
+            startedAt = record.timestamp;
+          }
+          if (record.timestamp !== void 0 && record.timestamp > lastActivityAt) {
+            lastActivityAt = record.timestamp;
+          }
+          if (model === "unknown" && record.type === "assistant") {
+            const assistantRecord = record;
+            const m = assistantRecord.message?.model;
+            if (m !== void 0 && m !== "") model = m;
+          }
+        }
+        return {
+          sessionId: first.sessionId ?? "",
+          model,
+          startedAt,
+          lastActivityAt,
+          cwd: first.cwd ?? "",
+          gitBranch: first.gitBranch ?? "",
+          version: first.version ?? ""
+        };
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: PrecisionToolTiming
+      // -------------------------------------------------------------------------
+      /**
+       * Extract precision tool timing data from JSONL progress records.
+       *
+       * Only 'completed' progress records contain elapsedTimeMs — 'started'
+       * records are ignored since we only need the total duration.
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One PrecisionToolTiming per completed progress event.
+       */
+      extractPrecisionToolTimings(records) {
+        const results = [];
+        for (const record of records) {
+          if (record.type !== "progress") continue;
+          const progress = record;
+          const data = progress.data;
+          if (data?.status !== "completed") continue;
+          if (data.elapsedTimeMs === void 0) continue;
+          if (progress.toolUseID === void 0) continue;
+          results.push({
+            toolUseId: progress.toolUseID,
+            serverName: data.serverName ?? "",
+            toolName: data.toolName ?? "",
+            elapsedTimeMs: data.elapsedTimeMs,
+            sessionId: progress.sessionId ?? "",
+            timestamp: progress.timestamp ?? (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
+        return results;
+      }
+      // -------------------------------------------------------------------------
+      // Cost calculation helper
+      // -------------------------------------------------------------------------
+      /**
+       * Calculate the USD cost for a given token breakdown.
+       *
+       * Uses configured per-1k rates with reduced rates for cache operations:
+       *   - Input tokens:       full input rate
+       *   - Output tokens:      full output rate
+       *   - Cache read tokens:  10% of input rate
+       *   - Cache write tokens: 25% of input rate
+       *
+       * @param usage - Token counts to calculate cost for.
+       * @returns Total estimated cost in USD.
+       */
+      calculateCost(usage) {
+        const inputCost = (usage.input_tokens ?? 0) / 1e3 * this.costPer1kInput;
+        const outputCost = (usage.output_tokens ?? 0) / 1e3 * this.costPer1kOutput;
+        const cacheReadCost = (usage.cache_read_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
+        const cacheWriteCost = (usage.cache_write_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+        return inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      }
+    };
+    __name(findActiveJsonlFile, "findActiveJsonlFile");
+    __name(sessionIdFromPath, "sessionIdFromPath");
+    __name(resolveProjectsBaseDir, "resolveProjectsBaseDir");
+  }
+});
+
 // src/data/db-schema.ts
 function getSchemaVersion(db) {
   try {
@@ -1116,7 +1542,7 @@ var init_global_db = __esm({
 // src/data/db-init.ts
 import { mkdirSync as mkdirSync2, existsSync as existsSync8 } from "node:fs";
 import { join as join11, resolve as resolve2 } from "node:path";
-import { homedir as homedir3 } from "node:os";
+import { homedir as homedir4 } from "node:os";
 function ensureGlobalAnalyticsDir() {
   if (!existsSync8(ANALYTICS_DIR)) {
     mkdirSync2(ANALYTICS_DIR, { recursive: true });
@@ -1151,7 +1577,7 @@ var init_db_init = __esm({
   "src/data/db-init.ts"() {
     "use strict";
     init_global_db();
-    GOODVIBES_BASE = join11(homedir3(), ".claude", ".goodvibes");
+    GOODVIBES_BASE = join11(homedir4(), ".claude", ".goodvibes");
     ANALYTICS_DIR = join11(GOODVIBES_BASE, "analytics");
     DB_FILENAME = "analytics.db";
     _singleton = null;
@@ -1474,6 +1900,10 @@ function getManager() {
   }
   return _manager;
 }
+function normalizeTarget(target) {
+  if (target === "dashboard") return "full";
+  return target;
+}
 function buildCommand(target) {
   let distDir;
   if (typeof __dirname !== "undefined") {
@@ -1509,6 +1939,11 @@ Fallback mode: ${fallback}.
   const lines = [];
   for (const target of targets) {
     try {
+      if (manager.isPaneAlive(target)) {
+        manager.closePane(target);
+        lines.push(`Stopped ${target} dashboard (toggled off).`);
+        continue;
+      }
       const paneInfo = manager.createPane(target, buildCommand(target));
       if (input.options?.pane_size != null) {
         manager.resizePane(target, input.options.pane_size);
@@ -1518,7 +1953,7 @@ Fallback mode: ${fallback}.
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      lines.push(`Failed to start ${target} dashboard: ${message}`);
+      lines.push(`Failed to toggle ${target} dashboard: ${message}`);
     }
   }
   return text(lines.join("\n"));
@@ -1571,6 +2006,9 @@ function resolveTargets(target) {
       return ["mini"];
     case "full":
       return ["full"];
+    case "dashboard":
+      return ["full"];
+    // backward-compat safety (already normalized above)
     case "both":
       return ["mini", "full"];
     default: {
@@ -1589,18 +2027,23 @@ var init_dashboard = __esm({
     init_types2();
     _manager = null;
     __name(getManager, "getManager");
+    __name(normalizeTarget, "normalizeTarget");
     __name(buildCommand, "buildCommand");
     handleDashboard = /* @__PURE__ */ __name(async (_aggregator, input) => {
       try {
-        switch (input.action) {
+        const normalizedInput = {
+          ...input,
+          target: normalizeTarget(input.target)
+        };
+        switch (normalizedInput.action) {
           case "start":
-            return handleStart(input);
+            return handleStart(normalizedInput);
           case "stop":
-            return handleStop(input);
+            return handleStop(normalizedInput);
           case "status":
             return handleStatus();
           default: {
-            const _exhaustive = input.action;
+            const _exhaustive = normalizedInput.action;
             return text(`Unknown action: ${_exhaustive}`);
           }
         }
@@ -1714,6 +2157,46 @@ var init_format = __esm({
 });
 
 // src/handlers/query.ts
+function buildDataScopeNote(aggregator, input) {
+  try {
+    const agg = aggregator;
+    const db = agg.globalDb;
+    if (!db) return null;
+    const tags = input.filters?.tags ?? [];
+    const lines = [];
+    if (input.data_scope === "all_projects") {
+      const sessions = db.getAllSessions?.() ?? [];
+      const totalCost = db.getTotalCostAllProjects?.() ?? 0;
+      lines.push(
+        "=== Cross-Project Summary (GlobalDB) ===",
+        `Sessions: ${sessions.length}`,
+        `Total cost (all projects): ${formatDollars(totalCost)}`
+      );
+    } else if (input.data_scope === "tagged" && tags.length > 0) {
+      const sessions = db.getSessionsByTags?.(tags) ?? [];
+      lines.push(
+        `=== Tagged Sessions (${tags.join(", ")}) ===`,
+        `Sessions matching tags: ${sessions.length}`
+      );
+    } else if (input.data_scope === "current_project") {
+      const state = aggregator.getState();
+      const projectHash = deriveProjectHash(state.session_id);
+      if (projectHash) {
+        const sessions = db.getSessionsByProject?.(projectHash) ?? [];
+        lines.push(
+          "=== Current Project (GlobalDB) ===",
+          `Sessions for this project: ${sessions.length}`
+        );
+      }
+    }
+    return lines.length > 0 ? lines.join("\n") : null;
+  } catch {
+    return null;
+  }
+}
+function deriveProjectHash(_sessionId) {
+  return null;
+}
 function filterByTimeRange(events, timeRange) {
   if (timeRange === "session") return events;
   const cutoffMs = TIME_RANGE_MS[timeRange];
@@ -2003,13 +2486,24 @@ var init_query = __esm({
           state.tools_breakdown,
           input.filters?.tool
         );
-        const result = buildResponse(state, activity, toolsBreakdown, input);
-        return text(result);
+        const sessionResult = buildResponse(state, activity, toolsBreakdown, input);
+        if (input.data_scope && input.data_scope !== "current_session") {
+          const scopeNote = buildDataScopeNote(aggregator, input);
+          if (scopeNote) {
+            return text(`${scopeNote}
+
+--- Current Session ---
+${sessionResult}`);
+          }
+        }
+        return text(sessionResult);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return text(`analytics_query error: ${message}`);
       }
     }, "handleQuery");
+    __name(buildDataScopeNote, "buildDataScopeNote");
+    __name(deriveProjectHash, "deriveProjectHash");
     TIME_RANGE_MS = {
       last_5m: 5 * 60 * 1e3,
       last_30m: 30 * 60 * 1e3,
@@ -2178,8 +2672,8 @@ var init_budget = __esm({
 // src/data/tag-store.ts
 import { readFileSync as readFileSync7, existsSync as existsSync9, readdirSync as readdirSync3, statSync as statSync7 } from "node:fs";
 import { join as join13, resolve as resolve3 } from "node:path";
-import { homedir as homedir4 } from "node:os";
-function resolveJsonlPath(sessionId, jsonlBase = join13(homedir4(), ".claude", "projects")) {
+import { homedir as homedir5 } from "node:os";
+function resolveJsonlPath(sessionId, jsonlBase = join13(homedir5(), ".claude", "projects")) {
   const targetFile = `${sessionId}.jsonl`;
   if (!existsSync9(jsonlBase)) return null;
   try {
@@ -2749,11 +3243,16 @@ async function handleExport(aggregator, input, store) {
       const state = aggregator.getState();
       data = extractSections(state, sections);
       title = `Session Export \u2014 ${state.session_id}`;
-    } else if (input.scope === "historical") {
-      const archives = store.list();
+    } else if (input.scope === "historical" || input.scope === "all_projects") {
+      const allArchives = store.list();
+      const tags = input.tags ?? [];
+      const archives = tags.length > 0 ? allArchives.filter(
+        (a) => tags.some((t) => Array.isArray(a.tags) && a.tags.includes(t))
+      ) : allArchives;
       if (archives.length === 0) {
+        const tagNote = tags.length > 0 ? ` matching tags [${tags.join(", ")}]` : "";
         return {
-          content: [{ type: "text", text: "No historical sessions found." }]
+          content: [{ type: "text", text: `No historical sessions found${tagNote}.` }]
         };
       }
       const entries = {};
@@ -2859,24 +3358,53 @@ async function persistConfig(goodvibesDir, config) {
   await fs2.promises.mkdir(goodvibesDir, { recursive: true });
   await fs2.promises.writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
-async function handleConfig(_aggregator, input, config, goodvibesDir) {
+async function handleConfig(aggregator, input, config, goodvibesDir) {
   try {
     const configObj = config;
+    if (input.action === "reload") {
+      try {
+        const newConfig = loadConfig(goodvibesDir);
+        if (typeof aggregator.reloadConfig === "function") {
+          aggregator.reloadConfig(newConfig);
+          return {
+            content: [{
+              type: "text",
+              text: `Config hot-reloaded from disk and applied to the running aggregator.
+
+Loaded from: ${goodvibesDir}/analytics.json (or global config if present).`
+            }]
+          };
+        } else {
+          return {
+            content: [{
+              type: "text",
+              text: "Config reloaded from disk. Note: the running aggregator does not support hot-reload; restart to apply changes."
+            }]
+          };
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          content: [{ type: "text", text: `Config reload failed: ${message}` }]
+        };
+      }
+    }
     if (input.action === "get") {
       if (input.key) {
-        const value = getByPath(configObj, input.key);
+        const resolvedKey2 = resolveKeyAlias(input.key);
+        const value = getByPath(configObj, resolvedKey2);
         if (value === void 0) {
           return {
             content: [{
               type: "text",
-              text: `Config key not found: "${input.key}"`
+              text: `Config key not found: "${input.key}"${resolvedKey2 !== input.key ? ` (resolved alias: "${resolvedKey2}")` : ""}.`
             }]
           };
         }
         return {
           content: [{
             type: "text",
-            text: `${input.key} = ${JSON.stringify(value, null, 2)}`
+            text: `${resolvedKey2} = ${JSON.stringify(value, null, 2)}`
           }]
         };
       }
@@ -2897,25 +3425,26 @@ async function handleConfig(_aggregator, input, config, goodvibesDir) {
         content: [{ type: "text", text: 'analytics_config set: "value" is required.' }]
       };
     }
-    const existing = getByPath(configObj, input.key);
+    const resolvedKey = resolveKeyAlias(input.key);
+    const existing = getByPath(configObj, resolvedKey);
     if (existing === void 0) {
       return {
         content: [{
           type: "text",
-          text: `Config key not found: "${input.key}". Use "get" (no key) to list all valid keys.`
+          text: `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ""}. Use "get" (no key) to list all valid keys.`
         }]
       };
     }
     const updated = JSON.parse(JSON.stringify(config));
-    setByPath(updated, input.key, input.value);
+    setByPath(updated, resolvedKey, input.value);
     await persistConfig(goodvibesDir, updated);
     return {
       content: [{
         type: "text",
-        text: `Config updated: ${input.key} = ${JSON.stringify(input.value)}
+        text: `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}
 
 Persisted to ${path5.join(goodvibesDir, CONFIG_FILENAME)}.
-Restart the analytics daemon for changes to take effect.`
+Use action="reload" to apply changes to the running engine without restarting.`
       }]
     };
   } catch (err) {
@@ -2925,15 +3454,246 @@ Restart the analytics daemon for changes to take effect.`
     };
   }
 }
-var CONFIG_FILENAME;
+function resolveKeyAlias(key) {
+  return KEY_ALIASES[key] ?? key;
+}
+var CONFIG_FILENAME, KEY_ALIASES;
 var init_config2 = __esm({
   "src/handlers/config.ts"() {
     "use strict";
+    init_config();
     CONFIG_FILENAME = "analytics.json";
     __name(getByPath, "getByPath");
     __name(setByPath, "setByPath");
     __name(persistConfig, "persistConfig");
     __name(handleConfig, "handleConfig");
+    KEY_ALIASES = {
+      // 'full' -> 'dashboard' renames
+      "auto_start_full": "auto_start_dashboard",
+      "full_tui_refresh_rate_ms": "dashboard_refresh_rate_ms",
+      "tmux.full_pane_size": "tmux.dashboard_pane_size",
+      "tmux.full_position": "tmux.dashboard_position"
+    };
+    __name(resolveKeyAlias, "resolveKeyAlias");
+  }
+});
+
+// src/handlers/sync.ts
+import * as fs3 from "node:fs";
+import * as path6 from "node:path";
+import { homedir as homedir6 } from "node:os";
+function listProjectDirs(baseDir) {
+  try {
+    const expanded = baseDir.startsWith("~") ? path6.join(homedir6(), baseDir.slice(1)) : baseDir;
+    if (!fs3.existsSync(expanded)) return [];
+    const entries = fs3.readdirSync(expanded, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory()).map((e) => path6.join(expanded, e.name));
+  } catch {
+    return [];
+  }
+}
+function findProjectDirForSession(baseDir, sessionId) {
+  const dirs = listProjectDirs(baseDir);
+  for (const dir of dirs) {
+    try {
+      const files = fs3.readdirSync(dir);
+      if (files.some((f) => f === `${sessionId}.jsonl` || f.startsWith(sessionId))) {
+        return dir;
+      }
+    } catch {
+    }
+  }
+  return null;
+}
+function listJsonlFiles(projectDir) {
+  try {
+    const entries = fs3.readdirSync(projectDir);
+    return entries.filter((f) => f.endsWith(".jsonl")).map((f) => path6.join(projectDir, f));
+  } catch {
+    return [];
+  }
+}
+async function syncProjectDirs(db, reader, projectDirs) {
+  const results = {
+    files: [],
+    totalSynced: 0,
+    totalSkipped: 0,
+    totalErrors: 0,
+    totalNewRecords: 0
+  };
+  for (const dir of projectDirs) {
+    const jsonlFiles = listJsonlFiles(dir);
+    const projectHash = path6.basename(dir);
+    for (const filePath of jsonlFiles) {
+      const fileResult = await syncSingleFile(db, reader, filePath, projectHash);
+      results.files.push(fileResult);
+      switch (fileResult.status) {
+        case "synced":
+          results.totalSynced++;
+          results.totalNewRecords += fileResult.newRecords;
+          break;
+        case "skipped":
+          results.totalSkipped++;
+          break;
+        case "error":
+          results.totalErrors++;
+          break;
+      }
+    }
+  }
+  db.saveToDisk();
+  return results;
+}
+async function syncSingleFile(db, reader, filePath, projectHash) {
+  const sessionId = sessionIdFromPath(filePath);
+  try {
+    const syncState = db.getSyncState(filePath);
+    const fromOffset = syncState?.last_offset ?? 0;
+    const parseResult = await reader.parseFile(filePath, fromOffset);
+    const newRecordCount = parseResult.records.length;
+    if (newRecordCount === 0 && fromOffset > 0) {
+      return { filePath, sessionId, status: "skipped", newRecords: 0 };
+    }
+    const apiCalls = reader.extractApiCalls(parseResult.records);
+    const sessionInfo = reader.extractSessionInfo(parseResult.records);
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalCacheReadTokens = 0;
+    let totalCacheWriteTokens = 0;
+    let totalCostUsd = 0;
+    for (const call of apiCalls) {
+      totalInputTokens += call.input_tokens;
+      totalOutputTokens += call.output_tokens;
+      totalCacheReadTokens += call.cache_read_tokens;
+      totalCacheWriteTokens += call.cache_write_tokens;
+      totalCostUsd += call.cost_usd;
+    }
+    const lastActivityAt = sessionInfo.lastActivityAt;
+    const ageMs = Date.now() - new Date(lastActivityAt).getTime();
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1e3;
+    const isCompleted = ageMs > TWO_HOURS_MS;
+    const session = {
+      session_id: sessionId,
+      project_hash: projectHash,
+      started_at: sessionInfo.startedAt,
+      model: sessionInfo.model,
+      total_input_tokens: totalInputTokens,
+      total_output_tokens: totalOutputTokens,
+      total_cache_read_tokens: totalCacheReadTokens,
+      total_cache_write_tokens: totalCacheWriteTokens,
+      total_cost_usd: totalCostUsd,
+      total_api_calls: apiCalls.length,
+      total_tool_calls: 0,
+      // Not computable from sessionInfo alone
+      total_native_tool_calls: 0,
+      // Not computable without tool breakdown
+      total_precision_tool_calls: 0,
+      total_agent_spawns: 0,
+      tags: [],
+      status: isCompleted ? "completed" : "active",
+      ...isCompleted ? { ended_at: lastActivityAt } : {}
+    };
+    db.upsertSession(session);
+    if (apiCalls.length > 0) {
+      db.batchInsertApiCalls(apiCalls);
+    }
+    db.upsertSyncState({
+      jsonl_path: filePath,
+      session_id: sessionId,
+      last_offset: parseResult.newOffset,
+      last_synced_at: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    return { filePath, sessionId, status: "synced", newRecords: newRecordCount };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return { filePath, sessionId, status: "error", newRecords: 0, errorMessage };
+  }
+}
+function buildSyncReport(scope, projectCount, results) {
+  const lines = [
+    "=== Analytics Sync Complete ===",
+    `Scope:          ${scope === "all" ? "all projects" : "current project"}`,
+    `Projects:       ${projectCount}`,
+    `Files synced:   ${results.totalSynced}`,
+    `Files skipped:  ${results.totalSkipped} (already up to date)`,
+    `Errors:         ${results.totalErrors}`,
+    `New records:    ${results.totalNewRecords}`
+  ];
+  if (results.totalErrors > 0) {
+    lines.push("");
+    lines.push("Errors:");
+    for (const f of results.files.filter((r) => r.status === "error")) {
+      lines.push(`  ${path6.basename(f.filePath)}: ${f.errorMessage ?? "unknown error"}`);
+    }
+  }
+  if (results.totalSynced > 0 && results.files.length <= 20) {
+    lines.push("");
+    lines.push("Synced files:");
+    for (const f of results.files.filter((r) => r.status === "synced")) {
+      lines.push(`  ${path6.basename(f.filePath)} \u2014 ${f.newRecords} new records`);
+    }
+  } else if (results.totalSynced > 20) {
+    lines.push(
+      `
+(${results.totalSynced} files synced \u2014 use scope="current" for per-file details)`
+    );
+  }
+  return lines.join("\n");
+}
+var handleSync;
+var init_sync = __esm({
+  "src/handlers/sync.ts"() {
+    "use strict";
+    init_db_init();
+    init_jsonl_reader();
+    init_types();
+    init_types2();
+    handleSync = /* @__PURE__ */ __name(async (aggregator, input) => {
+      try {
+        const db = await initializeGlobalDb();
+        const aggregatorAny = aggregator;
+        const config = aggregatorAny["config"] ?? {};
+        const reader = new JSONLReader({
+          cost_per_1k_input_tokens: config.cost_per_1k_input_tokens ?? DEFAULT_CONFIG.cost_per_1k_input_tokens,
+          cost_per_1k_output_tokens: config.cost_per_1k_output_tokens ?? DEFAULT_CONFIG.cost_per_1k_output_tokens
+        });
+        const projectsBaseDir = resolveProjectsBaseDir();
+        let projectDirs;
+        if (input.scope === "current") {
+          const state = aggregator.getState();
+          const currentSessionId = state.session_id;
+          if (!currentSessionId) {
+            return text(
+              "No active session detected. Cannot determine current project directory."
+            );
+          }
+          const dir = findProjectDirForSession(projectsBaseDir, currentSessionId);
+          if (!dir) {
+            return text(
+              `No JSONL directory found for session ${currentSessionId} under ${projectsBaseDir}.
+Use scope="all" to scan all projects.`
+            );
+          }
+          projectDirs = [dir];
+        } else {
+          projectDirs = listProjectDirs(projectsBaseDir);
+          if (projectDirs.length === 0) {
+            return text(`No project directories found under ${projectsBaseDir}.`);
+          }
+        }
+        const results = await syncProjectDirs(db, reader, projectDirs);
+        return text(buildSyncReport(input.scope, projectDirs.length, results));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return text(`analytics_sync error: ${message}`);
+      }
+    }, "handleSync");
+    __name(listProjectDirs, "listProjectDirs");
+    __name(findProjectDirForSession, "findProjectDirForSession");
+    __name(listJsonlFiles, "listJsonlFiles");
+    __name(syncProjectDirs, "syncProjectDirs");
+    __name(syncSingleFile, "syncSingleFile");
+    __name(buildSyncReport, "buildSyncReport");
   }
 });
 
@@ -2946,6 +3706,7 @@ __export(handlers_exports, {
   handleDashboard: () => handleDashboard,
   handleExport: () => handleExport,
   handleQuery: () => handleQuery,
+  handleSync: () => handleSync,
   handleTag: () => handleTag
 });
 var HANDLER_REGISTRY;
@@ -2958,13 +3719,15 @@ var init_handlers = __esm({
     init_tag();
     init_export();
     init_config2();
+    init_sync();
     HANDLER_REGISTRY = {
       analytics_dashboard: handleDashboard,
       analytics_query: handleQuery,
       analytics_budget: handleBudget,
       analytics_tag: handleTag,
       analytics_export: handleExport,
-      analytics_config: handleConfig
+      analytics_config: handleConfig,
+      analytics_sync: handleSync
     };
   }
 });
@@ -2975,7 +3738,7 @@ init_config();
 
 // src/daemon/aggregator.ts
 import { join as join9, dirname as dirname3, basename as basename3 } from "node:path";
-import { homedir as homedir2 } from "node:os";
+import { homedir as homedir3 } from "node:os";
 import { existsSync as existsSync6, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
 
 // src/data/telemetry-reader.ts
@@ -3667,418 +4430,8 @@ function extToCategory(ext) {
 }
 __name(extToCategory, "extToCategory");
 
-// src/data/jsonl-reader.ts
-import { createReadStream, statSync as statSync3 } from "node:fs";
-import { stat, readdir } from "node:fs/promises";
-import { createInterface } from "node:readline";
-import { join as join5, basename } from "node:path";
-var CACHE_READ_COST_RATIO = 0.1;
-var CACHE_WRITE_COST_RATIO = 0.25;
-var JSONLReader = class {
-  static {
-    __name(this, "JSONLReader");
-  }
-  costPer1kInput;
-  costPer1kOutput;
-  /**
-   * @param config - Pricing config for cost calculation.
-   * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens.
-   * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens.
-   */
-  constructor(config) {
-    this.costPer1kInput = config.cost_per_1k_input_tokens;
-    this.costPer1kOutput = config.cost_per_1k_output_tokens;
-  }
-  // -------------------------------------------------------------------------
-  // Core parsing
-  // -------------------------------------------------------------------------
-  /**
-   * Parse a JSONL file from an optional byte offset.
-   *
-   * Uses readline for memory-efficient line-by-line reading. The byte offset
-   * enables incremental / tail-style reads: persist `result.newOffset` and
-   * pass it as `fromOffset` on the next call to read only new content.
-   *
-   * @param filePath   - Absolute path to the JSONL file.
-   * @param fromOffset - Byte offset to start reading from (default: 0).
-   * @returns Parsed records, new byte offset, and parse statistics.
-   */
-  async parseFile(filePath, fromOffset = 0) {
-    const errors = [];
-    const records = [];
-    let linesParsed = 0;
-    let linesSkipped = 0;
-    let byteOffset = fromOffset;
-    let fileSize;
-    try {
-      const fileStat = await stat(filePath);
-      fileSize = fileStat.size;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return {
-        records,
-        newOffset: fromOffset,
-        linesParsed: 0,
-        linesSkipped: 0,
-        errors: [`Failed to stat file "${filePath}": ${message}`]
-      };
-    }
-    if (fromOffset >= fileSize) {
-      return { records, newOffset: fromOffset, linesParsed: 0, linesSkipped: 0, errors };
-    }
-    const stream = createReadStream(filePath, { start: fromOffset, encoding: "utf8" });
-    const rl = createInterface({ input: stream, crlfDelay: Infinity });
-    let bytesConsumed = 0;
-    let lastValidOffset = fromOffset;
-    for await (const line of rl) {
-      const lineByteLength = Buffer.byteLength(line, "utf8") + 1;
-      const trimmed = line.trim();
-      if (trimmed === "") {
-        bytesConsumed += lineByteLength;
-        linesSkipped++;
-        continue;
-      }
-      linesParsed++;
-      const record = this.parseLine(trimmed);
-      if (record !== null) {
-        records.push(record);
-        bytesConsumed += lineByteLength;
-        lastValidOffset = fromOffset + bytesConsumed;
-      } else {
-        errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
-        bytesConsumed += lineByteLength;
-        lastValidOffset = fromOffset + bytesConsumed;
-        linesSkipped++;
-      }
-    }
-    byteOffset = lastValidOffset;
-    return {
-      records,
-      newOffset: byteOffset,
-      linesParsed,
-      linesSkipped,
-      errors
-    };
-  }
-  /**
-   * Parse an array of pre-split text lines.
-   *
-   * Useful for testing or when the caller has already split content.
-   * Skips empty lines silently.
-   *
-   * @param lines - Array of raw text lines (not yet JSON.parse'd).
-   * @returns Successfully parsed records (malformed lines silently dropped).
-   */
-  parseLines(lines) {
-    const records = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed === "") continue;
-      const record = this.parseLine(trimmed);
-      if (record !== null) records.push(record);
-    }
-    return records;
-  }
-  /**
-   * Parse a single JSON line into a JSONLRecord.
-   *
-   * Returns null on any parse failure (invalid JSON, missing type field,
-   * or unrecognised type value) — never throws.
-   *
-   * @param line - Single trimmed line of text from a JSONL file.
-   * @returns Parsed record, or null if the line is malformed or unrecognised.
-   */
-  parseLine(line) {
-    try {
-      const parsed = JSON.parse(line);
-      if (typeof parsed !== "object" || parsed === null) return null;
-      const record = parsed;
-      const type = record["type"];
-      if (type === "assistant") return record;
-      if (type === "user") return record;
-      if (type === "progress") return record;
-      if (type === "file-history-snapshot") return record;
-      return null;
-    } catch {
-      return null;
-    }
-  }
-  // -------------------------------------------------------------------------
-  // Extraction: ApiCallRecord
-  // -------------------------------------------------------------------------
-  /**
-   * Extract API call records from assistant JSONL records.
-   *
-   * Each assistant record represents one Claude API response. Token counts
-   * and cost are extracted from message.usage. Cost is calculated from
-   * configured rates (cost_usd is NOT present in the JSONL format).
-   *
-   * Cache tokens are costed at reduced rates:
-   *   - cache_read:  10% of input token cost (reading from cache is cheap)
-   *   - cache_write: 25% of input token cost (writing to cache has a premium)
-   *
-   * @param records - Parsed JSONL records to scan.
-   * @returns One ApiCallRecord per assistant record with usage data.
-   */
-  extractApiCalls(records) {
-    const results = [];
-    for (const record of records) {
-      if (record.type !== "assistant") continue;
-      const assistant = record;
-      const usage = assistant.message?.usage;
-      if (usage === void 0) continue;
-      const inputTokens = usage.input_tokens ?? 0;
-      const outputTokens = usage.output_tokens ?? 0;
-      const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
-      const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
-      if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
-      const inputCost = inputTokens / 1e3 * this.costPer1kInput;
-      const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
-      const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
-      const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
-      const totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
-      results.push({
-        session_id: assistant.sessionId ?? "",
-        timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
-        model: assistant.message?.model,
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        cache_read_tokens: cacheReadTokens,
-        cache_write_tokens: cacheWriteTokens,
-        cost_usd: totalCost,
-        duration_ms: 0,
-        // Not available in JSONL; may be filled in by progress record correlation.
-        stop_reason: assistant.message?.stop_reason
-      });
-    }
-    return results;
-  }
-  // -------------------------------------------------------------------------
-  // Extraction: ToolCallInfo
-  // -------------------------------------------------------------------------
-  /**
-   * Extract tool call information by correlating assistant tool_use blocks
-   * with their corresponding user tool_result blocks.
-   *
-   * Correlation is by tool_use_id (present in both the tool_use block and
-   * the tool_result block).
-   *
-   * @param records - Parsed JSONL records to scan.
-   * @returns One ToolCallInfo per tool_use block found in assistant records.
-   */
-  extractToolCalls(records) {
-    const results = [];
-    const resultMap = /* @__PURE__ */ new Map();
-    for (const record of records) {
-      if (record.type !== "user") continue;
-      const user = record;
-      const content = user.message?.content;
-      if (!Array.isArray(content)) continue;
-      for (const block of content) {
-        const b = block;
-        if (b?.type === "tool_result" && b.tool_use_id !== void 0) {
-          resultMap.set(b.tool_use_id, b);
-        }
-      }
-    }
-    for (const record of records) {
-      if (record.type !== "assistant") continue;
-      const assistant = record;
-      const content = assistant.message?.content;
-      if (!Array.isArray(content)) continue;
-      for (const block of content) {
-        const b = block;
-        if (b?.type !== "tool_use") continue;
-        if (b.id === void 0 || b.name === void 0) continue;
-        const result = resultMap.get(b.id);
-        results.push({
-          id: b.id,
-          name: b.name,
-          input: b.input ?? {},
-          sessionId: assistant.sessionId ?? "",
-          timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
-          assistantRecordUuid: assistant.uuid ?? "",
-          resultContent: result?.content,
-          isError: result?.is_error
-        });
-      }
-    }
-    return results;
-  }
-  // -------------------------------------------------------------------------
-  // Extraction: AgentActivityInfo
-  // -------------------------------------------------------------------------
-  /**
-   * Infer agent activity from JSONL records.
-   *
-   * Agent spawns are NOT explicit record types. They are inferred from assistant
-   * records containing tool_use blocks with name === 'Task'. Completion is
-   * inferred by the presence of a tool_result block for the Task tool_use_id.
-   *
-   * @param records - Parsed JSONL records to scan.
-   * @returns One AgentActivityInfo per Task tool_use block found.
-   */
-  extractAgentActivity(records) {
-    const taskCalls = this.extractToolCalls(records).filter((tc) => tc.name === "Task");
-    const resultTimestamps = /* @__PURE__ */ new Map();
-    for (const record of records) {
-      if (record.type !== "user") continue;
-      const user = record;
-      const content = user.message?.content;
-      if (!Array.isArray(content)) continue;
-      for (const block of content) {
-        const b = block;
-        if (b?.type === "tool_result" && b.tool_use_id !== void 0 && record.timestamp) {
-          resultTimestamps.set(b.tool_use_id, record.timestamp);
-        }
-      }
-    }
-    return taskCalls.map((tc) => ({
-      agentId: tc.id,
-      parentSessionId: tc.sessionId,
-      spawnedAt: tc.timestamp,
-      completedAt: resultTimestamps.get(tc.id),
-      taskInput: tc.input,
-      completed: tc.resultContent !== void 0,
-      exitStatus: tc.isError === true ? "error" : tc.resultContent !== void 0 ? "success" : void 0
-    }));
-  }
-  // -------------------------------------------------------------------------
-  // Extraction: SessionInfo
-  // -------------------------------------------------------------------------
-  /**
-   * Extract session-level summary information from a set of JSONL records.
-   *
-   * Uses the first record for session ID, cwd, and git branch.
-   * Scans all records to find the earliest and latest timestamps.
-   * Model comes from the first assistant record.
-   *
-   * @param records - All parsed records for a session.
-   * @returns Session summary, or a stub with empty strings if no records are provided.
-   */
-  extractSessionInfo(records) {
-    if (records.length === 0) {
-      return {
-        sessionId: "",
-        model: "unknown",
-        startedAt: (/* @__PURE__ */ new Date()).toISOString(),
-        lastActivityAt: (/* @__PURE__ */ new Date()).toISOString(),
-        cwd: "",
-        gitBranch: "",
-        version: ""
-      };
-    }
-    const first = records[0];
-    let model = "unknown";
-    let startedAt = first.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
-    let lastActivityAt = startedAt;
-    for (const record of records) {
-      if (record.timestamp !== void 0 && record.timestamp < startedAt) {
-        startedAt = record.timestamp;
-      }
-      if (record.timestamp !== void 0 && record.timestamp > lastActivityAt) {
-        lastActivityAt = record.timestamp;
-      }
-      if (model === "unknown" && record.type === "assistant") {
-        const assistantRecord = record;
-        const m = assistantRecord.message?.model;
-        if (m !== void 0 && m !== "") model = m;
-      }
-    }
-    return {
-      sessionId: first.sessionId ?? "",
-      model,
-      startedAt,
-      lastActivityAt,
-      cwd: first.cwd ?? "",
-      gitBranch: first.gitBranch ?? "",
-      version: first.version ?? ""
-    };
-  }
-  // -------------------------------------------------------------------------
-  // Extraction: PrecisionToolTiming
-  // -------------------------------------------------------------------------
-  /**
-   * Extract precision tool timing data from JSONL progress records.
-   *
-   * Only 'completed' progress records contain elapsedTimeMs — 'started'
-   * records are ignored since we only need the total duration.
-   *
-   * @param records - Parsed JSONL records to scan.
-   * @returns One PrecisionToolTiming per completed progress event.
-   */
-  extractPrecisionToolTimings(records) {
-    const results = [];
-    for (const record of records) {
-      if (record.type !== "progress") continue;
-      const progress = record;
-      const data = progress.data;
-      if (data?.status !== "completed") continue;
-      if (data.elapsedTimeMs === void 0) continue;
-      if (progress.toolUseID === void 0) continue;
-      results.push({
-        toolUseId: progress.toolUseID,
-        serverName: data.serverName ?? "",
-        toolName: data.toolName ?? "",
-        elapsedTimeMs: data.elapsedTimeMs,
-        sessionId: progress.sessionId ?? "",
-        timestamp: progress.timestamp ?? (/* @__PURE__ */ new Date()).toISOString()
-      });
-    }
-    return results;
-  }
-  // -------------------------------------------------------------------------
-  // Cost calculation helper
-  // -------------------------------------------------------------------------
-  /**
-   * Calculate the USD cost for a given token breakdown.
-   *
-   * Uses configured per-1k rates with reduced rates for cache operations:
-   *   - Input tokens:       full input rate
-   *   - Output tokens:      full output rate
-   *   - Cache read tokens:  10% of input rate
-   *   - Cache write tokens: 25% of input rate
-   *
-   * @param usage - Token counts to calculate cost for.
-   * @returns Total estimated cost in USD.
-   */
-  calculateCost(usage) {
-    const inputCost = (usage.input_tokens ?? 0) / 1e3 * this.costPer1kInput;
-    const outputCost = (usage.output_tokens ?? 0) / 1e3 * this.costPer1kOutput;
-    const cacheReadCost = (usage.cache_read_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
-    const cacheWriteCost = (usage.cache_write_tokens ?? 0) / 1e3 * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
-    return inputCost + outputCost + cacheReadCost + cacheWriteCost;
-  }
-};
-async function findActiveJsonlFile(projectDir) {
-  let entries;
-  try {
-    entries = await readdir(projectDir);
-  } catch {
-    return null;
-  }
-  const jsonlFiles = entries.filter((e) => e.endsWith(".jsonl"));
-  if (jsonlFiles.length === 0) return null;
-  let latestPath = null;
-  let latestMtime = 0;
-  for (const file of jsonlFiles) {
-    const fullPath = join5(projectDir, file);
-    try {
-      const s = statSync3(fullPath);
-      if (s.mtimeMs > latestMtime) {
-        latestMtime = s.mtimeMs;
-        latestPath = fullPath;
-      }
-    } catch {
-    }
-  }
-  return latestPath;
-}
-__name(findActiveJsonlFile, "findActiveJsonlFile");
-function sessionIdFromPath(jsonlPath) {
-  return basename(jsonlPath, ".jsonl");
-}
-__name(sessionIdFromPath, "sessionIdFromPath");
+// src/daemon/aggregator.ts
+init_jsonl_reader();
 
 // src/daemon/anomaly-detector.ts
 var DEFAULT_LOGGER = {
@@ -4781,6 +5134,7 @@ import { watch as watch2, existsSync as existsSync5, statSync as statSync5 } fro
 import { join as join8, dirname as dirname2, basename as basename2 } from "node:path";
 
 // src/data/jsonl-watcher.ts
+init_jsonl_reader();
 import { EventEmitter } from "node:events";
 import { watch, existsSync as existsSync4, statSync as statSync4 } from "node:fs";
 import { join as join7 } from "node:path";
@@ -4928,12 +5282,12 @@ var JSONLWatcher = class extends EventEmitter {
   async switchToSession(jsonlPath) {
     const newSessionId = sessionIdFromPath(jsonlPath);
     if (this.activeSessionPath !== null && this.activeSessionPath !== jsonlPath) {
-      for (const [path6, watched] of this.watchedFiles.entries()) {
+      for (const [path7, watched] of this.watchedFiles.entries()) {
         try {
           watched.handle.close();
         } catch {
         }
-        this.watchedFiles.delete(path6);
+        this.watchedFiles.delete(path7);
       }
       this.emit("session-change", newSessionId);
     }
@@ -5500,7 +5854,7 @@ function toolToActivityType(tool) {
 }
 __name(toolToActivityType, "toolToActivityType");
 function resolveJsonlProjectDir(goodvibesDir, jsonlBasePath) {
-  const expandedBase = jsonlBasePath.startsWith("~") ? join9(homedir2(), jsonlBasePath.slice(1)) : jsonlBasePath;
+  const expandedBase = jsonlBasePath.startsWith("~") ? join9(homedir3(), jsonlBasePath.slice(1)) : jsonlBasePath;
   if (!existsSync6(expandedBase)) return null;
   let entries;
   try {
@@ -6155,8 +6509,8 @@ var Aggregator = class _Aggregator {
         }
       }
     }
-    const hotspots = Array.from(fileStats.entries()).map(([path6, stat2]) => ({
-      path: path6,
+    const hotspots = Array.from(fileStats.entries()).map(([path7, stat2]) => ({
+      path: path7,
       reads: stat2.reads,
       writes: stat2.writes,
       conflicts: stat2.conflicts,
@@ -6329,22 +6683,36 @@ init_db_init();
 import { z } from "zod";
 var AnalyticsDashboardInput = z.object({
   action: z.enum(["start", "stop", "status"]),
-  target: z.enum(["mini", "full", "both"]).default("both"),
+  /**
+   * Target dashboard to operate on.
+   * 'dashboard' is the current name for the full TUI pane; 'full' is accepted
+   * as a backward-compatible alias.
+   */
+  target: z.enum(["mini", "full", "dashboard", "both"]).default("both"),
   options: z.object({
     pane_position: z.enum(["bottom", "top", "left", "right"]).optional(),
     pane_size: z.union([z.number(), z.string()]).optional()
   }).optional()
 });
 var AnalyticsQueryInput = z.object({
+  /** The data domain to query within the current session. */
   scope: z.enum(["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"]),
   time_range: z.enum(["session", "last_5m", "last_30m", "last_1h"]).default("session"),
   group_by: z.enum(["tool", "agent", "file", "status"]).optional(),
   filters: z.object({
     tool: z.string().optional(),
     status: z.enum(["success", "failed", "partial"]).optional(),
-    agent: z.string().optional()
+    agent: z.string().optional(),
+    /** Filter activity events by one or more session tags. */
+    tags: z.array(z.string()).optional()
   }).optional(),
-  format: z.enum(["standard", "minimal", "verbose"]).default("standard")
+  format: z.enum(["standard", "minimal", "verbose"]).default("standard"),
+  /**
+   * Cross-project scope: which set of sessions to include.
+   * Defaults to 'current_session'. Use 'all_projects' to aggregate across
+   * all GlobalDB sessions, or 'tagged' to filter by tags.
+   */
+  data_scope: z.enum(["current_session", "current_project", "all_projects", "tagged"]).default("current_session")
 });
 var AnalyticsBudgetInput = z.object({
   action: z.enum(["set", "check", "clear"]),
@@ -6367,26 +6735,39 @@ var AnalyticsTagInput = z.object({
 );
 var AnalyticsExportInput = z.object({
   format: z.enum(["json", "csv", "markdown"]),
-  scope: z.string().regex(/^(current|historical|session:[a-f0-9]+)$/, 'Must be "current", "historical", or "session:<id>"').default("current"),
+  scope: z.string().regex(
+    /^(current|historical|all_projects|session:[a-f0-9-]+)$/,
+    'Must be "current", "historical", "all_projects", or "session:<id>"'
+  ).default("current"),
   sections: z.array(
     z.enum(["tokens", "cache", "commands", "agents", "files", "cost", "timeline"])
   ).optional(),
-  output_path: z.string().optional()
+  output_path: z.string().optional(),
+  /** Filter exported sessions by tags (applies to historical and all_projects scopes). */
+  tags: z.array(z.string()).optional()
 });
 var AnalyticsConfigInput = z.object({
-  action: z.enum(["get", "set"]),
+  action: z.enum(["get", "set", "reload"]),
   key: z.string().optional(),
   value: z.unknown().optional()
+});
+var AnalyticsSyncInput = z.object({
+  /**
+   * Scope of the sync operation.
+   * - 'current': sync only the current project's JSONL files.
+   * - 'all': sync ALL projects discovered under ~/.claude/projects/.
+   */
+  scope: z.enum(["current", "all"]).default("current")
 });
 var TOOL_DEFINITIONS = {
   analytics_dashboard: {
     name: "analytics_dashboard",
-    description: "Launch, stop, or check status of the analytics TUI and mini dashboard. The mini dashboard is a 4-line always-on tmux pane showing session metrics. The full TUI is a 3-page interactive dashboard.",
+    description: 'Launch, stop, or check status of the analytics TUI and mini dashboard. The mini dashboard is a 4-line always-on tmux pane showing session metrics. The full TUI (target="dashboard") is a 3-page interactive dashboard. Calling start on a running target toggles it off (stop); calling stop on a stopped target is a no-op.',
     inputSchema: AnalyticsDashboardInput
   },
   analytics_query: {
     name: "analytics_query",
-    description: "Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, or project metrics. Supports time ranges, grouping, and filtering.",
+    description: "Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope.",
     inputSchema: AnalyticsQueryInput
   },
   analytics_budget: {
@@ -6401,13 +6782,18 @@ var TOOL_DEFINITIONS = {
   },
   analytics_export: {
     name: "analytics_export",
-    description: "Export session data in JSON, CSV, or markdown format. Can export current session, a specific historical session, or all historical data.",
+    description: 'Export session data in JSON, CSV, or markdown format. Supports current session, a specific historical session, all historical data, or all projects (scope="all_projects"). Filter by tags.',
     inputSchema: AnalyticsExportInput
   },
   analytics_config: {
     name: "analytics_config",
-    description: "View or update analytics engine settings like refresh rates, cost rates, webhook URLs, and anomaly detection.",
+    description: 'View, update, or reload analytics engine settings. Supports dot-notation keys. Use action="reload" to hot-reload configuration from disk without restarting.',
     inputSchema: AnalyticsConfigInput
+  },
+  analytics_sync: {
+    name: "analytics_sync",
+    description: 'Sync Claude JSONL session files into the global analytics SQLite database. Use scope="current" to sync the current project, or scope="all" to sync all projects discovered under ~/.claude/projects/. Supports incremental sync via byte-offset tracking.',
+    inputSchema: AnalyticsSyncInput
   }
 };
 
@@ -6418,7 +6804,8 @@ var SCHEMA_MAP = {
   analytics_budget: AnalyticsBudgetInput,
   analytics_tag: AnalyticsTagInput,
   analytics_export: AnalyticsExportInput,
-  analytics_config: AnalyticsConfigInput
+  analytics_config: AnalyticsConfigInput,
+  analytics_sync: AnalyticsSyncInput
 };
 function getToolDefinitions() {
   return Object.values(TOOL_DEFINITIONS).map((def) => ({
