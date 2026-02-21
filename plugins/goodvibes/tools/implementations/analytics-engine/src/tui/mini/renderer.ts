@@ -174,7 +174,9 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     ? state.session_id.slice(0, SESSION_ID_LENGTH)
     : 'no-session';
 
-  const uptime = formatUptimeProgressive(state.uptime_ms);
+  // Compute uptime live from Date.now() so it ticks independently of aggregator refreshes
+  const startMs = state.started_at ? new Date(state.started_at).getTime() : Date.now();
+  const uptime = formatUptimeProgressive(Date.now() - startMs);
 
   // Session cost in dollars (from cost metrics)
   const sessionCost = formatDollars(cost.total ?? 0);
