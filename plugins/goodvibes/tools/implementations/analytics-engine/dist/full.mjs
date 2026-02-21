@@ -53984,6 +53984,9 @@ var Aggregator = class _Aggregator {
       cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
       cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
+    tokens.total = tokens.api_input + tokens.api_output;
+    tokens.saved = tokens.cache_read;
+    tokens.efficiency = tokens.total > 0 ? tokens.saved / tokens.total * 100 : 0;
     const cache3 = this.buildCacheMetrics(
       telemetrySummary,
       tokens.cache_read,
@@ -54069,6 +54072,29 @@ var Aggregator = class _Aggregator {
           createdFiles++;
         } else if (toolName === "edit" || toolName === "precision_edit") {
           uniqueReadFiles.add(inputPath);
+        }
+      }
+      if (toolName === "precision_read" || toolName === "precision_write") {
+        const filesArr = tc.input["files"];
+        if (Array.isArray(filesArr)) {
+          for (const f of filesArr) {
+            const p = typeof f === "object" && f !== null && typeof f["path"] === "string" ? f["path"] : null;
+            if (p) {
+              if (toolName === "precision_read") uniqueReadFiles.add(p);
+              else createdFiles++;
+            }
+          }
+        }
+      } else if (toolName === "precision_edit") {
+        const editsArr = tc.input["edits"];
+        if (Array.isArray(editsArr)) {
+          for (const e of editsArr) {
+            if (typeof e === "object" && e !== null) {
+              const editRec = e;
+              const p = typeof editRec["path"] === "string" ? editRec["path"] : typeof editRec["file"] === "string" ? editRec["file"] : null;
+              if (p) uniqueReadFiles.add(p);
+            }
+          }
         }
       }
     }

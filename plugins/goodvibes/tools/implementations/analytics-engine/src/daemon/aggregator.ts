@@ -839,6 +839,12 @@ export class Aggregator {
       cache_write: hasJsonlData ? jsonl.cache_write : (tokenMetrics?.cache_write ?? 0),
     };
 
+    // Compute derived token fields from the populated api_input/api_output/cache_read values.
+    // These were previously left as 0; now we derive them from the real data above.
+    tokens.total = tokens.api_input + tokens.api_output;
+    tokens.saved = tokens.cache_read; // tokens served from cache = savings
+    tokens.efficiency = tokens.total > 0 ? (tokens.saved / tokens.total) * 100 : 0;
+
     // Precision token fields stay at 0 when telemetry.db has no data.
     // API data is shown separately in the "API TOKENS (JSONL)" dashboard section.
 
@@ -955,6 +961,35 @@ export class Aggregator {
           createdFiles++;
         } else if (toolName === 'edit' || toolName === 'precision_edit') {
           uniqueReadFiles.add(inputPath);  // Edits modify existing files
+        }
+      }
+      // Handle precision batch tools: precision_read / precision_write use a files[] array.
+      if (toolName === 'precision_read' || toolName === 'precision_write') {
+        const filesArr = tc.input['files'];
+        if (Array.isArray(filesArr)) {
+          for (const f of filesArr as unknown[]) {
+            const p = typeof f === 'object' && f !== null && typeof (f as Record<string, unknown>)['path'] === 'string'
+              ? (f as Record<string, unknown>)['path'] as string
+              : null;
+            if (p) {
+              if (toolName === 'precision_read') uniqueReadFiles.add(p);
+              else createdFiles++;
+            }
+          }
+        }
+      } else if (toolName === 'precision_edit') {
+        // precision_edit uses an edits[] array, each item has 'path' or 'file'.
+        const editsArr = tc.input['edits'];
+        if (Array.isArray(editsArr)) {
+          for (const e of editsArr as unknown[]) {
+            if (typeof e === 'object' && e !== null) {
+              const editRec = e as Record<string, unknown>;
+              const p = typeof editRec['path'] === 'string'
+                ? editRec['path'] as string
+                : typeof editRec['file'] === 'string' ? editRec['file'] as string : null;
+              if (p) uniqueReadFiles.add(p);
+            }
+          }
         }
       }
     }
