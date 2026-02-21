@@ -251,21 +251,21 @@ describe('MiniRenderer', () => {
   describe('data field presence', () => {
     beforeEach(() => setColumns(80));
 
-    it('line 1 contains the word "analytics"', () => {
+    it('line 1 contains the text "GoodVibes Analytics"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('analytics');
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('GoodVibes Analytics');
     });
 
-    it('line 1 contains the session ID (first 8 chars)', () => {
+    it('line 1 contains the session ID prefixed with "Session ID: " (first 8 chars)', () => {
       const output = renderer.render(createMockState());
       // 'test-session-abc'.slice(0, 8) = 'test-ses'
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('test-ses');
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('Session ID: test-ses');
     });
 
-    it('line 1 contains uptime value', () => {
+    it('line 1 contains uptime value prefixed with "Uptime: "', () => {
       const output = renderer.render(createMockState());
       // uptime_ms: 65_000 -> "00h01m05s" (formatUptimeProgressive)
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('00h01m05s');
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('Uptime: 00h01m05s');
     });
 
     it('line 2 contains "Context:" (context window percentage)', () => {
@@ -290,32 +290,32 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[2]!)).toContain('Saved');
     });
 
-    it('line 2 contains "Cache Read:" (cache read tokens)', () => {
+    it('line 2 contains "API Cache Read:" (cache read tokens)', () => {
       // All sections visible at MIN_WIDTH=160
       setColumns(160);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cache Read:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Cache Read:');
     });
 
-    it('line 2 contains "Cache Write:" (cache write tokens)', () => {
+    it('line 2 contains "API Cache Write:" (cache write tokens)', () => {
       // 6 sections on line 2 need 200+ cols to all be visible
       setColumns(200);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cache Write:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Cache Write:');
     });
 
-    it('line 3 contains "Tokens Saved:" (precision savings label)', () => {
+    it('line 3 contains "GoodVibes - Tokens Saved:" (precision savings label)', () => {
       // All sections visible at MIN_WIDTH=160
       setColumns(160);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('Tokens Saved:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('GoodVibes - Tokens Saved:');
     });
 
-    it('line 3 contains "Cache Hit:" (cache hit rate)', () => {
+    it('line 3 contains "GoodVibes Cache Hit:" (cache hit rate)', () => {
       // 5 sections on line 3 need 200+ cols to all be visible
       setColumns(200);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('Cache Hit:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('GoodVibes Cache Hit:');
     });
 
     it('line 3 contains "Agents:"', () => {
@@ -333,16 +333,16 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[2]!)).toContain('Commands:');
     });
 
-    it('line 2 contains "Cost:" (API-level session cost)', () => {
+    it('line 2 contains "API Cost:" (API-level session cost)', () => {
       // All 5 line-2 sections fit at 200 cols (5×32 + 4 separators×5 + 2 padding + 2 borders = 184 needed)
       setColumns(200);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cost:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Cost:');
     });
 
-    it('line 3 does not contain "Cost:"', () => {
+    it('line 3 does not contain "API Cost:"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).not.toContain('Cost:');
+      expect(stripAnsi(output.split('\n')[2]!)).not.toContain('API Cost:');
     });
   });
 
