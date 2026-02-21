@@ -348,8 +348,7 @@ export class MiniRenderer {
     // ── Line 1: Header — session ID, uptime, session cost ──────────────────────────
     const headerContent =
       ` GoodVibes Analytics ${ansi.dim}\u2500${ansi.reset} Session ID: ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
-      ` Uptime: ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
-      ` ${ansi.bold}${m.sessionCost}${ansi.reset} `;
+      ` Uptime: ${m.uptime} `;
 
     // Build the header line: \u250c {content} {filler dashes} \u2510
     const headerVisible = visibleLength(headerContent);
@@ -434,7 +433,7 @@ export class MiniRenderer {
       sectionWidth,
     );
     const cacheHitSection = padSection(
-      `GoodVibes Cache Hit: ${m.cacheHitRate}`,
+      `GoodVibes - Cache Hit: ${m.cacheHitRate}`,
       sectionWidth,
     );
 

@@ -215,7 +215,7 @@ export function formatDelta(current: number, baseline: number): string {
  * Hours always have leading zero when < 10. Minutes and seconds always 2 digits.
  */
 export function formatUptimeProgressive(ms: number): string {
-  if (!isFinite(ms) || ms < 0) return '00h00m00s';
+  if (!isFinite(ms) || ms < 0) return '00h 00m 00s';
 
   const totalSeconds = Math.floor(ms / 1_000);
   const totalMinutes = Math.floor(totalSeconds / 60);
@@ -231,13 +231,13 @@ export function formatUptimeProgressive(ms: number): string {
 
   // Under 24 hours
   if (totalDays < 1) {
-    return `${hh}h${mm}m${ss}s`;
+    return `${hh}h ${mm}m ${ss}s`;
   }
 
   // 1–6 days: show days + hours + minutes, drop seconds
   if (totalDays < 7) {
     const d  = totalDays;
-    return `${d}d ${hh}h${mm}m`;
+    return `${d}d ${hh}h ${mm}m`;
   }
 
   // 1–3 weeks: show weeks + days + hours, drop minutes

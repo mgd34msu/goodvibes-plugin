@@ -264,8 +264,8 @@ describe('MiniRenderer', () => {
 
     it('line 1 contains uptime value prefixed with "Uptime: "', () => {
       const output = renderer.render(createMockState());
-      // uptime_ms: 65_000 -> "00h01m05s" (formatUptimeProgressive)
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('Uptime: 00h01m05s');
+      // uptime_ms: 65_000 -> "00h 01m 05s" (formatUptimeProgressive)
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('Uptime: 00h 01m 05s');
     });
 
     it('line 2 contains "Context:" (context window percentage)', () => {
@@ -315,7 +315,7 @@ describe('MiniRenderer', () => {
       // 5 sections on line 3 need 200+ cols to all be visible
       setColumns(200);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('GoodVibes Cache Hit:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('GoodVibes - Cache Hit:');
     });
 
     it('line 3 contains "Agents:"', () => {
@@ -453,11 +453,11 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[0]!)).not.toContain('budget:');
     });
 
-    it('when budget is set, header still shows session cost', () => {
+    it('when budget is set, header does not show session cost (cost removed from header)', () => {
       const state = createMockState({ budget });
       const output = renderer.render(state);
-      // Cost is always in the header regardless of budget
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('$0.05');
+      // Cost was removed from header line 1
+      expect(stripAnsi(output.split('\n')[0]!)).not.toContain('$0.05');
     });
 
     it('when budget is set, header renders 4 lines without crashing', () => {
@@ -466,11 +466,11 @@ describe('MiniRenderer', () => {
       expect(output.split('\n')).toHaveLength(4);
     });
 
-    it('when budget is null, header shows session cost', () => {
+    it('when budget is null, header does not show session cost (cost removed from header)', () => {
       const state = createMockState({ budget: null });
       const output = renderer.render(state);
-      // cost.total: 0.0525 -> "$0.0525"
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('$0.05');
+      // Cost was removed from header line 1
+      expect(stripAnsi(output.split('\n')[0]!)).not.toContain('$0.05');
     });
 
     it('when budget is null, header does not show "budget:"', () => {
