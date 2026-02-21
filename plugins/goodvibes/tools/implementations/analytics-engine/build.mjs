@@ -88,7 +88,7 @@ async function build() {
     await esbuild.build({
       ...sharedOptions,
       format: 'esm',
-      banner: { js: "import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);" },
+      banner: { js: "import { createRequire as __createRequire } from 'module'; import { fileURLToPath as __fileURLToPath } from 'url'; import { dirname as __dirnameFn } from 'path'; const require = __createRequire(import.meta.url); const __filename = __fileURLToPath(import.meta.url); const __dirname = __dirnameFn(__filename);" },
       external: [],
       entryPoints: [join(__dirname, 'src/full.ts')],
       outfile: join(__dirname, 'dist/full.mjs'),
@@ -100,7 +100,7 @@ async function build() {
     await esbuild.build({
       ...sharedOptions,
       format: 'esm',
-      banner: { js: "import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);" },
+      banner: { js: "import { createRequire as __createRequire } from 'module'; import { fileURLToPath as __fileURLToPath } from 'url'; import { dirname as __dirnameFn } from 'path'; const require = __createRequire(import.meta.url); const __filename = __fileURLToPath(import.meta.url); const __dirname = __dirnameFn(__filename);" },
       external: [],
       entryPoints: [join(__dirname, 'src/dashboard.ts')],
       outfile: join(__dirname, 'dist/dashboard.mjs'),
