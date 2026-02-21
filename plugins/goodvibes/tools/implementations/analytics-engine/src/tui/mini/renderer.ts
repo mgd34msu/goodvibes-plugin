@@ -445,7 +445,7 @@ export class MiniRenderer {
       sectionWidth,
     );
     const precSection = padSection(
-      `Precision: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
+      `Prec: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
       sectionWidth,
     );
 

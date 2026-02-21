@@ -230,7 +230,7 @@ export class ReportGenerator {
     );
 
     return [
-      '## Token Usage',
+      '## Precision Token Usage',
       '',
       '| Metric | Value |',
       '|--------|-------|',
@@ -239,6 +239,15 @@ export class ReportGenerator {
       `| Total | ${formatNumber(tokens.total)} |`,
       `| Saved | ${formatNumber(tokens.saved)} |`,
       `| Efficiency | ${efficiencyLabel} |`,
+      '',
+      '## API Token Usage',
+      '',
+      '| Metric | Value |',
+      '|--------|-------|',
+      `| API Input | ${formatNumber(tokens.api_input)} |`,
+      `| API Output | ${formatNumber(tokens.api_output)} |`,
+      `| Cache Read | ${formatNumber(tokens.cache_read)} |`,
+      `| Cache Write | ${formatNumber(tokens.cache_write)} |`,
     ].join('\n');
   }
 
@@ -259,7 +268,7 @@ export class ReportGenerator {
   private renderCachePerformance(metrics: SessionMetrics): string {
     const { cache } = metrics;
     return [
-      '## Cache Performance',
+      '## Precision Cache Performance',
       '',
       '| Metric | Value |',
       '|--------|-------|',

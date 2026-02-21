@@ -313,15 +313,21 @@ function buildBody(
 function renderTokens(state: DashboardState, format: AnalyticsQueryInput['format']): string {
   const { tokens } = state.metrics;
   if (format === 'minimal') {
-    return `tokens: in=${formatNumber(tokens.input)} out=${formatNumber(tokens.output)} saved=${formatNumber(tokens.saved)} eff=${formatPercent(tokens.efficiency)}`;
+    return `precision-tokens: in=${formatNumber(tokens.input)} out=${formatNumber(tokens.output)} saved=${formatNumber(tokens.saved)} eff=${formatPercent(tokens.efficiency)} | api: in=${formatNumber(tokens.api_input)} out=${formatNumber(tokens.api_output)} cache-read=${formatNumber(tokens.cache_read)}`;
   }
   const lines = [
-    '=== Tokens ===',
+    '=== Precision Token Metrics ===',
     `Input:      ${formatNumber(tokens.input)}`,
     `Output:     ${formatNumber(tokens.output)}`,
     `Total:      ${formatNumber(tokens.total)}`,
     `Saved:      ${formatNumber(tokens.saved)}`,
     `Efficiency: ${formatPercent(tokens.efficiency)}`,
+    '',
+    '--- API Token Usage ---',
+    `API Input:   ${formatNumber(tokens.api_input)}`,
+    `API Output:  ${formatNumber(tokens.api_output)}`,
+    `Cache Read:  ${formatNumber(tokens.cache_read)}`,
+    `Cache Write: ${formatNumber(tokens.cache_write)}`,
   ];
   if (format === 'verbose') {
     lines.push(`Raw input:  ${tokens.input}`);
@@ -335,10 +341,10 @@ function renderTokens(state: DashboardState, format: AnalyticsQueryInput['format
 function renderCache(state: DashboardState, format: AnalyticsQueryInput['format']): string {
   const { cache } = state.metrics;
   if (format === 'minimal') {
-    return `cache: hit_rate=${formatPercent(cache.hit_rate)} hits=${formatNumber(cache.hits)} misses=${formatNumber(cache.misses)}`;
+    return `precision-cache: hit_rate=${formatPercent(cache.hit_rate)} hits=${formatNumber(cache.hits)} misses=${formatNumber(cache.misses)}`;
   }
   const lines = [
-    '=== Cache ===',
+    '=== Precision Cache ===',
     `Hit rate: ${formatPercent(cache.hit_rate)}`,
     `Hits:     ${formatNumber(cache.hits)}`,
     `Misses:   ${formatNumber(cache.misses)}`,

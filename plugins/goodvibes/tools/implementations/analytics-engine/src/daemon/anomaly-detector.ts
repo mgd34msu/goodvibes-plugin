@@ -124,7 +124,7 @@ const cacheDegradationRule: AnomalyRule = {
   type: 'cache_degradation',
   severity: 'warning',
   windowMs: WINDOW_5_MIN,
-  description: 'Cache hit rate dropped >15% vs session average in a 5-min window',
+  description: 'Precision cache hit rate dropped >15pp vs session average in a 5-min window',
   check(telemetry, state) {
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
     if (windowRecords.length === 0) return null;

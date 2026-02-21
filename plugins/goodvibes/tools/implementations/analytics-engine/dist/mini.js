@@ -4192,7 +4192,7 @@ var MiniRenderer = class {
       sectionWidth
     );
     const precSection = padSection(
-      `Prec: ${m.tokensSaved} saved (${m.cacheHitRate} P$hit)`,
+      `Prec: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
       sectionWidth
     );
     const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);

@@ -297,11 +297,11 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[1]!)).toContain('API Cache:');
     });
 
-    it('line 3 contains "Precision:" (precision savings label)', () => {
+    it('line 3 contains "Prec:" (precision savings label)', () => {
       // All sections visible at MIN_WIDTH=160
       setColumns(160);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('Precision:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Prec:');
     });
 
     it('line 3 contains "Agents:"', () => {
@@ -494,7 +494,7 @@ describe('MiniRenderer', () => {
       // Precision section visible at MIN_WIDTH=160
       setColumns(160);
       const state = createMockState({
-        // saved tokens are shown in the Precision: section
+        // saved tokens are shown in the Prec: section
         metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 75_000, efficiency: 0.4, api_input: 50_000, api_output: 25_000, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
