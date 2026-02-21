@@ -129,10 +129,11 @@ export class DataWatcher extends EventEmitter {
       this.jsonlWatcher.on('records', (records: JSONLRecord[]) => {
         if (this.running) this.emit('jsonl-records', records);
       });
-      this.jsonlWatcher.on('error', (_err: Error) => {
-        // JSONL errors are non-fatal; log to stderr and continue.
+      this.jsonlWatcher.on('error', (err: Error) => {
+        // JSONL errors are non-fatal; log and continue.
         // Do not re-emit as 'error' since DataWatcher's error handling
         // is wired to the fs.watch subsystem.
+        console.warn(`[analytics:watcher] JSONL watcher error: ${err.message}`);
       });
     }
   }

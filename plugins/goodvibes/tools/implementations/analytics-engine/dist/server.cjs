@@ -25860,7 +25860,8 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
       this.jsonlWatcher.on("records", (records) => {
         if (this.running) this.emit("jsonl-records", records);
       });
-      this.jsonlWatcher.on("error", (_err) => {
+      this.jsonlWatcher.on("error", (err) => {
+        console.warn(`[analytics:watcher] JSONL watcher error: ${err.message}`);
       });
     }
   }
@@ -26188,6 +26189,11 @@ function resolveJsonlProjectDir(goodvibesDir, jsonlBasePath) {
     } catch {
     }
   }
+  if (latestDir !== null) {
+    console.warn(
+      `[analytics:aggregator] JSONL project directory not found for primary match; falling back to most recent directory`
+    );
+  }
   return latestDir;
 }
 __name(resolveJsonlProjectDir, "resolveJsonlProjectDir");
@@ -26205,7 +26211,7 @@ function emptyJsonlTotals() {
   };
 }
 __name(emptyJsonlTotals, "emptyJsonlTotals");
-var Aggregator = class {
+var Aggregator = class _Aggregator {
   static {
     __name(this, "Aggregator");
   }
@@ -26398,7 +26404,7 @@ var Aggregator = class {
       this.refreshing = false;
       if (this.refreshQueued) {
         this.refreshQueued = false;
-        return this.refresh();
+        void Promise.resolve().then(() => this.refresh());
       }
     }
   }
@@ -26507,9 +26513,13 @@ var Aggregator = class {
    *
    * @param records - New records to append.
    */
+  static MAX_JSONL_RECORDS = 1e4;
   accumulateJsonlRecords(records) {
     if (records.length === 0) return;
     this.jsonlRecords.push(...records);
+    if (this.jsonlRecords.length > _Aggregator.MAX_JSONL_RECORDS) {
+      this.jsonlRecords = this.jsonlRecords.slice(-_Aggregator.MAX_JSONL_RECORDS);
+    }
     this.recomputeJsonlTotals();
   }
   /**
@@ -26556,6 +26566,7 @@ var Aggregator = class {
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
     const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
     const jsonl = this.jsonlTotals;
+    const hasJsonlData = this.jsonlRecords.length > 0;
     const tokens = {
       // Precision telemetry fields (fall back to 0 if unavailable).
       input: tokenMetrics?.input ?? 0,
@@ -26564,10 +26575,12 @@ var Aggregator = class {
       saved: tokenMetrics?.saved ?? 0,
       efficiency: tokenMetrics?.efficiency ?? 0,
       // JSONL API fields: prefer JSONL if available, else precision telemetry.
-      api_input: jsonl.api_input > 0 ? jsonl.api_input : tokenMetrics?.api_input ?? 0,
-      api_output: jsonl.api_output > 0 ? jsonl.api_output : tokenMetrics?.api_output ?? 0,
-      cache_read: jsonl.cache_read > 0 ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
-      cache_write: jsonl.cache_write > 0 ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
+      // Use presence check (hasJsonlData) rather than > 0 to distinguish
+      // "no data" from "zero tokens" correctly.
+      api_input: hasJsonlData ? jsonl.api_input : tokenMetrics?.api_input ?? 0,
+      api_output: hasJsonlData ? jsonl.api_output : tokenMetrics?.api_output ?? 0,
+      cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
+      cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
     if (tokens.total === 0 && jsonl.api_input + jsonl.api_output > 0) {
       const jsonlSum = jsonl.api_input + jsonl.api_output + jsonl.cache_read + jsonl.cache_write;
@@ -26859,9 +26872,15 @@ var Aggregator = class {
     try {
       const metrics = this.state.metrics;
       const jsonl = this.jsonlTotals;
+      const projectHash = (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir));
+      const jsonlToolCalls = this.jsonlReader !== null ? this.jsonlReader.extractToolCalls(this.jsonlRecords) : [];
+      const precisionCalls = jsonlToolCalls.filter(
+        (tc) => (tc.name ?? "").startsWith("mcp__plugin_goodvibes_precision")
+      ).length;
       this.globalDb.upsertSession({
         session_id: sessionId,
         project_path: this.goodvibesDir,
+        project_hash: projectHash,
         started_at: this.startedAt,
         model: jsonl.model !== "unknown" ? jsonl.model : void 0,
         total_input_tokens: metrics.tokens.api_input,
@@ -26874,10 +26893,8 @@ var Aggregator = class {
           (sum, tb) => sum + tb.calls,
           0
         ),
-        total_native_tool_calls: 0,
-        // Native vs precision split requires telemetry metadata
-        total_precision_tool_calls: 0,
-        // Will be populated in a future phase
+        total_native_tool_calls: jsonlToolCalls.length - precisionCalls,
+        total_precision_tool_calls: precisionCalls,
         total_agent_spawns: metrics.agents.spawned,
         status: "active"
       });
@@ -27075,6 +27092,7 @@ var AnalyticsEngine = class {
    */
   async initialize() {
     this.globalDb = await initializeGlobalDb();
+    this.aggregator.setGlobalDb(this.globalDb);
     await this.aggregator.initialize();
     this.initialized = true;
   }

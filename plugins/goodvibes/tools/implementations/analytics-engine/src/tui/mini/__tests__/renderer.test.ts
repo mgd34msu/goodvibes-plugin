@@ -17,7 +17,9 @@ function visibleWidth(str: string): number {
 
 // ── Fixture Factory ───────────────────────────────────────────────────────────
 
-function createMockState(overrides: Partial<DashboardState> = {}): DashboardState {
+type DashboardOverrides = Omit<Partial<DashboardState>, 'metrics'> & { metrics?: Partial<DashboardState['metrics']> };
+
+function createMockState(overrides: DashboardOverrides = {}): DashboardState {
   const base: DashboardState = {
     session_id: 'test-session-abc',
     started_at: '2026-02-20T10:00:00.000Z',
@@ -93,10 +95,10 @@ function createMockState(overrides: Partial<DashboardState> = {}): DashboardStat
         agents: { ...base.metrics.agents, ...overrides.metrics.agents },
         files: { ...base.metrics.files, ...overrides.metrics.files },
       },
-    };
+    } as DashboardState;
   }
 
-  return { ...base, ...overrides };
+  return { ...base, ...overrides } as DashboardState;
 }
 
 // ── Column Width Mock Utilities ───────────────────────────────────────────────

@@ -114,6 +114,7 @@ export class AnalyticsEngine {
     // Initialize global analytics database
     this.globalDb = await initializeGlobalDb();
 
+    this.aggregator.setGlobalDb(this.globalDb);
     await this.aggregator.initialize();
     this.initialized = true;
   }
