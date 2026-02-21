@@ -5723,10 +5723,10 @@ function computeMetrics(state) {
   const commands = metrics.commands;
   const sessionId = state.session_id ? truncate(state.session_id, SESSION_ID_TRUNCATE_LENGTH) : "no-session";
   const uptime = formatUptime(state.uptime_ms);
-  const toolCalls = formatNumber(
-    (commands.total ?? 0) + (agents.spawned ?? 0)
-  );
-  const successRate = formatPercent(commands.success_rate ?? 0);
+  const sessionCost = formatDollars(cost.total ?? 0);
+  const apiInputTokens = formatNumber(tokens.api_input ?? 0);
+  const apiOutputTokens = formatNumber(tokens.api_output ?? 0);
+  const cacheReadTokens = formatNumber(tokens.cache_read ?? 0);
   const tokensUsed = formatNumber(tokens.total ?? 0);
   const tokensSaved = formatNumber(tokens.saved ?? 0);
   const savings = formatDollars(cost.saved ?? 0);
@@ -5742,13 +5742,13 @@ function computeMetrics(state) {
   const cmdFails = formatNumber(commands.failures ?? 0);
   const rawAvgMs = commands.avg_duration_ms;
   const cmdAvgSec = rawAvgMs != null && isFinite(rawAvgMs) && rawAvgMs > 0 ? (rawAvgMs / 1e3).toFixed(1) : "0.0";
-  const rawNet = (cost.total ?? 0) - (cost.saved ?? 0);
-  const netCost = formatDollars(isFinite(rawNet) ? rawNet : 0);
   return {
     sessionId,
     uptime,
-    toolCalls,
-    successRate,
+    sessionCost,
+    apiInputTokens,
+    apiOutputTokens,
+    cacheReadTokens,
     tokensUsed,
     tokensSaved,
     savings,
@@ -5760,8 +5760,7 @@ function computeMetrics(state) {
     conflicts,
     cmdTotal,
     cmdFails,
-    cmdAvgSec,
-    netCost
+    cmdAvgSec
   };
 }
 __name(computeMetrics, "computeMetrics");
@@ -5832,7 +5831,7 @@ var MiniRenderer = class {
     const m = computeMetrics(state);
     const showBudgetBar = this.config?.mini_budget_bar ?? false;
     let headerContent;
-    if (state.budget !== null) {
+    if (state.budget != null) {
       const b = state.budget;
       const budgetUsed = formatDollars(b.used ?? 0);
       const budgetTotal = formatDollars(b.amount ?? 0);
@@ -5845,7 +5844,7 @@ var MiniRenderer = class {
         headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} budget: ${budgetUsed}/${budgetTotal} (${budgetPct}%) `;
       }
     } else {
-      headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${m.toolCalls} calls ${ansi.dim}\u2500${ansi.reset} ${m.successRate} `;
+      headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${ansi.bold}${m.sessionCost}${ansi.reset} ${ansi.dim}\u2500${ansi.reset} ${m.agentsActive} agent${m.agentsActive !== 1 ? "s" : ""} `;
     }
     const headerVisible = visibleLength(headerContent);
     const dashCount = Math.max(0, innerWidth - headerVisible);
@@ -5866,8 +5865,8 @@ var MiniRenderer = class {
       { thresholds: { warn: 0.5, alert: 0.84 } }
     );
     const row2Content = buildSections([
-      `tokens ${ansi.bold}${m.tokensUsed}${ansi.reset} used`,
-      `${m.tokensSaved} saved (${m.savings})`,
+      `api ${ansi.bold}${m.apiInputTokens}${ansi.reset}in ${ansi.bold}${m.apiOutputTokens}${ansi.reset}out`,
+      `cache-read ${m.cacheReadTokens}`,
       showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
       showBars ? `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}` : `agents ${m.agentsActive}/${m.agentsMax}`
     ]);
@@ -5876,8 +5875,8 @@ var MiniRenderer = class {
     const row3Content = buildSections([
       `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`,
       `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s avg)`,
-      // ✗
-      `cost ${m.netCost}`
+      // \u2717
+      `precision ${m.tokensSaved} saved (${m.savings})`
     ]);
     const line3 = buildRow(row3Content, borderColor, w);
     const footerDashes = ansi.box.horizontal.repeat(innerWidth);

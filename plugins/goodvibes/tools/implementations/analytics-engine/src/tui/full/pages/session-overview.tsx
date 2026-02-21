@@ -1,11 +1,13 @@
 /**
  * Page 1 — Session Overview.
  * Displays current session metrics, token/cost/cache breakdown,
- * and a tools-usage bar chart.
+ * API token details from JSONL data, tags, and a tools-usage bar chart.
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import type { DashboardState } from '../../../types.js';
+import { DEFAULT_CONFIG } from '../../../types.js';
+import type { GlobalDB } from '../../../data/global-db.js';
 import { MetricBox, BarChart } from '../components/index.js';
 import {
   formatNumber,
@@ -20,6 +22,8 @@ import {
 export interface SessionOverviewProps {
   /** Aggregated dashboard state. */
   state: DashboardState;
+  /** GlobalDB for tag resolution. Null when DB is unavailable. */
+  globalDb: GlobalDB | null;
 }
 
 /**
@@ -27,12 +31,25 @@ export interface SessionOverviewProps {
  *
  * Layout:
  *   Row 1: TOKENS | CACHE | COST
- *   Row 2: COMMANDS | AGENTS | FILES
- *   Row 3: TOOLS BREAKDOWN (full-width bar chart)
+ *   Row 2: API USAGE | COMMANDS | AGENTS | FILES
+ *   Row 3: TAGS (if available)
+ *   Row 4: TOOLS BREAKDOWN (full-width bar chart)
  */
-export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
+export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalDb }) => {
   const { metrics, tools_breakdown, session_id, started_at, uptime_ms } = state;
   const { tokens, cache, cost, commands, agents, files } = metrics;
+
+  // Fetch tags for the current session from GlobalDB
+  const tags = useMemo(() => {
+    if (!globalDb || !session_id) return [];
+    try {
+      const entries = globalDb.getTagsForSession(session_id);
+      return entries.map((e) => e.tag);
+    } catch {
+      return [];
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalDb, session_id]);
 
   // Build tools bar-chart items sorted by call count descending
   const toolItems = Object.entries(tools_breakdown)
@@ -45,6 +62,11 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
 
   const maxToolCalls = toolItems.reduce((m, i) => Math.max(m, i.value), 0);
 
+  // API-level token cost (from JSONL data) — uses DEFAULT_CONFIG pricing constants
+  const apiInputCost = (tokens.api_input / 1000) * DEFAULT_CONFIG.cost_per_1k_input_tokens;
+  const apiOutputCost = (tokens.api_output / 1000) * DEFAULT_CONFIG.cost_per_1k_output_tokens;
+  const apiTotalCost = apiInputCost + apiOutputCost;
+
   return (
     <Box flexDirection="column" paddingX={1} paddingY={1} gap={1}>
       {/* Session header */}
@@ -55,10 +77,20 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
         <Text dimColor>Up: {formatUptime(uptime_ms)}</Text>
       </Box>
 
+      {/* Tags row */}
+      {tags.length > 0 && (
+        <Box gap={1}>
+          <Text dimColor>Tags:</Text>
+          {tags.map((tag) => (
+            <Text key={tag} color="cyan">[{tag}]</Text>
+          ))}
+        </Box>
+      )}
+
       {/* Metric boxes — row 1: tokens / cache / cost */}
       <Box gap={1} flexWrap="wrap">
         <MetricBox
-          title="TOKENS"
+          title="PRECISION TOKENS"
           rows={[
             { label: 'Total', value: formatNumber(tokens.total) },
             { label: 'Input', value: formatNumber(tokens.input) },
@@ -74,14 +106,13 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
             { label: 'Hit Rate', value: formatPercent(cache.hit_rate) },
             { label: 'Hits', value: formatNumber(cache.hits) },
             { label: 'Misses', value: formatNumber(cache.misses) },
-            // formatNumber rounds to integers; toFixed(1) preserves decimal precision for MB
             { label: 'Peak MB', value: `${cache.memory_peak_mb.toFixed(1)} MB` },
             { label: 'Evictions', value: formatNumber(cache.evictions) },
           ]}
         />
 
         <MetricBox
-          title="COST"
+          title="SESSION COST"
           rows={[
             { label: 'Total', value: formatDollars(cost.total) },
             { label: 'Input', value: formatDollars(cost.input) },
@@ -91,8 +122,19 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state }) => {
         />
       </Box>
 
-      {/* Metric boxes — row 2: commands / agents / files */}
+      {/* Metric boxes — row 2: API usage / commands / agents / files */}
       <Box gap={1} flexWrap="wrap">
+        <MetricBox
+          title="API TOKENS (JSONL)"
+          rows={[
+            { label: 'Input', value: formatNumber(tokens.api_input) },
+            { label: 'Output', value: formatNumber(tokens.api_output) },
+            { label: 'Cache Read', value: formatNumber(tokens.cache_read) },
+            { label: 'Cache Write', value: formatNumber(tokens.cache_write) },
+            { label: 'API Cost', value: formatDollars(apiTotalCost) },
+          ]}
+        />
+
         <MetricBox
           title="COMMANDS"
           rows={[

@@ -3496,8 +3496,8 @@ var require_utils = __commonJS({
       return ind;
     }
     __name(findToken, "findToken");
-    function removeDotSegments(path8) {
-      let input = path8;
+    function removeDotSegments(path9) {
+      let input = path9;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3704,8 +3704,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path8, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
+        const [path9, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -13114,185 +13114,408 @@ var init_config2 = __esm({
   }
 });
 
-// src/handlers/sync.ts
-function listProjectDirs(baseDir) {
-  try {
-    const expanded = baseDir.startsWith("~") ? path7.join((0, import_node_os6.homedir)(), baseDir.slice(1)) : baseDir;
-    if (!fs3.existsSync(expanded)) return [];
-    const entries = fs3.readdirSync(expanded, { withFileTypes: true });
-    return entries.filter((e) => e.isDirectory()).map((e) => path7.join(expanded, e.name));
-  } catch {
-    return [];
-  }
-}
-function findProjectDirForSession(baseDir, sessionId) {
-  const dirs = listProjectDirs(baseDir);
-  for (const dir of dirs) {
-    try {
-      const files = fs3.readdirSync(dir);
-      if (files.some((f) => f === `${sessionId}.jsonl` || f.startsWith(sessionId))) {
-        return dir;
-      }
-    } catch {
-    }
-  }
-  return null;
-}
-function listJsonlFiles(projectDir) {
-  try {
-    const entries = fs3.readdirSync(projectDir);
-    return entries.filter((f) => f.endsWith(".jsonl")).map((f) => path7.join(projectDir, f));
-  } catch {
-    return [];
-  }
-}
-async function syncProjectDirs(db, reader, projectDirs) {
-  const results = {
-    files: [],
-    totalSynced: 0,
-    totalSkipped: 0,
-    totalErrors: 0,
-    totalNewRecords: 0
-  };
-  for (const dir of projectDirs) {
-    const jsonlFiles = listJsonlFiles(dir);
-    const projectHash = path7.basename(dir);
-    for (const filePath of jsonlFiles) {
-      const fileResult = await syncSingleFile(db, reader, filePath, projectHash);
-      results.files.push(fileResult);
-      switch (fileResult.status) {
-        case "synced":
-          results.totalSynced++;
-          results.totalNewRecords += fileResult.newRecords;
-          break;
-        case "skipped":
-          results.totalSkipped++;
-          break;
-        case "error":
-          results.totalErrors++;
-          break;
-      }
-    }
-  }
-  db.saveToDisk();
-  return results;
-}
-async function syncSingleFile(db, reader, filePath, projectHash) {
-  const sessionId = sessionIdFromPath(filePath);
-  try {
-    const syncState = db.getSyncState(filePath);
-    const fromOffset = syncState?.last_offset ?? 0;
-    const parseResult = await reader.parseFile(filePath, fromOffset);
-    const newRecordCount = parseResult.records.length;
-    if (newRecordCount === 0 && fromOffset > 0) {
-      return { filePath, sessionId, status: "skipped", newRecords: 0 };
-    }
-    const apiCalls = reader.extractApiCalls(parseResult.records);
-    const sessionInfo = reader.extractSessionInfo(parseResult.records);
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    let totalCacheReadTokens = 0;
-    let totalCacheWriteTokens = 0;
-    let totalCostUsd = 0;
-    for (const call of apiCalls) {
-      totalInputTokens += call.input_tokens;
-      totalOutputTokens += call.output_tokens;
-      totalCacheReadTokens += call.cache_read_tokens;
-      totalCacheWriteTokens += call.cache_write_tokens;
-      totalCostUsd += call.cost_usd;
-    }
-    const lastActivityAt = sessionInfo.lastActivityAt;
-    const ageMs = Date.now() - new Date(lastActivityAt).getTime();
-    const TWO_HOURS_MS = 2 * 60 * 60 * 1e3;
-    const isCompleted = ageMs > TWO_HOURS_MS;
-    const session = {
-      session_id: sessionId,
-      project_hash: projectHash,
-      started_at: sessionInfo.startedAt,
-      model: sessionInfo.model,
-      total_input_tokens: totalInputTokens,
-      total_output_tokens: totalOutputTokens,
-      total_cache_read_tokens: totalCacheReadTokens,
-      total_cache_write_tokens: totalCacheWriteTokens,
-      total_cost_usd: totalCostUsd,
-      total_api_calls: apiCalls.length,
-      total_tool_calls: 0,
-      // Not computable from sessionInfo alone
-      total_native_tool_calls: 0,
-      // Not computable without tool breakdown
-      total_precision_tool_calls: 0,
-      total_agent_spawns: 0,
-      tags: [],
-      status: isCompleted ? "completed" : "active",
-      ...isCompleted ? { ended_at: lastActivityAt } : {}
-    };
-    db.upsertSession(session);
-    if (apiCalls.length > 0) {
-      db.batchInsertApiCalls(apiCalls);
-    }
-    db.upsertSyncState({
-      jsonl_path: filePath,
-      session_id: sessionId,
-      last_offset: parseResult.newOffset,
-      last_synced_at: (/* @__PURE__ */ new Date()).toISOString()
-    });
-    return { filePath, sessionId, status: "synced", newRecords: newRecordCount };
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    return { filePath, sessionId, status: "error", newRecords: 0, errorMessage };
-  }
-}
-function buildSyncReport(scope, projectCount, results) {
-  const lines = [
-    "=== Analytics Sync Complete ===",
-    `Scope:          ${scope === "all" ? "all projects" : "current project"}`,
-    `Projects:       ${projectCount}`,
-    `Files synced:   ${results.totalSynced}`,
-    `Files skipped:  ${results.totalSkipped} (already up to date)`,
-    `Errors:         ${results.totalErrors}`,
-    `New records:    ${results.totalNewRecords}`
-  ];
-  if (results.totalErrors > 0) {
-    lines.push("");
-    lines.push("Errors:");
-    for (const f of results.files.filter((r) => r.status === "error")) {
-      lines.push(`  ${path7.basename(f.filePath)}: ${f.errorMessage ?? "unknown error"}`);
-    }
-  }
-  if (results.totalSynced > 0 && results.files.length <= 20) {
-    lines.push("");
-    lines.push("Synced files:");
-    for (const f of results.files.filter((r) => r.status === "synced")) {
-      lines.push(`  ${path7.basename(f.filePath)} \u2014 ${f.newRecords} new records`);
-    }
-  } else if (results.totalSynced > 20) {
-    lines.push(
-      `
-(${results.totalSynced} files synced \u2014 use scope="current" for per-file details)`
-    );
-  }
-  return lines.join("\n");
-}
-var fs3, path7, import_node_os6, handleSync;
-var init_sync = __esm({
-  "src/handlers/sync.ts"() {
+// src/data/jsonl-scanner.ts
+var fs3, path7, import_node_os6, JSONLScanner;
+var init_jsonl_scanner = __esm({
+  "src/data/jsonl-scanner.ts"() {
     "use strict";
     fs3 = __toESM(require("node:fs"), 1);
     path7 = __toESM(require("node:path"), 1);
     import_node_os6 = require("node:os");
-    init_db_init();
     init_jsonl_reader();
+    JSONLScanner = class {
+      static {
+        __name(this, "JSONLScanner");
+      }
+      projectsBaseDir;
+      /**
+       * @param projectsBaseDir - Base directory for Claude projects.
+       *   Defaults to the resolved value from `resolveProjectsBaseDir()`
+       *   (~/.claude/projects on most systems).
+       */
+      constructor(projectsBaseDir) {
+        this.projectsBaseDir = projectsBaseDir ?? resolveProjectsBaseDir();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Public API
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Scan a single project directory for JSONL files.
+       *
+       * @param projectDir - Absolute path to a project directory
+       *   (e.g. `~/.claude/projects/<hash>`).
+       * @returns ScanResult with files found in that directory.
+       */
+      scanProjectDir(projectDir) {
+        const expanded = this.expandTilde(projectDir);
+        const projectHash = path7.basename(expanded);
+        const files = [];
+        let projectErrors = 0;
+        try {
+          const entries = fs3.readdirSync(expanded, { withFileTypes: true });
+          for (const entry of entries) {
+            if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
+            const filePath = path7.join(expanded, entry.name);
+            const info = this.buildFileInfo(projectHash, entry.name, filePath);
+            if (info) files.push(info);
+          }
+        } catch {
+          projectErrors = 1;
+        }
+        return { files, projectsScanned: projectErrors === 0 ? 1 : 0, projectErrors };
+      }
+      /**
+       * Scan ALL project directories under the configured base directory.
+       *
+       * Iterates over all subdirectories of `~/.claude/projects/` and scans
+       * each for JSONL files.
+       *
+       * @returns ScanResult aggregating all files found.
+       */
+      scanAllProjects() {
+        const expanded = this.expandTilde(this.projectsBaseDir);
+        const allFiles = [];
+        let projectsScanned = 0;
+        let projectErrors = 0;
+        let projectDirs;
+        try {
+          const entries = fs3.readdirSync(expanded, { withFileTypes: true });
+          projectDirs = entries.filter((e) => e.isDirectory()).map((e) => path7.join(expanded, e.name));
+        } catch {
+          return { files: [], projectsScanned: 0, projectErrors: 1 };
+        }
+        for (const projectDir of projectDirs) {
+          const result = this.scanProjectDir(projectDir);
+          allFiles.push(...result.files);
+          projectsScanned += result.projectsScanned;
+          projectErrors += result.projectErrors;
+        }
+        return { files: allFiles, projectsScanned, projectErrors };
+      }
+      /**
+       * Find the project directory containing JSONL files for a given session ID.
+       *
+       * Searches all project directories for a file whose name matches
+       * `<sessionId>.jsonl` or starts with `<sessionId>`.
+       *
+       * @param sessionId - The session identifier to locate.
+       * @returns Absolute path to the project directory, or null if not found.
+       */
+      findProjectDirForSession(sessionId) {
+        const expanded = this.expandTilde(this.projectsBaseDir);
+        let projectDirs;
+        try {
+          const entries = fs3.readdirSync(expanded, { withFileTypes: true });
+          projectDirs = entries.filter((e) => e.isDirectory()).map((e) => path7.join(expanded, e.name));
+        } catch {
+          return null;
+        }
+        for (const dir of projectDirs) {
+          try {
+            const files = fs3.readdirSync(dir);
+            const match = files.some(
+              (f) => f === `${sessionId}.jsonl` || f.startsWith(sessionId)
+            );
+            if (match) return dir;
+          } catch {
+          }
+        }
+        return null;
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Private helpers
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Construct a JsonlFileInfo for a given file within a project directory.
+       *
+       * Returns null if the file cannot be stat'd (e.g. a dangling symlink).
+       */
+      buildFileInfo(projectHash, filename, filePath) {
+        let sizeBytes;
+        try {
+          sizeBytes = fs3.statSync(filePath).size;
+        } catch {
+          return null;
+        }
+        const sessionId = filename.replace(/\.jsonl$/, "");
+        const { isSubagent, parentSessionId } = this.parseSessionIdMeta(sessionId);
+        return { projectHash, sessionId, filePath, sizeBytes, isSubagent, parentSessionId };
+      }
+      /**
+       * Determine whether a session ID belongs to a subagent and extract the
+       * parent session ID if possible.
+       *
+       * Claude subagent JSONL files can follow naming patterns such as:
+       *   - `<parent-uuid>.<suffix>` (dot-separated parent reference)
+       *   - Standard UUID sessions are NOT subagents
+       *
+       * Without a definitive naming spec, we apply a conservative heuristic:
+       * a session ID containing a dot separator after a UUID-length prefix is
+       * treated as a potential subagent file.
+       *
+       * @param sessionId - The session ID (filename without extension).
+       * @returns isSubagent flag and optional parentSessionId.
+       */
+      parseSessionIdMeta(sessionId) {
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (UUID_RE.test(sessionId)) {
+          return { isSubagent: false, parentSessionId: null };
+        }
+        const dotIdx = sessionId.indexOf(".");
+        if (dotIdx > 0) {
+          const prefix = sessionId.slice(0, dotIdx);
+          if (UUID_RE.test(prefix)) {
+            return { isSubagent: true, parentSessionId: prefix };
+          }
+        }
+        return { isSubagent: false, parentSessionId: null };
+      }
+      /**
+       * Expand a leading tilde in a path to the home directory.
+       */
+      expandTilde(inputPath) {
+        if (inputPath.startsWith("~/") || inputPath === "~") {
+          return path7.join((0, import_node_os6.homedir)(), inputPath.slice(2));
+        }
+        return inputPath;
+      }
+    };
+  }
+});
+
+// src/data/sync-engine.ts
+var path8, TWO_HOURS_MS, SyncEngine;
+var init_sync_engine = __esm({
+  "src/data/sync-engine.ts"() {
+    "use strict";
+    path8 = __toESM(require("node:path"), 1);
+    init_jsonl_reader();
+    init_jsonl_scanner();
+    TWO_HOURS_MS = 2 * 60 * 60 * 1e3;
+    SyncEngine = class {
+      static {
+        __name(this, "SyncEngine");
+      }
+      db;
+      reader;
+      scanner;
+      /**
+       * @param db     - Initialized GlobalDB instance for data persistence.
+       * @param config - Pricing config for API call cost calculation.
+       * @param scanner - Optional custom JSONLScanner (defaults to standard scanner).
+       */
+      constructor(db, config2, scanner) {
+        this.db = db;
+        this.reader = new JSONLReader({
+          cost_per_1k_input_tokens: config2.costPer1kInputTokens,
+          cost_per_1k_output_tokens: config2.costPer1kOutputTokens
+        });
+        this.scanner = scanner ?? new JSONLScanner();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Public API
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Sync JSONL files for a specific project directory.
+       *
+       * Scans the given directory for `.jsonl` files and incrementally
+       * processes any new content since the last sync.
+       *
+       * @param projectDir - Absolute path to a single project directory
+       *   (e.g. `~/.claude/projects/<hash>`).
+       * @returns Progress summary for the sync operation.
+       */
+      async syncCurrentProject(projectDir) {
+        const scanResult = this.scanner.scanProjectDir(projectDir);
+        return this.processFiles(scanResult.files, scanResult.projectsScanned);
+      }
+      /**
+       * Sync JSONL files across ALL Claude project directories.
+       *
+       * Iterates over all subdirectories of `~/.claude/projects/` and
+       * incrementally processes any new JSONL content.
+       *
+       * @returns Progress summary aggregated across all projects.
+       */
+      async syncAllProjects() {
+        const scanResult = this.scanner.scanAllProjects();
+        return this.processFiles(scanResult.files, scanResult.projectsScanned);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Private implementation
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Process a list of JSONL files and return aggregated progress.
+       */
+      async processFiles(files, projectsScanned) {
+        const progress = {
+          sessionsProcessed: 0,
+          recordsProcessed: 0,
+          bytesProcessed: 0,
+          filesSkipped: 0,
+          errors: [],
+          projectsScanned
+        };
+        for (const fileInfo of files) {
+          const result = await this.syncSingleFile(
+            fileInfo.filePath,
+            fileInfo.projectHash,
+            fileInfo.isSubagent,
+            fileInfo.parentSessionId
+          );
+          switch (result.status) {
+            case "synced":
+              progress.sessionsProcessed++;
+              progress.recordsProcessed += result.newRecords;
+              progress.bytesProcessed += result.bytesProcessed;
+              break;
+            case "skipped":
+              progress.filesSkipped++;
+              break;
+            case "error":
+              progress.errors.push({
+                filePath: result.filePath,
+                sessionId: result.sessionId,
+                message: result.errorMessage ?? "unknown error"
+              });
+              break;
+          }
+        }
+        this.db.saveToDisk();
+        return progress;
+      }
+      /**
+       * Incrementally sync a single JSONL file into GlobalDB.
+       *
+       * Algorithm:
+       * 1. Look up prior sync state (last processed byte offset).
+       * 2. Parse new records from the offset forward.
+       * 3. If no new records and already processed, return 'skipped'.
+       * 4. Extract API calls and session metadata from new records.
+       * 5. Upsert the session record (accumulates totals).
+       * 6. Batch-insert new API call records in a transaction.
+       * 7. For subagent sessions, link to parent if known.
+       * 8. Update sync_state with the new byte offset.
+       */
+      async syncSingleFile(filePath, projectHash, isSubagent, parentSessionId) {
+        const sessionId = sessionIdFromPath(filePath);
+        try {
+          const syncState = this.db.getSyncState(filePath);
+          const fromOffset = syncState?.last_offset ?? 0;
+          const parseResult = await this.reader.parseFile(filePath, fromOffset);
+          const newRecordCount = parseResult.records.length;
+          if (newRecordCount === 0) {
+            return { filePath, sessionId, status: "skipped", newRecords: 0, bytesProcessed: 0 };
+          }
+          const bytesProcessed = parseResult.newOffset - fromOffset;
+          const apiCalls = this.reader.extractApiCalls(parseResult.records);
+          const sessionInfo = this.reader.extractSessionInfo(parseResult.records);
+          let totalInputTokens = 0;
+          let totalOutputTokens = 0;
+          let totalCacheReadTokens = 0;
+          let totalCacheWriteTokens = 0;
+          let totalCostUsd = 0;
+          for (const call of apiCalls) {
+            totalInputTokens += call.input_tokens;
+            totalOutputTokens += call.output_tokens;
+            totalCacheReadTokens += call.cache_read_tokens;
+            totalCacheWriteTokens += call.cache_write_tokens;
+            totalCostUsd += call.cost_usd;
+          }
+          const lastActivityAt = sessionInfo.lastActivityAt;
+          const ageMs = Date.now() - new Date(lastActivityAt).getTime();
+          const isCompleted = ageMs > TWO_HOURS_MS;
+          const session = {
+            session_id: sessionId,
+            project_hash: projectHash,
+            started_at: sessionInfo.startedAt,
+            model: sessionInfo.model,
+            total_input_tokens: totalInputTokens,
+            total_output_tokens: totalOutputTokens,
+            total_cache_read_tokens: totalCacheReadTokens,
+            total_cache_write_tokens: totalCacheWriteTokens,
+            total_cost_usd: totalCostUsd,
+            total_api_calls: apiCalls.length,
+            // Tool call counts not extractable from JSONL alone; zeroed for initial sync
+            total_tool_calls: 0,
+            total_native_tool_calls: 0,
+            total_precision_tool_calls: 0,
+            total_agent_spawns: 0,
+            tags: [],
+            status: isCompleted ? "completed" : "active",
+            ...isCompleted ? { ended_at: lastActivityAt } : {}
+          };
+          this.db.upsertSession(session);
+          if (apiCalls.length > 0) {
+            this.db.batchInsertApiCalls(apiCalls);
+          }
+          if (isSubagent && parentSessionId) {
+            const agentId = path8.basename(filePath, ".jsonl");
+            this.db.upsertAgent({
+              session_id: parentSessionId,
+              agent_id: agentId,
+              agent_type: "subagent",
+              parent_session_id: parentSessionId,
+              model: sessionInfo.model,
+              spawned_at: sessionInfo.startedAt,
+              completed_at: isCompleted ? lastActivityAt : void 0,
+              total_tokens: totalInputTokens + totalOutputTokens,
+              duration_ms: 0
+            });
+          }
+          this.db.upsertSyncState({
+            jsonl_path: filePath,
+            session_id: sessionId,
+            last_offset: parseResult.newOffset,
+            last_synced_at: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          return { filePath, sessionId, status: "synced", newRecords: newRecordCount, bytesProcessed };
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          return { filePath, sessionId, status: "error", newRecords: 0, bytesProcessed: 0, errorMessage };
+        }
+      }
+    };
+  }
+});
+
+// src/handlers/sync.ts
+function buildSyncReport(scope, progress) {
+  const lines = [
+    "=== Analytics Sync Complete ===",
+    `Scope:              ${scope === "all" ? "all projects" : "current project"}`,
+    `Projects scanned:   ${progress.projectsScanned}`,
+    `Sessions processed: ${progress.sessionsProcessed}`,
+    `Records processed:  ${progress.recordsProcessed}`,
+    `Files skipped:      ${progress.filesSkipped} (already up to date)`,
+    `Error count:        ${progress.errors.length}`
+  ];
+  if (progress.errors.length > 0) {
+    lines.push("");
+    lines.push("Errors:");
+    for (const err of progress.errors) {
+      lines.push(`  ${err.sessionId}: ${err.message}`);
+    }
+  }
+  return lines.join("\n");
+}
+var handleSync;
+var init_sync = __esm({
+  "src/handlers/sync.ts"() {
+    "use strict";
+    init_db_init();
+    init_sync_engine();
+    init_jsonl_scanner();
     init_types2();
-    handleSync = /* @__PURE__ */ __name(async (aggregator, input) => {
+    handleSync = /* @__PURE__ */ __name(async (aggregator, input, _goodvibesDir) => {
       try {
         const db = await initializeGlobalDb();
         const config2 = aggregator.getConfig();
-        const reader = new JSONLReader({
-          cost_per_1k_input_tokens: config2.cost_per_1k_input_tokens,
-          cost_per_1k_output_tokens: config2.cost_per_1k_output_tokens
+        const engine = new SyncEngine(db, {
+          costPer1kInputTokens: config2.cost_per_1k_input_tokens,
+          costPer1kOutputTokens: config2.cost_per_1k_output_tokens
         });
-        const projectsBaseDir = resolveProjectsBaseDir();
-        let projectDirs;
+        let progress;
         if (input.scope === "current") {
           const state = aggregator.getState();
           const currentSessionId = state.session_id;
@@ -13301,32 +13524,24 @@ var init_sync = __esm({
               "No active session detected. Cannot determine current project directory."
             );
           }
-          const dir = findProjectDirForSession(projectsBaseDir, currentSessionId);
-          if (!dir) {
+          const scanner = new JSONLScanner();
+          const projectDir = scanner.findProjectDirForSession(currentSessionId);
+          if (!projectDir) {
             return text(
-              `No JSONL directory found for session ${currentSessionId} under ${projectsBaseDir}.
+              `No JSONL directory found for session ${currentSessionId}.
 Use scope="all" to scan all projects.`
             );
           }
-          projectDirs = [dir];
+          progress = await engine.syncCurrentProject(projectDir);
         } else {
-          projectDirs = listProjectDirs(projectsBaseDir);
-          if (projectDirs.length === 0) {
-            return text(`No project directories found under ${projectsBaseDir}.`);
-          }
+          progress = await engine.syncAllProjects();
         }
-        const results = await syncProjectDirs(db, reader, projectDirs);
-        return text(buildSyncReport(input.scope, projectDirs.length, results));
+        return text(buildSyncReport(input.scope, progress));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return text(`analytics_sync error: ${message}`);
       }
     }, "handleSync");
-    __name(listProjectDirs, "listProjectDirs");
-    __name(findProjectDirForSession, "findProjectDirForSession");
-    __name(listJsonlFiles, "listJsonlFiles");
-    __name(syncProjectDirs, "syncProjectDirs");
-    __name(syncSingleFile, "syncSingleFile");
     __name(buildSyncReport, "buildSyncReport");
   }
 });
@@ -13852,8 +14067,8 @@ __name(getErrorMap, "getErrorMap");
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = /* @__PURE__ */ __name((params) => {
-  const { data, path: path8, errorMaps, issueData } = params;
-  const fullPath = [...path8, ...issueData.path || []];
+  const { data, path: path9, errorMaps, issueData } = params;
+  const fullPath = [...path9, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -13976,11 +14191,11 @@ var ParseInputLazyPath = class {
   static {
     __name(this, "ParseInputLazyPath");
   }
-  constructor(parent, value, path8, key) {
+  constructor(parent, value, path9, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path8;
+    this._path = path9;
     this._key = key;
   }
   get path() {
@@ -17769,10 +17984,10 @@ function assignProp(target, prop, value) {
   });
 }
 __name(assignProp, "assignProp");
-function getElementAtPath(obj, path8) {
-  if (!path8)
+function getElementAtPath(obj, path9) {
+  if (!path9)
     return obj;
-  return path8.reduce((acc, key) => acc?.[key], obj);
+  return path9.reduce((acc, key) => acc?.[key], obj);
 }
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
@@ -18112,11 +18327,11 @@ function aborted(x, startIndex = 0) {
   return false;
 }
 __name(aborted, "aborted");
-function prefixIssues(path8, issues) {
+function prefixIssues(path9, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path8);
+    iss.path.unshift(path9);
     return iss;
   });
 }
@@ -26233,12 +26448,12 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
   async switchToSession(jsonlPath) {
     const newSessionId = sessionIdFromPath(jsonlPath);
     if (this.activeSessionPath !== null && this.activeSessionPath !== jsonlPath) {
-      for (const [path8, watched] of this.watchedFiles.entries()) {
+      for (const [path9, watched] of this.watchedFiles.entries()) {
         try {
           watched.handle.close();
         } catch {
         }
-        this.watchedFiles.delete(path8);
+        this.watchedFiles.delete(path9);
       }
       this.emit("session-change", newSessionId);
     }
@@ -27474,8 +27689,8 @@ var Aggregator = class _Aggregator {
         }
       }
     }
-    const hotspots = Array.from(fileStats.entries()).map(([path8, stat2]) => ({
-      path: path8,
+    const hotspots = Array.from(fileStats.entries()).map(([path9, stat2]) => ({
+      path: path9,
       reads: stat2.reads,
       writes: stat2.writes,
       conflicts: stat2.conflicts,

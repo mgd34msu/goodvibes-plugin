@@ -55403,12 +55403,6 @@ main().catch((err) => {
   console.error("[analytics-dashboard] Fatal:", err);
   process.exit(1);
 });
-
-// src/full.ts
-main().catch((err) => {
-  console.error("[analytics-full] Fatal:", err);
-  process.exit(1);
-});
 export {
   main
 };
@@ -55553,4 +55547,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=full.mjs.map
+//# sourceMappingURL=dashboard.mjs.map

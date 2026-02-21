@@ -6,9 +6,9 @@
  * Auto-detects terminal width on each render tick.
  *
  * Layout:
- *   Line 1 (header): session ID, uptime, call count, success rate (or budget)
- *   Line 2: token usage, saved tokens (with dollar savings), cache rate, agent concurrency
- *   Line 3: file ops, command stats, net cost
+ *   Line 1 (header): session ID, uptime, session cost, active agents
+ *   Line 2: API tokens (input/output), cache rate, active agent bar
+ *   Line 3: file ops, command stats, precision token savings
  *   Line 4 (footer): bottom border
  */
 
@@ -88,7 +88,7 @@ function fitToWidth(str: string, width: number): string {
  */
 function buildSections(sections: string[]): string {
   return sections
-    .map((s, i) => (i === 0 ? ` ${s}` : `  ${ansi.dim}│${ansi.reset}  ${s}`))
+    .map((s, i) => (i === 0 ? ` ${s}` : `  ${ansi.dim}\u2502${ansi.reset}  ${s}`))
     .join('') + ' ';
 }
 
@@ -120,8 +120,12 @@ function determineHealth(
 interface ComputedMetrics {
   sessionId: string;
   uptime: string;
-  toolCalls: string;
-  successRate: string;
+  sessionCost: string;
+  // API-level token counts (from JSONL)
+  apiInputTokens: string;
+  apiOutputTokens: string;
+  cacheReadTokens: string;
+  // Precision tool token counts
   tokensUsed: string;
   tokensSaved: string;
   savings: string;
@@ -134,7 +138,6 @@ interface ComputedMetrics {
   cmdTotal: string;
   cmdFails: string;
   cmdAvgSec: string;
-  netCost: string;
 }
 
 /**
@@ -156,11 +159,15 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
 
   const uptime = formatUptime(state.uptime_ms);
 
-  const toolCalls = formatNumber(
-    (commands.total ?? 0) + (agents.spawned ?? 0),
-  );
+  // Session cost in dollars (from cost metrics)
+  const sessionCost = formatDollars(cost.total ?? 0);
 
-  const successRate = formatPercent(commands.success_rate ?? 0);
+  // API-level token counts from JSONL (api_input, api_output, cache_read)
+  const apiInputTokens = formatNumber(tokens.api_input ?? 0);
+  const apiOutputTokens = formatNumber(tokens.api_output ?? 0);
+  const cacheReadTokens = formatNumber(tokens.cache_read ?? 0);
+
+  // Precision tool token metrics
   const tokensUsed = formatNumber(tokens.total ?? 0);
   const tokensSaved = formatNumber(tokens.saved ?? 0);
   const savings = formatDollars(cost.saved ?? 0);
@@ -183,14 +190,13 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
       ? (rawAvgMs / 1000).toFixed(1)
       : '0.0';
 
-  const rawNet = (cost.total ?? 0) - (cost.saved ?? 0);
-  const netCost = formatDollars(isFinite(rawNet) ? rawNet : 0);
-
   return {
     sessionId,
     uptime,
-    toolCalls,
-    successRate,
+    sessionCost,
+    apiInputTokens,
+    apiOutputTokens,
+    cacheReadTokens,
     tokensUsed,
     tokensSaved,
     savings,
@@ -203,7 +209,6 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     cmdTotal,
     cmdFails,
     cmdAvgSec,
-    netCost,
   };
 }
 
@@ -242,7 +247,7 @@ function renderFallback(width: number): string {
 }
 
 /**
- * Render a colored progress bar: `[████████░░]`
+ * Render a colored progress bar: `[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591]`
  *
  * @param value - Current value
  * @param max - Maximum value
@@ -316,14 +321,13 @@ export class MiniRenderer {
     const borderColor = colorForHealth(health);
     const innerWidth = w - 2;
 
-    // ── Derived values ────────────────────────────────────────────────────────
+    // ── Derived values ────────────────────────────────────────────────────────────
     const m = computeMetrics(state);
 
-    // ── Line 1: Header ────────────────────────────────────────────────────────
-    // Budget header (with optional graphical bar) or standard header
+    // ── Line 1: Header — session ID, uptime, session cost, active agents ───────────
     const showBudgetBar = (this.config?.mini_budget_bar ?? false);
     let headerContent: string;
-    if (state.budget !== null) {
+    if (state.budget != null) {
       const b = state.budget;
       const budgetUsed = formatDollars(b.used ?? 0);
       const budgetTotal = formatDollars(b.amount ?? 0);
@@ -333,24 +337,25 @@ export class MiniRenderer {
         // Budget bar: 10 chars wide, color escalates as usage rises
         const budgetBar = renderBar(rawPct ?? 0, 100, 10);
         headerContent =
-          ` analytics ${ansi.dim}─${ansi.reset} ${m.sessionId} ${ansi.dim}─${ansi.reset}` +
-          ` ${m.uptime} ${ansi.dim}─${ansi.reset}` +
+          ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
+          ` ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
           ` budget ${budgetBar} ${budgetPct}% ${budgetUsed}/${budgetTotal} `;
       } else {
-        // Text-only budget display
         headerContent =
-          ` analytics ${ansi.dim}─${ansi.reset} ${m.sessionId} ${ansi.dim}─${ansi.reset}` +
-          ` ${m.uptime} ${ansi.dim}─${ansi.reset}` +
+          ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
+          ` ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
           ` budget: ${budgetUsed}/${budgetTotal} (${budgetPct}%) `;
       }
     } else {
+      // Show session cost prominently and active agent count
       headerContent =
-        ` analytics ${ansi.dim}─${ansi.reset} ${m.sessionId} ${ansi.dim}─${ansi.reset}` +
-        ` ${m.uptime} ${ansi.dim}─${ansi.reset}` +
-        ` ${m.toolCalls} calls ${ansi.dim}─${ansi.reset} ${m.successRate} `;
+        ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset}` +
+        ` ${m.uptime} ${ansi.dim}\u2500${ansi.reset}` +
+        ` ${ansi.bold}${m.sessionCost}${ansi.reset} ${ansi.dim}\u2500${ansi.reset}` +
+        ` ${m.agentsActive} agent${m.agentsActive !== 1 ? 's' : ''} `;
     }
 
-    // Build the header line: ┌ {content} {filler dashes} ┐
+    // Build the header line: \u250c {content} {filler dashes} \u2510
     const headerVisible = visibleLength(headerContent);
     const dashCount = Math.max(0, innerWidth - headerVisible);
     const dashes = ansi.box.horizontal.repeat(dashCount);
@@ -359,8 +364,7 @@ export class MiniRenderer {
       headerContent +
       `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
 
-    // ── Line 2: Tokens / cache / agents ───────────────────────────────────────
-    // Only render graphical bars when terminal is wide enough (≥80 cols)
+    // ── Line 2: API tokens / cache / agents ───────────────────────────────────────
     const showBars = w >= 80;
     // Cache bar: 10 chars, inverted (high cache rate = good = green)
     const cacheRatio = state.metrics.cache.hit_rate ?? 0;
@@ -374,25 +378,25 @@ export class MiniRenderer {
       { thresholds: { warn: 0.5, alert: 0.84 } },
     );
     const row2Content = buildSections([
-      `tokens ${ansi.bold}${m.tokensUsed}${ansi.reset} used`,
-      `${m.tokensSaved} saved (${m.savings})`,
+      `api ${ansi.bold}${m.apiInputTokens}${ansi.reset}in ${ansi.bold}${m.apiOutputTokens}${ansi.reset}out`,
+      `cache-read ${m.cacheReadTokens}`,
       showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
       showBars ? `agents ${agentBar} ${m.agentsActive}/${m.agentsMax}` : `agents ${m.agentsActive}/${m.agentsMax}`,
     ]);
     const line2 = buildRow(row2Content, borderColor, w);
 
-    // ── Line 3: Files / commands / net cost ───────────────────────────────────
+    // ── Line 3: Files / commands / precision savings ─────────────────────────────
     const conflictStr = m.conflicts > 0
-      ? `${ansi.yellow}${m.conflicts}\u26a1${ansi.reset}`  // ⚡ highlighted
+      ? `${ansi.yellow}${m.conflicts}\u26a1${ansi.reset}`  // \u26a1 highlighted
       : `${m.conflicts}\u26a1`;
     const row3Content = buildSections([
       `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`,
-      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s avg)`,  // ✗
-      `cost ${m.netCost}`,
+      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s avg)`,  // \u2717
+      `precision ${m.tokensSaved} saved (${m.savings})`,
     ]);
     const line3 = buildRow(row3Content, borderColor, w);
 
-    // ── Line 4: Footer ────────────────────────────────────────────────────────
+    // ── Line 4: Footer ───────────────────────────────────────────────────────────
     const footerDashes = ansi.box.horizontal.repeat(innerWidth);
     const line4 =
       `${borderColor}${ansi.box.bottomLeft}${footerDashes}${ansi.box.bottomRight}${ansi.reset}`;

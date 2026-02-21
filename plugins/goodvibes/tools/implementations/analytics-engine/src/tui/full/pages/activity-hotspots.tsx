@@ -19,7 +19,7 @@ const severityIcon = (severity: 'warning' | 'alert'): string =>
   severity === 'alert' ? '!!' : '! ';
 
 /** Color for each anomaly severity. */
-const severityColor = (severity: 'warning' | 'alert'): string =>
+const severityColor = (severity: 'warning' | 'alert'): 'red' | 'yellow' =>
   severity === 'alert' ? 'red' : 'yellow';
 
 /**
@@ -48,7 +48,7 @@ export const ActivityHotspots: React.FC<ActivityHotspotsProps> = ({ state }) => 
   return (
     <Box flexDirection="column" paddingX={1} paddingY={1} gap={1}>
       {/* Header */}
-      <Text bold color="cyan">ACTIVITY &amp; HOTSPOTS</Text>
+      <Text bold color="cyan">ACTIVITY & HOTSPOTS</Text>
 
       {/* Recent activity timeline */}
       <Box flexDirection="column" gap={0}>
@@ -83,7 +83,7 @@ export const ActivityHotspots: React.FC<ActivityHotspotsProps> = ({ state }) => 
       {/* Anomalies & recommendations */}
       {anomalies.length > 0 && (
         <Box flexDirection="column" gap={0}>
-          <Text bold color="yellow">ANOMALIES &amp; RECOMMENDATIONS</Text>
+          <Text bold color="yellow">ANOMALIES & RECOMMENDATIONS</Text>
           {anomalies.slice(0, 6).map((anomaly) => (
             <Box key={anomaly.id} gap={1}>
               <Text color={severityColor(anomaly.severity)}>

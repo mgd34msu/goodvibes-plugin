@@ -52,7 +52,7 @@ async function build() {
     });
     console.log('Build completed: dist/mini.js');
 
-    // Build full TUI standalone (ESM, for dev with node_modules)
+    // Build full TUI standalone (ESM, for dev with node_modules) — backward compat
     await esbuild.build({
       ...sharedOptions,
       banner: binBanner,
@@ -60,6 +60,15 @@ async function build() {
       outfile: join(__dirname, 'dist/full.js'),
     });
     console.log('Build completed: dist/full.js');
+
+    // Build dashboard standalone (ESM, for dev with node_modules)
+    await esbuild.build({
+      ...sharedOptions,
+      banner: binBanner,
+      entryPoints: [join(__dirname, 'src/dashboard.ts')],
+      outfile: join(__dirname, 'dist/dashboard.js'),
+    });
+    console.log('Build completed: dist/dashboard.js');
 
     // Build mini dashboard CJS (all deps bundled for plugin installs — no node_modules)
     await esbuild.build({
@@ -72,7 +81,7 @@ async function build() {
     });
     console.log('Build completed: dist/mini.cjs');
 
-    // Build full TUI standalone (ESM, all deps bundled for plugin installs — no node_modules)
+    // Build full TUI bundled ESM (backward compat — all deps bundled for plugin installs)
     // ESM format required: ink + yoga-layout use top-level await (incompatible with CJS).
     // createRequire banner: sql.js internally uses require('node:fs') which fails in ESM
     // bundles — the shim makes require() available.
@@ -85,6 +94,18 @@ async function build() {
       outfile: join(__dirname, 'dist/full.mjs'),
     });
     console.log('Build completed: dist/full.mjs');
+
+    // Build dashboard bundled ESM (canonical entry point — all deps bundled for plugin installs)
+    // Same ESM/createRequire pattern as full.mjs.
+    await esbuild.build({
+      ...sharedOptions,
+      format: 'esm',
+      banner: { js: "import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);" },
+      external: [],
+      entryPoints: [join(__dirname, 'src/dashboard.ts')],
+      outfile: join(__dirname, 'dist/dashboard.mjs'),
+    });
+    console.log('Build completed: dist/dashboard.mjs');
 
     // Copy sql.js WASM to dist so it can be loaded at runtime
     const sqlJsWasmSrc = join(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm');

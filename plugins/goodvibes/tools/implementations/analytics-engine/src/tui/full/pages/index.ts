@@ -9,3 +9,6 @@ export type { ActivityHotspotsProps } from './activity-hotspots.js';
 
 export { Historical } from './historical.js';
 export type { HistoricalProps } from './historical.js';
+
+export { CrossProject } from './cross-project.js';
+export type { CrossProjectProps } from './cross-project.js';
