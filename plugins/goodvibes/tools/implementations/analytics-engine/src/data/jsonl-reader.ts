@@ -18,6 +18,7 @@ import { stat, readdir } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import { homedir } from 'node:os';
 import { join, basename } from 'node:path';
+import type { ModelPricingInfo, ModelPricingMap } from '../config.js';
 
 import type {
   JSONLRecord,
@@ -39,11 +40,22 @@ import type { ApiCallRecord } from '../types.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Cost multiplier for cache_read tokens relative to input cost (Anthropic pricing: ~10%). */
-const CACHE_READ_COST_RATIO = 0.1;
+/** Tier boundary for tiered input pricing (first 200k tokens at base rate). */
+const TIER_BOUNDARY = 200_000;
 
-/** Cost multiplier for cache_write tokens relative to input cost (Anthropic pricing: ~25%). */
-const CACHE_WRITE_COST_RATIO = 0.25;
+/**
+ * Calculate input cost with tiered pricing:
+ *   - First 200k tokens at baseRate ($/MTok)
+ *   - Remaining tokens at 2x baseRate
+ */
+function calculateTieredInputCost(tokens: number, baseRatePerMtok: number): number {
+  if (tokens <= TIER_BOUNDARY) {
+    return (tokens / 1_000_000) * baseRatePerMtok;
+  }
+  const tier1Cost = (TIER_BOUNDARY / 1_000_000) * baseRatePerMtok;
+  const tier2Cost = ((tokens - TIER_BOUNDARY) / 1_000_000) * (baseRatePerMtok * 2);
+  return tier1Cost + tier2Cost;
+}
 
 // ---------------------------------------------------------------------------
 // JSONLReader
@@ -60,15 +72,41 @@ const CACHE_WRITE_COST_RATIO = 0.25;
 export class JSONLReader {
   private readonly costPer1kInput: number;
   private readonly costPer1kOutput: number;
+  private readonly pricingMap: ModelPricingMap | null;
 
   /**
    * @param config - Pricing config for cost calculation.
-   * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens.
-   * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens.
+   * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens (fallback).
+   * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens (fallback).
+   * @param pricingMap - Optional model pricing map for dynamic per-model pricing ($/MTok).
+   *                     When provided, takes precedence over flat cost_per_1k_* rates.
    */
-  constructor(config: { cost_per_1k_input_tokens: number; cost_per_1k_output_tokens: number }) {
+  constructor(
+    config: { cost_per_1k_input_tokens: number; cost_per_1k_output_tokens: number },
+    pricingMap?: ModelPricingMap,
+  ) {
     this.costPer1kInput = config.cost_per_1k_input_tokens;
     this.costPer1kOutput = config.cost_per_1k_output_tokens;
+    this.pricingMap = pricingMap ?? null;
+  }
+
+  /** Get pricing info for a model from the pricing map, or null if not available. */
+  private getPricingForModel(modelId: string | undefined): ModelPricingInfo | null {
+    if (!this.pricingMap || !modelId) return null;
+    // Exact match.
+    if (this.pricingMap[modelId]) return this.pricingMap[modelId]!;
+    // Normalise dashes/dots: 'claude-sonnet-4-6' -> 'claude-sonnet-4.6'
+    const normId = modelId.replace(/-/g, '.');
+    const dotKey = Object.keys(this.pricingMap).find(
+      (k) => k.replace(/-/g, '.') === normId,
+    );
+    if (dotKey) return this.pricingMap[dotKey]!;
+    // Prefix match.
+    const prefixKey = Object.keys(this.pricingMap).find(
+      (k) => modelId.startsWith(k) || k.startsWith(modelId),
+    );
+    if (prefixKey) return this.pricingMap[prefixKey]!;
+    return null;
   }
 
   // -------------------------------------------------------------------------
@@ -250,24 +288,51 @@ export class JSONLReader {
       const usage = assistant.message?.usage;
       if (usage === undefined) continue;
 
+      const modelId = assistant.message?.model;
       const inputTokens = usage.input_tokens ?? 0;
       const outputTokens = usage.output_tokens ?? 0;
       const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+      // Use total cache_creation_input_tokens for backward compat count
       const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+      // Extended cache write breakdown for tiered write cost calculation
+      const cache5mTokens = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0;
+      const cache1hTokens = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
 
       // Skip records with no meaningful token data.
       if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
 
-      const inputCost = (inputTokens / 1000) * this.costPer1kInput;
-      const outputCost = (outputTokens / 1000) * this.costPer1kOutput;
-      const cacheReadCost = (cacheReadTokens / 1000) * this.costPer1kInput * CACHE_READ_COST_RATIO;
-      const cacheWriteCost = (cacheWriteTokens / 1000) * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
-      const totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      let totalCost: number;
+      const modelPricing = this.getPricingForModel(modelId);
+
+      if (modelPricing) {
+        // Dynamic pricing path: use $/MTok rates with tiered input cost.
+        const inputCost = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+        const outputCost = (outputTokens / 1_000_000) * modelPricing.outputPrice;
+        // If extended cache write breakdown is available, use it for accurate cost;
+        // otherwise fall back to the aggregate write count at 5-min rate.
+        let cacheWriteCost: number;
+        if (cache5mTokens > 0 || cache1hTokens > 0) {
+          cacheWriteCost =
+            (cache5mTokens / 1_000_000) * modelPricing.cacheWrite5Min +
+            (cache1hTokens / 1_000_000) * modelPricing.cacheWrite1Hour;
+        } else {
+          cacheWriteCost = (cacheWriteTokens / 1_000_000) * modelPricing.cacheWrite5Min;
+        }
+        const cacheReadCost = (cacheReadTokens / 1_000_000) * modelPricing.cacheHits;
+        totalCost = inputCost + outputCost + cacheWriteCost + cacheReadCost;
+      } else {
+        // Fallback path: use legacy $/1k flat rates.
+        const inputCost = (inputTokens / 1000) * this.costPer1kInput;
+        const outputCost = (outputTokens / 1000) * this.costPer1kOutput;
+        const cacheReadCost = (cacheReadTokens / 1000) * this.costPer1kInput * 0.1;
+        const cacheWriteCost = (cacheWriteTokens / 1000) * this.costPer1kInput * 0.25;
+        totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      }
 
       results.push({
         session_id: assistant.sessionId ?? '',
         timestamp: assistant.timestamp ?? new Date().toISOString(),
-        model: assistant.message?.model,
+        model: modelId,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
         cache_read_tokens: cacheReadTokens,
@@ -505,11 +570,25 @@ export class JSONLReader {
     output_tokens?: number;
     cache_read_tokens?: number;
     cache_write_tokens?: number;
+    model?: string;
   }): number {
-    const inputCost = ((usage.input_tokens ?? 0) / 1000) * this.costPer1kInput;
-    const outputCost = ((usage.output_tokens ?? 0) / 1000) * this.costPer1kOutput;
-    const cacheReadCost = ((usage.cache_read_tokens ?? 0) / 1000) * this.costPer1kInput * CACHE_READ_COST_RATIO;
-    const cacheWriteCost = ((usage.cache_write_tokens ?? 0) / 1000) * this.costPer1kInput * CACHE_WRITE_COST_RATIO;
+    const inputTokens = usage.input_tokens ?? 0;
+    const outputTokens = usage.output_tokens ?? 0;
+    const cacheReadTokens = usage.cache_read_tokens ?? 0;
+    const cacheWriteTokens = usage.cache_write_tokens ?? 0;
+    const modelPricing = this.getPricingForModel(usage.model);
+    if (modelPricing) {
+      const inputCost = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+      const outputCost = (outputTokens / 1_000_000) * modelPricing.outputPrice;
+      const cacheReadCost = (cacheReadTokens / 1_000_000) * modelPricing.cacheHits;
+      const cacheWriteCost = (cacheWriteTokens / 1_000_000) * modelPricing.cacheWrite5Min;
+      return inputCost + outputCost + cacheReadCost + cacheWriteCost;
+    }
+    // Fallback: legacy flat $/1k rates.
+    const inputCost = (inputTokens / 1000) * this.costPer1kInput;
+    const outputCost = (outputTokens / 1000) * this.costPer1kOutput;
+    const cacheReadCost = (cacheReadTokens / 1000) * this.costPer1kInput * 0.1;
+    const cacheWriteCost = (cacheWriteTokens / 1000) * this.costPer1kInput * 0.25;
     return inputCost + outputCost + cacheReadCost + cacheWriteCost;
   }
 }

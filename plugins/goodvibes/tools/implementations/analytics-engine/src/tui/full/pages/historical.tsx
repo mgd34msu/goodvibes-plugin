@@ -67,6 +67,26 @@ function avgCacheHitRate(sessions: GlobalSession[]): number {
   );
 }
 
+function avgInputTokens(sessions: GlobalSession[]): number {
+  if (sessions.length === 0) return 0;
+  return sessions.reduce((s, x) => s + x.total_input_tokens, 0) / sessions.length;
+}
+
+function avgOutputTokens(sessions: GlobalSession[]): number {
+  if (sessions.length === 0) return 0;
+  return sessions.reduce((s, x) => s + x.total_output_tokens, 0) / sessions.length;
+}
+
+function avgToolCalls(sessions: GlobalSession[]): number {
+  if (sessions.length === 0) return 0;
+  return sessions.reduce((s, x) => s + x.total_tool_calls, 0) / sessions.length;
+}
+
+function avgAgentSpawns(sessions: GlobalSession[]): number {
+  if (sessions.length === 0) return 0;
+  return sessions.reduce((s, x) => s + x.total_agent_spawns, 0) / sessions.length;
+}
+
 /**
  * Historical & Trends page — Page 3 of the full TUI dashboard.
  *
@@ -111,6 +131,10 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
   const sessionAvgCost = avgCost(projectSessions);
   const sessionAvgTokens = avgTokens(projectSessions);
   const histAvgCacheHitRate = avgCacheHitRate(projectSessions);
+  const histAvgInputTokens = avgInputTokens(projectSessions);
+  const histAvgOutputTokens = avgOutputTokens(projectSessions);
+  const histAvgToolCalls = avgToolCalls(projectSessions);
+  const histAvgAgentSpawns = avgAgentSpawns(projectSessions);
   // Precision tokens (input+output from precision tool tracking)
   const currentTotalTokens = tokens.input + tokens.output;
 
@@ -128,20 +152,20 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     [
       'API Input Tok',
       formatNumber(tokens.api_input),
-      '—',
-      '—',
+      hasHistory ? formatNumber(histAvgInputTokens) : '—',
+      hasHistory && histAvgInputTokens > 0 ? formatDelta(tokens.api_input, histAvgInputTokens) : '—',
     ],
     [
       'API Output Tok',
       formatNumber(tokens.api_output),
-      '—',
-      '—',
+      hasHistory ? formatNumber(histAvgOutputTokens) : '—',
+      hasHistory && histAvgOutputTokens > 0 ? formatDelta(tokens.api_output, histAvgOutputTokens) : '—',
     ],
     [
       'Cache Hit Rate',
       formatPercent(cache.hit_rate),
-      '—',
-      '—',
+      hasHistory ? formatPercent(histAvgCacheHitRate) : '—',
+      hasHistory && histAvgCacheHitRate > 0 ? formatDelta(cache.hit_rate, histAvgCacheHitRate) : '—',
     ],
     [
       'Total Cost',
@@ -160,8 +184,8 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     [
       'Commands',
       formatNumber(commands.total),
-      '—',
-      '—',
+      hasHistory ? formatNumber(Math.round(histAvgToolCalls)) : '—',
+      hasHistory && histAvgToolCalls > 0 ? formatDelta(commands.total, histAvgToolCalls) : '—',
     ],
     [
       'Success Rate',
@@ -172,8 +196,8 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     [
       'Agents Spawned',
       formatNumber(agents.spawned),
-      '—',
-      '—',
+      hasHistory ? formatNumber(Math.round(histAvgAgentSpawns)) : '—',
+      hasHistory && histAvgAgentSpawns > 0 ? formatDelta(agents.spawned, histAvgAgentSpawns) : '—',
     ],
   ];
 

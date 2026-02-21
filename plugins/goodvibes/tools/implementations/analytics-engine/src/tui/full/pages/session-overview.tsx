@@ -149,6 +149,7 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
             { label: 'Active', value: formatNumber(agents.active) },
             { label: 'Done', value: formatNumber(agents.completed) },
             { label: 'Max Conc', value: formatNumber(agents.max_concurrent) },
+            { label: 'Tokens', value: formatNumber(agents.total_tokens) },
           ]}
         />
 

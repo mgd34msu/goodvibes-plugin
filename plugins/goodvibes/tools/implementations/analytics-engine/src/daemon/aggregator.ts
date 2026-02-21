@@ -50,6 +50,8 @@ import {
   sessionIdFromPath,
 } from '../data/jsonl-reader.js';
 import type { JSONLRecord, JSONLAssistantRecord, ToolCallInfo, AgentActivityInfo } from '../data/jsonl-types.js';
+import { loadModelPricing } from '../config.js';
+import type { ModelPricingMap } from '../config.js';
 import type { GlobalDB } from '../data/global-db.js';
 import { AnomalyDetector } from './anomaly-detector.js';
 import { BudgetTracker } from './budget-tracker.js';
@@ -344,6 +346,9 @@ export class Aggregator {
   private session!: SessionReader;
   private index!: IndexReader;
 
+  // Model pricing map — loaded on initialize() from ~/.claude/model-pricing.json.
+  private pricingMap: ModelPricingMap = {};
+
   // JSONL reader — created in initialize() from config pricing.
   private jsonlReader: JSONLReader | null = null;
 
@@ -451,10 +456,14 @@ export class Aggregator {
    */
   reloadConfig(newConfig: AnalyticsConfig): void {
     this.config = newConfig;
-    this.jsonlReader = new JSONLReader({
-      cost_per_1k_input_tokens: newConfig.cost_per_1k_input_tokens,
-      cost_per_1k_output_tokens: newConfig.cost_per_1k_output_tokens,
-    });
+    this.pricingMap = loadModelPricing();
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: newConfig.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: newConfig.cost_per_1k_output_tokens,
+      },
+      this.pricingMap,
+    );
     // Recompute JSONL totals with new pricing, then refresh state.
     this.recomputeJsonlTotals();
     void this.refresh();
@@ -481,11 +490,17 @@ export class Aggregator {
     // Initialize the telemetry reader (loads SQLite)
     await this.telemetry.initialize();
 
-    // Create the JSONL reader with configured pricing rates.
-    this.jsonlReader = new JSONLReader({
-      cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
-      cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens,
-    });
+    // Load dynamic model pricing.
+    this.pricingMap = loadModelPricing();
+
+    // Create the JSONL reader with configured pricing rates and dynamic pricing map.
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens,
+      },
+      this.pricingMap,
+    );
 
     // Resolve the JSONL project directory and load any existing records.
     const jsonlProjectDir = resolveJsonlProjectDir(
@@ -845,23 +860,8 @@ export class Aggregator {
       };
     })();
 
-    // ── Command metrics (from exec tool breakdown) ─────────────────────────
-    const commands: CommandMetrics = (() => {
-      const execBreakdown = telemetrySummary?.by_tool['exec'];
-      if (!execBreakdown) {
-        return { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null };
-      }
-      const total = execBreakdown.calls;
-      const failures = Math.round(total * (1 - execBreakdown.success_rate));
-      return {
-        total,
-        success_rate: execBreakdown.success_rate,
-        avg_duration_ms: execBreakdown.avg_ms,
-        total_duration_ms: execBreakdown.avg_ms * total,
-        failures,
-        slowest: null, // would require scanning individual records
-      };
-    })();
+    // ── Command metrics deferred — computed after jsonlToolCalls is extracted ──
+    const _commandsPlaceholder = null; // filled after jsonlToolCalls is available
 
     // ── Agent activity from JSONL ────────────────────────────────────────────
     const agentActivities = this.safeCall(
@@ -907,7 +907,7 @@ export class Aggregator {
         ? agentActivities.length
         : (sessionCounters?.agents_spawned ?? 0),
       max_concurrent: maxConcurrent, // peak overlap derived from spawn/complete timestamp windows
-      total_tokens: 0,  // Per-agent token data requires subagent JSONL correlation (not yet implemented)
+      total_tokens: 0,  // Updated to subagent sum after buildAgentProfiles populates profiles
       active: activeAgents,
       completed: completedAgents,
     };
@@ -924,9 +924,7 @@ export class Aggregator {
     const uniqueReadFiles = new Set<string>();
     let createdFiles = 0;
     for (const tc of jsonlToolCalls) {
-      // Extract base tool name: "mcp__...__precision_read" → "precision_read"
-      const rawName = (tc.name ?? '').toLowerCase();
-      const toolName = rawName.includes('__') ? rawName.split('__').pop()! : rawName;
+      const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
       const inputPath = typeof tc.input['path'] === 'string' ? tc.input['path'] : null;
       if (inputPath !== null) {
         if (toolName === 'read' || toolName === 'precision_read') {
@@ -938,6 +936,52 @@ export class Aggregator {
         }
       }
     }
+
+    // ── Command metrics (Bug 2): JSONL as primary source, telemetry as supplement ──
+    const commands: CommandMetrics = (() => {
+      // Count bash/precision_exec/exec calls from JSONL tool calls.
+      let jsonlCmdTotal = 0;
+      let jsonlCmdFailures = 0;
+      for (const tc of jsonlToolCalls) {
+        const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
+        if (toolName === 'bash' || toolName === 'precision_exec' || toolName === 'exec') {
+          jsonlCmdTotal++;
+          if (tc.isError) jsonlCmdFailures++;
+        }
+      }
+
+      if (jsonlCmdTotal > 0) {
+        // JSONL-derived: accurate tool call counts.
+        const successRate = jsonlCmdTotal > 0 ? (jsonlCmdTotal - jsonlCmdFailures) / jsonlCmdTotal : 1;
+        // Get avg_duration_ms from telemetry if available, else 0.
+        const execBreakdown = telemetrySummary?.by_tool['exec'];
+        const avgDuration = execBreakdown?.avg_ms ?? 0;
+        return {
+          total: jsonlCmdTotal,
+          success_rate: successRate,
+          avg_duration_ms: avgDuration,
+          total_duration_ms: avgDuration * jsonlCmdTotal,
+          failures: jsonlCmdFailures,
+          slowest: null,
+        };
+      }
+
+      // Fall back to precision telemetry exec breakdown.
+      const execBreakdown = telemetrySummary?.by_tool['exec'];
+      if (!execBreakdown) {
+        return { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null };
+      }
+      const total = execBreakdown.calls;
+      const failures = Math.round(total * (1 - execBreakdown.success_rate));
+      return {
+        total,
+        success_rate: execBreakdown.success_rate,
+        avg_duration_ms: execBreakdown.avg_ms,
+        total_duration_ms: execBreakdown.avg_ms * total,
+        failures,
+        slowest: null,
+      };
+    })();
 
     // ── File metrics ──────────────────────────────────────────────────────
     const files: FileMetrics = {
@@ -954,7 +998,7 @@ export class Aggregator {
       telemetrySummary?.by_tool ?? {};
 
     // ── Recent activity ───────────────────────────────────────────────────
-    const recentActivity: ActivityEvent[] = this.buildRecentActivity();
+    const recentActivity: ActivityEvent[] = this.buildRecentActivity(jsonlToolCalls, agentActivities);
 
     // ── File hotspots ─────────────────────────────────────────────────────
     const fileHotspots: FileHotspot[] = this.buildFileHotspots(
@@ -965,6 +1009,10 @@ export class Aggregator {
 
     // ── Agent profiles ────────────────────────────────────────────────────
     const agentProfiles: AgentProfile[] = this.buildAgentProfiles(agentActivities);
+    // Update agents.total_tokens from parsed subagent profiles (Bug 3).
+    agents.total_tokens = agentProfiles.reduce(
+      (sum, p) => sum + p.tokens_in + p.tokens_out, 0,
+    );
 
     // ── Context window usage percentage ───────────────────────────────────
     // Derived from the most recent assistant record's input_tokens.
@@ -1047,27 +1095,79 @@ export class Aggregator {
   /**
    * Build the recent activity list from the most recent telemetry records.
    */
-  private buildRecentActivity(): ActivityEvent[] {
-    const records = this.safeCall(
+  private buildRecentActivity(
+    jsonlToolCalls: ToolCallInfo[],
+    agentActivities: AgentActivityInfo[],
+  ): ActivityEvent[] {
+    const events: ActivityEvent[] = [];
+
+    // Build events from JSONL tool calls (primary source — telemetry DB is often empty).
+    for (const tc of jsonlToolCalls) {
+      const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
+      events.push({
+        timestamp: tc.timestamp,
+        type: toolToActivityType(toolName),
+        tool: toolName,
+        description: tc.isError ? 'error' : 'ok',
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { status: tc.isError ? 'error' : 'success' },
+      });
+    }
+
+    // Build events from agent spawn/complete records.
+    for (const a of agentActivities) {
+      events.push({
+        timestamp: a.spawnedAt,
+        type: 'agent_spawn',
+        tool: 'Task',
+        description: 'agent spawned',
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { agent_id: a.agentId },
+      });
+      if (a.completedAt !== undefined) {
+        events.push({
+          timestamp: a.completedAt,
+          type: 'agent_complete',
+          tool: 'Task',
+          description: a.exitStatus === 'error' ? 'error' : 'completed',
+          duration_ms: 0,
+          cache_hit: false,
+          tokens: 0,
+          details: { agent_id: a.agentId, status: a.exitStatus },
+        });
+      }
+    }
+
+    // Also include precision telemetry records when available.
+    const telemetryRecords = this.safeCall(
       () => this.telemetry.getRecentRecords(RECENT_ACTIVITY_LIMIT),
       [],
     );
+    for (const r of telemetryRecords) {
+      events.push({
+        timestamp: r.created_at,
+        type: toolToActivityType(r.tool),
+        tool: r.tool,
+        description: r.error ?? (r.status === 'success' ? 'ok' : r.status),
+        duration_ms: r.duration_ms,
+        cache_hit: r.cache_hit,
+        tokens: (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
+        details: {
+          status: r.status,
+          tokens_in: r.tokens_in,
+          tokens_out: r.tokens_out,
+          cache_bytes_saved: r.cache_bytes_saved,
+        },
+      });
+    }
 
-    return records.map((r) => ({
-      timestamp: r.created_at,
-      type: toolToActivityType(r.tool),
-      tool: r.tool,
-      description: r.error ?? (r.status === 'success' ? 'ok' : r.status),
-      duration_ms: r.duration_ms,
-      cache_hit: r.cache_hit,
-      tokens: (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
-      details: {
-        status: r.status,
-        tokens_in: r.tokens_in,
-        tokens_out: r.tokens_out,
-        cache_bytes_saved: r.cache_bytes_saved,
-      },
-    }));
+    // Sort by timestamp descending and return most recent RECENT_ACTIVITY_LIMIT events.
+    events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    return events.slice(0, RECENT_ACTIVITY_LIMIT);
   }
 
   /**
@@ -1091,7 +1191,7 @@ export class Aggregator {
     const fileStats = new Map<string, { reads: number; writes: number; conflicts: number; lastAccessed: string }>();
 
     for (const tc of jsonlToolCalls) {
-      const toolName = (tc.name ?? '').toLowerCase();
+      const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
       const timestamp = tc.timestamp ?? new Date().toISOString();
 
       // Collect all file paths referenced by this tool call.
@@ -1192,6 +1292,8 @@ export class Aggregator {
    * @param agentActivities - Agent activity records extracted from JSONL.
    */
   private buildAgentProfiles(agentActivities: AgentActivityInfo[]): AgentProfile[] {
+    const sessionDir = this.findSessionDir();
+
     return agentActivities.map((a) => {
       // Calculate duration from spawnedAt/completedAt timestamps when both are present.
       let duration_ms = 0;
@@ -1203,19 +1305,114 @@ export class Aggregator {
         }
       }
 
+      // Try to find and parse the matching subagent JSONL file.
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+
+      if (sessionDir !== null) {
+        const subagentData = this.parseSubagentFile(sessionDir, a.agentId);
+        if (subagentData !== null) {
+          tokens_in = subagentData.tokens_in;
+          tokens_out = subagentData.tokens_out;
+          tool_calls = subagentData.tool_calls;
+        }
+      }
+
       return {
         agent_id: a.agentId,
-        agent_type: 'task', // All JSONL-derived agents are Task tool spawns
-        tokens_in: 0,       // Per-agent token counts require subagent JSONL correlation
-        tokens_out: 0,
-        tool_calls: 0,      // Not derivable without subagent session JSONL correlation
-        success_rate: 1,    // Default; no per-agent failure data available
+        agent_type: 'task',
+        tokens_in,
+        tokens_out,
+        tool_calls,
+        success_rate: 1,
         duration_ms,
         status: a.completed
           ? (a.exitStatus === 'error' ? 'failed' : 'completed')
           : 'active',
       };
     });
+  }
+
+  /**
+   * Determine the session directory (parent dir of the active JSONL file).
+   * Subagent files live at <session-dir>/subagents/agent-<id>.jsonl
+   */
+  private findSessionDir(): string | null {
+    if (this.activeJsonlPath === null) return null;
+    return dirname(this.activeJsonlPath);
+  }
+
+  /**
+   * Parse a subagent JSONL file and return aggregated token/tool counts.
+   *
+   * @param sessionDir - Session directory (parent of the main JSONL file).
+   * @param agentId    - Agent ID from the Task tool_use block (may be a prefix).
+   */
+  private parseSubagentFile(
+    sessionDir: string,
+    agentId: string,
+  ): { tokens_in: number; tokens_out: number; tool_calls: number } | null {
+    const subagentsDir = join(sessionDir, 'subagents');
+    if (!existsSync(subagentsDir)) return null;
+
+    // Find a matching file: exact match or agentId as prefix.
+    let subagentFile: string | null = null;
+    try {
+      const entries = readdirSync(subagentsDir);
+      for (const entry of entries) {
+        if (!entry.startsWith('agent-') || !entry.endsWith('.jsonl')) continue;
+        // The agentId is the tool_use id; the filename is agent-<id>.jsonl.
+        // Try exact match first, then prefix match.
+        const fileId = entry.slice('agent-'.length, -'.jsonl'.length);
+        if (fileId === agentId || fileId.startsWith(agentId) || agentId.startsWith(fileId)) {
+          subagentFile = join(subagentsDir, entry);
+          break;
+        }
+      }
+    } catch {
+      return null;
+    }
+
+    if (subagentFile === null) return null;
+
+    try {
+      const content = readFileSync(subagentFile, 'utf8');
+      const lines = content.split('\n').filter((l) => l.trim() !== '');
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line) as Record<string, unknown>;
+          if (entry['type'] !== 'assistant') continue;
+          const msg = entry['message'] as Record<string, unknown> | undefined;
+          if (msg?.['usage']) {
+            const usage = msg['usage'] as Record<string, number>;
+            tokens_in += usage['input_tokens'] ?? 0;
+            tokens_out += usage['output_tokens'] ?? 0;
+          }
+          const contentBlocks = msg?.['content'];
+          if (Array.isArray(contentBlocks)) {
+            for (const block of contentBlocks) {
+              if (
+                typeof block === 'object' && block !== null &&
+                (block as Record<string, unknown>)['type'] === 'tool_use'
+              ) {
+                tool_calls++;
+              }
+            }
+          }
+        } catch {
+          // Skip malformed lines.
+        }
+      }
+
+      return { tokens_in, tokens_out, tool_calls };
+    } catch {
+      return null;
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1328,6 +1525,20 @@ export class Aggregator {
    * @param fn       - Function to execute.
    * @param fallback - Value returned if fn throws.
    */
+  /**
+   * Extract the base tool name from a raw MCP tool name.
+   *
+   * Strips the MCP prefix (e.g. 'mcp__plugin_goodvibes_precision-engine__precision_read'
+   * becomes 'precision_read'). Also lowercases the result.
+   *
+   * @param rawName - Raw tool name from JSONL tool_use block.
+   * @returns Lowercased base tool name without MCP prefix.
+   */
+  static extractBaseToolName(rawName: string): string {
+    const name = rawName.toLowerCase();
+    return name.includes('__') ? name.split('__').pop()! : name;
+  }
+
   private safeCall<T>(fn: () => T, fallback: T): T {
     try {
       return fn();
