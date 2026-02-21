@@ -3241,7 +3241,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve5.call(this, root, ref);
+      let _sch = resolve7.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3272,13 +3272,13 @@ var require_compile = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve5(root, ref) {
+    function resolve7(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve5, "resolve");
+    __name(resolve7, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -3871,13 +3871,13 @@ var require_fast_uri = __commonJS({
       return uri;
     }
     __name(normalize, "normalize");
-    function resolve5(baseURI, relativeURI, options) {
+    function resolve7(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    __name(resolve5, "resolve");
+    __name(resolve7, "resolve");
     function resolveComponent(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
@@ -4103,7 +4103,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve5,
+      resolve: resolve7,
       resolveComponent,
       equal,
       serialize,
@@ -11416,7 +11416,12 @@ function buildCommand(target) {
     distDir = (0, import_node_path9.join)(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
   }
   const ext = target === "full" ? "mjs" : "cjs";
-  return `node "${(0, import_node_path9.join)(distDir, `${target}.${ext}`)}"`;
+  const absGoodvibesDir = (0, import_node_path9.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+  if (/[\x00-\x1f\x7f]/.test(absGoodvibesDir)) {
+    throw new Error("GOODVIBES_DIR contains invalid control characters");
+  }
+  const safeDir = absGoodvibesDir.replace(/["\`$]/g, "$&");
+  return `GOODVIBES_DIR="${safeDir}" node "${(0, import_node_path9.join)(distDir, `${target}.${ext}`)}"`;
 }
 function handleStart(input) {
   const detection = detectTmux();
@@ -23922,7 +23927,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve5) => setTimeout(resolve5, pollInterval));
+        await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -23939,7 +23944,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve7, reject) => {
       const earlyReject = /* @__PURE__ */ __name((error2) => {
         reject(error2);
       }, "earlyReject");
@@ -24017,7 +24022,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve5(parseResult.data);
+            resolve7(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -24278,12 +24283,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve7, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve5, interval);
+      const timeoutId = setTimeout(resolve7, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -25034,12 +25039,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve5) => {
+    return new Promise((resolve7) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve5();
+        resolve7();
       } else {
-        this._stdout.once("drain", resolve5);
+        this._stdout.once("drain", resolve7);
       }
     });
   }
@@ -27198,7 +27203,7 @@ function resolveJsonlProjectDir(goodvibesDir, jsonlBasePath) {
   } catch {
     return null;
   }
-  const projectRoot = (0, import_node_path6.dirname)(goodvibesDir);
+  const projectRoot = (0, import_node_path6.dirname)((0, import_node_path6.resolve)(goodvibesDir));
   const dashedPath = projectRoot.replace(/\//g, "-");
   for (const entry of entries) {
     if (entry === dashedPath) {
@@ -27411,8 +27416,8 @@ var Aggregator = class _Aggregator {
       this.accumulateJsonlRecords(records);
       void this.refresh();
     });
-    this.watcher.start();
     this.initialized = true;
+    this.watcher.start();
     await this.refresh();
   }
   /**
@@ -27626,7 +27631,7 @@ var Aggregator = class _Aggregator {
     const uptimeMs = now - startedAtMs;
     const sessionId = this.jsonlSessionId ?? this.safeCall(() => this.telemetry?.getCurrentSessionId(), null) ?? this.safeCall(() => this.session?.readCurrentSession()?.id, null) ?? "unknown";
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
     const jsonl = this.jsonlTotals;
     const hasJsonlData = this.jsonlRecords.length > 0;
     const tokens = {
@@ -27950,7 +27955,8 @@ var Aggregator = class _Aggregator {
           }
         }
       }
-      for (const filePath of filePaths) {
+      for (const rawPath of filePaths) {
+        const filePath = (0, import_node_path6.resolve)(rawPath);
         if (!fileStats.has(filePath)) {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
@@ -28020,7 +28026,7 @@ var Aggregator = class _Aggregator {
       }
       return {
         agent_id: a.agentId,
-        agent_type: "task",
+        agent_type: a.taskInput["subagent_type"] ?? a.taskInput["description"] ?? "unknown",
         tokens_in,
         tokens_out,
         tool_calls,

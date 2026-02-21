@@ -14,10 +14,11 @@ import React from 'react';
 import { render } from 'ink';
 import { Aggregator } from './daemon/aggregator.js';
 import { App } from './tui/full/app.js';
+import { resolve } from 'node:path';
 import { loadConfig } from './config.js';
 import { initializeGlobalDb } from './data/db-init.js';
 
-const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
+const goodvibesDir = resolve(process.env['GOODVIBES_DIR'] ?? '.goodvibes');
 
 /**
  * Bootstrap the aggregator, perform initial render, then subscribe
@@ -57,8 +58,11 @@ export async function main(): Promise<void> {
     }),
   );
 
-  // Subscribe to state changes — re-render on each update
-  aggregator.onStateChange(renderApp);
+  // Subscribe to state changes — delay to next tick so the initial render
+  // completes before any state-change rerender fires (prevents duplicate header).
+  process.nextTick(() => {
+    aggregator.onStateChange(renderApp);
+  });
 
   process.on('SIGINT', () => { shutdown().catch((err) => console.error('[shutdown]', err)); });
   process.on('SIGTERM', () => { shutdown().catch((err) => console.error('[shutdown]', err)); });

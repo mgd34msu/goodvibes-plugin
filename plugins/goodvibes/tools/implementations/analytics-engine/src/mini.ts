@@ -8,12 +8,13 @@
  * Handles SIGINT/SIGTERM for graceful shutdown.
  */
 
+import { resolve } from 'node:path';
 import { Aggregator } from './daemon/aggregator.js';
 import { MiniRenderer } from './tui/mini/renderer.js';
 import { loadConfig } from './config.js';
 import { initializeGlobalDb } from './data/db-init.js';
 
-const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
+const goodvibesDir = resolve(process.env['GOODVIBES_DIR'] ?? '.goodvibes');
 
 async function main(): Promise<void> {
   const config = loadConfig(goodvibesDir);

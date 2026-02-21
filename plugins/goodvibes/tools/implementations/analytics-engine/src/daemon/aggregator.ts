@@ -20,7 +20,7 @@
  *   - shutdown() cleanly stops the DataWatcher and closes the TelemetryReader.
  */
 
-import { join, dirname, basename } from 'node:path';
+import { join, dirname, basename, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 
@@ -240,7 +240,7 @@ function resolveJsonlProjectDir(
   // The goodvibesDir is typically <project-root>/.goodvibes.
   // Claude stores JSONL project dirs with dashed-path names, e.g.
   // /home/user/Projects/myapp → -home-user-Projects-myapp
-  const projectRoot = dirname(goodvibesDir);
+  const projectRoot = dirname(resolve(goodvibesDir));
   const dashedPath = projectRoot.replace(/\//g, '-');
   for (const entry of entries) {
     if (entry === dashedPath) {
@@ -547,10 +547,11 @@ export class Aggregator {
       void this.refresh();
     });
 
-    this.watcher.start();
-
-    // Mark initialized before first refresh so the guard in refresh() passes.
+    // Mark initialized before watcher starts — watcher events call refresh()
+    // which checks this flag.
     this.initialized = true;
+
+    this.watcher.start();
 
     // Initial state computation
     await this.refresh();
@@ -808,7 +809,7 @@ export class Aggregator {
 
     // ── Telemetry summary (precision-engine data) ─────────────────────────
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
 
     // ── Token metrics: merge precision telemetry with JSONL API data ──────
     //
@@ -1245,7 +1246,9 @@ export class Aggregator {
         }
       }
 
-      for (const filePath of filePaths) {
+      for (const rawPath of filePaths) {
+        // Normalize path to avoid duplicate entries from relative vs absolute variants.
+        const filePath = resolve(rawPath);
         if (!fileStats.has(filePath)) {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
@@ -1338,7 +1341,7 @@ export class Aggregator {
 
       return {
         agent_id: a.agentId,
-        agent_type: 'task',
+        agent_type: (a.taskInput['subagent_type'] as string) ?? (a.taskInput['description'] as string) ?? 'unknown',
         tokens_in,
         tokens_out,
         tool_calls,

@@ -256,28 +256,28 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
           <TrendLine
             label="Token Efficiency"
             value={formatPercent(tokens.efficiency)}
-            trend={'\u2014'}
+            trend={'—'}
             barValue={tokens.efficiency}
             higherIsBetter
           />
           <TrendLine
             label="Cache Hit Rate"
             value={formatPercent(cache.hit_rate)}
-            trend={hasHistory ? formatDelta(cache.hit_rate, histAvgCacheHitRate) : '\u2014'}
+            trend={hasHistory ? formatDelta(cache.hit_rate, histAvgCacheHitRate) : '—'}
             barValue={cache.hit_rate}
             higherIsBetter
           />
           <TrendLine
             label="Command Success"
             value={formatPercent(commands.success_rate)}
-            trend="\u2014"
+            trend="—"
             barValue={commands.success_rate}
             higherIsBetter
           />
           <TrendLine
             label="Cost Savings"
             value={formatPercent(costSavedRatio)}
-            trend="\u2014"
+            trend="—"
             barValue={costSavedRatio}
             higherIsBetter
           />

@@ -836,7 +836,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 // src/data/global-db.ts
 import { readFileSync as readFileSync7, writeFileSync as writeFileSync3, existsSync as existsSync7 } from "node:fs";
-import { join as join10, resolve } from "node:path";
+import { join as join10, resolve as resolve2 } from "node:path";
 function rowsToObjects(result) {
   if (!result.length) return [];
   const { columns, values } = result[0];
@@ -1677,11 +1677,11 @@ var init_global_db = __esm({
         } catch {
           baseDir = process.cwd();
         }
-        const distWasm = resolve(join10(baseDir, "sql-wasm.wasm"));
+        const distWasm = resolve2(join10(baseDir, "sql-wasm.wasm"));
         if (existsSync7(distWasm)) return distWasm;
-        const nodeWasm = resolve(join10(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
+        const nodeWasm = resolve2(join10(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
         if (existsSync7(nodeWasm)) return nodeWasm;
-        return resolve(join10(baseDir, "sql-wasm.wasm"));
+        return resolve2(join10(baseDir, "sql-wasm.wasm"));
       }
     };
   }
@@ -1689,7 +1689,7 @@ var init_global_db = __esm({
 
 // src/data/db-init.ts
 import { mkdirSync as mkdirSync2, existsSync as existsSync8 } from "node:fs";
-import { join as join11, resolve as resolve2 } from "node:path";
+import { join as join11, resolve as resolve3 } from "node:path";
 import { homedir as homedir4 } from "node:os";
 function ensureGlobalAnalyticsDir() {
   if (!existsSync8(ANALYTICS_DIR)) {
@@ -1698,7 +1698,7 @@ function ensureGlobalAnalyticsDir() {
   return ANALYTICS_DIR;
 }
 function getGlobalDbPath() {
-  return resolve2(join11(ANALYTICS_DIR, DB_FILENAME));
+  return resolve3(join11(ANALYTICS_DIR, DB_FILENAME));
 }
 async function initializeGlobalDb(dbPath) {
   if (dbPath) {
@@ -2041,7 +2041,7 @@ var init_types2 = __esm({
 });
 
 // src/handlers/dashboard.ts
-import { join as join12 } from "node:path";
+import { join as join12, resolve as resolve4 } from "node:path";
 function getManager() {
   if (_manager === null) {
     _manager = new TmuxManager(DEFAULT_CONFIG.tmux);
@@ -2061,7 +2061,12 @@ function buildCommand(target) {
     distDir = join12(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
   }
   const ext = target === "full" ? "mjs" : "cjs";
-  return `node "${join12(distDir, `${target}.${ext}`)}"`;
+  const absGoodvibesDir = resolve4(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+  if (/[\x00-\x1f\x7f]/.test(absGoodvibesDir)) {
+    throw new Error("GOODVIBES_DIR contains invalid control characters");
+  }
+  const safeDir = absGoodvibesDir.replace(/["\`$]/g, "$&");
+  return `GOODVIBES_DIR="${safeDir}" node "${join12(distDir, `${target}.${ext}`)}"`;
 }
 function handleStart(input) {
   const detection = detectTmux();
@@ -2823,7 +2828,7 @@ var init_budget = __esm({
 
 // src/data/tag-store.ts
 import { readFileSync as readFileSync8, existsSync as existsSync9, readdirSync as readdirSync3, statSync as statSync7 } from "node:fs";
-import { join as join13, resolve as resolve3 } from "node:path";
+import { join as join13, resolve as resolve5 } from "node:path";
 import { homedir as homedir5 } from "node:os";
 function resolveJsonlPath(sessionId, jsonlBase = join13(homedir5(), ".claude", "projects")) {
   const targetFile = `${sessionId}.jsonl`;
@@ -2837,7 +2842,7 @@ function resolveJsonlPath(sessionId, jsonlBase = join13(homedir5(), ".claude", "
       }
     });
     for (const projectDir of projectDirs) {
-      const candidate = resolve3(join13(jsonlBase, projectDir, targetFile));
+      const candidate = resolve5(join13(jsonlBase, projectDir, targetFile));
       if (existsSync9(candidate)) {
         return candidate;
       }
@@ -4378,7 +4383,7 @@ init_types();
 init_config();
 
 // src/daemon/aggregator.ts
-import { join as join9, dirname as dirname3, basename as basename3 } from "node:path";
+import { join as join9, dirname as dirname3, basename as basename3, resolve } from "node:path";
 import { homedir as homedir3 } from "node:os";
 import { existsSync as existsSync6, readFileSync as readFileSync6, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
 
@@ -6525,7 +6530,7 @@ function resolveJsonlProjectDir(goodvibesDir, jsonlBasePath) {
   } catch {
     return null;
   }
-  const projectRoot = dirname3(goodvibesDir);
+  const projectRoot = dirname3(resolve(goodvibesDir));
   const dashedPath = projectRoot.replace(/\//g, "-");
   for (const entry of entries) {
     if (entry === dashedPath) {
@@ -6738,8 +6743,8 @@ var Aggregator = class _Aggregator {
       this.accumulateJsonlRecords(records);
       void this.refresh();
     });
-    this.watcher.start();
     this.initialized = true;
+    this.watcher.start();
     await this.refresh();
   }
   /**
@@ -6953,7 +6958,7 @@ var Aggregator = class _Aggregator {
     const uptimeMs = now - startedAtMs;
     const sessionId = this.jsonlSessionId ?? this.safeCall(() => this.telemetry?.getCurrentSessionId(), null) ?? this.safeCall(() => this.session?.readCurrentSession()?.id, null) ?? "unknown";
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
     const jsonl = this.jsonlTotals;
     const hasJsonlData = this.jsonlRecords.length > 0;
     const tokens = {
@@ -7277,7 +7282,8 @@ var Aggregator = class _Aggregator {
           }
         }
       }
-      for (const filePath of filePaths) {
+      for (const rawPath of filePaths) {
+        const filePath = resolve(rawPath);
         if (!fileStats.has(filePath)) {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
@@ -7347,7 +7353,7 @@ var Aggregator = class _Aggregator {
       }
       return {
         agent_id: a.agentId,
-        agent_type: "task",
+        agent_type: a.taskInput["subagent_type"] ?? a.taskInput["description"] ?? "unknown",
         tokens_in,
         tokens_out,
         tool_calls,

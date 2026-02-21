@@ -14,7 +14,7 @@ import React6 from "react";
 import { render } from "ink";
 
 // src/daemon/aggregator.ts
-import { join as join9, dirname as dirname3, basename as basename3 } from "node:path";
+import { join as join9, dirname as dirname3, basename as basename3, resolve } from "node:path";
 import { homedir as homedir2 } from "node:os";
 import { existsSync as existsSync6, readFileSync as readFileSync6, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
 
@@ -2793,7 +2793,7 @@ function resolveJsonlProjectDir(goodvibesDir2, jsonlBasePath) {
   } catch {
     return null;
   }
-  const projectRoot = dirname3(goodvibesDir2);
+  const projectRoot = dirname3(resolve(goodvibesDir2));
   const dashedPath = projectRoot.replace(/\//g, "-");
   for (const entry of entries) {
     if (entry === dashedPath) {
@@ -3006,8 +3006,8 @@ var Aggregator = class _Aggregator {
       this.accumulateJsonlRecords(records);
       void this.refresh();
     });
-    this.watcher.start();
     this.initialized = true;
+    this.watcher.start();
     await this.refresh();
   }
   /**
@@ -3221,7 +3221,7 @@ var Aggregator = class _Aggregator {
     const uptimeMs = now - startedAtMs;
     const sessionId = this.jsonlSessionId ?? this.safeCall(() => this.telemetry?.getCurrentSessionId(), null) ?? this.safeCall(() => this.session?.readCurrentSession()?.id, null) ?? "unknown";
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
     const jsonl = this.jsonlTotals;
     const hasJsonlData = this.jsonlRecords.length > 0;
     const tokens = {
@@ -3545,7 +3545,8 @@ var Aggregator = class _Aggregator {
           }
         }
       }
-      for (const filePath of filePaths) {
+      for (const rawPath of filePaths) {
+        const filePath = resolve(rawPath);
         if (!fileStats.has(filePath)) {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
@@ -3615,7 +3616,7 @@ var Aggregator = class _Aggregator {
       }
       return {
         agent_id: a.agentId,
-        agent_type: "task",
+        agent_type: a.taskInput["subagent_type"] ?? a.taskInput["description"] ?? "unknown",
         tokens_in,
         tokens_out,
         tool_calls,
@@ -4709,7 +4710,7 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
           {
             label: "Command Success",
             value: formatPercent(commands.success_rate),
-            trend: "\\u2014",
+            trend: "\u2014",
             barValue: commands.success_rate,
             higherIsBetter: true
           }
@@ -4719,7 +4720,7 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
           {
             label: "Cost Savings",
             value: formatPercent(costSavedRatio),
-            trend: "\\u2014",
+            trend: "\u2014",
             barValue: costSavedRatio,
             higherIsBetter: true
           }
@@ -5049,14 +5050,17 @@ var HelpOverlay = /* @__PURE__ */ __name(() => /* @__PURE__ */ jsxs11(Box11, { f
   ] })
 ] }), "HelpOverlay");
 
+// src/dashboard.ts
+import { resolve as resolve4 } from "node:path";
+
 // src/data/db-init.ts
 import { mkdirSync as mkdirSync2, existsSync as existsSync8 } from "node:fs";
-import { join as join11, resolve as resolve2 } from "node:path";
+import { join as join11, resolve as resolve3 } from "node:path";
 import { homedir as homedir3 } from "node:os";
 
 // src/data/global-db.ts
 import { readFileSync as readFileSync7, writeFileSync as writeFileSync3, existsSync as existsSync7 } from "node:fs";
-import { join as join10, resolve } from "node:path";
+import { join as join10, resolve as resolve2 } from "node:path";
 
 // src/data/db-schema.ts
 var SCHEMA_VERSION = 1;
@@ -6040,11 +6044,11 @@ var GlobalDB = class {
     } catch {
       baseDir = process.cwd();
     }
-    const distWasm = resolve(join10(baseDir, "sql-wasm.wasm"));
+    const distWasm = resolve2(join10(baseDir, "sql-wasm.wasm"));
     if (existsSync7(distWasm)) return distWasm;
-    const nodeWasm = resolve(join10(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
+    const nodeWasm = resolve2(join10(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
     if (existsSync7(nodeWasm)) return nodeWasm;
-    return resolve(join10(baseDir, "sql-wasm.wasm"));
+    return resolve2(join10(baseDir, "sql-wasm.wasm"));
   }
 };
 
@@ -6062,7 +6066,7 @@ function ensureGlobalAnalyticsDir() {
 }
 __name(ensureGlobalAnalyticsDir, "ensureGlobalAnalyticsDir");
 function getGlobalDbPath() {
-  return resolve2(join11(ANALYTICS_DIR, DB_FILENAME));
+  return resolve3(join11(ANALYTICS_DIR, DB_FILENAME));
 }
 __name(getGlobalDbPath, "getGlobalDbPath");
 async function initializeGlobalDb(dbPath) {
@@ -6088,7 +6092,7 @@ async function initializeGlobalDb(dbPath) {
 __name(initializeGlobalDb, "initializeGlobalDb");
 
 // src/dashboard.ts
-var goodvibesDir = process.env["GOODVIBES_DIR"] ?? ".goodvibes";
+var goodvibesDir = resolve4(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
 async function main() {
   const config = loadConfig(goodvibesDir);
   const aggregator = new Aggregator(goodvibesDir, config);
@@ -6116,7 +6120,9 @@ async function main() {
       onQuit: shutdown
     })
   );
-  aggregator.onStateChange(renderApp);
+  process.nextTick(() => {
+    aggregator.onStateChange(renderApp);
+  });
   process.on("SIGINT", () => {
     shutdown().catch((err) => console.error("[shutdown]", err));
   });

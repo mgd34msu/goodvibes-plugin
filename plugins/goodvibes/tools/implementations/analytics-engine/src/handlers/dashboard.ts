@@ -11,7 +11,7 @@
  *   - 'dashboard' is the canonical target name; 'full' is a backward-compatible alias
  */
 
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { AnalyticsDashboardInput } from '../schemas/tools.js';
 import type { Aggregator } from '../daemon/aggregator.js';
 import { TmuxManager } from '../tmux/manager.js';
@@ -77,7 +77,12 @@ function buildCommand(target: 'mini' | 'full'): string {
     distDir = join(pluginRoot, 'tools', 'implementations', 'analytics-engine', 'dist');
   }
   const ext = target === 'full' ? 'mjs' : 'cjs';
-  return `node "${join(distDir, `${target}.${ext}`)}"`;
+  const absGoodvibesDir = resolve(process.env['GOODVIBES_DIR'] ?? '.goodvibes');
+  if (/[\x00-\x1f\x7f]/.test(absGoodvibesDir)) {
+    throw new Error('GOODVIBES_DIR contains invalid control characters');
+  }
+  const safeDir = absGoodvibesDir.replace(/["\`$]/g, '\$&');
+  return `GOODVIBES_DIR="${safeDir}" node "${join(distDir, `${target}.${ext}`)}"`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

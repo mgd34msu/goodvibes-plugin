@@ -2208,6 +2208,9 @@ var require_sql_wasm = __commonJS({
   }
 });
 
+// src/mini.ts
+var import_node_path9 = require("node:path");
+
 // src/daemon/aggregator.ts
 var import_node_path6 = require("node:path");
 var import_node_os2 = require("node:os");
@@ -4983,7 +4986,7 @@ function resolveJsonlProjectDir(goodvibesDir2, jsonlBasePath) {
   } catch {
     return null;
   }
-  const projectRoot = (0, import_node_path6.dirname)(goodvibesDir2);
+  const projectRoot = (0, import_node_path6.dirname)((0, import_node_path6.resolve)(goodvibesDir2));
   const dashedPath = projectRoot.replace(/\//g, "-");
   for (const entry of entries) {
     if (entry === dashedPath) {
@@ -5196,8 +5199,8 @@ var Aggregator = class _Aggregator {
       this.accumulateJsonlRecords(records);
       void this.refresh();
     });
-    this.watcher.start();
     this.initialized = true;
+    this.watcher.start();
     await this.refresh();
   }
   /**
@@ -5411,7 +5414,7 @@ var Aggregator = class _Aggregator {
     const uptimeMs = now - startedAtMs;
     const sessionId = this.jsonlSessionId ?? this.safeCall(() => this.telemetry?.getCurrentSessionId(), null) ?? this.safeCall(() => this.session?.readCurrentSession()?.id, null) ?? "unknown";
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(sessionId), null);
     const jsonl = this.jsonlTotals;
     const hasJsonlData = this.jsonlRecords.length > 0;
     const tokens = {
@@ -5735,7 +5738,8 @@ var Aggregator = class _Aggregator {
           }
         }
       }
-      for (const filePath of filePaths) {
+      for (const rawPath of filePaths) {
+        const filePath = (0, import_node_path6.resolve)(rawPath);
         if (!fileStats.has(filePath)) {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
@@ -5805,7 +5809,7 @@ var Aggregator = class _Aggregator {
       }
       return {
         agent_id: a.agentId,
-        agent_type: "task",
+        agent_type: a.taskInput["subagent_type"] ?? a.taskInput["description"] ?? "unknown",
         tokens_in,
         tokens_out,
         tool_calls,
@@ -7446,7 +7450,7 @@ async function initializeGlobalDb(dbPath) {
 __name(initializeGlobalDb, "initializeGlobalDb");
 
 // src/mini.ts
-var goodvibesDir = process.env["GOODVIBES_DIR"] ?? ".goodvibes";
+var goodvibesDir = (0, import_node_path9.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
 async function main() {
   const config = loadConfig(goodvibesDir);
   const aggregator = new Aggregator(goodvibesDir, config);
