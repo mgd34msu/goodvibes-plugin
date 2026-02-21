@@ -8,6 +8,9 @@ const __dirname = dirname(__filename);
 
 const binBanner = { js: '#!/usr/bin/env node' };
 
+/** ESM bundle banner: provides require(), __filename, and __dirname for CJS deps like sql.js. */
+const esmBundleBanner = { js: "import { createRequire as __createRequire } from 'module'; import { fileURLToPath as __fileURLToPath } from 'url'; import { dirname as __dirnameFn } from 'path'; const require = __createRequire(import.meta.url); const __filename = __fileURLToPath(import.meta.url); const __dirname = __dirnameFn(__filename);" };
+
 const sharedOptions = {
   bundle: true,
   platform: 'node',
@@ -88,7 +91,7 @@ async function build() {
     await esbuild.build({
       ...sharedOptions,
       format: 'esm',
-      banner: { js: "import { createRequire as __createRequire } from 'module'; import { fileURLToPath as __fileURLToPath } from 'url'; import { dirname as __dirnameFn } from 'path'; const require = __createRequire(import.meta.url); const __filename = __fileURLToPath(import.meta.url); const __dirname = __dirnameFn(__filename);" },
+      banner: esmBundleBanner,
       external: [],
       entryPoints: [join(__dirname, 'src/full.ts')],
       outfile: join(__dirname, 'dist/full.mjs'),
@@ -100,7 +103,7 @@ async function build() {
     await esbuild.build({
       ...sharedOptions,
       format: 'esm',
-      banner: { js: "import { createRequire as __createRequire } from 'module'; import { fileURLToPath as __fileURLToPath } from 'url'; import { dirname as __dirnameFn } from 'path'; const require = __createRequire(import.meta.url); const __filename = __fileURLToPath(import.meta.url); const __dirname = __dirnameFn(__filename);" },
+      banner: esmBundleBanner,
       external: [],
       entryPoints: [join(__dirname, 'src/dashboard.ts')],
       outfile: join(__dirname, 'dist/dashboard.mjs'),
