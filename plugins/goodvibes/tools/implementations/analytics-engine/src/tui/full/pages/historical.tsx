@@ -167,10 +167,17 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
       hasHistory && histAvgOutputTokens > 0 ? formatDelta(tokens.api_output, histAvgOutputTokens) : '—',
     ],
     [
-      'Cache Hit Rate',
+      'Precision Cache',
       formatPercent(cache.hit_rate),
+      '—', // no historical precision cache data in GlobalDB
+      '—',
+    ],
+    [
+      'API Cache Rate',
+      tokens.api_input > 0 ? formatPercent(tokens.cache_read / tokens.api_input) : '—',
       hasHistory ? formatPercent(histAvgCacheHitRate) : '—',
-      hasHistory && histAvgCacheHitRate > 0 ? formatDelta(cache.hit_rate, histAvgCacheHitRate) : '—',
+      hasHistory && histAvgCacheHitRate > 0 && tokens.api_input > 0
+        ? formatDelta(tokens.cache_read / tokens.api_input, histAvgCacheHitRate) : '—',
     ],
     [
       'Total Cost',
@@ -272,9 +279,9 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
             higherIsBetter
           />
           <TrendLine
-            label="Cache Hit Rate"
+            label="Precision Cache"
             value={formatPercent(cache.hit_rate)}
-            trend={hasHistory ? formatDelta(cache.hit_rate, histAvgCacheHitRate) : '—'}
+            trend={'—'}
             barValue={cache.hit_rate}
             higherIsBetter
           />

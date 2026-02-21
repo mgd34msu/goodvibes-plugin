@@ -839,21 +839,12 @@ export class Aggregator {
       cache_write: hasJsonlData ? jsonl.cache_write : (tokenMetrics?.cache_write ?? 0),
     };
 
-    // Compute derived token fields from the populated api_input/api_output/cache_read values.
-    // These were previously left as 0; now we derive them from the real data above.
-    tokens.total = tokens.api_input + tokens.api_output;
-    tokens.saved = tokens.cache_read; // tokens served from cache = savings
-    tokens.efficiency = tokens.total > 0 ? (tokens.saved / tokens.total) * 100 : 0;
+    // NOTE: tokens.input/output/total/saved/efficiency remain from precision telemetry above.
+    // API fields (api_input, api_output, cache_read, cache_write) come from JSONL above.
+    // These two caching systems are distinct and must NOT be conflated.
 
-    // Precision token fields stay at 0 when telemetry.db has no data.
-    // API data is shown separately in the "API TOKENS (JSONL)" dashboard section.
-
-    // ── Cache metrics ─────────────────────────────────────────────────────
-    const cache: CacheMetrics = this.buildCacheMetrics(
-      telemetrySummary,
-      tokens.cache_read,
-      tokens.api_input,
-    );
+    // ── Cache metrics (precision engine only) ────────────────────────────
+    const cache: CacheMetrics = this.buildCacheMetrics(telemetrySummary);
 
     // ── Cost metrics: prefer JSONL calculated cost (uses real API tokens) ──
     const cost: CostMetrics = (() => {
@@ -930,12 +921,20 @@ export class Aggregator {
       if (currentConcurrent > maxConcurrent) maxConcurrent = currentConcurrent;
     }
 
+    // ── Agent profiles ────────────────────────────────────────────────────
+    // Build agent profiles first so total_tokens can be set correctly during
+    // agents object construction, avoiding a fragile post-creation mutation.
+    const agentProfiles: AgentProfile[] = this.buildAgentProfiles(agentActivities);
+    const agentTotalTokens = agentProfiles.reduce(
+      (sum, p) => sum + p.tokens_in + p.tokens_out, 0,
+    );
+
     const agents: AgentMetrics = {
       spawned: agentActivities.length > 0
         ? agentActivities.length
         : (sessionCounters?.agents_spawned ?? 0),
       max_concurrent: maxConcurrent, // peak overlap derived from spawn/complete timestamp windows
-      total_tokens: 0,  // Updated to subagent sum after buildAgentProfiles populates profiles
+      total_tokens: agentTotalTokens,
       active: activeAgents,
       completed: completedAgents,
     };
@@ -1017,6 +1016,9 @@ export class Aggregator {
           total: jsonlCmdTotal,
           success_rate: successRate,
           avg_duration_ms: avgDuration,
+          // total_duration_ms is approximate: telemetry avg_ms (all exec calls) × JSONL
+          // command count (may differ from telemetry count). No per-call duration sum is
+          // exposed by ToolBreakdown, so this is the best available estimate.
           total_duration_ms: avgDuration * jsonlCmdTotal,
           failures: jsonlCmdFailures,
           slowest: null,
@@ -1064,12 +1066,7 @@ export class Aggregator {
       sessionCounters,
     );
 
-    // ── Agent profiles ────────────────────────────────────────────────────
-    const agentProfiles: AgentProfile[] = this.buildAgentProfiles(agentActivities);
-    // Update agents.total_tokens from parsed subagent profiles (Bug 3).
-    agents.total_tokens = agentProfiles.reduce(
-      (sum, p) => sum + p.tokens_in + p.tokens_out, 0,
-    );
+    // agentProfiles already built above (before agents object creation).
 
     // ── Context window usage percentage ───────────────────────────────────
     // Derived from the most recent assistant record's input_tokens.
@@ -1571,24 +1568,26 @@ export class Aggregator {
   /**
    * Build cache metrics from the telemetry summary.
    *
-   * memory_peak_mb and evictions are not tracked in the telemetry DB;
+   * `hit_rate` is a 0–1 count-based ratio derived from the precision engine:
+   * `cache_hits / total_calls`. It is NOT a percentage and is NOT the Anthropic
+   * API prompt cache ratio (`cache_read_tokens / api_input_tokens`).
+   *
+   * `hits` and `misses` are precision engine call counts, not token counts.
+   * The API prompt cache is tracked separately in `tokens.cache_read`.
+   *
+   * `memory_peak_mb` and `evictions` are not tracked in the telemetry DB;
    * they are reported as 0 until a richer data source is available.
    */
   private buildCacheMetrics(
     telemetrySummary: ReturnType<TelemetryReader['getSessionSummary']> | null,
-    cacheReadTokens: number,
-    apiInputTokens: number,
   ): CacheMetrics {
-    // Compute hit rate as the fraction of API input tokens that were served
-    // from the prompt cache (cache_read_tokens / api_input_tokens).  This is
-    // the same formula used by historical.tsx avgCacheHitRate() and avoids the
-    // inflation that results from dividing raw precision-tool call counts.
-    const hitRate = apiInputTokens > 0 ? cacheReadTokens / apiInputTokens : 0;
-
-    // Fall back to telemetry-based hit/miss counts for the raw hit/miss display.
+    // Precision engine cache: hit rate is count-based (hits / total calls).
+    // This is distinct from the Anthropic API prompt cache (cache_read_tokens / api_input_tokens).
+    // Do NOT conflate: tokens.cache_read is the API prompt cache, not the precision engine cache.
     const hits   = telemetrySummary?.total_cache_hits ?? 0;
     const total  = telemetrySummary?.total_calls      ?? 0;
     const misses = total - hits;
+    const hitRate = total > 0 ? hits / total : 0;
     return {
       hit_rate: hitRate,
       hits,

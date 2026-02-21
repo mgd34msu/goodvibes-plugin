@@ -53984,14 +53984,7 @@ var Aggregator = class _Aggregator {
       cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
       cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
     };
-    tokens.total = tokens.api_input + tokens.api_output;
-    tokens.saved = tokens.cache_read;
-    tokens.efficiency = tokens.total > 0 ? tokens.saved / tokens.total * 100 : 0;
-    const cache3 = this.buildCacheMetrics(
-      telemetrySummary,
-      tokens.cache_read,
-      tokens.api_input
-    );
+    const cache3 = this.buildCacheMetrics(telemetrySummary);
     const cost = (() => {
       if (jsonl.cost_usd > 0) {
         const rates = getModelRates(jsonl.model, this.pricingMap);
@@ -54047,12 +54040,16 @@ var Aggregator = class _Aggregator {
       currentConcurrent += delta;
       if (currentConcurrent > maxConcurrent) maxConcurrent = currentConcurrent;
     }
+    const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const agentTotalTokens = agentProfiles.reduce(
+      (sum, p) => sum + p.tokens_in + p.tokens_out,
+      0
+    );
     const agents = {
       spawned: agentActivities.length > 0 ? agentActivities.length : sessionCounters?.agents_spawned ?? 0,
       max_concurrent: maxConcurrent,
       // peak overlap derived from spawn/complete timestamp windows
-      total_tokens: 0,
-      // Updated to subagent sum after buildAgentProfiles populates profiles
+      total_tokens: agentTotalTokens,
       active: activeAgents,
       completed: completedAgents
     };
@@ -54116,6 +54113,9 @@ var Aggregator = class _Aggregator {
           total: jsonlCmdTotal,
           success_rate: successRate,
           avg_duration_ms: avgDuration,
+          // total_duration_ms is approximate: telemetry avg_ms (all exec calls) × JSONL
+          // command count (may differ from telemetry count). No per-call duration sum is
+          // exposed by ToolBreakdown, so this is the best available estimate.
           total_duration_ms: avgDuration * jsonlCmdTotal,
           failures: jsonlCmdFailures,
           slowest: null
@@ -54149,11 +54149,6 @@ var Aggregator = class _Aggregator {
       toolsBreakdown,
       jsonlToolCalls,
       sessionCounters
-    );
-    const agentProfiles = this.buildAgentProfiles(agentActivities);
-    agents.total_tokens = agentProfiles.reduce(
-      (sum, p) => sum + p.tokens_in + p.tokens_out,
-      0
     );
     const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
     let contextPercent = 0;
@@ -54548,14 +54543,21 @@ var Aggregator = class _Aggregator {
   /**
    * Build cache metrics from the telemetry summary.
    *
-   * memory_peak_mb and evictions are not tracked in the telemetry DB;
+   * `hit_rate` is a 0–1 count-based ratio derived from the precision engine:
+   * `cache_hits / total_calls`. It is NOT a percentage and is NOT the Anthropic
+   * API prompt cache ratio (`cache_read_tokens / api_input_tokens`).
+   *
+   * `hits` and `misses` are precision engine call counts, not token counts.
+   * The API prompt cache is tracked separately in `tokens.cache_read`.
+   *
+   * `memory_peak_mb` and `evictions` are not tracked in the telemetry DB;
    * they are reported as 0 until a richer data source is available.
    */
-  buildCacheMetrics(telemetrySummary, cacheReadTokens, apiInputTokens) {
-    const hitRate = apiInputTokens > 0 ? cacheReadTokens / apiInputTokens : 0;
+  buildCacheMetrics(telemetrySummary) {
     const hits = telemetrySummary?.total_cache_hits ?? 0;
     const total = telemetrySummary?.total_calls ?? 0;
     const misses = total - hits;
+    const hitRate = total > 0 ? hits / total : 0;
     return {
       hit_rate: hitRate,
       hits,
@@ -55373,10 +55375,17 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
       hasHistory && histAvgOutputTokens > 0 ? formatDelta(tokens.api_output, histAvgOutputTokens) : "\u2014"
     ],
     [
-      "Cache Hit Rate",
+      "Precision Cache",
       formatPercent(cache3.hit_rate),
+      "\u2014",
+      // no historical precision cache data in GlobalDB
+      "\u2014"
+    ],
+    [
+      "API Cache Rate",
+      tokens.api_input > 0 ? formatPercent(tokens.cache_read / tokens.api_input) : "\u2014",
       hasHistory ? formatPercent(histAvgCacheHitRate) : "\u2014",
-      hasHistory && histAvgCacheHitRate > 0 ? formatDelta(cache3.hit_rate, histAvgCacheHitRate) : "\u2014"
+      hasHistory && histAvgCacheHitRate > 0 && tokens.api_input > 0 ? formatDelta(tokens.cache_read / tokens.api_input, histAvgCacheHitRate) : "\u2014"
     ],
     [
       "Total Cost",
@@ -55465,9 +55474,9 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
           TrendLine,
           {
-            label: "Cache Hit Rate",
+            label: "Precision Cache",
             value: formatPercent(cache3.hit_rate),
-            trend: hasHistory ? formatDelta(cache3.hit_rate, histAvgCacheHitRate) : "\u2014",
+            trend: "\u2014",
             barValue: cache3.hit_rate,
             higherIsBetter: true
           }
