@@ -10,7 +10,7 @@ export function formatNumber(n: number): string {
   const sign = n < 0 ? '-' : '';
   if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1)}B`;
   if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}K`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}k`;
   return `${sign}${Math.round(abs)}`;
 }
 

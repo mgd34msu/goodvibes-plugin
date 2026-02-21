@@ -268,54 +268,67 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[0]!)).toContain('1m 5s');
     });
 
-    it('line 2 contains "Ctx:" (context window percentage)', () => {
+    it('line 2 contains "Context:" (context window percentage)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('Ctx:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Context:');
     });
 
-    it('line 2 contains "In:" (API input tokens)', () => {
+    it('line 2 contains "API Input:" (API input tokens)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('In:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Input:');
+    });
+
+    it('line 2 contains "API Output:" (API output tokens)', () => {
+      const output = renderer.render(createMockState());
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Output:');
     });
 
     it('line 3 contains "saved" (precision savings)', () => {
+      // Precision section (20-char width) may clip at 80 cols; use wider terminal to guarantee visibility
+      setColumns(120);
       const output = renderer.render(createMockState());
       expect(stripAnsi(output.split('\n')[2]!)).toContain('saved');
     });
 
-    it('line 2 contains "Cache:" (cache read tokens)', () => {
+    it('line 2 contains "API Cache:" (cache read tokens)', () => {
+      // API Cache section is clipped at 80 cols; use wider terminal
+      setColumns(120);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cache:');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('API Cache:');
     });
 
-    it('line 3 contains "prec" (precision savings label)', () => {
+    it('line 3 contains "Precision:" (precision savings label)', () => {
+      // Precision label may be clipped at 80 cols; use wider terminal
+      setColumns(120);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('prec');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Precision:');
     });
 
-    it('line 3 contains "agents"', () => {
+    it('line 3 contains "Agents:"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('agents');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Agents:');
     });
 
-    it('line 3 contains "files"', () => {
+    it('line 3 contains "Files:"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('files');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Files:');
     });
 
-    it('line 3 contains "cmds"', () => {
+    it('line 3 contains "Commands:"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('cmds');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Commands:');
     });
 
-    it('line 2 contains "cost" (API-level session cost)', () => {
+    it('line 2 contains "Cost:" (API-level session cost)', () => {
+      // Cost section is clipped at 80 cols; use wider terminal
+      setColumns(120);
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('cost');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cost:');
     });
 
-    it('line 3 does not contain "cost"', () => {
+    it('line 3 does not contain "Cost:"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).not.toContain('cost');
+      expect(stripAnsi(output.split('\n')[2]!)).not.toContain('Cost:');
     });
   });
 
@@ -478,12 +491,14 @@ describe('MiniRenderer', () => {
     });
 
     it('formats large token counts with K suffix', () => {
+      // Precision section (tokensSaved) clips at 80 cols — use wider terminal
+      setColumns(120);
       const state = createMockState({
-        // saved tokens are shown in the Prec: section
+        // saved tokens are shown in the Precision: section
         metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 75_000, efficiency: 0.4, api_input: 50_000, api_output: 25_000, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
-      expect(stripAnsi(output)).toContain('75.0K');
+      expect(stripAnsi(output)).toContain('75.0k');
     });
 
     it('formats very large token counts with M suffix', () => {

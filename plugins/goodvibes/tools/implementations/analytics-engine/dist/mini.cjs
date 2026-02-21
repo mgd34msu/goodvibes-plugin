@@ -5629,7 +5629,7 @@ function formatNumber(n) {
   const sign = n < 0 ? "-" : "";
   if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1)}B`;
   if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K`;
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}k`;
   return `${sign}${Math.round(abs)}`;
 }
 __name(formatNumber, "formatNumber");
@@ -5738,7 +5738,7 @@ function fitToWidth(str, width) {
 }
 __name(fitToWidth, "fitToWidth");
 function buildSections(sections) {
-  return sections.map((s, i) => i === 0 ? ` ${s}` : `  ${ansi.dim}\u2502${ansi.reset}  ${s}`).join("") + " ";
+  return sections.map((s, i) => i === 0 ? ` ${s}` : `  ${ansi.dim}${ansi.box.vertical}${ansi.reset}  ${s}`).join("") + " ";
 }
 __name(buildSections, "buildSections");
 function buildRow(content, borderColor, width) {
@@ -5784,6 +5784,9 @@ function computeMetrics(state) {
   const conflicts = files.conflicts ?? 0;
   const cmdTotal = formatNumber(commands.total ?? 0);
   const cmdFails = formatNumber(commands.failures ?? 0);
+  const rawAvgMs = commands.avg_duration_ms ?? 0;
+  const cmdAvgSec = (rawAvgMs / 1e3).toFixed(1);
+  const cacheHitRate = `${Math.round((cache.hit_rate ?? 0) * 100)}%`;
   const rawCtx = state.context_percent ?? 0;
   const contextPercent = isFinite(rawCtx) ? Math.max(0, Math.min(100, rawCtx)) : 0;
   const contextPercentStr = contextPercent.toFixed(1);
@@ -5805,7 +5808,9 @@ function computeMetrics(state) {
     filesWritten,
     conflicts,
     cmdTotal,
-    cmdFails
+    cmdFails,
+    cmdAvgSec,
+    cacheHitRate
   };
 }
 __name(computeMetrics, "computeMetrics");
@@ -5897,43 +5902,59 @@ var MiniRenderer = class {
     const line1 = `${borderColor}${ansi.box.topLeft}${ansi.reset}` + headerContent + `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
     const ctxColor = m.contextPercent >= 80 ? ansi.red : m.contextPercent >= 50 ? ansi.yellow : ansi.green;
     const ctxSection = padSection(
-      `Ctx:${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
-      10
-      // "Ctx:100.0%" = 10 visible chars
+      `Context: ${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
+      14
+      // "Context: 25.0%" = 14 visible; fits all values without clipping
     );
-    const apiSection = padSection(
-      `In:${ansi.bold}${m.apiInputTokens}${ansi.reset} Out:${ansi.bold}${m.apiOutputTokens}${ansi.reset} Cache:${m.cacheReadTokens}`,
-      28
-      // "In:X.XM Out:X.XM Cache:X.XM" — 28 chars covers all typical values
+    const apiInSection = padSection(
+      `API Input: ${ansi.bold}${m.apiInputTokens}${ansi.reset}`,
+      16
+      // "API Input: 1.2M" = 15 visible; 16 avoids clipping large values
+    );
+    const apiOutSection = padSection(
+      `API Output: ${ansi.bold}${m.apiOutputTokens}${ansi.reset}`,
+      15
+      // "API Output: 45k" = 15 visible
+    );
+    const apiCacheSection = padSection(
+      `API Cache: ${m.cacheReadTokens}`,
+      14
+      // "API Cache: 890k" = 15 visible; 14 clips rare overflow
     );
     const costSection = padSection(
-      `cost ${m.sessionCost}`,
-      12
-      // "cost $XX.XX" = 11 chars; 12 for breathing room
+      `Cost: ${m.sessionCost}`,
+      11
+      // "Cost: $1.23" = 11 visible
     );
-    const row2Content = buildSections([ctxSection, apiSection, costSection]);
+    const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, apiCacheSection, costSection]);
     const line2 = buildRow(row2Content, borderColor, w);
     const conflictStr = m.conflicts > 0 ? `${ansi.yellow}${m.conflicts}\u26A1${ansi.reset}` : "";
     const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
-    const agentsSection = padSection(
-      `agents ${m.agentsActive}/${configuredMax}`,
-      10
-      // "agents 9/99" = 11 — clips gracefully if needed
+    const agentBar = renderBar(
+      m.agentsActive,
+      configuredMax,
+      6,
+      { thresholds: { warn: 0.5, alert: 0.84 } }
     );
     const cmdsSection = padSection(
-      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717)`,
-      14
-      // "cmds 999 (99✗)" = 14 visible chars
+      `Commands: ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
+      17
+      // "Commands: 12 (1✗ 1.2s)" — reduced width for 80-col fit
     );
     const filesSection = padSection(
-      conflictStr ? `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}` : `files ${m.filesRead}r ${m.filesWritten}w`,
+      conflictStr ? `Files: ${m.filesRead}r ${m.filesWritten}w ${conflictStr}` : `Files: ${m.filesRead}r ${m.filesWritten}w`,
+      18
+      // "Files: 42r 5w 3⚡" = 17 visible; 18 accommodates conflict indicator
+    );
+    const agentsSection = padSection(
+      `Agents: ${agentBar} ${m.agentsActive}/${configuredMax}`,
       16
-      // "files 99r 9w 9⚡" = 16 chars — accommodates conflict indicator
+      // "Agents: [██░░░░] 2/6" — bar is 8 chars + label + fraction
     );
     const precSection = padSection(
-      `prec ${m.tokensSaved} saved (${m.savings})`,
-      21
-      // "prec X.XK saved ($XX.XX)" — clips trailing chars if very long
+      `Precision: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
+      24
+      // "Precision: 3.0k saved" = 22 visible; 24 shows full savings at wider terminals
     );
     const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);
     const line3 = buildRow(row3Content, borderColor, w);

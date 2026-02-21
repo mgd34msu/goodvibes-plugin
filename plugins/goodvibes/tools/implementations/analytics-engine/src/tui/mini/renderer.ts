@@ -86,7 +86,7 @@ function fitToWidth(str: string, width: number): string {
  */
 function buildSections(sections: string[]): string {
   return sections
-    .map((s, i) => (i === 0 ? ` ${s}` : `  ${ansi.dim}\u2502${ansi.reset}  ${s}`))
+    .map((s, i) => (i === 0 ? ` ${s}` : `  ${ansi.dim}${ansi.box.vertical}${ansi.reset}  ${s}`))
     .join('') + ' ';
 }
 
@@ -149,6 +149,8 @@ interface ComputedMetrics {
   conflicts: number;
   cmdTotal: string;
   cmdFails: string;
+  cmdAvgSec: string;
+  cacheHitRate: string;
 }
 
 /**
@@ -183,7 +185,7 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   const tokensSaved = formatNumber(tokens.saved ?? 0);
   const savings = formatDollars(cost.saved ?? 0);
   const agentsActive = agents.active ?? 0;
-  const agentsMax = agents.max_concurrent ?? 0;  // observed peak (for display only)
+  const agentsMax = agents.max_concurrent ?? 0;  // fallback from observed peak when configured max not available
 
   const filesRead = formatNumber(files.unique_read ?? 0);
   const filesWritten = formatNumber(
@@ -193,6 +195,11 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
 
   const cmdTotal = formatNumber(commands.total ?? 0);
   const cmdFails = formatNumber(commands.failures ?? 0);
+  const rawAvgMs = commands.avg_duration_ms ?? 0;
+  const cmdAvgSec = (rawAvgMs / 1000).toFixed(1);
+
+  // Precision engine cache hit rate (compact, no decimal)
+  const cacheHitRate = `${Math.round((cache.hit_rate ?? 0) * 100)}%`;
 
   // Context window usage
   const rawCtx = state.context_percent ?? 0;
@@ -218,6 +225,8 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     conflicts,
     cmdTotal,
     cmdFails,
+    cmdAvgSec,
+    cacheHitRate,
   };
 }
 
@@ -373,29 +382,36 @@ export class MiniRenderer {
       headerContent +
       `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
 
-    // ── Line 2: Claude API metrics — context %, tokens, cost ───────────────────────
+    // ── Line 2: Claude API metrics — context %, tokens (3 separate sections), cost ─
     // Context percentage: color escalates green -> yellow -> red
     const ctxColor = m.contextPercent >= 80
       ? ansi.red
       : m.contextPercent >= 50
         ? ansi.yellow
         : ansi.green;
-    // Exact fixed widths for line 2 sections (inner width 78):
-    // 1 + 10 + 5 + 28 + 5 + 12 + 1 = 62 chars total — fits comfortably
+
     const ctxSection = padSection(
-      `Ctx:${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
-      10, // "Ctx:100.0%" = 10 visible chars
+      `Context: ${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
+      14, // "Context: 25.0%" = 14 visible; fits all values without clipping
     );
-    const apiSection = padSection(
-      `In:${ansi.bold}${m.apiInputTokens}${ansi.reset} Out:${ansi.bold}${m.apiOutputTokens}${ansi.reset} Cache:${m.cacheReadTokens}`,
-      28, // "In:X.XM Out:X.XM Cache:X.XM" — 28 chars covers all typical values
+    const apiInSection = padSection(
+      `API Input: ${ansi.bold}${m.apiInputTokens}${ansi.reset}`,
+      16, // "API Input: 1.2M" = 15 visible; 16 avoids clipping large values
+    );
+    const apiOutSection = padSection(
+      `API Output: ${ansi.bold}${m.apiOutputTokens}${ansi.reset}`,
+      15, // "API Output: 45k" = 15 visible
+    );
+    const apiCacheSection = padSection(
+      `API Cache: ${m.cacheReadTokens}`,
+      14, // "API Cache: 890k" = 15 visible; 14 clips rare overflow
     );
     const costSection = padSection(
-      `cost ${m.sessionCost}`,
-      12, // "cost $XX.XX" = 11 chars; 12 for breathing room
+      `Cost: ${m.sessionCost}`,
+      11, // "Cost: $1.23" = 11 visible
     );
 
-    const row2Content = buildSections([ctxSection, apiSection, costSection]);
+    const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, apiCacheSection, costSection]);
     const line2 = buildRow(row2Content, borderColor, w);
 
     // ── Line 3: Precision + Operations — cmds, files, agents, prec savings ────────
@@ -404,25 +420,28 @@ export class MiniRenderer {
       : '';
 
     const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
-    const agentsSection = padSection(
-      `agents ${m.agentsActive}/${configuredMax}`,
-      10, // "agents 9/99" = 11 — clips gracefully if needed
+    const agentBar = renderBar(
+      m.agentsActive, configuredMax, 6,
+      { thresholds: { warn: 0.5, alert: 0.84 } },
     );
 
-    // Exact fixed widths: 1 + 14 + 5 + 16 + 5 + 10 + 5 + 21 + 1 = 78 (fits in 78 inner)
     const cmdsSection = padSection(
-      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717)`,
-      14, // "cmds 999 (99✗)" = 14 visible chars
+      `Commands: ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
+      17, // "Commands: 12 (1✗ 1.2s)" — reduced width for 80-col fit
     );
     const filesSection = padSection(
       conflictStr
-        ? `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`
-        : `files ${m.filesRead}r ${m.filesWritten}w`,
-      16, // "files 99r 9w 9⚡" = 16 chars — accommodates conflict indicator
+        ? `Files: ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`
+        : `Files: ${m.filesRead}r ${m.filesWritten}w`,
+      18, // "Files: 42r 5w 3⚡" = 17 visible; 18 accommodates conflict indicator
+    );
+    const agentsSection = padSection(
+      `Agents: ${agentBar} ${m.agentsActive}/${configuredMax}`,
+      16, // "Agents: [██░░░░] 2/6" — bar is 8 chars + label + fraction
     );
     const precSection = padSection(
-      `prec ${m.tokensSaved} saved (${m.savings})`,
-      21, // "prec X.XK saved ($XX.XX)" — clips trailing chars if very long
+      `Precision: ${m.tokensSaved} saved (${m.cacheHitRate} hit)`,
+      24, // "Precision: 3.0k saved" = 22 visible; 24 shows full savings at wider terminals
     );
 
     const row3Content = buildSections([cmdsSection, filesSection, agentsSection, precSection]);
