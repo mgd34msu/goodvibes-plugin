@@ -152,8 +152,8 @@ interface ComputedMetrics {
   filesWritten: string;
   conflicts: number;
   cmdTotal: string;
+  cmdPass: string;
   cmdFails: string;
-  cmdAvgSec: string;
   cacheHitRate: string;
 }
 
@@ -196,10 +196,11 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   );
   const conflicts = files.conflicts ?? 0;
 
-  const cmdTotal = formatNumber(commands.total ?? 0);
-  const cmdFails = formatNumber(commands.failures ?? 0);
-  const rawAvgMs = commands.avg_duration_ms ?? 0;
-  const cmdAvgSec = (rawAvgMs / 1000).toFixed(1);
+  const rawTotal = commands.total ?? 0;
+  const rawFails = commands.failures ?? 0;
+  const cmdTotal = formatNumber(rawTotal);
+  const cmdPass = formatNumber(Math.max(0, rawTotal - rawFails));
+  const cmdFails = formatNumber(rawFails);
 
   // Precision engine cache hit rate (one decimal place)
   const cacheHitRate = `${((cache.hit_rate ?? 0) * 100).toFixed(1)}%`;
@@ -226,8 +227,8 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
     filesWritten,
     conflicts,
     cmdTotal,
+    cmdPass,
     cmdFails,
-    cmdAvgSec,
     cacheHitRate,
   };
 }
@@ -415,7 +416,7 @@ export class MiniRenderer {
     );
 
     const cmdsSection = padSection(
-      `Commands: ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
+      `Commands: ${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
       sectionWidth,
     );
     const filesSection = padSection(
