@@ -225,6 +225,8 @@ export interface DashboardState {
   anomalies: Anomaly[];
   budget: BudgetState | null;
   health_status: 'healthy' | 'warning' | 'alert';
+  /** Estimated context window usage as a percentage (0-100), derived from most recent JSONL assistant input_tokens. */
+  context_percent: number;
 }
 
 // === Session Archive (persisted to disk) ===

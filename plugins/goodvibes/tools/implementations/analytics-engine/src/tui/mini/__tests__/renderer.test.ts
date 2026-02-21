@@ -27,6 +27,7 @@ function createMockState(overrides: DashboardOverrides = {}): DashboardState {
     started_at: '2026-02-20T10:00:00.000Z',
     uptime_ms: 65_000,
     health_status: 'healthy',
+    context_percent: 0,
     budget: null,
     anomalies: [],
     recent_activity: [],
@@ -267,9 +268,14 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[0]!)).toContain('1m 5s');
     });
 
-    it('line 2 contains "tokens"', () => {
+    it('line 2 contains "Ctx:" (context window percentage)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('tokens');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Ctx:');
+    });
+
+    it('line 2 contains "In:" (API input tokens)', () => {
+      const output = renderer.render(createMockState());
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('In:');
     });
 
     it('line 2 contains "saved"', () => {
@@ -277,14 +283,19 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[1]!)).toContain('saved');
     });
 
-    it('line 2 contains "cache"', () => {
+    it('line 2 contains "Cache:" (cache read tokens)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('cache');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Cache:');
     });
 
-    it('line 2 contains "agents"', () => {
+    it('line 2 contains "Hit:" (cache hit rate)', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[1]!)).toContain('agents');
+      expect(stripAnsi(output.split('\n')[1]!)).toContain('Hit:');
+    });
+
+    it('line 3 contains "agents"', () => {
+      const output = renderer.render(createMockState());
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('agents');
     });
 
     it('line 3 contains "files"', () => {
@@ -396,17 +407,18 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[0]!)).not.toContain('calls');
     });
 
-    it('when budget is null, header shows call count with "calls"', () => {
+    it('when budget is null, header shows agent count', () => {
       const state = createMockState({ budget: null });
       const output = renderer.render(state);
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('calls');
+      // agents.active: 1 -> "1 agent"
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('agent');
     });
 
-    it('when budget is null, header shows success rate', () => {
+    it('when budget is null, header shows session cost', () => {
       const state = createMockState({ budget: null });
       const output = renderer.render(state);
-      // success_rate: 0.917 -> "91.7%"
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('91.7%');
+      // cost.total: 0.0525 -> "$0.0525"
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('$0.05');
     });
 
     it('when budget is null, header does not show "budget:"', () => {
@@ -439,7 +451,8 @@ describe('MiniRenderer', () => {
 
     it('formats large token counts with K suffix', () => {
       const state = createMockState({
-        metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 30_000, efficiency: 0.4, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 } },
+        // saved tokens are shown in the Prec: section
+        metrics: { tokens: { input: 50_000, output: 25_000, total: 75_000, saved: 75_000, efficiency: 0.4, api_input: 50_000, api_output: 25_000, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
       expect(stripAnsi(output)).toContain('75.0K');
@@ -447,7 +460,8 @@ describe('MiniRenderer', () => {
 
     it('formats very large token counts with M suffix', () => {
       const state = createMockState({
-        metrics: { tokens: { input: 0, output: 0, total: 2_500_000, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 } },
+        // api_input is shown in the In: section
+        metrics: { tokens: { input: 0, output: 0, total: 2_500_000, saved: 2_500_000, efficiency: 0, api_input: 2_500_000, api_output: 0, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
       expect(stripAnsi(output)).toContain('2.5M');
@@ -455,7 +469,8 @@ describe('MiniRenderer', () => {
 
     it('formats billion-scale numbers with B suffix', () => {
       const state = createMockState({
-        metrics: { tokens: { input: 0, output: 0, total: 3_000_000_000, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 } },
+        // api_input is shown in the In: section
+        metrics: { tokens: { input: 0, output: 0, total: 3_000_000_000, saved: 3_000_000_000, efficiency: 0, api_input: 3_000_000_000, api_output: 0, cache_read: 0, cache_write: 0 } },
       });
       const output = renderer.render(state);
       expect(stripAnsi(output)).toContain('3.0B');
@@ -471,15 +486,16 @@ describe('MiniRenderer', () => {
       expect(() => renderer.render(state)).not.toThrow();
     });
 
-    it('truncates session ID longer than 16 characters', () => {
-      const longId = 'this-is-a-very-long-session-id-here';
+    it('shows only first 8 characters of session ID', () => {
+      const longId = 'abcdef12-3456-7890-abcd-ef1234567890';
       const state = createMockState({ session_id: longId });
       const output = renderer.render(state);
       const line1 = stripAnsi(output.split('\n')[0]!);
-      // Should not contain the full ID
+      // Should not contain the full UUID
       expect(line1).not.toContain(longId);
-      // Should contain the truncated version (13 chars + '...')
-      expect(line1).toContain('this-is-a-ver...');
+      // Should contain only the first 8 characters
+      expect(line1).toContain('abcdef12');
+      expect(line1).not.toContain('abcdef12-');
     });
 
     it('uses "no-session" when session_id is empty string', () => {

@@ -20,7 +20,6 @@ import {
   formatPercent,
   formatUptime,
   formatDollars,
-  truncate,
 } from './format.js';
 
 /** Minimum width of the rendered box (characters). */
@@ -30,7 +29,7 @@ const MIN_WIDTH = 60;
 const DEFAULT_WIDTH = 80;
 
 /** Maximum visible length of a session ID in the header. */
-const SESSION_ID_TRUNCATE_LENGTH = 16;
+const SESSION_ID_LENGTH = 8;
 
 /** Get the current terminal width, with a minimum floor. */
 function getTerminalWidth(): number {
@@ -114,6 +113,16 @@ function determineHealth(
 }
 
 /**
+ * Pad a section string to at least minWidth visible characters.
+ * Used to ensure fixed-width columns in the dashboard.
+ */
+function padSection(content: string, minWidth: number): string {
+  const visible = visibleLength(content);
+  if (visible >= minWidth) return content;
+  return content + ' '.repeat(minWidth - visible);
+}
+
+/**
  * Derived metrics object computed from raw DashboardState.
  * Separates data derivation from rendering logic.
  */
@@ -121,6 +130,8 @@ interface ComputedMetrics {
   sessionId: string;
   uptime: string;
   sessionCost: string;
+  contextPercent: number;
+  contextPercentStr: string;
   // API-level token counts (from JSONL)
   apiInputTokens: string;
   apiOutputTokens: string;
@@ -154,7 +165,7 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   const commands = metrics.commands;
 
   const sessionId = state.session_id
-    ? truncate(state.session_id, SESSION_ID_TRUNCATE_LENGTH)
+    ? state.session_id.slice(0, SESSION_ID_LENGTH)
     : 'no-session';
 
   const uptime = formatUptime(state.uptime_ms);
@@ -190,10 +201,17 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
       ? (rawAvgMs / 1000).toFixed(1)
       : '0.0';
 
+  // Context window usage
+  const rawCtx = state.context_percent ?? 0;
+  const contextPercent = isFinite(rawCtx) ? Math.max(0, Math.min(100, rawCtx)) : 0;
+  const contextPercentStr = contextPercent.toFixed(1);
+
   return {
     sessionId,
     uptime,
     sessionCost,
+    contextPercent,
+    contextPercentStr,
     apiInputTokens,
     apiOutputTokens,
     cacheReadTokens,
@@ -364,38 +382,78 @@ export class MiniRenderer {
       headerContent +
       `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
 
-    // ── Line 2: API tokens / cache / agents ───────────────────────────────────────
-    const showBars = w >= 80;
-    // Cache bar: 10 chars, inverted (high cache rate = good = green)
+    // ── Line 2: Context / API tokens / cache hit rate / precision savings ──────────
+    // Context percentage: color escalates green -> yellow -> red
+    const ctxColor = m.contextPercent >= 80
+      ? ansi.red
+      : m.contextPercent >= 50
+        ? ansi.yellow
+        : ansi.green;
+    const ctxSection = padSection(
+      `Ctx:${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
+      8, // "Ctx:X.X%" minimum
+    );
+
+    // API tokens: In / Out / Cache breakdown (min 18 chars for "In:0 Out:0 Cache:0")
+    const apiSection = padSection(
+      `In:${ansi.bold}${m.apiInputTokens}${ansi.reset} Out:${ansi.bold}${m.apiOutputTokens}${ansi.reset} Cache:${m.cacheReadTokens}`,
+      18,
+    );
+
+    // Cache hit rate (fixed 10 char min)
     const cacheRatio = state.metrics.cache.hit_rate ?? 0;
+    // Show progress bars only at wider terminals to prevent line overflow at 80 cols.
+    const showBars = w >= 90;
     const cacheBar = renderBar(
       isFinite(cacheRatio) ? cacheRatio : 0, 1, 10,
       { thresholds: { warn: 0.4, alert: 0.7 }, invertColor: true },
     );
-    // Agent bar: 6 chars (one per slot), green <50%, yellow 50-83%, red >83%
-    // Use configured max_agent_chains for bar denominator, not observed peak.
+    const hitSection = padSection(
+      showBars ? `Hit:${cacheBar} ${m.cacheRate}` : `Hit:${m.cacheRate}`,
+      showBars ? 20 : 8, // "Hit:XX.X%" = 9 chars minimum without bars
+    );
+
+    // Precision savings (fixed 20 char min)
+    const precSection = padSection(
+      `Prec:${m.tokensSaved} saved (${m.savings})`,
+      20,
+    );
+
+    const row2Content = buildSections([ctxSection, apiSection, hitSection, precSection]);
+    const line2 = buildRow(row2Content, borderColor, w);
+
+    // ── Line 3: Commands / files / cost / agents ──────────────────────────────────
+    const conflictStr = m.conflicts > 0
+      ? `${ansi.yellow}${m.conflicts}\u26a1${ansi.reset}`  // \u26a1 highlighted
+      : `${m.conflicts}\u26a1`;
+
+    // Agent bar on line 3 when terminal is wide enough
     const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
     const agentBar = renderBar(
       m.agentsActive, configuredMax, 6,
       { thresholds: { warn: 0.5, alert: 0.84 } },
     );
-    const row2Content = buildSections([
-      `api ${ansi.bold}${m.apiInputTokens}${ansi.reset}in ${ansi.bold}${m.apiOutputTokens}${ansi.reset}out`,
-      `cache-read ${m.cacheReadTokens}`,
-      showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
-      showBars ? `agents ${agentBar} ${m.agentsActive}/${configuredMax}` : `agents ${m.agentsActive}/${configuredMax}`,
-    ]);
-    const line2 = buildRow(row2Content, borderColor, w);
+    const agentsSection = padSection(
+      showBars
+        ? `agents ${agentBar} ${m.agentsActive}/${configuredMax}`
+        : `agents ${m.agentsActive}/${configuredMax}`,
+      showBars ? 20 : 10, // "agents X/Y" minimum
+    );
 
-    // ── Line 3: Files / commands / precision savings ─────────────────────────────
-    const conflictStr = m.conflicts > 0
-      ? `${ansi.yellow}${m.conflicts}\u26a1${ansi.reset}`  // \u26a1 highlighted
-      : `${m.conflicts}\u26a1`;
-    const row3Content = buildSections([
+    const cmdsSection = padSection(
+      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
+      14, // "cmds X (X✗ X.Xs)" minimum
+    );
+    const filesSection = padSection(
       `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`,
-      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s avg)`,  // \u2717
-      `precision ${m.tokensSaved} saved (${m.savings})`,
-    ]);
+      14, // "files Xr Xw X⚡" minimum
+    );
+    const costSection = padSection(
+      `cost ${m.sessionCost}`,
+      10, // "cost $X.XX" minimum
+    );
+
+    const row3Content = buildSections([cmdsSection, filesSection, costSection, agentsSection]);
     const line3 = buildRow(row3Content, borderColor, w);
 
     // ── Line 4: Footer ───────────────────────────────────────────────────────────

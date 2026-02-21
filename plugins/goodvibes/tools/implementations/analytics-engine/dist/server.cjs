@@ -27015,7 +27015,8 @@ function emptyDashboardState(sessionId, projectHash, startedAt) {
     agent_profiles: [],
     anomalies: [],
     budget: null,
-    health_status: "healthy"
+    health_status: "healthy",
+    context_percent: 0
   };
 }
 __name(emptyDashboardState, "emptyDashboardState");
@@ -27463,6 +27464,7 @@ var Aggregator = class _Aggregator {
    * a single reader failure does not crash the entire aggregation.
    */
   aggregate() {
+    this.safeCall(() => this.telemetry.reload(), void 0);
     const now = Date.now();
     const startedAtMs = new Date(this.startedAt).getTime();
     const uptimeMs = now - startedAtMs;
@@ -27587,6 +27589,19 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const CONTEXT_WINDOW_SIZE = 2e5;
+    let contextPercent = 0;
+    for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
+      const rec = this.jsonlRecords[i];
+      if (rec.type === "assistant") {
+        const assistantRec = rec;
+        const inputTok = assistantRec.message?.usage?.input_tokens;
+        if (inputTok != null && inputTok > 0) {
+          contextPercent = Math.min(100, inputTok / CONTEXT_WINDOW_SIZE * 100);
+          break;
+        }
+      }
+    }
     const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
@@ -27602,7 +27617,8 @@ var Aggregator = class _Aggregator {
       anomalies: this.state.anomalies,
       // carry forward existing anomalies
       budget: this.state.budget,
-      health_status: this.state.health_status
+      health_status: this.state.health_status,
+      context_percent: contextPercent
     };
     const newAnomalies = this.safeCall(
       () => this.anomalyDetector.detect(partialState),
@@ -27630,7 +27646,8 @@ var Aggregator = class _Aggregator {
       agent_profiles: agentProfiles,
       anomalies: allAnomalies,
       budget,
-      health_status: healthStatus
+      health_status: healthStatus,
+      context_percent: contextPercent
     };
   }
   /**

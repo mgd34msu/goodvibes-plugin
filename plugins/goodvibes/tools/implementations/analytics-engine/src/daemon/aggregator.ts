@@ -148,6 +148,7 @@ function emptyDashboardState(sessionId: string, projectHash: string, startedAt: 
     anomalies: [],
     budget: null,
     health_status: 'healthy',
+    context_percent: 0,
   };
 }
 
@@ -764,6 +765,9 @@ export class Aggregator {
    * a single reader failure does not crash the entire aggregation.
    */
   private aggregate(): DashboardState {
+    // Reload telemetry DB from disk so data reflects latest writes.
+    this.safeCall(() => this.telemetry.reload(), undefined);
+
     const now = Date.now();
     const startedAtMs = new Date(this.startedAt).getTime();
     const uptimeMs = now - startedAtMs;
@@ -949,6 +953,24 @@ export class Aggregator {
     // ── Agent profiles ────────────────────────────────────────────────────
     const agentProfiles: AgentProfile[] = this.buildAgentProfiles(agentActivities);
 
+    // ── Context window usage percentage ───────────────────────────────────
+    // Derived from the most recent assistant record's input_tokens.
+    // The full conversation history is sent as input each turn, so the
+    // most recent value approximates current context window fill level.
+    const CONTEXT_WINDOW_SIZE = 200_000; // tokens (Claude context window)
+    let contextPercent = 0;
+    for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
+      const rec = this.jsonlRecords[i]!;
+      if (rec.type === 'assistant') {
+        const assistantRec = rec as { type: 'assistant'; message?: { usage?: { input_tokens?: number } } };
+        const inputTok = assistantRec.message?.usage?.input_tokens;
+        if (inputTok != null && inputTok > 0) {
+          contextPercent = Math.min(100, (inputTok / CONTEXT_WINDOW_SIZE) * 100);
+          break;
+        }
+      }
+    }
+
     // ── Anomaly detection ─────────────────────────────────────────────────
     const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
 
@@ -966,6 +988,7 @@ export class Aggregator {
       anomalies: this.state.anomalies, // carry forward existing anomalies
       budget: this.state.budget,
       health_status: this.state.health_status,
+      context_percent: contextPercent,
     };
 
     const newAnomalies = this.safeCall(
@@ -1004,6 +1027,7 @@ export class Aggregator {
       anomalies: allAnomalies,
       budget,
       health_status: healthStatus,
+      context_percent: contextPercent,
     };
   }
 

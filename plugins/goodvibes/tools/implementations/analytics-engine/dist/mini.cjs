@@ -4731,7 +4731,8 @@ function emptyDashboardState(sessionId, projectHash, startedAt) {
     agent_profiles: [],
     anomalies: [],
     budget: null,
-    health_status: "healthy"
+    health_status: "healthy",
+    context_percent: 0
   };
 }
 __name(emptyDashboardState, "emptyDashboardState");
@@ -5179,6 +5180,7 @@ var Aggregator = class _Aggregator {
    * a single reader failure does not crash the entire aggregation.
    */
   aggregate() {
+    this.safeCall(() => this.telemetry.reload(), void 0);
     const now = Date.now();
     const startedAtMs = new Date(this.startedAt).getTime();
     const uptimeMs = now - startedAtMs;
@@ -5303,6 +5305,19 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const CONTEXT_WINDOW_SIZE = 2e5;
+    let contextPercent = 0;
+    for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
+      const rec = this.jsonlRecords[i];
+      if (rec.type === "assistant") {
+        const assistantRec = rec;
+        const inputTok = assistantRec.message?.usage?.input_tokens;
+        if (inputTok != null && inputTok > 0) {
+          contextPercent = Math.min(100, inputTok / CONTEXT_WINDOW_SIZE * 100);
+          break;
+        }
+      }
+    }
     const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
@@ -5318,7 +5333,8 @@ var Aggregator = class _Aggregator {
       anomalies: this.state.anomalies,
       // carry forward existing anomalies
       budget: this.state.budget,
-      health_status: this.state.health_status
+      health_status: this.state.health_status,
+      context_percent: contextPercent
     };
     const newAnomalies = this.safeCall(
       () => this.anomalyDetector.detect(partialState),
@@ -5346,7 +5362,8 @@ var Aggregator = class _Aggregator {
       agent_profiles: agentProfiles,
       anomalies: allAnomalies,
       budget,
-      health_status: healthStatus
+      health_status: healthStatus,
+      context_percent: contextPercent
     };
   }
   /**
@@ -5639,13 +5656,6 @@ function formatUptime(ms) {
   return `${seconds}s`;
 }
 __name(formatUptime, "formatUptime");
-function truncate(str, maxWidth) {
-  if (maxWidth <= 0) return "";
-  if (str.length <= maxWidth) return str;
-  if (maxWidth <= 3) return str.slice(0, maxWidth);
-  return str.slice(0, maxWidth - 3) + "...";
-}
-__name(truncate, "truncate");
 var ansi = {
   reset: "\x1B[0m",
   bold: "\x1B[1m",
@@ -5696,7 +5706,7 @@ __name(colorForHealth, "colorForHealth");
 // src/tui/mini/renderer.ts
 var MIN_WIDTH = 60;
 var DEFAULT_WIDTH = 80;
-var SESSION_ID_TRUNCATE_LENGTH = 16;
+var SESSION_ID_LENGTH = 8;
 function getTerminalWidth() {
   const cols = process.stdout?.columns;
   return Math.max(MIN_WIDTH, cols != null && cols > 0 ? cols : DEFAULT_WIDTH);
@@ -5746,6 +5756,12 @@ function determineHealth(state) {
   return state.health_status;
 }
 __name(determineHealth, "determineHealth");
+function padSection(content, minWidth) {
+  const visible = visibleLength(content);
+  if (visible >= minWidth) return content;
+  return content + " ".repeat(minWidth - visible);
+}
+__name(padSection, "padSection");
 function computeMetrics(state) {
   const metrics = state.metrics;
   const tokens = metrics.tokens;
@@ -5754,7 +5770,7 @@ function computeMetrics(state) {
   const agents = metrics.agents;
   const files = metrics.files;
   const commands = metrics.commands;
-  const sessionId = state.session_id ? truncate(state.session_id, SESSION_ID_TRUNCATE_LENGTH) : "no-session";
+  const sessionId = state.session_id ? state.session_id.slice(0, SESSION_ID_LENGTH) : "no-session";
   const uptime = formatUptime(state.uptime_ms);
   const sessionCost = formatDollars(cost.total ?? 0);
   const apiInputTokens = formatNumber(tokens.api_input ?? 0);
@@ -5775,10 +5791,15 @@ function computeMetrics(state) {
   const cmdFails = formatNumber(commands.failures ?? 0);
   const rawAvgMs = commands.avg_duration_ms;
   const cmdAvgSec = rawAvgMs != null && isFinite(rawAvgMs) && rawAvgMs > 0 ? (rawAvgMs / 1e3).toFixed(1) : "0.0";
+  const rawCtx = state.context_percent ?? 0;
+  const contextPercent = isFinite(rawCtx) ? Math.max(0, Math.min(100, rawCtx)) : 0;
+  const contextPercentStr = contextPercent.toFixed(1);
   return {
     sessionId,
     uptime,
     sessionCost,
+    contextPercent,
+    contextPercentStr,
     apiInputTokens,
     apiOutputTokens,
     cacheReadTokens,
@@ -5883,14 +5904,36 @@ var MiniRenderer = class {
     const dashCount = Math.max(0, innerWidth - headerVisible);
     const dashes = ansi.box.horizontal.repeat(dashCount);
     const line1 = `${borderColor}${ansi.box.topLeft}${ansi.reset}` + headerContent + `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
-    const showBars = w >= 80;
+    const ctxColor = m.contextPercent >= 80 ? ansi.red : m.contextPercent >= 50 ? ansi.yellow : ansi.green;
+    const ctxSection = padSection(
+      `Ctx:${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
+      8
+      // "Ctx:X.X%" minimum
+    );
+    const apiSection = padSection(
+      `In:${ansi.bold}${m.apiInputTokens}${ansi.reset} Out:${ansi.bold}${m.apiOutputTokens}${ansi.reset} Cache:${m.cacheReadTokens}`,
+      18
+    );
     const cacheRatio = state.metrics.cache.hit_rate ?? 0;
+    const showBars = w >= 90;
     const cacheBar = renderBar(
       isFinite(cacheRatio) ? cacheRatio : 0,
       1,
       10,
       { thresholds: { warn: 0.4, alert: 0.7 }, invertColor: true }
     );
+    const hitSection = padSection(
+      showBars ? `Hit:${cacheBar} ${m.cacheRate}` : `Hit:${m.cacheRate}`,
+      showBars ? 20 : 8
+      // "Hit:XX.X%" = 9 chars minimum without bars
+    );
+    const precSection = padSection(
+      `Prec:${m.tokensSaved} saved (${m.savings})`,
+      20
+    );
+    const row2Content = buildSections([ctxSection, apiSection, hitSection, precSection]);
+    const line2 = buildRow(row2Content, borderColor, w);
+    const conflictStr = m.conflicts > 0 ? `${ansi.yellow}${m.conflicts}\u26A1${ansi.reset}` : `${m.conflicts}\u26A1`;
     const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
     const agentBar = renderBar(
       m.agentsActive,
@@ -5898,20 +5941,27 @@ var MiniRenderer = class {
       6,
       { thresholds: { warn: 0.5, alert: 0.84 } }
     );
-    const row2Content = buildSections([
-      `api ${ansi.bold}${m.apiInputTokens}${ansi.reset}in ${ansi.bold}${m.apiOutputTokens}${ansi.reset}out`,
-      `cache-read ${m.cacheReadTokens}`,
-      showBars ? `cache ${cacheBar} ${m.cacheRate}` : `cache ${m.cacheRate}`,
-      showBars ? `agents ${agentBar} ${m.agentsActive}/${configuredMax}` : `agents ${m.agentsActive}/${configuredMax}`
-    ]);
-    const line2 = buildRow(row2Content, borderColor, w);
-    const conflictStr = m.conflicts > 0 ? `${ansi.yellow}${m.conflicts}\u26A1${ansi.reset}` : `${m.conflicts}\u26A1`;
-    const row3Content = buildSections([
+    const agentsSection = padSection(
+      showBars ? `agents ${agentBar} ${m.agentsActive}/${configuredMax}` : `agents ${m.agentsActive}/${configuredMax}`,
+      showBars ? 20 : 10
+      // "agents X/Y" minimum
+    );
+    const cmdsSection = padSection(
+      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s)`,
+      14
+      // "cmds X (X✗ X.Xs)" minimum
+    );
+    const filesSection = padSection(
       `files ${m.filesRead}r ${m.filesWritten}w ${conflictStr}`,
-      `cmds ${m.cmdTotal} (${m.cmdFails}\u2717 ${m.cmdAvgSec}s avg)`,
-      // \u2717
-      `precision ${m.tokensSaved} saved (${m.savings})`
-    ]);
+      14
+      // "files Xr Xw X⚡" minimum
+    );
+    const costSection = padSection(
+      `cost ${m.sessionCost}`,
+      10
+      // "cost $X.XX" minimum
+    );
+    const row3Content = buildSections([cmdsSection, filesSection, costSection, agentsSection]);
     const line3 = buildRow(row3Content, borderColor, w);
     const footerDashes = ansi.box.horizontal.repeat(innerWidth);
     const line4 = `${borderColor}${ansi.box.bottomLeft}${footerDashes}${ansi.box.bottomRight}${ansi.reset}`;
