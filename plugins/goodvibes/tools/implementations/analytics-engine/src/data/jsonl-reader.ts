@@ -137,15 +137,17 @@ export class JSONLReader {
       }
 
       linesParsed++;
-      const record = this.parseLine(trimmed);
-      if (record !== null) {
-        records.push(record);
-        bytesConsumed += lineByteLength;
-        lastValidOffset = fromOffset + bytesConsumed;
+      const detail = this.parseLineDetailed(trimmed);
+      bytesConsumed += lineByteLength;
+      lastValidOffset = fromOffset + bytesConsumed;
+
+      if (detail.kind === 'record') {
+        records.push(detail.record);
+      } else if (detail.kind === 'error') {
+        errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed - lineByteLength}: ${trimmed.slice(0, 80)}...`);
+        linesSkipped++;
       } else {
-        errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
-        bytesConsumed += lineByteLength;
-        lastValidOffset = fromOffset + bytesConsumed;
+        // kind === 'skipped': valid JSON but unrecognised record type — skip silently.
         linesSkipped++;
       }
     }

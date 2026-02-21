@@ -769,15 +769,15 @@ var JSONLReader = class {
         continue;
       }
       linesParsed++;
-      const record = this.parseLine(trimmed);
-      if (record !== null) {
-        records.push(record);
-        bytesConsumed += lineByteLength;
-        lastValidOffset = fromOffset + bytesConsumed;
+      const detail = this.parseLineDetailed(trimmed);
+      bytesConsumed += lineByteLength;
+      lastValidOffset = fromOffset + bytesConsumed;
+      if (detail.kind === "record") {
+        records.push(detail.record);
+      } else if (detail.kind === "error") {
+        errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed - lineByteLength}: ${trimmed.slice(0, 80)}...`);
+        linesSkipped++;
       } else {
-        errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
-        bytesConsumed += lineByteLength;
-        lastValidOffset = fromOffset + bytesConsumed;
         linesSkipped++;
       }
     }
@@ -818,19 +818,28 @@ var JSONLReader = class {
    * @param line - Single trimmed line of text from a JSONL file.
    * @returns Parsed record, or null if the line is malformed or unrecognised.
    */
+  /**
+   * Parse result: 'record' = recognized, 'skipped' = valid JSON but unknown type,
+   * 'error' = invalid JSON or not an object.
+   */
   parseLine(line) {
+    const result = this.parseLineDetailed(line);
+    return result.kind === "record" ? result.record : null;
+  }
+  /** Detailed parse with discrimination between unrecognized and malformed. */
+  parseLineDetailed(line) {
     try {
       const parsed = JSON.parse(line);
-      if (typeof parsed !== "object" || parsed === null) return null;
+      if (typeof parsed !== "object" || parsed === null) return { kind: "error" };
       const record = parsed;
       const type = record["type"];
-      if (type === "assistant") return record;
-      if (type === "user") return record;
-      if (type === "progress") return record;
-      if (type === "file-history-snapshot") return record;
-      return null;
+      if (type === "assistant") return { kind: "record", record };
+      if (type === "user") return { kind: "record", record };
+      if (type === "progress") return { kind: "record", record };
+      if (type === "file-history-snapshot") return { kind: "record", record };
+      return { kind: "skipped" };
     } catch {
-      return null;
+      return { kind: "error" };
     }
   }
   // -------------------------------------------------------------------------
