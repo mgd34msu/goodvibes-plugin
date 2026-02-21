@@ -4227,18 +4227,18 @@ var MiniRenderer = class {
     const borderColor = ansi.green;
     const innerWidth = w - 2;
     const m = computeMetrics(state);
-    const headerContent = ` analytics ${ansi.dim}\u2500${ansi.reset} ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${ansi.bold}${m.sessionCost}${ansi.reset} `;
+    const headerContent = ` GoodVibes Analytics ${ansi.dim}\u2500${ansi.reset} Session ID: ${m.sessionId} ${ansi.dim}\u2500${ansi.reset} Uptime: ${m.uptime} ${ansi.dim}\u2500${ansi.reset} ${ansi.bold}${m.sessionCost}${ansi.reset} `;
     const headerVisible = visibleLength(headerContent);
     const dashCount = Math.max(0, innerWidth - headerVisible);
     const dashes = `${ansi.dim}${ansi.box.horizontal.repeat(dashCount)}${ansi.reset}`;
     const line1 = `${borderColor}${ansi.box.topLeft}${ansi.reset}` + headerContent + `${borderColor}${dashes}${ansi.box.topRight}${ansi.reset}`;
     const ctxColor = m.contextPercent >= 80 ? ansi.red : m.contextPercent >= 50 ? ansi.yellow : ansi.green;
     const ctxLabel = "Context: ";
-    const ctxPercentDisplay = ` ${m.contextPercentStr}%`;
-    const ctxBarWidth = Math.max(1, sectionWidth - ctxLabel.length - ctxPercentDisplay.length);
+    const ctxPercentDisplay = `${m.contextPercentStr}%`.padStart(6);
+    const ctxBarWidth = Math.max(1, sectionWidth - ctxLabel.length - 2 - ctxPercentDisplay.length - 1);
     const ctxBar = renderBar(m.contextPercent, 100, ctxBarWidth, { thresholds: { warn: 0.5, alert: 0.8 } });
     const ctxSection = padSection(
-      `${ctxLabel}${ctxBar}${ctxColor}${ctxPercentDisplay}${ansi.reset}`,
+      `${ctxLabel}${ctxBar} ${ctxColor}${ctxPercentDisplay}${ansi.reset}`,
       sectionWidth
     );
     const apiInSection = padSection(
@@ -4250,25 +4250,28 @@ var MiniRenderer = class {
       sectionWidth
     );
     const cacheReadSection = padSection(
-      `Cache Read: ${m.cacheReadTokens}`,
+      `API Cache Read: ${m.cacheReadTokens}`,
       sectionWidth
     );
     const cacheWriteSection = padSection(
-      `Cache Write: ${m.cacheWriteTokens}`,
+      `API Cache Write: ${m.cacheWriteTokens}`,
       sectionWidth
     );
     const costSection = padSection(
-      `Cost: ${m.sessionCost}`,
+      `API Cost: ${m.sessionCost}`,
       sectionWidth
     );
     const row2Content = buildSections([ctxSection, apiInSection, apiOutSection, cacheReadSection, cacheWriteSection, costSection]);
     const line2 = buildRow(row2Content, borderColor, w);
     const conflictStr = m.conflicts > 0 ? `${ansi.yellow}${m.conflicts}\u26A1${ansi.reset}` : "";
     const configuredMax = Math.max(1, state.max_agent_chains ?? m.agentsMax);
+    const agentCountDisplay = `${m.agentsActive}/${configuredMax}`;
+    const agentLabel = "Agents: ";
+    const agentBarWidth = Math.max(1, sectionWidth - agentLabel.length - 2 - agentCountDisplay.length - 1);
     const agentBar = renderBar(
       m.agentsActive,
       configuredMax,
-      6,
+      agentBarWidth,
       { thresholds: { warn: 0.5, alert: 0.84 } }
     );
     const cmdsSection = padSection(
@@ -4276,19 +4279,19 @@ var MiniRenderer = class {
       sectionWidth
     );
     const filesSection = padSection(
-      conflictStr ? `Files: ${m.filesRead}r ${m.filesWritten}w ${conflictStr}` : `Files: ${m.filesRead}r ${m.filesWritten}w`,
+      conflictStr ? `Files: ${m.filesRead} reads ${m.filesWritten} writes ${conflictStr}` : `Files: ${m.filesRead} reads ${m.filesWritten} writes`,
       sectionWidth
     );
     const agentsSection = padSection(
-      `Agents: ${agentBar} ${m.agentsActive}/${configuredMax}`,
+      `${agentLabel}${agentBar} ${agentCountDisplay}`,
       sectionWidth
     );
     const tokensSavedSection = padSection(
-      `Tokens Saved: ${formatTokensSaved(state.metrics.tokens.saved ?? 0)}`,
+      `GoodVibes - Tokens Saved: ${formatTokensSaved(state.metrics.tokens.saved ?? 0)}`,
       sectionWidth
     );
     const cacheHitSection = padSection(
-      `Cache Hit: ${m.cacheHitRate}`,
+      `GoodVibes Cache Hit: ${m.cacheHitRate}`,
       sectionWidth
     );
     const row3Content = buildSections([cmdsSection, filesSection, agentsSection, tokensSavedSection, cacheHitSection]);
