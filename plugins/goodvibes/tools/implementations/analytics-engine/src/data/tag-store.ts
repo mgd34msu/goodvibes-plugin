@@ -132,7 +132,7 @@ const ACTIVITY_PATTERNS: ReadonlyArray<{
  * const store = new TagStore(globalDb);
  * store.addTag('session-abc', 'typescript');
  * const tags = store.getTagsForSession('session-abc');
- * const suggested = await store.suggestTags('session-abc', '/path/to/session.jsonl');
+ * const suggested = store.suggestTags('session-abc', '/path/to/session.jsonl');
  * ```
  */
 export class TagStore {
@@ -253,10 +253,10 @@ export class TagStore {
    * @param jsonlPath  - Absolute path to the Claude session JSONL file.
    * @returns Array of `{ tag, confidence }` suggestion objects, sorted by confidence.
    */
-  async suggestTags(
+  suggestTags(
     sessionId: string,
     jsonlPath: string,
-  ): Promise<Array<{ tag: string; confidence: 'high' | 'medium' | 'low'; reason: string }>> {
+  ): Array<{ tag: string; confidence: 'high' | 'medium' | 'low'; reason: string }> {
     const existing = new Set(
       this.db.getTagsForSession(sessionId).map((t) => t.tag),
     );
@@ -286,9 +286,9 @@ export class TagStore {
       if (existing.has(tag)) continue;
       const matchedPattern = patterns.find((p) => p.test(fullText));
       if (matchedPattern) {
-        const existing_entry = suggestions.get(tag);
+        const existingEntry = suggestions.get(tag);
         // Only overwrite if new confidence is higher
-        if (!existing_entry || this._confidenceRank(confidence) > this._confidenceRank(existing_entry.confidence)) {
+        if (!existingEntry || this._confidenceRank(confidence) > this._confidenceRank(existingEntry.confidence)) {
           suggestions.set(tag, { confidence, reason: `keyword match: ${matchedPattern.source}` });
         }
       }
@@ -353,7 +353,6 @@ export class TagStore {
     const tailLines = lines.slice(-SCAN_TAIL_LINES);
     const sampleLines = [...new Set([...headLines, ...tailLines])];
 
-    const textParts: string[] = [];
     const toolCounts = new Map<string, number>();
 
     for (const line of sampleLines) {
@@ -363,9 +362,6 @@ export class TagStore {
       } catch {
         continue;
       }
-
-      // Flatten all string values for keyword matching
-      this._extractStrings(parsed, textParts);
 
       // Count tool usage
       const type = parsed['type'];
@@ -382,35 +378,6 @@ export class TagStore {
       tailText: tailLines.join('\n'),
       toolCounts,
     };
-  }
-
-  /**
-   * Recursively extract all string values from an object into an array.
-   *
-   * Limits recursion depth to 4 to avoid excessive token consumption
-   * on deeply nested structures.
-   *
-   * @param obj   - Object to traverse.
-   * @param parts - Array to push string values into.
-   * @param depth - Current recursion depth.
-   */
-  private _extractStrings(
-    obj: unknown,
-    parts: string[],
-    depth = 0,
-  ): void {
-    if (depth > 4) return;
-    if (typeof obj === 'string') {
-      parts.push(obj);
-    } else if (Array.isArray(obj)) {
-      for (const item of obj) {
-        this._extractStrings(item, parts, depth + 1);
-      }
-    } else if (obj !== null && typeof obj === 'object') {
-      for (const val of Object.values(obj as Record<string, unknown>)) {
-        this._extractStrings(val, parts, depth + 1);
-      }
-    }
   }
 
   /**

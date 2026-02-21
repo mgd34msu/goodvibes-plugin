@@ -3687,10 +3687,10 @@ var JSONLReader = class {
       } else {
         errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
         bytesConsumed += lineByteLength;
+        lastValidOffset = fromOffset + bytesConsumed;
         linesSkipped++;
       }
     }
-    rl.close();
     byteOffset = lastValidOffset;
     return {
       records,
@@ -3771,7 +3771,7 @@ var JSONLReader = class {
       const outputTokens = usage.output_tokens ?? 0;
       const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
       const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
-      if (inputTokens === 0 && outputTokens === 0) continue;
+      if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
       const inputCost = inputTokens / 1e3 * this.costPer1kInput;
       const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
       const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
@@ -3977,10 +3977,9 @@ var JSONLReader = class {
   }
 };
 async function findActiveJsonlFile(projectDir) {
-  const { readdir: readdir2 } = await import("node:fs/promises");
   let entries;
   try {
-    entries = await readdir2(projectDir);
+    entries = await (0, import_promises.readdir)(projectDir);
   } catch {
     return null;
   }
@@ -4030,6 +4029,8 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
   rotationTimer = null;
   /** Whether the watcher is running. */
   running = false;
+  /** Watcher for the subagent directory (kept separate from watchedFiles). */
+  subagentDirWatcher = null;
   /**
    * @param projectDir - Absolute path to the Claude project directory
    *                     (e.g. ~/.claude/projects/<project-hash>/).
@@ -4092,6 +4093,13 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       }
     }
     this.watchedFiles.clear();
+    if (this.subagentDirWatcher !== null) {
+      try {
+        this.subagentDirWatcher.watcher.close();
+      } catch {
+      }
+      this.subagentDirWatcher = null;
+    }
     this.activeSessionPath = null;
     this.activeSessionId = null;
     this.pendingRecords = [];
@@ -4170,18 +4178,11 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    */
   attachFileWatcher(filePath, isSubagent) {
     if (this.watchedFiles.has(filePath)) return;
-    let initialOffset = 0;
-    try {
-      const s = (0, import_node_fs5.statSync)(filePath);
-      initialOffset = isSubagent ? 0 : 0;
-      void s;
-    } catch {
-      initialOffset = 0;
-    }
     const watched = {
       path: filePath,
-      offset: initialOffset,
-      handle: {},
+      offset: 0,
+      handle: { close() {
+      } },
       // placeholder; replaced below
       isSubagent
     };
@@ -4301,7 +4302,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    * @param sessionId   - Parent session ID (for validation).
    */
   watchSubagentDirectory(subagentDir, sessionId) {
-    if (this.watchedFiles.has(subagentDir)) return;
+    if (this.subagentDirWatcher !== null && this.subagentDirWatcher.path === subagentDir) return;
     const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
       if (this.activeSessionId !== sessionId) return;
       if (filename === null) return;
@@ -4319,12 +4320,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       handle = { close() {
       } };
     }
-    this.watchedFiles.set(subagentDir, {
-      path: subagentDir,
-      offset: 0,
-      handle,
-      isSubagent: true
-    });
+    this.subagentDirWatcher = { watcher: handle, path: subagentDir };
   }
   // -------------------------------------------------------------------------
   // Incremental reading
@@ -4424,6 +4420,11 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
         pollIntervalMs: options.pollIntervalMs,
         costConfig: options.jsonlCostConfig
       });
+      this.jsonlWatcher.on("records", (records) => {
+        if (this.running) this.emit("jsonl-records", records);
+      });
+      this.jsonlWatcher.on("error", (_err) => {
+      });
     }
   }
   // -------------------------------------------------------------------------
@@ -4438,11 +4439,6 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
     this.running = true;
     this.attachWatchers();
     if (this.jsonlWatcher !== null) {
-      this.jsonlWatcher.on("records", (records) => {
-        if (this.running) this.emit("jsonl-records", records);
-      });
-      this.jsonlWatcher.on("error", (_err) => {
-      });
       this.jsonlWatcher.start();
     }
   }

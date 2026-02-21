@@ -14,7 +14,7 @@
  */
 
 import { createReadStream, statSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { stat, readdir } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import { homedir } from 'node:os';
 import { join, basename } from 'node:path';
@@ -24,6 +24,7 @@ import type {
   JSONLAssistantRecord,
   JSONLUserRecord,
   JSONLProgressRecord,
+  JSONLFileHistoryRecord,
   JSONLParseResult,
   ToolCallInfo,
   AgentActivityInfo,
@@ -144,11 +145,11 @@ export class JSONLReader {
       } else {
         errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
         bytesConsumed += lineByteLength;
+        lastValidOffset = fromOffset + bytesConsumed;
         linesSkipped++;
       }
     }
 
-    rl.close();
     byteOffset = lastValidOffset;
 
     return {
@@ -200,7 +201,7 @@ export class JSONLReader {
       if (type === 'assistant') return record as JSONLAssistantRecord;
       if (type === 'user') return record as JSONLUserRecord;
       if (type === 'progress') return record as JSONLProgressRecord;
-      if (type === 'file-history-snapshot') return record as JSONLRecord;
+      if (type === 'file-history-snapshot') return record as JSONLFileHistoryRecord;
 
       // Unknown type — return null silently. Format may have evolved.
       return null;
@@ -243,7 +244,7 @@ export class JSONLReader {
       const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
 
       // Skip records with no meaningful token data.
-      if (inputTokens === 0 && outputTokens === 0) continue;
+      if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
 
       const inputCost = (inputTokens / 1000) * this.costPer1kInput;
       const outputCost = (outputTokens / 1000) * this.costPer1kOutput;
@@ -499,8 +500,6 @@ export class JSONLReader {
  * @returns Absolute path to the most recently modified JSONL, or null if none found.
  */
 export async function findActiveJsonlFile(projectDir: string): Promise<string | null> {
-  const { readdir } = await import('node:fs/promises');
-
   let entries: string[];
   try {
     entries = await readdir(projectDir);

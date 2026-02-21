@@ -15,8 +15,6 @@
  *   - 'file-history-snapshot': File state snapshots (skip for analytics)
  */
 
-import type { ApiCallRecord } from '../types.js';
-
 // ---------------------------------------------------------------------------
 // Base
 // ---------------------------------------------------------------------------
@@ -323,5 +321,3 @@ export interface PrecisionToolTiming {
   timestamp: string;
 }
 
-// Re-export ApiCallRecord so callers only need to import from jsonl-types
-export type { ApiCallRecord };

@@ -128,6 +128,9 @@ export class JSONLWatcher extends EventEmitter {
   /** Whether the watcher is running. */
   private running = false;
 
+  /** Watcher for the subagent directory (kept separate from watchedFiles). */
+  private subagentDirWatcher: { watcher: FSWatcher | { close(): void }; path: string } | null = null;
+
   /**
    * @param projectDir - Absolute path to the Claude project directory
    *                     (e.g. ~/.claude/projects/<project-hash>/).
@@ -202,6 +205,12 @@ export class JSONLWatcher extends EventEmitter {
       try { watched.handle.close(); } catch { /* best-effort */ }
     }
     this.watchedFiles.clear();
+
+    // Close subagent directory watcher.
+    if (this.subagentDirWatcher !== null) {
+      try { this.subagentDirWatcher.watcher.close(); } catch { /* best-effort */ }
+      this.subagentDirWatcher = null;
+    }
 
     this.activeSessionPath = null;
     this.activeSessionId = null;
@@ -302,24 +311,10 @@ export class JSONLWatcher extends EventEmitter {
   private attachFileWatcher(filePath: string, isSubagent: boolean): void {
     if (this.watchedFiles.has(filePath)) return;
 
-    // Determine initial offset (start of file, or end if we only want new data).
-    let initialOffset = 0;
-    try {
-      // For the active session file, start at the beginning on first attach
-      // so we capture all existing data. The caller can choose to skip by
-      // passing a saved offset — but on fresh start we always read from 0.
-      const s = statSync(filePath);
-      // For subagent files discovered after start, read from beginning.
-      initialOffset = isSubagent ? 0 : 0;
-      void s; // suppress unused warning
-    } catch {
-      initialOffset = 0;
-    }
-
     const watched: WatchedFile = {
       path: filePath,
-      offset: initialOffset,
-      handle: {} as { close(): void }, // placeholder; replaced below
+      offset: 0,
+      handle: { close() {} }, // placeholder; replaced below
       isSubagent,
     };
 
@@ -455,7 +450,7 @@ export class JSONLWatcher extends EventEmitter {
    */
   private watchSubagentDirectory(subagentDir: string, sessionId: string): void {
     // Only set up the directory watch once.
-    if (this.watchedFiles.has(subagentDir)) return;
+    if (this.subagentDirWatcher !== null && this.subagentDirWatcher.path === subagentDir) return;
 
     const onDirChange = (_eventType: string, filename: string | null): void => {
       // Only react to this session's subagents.
@@ -477,12 +472,7 @@ export class JSONLWatcher extends EventEmitter {
       handle = { close(): void { /* no-op */ } };
     }
 
-    this.watchedFiles.set(subagentDir, {
-      path: subagentDir,
-      offset: 0,
-      handle,
-      isSubagent: true,
-    });
+    this.subagentDirWatcher = { watcher: handle, path: subagentDir };
   }
 
   // -------------------------------------------------------------------------

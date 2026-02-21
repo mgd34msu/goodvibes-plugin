@@ -27,23 +27,35 @@ import type { GlobalDB } from '../data/global-db.js';
 /** Lazy-loaded GlobalDB instance, shared across all tag handler invocations. */
 let _globalDb: GlobalDB | null = null;
 
+/** Cached TagStore instance, created once alongside _globalDb. */
+let _tagStore: TagStore | null = null;
+
 /** Pending initialization promise to avoid duplicate concurrent initializations. */
 let _initPromise: Promise<GlobalDB> | null = null;
 
 /**
- * Return the shared GlobalDB instance, initializing it on first call.
+ * Return the shared TagStore instance, initializing the DB on first call.
  *
- * @returns Initialized GlobalDB ready for tag operations.
+ * @returns TagStore backed by the initialized GlobalDB.
  */
-async function getGlobalDb(): Promise<GlobalDB> {
-  if (_globalDb) return _globalDb;
-  if (_initPromise) return _initPromise;
-  _initPromise = initializeGlobalDb().then((db) => {
-    _globalDb = db;
-    _initPromise = null;
-    return db;
-  });
-  return _initPromise;
+async function getTagStore(): Promise<TagStore> {
+  if (_tagStore) return _tagStore;
+  if (!_initPromise) {
+    _initPromise = initializeGlobalDb()
+      .then((db) => {
+        _globalDb = db;
+        _tagStore = new TagStore(db);
+        _initPromise = null;
+        return db;
+      })
+      .catch((err) => {
+        _initPromise = null; // Allow retry on next call
+        throw err;
+      });
+  }
+  await _initPromise;
+  if (!_tagStore) throw new Error('TagStore initialization failed');
+  return _tagStore;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,8 +79,7 @@ export async function handleTag(
   _goodvibesDir: string,
 ): Promise<HandlerResponse> {
   try {
-    const db = await getGlobalDb();
-    const store = new TagStore(db);
+    const store = await getTagStore();
     const state = aggregator.getState();
     const sessionId = state.session_id;
 
@@ -185,10 +196,10 @@ function handleList(
  * @param store     - TagStore instance.
  * @param sessionId - Current session ID.
  */
-async function handleAuto(
+function handleAuto(
   store: TagStore,
   sessionId: string,
-): Promise<HandlerResponse> {
+): HandlerResponse {
   // Resolve JSONL path from the session ID
   const jsonlPath = resolveJsonlPath(sessionId);
 
@@ -200,7 +211,7 @@ async function handleAuto(
     );
   }
 
-  const suggestions = await store.suggestTags(sessionId, jsonlPath);
+  const suggestions = store.suggestTags(sessionId, jsonlPath);
 
   if (suggestions.length === 0) {
     return text(

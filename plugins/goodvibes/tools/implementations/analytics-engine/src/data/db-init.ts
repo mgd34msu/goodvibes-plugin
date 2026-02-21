@@ -25,6 +25,14 @@ const ANALYTICS_DIR = join(GOODVIBES_BASE, 'analytics');
 const DB_FILENAME = 'analytics.db';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Singleton cache
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Module-level singleton: ensures only one GlobalDB instance per process. */
+let _singleton: GlobalDB | null = null;
+let _singletonPromise: Promise<GlobalDB> | null = null;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -77,11 +85,28 @@ export function getGlobalDbPath(): string {
  * ```
  */
 export async function initializeGlobalDb(dbPath?: string): Promise<GlobalDB> {
-  ensureGlobalAnalyticsDir();
-  const resolvedPath = dbPath ?? getGlobalDbPath();
-  const db = new GlobalDB(resolvedPath);
-  await db.initialize();
-  return db;
+  // If a custom path is provided, skip singleton caching (used by tests)
+  if (dbPath) {
+    ensureGlobalAnalyticsDir();
+    const db = new GlobalDB(dbPath);
+    await db.initialize();
+    return db;
+  }
+
+  if (_singleton) return _singleton;
+  if (_singletonPromise) return _singletonPromise;
+
+  _singletonPromise = (async () => {
+    ensureGlobalAnalyticsDir();
+    const resolvedPath = getGlobalDbPath();
+    const db = new GlobalDB(resolvedPath);
+    await db.initialize();
+    _singleton = db;
+    _singletonPromise = null;
+    return db;
+  })();
+
+  return _singletonPromise;
 }
 
 /**

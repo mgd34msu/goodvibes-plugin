@@ -1126,13 +1126,26 @@ function getGlobalDbPath() {
   return resolve2(join11(ANALYTICS_DIR, DB_FILENAME));
 }
 async function initializeGlobalDb(dbPath) {
-  ensureGlobalAnalyticsDir();
-  const resolvedPath = dbPath ?? getGlobalDbPath();
-  const db = new GlobalDB(resolvedPath);
-  await db.initialize();
-  return db;
+  if (dbPath) {
+    ensureGlobalAnalyticsDir();
+    const db = new GlobalDB(dbPath);
+    await db.initialize();
+    return db;
+  }
+  if (_singleton) return _singleton;
+  if (_singletonPromise) return _singletonPromise;
+  _singletonPromise = (async () => {
+    ensureGlobalAnalyticsDir();
+    const resolvedPath = getGlobalDbPath();
+    const db = new GlobalDB(resolvedPath);
+    await db.initialize();
+    _singleton = db;
+    _singletonPromise = null;
+    return db;
+  })();
+  return _singletonPromise;
 }
-var GOODVIBES_BASE, ANALYTICS_DIR, DB_FILENAME;
+var GOODVIBES_BASE, ANALYTICS_DIR, DB_FILENAME, _singleton, _singletonPromise;
 var init_db_init = __esm({
   "src/data/db-init.ts"() {
     "use strict";
@@ -1140,6 +1153,8 @@ var init_db_init = __esm({
     GOODVIBES_BASE = join11(homedir2(), ".claude", ".goodvibes");
     ANALYTICS_DIR = join11(GOODVIBES_BASE, "analytics");
     DB_FILENAME = "analytics.db";
+    _singleton = null;
+    _singletonPromise = null;
     __name(ensureGlobalAnalyticsDir, "ensureGlobalAnalyticsDir");
     __name(getGlobalDbPath, "getGlobalDbPath");
     __name(initializeGlobalDb, "initializeGlobalDb");
@@ -2361,7 +2376,7 @@ var init_tag_store = __esm({
        * @param jsonlPath  - Absolute path to the Claude session JSONL file.
        * @returns Array of `{ tag, confidence }` suggestion objects, sorted by confidence.
        */
-      async suggestTags(sessionId, jsonlPath) {
+      suggestTags(sessionId, jsonlPath) {
         const existing = new Set(
           this.db.getTagsForSession(sessionId).map((t) => t.tag)
         );
@@ -2384,8 +2399,8 @@ ${tailText}`;
           if (existing.has(tag)) continue;
           const matchedPattern = patterns.find((p) => p.test(fullText));
           if (matchedPattern) {
-            const existing_entry = suggestions.get(tag);
-            if (!existing_entry || this._confidenceRank(confidence) > this._confidenceRank(existing_entry.confidence)) {
+            const existingEntry = suggestions.get(tag);
+            if (!existingEntry || this._confidenceRank(confidence) > this._confidenceRank(existingEntry.confidence)) {
               suggestions.set(tag, { confidence, reason: `keyword match: ${matchedPattern.source}` });
             }
           }
@@ -2434,7 +2449,6 @@ ${tailText}`;
         const headLines = lines.slice(0, SCAN_HEAD_LINES);
         const tailLines = lines.slice(-SCAN_TAIL_LINES);
         const sampleLines = [.../* @__PURE__ */ new Set([...headLines, ...tailLines])];
-        const textParts = [];
         const toolCounts = /* @__PURE__ */ new Map();
         for (const line of sampleLines) {
           let parsed;
@@ -2443,7 +2457,6 @@ ${tailText}`;
           } catch {
             continue;
           }
-          this._extractStrings(parsed, textParts);
           const type = parsed["type"];
           if (type === "tool_use" || type === "tool_result") {
             const toolName = String(parsed["name"] ?? parsed["tool_name"] ?? "");
@@ -2457,30 +2470,6 @@ ${tailText}`;
           tailText: tailLines.join("\n"),
           toolCounts
         };
-      }
-      /**
-       * Recursively extract all string values from an object into an array.
-       *
-       * Limits recursion depth to 4 to avoid excessive token consumption
-       * on deeply nested structures.
-       *
-       * @param obj   - Object to traverse.
-       * @param parts - Array to push string values into.
-       * @param depth - Current recursion depth.
-       */
-      _extractStrings(obj, parts, depth = 0) {
-        if (depth > 4) return;
-        if (typeof obj === "string") {
-          parts.push(obj);
-        } else if (Array.isArray(obj)) {
-          for (const item of obj) {
-            this._extractStrings(item, parts, depth + 1);
-          }
-        } else if (obj !== null && typeof obj === "object") {
-          for (const val of Object.values(obj)) {
-            this._extractStrings(val, parts, depth + 1);
-          }
-        }
       }
       /**
        * Map confidence level to a numeric rank for sorting.
@@ -2504,20 +2493,26 @@ ${tailText}`;
 });
 
 // src/handlers/tag.ts
-async function getGlobalDb() {
-  if (_globalDb) return _globalDb;
-  if (_initPromise) return _initPromise;
-  _initPromise = initializeGlobalDb().then((db) => {
-    _globalDb = db;
-    _initPromise = null;
-    return db;
-  });
-  return _initPromise;
+async function getTagStore() {
+  if (_tagStore) return _tagStore;
+  if (!_initPromise) {
+    _initPromise = initializeGlobalDb().then((db) => {
+      _globalDb = db;
+      _tagStore = new TagStore(db);
+      _initPromise = null;
+      return db;
+    }).catch((err) => {
+      _initPromise = null;
+      throw err;
+    });
+  }
+  await _initPromise;
+  if (!_tagStore) throw new Error("TagStore initialization failed");
+  return _tagStore;
 }
 async function handleTag(aggregator, input, _goodvibesDir) {
   try {
-    const db = await getGlobalDb();
-    const store = new TagStore(db);
+    const store = await getTagStore();
     const state = aggregator.getState();
     const sessionId = state.session_id;
     switch (input.action) {
@@ -2587,7 +2582,7 @@ Add tags with: analytics_tag { action: "add", value: "<tag>" }`
 ${lines.join("\n")}`
   );
 }
-async function handleAuto(store, sessionId) {
+function handleAuto(store, sessionId) {
   const jsonlPath = resolveJsonlPath(sessionId);
   if (!jsonlPath) {
     return text(
@@ -2597,7 +2592,7 @@ Expected location: ~/.claude/projects/<project-hash>/${sessionId}.jsonl
 Ensure the session file exists before using auto-tagging.`
     );
   }
-  const suggestions = await store.suggestTags(sessionId, jsonlPath);
+  const suggestions = store.suggestTags(sessionId, jsonlPath);
   if (suggestions.length === 0) {
     return text(
       `No tag suggestions found for session ${sessionId}.
@@ -2619,7 +2614,7 @@ Apply with:
 ${applyHints}`
   );
 }
-var _globalDb, _initPromise;
+var _globalDb, _tagStore, _initPromise;
 var init_tag = __esm({
   "src/handlers/tag.ts"() {
     "use strict";
@@ -2627,8 +2622,9 @@ var init_tag = __esm({
     init_tag_store();
     init_db_init();
     _globalDb = null;
+    _tagStore = null;
     _initPromise = null;
-    __name(getGlobalDb, "getGlobalDb");
+    __name(getTagStore, "getTagStore");
     __name(handleTag, "handleTag");
     __name(handleAdd, "handleAdd");
     __name(handleRemove, "handleRemove");
@@ -4372,11 +4368,11 @@ import { join as join8, dirname as dirname2, basename as basename2 } from "node:
 import { EventEmitter } from "node:events";
 import { watch, existsSync as existsSync4, statSync as statSync4 } from "node:fs";
 import { join as join7 } from "node:path";
-import { readdir } from "node:fs/promises";
+import { readdir as readdir2 } from "node:fs/promises";
 
 // src/data/jsonl-reader.ts
 import { createReadStream, statSync as statSync3 } from "node:fs";
-import { stat } from "node:fs/promises";
+import { stat, readdir } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join as join6, basename } from "node:path";
 var CACHE_READ_COST_RATIO = 0.1;
@@ -4454,10 +4450,10 @@ var JSONLReader = class {
       } else {
         errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed}: ${trimmed.slice(0, 80)}...`);
         bytesConsumed += lineByteLength;
+        lastValidOffset = fromOffset + bytesConsumed;
         linesSkipped++;
       }
     }
-    rl.close();
     byteOffset = lastValidOffset;
     return {
       records,
@@ -4538,7 +4534,7 @@ var JSONLReader = class {
       const outputTokens = usage.output_tokens ?? 0;
       const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
       const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
-      if (inputTokens === 0 && outputTokens === 0) continue;
+      if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
       const inputCost = inputTokens / 1e3 * this.costPer1kInput;
       const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
       const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * CACHE_READ_COST_RATIO;
@@ -4744,10 +4740,9 @@ var JSONLReader = class {
   }
 };
 async function findActiveJsonlFile(projectDir) {
-  const { readdir: readdir2 } = await import("node:fs/promises");
   let entries;
   try {
-    entries = await readdir2(projectDir);
+    entries = await readdir(projectDir);
   } catch {
     return null;
   }
@@ -4797,6 +4792,8 @@ var JSONLWatcher = class extends EventEmitter {
   rotationTimer = null;
   /** Whether the watcher is running. */
   running = false;
+  /** Watcher for the subagent directory (kept separate from watchedFiles). */
+  subagentDirWatcher = null;
   /**
    * @param projectDir - Absolute path to the Claude project directory
    *                     (e.g. ~/.claude/projects/<project-hash>/).
@@ -4859,6 +4856,13 @@ var JSONLWatcher = class extends EventEmitter {
       }
     }
     this.watchedFiles.clear();
+    if (this.subagentDirWatcher !== null) {
+      try {
+        this.subagentDirWatcher.watcher.close();
+      } catch {
+      }
+      this.subagentDirWatcher = null;
+    }
     this.activeSessionPath = null;
     this.activeSessionId = null;
     this.pendingRecords = [];
@@ -4937,18 +4941,11 @@ var JSONLWatcher = class extends EventEmitter {
    */
   attachFileWatcher(filePath, isSubagent) {
     if (this.watchedFiles.has(filePath)) return;
-    let initialOffset = 0;
-    try {
-      const s = statSync4(filePath);
-      initialOffset = isSubagent ? 0 : 0;
-      void s;
-    } catch {
-      initialOffset = 0;
-    }
     const watched = {
       path: filePath,
-      offset: initialOffset,
-      handle: {},
+      offset: 0,
+      handle: { close() {
+      } },
       // placeholder; replaced below
       isSubagent
     };
@@ -5048,7 +5045,7 @@ var JSONLWatcher = class extends EventEmitter {
     if (!existsSync4(subagentDir)) return;
     let entries;
     try {
-      entries = await readdir(subagentDir);
+      entries = await readdir2(subagentDir);
     } catch {
       return;
     }
@@ -5068,7 +5065,7 @@ var JSONLWatcher = class extends EventEmitter {
    * @param sessionId   - Parent session ID (for validation).
    */
   watchSubagentDirectory(subagentDir, sessionId) {
-    if (this.watchedFiles.has(subagentDir)) return;
+    if (this.subagentDirWatcher !== null && this.subagentDirWatcher.path === subagentDir) return;
     const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
       if (this.activeSessionId !== sessionId) return;
       if (filename === null) return;
@@ -5086,12 +5083,7 @@ var JSONLWatcher = class extends EventEmitter {
       handle = { close() {
       } };
     }
-    this.watchedFiles.set(subagentDir, {
-      path: subagentDir,
-      offset: 0,
-      handle,
-      isSubagent: true
-    });
+    this.subagentDirWatcher = { watcher: handle, path: subagentDir };
   }
   // -------------------------------------------------------------------------
   // Incremental reading
@@ -5191,6 +5183,11 @@ var DataWatcher = class extends EventEmitter2 {
         pollIntervalMs: options.pollIntervalMs,
         costConfig: options.jsonlCostConfig
       });
+      this.jsonlWatcher.on("records", (records) => {
+        if (this.running) this.emit("jsonl-records", records);
+      });
+      this.jsonlWatcher.on("error", (_err) => {
+      });
     }
   }
   // -------------------------------------------------------------------------
@@ -5205,11 +5202,6 @@ var DataWatcher = class extends EventEmitter2 {
     this.running = true;
     this.attachWatchers();
     if (this.jsonlWatcher !== null) {
-      this.jsonlWatcher.on("records", (records) => {
-        if (this.running) this.emit("jsonl-records", records);
-      });
-      this.jsonlWatcher.on("error", (_err) => {
-      });
       this.jsonlWatcher.start();
     }
   }

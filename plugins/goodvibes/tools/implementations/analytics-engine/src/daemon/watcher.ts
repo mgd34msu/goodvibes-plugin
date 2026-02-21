@@ -125,6 +125,15 @@ export class DataWatcher extends EventEmitter {
         pollIntervalMs: options.pollIntervalMs,
         costConfig: options.jsonlCostConfig,
       });
+      // Attach listeners once in the constructor to prevent leaks on start/stop cycles.
+      this.jsonlWatcher.on('records', (records: JSONLRecord[]) => {
+        if (this.running) this.emit('jsonl-records', records);
+      });
+      this.jsonlWatcher.on('error', (_err: Error) => {
+        // JSONL errors are non-fatal; log to stderr and continue.
+        // Do not re-emit as 'error' since DataWatcher's error handling
+        // is wired to the fs.watch subsystem.
+      });
     }
   }
 
@@ -143,14 +152,6 @@ export class DataWatcher extends EventEmitter {
 
     // Start the JSONL watcher if configured.
     if (this.jsonlWatcher !== null) {
-      this.jsonlWatcher.on('records', (records: JSONLRecord[]) => {
-        if (this.running) this.emit('jsonl-records', records);
-      });
-      this.jsonlWatcher.on('error', (_err: Error) => {
-        // JSONL errors are non-fatal; log to stderr and continue.
-        // Do not re-emit as 'error' since DataWatcher's error handling
-        // is wired to the fs.watch subsystem.
-      });
       this.jsonlWatcher.start();
     }
   }
