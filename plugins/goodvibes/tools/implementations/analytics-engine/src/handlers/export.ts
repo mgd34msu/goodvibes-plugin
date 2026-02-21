@@ -4,7 +4,7 @@ import type { Aggregator } from '../daemon/aggregator.js';
 import { HistoricalStore } from '../data/historical-store.js';
 import type { AnalyticsExportInput } from '../schemas/tools.js';
 import type { SessionArchive, SessionMetrics, DashboardState } from '../types.js';
-import type { HandlerResponse } from './types.js';
+import { type HandlerResponse, text } from './types.js';
 
 // === Section keys ===
 
@@ -169,16 +169,17 @@ function renderMarkdown(data: Record<string, unknown>, title: string): string {
  * If `output_path` is provided, the export is written to disk.
  * Otherwise, the content is returned inline in the MCP response.
  *
- * @param aggregator  - The running Aggregator instance.
- * @param input       - Validated AnalyticsExportInput from the MCP tool call.
- * @param store       - HistoricalStore instance for accessing archived sessions.
+ * @param aggregator   - The running Aggregator instance.
+ * @param input        - Validated AnalyticsExportInput from the MCP tool call.
+ * @param goodvibesDir - Path to the .goodvibes directory (used to instantiate HistoricalStore).
  * @returns MCP tool response with the exported content or confirmation.
  */
 export async function handleExport(
   aggregator: Aggregator,
   input: AnalyticsExportInput,
-  store: HistoricalStore,
+  goodvibesDir: string,
 ): Promise<HandlerResponse> {
+  const store = new HistoricalStore(goodvibesDir);
   try {
     const rawSections = input.sections;
     const sections: SectionKey[] = Array.isArray(rawSections) && rawSections.length > 0
@@ -204,9 +205,7 @@ export async function handleExport(
 
       if (archives.length === 0) {
         const tagNote = tags.length > 0 ? ` matching tags [${tags.join(', ')}]` : '';
-        return {
-          content: [{ type: 'text', text: `No historical sessions found${tagNote}.` }],
-        };
+        return text(`No historical sessions found${tagNote}.`);
       }
       const entries: Record<string, unknown> = {};
       for (const archive of archives) {
@@ -219,9 +218,7 @@ export async function handleExport(
       const sessionId = input.scope.replace(/^session:/, '');
       const archive = store.load(sessionId);
       if (!archive) {
-        return {
-          content: [{ type: 'text', text: `Session not found: ${sessionId}` }],
-        };
+        return text(`Session not found: ${sessionId}`);
       }
       data = extractArchiveSections(archive, sections);
       title = `Session Export — ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
@@ -245,21 +242,14 @@ export async function handleExport(
       const absPath = path.resolve(input.output_path);
       await fs.promises.mkdir(path.dirname(absPath), { recursive: true });
       await fs.promises.writeFile(absPath, rendered, 'utf-8');
-      return {
-        content: [{
-          type: 'text',
-          text: `Export written to: ${absPath}\n\nFormat: ${input.format}  Scope: ${input.scope}  Sections: ${sections.join(', ')}`,
-        }],
-      };
+      return text(
+        `Export written to: ${absPath}\n\nFormat: ${input.format}  Scope: ${input.scope}  Sections: ${sections.join(', ')}`,
+      );
     }
 
-    return {
-      content: [{ type: 'text', text: rendered }],
-    };
+    return text(rendered);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return {
-      content: [{ type: 'text', text: `analytics_export error: ${message}` }],
-    };
+    return text(`analytics_export error: ${message}`);
   }
 }

@@ -92,33 +92,31 @@ function buildDataScopeNote(
   input: AnalyticsQueryInput,
 ): string | null {
   try {
-    // Access globalDb via aggregator internals (it's private, but we use a safe cast)
-    const agg = aggregator as unknown as { globalDb?: { getAllSessions?: (opts?: Record<string, unknown>) => unknown[]; getSessionsByTags?: (tags: string[]) => unknown[]; getTotalCostAllProjects?: () => number; getSessionsByProject?: (hash: string) => unknown[] } };
-    const db = agg.globalDb;
+    const db = aggregator.getGlobalDb();
     if (!db) return null;
 
     const tags = input.filters?.tags ?? [];
     const lines: string[] = [];
 
     if (input.data_scope === 'all_projects') {
-      const sessions = db.getAllSessions?.() ?? [];
-      const totalCost = db.getTotalCostAllProjects?.() ?? 0;
+      const sessions = db.getAllSessions();
+      const totalCost = db.getTotalCostAllProjects();
       lines.push(
         '=== Cross-Project Summary (GlobalDB) ===',
         `Sessions: ${sessions.length}`,
         `Total cost (all projects): ${formatDollars(totalCost)}`,
       );
     } else if (input.data_scope === 'tagged' && tags.length > 0) {
-      const sessions = db.getSessionsByTags?.(tags) ?? [];
+      const sessions = db.getSessionsByTags(tags);
       lines.push(
         `=== Tagged Sessions (${tags.join(', ')}) ===`,
         `Sessions matching tags: ${sessions.length}`,
       );
     } else if (input.data_scope === 'current_project') {
       const state = aggregator.getState();
-      const projectHash = deriveProjectHash(state.session_id);
+      const projectHash = deriveProjectHash(db, state.session_id);
       if (projectHash) {
-        const sessions = db.getSessionsByProject?.(projectHash) ?? [];
+        const sessions = db.getSessionsByProject(projectHash);
         lines.push(
           '=== Current Project (GlobalDB) ===',
           `Sessions for this project: ${sessions.length}`,
@@ -133,13 +131,23 @@ function buildDataScopeNote(
 }
 
 /**
- * Attempt to derive a project hash from the session ID by reading the
- * GlobalDB session record. Falls back to null if unavailable.
+ * Derive a project hash from the session ID by looking it up in the GlobalDB.
+ *
+ * Claude project hashes are derived from the project directory path and stored
+ * on session records in the global DB. We look up the session to find the hash.
+ * Falls back to null if the session is not found or the DB is unavailable.
+ *
+ * @param db        - The GlobalDB instance to query.
+ * @param sessionId - The current session ID to look up.
+ * @returns The project_hash string, or null if not found.
  */
-function deriveProjectHash(_sessionId: string): string | null {
-  // Project hash derivation requires DB lookup — not available without a DB reference.
-  // Return null here; callers handle gracefully.
-  return null;
+function deriveProjectHash(db: import('../data/global-db.js').GlobalDB, sessionId: string): string | null {
+  try {
+    const session = db.getSession(sessionId);
+    return session?.project_hash ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

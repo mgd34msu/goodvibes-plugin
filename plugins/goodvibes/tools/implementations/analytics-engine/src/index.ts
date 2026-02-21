@@ -1,7 +1,7 @@
 /**
  * Analytics Engine — Library Entry Point
  *
- * Initializes the analytics daemon (Aggregator) and exposes 6 MCP tools
+ * Initializes the analytics daemon (Aggregator) and exposes 7 MCP tools
  * for session intelligence, budget tracking, and data export.
  *
  * Usage: `import { AnalyticsEngine } from './index.js'` — instantiate and manage lifecycle.
@@ -152,17 +152,15 @@ export class AnalyticsEngine {
     }
 
     // Dynamically import handler registry so this module can be imported
-    // before handlers are compiled (tree-shaking friendly)
-    // HandlerResponse is structurally compatible with ToolResponse (both have content + optional isError).
+    // before handlers are compiled (tree-shaking friendly).
+    // HandlerFn is structurally compatible with ToolResponse return type (both have content + optional isError).
     try {
-      const { HANDLER_REGISTRY } = await import('./handlers/index.js') as unknown as {
-        HANDLER_REGISTRY: Record<ToolName, (aggregator: Aggregator, input: unknown, goodvibesDir: string) => Promise<ToolResponse>>;
-      };
-      const handler = HANDLER_REGISTRY[name as ToolName];
+      const { HANDLER_REGISTRY } = await import('./handlers/index.js');
+      const handler = HANDLER_REGISTRY[name];
       if (!handler) {
         return toolResponse(`No handler registered for tool: ${name}`, true);
       }
-      return await handler(this.aggregator, parseResult.data, this.goodvibesDir);
+      return await handler(this.aggregator, parseResult.data, this.goodvibesDir) as ToolResponse;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       return toolResponse(`Handler error: ${message}`, true);

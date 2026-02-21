@@ -11,5 +11,6 @@ export {
   AnalyticsTagInput,
   AnalyticsExportInput,
   AnalyticsConfigInput,
+  AnalyticsSyncInput,
   TOOL_DEFINITIONS,
 } from './tools.js';

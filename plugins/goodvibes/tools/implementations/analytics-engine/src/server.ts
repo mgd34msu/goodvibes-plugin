@@ -2,8 +2,8 @@
  * Analytics Engine MCP Server
  *
  * Stdio-based MCP transport wrapping the AnalyticsEngine class.
- * Registers 6 tools: analytics_dashboard, analytics_query, analytics_budget,
- * analytics_tag, analytics_export, analytics_config.
+ * Registers 7 tools: analytics_dashboard, analytics_query, analytics_budget,
+ * analytics_tag, analytics_export, analytics_config, analytics_sync.
  *
  * Entry point for .mcp.json registration. Library consumers should
  * import AnalyticsEngine from './index.js' instead.

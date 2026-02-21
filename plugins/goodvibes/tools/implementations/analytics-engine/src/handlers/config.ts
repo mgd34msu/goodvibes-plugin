@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import type { Aggregator } from '../daemon/aggregator.js';
 import type { AnalyticsConfig } from '../types.js';
 import type { AnalyticsConfigInput } from '../schemas/tools.js';
-import type { HandlerResponse } from './types.js';
+import { type HandlerResponse, text } from './types.js';
 import { loadConfig } from '../config.js';
 
 // === Config file path ===
@@ -83,17 +83,16 @@ async function persistConfig(goodvibesDir: string, config: AnalyticsConfig): Pro
  *
  * @param aggregator  - The running Aggregator instance.
  * @param input       - Validated AnalyticsConfigInput from the MCP tool call.
- * @param config      - The current AnalyticsConfig (passed from the engine context).
  * @param goodvibesDir - Path to the `.goodvibes/` directory for persistence.
  * @returns MCP tool response with the config value or confirmation.
  */
 export async function handleConfig(
   aggregator: Aggregator,
   input: AnalyticsConfigInput,
-  config: AnalyticsConfig,
   goodvibesDir: string,
 ): Promise<HandlerResponse> {
   try {
+    const config = aggregator.getConfig();
     const configObj = config as unknown as Record<string, unknown>;
 
     // === reload ===
@@ -101,28 +100,14 @@ export async function handleConfig(
       try {
         const newConfig = loadConfig(goodvibesDir);
         // Apply the reloaded config to the running aggregator
-        if (typeof (aggregator as unknown as { reloadConfig?: (c: AnalyticsConfig) => void }).reloadConfig === 'function') {
-          (aggregator as unknown as { reloadConfig: (c: AnalyticsConfig) => void }).reloadConfig(newConfig);
-          return {
-            content: [{
-              type: 'text',
-              text: 'Config hot-reloaded from disk and applied to the running aggregator.\n\n' +
-                `Loaded from: ${goodvibesDir}/analytics.json (or global config if present).`,
-            }],
-          };
-        } else {
-          return {
-            content: [{
-              type: 'text',
-              text: 'Config reloaded from disk. Note: the running aggregator does not support hot-reload; restart to apply changes.',
-            }],
-          };
-        }
+        aggregator.reloadConfig(newConfig);
+        return text(
+          'Config hot-reloaded from disk and applied to the running aggregator.\n\n' +
+          `Loaded from: ${goodvibesDir}/analytics.json (or global config if present).`,
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: 'text', text: `Config reload failed: ${message}` }],
-        };
+        return text(`Config reload failed: ${message}`);
       }
     }
 
@@ -133,41 +118,24 @@ export async function handleConfig(
         const resolvedKey = resolveKeyAlias(input.key);
         const value = getByPath(configObj, resolvedKey);
         if (value === undefined) {
-          return {
-            content: [{
-              type: 'text',
-              text: `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (resolved alias: "${resolvedKey}")` : ''}.`,
-            }],
-          };
+          return text(
+            `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (resolved alias: "${resolvedKey}")` : ''}.`,
+          );
         }
-        return {
-          content: [{
-            type: 'text',
-            text: `${resolvedKey} = ${JSON.stringify(value, null, 2)}`,
-          }],
-        };
+        return text(`${resolvedKey} = ${JSON.stringify(value, null, 2)}`);
       }
 
       // No key — return full config
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(config, null, 2),
-        }],
-      };
+      return text(JSON.stringify(config, null, 2));
     }
 
     // === set ===
     if (!input.key) {
-      return {
-        content: [{ type: 'text', text: 'analytics_config set: "key" is required.' }],
-      };
+      return text('analytics_config set: "key" is required.');
     }
 
     if (input.value === undefined) {
-      return {
-        content: [{ type: 'text', text: 'analytics_config set: "value" is required.' }],
-      };
+      return text('analytics_config set: "value" is required.');
     }
 
     // Resolve key alias before setting
@@ -176,12 +144,9 @@ export async function handleConfig(
     // Verify the key path exists before setting
     const existing = getByPath(configObj, resolvedKey);
     if (existing === undefined) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ''}. Use "get" (no key) to list all valid keys.`,
-        }],
-      };
+      return text(
+        `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ''}. Use "get" (no key) to list all valid keys.`,
+      );
     }
 
     // Clone config to avoid mutating the passed-in reference
@@ -189,19 +154,14 @@ export async function handleConfig(
     setByPath(updated as unknown as Record<string, unknown>, resolvedKey, input.value);
     await persistConfig(goodvibesDir, updated);
 
-    return {
-      content: [{
-        type: 'text',
-        text: `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}\n\n` +
-          `Persisted to ${path.join(goodvibesDir, CONFIG_FILENAME)}.\n` +
-          'Use action="reload" to apply changes to the running engine without restarting.',
-      }],
-    };
+    return text(
+      `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}\n\n` +
+      `Persisted to ${path.join(goodvibesDir, CONFIG_FILENAME)}.\n` +
+      'Use action="reload" to apply changes to the running engine without restarting.',
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return {
-      content: [{ type: 'text', text: `analytics_config error: ${message}` }],
-    };
+    return text(`analytics_config error: ${message}`);
   }
 }
 

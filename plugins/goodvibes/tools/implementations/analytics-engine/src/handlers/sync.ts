@@ -15,7 +15,6 @@ import { initializeGlobalDb } from '../data/db-init.js';
 import { JSONLReader, resolveProjectsBaseDir, sessionIdFromPath } from '../data/jsonl-reader.js';
 import type { GlobalDB } from '../data/global-db.js';
 import type { GlobalSession, ApiCallRecord, SyncStateRecord } from '../types.js';
-import { DEFAULT_CONFIG } from '../types.js';
 import { type HandlerResponse, text } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,18 +48,12 @@ export const handleSync: SyncHandler = async (
   try {
     const db = await initializeGlobalDb();
 
-    // Access config via the aggregator's internal config (type-safe via property access)
-    const aggregatorAny = aggregator as unknown as Record<string, unknown>;
-    const config = (aggregatorAny['config'] ?? {}) as {
-      cost_per_1k_input_tokens?: number;
-      cost_per_1k_output_tokens?: number;
-    };
+    // Access config via the public getConfig() method on the Aggregator.
+    const config = aggregator.getConfig();
 
     const reader = new JSONLReader({
-      cost_per_1k_input_tokens:
-        config.cost_per_1k_input_tokens ?? DEFAULT_CONFIG.cost_per_1k_input_tokens,
-      cost_per_1k_output_tokens:
-        config.cost_per_1k_output_tokens ?? DEFAULT_CONFIG.cost_per_1k_output_tokens,
+      cost_per_1k_input_tokens: config.cost_per_1k_input_tokens,
+      cost_per_1k_output_tokens: config.cost_per_1k_output_tokens,
     });
 
     const projectsBaseDir = resolveProjectsBaseDir();

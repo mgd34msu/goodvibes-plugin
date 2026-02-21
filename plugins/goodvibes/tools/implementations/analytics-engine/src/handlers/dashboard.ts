@@ -16,7 +16,7 @@ import type { AnalyticsDashboardInput } from '../schemas/tools.js';
 import type { Aggregator } from '../daemon/aggregator.js';
 import { TmuxManager } from '../tmux/manager.js';
 import { getFallbackMode, detectTmux } from '../tmux/detect.js';
-import { DEFAULT_CONFIG } from '../config.js';
+import { DEFAULT_CONFIG } from '../types.js';
 import { type HandlerResponse, text } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ function getManager(): TmuxManager {
  * Normalize 'dashboard' and 'full' to the canonical pane key used by TmuxManager.
  * 'full' is a backward-compatible alias for 'dashboard'.
  */
-function normalizeTarget(target: AnalyticsDashboardInput['target']): 'mini' | 'full' | 'both' {
+function normalizeTarget(target: AnalyticsDashboardInput['target']): Exclude<AnalyticsDashboardInput['target'], 'dashboard'> {
   if (target === 'dashboard') return 'full';
   return target;
 }

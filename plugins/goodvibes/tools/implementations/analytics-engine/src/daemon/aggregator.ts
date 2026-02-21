@@ -401,6 +401,22 @@ export class Aggregator {
   }
 
   /**
+   * Return the current GlobalDB instance, or null if not initialized.
+   * Allows handlers to access cross-project data without unsafe casts.
+   */
+  getGlobalDb(): GlobalDB | null {
+    return this.globalDb;
+  }
+
+  /**
+   * Return the current resolved analytics configuration.
+   * Allows handlers to read cost rates and other config without unsafe casts.
+   */
+  getConfig(): AnalyticsConfig {
+    return this.config;
+  }
+
+  /**
    * Reload configuration without restarting the aggregator.
    *
    * Updates the stored config (including token costs) and recreates the
