@@ -5976,7 +5976,7 @@ var MiniRenderer = class {
         const msg = err instanceof Error ? err.message : String(err);
         process.stderr.write(`[analytics-mini] render error: ${msg}
 `);
-        const w = getTerminalWidth();
+        const w = getTerminalWidth(this.config?.mini_min_width ?? MIN_WIDTH);
         process.stdout.write("\x1B[H\x1B[2J" + renderFallback(w));
       }
     }, "draw");
