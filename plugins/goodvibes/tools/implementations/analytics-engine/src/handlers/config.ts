@@ -4,6 +4,7 @@ import type { Aggregator } from '../daemon/aggregator.js';
 import type { AnalyticsConfig } from '../types.js';
 import type { AnalyticsConfigInput } from '../schemas/tools.js';
 import type { HandlerResponse } from './types.js';
+import { loadConfig } from '../config.js';
 
 // === Config file path ===
 
@@ -76,46 +77,73 @@ async function persistConfig(goodvibesDir: string, config: AnalyticsConfig): Pro
  * Handle the `analytics_config` tool.
  *
  * Actions:
- * - `get` — Return the full config or a specific key (dot-notation supported).
- * - `set` — Set a specific config key (dot-notation). Persists to `.goodvibes/analytics.json`.
+ * - `get`    — Return the full config or a specific key (dot-notation supported).
+ * - `set`    — Set a specific config key (dot-notation). Persists to global analytics.json.
+ * - `reload` — Hot-reload the config from disk and apply it to the running Aggregator.
  *
- * Note: `set` persists the change to disk so it survives session restarts,
- * but does NOT hot-reload the running Aggregator's in-memory config.
- * Restart the analytics daemon for changes to take effect.
- *
- * @param _aggregator - The running Aggregator instance (unused; kept for handler interface consistency).
+ * @param aggregator  - The running Aggregator instance.
  * @param input       - Validated AnalyticsConfigInput from the MCP tool call.
  * @param config      - The current AnalyticsConfig (passed from the engine context).
  * @param goodvibesDir - Path to the `.goodvibes/` directory for persistence.
  * @returns MCP tool response with the config value or confirmation.
  */
 export async function handleConfig(
-  _aggregator: Aggregator,
+  aggregator: Aggregator,
   input: AnalyticsConfigInput,
   config: AnalyticsConfig,
   goodvibesDir: string,
 ): Promise<HandlerResponse> {
-  // Note: _aggregator is unused here but kept for handler interface consistency
-  // (all handlers receive aggregator as their first argument).
   try {
     const configObj = config as unknown as Record<string, unknown>;
+
+    // === reload ===
+    if (input.action === 'reload') {
+      try {
+        const newConfig = loadConfig(goodvibesDir);
+        // Apply the reloaded config to the running aggregator
+        if (typeof (aggregator as unknown as { reloadConfig?: (c: AnalyticsConfig) => void }).reloadConfig === 'function') {
+          (aggregator as unknown as { reloadConfig: (c: AnalyticsConfig) => void }).reloadConfig(newConfig);
+          return {
+            content: [{
+              type: 'text',
+              text: 'Config hot-reloaded from disk and applied to the running aggregator.\n\n' +
+                `Loaded from: ${goodvibesDir}/analytics.json (or global config if present).`,
+            }],
+          };
+        } else {
+          return {
+            content: [{
+              type: 'text',
+              text: 'Config reloaded from disk. Note: the running aggregator does not support hot-reload; restart to apply changes.',
+            }],
+          };
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          content: [{ type: 'text', text: `Config reload failed: ${message}` }],
+        };
+      }
+    }
 
     // === get ===
     if (input.action === 'get') {
       if (input.key) {
-        const value = getByPath(configObj, input.key);
+        // Support renamed key aliases for backward compatibility
+        const resolvedKey = resolveKeyAlias(input.key);
+        const value = getByPath(configObj, resolvedKey);
         if (value === undefined) {
           return {
             content: [{
               type: 'text',
-              text: `Config key not found: "${input.key}"`,
+              text: `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (resolved alias: "${resolvedKey}")` : ''}.`,
             }],
           };
         }
         return {
           content: [{
             type: 'text',
-            text: `${input.key} = ${JSON.stringify(value, null, 2)}`,
+            text: `${resolvedKey} = ${JSON.stringify(value, null, 2)}`,
           }],
         };
       }
@@ -142,26 +170,31 @@ export async function handleConfig(
       };
     }
 
+    // Resolve key alias before setting
+    const resolvedKey = resolveKeyAlias(input.key);
+
     // Verify the key path exists before setting
-    const existing = getByPath(configObj, input.key);
+    const existing = getByPath(configObj, resolvedKey);
     if (existing === undefined) {
       return {
         content: [{
           type: 'text',
-          text: `Config key not found: "${input.key}". Use "get" (no key) to list all valid keys.`,
+          text: `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ''}. Use "get" (no key) to list all valid keys.`,
         }],
       };
     }
 
     // Clone config to avoid mutating the passed-in reference
     const updated = JSON.parse(JSON.stringify(config)) as AnalyticsConfig;
-    setByPath(updated as unknown as Record<string, unknown>, input.key, input.value);
+    setByPath(updated as unknown as Record<string, unknown>, resolvedKey, input.value);
     await persistConfig(goodvibesDir, updated);
 
     return {
       content: [{
         type: 'text',
-        text: `Config updated: ${input.key} = ${JSON.stringify(input.value)}\n\nPersisted to ${path.join(goodvibesDir, CONFIG_FILENAME)}.\nRestart the analytics daemon for changes to take effect.`,
+        text: `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}\n\n` +
+          `Persisted to ${path.join(goodvibesDir, CONFIG_FILENAME)}.\n` +
+          'Use action="reload" to apply changes to the running engine without restarting.',
       }],
     };
   } catch (err: unknown) {
@@ -170,4 +203,25 @@ export async function handleConfig(
       content: [{ type: 'text', text: `analytics_config error: ${message}` }],
     };
   }
+}
+
+// === Key alias resolution ===
+
+/**
+ * Map deprecated/renamed config key paths to their canonical equivalents.
+ * Allows old keys to continue working after renames.
+ */
+const KEY_ALIASES: Record<string, string> = {
+  // 'full' -> 'dashboard' renames
+  'auto_start_full':             'auto_start_dashboard',
+  'full_tui_refresh_rate_ms':    'dashboard_refresh_rate_ms',
+  'tmux.full_pane_size':         'tmux.dashboard_pane_size',
+  'tmux.full_position':          'tmux.dashboard_position',
+};
+
+/**
+ * Resolve a possibly-deprecated config key to its canonical form.
+ */
+function resolveKeyAlias(key: string): string {
+  return KEY_ALIASES[key] ?? key;
 }

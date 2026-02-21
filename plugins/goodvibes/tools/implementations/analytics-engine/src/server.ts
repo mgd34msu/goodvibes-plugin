@@ -119,7 +119,7 @@ class AnalyticsEngineServer {
     await this.engine.initialize();
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    process.stderr.write(`[${SERVER_NAME}] v${SERVER_VERSION} started (6 tools)\n`);
+    process.stderr.write(`[${SERVER_NAME}] v${SERVER_VERSION} started (7 tools)\n`);
   }
 }
 

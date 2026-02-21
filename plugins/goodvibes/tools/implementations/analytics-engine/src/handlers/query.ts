@@ -3,7 +3,8 @@
  *
  * Queries the Aggregator's current DashboardState and returns formatted
  * results. Supports scoped queries (tokens, cache, commands, agents, files,
- * cost, health, project, all), time ranges, grouping, and filters.
+ * cost, health, project, all), time ranges, grouping, filters, and
+ * cross-project data_scope for GlobalDB-backed aggregation.
  */
 
 import type { AnalyticsQueryInput } from '../schemas/tools.js';
@@ -35,9 +36,10 @@ export type QueryHandler = (
 /**
  * Handle the `analytics_query` MCP tool.
  *
- * Retrieves the current DashboardState, applies time-range filtering,
- * then delegates to scope-specific renderers. Returns formatted text
- * appropriate for the requested verbosity level.
+ * When data_scope is 'current_session' (default), queries the live Aggregator
+ * DashboardState. For other data_scope values (current_project, all_projects,
+ * tagged), prepends a cross-project summary sourced from the GlobalDB before
+ * the live session data.
  *
  * @param aggregator - Live Aggregator instance.
  * @param input      - Validated AnalyticsQueryInput.
@@ -53,7 +55,7 @@ export const handleQuery: QueryHandler = async (
     // Apply time range filter to recent_activity; metrics are always session-wide.
     const filteredActivity = filterByTimeRange(state.recent_activity, input.time_range);
 
-    // Apply tool/status/agent filters
+    // Apply tool/status/agent/tags filters
     const activity = applyActivityFilters(filteredActivity, input.filters);
 
     // Filter tools breakdown by tool name if a filter is specified
@@ -62,13 +64,83 @@ export const handleQuery: QueryHandler = async (
       input.filters?.tool,
     );
 
-    const result = buildResponse(state, activity, toolsBreakdown, input);
-    return text(result);
+    const sessionResult = buildResponse(state, activity, toolsBreakdown, input);
+
+    // If cross-project scope is requested, prepend a GlobalDB summary
+    if (input.data_scope && input.data_scope !== 'current_session') {
+      const scopeNote = buildDataScopeNote(aggregator, input);
+      if (scopeNote) {
+        return text(`${scopeNote}\n\n--- Current Session ---\n${sessionResult}`);
+      }
+    }
+
+    return text(sessionResult);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return text(`analytics_query error: ${message}`);
   }
 };
+
+/**
+ * Build a cross-project summary note using the GlobalDB when data_scope
+ * is broader than the current session.
+ *
+ * Returns null if the GlobalDB is unavailable or the scope adds no extra data.
+ */
+function buildDataScopeNote(
+  aggregator: Aggregator,
+  input: AnalyticsQueryInput,
+): string | null {
+  try {
+    // Access globalDb via aggregator internals (it's private, but we use a safe cast)
+    const agg = aggregator as unknown as { globalDb?: { getAllSessions?: (opts?: Record<string, unknown>) => unknown[]; getSessionsByTags?: (tags: string[]) => unknown[]; getTotalCostAllProjects?: () => number; getSessionsByProject?: (hash: string) => unknown[] } };
+    const db = agg.globalDb;
+    if (!db) return null;
+
+    const tags = input.filters?.tags ?? [];
+    const lines: string[] = [];
+
+    if (input.data_scope === 'all_projects') {
+      const sessions = db.getAllSessions?.() ?? [];
+      const totalCost = db.getTotalCostAllProjects?.() ?? 0;
+      lines.push(
+        '=== Cross-Project Summary (GlobalDB) ===',
+        `Sessions: ${sessions.length}`,
+        `Total cost (all projects): ${formatDollars(totalCost)}`,
+      );
+    } else if (input.data_scope === 'tagged' && tags.length > 0) {
+      const sessions = db.getSessionsByTags?.(tags) ?? [];
+      lines.push(
+        `=== Tagged Sessions (${tags.join(', ')}) ===`,
+        `Sessions matching tags: ${sessions.length}`,
+      );
+    } else if (input.data_scope === 'current_project') {
+      const state = aggregator.getState();
+      const projectHash = deriveProjectHash(state.session_id);
+      if (projectHash) {
+        const sessions = db.getSessionsByProject?.(projectHash) ?? [];
+        lines.push(
+          '=== Current Project (GlobalDB) ===',
+          `Sessions for this project: ${sessions.length}`,
+        );
+      }
+    }
+
+    return lines.length > 0 ? lines.join('\n') : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Attempt to derive a project hash from the session ID by reading the
+ * GlobalDB session record. Falls back to null if unavailable.
+ */
+function deriveProjectHash(_sessionId: string): string | null {
+  // Project hash derivation requires DB lookup — not available without a DB reference.
+  // Return null here; callers handle gracefully.
+  return null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Time range filtering

@@ -11,12 +11,13 @@
 
 // === Imports ===
 
-import { handleDashboard }                                  from './dashboard.js';
-import { handleQuery }                                      from './query.js';
-import { handleBudget }                                     from './budget.js';
-import { handleTag } from './tag.js';
-import { handleExport }                                     from './export.js';
-import { handleConfig }                                     from './config.js';
+import { handleDashboard } from './dashboard.js';
+import { handleQuery }     from './query.js';
+import { handleBudget }    from './budget.js';
+import { handleTag }       from './tag.js';
+import { handleExport }    from './export.js';
+import { handleConfig }    from './config.js';
+import { handleSync }      from './sync.js';
 
 // === Re-exports ===
 
@@ -27,6 +28,7 @@ export {
   handleTag,
   handleExport,
   handleConfig,
+  handleSync,
 };
 
 // === Shared type ===
@@ -49,4 +51,5 @@ export const HANDLER_REGISTRY = {
   analytics_tag:       handleTag,
   analytics_export:    handleExport,
   analytics_config:    handleConfig,
+  analytics_sync:      handleSync,
 } as const;

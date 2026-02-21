@@ -192,11 +192,20 @@ export async function handleExport(
       const state = aggregator.getState();
       data = extractSections(state, sections);
       title = `Session Export — ${state.session_id}`;
-    } else if (input.scope === 'historical') {
-      const archives = store.list();
+    } else if (input.scope === 'historical' || input.scope === 'all_projects') {
+      // Retrieve all archived sessions; filter by tags if specified
+      const allArchives = store.list();
+      const tags = input.tags ?? [];
+      const archives = tags.length > 0
+        ? allArchives.filter((a) =>
+            tags.some((t) => Array.isArray(a.tags) && a.tags.includes(t)),
+          )
+        : allArchives;
+
       if (archives.length === 0) {
+        const tagNote = tags.length > 0 ? ` matching tags [${tags.join(', ')}]` : '';
         return {
-          content: [{ type: 'text', text: 'No historical sessions found.' }],
+          content: [{ type: 'text', text: `No historical sessions found${tagNote}.` }],
         };
       }
       const entries: Record<string, unknown> = {};

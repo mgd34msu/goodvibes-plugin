@@ -22,6 +22,7 @@ import {
   AnalyticsTagInput,
   AnalyticsExportInput,
   AnalyticsConfigInput,
+  AnalyticsSyncInput,
 } from './schemas/tools.js';
 
 // ============================================================
@@ -37,11 +38,12 @@ export type ToolName = keyof typeof TOOL_DEFINITIONS;
 
 const SCHEMA_MAP = {
   analytics_dashboard: AnalyticsDashboardInput,
-  analytics_query: AnalyticsQueryInput,
-  analytics_budget: AnalyticsBudgetInput,
-  analytics_tag: AnalyticsTagInput,
-  analytics_export: AnalyticsExportInput,
-  analytics_config: AnalyticsConfigInput,
+  analytics_query:     AnalyticsQueryInput,
+  analytics_budget:    AnalyticsBudgetInput,
+  analytics_tag:       AnalyticsTagInput,
+  analytics_export:    AnalyticsExportInput,
+  analytics_config:    AnalyticsConfigInput,
+  analytics_sync:      AnalyticsSyncInput,
 } as const satisfies Record<ToolName, unknown>;
 
 // ============================================================

@@ -1,9 +1,14 @@
 /**
- * analytics_dashboard handler — launch, stop, or check status of analytics TUI panes.
+ * analytics_dashboard handler — launch, stop, or toggle analytics TUI panes.
  *
- * Manages mini (4-line status bar) and full (3-page interactive) dashboard
+ * Manages mini (4-line status bar) and dashboard/full (3-page interactive)
  * tmux panes. A module-level TmuxManager singleton tracks live panes across
  * handler invocations so that start/stop/status are consistent.
+ *
+ * Toggle semantics:
+ *   - start on a running target → stops it (toggle off)
+ *   - stop on a stopped target → no-op (reports already stopped)
+ *   - 'dashboard' is the canonical target name; 'full' is a backward-compatible alias
  */
 
 import { join } from 'node:path';
@@ -48,8 +53,17 @@ function getManager(): TmuxManager {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Normalize 'dashboard' and 'full' to the canonical pane key used by TmuxManager.
+ * 'full' is a backward-compatible alias for 'dashboard'.
+ */
+function normalizeTarget(target: AnalyticsDashboardInput['target']): 'mini' | 'full' | 'both' {
+  if (target === 'dashboard') return 'full';
+  return target;
+}
+
+/**
  * Build an absolute path to the bundled dist script for the given target.
- * mini → node <dist>/mini.cjs, full → node <dist>/full.mjs
+ * mini → node <dist>/mini.cjs, full/dashboard → node <dist>/full.mjs
  */
 function buildCommand(target: 'mini' | 'full'): string {
   // Resolve absolute path to the CJS dist file.
@@ -89,15 +103,21 @@ export const handleDashboard: DashboardHandler = async (
   input: AnalyticsDashboardInput,
 ): Promise<HandlerResponse> => {
   try {
-    switch (input.action) {
+    // Normalize 'dashboard' → 'full' for the canonical pane key
+    const normalizedInput: AnalyticsDashboardInput = {
+      ...input,
+      target: normalizeTarget(input.target),
+    };
+
+    switch (normalizedInput.action) {
       case 'start':
-        return handleStart(input);
+        return handleStart(normalizedInput);
       case 'stop':
-        return handleStop(input);
+        return handleStop(normalizedInput);
       case 'status':
         return handleStatus();
       default: {
-        const _exhaustive: never = input.action;
+        const _exhaustive: never = normalizedInput.action;
         return text(`Unknown action: ${_exhaustive as string}`);
       }
     }
@@ -112,10 +132,11 @@ export const handleDashboard: DashboardHandler = async (
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Start one or both dashboard panes.
+ * Start one or both dashboard panes with toggle semantics.
  *
- * Checks tmux availability first. When unavailable, returns the fallback mode
- * so callers know the dashboard cannot be displayed as a pane.
+ * If the target pane is already running, it is stopped (toggle off).
+ * If it is not running, it is started (toggle on).
+ * Checks tmux availability first; returns fallback guidance when unavailable.
  */
 function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
   const detection = detectTmux();
@@ -145,6 +166,14 @@ function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
 
   for (const target of targets) {
     try {
+      // Toggle logic: if already running, stop it instead of starting again
+      if (manager.isPaneAlive(target)) {
+        manager.closePane(target);
+        lines.push(`Stopped ${target} dashboard (toggled off).`);
+        continue;
+      }
+
+      // Not running — start it
       const paneInfo = manager.createPane(target, buildCommand(target));
       if (input.options?.pane_size != null) {
         manager.resizePane(target, input.options.pane_size);
@@ -154,7 +183,7 @@ function handleStart(input: AnalyticsDashboardInput): HandlerResponse {
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      lines.push(`Failed to start ${target} dashboard: ${message}`);
+      lines.push(`Failed to toggle ${target} dashboard: ${message}`);
     }
   }
 
@@ -222,13 +251,15 @@ function handleStatus(): HandlerResponse {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolve the `target` field of the input to an array of concrete targets.
+ * Resolve the `target` field of the input to an array of concrete pane targets.
+ * At this point 'dashboard' has already been normalized to 'full'.
  */
 function resolveTargets(target: AnalyticsDashboardInput['target']): Array<'mini' | 'full'> {
   switch (target) {
-    case 'mini': return ['mini'];
-    case 'full': return ['full'];
-    case 'both': return ['mini', 'full'];
+    case 'mini':      return ['mini'];
+    case 'full':      return ['full'];
+    case 'dashboard': return ['full']; // backward-compat safety (already normalized above)
+    case 'both':      return ['mini', 'full'];
     default: {
       const _exhaustive: never = target;
       return [_exhaustive];
