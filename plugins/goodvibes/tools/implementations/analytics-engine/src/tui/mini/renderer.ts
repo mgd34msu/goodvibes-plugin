@@ -417,7 +417,8 @@ export class MiniRenderer {
       { thresholds: { warn: 0.5, alert: 0.84 } },
     );
 
-    const cmdsLabel = (commands.total ?? 0) >= 1000 || (commands.failures ?? 0) >= 1000 ? 'Cmds: ' : 'Commands: ';
+    const cmds = state.metrics.commands;
+    const cmdsLabel = (cmds.total ?? 0) >= 1000 || (cmds.failures ?? 0) >= 1000 ? 'Cmds: ' : 'Commands: ';
     const cmdsSection = padSection(
       `${cmdsLabel}${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
       sectionWidth,

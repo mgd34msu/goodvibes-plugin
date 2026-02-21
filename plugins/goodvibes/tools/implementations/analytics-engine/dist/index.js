@@ -4444,7 +4444,12 @@ var TelemetryReader = class _TelemetryReader {
       return;
     }
     try {
-      const bundleDir = path.dirname(new URL(import.meta.url).pathname);
+      let bundleDir;
+      try {
+        bundleDir = path.dirname(new URL(import.meta.url).pathname);
+      } catch {
+        bundleDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(process.argv[1]);
+      }
       const wasmBesideBundle = path.join(bundleDir, "sql-wasm.wasm");
       const sqlConfig = existsSync2(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, file), "locateFile") } : {};
       this._SQL = await initSqlJs(sqlConfig);

@@ -2,6 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { DashboardState, BudgetState } from '../../../types.js';
 import { MiniRenderer } from '../renderer.js';
 
+// ── Time mock ────────────────────────────────────────────────────────────────
+// The renderer computes uptime live via Date.now() - started_at.
+// Pin Date.now() so tests are deterministic: started_at + uptime_ms.
+const MOCK_STARTED_AT = new Date('2026-02-20T10:00:00.000Z').getTime();
+const MOCK_UPTIME_MS = 65_000;
+beforeEach(() => { vi.spyOn(Date, 'now').mockReturnValue(MOCK_STARTED_AT + MOCK_UPTIME_MS); });
+afterEach(() => { vi.restoreAllMocks(); });
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Strip ANSI escape codes to measure visible character width. */

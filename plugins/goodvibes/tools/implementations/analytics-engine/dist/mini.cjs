@@ -2268,7 +2268,12 @@ var TelemetryReader = class _TelemetryReader {
       return;
     }
     try {
-      const bundleDir = path.dirname(new URL(import_meta.url).pathname);
+      let bundleDir;
+      try {
+        bundleDir = path.dirname(new URL(import_meta.url).pathname);
+      } catch {
+        bundleDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(process.argv[1]);
+      }
       const wasmBesideBundle = path.join(bundleDir, "sql-wasm.wasm");
       const sqlConfig = (0, import_node_fs.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, file), "locateFile") } : {};
       this._SQL = await (0, import_sql.default)(sqlConfig);
@@ -4082,12 +4087,12 @@ var MemoryUpdater = class {
         reason: `${hotFiles.length} file(s) were read ${HIGH_READ_COUNT}+ times. Defaulting repeated reads to outline mode reduces token consumption.`
       });
     }
-    const { commands: commands2 } = state.metrics;
-    if (commands2.avg_duration_ms > SLOW_COMMAND_MS) {
+    const { commands } = state.metrics;
+    if (commands.avg_duration_ms > SLOW_COMMAND_MS) {
       patterns.push({
         id: "pat_analytics_slow_commands",
         name: "SlowCommandOptimisation",
-        description: `Commands averaged ${Math.round(commands2.avg_duration_ms / 1e3)}s this session. Consider caching results, parallelising steps, or using incremental builds.`,
+        description: `Commands averaged ${Math.round(commands.avg_duration_ms / 1e3)}s this session. Consider caching results, parallelising steps, or using incremental builds.`,
         when_to_use: "When command execution is a bottleneck in the development loop.",
         example_files: [],
         keywords: ["slow", "commands", "performance", "build", "optimisation"]
@@ -5563,7 +5568,7 @@ var Aggregator = class _Aggregator {
         }
       }
     }
-    const commands2 = (() => {
+    const commands = (() => {
       let jsonlCmdTotal = 0;
       let jsonlCmdFailures = 0;
       for (const tc of jsonlToolCalls) {
@@ -5610,7 +5615,7 @@ var Aggregator = class _Aggregator {
       created: createdFiles,
       conflicts: 0
     };
-    const metrics = { tokens, cache, cost, commands: commands2, agents, files };
+    const metrics = { tokens, cache, cost, commands, agents, files };
     const toolsBreakdown = telemetrySummary?.by_tool ?? {};
     const recentActivity = this.buildRecentActivity(jsonlToolCalls, agentActivities);
     const fileHotspots = this.buildFileHotspots(
@@ -6311,7 +6316,7 @@ function computeMetrics(state) {
   const cache = metrics.cache;
   const agents = metrics.agents;
   const files = metrics.files;
-  const commands2 = metrics.commands;
+  const commands = metrics.commands;
   const sessionId = state.session_id ? state.session_id.slice(0, SESSION_ID_LENGTH) : "no-session";
   const startMs = state.started_at ? new Date(state.started_at).getTime() : Date.now();
   const uptime = formatUptimeProgressive(Date.now() - startMs);
@@ -6328,8 +6333,8 @@ function computeMetrics(state) {
     (files.modified ?? 0) + (files.created ?? 0)
   );
   const conflicts = files.conflicts ?? 0;
-  const rawTotal = commands2.total ?? 0;
-  const rawFails = commands2.failures ?? 0;
+  const rawTotal = commands.total ?? 0;
+  const rawFails = commands.failures ?? 0;
   const cmdTotal = formatNumber(rawTotal);
   const cmdPass = formatNumber(Math.max(0, rawTotal - rawFails));
   const cmdFails = formatNumber(rawFails);
@@ -6473,7 +6478,8 @@ var MiniRenderer = class {
       agentBarWidth,
       { thresholds: { warn: 0.5, alert: 0.84 } }
     );
-    const cmdsLabel = (commands.total ?? 0) >= 1e3 || (commands.failures ?? 0) >= 1e3 ? "Cmds: " : "Commands: ";
+    const cmds = state.metrics.commands;
+    const cmdsLabel = (cmds.total ?? 0) >= 1e3 || (cmds.failures ?? 0) >= 1e3 ? "Cmds: " : "Commands: ";
     const cmdsSection = padSection(
       `${cmdsLabel}${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
       sectionWidth

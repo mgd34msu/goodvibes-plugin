@@ -83,7 +83,13 @@ export class TelemetryReader {
     try {
       // Locate WASM beside the bundle when running from dist/; fall back to
       // node_modules resolution in the source / test environment.
-      const bundleDir = path.dirname(new URL(import.meta.url).pathname);
+      let bundleDir: string;
+      try {
+        bundleDir = path.dirname(new URL(import.meta.url).pathname);
+      } catch {
+        // CJS bundle: import.meta.url is undefined — fall back to __dirname or process.argv[1]
+        bundleDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(process.argv[1]);
+      }
       const wasmBesideBundle = path.join(bundleDir, 'sql-wasm.wasm');
       const sqlConfig = existsSync(wasmBesideBundle)
         ? { locateFile: (file: string) => path.join(bundleDir, file) }

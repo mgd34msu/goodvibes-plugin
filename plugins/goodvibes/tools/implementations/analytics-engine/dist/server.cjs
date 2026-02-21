@@ -25117,7 +25117,12 @@ var TelemetryReader = class _TelemetryReader {
       return;
     }
     try {
-      const bundleDir = path.dirname(new URL(import_meta.url).pathname);
+      let bundleDir;
+      try {
+        bundleDir = path.dirname(new URL(import_meta.url).pathname);
+      } catch {
+        bundleDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(process.argv[1]);
+      }
       const wasmBesideBundle = path.join(bundleDir, "sql-wasm.wasm");
       const sqlConfig = (0, import_node_fs2.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, file), "locateFile") } : {};
       this._SQL = await (0, import_sql.default)(sqlConfig);
