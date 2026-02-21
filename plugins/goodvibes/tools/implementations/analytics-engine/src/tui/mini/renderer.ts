@@ -6,9 +6,9 @@
  * Auto-detects terminal width on each render tick.
  *
  * Layout:
- *   Line 1 (header): session ID, uptime, session cost, active agents
- *   Line 2: API tokens (input/output), cache rate, active agent bar
- *   Line 3: file ops, command stats, precision token savings
+ *   Line 1 (header): session ID (8 chars), uptime, health status, budget
+ *   Line 2: context %, API tokens (In/Out/Cache), cache hit rate, precision savings
+ *   Line 3: commands, file ops, session cost, active agents
  *   Line 4 (footer): bottom border
  */
 
@@ -391,10 +391,10 @@ export class MiniRenderer {
         : ansi.green;
     const ctxSection = padSection(
       `Ctx:${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
-      8, // "Ctx:X.X%" minimum
+      10, // "Ctx:100.0%" = 10 chars
     );
 
-    // API tokens: In / Out / Cache breakdown (min 18 chars for "In:0 Out:0 Cache:0")
+    // API tokens: In / Out / Cache breakdown (visible min 18 chars — ANSI bold doesn't count)
     const apiSection = padSection(
       `In:${ansi.bold}${m.apiInputTokens}${ansi.reset} Out:${ansi.bold}${m.apiOutputTokens}${ansi.reset} Cache:${m.cacheReadTokens}`,
       18,

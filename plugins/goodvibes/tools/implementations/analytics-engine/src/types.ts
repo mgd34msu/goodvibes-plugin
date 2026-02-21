@@ -15,6 +15,11 @@ export interface AnalyticsConfig {
   budget_warn_thresholds: number[];
   /** When true, show the graphical budget progress bar in the mini dashboard header. Default: false. */
   mini_budget_bar?: boolean;
+  /**
+   * Claude context window size in tokens used to compute context_percent.
+   * Defaults to 200_000 (Claude's current context window).
+   */
+  context_window_tokens?: number;
   anomaly_detection: boolean;
   auto_report_on_shutdown: boolean;
   webhook_url: string | null;

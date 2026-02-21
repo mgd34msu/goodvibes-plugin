@@ -49,7 +49,7 @@ import {
   findActiveJsonlFile,
   sessionIdFromPath,
 } from '../data/jsonl-reader.js';
-import type { JSONLRecord, ToolCallInfo, AgentActivityInfo } from '../data/jsonl-types.js';
+import type { JSONLRecord, JSONLAssistantRecord, ToolCallInfo, AgentActivityInfo } from '../data/jsonl-types.js';
 import type { GlobalDB } from '../data/global-db.js';
 import { AnomalyDetector } from './anomaly-detector.js';
 import { BudgetTracker } from './budget-tracker.js';
@@ -765,7 +765,9 @@ export class Aggregator {
    * a single reader failure does not crash the entire aggregation.
    */
   private aggregate(): DashboardState {
-    // Reload telemetry DB from disk so data reflects latest writes.
+    // Reload telemetry DB from disk on each aggregate cycle.
+    // Cost: file I/O + sql.js WASM re-init (~1-5ms). Acceptable at 2s refresh rate.
+    // Future: debounce via file mtime check if profiling shows bottleneck.
     this.safeCall(() => this.telemetry.reload(), undefined);
 
     const now = Date.now();
@@ -957,12 +959,12 @@ export class Aggregator {
     // Derived from the most recent assistant record's input_tokens.
     // The full conversation history is sent as input each turn, so the
     // most recent value approximates current context window fill level.
-    const CONTEXT_WINDOW_SIZE = 200_000; // tokens (Claude context window)
+    const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 200_000; // tokens (configurable; default = Claude context window)
     let contextPercent = 0;
     for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
       const rec = this.jsonlRecords[i]!;
       if (rec.type === 'assistant') {
-        const assistantRec = rec as { type: 'assistant'; message?: { usage?: { input_tokens?: number } } };
+        const assistantRec = rec as JSONLAssistantRecord;
         const inputTok = assistantRec.message?.usage?.input_tokens;
         if (inputTok != null && inputTok > 0) {
           contextPercent = Math.min(100, (inputTok / CONTEXT_WINDOW_SIZE) * 100);

@@ -5305,7 +5305,7 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
-    const CONTEXT_WINDOW_SIZE = 2e5;
+    const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
     let contextPercent = 0;
     for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
       const rec = this.jsonlRecords[i];
@@ -5907,8 +5907,8 @@ var MiniRenderer = class {
     const ctxColor = m.contextPercent >= 80 ? ansi.red : m.contextPercent >= 50 ? ansi.yellow : ansi.green;
     const ctxSection = padSection(
       `Ctx:${ctxColor}${m.contextPercentStr}%${ansi.reset}`,
-      8
-      // "Ctx:X.X%" minimum
+      10
+      // "Ctx:100.0%" = 10 chars
     );
     const apiSection = padSection(
       `In:${ansi.bold}${m.apiInputTokens}${ansi.reset} Out:${ansi.bold}${m.apiOutputTokens}${ansi.reset} Cache:${m.cacheReadTokens}`,

@@ -6916,7 +6916,7 @@ var Aggregator = class _Aggregator {
       sessionCounters
     );
     const agentProfiles = this.buildAgentProfiles(agentActivities);
-    const CONTEXT_WINDOW_SIZE = 2e5;
+    const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
     let contextPercent = 0;
     for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
       const rec = this.jsonlRecords[i];

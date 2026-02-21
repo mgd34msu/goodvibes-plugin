@@ -256,10 +256,10 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[0]!)).toContain('analytics');
     });
 
-    it('line 1 contains the session ID (truncated to 16 chars)', () => {
+    it('line 1 contains the session ID (first 8 chars)', () => {
       const output = renderer.render(createMockState());
-      // 'test-session-abc' is exactly 16 chars so not truncated
-      expect(stripAnsi(output.split('\n')[0]!)).toContain('test-session-abc');
+      // 'test-session-abc'.slice(0, 8) = 'test-ses'
+      expect(stripAnsi(output.split('\n')[0]!)).toContain('test-ses');
     });
 
     it('line 1 contains uptime value', () => {
@@ -316,6 +316,34 @@ describe('MiniRenderer', () => {
     it('line 2 does not contain "cost"', () => {
       const output = renderer.render(createMockState());
       expect(stripAnsi(output.split('\n')[1]!)).not.toContain('cost');
+    });
+  });
+
+  // ── 3b. Context percent color thresholds ────────────────────────────────────
+
+  describe('context percent color thresholds', () => {
+    beforeEach(() => setColumns(80));
+
+    it('shows green context percent when below 50%', () => {
+      const state = createMockState({ context_percent: 25 });
+      const output = renderer.render(state);
+      // Line 2 should contain green ANSI for context (\x1b[32m)
+      const line2 = output.split('\n')[1]!;
+      expect(line2).toContain('\x1b[32m25.0%');
+    });
+
+    it('shows yellow context percent between 50% and 80%', () => {
+      const state = createMockState({ context_percent: 65 });
+      const output = renderer.render(state);
+      const line2 = output.split('\n')[1]!;
+      expect(line2).toContain('\x1b[33m65.0%');
+    });
+
+    it('shows red context percent at 80% or above', () => {
+      const state = createMockState({ context_percent: 85 });
+      const output = renderer.render(state);
+      const line2 = output.split('\n')[1]!;
+      expect(line2).toContain('\x1b[31m85.0%');
     });
   });
 
