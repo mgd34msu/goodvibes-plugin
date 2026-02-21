@@ -36,3 +36,7 @@ export {
 } from './jsonl-reader.js';
 export { JSONLWatcher } from './jsonl-watcher.js';
 export type { JSONLWatcherOptions, JSONLWatcherEvents } from './jsonl-watcher.js';
+export { JSONLScanner } from './jsonl-scanner.js';
+export type { JsonlFileInfo, ScanResult } from './jsonl-scanner.js';
+export { SyncEngine } from './sync-engine.js';
+export type { SyncEngineConfig, SyncFileResult, SyncProgress } from './sync-engine.js';
