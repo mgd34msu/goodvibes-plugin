@@ -53,6 +53,21 @@ function avgTokens(sessions: GlobalSession[]): number {
 }
 
 /**
+ * Compute the average cache hit rate (cache_read_tokens / input_tokens) across sessions.
+ * Sessions with zero input tokens are excluded.
+ */
+function avgCacheHitRate(sessions: GlobalSession[]): number {
+  const valid = sessions.filter((s) => s.total_input_tokens > 0);
+  if (valid.length === 0) return 0;
+  return (
+    valid.reduce(
+      (sum, s) => sum + s.total_cache_read_tokens / s.total_input_tokens,
+      0,
+    ) / valid.length
+  );
+}
+
+/**
  * Historical & Trends page — Page 3 of the full TUI dashboard.
  *
  * Layout:
@@ -64,21 +79,22 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
   const { metrics } = state;
   const { tokens, cache, cost, commands, agents } = metrics;
 
-  // Pull project sessions from GlobalDB for comparison.
-  // Uses state.project_hash directly (set by the aggregator) instead of
-  // looking up the current session in GlobalDB, which may not exist yet.
+  // Pull project sessions from GlobalDB for comparison
   const projectSessions = useMemo(() => {
-    if (!globalDb || !state.project_hash) return [];
+    if (!globalDb || !state.session_id) return [];
     try {
+      const current = globalDb.getSession(state.session_id);
+      if (!current) return [];
+      // Fetch up to 50 completed/archived sessions for this project
       return globalDb
-        .getSessionsByProject(state.project_hash)
+        .getSessionsByProject(current.project_hash)
         .filter((s) => s.session_id !== state.session_id)
         .slice(0, 50);
     } catch {
       return [];
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalDb, state.project_hash, state.session_id]);
+  }, [globalDb, state.session_id]);
 
   // Pull recent sessions (across all projects) for the archive table
   const recentSessions = useMemo(() => {
@@ -94,6 +110,7 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
   const hasHistory = projectSessions.length > 0;
   const sessionAvgCost = avgCost(projectSessions);
   const sessionAvgTokens = avgTokens(projectSessions);
+  const histAvgCacheHitRate = avgCacheHitRate(projectSessions);
   // Precision tokens (input+output from precision tool tracking)
   const currentTotalTokens = tokens.input + tokens.output;
 
@@ -221,26 +238,30 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
           <TrendLine
             label="Token Efficiency"
             value={formatPercent(tokens.efficiency)}
-            trend={formatDelta(tokens.efficiency, 0.5)}
+            trend={'\u2014'}
             barValue={tokens.efficiency}
+            higherIsBetter
           />
           <TrendLine
             label="Cache Hit Rate"
             value={formatPercent(cache.hit_rate)}
-            trend={formatDelta(cache.hit_rate, 0.7)}
+            trend={hasHistory ? formatDelta(cache.hit_rate, histAvgCacheHitRate) : '\u2014'}
             barValue={cache.hit_rate}
+            higherIsBetter
           />
           <TrendLine
             label="Command Success"
             value={formatPercent(commands.success_rate)}
-            trend={formatDelta(commands.success_rate, 0.95)}
+            trend="\u2014"
             barValue={commands.success_rate}
+            higherIsBetter
           />
           <TrendLine
             label="Cost Savings"
             value={formatPercent(costSavedRatio)}
-            trend={formatDelta(costSavedRatio, 0.3)}
+            trend="\u2014"
             barValue={costSavedRatio}
+            higherIsBetter
           />
         </Box>
       </Box>

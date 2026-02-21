@@ -19,6 +19,12 @@ export interface TrendLineProps {
   barValue: number;
   /** Total width of the component in terminal columns. Defaults to 50. */
   width?: number;
+  /**
+   * When true, a rising trend (+) is shown in green and a falling trend (-) in red.
+   * Use this for metrics where higher values are better (efficiency, hit rate, etc.).
+   * Defaults to false (rising = red, falling = green — cost-style metrics).
+   */
+  higherIsBetter?: boolean;
 }
 
 /** Column widths for the fixed layout regions. */
@@ -34,10 +40,10 @@ const FILL_CHAR = '█';
 const EMPTY_CHAR = '░';
 
 /** Determine colour based on a trend string. */
-function trendColor(trend: string): string {
-  if (trend.startsWith('+')) return 'red'; // increasing = more expensive/used
-  if (trend.startsWith('-')) return 'green'; // decreasing = better
-  return 'gray'; // stable
+function trendColor(trend: string, higherIsBetter = false): string {
+  if (trend.startsWith('+')) return higherIsBetter ? 'green' : 'red'; // cost: up=bad; efficiency: up=good
+  if (trend.startsWith('-')) return higherIsBetter ? 'red' : 'green'; // cost: down=good; efficiency: down=bad
+  return 'gray'; // stable or no data
 }
 
 /**
@@ -71,6 +77,7 @@ export function TrendLine({
   trend,
   barValue,
   width = 50,
+  higherIsBetter = false,
 }: TrendLineProps): React.ReactElement {
   const barWidth = Math.max(
     width - LABEL_COL - VALUE_COL - TREND_COL - SEPARATOR - PADDING,
@@ -87,7 +94,7 @@ export function TrendLine({
 
   const valueStr = value.padStart(VALUE_COL, ' ');
   const trendStr = trend.padStart(TREND_COL, ' ');
-  const color = trendColor(trend);
+  const color = trendColor(trend, higherIsBetter);
 
   return (
     <Box flexDirection="row" width={width}>

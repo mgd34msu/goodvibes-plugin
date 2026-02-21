@@ -3738,9 +3738,9 @@ var SEPARATOR = 3;
 var PADDING = 4;
 var FILL_CHAR = "\u2588";
 var EMPTY_CHAR = "\u2591";
-function trendColor(trend) {
-  if (trend.startsWith("+")) return "red";
-  if (trend.startsWith("-")) return "green";
+function trendColor(trend, higherIsBetter = false) {
+  if (trend.startsWith("+")) return higherIsBetter ? "green" : "red";
+  if (trend.startsWith("-")) return higherIsBetter ? "red" : "green";
   return "gray";
 }
 __name(trendColor, "trendColor");
@@ -3749,7 +3749,8 @@ function TrendLine({
   value,
   trend,
   barValue,
-  width = 50
+  width = 50,
+  higherIsBetter = false
 }) {
   const barWidth = Math.max(
     width - LABEL_COL - VALUE_COL - TREND_COL - SEPARATOR - PADDING,
@@ -3761,7 +3762,7 @@ function TrendLine({
   const labelStr = label.length > LABEL_COL ? label.slice(0, LABEL_COL - 1) + "\u2026" : label.padEnd(LABEL_COL, " ");
   const valueStr = value.padStart(VALUE_COL, " ");
   const trendStr = trend.padStart(TREND_COL, " ");
-  const color = trendColor(trend);
+  const color = trendColor(trend, higherIsBetter);
   return /* @__PURE__ */ jsxs6(Box6, { flexDirection: "row", width, children: [
     /* @__PURE__ */ jsx6(Text6, { color: "white", children: labelStr }),
     /* @__PURE__ */ jsx6(Text6, { children: "  " }),
@@ -4143,17 +4144,28 @@ function avgTokens(sessions) {
   ) / sessions.length;
 }
 __name(avgTokens, "avgTokens");
+function avgCacheHitRate(sessions) {
+  const valid = sessions.filter((s) => s.total_input_tokens > 0);
+  if (valid.length === 0) return 0;
+  return valid.reduce(
+    (sum, s) => sum + s.total_cache_read_tokens / s.total_input_tokens,
+    0
+  ) / valid.length;
+}
+__name(avgCacheHitRate, "avgCacheHitRate");
 var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const { metrics } = state;
   const { tokens, cache, cost, commands, agents } = metrics;
   const projectSessions = useMemo2(() => {
-    if (!globalDb || !state.project_hash) return [];
+    if (!globalDb || !state.session_id) return [];
     try {
-      return globalDb.getSessionsByProject(state.project_hash).filter((s) => s.session_id !== state.session_id).slice(0, 50);
+      const current = globalDb.getSession(state.session_id);
+      if (!current) return [];
+      return globalDb.getSessionsByProject(current.project_hash).filter((s) => s.session_id !== state.session_id).slice(0, 50);
     } catch {
       return [];
     }
-  }, [globalDb, state.project_hash, state.session_id]);
+  }, [globalDb, state.session_id]);
   const recentSessions = useMemo2(() => {
     if (!globalDb) return [];
     try {
@@ -4165,6 +4177,7 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const hasHistory = projectSessions.length > 0;
   const sessionAvgCost = avgCost(projectSessions);
   const sessionAvgTokens = avgTokens(projectSessions);
+  const histAvgCacheHitRate = avgCacheHitRate(projectSessions);
   const currentTotalTokens = tokens.input + tokens.output;
   const comparisonHeaders = ["Metric", "Current", "Proj Avg", "Delta"];
   const comparisonRows = [
@@ -4271,8 +4284,9 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
           {
             label: "Token Efficiency",
             value: formatPercent(tokens.efficiency),
-            trend: formatDelta(tokens.efficiency, 0.5),
-            barValue: tokens.efficiency
+            trend: "\u2014",
+            barValue: tokens.efficiency,
+            higherIsBetter: true
           }
         ),
         /* @__PURE__ */ jsx9(
@@ -4280,8 +4294,9 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
           {
             label: "Cache Hit Rate",
             value: formatPercent(cache.hit_rate),
-            trend: formatDelta(cache.hit_rate, 0.7),
-            barValue: cache.hit_rate
+            trend: hasHistory ? formatDelta(cache.hit_rate, histAvgCacheHitRate) : "\u2014",
+            barValue: cache.hit_rate,
+            higherIsBetter: true
           }
         ),
         /* @__PURE__ */ jsx9(
@@ -4289,8 +4304,9 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
           {
             label: "Command Success",
             value: formatPercent(commands.success_rate),
-            trend: formatDelta(commands.success_rate, 0.95),
-            barValue: commands.success_rate
+            trend: "\\u2014",
+            barValue: commands.success_rate,
+            higherIsBetter: true
           }
         ),
         /* @__PURE__ */ jsx9(
@@ -4298,8 +4314,9 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
           {
             label: "Cost Savings",
             value: formatPercent(costSavedRatio),
-            trend: formatDelta(costSavedRatio, 0.3),
-            barValue: costSavedRatio
+            trend: "\\u2014",
+            barValue: costSavedRatio,
+            higherIsBetter: true
           }
         )
       ] })
