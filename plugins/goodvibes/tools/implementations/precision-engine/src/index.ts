@@ -31,7 +31,7 @@ import { allSchemas } from './schemas/index.js';
 import { getHandler, hasHandler, listHandlers } from './handlers/index.js';
 import { FileStateCache } from './state/file-cache.js';
 import { sessionState } from './state/index.js';
-import { PrecisionRuntime, extractMetadata, extractCacheHit } from './state/precision-runtime.js';
+import { PrecisionRuntime, extractMetadata, extractCacheInfo } from './state/precision-runtime.js';
 import { HooksManager, HookAbortError } from './state/hooks.js';
 import type { HookContext } from './state/hooks.js';
 import { Telemetry } from './state/telemetry.js';
@@ -295,6 +295,7 @@ async function executeHandler(
     // Record successful telemetry (zero LLM token cost — server-side only)
     if (runtime && precisionId && (!hooks || hooks.isHookEnabled('PostPrecisionTool', 'record_telemetry'))) {
       try {
+        const cacheInfo = extractCacheInfo(result);
         runtime.telemetry.record({
           id: precisionId,
           tool: toolName,
@@ -302,7 +303,8 @@ async function executeHandler(
           tokens_in: Telemetry.estimateTokens(args),
           tokens_out: Telemetry.estimateTokens(result),
           duration_ms: Date.now() - startMs,
-          cache_hit: extractCacheHit(result),
+          cache_hit: cacheInfo.cache_hit,
+          cache_bytes_saved: cacheInfo.cache_bytes_saved,
           metadata: extractMetadata(toolName, args),
         });
       } catch (telErr) {

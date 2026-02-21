@@ -12,7 +12,7 @@ export { getTelemetry, Telemetry, type TelemetryRecord, type SessionSummary, typ
 // HooksManager is the Phase 4G hooks implementation. ModeManager is Phase 5.
 export { HooksManager, HookAbortError, type HookEvent, type HookType, type HookConfig, type HookContext, type HookResult, type HookFilter } from './hooks.js';
 export { ModeManager, capVerbosity, type ModeConfig, type VerbosityLevel, type ReadExtractMode, type GrepFormat } from './mode-manager.js';
-export { PrecisionRuntime, type SessionInfo, extractMetadata, extractCacheHit } from './precision-runtime.js';
+export { PrecisionRuntime, type SessionInfo, extractMetadata, extractCacheHit, extractCacheInfo } from './precision-runtime.js';
 // Phase 5H: Agent dossier types
 export {
   DossierGenerator,

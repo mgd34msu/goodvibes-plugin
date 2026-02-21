@@ -11,12 +11,15 @@
 import { Aggregator } from './daemon/aggregator.js';
 import { MiniRenderer } from './tui/mini/renderer.js';
 import { loadConfig } from './config.js';
+import { initializeGlobalDb } from './data/db-init.js';
 
 const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
 
 async function main(): Promise<void> {
   const config = loadConfig(goodvibesDir);
   const aggregator = new Aggregator(goodvibesDir, config);
+  const globalDb = await initializeGlobalDb();
+  aggregator.setGlobalDb(globalDb);
   await aggregator.initialize();
 
   const renderer = new MiniRenderer(config);

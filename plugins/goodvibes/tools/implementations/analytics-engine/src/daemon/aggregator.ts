@@ -238,10 +238,12 @@ function resolveJsonlProjectDir(
 
   // Try to find the project directory matching the goodvibesDir ancestor.
   // The goodvibesDir is typically <project-root>/.goodvibes.
-  // The project hash appears as a directory name under the projects base.
-  const projectParent = basename(dirname(goodvibesDir));
+  // Claude stores JSONL project dirs with dashed-path names, e.g.
+  // /home/user/Projects/myapp → -home-user-Projects-myapp
+  const projectRoot = dirname(goodvibesDir);
+  const dashedPath = projectRoot.replace(/\//g, '-');
   for (const entry of entries) {
-    if (entry === projectParent) {
+    if (entry === dashedPath) {
       const candidate = join(expandedBase, entry);
       if (existsSync(candidate)) return candidate;
     }
@@ -547,10 +549,11 @@ export class Aggregator {
 
     this.watcher.start();
 
+    // Mark initialized before first refresh so the guard in refresh() passes.
+    this.initialized = true;
+
     // Initial state computation
     await this.refresh();
-
-    this.initialized = true;
   }
 
   /**

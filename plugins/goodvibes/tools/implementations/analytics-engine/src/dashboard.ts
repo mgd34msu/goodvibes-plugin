@@ -15,6 +15,7 @@ import { render } from 'ink';
 import { Aggregator } from './daemon/aggregator.js';
 import { App } from './tui/full/app.js';
 import { loadConfig } from './config.js';
+import { initializeGlobalDb } from './data/db-init.js';
 
 const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
 
@@ -25,6 +26,8 @@ const goodvibesDir = process.env['GOODVIBES_DIR'] ?? '.goodvibes';
 export async function main(): Promise<void> {
   const config = loadConfig(goodvibesDir);
   const aggregator = new Aggregator(goodvibesDir, config);
+  const globalDb = await initializeGlobalDb();
+  aggregator.setGlobalDb(globalDb);
   await aggregator.initialize();
 
   let inkInstance: ReturnType<typeof render> | null = null;
@@ -38,7 +41,6 @@ export async function main(): Promise<void> {
   /** Re-render the app with the latest aggregated state. */
   const renderApp = (): void => {
     const state = aggregator.getState();
-    const globalDb = aggregator.getGlobalDb();
     if (inkInstance) {
       inkInstance.rerender(
         React.createElement(App, { state, globalDb, onQuit: shutdown }),
@@ -47,7 +49,6 @@ export async function main(): Promise<void> {
   };
 
   // Initial render
-  const globalDb = aggregator.getGlobalDb();
   inkInstance = render(
     React.createElement(App, {
       state: aggregator.getState(),

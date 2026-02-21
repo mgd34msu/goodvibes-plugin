@@ -329,8 +329,10 @@ export class TelemetryReader {
     if (!this.db) return empty;
 
     try {
-      const where = sessionId ? 'WHERE session_id = ?' : '';
-      const params = sessionId ? [sessionId] : undefined;
+      // Default to current session — avoids summing all historical sessions.
+      const sid = sessionId ?? this.getCurrentSessionId();
+      const where = sid ? 'WHERE session_id = ?' : '';
+      const params = sid ? [sid] : undefined;
 
       const results = this.db.exec(
         `SELECT tokens_in, tokens_out, cache_bytes_saved FROM calls ${where}`,

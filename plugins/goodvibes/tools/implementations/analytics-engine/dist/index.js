@@ -4628,8 +4628,9 @@ var TelemetryReader = class _TelemetryReader {
     };
     if (!this.db) return empty;
     try {
-      const where = sessionId ? "WHERE session_id = ?" : "";
-      const params = sessionId ? [sessionId] : void 0;
+      const sid = sessionId ?? this.getCurrentSessionId();
+      const where = sid ? "WHERE session_id = ?" : "";
+      const params = sid ? [sid] : void 0;
       const results = this.db.exec(
         `SELECT tokens_in, tokens_out, cache_bytes_saved FROM calls ${where}`,
         params
@@ -6524,9 +6525,10 @@ function resolveJsonlProjectDir(goodvibesDir, jsonlBasePath) {
   } catch {
     return null;
   }
-  const projectParent = basename3(dirname3(goodvibesDir));
+  const projectRoot = dirname3(goodvibesDir);
+  const dashedPath = projectRoot.replace(/\//g, "-");
   for (const entry of entries) {
-    if (entry === projectParent) {
+    if (entry === dashedPath) {
       const candidate = join9(expandedBase, entry);
       if (existsSync6(candidate)) return candidate;
     }
@@ -6737,8 +6739,8 @@ var Aggregator = class _Aggregator {
       void this.refresh();
     });
     this.watcher.start();
-    await this.refresh();
     this.initialized = true;
+    await this.refresh();
   }
   /**
    * Get the current dashboard state.

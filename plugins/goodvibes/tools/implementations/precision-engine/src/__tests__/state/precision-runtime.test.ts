@@ -597,21 +597,38 @@ describe('extractCacheHit()', () => {
     expect(extractCacheHit(42)).toBe(false);
   });
 
-  it('reads top-level cache_hit boolean', async () => {
-    const { extractCacheHit } = await import('../../state/precision-runtime.js');
+  it('detects cache hit from MCP CallToolResult with unchanged status', async () => {
+    const { extractCacheHit, extractCacheInfo } = await import('../../state/precision-runtime.js');
 
-    expect(extractCacheHit({ cache_hit: true })).toBe(true);
-    expect(extractCacheHit({ cache_hit: false })).toBe(false);
+    const cachedResult = {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          data: { files: { 'test.ts': { cache: { status: 'unchanged', tokens_saved: 500 } } } },
+        }),
+      }],
+    };
+    expect(extractCacheHit(cachedResult)).toBe(true);
+    const info = extractCacheInfo(cachedResult);
+    expect(info.cache_hit).toBe(true);
+    expect(info.cache_bytes_saved).toBe(2000); // 500 tokens * 4 bytes
   });
 
-  it('reads nested data.cache_hit boolean', async () => {
-    const { extractCacheHit } = await import('../../state/precision-runtime.js');
+  it('returns false for MCP CallToolResult without cache', async () => {
+    const { extractCacheHit, extractCacheInfo } = await import('../../state/precision-runtime.js');
 
-    expect(extractCacheHit({ data: { cache_hit: true } })).toBe(true);
-    expect(extractCacheHit({ data: { cache_hit: false } })).toBe(false);
+    const freshResult = {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ success: true, data: { files: { 'test.ts': { content: 'hello' } } } }),
+      }],
+    };
+    expect(extractCacheHit(freshResult)).toBe(false);
+    expect(extractCacheInfo(freshResult).cache_bytes_saved).toBe(0);
   });
 
-  it('returns false when cache_hit is not a boolean', async () => {
+  it('returns false when content is not MCP format', async () => {
     const { extractCacheHit } = await import('../../state/precision-runtime.js');
 
     expect(extractCacheHit({ cache_hit: 'yes' })).toBe(false);

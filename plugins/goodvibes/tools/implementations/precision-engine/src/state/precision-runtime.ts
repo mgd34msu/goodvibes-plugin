@@ -389,13 +389,46 @@ export function extractMetadata(
  * Returns false for most tools; can be enhanced per-tool as needed.
  */
 export function extractCacheHit(result: unknown): boolean {
-  if (!result || typeof result !== 'object') return false;
+  return extractCacheInfo(result).cache_hit;
+}
+
+/**
+ * Extract cache hit status and bytes saved from a precision-engine tool result.
+ *
+ * Parses the MCP CallToolResult text content to detect cache indicators.
+ * precision_read results contain `cache.status: "unchanged"` and `cache.tokens_saved`
+ * when serving from the internal file cache.
+ *
+ * @returns Object with cache_hit boolean and cache_bytes_saved in bytes.
+ */
+export function extractCacheInfo(result: unknown): { cache_hit: boolean; cache_bytes_saved: number } {
+  const none = { cache_hit: false, cache_bytes_saved: 0 };
+  if (!result || typeof result !== 'object') return none;
+
+  // MCP CallToolResult format: { content: [{ type: "text", text: "..." }] }
   const r = result as Record<string, unknown>;
-  // Look for top-level cache_hit flag (some tools surface this)
-  if (typeof r.cache_hit === 'boolean') return r.cache_hit;
-  // Look inside data.cache_hit
-  if (r.data && typeof (r.data as Record<string, unknown>).cache_hit === 'boolean') {
-    return (r.data as Record<string, unknown>).cache_hit as boolean;
+  const content = r.content;
+  if (!Array.isArray(content) || content.length === 0) return none;
+
+  const first = (content as Array<{ type?: string; text?: string }>).find(
+    (c) => c?.type === 'text' && typeof c?.text === 'string',
+  );
+  if (!first?.text) return none;
+
+  const text = first.text;
+
+  // Quick string check: cache status "unchanged" is the precision-engine cache hit indicator.
+  if (!text.includes('"status": "unchanged"') && !text.includes('"status":"unchanged"')) {
+    return none;
   }
-  return false;
+
+  // Found cache hit. Sum tokens_saved across all cached files.
+  let totalBytesSaved = 0;
+  const pattern = /"tokens_saved":\s*(\d+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    totalBytesSaved += parseInt(match[1], 10) * 4; // tokens → bytes (4 bytes/token)
+  }
+
+  return { cache_hit: true, cache_bytes_saved: totalBytesSaved };
 }
