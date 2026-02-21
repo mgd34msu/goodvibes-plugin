@@ -40,7 +40,7 @@ const FILL_CHAR = '█';
 const EMPTY_CHAR = '░';
 
 /** Determine colour based on a trend string. */
-function trendColor(trend: string, higherIsBetter = false): string {
+export function trendColor(trend: string, higherIsBetter = false): string {
   if (trend.startsWith('+')) return higherIsBetter ? 'green' : 'red'; // cost: up=bad; efficiency: up=good
   if (trend.startsWith('-')) return higherIsBetter ? 'red' : 'green'; // cost: down=good; efficiency: down=bad
   return 'gray'; // stable or no data
@@ -55,7 +55,9 @@ function trendColor(trend: string, higherIsBetter = false): string {
  *
  * Row format: `{label}  {bar}  {value} │ {trend}`
  *
- * Trend colour: rising metrics are shown in red, falling in green, stable in gray.
+ * Trend colour: by default, rising metrics are shown in red (cost-style) and falling
+ * in green. When `higherIsBetter` is true, this is inverted: rising = green, falling = red
+ * (efficiency-style). Stable trends are always shown in gray.
  * Bar fill is computed from `barValue` (0-1) clamped to the available bar width.
  *
  * Used on Page 3 of the full TUI dashboard for historical trend comparison.
