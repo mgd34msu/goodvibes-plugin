@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-02-22T01:29:36.433Z'
+generated: '2026-02-22T05:53:24.203Z'
 total: 66
 servers:
   - name: precision-engine
@@ -249,16 +249,17 @@ servers:
       - name: frontend_stacking_context
         path: frontend-engine/frontend-stacking-context.yaml
         description: >-
-          Analyze z-index and stacking contexts in React components. Detects which CSS properties create new
-          stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical
-          stacking tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging
-          "why isn't my z-index working" issues.
+          Analyze z-index and stacking contexts in React components. Detects which CSS properties create new stacking
+          contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking tree,
+          identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my
+          z-index working" issues.
       - name: frontend_responsive_breakpoints
         path: frontend-engine/frontend-responsive-breakpoints.yaml
         description: >-
           Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes
           across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive
-          design issues like desktop-first patterns or missing base styles.
+          design issues like desktop-first patterns or missing base styles. Supports custom breakpoints via explicit
+          parameter or automatic tailwind.config.js/ts detection.
       - name: frontend_component_state
         path: frontend-engine/frontend-component-state.yaml
         description: >-
@@ -276,11 +277,11 @@ servers:
       - name: frontend_layout_hierarchy
         path: frontend-engine/frontend-layout-hierarchy.yaml
         description: >-
-          Analyze the CSS layout hierarchy of React components. Parses JSX/TSX files to build a layout tree
-          with sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and
-          positioning. Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed
-          height containers with auto-height children, nested flex without sizing, percentage height without parent
-          height, etc.
+          Analyze the CSS layout hierarchy of React components. Parses JSX/TSX files to build a layout tree with sizing
+          constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning.
+          Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height
+          containers with auto-height children, nested flex without sizing, percentage height without parent height,
+          etc.
       - name: frontend_overflow
         path: frontend-engine/frontend-overflow.yaml
         description: >-
@@ -291,11 +292,11 @@ servers:
       - name: frontend_accessibility_tree
         path: frontend-engine/frontend-accessibility-tree.yaml
         description: >-
-          Build an accessibility tree and detect WCAG issues in React components. Analyzes semantic HTML
-          roles, focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1),
-          unlabeled form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on
-          non-interactive elements, missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical
-          accessibility tree, focus order sequence, issues with WCAG criteria references, and optimization suggestions.
+          Build an accessibility tree and detect WCAG issues in React components. Analyzes semantic HTML roles, focus
+          order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled form
+          inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements,
+          missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus
+          order sequence, issues with WCAG criteria references, and optimization suggestions.
       - name: frontend_sizing_strategy
         path: frontend-engine/frontend-sizing-strategy.yaml
         description: >-
@@ -307,35 +308,37 @@ servers:
       - name: frontend_event_flow
         path: frontend-engine/frontend-event-flow.yaml
         description: >-
-          Analyze event handling and propagation in React components. Detects all event handlers (onClick,
-          onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
-          elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and
-          form submits without preventDefault. Also detects event delegation patterns (e.target.closest,
-          e.target.matches checks). Essential for debugging "why is my click firing twice" and accessibility audits.
-      - name: frontend_client_boundary
-        path: frontend-engine/frontend-client-boundary.yaml
-        description: >-
-          Analyzes Next.js App Router "use client" and "use server" boundaries to find misclassified
-          components, unnecessary client components, and boundary optimization opportunities.
-          Scans for directives, builds an import graph, classifies files as server/client/client-inherited/ambiguous,
-          and detects issues like missing directives, server-only imports in client files, and large client subtrees.
-      - name: frontend_tailwind_conflicts
-        path: frontend-engine/frontend-tailwind-conflicts.yaml
-        description: >-
-          Detect conflicting and redundant Tailwind CSS classes in React components. Identifies three types
-          of issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant
-          classes from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3)
-          Contradiction conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts
-          with explicit w-/h- classes, z-index without position, and provides optimization suggestions like using size-X
-          instead of w-X h-X when equal.
+          Analyze event handling and propagation in React components. Detects all event handlers (onClick, onChange,
+          onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable elements
+          that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form
+          submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches
+          checks). Essential for debugging "why is my click firing twice" and accessibility audits.
       - name: frontend_hook_dependencies
         path: frontend-engine/frontend-hook-dependencies.yaml
         description: >-
           Analyzes React hook dependency arrays for stale closures, missing/unnecessary dependencies, unstable
           references, and anti-patterns like derived state in effects. Covers useEffect, useMemo, useCallback,
-          useLayoutEffect, useInsertionEffect. Detects stale closures (empty deps + state refs), missing deps,
-          unnecessary deps, unstable deps (inline objects/arrays/functions, .map()/.filter() results), derived state
-          anti-pattern (useEffect only calling setState), and missing cleanup for subscriptions/timers.
+          useLayoutEffect, useInsertionEffect. Detects: stale closures (empty deps + state refs), missing deps (body
+          refs not in array), unnecessary deps (array entries not referenced), unstable deps (inline
+          objects/arrays/functions, .map()/.filter() results, Object.keys/values/entries), derived state anti-pattern,
+          and missing cleanup for subscriptions/timers.
+      - name: frontend_tailwind_conflicts
+        path: frontend-engine/frontend-tailwind-conflicts.yaml
+        description: >-
+          Detect conflicting and redundant Tailwind CSS classes in React components. Identifies three types of issues:
+          (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes from
+          shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3) Contradiction
+          conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts with explicit
+          w-/h- classes, z-index without position, and provides optimization suggestions like using size-X instead of
+          w-X h-X when equal.
+      - name: frontend_client_boundary
+        path: frontend-engine/frontend-client-boundary.yaml
+        description: >-
+          Analyzes Next.js App Router "use client" and "use server" boundaries to find misclassified components,
+          unnecessary client components, and boundary optimization opportunities. Scans files for directives, builds an
+          import graph, classifies each file as server/client/client-inherited/ambiguous, and detects issues like
+          missing directives, unnecessary client usage, server-only imports in client files, and large client subtrees
+          that bloat the bundle.
       - name: frontend_error_boundaries
         path: frontend-engine/frontend-error-boundaries.yaml
         description: >-
@@ -1511,8 +1514,7 @@ search_index:
     server: project-engine
   - name: frontend_component_tree
     keywords:
-      - get
-      - react
+      - frontend
       - component
       - tree
       - parse
@@ -1535,6 +1537,7 @@ search_index:
       - relationships
       - useful
       - understanding
+      - react
       - architecture
     path: frontend-engine/frontend-component-tree.yaml
     description: >-
@@ -1544,9 +1547,10 @@ search_index:
     server: frontend-engine
   - name: frontend_stacking_context
     keywords:
-      - analyze
+      - frontend
       - stacking
       - context
+      - analyze
       - index
       - contexts
       - react
@@ -1580,16 +1584,17 @@ search_index:
       - issues
     path: frontend-engine/frontend-stacking-context.yaml
     description: >-
-      Analyze z-index and stacking contexts in React components. Detects which CSS properties create new
-      stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking
-      tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my
+      Analyze z-index and stacking contexts in React components. Detects which CSS properties create new stacking
+      contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking tree,
+      identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my
       z-index working" issues.
     server: frontend-engine
   - name: frontend_responsive_breakpoints
     keywords:
-      - analyze
+      - frontend
       - responsive
       - breakpoints
+      - analyze
       - tailwind
       - classes
       - across
@@ -1614,17 +1619,27 @@ search_index:
       - missing
       - base
       - styles
+      - supports
+      - custom
+      - via
+      - explicit
+      - parameter
+      - automatic
+      - config
+      - detection
     path: frontend-engine/frontend-responsive-breakpoints.yaml
     description: >-
       Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes
       across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive
-      design issues like desktop-first patterns or missing base styles.
+      design issues like desktop-first patterns or missing base styles. Supports custom breakpoints via explicit
+      parameter or automatic tailwind.config.js/ts detection.
     server: frontend-engine
   - name: frontend_component_state
     keywords:
-      - trace
+      - frontend
       - component
       - state
+      - trace
       - react
       - props
       - through
@@ -1665,9 +1680,10 @@ search_index:
     server: frontend-engine
   - name: frontend_render_triggers
     keywords:
-      - analyze
+      - frontend
       - render
       - triggers
+      - analyze
       - what
       - causes
       - react
@@ -1709,9 +1725,10 @@ search_index:
     server: frontend-engine
   - name: frontend_layout_hierarchy
     keywords:
-      - analyze
+      - frontend
       - layout
       - hierarchy
+      - analyze
       - css
       - react
       - components
@@ -1753,15 +1770,16 @@ search_index:
       - etc
     path: frontend-engine/frontend-layout-hierarchy.yaml
     description: >-
-      Analyze the CSS layout hierarchy of React components. Parses JSX/TSX files to build a layout tree with
-      sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning.
-      Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers
-      with auto-height children, nested flex without sizing, percentage height without parent height, etc.
+      Analyze the CSS layout hierarchy of React components. Parses JSX/TSX files to build a layout tree with sizing
+      constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning. Supports
+      comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers with
+      auto-height children, nested flex without sizing, percentage height without parent height, etc.
     server: frontend-engine
   - name: frontend_overflow
     keywords:
-      - diagnose
+      - frontend
       - overflow
+      - diagnose
       - css
       - issues
       - recommend
@@ -1807,7 +1825,7 @@ search_index:
     server: frontend-engine
   - name: frontend_accessibility_tree
     keywords:
-      - get
+      - frontend
       - accessibility
       - tree
       - build
@@ -1855,15 +1873,15 @@ search_index:
       - suggestions
     path: frontend-engine/frontend-accessibility-tree.yaml
     description: >-
-      Build an accessibility tree and detect WCAG issues in React components. Analyzes semantic HTML roles,
-      focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled
-      form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements,
-      missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus
-      order sequence, issues with WCAG criteria references, and optimization suggestions.
+      Build an accessibility tree and detect WCAG issues in React components. Analyzes semantic HTML roles, focus order,
+      keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled form inputs
+      (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements, missing focus
+      indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus order sequence,
+      issues with WCAG criteria references, and optimization suggestions.
     server: frontend-engine
   - name: frontend_sizing_strategy
     keywords:
-      - get
+      - frontend
       - sizing
       - strategy
       - analyze
@@ -1925,9 +1943,10 @@ search_index:
     server: frontend-engine
   - name: frontend_event_flow
     keywords:
-      - analyze
+      - frontend
       - event
       - flow
+      - analyze
       - handling
       - propagation
       - react
@@ -1979,15 +1998,72 @@ search_index:
       - audits
     path: frontend-engine/frontend-event-flow.yaml
     description: >-
-      Analyze event handling and propagation in React components. Detects all event handlers (onClick,
-      onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
-      elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form
-      submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches
-      checks). Essential for debugging "why is my click firing twice" and accessibility audits.
+      Analyze event handling and propagation in React components. Detects all event handlers (onClick, onChange,
+      onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable elements that
+      may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form submits
+      without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches checks).
+      Essential for debugging "why is my click firing twice" and accessibility audits.
+    server: frontend-engine
+  - name: frontend_hook_dependencies
+    keywords:
+      - frontend
+      - hook
+      - dependencies
+      - analyzes
+      - react
+      - dependency
+      - arrays
+      - stale
+      - closures
+      - missing
+      - unnecessary
+      - unstable
+      - references
+      - anti
+      - patterns
+      - like
+      - derived
+      - state
+      - effects
+      - covers
+      - useeffect
+      - usememo
+      - usecallback
+      - uselayouteffect
+      - useinsertioneffect
+      - detects
+      - empty
+      - deps
+      - refs
+      - body
+      - not
+      - array
+      - entries
+      - referenced
+      - inline
+      - objects
+      - functions
+      - map
+      - filter
+      - results
+      - object
+      - keys
+      - values
+      - pattern
+      - cleanup
+      - subscriptions
+      - timers
+    path: frontend-engine/frontend-hook-dependencies.yaml
+    description: >-
+      Analyzes React hook dependency arrays for stale closures, missing/unnecessary dependencies, unstable references,
+      and anti-patterns like derived state in effects. Covers useEffect, useMemo, useCallback, useLayoutEffect,
+      useInsertionEffect. Detects: stale closures (empty deps + state refs), missing deps (body refs not in array),
+      unnecessary deps (array entries not referenced), unstable deps (inline objects/arrays/functions, .map()/.filter()
+      results, Object.keys/values/entries), derived state anti-pattern, and missing cleanup for subscriptions/timers.
     server: frontend-engine
   - name: frontend_tailwind_conflicts
     keywords:
-      - analyze
+      - frontend
       - tailwind
       - conflicts
       - detect
@@ -2033,10 +2109,111 @@ search_index:
       - equal
     path: frontend-engine/frontend-tailwind-conflicts.yaml
     description: >-
-      Detect conflicting and redundant Tailwind CSS classes in React components. Identifies three types of
-      issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes
-      from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3) Contradiction
+      Detect conflicting and redundant Tailwind CSS classes in React components. Identifies three types of issues: (1)
+      Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes from
+      shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3) Contradiction
       conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts with explicit w-/h-
       classes, z-index without position, and provides optimization suggestions like using size-X instead of w-X h-X when
       equal.
+    server: frontend-engine
+  - name: frontend_client_boundary
+    keywords:
+      - frontend
+      - client
+      - boundary
+      - analyzes
+      - next
+      - app
+      - router
+      - server
+      - boundaries
+      - find
+      - misclassified
+      - components
+      - unnecessary
+      - optimization
+      - opportunities
+      - scans
+      - files
+      - directives
+      - builds
+      - import
+      - graph
+      - classifies
+      - each
+      - file
+      - inherited
+      - ambiguous
+      - detects
+      - issues
+      - like
+      - missing
+      - usage
+      - only
+      - imports
+      - large
+      - subtrees
+      - that
+      - bloat
+      - bundle
+    path: frontend-engine/frontend-client-boundary.yaml
+    description: >-
+      Analyzes Next.js App Router "use client" and "use server" boundaries to find misclassified components, unnecessary
+      client components, and boundary optimization opportunities. Scans files for directives, builds an import graph,
+      classifies each file as server/client/client-inherited/ambiguous, and detects issues like missing directives,
+      unnecessary client usage, server-only imports in client files, and large client subtrees that bloat the bundle.
+    server: frontend-engine
+  - name: frontend_error_boundaries
+    keywords:
+      - frontend
+      - error
+      - boundaries
+      - analyzes
+      - react
+      - next
+      - projects
+      - boundary
+      - coverage
+      - detects
+      - class
+      - based
+      - getderivedstatefromerror
+      - componentdidcatch
+      - library
+      - wrappers
+      - sentry
+      - etc
+      - which
+      - component
+      - subtrees
+      - are
+      - protected
+      - identifies
+      - missing
+      - tsx
+      - files
+      - app
+      - router
+      - route
+      - segments
+      - flags
+      - issues
+      - like
+      - fallback
+      - reset
+      - retry
+      - mechanisms
+      - overly
+      - broad
+      - async
+      - components
+      - without
+      - protection
+    path: frontend-engine/frontend-error-boundaries.yaml
+    description: >-
+      Analyzes React/Next.js projects for error boundary coverage. Detects class-based error boundaries
+      (getDerivedStateFromError / componentDidCatch) and library wrappers (react-error-boundary, Sentry, etc.), analyzes
+      which component subtrees are protected, identifies missing error.tsx files in Next.js App Router route segments,
+      and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad boundaries, and async
+      components without protection.
     server: frontend-engine
