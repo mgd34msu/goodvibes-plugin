@@ -1,7 +1,7 @@
 /**
  * Portal Detection for React
  *
- * Detects portal usage patterns across different frameworks.
+ * Detects React portal usage patterns.
  *
  * @module handlers/frontend/stacking-context/portal-detector
  */

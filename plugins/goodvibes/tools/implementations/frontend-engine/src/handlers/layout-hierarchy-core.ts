@@ -13,6 +13,7 @@ import {
   type ParsedCssProperties,
   parseTailwindClasses,
 } from './layout-hierarchy-utils.js';
+import { extractClassesFromAttribute } from './jsx-class-utils.js';
 import type {
   Sizing,
   FlexProps,
@@ -26,109 +27,16 @@ import type {
 // =============================================================================
 
 /**
- * Extract CSS classes from a single AST node (string, logical AND, ternary, object, array)
- * Mutates the `out` array in place for efficiency.
- */
-function extractClassesFromNode(node: ts.Node, out: string[]): void {
-  // 'flex p-4'
-  if (ts.isStringLiteral(node)) {
-    out.push(...node.text.split(/\s+/).filter(Boolean));
-    return;
-  }
-
-  // isActive && 'bg-blue-500'
-  if (
-    ts.isBinaryExpression(node) &&
-    node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
-  ) {
-    if (ts.isStringLiteral(node.right)) {
-      out.push(...node.right.text.split(/\s+/).filter(Boolean));
-    }
-    return;
-  }
-
-  // condition ? 'a' : 'b'
-  if (ts.isConditionalExpression(node)) {
-    extractClassesFromNode(node.whenTrue, out);
-    extractClassesFromNode(node.whenFalse, out);
-    return;
-  }
-
-  // { 'bg-blue-500': isActive, 'bg-gray-200': !isActive }
-  if (ts.isObjectLiteralExpression(node)) {
-    for (const prop of node.properties) {
-      if (ts.isPropertyAssignment(prop)) {
-        if (ts.isStringLiteral(prop.name)) {
-          out.push(...prop.name.text.split(/\s+/).filter(Boolean));
-        } else if (ts.isIdentifier(prop.name)) {
-          out.push(prop.name.text);
-        }
-      }
-      if (ts.isShorthandPropertyAssignment(prop)) {
-        out.push(prop.name.text);
-      }
-    }
-    return;
-  }
-
-  // ['flex', isActive && 'bg-blue-500']
-  if (ts.isArrayLiteralExpression(node)) {
-    for (const element of node.elements) {
-      extractClassesFromNode(element, out);
-    }
-    return;
-  }
-}
-
-/**
  * Extract className attribute from a JSX element
  */
 export function extractClassName(node: ts.JsxOpeningElement | ts.JsxSelfClosingElement, sourceFile: ts.SourceFile): string[] {
   const classes: string[] = [];
 
   for (const attr of node.attributes.properties) {
-    if (ts.isJsxAttribute(attr) && attr.name.getText(sourceFile) === 'className') {
-      if (attr.initializer) {
-        if (ts.isStringLiteral(attr.initializer)) {
-          // className="flex items-center"
-          classes.push(...attr.initializer.text.split(/\s+/).filter(Boolean));
-        } else if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-          const expr = attr.initializer.expression;
-          if (ts.isTemplateExpression(expr)) {
-            // Extract head text
-            const headText = expr.head.text;
-            classes.push(...headText.split(/\s+/).filter(Boolean));
-
-            // Extract literal spans
-            for (const span of expr.templateSpans) {
-              if (span.literal.text) {
-                classes.push(...span.literal.text.split(/\s+/).filter(Boolean));
-              }
-            }
-          } else if (ts.isNoSubstitutionTemplateLiteral(expr)) {
-            classes.push(...expr.text.split(/\s+/).filter(Boolean));
-          } else if (ts.isCallExpression(expr)) {
-            // Handle cn(), clsx(), classNames() calls with full pattern support
-            for (const arg of expr.arguments) {
-              extractClassesFromNode(arg, classes);
-            }
-          } else if (
-            ts.isBinaryExpression(expr) &&
-            expr.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
-          ) {
-            // className={isActive && 'bg-blue-500'}
-            if (ts.isStringLiteral(expr.right)) {
-              classes.push(...expr.right.text.split(/\s+/).filter(Boolean));
-            }
-          }
-        }
-      }
-    }
-
-    // Also handle 'class' attribute for completeness
-    if (ts.isJsxAttribute(attr) && attr.name.getText(sourceFile) === 'class') {
-      if (attr.initializer && ts.isStringLiteral(attr.initializer)) {
-        classes.push(...attr.initializer.text.split(/\s+/).filter(Boolean));
+    if (ts.isJsxAttribute(attr)) {
+      const attrName = attr.name.getText(sourceFile);
+      if (attrName === 'className' || attrName === 'class') {
+        classes.push(...extractClassesFromAttribute(attr));
       }
     }
   }

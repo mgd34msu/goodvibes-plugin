@@ -8,6 +8,7 @@
 
 import ts from 'typescript';
 import type { ClassNameExtraction } from './types.js';
+import { extractClassesFromNode } from '../jsx-class-utils.js';
 
 /**
  * Extract className attributes from JSX elements
@@ -36,7 +37,8 @@ export function extractClassNames(sourceFile: ts.SourceFile, elementFilter?: str
       // Extract static parts from template literal
       let result = node.head.text;
       for (const span of node.templateSpans) {
-        result += ' ' + span.literal.text;
+        const spanText = span.literal.text.trim();
+        if (spanText) result += ' ' + spanText;
       }
       return result;
     }
@@ -45,35 +47,12 @@ export function extractClassNames(sourceFile: ts.SourceFile, elementFilter?: str
     }
     if (ts.isCallExpression(node)) {
       // Handle cn(), clsx(), classNames() etc.
-      let result = '';
+      // Delegate to shared extractClassesFromNode for consistent class extraction
+      const classes: string[] = [];
       for (const arg of node.arguments) {
-        if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) {
-          result += ' ' + arg.text;
-        } else if (ts.isTemplateExpression(arg)) {
-          result += ' ' + extractStringValue(arg);
-        } else if (ts.isArrayLiteralExpression(arg)) {
-          for (const element of arg.elements) {
-            result += ' ' + extractStringValue(element);
-          }
-        } else if (ts.isObjectLiteralExpression(arg)) {
-          // { 'class-name': condition } — keys are the class names
-          for (const prop of arg.properties) {
-            if (ts.isPropertyAssignment(prop)) {
-              if (ts.isStringLiteral(prop.name)) {
-                result += ' ' + prop.name.text;
-              } else if (ts.isIdentifier(prop.name)) {
-                result += ' ' + prop.name.text;
-              }
-            }
-            if (ts.isShorthandPropertyAssignment(prop)) {
-              result += ' ' + prop.name.text;
-            }
-          }
-        } else {
-          result += ' ' + extractStringValue(arg);
-        }
+        extractClassesFromNode(arg, classes);
       }
-      return result;
+      return classes.join(' ');
     }
     if (ts.isConditionalExpression(node)) {
       // Ternary: condition ? 'a' : 'b' - extract both branches

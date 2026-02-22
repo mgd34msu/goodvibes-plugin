@@ -1,0 +1,47 @@
+name: audit_hook_dependencies
+version: "1.0.0"
+description: |
+  Analyzes React hook dependency arrays for stale closures, missing/unnecessary
+  dependencies, unstable references, and anti-patterns like derived state in effects.
+  Covers useEffect, useMemo, useCallback, useLayoutEffect, useInsertionEffect.
+  Detects: stale closures (empty deps + state refs), missing deps (body refs not in array),
+  unnecessary deps (array entries not referenced in body), unstable deps (inline objects/arrays/
+  functions, .map()/.filter() results, Object.keys/values/entries, spread expressions),
+  derived state anti-pattern (useEffect that only calls setState), and missing cleanup
+  (subscriptions/timers without a cleanup return).
+
+category: frontend
+tags:
+  - react
+  - hooks
+  - dependencies
+  - performance
+  - anti-patterns
+  - debugging
+  - stale-closure
+
+mcp:
+  server: goodvibes-tools
+  method: audit_hook_dependencies
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: React component file path (.tsx, .jsx, .ts, .js)
+    hook:
+      type: string
+      description: Analyze a specific hook by variable name or line number (e.g., "myEffect" or "42")
+    include_stable_analysis:
+      type: boolean
+      description: Include stability classification for all deps, including stable ones (default true)
+      default: true
+  required:
+    - file
+
+handler:
+  type: native
+  module: frontend
+  function: handleAuditHookDependencies

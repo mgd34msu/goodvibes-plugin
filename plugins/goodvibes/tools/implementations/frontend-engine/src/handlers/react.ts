@@ -171,10 +171,17 @@ const HOC_WRAPPING_CALLEE = new Set([
 ]);
 
 /**
- * Get the callee text of a CallExpression (handles both Identifier and PropertyAccess).
+ * Get the root callee name of a CallExpression.
+ * Handles simple identifiers, property accesses, and curried HOCs like connect(mapState)(Comp)
+ * by unwrapping nested CallExpression callees to find the outermost function name.
  */
 function getCalleeName(callExpr: ts.CallExpression, sourceFile: ts.SourceFile): string {
-  return callExpr.expression.getText(sourceFile);
+  let expr: ts.Expression = callExpr.expression;
+  // Unwrap curried form: connect(mapState)(Comp) -> expression is connect(mapState) CallExpression
+  while (ts.isCallExpression(expr)) {
+    expr = expr.expression;
+  }
+  return expr.getText(sourceFile);
 }
 
 /**
@@ -345,70 +352,38 @@ export function getComponentName(node: ts.Node, sourceFile: ts.SourceFile): stri
 }
 
 /**
- * Extract props from a component definition
+ * Extract props from a component definition.
+ * Accepts an optional pre-computed unwrap result to avoid redundant HOC detection.
  */
-function extractProps(node: ts.Node, sourceFile: ts.SourceFile): string[] {
-  const props: Set<string> = new Set();
-
-  // Handle function/arrow function parameters
-  let params: ts.NodeArray<ts.ParameterDeclaration> | undefined;
-
+function extractProps(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  precomputedUnwrap?: UnwrapResult | null
+): string[] {
+  // Function declaration: delegate directly
   if (ts.isFunctionDeclaration(node)) {
-    params = node.parameters;
-  } else if (ts.isVariableStatement(node)) {
+    return extractPropsFromFn(node as unknown as ts.ArrowFunction, sourceFile);
+  }
+
+  if (ts.isVariableStatement(node)) {
     for (const decl of node.declarationList.declarations) {
       if (decl.initializer && (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))) {
-        params = decl.initializer.parameters;
-        break;
+        return extractPropsFromFn(decl.initializer, sourceFile);
       }
       // HOC-wrapped: extract props from the inner render function
       if (decl.initializer && ts.isCallExpression(decl.initializer)) {
-        const unwrapped = detectHocWrappedComponent(decl, sourceFile);
+        const unwrapped = precomputedUnwrap ?? detectHocWrappedComponent(decl, sourceFile);
         if (unwrapped?.innerFn) {
-          params = unwrapped.innerFn.parameters;
-          break;
+          return extractPropsFromFn(unwrapped.innerFn, sourceFile);
         }
       }
     }
-  }
-
-  if (params && params.length > 0) {
-    const firstParam = params[0];
-
-    // Destructured props: ({ prop1, prop2 })
-    if (ts.isObjectBindingPattern(firstParam.name)) {
-      for (const element of firstParam.name.elements) {
-        if (ts.isBindingElement(element) && ts.isIdentifier(element.name)) {
-          props.add(element.name.getText(sourceFile));
-        }
-      }
-    }
-
-    // Type annotation: (props: Props)
-    if (firstParam.type) {
-      // Extract from type literal: { prop1: string, prop2: number }
-      if (ts.isTypeLiteralNode(firstParam.type)) {
-        for (const member of firstParam.type.members) {
-          if (ts.isPropertySignature(member) && member.name) {
-            props.add(member.name.getText(sourceFile));
-          }
-        }
-      }
-
-      // Extract from interface reference - look for the type reference
-      if (ts.isTypeReferenceNode(firstParam.type)) {
-        // Could resolve the interface, but for now just note it uses typed props
-        const typeName = firstParam.type.typeName.getText(sourceFile);
-        if (typeName.endsWith('Props')) {
-          // Try to find the interface in the same file
-          extractPropsFromInterface(sourceFile, typeName, props);
-        }
-      }
-    }
+    return [];
   }
 
   // For class components, look for this.props usage
   if (ts.isClassDeclaration(node)) {
+    const props: Set<string> = new Set();
     function findPropsUsage(n: ts.Node): void {
       if (ts.isPropertyAccessExpression(n)) {
         const text = n.getText(sourceFile);
@@ -420,9 +395,10 @@ function extractProps(node: ts.Node, sourceFile: ts.SourceFile): string[] {
       ts.forEachChild(n, findPropsUsage);
     }
     findPropsUsage(node);
+    return Array.from(props);
   }
 
-  return Array.from(props);
+  return [];
 }
 
 /**
@@ -454,9 +430,10 @@ function extractPropsFromInterface(sourceFile: ts.SourceFile, interfaceName: str
 /**
  * Extract props from a function/arrow-function node directly.
  * Used for HOC-wrapped components where the inner fn is extracted.
+ * Also accepts FunctionDeclaration (cast as ArrowFunction) for unified delegation.
  */
 function extractPropsFromFn(
-  fn: ts.FunctionExpression | ts.ArrowFunction,
+  fn: ts.FunctionExpression | ts.ArrowFunction | ts.FunctionDeclaration,
   sourceFile: ts.SourceFile
 ): string[] {
   const props: Set<string> = new Set();
@@ -591,6 +568,8 @@ function analyzeFile(filePath: string, projectRoot: string): ComponentInfo[] {
 
   const relativePath = makeRelativePath(filePath, projectRoot);
 
+  const detectedNames = new Set<string>();
+
   function visit(node: ts.Node): void {
     if (isReactComponent(node, sourceFile)) {
       const name = getComponentName(node, sourceFile);
@@ -599,11 +578,13 @@ function analyzeFile(filePath: string, projectRoot: string): ComponentInfo[] {
         // Collect HOC wrapper metadata for variable declarations
         let lazy: boolean | undefined;
         let wrappers: string[] | undefined;
+        let precomputedUnwrap: UnwrapResult | null = null;
         if (ts.isVariableStatement(node)) {
           for (const decl of node.declarationList.declarations) {
             if (decl.initializer && ts.isCallExpression(decl.initializer)) {
               const unwrapped = detectHocWrappedComponent(decl, sourceFile);
               if (unwrapped) {
+                precomputedUnwrap = unwrapped;
                 wrappers = unwrapped.wrappers.length > 0 ? unwrapped.wrappers : undefined;
                 lazy = unwrapped.isLazy || undefined;
               }
@@ -611,11 +592,12 @@ function analyzeFile(filePath: string, projectRoot: string): ComponentInfo[] {
           }
         }
 
+        detectedNames.add(name);
         components.push({
           name,
           file: relativePath,
           line: getLineNumber(node, sourceFile),
-          props: extractProps(node, sourceFile),
+          props: extractProps(node, sourceFile, precomputedUnwrap),
           used_by: [], // Will be filled later
           uses: findUsedComponents(node, sourceFile),
           ...(lazy !== undefined && { lazy }),
@@ -629,8 +611,9 @@ function analyzeFile(filePath: string, projectRoot: string): ComponentInfo[] {
       const detected = detectDefaultExportHoc(node, sourceFile);
       if (detected) {
         const { name, unwrapped } = detected;
-        // Avoid duplicate if already registered by name
-        if (!components.some(c => c.name === name)) {
+        // Avoid duplicate if already registered by name (O(1) Set lookup)
+        if (!detectedNames.has(name)) {
+          detectedNames.add(name);
           components.push({
             name,
             file: relativePath,

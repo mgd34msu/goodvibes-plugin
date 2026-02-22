@@ -5,12 +5,6 @@
  */
 
 /**
- * Tailwind breakpoint prefixes in order
- */
-export const BREAKPOINTS = ['sm', 'md', 'lg', 'xl', '2xl'] as const;
-export type Breakpoint = (typeof BREAKPOINTS)[number];
-
-/**
  * Breakpoint sizes for reference
  */
 export const BREAKPOINT_SIZES: Record<string, string> = {

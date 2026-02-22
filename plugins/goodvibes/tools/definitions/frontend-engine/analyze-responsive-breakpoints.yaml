@@ -16,8 +16,6 @@ tags:
   - css
   - mobile-first
   - react
-  - vue
-  - svelte
 
 mcp:
   server: goodvibes-tools
@@ -29,7 +27,7 @@ inputSchema:
   properties:
     file:
       type: string
-      description: File path to analyze (supports .tsx, .jsx, .vue, .svelte)
+      description: File path to analyze (supports .tsx, .jsx, .ts, .js)
     element:
       type: string
       description: "Optional: specific element to analyze (e.g., \"div\" or \"Button#3\"). If not provided, analyzes all elements."

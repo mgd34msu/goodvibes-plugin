@@ -34,11 +34,14 @@ const TAILWIND_CONFIG_FILES = [
 
 /**
  * Parse pixel value to number for sorting.
- * Returns Infinity for non-px values.
+ * Handles px, rem, and em values. Returns Infinity for unrecognised units.
  */
 function parsePx(value: string): number {
-  const match = value.match(/^(\d+(?:\.\d+)?)px$/);
-  return match ? parseFloat(match[1]) : Infinity;
+  const pxMatch = value.match(/^(\d+(?:\.\d+)?)px$/);
+  if (pxMatch) return parseFloat(pxMatch[1]);
+  const remMatch = value.match(/^(\d+(?:\.\d+)?)r?em$/);
+  if (remMatch) return parseFloat(remMatch[1]) * 16;
+  return Infinity;
 }
 
 /**
@@ -52,19 +55,34 @@ function sortBreakpointsBySize(
 }
 
 /**
- * Attempt to parse tailwind.config screens from file content using regex.
+ * Extract the content of a brace-delimited block following a keyword.
+ * Uses brace-depth counting to handle nested objects correctly.
+ */
+function extractBracedBlock(content: string, keyword: string): string | null {
+  const startIdx = content.indexOf(keyword);
+  if (startIdx === -1) return null;
+  const braceStart = content.indexOf('{', startIdx);
+  if (braceStart === -1) return null;
+  let depth = 0;
+  for (let i = braceStart; i < content.length; i++) {
+    if (content[i] === '{') depth++;
+    if (content[i] === '}') depth--;
+    if (depth === 0) return content.slice(braceStart + 1, i);
+  }
+  return null;
+}
+
+/**
+ * Attempt to parse tailwind.config screens from file content.
  * Handles:
  *   screens: { sm: '640px', md: '768px' }
- *   screens: { sm: { min: '640px' }, md: { min: '768px' } }
+ *   screens: { sm: { min: '640px', max: '767px' }, md: '768px' }
+ * Uses brace-depth counting to correctly handle nested objects.
  * Returns null if unable to parse reliably.
  */
 function parseTailwindScreens(content: string): Record<string, string> | null {
-  // Match the screens block — find `screens:` or `screens :\n` followed by object literal
-  // We use a simple approach: find `screens:` and extract the braced block
-  const screensMatch = content.match(/screens\s*:\s*\{([^}]+)\}/);
-  if (!screensMatch) return null;
-
-  const screensBlock = screensMatch[1];
+  const screensBlock = extractBracedBlock(content, 'screens');
+  if (!screensBlock) return null;
   const result: Record<string, string> = {};
   let foundAny = false;
 
@@ -99,6 +117,8 @@ function parseTailwindScreens(content: string): Record<string, string> | null {
 function readTailwindConfig(projectRoot: string): Record<string, string> | null {
   for (const configFile of TAILWIND_CONFIG_FILES) {
     const configPath = path.join(projectRoot, configFile);
+    const resolved = path.resolve(configPath);
+    if (!resolved.startsWith(path.resolve(projectRoot) + path.sep)) continue;
     if (!fs.existsSync(configPath)) continue;
 
     try {
@@ -106,7 +126,8 @@ function readTailwindConfig(projectRoot: string): Record<string, string> | null 
       const parsed = parseTailwindScreens(content);
       if (parsed) return parsed;
     } catch {
-      // Silently skip unreadable configs
+      // Intentionally skip unreadable config files (permission errors, encoding issues).
+      // Falls through to try the next config filename or use defaults.
     }
     break; // Only try the first config file found
   }
@@ -153,7 +174,8 @@ export function resolveBreakpoints(
     // Priority 3: defaults already in mergedSizes
   }
 
-  // Always include base
+  // Always ensure base is present (BREAKPOINT_SIZES already includes base: '0px',
+  // but explicit overrides may not; this guarantees it is always set)
   mergedSizes['base'] = '0px';
 
   // Build sorted breakpoint list (excludes 'base')

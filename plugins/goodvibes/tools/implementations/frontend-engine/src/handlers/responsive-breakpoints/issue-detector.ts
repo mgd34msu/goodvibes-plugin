@@ -6,15 +6,23 @@
  * @module handlers/frontend/responsive-breakpoints/issue-detector
  */
 
-import type { ElementAnalysis, Warning } from './types.js';
-import { BREAKPOINTS } from './constants.js';
+import type { ElementAnalysis, Issue } from './types.js';
 import { getPropertyFromClass } from './class-parser.js';
 
 /**
- * Detect potential responsive design issues
+ * Detect potential responsive design issues.
+ *
+ * @param elements - Analyzed element list
+ * @param breakpoints - Ordered list of active breakpoint names
  */
-export function detectIssues(elements: ElementAnalysis[]): Warning[] {
-  const warnings: Warning[] = [];
+export function detectIssues(
+  elements: ElementAnalysis[],
+  breakpoints: string[]
+): Issue[] {
+  const warnings: Issue[] = [];
+
+  // Smallest breakpoint (typically 'sm') — skip desktop-first warning for it
+  const smallestBreakpoint = breakpoints[0];
 
   for (const el of elements) {
     // Issue 1: Desktop-first pattern - property defined at lg: but not at base
@@ -22,8 +30,8 @@ export function detectIssues(elements: ElementAnalysis[]): Warning[] {
       if (change.base_value === '' && change.transitions.length > 0) {
         const firstBreakpoint = change.transitions[0].breakpoint;
 
-        // Skip if it starts from sm (might be intentional hide-on-mobile)
-        if (firstBreakpoint !== 'sm') {
+        // Skip if it starts from the smallest breakpoint (might be intentional hide-on-mobile)
+        if (firstBreakpoint !== smallestBreakpoint) {
           warnings.push({
             element: el.element,
             breakpoint: firstBreakpoint,
@@ -36,7 +44,7 @@ export function detectIssues(elements: ElementAnalysis[]): Warning[] {
 
     // Issue 2: Hidden on mobile without show class
     const hasHiddenBase = el.classes_by_breakpoint.base.includes('hidden');
-    const hasBlockBreakpoint = BREAKPOINTS.some((bp) => {
+    const hasBlockBreakpoint = breakpoints.some((bp) => {
       const classes = el.classes_by_breakpoint[bp];
       return classes?.some((c) => ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'].includes(c));
     });
@@ -50,17 +58,17 @@ export function detectIssues(elements: ElementAnalysis[]): Warning[] {
     }
 
     // Issue 3: Gap in breakpoint coverage (e.g., sm and xl defined, but md skipped)
-    const usedBreakpoints = BREAKPOINTS.filter((bp) => {
+    const usedBreakpoints = breakpoints.filter((bp) => {
       const classes = el.classes_by_breakpoint[bp];
       return classes && classes.length > 0;
     });
 
     if (usedBreakpoints.length >= 2) {
-      const indices = usedBreakpoints.map((bp) => BREAKPOINTS.indexOf(bp));
+      const indices = usedBreakpoints.map((bp) => breakpoints.indexOf(bp));
       for (let i = 1; i < indices.length; i++) {
         const gap = indices[i] - indices[i - 1];
         if (gap > 1) {
-          const skippedBreakpoints = BREAKPOINTS.slice(indices[i - 1] + 1, indices[i]);
+          const skippedBreakpoints = breakpoints.slice(indices[i - 1] + 1, indices[i]);
           warnings.push({
             element: el.element,
             issue: `Breakpoint gap: defined at ${usedBreakpoints[i - 1]} and ${usedBreakpoints[i]}, skipping ${skippedBreakpoints.join(', ')}`,

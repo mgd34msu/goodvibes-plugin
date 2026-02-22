@@ -29,7 +29,7 @@ inputSchema:
       description: File path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .ts, .js
     include_portals:
       type: boolean
-      description: Look for portal destinations (createPortal, Teleport, etc.)
+      description: Look for portal destinations (createPortal, Radix Portal, etc.)
       default: true
   required:
     - file

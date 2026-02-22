@@ -35,11 +35,11 @@ import type {
   ElementAnalysis,
   ToolResponse,
 } from './types.js';
-import { BREAKPOINTS, BREAKPOINT_SIZES } from './constants.js';
 import { createSuccessResponse, createErrorResponse, makeRelativePath } from './utils.js';
 import { parseClassName, parseBreakpointClasses, trackPropertyChanges } from './class-parser.js';
 import { detectIssues } from './issue-detector.js';
 import { extractClassNames } from './jsx-extractor.js';
+import { resolveBreakpoints } from './breakpoint-resolver.js';
 
 // =============================================================================
 // Main Handler
@@ -53,6 +53,11 @@ import { extractClassNames } from './jsx-extractor.js';
  * - Track breakpoint coverage
  * - Detect property changes across breakpoints
  * - Flag potential responsive design issues
+ *
+ * Breakpoint resolution priority:
+ *   1. Explicit `breakpoints` argument (overrides + adds keys)
+ *   2. Auto-detected tailwind.config.js/ts in project root
+ *   3. Hardcoded Tailwind defaults (sm, md, lg, xl, 2xl)
  *
  * @param args - The analyze_responsive_breakpoints tool arguments
  * @returns MCP tool response with breakpoint analysis
@@ -68,6 +73,9 @@ export async function handleAnalyzeResponsiveBreakpoints(
       return createErrorResponse('file argument is required');
     }
 
+    // Resolve active breakpoints (explicit > tailwind.config > defaults)
+    const { breakpoints, sizes } = resolveBreakpoints(args.breakpoints, projectRoot);
+
     // Resolve file path
     const filePath = path.isAbsolute(args.file)
       ? args.file
@@ -80,7 +88,7 @@ export async function handleAnalyzeResponsiveBreakpoints(
       });
     }
 
-    // Check file extension
+    // Check file extension - support React/JSX/TSX files
     const ext = path.extname(filePath).toLowerCase();
     if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
       return createErrorResponse(
@@ -93,11 +101,10 @@ export async function handleAnalyzeResponsiveBreakpoints(
     const content = fs.readFileSync(filePath, 'utf-8');
 
     // Use TSX/JSX script kind to properly parse JSX elements
-    const processableContent = content;
     const scriptKind = ext === '.tsx' || ext === '.ts' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX;
     const sourceFile = ts.createSourceFile(
       filePath,
-      processableContent,
+      content,
       ts.ScriptTarget.Latest,
       true,
       scriptKind
@@ -106,18 +113,20 @@ export async function handleAnalyzeResponsiveBreakpoints(
     // Extract className attributes
     const classNameExtractions = extractClassNames(sourceFile, args.element);
 
+    // Build initial breakpoint coverage record with all resolved breakpoints
+    const buildEmptyCoverage = (): BreakpointCoverage => {
+      const coverage: BreakpointCoverage = { base: false };
+      for (const bp of breakpoints) {
+        coverage[bp] = false;
+      }
+      return coverage;
+    };
+
     if (classNameExtractions.length === 0) {
       return createSuccessResponse({
         file: makeRelativePath(filePath, projectRoot),
         breakpoints_used: [],
-        breakpoint_coverage: {
-          base: false,
-          sm: false,
-          md: false,
-          lg: false,
-          xl: false,
-          '2xl': false,
-        },
+        breakpoint_coverage: buildEmptyCoverage(),
         elements: [],
         issues: [],
         summary: 'No className attributes found in file.',
@@ -127,27 +136,20 @@ export async function handleAnalyzeResponsiveBreakpoints(
     // Analyze each element
     const elements: ElementAnalysis[] = [];
     const allBreakpointsUsed = new Set<string>();
-    const breakpointCoverage: BreakpointCoverage = {
-      base: false,
-      sm: false,
-      md: false,
-      lg: false,
-      xl: false,
-      '2xl': false,
-    };
+    const breakpointCoverage: BreakpointCoverage = buildEmptyCoverage();
 
     for (const extraction of classNameExtractions) {
       const classes = parseClassName(extraction.className);
-      const breakpointClasses = parseBreakpointClasses(classes);
-      const propertyChanges = trackPropertyChanges(breakpointClasses);
+      const breakpointClasses = parseBreakpointClasses(classes, breakpoints);
+      const propertyChanges = trackPropertyChanges(breakpointClasses, breakpoints);
 
       // Track breakpoint usage
       if (breakpointClasses.base.length > 0) {
         allBreakpointsUsed.add('base');
         breakpointCoverage.base = true;
       }
-      for (const bp of BREAKPOINTS) {
-        if (breakpointClasses[bp] && breakpointClasses[bp]!.length > 0) {
+      for (const bp of breakpoints) {
+        if (breakpointClasses[bp] && (breakpointClasses[bp] as string[]).length > 0) {
           allBreakpointsUsed.add(bp);
           breakpointCoverage[bp] = true;
         }
@@ -161,23 +163,26 @@ export async function handleAnalyzeResponsiveBreakpoints(
     }
 
     // Detect issues
-    const issues = detectIssues(elements);
+    const issues = detectIssues(elements, breakpoints);
 
     // Generate summary
     const breakpointsUsed = Array.from(allBreakpointsUsed).sort((a, b) => {
-      const order = ['base', ...BREAKPOINTS];
+      const order = ['base', ...breakpoints];
       return order.indexOf(a) - order.indexOf(b);
     });
 
     // Determine if mobile-first pattern is being used
+    // Use the second half of breakpoints as "large" indicators
+    const midIndex = Math.ceil(breakpoints.length / 2);
+    const largeBreakpoints = new Set(breakpoints.slice(midIndex));
+
     let mobileFirst = true;
     let desktopFirstCount = 0;
     for (const el of elements) {
       for (const change of el.property_changes) {
         if (change.base_value === '' && change.transitions.length > 0) {
           const firstBp = change.transitions[0].breakpoint;
-          // If first definition is at md or larger, might be desktop-first
-          if (['md', 'lg', 'xl', '2xl'].includes(firstBp)) {
+          if (largeBreakpoints.has(firstBp)) {
             desktopFirstCount++;
           }
         }
@@ -186,12 +191,6 @@ export async function handleAnalyzeResponsiveBreakpoints(
     if (desktopFirstCount > elements.length / 2) {
       mobileFirst = false;
     }
-
-    // Check complete coverage
-    const completeCoverage =
-      breakpointCoverage.base &&
-      (breakpointCoverage.sm || breakpointCoverage.md) &&
-      (breakpointCoverage.lg || breakpointCoverage.xl);
 
     // Generate notes
     const notes: string[] = [];
@@ -219,7 +218,7 @@ export async function handleAnalyzeResponsiveBreakpoints(
     }
 
     // Add breakpoint size reference
-    const usedSizes = breakpointsUsed.map((bp) => `${bp}: ${BREAKPOINT_SIZES[bp]}`);
+    const usedSizes = breakpointsUsed.map((bp) => `${bp}: ${sizes[bp]}`);
     if (usedSizes.length > 0) {
       notes.push(`Breakpoint sizes: ${usedSizes.join(', ')}`);
     }

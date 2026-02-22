@@ -7,7 +7,7 @@
  */
 
 import type { BreakpointClasses, PropertyChange } from './types.js';
-import { BREAKPOINTS, Breakpoint, CLASS_TO_PROPERTY, CLASS_PREFIX_TO_PROPERTY } from './constants.js';
+import { CLASS_TO_PROPERTY, CLASS_PREFIX_TO_PROPERTY } from './constants.js';
 
 /**
  * Parse a className string into individual classes
@@ -25,19 +25,33 @@ export function parseClassName(className: string): string[] {
 }
 
 /**
- * Parse classes into breakpoint-organized structure
+ * Parse classes into breakpoint-organized structure.
+ *
+ * @param classes - List of individual Tailwind class strings
+ * @param breakpoints - Ordered list of active breakpoint names (e.g., ['sm','md','lg','xl','2xl'])
  */
-export function parseBreakpointClasses(classes: string[]): BreakpointClasses {
+export function parseBreakpointClasses(
+  classes: string[],
+  breakpoints: string[]
+): BreakpointClasses {
   const result: BreakpointClasses = { base: [] };
 
+  // Build a regex that matches any known breakpoint prefix
+  // Escape breakpoint names for regex (e.g., '2xl' is safe, but future names could have special chars)
+  const bpPattern = breakpoints
+    .filter((bp) => bp.length <= 20) // Reject absurdly long breakpoint names
+    .map((bp) => bp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  const breakpointRegex = bpPattern.length > 0
+    ? new RegExp(`^(${bpPattern}):(.+)$`)
+    : null;
+
   for (const cls of classes) {
-    // Match breakpoint prefix: sm:, md:, lg:, xl:, 2xl:
-    const match = cls.match(/^(sm|md|lg|xl|2xl):(.+)$/);
+    const match = breakpointRegex ? cls.match(breakpointRegex) : null;
     if (match) {
       const [, breakpoint, utility] = match;
-      const bp = breakpoint as Breakpoint;
-      if (!result[bp]) result[bp] = [];
-      result[bp]!.push(utility);
+      if (!result[breakpoint]) result[breakpoint] = [];
+      (result[breakpoint] as string[]).push(utility);
     } else {
       // No breakpoint prefix = base (mobile-first)
       result.base.push(cls);
@@ -67,9 +81,15 @@ export function getPropertyFromClass(cls: string): string | null {
 }
 
 /**
- * Track property changes across breakpoints
+ * Track property changes across breakpoints.
+ *
+ * @param breakpointClasses - Classes organized by breakpoint
+ * @param breakpoints - Ordered list of active breakpoint names
  */
-export function trackPropertyChanges(breakpointClasses: BreakpointClasses): PropertyChange[] {
+export function trackPropertyChanges(
+  breakpointClasses: BreakpointClasses,
+  breakpoints: string[]
+): PropertyChange[] {
   const properties = new Map<string, PropertyChange>();
 
   // Process base classes first
@@ -89,8 +109,8 @@ export function trackPropertyChanges(breakpointClasses: BreakpointClasses): Prop
     }
   }
 
-  // Process breakpoint classes
-  for (const bp of BREAKPOINTS) {
+  // Process breakpoint classes in order
+  for (const bp of breakpoints) {
     const classes = breakpointClasses[bp];
     if (!classes) continue;
 

@@ -59,6 +59,14 @@ outputSchema:
         children:
           type: array
           description: Child components used by this component
+        lazy:
+          type: boolean
+          description: True if the component is lazy-loaded via React.lazy
+        wrappers:
+          type: array
+          items:
+            type: string
+          description: HOC wrappers applied to the component (e.g. memo, forwardRef)
     components:
       type: array
       description: Flat list of all discovered components
@@ -89,6 +97,14 @@ outputSchema:
             items:
               type: string
             description: Components used by this component
+          lazy:
+            type: boolean
+            description: True if the component is lazy-loaded via React.lazy
+          wrappers:
+            type: array
+            items:
+              type: string
+            description: HOC wrappers applied to the component (e.g. memo, forwardRef)
     count:
       type: number
       description: Total number of components found

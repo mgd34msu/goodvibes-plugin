@@ -25,6 +25,8 @@ import { handleGetSizingStrategy } from './get-sizing-strategy.js';
 import { handleAnalyzeTailwindConflicts } from './analyze-tailwind-conflicts.js';
 import { handleAnalyzeEventFlow } from './analyze-event-flow.js';
 import { handleGetReactComponentTree } from './react.js';
+import { handleAnalyzeClientBoundary } from './analyze-client-boundary.js';
+import { handleAuditHookDependencies } from './audit-hook-dependencies.js';
 
 // Export types only
 export type { AnalyzeRenderTriggersArgs } from './analyze-render-triggers.js';
@@ -42,6 +44,8 @@ export type { GetSizingStrategyArgs, GetSizingStrategyResult } from './get-sizin
 export type { AnalyzeTailwindConflictsArgs } from './analyze-tailwind-conflicts.js';
 export type { AnalyzeEventFlowArgs } from './analyze-event-flow.js';
 export type { GetReactComponentTreeArgs } from './react.js';
+export type { AnalyzeClientBoundaryArgs } from './analyze-client-boundary.js';
+export type { AuditHookDependenciesArgs, AuditResult, HookInfo, HookIssue } from './audit-hook-dependencies.js';
 
 // =============================================================================
 // HANDLER REGISTRY
@@ -61,6 +65,8 @@ const handlerRegistry = new Map<string, ToolHandler>([
   ['get_sizing_strategy', handleGetSizingStrategy as ToolHandler],
   ['analyze_event_flow', handleAnalyzeEventFlow as ToolHandler],
   ['analyze_tailwind_conflicts', handleAnalyzeTailwindConflicts as ToolHandler],
+  ['analyze_client_boundary', handleAnalyzeClientBoundary as ToolHandler],
+  ['audit_hook_dependencies', handleAuditHookDependencies as ToolHandler],
 ]);
 
 /**

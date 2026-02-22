@@ -1,0 +1,39 @@
+name: analyze_client_boundary
+version: "1.0.0"
+description: |
+  Analyzes Next.js App Router "use client" and "use server" boundaries to find
+  misclassified components, unnecessary client components, and boundary optimization opportunities.
+  Scans files for directives, builds an import graph, classifies each file as server/client/client-inherited/ambiguous,
+  and detects issues like missing directives, unnecessary client usage, server-only imports in client files,
+  and large client subtrees that bloat the client bundle.
+
+category: frontend
+tags:
+  - react
+  - nextjs
+  - app-router
+  - server-components
+  - client-boundary
+  - performance
+  - optimization
+
+mcp:
+  server: goodvibes-tools
+  method: analyze_client_boundary
+  defer_loading: true
+
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Directory to scan (default: "app" or "src" auto-detected)
+    entry:
+      type: string
+      description: Specific entry file to trace from instead of scanning a directory
+  required: []
+
+handler:
+  type: native
+  module: frontend
+  function: handleAnalyzeClientBoundary

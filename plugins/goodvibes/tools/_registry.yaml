@@ -1,6 +1,6 @@
 version: 2.0.0
 generated: '2026-02-22T01:29:36.433Z'
-total: 63
+total: 65
 servers:
   - name: precision-engine
     count: 12
@@ -238,7 +238,7 @@ servers:
         path: project-engine/project-test-find.yaml
         description: Find test files associated with a given source file, including indirect test relationships.
   - name: frontend-engine
-    count: 11
+    count: 13
     tools:
       - name: get_react_component_tree
         path: frontend-engine/get-react-component-tree.yaml
@@ -249,7 +249,7 @@ servers:
       - name: analyze_stacking_context
         path: frontend-engine/analyze-stacking-context.yaml
         description: >-
-          Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new
+          Analyze z-index and stacking contexts in React components. Detects which CSS properties create new
           stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical
           stacking tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging
           "why isn't my z-index working" issues.
@@ -276,7 +276,7 @@ servers:
       - name: analyze_layout_hierarchy
         path: frontend-engine/analyze-layout-hierarchy.yaml
         description: >-
-          Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree
+          Analyze the CSS layout hierarchy of React components. Parses JSX/TSX files to build a layout tree
           with sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and
           positioning. Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed
           height containers with auto-height children, nested flex without sizing, percentage height without parent
@@ -291,7 +291,7 @@ servers:
       - name: get_accessibility_tree
         path: frontend-engine/get-accessibility-tree.yaml
         description: >-
-          Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML
+          Build an accessibility tree and detect WCAG issues in React components. Analyzes semantic HTML
           roles, focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1),
           unlabeled form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on
           non-interactive elements, missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical
@@ -307,20 +307,35 @@ servers:
       - name: analyze_event_flow
         path: frontend-engine/analyze-event-flow.yaml
         description: >-
-          Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick,
+          Analyze event handling and propagation in React components. Detects all event handlers (onClick,
           onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
           elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and
           form submits without preventDefault. Also detects event delegation patterns (e.target.closest,
           e.target.matches checks). Essential for debugging "why is my click firing twice" and accessibility audits.
+      - name: analyze_client_boundary
+        path: frontend-engine/analyze-client-boundary.yaml
+        description: >-
+          Analyzes Next.js App Router "use client" and "use server" boundaries to find misclassified
+          components, unnecessary client components, and boundary optimization opportunities.
+          Scans for directives, builds an import graph, classifies files as server/client/client-inherited/ambiguous,
+          and detects issues like missing directives, server-only imports in client files, and large client subtrees.
       - name: analyze_tailwind_conflicts
         path: frontend-engine/analyze-tailwind-conflicts.yaml
         description: >-
-          Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types
+          Detect conflicting and redundant Tailwind CSS classes in React components. Identifies three types
           of issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant
           classes from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3)
           Contradiction conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts
           with explicit w-/h- classes, z-index without position, and provides optimization suggestions like using size-X
           instead of w-X h-X when equal.
+      - name: audit_hook_dependencies
+        path: frontend-engine/audit-hook-dependencies.yaml
+        description: >-
+          Analyzes React hook dependency arrays for stale closures, missing/unnecessary dependencies, unstable
+          references, and anti-patterns like derived state in effects. Covers useEffect, useMemo, useCallback,
+          useLayoutEffect, useInsertionEffect. Detects stale closures (empty deps + state refs), missing deps,
+          unnecessary deps, unstable deps (inline objects/arrays/functions, .map()/.filter() results), derived state
+          anti-pattern (useEffect only calling setState), and missing cleanup for subscriptions/timers.
 search_index:
   - name: precision_write
     keywords:
@@ -1559,7 +1574,7 @@ search_index:
       - issues
     path: frontend-engine/analyze-stacking-context.yaml
     description: >-
-      Analyze z-index and stacking contexts in React/Vue/Svelte components. Detects which CSS properties create new
+      Analyze z-index and stacking contexts in React components. Detects which CSS properties create new
       stacking contexts (position+z-index, transform, opacity, filter, isolation, etc.), builds a hierarchical stacking
       tree, identifies potential z-index conflicts, and finds portal destinations. Essential for debugging "why isn't my
       z-index working" issues.
@@ -1734,7 +1749,7 @@ search_index:
       - etc
     path: frontend-engine/analyze-layout-hierarchy.yaml
     description: >-
-      Analyze the CSS layout hierarchy of React/Vue/Svelte components. Parses JSX/TSX files to build a layout tree with
+      Analyze the CSS layout hierarchy of React components. Parses JSX/TSX files to build a layout tree with
       sizing constraints, display types (flex/grid/block), flex/grid properties, overflow handling, and positioning.
       Supports comprehensive Tailwind CSS class parsing. Detects potential layout issues like fixed height containers
       with auto-height children, nested flex without sizing, percentage height without parent height, etc.
@@ -1838,7 +1853,7 @@ search_index:
       - suggestions
     path: frontend-engine/get-accessibility-tree.yaml
     description: >-
-      Build an accessibility tree and detect WCAG issues in React/Vue/Svelte components. Analyzes semantic HTML roles,
+      Build an accessibility tree and detect WCAG issues in React components. Analyzes semantic HTML roles,
       focus order, keyboard interactions, and ARIA patterns. Detects issues like missing alt text (1.1.1), unlabeled
       form inputs (1.3.1), buttons/links without accessible names (4.1.2), click handlers on non-interactive elements,
       missing focus indicators (2.4.7), and invalid ARIA patterns. Returns a hierarchical accessibility tree, focus
@@ -1964,7 +1979,7 @@ search_index:
       - audits
     path: frontend-engine/analyze-event-flow.yaml
     description: >-
-      Analyze event handling and propagation in React/Vue/Svelte components. Detects all event handlers (onClick,
+      Analyze event handling and propagation in React components. Detects all event handlers (onClick,
       onChange, onSubmit, etc.), simulates event bubbling from leaf to root, identifies issues like nested clickable
       elements that may double-fire, click handlers on non-interactive elements without keyboard alternatives, and form
       submits without preventDefault. Also detects event delegation patterns (e.target.closest, e.target.matches
@@ -2020,7 +2035,7 @@ search_index:
       - equal
     path: frontend-engine/analyze-tailwind-conflicts.yaml
     description: >-
-      Detect conflicting and redundant Tailwind CSS classes in React/Vue/Svelte components. Identifies three types of
+      Detect conflicting and redundant Tailwind CSS classes in React components. Identifies three types of
       issues: (1) Override conflicts where later classes override earlier ones (e.g., "p-2 p-4"), (2) Redundant classes
       from shorthand/longhand combinations (e.g., "p-2 px-4" where p-2's x-padding is overridden), (3) Contradiction
       conflicts with mutually exclusive classes (e.g., "hidden flex"). Also detects size-X conflicts with explicit w-/h-

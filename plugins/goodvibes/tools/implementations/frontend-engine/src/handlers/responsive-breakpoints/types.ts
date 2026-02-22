@@ -12,31 +12,30 @@ export interface AnalyzeResponsiveBreakpointsArgs {
   file: string;
   /** Specific element to analyze, or analyze whole component */
   element?: string;
+  /**
+   * Optional custom breakpoint overrides as a map of name to min-width size.
+   * E.g., { xs: '480px', '3xl': '1920px' }
+   * Overrides matching defaults; new keys are added.
+   * Tailwind config is auto-detected when this is omitted.
+   */
+  breakpoints?: Record<string, string>;
 }
 
 /**
- * Classes organized by breakpoint
+ * Classes organized by breakpoint.
+ * 'base' is always present; all other keys are dynamic and depend on the
+ * resolved breakpoint set.
  */
 export interface BreakpointClasses {
   base: string[];
-  sm?: string[];
-  md?: string[];
-  lg?: string[];
-  xl?: string[];
-  '2xl'?: string[];
+  [breakpoint: string]: string[] | undefined;
 }
 
 /**
- * Coverage status for each breakpoint
+ * Coverage status for each breakpoint.
+ * Keys are dynamic and match the resolved breakpoint set (plus 'base').
  */
-export interface BreakpointCoverage {
-  base: boolean;
-  sm: boolean;
-  md: boolean;
-  lg: boolean;
-  xl: boolean;
-  '2xl': boolean;
-}
+export type BreakpointCoverage = Record<string, boolean>;
 
 /**
  * Property transition across breakpoints
