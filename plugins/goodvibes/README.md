@@ -6,7 +6,7 @@
 
 > Plug in. Receive good vibes.
 
-A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 70 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
+A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 66 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
 
 ## At a Glance
 
@@ -14,7 +14,7 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 |-----------|-------|--------------|
 | Agents | 11 | Specialized roles (Opus/Sonnet) for engineering, review, testing, architecture, deployment, integration, planning |
 | Skills | 25 | Tiered knowledge modules: protocol, orchestration, outcome, quality |
-| MCP Tools | 70 | Token-efficient tools across 5 specialized engines |
+| MCP Tools | 66 | Token-efficient tools across 5 specialized engines |
 | Hooks | 11 | Lifecycle automation (tool redirection, context injection, error recovery, setup) |
 | Output Styles | 2 | Interactive (vibecoding) or fully autonomous (justvibes) |
 | Templates | 3 | Production scaffolds |
@@ -200,134 +200,146 @@ Set your output style:
 /output-style goodvibes:justvibes    # Autonomous mode
 ```
 
-## Precision Engine - 12 Tools
+## Precision Engine — 12 Tools
 
-The core of GoodVibes. 12 tools that replace Claude Code's native tools with enhanced, token-efficient alternatives.
+The core of GoodVibes. Replaces Claude Code's native tools with token-efficient alternatives that support batching, extract modes, caching, and atomic transactions.
 
-### Tool Overview
-
-| Tool | Replaces | Key Enhancements |
-|------|----------|------------------|
-| precision_read | Read | Batch reads, extract modes (content/outline/symbols/ast/lines), image viewing (PNG/JPG/GIF/WebP/BMP/ICO/TIFF/AVIF/SVG as visual blocks with magic byte validation), PDF text extraction with page ranges, Jupyter notebook cells, token budgets with pagination, file state caching |
-| precision_write | Write | Batch writes, fail_if_exists/overwrite/backup modes, atomic transactions with rollback, dry run, auto directory creation, base64 content support |
-| precision_edit | Edit | Batch edits, match modes (exact/fuzzy/regex/ast_pattern with AST-Grep captures), occurrence selection (first/last/Nth/all), context hints (near_line/in_function/in_class/after/before), atomic transactions with rollback, dry run, whitespace/case sensitivity toggles |
-| precision_grep | Grep | Batch queries with parallel execution, output modes (count_only/files_only/locations/matches/context), context expansion (line/block/function/class), negation search, find-replace preview with backreference support, relevance ranking, cross-file relationship tracing, whole word matching |
-| precision_glob | Glob | Presets (typescript/javascript/styles/config/tests), size/date/content filters, output modes (count_only/paths_only/with_stats/with_preview), backend selection (fast-glob/ripgrep), symlink following |
-| precision_exec | Bash | Batch commands with parallel execution, expectation checking (exit code/stdout/stderr), retry engine (configurable backoff for transient failures), pattern-based termination, safe mode (blocks rm -rf, dd, etc.), background process lifecycle management |
-| precision_fetch | WebFetch | Full HTTP client: 7 methods (GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS), service registry with auto-auth, per-request auth (none/bearer/basic/api-key/custom-headers), 12 extraction modes (raw/text/json/markdown/structured/summary/code_blocks/tables/links/metadata/readable/pdf), body encoding (json/form/multipart/raw), query params, CSS selectors, response headers/cookies/redirect chains/timing, 15-min TTL cache |
-| precision_notebook | NotebookEdit | Batch operations with auto-index adjustment, cell targeting by cell_id (with metadata.id fallback), output clearing per cell, auto cell_id generation for nbformat 4.5+ |
-| precision_agent | (unique) | Spawn headless Claude sessions with dossier-based context injection. Background-only execution, multi-provider support (Claude, Gemini, Codex), project context auto-injection, scope/acceptance criteria definition, model override per call |
-| discover | (unique) | Parallel multi-query: run grep + glob + symbol + structural (AST pattern) queries simultaneously, results keyed by query ID |
-| precision_symbols | (unique) | Workspace-wide or per-file symbol search, kind filtering (10 kinds), export/private filtering, signature extraction with JSDoc/docstrings, grouping by file/kind, multi-language (TypeScript, JavaScript, Python, Rust, Go) |
-| precision_config | (unique) | Runtime configuration for precision engine (get/set/reload), sandbox mode, cache tuning, execution defaults, session state KV store, telemetry queries, hook management |
-
-### Batch Operations
-
-Read 10 files, edit 5 files, run 3 commands, fetch 5 URLs — each in a single tool call. Reduces round trips and context overhead.
-
-### Atomic Transactions
-
-precision_edit and precision_write support transaction modes (atomic/partial/none). In atomic mode, if any operation fails, all changes roll back. Every edit generates a rollback ID for manual undo.
-
-### Advanced Matching
-
-precision_edit supports 4 match modes:
-- **exact**: literal string match (default)
-- **fuzzy**: whitespace-insensitive matching
-- **regex**: full regex with capture group support ($1-$9, $$, $&, $`, $')
-- **ast_pattern**: AST-Grep structural patterns with captures ($VAR for single nodes, $$$VAR for sequences) across 18 languages (JavaScript, TypeScript, Python, Rust, Go, C, C++, Java, Kotlin, Swift, Ruby, PHP, C#, Scala, Bash, HTML, CSS, Lua)
-
-### Multi-Format Reading
-
-precision_read handles more than text:
-- **Images** (.png, .jpg, .gif, .webp, .svg): returned as MCP ImageContent blocks — Claude sees them visually
-- **PDFs**: per-page text extraction via pdf-parse, `pages` parameter for ranges (e.g., "1-5"), max 20 pages per request
-- **Jupyter notebooks** (.ipynb): parsed as JSON, formatted with cell types (code/markdown) and outputs
-- **SVG files** get both text content and visual image representation
-
-### Safety
-
-precision_exec includes a safe mode that blocks destructive commands matching patterns like `rm -rf /`, `rmdir /`, `dd if=/dev/`. Expectation checking verifies exit codes and output content after execution.
-
-### Context Expansion
-
-precision_grep can expand matches beyond the matched line to enclosing block, function, or class scope using Tree-Sitter AST analysis.
-
-### HTTP Client & Authentication
-
-precision_fetch operates as a full HTTP client, not just a page fetcher:
-- **Service registry**: Named API services with stored base URLs and credentials. Auto-auth resolves service name to authenticated requests without passing credentials each time
-- **Per-request auth**: 5 auth types (none, bearer, basic, api-key, custom-headers) configurable per URL
-- **Body encoding**: 4 body types (json, form, multipart, raw) with automatic content-type headers
-- **Query parameters**: Key-value params auto-appended to URLs
-- **Response inspection**: Response headers, cookies (with domain/path/expiry), redirect chains, and request timing (DNS/connect/TTFB/total)
-- **401 retry**: Automatic token refresh and retry on authentication failures
-
-## Analysis Engine - 20 Tools
-
-| Category | Tools |
-|----------|-------|
-| Detection | detect_stack, check_versions, scan_patterns, read_config, get_conventions |
-| Code Quality | find_dead_code, get_api_surface, safe_delete_check, find_circular_deps |
-| Validation | detect_breaking_changes, semantic_diff, validate_implementation, validate_edits_preview, validate_api_contract |
-| Security | env_audit, scan_for_secrets, check_permissions |
-| Debugging | parse_error_stack, explain_type_error |
+| Tool | Replaces | Description |
+|------|----------|-------------|
+| `precision_read` | Read | Batch reads, extract modes (content/outline/symbols/ast/lines), image/PDF/notebook support, token budgets with pagination, file state caching |
+| `precision_write` | Write | Batch writes, fail_if_exists/overwrite/backup modes, atomic transactions with rollback, auto directory creation |
+| `precision_edit` | Edit | Batch edits, match modes (exact/fuzzy/regex/ast_pattern), occurrence selection, context hints, atomic transactions with rollback |
+| `precision_grep` | Grep | Batch queries, output modes (count_only/files_only/locations/matches/context), block/function/class context expansion |
+| `precision_glob` | Glob | Presets (typescript/javascript/styles/config/tests), size/date/content filters, output modes (count_only/paths_only/with_stats/with_preview) |
+| `precision_exec` | Bash | Batch commands, expectation checking (exit/stdout/stderr), retry engine, safe mode (blocks rm -rf, dd), background process management |
+| `precision_fetch` | WebFetch | Full HTTP client: 7 methods, service registry with auto-auth, 12 extraction modes, body encoding (json/form/multipart), 15-min TTL cache |
+| `precision_notebook` | NotebookEdit | Batch operations, cell targeting by cell_id, output clearing, auto cell_id generation |
+| `precision_agent` | (unique) | Spawn headless Claude sessions with dossier-based context injection, multi-provider support, background-only execution |
+| `discover` | (unique) | Parallel multi-query: run grep + glob + symbol + structural (AST pattern) queries simultaneously, results keyed by query ID |
+| `precision_symbols` | (unique) | Workspace-wide symbol search, kind filtering (10 kinds), export/private filtering, JSDoc extraction, multi-language support |
+| `precision_config` | (unique) | Runtime configuration: sandbox mode, cache tuning, session state KV store, telemetry queries, hook management |
 
 Key capabilities:
-- **TypeScript Language Service** for precise reference tracking, dead code detection, and breaking change analysis
-- **40+ secret patterns** covering AWS, Azure, Google, GitHub, Stripe, Slack, private keys, and database connection strings
-- **LLM-powered analysis** for convention detection, breaking change assessment, and type error explanation
-- **Virtual snapshot validation** — preview edit impact without modifying files
+- **Batch operations**: read 10 files, edit 5 files, run 3 commands, fetch 5 URLs — each in a single tool call
+- **Atomic transactions**: if any operation in a batch fails, all changes roll back (rollback ID provided for manual undo)
+- **AST-Grep matching**: structural code patterns with captures across 18 languages
+- **Multi-format reading**: images (returned as visual blocks), PDFs (per-page), Jupyter notebooks (structured cell output)
 
-## Project Engine - 20 Tools
+> Full details: [precision-engine.md](precision-engine.md)
 
-| Category | Tools |
-|----------|-------|
-| Scaffolding | scaffold_project, list_templates |
-| Status | plugin_status, project_issues |
-| API | generate_openapi, get_api_routes |
-| Database | get_database_schema, get_prisma_operations, query_database |
-| Maintenance | upgrade_package, analyze_bundle, analyze_dependencies, find_circular_deps |
-| Testing | find_tests_for_file, get_test_coverage, suggest_test_cases, generate_fixture |
-| Types | generate_types, sync_api_types |
-| Git | create_pull_request, resolve_merge_conflict |
+## Project Engine — 26 Tools
+
+Project-wide intelligence layer. Consolidates code analysis, API tooling, database tools, security scanning, runtime profiling, and scaffolding in a single MCP server with a consistent `project_*` naming convention.
+
+| Tool | Description |
+|------|-------------|
+| `project_code_dead` | Find unused/dead exports using the TypeScript Language Service |
+| `project_code_safe_delete` | Check if a symbol at file:line:column can be safely deleted |
+| `project_code_preview_edits` | Validate proposed edits against TypeScript compiler in a virtual filesystem — no disk writes |
+| `project_code_breaking` | Detect breaking API changes between two git refs using LLM analysis |
+| `project_code_semantic_diff` | Summarize semantic meaning of code changes between git refs |
+| `project_code_surface` | Extract the public and internal API surface of a project |
+| `project_api_routes` | Discover all HTTP routes (Next.js, Express, Fastify, Hono) |
+| `project_api_spec` | Generate OpenAPI 3.0.3 spec from discovered routes |
+| `project_api_validate` | Validate a live API against an OpenAPI spec with real HTTP requests |
+| `project_api_sync` | Detect type drift between backend route handlers and frontend fetch calls |
+| `project_db_schema` | Extract schema from Prisma, Drizzle, or raw SQL migration files |
+| `project_db_query` | Execute SQL queries against PostgreSQL, MySQL, or SQLite |
+| `project_db_prisma` | Analyze Prisma client usage — operations, model stats, N+1 detection |
+| `project_deps_analyze` | Analyze package dependencies: usage, outdated status, unused packages |
+| `project_deps_circular` | Find circular import dependencies using depth-first search |
+| `project_deps_upgrade` | Analyze and apply package upgrades with changelog and breaking change detection |
+| `project_runtime_memory` | Profile memory usage of a running process with leak detection via linear regression |
+| `project_runtime_profile` | Benchmark a specific function with statistical timing analysis |
+| `project_runtime_logs` | Parse and analyze log files or command output with anomaly detection |
+| `project_security_secrets` | Scan files for hardcoded secrets using 40+ patterns (AWS, Stripe, GitHub, etc.) |
+| `project_security_permissions` | Detect sensitive API usage — filesystem, network, process, and crypto operations |
+| `project_security_env` | Audit environment variable usage — missing, unused, undocumented, type mismatches |
+| `scaffold` | Generate a new project from a template with variable substitution |
+| `bundle_analyze` | Analyze build output for bundle size, large modules, duplicates, and optimizations |
+| `project_test_coverage` | Parse test coverage reports (LCOV, Istanbul/c8) and return coverage metrics |
+| `project_test_find` | Find test files that test a given source file, with confidence scoring |
 
 Key capabilities:
-- **Multi-ORM schema parsing**: Prisma, Drizzle, TypeORM, and raw SQL
-- **Multi-database query execution**: PostgreSQL, MySQL, SQLite with safety guards (readonly mode, auto-LIMIT, EXPLAIN plans)
-- **Route extraction**: Next.js, Express, Fastify, Hono
-- **Coverage report parsing**: lcov and istanbul formats
-- **Bundle analysis**: size analysis, duplicate detection, tree-shaking impact, optimization suggestions
-- **OpenAPI 3.0.3 generation** from discovered API routes
+- **TypeScript Language Service**: compiler-grade analysis for dead code, safe deletion, and virtual edit validation
+- **Multi-ORM database support**: Prisma, Drizzle, raw SQL schema parsing; PostgreSQL, MySQL, SQLite query execution
+- **LLM-powered analysis**: breaking change detection and semantic diff with configurable model (haiku/sonnet/opus)
+- **Security scanning**: 40+ secret patterns, 330+ permission patterns, env var auditing
 
+> Full details: [project-engine.md](project-engine.md)
 
-## Frontend Engine - 11 Tools
+## Frontend Engine — 14 Tools
 
-| Tool | Purpose |
-|------|---------|
-| get_react_component_tree | Extract component hierarchy with props and parent-child relationships |
-| analyze_stacking_context | Debug z-index issues and stacking context creation |
-| analyze_responsive_breakpoints | Audit Tailwind responsive classes across breakpoints |
-| trace_component_state | Trace state and props through component trees, detect prop drilling |
-| analyze_render_triggers | Find unnecessary re-renders, missing memoization, unstable references |
-| analyze_layout_hierarchy | Debug CSS layout with sizing constraints and Tailwind class parsing |
-| diagnose_overflow | Find overflow causes with constraint chain analysis |
-| get_accessibility_tree | Generate accessibility tree with WCAG 2.1 AA compliance checking |
-| get_sizing_strategy | Analyze how element size is determined (fixed, flex, grid, content) |
-| analyze_event_flow | Trace event propagation, detect nested clickable conflicts |
-| analyze_tailwind_conflicts | Find conflicting and redundant Tailwind classes |
+Static analysis tools for React/TypeScript frontends. All analysis is AST-based — no runtime, no DOM, no browser required.
 
-## Registry Engine - 7 Tools
+| Tool | Description |
+|------|-------------|
+| `frontend_component_tree` | Parse JSX/TSX and build a component hierarchy tree with props and parent-child relationships |
+| `frontend_component_state` | Trace React state and props through component trees; detect prop drilling and anti-patterns |
+| `frontend_render_triggers` | Identify what causes re-renders: state, props, inline definitions, context subscriptions |
+| `frontend_layout_hierarchy` | Build a layout tree showing display types, sizing constraints, flex/grid properties, and overflow |
+| `frontend_sizing_strategy` | Analyze how a specific element's dimensions are computed, walking the ancestor constraint chain |
+| `frontend_overflow` | Diagnose CSS overflow issues and generate fix recommendations with trade-off explanations |
+| `frontend_stacking_context` | Analyze z-index and stacking contexts; detect conflicts and portal destinations |
+| `frontend_responsive_breakpoints` | Audit Tailwind responsive classes across breakpoints; detect missing base styles and gaps |
+| `frontend_tailwind_conflicts` | Detect conflicting, redundant, and contradictory Tailwind classes |
+| `frontend_accessibility_tree` | Build an ARIA accessibility tree with WCAG 2.1 AA compliance checking |
+| `frontend_event_flow` | Analyze event propagation; detect nested clickable conflicts and missing keyboard alternatives |
+| `frontend_client_boundary` | Analyze Next.js App Router `"use client"`/`"use server"` boundaries and optimization opportunities |
+| `frontend_error_boundaries` | Audit React/Next.js error boundary coverage; detect missing `error.tsx` and coverage gaps |
+| `frontend_hook_dependencies` | Audit React hook dependency arrays for stale closures, missing/unnecessary/unstable dependencies |
 
-| Tool | Purpose |
-|------|---------|
-| search_skills | Search skills by query and category |
-| search_agents | Search agents by capability |
-| search_tools | Search MCP tools |
-| recommend_skills | Context-aware skill recommendations |
-| get_skill_content | Load skill content into context |
-| get_agent_content | Load agent definition |
-| skill_dependencies | Resolve skill dependency chain |
+Key capabilities:
+- **AST-based analysis**: all tools use the TypeScript compiler API — no runtime required
+- **Tailwind-aware**: resolves breakpoints from `tailwind.config.js`, classifies utilities by CSS property group
+- **Next.js App Router support**: client/server boundary analysis, route segment error boundary coverage
+- **WCAG 2.1 AA**: checks roles, focus order, keyboard interactions, and ARIA composite patterns
+
+> Full details: [frontend-engine.md](frontend-engine.md)
+
+## Analytics Engine — 7 Tools
+
+Session intelligence daemon. Tracks token usage, API costs, tool call metrics, agent lifecycle, file hotspots, and anomalies. Renders into tmux panes via a mini (4-line) or full (4-page interactive) TUI dashboard.
+
+| Tool | Description |
+|------|-------------|
+| `analytics_dashboard` | Launch, stop, or check status of TUI dashboard panes in tmux |
+| `analytics_query` | Ad-hoc queries against live session data: tokens, cache, commands, agents, files, cost, health |
+| `analytics_budget` | Set, check, or clear a session spending/token budget with configurable warn thresholds |
+| `analytics_tag` | Add, remove, or list session tags; auto-suggest tags from JSONL content analysis |
+| `analytics_export` | Export session data in JSON, CSV, or markdown; supports current, historical, and cross-project scopes |
+| `analytics_config` | View, update, or hot-reload analytics engine configuration |
+| `analytics_sync` | Sync Claude JSONL session files into the global SQLite database |
+
+Key capabilities:
+- **Cost tracking**: per-model pricing map computed from Claude JSONL session files
+- **Anomaly detection**: 6 rule types including cache degradation, error spikes, and token burn
+- **Cross-session history**: global SQLite DB (`~/.claude/.goodvibes/analytics/analytics.db`) with tag filtering
+- **TUI dashboards**: spawns standalone tmux pane processes (mini: 4-line statusline; full: 4-page interactive Ink/React app)
+
+> Full details: [analytics-engine.md](analytics-engine.md)
+
+## Registry Engine — 7 Tools
+
+Discovery and search layer for skills, agents, and tools. Uses Fuse.js fuzzy search indexed over YAML registry files. Supports deferred loading — tools are registered only when activated via `ToolSearch`.
+
+| Tool | Description |
+|------|-------------|
+| `search_skills` | Keyword/semantic search over the 25-skill registry |
+| `search_agents` | Search the 11-agent registry by expertise area |
+| `search_tools` | Search the 66-tool registry by functionality |
+| `recommend_skills` | Analyze a task description and recommend relevant skills with context classification |
+| `get_skill_content` | Load a skill's full content into context for immediate use |
+| `get_agent_content` | Load an agent definition into context |
+| `skill_dependencies` | Resolve a skill's dependency chain (all transitively required skills) |
+
+Key capabilities:
+- **Fuzzy search**: Fuse.js with weighted fields (description 0.4, name 0.3, keywords 0.3) and relevance scoring
+- **Lazy loading**: server starts instantly; registry indexes are loaded on first use (single-flight pattern)
+- **Deferred tools**: all 7 tools use `defer_loading: true` — loaded on-demand via `ToolSearch` to minimize startup cost
+- **Three registries**: skills (25), agents (11), tools (66) — each indexed independently with Fuse.js
+
+> Full details: [registry-engine.md](registry-engine.md)
 
 ## Agents
 
