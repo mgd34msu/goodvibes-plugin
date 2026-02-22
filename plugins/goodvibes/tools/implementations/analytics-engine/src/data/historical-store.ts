@@ -144,12 +144,12 @@ export class HistoricalStore {
       avg.cost.output += m.cost.output;
       avg.cost.total += m.cost.total;
       avg.cost.saved += m.cost.saved;
-      // commands
-      avg.commands.total += m.commands.total;
-      avg.commands.success_rate += m.commands.success_rate;
-      avg.commands.avg_duration_ms += m.commands.avg_duration_ms;
-      avg.commands.total_duration_ms += m.commands.total_duration_ms;
-      avg.commands.failures += m.commands.failures;
+      // tools
+      avg.tools.total += m.tools.total;
+      avg.tools.success_rate += m.tools.success_rate;
+      avg.tools.avg_duration_ms += m.tools.avg_duration_ms;
+      avg.tools.total_duration_ms += m.tools.total_duration_ms;
+      avg.tools.failures += m.tools.failures;
       // agents
       avg.agents.spawned += m.agents.spawned;
       avg.agents.max_concurrent += m.agents.max_concurrent;
@@ -182,11 +182,11 @@ export class HistoricalStore {
     avg.cost.output /= n;
     avg.cost.total /= n;
     avg.cost.saved /= n;
-    avg.commands.total /= n;
-    avg.commands.success_rate /= n;
-    avg.commands.avg_duration_ms /= n;
-    avg.commands.total_duration_ms /= n;
-    avg.commands.failures /= n;
+    avg.tools.total /= n;
+    avg.tools.success_rate /= n;
+    avg.tools.avg_duration_ms /= n;
+    avg.tools.total_duration_ms /= n;
+    avg.tools.failures /= n;
     avg.agents.spawned /= n;
     avg.agents.max_concurrent /= n;
     avg.agents.total_tokens /= n;
@@ -301,7 +301,7 @@ function _emptyMetrics(): SessionMetrics {
     tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
     cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
     cost: { input: 0, output: 0, total: 0, saved: 0 },
-    commands: {
+    tools: {
       total: 0,
       success_rate: 0,
       avg_duration_ms: 0,
@@ -334,11 +334,11 @@ function _flattenMetrics(m: SessionMetrics): Record<string, number> {
     'cost.output': m.cost.output,
     'cost.total': m.cost.total,
     'cost.saved': m.cost.saved,
-    'commands.total': m.commands.total,
-    'commands.success_rate': m.commands.success_rate,
-    'commands.avg_duration_ms': m.commands.avg_duration_ms,
-    'commands.total_duration_ms': m.commands.total_duration_ms,
-    'commands.failures': m.commands.failures,
+    'tools.total': m.tools.total,
+    'tools.success_rate': m.tools.success_rate,
+    'tools.avg_duration_ms': m.tools.avg_duration_ms,
+    'tools.total_duration_ms': m.tools.total_duration_ms,
+    'tools.failures': m.tools.failures,
     'agents.spawned': m.agents.spawned,
     'agents.max_concurrent': m.agents.max_concurrent,
     'agents.total_tokens': m.agents.total_tokens,

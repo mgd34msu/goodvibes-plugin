@@ -11886,19 +11886,19 @@ function renderCost(state, format) {
   return lines.join("\n");
 }
 function renderCommands(state, format) {
-  const { commands } = state.metrics;
+  const { tools } = state.metrics;
   if (format === "minimal") {
-    return `commands: total=${commands.total} success=${formatPercent(commands.success_rate)} failures=${commands.failures}`;
+    return `tools: total=${tools.total} success=${formatPercent(tools.success_rate)} failures=${tools.failures}`;
   }
   const lines = [
-    "=== Commands ===",
-    `Total:       ${commands.total}`,
-    `Success rate: ${formatPercent(commands.success_rate)}`,
-    `Failures:    ${commands.failures}`,
-    `Avg duration: ${formatDuration(commands.avg_duration_ms)}`
+    "=== Tools ===",
+    `Total:       ${tools.total}`,
+    `Success rate: ${formatPercent(tools.success_rate)}`,
+    `Failures:    ${tools.failures}`,
+    `Avg duration: ${formatDuration(tools.avg_duration_ms)}`
   ];
-  if (format === "verbose" && commands.slowest !== null) {
-    lines.push(`Slowest: ${commands.slowest.command} (${formatDuration(commands.slowest.duration_ms)})`);
+  if (format === "verbose" && tools.slowest !== null) {
+    lines.push(`Slowest: ${tools.slowest.tool} (${formatDuration(tools.slowest.duration_ms)})`);
   }
   return lines.join("\n");
 }
@@ -12681,7 +12681,7 @@ function _emptyMetrics() {
     tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
     cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
     cost: { input: 0, output: 0, total: 0, saved: 0 },
-    commands: {
+    tools: {
       total: 0,
       success_rate: 0,
       avg_duration_ms: 0,
@@ -12713,11 +12713,11 @@ function _flattenMetrics(m) {
     "cost.output": m.cost.output,
     "cost.total": m.cost.total,
     "cost.saved": m.cost.saved,
-    "commands.total": m.commands.total,
-    "commands.success_rate": m.commands.success_rate,
-    "commands.avg_duration_ms": m.commands.avg_duration_ms,
-    "commands.total_duration_ms": m.commands.total_duration_ms,
-    "commands.failures": m.commands.failures,
+    "tools.total": m.tools.total,
+    "tools.success_rate": m.tools.success_rate,
+    "tools.avg_duration_ms": m.tools.avg_duration_ms,
+    "tools.total_duration_ms": m.tools.total_duration_ms,
+    "tools.failures": m.tools.failures,
     "agents.spawned": m.agents.spawned,
     "agents.max_concurrent": m.agents.max_concurrent,
     "agents.total_tokens": m.agents.total_tokens,
@@ -12861,11 +12861,11 @@ var init_historical_store = __esm({
           avg.cost.output += m.cost.output;
           avg.cost.total += m.cost.total;
           avg.cost.saved += m.cost.saved;
-          avg.commands.total += m.commands.total;
-          avg.commands.success_rate += m.commands.success_rate;
-          avg.commands.avg_duration_ms += m.commands.avg_duration_ms;
-          avg.commands.total_duration_ms += m.commands.total_duration_ms;
-          avg.commands.failures += m.commands.failures;
+          avg.tools.total += m.tools.total;
+          avg.tools.success_rate += m.tools.success_rate;
+          avg.tools.avg_duration_ms += m.tools.avg_duration_ms;
+          avg.tools.total_duration_ms += m.tools.total_duration_ms;
+          avg.tools.failures += m.tools.failures;
           avg.agents.spawned += m.agents.spawned;
           avg.agents.max_concurrent += m.agents.max_concurrent;
           avg.agents.total_tokens += m.agents.total_tokens;
@@ -12894,11 +12894,11 @@ var init_historical_store = __esm({
         avg.cost.output /= n;
         avg.cost.total /= n;
         avg.cost.saved /= n;
-        avg.commands.total /= n;
-        avg.commands.success_rate /= n;
-        avg.commands.avg_duration_ms /= n;
-        avg.commands.total_duration_ms /= n;
-        avg.commands.failures /= n;
+        avg.tools.total /= n;
+        avg.tools.success_rate /= n;
+        avg.tools.avg_duration_ms /= n;
+        avg.tools.total_duration_ms /= n;
+        avg.tools.failures /= n;
         avg.agents.spawned /= n;
         avg.agents.max_concurrent /= n;
         avg.agents.total_tokens /= n;
@@ -13006,7 +13006,7 @@ function extractSections(state, sections) {
     result["cache"] = state.metrics.cache;
   }
   if (sections.includes("commands")) {
-    result["commands"] = state.metrics.commands;
+    result["commands"] = state.metrics.tools;
   }
   if (sections.includes("agents")) {
     result["agents"] = state.metrics.agents;
@@ -13032,7 +13032,7 @@ function extractArchiveSections(archive, sections) {
   const m = archive.metrics;
   if (sections.includes("tokens")) result["tokens"] = m.tokens;
   if (sections.includes("cache")) result["cache"] = m.cache;
-  if (sections.includes("commands")) result["commands"] = m.commands;
+  if (sections.includes("commands")) result["commands"] = m.tools;
   if (sections.includes("agents")) result["agents"] = m.agents;
   if (sections.includes("files")) result["files"] = m.files;
   if (sections.includes("cost")) result["cost"] = m.cost;
@@ -27164,7 +27164,7 @@ function emptySessionMetrics() {
     tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
     cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
     cost: { input: 0, output: 0, total: 0, saved: 0 },
-    commands: { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
+    tools: { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
     agents: { spawned: 0, max_concurrent: 0, total_tokens: 0, active: 0, completed: 0 },
     files: { unique_read: 0, modified: 0, created: 0, conflicts: 0 }
   };
@@ -27207,7 +27207,7 @@ function emptyDashboardState(sessionId, projectHash, startedAt) {
 }
 __name(emptyDashboardState, "emptyDashboardState");
 function computeHealthStatus(anomalies, metrics) {
-  const errorRate = 1 - metrics.commands.success_rate;
+  const errorRate = 1 - metrics.tools.success_rate;
   const hasAlert = anomalies.some((a) => a.severity === "alert");
   const hasWarning = anomalies.some((a) => a.severity === "warning");
   if (hasAlert || errorRate > 0.25) return "alert";
@@ -27306,9 +27306,9 @@ var Aggregator = class _Aggregator {
   jsonlReader = null;
   // Accumulated JSONL records from the current file, merged in batches.
   jsonlRecords = [];
-  // Cumulative command counters — never decrease even when sliding window drops old records.
-  cumulativeCmdTotal = 0;
-  cumulativeCmdFailures = 0;
+  // Cumulative tool counters — never decrease even when sliding window drops old records.
+  cumulativeToolTotal = 0;
+  cumulativeToolFailures = 0;
   // Resolved path to the active JSONL file (null if not found).
   activeJsonlPath = null;
   // Session ID resolved from the active JSONL filename.
@@ -27822,35 +27822,35 @@ var Aggregator = class _Aggregator {
         }
       }
     }
-    const commands = (() => {
-      let jsonlCmdTotal = 0;
-      let jsonlCmdFailures = 0;
+    const tools = (() => {
+      let jsonlToolTotal = 0;
+      let jsonlToolFailures = 0;
       for (const tc of jsonlToolCalls) {
         const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
-        if (toolName === "bash" || toolName === "precision_exec" || toolName === "exec") {
-          jsonlCmdTotal++;
-          if (tc.isError) jsonlCmdFailures++;
+        if (toolName.startsWith("precision_") || toolName === "discover") {
+          jsonlToolTotal++;
+          if (tc.isError) jsonlToolFailures++;
         }
       }
-      if (jsonlCmdTotal >= this.cumulativeCmdTotal) {
-        this.cumulativeCmdTotal = jsonlCmdTotal;
-        this.cumulativeCmdFailures = jsonlCmdFailures;
+      if (jsonlToolTotal >= this.cumulativeToolTotal) {
+        this.cumulativeToolTotal = jsonlToolTotal;
+        this.cumulativeToolFailures = jsonlToolFailures;
       }
-      const effectiveCmdTotal = Math.max(jsonlCmdTotal, this.cumulativeCmdTotal);
-      const effectiveCmdFailures = Math.min(this.cumulativeCmdFailures, effectiveCmdTotal);
-      if (effectiveCmdTotal > 0) {
-        const successRate = (effectiveCmdTotal - effectiveCmdFailures) / effectiveCmdTotal;
+      const effectiveToolTotal = Math.max(jsonlToolTotal, this.cumulativeToolTotal);
+      const effectiveToolFailures = Math.min(this.cumulativeToolFailures, effectiveToolTotal);
+      if (effectiveToolTotal > 0) {
+        const successRate = (effectiveToolTotal - effectiveToolFailures) / effectiveToolTotal;
         const execBreakdown2 = telemetrySummary?.by_tool["exec"];
         const avgDuration = execBreakdown2?.avg_ms ?? 0;
         return {
-          total: effectiveCmdTotal,
+          total: effectiveToolTotal,
           success_rate: successRate,
           avg_duration_ms: avgDuration,
           // total_duration_ms is approximate: telemetry avg_ms (all exec calls) × JSONL
-          // command count (may differ from telemetry count). No per-call duration sum is
+          // tool count (may differ from telemetry count). No per-call duration sum is
           // exposed by ToolBreakdown, so this is the best available estimate.
-          total_duration_ms: avgDuration * effectiveCmdTotal,
-          failures: effectiveCmdFailures,
+          total_duration_ms: avgDuration * effectiveToolTotal,
+          failures: effectiveToolFailures,
           slowest: null
         };
       }
@@ -27875,7 +27875,7 @@ var Aggregator = class _Aggregator {
       created: createdFiles,
       conflicts: 0
     };
-    const metrics = { tokens, cache, cost, commands, agents, files };
+    const metrics = { tokens, cache, cost, tools, agents, files };
     const toolsBreakdown = telemetrySummary?.by_tool ?? {};
     const recentActivity = this.buildRecentActivity(jsonlToolCalls, agentActivities);
     const fileHotspots = this.buildFileHotspots(

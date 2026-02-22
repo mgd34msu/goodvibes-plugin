@@ -228,14 +228,14 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
   describe('initial state', () => {
     it('starts with cumulative counters at zero', () => {
       const counters = getCumulativeCounters(agg);
-      expect(counters.cumulativeCmdTotal).toBe(0);
-      expect(counters.cumulativeCmdFailures).toBe(0);
+      expect(counters.cumulativeToolTotal).toBe(0);
+      expect(counters.cumulativeToolFailures).toBe(0);
     });
 
     it('returns zero command metrics when no tool calls exist', () => {
       mockJsonlReader.extractToolCalls.mockReturnValue([]);
       const state = callAggregate(agg);
-      // When effectiveCmdTotal is 0, the commands block is not built from JSONL.
+      // When effectiveToolTotal is 0, the tools block is not built from JSONL.
       // The state.metrics.tools.total may fall back to 0 from telemetry.
       expect(state.metrics.tools.total).toBe(0);
     });
@@ -297,7 +297,7 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
 
       // The effective total must NOT drop below the high-water mark of 5.
       expect(state.metrics.tools.total).toBe(5);
-      // The cumulative counter stays at 5 (not updated when jsonlCmdTotal < cumulativeCmdTotal).
+      // The cumulative counter stays at 5 (not updated when jsonlToolTotal < cumulativeToolTotal).
       expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(5);
     });
 
@@ -316,9 +316,9 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       ]);
       const state = callAggregate(agg);
 
-      // effectiveCmdTotal = max(3, 8) = 8 — count is preserved.
+      // effectiveToolTotal = max(3, 8) = 8 — count is preserved.
       expect(state.metrics.tools.total).toBe(8);
-      // cumulativeCmdTotal stays at 8 (3 < 8, no update).
+      // cumulativeToolTotal stays at 8 (3 < 8, no update).
       expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(8);
     });
 
@@ -332,7 +332,7 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       ]);
       callAggregate(agg);
 
-      // >= condition: cumulativeCmdTotal updated to 5 (same value, 0 failures).
+      // >= condition: cumulativeToolTotal updated to 5 (same value, 0 failures).
       expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(5);
       // Failures are reset to 0 since new batch has none.
       expect(getCumulativeCounters(agg).cumulativeToolFailures).toBe(0);
@@ -358,8 +358,8 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
 
   describe('failure count clamping', () => {
     it('clamps effectiveCmdFailures to effectiveCmdTotal', () => {
-      // Edge case: if cumulativeCmdFailures somehow exceeds the effective total,
-      // effectiveCmdFailures = min(cumulativeCmdFailures, effectiveCmdTotal).
+      // Edge case: if cumulativeToolFailures somehow exceeds the effective total,
+      // effectiveToolFailures = min(cumulativeToolFailures, effectiveToolTotal).
       // Seed unrealistic state: 10 cumulative total, 10 failures.
       setInternals(agg, { cumulativeToolTotal: 10, cumulativeToolFailures: 10 });
 
@@ -369,15 +369,15 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       ]);
       const state = callAggregate(agg);
 
-      // effectiveCmdTotal = max(2, 10) = 10
-      // effectiveCmdFailures = min(10, 10) = 10
+      // effectiveToolTotal = max(2, 10) = 10
+      // effectiveToolFailures = min(10, 10) = 10
       // success_rate = (10 - 10) / 10 = 0
       expect(state.metrics.tools.total).toBe(10);
       expect(state.metrics.tools.failures).toBe(10);
       expect(state.metrics.tools.success_rate).toBe(0);
     });
 
-    it('clamps effectiveCmdFailures when failures exceed new effective total', () => {
+    it('clamps effectiveToolFailures when failures exceed new effective total', () => {
       // Seed: 20 total, 15 failures.
       setInternals(agg, { cumulativeToolTotal: 20, cumulativeToolFailures: 15 });
 
@@ -387,8 +387,8 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       ]);
       const state = callAggregate(agg);
 
-      // effectiveCmdTotal = max(3, 20) = 20
-      // effectiveCmdFailures = min(15, 20) = 15
+      // effectiveToolTotal = max(3, 20) = 20
+      // effectiveToolFailures = min(15, 20) = 15
       expect(state.metrics.tools.total).toBe(20);
       expect(state.metrics.tools.failures).toBe(15);
       expect(state.metrics.tools.success_rate).toBeCloseTo(5 / 20, 5);

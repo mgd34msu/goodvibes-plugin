@@ -115,7 +115,7 @@ export interface ToolMetrics {
   avg_duration_ms: number;
   total_duration_ms: number;
   failures: number;
-  slowest: { command: string; duration_ms: number } | null;
+  slowest: { tool: string; duration_ms: number } | null;
 }
 
 export interface AgentMetrics {

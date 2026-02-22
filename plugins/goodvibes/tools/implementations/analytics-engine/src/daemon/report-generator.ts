@@ -129,7 +129,7 @@ export class ReportGenerator {
       this.renderTokenUsage(state.metrics),
       this.renderCost(state.metrics),
       this.renderCachePerformance(state.metrics),
-      this.renderCommands(state.metrics),
+      this.renderTools(state.metrics),
       this.renderAgents(state),
       this.renderFileHotspots(state.file_hotspots),
       this.renderToolBreakdown(state.tools_breakdown),
@@ -210,9 +210,9 @@ export class ReportGenerator {
 
   private renderSummary(state: DashboardState): string {
     const uptime = formatUptime(state.uptime_ms);
-    const { commands } = state.metrics;
-    const total = commands.total;
-    const successRate = formatPercent(commands.success_rate);
+    const { tools } = state.metrics;
+    const total = tools.total;
+    const successRate = formatPercent(tools.success_rate);
     const health = state.health_status;
 
     return [
@@ -280,22 +280,22 @@ export class ReportGenerator {
     ].join('\n');
   }
 
-  private renderCommands(metrics: SessionMetrics): string {
-    const { commands } = metrics;
-    const slowest = commands.slowest
-      ? `${commands.slowest.command} (${formatDuration(commands.slowest.duration_ms)})`
+  private renderTools(metrics: SessionMetrics): string {
+    const { tools } = metrics;
+    const slowest = tools.slowest
+      ? `${tools.slowest.tool} (${formatDuration(tools.slowest.duration_ms)})`
       : 'N/A';
 
     return [
-      '## Commands',
+      '## Tools',
       '',
       '| Metric | Value |',
       '|--------|-------|',
-      `| Total | ${formatNumber(commands.total)} |`,
-      `| Success Rate | ${formatPercent(commands.success_rate)} |`,
-      `| Failures | ${formatNumber(commands.failures)} |`,
-      `| Avg Duration | ${formatDuration(commands.avg_duration_ms)} |`,
-      `| Total Duration | ${formatDuration(commands.total_duration_ms)} |`,
+      `| Total | ${formatNumber(tools.total)} |`,
+      `| Success Rate | ${formatPercent(tools.success_rate)} |`,
+      `| Failures | ${formatNumber(tools.failures)} |`,
+      `| Avg Duration | ${formatDuration(tools.avg_duration_ms)} |`,
+      `| Total Duration | ${formatDuration(tools.total_duration_ms)} |`,
       `| Slowest | ${slowest} |`,
     ].join('\n');
   }
@@ -435,10 +435,10 @@ export class ReportGenerator {
       `| Cache Hit Rate | ${formatPercent(current.cache.hit_rate)} | ${formatPercent(avg.cache.hit_rate)} | ${cacheDelta ? formatPrecomputedDelta(cacheDelta) : 'N/A'} |`,
     );
 
-    // Commands row
-    const cmdDelta = deltas['commands.success_rate'];
+    // Tools row
+    const cmdDelta = deltas['tools.success_rate'];
     lines.push(
-      `| Command Success | ${formatPercent(current.commands.success_rate)} | ${formatPercent(avg.commands.success_rate)} | ${cmdDelta ? formatPrecomputedDelta(cmdDelta) : 'N/A'} |`,
+      `| Tool Success | ${formatPercent(current.tools.success_rate)} | ${formatPercent(avg.tools.success_rate)} | ${cmdDelta ? formatPrecomputedDelta(cmdDelta) : 'N/A'} |`,
     );
 
     return lines.join('\n');
@@ -448,7 +448,7 @@ export class ReportGenerator {
     const recs: string[] = [];
 
     // Cache hit rate recommendations
-    const { cache, commands, tokens, agents } = state.metrics;
+    const { cache, tools, tokens, agents } = state.metrics;
     if (cache.hit_rate < 0.5) {
       recs.push('- **Low cache hit rate** — Consider reviewing precision_read extract modes (use `outline` or `symbols` instead of `content` where possible).');
     } else if (cache.hit_rate < 0.7) {
@@ -456,8 +456,8 @@ export class ReportGenerator {
     }
 
     // Error rate recommendations
-    if (commands.total > 0 && commands.success_rate < 0.9) {
-      recs.push(`- **Elevated failure rate** (${formatPercent(1 - commands.success_rate)}) — Review recent failures in the tool breakdown above.`);
+    if (tools.total > 0 && tools.success_rate < 0.9) {
+      recs.push(`- **Elevated failure rate** (${formatPercent(1 - tools.success_rate)}) — Review recent failures in the tool breakdown above.`);
     }
 
     // Token efficiency recommendations

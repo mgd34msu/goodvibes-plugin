@@ -372,21 +372,21 @@ function renderCost(state: DashboardState, format: AnalyticsQueryInput['format']
   return lines.join('\n');
 }
 
-/** Render shell command execution metrics. */
+/** Render tool execution metrics. */
 function renderCommands(state: DashboardState, format: AnalyticsQueryInput['format']): string {
-  const { commands } = state.metrics;
+  const { tools } = state.metrics;
   if (format === 'minimal') {
-    return `commands: total=${commands.total} success=${formatPercent(commands.success_rate)} failures=${commands.failures}`;
+    return `tools: total=${tools.total} success=${formatPercent(tools.success_rate)} failures=${tools.failures}`;
   }
   const lines = [
-    '=== Commands ===',
-    `Total:       ${commands.total}`,
-    `Success rate: ${formatPercent(commands.success_rate)}`,
-    `Failures:    ${commands.failures}`,
-    `Avg duration: ${formatDuration(commands.avg_duration_ms)}`,
+    '=== Tools ===',
+    `Total:       ${tools.total}`,
+    `Success rate: ${formatPercent(tools.success_rate)}`,
+    `Failures:    ${tools.failures}`,
+    `Avg duration: ${formatDuration(tools.avg_duration_ms)}`,
   ];
-  if (format === 'verbose' && commands.slowest !== null) {
-    lines.push(`Slowest: ${commands.slowest.command} (${formatDuration(commands.slowest.duration_ms)})`);
+  if (format === 'verbose' && tools.slowest !== null) {
+    lines.push(`Slowest: ${tools.slowest.tool} (${formatDuration(tools.slowest.duration_ms)})`);
   }
   return lines.join('\n');
 }

@@ -2719,7 +2719,7 @@ function emptySessionMetrics() {
     tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
     cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
     cost: { input: 0, output: 0, total: 0, saved: 0 },
-    commands: { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
+    tools: { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
     agents: { spawned: 0, max_concurrent: 0, total_tokens: 0, active: 0, completed: 0 },
     files: { unique_read: 0, modified: 0, created: 0, conflicts: 0 }
   };
@@ -2762,7 +2762,7 @@ function emptyDashboardState(sessionId, projectHash, startedAt) {
 }
 __name(emptyDashboardState, "emptyDashboardState");
 function computeHealthStatus(anomalies, metrics) {
-  const errorRate = 1 - metrics.commands.success_rate;
+  const errorRate = 1 - metrics.tools.success_rate;
   const hasAlert = anomalies.some((a) => a.severity === "alert");
   const hasWarning = anomalies.some((a) => a.severity === "warning");
   if (hasAlert || errorRate > 0.25) return "alert";
@@ -2861,9 +2861,9 @@ var Aggregator = class _Aggregator {
   jsonlReader = null;
   // Accumulated JSONL records from the current file, merged in batches.
   jsonlRecords = [];
-  // Cumulative command counters — never decrease even when sliding window drops old records.
-  cumulativeCmdTotal = 0;
-  cumulativeCmdFailures = 0;
+  // Cumulative tool counters — never decrease even when sliding window drops old records.
+  cumulativeToolTotal = 0;
+  cumulativeToolFailures = 0;
   // Resolved path to the active JSONL file (null if not found).
   activeJsonlPath = null;
   // Session ID resolved from the active JSONL filename.
@@ -3377,35 +3377,35 @@ var Aggregator = class _Aggregator {
         }
       }
     }
-    const commands = (() => {
-      let jsonlCmdTotal = 0;
-      let jsonlCmdFailures = 0;
+    const tools = (() => {
+      let jsonlToolTotal = 0;
+      let jsonlToolFailures = 0;
       for (const tc of jsonlToolCalls) {
         const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
-        if (toolName === "bash" || toolName === "precision_exec" || toolName === "exec") {
-          jsonlCmdTotal++;
-          if (tc.isError) jsonlCmdFailures++;
+        if (toolName.startsWith("precision_") || toolName === "discover") {
+          jsonlToolTotal++;
+          if (tc.isError) jsonlToolFailures++;
         }
       }
-      if (jsonlCmdTotal >= this.cumulativeCmdTotal) {
-        this.cumulativeCmdTotal = jsonlCmdTotal;
-        this.cumulativeCmdFailures = jsonlCmdFailures;
+      if (jsonlToolTotal >= this.cumulativeToolTotal) {
+        this.cumulativeToolTotal = jsonlToolTotal;
+        this.cumulativeToolFailures = jsonlToolFailures;
       }
-      const effectiveCmdTotal = Math.max(jsonlCmdTotal, this.cumulativeCmdTotal);
-      const effectiveCmdFailures = Math.min(this.cumulativeCmdFailures, effectiveCmdTotal);
-      if (effectiveCmdTotal > 0) {
-        const successRate = (effectiveCmdTotal - effectiveCmdFailures) / effectiveCmdTotal;
+      const effectiveToolTotal = Math.max(jsonlToolTotal, this.cumulativeToolTotal);
+      const effectiveToolFailures = Math.min(this.cumulativeToolFailures, effectiveToolTotal);
+      if (effectiveToolTotal > 0) {
+        const successRate = (effectiveToolTotal - effectiveToolFailures) / effectiveToolTotal;
         const execBreakdown2 = telemetrySummary?.by_tool["exec"];
         const avgDuration = execBreakdown2?.avg_ms ?? 0;
         return {
-          total: effectiveCmdTotal,
+          total: effectiveToolTotal,
           success_rate: successRate,
           avg_duration_ms: avgDuration,
           // total_duration_ms is approximate: telemetry avg_ms (all exec calls) × JSONL
-          // command count (may differ from telemetry count). No per-call duration sum is
+          // tool count (may differ from telemetry count). No per-call duration sum is
           // exposed by ToolBreakdown, so this is the best available estimate.
-          total_duration_ms: avgDuration * effectiveCmdTotal,
-          failures: effectiveCmdFailures,
+          total_duration_ms: avgDuration * effectiveToolTotal,
+          failures: effectiveToolFailures,
           slowest: null
         };
       }
@@ -3430,7 +3430,7 @@ var Aggregator = class _Aggregator {
       created: createdFiles,
       conflicts: 0
     };
-    const metrics = { tokens, cache, cost, commands, agents, files };
+    const metrics = { tokens, cache, cost, tools, agents, files };
     const toolsBreakdown = telemetrySummary?.by_tool ?? {};
     const recentActivity = this.buildRecentActivity(jsonlToolCalls, agentActivities);
     const fileHotspots = this.buildFileHotspots(
@@ -4131,7 +4131,7 @@ function computeMetrics(state) {
   const cache = metrics.cache;
   const agents = metrics.agents;
   const files = metrics.files;
-  const commands = metrics.commands;
+  const tools = metrics.tools;
   const sessionId = state.session_id ? state.session_id.slice(0, SESSION_ID_LENGTH) : "no-session";
   const startMs = state.started_at ? new Date(state.started_at).getTime() : Date.now();
   const uptime = formatUptimeProgressive(Date.now() - startMs);
@@ -4148,8 +4148,8 @@ function computeMetrics(state) {
     (files.modified ?? 0) + (files.created ?? 0)
   );
   const conflicts = files.conflicts ?? 0;
-  const rawTotal = commands.total ?? 0;
-  const rawFails = commands.failures ?? 0;
+  const rawTotal = tools.total ?? 0;
+  const rawFails = tools.failures ?? 0;
   const cmdTotal = formatNumber(rawTotal);
   const cmdPass = formatNumber(Math.max(0, rawTotal - rawFails));
   const cmdFails = formatNumber(rawFails);
@@ -4186,7 +4186,7 @@ function isValidState(state) {
   if (typeof s["health_status"] !== "string") return false;
   if (s["metrics"] == null || typeof s["metrics"] !== "object") return false;
   const m = s["metrics"];
-  return m["tokens"] != null && m["cost"] != null && m["cache"] != null && m["agents"] != null && m["files"] != null && m["commands"] != null;
+  return m["tokens"] != null && m["cost"] != null && m["cache"] != null && m["agents"] != null && m["files"] != null && m["tools"] != null;
 }
 __name(isValidState, "isValidState");
 function renderFallback(width) {
@@ -4293,8 +4293,8 @@ var MiniRenderer = class {
       agentBarWidth,
       { thresholds: { warn: 0.5, alert: 0.84 } }
     );
-    const cmds = state.metrics.commands;
-    const cmdsLabel = (cmds.total ?? 0) >= 1e3 || (cmds.failures ?? 0) >= 1e3 ? "Cmds: " : "Commands: ";
+    const cmds = state.metrics.tools;
+    const cmdsLabel = "Tools: ";
     const cmdsSection = padSection(
       `${cmdsLabel}${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
       sectionWidth
