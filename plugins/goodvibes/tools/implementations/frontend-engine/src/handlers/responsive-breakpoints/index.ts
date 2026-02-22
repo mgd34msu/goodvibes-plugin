@@ -82,9 +82,9 @@ export async function handleAnalyzeResponsiveBreakpoints(
 
     // Check file extension
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.ts', '.js', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Expected .tsx, .jsx, .ts, .js, .vue, or .svelte`,
+        `Unsupported file type: ${ext}. Expected .tsx, .jsx, .ts, or .js`,
         { file: args.file }
       );
     }
@@ -92,33 +92,8 @@ export async function handleAnalyzeResponsiveBreakpoints(
     // Read and parse file
     const content = fs.readFileSync(filePath, 'utf-8');
 
-    // For Vue/Svelte, extract template section
-    let processableContent = content;
-    if (ext === '.vue') {
-      const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/i);
-      if (templateMatch) {
-        // Wrap in a JSX-compatible format for parsing
-        processableContent = `function Component() { return (<>${templateMatch[1]}</>) }`;
-      }
-    } else if (ext === '.svelte') {
-      // For Svelte, treat the whole file as template (simplified)
-      const scriptMatch = content.match(/<script[^>]*>[\s\S]*?<\/script>/gi);
-      let templateContent = content;
-      if (scriptMatch) {
-        for (const script of scriptMatch) {
-          templateContent = templateContent.replace(script, '');
-        }
-      }
-      const styleMatch = templateContent.match(/<style[^>]*>[\s\S]*?<\/style>/gi);
-      if (styleMatch) {
-        for (const style of styleMatch) {
-          templateContent = templateContent.replace(style, '');
-        }
-      }
-      processableContent = `function Component() { return (<>${templateContent}</>) }`;
-    }
-
     // Use TSX/JSX script kind to properly parse JSX elements
+    const processableContent = content;
     const scriptKind = ext === '.tsx' || ext === '.ts' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX;
     const sourceFile = ts.createSourceFile(
       filePath,

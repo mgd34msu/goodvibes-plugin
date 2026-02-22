@@ -1,5 +1,5 @@
 /**
- * Portal Detection for React/Vue/Svelte
+ * Portal Detection for React
  *
  * Detects portal usage patterns across different frameworks.
  *
@@ -51,7 +51,7 @@ export function findContainingComponent(position: number, sourceFile: ts.SourceF
 }
 
 /**
- * Detect React/Vue/Svelte portal usage in source code
+ * Detect React portal usage in source code
  * @param content - Source file content
  * @param sourceFile - TypeScript source file
  * @returns Array of detected portals
@@ -91,24 +91,6 @@ export function detectPortals(content: string, sourceFile: ts.SourceFile): Porta
     portals.push({
       component: findContainingComponent(match.index, sourceFile) || 'Unknown',
       destination: containerMatch ? containerMatch[1] : 'document.body (default)',
-    });
-  }
-
-  // Vue Teleport pattern
-  const vueTeleportRegex = /<Teleport[^>]*to\s*=\s*['"]([^'"]+)['"]/g;
-  while ((match = vueTeleportRegex.exec(content)) !== null) {
-    portals.push({
-      component: findContainingComponent(match.index, sourceFile) || 'Unknown',
-      destination: match[1],
-    });
-  }
-
-  // Svelte portal pattern (various libraries)
-  const sveltePortalRegex = /<Portal[^>]*target\s*=\s*['"]([^'"]+)['"]/g;
-  while ((match = sveltePortalRegex.exec(content)) !== null) {
-    portals.push({
-      component: findContainingComponent(match.index, sourceFile) || 'Unknown',
-      destination: match[1],
     });
   }
 

@@ -1,7 +1,7 @@
 name: analyze_layout_hierarchy
 version: "1.0.0"
 description: |
-  Analyze the CSS layout hierarchy of React/Vue/Svelte components.
+  Analyze the CSS layout hierarchy of React components.
   Parses JSX/TSX files to build a layout tree with sizing constraints,
   display types (flex/grid/block), flex/grid properties, overflow handling,
   and positioning. Supports comprehensive Tailwind CSS class parsing.
@@ -17,8 +17,6 @@ tags:
   - tailwind
   - debugging
   - react
-  - vue
-  - svelte
 
 mcp:
   server: goodvibes-tools
@@ -30,7 +28,7 @@ inputSchema:
   properties:
     file:
       type: string
-      description: Component file path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte files.
+      description: Component file path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .ts, .js files.
     selector:
       type: string
       description: "Optional: Focus on specific element by class (.class-name) or id (#element-id). If omitted, analyzes entire component tree."

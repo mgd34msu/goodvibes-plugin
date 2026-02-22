@@ -1,7 +1,7 @@
 /**
  * Analyze Stacking Context Handler
  *
- * Analyzes z-index and stacking contexts in React/Vue/Svelte components
+ * Analyzes z-index and stacking contexts in React components
  * using Tailwind CSS class analysis. Detects potential z-index conflicts,
  * context isolation issues, and portal destinations.
  *

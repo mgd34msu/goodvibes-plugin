@@ -1,7 +1,7 @@
 name: analyze_stacking_context
 version: "1.0.0"
 description: |
-  Analyze z-index and stacking contexts in React/Vue/Svelte components.
+  Analyze z-index and stacking contexts in React components.
   Detects which CSS properties create new stacking contexts (position+z-index,
   transform, opacity, filter, isolation, etc.), builds a hierarchical stacking
   tree, identifies potential z-index conflicts, and finds portal destinations.
@@ -15,8 +15,6 @@ tags:
   - layout
   - debugging
   - react
-  - vue
-  - svelte
 
 mcp:
   server: goodvibes-tools
@@ -28,7 +26,7 @@ inputSchema:
   properties:
     file:
       type: string
-      description: File path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .vue, .svelte
+      description: File path to analyze (relative to project root or absolute). Supports .tsx, .jsx, .ts, .js
     include_portals:
       type: boolean
       description: Look for portal destinations (createPortal, Teleport, etc.)

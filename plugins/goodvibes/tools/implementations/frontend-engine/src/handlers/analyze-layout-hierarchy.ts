@@ -1,7 +1,7 @@
 /**
  * Analyze Layout Hierarchy Handler
  *
- * Parses JSX/TSX/Vue/Svelte files and analyzes the CSS layout hierarchy
+ * Parses JSX/TSX files and analyzes the CSS layout hierarchy
  * to identify sizing constraints, flex/grid properties, and potential
  * layout issues. Supports Tailwind CSS class parsing.
  *
@@ -122,31 +122,15 @@ export async function handleAnalyzeLayoutHierarchy(
 
     // Check file extension
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.ts', '.js', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js, .vue, .svelte`,
+        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
         { provided_path: args.file }
       );
     }
 
     // Read file content
     const content = fs.readFileSync(filePath, 'utf-8');
-
-    // For Vue/Svelte, extract template section
-    let jsxContent = content;
-    if (ext === '.vue') {
-      const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
-      if (templateMatch) {
-        // Convert Vue template to JSX-like format for parsing
-        jsxContent = templateMatch[1]
-          .replace(/:class=/g, 'className=')
-          .replace(/v-bind:class=/g, 'className=')
-          .replace(/class=/g, 'className=');
-      }
-    } else if (ext === '.svelte') {
-      // For Svelte, content is mixed, try to parse directly
-      jsxContent = content.replace(/class=/g, 'className=');
-    }
 
     // Determine script kind based on file extension
     const scriptKind =
@@ -158,7 +142,7 @@ export async function handleAnalyzeLayoutHierarchy(
     // Parse as TSX/JSX
     const sourceFile = ts.createSourceFile(
       filePath,
-      jsxContent,
+      content,
       ts.ScriptTarget.Latest,
       true,
       scriptKind

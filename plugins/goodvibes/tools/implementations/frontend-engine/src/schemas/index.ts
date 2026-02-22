@@ -30,7 +30,7 @@ export const FRONTEND_SCHEMAS = [
   },
   {
     name: 'analyze_responsive_breakpoints',
-    description: 'Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive design issues like desktop-first patterns or missing base styles.',
+    description: 'Analyze responsive Tailwind classes across breakpoints. Detects mobile-first patterns, tracks property changes across breakpoints (sm, md, lg, xl, 2xl), identifies breakpoint coverage gaps, and flags potential responsive design issues like desktop-first patterns or missing base styles. Supports custom breakpoints via explicit parameter or automatic tailwind.config.js/ts detection.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -41,6 +41,11 @@ export const FRONTEND_SCHEMAS = [
         element: {
           type: 'string',
           description: 'Optional: specific element to analyze (e.g., "div" or "Button#3"). If not provided, analyzes all elements.',
+        },
+        breakpoints: {
+          type: 'object',
+          description: 'Optional: custom breakpoint overrides as a map of name to min-width size (e.g., { xs: "480px", "3xl": "1920px" }). Overrides matching defaults; new keys are added. Tailwind config is auto-detected when this is omitted.',
+          additionalProperties: { type: 'string' },
         },
       },
       required: ['file'],

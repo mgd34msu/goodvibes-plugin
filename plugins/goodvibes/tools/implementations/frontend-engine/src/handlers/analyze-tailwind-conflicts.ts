@@ -1,7 +1,7 @@
 /**
  * Analyze Tailwind Conflicts Handler
  *
- * Detects conflicting and redundant Tailwind CSS classes in React/Vue/Svelte
+ * Detects conflicting and redundant Tailwind CSS classes in React
  * components. Identifies overrides, redundant shorthand/longhand combinations,
  * contradictory classes, and provides fix suggestions.
  *
@@ -132,9 +132,9 @@ export async function handleAnalyzeTailwindConflicts(
 
     // Check file extension
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
+        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
         { file: args.file }
       );
     }
@@ -142,32 +142,17 @@ export async function handleAnalyzeTailwindConflicts(
     // Read file content
     const content = fs.readFileSync(filePath, 'utf-8');
 
-    // For Vue/Svelte, extract template section
-    let processableContent = content;
-    if (ext === '.vue') {
-      const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
-      if (templateMatch) {
-        processableContent = `function Component() { return (<>${templateMatch[1]}</>) }`;
-      }
-    } else if (ext === '.svelte') {
-      let templateContent = content;
-      templateContent = templateContent
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/g, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/g, '');
-      processableContent = `function Component() { return (<>${templateContent}</>) }`;
-    }
-
     // Create TypeScript source file for parsing
     const sourceFile = ts.createSourceFile(
       filePath,
-      processableContent,
+      content,
       ts.ScriptTarget.Latest,
       true,
-      ext === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
+      ext === '.tsx' || ext === '.ts' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
     );
 
     // Analyze elements
-    const elements = analyzeJsxFile(processableContent, sourceFile);
+    const elements = analyzeJsxFile(content, sourceFile);
 
     if (elements.length === 0) {
       return createSuccessResponse({

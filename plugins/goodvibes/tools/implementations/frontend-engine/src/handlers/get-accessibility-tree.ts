@@ -1,7 +1,7 @@
 /**
  * Get Accessibility Tree Handler
  *
- * Builds an accessibility tree from React/Vue/Svelte components and detects
+ * Builds an accessibility tree from React components and detects
  * WCAG issues. Analyzes semantic roles, focus order, keyboard interactions,
  * and ARIA patterns.
  *
@@ -133,9 +133,9 @@ export async function handleGetAccessibilityTree(
 
     // Check file extension
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
+        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
         { file: args.file }
       );
     }
@@ -143,24 +143,13 @@ export async function handleGetAccessibilityTree(
     // Read file content
     const content = fs.readFileSync(filePath, 'utf-8');
 
-    // For Vue/Svelte, extract template section
-    let templateContent = content;
-    if (ext === '.vue') {
-      const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
-      templateContent = templateMatch ? templateMatch[1] : content;
-    } else if (ext === '.svelte') {
-      templateContent = content
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/g, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/g, '');
-    }
-
     // Create TypeScript source file for parsing
     const sourceFile = ts.createSourceFile(
       filePath,
       content,
       ts.ScriptTarget.Latest,
       true,
-      ext === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
+      ext === '.tsx' || ext === '.ts' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
     );
 
     // Analyze elements

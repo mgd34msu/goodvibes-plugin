@@ -136,9 +136,9 @@ export async function handleGetSizingStrategy(
 
     // Check file extension
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .vue, .svelte`,
+        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
         { provided_path: args.file }
       );
     }
@@ -146,38 +146,13 @@ export async function handleGetSizingStrategy(
     // Read file content
     const content = fs.readFileSync(filePath, 'utf-8');
 
-    // For Vue/Svelte, extract template section and wrap as JSX
-    let jsxContent = content;
-    if (ext === '.vue') {
-      const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
-      if (templateMatch) {
-        const templateContent = templateMatch[1]
-          .replace(/:class=/g, 'className=')
-          .replace(/v-bind:class=/g, 'className=')
-          .replace(/class=/g, 'className=');
-        // Wrap Vue template content in a JSX function for parsing
-        jsxContent = `function VueComponent() { return (<>${templateContent}</>); }`;
-      } else {
-        return createErrorResponse('No <template> section found in Vue file', { file: args.file });
-      }
-    } else if (ext === '.svelte') {
-      // Extract just the template part (strip script/style)
-      let templateContent = content
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/class=/g, 'className=')
-        .trim();
-      // Wrap Svelte template content in a JSX function for parsing
-      jsxContent = `function SvelteComponent() { return (<>${templateContent}</>); }`;
-    }
-
-    // Parse as TSX
+    // Parse as TSX/JSX
     const sourceFile = ts.createSourceFile(
       filePath,
-      jsxContent,
+      content,
       ts.ScriptTarget.Latest,
       true,
-      ext === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
+      ext === '.tsx' || ext === '.ts' ? ts.ScriptKind.TSX : ts.ScriptKind.JSX
     );
 
     // Find root JSX element

@@ -1,7 +1,7 @@
 /**
  * Analyze Stacking Context Handler
  *
- * Analyzes z-index and stacking contexts in React/Vue/Svelte components
+ * Analyzes z-index and stacking contexts in React components
  * using Tailwind CSS class analysis. Detects potential z-index conflicts,
  * context isolation issues, and portal destinations.
  *
@@ -80,11 +80,11 @@ export async function handleAnalyzeStackingContext(
       });
     }
 
-    // Check file extension - support .tsx, .jsx, .ts, .js, .vue, .svelte
+    // Check file extension - support .tsx, .jsx, .ts, .js
     const ext = path.extname(filePath).toLowerCase();
-    if (!['.tsx', '.jsx', '.ts', '.js', '.vue', '.svelte'].includes(ext)) {
+    if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
       return createErrorResponse(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js, .vue, .svelte`,
+        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
         { file: args.file }
       );
     }

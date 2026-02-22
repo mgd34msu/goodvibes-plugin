@@ -43,6 +43,10 @@ interface ComponentTreeNode {
   file: string;
   props: string[];
   children: ComponentTreeNode[];
+  /** True if the component is lazy-loaded via React.lazy */
+  lazy?: boolean;
+  /** HOC wrappers applied to the component (e.g. ['memo', 'forwardRef']) */
+  wrappers?: string[];
 }
 
 /**
@@ -55,6 +59,10 @@ interface ComponentInfo {
   props: string[];
   used_by: string[];
   uses: string[];
+  /** True if the component is lazy-loaded via React.lazy */
+  lazy?: boolean;
+  /** HOC wrappers applied to the component (e.g. ['memo', 'forwardRef']) */
+  wrappers?: string[];
 }
 
 /**
@@ -96,6 +104,7 @@ function isReactComponent(node: ts.Node, sourceFile: ts.SourceFile): boolean {
   }
 
   // Arrow function assigned to const: const Component = () => <div/>
+  // Also handles HOC-wrapped: const Component = memo(() => <div/>), forwardRef(...), lazy(...)
   if (ts.isVariableStatement(node)) {
     for (const decl of node.declarationList.declarations) {
       if (ts.isIdentifier(decl.name)) {
@@ -103,6 +112,10 @@ function isReactComponent(node: ts.Node, sourceFile: ts.SourceFile): boolean {
         if (/^[A-Z]/.test(name) && decl.initializer) {
           if (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer)) {
             return containsJsxReturn(decl.initializer, sourceFile);
+          }
+          // HOC-wrapped component
+          if (ts.isCallExpression(decl.initializer)) {
+            return detectHocWrappedComponent(decl, sourceFile) !== null;
           }
         }
       }
@@ -141,6 +154,169 @@ function containsJsxReturn(node: ts.Node, sourceFile: ts.SourceFile): boolean {
 
   visit(node);
   return hasJsx;
+}
+
+// =============================================================================
+// HOC Detection Helpers
+// =============================================================================
+
+/** Known React HOC callee names (simple and namespace forms) */
+const MEMO_CALLEE = new Set(['memo', 'React.memo']);
+const FORWARD_REF_CALLEE = new Set(['forwardRef', 'React.forwardRef']);
+const LAZY_CALLEE = new Set(['lazy', 'React.lazy']);
+const HOC_WRAPPING_CALLEE = new Set([
+  ...MEMO_CALLEE,
+  ...FORWARD_REF_CALLEE,
+  ...LAZY_CALLEE,
+]);
+
+/**
+ * Get the callee text of a CallExpression (handles both Identifier and PropertyAccess).
+ */
+function getCalleeName(callExpr: ts.CallExpression, sourceFile: ts.SourceFile): string {
+  return callExpr.expression.getText(sourceFile);
+}
+
+/**
+ * Result of unwrapping HOC call expressions
+ */
+interface UnwrapResult {
+  /** The innermost function node (the actual render function), if found */
+  innerFn: ts.FunctionExpression | ts.ArrowFunction | null;
+  /** Ordered list of wrapper names outermost-first (e.g. ['memo', 'forwardRef']) */
+  wrappers: string[];
+  /** True if any wrapper is lazy */
+  isLazy: boolean;
+  /** For withRouter/connect-style HOCs: the component identifier passed as argument */
+  hoistedComponent: string | null;
+}
+
+/**
+ * Recursively unwrap nested HOC CallExpressions to find the inner render function
+ * and collect wrapper names. Handles:
+ *   memo(() => <div/>)
+ *   forwardRef((props, ref) => <div/>)
+ *   memo(forwardRef((props, ref) => <div/>))
+ *   lazy(() => import('./Comp'))
+ *   withRouter(MyComponent) / connect(mapState)(MyComponent)
+ */
+function unwrapHocCall(callExpr: ts.CallExpression, sourceFile: ts.SourceFile): UnwrapResult {
+  const result: UnwrapResult = {
+    innerFn: null,
+    wrappers: [],
+    isLazy: false,
+    hoistedComponent: null,
+  };
+
+  let current: ts.CallExpression = callExpr;
+
+  while (true) {
+    const calleeName = getCalleeName(current, sourceFile);
+    const args = current.arguments;
+
+    if (HOC_WRAPPING_CALLEE.has(calleeName)) {
+      result.wrappers.push(calleeName);
+
+      if (LAZY_CALLEE.has(calleeName)) {
+        result.isLazy = true;
+        // lazy(() => import('./X')) — no inner render fn to unwrap
+        break;
+      }
+
+      // memo/forwardRef: first arg is the render function or another HOC call
+      if (args.length > 0) {
+        const firstArg = args[0];
+        if (ts.isArrowFunction(firstArg) || ts.isFunctionExpression(firstArg)) {
+          result.innerFn = firstArg;
+          break;
+        } else if (ts.isCallExpression(firstArg)) {
+          // Nested HOC: e.g. memo(forwardRef(...))
+          current = firstArg;
+          continue;
+        }
+      }
+      break;
+    } else {
+      // Unknown HOC (withRouter, connect, etc.) — look for a component identifier argument
+      // For connect(mapState)(MyComponent) the outer call's arg is MyComponent
+      // For withRouter(MyComponent) the first arg is MyComponent
+      for (const arg of args) {
+        if (ts.isIdentifier(arg)) {
+          const name = arg.getText(sourceFile);
+          if (/^[A-Z]/.test(name)) {
+            result.hoistedComponent = name;
+            result.wrappers.push(calleeName);
+            break;
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Determine if a VariableDeclaration with a CallExpression initializer
+ * represents an HOC-wrapped React component. Returns the unwrap result or null.
+ */
+function detectHocWrappedComponent(
+  decl: ts.VariableDeclaration,
+  sourceFile: ts.SourceFile
+): UnwrapResult | null {
+  if (!decl.initializer || !ts.isCallExpression(decl.initializer)) return null;
+  if (!ts.isIdentifier(decl.name)) return null;
+
+  const varName = decl.name.getText(sourceFile);
+  if (!/^[A-Z]/.test(varName)) return null;
+
+  const unwrapped = unwrapHocCall(decl.initializer, sourceFile);
+
+  // Accept if: it's a known HOC wrapper, or it's lazy
+  if (unwrapped.wrappers.length === 0) return null;
+
+  // For memo/forwardRef: require JSX in the inner function
+  if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
+    if (!unwrapped.innerFn) return null;
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) return null;
+  }
+
+  return unwrapped;
+}
+
+/**
+ * Detect HOC-wrapped default export:
+ *   export default memo(() => <div/>)
+ *   export default withRouter(MyComponent)
+ * Returns { name, unwrapped } or null.
+ */
+function detectDefaultExportHoc(
+  node: ts.ExportAssignment,
+  sourceFile: ts.SourceFile
+): { name: string; unwrapped: UnwrapResult } | null {
+  const expr = node.expression;
+  if (!ts.isCallExpression(expr)) return null;
+
+  const unwrapped = unwrapHocCall(expr, sourceFile);
+  if (unwrapped.wrappers.length === 0) return null;
+
+  // For memo/forwardRef: require JSX
+  if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
+    if (!unwrapped.innerFn) return null;
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) return null;
+  }
+
+  // Determine the component name
+  let name: string;
+  if (unwrapped.hoistedComponent) {
+    name = unwrapped.hoistedComponent;
+  } else {
+    // Anonymous — use the filename
+    name = 'DefaultExport';
+  }
+
+  return { name, unwrapped };
 }
 
 /**
@@ -184,6 +360,14 @@ function extractProps(node: ts.Node, sourceFile: ts.SourceFile): string[] {
       if (decl.initializer && (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))) {
         params = decl.initializer.parameters;
         break;
+      }
+      // HOC-wrapped: extract props from the inner render function
+      if (decl.initializer && ts.isCallExpression(decl.initializer)) {
+        const unwrapped = detectHocWrappedComponent(decl, sourceFile);
+        if (unwrapped?.innerFn) {
+          params = unwrapped.innerFn.parameters;
+          break;
+        }
       }
     }
   }
@@ -265,6 +449,50 @@ function extractPropsFromInterface(sourceFile: ts.SourceFile, interfaceName: str
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
+}
+
+/**
+ * Extract props from a function/arrow-function node directly.
+ * Used for HOC-wrapped components where the inner fn is extracted.
+ */
+function extractPropsFromFn(
+  fn: ts.FunctionExpression | ts.ArrowFunction,
+  sourceFile: ts.SourceFile
+): string[] {
+  const props: Set<string> = new Set();
+  const params = fn.parameters;
+
+  if (params.length > 0) {
+    const firstParam = params[0];
+
+    // Destructured props: ({ prop1, prop2 })
+    if (ts.isObjectBindingPattern(firstParam.name)) {
+      for (const element of firstParam.name.elements) {
+        if (ts.isBindingElement(element) && ts.isIdentifier(element.name)) {
+          props.add(element.name.getText(sourceFile));
+        }
+      }
+    }
+
+    // Type annotation
+    if (firstParam.type) {
+      if (ts.isTypeLiteralNode(firstParam.type)) {
+        for (const member of firstParam.type.members) {
+          if (ts.isPropertySignature(member) && member.name) {
+            props.add(member.name.getText(sourceFile));
+          }
+        }
+      }
+      if (ts.isTypeReferenceNode(firstParam.type)) {
+        const typeName = firstParam.type.typeName.getText(sourceFile);
+        if (typeName.endsWith('Props')) {
+          extractPropsFromInterface(sourceFile, typeName, props);
+        }
+      }
+    }
+  }
+
+  return Array.from(props);
 }
 
 /**
@@ -368,6 +596,21 @@ function analyzeFile(filePath: string, projectRoot: string): ComponentInfo[] {
       const name = getComponentName(node, sourceFile);
       /* v8 ignore next */ // Defensive: isReactComponent ensures name exists
       if (name) {
+        // Collect HOC wrapper metadata for variable declarations
+        let lazy: boolean | undefined;
+        let wrappers: string[] | undefined;
+        if (ts.isVariableStatement(node)) {
+          for (const decl of node.declarationList.declarations) {
+            if (decl.initializer && ts.isCallExpression(decl.initializer)) {
+              const unwrapped = detectHocWrappedComponent(decl, sourceFile);
+              if (unwrapped) {
+                wrappers = unwrapped.wrappers.length > 0 ? unwrapped.wrappers : undefined;
+                lazy = unwrapped.isLazy || undefined;
+              }
+            }
+          }
+        }
+
         components.push({
           name,
           file: relativePath,
@@ -375,9 +618,33 @@ function analyzeFile(filePath: string, projectRoot: string): ComponentInfo[] {
           props: extractProps(node, sourceFile),
           used_by: [], // Will be filled later
           uses: findUsedComponents(node, sourceFile),
+          ...(lazy !== undefined && { lazy }),
+          ...(wrappers !== undefined && { wrappers }),
         });
       }
     }
+
+    // Handle `export default memo(...)` / `export default withRouter(Comp)` etc.
+    if (ts.isExportAssignment(node) && !node.isExportEquals) {
+      const detected = detectDefaultExportHoc(node, sourceFile);
+      if (detected) {
+        const { name, unwrapped } = detected;
+        // Avoid duplicate if already registered by name
+        if (!components.some(c => c.name === name)) {
+          components.push({
+            name,
+            file: relativePath,
+            line: getLineNumber(node, sourceFile),
+            props: unwrapped.innerFn ? extractPropsFromFn(unwrapped.innerFn, sourceFile) : [],
+            used_by: [],
+            uses: unwrapped.innerFn ? findUsedComponents(unwrapped.innerFn, sourceFile) : [],
+            ...(unwrapped.isLazy && { lazy: true }),
+            ...(unwrapped.wrappers.length > 0 && { wrappers: unwrapped.wrappers }),
+          });
+        }
+      }
+    }
+
     ts.forEachChild(node, visit);
   }
 
@@ -438,6 +705,8 @@ function buildTree(
     file: component.file,
     props: component.props,
     children,
+    ...(component.lazy !== undefined && { lazy: component.lazy }),
+    ...(component.wrappers !== undefined && { wrappers: component.wrappers }),
   };
 }
 

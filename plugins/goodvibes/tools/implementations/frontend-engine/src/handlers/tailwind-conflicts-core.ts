@@ -23,6 +23,61 @@ export function getLineNumber(pos: number, sourceFile: ts.SourceFile): number {
 }
 
 /**
+ * Extract CSS classes from a single AST node (string, logical AND, ternary, object, array)
+ * Mutates the `out` array in place for efficiency.
+ */
+function extractClassesFromNode(node: ts.Node, out: string[]): void {
+  // 'flex p-4'
+  if (ts.isStringLiteral(node)) {
+    out.push(...node.text.split(/\s+/).filter(Boolean));
+    return;
+  }
+
+  // isActive && 'bg-blue-500'
+  if (
+    ts.isBinaryExpression(node) &&
+    node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+  ) {
+    if (ts.isStringLiteral(node.right)) {
+      out.push(...node.right.text.split(/\s+/).filter(Boolean));
+    }
+    return;
+  }
+
+  // condition ? 'a' : 'b'
+  if (ts.isConditionalExpression(node)) {
+    extractClassesFromNode(node.whenTrue, out);
+    extractClassesFromNode(node.whenFalse, out);
+    return;
+  }
+
+  // { 'bg-blue-500': isActive, 'bg-gray-200': !isActive }
+  if (ts.isObjectLiteralExpression(node)) {
+    for (const prop of node.properties) {
+      if (ts.isPropertyAssignment(prop)) {
+        if (ts.isStringLiteral(prop.name)) {
+          out.push(...prop.name.text.split(/\s+/).filter(Boolean));
+        } else if (ts.isIdentifier(prop.name)) {
+          out.push(prop.name.text);
+        }
+      }
+      if (ts.isShorthandPropertyAssignment(prop)) {
+        out.push(prop.name.text);
+      }
+    }
+    return;
+  }
+
+  // ['flex', isActive && 'bg-blue-500']
+  if (ts.isArrayLiteralExpression(node)) {
+    for (const element of node.elements) {
+      extractClassesFromNode(element, out);
+    }
+    return;
+  }
+}
+
+/**
  * Extract CSS classes from a JSX className attribute
  */
 export function extractClassesFromAttribute(
@@ -63,23 +118,19 @@ export function extractClassesFromAttribute(
     if (ts.isCallExpression(expr)) {
       const classes: string[] = [];
       for (const arg of expr.arguments) {
-        if (ts.isStringLiteral(arg)) {
-          classes.push(...arg.text.split(/\s+/).filter(Boolean));
-        }
-        if (ts.isObjectLiteralExpression(arg)) {
-          for (const prop of arg.properties) {
-            if (ts.isPropertyAssignment(prop)) {
-              if (ts.isStringLiteral(prop.name)) {
-                classes.push(...prop.name.text.split(/\s+/).filter(Boolean));
-              } else if (ts.isIdentifier(prop.name)) {
-                classes.push(prop.name.text);
-              }
-            }
-            if (ts.isShorthandPropertyAssignment(prop)) {
-              classes.push(prop.name.text);
-            }
-          }
-        }
+        extractClassesFromNode(arg, classes);
+      }
+      return classes;
+    }
+
+    // className={isActive && 'bg-blue-500'}
+    if (
+      ts.isBinaryExpression(expr) &&
+      expr.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+    ) {
+      const classes: string[] = [];
+      if (ts.isStringLiteral(expr.right)) {
+        classes.push(...expr.right.text.split(/\s+/).filter(Boolean));
       }
       return classes;
     }

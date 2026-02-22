@@ -55,6 +55,22 @@ export function extractClassNames(sourceFile: ts.SourceFile, elementFilter?: str
           for (const element of arg.elements) {
             result += ' ' + extractStringValue(element);
           }
+        } else if (ts.isObjectLiteralExpression(arg)) {
+          // { 'class-name': condition } — keys are the class names
+          for (const prop of arg.properties) {
+            if (ts.isPropertyAssignment(prop)) {
+              if (ts.isStringLiteral(prop.name)) {
+                result += ' ' + prop.name.text;
+              } else if (ts.isIdentifier(prop.name)) {
+                result += ' ' + prop.name.text;
+              }
+            }
+            if (ts.isShorthandPropertyAssignment(prop)) {
+              result += ' ' + prop.name.text;
+            }
+          }
+        } else {
+          result += ' ' + extractStringValue(arg);
         }
       }
       return result;
@@ -66,6 +82,10 @@ export function extractClassNames(sourceFile: ts.SourceFile, elementFilter?: str
     if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
       // String concatenation
       return extractStringValue(node.left) + ' ' + extractStringValue(node.right);
+    }
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+      // Logical AND: condition && 'class-name' — only the right operand is a class
+      return extractStringValue(node.right);
     }
     if (ts.isParenthesizedExpression(node)) {
       return extractStringValue(node.expression);

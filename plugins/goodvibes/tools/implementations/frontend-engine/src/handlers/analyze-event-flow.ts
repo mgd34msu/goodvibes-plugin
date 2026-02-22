@@ -1,7 +1,7 @@
 /**
  * Analyze Event Flow Handler
  *
- * Analyzes event handling and propagation in React/Vue/Svelte components.
+ * Analyzes event handling and propagation in React components.
  * Detects event handlers, propagation patterns, delegation, and common issues
  * like nested clickable elements or missing keyboard alternatives.
  *
@@ -110,7 +110,7 @@ function makeRelativePath(absolutePath: string, projectRoot: string): string {
 /**
  * Handles the analyze_event_flow MCP tool call.
  *
- * Analyzes event handling and propagation in React/Vue/Svelte components:
+ * Analyzes event handling and propagation in React components:
  * - Detects all event handlers and their properties
  * - Simulates event bubbling to show flow paths
  * - Identifies issues like nested clickables and missing keyboard support
@@ -135,9 +135,9 @@ export async function handleAnalyzeEventFlow(args: AnalyzeEventFlowArgs): Promis
 
   // Check file extension
   const ext = path.extname(filePath).toLowerCase();
-  if (!['.tsx', '.jsx', '.ts', '.js', '.vue', '.svelte'].includes(ext)) {
+  if (!['.tsx', '.jsx', '.ts', '.js'].includes(ext)) {
     return createErrorResponse(
-      'File must be a component file (.tsx, .jsx, .ts, .js, .vue, .svelte)',
+      'File must be a component file (.tsx, .jsx, .ts, .js)',
       { provided_extension: ext }
     );
   }
