@@ -1,4 +1,4 @@
-name: analyze_stacking_context
+name: frontend_stacking_context
 version: "1.0.0"
 description: |
   Analyze z-index and stacking contexts in React components.
@@ -18,7 +18,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: analyze_stacking_context
+  method: frontend_stacking_context
   defer_loading: true
 
 inputSchema:

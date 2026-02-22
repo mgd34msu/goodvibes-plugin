@@ -1,4 +1,4 @@
-name: get_react_component_tree
+name: frontend_component_tree
 version: "1.0.0"
 description: |
   Parse JSX/TSX files and build a component hierarchy tree.
@@ -17,7 +17,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: get_react_component_tree
+  method: frontend_component_tree
   defer_loading: true
 
 inputSchema:

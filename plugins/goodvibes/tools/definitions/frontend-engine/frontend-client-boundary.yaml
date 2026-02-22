@@ -1,4 +1,4 @@
-name: analyze_client_boundary
+name: frontend_client_boundary
 version: "1.0.0"
 description: |
   Analyzes Next.js App Router "use client" and "use server" boundaries to find
@@ -19,7 +19,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: analyze_client_boundary
+  method: frontend_client_boundary
   defer_loading: true
 
 inputSchema:
@@ -27,7 +27,7 @@ inputSchema:
   properties:
     path:
       type: string
-      description: Directory to scan (default: "app" or "src" auto-detected)
+      description: 'Directory to scan (default: "app" or "src" auto-detected)'
     entry:
       type: string
       description: Specific entry file to trace from instead of scanning a directory

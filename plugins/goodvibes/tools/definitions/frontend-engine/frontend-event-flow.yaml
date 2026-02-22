@@ -1,4 +1,4 @@
-name: analyze_event_flow
+name: frontend_event_flow
 version: "1.0.0"
 description: |
   Analyze event handling and propagation in React components.
@@ -20,7 +20,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: analyze_event_flow
+  method: frontend_event_flow
   defer_loading: true
 
 inputSchema:

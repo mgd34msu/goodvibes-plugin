@@ -1,4 +1,4 @@
-name: diagnose_overflow
+name: frontend_overflow
 version: "1.0.0"
 description: |
   Diagnose CSS overflow issues and recommend fixes.
@@ -19,7 +19,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: diagnose_overflow
+  method: frontend_overflow
   defer_loading: true
 
 inputSchema:

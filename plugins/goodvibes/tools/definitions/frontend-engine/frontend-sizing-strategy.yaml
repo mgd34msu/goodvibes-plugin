@@ -1,4 +1,4 @@
-name: get_sizing_strategy
+name: frontend_sizing_strategy
 version: "1.0.0"
 description: |
   Analyze how a specific element's size is determined.
@@ -21,7 +21,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: get_sizing_strategy
+  method: frontend_sizing_strategy
   defer_loading: true
 
 inputSchema:

@@ -11,17 +11,17 @@ All 11 required tools are implemented, registered, and functioning correctly in 
 
 | # | Tool Name | Handler Exists | Schema Exists | Registered | Status |
 |---|-----------|----------------|---------------|------------|--------|
-| 1 | `get_react_component_tree` | ✅ | ✅ | ✅ | ✅ PASS |
-| 2 | `analyze_stacking_context` | ✅ | ✅ | ✅ | ✅ PASS |
-| 3 | `analyze_responsive_breakpoints` | ✅ | ✅ | ✅ | ✅ PASS |
-| 4 | `trace_component_state` | ✅ | ✅ | ✅ | ✅ PASS |
-| 5 | `analyze_render_triggers` | ✅ | ✅ | ✅ | ✅ PASS |
-| 6 | `analyze_layout_hierarchy` | ✅ | ✅ | ✅ | ✅ PASS |
-| 7 | `diagnose_overflow` | ✅ | ✅ | ✅ | ✅ PASS |
-| 8 | `get_accessibility_tree` | ✅ | ✅ | ✅ | ✅ PASS |
-| 9 | `get_sizing_strategy` | ✅ | ✅ | ✅ | ✅ PASS |
-| 10 | `analyze_event_flow` | ✅ | ✅ | ✅ | ✅ PASS |
-| 11 | `analyze_tailwind_conflicts` | ✅ | ✅ | ✅ | ✅ PASS |
+| 1 | `frontend_component_tree` | ✅ | ✅ | ✅ | ✅ PASS |
+| 2 | `frontend_stacking_context` | ✅ | ✅ | ✅ | ✅ PASS |
+| 3 | `frontend_responsive_breakpoints` | ✅ | ✅ | ✅ | ✅ PASS |
+| 4 | `frontend_component_state` | ✅ | ✅ | ✅ | ✅ PASS |
+| 5 | `frontend_render_triggers` | ✅ | ✅ | ✅ | ✅ PASS |
+| 6 | `frontend_layout_hierarchy` | ✅ | ✅ | ✅ | ✅ PASS |
+| 7 | `frontend_overflow` | ✅ | ✅ | ✅ | ✅ PASS |
+| 8 | `frontend_accessibility_tree` | ✅ | ✅ | ✅ | ✅ PASS |
+| 9 | `frontend_sizing_strategy` | ✅ | ✅ | ✅ | ✅ PASS |
+| 10 | `frontend_event_flow` | ✅ | ✅ | ✅ | ✅ PASS |
+| 11 | `frontend_tailwind_conflicts` | ✅ | ✅ | ✅ | ✅ PASS |
 
 ## Implementation Details
 
@@ -32,7 +32,7 @@ The handlers follow a modular architecture with re-export files:
 ```
 src/handlers/
 ├── index.ts                              # Main registry
-├── react.ts                              # get_react_component_tree
+├── react.ts                              # frontend_component_tree
 ├── analyze-render-triggers.ts            # Re-exports from render-triggers/
 ├── analyze-stacking-context.ts           # Re-exports from stacking-context/
 ├── analyze-responsive-breakpoints.ts     # Re-exports from responsive-breakpoints/
@@ -52,17 +52,17 @@ All 11 handlers are properly registered in `src/handlers/index.ts`:
 
 ```typescript
 const handlerRegistry = new Map<string, ToolHandler>([
-  ['get_react_component_tree', handleGetReactComponentTree],
-  ['analyze_stacking_context', handleAnalyzeStackingContext],
-  ['analyze_responsive_breakpoints', handleAnalyzeResponsiveBreakpoints],
-  ['trace_component_state', handleTraceComponentState],
-  ['analyze_render_triggers', handleAnalyzeRenderTriggers],
-  ['analyze_layout_hierarchy', handleAnalyzeLayoutHierarchy],
-  ['diagnose_overflow', handleDiagnoseOverflow],
-  ['get_accessibility_tree', handleGetAccessibilityTree],
-  ['get_sizing_strategy', handleGetSizingStrategy],
-  ['analyze_event_flow', handleAnalyzeEventFlow],
-  ['analyze_tailwind_conflicts', handleAnalyzeTailwindConflicts],
+  ['frontend_component_tree', handleGetReactComponentTree],
+  ['frontend_stacking_context', handleAnalyzeStackingContext],
+  ['frontend_responsive_breakpoints', handleAnalyzeResponsiveBreakpoints],
+  ['frontend_component_state', handleTraceComponentState],
+  ['frontend_render_triggers', handleAnalyzeRenderTriggers],
+  ['frontend_layout_hierarchy', handleAnalyzeLayoutHierarchy],
+  ['frontend_overflow', handleDiagnoseOverflow],
+  ['frontend_accessibility_tree', handleGetAccessibilityTree],
+  ['frontend_sizing_strategy', handleGetSizingStrategy],
+  ['frontend_event_flow', handleAnalyzeEventFlow],
+  ['frontend_tailwind_conflicts', handleAnalyzeTailwindConflicts],
 ]);
 ```
 
@@ -88,32 +88,32 @@ Verified via `mcp-cli`:
 
 ```bash
 $ mcp-cli tools plugin_goodvibes_frontend-engine
-get_react_component_tree
-analyze_stacking_context
-analyze_responsive_breakpoints
-trace_component_state
-analyze_render_triggers
-analyze_layout_hierarchy
-diagnose_overflow
-get_accessibility_tree
-get_sizing_strategy
-analyze_event_flow
-analyze_tailwind_conflicts
+frontend_component_tree
+frontend_stacking_context
+frontend_responsive_breakpoints
+frontend_component_state
+frontend_render_triggers
+frontend_layout_hierarchy
+frontend_overflow
+frontend_accessibility_tree
+frontend_sizing_strategy
+frontend_event_flow
+frontend_tailwind_conflicts
 ```
 
 ### Sample Tool Schema Verification
 
-**Tool**: `get_react_component_tree`
+**Tool**: `frontend_component_tree`
 - Description: Parse JSX/TSX files and build a component hierarchy tree
 - Parameters: `file`, `path`, `root_component`, `depth`
 - Schema: Valid JSON schema with proper types
 
-**Tool**: `analyze_tailwind_conflicts`
+**Tool**: `frontend_tailwind_conflicts`
 - Description: Detect conflicting and redundant Tailwind CSS classes
 - Parameters: `file` (required), `include_arbitrary` (optional)
 - Schema: Valid JSON schema with required fields
 
-**Tool**: `get_accessibility_tree`
+**Tool**: `frontend_accessibility_tree`
 - Description: Build accessibility tree and detect WCAG issues
 - Parameters: `file` (required), `element`, `check_patterns`
 - Schema: Valid JSON schema with defaults

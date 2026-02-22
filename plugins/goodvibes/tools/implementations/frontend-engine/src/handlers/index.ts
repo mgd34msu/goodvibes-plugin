@@ -61,20 +61,20 @@ export type {
 type ToolHandler = (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }>;
 
 const handlerRegistry = new Map<string, ToolHandler>([
-  ['get_react_component_tree', handleGetReactComponentTree as ToolHandler],
-  ['analyze_stacking_context', handleAnalyzeStackingContext as ToolHandler],
-  ['analyze_responsive_breakpoints', handleAnalyzeResponsiveBreakpoints as ToolHandler],
-  ['trace_component_state', handleTraceComponentState as ToolHandler],
-  ['analyze_render_triggers', handleAnalyzeRenderTriggers as ToolHandler],
-  ['analyze_layout_hierarchy', handleAnalyzeLayoutHierarchy as ToolHandler],
-  ['diagnose_overflow', handleDiagnoseOverflow as ToolHandler],
-  ['get_accessibility_tree', handleGetAccessibilityTree as ToolHandler],
-  ['get_sizing_strategy', handleGetSizingStrategy as ToolHandler],
-  ['analyze_event_flow', handleAnalyzeEventFlow as ToolHandler],
-  ['analyze_tailwind_conflicts', handleAnalyzeTailwindConflicts as ToolHandler],
-  ['analyze_client_boundary', handleAnalyzeClientBoundary as ToolHandler],
-  ['audit_hook_dependencies', handleAuditHookDependencies as ToolHandler],
-  ['analyze_error_boundaries', handleAnalyzeErrorBoundaries as ToolHandler],
+  ['frontend_component_tree', handleGetReactComponentTree as ToolHandler],
+  ['frontend_stacking_context', handleAnalyzeStackingContext as ToolHandler],
+  ['frontend_responsive_breakpoints', handleAnalyzeResponsiveBreakpoints as ToolHandler],
+  ['frontend_component_state', handleTraceComponentState as ToolHandler],
+  ['frontend_render_triggers', handleAnalyzeRenderTriggers as ToolHandler],
+  ['frontend_layout_hierarchy', handleAnalyzeLayoutHierarchy as ToolHandler],
+  ['frontend_overflow', handleDiagnoseOverflow as ToolHandler],
+  ['frontend_accessibility_tree', handleGetAccessibilityTree as ToolHandler],
+  ['frontend_sizing_strategy', handleGetSizingStrategy as ToolHandler],
+  ['frontend_event_flow', handleAnalyzeEventFlow as ToolHandler],
+  ['frontend_tailwind_conflicts', handleAnalyzeTailwindConflicts as ToolHandler],
+  ['frontend_client_boundary', handleAnalyzeClientBoundary as ToolHandler],
+  ['frontend_hook_dependencies', handleAuditHookDependencies as ToolHandler],
+  ['frontend_error_boundaries', handleAnalyzeErrorBoundaries as ToolHandler],
 ]);
 
 /**

@@ -1,4 +1,4 @@
-name: analyze_tailwind_conflicts
+name: frontend_tailwind_conflicts
 version: "1.0.0"
 description: |
   Detect conflicting and redundant Tailwind CSS classes in React components.
@@ -20,7 +20,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: analyze_tailwind_conflicts
+  method: frontend_tailwind_conflicts
   defer_loading: true
 
 inputSchema:

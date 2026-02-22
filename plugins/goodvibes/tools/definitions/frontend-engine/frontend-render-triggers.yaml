@@ -1,4 +1,4 @@
-name: analyze_render_triggers
+name: frontend_render_triggers
 version: "1.0.0"
 description: |
   Analyze what causes a React component to re-render.
@@ -18,7 +18,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: analyze_render_triggers
+  method: frontend_render_triggers
   defer_loading: true
 
 inputSchema:

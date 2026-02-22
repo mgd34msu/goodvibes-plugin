@@ -1,4 +1,4 @@
-name: analyze_layout_hierarchy
+name: frontend_layout_hierarchy
 version: "1.0.0"
 description: |
   Analyze the CSS layout hierarchy of React components.
@@ -20,7 +20,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: analyze_layout_hierarchy
+  method: frontend_layout_hierarchy
   defer_loading: true
 
 inputSchema:

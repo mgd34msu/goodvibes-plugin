@@ -1,4 +1,4 @@
-name: analyze_responsive_breakpoints
+name: frontend_responsive_breakpoints
 version: "1.0.0"
 description: |
   Analyze responsive Tailwind classes across breakpoints.
@@ -19,7 +19,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: analyze_responsive_breakpoints
+  method: frontend_responsive_breakpoints
   defer_loading: true
 
 inputSchema:

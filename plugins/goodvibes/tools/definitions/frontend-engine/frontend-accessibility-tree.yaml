@@ -1,4 +1,4 @@
-name: get_accessibility_tree
+name: frontend_accessibility_tree
 version: "1.0.0"
 description: |
   Build an accessibility tree and detect WCAG issues in React components.
@@ -21,7 +21,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: get_accessibility_tree
+  method: frontend_accessibility_tree
   defer_loading: true
 
 inputSchema:

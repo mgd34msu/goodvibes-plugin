@@ -1,4 +1,4 @@
-name: trace_component_state
+name: frontend_component_state
 version: "1.0.0"
 description: |
   Trace React state and props through component trees.
@@ -19,7 +19,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: trace_component_state
+  method: frontend_component_state
   defer_loading: true
 
 inputSchema:

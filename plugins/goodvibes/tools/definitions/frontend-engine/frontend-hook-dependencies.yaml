@@ -1,4 +1,4 @@
-name: audit_hook_dependencies
+name: frontend_hook_dependencies
 version: "1.0.0"
 description: |
   Analyzes React hook dependency arrays for stale closures, missing/unnecessary
@@ -22,7 +22,7 @@ tags:
 
 mcp:
   server: goodvibes-tools
-  method: audit_hook_dependencies
+  method: frontend_hook_dependencies
   defer_loading: true
 
 inputSchema:
