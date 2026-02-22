@@ -56,7 +56,7 @@ export function extractClassesFromNode(node: ts.Node, out: string[]): void {
       // (lowercase with hyphens/slashes/brackets, not a camelCase JS identifier)
       if (ts.isShorthandPropertyAssignment(prop)) {
         const name = prop.name.text;
-        if (name === name.toLowerCase() && /^[a-z][a-z0-9\-\/\[\]:.]*$/.test(name)) {
+        if (name === name.toLowerCase() && /^[a-z][a-z0-9\/\[\]:.-]*$/.test(name)) {
           out.push(name);
         }
       }

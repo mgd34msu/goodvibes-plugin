@@ -22,8 +22,6 @@ export type {
   PropertyChange,
   ElementAnalysis,
   Issue,
-  Warning,
-  AnalysisSummary,
   ToolResponse,
 } from './types.js';
 

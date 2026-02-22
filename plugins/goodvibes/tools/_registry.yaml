@@ -1,6 +1,6 @@
 version: 2.0.0
 generated: '2026-02-22T01:29:36.433Z'
-total: 65
+total: 66
 servers:
   - name: precision-engine
     count: 12
@@ -238,7 +238,7 @@ servers:
         path: project-engine/project-test-find.yaml
         description: Find test files associated with a given source file, including indirect test relationships.
   - name: frontend-engine
-    count: 13
+    count: 14
     tools:
       - name: get_react_component_tree
         path: frontend-engine/get-react-component-tree.yaml
@@ -336,6 +336,14 @@ servers:
           useLayoutEffect, useInsertionEffect. Detects stale closures (empty deps + state refs), missing deps,
           unnecessary deps, unstable deps (inline objects/arrays/functions, .map()/.filter() results), derived state
           anti-pattern (useEffect only calling setState), and missing cleanup for subscriptions/timers.
+      - name: analyze_error_boundaries
+        path: frontend-engine/analyze-error-boundaries.yaml
+        description: >-
+          Analyzes React/Next.js projects for error boundary coverage. Detects class-based error boundaries
+          (getDerivedStateFromError / componentDidCatch) and library wrappers (react-error-boundary, Sentry, etc.),
+          analyzes which component subtrees are protected, identifies missing error.tsx files in Next.js App Router
+          route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
+          boundaries, and async components without protection.
 search_index:
   - name: precision_write
     keywords:
@@ -1542,8 +1550,6 @@ search_index:
       - index
       - contexts
       - react
-      - vue
-      - svelte
       - components
       - detects
       - which
@@ -1708,8 +1714,6 @@ search_index:
       - hierarchy
       - css
       - react
-      - vue
-      - svelte
       - components
       - parses
       - jsx
@@ -1811,8 +1815,6 @@ search_index:
       - wcag
       - issues
       - react
-      - vue
-      - svelte
       - components
       - analyzes
       - semantic
@@ -1929,8 +1931,6 @@ search_index:
       - handling
       - propagation
       - react
-      - vue
-      - svelte
       - components
       - detects
       - all
@@ -1996,8 +1996,6 @@ search_index:
       - css
       - classes
       - react
-      - vue
-      - svelte
       - components
       - identifies
       - three

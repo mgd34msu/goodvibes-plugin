@@ -73,20 +73,6 @@ export interface Issue {
   suggestion: string;
 }
 
-/**
- * @deprecated Use Issue instead
- */
-export type Warning = Issue;
-
-/**
- * Analysis summary
- */
-export interface AnalysisSummary {
-  mobile_first: boolean;
-  complete_coverage: boolean;
-  breakpoints_used: string[];
-  notes: string[];
-}
 
 /**
  * Complete analysis result

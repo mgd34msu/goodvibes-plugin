@@ -108,12 +108,17 @@ export function buildImportGraph(files: string[], projectRoot: string): ImportGr
     try {
       content = fs.readFileSync(filePath, 'utf-8');
     } catch {
+      // Intentionally swallowed: unreadable files get empty import lists
+      // so graph traversal can proceed without them.
       graph.set(relPath, []);
       continue;
     }
 
     const ext = path.extname(filePath).toLowerCase();
-    const scriptKind = ext === '.tsx' || ext === '.jsx' ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+    const scriptKind =
+      ext === '.tsx' || ext === '.jsx' ? ts.ScriptKind.TSX
+      : ext === '.js' || ext === '.mjs' || ext === '.cjs' ? ts.ScriptKind.JS
+      : ts.ScriptKind.TS;
     const sourceFile = ts.createSourceFile(
       filePath,
       content,

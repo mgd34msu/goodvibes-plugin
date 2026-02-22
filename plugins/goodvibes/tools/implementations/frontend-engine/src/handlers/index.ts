@@ -27,6 +27,7 @@ import { handleAnalyzeEventFlow } from './analyze-event-flow.js';
 import { handleGetReactComponentTree } from './react.js';
 import { handleAnalyzeClientBoundary } from './analyze-client-boundary.js';
 import { handleAuditHookDependencies } from './audit-hook-dependencies.js';
+import { handleAnalyzeErrorBoundaries } from './analyze-error-boundaries.js';
 
 // Export types only
 export type { AnalyzeRenderTriggersArgs } from './analyze-render-triggers.js';
@@ -46,6 +47,12 @@ export type { AnalyzeEventFlowArgs } from './analyze-event-flow.js';
 export type { GetReactComponentTreeArgs } from './react.js';
 export type { AnalyzeClientBoundaryArgs } from './analyze-client-boundary.js';
 export type { AuditHookDependenciesArgs, AuditResult, HookInfo, HookIssue } from './audit-hook-dependencies.js';
+export type {
+  AnalyzeErrorBoundariesArgs,
+  ErrorBoundaryResult,
+  ErrorBoundaryInfo,
+  ErrorBoundaryIssue,
+} from './analyze-error-boundaries.js';
 
 // =============================================================================
 // HANDLER REGISTRY
@@ -67,6 +74,7 @@ const handlerRegistry = new Map<string, ToolHandler>([
   ['analyze_tailwind_conflicts', handleAnalyzeTailwindConflicts as ToolHandler],
   ['analyze_client_boundary', handleAnalyzeClientBoundary as ToolHandler],
   ['audit_hook_dependencies', handleAuditHookDependencies as ToolHandler],
+  ['analyze_error_boundaries', handleAnalyzeErrorBoundaries as ToolHandler],
 ]);
 
 /**

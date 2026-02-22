@@ -37,7 +37,7 @@ export function extractClassNames(sourceFile: ts.SourceFile, elementFilter?: str
       // Extract static parts from template literal
       let result = node.head.text;
       for (const span of node.templateSpans) {
-        const spanText = span.literal.text.trim();
+        const spanText = span.literal.text.split(/\s+/).filter(Boolean).join(' ');
         if (spanText) result += ' ' + spanText;
       }
       return result;

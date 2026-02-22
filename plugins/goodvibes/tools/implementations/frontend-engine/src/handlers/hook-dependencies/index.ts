@@ -75,16 +75,8 @@ function detectComponentName(sourceFile: ts.SourceFile, filePath: string): strin
       }
     }
 
-    // export default function Component()
-    if (
-      ts.isExportAssignment(statement) &&
-      ts.isFunctionDeclaration(statement as unknown as ts.Node)
-    ) {
-      const inner = (statement as unknown as ts.ExportAssignment).expression;
-      if (ts.isFunctionExpression(inner) && inner.name) {
-        return inner.name.getText(sourceFile);
-      }
-    }
+    // Note: `export default function Component()` is parsed as a FunctionDeclaration
+    // with export+default modifiers — already handled by the function declaration branch above.
   }
 
   // Fall back to file name
@@ -94,6 +86,11 @@ function detectComponentName(sourceFile: ts.SourceFile, filePath: string): strin
 /**
  * Find the first function-like node in the source file that likely contains hooks.
  * Used when the file doesn't have a single obvious component.
+ *
+ * Note: Currently returns the entire source file to capture all hooks at top level.
+ * A more precise implementation would find the first PascalCase function/arrow that
+ * contains hook calls. This is acceptable for the current use case since we analyze
+ * all hooks regardless of nesting depth.
  */
 function findComponentNode(sourceFile: ts.SourceFile): ts.Node {
   // Return source file itself to analyze all hooks at top level

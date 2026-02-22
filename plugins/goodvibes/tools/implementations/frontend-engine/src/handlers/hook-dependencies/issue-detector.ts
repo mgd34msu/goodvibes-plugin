@@ -12,6 +12,7 @@
  */
 
 import type { HookInfo, HookIssue, ComponentScope, DependencyInfo } from './types.js';
+import { GLOBAL_IDENTIFIERS } from './hook-extractor.js';
 
 /**
  * setState/dispatch keyword patterns that, when seen in body, indicate
@@ -30,7 +31,8 @@ export function detectStaleClosure(
   scope: ComponentScope
 ): HookIssue[] {
   // Only applies to effects (not useMemo/useCallback where empty deps means run-once by design)
-  if (hook.name !== 'useEffect' && hook.name !== 'useLayoutEffect' && hook.name !== 'useInsertionEffect') {
+  // useInsertionEffect is excluded: per React docs it should not access state/refs (covered by missing-deps detector)
+  if (hook.name !== 'useEffect' && hook.name !== 'useLayoutEffect') {
     return [];
   }
 
@@ -39,11 +41,9 @@ export function detectStaleClosure(
   const staleRefs: string[] = [];
 
   for (const ref of hook.bodyRefs) {
-    if (scope.stateVars.has(ref) || scope.setterVars.has(ref) || scope.dispatchVars.has(ref)) {
-      // Setters and dispatch are stable, only flag actual state values
-      if (scope.stateVars.has(ref)) {
-        staleRefs.push(ref);
-      }
+    // Only flag actual state values — setters and dispatch are stable
+    if (scope.stateVars.has(ref)) {
+      staleRefs.push(ref);
     }
   }
 
@@ -98,36 +98,15 @@ export function detectMissingDeps(
       continue;
     }
 
-    // Skip common globals and React hooks themselves
-    if (
-      ref === 'React' ||
-      ref === 'console' ||
-      ref === 'window' ||
-      ref === 'document' ||
-      ref === 'navigator' ||
-      ref === 'location' ||
-      ref === 'performance' ||
-      ref === 'localStorage' ||
-      ref === 'sessionStorage' ||
-      ref === 'fetch' ||
-      ref === 'AbortController' ||
-      ref === 'URL' ||
-      ref === 'URLSearchParams'
-    ) {
-      continue;
-    }
+    // Skip common globals and React hooks themselves (shared with hook-extractor)
+    if (GLOBAL_IDENTIFIERS.has(ref)) continue;
 
     // Skip hook names themselves (useEffect etc. referenced by name)
     if (/^use[A-Z]/.test(ref)) continue;
 
-    // This ref is potentially missing
-    if (
-      scope.stateVars.has(ref) ||
-      scope.useMemoVars.has(ref)
-    ) {
-      // State or memoized values that are referenced but not in deps
-      missing.push(ref);
-    }
+    // Everything that passes the skip checks above and is in bodyRefs but not in deps
+    // should be flagged as missing — props, context values, custom hook returns, etc.
+    missing.push(ref);
   }
 
   if (missing.length === 0) return [];
@@ -223,7 +202,9 @@ export function detectDerivedState(
     bodyWithoutWhitespace.includes('if (') ||
     bodyWithoutWhitespace.includes('if(') ||
     bodyWithoutWhitespace.includes('for (') ||
-    bodyWithoutWhitespace.includes('while (')
+    bodyWithoutWhitespace.includes('while (') ||
+    // Ternary expressions can bypass the conditional filter — skip those too
+    (bodyWithoutWhitespace.includes('?') && bodyWithoutWhitespace.includes(':'))
   ) {
     return [];
   }

@@ -52,7 +52,7 @@ function resolveScanPath(
   projectRoot: string,
   providedPath?: string,
   entryFile?: string
-): { scanPath: string; description: string } {
+): { scanPath: string; description: string; error?: string } {
   const normalizedRoot = projectRoot.endsWith(path.sep) ? projectRoot : projectRoot + path.sep;
 
   if (entryFile) {
@@ -104,11 +104,15 @@ export async function handleAnalyzeClientBoundary(
 ): Promise<ToolResponse> {
   const projectRoot = getProjectRoot();
 
-  const { scanPath, description } = resolveScanPath(
+  const { scanPath, description, error: pathError } = resolveScanPath(
     projectRoot,
     args.path,
     args.entry
   );
+
+  if (pathError) {
+    return createErrorResponse(pathError, { provided: args.path ?? args.entry });
+  }
 
   // Validate scan target exists
   if (!fs.existsSync(scanPath)) {
@@ -164,6 +168,9 @@ export async function handleAnalyzeClientBoundary(
       client: classifications.filter(c => c.classification === 'client').length,
       clientInherited: classifications.filter(c => c.classification === 'client-inherited').length,
       ambiguous: classifications.filter(c => c.classification === 'ambiguous').length,
+      ...(clientFiles.length === 0 && !args.entry
+        ? { note: 'No "use client" directives found in the scanned directory — all files are treated as server components.' }
+        : {}),
     };
 
     // STEP 8: Build boundaries list (sorted by childCount desc)

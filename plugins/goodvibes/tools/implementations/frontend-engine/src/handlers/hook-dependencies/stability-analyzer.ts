@@ -146,6 +146,10 @@ export function classifyDependency(
   }
 
   // Array method chaining (e.g., items.map(...), list.filter(...))
+  // Known limitation: regex matches any lowercase dot-method call, including string methods
+  // like .slice(), .toLowerCase(), etc. These are technically stable (primitives), but
+  // since we can't determine the receiver type statically, we accept the false positive
+  // as a conservative approximation.
   const arrayMethodMatch = depText.match(/\.([a-z]+)\s*\(/);
   if (arrayMethodMatch && UNSTABLE_ARRAY_METHODS.has(arrayMethodMatch[1])) {
     return {
@@ -155,6 +159,9 @@ export function classifyDependency(
   }
 
   // Object.keys/values/entries
+  // Known limitation: aliased imports (e.g., `import { keys } from 'object-keys'`) are
+  // not detected since we only check for the `Object.method(` literal pattern. Such
+  // aliased calls would fall through to the unknown stability classification below.
   const objectMethodMatch = depText.match(/^Object\.([a-z]+)\s*\(/);
   if (objectMethodMatch && UNSTABLE_OBJECT_METHODS.has(objectMethodMatch[1])) {
     return {

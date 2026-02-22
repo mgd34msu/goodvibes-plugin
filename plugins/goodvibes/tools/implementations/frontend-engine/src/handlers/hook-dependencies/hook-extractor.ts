@@ -29,8 +29,8 @@ const SUBSCRIPTION_PATTERNS = [
   'setTimeout',
   'clearInterval',
   'clearTimeout',
-  'on(',
-  'off(',
+  '.on(',  // word-boundary prefix to avoid false positives like abandon(, function(
+  '.off(',
   'addListener',
   'removeListener',
   'observe',
@@ -38,44 +38,71 @@ const SUBSCRIPTION_PATTERNS = [
 ];
 
 /**
- * Extract all identifiers referenced in an AST node (recursively)
+ * Global identifiers to exclude from body ref collection.
+ * Shared constant used by both hook-extractor and issue-detector.
+ */
+export const GLOBAL_IDENTIFIERS = new Set([
+  'undefined', 'null', 'true', 'false', 'this',
+  'console', 'window', 'document', 'Math', 'JSON',
+  'Object', 'Array', 'Promise', 'Error', 'String', 'Number', 'Boolean',
+  'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval',
+  'addEventListener', 'removeEventListener',
+  'navigator', 'location', 'performance',
+  'localStorage', 'sessionStorage',
+  'fetch', 'AbortController', 'URL', 'URLSearchParams',
+  'React',
+]);
+
+/**
+ * Extract all identifiers referenced in an AST node (recursively).
+ *
+ * Filters out:
+ * - Property access names (right side of `.`) to avoid false positives
+ * - Locally declared variables within the callback body
+ * - Parameter names of inner functions/callbacks
+ * - Global identifiers
  */
 function extractBodyRefs(node: ts.Node, sourceFile: ts.SourceFile): Set<string> {
   const refs = new Set<string>();
+  const localDecls = new Set<string>();
 
-  function visit(n: ts.Node): void {
+  // First pass: collect local declarations and parameters within the callback
+  function collectLocals(n: ts.Node): void {
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) {
+      localDecls.add(n.name.getText(sourceFile));
+    }
+    if (ts.isParameter(n) && ts.isIdentifier(n.name)) {
+      localDecls.add(n.name.getText(sourceFile));
+    }
+    // Arrow function and function expression parameters (inner callbacks)
+    if ((ts.isArrowFunction(n) || ts.isFunctionExpression(n)) && n !== node) {
+      for (const param of n.parameters) {
+        if (ts.isIdentifier(param.name)) {
+          localDecls.add(param.name.getText(sourceFile));
+        }
+      }
+    }
+    ts.forEachChild(n, collectLocals);
+  }
+  collectLocals(node);
+
+  // Second pass: collect identifier references, excluding locals and property access names
+  function collectRefs(n: ts.Node): void {
     if (ts.isIdentifier(n)) {
       const text = n.getText(sourceFile);
-      // Exclude keywords and built-ins
-      if (
-        text !== 'undefined' &&
-        text !== 'null' &&
-        text !== 'true' &&
-        text !== 'false' &&
-        text !== 'this' &&
-        text !== 'console' &&
-        text !== 'window' &&
-        text !== 'document' &&
-        text !== 'Math' &&
-        text !== 'JSON' &&
-        text !== 'Object' &&
-        text !== 'Array' &&
-        text !== 'Promise' &&
-        text !== 'Error' &&
-        text !== 'setTimeout' &&
-        text !== 'setInterval' &&
-        text !== 'clearTimeout' &&
-        text !== 'clearInterval' &&
-        text !== 'addEventListener' &&
-        text !== 'removeEventListener'
-      ) {
+      // Skip if right side of property access (e.g., obj.name — skip "name")
+      const isPropertyName =
+        n.parent &&
+        ts.isPropertyAccessExpression(n.parent) &&
+        n.parent.name === n;
+      if (!isPropertyName && !localDecls.has(text) && !GLOBAL_IDENTIFIERS.has(text)) {
         refs.add(text);
       }
     }
-    ts.forEachChild(n, visit);
+    ts.forEachChild(n, collectRefs);
   }
+  collectRefs(node);
 
-  visit(node);
   return refs;
 }
 

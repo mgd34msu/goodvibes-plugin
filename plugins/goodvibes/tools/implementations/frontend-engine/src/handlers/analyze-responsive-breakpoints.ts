@@ -19,7 +19,5 @@ export {
   type PropertyChange,
   type ElementAnalysis,
   type Issue,
-  type Warning,
-  type AnalysisSummary,
   type ToolResponse,
 } from './responsive-breakpoints/index.js';

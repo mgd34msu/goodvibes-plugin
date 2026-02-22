@@ -53,7 +53,10 @@ export interface HookInfo {
   hasEmptyDeps: boolean;
   /** Whether the dep array is omitted entirely */
   hasNoDeps: boolean;
-  /** Text of the callback body */
+  /**
+   * Text of the callback body.
+   * @internal — used by issue detection only, not serialized in final output
+   */
   body: string;
   /** Identifiers referenced inside the hook body */
   bodyRefs: string[];
@@ -78,8 +81,7 @@ export interface HookIssue {
     | 'unnecessary_deps'
     | 'unstable_deps'
     | 'derived_state'
-    | 'missing_cleanup'
-    | 'cleanup_stale_ref';
+    | 'missing_cleanup';
   /** Severity level */
   severity: 'error' | 'warning' | 'info';
   /** Human-readable issue description */

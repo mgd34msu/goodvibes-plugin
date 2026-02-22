@@ -258,6 +258,30 @@ export const FRONTEND_SCHEMAS = [
       },
     },
   },
+  {
+    name: 'analyze_error_boundaries',
+    description:
+      'Analyzes React/Next.js projects for error boundary coverage. Detects class-based error boundaries (getDerivedStateFromError / componentDidCatch) and library wrappers (react-error-boundary, Sentry, etc.), analyzes which component subtrees are protected, identifies missing error.tsx files in Next.js App Router route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad boundaries, and async components without protection.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project_path: {
+          type: 'string',
+          description: 'Root directory of the React/Next.js project to analyze',
+        },
+        entry: {
+          type: 'string',
+          description: 'Optional entry file to start analysis from instead of scanning the entire project',
+        },
+        include_library_boundaries: {
+          type: 'boolean',
+          description: 'Include detection of library error boundaries (react-error-boundary, Sentry, etc.) (default: true)',
+          default: true,
+        },
+      },
+      required: ['project_path'],
+    },
+  },
 ];
 
 export const allSchemas = FRONTEND_SCHEMAS;
