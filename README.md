@@ -1,7 +1,7 @@
 # GoodVibes Plugin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.2.30-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://claude.com/claude-code)
 
 > Plug in. Receive good vibes.
