@@ -69,7 +69,7 @@ prisma/*.db
 logs/
 
 # Release
-RELEASE.md
+# RELEASE.md
 
 # More Tests
 test-auto-encode/

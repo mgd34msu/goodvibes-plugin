@@ -7,19 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-21
+
 ### Added
-- JSDoc documentation for automation modules (fix-loop.ts, git-operations.ts)
-- Windows NUL device artifacts to gitignore
-- PACKAGE_NOTES.md documenting esbuild version pinning rationale
+- **Analytics Engine** — entirely new engine with 7 MCP tools (analytics_dashboard, analytics_query, analytics_budget, analytics_tag, analytics_export, analytics_config, analytics_sync), global SQLite database (sql.js), JSONL session parser, daemon system, tmux mini dashboard, Ink/React full TUI with 4 pages, sync engine, tag system, budget system
+- **Project Engine v2** — consolidated from analysis-engine with 26 tools using project_* naming convention, TypeScript Language Service integration, multi-DB support
+- **Precision Engine v2** — file_ops (copy/move/delete) in precision_exec, ProjectIndex v3 with token estimates, PrecisionRuntime singleton, hooks system, telemetry with precision_id, session state KV, ModeManager, precision_agent with dossier format
+- **Frontend Engine v2** — 3 new tools (frontend_client_boundary, frontend_hook_dependencies, frontend_error_boundaries), improved detection with DRY shared utilities
+- **Skills overhaul** — all 25 skills rewritten to 10/10 review scores, 5 always-active protocol skills, tiered loading architecture, 80% token reduction
+- **GPA Loop** (Gather-Plan-Apply) — renamed from DPB with practical batching
+- **Setup hook** for session initialization and project indexing
+- **Deep-dive documentation** for all 5 engines (precision-engine.md, analytics-engine.md, project-engine.md, frontend-engine.md, registry-engine.md)
+- **/goodvibes:analytics** slash command for dashboard management
+- **Native tool blocking** — WebFetch and Update redirected to precision equivalents
+- **Sandbox mode protection** — agents prohibited from enabling sandbox
+- **Progressive disclosure** model for context injection
 
 ### Changed
-- Modularized post-tool-use.ts from 566 lines to 153 lines with focused modules
-- Replaced console.* with debug() across context and state modules
-- Updated brutal-reviewer with context-aware TODO detection
+- Frontend engine tools renamed from verb-based (get_*, analyze_*, etc.) to frontend_* prefix convention
+- DPB (Discover-Plan-Batch) renamed to GPA (Gather-Plan-Apply), relaxed from strict 3-call cycle
+- precision_agent restricted to background-only mode (blocking removed)
+- Subagent protocol split into chain-loaded files for progressive disclosure
+- All prompt files loaded from external templates instead of hardcoding
+- max_parallel_agent_chains renamed from parallel_agents in output styles
 
 ### Fixed
-- Added execSync timeout (30s) to telemetry/agents.ts
-- Added debug logging to memory parser catch blocks
+- 14+ analytics engine dashboard fixes (crash prevention, live metrics, label clarity, terminal width detection)
+- Frontend engine critical issues across 4 submodules resolved to 10/10
+- Project engine shell injection eliminated, return types fixed
+- Precision engine ProjectIndex 7 issues resolved, ModeManager polish, KVState polish
+- 18 skills brought from various scores to 10/10 through systematic review fixes
+- Context injection aligned with progressive disclosure model
+- precision_exec loophole for file search commands closed
+- better-sqlite3 replaced with sql.js for portability, env variable leaks fixed
+
+### Removed
+- **Analysis Engine** — replaced entirely by Project Engine v2
+- **Batch Engine** — functionality absorbed into precision_exec file_ops
+- Old verb-based frontend tool names (replaced by frontend_* convention)
+
+## [1.2.0] - 2026-02-09
+
+### Added
+- **Precision Fetch Authentication** — service registry with auto-auth, OAuth2 browser flow, token refresh, cookie jar, rate limiting, 12 extraction modes
+- **precision_notebook** tool for Jupyter notebook cell editing with cell_id targeting
+- **precision_config** tool for runtime configuration management
+- **FileStateCache** with optimistic concurrency control and LRU eviction
+- **Context intelligence** for smart file suggestions and batch pagination
+- **ProcessManager** for background execution with SessionState and CommandHistory
+- Image, PDF, and notebook (.ipynb) support in precision_read
+- Runtime sandbox toggle for external path access
+- 3 new integrator agents (integrator-ai, integrator-services, integrator-state)
+
+### Changed
+- Integrator agent split into 3 domain-specific agents
+- SEW Loop renamed to DBE Loop (Discover Batch Execute Loop)
+- Enterprise-grade code standards enforced across all agents
+
+### Fixed
+- 34+ E2E bugs across 8 rounds of remediation (319 to 562 tests)
+- Auth orchestrator edge cases, OAuth2 single-quote escaping
+- Format/mode mismatch in MCP schema vs handlers
+- Ripgrep --glob pattern issues, timer leaks, cache invalidation
+- Zero-length regex guard, image magic byte validation
+
+## [1.1.0] - 2026-01-31
+
+### Added
+- **Precision Engine** — 12 MCP tools replacing native Claude Code tools (precision_read, precision_write, precision_edit, precision_grep, precision_glob, precision_exec, precision_fetch, precision_symbols, precision_agent, precision_notebook, precision_config, discover)
+- Token-efficient operations with verbosity levels (count_only, minimal, standard, verbose)
+- Extract modes for precision_read (content, outline, symbols, ast, lines)
+- Batch operations across all tools (files[], edits[], commands[], queries[])
+- Transaction support in precision_edit (atomic, partial, none)
+- Fuzzy and regex match modes for precision_edit
+- Background execution support in precision_exec
+- **Registry Engine** — 7 tools for skill/agent/tool discovery (search_skills, search_agents, search_tools, recommend_skills, get_skill_content, get_agent_content, skill_dependencies)
+- Fuse.js-based fuzzy search for registry lookups
+- DBE Loop (Discover-Batch-Execute) workflow
+- WRFC Loop (Write-Review-Fix-Check) quality enforcement
+- Output styles: vibecoding and justvibes modes
+
+### Changed
+- All native tool operations deprecated in favor of precision equivalents
+- Agent architecture standardized with memory/logging integration
+
+## [1.0.0] - 2026-01-15
+
+### Added
+- **Major version release** — production-ready plugin architecture
+- MCP server with tool definitions, schemas, and handler dispatch
+- 11 specialized subagents (engineer, reviewer, tester, architect, deployer, planner, integrator-ai, integrator-services, integrator-state, skill-factory, agent-factory)
+- Comprehensive hook system (12 events: SessionStart, PreToolUse, PostToolUse, SubagentStart, SubagentStop, etc.)
+- Persistent memory system in .goodvibes/memory/ (decisions, patterns, failures, preferences)
+- Smart context injection on session start
+- Plugin distribution via marketplace.json
+
+### Changed
+- Complete rewrite from v0.5 architecture
+- All agents standardized with decision frameworks and memory integration
 
 ## [0.5.0] - 2026-01-04
 
@@ -138,13 +223,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 1.3.0 | 2026-02-21 | Analytics Engine, Project Engine v2, Precision Engine v2, Frontend Engine v2, Skills overhaul |
+| 1.2.0 | 2026-02-09 | Precision Fetch auth, precision_notebook, precision_config, FileStateCache, ProcessManager |
+| 1.1.0 | 2026-01-31 | Precision Engine (12 tools), Registry Engine, DBE Loop, WRFC Loop |
+| 1.0.0 | 2026-01-15 | Production-ready architecture, 11 subagents, hook system, persistent memory |
 | 0.5.0 | 2026-01-04 | Complete enhancement implementation (74 tasks), 10 feature areas |
 | 0.4.0 | 2026-01-03 | Workflow-planner, persistent memory, telemetry hooks |
 | 0.3.0 | 2026-01-03 | brutal-reviewer, code-architect, major refactoring |
 | 0.2.0 | 2026-01-02 | MCP server refactoring, hook system compliance |
 | 0.1.0 | 2026-01-02 | Initial release |
 
-[Unreleased]: https://github.com/mgd34msu/goodvibes-plugin/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v0.5.0...v1.0.0
 [0.5.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v0.2.0...v0.3.0
