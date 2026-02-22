@@ -55128,7 +55128,7 @@ __name(formatDelta, "formatDelta");
 var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
 var SessionOverview = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const { metrics, tools_breakdown, session_id, started_at, uptime_ms } = state;
-  const { tokens, cache: cache3, cost, commands, agents, files } = metrics;
+  const { tokens, cache: cache3, cost, tools, agents, files } = metrics;
   const tags = (0, import_react23.useMemo)(() => {
     if (!globalDb || !session_id) return [];
     try {
@@ -55224,12 +55224,12 @@ var SessionOverview = /* @__PURE__ */ __name(({ state, globalDb }) => {
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         MetricBox,
         {
-          title: "COMMANDS",
+          title: "TOOLS",
           rows: [
-            { label: "Total", value: formatNumber(commands.total) },
-            { label: "Failures", value: formatNumber(commands.failures) },
-            { label: "Success", value: formatPercent(commands.success_rate) },
-            { label: "Avg ms", value: formatDuration(commands.avg_duration_ms) }
+            { label: "Total", value: formatNumber(tools.total) },
+            { label: "Failures", value: formatNumber(tools.failures) },
+            { label: "Success", value: formatPercent(tools.success_rate) },
+            { label: "Avg ms", value: formatDuration(tools.avg_duration_ms) }
           ]
         }
       ),
@@ -55406,7 +55406,7 @@ function avgToolCalls(sessions) {
 __name(avgToolCalls, "avgToolCalls");
 var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
   const { metrics } = state;
-  const { tokens, cache: cache3, cost, commands, agents } = metrics;
+  const { tokens, cache: cache3, cost, tools, agents } = metrics;
   const projectSessions = (0, import_react24.useMemo)(() => {
     if (!globalDb || !state.session_id) return [];
     try {
@@ -55481,7 +55481,7 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
     ],
     [
       "Commands",
-      formatNumber(commands.total),
+      formatNumber(tools.total),
       "\u2014",
       // GlobalDB tracks all tool calls, not bash/exec commands specifically
       "\u2014"
@@ -55495,7 +55495,7 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
     ],
     [
       "Success Rate",
-      formatPercent(commands.success_rate),
+      formatPercent(tools.success_rate),
       "\u2014",
       "\u2014"
     ],
@@ -55573,9 +55573,9 @@ var Historical = /* @__PURE__ */ __name(({ state, globalDb }) => {
           TrendLine,
           {
             label: "Command Success",
-            value: formatPercent(commands.success_rate),
+            value: formatPercent(tools.success_rate),
             trend: "\u2014",
-            barValue: commands.success_rate,
+            barValue: tools.success_rate,
             higherIsBetter: true
           }
         ),

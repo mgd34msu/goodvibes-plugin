@@ -86,7 +86,7 @@ function avgAgentSpawns(sessions: GlobalSession[]): number {
  * Compute the average total_tool_calls across sessions.
  * Note: total_tool_calls includes ALL tool calls (precision_read, precision_write,
  * precision_exec, etc.), not just bash/exec commands. Used for tool-call comparison
- * only — not comparable to current session's commands.total (bash+exec only).
+ * only — not comparable to current session's tools.total (bash+exec only).
  */
 function avgToolCalls(sessions: GlobalSession[]): number {
   if (sessions.length === 0) return 0;
@@ -103,7 +103,7 @@ function avgToolCalls(sessions: GlobalSession[]): number {
  */
 export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
   const { metrics } = state;
-  const { tokens, cache, cost, commands, agents } = metrics;
+  const { tokens, cache, cost, tools, agents } = metrics;
 
   // Pull project sessions from GlobalDB for comparison
   const projectSessions = useMemo(() => {
@@ -196,7 +196,7 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     ],
     [
       'Commands',
-      formatNumber(commands.total),
+      formatNumber(tools.total),
       '—', // GlobalDB tracks all tool calls, not bash/exec commands specifically
       '—',
     ],
@@ -208,7 +208,7 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
     ],
     [
       'Success Rate',
-      formatPercent(commands.success_rate),
+      formatPercent(tools.success_rate),
       '—',
       '—',
     ],
@@ -294,9 +294,9 @@ export const Historical: React.FC<HistoricalProps> = ({ state, globalDb }) => {
           />
           <TrendLine
             label="Command Success"
-            value={formatPercent(commands.success_rate)}
+            value={formatPercent(tools.success_rate)}
             trend="—"
-            barValue={commands.success_rate}
+            barValue={tools.success_rate}
             higherIsBetter
           />
           <TrendLine

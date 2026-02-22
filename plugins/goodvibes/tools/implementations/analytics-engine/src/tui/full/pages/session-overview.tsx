@@ -36,7 +36,7 @@ export interface SessionOverviewProps {
  */
 export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalDb }) => {
   const { metrics, tools_breakdown, session_id, started_at, uptime_ms } = state;
-  const { tokens, cache, cost, commands, agents, files } = metrics;
+  const { tokens, cache, cost, tools, agents, files } = metrics;
 
   // Fetch tags for the current session from GlobalDB
   const tags = useMemo(() => {
@@ -116,7 +116,7 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
         />
       </Box>
 
-      {/* Metric boxes — row 2: API usage / commands / agents / files */}
+      {/* Metric boxes — row 2: API usage / tools / agents / files */}
       <Box gap={1} flexWrap="wrap">
         <MetricBox
           title="API TOKENS (JSONL)"
@@ -130,12 +130,12 @@ export const SessionOverview: React.FC<SessionOverviewProps> = ({ state, globalD
         />
 
         <MetricBox
-          title="COMMANDS"
+          title="TOOLS"
           rows={[
-            { label: 'Total', value: formatNumber(commands.total) },
-            { label: 'Failures', value: formatNumber(commands.failures) },
-            { label: 'Success', value: formatPercent(commands.success_rate) },
-            { label: 'Avg ms', value: formatDuration(commands.avg_duration_ms) },
+            { label: 'Total', value: formatNumber(tools.total) },
+            { label: 'Failures', value: formatNumber(tools.failures) },
+            { label: 'Success', value: formatPercent(tools.success_rate) },
+            { label: 'Avg ms', value: formatDuration(tools.avg_duration_ms) },
           ]}
         />
 
