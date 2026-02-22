@@ -30,7 +30,7 @@ function extractSections(
     result['cache'] = state.metrics.cache;
   }
   if (sections.includes('commands')) {
-    result['commands'] = state.metrics.commands;
+    result['commands'] = state.metrics.tools;
   }
   if (sections.includes('agents')) {
     result['agents'] = state.metrics.agents;
@@ -65,7 +65,7 @@ function extractArchiveSections(
 
   if (sections.includes('tokens'))   result['tokens']   = m.tokens;
   if (sections.includes('cache'))    result['cache']    = m.cache;
-  if (sections.includes('commands')) result['commands'] = m.commands;
+  if (sections.includes('commands')) result['commands'] = m.tools;
   if (sections.includes('agents'))   result['agents']   = m.agents;
   if (sections.includes('files'))    result['files']    = m.files;
   if (sections.includes('cost'))     result['cost']     = m.cost;

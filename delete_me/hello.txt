@@ -1,0 +1,4 @@
+Hello, world!
+This is a test file.
+Line three.
+Line four — added by edit.

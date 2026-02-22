@@ -67,7 +67,7 @@ function createMockState(overrides: DashboardOverrides = {}): DashboardState {
         total: 0.0525,
         saved: 0.009,
       },
-      commands: {
+      tools: {
         total: 12,
         success_rate: 0.917,
         avg_duration_ms: 1_200,
@@ -102,7 +102,7 @@ function createMockState(overrides: DashboardOverrides = {}): DashboardState {
         tokens: { ...base.metrics.tokens, ...overrides.metrics.tokens },
         cache: { ...base.metrics.cache, ...overrides.metrics.cache },
         cost: { ...base.metrics.cost, ...overrides.metrics.cost },
-        commands: { ...base.metrics.commands, ...overrides.metrics.commands },
+        tools: { ...base.metrics.tools, ...overrides.metrics.tools },
         agents: { ...base.metrics.agents, ...overrides.metrics.agents },
         files: { ...base.metrics.files, ...overrides.metrics.files },
       },
@@ -336,9 +336,9 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[2]!)).toContain('Files:');
     });
 
-    it('line 3 contains "Commands:"', () => {
+    it('line 3 contains "Tools:"', () => {
       const output = renderer.render(createMockState());
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('Commands:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Tools:');
     });
 
     it('line 2 contains "API Cost:" (API-level session cost)', () => {
@@ -506,7 +506,7 @@ describe('MiniRenderer', () => {
           tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
           cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
           cost: { input: 0, output: 0, total: 0, saved: 0 },
-          commands: { total: 0, success_rate: 0, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
+          tools: { total: 0, success_rate: 0, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
           agents: { spawned: 0, max_concurrent: 0, total_tokens: 0, active: 0, completed: 0 },
           files: { unique_read: 0, modified: 0, created: 0, conflicts: 0 },
         },
@@ -576,7 +576,7 @@ describe('MiniRenderer', () => {
 
     it('does not crash with zero avg_duration_ms', () => {
       const state = createMockState({
-        metrics: { commands: { total: 5, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null } },
+        metrics: { tools: { total: 5, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null } },
       });
       expect(() => renderer.render(state)).not.toThrow();
       expect(renderer.render(state).split('\n')).toHaveLength(4);
@@ -757,7 +757,7 @@ describe('MiniRenderer', () => {
       expect(stripAnsi(output.split('\n')[1]!)).toContain('Context:');
       expect(stripAnsi(output.split('\n')[1]!)).toContain('API Input:');
       // Line 3 should still contain its section labels
-      expect(stripAnsi(output.split('\n')[2]!)).toContain('Commands:');
+      expect(stripAnsi(output.split('\n')[2]!)).toContain('Tools:');
       expect(stripAnsi(output.split('\n')[2]!)).toContain('Files:');
     });
   });

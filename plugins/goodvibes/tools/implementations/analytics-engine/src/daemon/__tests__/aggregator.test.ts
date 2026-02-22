@@ -2,8 +2,8 @@
  * Unit tests for Aggregator cumulative command counter (high-water mark).
  *
  * Tests cover:
- * - Cumulative command count never decreases when sliding window drops records
- * - Command count increases normally when new commands are added
+ * - Cumulative tool count never decreases when sliding window drops records
+ * - Tool count increases normally when new tool calls are added
  * - Failure count is properly clamped to total
  * - High-water mark update condition (>= threshold)
  */
@@ -146,16 +146,16 @@ function setInternals(
   overrides: {
     jsonlReader?: object | null;
     jsonlRecords?: object[];
-    cumulativeCmdTotal?: number;
-    cumulativeCmdFailures?: number;
+    cumulativeToolTotal?: number;
+    cumulativeToolFailures?: number;
   },
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const a = agg as any;
   if ('jsonlReader' in overrides) a.jsonlReader = overrides.jsonlReader;
   if ('jsonlRecords' in overrides) a.jsonlRecords = overrides.jsonlRecords;
-  if ('cumulativeCmdTotal' in overrides) a.cumulativeCmdTotal = overrides.cumulativeCmdTotal;
-  if ('cumulativeCmdFailures' in overrides) a.cumulativeCmdFailures = overrides.cumulativeCmdFailures;
+  if ('cumulativeToolTotal' in overrides) a.cumulativeToolTotal = overrides.cumulativeToolTotal;
+  if ('cumulativeToolFailures' in overrides) a.cumulativeToolFailures = overrides.cumulativeToolFailures;
 }
 
 /**
@@ -165,8 +165,8 @@ function getCumulativeCounters(agg: Aggregator) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const a = agg as any;
   return {
-    cumulativeCmdTotal: a.cumulativeCmdTotal as number,
-    cumulativeCmdFailures: a.cumulativeCmdFailures as number,
+    cumulativeToolTotal: a.cumulativeToolTotal as number,
+    cumulativeToolFailures: a.cumulativeToolFailures as number,
   };
 }
 
@@ -179,18 +179,21 @@ type MockToolCall = {
   input: Record<string, unknown>;
 };
 
-function makeBashCall(opts: { isError?: boolean } = {}): MockToolCall {
+function makePrecisionCall(opts: { isError?: boolean } = {}): MockToolCall {
   return {
-    name: 'Bash',
+    name: 'mcp__plugin_goodvibes_precision-engine__precision_read',
     timestamp: new Date().toISOString(),
     isError: opts.isError ?? false,
-    input: { command: 'echo hello' },
+    input: { files: [] },
   };
 }
 
+/** @deprecated Use makePrecisionCall — kept for backward compat in tests */
+const makeBashCall = makePrecisionCall;
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('Aggregator cumulative command counter (high-water mark)', () => {
+describe('Aggregator cumulative tool counter (high-water mark)', () => {
   let agg: Aggregator;
   let mockJsonlReader: { extractToolCalls: ReturnType<typeof vi.fn>; extractAgentActivity: ReturnType<typeof vi.fn>; extractApiCalls: ReturnType<typeof vi.fn>; extractSessionInfo: ReturnType<typeof vi.fn> };
 
@@ -233,49 +236,49 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
       mockJsonlReader.extractToolCalls.mockReturnValue([]);
       const state = callAggregate(agg);
       // When effectiveCmdTotal is 0, the commands block is not built from JSONL.
-      // The state.metrics.commands.total may fall back to 0 from telemetry.
-      expect(state.metrics.commands.total).toBe(0);
+      // The state.metrics.tools.total may fall back to 0 from telemetry.
+      expect(state.metrics.tools.total).toBe(0);
     });
   });
 
   describe('command counting with window records', () => {
-    it('counts bash tool calls and increases command total', () => {
+    it('counts precision tool calls and increases tool total', () => {
       mockJsonlReader.extractToolCalls.mockReturnValue([
-        makeBashCall(),
-        makeBashCall(),
-        makeBashCall(),
+        makePrecisionCall(),
+        makePrecisionCall(),
+        makePrecisionCall(),
       ]);
 
       const state = callAggregate(agg);
 
-      expect(state.metrics.commands.total).toBe(3);
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(3);
+      expect(state.metrics.tools.total).toBe(3);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(3);
     });
 
-    it('counts failed bash calls as failures', () => {
+    it('counts failed precision tool calls as failures', () => {
       mockJsonlReader.extractToolCalls.mockReturnValue([
-        makeBashCall({ isError: false }),
-        makeBashCall({ isError: true }),
-        makeBashCall({ isError: false }),
+        makePrecisionCall({ isError: false }),
+        makePrecisionCall({ isError: true }),
+        makePrecisionCall({ isError: false }),
       ]);
 
       const state = callAggregate(agg);
 
-      expect(state.metrics.commands.total).toBe(3);
+      expect(state.metrics.tools.total).toBe(3);
       // 1 failure out of 3 -> success_rate = 2/3 ≈ 0.667
-      expect(state.metrics.commands.failures).toBe(1);
-      expect(state.metrics.commands.success_rate).toBeCloseTo(2 / 3, 5);
+      expect(state.metrics.tools.failures).toBe(1);
+      expect(state.metrics.tools.success_rate).toBeCloseTo(2 / 3, 5);
     });
 
-    it('counts precision_exec tool calls as commands', () => {
+    it('counts precision_exec tool calls as tools', () => {
       mockJsonlReader.extractToolCalls.mockReturnValue([
         { name: 'mcp__plugin_goodvibes_precision-engine__precision_exec', timestamp: new Date().toISOString(), isError: false, input: {} },
       ]);
 
       const state = callAggregate(agg);
 
-      expect(state.metrics.commands.total).toBe(1);
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(1);
+      expect(state.metrics.tools.total).toBe(1);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(1);
     });
   });
 
@@ -286,16 +289,16 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
         makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(),
       ]);
       callAggregate(agg);
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(5);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(5);
 
       // Second aggregate: window now shows 0 calls (older records slid off).
       mockJsonlReader.extractToolCalls.mockReturnValue([]);
       const state = callAggregate(agg);
 
       // The effective total must NOT drop below the high-water mark of 5.
-      expect(state.metrics.commands.total).toBe(5);
+      expect(state.metrics.tools.total).toBe(5);
       // The cumulative counter stays at 5 (not updated when jsonlCmdTotal < cumulativeCmdTotal).
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(5);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(5);
     });
 
     it('retains count when window shrinks but does not reach zero', () => {
@@ -305,7 +308,7 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
         makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(),
       ]);
       callAggregate(agg);
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(8);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(8);
 
       // Second aggregate: only 3 commands remain in window (5 dropped off).
       mockJsonlReader.extractToolCalls.mockReturnValue([
@@ -314,14 +317,14 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
       const state = callAggregate(agg);
 
       // effectiveCmdTotal = max(3, 8) = 8 — count is preserved.
-      expect(state.metrics.commands.total).toBe(8);
+      expect(state.metrics.tools.total).toBe(8);
       // cumulativeCmdTotal stays at 8 (3 < 8, no update).
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(8);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(8);
     });
 
     it('updates high-water mark when current count equals previous high', () => {
       // Seed the cumulative counter to 5 directly.
-      setInternals(agg, { cumulativeCmdTotal: 5, cumulativeCmdFailures: 1 });
+      setInternals(agg, { cumulativeToolTotal: 5, cumulativeToolFailures: 1 });
 
       // Current window also has exactly 5 commands (>= threshold triggers update).
       mockJsonlReader.extractToolCalls.mockReturnValue([
@@ -330,14 +333,14 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
       callAggregate(agg);
 
       // >= condition: cumulativeCmdTotal updated to 5 (same value, 0 failures).
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(5);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(5);
       // Failures are reset to 0 since new batch has none.
-      expect(getCumulativeCounters(agg).cumulativeCmdFailures).toBe(0);
+      expect(getCumulativeCounters(agg).cumulativeToolFailures).toBe(0);
     });
 
     it('updates high-water mark when count increases', () => {
       // Seed the cumulative counter at 3.
-      setInternals(agg, { cumulativeCmdTotal: 3, cumulativeCmdFailures: 1 });
+      setInternals(agg, { cumulativeToolTotal: 3, cumulativeToolFailures: 1 });
 
       // New aggregate cycle shows 7 commands (growth).
       mockJsonlReader.extractToolCalls.mockReturnValue([
@@ -346,10 +349,10 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
       ]);
       const state = callAggregate(agg);
 
-      expect(state.metrics.commands.total).toBe(7);
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(7);
+      expect(state.metrics.tools.total).toBe(7);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(7);
       // Failures from current window: 1
-      expect(getCumulativeCounters(agg).cumulativeCmdFailures).toBe(1);
+      expect(getCumulativeCounters(agg).cumulativeToolFailures).toBe(1);
     });
   });
 
@@ -358,7 +361,7 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
       // Edge case: if cumulativeCmdFailures somehow exceeds the effective total,
       // effectiveCmdFailures = min(cumulativeCmdFailures, effectiveCmdTotal).
       // Seed unrealistic state: 10 cumulative total, 10 failures.
-      setInternals(agg, { cumulativeCmdTotal: 10, cumulativeCmdFailures: 10 });
+      setInternals(agg, { cumulativeToolTotal: 10, cumulativeToolFailures: 10 });
 
       // Window now shows only 2 commands (all successful) — total drops, failures capped.
       mockJsonlReader.extractToolCalls.mockReturnValue([
@@ -369,14 +372,14 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
       // effectiveCmdTotal = max(2, 10) = 10
       // effectiveCmdFailures = min(10, 10) = 10
       // success_rate = (10 - 10) / 10 = 0
-      expect(state.metrics.commands.total).toBe(10);
-      expect(state.metrics.commands.failures).toBe(10);
-      expect(state.metrics.commands.success_rate).toBe(0);
+      expect(state.metrics.tools.total).toBe(10);
+      expect(state.metrics.tools.failures).toBe(10);
+      expect(state.metrics.tools.success_rate).toBe(0);
     });
 
     it('clamps effectiveCmdFailures when failures exceed new effective total', () => {
       // Seed: 20 total, 15 failures.
-      setInternals(agg, { cumulativeCmdTotal: 20, cumulativeCmdFailures: 15 });
+      setInternals(agg, { cumulativeToolTotal: 20, cumulativeToolFailures: 15 });
 
       // Window shows 3 successes — effective total is still 20 (high-water mark).
       mockJsonlReader.extractToolCalls.mockReturnValue([
@@ -386,9 +389,9 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
 
       // effectiveCmdTotal = max(3, 20) = 20
       // effectiveCmdFailures = min(15, 20) = 15
-      expect(state.metrics.commands.total).toBe(20);
-      expect(state.metrics.commands.failures).toBe(15);
-      expect(state.metrics.commands.success_rate).toBeCloseTo(5 / 20, 5);
+      expect(state.metrics.tools.total).toBe(20);
+      expect(state.metrics.tools.failures).toBe(15);
+      expect(state.metrics.tools.success_rate).toBeCloseTo(5 / 20, 5);
     });
   });
 
@@ -399,14 +402,14 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
         makeBashCall(), makeBashCall(), makeBashCall(),
       ]);
       let state = callAggregate(agg);
-      expect(state.metrics.commands.total).toBe(3);
+      expect(state.metrics.tools.total).toBe(3);
 
       // Cycle 2: 5 commands (window grew — e.g. new records added).
       mockJsonlReader.extractToolCalls.mockReturnValue([
         makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(),
       ]);
       state = callAggregate(agg);
-      expect(state.metrics.commands.total).toBe(5);
+      expect(state.metrics.tools.total).toBe(5);
 
       // Cycle 3: window drops back to 2 (old records fell off).
       mockJsonlReader.extractToolCalls.mockReturnValue([
@@ -414,7 +417,7 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
       ]);
       state = callAggregate(agg);
       // High-water mark was 5, so effective total stays at 5.
-      expect(state.metrics.commands.total).toBe(5);
+      expect(state.metrics.tools.total).toBe(5);
 
       // Cycle 4: window grows to 9 (past the high-water mark).
       mockJsonlReader.extractToolCalls.mockReturnValue([
@@ -422,8 +425,8 @@ describe('Aggregator cumulative command counter (high-water mark)', () => {
         makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(),
       ]);
       state = callAggregate(agg);
-      expect(state.metrics.commands.total).toBe(9);
-      expect(getCumulativeCounters(agg).cumulativeCmdTotal).toBe(9);
+      expect(state.metrics.tools.total).toBe(9);
+      expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(9);
     });
   });
 });

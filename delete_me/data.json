@@ -1,0 +1,5 @@
+{
+  "name": "test",
+  "value": 99,
+  "items": ["alpha", "beta", "gamma"]
+}

@@ -109,7 +109,7 @@ export interface CostMetrics {
   saved: number;   // dollars
 }
 
-export interface CommandMetrics {
+export interface ToolMetrics {
   total: number;
   success_rate: number;
   avg_duration_ms: number;
@@ -137,7 +137,7 @@ export interface SessionMetrics {
   tokens: TokenMetrics;
   cache: CacheMetrics;
   cost: CostMetrics;
-  commands: CommandMetrics;
+  tools: ToolMetrics;
   agents: AgentMetrics;
   files: FileMetrics;
 }

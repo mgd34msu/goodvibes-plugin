@@ -182,7 +182,7 @@ export class SessionArchiver {
    * @param metrics - Session metrics to derive duration from.
    */
   private estimateDurationMinutes(metrics: SessionMetrics): number {
-    const totalMs = metrics.commands.total_duration_ms;
+    const totalMs = metrics.tools.total_duration_ms;
     return totalMs > 0 ? Math.round(totalMs / 60_000) : 0;
   }
 }

@@ -9,7 +9,7 @@
  * Layout:
  *   Line 1 (header): session ID (8 chars), uptime, session cost
  *   Line 2: context bar, API tokens (In/Out/CacheRead/CacheWrite), total cost
- *   Line 3: commands, files, agents, tokens saved, cache hit rate
+ *   Line 3: tools, files, agents, tokens saved, cache hit rate
  *   Line 4 (footer): bottom border
  */
 
@@ -168,7 +168,7 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   const cache = metrics.cache;
   const agents = metrics.agents;
   const files = metrics.files;
-  const commands = metrics.commands;
+  const tools = metrics.tools;
 
   const sessionId = state.session_id
     ? state.session_id.slice(0, SESSION_ID_LENGTH)
@@ -198,8 +198,8 @@ function computeMetrics(state: DashboardState): ComputedMetrics {
   );
   const conflicts = files.conflicts ?? 0;
 
-  const rawTotal = commands.total ?? 0;
-  const rawFails = commands.failures ?? 0;
+  const rawTotal = tools.total ?? 0;
+  const rawFails = tools.failures ?? 0;
   const cmdTotal = formatNumber(rawTotal);
   const cmdPass = formatNumber(Math.max(0, rawTotal - rawFails));
   const cmdFails = formatNumber(rawFails);
@@ -251,7 +251,7 @@ function isValidState(state: unknown): state is DashboardState {
     m['cache'] != null &&
     m['agents'] != null &&
     m['files'] != null &&
-    m['commands'] != null
+    m['tools'] != null
   );
 }
 
@@ -417,8 +417,8 @@ export class MiniRenderer {
       { thresholds: { warn: 0.5, alert: 0.84 } },
     );
 
-    const cmds = state.metrics.commands;
-    const cmdsLabel = (cmds.total ?? 0) >= 1000 || (cmds.failures ?? 0) >= 1000 ? 'Cmds: ' : 'Commands: ';
+    const cmds = state.metrics.tools;
+    const cmdsLabel = (cmds.total ?? 0) >= 1000 || (cmds.failures ?? 0) >= 1000 ? 'Tools: ' : 'Tools: ';
     const cmdsSection = padSection(
       `${cmdsLabel}${m.cmdTotal} (${ansi.green}\u2713${m.cmdPass}${ansi.reset} ${ansi.red}\u2717${m.cmdFails}${ansi.reset})`,
       sectionWidth,
