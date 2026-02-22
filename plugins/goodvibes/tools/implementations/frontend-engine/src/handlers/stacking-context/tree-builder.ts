@@ -45,8 +45,19 @@ export function buildStackingTree(elements: ElementInfo[]): StackingContext {
     // Find the parent stacking context
     let parentContextIndex: number | null = null;
     let searchIndex = elem.parent_index;
+    const visited = new Set<number>();
 
     while (searchIndex !== null) {
+      // Bounds check: parent_index must be a valid index
+      if (searchIndex < 0 || searchIndex >= elements.length) {
+        break;
+      }
+      // Cycle detection: if we've visited this index before, stop
+      if (visited.has(searchIndex)) {
+        break;
+      }
+      visited.add(searchIndex);
+
       const parentElem = elements[searchIndex];
       if (parentElem.creates_context) {
         parentContextIndex = searchIndex;
@@ -71,10 +82,15 @@ export function buildStackingTree(elements: ElementInfo[]): StackingContext {
  * Get the parent stacking context name for an element
  */
 export function getContextParent(elementIndex: number, elements: ElementInfo[]): string {
+  if (elementIndex < 0 || elementIndex >= elements.length) return 'root';
   const elem = elements[elementIndex];
   let searchIndex = elem.parent_index;
+  const visited = new Set<number>();
 
   while (searchIndex !== null) {
+    if (searchIndex < 0 || searchIndex >= elements.length) break;
+    if (visited.has(searchIndex)) break;
+    visited.add(searchIndex);
     const parentElem = elements[searchIndex];
     if (parentElem.creates_context) {
       return parentElem.element;

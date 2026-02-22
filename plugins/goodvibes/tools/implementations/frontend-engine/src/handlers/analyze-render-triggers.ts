@@ -24,4 +24,5 @@ export {
   type OptimizationSuggestion,
   type MemoType,
   type ToolResponse,
+  type ComponentResult,
 } from './render-triggers/index.js';

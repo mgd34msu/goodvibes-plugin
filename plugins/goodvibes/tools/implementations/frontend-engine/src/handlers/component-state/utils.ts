@@ -92,7 +92,7 @@ export function inferTypeFromValue(node: ts.Node | undefined, sourceFile: ts.Sou
 
   // For complex expressions, just return the text (truncated)
   const text = node.getText(sourceFile);
-  return text.length > 50 ? text.slice(0, 47) + '...' : text;
+  return text.length > 120 ? text.slice(0, 117) + '...' : text;
 }
 
 /**

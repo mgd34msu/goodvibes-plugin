@@ -131,6 +131,30 @@ export interface AnalyzeStackingContextResult {
 }
 
 /**
+ * Thresholds for stacking issue detection (all configurable)
+ */
+export interface StackingThresholds {
+  /** Minimum z-index value to be considered "high" (default: 50) */
+  highZIndex: number;
+  /** Z-index value considered "very high" / extreme (default: 9999) */
+  veryHighZIndex: number;
+  /** Minimum count of high-z elements before flagging inflation (default: 3) */
+  zInflationCount: number;
+  /** Z-index value above which children are flagged in isolation check (default: 10) */
+  isolationChildZIndex: number;
+}
+
+/**
+ * Default thresholds for stacking issue detection
+ */
+export const DEFAULT_STACKING_THRESHOLDS: StackingThresholds = {
+  highZIndex: 50,
+  veryHighZIndex: 9999,
+  zInflationCount: 3,
+  isolationChildZIndex: 10,
+};
+
+/**
  * Tool response format
  */
 export interface ToolResponse {

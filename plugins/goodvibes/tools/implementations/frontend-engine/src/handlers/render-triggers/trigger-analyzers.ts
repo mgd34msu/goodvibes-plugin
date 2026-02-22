@@ -14,6 +14,7 @@ import type {
   ContextSubscription,
   ChildAnalysis,
   ContextGranularity,
+  MemoInfo,
 } from './types.js';
 import {
   getLineNumber,
@@ -165,7 +166,7 @@ export function findInlineDefinitions(componentNode: ts.Node, sourceFile: ts.Sou
     if (!expr) return;
 
     // Skip if inside a memoization hook
-    if (isInsideMemoizationHook(expr)) return;
+    if (isInsideMemoizationHook(expr, sourceFile)) return;
 
     const attrName = node.name.getText(sourceFile);
 
@@ -254,7 +255,7 @@ export function findExpensiveComputations(componentNode: ts.Node, sourceFile: ts
   function findExpensive(node: ts.Node): void {
     if (ts.isCallExpression(node)) {
       // Skip if inside useMemo
-      if (isInsideMemoizationHook(node)) {
+      if (isInsideMemoizationHook(node, sourceFile)) {
         ts.forEachChild(node, findExpensive);
         return;
       }
@@ -298,7 +299,7 @@ export function findExpensiveComputations(componentNode: ts.Node, sourceFile: ts
     }
 
     // Check for object spread creating new references
-    if (ts.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node)) {
+    if (ts.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node, sourceFile)) {
       const hasSpread = node.properties.some(p => ts.isSpreadAssignment(p));
       if (hasSpread) {
         // Check if this is in a variable declaration or return statement (not JSX)
@@ -404,7 +405,8 @@ export function analyzeContextUsage(componentNode: ts.Node, sourceFile: ts.Sourc
 export function analyzeChildProps(
   componentNode: ts.Node,
   sourceFile: ts.SourceFile,
-  inlineDefinitions: InlineDefinition[]
+  inlineDefinitions: InlineDefinition[],
+  memoInfo: Map<string, MemoInfo>
 ): ChildAnalysis[] {
   const children: ChildAnalysis[] = [];
   const inlineLines = new Set(inlineDefinitions.map(d => d.line));
@@ -436,7 +438,7 @@ export function analyzeChildProps(
                 // Also check for inline definitions not in our list yet
                 if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr) ||
                     ts.isObjectLiteralExpression(expr) || ts.isArrayLiteralExpression(expr)) {
-                  if (!isInsideMemoizationHook(expr) && !unstableProps.includes(attrName)) {
+                  if (!isInsideMemoizationHook(expr, sourceFile) && !unstableProps.includes(attrName)) {
                     unstableProps.push(attrName);
                   }
                 }
@@ -447,7 +449,9 @@ export function analyzeChildProps(
 
         children.push({
           component: tagName,
-          memoized: false, // We'd need to analyze the child component to know this
+          // Note: memoInfo only contains components defined in the current file.
+          // Imported components (e.g., from other modules) default to unmemoized.
+          memoized: memoInfo.get(tagName)?.is_memoized ?? false,
           receives_unstable_props: unstableProps.length > 0,
           unstable_props: unstableProps.length > 0 ? unstableProps : undefined,
         });

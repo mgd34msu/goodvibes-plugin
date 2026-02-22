@@ -24,7 +24,9 @@ export type {
   PortalInfo,
   ToolResponse,
   ElementInfo,
+  StackingThresholds,
 } from './types.js';
+export { DEFAULT_STACKING_THRESHOLDS } from './types.js';
 
 // Import from modules
 import type {
@@ -89,18 +91,6 @@ export async function handleAnalyzeStackingContext(
 
     // Read file content
     const content = fs.readFileSync(filePath, 'utf-8');
-
-    // For Vue/Svelte, extract template section
-    let templateContent = content;
-    if (ext === '.vue') {
-      const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
-      templateContent = templateMatch ? templateMatch[1] : content;
-    } else if (ext === '.svelte') {
-      // Svelte template is the whole file minus script/style tags
-      templateContent = content
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/g, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/g, '');
-    }
 
     // Create TypeScript source file for parsing
     const scriptKind =
@@ -179,6 +169,10 @@ export async function handleAnalyzeStackingContext(
     const zIndexValues = collectZIndexValues(elements);
 
     // Detect issues
+    // Note: the thresholds parameter of detectStackingIssues() is for programmatic /
+    // internal use only. It is not exposed via the MCP tool schema (AnalyzeStackingContextArgs
+    // has no thresholds field). To expose it as a tool argument, add it to AnalyzeStackingContextArgs
+    // and pass args.thresholds here.
     const potentialIssues = detectStackingIssues(elements, zIndexValues);
 
     // Generate summary

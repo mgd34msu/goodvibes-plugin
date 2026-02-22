@@ -7,6 +7,7 @@
  */
 
 import type { LayoutNode, ConstraintChainEntry } from './types.js';
+import { matchesSelector } from './utils.js';
 
 /**
  * Describe the constraint a node applies
@@ -43,17 +44,21 @@ export function describeConstraint(node: LayoutNode): string {
 }
 
 /**
- * Build constraint chain from tree to target element
+ * Build constraint chain from the layout tree root to the target element.
+ *
+ * The `target` parameter is a CSS-style selector. The `element` field on each
+ * `LayoutNode` is a COMPOSITE identifier (e.g. `div#main-container`, `section.flex.h-full`)
+ * produced by `createElementIdentifier()` in `layout-hierarchy-core.ts`.
+ * Matching is delegated to `matchesSelector` to correctly handle all selector types.
  */
 export function buildConstraintChain(tree: LayoutNode, target: string): ConstraintChainEntry[] {
   const chain: ConstraintChainEntry[] = [];
-  const targetLower = target.toLowerCase();
 
   function traverse(node: LayoutNode, path: LayoutNode[]): boolean {
-    const elementLower = node.element.toLowerCase();
-    const classMatch = node.classes.some((c) => c.toLowerCase().includes(targetLower));
+    // Delegate to shared selector matcher — handles `.class`, `#id`, and `tag` correctly
+    const isMatch = matchesSelector(node, target);
 
-    if (elementLower.includes(targetLower) || classMatch) {
+    if (isMatch) {
       // Found target, build chain from path
       for (let i = 0; i < path.length; i++) {
         const ancestor = path[i];

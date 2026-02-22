@@ -3249,7 +3249,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve11.call(this, root, ref);
+      let _sch = resolve12.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a2 = root.localRefs) === null || _a2 === void 0 ? void 0 : _a2[ref];
         const { schemaId } = this.opts;
@@ -3280,13 +3280,13 @@ var require_compile = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve11(root, ref) {
+    function resolve12(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve11, "resolve");
+    __name(resolve12, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -3880,13 +3880,13 @@ var require_fast_uri = __commonJS({
       return uri;
     }
     __name(normalize, "normalize");
-    function resolve11(baseURI, relativeURI, options) {
+    function resolve12(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    __name(resolve11, "resolve");
+    __name(resolve12, "resolve");
     function resolveComponent(base, relative12, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
@@ -4113,7 +4113,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve11,
+      resolve: resolve12,
       resolveComponent,
       equal,
       serialize,
@@ -58743,11 +58743,11 @@ ${lanes.join("\n")}
             if (i < rootLength) {
               return void 0;
             }
-            const sep = directory.lastIndexOf(directorySeparator, i - 1);
-            if (sep === -1) {
+            const sep2 = directory.lastIndexOf(directorySeparator, i - 1);
+            if (sep2 === -1) {
               return void 0;
             }
-            return directory.substr(0, Math.max(sep, rootLength));
+            return directory.substr(0, Math.max(sep2, rootLength));
           }
           __name(getCommonPrefix, "getCommonPrefix");
         }
@@ -138690,7 +138690,7 @@ ${lanes.join("\n")}
         }
         __name(createImportCallExpressionUMD, "createImportCallExpressionUMD");
         function createImportCallExpressionAMD(arg, containsLexicalThis) {
-          const resolve11 = factory2.createUniqueName("resolve");
+          const resolve12 = factory2.createUniqueName("resolve");
           const reject = factory2.createUniqueName("reject");
           const parameters = [
             factory2.createParameterDeclaration(
@@ -138699,7 +138699,7 @@ ${lanes.join("\n")}
               /*dotDotDotToken*/
               void 0,
               /*name*/
-              resolve11
+              resolve12
             ),
             factory2.createParameterDeclaration(
               /*modifiers*/
@@ -138716,7 +138716,7 @@ ${lanes.join("\n")}
                 factory2.createIdentifier("require"),
                 /*typeArguments*/
                 void 0,
-                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve11, reject]
+                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve12, reject]
               )
             )
           ]);
@@ -230700,8 +230700,8 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         installPackage(options) {
           this.packageInstallId++;
           const request = { kind: "installPackage", ...options, id: this.packageInstallId };
-          const promise2 = new Promise((resolve11, reject) => {
-            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve11, reject });
+          const promise2 = new Promise((resolve12, reject) => {
+            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve12, reject });
           });
           this.installer.send(request);
           return promise2;
@@ -244197,7 +244197,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve11) => setTimeout(resolve11, pollInterval));
+        await new Promise((resolve12) => setTimeout(resolve12, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -244214,7 +244214,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve11, reject) => {
+    return new Promise((resolve12, reject) => {
       const earlyReject = /* @__PURE__ */ __name((error2) => {
         reject(error2);
       }, "earlyReject");
@@ -244292,7 +244292,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve11(parseResult.data);
+            resolve12(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -244553,12 +244553,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve11, reject) => {
+    return new Promise((resolve12, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve11, interval);
+      const timeoutId = setTimeout(resolve12, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -245309,12 +245309,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve11) => {
+    return new Promise((resolve12) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve11();
+        resolve12();
       } else {
-        this._stdout.once("drain", resolve11);
+        this._stdout.once("drain", resolve12);
       }
     });
   }
@@ -245409,6 +245409,10 @@ var FRONTEND_SCHEMAS = [
         file: {
           type: "string",
           description: "File path to analyze (relative to project root or absolute). Must be a React component file (.tsx, .jsx)"
+        },
+        component: {
+          type: "string",
+          description: "Specific component name to analyze if file contains multiple components"
         },
         include_children: {
           type: "boolean",
@@ -245614,11 +245618,11 @@ function isInsideJsxAttribute(node) {
   return false;
 }
 __name(isInsideJsxAttribute, "isInsideJsxAttribute");
-function isInsideMemoizationHook(node) {
+function isInsideMemoizationHook(node, sourceFile) {
   let current = node.parent;
   while (current) {
     if (import_typescript.default.isCallExpression(current)) {
-      const callText = current.expression.getText();
+      const callText = current.expression.getText(sourceFile);
       if (callText === "useCallback" || callText === "useMemo" || callText === "React.useCallback" || callText === "React.useMemo") {
         return true;
       }
@@ -245881,7 +245885,7 @@ function findInlineDefinitions(componentNode, sourceFile) {
     const expr = initializer3.expression;
     if (!expr)
       return;
-    if (isInsideMemoizationHook(expr))
+    if (isInsideMemoizationHook(expr, sourceFile))
       return;
     const attrName = node.name.getText(sourceFile);
     if (import_typescript3.default.isObjectLiteralExpression(expr)) {
@@ -245951,7 +245955,7 @@ function findExpensiveComputations(componentNode, sourceFile) {
   findMemoized(componentNode);
   function findExpensive(node) {
     if (import_typescript3.default.isCallExpression(node)) {
-      if (isInsideMemoizationHook(node)) {
+      if (isInsideMemoizationHook(node, sourceFile)) {
         import_typescript3.default.forEachChild(node, findExpensive);
         return;
       }
@@ -245985,7 +245989,7 @@ function findExpensiveComputations(componentNode, sourceFile) {
         }
       }
     }
-    if (import_typescript3.default.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node)) {
+    if (import_typescript3.default.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node, sourceFile)) {
       const hasSpread = node.properties.some((p) => import_typescript3.default.isSpreadAssignment(p));
       if (hasSpread) {
         const parent = node.parent;
@@ -246056,7 +246060,7 @@ function analyzeContextUsage(componentNode, sourceFile) {
   return subscriptions;
 }
 __name(analyzeContextUsage, "analyzeContextUsage");
-function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
+function analyzeChildProps(componentNode, sourceFile, inlineDefinitions, memoInfo) {
   const children = [];
   const inlineLines = new Set(inlineDefinitions.map((d) => d.line));
   function visit(node) {
@@ -246076,7 +246080,7 @@ function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
                   unstableProps.push(attrName);
                 }
                 if (import_typescript3.default.isArrowFunction(expr) || import_typescript3.default.isFunctionExpression(expr) || import_typescript3.default.isObjectLiteralExpression(expr) || import_typescript3.default.isArrayLiteralExpression(expr)) {
-                  if (!isInsideMemoizationHook(expr) && !unstableProps.includes(attrName)) {
+                  if (!isInsideMemoizationHook(expr, sourceFile) && !unstableProps.includes(attrName)) {
                     unstableProps.push(attrName);
                   }
                 }
@@ -246086,8 +246090,9 @@ function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
         }
         children.push({
           component: tagName,
-          memoized: false,
-          // We'd need to analyze the child component to know this
+          // Note: memoInfo only contains components defined in the current file.
+          // Imported components (e.g., from other modules) default to unmemoized.
+          memoized: memoInfo.get(tagName)?.is_memoized ?? false,
           receives_unstable_props: unstableProps.length > 0,
           unstable_props: unstableProps.length > 0 ? unstableProps : void 0
         });
@@ -246116,9 +246121,9 @@ function analyzeChildProps(componentNode, sourceFile, inlineDefinitions) {
 __name(analyzeChildProps, "analyzeChildProps");
 
 // src/handlers/render-triggers/suggestion-generator.ts
-function generateSuggestions(isMemoized, inlineDefinitions, expensiveComputations, contextSubscriptions, childrenAnalysis) {
+function generateSuggestions(isMemoized, inlineDefinitions, expensiveComputations, contextSubscriptions, childrenAnalysis, hasPropTriggers = false) {
   const suggestions = [];
-  if (!isMemoized && childrenAnalysis.length > 0) {
+  if (!isMemoized && (childrenAnalysis.length > 0 || hasPropTriggers)) {
     suggestions.push({
       priority: "medium",
       type: "memo",
@@ -246209,6 +246214,50 @@ async function handleAnalyzeRenderTriggers(args) {
     );
   }
   try {
+    let analyzeComponent2 = function(comp) {
+      const memo = comp.memoInfo;
+      const triggers = [
+        ...findStateHooks(comp.node, sourceFile),
+        ...findPropTriggers(comp.node, sourceFile, memo.is_memoized),
+        ...findForceUpdateTriggers(comp.node, sourceFile)
+      ];
+      const hasPropTriggers = triggers.some((t) => t.type === "prop");
+      triggers.push({
+        type: "parent",
+        source: "Parent component re-render",
+        frequency: memo.is_memoized ? "on_change" : "every_render",
+        preventable: !memo.is_memoized,
+        prevention_method: memo.is_memoized ? void 0 : "Wrap component with React.memo()"
+      });
+      const inlineDefs = findInlineDefinitions(comp.node, sourceFile);
+      const expensiveComps = findExpensiveComputations(comp.node, sourceFile);
+      const ctxSubs = analyzeContextUsage(comp.node, sourceFile);
+      let childrenAnalysis;
+      if (includeChildren) {
+        childrenAnalysis = analyzeChildProps(comp.node, sourceFile, inlineDefs, memoMap);
+      }
+      const suggestions = generateSuggestions(
+        memo.is_memoized,
+        inlineDefs,
+        expensiveComps,
+        ctxSubs,
+        childrenAnalysis || [],
+        hasPropTriggers
+      );
+      return {
+        component: comp.name,
+        is_memoized: memo.is_memoized,
+        memo_type: memo.memo_type,
+        render_triggers: triggers,
+        inline_definitions: inlineDefs,
+        expensive_computations: expensiveComps,
+        context_subscriptions: ctxSubs,
+        children_analysis: childrenAnalysis,
+        optimization_suggestions: suggestions
+      };
+    };
+    var analyzeComponent = analyzeComponent2;
+    __name(analyzeComponent2, "analyzeComponent");
     const content = fs.readFileSync(filePath, "utf-8");
     const sourceFile = import_typescript4.default.createSourceFile(
       filePath,
@@ -246218,53 +246267,48 @@ async function handleAnalyzeRenderTriggers(args) {
       ext === ".tsx" || ext === ".jsx" ? import_typescript4.default.ScriptKind.TSX : import_typescript4.default.ScriptKind.TS
     );
     const relativePath = makeRelativePath(filePath, projectRoot);
-    const memoInfo = detectMemoization(sourceFile);
-    const components = findComponents(sourceFile, memoInfo);
+    const memoMap = detectMemoization(sourceFile);
+    const components = findComponents(sourceFile, memoMap);
     if (components.length === 0) {
       return createSuccessResponse({
         message: "No React components found in file",
         file: relativePath
       });
     }
-    const mainComponent = components[0];
-    const componentMemo = mainComponent.memoInfo;
-    const renderTriggers = [
-      ...findStateHooks(mainComponent.node, sourceFile),
-      ...findPropTriggers(mainComponent.node, sourceFile, componentMemo.is_memoized),
-      ...findForceUpdateTriggers(mainComponent.node, sourceFile)
-    ];
-    renderTriggers.push({
-      type: "parent",
-      source: "Parent component re-render",
-      frequency: componentMemo.is_memoized ? "on_change" : "every_render",
-      preventable: !componentMemo.is_memoized,
-      prevention_method: componentMemo.is_memoized ? void 0 : "Wrap component with React.memo()"
+    let defaultExportName;
+    import_typescript4.default.forEachChild(sourceFile, (node) => {
+      if (import_typescript4.default.isExportAssignment(node) && !node.isExportEquals) {
+        if (import_typescript4.default.isIdentifier(node.expression)) {
+          defaultExportName = node.expression.getText(sourceFile);
+        } else if (import_typescript4.default.isCallExpression(node.expression)) {
+          const arg = node.expression.arguments[0];
+          if (arg && import_typescript4.default.isIdentifier(arg)) {
+            defaultExportName = arg.getText(sourceFile);
+          }
+        }
+      }
+      if (import_typescript4.default.isFunctionDeclaration(node) || import_typescript4.default.isClassDeclaration(node)) {
+        const modifiers = import_typescript4.default.getModifiers(node);
+        if (modifiers && modifiers.some((m) => m.kind === import_typescript4.default.SyntaxKind.DefaultKeyword) && node.name) {
+          defaultExportName = node.name.getText(sourceFile);
+        }
+      }
     });
-    const inlineDefinitions = findInlineDefinitions(mainComponent.node, sourceFile);
-    const expensiveComputations = findExpensiveComputations(mainComponent.node, sourceFile);
-    const contextSubscriptions = analyzeContextUsage(mainComponent.node, sourceFile);
-    let childrenAnalysis;
-    if (includeChildren) {
-      childrenAnalysis = analyzeChildProps(mainComponent.node, sourceFile, inlineDefinitions);
-    }
-    const optimizationSuggestions = generateSuggestions(
-      componentMemo.is_memoized,
-      inlineDefinitions,
-      expensiveComputations,
-      contextSubscriptions,
-      childrenAnalysis || []
-    );
+    const mainComponent = defaultExportName && components.find((c) => c.name === defaultExportName) || components[components.length - 1];
+    const allComponentResults = components.map(analyzeComponent2);
+    const mainResult = allComponentResults.find((r) => r.component === mainComponent.name);
     const result = {
-      component: mainComponent.name,
+      component: mainResult.component,
       file: relativePath,
-      is_memoized: componentMemo.is_memoized,
-      memo_type: componentMemo.memo_type,
-      render_triggers: renderTriggers,
-      inline_definitions: inlineDefinitions,
-      expensive_computations: expensiveComputations,
-      context_subscriptions: contextSubscriptions,
-      children_analysis: childrenAnalysis,
-      optimization_suggestions: optimizationSuggestions
+      is_memoized: mainResult.is_memoized,
+      memo_type: mainResult.memo_type,
+      render_triggers: mainResult.render_triggers,
+      inline_definitions: mainResult.inline_definitions,
+      expensive_computations: mainResult.expensive_computations,
+      context_subscriptions: mainResult.context_subscriptions,
+      children_analysis: mainResult.children_analysis,
+      optimization_suggestions: mainResult.optimization_suggestions,
+      components: allComponentResults
     };
     return createSuccessResponse(result);
   } catch (error2) {
@@ -246278,6 +246322,14 @@ __name(handleAnalyzeRenderTriggers, "handleAnalyzeRenderTriggers");
 var fs2 = __toESM(require("fs"), 1);
 var path3 = __toESM(require("path"), 1);
 var import_typescript7 = __toESM(require_typescript(), 1);
+
+// src/handlers/stacking-context/types.ts
+var DEFAULT_STACKING_THRESHOLDS = {
+  highZIndex: 50,
+  veryHighZIndex: 9999,
+  zInflationCount: 3,
+  isolationChildZIndex: 10
+};
 
 // src/handlers/stacking-context/utils.ts
 function createSuccessResponse2(data) {
@@ -246352,17 +246404,6 @@ var CONTEXT_CREATORS = {
    * Mix-blend-mode other than normal creates a stacking context
    */
   mix_blend: (classes) => classes.some((c) => c.startsWith("mix-blend-") && c !== "mix-blend-normal"),
-  /**
-   * Flex/Grid child with z-index creates a stacking context
-   * (technically the parent needs to be flex/grid, but we detect the z-index usage)
-   */
-  flex_grid_z: (classes) => {
-    const hasZIndex = classes.some((c) => /^-?z-/.test(c));
-    const hasPosition = classes.some(
-      (c) => ["relative", "absolute", "fixed", "sticky"].includes(c)
-    );
-    return hasZIndex && !hasPosition;
-  },
   /**
    * Perspective creates a stacking context
    */
@@ -246493,8 +246534,27 @@ function analyzeJsxFile(filePath, content, sourceFile) {
   const elements = [];
   const elementStack = [];
   function visit(node) {
+    if (import_typescript5.default.isJsxOpeningFragment(node)) {
+      const parentIndex = elementStack.length > 0 ? elementStack[elementStack.length - 1] : null;
+      elementStack.push(parentIndex !== null ? parentIndex : -1);
+      import_typescript5.default.forEachChild(node, visit);
+      return;
+    }
+    if (import_typescript5.default.isJsxClosingFragment(node)) {
+      elementStack.pop();
+      import_typescript5.default.forEachChild(node, visit);
+      return;
+    }
     if (import_typescript5.default.isJsxOpeningElement(node) || import_typescript5.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
+      if (tagName === "React.Fragment" || tagName === "Fragment") {
+        if (import_typescript5.default.isJsxOpeningElement(node)) {
+          const parentIndex = elementStack.length > 0 ? elementStack[elementStack.length - 1] : null;
+          elementStack.push(parentIndex !== null ? parentIndex : -1);
+        }
+        import_typescript5.default.forEachChild(node, visit);
+        return;
+      }
       const line = getLineNumber2(node.getStart(), sourceFile);
       const isComponent = /^[A-Z]/.test(tagName);
       let classes = [];
@@ -246510,6 +246570,8 @@ function analyzeJsxFile(filePath, content, sourceFile) {
       const { creates, reason } = createsStackingContext(classes);
       const z_index = extractZIndex(classes);
       const position = extractPosition(classes);
+      const rawParent = elementStack.length > 0 ? elementStack[elementStack.length - 1] : null;
+      const resolvedParent = rawParent !== null && rawParent >= 0 ? rawParent : null;
       const elementInfo = {
         element: `${tagName}:${line}`,
         line,
@@ -246518,7 +246580,7 @@ function analyzeJsxFile(filePath, content, sourceFile) {
         position,
         creates_context: creates,
         context_reason: reason,
-        parent_index: elementStack.length > 0 ? elementStack[elementStack.length - 1] : null,
+        parent_index: resolvedParent,
         is_component: isComponent
       };
       const currentIndex = elements.length;
@@ -246564,7 +246626,15 @@ function buildStackingTree(elements) {
     const node = nodeMap.get(i);
     let parentContextIndex = null;
     let searchIndex = elem.parent_index;
+    const visited = /* @__PURE__ */ new Set();
     while (searchIndex !== null) {
+      if (searchIndex < 0 || searchIndex >= elements.length) {
+        break;
+      }
+      if (visited.has(searchIndex)) {
+        break;
+      }
+      visited.add(searchIndex);
       const parentElem = elements[searchIndex];
       if (parentElem.creates_context) {
         parentContextIndex = searchIndex;
@@ -246583,9 +246653,17 @@ function buildStackingTree(elements) {
 }
 __name(buildStackingTree, "buildStackingTree");
 function getContextParent(elementIndex, elements) {
+  if (elementIndex < 0 || elementIndex >= elements.length)
+    return "root";
   const elem = elements[elementIndex];
   let searchIndex = elem.parent_index;
+  const visited = /* @__PURE__ */ new Set();
   while (searchIndex !== null) {
+    if (searchIndex < 0 || searchIndex >= elements.length)
+      break;
+    if (visited.has(searchIndex))
+      break;
+    visited.add(searchIndex);
     const parentElem = elements[searchIndex];
     if (parentElem.creates_context) {
       return parentElem.element;
@@ -246612,18 +246690,21 @@ function collectZIndexValues(elements) {
 __name(collectZIndexValues, "collectZIndexValues");
 
 // src/handlers/stacking-context/issue-detector.ts
-function detectStackingIssues(elements, zIndexValues) {
+var FLEX_GRID_CLASSES = ["flex", "grid", "inline-flex", "inline-grid"];
+var ISOLATION_CAUSING_REASONS = ["isolate", "transform", "filter", "opacity"];
+function detectStackingIssues(elements, zIndexValues, thresholds) {
+  const t = { ...DEFAULT_STACKING_THRESHOLDS, ...thresholds };
   const issues = [];
-  const highZElements = zIndexValues.filter((z2) => z2.z_index >= 50);
-  if (highZElements.length > 3) {
+  const highZElements = zIndexValues.filter((z2) => z2.z_index >= t.highZIndex);
+  if (highZElements.length > t.zInflationCount) {
     issues.push({
       issue: "z-index inflation detected",
       elements: highZElements.map((z2) => `${z2.element} (z-${z2.z_index})`),
-      explanation: 'Multiple elements with z-index >= 50 indicate potential layering confusion. This often leads to an "arms race" where z-index values keep increasing.',
+      explanation: `Multiple elements with z-index >= ${t.highZIndex} indicate potential layering confusion. This often leads to an "arms race" where z-index values keep increasing.`,
       fix: 'Restructure components to use fewer z-index values. Consider using CSS isolation ("isolate" class) to create local stacking contexts, or reorganize DOM structure so fewer elements need explicit z-index.'
     });
   }
-  const veryHighZ = zIndexValues.filter((z2) => z2.z_index >= 9999);
+  const veryHighZ = zIndexValues.filter((z2) => z2.z_index >= t.veryHighZIndex);
   if (veryHighZ.length > 0) {
     issues.push({
       issue: "Extremely high z-index values",
@@ -246639,26 +246720,37 @@ function detectStackingIssues(elements, zIndexValues) {
     );
     return hasZ && !hasPosition;
   });
-  if (zWithoutPosition.length > 0) {
+  const zWithFlexGrid = zWithoutPosition.filter(
+    (elem) => elem.classes.some((c) => FLEX_GRID_CLASSES.includes(c))
+  );
+  const zTrulyWithoutContext = zWithoutPosition.filter(
+    (elem) => !elem.classes.some((c) => FLEX_GRID_CLASSES.includes(c))
+  );
+  if (zTrulyWithoutContext.length > 0) {
     issues.push({
       issue: "z-index without positioning context",
-      elements: zWithoutPosition.map((e) => e.element),
-      explanation: "Elements with z-index but no position (relative, absolute, fixed, sticky) may not behave as expected unless they are flex/grid children.",
-      fix: 'Add "relative" class to elements that need z-index to work. Example: className="relative z-10" instead of just "z-10".'
+      elements: zTrulyWithoutContext.map((e) => e.element),
+      explanation: "Elements with z-index but no position (relative, absolute, fixed, sticky) will not have their z-index applied unless they are flex or grid children. Static elements ignore z-index entirely.",
+      fix: 'Add "relative" class to elements that need z-index to work. Example: className="relative z-10" instead of just "z-10". If this element is a flex/grid child, z-index will work without position.'
+    });
+  }
+  if (zWithFlexGrid.length > 0) {
+    issues.push({
+      issue: "z-index on flex/grid container without position",
+      elements: zWithFlexGrid.map((e) => e.element),
+      explanation: "These elements use z-index with flex/grid display utilities but no explicit position. If they are themselves flex/grid children, z-index will work correctly. However, if they are at the top of their stacking context, z-index may not apply as expected.",
+      fix: 'Verify this element is a child of a flex or grid parent for z-index to take effect. If not, add "relative" to establish a positioning context.'
     });
   }
   const isolatedContexts = elements.filter(
-    (elem) => elem.creates_context && elem.context_reason && ["isolation", "transform", "filter", "opacity"].includes(
-      elem.context_reason.replace(/ /g, "_")
-    )
+    (elem) => elem.creates_context && elem.context_reason && ISOLATION_CAUSING_REASONS.includes(elem.context_reason.toLowerCase())
   );
   if (isolatedContexts.length > 0) {
     for (const ctx of isolatedContexts) {
-      const ctxIndex = elements.indexOf(ctx);
       const childrenWithZ = zIndexValues.filter(
         (z2) => z2.context_parent === ctx.element
       );
-      if (childrenWithZ.some((z2) => z2.z_index > 10)) {
+      if (childrenWithZ.some((z2) => z2.z_index > t.isolationChildZIndex)) {
         issues.push({
           issue: `Stacking context isolation in ${ctx.element}`,
           elements: [ctx.element, ...childrenWithZ.map((z2) => z2.element)],
@@ -246698,6 +246790,7 @@ __name(detectStackingIssues, "detectStackingIssues");
 
 // src/handlers/stacking-context/portal-detector.ts
 var import_typescript6 = __toESM(require_typescript(), 1);
+var CREATE_PORTAL_CONTEXT_WINDOW = 300;
 function findContainingComponent(position, sourceFile) {
   let result = null;
   function visit(node) {
@@ -246758,17 +246851,37 @@ function detectPortals(content, sourceFile) {
       destination: match[1]
     });
   }
-  const nextPortalRegex = /next\/dynamic[^}]*Portal|@radix-ui\/react-portal|@headlessui\/react/g;
-  if (nextPortalRegex.test(content)) {
+  const nextPortalImportRegex = /from\s+['"](?:@radix-ui\/react-portal|@headlessui\/react|@floating-ui\/react)['"]/g;
+  if (nextPortalImportRegex.test(content)) {
     const modalRegex = /<(Modal|Dialog|Drawer|Sheet|Popover|Dropdown)[^>]*>/g;
     while ((match = modalRegex.exec(content)) !== null) {
-      const existingPortal = portals.find(
-        (p) => p.component === findContainingComponent(match.index, sourceFile)
-      );
+      const component = findContainingComponent(match.index, sourceFile) || "Unknown";
+      const existingPortal = portals.find((p) => p.component === component);
       if (!existingPortal) {
         portals.push({
-          component: findContainingComponent(match.index, sourceFile) || "Unknown",
-          destination: "document.body (inferred from modal/dialog pattern)"
+          component,
+          destination: "document.body (inferred from portal library import + modal usage)"
+        });
+      }
+    }
+  }
+  const createPortalUsageRegex = /createPortal\s*\(/g;
+  let createPortalMatch;
+  while ((createPortalMatch = createPortalUsageRegex.exec(content)) !== null) {
+    const contextSlice = content.slice(
+      createPortalMatch.index,
+      createPortalMatch.index + CREATE_PORTAL_CONTEXT_WINDOW
+    );
+    const alreadyCaptured = /document\.getElementById\s*\(\s*['"][^'"]+['"]/.test(
+      contextSlice
+    );
+    if (!alreadyCaptured) {
+      const component = findContainingComponent(createPortalMatch.index, sourceFile) || "Unknown";
+      const existingPortal = portals.find((p) => p.component === component);
+      if (!existingPortal) {
+        portals.push({
+          component,
+          destination: "dynamic/ref container (createPortal without getElementById)"
         });
       }
     }
@@ -246800,13 +246913,6 @@ async function handleAnalyzeStackingContext(args) {
       );
     }
     const content = fs2.readFileSync(filePath, "utf-8");
-    let templateContent = content;
-    if (ext === ".vue") {
-      const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
-      templateContent = templateMatch ? templateMatch[1] : content;
-    } else if (ext === ".svelte") {
-      templateContent = content.replace(/<script[^>]*>[\s\S]*?<\/script>/g, "").replace(/<style[^>]*>[\s\S]*?<\/style>/g, "");
-    }
     const scriptKind = ext === ".tsx" ? import_typescript7.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript7.default.ScriptKind.JSX : ext === ".ts" ? import_typescript7.default.ScriptKind.TS : import_typescript7.default.ScriptKind.JS;
     const sourceFile = import_typescript7.default.createSourceFile(
       filePath,
@@ -248564,6 +248670,23 @@ __name(handleAnalyzeResponsiveBreakpoints, "handleAnalyzeResponsiveBreakpoints")
 var path7 = __toESM(require("path"), 1);
 
 // src/handlers/overflow-diagnosis/utils.ts
+function matchesSelector2(node, selector) {
+  if (selector.startsWith(".")) {
+    const className = selector.slice(1).toLowerCase();
+    return node.classes.some((c) => c.toLowerCase() === className);
+  }
+  if (selector.startsWith("#")) {
+    const hashIdx = node.element.indexOf("#");
+    if (hashIdx === -1)
+      return false;
+    const idStart = hashIdx + 1;
+    const dotIdx = node.element.indexOf(".", idStart);
+    const elementId = dotIdx === -1 ? node.element.slice(idStart) : node.element.slice(idStart, dotIdx);
+    return elementId.toLowerCase() === selector.slice(1).toLowerCase();
+  }
+  return node.tag.toLowerCase() === selector.toLowerCase();
+}
+__name(matchesSelector2, "matchesSelector");
 function createSuccessResponse5(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
@@ -248591,10 +248714,10 @@ function enrichTreeWithParents(node, parent) {
   return enrichedNode;
 }
 __name(enrichTreeWithParents, "enrichTreeWithParents");
-function isFixedSizing(strategy) {
+function isConstrainedSizing(strategy) {
   return strategy === "fixed" || strategy === "percentage";
 }
-__name(isFixedSizing, "isFixedSizing");
+__name(isConstrainedSizing, "isConstrainedSizing");
 function isAutoSizing(strategy) {
   return strategy === "auto";
 }
@@ -248606,8 +248729,7 @@ __name(hasAutoHeightChildren, "hasAutoHeightChildren");
 function matchesHint(node, hint) {
   if (!hint)
     return true;
-  const hintLower = hint.toLowerCase();
-  return node.element.toLowerCase().includes(hintLower) || node.classes.some((c) => c.toLowerCase().includes(hintLower));
+  return matchesSelector2(node, hint);
 }
 __name(matchesHint, "matchesHint");
 
@@ -248615,7 +248737,7 @@ __name(matchesHint, "matchesHint");
 function findOverflowPatterns(tree, hint) {
   const patterns = [];
   function traverse(node) {
-    if (isFixedSizing(node.sizing.height.strategy) && hasAutoHeightChildren(node) && node.overflow.y === "visible" && matchesHint(node, hint)) {
+    if (isConstrainedSizing(node.sizing.height.strategy) && hasAutoHeightChildren(node) && node.overflow.y === "visible" && matchesHint(node, hint)) {
       patterns.push({
         type: "fixed_parent_auto_children",
         severity: "high",
@@ -248624,7 +248746,7 @@ function findOverflowPatterns(tree, hint) {
         children: node.children.filter((c) => isAutoSizing(c.sizing.height.strategy))
       });
     }
-    if ((node.display === "flex" || node.display === "inline-flex") && node.overflow.y === "visible" && isFixedSizing(node.sizing.height.strategy) && matchesHint(node, hint)) {
+    if ((node.display === "flex" || node.display === "inline-flex") && node.overflow.y === "visible" && isConstrainedSizing(node.sizing.height.strategy) && matchesHint(node, hint)) {
       patterns.push({
         type: "constrained_flex_no_overflow",
         severity: "medium",
@@ -248650,7 +248772,7 @@ function findOverflowPatterns(tree, hint) {
         parent: node.parent
       });
     }
-    if (node.flex_props && node.flex_props.shrink === 0 && node.parent && (node.parent.display === "flex" || node.parent.display === "inline-flex") && isFixedSizing(node.parent.sizing.height.strategy) && matchesHint(node, hint)) {
+    if (node.flex_props && node.flex_props.shrink === 0 && node.parent && (node.parent.display === "flex" || node.parent.display === "inline-flex") && isConstrainedSizing(node.parent.sizing.height.strategy) && matchesHint(node, hint)) {
       patterns.push({
         type: "flex_no_shrink",
         severity: "low",
@@ -248659,7 +248781,7 @@ function findOverflowPatterns(tree, hint) {
         parent: node.parent
       });
     }
-    if ((node.display === "grid" || node.display === "inline-grid") && node.overflow.y === "visible" && isFixedSizing(node.sizing.height.strategy) && matchesHint(node, hint)) {
+    if ((node.display === "grid" || node.display === "inline-grid") && node.overflow.y === "visible" && isConstrainedSizing(node.sizing.height.strategy) && matchesHint(node, hint)) {
       patterns.push({
         type: "grid_overflow",
         severity: "medium",
@@ -248667,7 +248789,7 @@ function findOverflowPatterns(tree, hint) {
         element: node
       });
     }
-    if ((node.display === "flex" || node.display === "inline-flex") && node.parent && (node.parent.display === "flex" || node.parent.display === "inline-flex") && !node.classes.includes("min-h-0") && node.flex_props?.grow === 1 && matchesHint(node, hint)) {
+    if ((node.display === "flex" || node.display === "inline-flex") && node.parent && (node.parent.display === "flex" || node.parent.display === "inline-flex") && !node.classes.some((c) => c === "min-h-0") && node.flex_props?.grow === 1 && matchesHint(node, hint)) {
       patterns.push({
         type: "min_height_zero_missing",
         severity: "high",
@@ -248716,11 +248838,9 @@ function describeConstraint(node) {
 __name(describeConstraint, "describeConstraint");
 function buildConstraintChain(tree, target) {
   const chain = [];
-  const targetLower = target.toLowerCase();
   function traverse(node, path15) {
-    const elementLower = node.element.toLowerCase();
-    const classMatch = node.classes.some((c) => c.toLowerCase().includes(targetLower));
-    if (elementLower.includes(targetLower) || classMatch) {
+    const isMatch = matchesSelector2(node, target);
+    if (isMatch) {
       for (let i = 0; i < path15.length; i++) {
         const ancestor = path15[i];
         const entry = {
@@ -249034,8 +249154,7 @@ async function handleDiagnoseOverflow(args) {
     container: patterns[0]?.parent?.element || patterns[0]?.element?.element,
     cause,
     constraint_chain: constraintChain,
-    fix_options: uniqueFixes.slice(0, 6),
-    // Limit to top 6 fixes
+    fix_options: uniqueFixes,
     recommendation
   };
   const relativePath = path7.isAbsolute(args.file) ? path7.relative(PROJECT_ROOT, args.file).replace(/\\/g, "/") : args.file;
@@ -249129,7 +249248,7 @@ function inferTypeFromValue(node, sourceFile) {
   if (import_typescript12.default.isArrowFunction(node) || import_typescript12.default.isFunctionExpression(node))
     return "function";
   const text = node.getText(sourceFile);
-  return text.length > 50 ? text.slice(0, 47) + "..." : text;
+  return text.length > 120 ? text.slice(0, 117) + "..." : text;
 }
 __name(inferTypeFromValue, "inferTypeFromValue");
 function extractDestructuredNames(node, sourceFile) {
@@ -249178,11 +249297,37 @@ __name(hasCleanupReturn, "hasCleanupReturn");
 
 // src/handlers/component-state/hook-analyzer.ts
 var import_typescript13 = __toESM(require_typescript(), 1);
+function isKnownHookOrImported(fnName, sourceFile) {
+  for (const statement of sourceFile.statements) {
+    if (import_typescript13.default.isImportDeclaration(statement) && statement.importClause) {
+      const clause = statement.importClause;
+      if (clause.namedBindings && import_typescript13.default.isNamedImports(clause.namedBindings)) {
+        for (const specifier of clause.namedBindings.elements) {
+          if (specifier.name.getText(sourceFile) === fnName)
+            return true;
+        }
+      }
+      if (clause.name && clause.name.getText(sourceFile) === fnName)
+        return true;
+    }
+    if (import_typescript13.default.isFunctionDeclaration(statement) && statement.name?.getText(sourceFile) === fnName)
+      return true;
+    if (import_typescript13.default.isVariableStatement(statement)) {
+      for (const decl of statement.declarationList.declarations) {
+        if (import_typescript13.default.isIdentifier(decl.name) && decl.name.getText(sourceFile) === fnName)
+          return true;
+      }
+    }
+  }
+  return false;
+}
+__name(isKnownHookOrImported, "isKnownHookOrImported");
 function extractHooks(componentNode, ctx) {
   const states = [];
   const effects = [];
   const contexts = [];
   const { sourceFile } = ctx;
+  let nestedFunctionDepth = 0;
   function visit(node) {
     if (import_typescript13.default.isCallExpression(node)) {
       const fnText = node.expression.getText(sourceFile);
@@ -249264,7 +249409,7 @@ function extractHooks(componentNode, ctx) {
         contexts.push(contextInfo);
         ctx.contextValues.set(valueName, contextInfo);
       }
-      if (fnName.startsWith("use") && fnName[3]?.match(/[A-Z]/) && ![
+      if (fnName.startsWith("use") && fnName.length > 3 && fnName[3].match(/[A-Z]/) && ![
         "useState",
         "useReducer",
         "useRef",
@@ -249280,7 +249425,7 @@ function extractHooks(componentNode, ctx) {
         "useId",
         "useSyncExternalStore",
         "useInsertionEffect"
-      ].includes(fnName)) {
+      ].includes(fnName) && nestedFunctionDepth === 0 && isKnownHookOrImported(fnName, sourceFile)) {
         const [valueName] = extractDestructuredNames(node, sourceFile);
         const contextInfo = {
           hook: fnName,
@@ -249310,7 +249455,14 @@ function extractHooks(componentNode, ctx) {
         });
       }
     }
-    import_typescript13.default.forEachChild(node, visit);
+    const isNestedFunctionBoundary = node !== componentNode && (import_typescript13.default.isArrowFunction(node) || import_typescript13.default.isFunctionExpression(node) || import_typescript13.default.isFunctionDeclaration(node));
+    if (isNestedFunctionBoundary) {
+      nestedFunctionDepth++;
+      import_typescript13.default.forEachChild(node, visit);
+      nestedFunctionDepth--;
+    } else {
+      import_typescript13.default.forEachChild(node, visit);
+    }
   }
   __name(visit, "visit");
   visit(componentNode);
@@ -249674,8 +249826,183 @@ function getComponentName(node, sourceFile) {
 __name(getComponentName, "getComponentName");
 
 // src/handlers/component-state/index.ts
+function findJsxComponentNames(sourceFile) {
+  const seen = /* @__PURE__ */ new Set();
+  function visit(node) {
+    if (import_typescript18.default.isJsxOpeningElement(node) || import_typescript18.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName;
+      let name;
+      if (import_typescript18.default.isPropertyAccessExpression(tagName)) {
+        name = tagName.expression.getText(sourceFile);
+      } else {
+        name = tagName.getText(sourceFile);
+      }
+      if (/^[A-Z]/.test(name)) {
+        seen.add(name);
+      }
+    }
+    import_typescript18.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return Array.from(seen);
+}
+__name(findJsxComponentNames, "findJsxComponentNames");
+function resolveImportPath(name, sourceFilePath, projectRoot, sourceFile) {
+  const dir = path9.dirname(sourceFilePath);
+  for (const statement of sourceFile.statements) {
+    if (!import_typescript18.default.isImportDeclaration(statement))
+      continue;
+    const clause = statement.importClause;
+    if (!clause)
+      continue;
+    let found = false;
+    if (clause.name?.getText(sourceFile) === name) {
+      found = true;
+    } else if (clause.namedBindings && import_typescript18.default.isNamedImports(clause.namedBindings)) {
+      for (const spec of clause.namedBindings.elements) {
+        if (spec.name.getText(sourceFile) === name) {
+          found = true;
+          break;
+        }
+      }
+    }
+    if (!found)
+      continue;
+    const moduleSpec = statement.moduleSpecifier.text;
+    if (!moduleSpec.startsWith("."))
+      return null;
+    const extensions = [".tsx", ".jsx", ".ts", ".js", "/index.tsx", "/index.jsx", "/index.ts", "/index.js"];
+    const resolved = path9.resolve(dir, moduleSpec);
+    const normalizedRoot = projectRoot.endsWith(path9.sep) ? projectRoot : projectRoot + path9.sep;
+    if (!resolved.startsWith(normalizedRoot) && resolved !== projectRoot)
+      return null;
+    for (const ext of extensions) {
+      const candidate = resolved + ext;
+      if (fs5.existsSync(candidate))
+        return candidate;
+    }
+    if (fs5.existsSync(resolved))
+      return resolved;
+  }
+  return null;
+}
+__name(resolveImportPath, "resolveImportPath");
+async function _analyzeComponent(filePath, args, projectRoot, visitedFiles) {
+  visitedFiles.add(filePath);
+  const ext = path9.extname(filePath).toLowerCase();
+  const content = fs5.readFileSync(filePath, "utf-8");
+  const sourceFile = import_typescript18.default.createSourceFile(
+    filePath,
+    content,
+    import_typescript18.default.ScriptTarget.Latest,
+    true,
+    ext === ".tsx" ? import_typescript18.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript18.default.ScriptKind.JSX : import_typescript18.default.ScriptKind.TS
+  );
+  let componentNode = null;
+  let componentName = null;
+  const targetComponent = args.component;
+  function findComponent(node) {
+    if (!componentNode && isReactComponent(node, sourceFile)) {
+      const name = getComponentName(node, sourceFile);
+      if (targetComponent) {
+        if (name === targetComponent) {
+          componentNode = node;
+          componentName = name;
+        }
+      } else {
+        componentNode = node;
+        componentName = name;
+      }
+    }
+    if (!componentNode) {
+      import_typescript18.default.forEachChild(node, findComponent);
+    }
+  }
+  __name(findComponent, "findComponent");
+  findComponent(sourceFile);
+  if (!componentNode || !componentName) {
+    return createSuccessResponse6({ message: "No React components found in file", file: makeRelativePath3(filePath, projectRoot) });
+  }
+  const ctx = {
+    sourceFile,
+    projectRoot,
+    stateVariables: /* @__PURE__ */ new Map(),
+    propNames: /* @__PURE__ */ new Set(),
+    contextValues: /* @__PURE__ */ new Map(),
+    jsxUsedIdentifiers: /* @__PURE__ */ new Set(),
+    jsxPassedProps: [],
+    inlineCallbacks: []
+  };
+  const { states, effects, contexts } = extractHooks(componentNode, ctx);
+  const receivedProps = extractReceivedProps(componentNode, ctx);
+  analyzeJsx(componentNode, ctx);
+  const providedContexts = findProvidedContexts(componentNode, ctx);
+  for (const state of states) {
+    if (ctx.jsxUsedIdentifiers.has(state.name) || state.setter && ctx.jsxUsedIdentifiers.has(state.setter)) {
+      state.used_in_jsx = true;
+    }
+    for (const passedProp of ctx.jsxPassedProps) {
+      if (passedProp.original_source === "state") {
+        state.passed_to_children = state.passed_to_children || [];
+        if (!state.passed_to_children.includes(passedProp.to_component)) {
+          state.passed_to_children.push(passedProp.to_component);
+        }
+      }
+    }
+  }
+  const issues = detectIssues3(componentNode, ctx, receivedProps, effects);
+  const result = {
+    component: componentName,
+    file: makeRelativePath3(filePath, projectRoot),
+    local_state: states,
+    props: {
+      received: receivedProps,
+      passed_down: ctx.jsxPassedProps
+    },
+    context: {
+      consumed: contexts,
+      provided: providedContexts
+    },
+    effects,
+    issues
+  };
+  if (args.include_children && (args.depth ?? 2) > 0) {
+    const childDepth = args.depth ?? 2;
+    const componentNames = findJsxComponentNames(sourceFile);
+    const children = [];
+    for (const name of componentNames) {
+      const childFilePath = resolveImportPath(name, filePath, projectRoot, sourceFile);
+      if (!childFilePath)
+        continue;
+      if (visitedFiles.has(childFilePath))
+        continue;
+      try {
+        const childArgs = {
+          file: childFilePath,
+          component: name,
+          include_children: childDepth > 1,
+          depth: childDepth - 1
+        };
+        const response = await _analyzeComponent(childFilePath, childArgs, projectRoot, visitedFiles);
+        if (response.isError)
+          continue;
+        const analysisData = JSON.parse(response.content[0].text);
+        children.push({
+          component: name,
+          file: childFilePath.startsWith(projectRoot) ? childFilePath.slice(projectRoot.length).replace(/^\//, "") : childFilePath,
+          analysis: analysisData
+        });
+      } catch {
+      }
+    }
+    result.children = children;
+  }
+  return createSuccessResponse6(result);
+}
+__name(_analyzeComponent, "_analyzeComponent");
 async function handleTraceComponentState(args) {
-  const projectRoot = process.cwd();
+  const projectRoot = getProjectRoot();
   if (!args.file) {
     return createErrorResponse6("file argument is required");
   }
@@ -249688,84 +250015,7 @@ async function handleTraceComponentState(args) {
     return createErrorResponse6(`Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`, { file: args.file });
   }
   try {
-    let findComponent2 = function(node) {
-      if (!componentNode && isReactComponent(node, sourceFile)) {
-        const name = getComponentName(node, sourceFile);
-        if (targetComponent) {
-          if (name === targetComponent) {
-            componentNode = node;
-            componentName = name;
-          }
-        } else {
-          componentNode = node;
-          componentName = name;
-        }
-      }
-      if (!componentNode) {
-        import_typescript18.default.forEachChild(node, findComponent2);
-      }
-    };
-    var findComponent = findComponent2;
-    __name(findComponent2, "findComponent");
-    const content = fs5.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript18.default.createSourceFile(
-      filePath,
-      content,
-      import_typescript18.default.ScriptTarget.Latest,
-      true,
-      ext === ".tsx" ? import_typescript18.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript18.default.ScriptKind.JSX : import_typescript18.default.ScriptKind.TS
-    );
-    let componentNode = null;
-    let componentName = null;
-    const targetComponent = args.component;
-    findComponent2(sourceFile);
-    if (!componentNode || !componentName) {
-      return createSuccessResponse6({ message: "No React components found in file", file: makeRelativePath3(filePath, projectRoot) });
-    }
-    const ctx = {
-      sourceFile,
-      projectRoot,
-      stateVariables: /* @__PURE__ */ new Map(),
-      propNames: /* @__PURE__ */ new Set(),
-      contextValues: /* @__PURE__ */ new Map(),
-      jsxUsedIdentifiers: /* @__PURE__ */ new Set(),
-      jsxPassedProps: [],
-      inlineCallbacks: []
-    };
-    const { states, effects, contexts } = extractHooks(componentNode, ctx);
-    const receivedProps = extractReceivedProps(componentNode, ctx);
-    analyzeJsx(componentNode, ctx);
-    const providedContexts = findProvidedContexts(componentNode, ctx);
-    for (const state of states) {
-      if (ctx.jsxUsedIdentifiers.has(state.name) || state.setter && ctx.jsxUsedIdentifiers.has(state.setter)) {
-        state.used_in_jsx = true;
-      }
-      for (const passedProp of ctx.jsxPassedProps) {
-        if (passedProp.original_source === "state") {
-          state.passed_to_children = state.passed_to_children || [];
-          if (!state.passed_to_children.includes(passedProp.to_component)) {
-            state.passed_to_children.push(passedProp.to_component);
-          }
-        }
-      }
-    }
-    const issues = detectIssues3(componentNode, ctx, receivedProps, effects);
-    const result = {
-      component: componentName,
-      file: makeRelativePath3(filePath, projectRoot),
-      local_state: states,
-      props: {
-        received: receivedProps,
-        passed_down: ctx.jsxPassedProps
-      },
-      context: {
-        consumed: contexts,
-        provided: providedContexts
-      },
-      effects,
-      issues
-    };
-    return createSuccessResponse6(result);
+    return await _analyzeComponent(filePath, args, projectRoot, /* @__PURE__ */ new Set());
   } catch (error2) {
     const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
     return createErrorResponse6(message, { file: args.file });
@@ -251480,7 +251730,7 @@ function buildElementNode(tagName, classes, id, parent) {
   };
 }
 __name(buildElementNode, "buildElementNode");
-function matchesSelector2(tagName, classes, id, selector) {
+function matchesSelector3(tagName, classes, id, selector) {
   if (selector.startsWith("#")) {
     return id === selector.slice(1);
   }
@@ -251489,7 +251739,7 @@ function matchesSelector2(tagName, classes, id, selector) {
   }
   return tagName.toLowerCase() === selector.toLowerCase();
 }
-__name(matchesSelector2, "matchesSelector");
+__name(matchesSelector3, "matchesSelector");
 function parseJsxTree(node, sourceFile, parent, selector) {
   if (import_typescript21.default.isJsxElement(node)) {
     const openingElement = node.openingElement;
@@ -251497,7 +251747,7 @@ function parseJsxTree(node, sourceFile, parent, selector) {
     const classes = extractClassName2(openingElement, sourceFile);
     const id = extractId2(openingElement, sourceFile);
     const elementNode = buildElementNode(tagName, classes, id, parent);
-    if (matchesSelector2(tagName, classes, id, selector)) {
+    if (matchesSelector3(tagName, classes, id, selector)) {
       for (const child of node.children) {
         const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
         if (childResult) {
@@ -251518,7 +251768,7 @@ function parseJsxTree(node, sourceFile, parent, selector) {
     const tagName = node.tagName.getText(sourceFile);
     const classes = extractClassName2(node, sourceFile);
     const id = extractId2(node, sourceFile);
-    if (matchesSelector2(tagName, classes, id, selector)) {
+    if (matchesSelector3(tagName, classes, id, selector)) {
       return buildElementNode(tagName, classes, id, parent);
     }
     return null;

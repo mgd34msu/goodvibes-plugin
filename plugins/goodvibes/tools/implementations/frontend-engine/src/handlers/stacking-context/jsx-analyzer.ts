@@ -99,9 +99,38 @@ export function analyzeJsxFile(
   const elementStack: number[] = []; // Stack of parent indices
 
   function visit(node: ts.Node): void {
+    // JSX Fragment opening (<> or <React.Fragment>) - transparent, just manage stack
+    // Fragments do not create stacking contexts; treat children as belonging to parent
+    if (ts.isJsxOpeningFragment(node)) {
+      // Push the current parent index again so children inherit the same parent
+      const parentIndex = elementStack.length > 0 ? elementStack[elementStack.length - 1] : null;
+      // We push a sentinel (-1) so the closing fragment can pop correctly
+      elementStack.push(parentIndex !== null ? parentIndex : -1);
+      ts.forEachChild(node, visit);
+      return;
+    }
+
+    if (ts.isJsxClosingFragment(node)) {
+      elementStack.pop();
+      ts.forEachChild(node, visit);
+      return;
+    }
+
     // JSX Opening Element or Self-Closing Element
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
+
+      // React.Fragment used as explicit component tag — treat as transparent
+      if (tagName === 'React.Fragment' || tagName === 'Fragment') {
+        if (ts.isJsxOpeningElement(node)) {
+          const parentIndex = elementStack.length > 0 ? elementStack[elementStack.length - 1] : null;
+          elementStack.push(parentIndex !== null ? parentIndex : -1);
+        }
+        // Self-closing Fragment (<React.Fragment />) has no children, nothing to push
+        ts.forEachChild(node, visit);
+        return;
+      }
+
       const line = getLineNumber(node.getStart(), sourceFile);
       const isComponent = /^[A-Z]/.test(tagName);
 
@@ -122,6 +151,10 @@ export function analyzeJsxFile(
       const z_index = extractZIndex(classes);
       const position = extractPosition(classes);
 
+      // Resolve actual parent: skip sentinel -1 values from fragment proxies
+      const rawParent = elementStack.length > 0 ? elementStack[elementStack.length - 1] : null;
+      const resolvedParent = rawParent !== null && rawParent >= 0 ? rawParent : null;
+
       const elementInfo: ElementInfo = {
         element: `${tagName}:${line}`,
         line,
@@ -130,7 +163,7 @@ export function analyzeJsxFile(
         position,
         creates_context: creates,
         context_reason: reason,
-        parent_index: elementStack.length > 0 ? elementStack[elementStack.length - 1] : null,
+        parent_index: resolvedParent,
         is_component: isComponent,
       };
 
@@ -144,6 +177,14 @@ export function analyzeJsxFile(
     }
 
     // JSX Closing Element - pop from stack
+    // Note: </> closings are JsxClosingFragment (handled above), not JsxClosingElement.
+    // </React.Fragment> and </Fragment> ARE JsxClosingElement and also pop here.
+    //
+    // Ordering invariant: TypeScript's AST visitor visits nodes in source order
+    // (opening element → children → closing element), which guarantees that every
+    // push on JsxOpeningElement is matched by a pop here before any sibling node
+    // is visited. This keeps elementStack balanced for both regular elements and
+    // Fragment-proxied parents.
     if (ts.isJsxClosingElement(node)) {
       elementStack.pop();
     }

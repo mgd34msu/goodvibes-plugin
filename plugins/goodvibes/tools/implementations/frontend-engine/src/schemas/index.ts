@@ -56,6 +56,10 @@ export const FRONTEND_SCHEMAS = [
           type: 'string',
           description: 'File path to analyze (relative to project root or absolute). Must be a React component file (.tsx, .jsx)',
         },
+        component: {
+          type: 'string',
+          description: 'Specific component name to analyze if file contains multiple components',
+        },
         include_children: {
           type: 'boolean',
           description: 'Analyze imported child components (default: false)',

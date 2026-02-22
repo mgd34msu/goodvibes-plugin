@@ -104,6 +104,15 @@ export interface ComponentIssue {
 }
 
 /**
+ * Child component analysis entry (used when include_children is true)
+ */
+export interface ChildComponentAnalysis {
+  component: string;
+  file: string;
+  analysis: TraceComponentStateResult;
+}
+
+/**
  * Result of tracing component state
  */
 export interface TraceComponentStateResult {
@@ -114,6 +123,8 @@ export interface TraceComponentStateResult {
   context: ContextAnalysis;
   effects: EffectInfo[];
   issues: ComponentIssue[];
+  /** Child component analyses, populated when include_children is true */
+  children?: ChildComponentAnalysis[];
 }
 
 /**

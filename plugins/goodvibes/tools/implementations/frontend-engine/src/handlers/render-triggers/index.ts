@@ -19,6 +19,7 @@ import ts from 'typescript';
 export type {
   AnalyzeRenderTriggersArgs,
   AnalyzeRenderTriggersResult,
+  ComponentResult,
   RenderTrigger,
   InlineDefinition,
   ExpensiveComputation,
@@ -30,7 +31,7 @@ export type {
 } from './types.js';
 
 // Import from modules
-import type { AnalyzeRenderTriggersArgs, AnalyzeRenderTriggersResult, ChildAnalysis, ToolResponse } from './types.js';
+import type { AnalyzeRenderTriggersArgs, AnalyzeRenderTriggersResult, ChildAnalysis, ComponentResult, ToolResponse } from './types.js';
 import { createSuccessResponse, createErrorResponse, makeRelativePath } from './utils.js';
 import { detectMemoization, findComponents } from './memoization-detector.js';
 import {
@@ -103,10 +104,10 @@ export async function handleAnalyzeRenderTriggers(
     const relativePath = makeRelativePath(filePath, projectRoot);
 
     // Detect memoization patterns
-    const memoInfo = detectMemoization(sourceFile);
+    const memoMap = detectMemoization(sourceFile);
 
     // Find components in the file
-    const components = findComponents(sourceFile, memoInfo);
+    const components = findComponents(sourceFile, memoMap);
 
     if (components.length === 0) {
       return createSuccessResponse({
@@ -115,63 +116,113 @@ export async function handleAnalyzeRenderTriggers(
       });
     }
 
-    // Analyze the first/main component (or we could return all)
-    const mainComponent = components[0];
-    const componentMemo = mainComponent.memoInfo;
-
-    // Gather all render triggers
-    const renderTriggers = [
-      ...findStateHooks(mainComponent.node, sourceFile),
-      ...findPropTriggers(mainComponent.node, sourceFile, componentMemo.is_memoized),
-      ...findForceUpdateTriggers(mainComponent.node, sourceFile),
-    ];
-
-    // Add parent re-render trigger
-    renderTriggers.push({
-      type: 'parent',
-      source: 'Parent component re-render',
-      frequency: componentMemo.is_memoized ? 'on_change' : 'every_render',
-      preventable: !componentMemo.is_memoized,
-      prevention_method: componentMemo.is_memoized
-        ? undefined
-        : 'Wrap component with React.memo()',
+    // Determine the default export name (if any) to identify the main component
+    let defaultExportName: string | undefined;
+    ts.forEachChild(sourceFile, (node) => {
+      // export default Identifier
+      if (ts.isExportAssignment(node) && !node.isExportEquals) {
+        if (ts.isIdentifier(node.expression)) {
+          defaultExportName = node.expression.getText(sourceFile);
+        } else if (ts.isCallExpression(node.expression)) {
+          const arg = node.expression.arguments[0];
+          if (arg && ts.isIdentifier(arg)) {
+            defaultExportName = arg.getText(sourceFile);
+          }
+        }
+      }
+      // export default function ComponentName / export default class ComponentName
+      if (
+        ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node)
+      ) {
+        const modifiers = ts.getModifiers(node);
+        if (
+          modifiers &&
+          modifiers.some(m => m.kind === ts.SyntaxKind.DefaultKeyword) &&
+          node.name
+        ) {
+          defaultExportName = node.name.getText(sourceFile);
+        }
+      }
     });
 
-    // Find inline definitions
-    const inlineDefinitions = findInlineDefinitions(mainComponent.node, sourceFile);
+    // Main component: prefer default export; fallback to last component (convention)
+    const mainComponent =
+      (defaultExportName && components.find(c => c.name === defaultExportName)) ||
+      components[components.length - 1];
 
-    // Find expensive computations
-    const expensiveComputations = findExpensiveComputations(mainComponent.node, sourceFile);
+    // Analyze a single component and return its ComponentResult
+    function analyzeComponent(comp: typeof components[0]): ComponentResult {
+      const memo = comp.memoInfo;
 
-    // Analyze context usage
-    const contextSubscriptions = analyzeContextUsage(mainComponent.node, sourceFile);
+      const triggers = [
+        ...findStateHooks(comp.node, sourceFile),
+        ...findPropTriggers(comp.node, sourceFile, memo.is_memoized),
+        ...findForceUpdateTriggers(comp.node, sourceFile),
+      ];
 
-    // Analyze child components if requested
-    let childrenAnalysis: ChildAnalysis[] | undefined;
-    if (includeChildren) {
-      childrenAnalysis = analyzeChildProps(mainComponent.node, sourceFile, inlineDefinitions);
+      // Determine if component has props
+      const hasPropTriggers = triggers.some(t => t.type === 'prop');
+
+      triggers.push({
+        type: 'parent',
+        source: 'Parent component re-render',
+        frequency: memo.is_memoized ? 'on_change' : 'every_render',
+        preventable: !memo.is_memoized,
+        prevention_method: memo.is_memoized
+          ? undefined
+          : 'Wrap component with React.memo()',
+      });
+
+      const inlineDefs = findInlineDefinitions(comp.node, sourceFile);
+      const expensiveComps = findExpensiveComputations(comp.node, sourceFile);
+      const ctxSubs = analyzeContextUsage(comp.node, sourceFile);
+
+      let childrenAnalysis: ChildAnalysis[] | undefined;
+      if (includeChildren) {
+        childrenAnalysis = analyzeChildProps(comp.node, sourceFile, inlineDefs, memoMap);
+      }
+
+      const suggestions = generateSuggestions(
+        memo.is_memoized,
+        inlineDefs,
+        expensiveComps,
+        ctxSubs,
+        childrenAnalysis || [],
+        hasPropTriggers
+      );
+
+      return {
+        component: comp.name,
+        is_memoized: memo.is_memoized,
+        memo_type: memo.memo_type,
+        render_triggers: triggers,
+        inline_definitions: inlineDefs,
+        expensive_computations: expensiveComps,
+        context_subscriptions: ctxSubs,
+        children_analysis: childrenAnalysis,
+        optimization_suggestions: suggestions,
+      };
     }
 
-    // Generate optimization suggestions
-    const optimizationSuggestions = generateSuggestions(
-      componentMemo.is_memoized,
-      inlineDefinitions,
-      expensiveComputations,
-      contextSubscriptions,
-      childrenAnalysis || []
-    );
+    // Analyze all components
+    const allComponentResults = components.map(analyzeComponent);
+
+    // Main component result (for backward-compatible top-level fields)
+    const mainResult = allComponentResults.find(r => r.component === mainComponent.name)!;
 
     const result: AnalyzeRenderTriggersResult = {
-      component: mainComponent.name,
+      component: mainResult.component,
       file: relativePath,
-      is_memoized: componentMemo.is_memoized,
-      memo_type: componentMemo.memo_type,
-      render_triggers: renderTriggers,
-      inline_definitions: inlineDefinitions,
-      expensive_computations: expensiveComputations,
-      context_subscriptions: contextSubscriptions,
-      children_analysis: childrenAnalysis,
-      optimization_suggestions: optimizationSuggestions,
+      is_memoized: mainResult.is_memoized,
+      memo_type: mainResult.memo_type,
+      render_triggers: mainResult.render_triggers,
+      inline_definitions: mainResult.inline_definitions,
+      expensive_computations: mainResult.expensive_computations,
+      context_subscriptions: mainResult.context_subscriptions,
+      children_analysis: mainResult.children_analysis,
+      optimization_suggestions: mainResult.optimization_suggestions,
+      components: allComponentResults,
     };
 
     return createSuccessResponse(result);

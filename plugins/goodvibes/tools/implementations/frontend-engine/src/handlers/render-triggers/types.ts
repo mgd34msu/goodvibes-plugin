@@ -114,9 +114,26 @@ export interface OptimizationSuggestion {
 }
 
 /**
+ * Per-component analysis result (for multi-component files)
+ */
+export interface ComponentResult {
+  /** Component name */
+  component: string;
+  is_memoized: boolean;
+  memo_type?: MemoType;
+  render_triggers: RenderTrigger[];
+  inline_definitions: InlineDefinition[];
+  expensive_computations: ExpensiveComputation[];
+  context_subscriptions: ContextSubscription[];
+  children_analysis?: ChildAnalysis[];
+  optimization_suggestions: OptimizationSuggestion[];
+}
+
+/**
  * Result of render trigger analysis
  */
 export interface AnalyzeRenderTriggersResult {
+  /** Main/primary component name (backward-compatible top-level field) */
   component: string;
   file: string;
   is_memoized: boolean;
@@ -127,6 +144,8 @@ export interface AnalyzeRenderTriggersResult {
   context_subscriptions: ContextSubscription[];
   children_analysis?: ChildAnalysis[];
   optimization_suggestions: OptimizationSuggestion[];
+  /** All components found in the file (populated when multiple components exist) */
+  components?: ComponentResult[];
 }
 
 /**

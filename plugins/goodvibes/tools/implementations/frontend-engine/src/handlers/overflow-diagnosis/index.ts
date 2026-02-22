@@ -132,7 +132,7 @@ export async function handleDiagnoseOverflow(
     container: patterns[0]?.parent?.element || patterns[0]?.element?.element,
     cause,
     constraint_chain: constraintChain,
-    fix_options: uniqueFixes.slice(0, 6), // Limit to top 6 fixes
+    fix_options: uniqueFixes,
     recommendation,
   };
 

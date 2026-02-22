@@ -11,6 +11,7 @@
 // Re-export everything from the modular implementation
 export {
   handleAnalyzeStackingContext,
+  DEFAULT_STACKING_THRESHOLDS,
   type AnalyzeStackingContextArgs,
   type AnalyzeStackingContextResult,
   type StackingContext,
@@ -19,4 +20,5 @@ export {
   type StackingIssue,
   type PortalInfo,
   type ToolResponse,
+  type StackingThresholds,
 } from './stacking-context/index.js';

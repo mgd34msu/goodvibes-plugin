@@ -74,11 +74,11 @@ export function isInsideJsxAttribute(node: ts.Node): boolean {
 /**
  * Check if a node is inside a hook call (useCallback, useMemo)
  */
-export function isInsideMemoizationHook(node: ts.Node): boolean {
+export function isInsideMemoizationHook(node: ts.Node, sourceFile: ts.SourceFile): boolean {
   let current: ts.Node | undefined = node.parent;
   while (current) {
     if (ts.isCallExpression(current)) {
-      const callText = current.expression.getText();
+      const callText = current.expression.getText(sourceFile);
       if (callText === 'useCallback' || callText === 'useMemo' ||
           callText === 'React.useCallback' || callText === 'React.useMemo') {
         return true;

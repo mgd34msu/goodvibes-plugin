@@ -19,6 +19,34 @@ import {
 /**
  * Extract all hook usages from a component
  */
+/**
+ * Check if a given AST node is imported or defined at the file level as a hook-like function.
+ * Used to reduce false positives when detecting custom hooks.
+ */
+function isKnownHookOrImported(fnName: string, sourceFile: ts.SourceFile): boolean {
+  // Walk top-level statements to find imports or function declarations named fnName
+  for (const statement of sourceFile.statements) {
+    // import { useFoo } from '...' or import useFoo from '...'
+    if (ts.isImportDeclaration(statement) && statement.importClause) {
+      const clause = statement.importClause;
+      if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+        for (const specifier of clause.namedBindings.elements) {
+          if (specifier.name.getText(sourceFile) === fnName) return true;
+        }
+      }
+      if (clause.name && clause.name.getText(sourceFile) === fnName) return true;
+    }
+    // function useFoo() { ... } or const useFoo = () => { ... }
+    if (ts.isFunctionDeclaration(statement) && statement.name?.getText(sourceFile) === fnName) return true;
+    if (ts.isVariableStatement(statement)) {
+      for (const decl of statement.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.name.getText(sourceFile) === fnName) return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function extractHooks(
   componentNode: ts.Node,
   ctx: AnalysisContext
@@ -27,6 +55,10 @@ export function extractHooks(
   const effects: EffectInfo[] = [];
   const contexts: ConsumedContext[] = [];
   const { sourceFile } = ctx;
+
+  // Track nesting depth inside callbacks/inner functions to enforce Rules of Hooks
+  // (hooks must be called at the top level of the component, not inside nested functions)
+  let nestedFunctionDepth = 0;
 
   function visit(node: ts.Node): void {
     if (ts.isCallExpression(node)) {
@@ -131,11 +163,16 @@ export function extractHooks(
       }
 
       // Custom hooks starting with 'use'
-      if (fnName.startsWith('use') && fnName[3]?.match(/[A-Z]/) &&
+      // Guards:
+      // 1. Must not be inside a nested function (Rules of Hooks: no hooks in callbacks/conditions)
+      // 2. Must be imported or defined at file scope (reduces false positives from non-hook functions)
+      if (fnName.startsWith('use') && fnName.length > 3 && fnName[3].match(/[A-Z]/) &&
           !['useState', 'useReducer', 'useRef', 'useEffect', 'useLayoutEffect',
             'useMemo', 'useCallback', 'useContext', 'useImperativeHandle',
             'useDebugValue', 'useDeferredValue', 'useTransition', 'useId',
-            'useSyncExternalStore', 'useInsertionEffect'].includes(fnName)) {
+            'useSyncExternalStore', 'useInsertionEffect'].includes(fnName) &&
+          nestedFunctionDepth === 0 &&
+          isKnownHookOrImported(fnName, sourceFile)) {
         // Custom context hook
         const [valueName] = extractDestructuredNames(node, sourceFile);
         const contextInfo: ConsumedContext = {
@@ -173,7 +210,19 @@ export function extractHooks(
       }
     }
 
-    ts.forEachChild(node, visit);
+    // Track nested function scopes (arrow functions, function expressions, function declarations
+    // that are NOT the component itself) to enforce Rules of Hooks
+    const isNestedFunctionBoundary =
+      node !== componentNode &&
+      (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node));
+
+    if (isNestedFunctionBoundary) {
+      nestedFunctionDepth++;
+      ts.forEachChild(node, visit);
+      nestedFunctionDepth--;
+    } else {
+      ts.forEachChild(node, visit);
+    }
   }
 
   visit(componentNode);

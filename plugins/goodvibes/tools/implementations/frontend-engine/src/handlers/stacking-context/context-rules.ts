@@ -103,19 +103,6 @@ export const CONTEXT_CREATORS: Record<string, (classes: string[]) => boolean> = 
     classes.some((c) => c.startsWith('mix-blend-') && c !== 'mix-blend-normal'),
 
   /**
-   * Flex/Grid child with z-index creates a stacking context
-   * (technically the parent needs to be flex/grid, but we detect the z-index usage)
-   */
-  flex_grid_z: (classes: string[]) => {
-    const hasZIndex = classes.some((c) => /^-?z-/.test(c));
-    // If it has z-index but no explicit position, could be in flex/grid context
-    const hasPosition = classes.some((c) =>
-      ['relative', 'absolute', 'fixed', 'sticky'].includes(c)
-    );
-    return hasZIndex && !hasPosition;
-  },
-
-  /**
    * Perspective creates a stacking context
    */
   perspective: (classes: string[]) =>

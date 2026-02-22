@@ -14,6 +14,7 @@ export {
   handleTraceComponentState,
   type TraceComponentStateArgs,
   type TraceComponentStateResult,
+  type ChildComponentAnalysis,
   type LocalStateInfo,
   type ReceivedProp,
   type PassedDownProp,

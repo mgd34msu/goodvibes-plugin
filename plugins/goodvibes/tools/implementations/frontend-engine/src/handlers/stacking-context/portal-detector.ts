@@ -10,6 +10,12 @@ import ts from 'typescript';
 import type { PortalInfo } from './types.js';
 
 /**
+ * Number of characters to inspect after a createPortal() call to determine
+ * whether it uses a ref/dynamic container rather than a static getElementById.
+ */
+const CREATE_PORTAL_CONTEXT_WINDOW = 300;
+
+/**
  * Find the containing component/function for a source position
  */
 export function findContainingComponent(position: number, sourceFile: ts.SourceFile): string | null {
@@ -106,21 +112,48 @@ export function detectPortals(content: string, sourceFile: ts.SourceFile): Porta
     });
   }
 
-  // Next.js Portal pattern
-  const nextPortalRegex =
-    /next\/dynamic[^}]*Portal|@radix-ui\/react-portal|@headlessui\/react/g;
-  if (nextPortalRegex.test(content)) {
-    // Check for usage patterns
+  // Radix UI / Headless UI / Floating UI portal imports + usage verification
+  // Only report if the file both imports portal-capable packages AND actually uses portal-like JSX.
+  // Note: next/dynamic does not expose a Portal API — removed that branch.
+  const nextPortalImportRegex =
+    /from\s+['"](?:@radix-ui\/react-portal|@headlessui\/react|@floating-ui\/react)['"]/g;
+  if (nextPortalImportRegex.test(content)) {
+    // Check for actual JSX usage of portal-wrapped components
     const modalRegex = /<(Modal|Dialog|Drawer|Sheet|Popover|Dropdown)[^>]*>/g;
     while ((match = modalRegex.exec(content)) !== null) {
-      const existingPortal = portals.find(
-        (p) =>
-          p.component === findContainingComponent(match!.index, sourceFile)
-      );
+      const component = findContainingComponent(match.index, sourceFile) || 'Unknown';
+      const existingPortal = portals.find((p) => p.component === component);
       if (!existingPortal) {
         portals.push({
-          component: findContainingComponent(match.index, sourceFile) || 'Unknown',
-          destination: 'document.body (inferred from modal/dialog pattern)',
+          component,
+          destination: 'document.body (inferred from portal library import + modal usage)',
+        });
+      }
+    }
+  }
+
+  // Custom portal wrapper detection:
+  // Look for functions/components that call createPortal internally
+  const createPortalUsageRegex = /createPortal\s*\(/g;
+  let createPortalMatch: RegExpExecArray | null;
+  while ((createPortalMatch = createPortalUsageRegex.exec(content)) !== null) {
+    // Check if this createPortal call is NOT already captured by the reactPortalRegex above
+    // (i.e. it doesn't include getElementById - it might use a ref or custom container)
+    const contextSlice = content.slice(
+      createPortalMatch.index,
+      createPortalMatch.index + CREATE_PORTAL_CONTEXT_WINDOW
+    );
+    const alreadyCaptured = /document\.getElementById\s*\(\s*['"][^'"]+['"]/.test(
+      contextSlice
+    );
+    if (!alreadyCaptured) {
+      const component =
+        findContainingComponent(createPortalMatch.index, sourceFile) || 'Unknown';
+      const existingPortal = portals.find((p) => p.component === component);
+      if (!existingPortal) {
+        portals.push({
+          component,
+          destination: 'dynamic/ref container (createPortal without getElementById)',
         });
       }
     }

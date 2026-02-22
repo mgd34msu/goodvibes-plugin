@@ -23,12 +23,15 @@ export function generateSuggestions(
   inlineDefinitions: InlineDefinition[],
   expensiveComputations: ExpensiveComputation[],
   contextSubscriptions: ContextSubscription[],
-  childrenAnalysis: ChildAnalysis[]
+  childrenAnalysis: ChildAnalysis[],
+  hasPropTriggers = false
 ): OptimizationSuggestion[] {
   const suggestions: OptimizationSuggestion[] = [];
 
-  // Check if component should be memoized
-  if (!isMemoized && childrenAnalysis.length > 0) {
+  // Check if component should be memoized:
+  // - Has children to analyze, OR
+  // - Receives props (may be rendered by multiple parents with shallow-equal props)
+  if (!isMemoized && (childrenAnalysis.length > 0 || hasPropTriggers)) {
     suggestions.push({
       priority: 'medium',
       type: 'memo',

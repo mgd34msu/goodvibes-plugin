@@ -7,7 +7,7 @@
  */
 
 import type { LayoutNode, OverflowPattern } from './types.js';
-import { isFixedSizing, isAutoSizing, hasAutoHeightChildren, matchesHint } from './utils.js';
+import { isConstrainedSizing, isAutoSizing, hasAutoHeightChildren, matchesHint } from './utils.js';
 
 /**
  * Find overflow-prone patterns in the layout tree
@@ -16,9 +16,9 @@ export function findOverflowPatterns(tree: LayoutNode, hint?: string): OverflowP
   const patterns: OverflowPattern[] = [];
 
   function traverse(node: LayoutNode): void {
-    // Pattern 1: Fixed height parent + auto height children (no overflow)
+    // Pattern 1: Constrained height parent + auto height children (no overflow)
     if (
-      isFixedSizing(node.sizing.height.strategy) &&
+      isConstrainedSizing(node.sizing.height.strategy) &&
       hasAutoHeightChildren(node) &&
       node.overflow.y === 'visible' &&
       matchesHint(node, hint)
@@ -36,7 +36,7 @@ export function findOverflowPatterns(tree: LayoutNode, hint?: string): OverflowP
     if (
       (node.display === 'flex' || node.display === 'inline-flex') &&
       node.overflow.y === 'visible' &&
-      isFixedSizing(node.sizing.height.strategy) &&
+      isConstrainedSizing(node.sizing.height.strategy) &&
       matchesHint(node, hint)
     ) {
       patterns.push({
@@ -85,7 +85,7 @@ export function findOverflowPatterns(tree: LayoutNode, hint?: string): OverflowP
       node.flex_props.shrink === 0 &&
       node.parent &&
       (node.parent.display === 'flex' || node.parent.display === 'inline-flex') &&
-      isFixedSizing(node.parent.sizing.height.strategy) &&
+      isConstrainedSizing(node.parent.sizing.height.strategy) &&
       matchesHint(node, hint)
     ) {
       patterns.push({
@@ -101,7 +101,7 @@ export function findOverflowPatterns(tree: LayoutNode, hint?: string): OverflowP
     if (
       (node.display === 'grid' || node.display === 'inline-grid') &&
       node.overflow.y === 'visible' &&
-      isFixedSizing(node.sizing.height.strategy) &&
+      isConstrainedSizing(node.sizing.height.strategy) &&
       matchesHint(node, hint)
     ) {
       patterns.push({
@@ -117,7 +117,7 @@ export function findOverflowPatterns(tree: LayoutNode, hint?: string): OverflowP
       (node.display === 'flex' || node.display === 'inline-flex') &&
       node.parent &&
       (node.parent.display === 'flex' || node.parent.display === 'inline-flex') &&
-      !node.classes.includes('min-h-0') &&
+      !node.classes.some((c) => c === 'min-h-0') &&
       node.flex_props?.grow === 1 &&
       matchesHint(node, hint)
     ) {
