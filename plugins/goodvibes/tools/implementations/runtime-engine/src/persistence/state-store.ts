@@ -103,6 +103,8 @@ export class JsonStateStore implements StateStore {
    *
    * Writes atomically: serialises to JSON, writes to a `.tmp` file, then
    * renames the `.tmp` file to the final path.
+   *
+   * @throws {Error} If the write or rename operation fails.
    */
   async set(key: string, state: unknown): Promise<void> {
     this.ensureDir();
@@ -127,6 +129,8 @@ export class JsonStateStore implements StateStore {
    *
    * Returns `null` (not an error) when the key does not exist. Throws on
    * unexpected I/O errors or JSON parse failures.
+   *
+   * @throws {Error} If a non-ENOENT I/O error or JSON parse failure occurs.
    */
   async get<T>(key: string): Promise<T | null> {
     const path = this.keyPath(key);
@@ -151,6 +155,8 @@ export class JsonStateStore implements StateStore {
    * {@inheritdoc StateStore.delete}
    *
    * Silently succeeds if the key does not exist (ENOENT is not an error).
+   *
+   * @throws {Error} If a non-ENOENT I/O error occurs.
    */
   async delete(key: string): Promise<void> {
     const path = this.keyPath(key);
@@ -176,6 +182,8 @@ export class JsonStateStore implements StateStore {
    *
    * Lists all `.json` files in the state directory (excluding `.tmp` files)
    * and strips the `.json` extension to return the key names.
+   *
+   * @throws {Error} If the directory cannot be read.
    */
   async keys(): Promise<string[]> {
     this.ensureDir();

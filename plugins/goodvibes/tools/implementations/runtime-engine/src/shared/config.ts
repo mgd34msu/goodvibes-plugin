@@ -237,6 +237,9 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
     if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
       // silent - normal first run
     } else {
+      // Note: process.stderr.write is used intentionally here. loadConfig is
+      // called during bootstrap before the structured logger is initialised.
+      // Direct stderr output is the only safe mechanism at this stage.
       process.stderr.write(
         `[runtime-engine] Warning: failed to load config at "${configPath}": ${
           toErrorMessage(err)

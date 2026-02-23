@@ -25,7 +25,7 @@ import { EventLog } from '../events/event-log.js';
 import { EventQueue } from '../events/event-queue.js';
 import { generateEventId, timestamp, toErrorMessage } from '../shared/utils.js';
 import { IPCServer } from '../ipc/ipc-server.js';
-import type { IPCMessage, IPCResponse } from '../ipc/protocol.js';
+import { IPCRouter } from '../ipc/ipc-router.js';
 import { WorkflowEngine } from '../workflow/workflow-engine.js';
 import { WRFC_LOOP_DEFINITION, FIX_LOOP_DEFINITION } from '../workflow/index.js';
 import { TriggerRegistry } from '../triggers/trigger-registry.js';
@@ -649,98 +649,15 @@ export class ProcessManager {
     try {
       this.ipcServer = new IPCServer(socketPath);
 
-      // Wire IPC message handler
-      this.ipcServer.onMessage(async (msg: IPCMessage): Promise<IPCResponse> => {
-        logger.debug('IPC message received', { id: msg.id, type: msg.type });
-
-        if (msg.type === 'hook_event') {
-          // Emit as a hook:* event on the EventBus
-          const emittedEvent: import('../events/types.js').RuntimeEvent = {
-            id: msg.id,
-            timestamp: msg.timestamp,
-            type: `hook:${msg.hook_name}` as import('../events/types.js').EventType,
-            source: { kind: 'hook', hook_name: msg.hook_name } as import('../events/types.js').EventSource,
-            payload: {
-              type: `hook:${msg.hook_name}` as import('../events/types.js').EventType,
-              data: msg.hook_input,
-            } as import('../events/types.js').EventPayload,
-            metadata: {
-              sequence: 0,
-              version: 1,
-            },
-          };
-          this.eventBus.emit(emittedEvent);
-          // Await trigger evaluation so directives are enqueued before the hook's follow-up query
-          if (this.triggerRegistry) {
-            try {
-              await this.triggerRegistry.evaluate(emittedEvent);
-            } catch (err) {
-              logger.warn('IPC hook_event: trigger evaluation error', {
-                error: toErrorMessage(err),
-              });
-            }
-          }
-          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
-        }
-
-        if (msg.type === 'query') {
-          const q = msg.query;
-          if (q.kind === 'get_directives') {
-            const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
-            const message = directives
-              .filter((d) => d.type === 'inject_system_message')
-              .sort((a, b) => b.priority - a.priority)
-              .map((d) => d.content)
-              .join('\n\n');
-            return {
-              id: msg.id,
-              status: 'ok',
-              data: { kind: 'system_message', message, directives },
-            };
-          }
-          if (q.kind === 'get_system_message') {
-            // Also drain directives for system_message queries
-            const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
-            const directiveMessage = directives
-              .filter((d) => d.type === 'inject_system_message')
-              .sort((a, b) => b.priority - a.priority)
-              .map((d) => d.content)
-              .join('\n\n');
-            return {
-              id: msg.id,
-              status: 'ok',
-              data: { kind: 'system_message', message: directiveMessage, directives },
-            };
-          }
-          if (q.kind === 'get_workflow_state') {
-            const instance = this.workflowEngine?.get(q.workflow_id);
-            return {
-              id: msg.id,
-              status: 'ok',
-              data: { kind: 'workflow_state', instance: (instance ?? {}) as Record<string, unknown> },
-            };
-          }
-          if (q.kind === 'should_block_tool') {
-            return {
-              id: msg.id,
-              status: 'ok',
-              data: { kind: 'tool_decision', allow: true },
-            };
-          }
-          // Default: ack unknown queries
-          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
-        }
-
-        if (msg.type === 'heartbeat') {
-          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
-        }
-
-        if (msg.type === 'state_update') {
-          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
-        }
-
-        return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
+      // Wire IPC message routing via dedicated IPCRouter
+      const router = new IPCRouter({
+        eventBus: this.eventBus,
+        triggerRegistry: this.triggerRegistry,
+        workflowEngine: this.workflowEngine,
+        agentCoordinator: this.agentCoordinator,
+        directiveQueue: this.directiveQueue,
       });
+      this.ipcServer.onMessage(router.route.bind(router));
 
       // Pre-create socket directory with owner-only permissions (belt-and-suspenders)
       mkdirSync(socketDir, { recursive: true, mode: 0o700 });

@@ -60,6 +60,12 @@ function resolveActiveLevel(): LogLevel {
  * Each log method writes a JSON {@link LogEntry} to `process.stderr`. Log entries
  * below the active level (set via `GOODVIBES_LOG_LEVEL`) are silently dropped.
  *
+ * Note: `process.stderr.write` is used intentionally in this module. The logger
+ * itself is the lowest-level output primitive in the runtime engine — it cannot
+ * depend on another logger instance. Direct stderr writes are the correct
+ * mechanism here and are consistent with MCP convention (stdout is reserved for
+ * the protocol wire format).
+ *
  * @param component - Name of the component emitting the logs (e.g. "state-store").
  * @returns A {@link Logger} instance scoped to the component.
  */

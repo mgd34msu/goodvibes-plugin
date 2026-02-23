@@ -29,6 +29,11 @@ const SIGINT_GRACE_MS = 5_000;
  * The timer is unref'd so it does not prevent the process from exiting
  * naturally if shutdown completes before the timeout.
  *
+ * Note: `process.stderr.write` is used intentionally throughout this module.
+ * Signal handlers execute in a synchronous, restricted context where async
+ * operations (including the structured logger) cannot be safely awaited.
+ * Direct stderr writes are the only safe output mechanism in signal handlers.
+ *
  * @param onShutdown - Async callback invoked on shutdown signals. Should
  *   persist state and close transports. Must not throw.
  */
