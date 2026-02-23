@@ -34,6 +34,7 @@ import {
   buildWorkflowCompleteMessage,
   buildEscalationMessage,
 } from './directive-builder.js';
+import { extractReviewScore, extractFiles } from './gv-tag-parser.js';
 
 const log = createLogger('wrfc-handlers');
 
@@ -46,8 +47,6 @@ const DEFAULT_MIN_REVIEW_SCORE = 9.5;
 /** Default maximum fix attempts before escalation. */
 const DEFAULT_MAX_FIX_ATTEMPTS = 3;
 
-/** Regex to extract a numeric score from reviewer output. */
-const SCORE_REGEX = /SCORE:\s*(\d+(?:\.\d+)?)\/10/i;
 
 /**
  * Agent types that auto-complete without entering the WRFC review cycle.
@@ -66,17 +65,6 @@ export const AUTO_COMPLETE_AGENT_TYPES = new Set([
   'general-purpose',
 ]);
 
-/**
- * Parses a review score from free-form text produced by a reviewer agent.
- *
- * @param text - Raw output string from the reviewer.
- * @returns Parsed score (0–10), or null if not found.
- */
-function parseReviewScore(text: string | undefined): number | null {
-  if (!text) return null;
-  const match = text.match(SCORE_REGEX);
-  return match ? parseFloat(match[1]) : null;
-}
 
 // ─── Shared Result-Handling Helpers ────────────────────────────────────────────────────
 
@@ -514,7 +502,7 @@ export function registerWRFCHandlers(
         (hookInput?.['last_assistant_message'] as string | undefined) ||
         (hookInput?.['task_output'] as string | undefined) ||
         (hookInput?.['result'] as string | undefined);
-      const score = parseReviewScore(taskOutput);
+      const score = extractReviewScore(taskOutput);
 
       if (score === null) {
         log.warn('wrfc_chain_next: could not parse review score from reviewer output', {
@@ -548,6 +536,26 @@ export function registerWRFCHandlers(
           agent_type: agentType,
         });
         return;
+      }
+
+      // Extract files from engineer output via <gv> tag
+      const fixOutput =
+        (hookInput?.['last_assistant_message'] as string | undefined) ||
+        (hookInput?.['task_output'] as string | undefined) ||
+        (hookInput?.['result'] as string | undefined);
+      const engineerFiles = extractFiles(fixOutput);
+      if (engineerFiles.length > 0) {
+        // Merge engineer-reported files into workflow context
+        const existingFiles = Array.isArray(workflow.context.files_modified)
+          ? (workflow.context.files_modified as string[])
+          : [];
+        const mergedFiles = [...new Set([...existingFiles, ...engineerFiles])];
+        workflow.context.files_modified = mergedFiles;
+        log.debug('wrfc_chain_next: updated files_modified from engineer <gv> tag', {
+          workflow_id: workflow.id,
+          new_files: engineerFiles,
+          total_files: mergedFiles.length,
+        });
       }
 
       const prevAttempts =

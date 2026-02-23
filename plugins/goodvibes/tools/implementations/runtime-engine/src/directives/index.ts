@@ -12,6 +12,7 @@ export {
   buildWorkflowCompleteMessage,
   buildEscalationMessage,
 } from './directive-builder.js';
-export { registerWRFCHandlers } from './wrfc-handlers.js';
-export { AUTO_COMPLETE_AGENT_TYPES } from './wrfc-handlers.js';
+export { registerWRFCHandlers, AUTO_COMPLETE_AGENT_TYPES } from './wrfc-handlers.js';
 export { AgentWorkflowMap } from './agent-workflow-map.js';
+export { parseGvTag, parseAllGvTags, extractReviewScore, extractFiles, extractTestResults } from './gv-tag-parser.js';
+export type { GvTagData, GvParseResult } from './gv-tag-parser.js';
