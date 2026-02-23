@@ -27,11 +27,18 @@ import { join } from 'path';
 
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { createLogger } from '../shared/logger.js';
+import { toErrorMessage } from '../shared/utils.js';
 
 const logger = createLogger('file-fallback');
 
 /** Interval in ms between response-file polling cycles. */
 const POLL_INTERVAL_MS = 20;
+
+/** Number of retry attempts after the initial try (total attempts = LOCK_RETRIES + 1). */
+const LOCK_RETRIES = 3;
+
+/** Delay in ms between lock acquisition retries. */
+const LOCK_RETRY_DELAY_MS = 10;
 
 /**
  * File-based IPC fallback for environments where the Unix socket is
@@ -87,7 +94,7 @@ export class FileFallback {
    */
   async writeRequest(message: IPCMessage): Promise<void> {
     this.ensureStateDir();
-    this.acquireLock();
+    await this.acquireLock();
     try {
       writeFileSync(this.requestPath, JSON.stringify(message, null, 2) + '\n', 'utf-8');
       logger.debug('IPC request written', { id: message.id, type: message.type });
@@ -120,7 +127,7 @@ export class FileFallback {
             return;
           } catch (err) {
             logger.warn('Failed to parse IPC response file', {
-              err: err instanceof Error ? err.message : String(err),
+              err: toErrorMessage(err),
             });
             resolve(null);
             return;
@@ -153,7 +160,7 @@ export class FileFallback {
   async readRequest(): Promise<IPCMessage | null> {
     if (!existsSync(this.requestPath)) return null;
 
-    this.acquireLock();
+    await this.acquireLock();
     try {
       const raw = readFileSync(this.requestPath, 'utf-8');
       const message = JSON.parse(raw) as IPCMessage;
@@ -165,7 +172,7 @@ export class FileFallback {
       return message;
     } catch (err) {
       logger.warn('Failed to read IPC request file', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
       return null;
     } finally {
@@ -200,7 +207,7 @@ export class FileFallback {
       } catch (err) {
         logger.warn('Could not remove IPC file', {
           path: filePath,
-          err: err instanceof Error ? err.message : String(err),
+          err: toErrorMessage(err),
         });
       }
     }
@@ -215,23 +222,44 @@ export class FileFallback {
   }
 
   /**
-   * Acquire a lock file.
+   * Acquire a lock file with retry on contention.
    *
    * Writes the current PID as the lock file content. This is a best-effort
    * advisory lock (not OS-level exclusive locking), sufficient for preventing
    * concurrent writes within the same machine.
+   *
+   * On EEXIST (another process holds the lock), retries up to
+   * {@link LOCK_RETRIES} times with a {@link LOCK_RETRY_DELAY_MS} ms delay
+   * between attempts. If all retries are exhausted, proceeds without the lock
+   * (advisory semantics — non-fatal).
    */
-  private acquireLock(): void {
-    try {
-      // Use { flag: 'wx' } for exclusive creation — atomically fails with EEXIST
-      // if the lock file already exists, preventing concurrent writes.
-      writeFileSync(this.lockPath, String(process.pid), { encoding: 'utf-8', flag: 'wx' });
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
-        // Another process holds the lock — proceed without it (advisory only)
+  private async acquireLock(): Promise<void> {
+    const delay = (ms: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
+    for (let attempt = 0; attempt <= LOCK_RETRIES; attempt++) {
+      try {
+        // Use { flag: 'wx' } for exclusive creation — atomically fails with EEXIST
+        // if the lock file already exists, preventing concurrent writes.
+        writeFileSync(this.lockPath, String(process.pid), { encoding: 'utf-8', flag: 'wx' });
+        return; // Lock acquired
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+          if (attempt < LOCK_RETRIES) {
+            // Another process holds the lock — wait briefly before retrying
+            await delay(LOCK_RETRY_DELAY_MS);
+            continue;
+          }
+          // All retries exhausted — proceed without lock (advisory only)
+          logger.debug('IPC lock contention after retries — proceeding without lock', {
+            attempts: LOCK_RETRIES + 1,
+          });
+          return;
+        }
+        // Any other error is also non-fatal for an advisory lock
+        logger.debug('acquireLock: unexpected error', { err: toErrorMessage(err) });
         return;
       }
-      // Any other error is also non-fatal for an advisory lock
     }
   }
 
