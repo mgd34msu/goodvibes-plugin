@@ -6,13 +6,14 @@
  * Key behaviors:
  * - Pattern matching supports exact type, namespace wildcard (`hook:*`), and global wildcard (`*`)
  * - Sync handlers execute in registration order. Async handlers are fire-and-forget (errors caught and logged)
- * - Async handlers are fire-and-forget: errors are caught and logged to stderr
+ * - Async handlers are fire-and-forget: errors are caught and logged via structured logger
  * - Every emitted event receives an auto-incremented sequence number and metadata defaults
  * - An in-memory ring buffer retains the last `maxHistorySize` events for fast replay
  * - Optional event log integration is set post-construction by the process-manager
  */
 
-import { generateEventId, timestamp } from '../shared/utils.js';
+import { generateEventId, timestamp, toErrorMessage } from '../shared/utils.js';
+import { createLogger } from '../shared/logger.js';
 import type {
   RuntimeEvent,
   EventTypePattern,
@@ -21,6 +22,8 @@ import type {
   Unsubscribe,
   EventType,
 } from './types.js';
+
+const logger = createLogger('event-bus');
 
 /**
  * Minimal interface for the persistent event log.
@@ -105,7 +108,7 @@ export class EventBus {
    *
    * Automatically fills in missing metadata fields and assigns the next
    * sequence number. Matching handlers execute synchronously in registration
-   * order; async handlers are fire-and-forget with errors swallowed to stderr.
+   * order; async handlers are fire-and-forget with errors logged via structured logger.
    *
    * @param event - Partial event. The `id`, `timestamp`, and full `metadata`
    *   may be omitted — the bus will generate or backfill them.
@@ -140,9 +143,7 @@ export class EventBus {
       try {
         this.eventLog.append(full);
       } catch (err) {
-        process.stderr.write(
-          `[EventBus] event log append failed: ${String(err)}\n`,
-        );
+        logger.error('Event log append failed', { error: toErrorMessage(err) });
       }
     }
 
@@ -159,15 +160,11 @@ export class EventBus {
             const result = handler(full);
             if (result instanceof Promise) {
               result.catch((err: unknown) => {
-                process.stderr.write(
-                  `[EventBus] async handler error (${pattern}): ${String(err)}\n`,
-                );
+                logger.warn('Async handler error', { pattern, error: toErrorMessage(err) });
               });
             }
           } catch (err) {
-            process.stderr.write(
-              `[EventBus] handler error (${pattern}): ${String(err)}\n`,
-            );
+            logger.warn('Sync handler error', { pattern, error: toErrorMessage(err) });
           }
         }
       }
@@ -212,9 +209,7 @@ export class EventBus {
       const result = handler(event);
       if (result instanceof Promise) {
         result.catch((err: unknown) => {
-          process.stderr.write(
-            `[EventBus] once handler error (${pattern}): ${String(err)}\n`,
-          );
+          logger.warn('Once handler error', { pattern, error: toErrorMessage(err) });
         });
       }
     });

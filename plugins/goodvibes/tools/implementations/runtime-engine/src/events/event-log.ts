@@ -710,7 +710,7 @@ export class EventLog {
       }
     }
     if (skippedLines > 0) {
-      logger.warn('Skipped malformed lines during cache rebuild', { count: skippedLines });
+      logger.warn('Skipped malformed lines during cache rebuild', { count: skippedLines, file: this.logPath });
     }
 
     this.typeCountCache = typeCount;
