@@ -9,8 +9,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { registerWRFCHandlers } from '../wrfc-handlers.js';
+import { registerWRFCHandlers, AUTO_COMPLETE_AGENT_TYPES } from '../wrfc-handlers.js';
 import { DirectiveQueue } from '../directive-queue.js';
+import { AgentWorkflowMap } from '../agent-workflow-map.js';
 
 // ─── Mock Factories ───────────────────────────────────────────────────────────
 
@@ -45,6 +46,17 @@ function createMockWorkflowEngine(
     listActive: vi.fn(() => activeWorkflows),
     get: vi.fn((id: string) => activeWorkflows.find((w) => w.id === id) ?? null),
     sendEvent: vi.fn(),
+    /** Simulates WorkflowEngine.create(); push to activeWorkflows so tests can inspect. */
+    create: vi.fn((
+      _definitionId: string,
+      _context: Record<string, unknown> = {},
+      instanceId?: string,
+    ) => {
+      const wf = createWorkflow('WRITING', _context);
+      if (instanceId) (wf as Record<string, unknown>)['id'] = instanceId;
+      activeWorkflows.push(wf);
+      return wf;
+    }),
   };
 }
 
@@ -85,9 +97,15 @@ describe('registerWRFCHandlers', () => {
   // ─── Registration ──────────────────────────────────────────────────────────
 
   describe('registration', () => {
-    it('registers exactly 3 handlers on the registry', () => {
+    it('registers exactly 4 handlers on the registry', () => {
       registerWRFCHandlers(registry as never, directiveQueue, null, null);
-      expect(registry.registerHandler).toHaveBeenCalledTimes(3);
+      expect(registry.registerHandler).toHaveBeenCalledTimes(4);
+    });
+
+    it('registers wrfc_agent_spawned', () => {
+      registerWRFCHandlers(registry as never, directiveQueue, null, null);
+      const names = registry.registerHandler.mock.calls.map((c) => c[0]);
+      expect(names).toContain('wrfc_agent_spawned');
     });
 
     it('registers wrfc_chain_next', () => {
@@ -1043,6 +1061,229 @@ describe('registerWRFCHandlers', () => {
 
       const [directive] = directiveQueue.drain('subagent_stop');
       expect(directive!.content).toContain('unknown');
+    });
+  });
+
+  // ─── wrfc_agent_spawned (Decision 2) ──────────────────────────────────────────────
+
+  describe('wrfc_agent_spawned (Decision 2: agent-workflow binding)', () => {
+    it('does nothing when agent_id is absent', async () => {
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({} as HandlerArgs);
+
+      expect(agentMap.size()).toBe(0);
+      expect(engine.create).not.toHaveBeenCalled();
+    });
+
+    it('creates a workflow with id wrfc_{agent_id} for a new originator agent', async () => {
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({ agent_id: 'agent_123', agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+      expect(engine.create).toHaveBeenCalledOnce();
+      const callArgs = engine.create.mock.calls[0]!;
+      expect(callArgs[0]).toBe('wrfc_loop');
+      expect(callArgs[2]).toBe('wrfc_agent_123');
+    });
+
+    it('stores the agent_id → wrfc_{agent_id} binding in the map', async () => {
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({ agent_id: 'agent_abc', agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+      expect(agentMap.lookup('agent_abc')).toBe('wrfc_agent_abc');
+    });
+
+    it('binds a chain agent to an existing workflow_id without creating a new workflow', async () => {
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      // This agent is a reviewer in an existing chain (workflow_id provided)
+      await handler({
+        agent_id: 'reviewer_456',
+        agent_type: 'goodvibes:reviewer',
+        workflow_id: 'wrfc_originator_001',
+      } as HandlerArgs);
+
+      // Should NOT create a new workflow
+      expect(engine.create).not.toHaveBeenCalled();
+      // Should bind the reviewer to the existing workflow
+      expect(agentMap.lookup('reviewer_456')).toBe('wrfc_originator_001');
+    });
+
+    it('unbinds the agent on workflow creation failure', async () => {
+      const engine = createMockWorkflowEngine([]);
+      engine.create.mockImplementationOnce(() => { throw new Error('max_active reached'); });
+      const agentMap = new AgentWorkflowMap();
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      // Should not throw
+      await expect(
+        handler({ agent_id: 'agent_fail', agent_type: 'goodvibes:engineer' } as HandlerArgs),
+      ).resolves.not.toThrow();
+
+      // Binding should be cleaned up on failure
+      expect(agentMap.has('agent_fail')).toBe(false);
+    });
+
+    it('works without agentWorkflowMap (still creates workflow)', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, null);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({ agent_id: 'agent_nomap', agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+      // Workflow should be created even without a map
+      expect(engine.create).toHaveBeenCalledOnce();
+    });
+  });
+
+  // ─── Decision 2: agent_id-based workflow lookup in wrfc_chain_next ───────────────
+
+  describe('wrfc_chain_next — Decision 2: agent_id-based workflow lookup', () => {
+    it('looks up workflow via agent_id in the map, ignoring most-recent-active fallback', async () => {
+      const workflowA = createWorkflow('WRITING', {});
+      const workflowB = createWorkflow('WRITING', {});
+      // workflowB is the most recent active, but we should route to workflowA via agent_id map
+      const engine = createMockWorkflowEngine([workflowA, workflowB]);
+      const agentMap = new AgentWorkflowMap();
+      agentMap.bind('agent_correct', workflowA.id);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({
+        hook_input: { agent_id: 'agent_correct', agent_type: 'goodvibes:engineer' },
+      } as HandlerArgs);
+
+      // The reviewer directive should reference workflowA's id
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain(workflowA.id);
+      expect(directive!.content).not.toContain(workflowB.id);
+    });
+
+    it('falls back to explicit workflow_id arg when agent_id is not in the map', async () => {
+      const workflow = createWorkflow('WRITING', {});
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      const agentMap = new AgentWorkflowMap(); // empty map
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({
+        workflow_id: workflow.id,
+        hook_input: { agent_id: 'agent_unknown', agent_type: 'goodvibes:engineer' },
+      } as HandlerArgs);
+
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+    });
+  });
+
+  // ─── Decision 3: Auto-complete whitelist ──────────────────────────────────────────────────
+
+  describe('wrfc_chain_next — Decision 3: auto-complete whitelist', () => {
+    it.each([...AUTO_COMPLETE_AGENT_TYPES])(
+      'auto-completes workflow for whitelisted agent type: %s',
+      async (agentType) => {
+        const workflow = createWorkflow('WRITING', {});
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: agentType, agent_id: 'agent_test' },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+        const [directive] = directiveQueue.drain('subagent_stop');
+        // Auto-complete enqueues a 'complete' action, not a 'spawn' action
+        expect(directive!.content).toContain('"action":"complete"');
+      },
+    );
+
+    it('spawns a reviewer (does NOT auto-complete) for goodvibes:engineer', async () => {
+      const workflow = createWorkflow('WRITING', {});
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({
+        hook_input: { agent_type: 'goodvibes:engineer', agent_id: 'agent_eng' },
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('reviewer');
+      expect(directive!.content).not.toContain('"action":"complete"');
+    });
+
+    it('spawns a reviewer (does NOT auto-complete) for goodvibes:reviewer', async () => {
+      // A reviewer completing in WRITING state is unusual but should not auto-complete
+      const workflow = createWorkflow('WRITING', {});
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({
+        hook_input: { agent_type: 'goodvibes:reviewer', agent_id: 'agent_rev' },
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('reviewer');
+      expect(directive!.content).not.toContain('"action":"complete"');
+    });
+
+    it('unbinds the agent_id from the map on auto-complete', async () => {
+      const workflow = createWorkflow('WRITING', {});
+      const engine = createMockWorkflowEngine([workflow]);
+      const agentMap = new AgentWorkflowMap();
+      agentMap.bind('agent_bash', workflow.id);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({
+        hook_input: { agent_type: 'Bash', agent_id: 'agent_bash' },
+      } as HandlerArgs);
+
+      // Binding should be cleaned up after auto-complete
+      expect(agentMap.has('agent_bash')).toBe(false);
+    });
+
+    it('does not auto-complete when workflow state is REVIEWING (only applies to WRITING)', async () => {
+      const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      // Bash agent completing in REVIEWING state: whitelist check is WRITING-only
+      // so this skips (agent is not a reviewer)
+      await handler({
+        hook_input: { agent_type: 'Bash', agent_id: 'agent_bash' },
+      } as HandlerArgs);
+
+      // REVIEWING state + non-reviewer → skips (no directive, no auto-complete)
+      expect(directiveQueue.size()).toBe(0);
+    });
+
+    it('AUTO_COMPLETE_AGENT_TYPES whitelist has expected entries', () => {
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('Explore')).toBe(true);
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('Plan')).toBe(true);
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('Bash')).toBe(true);
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('general-purpose')).toBe(true);
+      // Goodvibes agents must NOT be in the whitelist
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('goodvibes:engineer')).toBe(false);
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('goodvibes:reviewer')).toBe(false);
     });
   });
 });

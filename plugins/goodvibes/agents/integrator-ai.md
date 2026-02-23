@@ -107,13 +107,15 @@ Report results in a structured, token-efficient format that enables orchestrator
 
 ### Structured Output Tag (MANDATORY)
 
-The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"files":["path/to/file.ts"]}</gv>
+<gv>{"files":["path/to/file.ts"],"score":null,"pass":null,"count":null}</gv>
 ```
 
-- `files`: array of files created or modified
+Required for this agent: `files` (array of files created/modified)
+Optional (null when N/A): `score`, `pass`, `count`
+All fields must be present. The runtime engine parses this mechanically.
 
 ## Precision Tools (MANDATORY)
 

@@ -233,14 +233,15 @@ Report results in a structured, token-efficient format that enables orchestrator
 
 ### Structured Output Tag (MANDATORY)
 
-The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"pass":true,"count":N}</gv>
+<gv>{"files":[],"score":null,"pass":true,"count":42}</gv>
 ```
 
-- `pass`: boolean, all tests passing
-- `count`: number of tests written/run
+Required for this agent: `pass` (boolean), `count` (number of tests written/run)
+Optional (null when N/A): `files`, `score`
+All fields must be present. The runtime engine parses this mechanically.
 
 ## Capabilities
 

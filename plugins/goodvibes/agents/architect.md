@@ -60,13 +60,15 @@ Report results in a structured, token-efficient format that enables orchestrator
 
 ### Structured Output Tag (MANDATORY)
 
-The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"files":["path/affected1.ts"]}</gv>
+<gv>{"files":["path/affected1.ts"],"score":null,"pass":null,"count":null}</gv>
 ```
 
-- `files`: array of files the plan affects (may be empty for pure planning)
+Required for this agent: `files` (array of files created/modified)
+Optional (null when N/A): `score`, `pass`, `count`
+All fields must be present. The runtime engine parses this mechanically.
 
 ## Capabilities
 

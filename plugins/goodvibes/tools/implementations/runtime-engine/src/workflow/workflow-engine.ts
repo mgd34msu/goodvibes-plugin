@@ -116,10 +116,17 @@ export class WorkflowEngine {
    *
    * @param definitionId    - ID of the WorkflowDefinition to instantiate.
    * @param initialContext  - Optional initial context values.
+   * @param instanceId      - Optional custom instance ID (e.g. `wrfc_<agent_id>` for
+   *                          deterministic WRFC chain binding). Defaults to a
+   *                          randomly-generated `wf_<uuid>` when omitted.
    * @returns The new WorkflowInstance in its initial state.
    * @throws {Error} If the definition is not found or max active limit is reached.
    */
-  create(definitionId: string, initialContext: Partial<WorkflowContext> = {}): WorkflowInstance {
+  create(
+    definitionId: string,
+    initialContext: Partial<WorkflowContext> = {},
+    instanceId?: string,
+  ): WorkflowInstance {
     const def = this.definitions.get(definitionId);
     if (!def) {
       throw new Error(`WorkflowDefinition '${definitionId}' is not registered`);
@@ -134,7 +141,7 @@ export class WorkflowEngine {
 
     const now = timestamp();
     const instance: WorkflowInstance = {
-      id: generateWorkflowId(),
+      id: instanceId ?? generateWorkflowId(),
       definition_id: definitionId,
       current_state: def.initial_state,
       context: { ...initialContext },

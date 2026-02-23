@@ -270,9 +270,13 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
 
     // ─── 10. WRFC Start Workflow on Agent Spawn ───────────────────────────
     {
+      // Decision 2: invokes wrfc_agent_spawned handler which creates a workflow
+      // with ID `wrfc_{agent_id}` and stores the agent_id to workflow_id binding.
+      // If workflow_id is present in the event data, the agent is part of an
+      // existing chain -- wrfc_agent_spawned will bind without creating a new workflow.
       id: 'builtin_wrfc_start_workflow',
       name: 'wrfc_start_workflow',
-      description: 'Start a wrfc_loop workflow when an agent spawns, initialising the WRFC chain',
+      description: 'Bind agent to a wrfc_loop workflow on agent spawn, creating one if needed (Decision 2)',
       enabled: true,
       priority: 10,
       condition: {
@@ -280,13 +284,12 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
         event_type: 'hook:agent:spawned',
       },
       action: {
-        type: 'start_workflow',
-        workflow_definition: 'wrfc_loop',
-        context_template: {
-          trigger: 'agent_spawned',
-          event_id: '$event.id',
+        type: 'invoke_handler',
+        handler: 'wrfc_agent_spawned',
+        args_template: {
           agent_id: '$event.payload.data.agent_id',
           agent_type: '$event.payload.data.agent_type',
+          workflow_id: '$event.payload.data.workflow_id',
           task: '$event.payload.data.task_description',
         },
       },

@@ -32,7 +32,7 @@ import { TriggerRegistry } from '../triggers/trigger-registry.js';
 import { getBuiltinTriggers } from '../triggers/builtins.js';
 import { AgentCoordinator } from '../agents/agent-coordinator.js';
 import { BudgetTracker } from '../agents/budget-tracker.js';
-import { DirectiveQueue, registerWRFCHandlers } from '../directives/index.js';
+import { DirectiveQueue, registerWRFCHandlers, AgentWorkflowMap } from '../directives/index.js';
 
 const logger = createLogger('process-manager');
 
@@ -105,6 +105,9 @@ export class ProcessManager {
 
   /** Directive queue for WRFC orchestration messages. */
   private directiveQueue: DirectiveQueue | null = null;
+
+  /** Agent-to-workflow binding map for deterministic WRFC chain routing. */
+  private agentWorkflowMap: AgentWorkflowMap | null = null;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -215,11 +218,13 @@ export class ProcessManager {
     }
 
     // Register WRFC automation handlers (must be after AgentCoordinator init)
+    this.agentWorkflowMap = new AgentWorkflowMap();
     registerWRFCHandlers(
       this.triggerRegistry,
       this.directiveQueue,
       this.workflowEngine,
       this.agentCoordinator,
+      this.agentWorkflowMap,
     );
 
     // 9. Start IPC server if enabled

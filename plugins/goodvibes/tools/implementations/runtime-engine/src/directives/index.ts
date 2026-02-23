@@ -13,3 +13,5 @@ export {
   buildEscalationMessage,
 } from './directive-builder.js';
 export { registerWRFCHandlers } from './wrfc-handlers.js';
+export { AUTO_COMPLETE_AGENT_TYPES } from './wrfc-handlers.js';
+export { AgentWorkflowMap } from './agent-workflow-map.js';

@@ -1,19 +1,24 @@
 /**
  * WRFC Handler Registration
  *
- * Registers three named handlers with the TriggerRegistry that advance
- * the WRFC (Gather-Plan-Write-Review-Fix-Check) orchestration chain by enqueuing
- * directives into the DirectiveQueue.
+ * Registers four named handlers with the TriggerRegistry that drive
+ * the WRFC (Gather-Plan-Write-Review-Fix-Check) orchestration chain by
+ * creating workflow instances, maintaining agent-to-workflow bindings,
+ * and enqueuing directives into the DirectiveQueue.
  *
  * Handlers:
- * - `wrfc_chain_next`      — universal router: inspects workflow state (WRITING/REVIEWING/FIXING)
- *                            and routes to the appropriate next action (reviewer, fixer, escalation,
- *                            or workflow completion). Calls the shared handleReviewResult /
- *                            handleFixResult helpers internally.
- * - `wrfc_review_response` — after review (event-driven path), either complete or spawn a fixer.
- *                            Delegates to handleReviewResult.
- * - `wrfc_fix_response`    — after a fix (event-driven path), either escalate or re-review.
- *                            Delegates to handleFixResult.
+ * - `wrfc_agent_spawned`  — on `hook:agent:spawned`: creates a new workflow
+ *                           (or binds to an existing one if workflow_id is
+ *                           present in the event). Stores the agent_id → workflow_id
+ *                           binding in the AgentWorkflowMap.
+ * - `wrfc_chain_next`     — on `hook:agent:completed`: looks up the workflow
+ *                           via the AgentWorkflowMap, checks whether the agent
+ *                           type is on the auto-complete whitelist, then routes
+ *                           to review, fix, escalation, or auto-complete.
+ * - `wrfc_review_response` — after review (event-driven path), either complete
+ *                           or spawn a fixer. Delegates to handleReviewResult.
+ * - `wrfc_fix_response`   — after a fix (event-driven path), either escalate
+ *                           or re-review. Delegates to handleFixResult.
  */
 
 import { createLogger } from '../shared/logger.js';
@@ -23,6 +28,7 @@ import type { DirectiveQueue } from './directive-queue.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { WorkflowInstance } from '../workflow/types.js';
+import type { AgentWorkflowMap } from './agent-workflow-map.js';
 import {
   buildSpawnDirectiveMessage,
   buildWorkflowCompleteMessage,
@@ -44,6 +50,23 @@ const DEFAULT_MAX_FIX_ATTEMPTS = 3;
 const SCORE_REGEX = /SCORE:\s*(\d+(?:\.\d+)?)\/10/i;
 
 /**
+ * Agent types that auto-complete without entering the WRFC review cycle.
+ *
+ * Only non-work agent types that produce no reviewable output are listed.
+ * When in doubt, err toward review (false negatives are harmless;
+ * false positives — skipping review on real work — are dangerous).
+ *
+ * goodvibes agent types (goodvibes:engineer, goodvibes:reviewer, etc.)
+ * are intentionally NOT listed — they always get reviewed.
+ */
+export const AUTO_COMPLETE_AGENT_TYPES = new Set([
+  'Explore',
+  'Plan',
+  'Bash',
+  'general-purpose',
+]);
+
+/**
  * Parses a review score from free-form text produced by a reviewer agent.
  *
  * @param text - Raw output string from the reviewer.
@@ -55,7 +78,7 @@ function parseReviewScore(text: string | undefined): number | null {
   return match ? parseFloat(match[1]) : null;
 }
 
-// ─── Shared Result-Handling Helpers ──────────────────────────────────────────
+// ─── Shared Result-Handling Helpers ────────────────────────────────────────────────────
 
 /**
  * Shared logic for handling a completed review.
@@ -72,8 +95,10 @@ function handleReviewResult(params: {
   filesModified: string[];
   reviewIssues?: Array<{ dimension: string; severity: string; description: string }>;
   source: string;
+  agentWorkflowMap?: AgentWorkflowMap | null;
+  agentId?: string;
 }): void {
-  const { workflowEngine, directiveQueue, workflow, score, filesModified, reviewIssues = [], source } = params;
+  const { workflowEngine, directiveQueue, workflow, score, filesModified, reviewIssues = [], source, agentWorkflowMap, agentId } = params;
 
   const minScore =
     typeof workflow.context.min_review_score === 'number'
@@ -119,6 +144,10 @@ function handleReviewResult(params: {
       priority: 20,
       source,
     });
+    // Clean up agent-workflow binding
+    if (agentId && agentWorkflowMap) {
+      agentWorkflowMap.unbind(agentId);
+    }
     log.info(`${source}: workflow complete directive enqueued`, {
       workflow_id: workflow.id,
       review_score: score,
@@ -176,8 +205,10 @@ function handleFixResult(params: {
   maxFixAttempts: number;
   filesModified: string[];
   source: string;
+  agentWorkflowMap?: AgentWorkflowMap | null;
+  agentId?: string;
 }): void {
-  const { workflowEngine, directiveQueue, workflow, incomingFixAttempts, maxFixAttempts, filesModified, source } = params;
+  const { workflowEngine, directiveQueue, workflow, incomingFixAttempts, maxFixAttempts, filesModified, source, agentWorkflowMap, agentId } = params;
 
   // Increment and persist fix attempts in context
   const fixAttempts = incomingFixAttempts + 1;
@@ -213,6 +244,10 @@ function handleFixResult(params: {
       priority: 30,
       source,
     });
+    // Clean up agent-workflow binding on escalation
+    if (agentId && agentWorkflowMap) {
+      agentWorkflowMap.unbind(agentId);
+    }
     log.warn(`${source}: escalation directive enqueued`, {
       workflow_id: workflow.id,
       fix_attempts: fixAttempts,
@@ -264,23 +299,95 @@ function handleFixResult(params: {
 }
 
 /**
- * Register the three WRFC handler functions with the TriggerRegistry.
+ * Register the four WRFC handler functions with the TriggerRegistry.
  *
  * @param registry          - The trigger registry to register handlers on.
  * @param directiveQueue    - The directive queue to enqueue messages into.
  * @param workflowEngine    - Optional workflow engine for state inspection.
  * @param agentCoordinator  - Optional agent coordinator (reserved for future use).
+ * @param agentWorkflowMap  - Optional agent-to-workflow binding map. When provided,
+ *                            enables deterministic per-agent workflow routing and
+ *                            auto-complete whitelist evaluation.
  */
 export function registerWRFCHandlers(
   registry: TriggerRegistry,
   directiveQueue: DirectiveQueue,
   workflowEngine: WorkflowEngine | null,
   agentCoordinator: AgentCoordinator | null,
+  agentWorkflowMap?: AgentWorkflowMap | null,
 ): void {
-  // ─── Handler 1: wrfc_chain_next ─────────────────────────────────────────────
+  // ─── Handler 0: wrfc_agent_spawned ────────────────────────────────────────────────────
+  // Called on hook:agent:spawned.
+  // Decision 2: creates a workflow with ID `wrfc_{agent_id}` (or binds to
+  // an existing one if workflow_id is supplied in the event — meaning this
+  // agent is part of an already-running chain) and stores the binding.
+  registry.registerHandler('wrfc_agent_spawned', async (args) => {
+    log.debug('wrfc_agent_spawned invoked', { args });
+
+    const agentId = typeof args['agent_id'] === 'string' ? args['agent_id'] : null;
+    if (!agentId) {
+      log.debug('wrfc_agent_spawned: no agent_id in args, skipping');
+      return;
+    }
+
+    const agentType = typeof args['agent_type'] === 'string' ? args['agent_type'] : '';
+
+    // Determine the workflow_id for this agent
+    const incomingWorkflowId =
+      typeof args['workflow_id'] === 'string' && args['workflow_id'].length > 0
+        ? args['workflow_id']
+        : null;
+
+    const workflowId = incomingWorkflowId ?? `wrfc_${agentId}`;
+
+    // Store the binding so wrfc_chain_next can look it up on completion
+    if (agentWorkflowMap) {
+      agentWorkflowMap.bind(agentId, workflowId);
+    }
+
+    // Only create a new workflow instance for chain originators (no incoming workflow_id)
+    if (!incomingWorkflowId && workflowEngine) {
+      try {
+        workflowEngine.create(
+          'wrfc_loop',
+          {
+            trigger: 'agent_spawned',
+            agent_id: agentId,
+            agent_type: agentType,
+            task: typeof args['task'] === 'string' ? args['task'] : '',
+          },
+          workflowId,
+        );
+        log.info('wrfc_agent_spawned: created workflow for originator agent', {
+          agent_id: agentId,
+          agent_type: agentType,
+          workflow_id: workflowId,
+        });
+      } catch (err) {
+        log.error('wrfc_agent_spawned: failed to create workflow', {
+          agent_id: agentId,
+          workflow_id: workflowId,
+          error: String(err),
+        });
+        // Unbind on failure so the map stays consistent
+        if (agentWorkflowMap) {
+          agentWorkflowMap.unbind(agentId);
+        }
+      }
+    } else if (incomingWorkflowId) {
+      log.info('wrfc_agent_spawned: bound chain agent to existing workflow', {
+        agent_id: agentId,
+        agent_type: agentType,
+        workflow_id: workflowId,
+      });
+    }
+  });
+
+  // ─── Handler 1: wrfc_chain_next ──────────────────────────────────────────────────────────
   // Universal router called when hook:agent:completed fires.
-  // Inspects the current workflow state (WRITING / REVIEWING / FIXING) and
-  // routes to the correct next action via the shared result-handling helpers.
+  // Decision 2: looks up the workflow via agent_id from the AgentWorkflowMap
+  // instead of falling back to "most recent active".
+  // Decision 3: checks the auto-complete whitelist before entering WRFC review.
   registry.registerHandler('wrfc_chain_next', async (args) => {
     log.debug('wrfc_chain_next invoked', { args });
 
@@ -289,8 +396,21 @@ export function registerWRFCHandlers(
       return;
     }
 
-    // Find the target workflow - prefer explicit ID from event, fall back to most recent active
-    const workflowId = typeof args['workflow_id'] === 'string' ? args['workflow_id'] : null;
+    // Extract agent metadata from hook_input
+    const hookInput = args['hook_input'] as Record<string, unknown> | undefined;
+    const agentId = typeof hookInput?.['agent_id'] === 'string' ? hookInput['agent_id'] : null;
+    const agentType = (hookInput?.['agent_type'] ?? hookInput?.['subagent_type'] ?? '') as string;
+
+    // Decision 2: look up workflow via agent_id map, fall back to explicit workflow_id,
+    // then fall back to most-recent active (backward compatibility).
+    let workflowId: string | null = null;
+    if (agentId && agentWorkflowMap) {
+      workflowId = agentWorkflowMap.lookup(agentId) ?? null;
+    }
+    if (!workflowId) {
+      workflowId = typeof args['workflow_id'] === 'string' ? args['workflow_id'] : null;
+    }
+
     let workflow = workflowId ? workflowEngine.get(workflowId) : null;
     if (!workflow) {
       const activeWorkflows = workflowEngine.listActive();
@@ -302,8 +422,31 @@ export function registerWRFCHandlers(
     }
     const currentState = workflow.current_state.toUpperCase();
 
+    // Decision 3: Auto-complete whitelist check.
+    // Only applies when the agent just completed (WRITING state = agent did work).
+    // If the agent type is on the whitelist, skip review and auto-complete.
+    if (currentState === 'WRITING' && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
+      const message = buildWorkflowCompleteMessage(workflow.id, 'completed');
+      directiveQueue.enqueue('subagent_stop', {
+        type: 'inject_system_message',
+        content: message,
+        priority: 20,
+        source: 'wrfc_chain_next',
+      });
+      // Clean up the binding
+      if (agentId && agentWorkflowMap) {
+        agentWorkflowMap.unbind(agentId);
+      }
+      log.info('wrfc_chain_next: auto-complete for whitelisted agent type', {
+        workflow_id: workflow.id,
+        agent_type: agentType,
+        agent_id: agentId,
+      });
+      return;
+    }
+
     if (currentState === 'WRITING') {
-      // ── WRITING state: engineer completed → spawn reviewer ────────────────
+      // ── WRITING state: engineer completed → spawn reviewer ─────────────────────
       const filesModified = Array.isArray(workflow.context.files_modified)
         ? (workflow.context.files_modified as string[])
         : [];
@@ -354,8 +497,6 @@ export function registerWRFCHandlers(
       });
     } else if (currentState === 'REVIEWING') {
       // ── REVIEWING state: reviewer completed → delegate to handleReviewResult
-      const hookInput = args['hook_input'] as Record<string, unknown> | undefined;
-      const agentType = (hookInput?.['agent_type'] ?? hookInput?.['subagent_type'] ?? '') as string;
       const isReviewer = agentType.includes('reviewer');
 
       if (!isReviewer) {
@@ -394,11 +535,11 @@ export function registerWRFCHandlers(
         score,
         filesModified,
         source: 'wrfc_chain_next',
+        agentWorkflowMap,
+        agentId,
       });
     } else if (currentState === 'FIXING') {
       // ── FIXING state: engineer completed fix → delegate to handleFixResult ─
-      const hookInput = args['hook_input'] as Record<string, unknown> | undefined;
-      const agentType = (hookInput?.['agent_type'] ?? hookInput?.['subagent_type'] ?? '') as string;
       const isEngineer = agentType.includes('engineer');
 
       if (!isEngineer) {
@@ -429,6 +570,8 @@ export function registerWRFCHandlers(
         maxFixAttempts,
         filesModified,
         source: 'wrfc_chain_next',
+        agentWorkflowMap,
+        agentId,
       });
     } else {
       log.debug('wrfc_chain_next: workflow state not handled', {
@@ -438,7 +581,7 @@ export function registerWRFCHandlers(
     }
   });
 
-  // ─── Handler 2: wrfc_review_response ────────────────────────────────────────
+  // ─── Handler 2: wrfc_review_response ──────────────────────────────────────────
   // Called when wrfc:review_completed fires (event-driven path).
   // Delegates to handleReviewResult for score-based routing.
   registry.registerHandler('wrfc_review_response', async (args) => {
@@ -543,7 +686,7 @@ export function registerWRFCHandlers(
     });
   });
 
-  // ─── Handler 3: wrfc_fix_response ───────────────────────────────────────────
+  // ─── Handler 3: wrfc_fix_response ─────────────────────────────────────────────────
   // Called when wrfc:fix_completed fires (event-driven path).
   // Delegates to handleFixResult for budget-check routing.
   registry.registerHandler('wrfc_fix_response', async (args) => {
@@ -621,8 +764,9 @@ export function registerWRFCHandlers(
   });
 
   log.debug('WRFC handlers registered', {
-    handlers: ['wrfc_chain_next', 'wrfc_review_response', 'wrfc_fix_response'],
+    handlers: ['wrfc_agent_spawned', 'wrfc_chain_next', 'wrfc_review_response', 'wrfc_fix_response'],
     has_workflow_engine: workflowEngine !== null,
     has_agent_coordinator: agentCoordinator !== null,
+    has_agent_workflow_map: agentWorkflowMap != null,
   });
 }

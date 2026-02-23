@@ -80,16 +80,15 @@ Report results in a structured, token-efficient format that enables orchestrator
 
 ### Structured Output Tag (MANDATORY)
 
-The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"score":X.X,"pass":true|false}</gv>
+<gv>{"files":[],"score":9.5,"pass":true,"count":null}</gv>
 ```
 
-- `score`: numeric review score (0-10, supports decimals)
-- `pass`: boolean, true if score meets the review threshold
-
-Example: `<gv>{"score":9.5,"pass":true}</gv>`
+Required for this agent: `score` (0-10), `pass` (boolean)
+Optional (null when N/A): `files`, `count`
+All fields must be present. The runtime engine parses this mechanically.
 
 This tag MUST be present even if the review fails. The runtime engine parses it mechanically.
 
