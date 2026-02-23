@@ -4671,13 +4671,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger5) {
-      if (logger5 === false)
+    function getLogger(logger7) {
+      if (logger7 === false)
         return noLogs;
-      if (logger5 === void 0)
+      if (logger7 === void 0)
         return console;
-      if (logger5.log && logger5.warn && logger5.error)
-        return logger5;
+      if (logger7.log && logger7.warn && logger7.error)
+        return logger7;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -21662,9 +21662,9 @@ function createLogger(component) {
 __name(createLogger, "createLogger");
 
 // src/lifecycle/process-manager.ts
-var import_fs3 = require("fs");
-var import_crypto = require("crypto");
-var import_path3 = require("path");
+var import_fs4 = require("fs");
+var import_crypto2 = require("crypto");
+var import_path4 = require("path");
 var import_os = require("os");
 
 // src/persistence/state-store.ts
@@ -21964,12 +21964,946 @@ var HealthChecker = class {
   }
 };
 
+// src/shared/utils.ts
+var import_crypto = require("crypto");
+function generateId() {
+  return (0, import_crypto.randomUUID)();
+}
+__name(generateId, "generateId");
+function timestamp() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+__name(timestamp, "timestamp");
+function generateEventId() {
+  return `evt_${(0, import_crypto.randomUUID)()}`;
+}
+__name(generateEventId, "generateEventId");
+var DURATION_UNITS = {
+  s: 1e3,
+  m: 6e4,
+  h: 36e5,
+  d: 864e5
+};
+function parseRelativeTime(input) {
+  const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
+  if (!match) {
+    throw new Error(
+      `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
+    );
+  }
+  const value = parseFloat(match[1]);
+  const unit = match[2];
+  const ms = value * DURATION_UNITS[unit];
+  return new Date(Date.now() + ms);
+}
+__name(parseRelativeTime, "parseRelativeTime");
+
+// src/events/event-bus.ts
+var EventBus = class {
+  static {
+    __name(this, "EventBus");
+  }
+  /** Registered handlers keyed by subscription pattern. */
+  handlers;
+  /** Monotonically increasing sequence counter. Starts at 1 for the first event. */
+  sequence = 0;
+  /** Ring buffer storage for history events. */
+  historyBuffer;
+  /** Write index into the circular history buffer. */
+  historyWriteIndex = 0;
+  /** Number of events currently in the history buffer. */
+  historyCount = 0;
+  /** Maximum events to retain in the history ring buffer. */
+  maxHistorySize;
+  /** Optional persistent event log. Set by the process-manager after construction. */
+  eventLog;
+  /**
+   * Creates a new EventBus instance.
+   *
+   * @param maxHistorySize - Maximum number of events to retain in the in-memory
+   *   ring buffer. Older events are evicted when the buffer is full.
+   *   Defaults to 10,000.
+   */
+  constructor(maxHistorySize = 1e4) {
+    this.handlers = /* @__PURE__ */ new Map();
+    this.historyBuffer = new Array(maxHistorySize);
+    this.maxHistorySize = maxHistorySize;
+  }
+  /**
+   * Injects a persistent event log.
+   *
+   * Called by the process-manager once the persistence layer is initialised.
+   * After this point every emitted event is also appended to the log.
+   *
+   * @param log - An object with an `append` method.
+   */
+  setEventLog(log) {
+    this.eventLog = log;
+  }
+  /**
+   * Emits a runtime event.
+   *
+   * Automatically fills in missing metadata fields and assigns the next
+   * sequence number. Matching handlers execute synchronously in registration
+   * order; async handlers are fire-and-forget with errors swallowed to stderr.
+   *
+   * @param event - Partial event. The `id`, `timestamp`, and full `metadata`
+   *   may be omitted — the bus will generate or backfill them.
+   * @returns The fully-formed RuntimeEvent as stored in history.
+   */
+  emit(event) {
+    const seq = ++this.sequence;
+    const full = {
+      id: event.id ?? generateEventId(),
+      timestamp: event.timestamp ?? timestamp(),
+      source: event.source,
+      type: event.type,
+      payload: event.payload,
+      metadata: {
+        session_id: event.metadata?.session_id ?? process.env["CLAUDE_SESSION_ID"] ?? process.env["SESSION_ID"] ?? "unknown",
+        correlation_id: event.metadata?.correlation_id,
+        causation_id: event.metadata?.causation_id,
+        sequence: seq,
+        version: 1
+      }
+    };
+    if (this.eventLog) {
+      try {
+        this.eventLog.append(full);
+      } catch (err) {
+        process.stderr.write(
+          `[EventBus] event log append failed: ${String(err)}
+`
+        );
+      }
+    }
+    this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
+    this.historyWriteIndex++;
+    if (this.historyCount < this.maxHistorySize) this.historyCount++;
+    for (const [pattern, handlerSet] of this.handlers) {
+      if (this.matchPattern(full.type, pattern)) {
+        for (const handler of handlerSet) {
+          try {
+            const result = handler(full);
+            if (result instanceof Promise) {
+              result.catch((err) => {
+                process.stderr.write(
+                  `[EventBus] async handler error (${pattern}): ${String(err)}
+`
+                );
+              });
+            }
+          } catch (err) {
+            process.stderr.write(
+              `[EventBus] handler error (${pattern}): ${String(err)}
+`
+            );
+          }
+        }
+      }
+    }
+    return full;
+  }
+  /**
+   * Subscribes to events matching `pattern`.
+   *
+   * @param pattern - Exact event type, namespace wildcard (`hook:*`), or global wildcard (`*`).
+   * @param handler - Callback invoked for each matching event.
+   * @returns An unsubscribe function; call it to stop receiving events.
+   */
+  on(pattern, handler) {
+    if (!this.handlers.has(pattern)) {
+      this.handlers.set(pattern, /* @__PURE__ */ new Set());
+    }
+    this.handlers.get(pattern).add(handler);
+    return () => {
+      this.handlers.get(pattern)?.delete(handler);
+      if (this.handlers.get(pattern)?.size === 0) {
+        this.handlers.delete(pattern);
+      }
+    };
+  }
+  /**
+   * Subscribes to the next single event matching `pattern`.
+   *
+   * The subscription is automatically removed after the first delivery.
+   *
+   * @param pattern - Exact event type, namespace wildcard, or global wildcard.
+   * @param handler - Callback invoked once for the next matching event.
+   * @returns An unsubscribe function; call it to cancel before the event fires.
+   */
+  once(pattern, handler) {
+    const off = this.on(pattern, (event) => {
+      off();
+      const result = handler(event);
+      if (result instanceof Promise) {
+        result.catch((err) => {
+          process.stderr.write(
+            `[EventBus] once handler error (${pattern}): ${String(err)}
+`
+          );
+        });
+      }
+    });
+    return off;
+  }
+  /**
+   * Returns a snapshot of the in-memory event history, optionally filtered.
+   *
+   * This operates on the ring buffer only — events evicted from the buffer
+   * are not available here. For full historical replay, use the persistent
+   * event log via the process-manager.
+   *
+   * @param filter - Optional filter criteria.
+   * @returns Filtered and (optionally) limited array of events in emission order.
+   */
+  getHistory(filter) {
+    const events = [];
+    if (this.historyCount > 0) {
+      const startIndex = this.historyCount < this.maxHistorySize ? 0 : this.historyWriteIndex % this.maxHistorySize;
+      for (let i = 0; i < this.historyCount; i++) {
+        const entry = this.historyBuffer[(startIndex + i) % this.maxHistorySize];
+        if (entry !== void 0) events.push(entry);
+      }
+    }
+    let filteredEvents = events;
+    if (filter) {
+      if (filter.types && filter.types.length > 0) {
+        const typeSet = new Set(filter.types);
+        filteredEvents = filteredEvents.filter((e) => typeSet.has(e.type));
+      }
+      if (filter.source) {
+        const src = filter.source;
+        filteredEvents = filteredEvents.filter((e) => {
+          for (const key of Object.keys(src)) {
+            if (src[key] !== void 0 && e.source[key] !== src[key]) {
+              return false;
+            }
+          }
+          return true;
+        });
+      }
+      if (filter.since) {
+        const since = new Date(filter.since).getTime();
+        filteredEvents = filteredEvents.filter((e) => new Date(e.timestamp).getTime() >= since);
+      }
+      if (filter.until) {
+        const until = new Date(filter.until).getTime();
+        filteredEvents = filteredEvents.filter((e) => new Date(e.timestamp).getTime() <= until);
+      }
+      if (filter.correlation_id) {
+        const cid = filter.correlation_id;
+        filteredEvents = filteredEvents.filter((e) => e.metadata.correlation_id === cid);
+      }
+      if (filter.limit && filter.limit > 0) {
+        filteredEvents = filteredEvents.slice(-filter.limit);
+      }
+    }
+    return filteredEvents;
+  }
+  /**
+   * Returns the total number of registered handler functions.
+   *
+   * @param pattern - If provided, returns the count only for that pattern.
+   *   If omitted, returns the total across all patterns.
+   * @returns Handler count.
+   */
+  listenerCount(pattern) {
+    if (pattern !== void 0) {
+      return this.handlers.get(pattern)?.size ?? 0;
+    }
+    let total = 0;
+    for (const handlerSet of this.handlers.values()) {
+      total += handlerSet.size;
+    }
+    return total;
+  }
+  /**
+   * Removes all registered handlers.
+   *
+   * Should be called during engine shutdown to prevent memory leaks.
+   */
+  removeAllListeners() {
+    this.handlers.clear();
+    this.historyBuffer = new Array(this.maxHistorySize);
+    this.historyWriteIndex = 0;
+    this.historyCount = 0;
+  }
+  /**
+   * Tests whether `eventType` matches the given subscription `pattern`.
+   *
+   * Rules:
+   * - `'*'` matches any event type
+   * - `'namespace:*'` matches any event whose type starts with `namespace:`
+   * - An exact string matches only that specific type
+   *
+   * @param eventType - The event type to test (e.g. `'hook:pre_tool_use'`).
+   * @param pattern - The subscription pattern to test against.
+   * @returns `true` if the event type matches the pattern.
+   */
+  matchPattern(eventType, pattern) {
+    if (pattern === "*") {
+      return true;
+    }
+    if (pattern.endsWith(":*")) {
+      const namespace = pattern.slice(0, -2);
+      return eventType.startsWith(`${namespace}:`);
+    }
+    return eventType === pattern;
+  }
+};
+
+// src/events/event-log.ts
+var import_fs3 = require("fs");
+var import_path3 = require("path");
+var logger2 = createLogger("event-log");
+var EventLog = class {
+  static {
+    __name(this, "EventLog");
+  }
+  /** Absolute path to the active JSONL log file. */
+  logPath;
+  /** Directory for archived JSONL files. */
+  archiveDir;
+  /** The most recently seen sequence number (recovered on init). */
+  latestSeq = 0;
+  /** Count of events in the current log file. */
+  eventCount = 0;
+  /** Cached per-type event counts (updated on every append). */
+  typeCountCache = {};
+  /** Timestamp of the oldest event (recovered on init). */
+  oldestEvent;
+  /** Timestamp of the newest event (updated on every append). */
+  newestEvent;
+  /** Maximum log file size in megabytes before rotation is needed. */
+  maxSizeMb;
+  /** Events older than this many hours are eligible for compaction. */
+  compactAfterHours;
+  constructor(stateDir, config2) {
+    this.logPath = (0, import_path3.join)(stateDir, "events.jsonl");
+    this.archiveDir = (0, import_path3.join)(stateDir, "event-archives");
+    this.maxSizeMb = config2.event_log_max_size_mb;
+    this.compactAfterHours = config2.compact_after_hours;
+  }
+  /**
+   * Initialises the event log by reading the existing file (if any) to recover
+   * the latest sequence number, event count, and oldest/newest timestamps.
+   *
+   * Safe to call on a fresh (non-existent) log file.
+   */
+  async initialize() {
+    try {
+      const content = (0, import_fs3.readFileSync)(this.logPath, "utf-8");
+      const lines = content.split("\n").filter((l) => l.trim().length > 0);
+      this.eventCount = lines.length;
+      const typeCount = {};
+      let oldestTs;
+      let newestTs;
+      for (const line of lines) {
+        try {
+          const event = JSON.parse(line);
+          if (typeof event.metadata?.sequence === "number" && event.metadata.sequence > this.latestSeq) {
+            this.latestSeq = event.metadata.sequence;
+          }
+          if (event.type) {
+            typeCount[event.type] = (typeCount[event.type] ?? 0) + 1;
+          }
+          const ts = event.timestamp;
+          if (ts) {
+            if (!oldestTs || ts < oldestTs) oldestTs = ts;
+            if (!newestTs || ts > newestTs) newestTs = ts;
+          }
+        } catch {
+        }
+      }
+      this.typeCountCache = typeCount;
+      this.oldestEvent = oldestTs;
+      this.newestEvent = newestTs;
+      logger2.info("Event log initialised", {
+        events: this.eventCount,
+        latest_seq: this.latestSeq
+      });
+    } catch (err) {
+      if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+        logger2.debug("Event log file not found, starting fresh");
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger2.warn("Error reading event log on init", { error: msg });
+      }
+    }
+  }
+  /**
+   * Appends an event to the log synchronously.
+   *
+   * This method is called from the EventBus hot path and must not block
+   * the event loop with async I/O. Uses `appendFileSync` for durability.
+   *
+   * @param event - The event to persist.
+   */
+  append(event) {
+    const line = JSON.stringify(event) + "\n";
+    try {
+      (0, import_fs3.appendFileSync)(this.logPath, line, "utf-8");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger2.error("Failed to append event to log", { error: msg, event_id: event.id });
+      return;
+    }
+    if (typeof event.metadata?.sequence === "number" && event.metadata.sequence > this.latestSeq) {
+      this.latestSeq = event.metadata.sequence;
+    }
+    this.eventCount++;
+    if (event.type) {
+      this.typeCountCache[event.type] = (this.typeCountCache[event.type] ?? 0) + 1;
+    }
+    if (event.timestamp) {
+      if (!this.oldestEvent) this.oldestEvent = event.timestamp;
+      this.newestEvent = event.timestamp;
+    }
+  }
+  /**
+   * Queries the log, returning events that match the given filter.
+   *
+   * Reads the entire log file; suitable for Phase 2. Future phases should
+   * add an index for high-frequency queries.
+   *
+   * @param filter - Optional filter criteria.
+   * @returns Array of matching events in chronological order.
+   */
+  async query(filter = {}) {
+    let content;
+    try {
+      content = (0, import_fs3.readFileSync)(this.logPath, "utf-8");
+    } catch (err) {
+      if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+        return [];
+      }
+      throw err;
+    }
+    const lines = content.split("\n").filter((l) => l.trim().length > 0);
+    const results = [];
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line);
+        if (this.matchesFilter(event, filter)) {
+          results.push(event);
+          if (filter.limit !== void 0 && results.length >= filter.limit) break;
+        }
+      } catch {
+      }
+    }
+    return results;
+  }
+  /**
+   * Returns events with a sequence number greater than `sequence`.
+   *
+   * @param sequence - The last sequence number the caller has seen.
+   * @param limit - Maximum number of events to return.
+   */
+  async since(sequence, limit) {
+    return this.query({
+      since: void 0,
+      limit
+    }).then(
+      (events) => events.filter(
+        (e) => typeof e.metadata?.sequence === "number" && e.metadata.sequence > sequence
+      )
+    );
+  }
+  /**
+   * Returns the latest sequence number seen in the log.
+   */
+  getLatestSequence() {
+    return this.latestSeq;
+  }
+  /**
+   * Compacts the event log by archiving events older than the configured
+   * threshold to a per-day archive file.
+   *
+   * The main log is atomically replaced with only the retained events
+   * (tmp write + rename, matching the state-store pattern).
+   *
+   * @param beforeTimestamp - Optional ISO-8601 cutoff; events before this
+   *   timestamp are archived. Defaults to `compactAfterHours` ago.
+   * @returns Counts of archived and remaining events.
+   */
+  async compact(beforeTimestamp) {
+    const cutoff = beforeTimestamp ?? new Date(
+      Date.now() - this.compactAfterHours * 60 * 60 * 1e3
+    ).toISOString();
+    let content;
+    try {
+      content = (0, import_fs3.readFileSync)(this.logPath, "utf-8");
+    } catch (err) {
+      if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+        return { archived: 0, remaining: 0 };
+      }
+      throw err;
+    }
+    const lines = content.split("\n").filter((l) => l.trim().length > 0);
+    const toArchive = [];
+    const toKeep = [];
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line);
+        const ts = event.timestamp ?? "";
+        if (ts < cutoff) {
+          toArchive.push(line);
+        } else {
+          toKeep.push(line);
+        }
+      } catch {
+        toKeep.push(line);
+      }
+    }
+    if (toArchive.length === 0) {
+      logger2.debug("Compaction: no events to archive");
+      return { archived: 0, remaining: toKeep.length };
+    }
+    (0, import_fs3.mkdirSync)(this.archiveDir, { recursive: true });
+    const archiveDate = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const archivePath = (0, import_path3.join)(
+      this.archiveDir,
+      `events-archive-${archiveDate}.jsonl`
+    );
+    let existingArchive = "";
+    try {
+      existingArchive = (0, import_fs3.readFileSync)(archivePath, "utf-8");
+    } catch {
+    }
+    const archiveContent = (existingArchive.endsWith("\n") || existingArchive.length === 0 ? existingArchive : existingArchive + "\n") + toArchive.join("\n") + "\n";
+    const tmpArchive = archivePath + ".tmp";
+    (0, import_fs3.writeFileSync)(tmpArchive, archiveContent, "utf-8");
+    (0, import_fs3.renameSync)(tmpArchive, archivePath);
+    const tmpPath = this.logPath + ".tmp";
+    (0, import_fs3.writeFileSync)(tmpPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""), "utf-8");
+    (0, import_fs3.renameSync)(tmpPath, this.logPath);
+    this.eventCount = toKeep.length;
+    this.rebuildCacheFromLines(toKeep);
+    logger2.info("Compaction complete", {
+      archived: toArchive.length,
+      remaining: toKeep.length,
+      archive_file: archivePath
+    });
+    return { archived: toArchive.length, remaining: toKeep.length };
+  }
+  /**
+   * Returns a statistics snapshot for the event log.
+   *
+   * Uses cached in-memory values where available; stats the file for size.
+   */
+  getStats() {
+    let fileSizeBytes = 0;
+    try {
+      fileSizeBytes = (0, import_fs3.statSync)(this.logPath).size;
+    } catch {
+    }
+    return {
+      total_events: this.eventCount,
+      file_size_bytes: fileSizeBytes,
+      oldest_event: this.oldestEvent,
+      newest_event: this.newestEvent,
+      events_per_type: { ...this.typeCountCache }
+    };
+  }
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+  /** Returns true when `event` matches all criteria in `filter`. */
+  matchesFilter(event, filter) {
+    if (filter.types && filter.types.length > 0) {
+      if (!filter.types.includes(event.type)) return false;
+    }
+    if (filter.since && event.timestamp && event.timestamp < filter.since) return false;
+    if (filter.until && event.timestamp && event.timestamp > filter.until) return false;
+    if (filter.correlation_id && event.metadata?.correlation_id !== filter.correlation_id) return false;
+    if (filter.source) {
+      const src = filter.source;
+      if (src.kind && event.source.kind !== src.kind) return false;
+      if ("hook_name" in src && src.hook_name) {
+        if (event.source.kind !== "hook" || event.source.hook_name !== src.hook_name) return false;
+      }
+      if ("workflow_id" in src && src.workflow_id) {
+        if (event.source.kind !== "workflow" || event.source.workflow_id !== src.workflow_id) return false;
+      }
+      if ("agent_id" in src && src.agent_id) {
+        if (event.source.kind !== "agent" || event.source.agent_id !== src.agent_id) return false;
+      }
+      if ("trigger_id" in src && src.trigger_id) {
+        if (event.source.kind !== "trigger" || event.source.trigger_id !== src.trigger_id) return false;
+      }
+      if ("tool_name" in src && src.tool_name) {
+        if (event.source.kind !== "mcp_tool" || event.source.tool_name !== src.tool_name) return false;
+      }
+      if ("client_id" in src && src.client_id) {
+        if (event.source.kind !== "ipc" || event.source.client_id !== src.client_id) return false;
+      }
+    }
+    return true;
+  }
+  /** Rebuilds the in-memory type/oldest/newest cache from a set of raw JSONL lines. */
+  rebuildCacheFromLines(lines) {
+    const typeCount = {};
+    let oldest;
+    let newest;
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line);
+        if (event.type) {
+          typeCount[event.type] = (typeCount[event.type] ?? 0) + 1;
+        }
+        const ts = event.timestamp;
+        if (ts) {
+          if (!oldest || ts < oldest) oldest = ts;
+          if (!newest || ts > newest) newest = ts;
+        }
+      } catch {
+      }
+    }
+    this.typeCountCache = typeCount;
+    this.oldestEvent = oldest;
+    this.newestEvent = newest;
+  }
+};
+
+// src/events/event-queue.ts
+var logger3 = createLogger("event-queue");
+var EventQueue = class {
+  static {
+    __name(this, "EventQueue");
+  }
+  /** The active queue, maintained in priority+FIFO order. */
+  queue = [];
+  /** Entries that exhausted all retry attempts. */
+  deadLetters = [];
+  /** Registered handler functions keyed by name. */
+  handlers = /* @__PURE__ */ new Map();
+  /** Whether the queue is currently executing a processNext call. */
+  processing = false;
+  /** Handle to the pending setImmediate / setTimeout timer. */
+  processTimer = null;
+  /** Whether start() has been called (controls the run loop). */
+  running = false;
+  // Lifetime counters for stats
+  completedCount = 0;
+  failedCount = 0;
+  totalProcessingMs = 0;
+  // Configuration
+  maxSize;
+  maxAttempts;
+  backoffBase;
+  backoffMultiplier;
+  processIntervalMs;
+  constructor(config2) {
+    this.maxSize = config2.max_size;
+    this.maxAttempts = config2.max_attempts;
+    this.backoffBase = config2.backoff_base_ms;
+    this.backoffMultiplier = config2.backoff_multiplier;
+    this.processIntervalMs = config2.process_interval_ms;
+  }
+  /**
+   * Registers a handler function under the given name.
+   *
+   * Handlers are invoked by name when a matching queue entry is processed.
+   * Re-registering an existing name silently replaces the previous handler.
+   *
+   * @param name - Handler name, referenced by {@link QueueEntry.handler}.
+   * @param handler - The function to invoke.
+   */
+  registerHandler(name, handler) {
+    this.handlers.set(name, handler);
+    logger3.debug("Handler registered", { name });
+  }
+  /**
+   * Adds an event to the queue for deferred processing.
+   *
+   * The entry is inserted at the correct position to maintain priority+FIFO
+   * ordering. If the queue is at capacity the entry is rejected.
+   *
+   * @param entry - Entry fields; `id`, `enqueued_at`, `attempts`, and `backoff_ms`
+   *   are populated automatically if omitted.
+   * @returns The assigned entry ID.
+   * @throws {Error} When the queue has reached its maximum capacity.
+   */
+  enqueue(entry) {
+    if (this.queue.length >= this.maxSize) {
+      throw new Error(
+        `EventQueue is full (max_size=${this.maxSize}). Entry rejected for handler "${entry.handler}".`
+      );
+    }
+    const fullEntry = {
+      ...entry,
+      id: entry.id ?? generateId(),
+      enqueued_at: timestamp(),
+      attempts: 0,
+      backoff_ms: this.backoffBase
+    };
+    this.insertSorted(fullEntry);
+    logger3.debug("Entry enqueued", {
+      id: fullEntry.id,
+      priority: fullEntry.priority,
+      handler: fullEntry.handler,
+      queue_depth: this.queue.length
+    });
+    if (this.running && !this.processing && this.processTimer === null) {
+      this.scheduleNext(0);
+    }
+    return fullEntry.id;
+  }
+  /**
+   * Starts the queue processing loop.
+   *
+   * Safe to call multiple times — subsequent calls are no-ops if already running.
+   */
+  start() {
+    if (this.running) return;
+    this.running = true;
+    logger3.info("Event queue started");
+    if (this.queue.length > 0) {
+      this.scheduleNext(0);
+    }
+  }
+  /**
+   * Stops the queue processing loop.
+   *
+   * In-flight processing completes naturally; no new items are started.
+   * Use {@link drain} for a graceful shutdown that waits for completion.
+   */
+  stop() {
+    this.running = false;
+    if (this.processTimer !== null) {
+      clearTimeout(this.processTimer);
+      this.processTimer = null;
+    }
+    logger3.info("Event queue stopped");
+  }
+  /**
+   * Returns current queue statistics.
+   */
+  getStats() {
+    const byPriority = {
+      [0 /* CRITICAL */]: 0,
+      [1 /* HIGH */]: 0,
+      [2 /* NORMAL */]: 0,
+      [3 /* LOW */]: 0
+    };
+    for (const entry of this.queue) {
+      byPriority[entry.priority] = (byPriority[entry.priority] ?? 0) + 1;
+    }
+    const now = Date.now();
+    const oldest = this.queue[0];
+    const oldestAgeMs = oldest ? now - new Date(oldest.enqueued_at).getTime() : 0;
+    return {
+      pending: this.queue.length,
+      processing: this.processing ? 1 : 0,
+      completed: this.completedCount,
+      failed: this.failedCount,
+      dead_letters: this.deadLetters.length,
+      by_priority: byPriority,
+      avg_processing_ms: this.completedCount > 0 ? Math.round(this.totalProcessingMs / this.completedCount) : 0,
+      oldest_pending_age_ms: oldestAgeMs
+    };
+  }
+  /**
+   * Returns a copy of the dead-letter queue entries.
+   */
+  getDeadLetters() {
+    return [...this.deadLetters];
+  }
+  /**
+   * Moves a dead-letter entry back into the main queue for another attempt.
+   *
+   * The entry's attempt counter is reset and backoff is set to the base value.
+   *
+   * @param id - ID of the dead-letter entry to retry.
+   * @returns `true` if the entry was found and re-queued, `false` otherwise.
+   */
+  retryDeadLetter(id) {
+    const idx = this.deadLetters.findIndex((e) => e.id === id);
+    if (idx === -1) return false;
+    const [dead] = this.deadLetters.splice(idx, 1);
+    const retryEntry = {
+      id: dead.id,
+      event: dead.event,
+      priority: dead.priority,
+      handler: dead.handler,
+      enqueued_at: timestamp(),
+      attempts: 0,
+      max_attempts: dead.max_attempts,
+      backoff_ms: this.backoffBase,
+      deadline: dead.deadline
+    };
+    this.insertSorted(retryEntry);
+    logger3.info("Dead-letter entry re-queued", { id });
+    if (this.running && !this.processing && this.processTimer === null) {
+      this.scheduleNext(0);
+    }
+    return true;
+  }
+  /**
+   * Processes remaining queue items up to the given timeout.
+   *
+   * Temporarily starts the queue if it is stopped. Returns the number of
+   * items processed and the number still remaining when the timeout expires.
+   *
+   * @param timeout_ms - Maximum wall-clock time to wait for the queue to drain.
+   */
+  async drain(timeout_ms) {
+    const deadline = Date.now() + timeout_ms;
+    const initialCompleted = this.completedCount;
+    const wasRunning = this.running;
+    if (!wasRunning) {
+      this.running = true;
+    }
+    while (this.queue.length > 0 && Date.now() < deadline) {
+      await this.processNext();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    if (!wasRunning) {
+      this.running = false;
+    }
+    return {
+      processed: this.completedCount - initialCompleted,
+      remaining: this.queue.length
+    };
+  }
+  /** Number of entries currently in the pending queue. */
+  get size() {
+    return this.queue.length;
+  }
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+  /**
+   * Inserts an entry into the queue maintaining priority+FIFO order.
+   *
+   * Entries with a lower priority number are placed before entries with a
+   * higher number. Within the same priority, newer entries go after older ones.
+   */
+  insertSorted(entry) {
+    let insertAt = this.queue.length;
+    for (let i = this.queue.length - 1; i >= 0; i--) {
+      if (this.queue[i].priority <= entry.priority) {
+        insertAt = i + 1;
+        break;
+      }
+      insertAt = i;
+    }
+    this.queue.splice(insertAt, 0, entry);
+  }
+  /**
+   * Schedules the next `processNext` call.
+   *
+   * Uses `setImmediate` for zero-delay and `setTimeout` for positive delays.
+   */
+  scheduleNext(delayMs) {
+    if (this.processTimer !== null) return;
+    if (delayMs <= 0) {
+      this.processTimer = setTimeout(() => {
+        this.processTimer = null;
+        void this.processNext();
+      }, 0);
+    } else {
+      this.processTimer = setTimeout(() => {
+        this.processTimer = null;
+        void this.processNext();
+      }, delayMs);
+    }
+  }
+  /**
+   * Dequeues and processes the next entry.
+   *
+   * On success: increments the completed counter and schedules the next item.
+   * On failure: increments attempts, applies exponential backoff, and either
+   * re-queues with delay or moves to the dead-letter queue.
+   */
+  async processNext() {
+    if (!this.running || this.queue.length === 0) return;
+    if (this.processing) return;
+    this.processing = true;
+    const entry = this.queue.shift();
+    const startMs = Date.now();
+    let retryBackoffMs = 0;
+    try {
+      if (entry.deadline && new Date(entry.deadline).getTime() < Date.now()) {
+        logger3.warn("Entry dropped: deadline exceeded", {
+          id: entry.id,
+          deadline: entry.deadline
+        });
+        this.processing = false;
+        this.scheduleNext(0);
+        return;
+      }
+      const handler = this.handlers.get(entry.handler);
+      if (!handler) {
+        logger3.warn("No handler registered for entry", {
+          id: entry.id,
+          handler: entry.handler
+        });
+        this.processing = false;
+        this.scheduleNext(0);
+        return;
+      }
+      await handler(entry);
+      const durationMs = Date.now() - startMs;
+      this.completedCount++;
+      this.totalProcessingMs += durationMs;
+      logger3.debug("Entry processed", {
+        id: entry.id,
+        handler: entry.handler,
+        duration_ms: durationMs
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const updatedEntry = {
+        ...entry,
+        attempts: entry.attempts + 1,
+        backoff_ms: Math.round(entry.backoff_ms * this.backoffMultiplier)
+      };
+      this.failedCount++;
+      if (updatedEntry.attempts >= (entry.max_attempts ?? this.maxAttempts)) {
+        const dlEntry = {
+          ...updatedEntry,
+          failed_at: timestamp(),
+          last_error: errorMessage,
+          all_errors: [
+            ...entry.all_errors ?? [],
+            errorMessage
+          ]
+        };
+        this.deadLetters.push(dlEntry);
+        logger3.error("Entry dead-lettered", {
+          id: entry.id,
+          handler: entry.handler,
+          attempts: updatedEntry.attempts,
+          error: errorMessage
+        });
+      } else {
+        retryBackoffMs = updatedEntry.backoff_ms;
+        logger3.warn("Entry failed, will retry", {
+          id: entry.id,
+          handler: entry.handler,
+          attempts: updatedEntry.attempts,
+          backoff_ms: updatedEntry.backoff_ms,
+          error: errorMessage
+        });
+        this.insertSorted(updatedEntry);
+      }
+    } finally {
+      this.processing = false;
+      if (this.running && this.queue.length > 0) {
+        this.scheduleNext(retryBackoffMs > 0 ? retryBackoffMs : 0);
+      }
+    }
+  }
+};
+
 // src/lifecycle/process-manager.ts
-var logger2 = createLogger("process-manager");
+var logger4 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
-  const hash2 = (0, import_crypto.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_path3.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
+  const hash2 = (0, import_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
+  return (0, import_path4.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 var ProcessManager = class {
@@ -21990,6 +22924,12 @@ var ProcessManager = class {
   running = false;
   /** Absolute path to the project root, used to locate config on disk. */
   projectRoot;
+  /** Event bus for in-process pub/sub. */
+  eventBus;
+  /** Persistent JSONL event log. */
+  eventLog;
+  /** Priority event queue for deferred processing. */
+  eventQueue;
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -22014,24 +22954,39 @@ var ProcessManager = class {
    * @throws If any critical startup step fails.
    */
   async startup() {
-    logger2.info("Starting up");
+    logger4.info("Starting up");
     try {
       const diskConfig = loadConfig(this.projectRoot);
       this.config = diskConfig;
-      logger2.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger4.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger2.warn("Could not load config from disk \u2014 using defaults", {
+      logger4.warn("Could not load config from disk \u2014 using defaults", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
     this.stateStore = new JsonStateStore(this.config, this.projectRoot);
     await this.stateStore.initialize();
-    logger2.debug("State store initialised");
+    logger4.debug("State store initialised");
+    this.eventBus = new EventBus();
+    const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
+    this.eventLog = new EventLog(stateDir, this.config.persistence);
+    await this.eventLog.initialize();
+    this.eventBus.setEventLog(this.eventLog);
+    this.eventQueue = new EventQueue(this.config.queue);
+    this.eventQueue.start();
+    logger4.debug("Event system initialised");
     await this.checkCrashRecovery();
     this.writePidFile();
     this.startCheckpointTimer();
+    this.eventBus.emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: "system:startup",
+      source: { kind: "system" },
+      payload: { type: "system:startup", data: { pid: process.pid, uptime_ms: 0 } }
+    });
     this.running = true;
-    logger2.info("Startup complete", {
+    logger4.info("Startup complete", {
       pid: process.pid,
       uptime_ms: this.getUptime()
     });
@@ -22046,7 +23001,7 @@ var ProcessManager = class {
    *   before forcing process exit.
    */
   async shutdown(timeout_ms = 1e4) {
-    logger2.info("Shutting down", { timeout_ms });
+    logger4.info("Shutting down", { timeout_ms });
     const watchdog = setTimeout(() => {
       process.stderr.write(
         `[runtime-engine] Shutdown timed out after ${timeout_ms} ms \u2014 forcing exit
@@ -22057,17 +23012,46 @@ var ProcessManager = class {
     watchdog.unref();
     try {
       this.stopCheckpointTimer();
+      if (this.eventBus) {
+        try {
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "system:shutdown",
+            source: { kind: "system" },
+            payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
+          });
+        } catch (err) {
+          logger4.warn("Failed to emit shutdown event", {
+            err: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+      if (this.eventQueue) {
+        try {
+          await this.eventQueue.drain(5e3);
+          this.eventQueue.stop();
+          logger4.debug("Event queue drained and stopped");
+        } catch (err) {
+          logger4.warn("Event queue drain failed", {
+            err: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+      if (this.eventBus) {
+        this.eventBus.removeAllListeners();
+      }
       try {
         await this.saveCheckpoint();
-        logger2.debug("Final checkpoint saved");
+        logger4.debug("Final checkpoint saved");
       } catch (err) {
-        logger2.warn("Final checkpoint failed", {
+        logger4.warn("Final checkpoint failed", {
           err: err instanceof Error ? err.message : String(err)
         });
       }
       this.removePidFile();
       this.running = false;
-      logger2.info("Shutdown complete");
+      logger4.info("Shutdown complete");
     } finally {
       clearTimeout(watchdog);
     }
@@ -22137,6 +23121,39 @@ var ProcessManager = class {
   isRunning() {
     return this.running;
   }
+  /**
+   * Return the event bus.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getEventBus() {
+    if (!this.eventBus) {
+      throw new Error("ProcessManager.getEventBus() called before startup()");
+    }
+    return this.eventBus;
+  }
+  /**
+   * Return the persistent event log.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getEventLog() {
+    if (!this.eventLog) {
+      throw new Error("ProcessManager.getEventLog() called before startup()");
+    }
+    return this.eventLog;
+  }
+  /**
+   * Return the event queue.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getEventQueue() {
+    if (!this.eventQueue) {
+      throw new Error("ProcessManager.getEventQueue() called before startup()");
+    }
+    return this.eventQueue;
+  }
   // ─── Private helpers ────────────────────────────────────────────────────────
   /**
    * Check whether a stale PID file exists from a previous crash and, if so,
@@ -22144,18 +23161,18 @@ var ProcessManager = class {
    */
   async checkCrashRecovery() {
     const pidFilePath = getPidFilePath(this.projectRoot);
-    if (!(0, import_fs3.existsSync)(pidFilePath)) return;
+    if (!(0, import_fs4.existsSync)(pidFilePath)) return;
     try {
-      const stalePid = (0, import_fs3.readFileSync)(pidFilePath, "utf-8").trim();
+      const stalePid = (0, import_fs4.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
-        logger2.warn("Stale PID file detected \u2014 possible crash recovery", {
+        logger4.warn("Stale PID file detected \u2014 possible crash recovery", {
           stale_pid: stalePid
         });
         this.removePidFile();
       }
     } catch (err) {
-      logger2.warn("Could not read stale PID file", {
+      logger4.warn("Could not read stale PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -22167,10 +23184,10 @@ var ProcessManager = class {
   writePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_fs3.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
-      logger2.debug("PID file written", { path: pidFilePath, pid: process.pid });
+      (0, import_fs4.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
+      logger4.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
-      logger2.warn("Could not write PID file", {
+      logger4.warn("Could not write PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -22182,12 +23199,12 @@ var ProcessManager = class {
   removePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      if ((0, import_fs3.existsSync)(pidFilePath)) {
-        (0, import_fs3.unlinkSync)(pidFilePath);
-        logger2.debug("PID file removed", { path: pidFilePath });
+      if ((0, import_fs4.existsSync)(pidFilePath)) {
+        (0, import_fs4.unlinkSync)(pidFilePath);
+        logger4.debug("PID file removed", { path: pidFilePath });
       }
     } catch (err) {
-      logger2.warn("Could not remove PID file", {
+      logger4.warn("Could not remove PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -22199,13 +23216,13 @@ var ProcessManager = class {
   startCheckpointTimer() {
     this.checkpointTimer = setInterval(() => {
       this.saveCheckpoint().catch((err) => {
-        logger2.warn("Periodic checkpoint failed", {
+        logger4.warn("Periodic checkpoint failed", {
           err: err instanceof Error ? err.message : String(err)
         });
       });
     }, CHECKPOINT_INTERVAL_MS);
     this.checkpointTimer.unref();
-    logger2.debug("Checkpoint timer started", { interval_ms: CHECKPOINT_INTERVAL_MS });
+    logger4.debug("Checkpoint timer started", { interval_ms: CHECKPOINT_INTERVAL_MS });
   }
   /**
    * Stop the periodic checkpoint timer, preventing any further automatic saves.
@@ -22214,7 +23231,7 @@ var ProcessManager = class {
     if (this.checkpointTimer) {
       clearInterval(this.checkpointTimer);
       this.checkpointTimer = void 0;
-      logger2.debug("Checkpoint timer stopped");
+      logger4.debug("Checkpoint timer stopped");
     }
   }
   /**
@@ -22233,6 +23250,15 @@ var ProcessManager = class {
       memory_usage_mb: health.memory_usage_mb,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
+    if (this.eventLog) {
+      try {
+        await this.eventLog.compact();
+      } catch (err) {
+        logger4.warn("Event log compaction failed during checkpoint", {
+          err: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
   }
 };
 
@@ -22316,7 +23342,7 @@ function setupSignalHandlers(onShutdown) {
 __name(setupSignalHandlers, "setupSignalHandlers");
 
 // src/server/tool-handlers.ts
-var logger3 = createLogger("tool-handlers");
+var logger5 = createLogger("tool-handlers");
 function toSuccess(data, version2, uptime_ms, execution_ms) {
   const result = {
     success: true,
@@ -22354,11 +23380,11 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   try {
     const uptime_ms = ctx.getUptime();
     const statusData = ctx.getHealth();
-    logger3.debug("runtime_status computed", { status: statusData.status });
+    logger5.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, ctx.version, uptime_ms, Date.now() - start);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger3.error("runtime_status failed", { error: message });
+    logger5.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
@@ -22420,7 +23446,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       );
       saveConfig(ctx.projectRoot, updated);
       ctx.updateConfig(updated);
-      logger3.info("Config key set", { key, value });
+      logger5.info("Config key set", { key, value });
       return toSuccess(
         { key, value, persisted: true },
         ctx.version,
@@ -22431,7 +23457,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     if (action === "reset") {
       saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
       ctx.updateConfig(DEFAULT_CONFIG);
-      logger3.info("Config reset to defaults");
+      logger5.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -22447,7 +23473,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger3.error("runtime_config failed", { error: message });
+    logger5.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
@@ -22481,6 +23507,178 @@ function setNestedValue(obj, path, value) {
   return obj;
 }
 __name(setNestedValue, "setNestedValue");
+function matchesTypePattern(eventType, pattern) {
+  if (pattern === "*") return true;
+  if (pattern.endsWith(":*")) {
+    const ns = pattern.slice(0, -2);
+    return eventType.startsWith(`${ns}:`);
+  }
+  return eventType === pattern;
+}
+__name(matchesTypePattern, "matchesTypePattern");
+var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+  try {
+    if (args === null || args === void 0 || typeof args !== "object") {
+      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args;
+    const action = params.action;
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'query', 'tail', or 'stats'.",
+        ctx.version,
+        uptime_ms,
+        Date.now() - start
+      );
+    }
+    const verbosity = params.verbosity ?? "standard";
+    const filterRaw = params.filter ?? {};
+    if (action === "stats") {
+      const logStats = ctx.getEventLog().getStats();
+      const queueStats = ctx.getEventQueue().getStats();
+      const data = verbosity === "count_only" ? { event_count: logStats.total_events, queue_pending: queueStats.pending } : { log: logStats, queue: queueStats };
+      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "tail") {
+      const limit = typeof filterRaw.limit === "number" ? filterRaw.limit : 50;
+      const typePatterns = Array.isArray(filterRaw.types) ? filterRaw.types : void 0;
+      const historyFilter = {
+        correlation_id: filterRaw.correlation_id,
+        since: filterRaw.since ? resolveTimestamp(filterRaw.since) : void 0,
+        until: filterRaw.until,
+        limit
+      };
+      let events = ctx.getEventBus().getHistory(historyFilter);
+      if (typePatterns && typePatterns.length > 0) {
+        events = events.filter(
+          (e) => typePatterns.some((p) => matchesTypePattern(e.type, p))
+        );
+      }
+      if (filterRaw.source_kind) {
+        events = events.filter((e) => e.source.kind === filterRaw.source_kind);
+      }
+      const data = applyVerbosity(events, verbosity);
+      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "query") {
+      const typePatterns = Array.isArray(filterRaw.types) ? filterRaw.types : void 0;
+      let exactTypes;
+      let hasWildcards = false;
+      if (typePatterns && typePatterns.length > 0) {
+        const exact = [];
+        for (const p of typePatterns) {
+          if (p === "*" || p.endsWith(":*")) {
+            hasWildcards = true;
+          } else {
+            exact.push(p);
+          }
+        }
+        if (!hasWildcards) {
+          exactTypes = exact;
+        }
+      }
+      const logFilter = {
+        types: exactTypes,
+        correlation_id: filterRaw.correlation_id,
+        since: filterRaw.since ? resolveTimestamp(filterRaw.since) : void 0,
+        until: filterRaw.until,
+        limit: typeof filterRaw.limit === "number" ? filterRaw.limit : 50
+      };
+      let events = await ctx.getEventLog().query(logFilter);
+      if (hasWildcards && typePatterns) {
+        events = events.filter(
+          (e) => typePatterns.some((p) => matchesTypePattern(e.type, p))
+        );
+      }
+      if (filterRaw.source_kind) {
+        events = events.filter((e) => e.source.kind === filterRaw.source_kind);
+      }
+      const data = applyVerbosity(events, verbosity);
+      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+    }
+    return toError(
+      `Unknown action: '${action}'. Use 'query', 'tail', or 'stats'.`,
+      ctx.version,
+      uptime_ms,
+      Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger5.error("runtime_events failed", { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+}, "handleRuntimeEvents");
+function resolveTimestamp(value) {
+  if (value.includes("T") || value.includes("-")) return value;
+  try {
+    const futureDate = parseRelativeTime(value);
+    const durationMs = futureDate.getTime() - Date.now();
+    return new Date(Date.now() - durationMs).toISOString();
+  } catch {
+    return value;
+  }
+}
+__name(resolveTimestamp, "resolveTimestamp");
+function applyVerbosity(events, verbosity) {
+  if (verbosity === "count_only") {
+    return { count: events.length };
+  }
+  if (verbosity === "minimal") {
+    return {
+      count: events.length,
+      events: events.map((e) => ({
+        id: e.id,
+        type: e.type,
+        timestamp: e.timestamp,
+        source_kind: e.source.kind
+      }))
+    };
+  }
+  return { count: events.length, events };
+}
+__name(applyVerbosity, "applyVerbosity");
+var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+  try {
+    if (args === null || args === void 0 || typeof args !== "object") {
+      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args;
+    const eventType = params.event_type;
+    if (!eventType) {
+      return toError(
+        "Missing required field: event_type.",
+        ctx.version,
+        uptime_ms,
+        Date.now() - start
+      );
+    }
+    const payload = params.payload ?? {};
+    const correlationId = params.correlation_id;
+    const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:", "system:"];
+    const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
+    if (!isKnownPrefix) {
+      logger5.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
+    }
+    const emitted = ctx.getEventBus().emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: eventType,
+      source: { kind: "mcp_tool", tool_name: "runtime_emit" },
+      payload: { type: eventType, data: payload },
+      metadata: correlationId ? { correlation_id: correlationId } : void 0
+    });
+    logger5.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    return toSuccess({ emitted }, ctx.version, uptime_ms, Date.now() - start);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger5.error("runtime_emit failed", { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+}, "handleRuntimeEmit");
 var allSchemas = [
   {
     name: "runtime_status",
@@ -22528,11 +23726,90 @@ var allSchemas = [
       },
       additionalProperties: false
     }
+  },
+  {
+    name: "runtime_events",
+    description: "Query the runtime event log: filter by type, source, time range. Inspect event history and queue statistics.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["query", "tail", "stats"],
+          description: "query: filter event log (persistent), tail: recent events from in-memory bus history, stats: log and queue statistics."
+        },
+        filter: {
+          type: "object",
+          properties: {
+            types: {
+              type: "array",
+              items: { type: "string" },
+              description: "Event type patterns to filter (supports glob: 'hook:*', '*')."
+            },
+            source_kind: {
+              type: "string",
+              description: "Filter by event source kind (e.g. hook, agent, system)."
+            },
+            since: {
+              type: "string",
+              description: "Start time (ISO timestamp or relative: '5m', '1h', '30s')."
+            },
+            until: {
+              type: "string",
+              description: "End time (ISO timestamp)."
+            },
+            correlation_id: {
+              type: "string",
+              description: "Filter by correlation ID."
+            },
+            limit: {
+              type: "number",
+              default: 50,
+              description: "Maximum number of events to return."
+            }
+          },
+          additionalProperties: false
+        },
+        verbosity: {
+          type: "string",
+          enum: ["count_only", "minimal", "standard", "verbose"],
+          default: "standard",
+          description: "Response verbosity level."
+        }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "runtime_emit",
+    description: "Emit a custom event into the runtime event bus. Useful for manual workflow advancement, trigger testing, or custom automation.",
+    inputSchema: {
+      type: "object",
+      required: ["event_type"],
+      properties: {
+        event_type: {
+          type: "string",
+          description: "Event type to emit (e.g. 'system:health_check', 'trigger:fired')."
+        },
+        payload: {
+          type: "object",
+          description: "Event payload data."
+        },
+        correlation_id: {
+          type: "string",
+          description: "Link to a related event chain."
+        }
+      },
+      additionalProperties: false
+    }
   }
 ];
 var handlerRegistry = /* @__PURE__ */ new Map([
   ["runtime_status", handleRuntimeStatus],
-  ["runtime_config", handleRuntimeConfig]
+  ["runtime_config", handleRuntimeConfig],
+  ["runtime_events", handleRuntimeEvents],
+  ["runtime_emit", handleRuntimeEmit]
 ]);
 function getHandler(toolName) {
   return handlerRegistry.get(toolName);
@@ -22545,7 +23822,7 @@ __name(listHandlers, "listHandlers");
 
 // src/server/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger4 = createLogger("mcp-server");
+var logger6 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -22567,12 +23844,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger4.debug("ListTools request");
+      logger6.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger4.debug("CallTool request", { name });
+      logger6.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -22586,14 +23863,17 @@ var RuntimeEngineServer = class {
         getHealth: /* @__PURE__ */ __name(() => this.processManager.getHealthChecker().check(), "getHealth"),
         updateConfig: /* @__PURE__ */ __name((config2) => this.processManager.updateConfig(config2), "updateConfig"),
         projectRoot: this.processManager.getProjectRoot(),
-        version: ENGINE_VERSION
+        version: ENGINE_VERSION,
+        getEventBus: /* @__PURE__ */ __name(() => this.processManager.getEventBus(), "getEventBus"),
+        getEventLog: /* @__PURE__ */ __name(() => this.processManager.getEventLog(), "getEventLog"),
+        getEventQueue: /* @__PURE__ */ __name(() => this.processManager.getEventQueue(), "getEventQueue")
       };
       try {
         return await handler(args, ctx);
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = error2 instanceof Error ? error2.message : String(error2);
-        logger4.error(`Tool ${name} failed`, { error: message });
+        logger6.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -22605,7 +23885,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger4.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger6.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -22624,7 +23904,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger4.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger6.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid
     });
@@ -22638,22 +23918,22 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger4.info("Stopping runtime engine");
+    logger6.info("Stopping runtime engine");
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger4.warn("ProcessManager shutdown error", {
+      logger6.warn("ProcessManager shutdown error", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger4.warn("MCP server close error", {
+      logger6.warn("MCP server close error", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
-    logger4.info("Runtime engine stopped");
+    logger6.info("Runtime engine stopped");
   }
 };
 

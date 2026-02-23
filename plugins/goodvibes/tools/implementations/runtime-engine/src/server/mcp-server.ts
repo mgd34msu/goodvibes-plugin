@@ -92,6 +92,9 @@ export class RuntimeEngineServer {
         updateConfig: (config) => this.processManager.updateConfig(config),
         projectRoot: this.processManager.getProjectRoot(),
         version: ENGINE_VERSION,
+        getEventBus: () => this.processManager.getEventBus(),
+        getEventLog: () => this.processManager.getEventLog(),
+        getEventQueue: () => this.processManager.getEventQueue(),
       };
 
       try {

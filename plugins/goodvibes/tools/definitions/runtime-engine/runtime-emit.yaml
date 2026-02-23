@@ -1,0 +1,21 @@
+name: runtime_emit
+description: "Emit a custom event into the runtime event bus. Useful for manual workflow advancement, trigger testing, or custom automation."
+category: runtime
+input_schema:
+  type: object
+  properties:
+    event_type:
+      type: string
+      description: "Event type to emit (e.g. 'system:health_check', 'trigger:fired')"
+    payload:
+      type: object
+      description: "Event payload data"
+    correlation_id:
+      type: string
+      description: "Link to a related event chain"
+  required: [event_type]
+mcp:
+  server: runtime-engine
+  method: runtime_emit
+defer_loading: true
+tags: [runtime, events, emit, automation]

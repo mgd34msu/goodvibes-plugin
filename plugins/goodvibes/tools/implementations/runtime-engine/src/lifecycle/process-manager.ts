@@ -20,6 +20,10 @@ import { ENGINE_VERSION } from '../shared/constants.js';
 import { createLogger } from '../shared/logger.js';
 import { JsonStateStore } from '../persistence/state-store.js';
 import { HealthChecker } from './health.js';
+import { EventBus } from '../events/event-bus.js';
+import { EventLog } from '../events/event-log.js';
+import { EventQueue } from '../events/event-queue.js';
+import { generateEventId, timestamp } from '../shared/utils.js';
 
 const logger = createLogger('process-manager');
 
@@ -66,6 +70,15 @@ export class ProcessManager {
   /** Absolute path to the project root, used to locate config on disk. */
   private readonly projectRoot: string;
 
+  /** Event bus for in-process pub/sub. */
+  private eventBus!: EventBus;
+
+  /** Persistent JSONL event log. */
+  private eventLog!: EventLog;
+
+  /** Priority event queue for deferred processing. */
+  private eventQueue!: EventQueue;
+
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -110,14 +123,33 @@ export class ProcessManager {
     await this.stateStore.initialize();
     logger.debug('State store initialised');
 
-    // 3. Check for crash recovery
+    // 3. Initialise event system
+    this.eventBus = new EventBus();
+    const stateDir = join(this.projectRoot, this.config.persistence.state_dir);
+    this.eventLog = new EventLog(stateDir, this.config.persistence);
+    await this.eventLog.initialize();
+    this.eventBus.setEventLog(this.eventLog);
+    this.eventQueue = new EventQueue(this.config.queue);
+    this.eventQueue.start();
+    logger.debug('Event system initialised');
+
+    // 4. Check for crash recovery
     await this.checkCrashRecovery();
 
-    // 4. Write PID lock file
+    // 5. Write PID lock file
     this.writePidFile();
 
-    // 5. Start periodic checkpoint timer
+    // 6. Start periodic checkpoint timer
     this.startCheckpointTimer();
+
+    // 7. Emit startup event
+    this.eventBus.emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: 'system:startup',
+      source: { kind: 'system' },
+      payload: { type: 'system:startup', data: { pid: process.pid, uptime_ms: 0 } },
+    });
 
     this.running = true;
     logger.info('Startup complete', {
@@ -151,7 +183,42 @@ export class ProcessManager {
       // 1. Stop checkpoint timer
       this.stopCheckpointTimer();
 
-      // 2. Save final checkpoint
+      // 2. Emit shutdown event (before draining)
+      if (this.eventBus) {
+        try {
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: 'system:shutdown',
+            source: { kind: 'system' },
+            payload: { type: 'system:shutdown', data: { uptime_ms: this.getUptime() } },
+          });
+        } catch (err) {
+          logger.warn('Failed to emit shutdown event', {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // 3. Drain and stop the event queue
+      if (this.eventQueue) {
+        try {
+          await this.eventQueue.drain(5_000);
+          this.eventQueue.stop();
+          logger.debug('Event queue drained and stopped');
+        } catch (err) {
+          logger.warn('Event queue drain failed', {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // 4. Remove all event bus listeners
+      if (this.eventBus) {
+        this.eventBus.removeAllListeners();
+      }
+
+      // 5. Save final checkpoint
       try {
         await this.saveCheckpoint();
         logger.debug('Final checkpoint saved');
@@ -161,7 +228,7 @@ export class ProcessManager {
         });
       }
 
-      // 3. Remove PID lock file
+      // 6. Remove PID lock file
       this.removePidFile();
 
       this.running = false;
@@ -242,6 +309,42 @@ export class ProcessManager {
    */
   isRunning(): boolean {
     return this.running;
+  }
+
+  /**
+   * Return the event bus.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getEventBus(): EventBus {
+    if (!this.eventBus) {
+      throw new Error('ProcessManager.getEventBus() called before startup()');
+    }
+    return this.eventBus;
+  }
+
+  /**
+   * Return the persistent event log.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getEventLog(): EventLog {
+    if (!this.eventLog) {
+      throw new Error('ProcessManager.getEventLog() called before startup()');
+    }
+    return this.eventLog;
+  }
+
+  /**
+   * Return the event queue.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getEventQueue(): EventQueue {
+    if (!this.eventQueue) {
+      throw new Error('ProcessManager.getEventQueue() called before startup()');
+    }
+    return this.eventQueue;
   }
 
   // ─── Private helpers ────────────────────────────────────────────────────────
@@ -352,5 +455,16 @@ export class ProcessManager {
       memory_usage_mb: health.memory_usage_mb,
       timestamp: new Date().toISOString(),
     });
+
+    // Compact the event log if it is available
+    if (this.eventLog) {
+      try {
+        await this.eventLog.compact();
+      } catch (err) {
+        logger.warn('Event log compaction failed during checkpoint', {
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
   }
 }

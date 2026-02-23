@@ -5,6 +5,10 @@
  * - runtime_status  — health, uptime, and runtime diagnostics
  * - runtime_config  — configuration management (get/set/reset)
  *
+ * Phase 2 tools:
+ * - runtime_events  — query/tail the event log and queue statistics
+ * - runtime_emit    — emit a custom event into the event bus
+ *
  * Architecture:
  * - Each handler is a function conforming to ToolHandler.
  * - Handlers are registered in the handlerRegistry Map.
@@ -18,6 +22,11 @@ import type { RuntimeConfig } from '../shared/config.js';
 import { DEFAULT_CONFIG, saveConfig } from '../shared/config.js';
 import { createLogger } from '../shared/logger.js';
 import type { RuntimeResult } from '../types.js';
+import type { EventBus } from '../events/event-bus.js';
+import type { EventLog } from '../events/event-log.js';
+import type { EventQueue } from '../events/event-queue.js';
+import type { EventType, EventFilter } from '../events/types.js';
+import { generateEventId, timestamp, parseRelativeTime } from '../shared/utils.js';
 
 const logger = createLogger('tool-handlers');
 
@@ -46,6 +55,12 @@ export interface HandlerContext {
   projectRoot: string;
   /** Engine version string. */
   version: string;
+  /** The runtime event bus (in-memory pub/sub). */
+  getEventBus: () => EventBus;
+  /** The persistent JSONL event log. */
+  getEventLog: () => EventLog;
+  /** The priority event queue. */
+  getEventQueue: () => EventQueue;
 }
 
 // ─── Result helpers ───────────────────────────────────────────────────────────
@@ -330,10 +345,264 @@ function setNestedValue(
   return obj;
 }
 
+// ─── runtime_events handler ───────────────────────────────────────────────
+
+/**
+ * Checks whether an event type matches a pattern.
+ * Supports exact match, namespace wildcard ('hook:*'), and global wildcard ('*').
+ */
+function matchesTypePattern(eventType: string, pattern: string): boolean {
+  if (pattern === '*') return true;
+  if (pattern.endsWith(':*')) {
+    const ns = pattern.slice(0, -2);
+    return eventType.startsWith(`${ns}:`);
+  }
+  return eventType === pattern;
+}
+
+/**
+ * Handle runtime_events tool calls.
+ *
+ * Actions:
+ * - query: filter the persistent event log using the provided filter
+ * - tail: retrieve last N events from the in-memory EventBus history
+ * - stats: return EventLog stats + EventQueue stats
+ *
+ * Input schema: { action: 'query'|'tail'|'stats', filter?: {...}, verbosity?: string }
+ */
+export const handleRuntimeEvents: ToolHandler = async (
+  args: unknown,
+  ctx: HandlerContext
+): Promise<CallToolResult> => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+
+  try {
+    if (args === null || args === undefined || typeof args !== 'object') {
+      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args as Record<string, unknown>;
+    const action = params.action as string | undefined;
+
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'query', 'tail', or 'stats'.",
+        ctx.version, uptime_ms, Date.now() - start
+      );
+    }
+
+    const verbosity = (params.verbosity as string | undefined) ?? 'standard';
+    const filterRaw = (params.filter ?? {}) as Record<string, unknown>;
+
+    // ── stats ─────────────────────────────────────────────────────────────────
+    if (action === 'stats') {
+      const logStats = ctx.getEventLog().getStats();
+      const queueStats = ctx.getEventQueue().getStats();
+      const data = verbosity === 'count_only'
+        ? { event_count: logStats.total_events, queue_pending: queueStats.pending }
+        : { log: logStats, queue: queueStats };
+      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    // ── tail ──────────────────────────────────────────────────────────────────
+    if (action === 'tail') {
+      const limit = typeof filterRaw.limit === 'number' ? filterRaw.limit : 50;
+      const typePatterns = Array.isArray(filterRaw.types)
+        ? (filterRaw.types as string[])
+        : undefined;
+
+      // Build an EventFilter for getHistory — only exact types supported there
+      // We apply pattern filtering after the fact if glob patterns are present
+      const historyFilter: EventFilter = {
+        correlation_id: filterRaw.correlation_id as string | undefined,
+        since: filterRaw.since ? resolveTimestamp(filterRaw.since as string) : undefined,
+        until: filterRaw.until as string | undefined,
+        limit,
+      };
+
+      let events = ctx.getEventBus().getHistory(historyFilter);
+
+      // Apply type pattern filtering (supports 'hook:*', 'agent:spawned', '*')
+      if (typePatterns && typePatterns.length > 0) {
+        events = events.filter((e) =>
+          typePatterns.some((p) => matchesTypePattern(e.type, p))
+        );
+      }
+
+      // Apply source_kind filter
+      if (filterRaw.source_kind) {
+        events = events.filter((e) => e.source.kind === filterRaw.source_kind);
+      }
+
+      const data = applyVerbosity(events, verbosity);
+      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    // ── query ─────────────────────────────────────────────────────────────────
+    if (action === 'query') {
+      const typePatterns = Array.isArray(filterRaw.types)
+        ? (filterRaw.types as string[])
+        : undefined;
+
+      // Separate exact types from wildcard patterns for the log query
+      let exactTypes: EventType[] | undefined;
+      let hasWildcards = false;
+      if (typePatterns && typePatterns.length > 0) {
+        const exact: EventType[] = [];
+        for (const p of typePatterns) {
+          if (p === '*' || p.endsWith(':*')) {
+            hasWildcards = true;
+          } else {
+            exact.push(p as EventType);
+          }
+        }
+        // If only exact types (no wildcards), pass them to the log filter for efficiency
+        if (!hasWildcards) {
+          exactTypes = exact;
+        }
+      }
+
+      const logFilter: EventFilter = {
+        types: exactTypes,
+        correlation_id: filterRaw.correlation_id as string | undefined,
+        since: filterRaw.since ? resolveTimestamp(filterRaw.since as string) : undefined,
+        until: filterRaw.until as string | undefined,
+        limit: typeof filterRaw.limit === 'number' ? filterRaw.limit : 50,
+      };
+
+      let events = await ctx.getEventLog().query(logFilter);
+
+      // Apply wildcard type patterns post-query
+      if (hasWildcards && typePatterns) {
+        events = events.filter((e) =>
+          typePatterns.some((p) => matchesTypePattern(e.type, p))
+        );
+      }
+
+      // Apply source_kind filter
+      if (filterRaw.source_kind) {
+        events = events.filter((e) => e.source.kind === filterRaw.source_kind);
+      }
+
+      const data = applyVerbosity(events, verbosity);
+      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    return toError(
+      `Unknown action: '${action}'. Use 'query', 'tail', or 'stats'.`,
+      ctx.version, uptime_ms, Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('runtime_events failed', { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+};
+
+/**
+ * Resolves a time string to an ISO 8601 timestamp.
+ * Supports ISO strings directly, or relative strings like '5m', '1h', '30s'.
+ */
+function resolveTimestamp(value: string): string {
+  // If it already looks like an ISO timestamp, pass through
+  if (value.includes('T') || value.includes('-')) return value;
+  // parseRelativeTime returns a future Date (throws on invalid input)
+  try {
+    const futureDate = parseRelativeTime(value);
+    const durationMs = futureDate.getTime() - Date.now();
+    return new Date(Date.now() - durationMs).toISOString();
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Applies verbosity to an events array for response shaping.
+ */
+function applyVerbosity(
+  events: import('../events/types.js').RuntimeEvent[],
+  verbosity: string
+): unknown {
+  if (verbosity === 'count_only') {
+    return { count: events.length };
+  }
+  if (verbosity === 'minimal') {
+    return {
+      count: events.length,
+      events: events.map((e) => ({
+        id: e.id,
+        type: e.type,
+        timestamp: e.timestamp,
+        source_kind: e.source.kind,
+      })),
+    };
+  }
+  // standard / verbose
+  return { count: events.length, events };
+}
+
+// ─── runtime_emit handler ─────────────────────────────────────────────────
+
+/**
+ * Handle runtime_emit tool calls.
+ *
+ * Emits a custom event into the EventBus with source kind 'mcp_tool'.
+ *
+ * Input schema: { event_type: string, payload?: object, correlation_id?: string }
+ */
+export const handleRuntimeEmit: ToolHandler = async (
+  args: unknown,
+  ctx: HandlerContext
+): Promise<CallToolResult> => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+
+  try {
+    if (args === null || args === undefined || typeof args !== 'object') {
+      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args as Record<string, unknown>;
+    const eventType = params.event_type as string | undefined;
+
+    if (!eventType) {
+      return toError(
+        'Missing required field: event_type.',
+        ctx.version, uptime_ms, Date.now() - start
+      );
+    }
+
+    const payload = (params.payload as Record<string, unknown> | undefined) ?? {};
+    const correlationId = params.correlation_id as string | undefined;
+
+    // Validate event_type prefix — custom types are accepted but unknown prefixes are flagged
+    const knownPrefixes = ['session:', 'hook:', 'workflow:', 'wrfc:', 'fix:', 'agent:', 'trigger:', 'file:', 'build:', 'test:', 'devserver:', 'engine:', 'system:'];
+    const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
+    if (!isKnownPrefix) {
+      logger.warn('runtime_emit: unknown event type prefix', { event_type: eventType });
+    }
+
+    const emitted = ctx.getEventBus().emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: eventType as EventType,
+      source: { kind: 'mcp_tool', tool_name: 'runtime_emit' },
+      payload: { type: eventType as EventType, data: payload } as import('../events/types.js').EventPayload,
+      metadata: correlationId ? { correlation_id: correlationId } : undefined,
+    });
+
+    logger.info('runtime_emit: event emitted', { type: eventType, id: emitted.id });
+    return toSuccess({ emitted }, ctx.version, uptime_ms, Date.now() - start);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('runtime_emit failed', { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+};
+
 // ─── Tool schemas ─────────────────────────────────────────────────────────────
 
 /**
- * MCP tool schema definitions for all Phase 1 runtime-engine tools.
+ * MCP tool schema definitions for all runtime-engine tools (Phase 1 + Phase 2).
  * Returned verbatim in response to ListToolsRequestSchema.
  */
 export const allSchemas = [
@@ -394,6 +663,90 @@ export const allSchemas = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'runtime_events',
+    description:
+      'Query the runtime event log: filter by type, source, time range. ' +
+      'Inspect event history and queue statistics.',
+    inputSchema: {
+      type: 'object',
+      required: ['action'],
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['query', 'tail', 'stats'],
+          description:
+            'query: filter event log (persistent), ' +
+            'tail: recent events from in-memory bus history, ' +
+            'stats: log and queue statistics.',
+        },
+        filter: {
+          type: 'object',
+          properties: {
+            types: {
+              type: 'array',
+              items: { type: 'string' },
+              description: "Event type patterns to filter (supports glob: 'hook:*', '*').",
+            },
+            source_kind: {
+              type: 'string',
+              description: 'Filter by event source kind (e.g. hook, agent, system).',
+            },
+            since: {
+              type: 'string',
+              description: "Start time (ISO timestamp or relative: '5m', '1h', '30s').",
+            },
+            until: {
+              type: 'string',
+              description: 'End time (ISO timestamp).',
+            },
+            correlation_id: {
+              type: 'string',
+              description: 'Filter by correlation ID.',
+            },
+            limit: {
+              type: 'number',
+              default: 50,
+              description: 'Maximum number of events to return.',
+            },
+          },
+          additionalProperties: false,
+        },
+        verbosity: {
+          type: 'string',
+          enum: ['count_only', 'minimal', 'standard', 'verbose'],
+          default: 'standard',
+          description: 'Response verbosity level.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'runtime_emit',
+    description:
+      'Emit a custom event into the runtime event bus. ' +
+      'Useful for manual workflow advancement, trigger testing, or custom automation.',
+    inputSchema: {
+      type: 'object',
+      required: ['event_type'],
+      properties: {
+        event_type: {
+          type: 'string',
+          description: "Event type to emit (e.g. 'system:health_check', 'trigger:fired').",
+        },
+        payload: {
+          type: 'object',
+          description: 'Event payload data.',
+        },
+        correlation_id: {
+          type: 'string',
+          description: 'Link to a related event chain.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 // ─── Handler registry ─────────────────────────────────────────────────────────
@@ -405,6 +758,8 @@ export const allSchemas = [
 export const handlerRegistry = new Map<string, ToolHandler>([
   ['runtime_status', handleRuntimeStatus],
   ['runtime_config', handleRuntimeConfig],
+  ['runtime_events', handleRuntimeEvents],
+  ['runtime_emit', handleRuntimeEmit],
 ]);
 
 /**

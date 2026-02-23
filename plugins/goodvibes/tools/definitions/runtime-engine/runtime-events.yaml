@@ -1,0 +1,42 @@
+name: runtime_events
+description: "Query the runtime event log: filter by type, source, time range. Inspect event history and queue statistics."
+category: runtime
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [query, tail, stats]
+      description: "query: filter event log (persistent), tail: recent events from in-memory bus history, stats: log and queue statistics"
+    filter:
+      type: object
+      properties:
+        types:
+          type: array
+          items:
+            type: string
+          description: "Event types to filter (supports glob: 'hook:*', '*')"
+        source_kind:
+          type: string
+          description: "Filter by event source kind (e.g. hook, agent, system)"
+        since:
+          type: string
+          description: "Start time (ISO timestamp or relative: '5m', '1h', '30s')"
+        until:
+          type: string
+          description: "End time (ISO timestamp)"
+        correlation_id:
+          type: string
+        limit:
+          type: number
+          default: 50
+    verbosity:
+      type: string
+      enum: [count_only, minimal, standard, verbose]
+      default: standard
+  required: [action]
+mcp:
+  server: runtime-engine
+  method: runtime_events
+defer_loading: true
+tags: [runtime, events, query, monitoring]

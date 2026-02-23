@@ -1,6 +1,6 @@
 version: 2.0.0
 generated: '2026-02-22T19:04:39.698Z'
-total: 68
+total: 70
 servers:
   - name: precision-engine
     count: 12
@@ -348,7 +348,7 @@ servers:
           route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
           boundaries, and async components without protection.
   - name: runtime-engine
-    count: 2
+    count: 4
     tools:
       - name: runtime_status
         path: runtime-engine/runtime-status.yaml
@@ -360,6 +360,16 @@ servers:
         description: >-
           Get or set runtime engine configuration. Supports dot-separated key paths for nested values.
           Use to adjust queue settings, trigger defaults, IPC config, and feature flags.
+      - name: runtime_events
+        path: runtime-engine/runtime-events.yaml
+        description: >-
+          Query the runtime event log: filter by type, source, time range. Inspect event history
+          and queue statistics. Supports glob type patterns (hook:*, agent:*).
+      - name: runtime_emit
+        path: runtime-engine/runtime-emit.yaml
+        description: >-
+          Emit a custom event into the runtime event bus. Useful for manual workflow advancement,
+          trigger testing, or custom automation.
 search_index:
   - name: precision_write
     keywords:
@@ -2268,4 +2278,43 @@ search_index:
     description: >-
       Get or set runtime engine configuration. Supports dot-separated key paths for nested values.
       Use to adjust queue settings, trigger defaults, IPC config, and feature flags.
+    server: runtime-engine
+  - name: runtime_events
+    keywords:
+      - runtime
+      - events
+      - query
+      - tail
+      - stats
+      - event
+      - log
+      - filter
+      - type
+      - source
+      - time
+      - range
+      - history
+      - queue
+      - monitoring
+    path: runtime-engine/runtime-events.yaml
+    description: >-
+      Query the runtime event log: filter by type, source, time range. Inspect event history
+      and queue statistics. Supports glob type patterns (hook:*, agent:*).
+    server: runtime-engine
+  - name: runtime_emit
+    keywords:
+      - runtime
+      - emit
+      - event
+      - bus
+      - custom
+      - trigger
+      - workflow
+      - automation
+      - publish
+      - fire
+    path: runtime-engine/runtime-emit.yaml
+    description: >-
+      Emit a custom event into the runtime event bus. Useful for manual workflow advancement,
+      trigger testing, or custom automation.
     server: runtime-engine
