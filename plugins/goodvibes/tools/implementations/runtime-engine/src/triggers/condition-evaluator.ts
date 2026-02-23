@@ -1,9 +1,15 @@
 /**
  * Condition Evaluator
  *
- * Evaluates trigger conditions against incoming events. Maintains a ring buffer
- * of recent events to support threshold (N events in window) and sequence
- * (ordered event chain within window) conditions.
+ * Evaluates trigger conditions against incoming events. Maintains a true
+ * circular ring buffer of recent events to support threshold (N events in
+ * window) and sequence (ordered event chain within window) conditions.
+ *
+ * Uses the same O(1) ring-buffer pattern as EventBus.historyBuffer:
+ * - Pre-allocated fixed-size array
+ * - `recentEventsHead` is the next write position (monotonically increasing)
+ * - `recentEventsCount` tracks how many slots are occupied
+ * - Chronological order: start at `(head - count + capacity) % capacity`
  */
 
 import type { RuntimeEvent, EventTypePattern } from '../events/types.js';
@@ -29,8 +35,12 @@ interface RecentEntry {
  * when the buffer reaches capacity.
  */
 export class ConditionEvaluator {
-  /** Ring buffer of recent events for threshold/sequence evaluation. */
-  private recentEvents: RecentEntry[] = [];
+  /** Pre-allocated ring buffer storage for recent events. */
+  private recentEventsBuffer: (RecentEntry | undefined)[];
+  /** Next write index into the circular buffer (monotonically increasing). */
+  private recentEventsHead: number = 0;
+  /** Number of events currently stored in the buffer. */
+  private recentEventsCount: number = 0;
   /** Maximum number of recent events to retain. */
   private readonly maxRecentEvents: number;
 
@@ -39,6 +49,7 @@ export class ConditionEvaluator {
    */
   constructor(maxRecentEvents = 1000) {
     this.maxRecentEvents = maxRecentEvents;
+    this.recentEventsBuffer = new Array(maxRecentEvents);
   }
 
   /**
@@ -50,10 +61,14 @@ export class ConditionEvaluator {
    * @param event - The event to record.
    */
   recordEvent(event: RuntimeEvent): void {
-    this.recentEvents.push({ event, timestamp: Date.now() });
-    // Evict oldest entries when buffer is full
-    if (this.recentEvents.length > this.maxRecentEvents) {
-      this.recentEvents.shift();
+    // Write at the current head position (O(1) — no shifting)
+    this.recentEventsBuffer[this.recentEventsHead % this.maxRecentEvents] = {
+      event,
+      timestamp: Date.now(),
+    };
+    this.recentEventsHead++;
+    if (this.recentEventsCount < this.maxRecentEvents) {
+      this.recentEventsCount++;
     }
   }
 
@@ -118,6 +133,24 @@ export class ConditionEvaluator {
   }
 
   /**
+   * Returns the contents of the ring buffer in chronological order (oldest first).
+   */
+  private getRecentEventsInOrder(): RecentEntry[] {
+    if (this.recentEventsCount === 0) return [];
+    const capacity = this.maxRecentEvents;
+    const startIndex =
+      this.recentEventsCount < capacity
+        ? 0
+        : this.recentEventsHead % capacity;
+    const result: RecentEntry[] = [];
+    for (let i = 0; i < this.recentEventsCount; i++) {
+      const entry = this.recentEventsBuffer[(startIndex + i) % capacity];
+      if (entry !== undefined) result.push(entry);
+    }
+    return result;
+  }
+
+  /**
    * Evaluates a threshold condition: at least `count` matching events
    * within the last `window_ms` milliseconds (including the current event).
    */
@@ -129,7 +162,7 @@ export class ConditionEvaluator {
     const windowStart = now - cond.window_ms;
 
     let matchCount = 0;
-    for (const entry of this.recentEvents) {
+    for (const entry of this.getRecentEventsInOrder()) {
       if (entry.timestamp < windowStart) continue;
       if (!this.matchEventType(entry.event.type, cond.event_type)) continue;
       matchCount++;
@@ -159,7 +192,7 @@ export class ConditionEvaluator {
 
     // Build a list of recent events within the window. Note: recordEvent is
     // called before evaluate, so the current event IS included in this buffer.
-    const windowEvents = this.recentEvents.filter(
+    const windowEvents = this.getRecentEventsInOrder().filter(
       (e) => e.timestamp >= windowStart,
     );
 
@@ -190,12 +223,27 @@ export class ConditionEvaluator {
    */
   pruneOldEvents(maxAgeMs: number): void {
     const cutoff = Date.now() - maxAgeMs;
-    const firstKeep = this.recentEvents.findIndex((e) => e.timestamp >= cutoff);
-    if (firstKeep > 0) {
-      this.recentEvents.splice(0, firstKeep);
-    } else if (firstKeep === -1) {
-      // All events are older than cutoff
-      this.recentEvents = [];
+    const capacity = this.maxRecentEvents;
+
+    // Walk from the oldest slot forward, advancing head past expired entries.
+    // The oldest slot is at (head - count) % capacity (using positive modulo).
+    let pruned = 0;
+    while (pruned < this.recentEventsCount) {
+      const oldestSlot =
+        ((this.recentEventsHead - this.recentEventsCount + pruned) % capacity + capacity) % capacity;
+      const entry = this.recentEventsBuffer[oldestSlot];
+      if (entry === undefined || entry.timestamp < cutoff) {
+        this.recentEventsBuffer[oldestSlot] = undefined;
+        pruned++;
+      } else {
+        // Remaining entries are newer — stop
+        break;
+      }
+    }
+    this.recentEventsCount -= pruned;
+    // If all events were pruned, reset head to keep modulo arithmetic clean
+    if (this.recentEventsCount === 0) {
+      this.recentEventsHead = 0;
     }
   }
 }
