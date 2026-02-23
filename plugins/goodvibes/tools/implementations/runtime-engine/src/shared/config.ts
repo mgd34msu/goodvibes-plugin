@@ -158,10 +158,10 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     queue_depth_warn: 100,
   },
   features: {
-    ipc_enabled: false,
-    workflows_enabled: false,
-    agents_enabled: false,
-    full_integration: false,
+    ipc_enabled: true,
+    workflows_enabled: true,
+    agents_enabled: true,
+    full_integration: true,
   },
   agents: {
     max_concurrent: 6,
