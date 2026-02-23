@@ -12,7 +12,7 @@
  */
 
 import type { RuntimeEvent } from './types.js';
-import { generateId, timestamp } from '../shared/utils.js';
+import { generateId, timestamp, toErrorMessage } from '../shared/utils.js';
 import { createLogger } from '../shared/logger.js';
 
 const logger = createLogger('event-queue');
@@ -431,7 +431,7 @@ export class EventQueue {
         duration_ms: durationMs,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorMessage = toErrorMessage(err);
       const updatedEntry: QueueEntry = {
         ...entry,
         attempts: entry.attempts + 1,
@@ -476,8 +476,9 @@ export class EventQueue {
 
       // Schedule next item if queue is non-empty and running
       if (this.running && this.queue.length > 0) {
-        // Use the retry backoff from the catch block if this was a retry
-        this.scheduleNext(retryBackoffMs > 0 ? retryBackoffMs : 0);
+        // Use the retry backoff from the catch block if this was a retry,
+        // otherwise use the configured process interval between cycles.
+        this.scheduleNext(retryBackoffMs > 0 ? retryBackoffMs : this.processIntervalMs);
       }
     }
   }
