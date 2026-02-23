@@ -28,7 +28,7 @@ execution:
   max_autonomous_batches: unlimited
   checkpoint_frequency: per_phase
   max_parallel_agent_chains: 6
-  wrfc_binding: per_agent_chain # options: per_phase and per_agent_chain
+  wrfc_mode: directive_driven # runtime engine manages WRFC via <gv> directives
   auto_recovery_on_blocker: true
 
 blockers:
@@ -46,8 +46,8 @@ blockers:
     - other_undefined
 
 recovery:
-  on_issue: fix_review_loop
-  on_error: fix_review_loop
+  on_issue: directive_driven
+  on_error: directive_driven
   on_other: choose_best_option_silent
   max_fix_attempts: 3
 
@@ -86,8 +86,8 @@ logging:
 - Auto-chain operations without asking
 - No limit on autonomous batches
 - Checkpoint at phase boundaries
-- Up to `max_parallel_agent_chains` parallel agent chains running independent WRFC Loops
-- WRFC Loops are bound "per_agent_chain" meaning each open slot up to `max_parallel_agent_chains` is an independent WRFC Loop (NOT BOUND TO PHASES!)
+- Up to `max_parallel_agent_chains` parallel agent chains
+- The runtime engine manages WRFC chains automatically via `<gv>` directives
 - Always recover on any blocker
 
 ### Blockers
@@ -96,10 +96,10 @@ logging:
 - Other: Anything about the current task that is ambiguous, decisions that warrant questions, or any other unknown
 
 ### Recovery
-- Issues: ALWAYS fix, Run the WRFC Loop defined below
-- Errors: ALWAYS fix, Run the WRFC Loop defined below
+- Issues: The runtime engine handles fix/review cycles via directives
+- Errors: ALWAYS fix via directives or manual intervention
 - Other: ALWAYS choose the best possible option, silently
-- Max 3 fix attempts before moving on
+- Max fix attempts configured in runtime engine (default: 3)
 
 ### Fix Attempts
  - Single fix attempt includes four stages
@@ -125,7 +125,7 @@ Two-tier system: **logs/** for session details (Markdown), **memory/** for cross
 |------|--------|---------|---------------|
 | `logs/decisions.md` | Markdown | Architectural choices with options considered and rationale | Choosing between approaches, making trade-offs |
 | `logs/errors.md` | Markdown | Failures, root causes, and resolutions | Errors occur or recovery completes |
-| `logs/activity.md` | Markdown | Completed work that passed review | Task passes final review in WRFC loop |
+| `logs/activity.md` | Markdown | Completed work that passed review | Task passes final review via `complete` directive |
 | `memory/decisions.json` | JSON | Decision records for programmatic lookup | After decisions are made |
 | `memory/patterns.json` | JSON | Proven approaches for pattern matching | When successful patterns are identified |
 | `memory/failures.json` | JSON | Failure records for similar-failure lookup | When errors occur, for future prevention |
@@ -310,9 +310,9 @@ You ARE the orchestrator. Coordination only, NOT implementation.
 
 1. **Fix ALL issues** - No issue is too minor to fix. Every problem must be addressed.
 2. **100% completion required** - 99.9% is not acceptable. Work must be fully complete before passing review.
-3. **MANDATORY: Maintain WRFC Loops** - Maintain WRFC Loops as close to `max_parallel_agent_chains` concurrent agent chains at all times.
+3. **MANDATORY: Execute `<gv>` directives** - When an agent completes and the hook response contains a `<gv>` tag, parse it and execute the action immediately. Never ignore a directive.
 4. **MANDATORY: Monitor Agent Progress** - Whenever you receive a task complete notification, like the one shown below OR anything else that could indicate task completion, you MUST ACTUALLY CHECK the number of agents running and CONFIRM their task and status. Use non-blocking Task Output to monitor agent completion. Always know the number of running agents.
-5. **CRITICAL** - Spawn a reviewer agent to jumpstart WRFC loop if you are unsure about an agent's work.
+5. **CRITICAL** - The runtime engine decides when to review. Do NOT manually spawn reviewers unless explicitly asked by the user.
 6. **CRITICAL** - Instruct agents to check goodvibes logs and memory for patterns or other info that might help with the current task. 
 7. **MANDATORY: Plan all work** - Execution should be pre-meditated at all times. Take the time to think about your workflow. If you can use precision_engine tools with built-in batching (files array, edits array, commands array) to run multiple operations in one call, do it.
 8. **MANDATORY: Use Precision Engine Tools** - You MUST use precision_engine tools (defined below) instead of native tools, and you MUST instruct ALL agents to do the same. 
@@ -339,23 +339,35 @@ You ARE the orchestrator. Coordination only, NOT implementation.
   <status>completed</status>
 ```
 
-### WRFC Loop [Step-by-Step Process - justvibes] (MANDATORY)
+### Directive-Driven WRFC (MANDATORY)
 
-**CRITICAL:** WRFC Loop is per task, NOT per group of tasks!
+The runtime engine manages WRFC chains automatically via `<gv>` directives.
 
-1. **Spawn WORK agent** (background) - Performs the assigned task.
-2. **Spawn REVIEW agent** (background) - Checks the work that was done.
-3. **Evaluate REVIEW result:**
-   - **PASS**: Proceed to Step 4.
-   - **FAIL** If any issues found (even minor), incomplete work, or skipped items: Enter Fix -> Review Loop.
-        - **Spawn FIX agent** (background) - Addresses all issues identified by the review.
-        - **Spawn CHECK agent** (background) - Re-reviews the fixed work.
-            - **Evaluate REVIEW result:**
-                - **PASS**: Proceed to Step 4.
-                - **FAIL**: Repeat Fix -> Review Loop (spawn another FIX agent).
-4. **Commit Verified Work** - after verification, git commit related files
-5. **Update .goodvibes/ Memory and Logs** - After commit, update ALL goodvibes memory and tracking documents.
-6. **Repeat as necessary** - Continue until all work is done.
+**Your role as orchestrator:**
+
+1. **Spawn WORK agents** for the user's task (background, as many as needed)
+2. **On agent completion**, check the hook response for `<gv>` directives
+3. **Execute directives mechanically** — no interpretation, no second-guessing:
+
+| Directive | Action |
+|-----------|--------|
+| `{"action":"spawn","wid":"...","type":"...","task":"..."}` | Spawn the agent type with the task. Include `[WRFC:wid_value]` in the prompt. |
+| `{"action":"complete","wid":"..."}` | Git commit related files. Update .goodvibes/ logs and memory. |
+| `{"action":"escalate","wid":"...","reason":"..."}` | Notify the user with the reason. Stop the chain. |
+
+4. **If no directive received**, the agent's work auto-completed (utility/explore agent)
+5. **Repeat** until all active chains resolve
+
+**What you decide:**
+- What work to assign (initial task decomposition)
+- How many parallel chains to run
+- How to handle escalations
+
+**What the runtime decides:**
+- Whether to review
+- Whether to fix
+- When a chain is complete
+- When to escalate
   
 ## Logging Requirements
 
@@ -366,12 +378,12 @@ You ARE the orchestrator. Coordination only, NOT implementation.
 
 ## Prohibited Actions
 
-- Spawning more than `max_parallel_agent_chains ` concurrent agent chains
+- Spawning more than `max_parallel_agent_chains` concurrent agent chains
 - Running agents or processes in foreground
 - Proceeding before an agent signals completion
-- Waiting until all agents are done before continuing WRFC Loops
+- Ignoring a `<gv>` directive from the runtime engine
+- Manually spawning reviewers/fixers (the runtime handles this via directives)
 - Accepting incomplete or partial work
-- Skipping the review step
 - Forgetting to update the log and memory files
 
 ## Code Quality Standards
