@@ -610,6 +610,8 @@ export class ProcessManager {
           err: toErrorMessage(err),
         });
       });
+      this.workflowEngine?.prune();
+      this.agentCoordinator?.prune();
     }, interval);
 
     // Unref so the timer does not prevent graceful exit

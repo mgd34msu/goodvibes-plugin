@@ -93,8 +93,8 @@ export class EventLog {
   private closed: boolean = false;
   /** Whether we are currently draining the buffer to disk (prevents re-entry). */
   private flushing: boolean = false;
-  /** Queue of flush waiters (resolve callbacks). */
-  private flushWaiters: Array<() => void> = [];
+  /** Queue of flush waiters (resolve/reject pairs). */
+  private flushWaiters: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
 
   constructor(
     stateDir: string,
@@ -135,7 +135,7 @@ export class EventLog {
         }
       });
       if (skippedLines > 0) {
-        logger.warn('Skipped %d malformed lines in %s', skippedLines, this.logPath);
+        logger.warn('Skipped malformed lines during initialize', { count: skippedLines, file: this.logPath });
       }
 
       logger.info('Event log initialised', {
@@ -207,8 +207,8 @@ export class EventLog {
   async flush(): Promise<void> {
     if (this.writeBuffer.length === 0) return;
 
-    return new Promise<void>((resolve) => {
-      this.flushWaiters.push(resolve);
+    return new Promise<void>((resolve, reject) => {
+      this.flushWaiters.push({ resolve, reject });
       this.scheduleFlush();
     });
   }
@@ -227,6 +227,16 @@ export class EventLog {
     // Flush remaining buffer
     if (this.writeBuffer.length > 0) {
       await this.drainBuffer();
+    }
+
+    // Sync fallback if drainBuffer restored data to the buffer after a failure
+    if (this.writeBuffer.length > 0) {
+      try {
+        const { appendFileSync } = await import('fs');
+        appendFileSync(this.logPath, this.writeBuffer, 'utf-8');
+        this.writeBuffer = '';
+        this.writeBufferBytes = 0;
+      } catch { /* last resort failed */ }
     }
 
     // Close the write stream
@@ -275,7 +285,7 @@ export class EventLog {
         return true; // continue
       });
       if (skippedLines > 0) {
-        logger.warn('Skipped %d malformed lines in %s', skippedLines, this.logPath);
+        logger.warn('Skipped malformed lines during query', { count: skippedLines, file: this.logPath });
       }
     } catch (err) {
       if (
@@ -362,7 +372,7 @@ export class EventLog {
         return true;
       });
       if (skippedLines > 0) {
-        logger.warn('Skipped %d malformed lines in %s', skippedLines, this.logPath);
+        logger.warn('Skipped malformed lines during compact', { count: skippedLines, file: this.logPath });
       }
     } catch (err) {
       if (
@@ -529,7 +539,7 @@ export class EventLog {
       // Resolve waiters if buffer is empty
       if (this.writeBuffer.length === 0 && this.flushWaiters.length > 0) {
         const waiters = this.flushWaiters.splice(0);
-        for (const resolve of waiters) resolve();
+        for (const { resolve } of waiters) resolve();
       }
       return;
     }
@@ -551,6 +561,7 @@ export class EventLog {
     this.writeBuffer = '';
     this.writeBufferBytes = 0;
 
+    let drainError: Error | undefined;
     try {
       if (this.writeStream) {
         await new Promise<void>((resolve, reject) => {
@@ -566,6 +577,7 @@ export class EventLog {
         appendFileSync(this.logPath, data, 'utf-8');
       }
     } catch (err) {
+      drainError = err instanceof Error ? err : new Error(toErrorMessage(err));
       logger.error('Failed to flush event log buffer', { error: toErrorMessage(err) });
       // Restore buffer so data is not lost
       this.writeBuffer = data + this.writeBuffer;
@@ -573,10 +585,14 @@ export class EventLog {
     } finally {
       this.flushing = false;
 
-      // Notify waiters
+      // Notify waiters — reject on failure so callers know the flush did not persist
       if (this.flushWaiters.length > 0) {
         const waiters = this.flushWaiters.splice(0);
-        for (const resolve of waiters) resolve();
+        if (drainError) {
+          for (const { reject } of waiters) reject(drainError);
+        } else {
+          for (const { resolve } of waiters) resolve();
+        }
       }
 
       // If more data arrived while we were flushing, schedule another flush
@@ -694,7 +710,7 @@ export class EventLog {
       }
     }
     if (skippedLines > 0) {
-      logger.warn('Skipped %d malformed lines during cache rebuild', skippedLines);
+      logger.warn('Skipped malformed lines during cache rebuild', { count: skippedLines });
     }
 
     this.typeCountCache = typeCount;
