@@ -4614,11 +4614,11 @@ var require_core = __commonJS({
     Ajv2.ValidationError = validation_error_1.default;
     Ajv2.MissingRefError = ref_error_1.default;
     exports2.default = Ajv2;
-    function checkOptions(checkOpts, options, msg, log4 = "error") {
+    function checkOptions(checkOpts, options, msg, log5 = "error") {
       for (const key in checkOpts) {
         const opt = key;
         if (opt in options)
-          this.logger[log4](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log5](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
     __name(checkOptions, "checkOptions");
@@ -22050,8 +22050,8 @@ var EventBus = class {
    *
    * @param log - An object with an `append` method.
    */
-  setEventLog(log4) {
-    this.eventLog = log4;
+  setEventLog(log5) {
+    this.eventLog = log5;
   }
   /**
    * Emits a runtime event.
@@ -24022,6 +24022,60 @@ var ConditionEvaluator = class {
   }
 };
 
+// src/directives/directive-builder.ts
+function buildSpawnDirectiveMessage(agentType, task, budget, context) {
+  const lines = [
+    `[GoodVibes WRFC Orchestrator] ACTION REQUIRED: Spawn a ${agentType} agent.`,
+    "",
+    `TASK: ${task}`,
+    `BUDGET: ${budget.max_tokens} tokens, ${budget.max_turns} turns`
+  ];
+  if (context?.files_modified && context.files_modified.length > 0) {
+    lines.push(`FILES TO REVIEW: ${context.files_modified.join(", ")}`);
+  }
+  if (context?.review_score !== void 0) {
+    lines.push(`PREVIOUS REVIEW SCORE: ${context.review_score}/10`);
+  }
+  if (context?.review_issues && context.review_issues.length > 0) {
+    lines.push("ISSUES TO ADDRESS:");
+    for (const issue2 of context.review_issues) {
+      lines.push(`  - [${issue2.severity}] ${issue2.dimension}: ${issue2.description}`);
+    }
+  }
+  if (context?.fix_attempts !== void 0 && context.max_fix_attempts !== void 0) {
+    lines.push(`FIX ATTEMPT: ${context.fix_attempts + 1} of ${context.max_fix_attempts}`);
+  }
+  lines.push("");
+  lines.push(
+    `Use the Task tool to spawn a goodvibes:${agentType} agent with the task description above.`
+  );
+  lines.push(
+    "Run it in the background. Do NOT do the work yourself -- delegate to the agent."
+  );
+  return lines.join("\n");
+}
+__name(buildSpawnDirectiveMessage, "buildSpawnDirectiveMessage");
+function buildWorkflowCompleteMessage(workflowId, state) {
+  return [
+    "[GoodVibes WRFC Orchestrator] WORKFLOW COMPLETE.",
+    "",
+    `Workflow ${workflowId} has reached terminal state: ${state}.`,
+    "The WRFC chain has finished. No further agent spawning is required."
+  ].join("\n");
+}
+__name(buildWorkflowCompleteMessage, "buildWorkflowCompleteMessage");
+function buildEscalationMessage(workflowId, fixAttempts, lastScore) {
+  return [
+    "[GoodVibes WRFC Orchestrator] ESCALATION: Fix loop exhausted.",
+    "",
+    `Workflow ${workflowId} has made ${fixAttempts} fix attempts without achieving a passing review score.`,
+    `Last review score: ${lastScore}/10`,
+    "",
+    "Human intervention is required. Please review the outstanding issues manually."
+  ].join("\n");
+}
+__name(buildEscalationMessage, "buildEscalationMessage");
+
 // src/triggers/action-executor.ts
 var log2 = createLogger("action-executor");
 function resolveStringTemplate(value, event) {
@@ -24067,6 +24121,10 @@ var ActionExecutor = class {
   handlers = /* @__PURE__ */ new Map();
   /** Event bus for emit_event actions. */
   eventBus;
+  /** Directive queue for spawn_agent and workflow actions. */
+  directiveQueue;
+  /** Workflow engine for start_workflow and send_workflow_event actions. */
+  workflowEngine;
   /**
    * Injects the event bus. Call this once after construction.
    *
@@ -24074,6 +24132,22 @@ var ActionExecutor = class {
    */
   setEventBus(bus) {
     this.eventBus = bus;
+  }
+  /**
+   * Injects the directive queue. Call this once after construction.
+   *
+   * @param queue - The shared DirectiveQueue instance.
+   */
+  setDirectiveQueue(queue) {
+    this.directiveQueue = queue;
+  }
+  /**
+   * Injects the workflow engine. Call this once after construction.
+   *
+   * @param engine - The shared WorkflowEngine instance.
+   */
+  setWorkflowEngine(engine) {
+    this.workflowEngine = engine;
   }
   /**
    * Registers a named action handler.
@@ -24151,15 +24225,33 @@ var ActionExecutor = class {
     return { success: true };
   }
   /**
-   * Placeholder for Phase 5 agent spawning.
-   * Logs the intent and returns success so triggers don't fail.
+   * Enqueues a spawn-agent directive into the DirectiveQueue so a hook can
+   * inject the system message into Claude's context.
    */
   async executeSpawnAgent(action, event) {
     const resolvedTask = resolveStringTemplate(action.task_template, event);
-    log2.info("spawn_agent action \u2014 Phase 5 placeholder", {
+    if (!this.directiveQueue) {
+      log2.warn("spawn_agent action: directiveQueue not set \u2014 logging intent only", {
+        agent_type: action.agent_type,
+        task: resolvedTask,
+        triggered_by: event.id
+      });
+      return { success: true };
+    }
+    const message = buildSpawnDirectiveMessage(
+      action.agent_type,
+      resolvedTask,
+      action.budget
+    );
+    this.directiveQueue.enqueue("subagent_stop", {
+      type: "inject_system_message",
+      content: message,
+      priority: 10,
+      source: "action-executor:spawn_agent"
+    });
+    log2.info("spawn_agent action: directive enqueued", {
       agent_type: action.agent_type,
       task: resolvedTask,
-      budget: action.budget,
       triggered_by: event.id
     });
     return { success: true };
@@ -24178,19 +24270,61 @@ var ActionExecutor = class {
     return { success: true };
   }
   /**
-   * Placeholder for WorkflowEngine integration (Phase 5).
-   * Logs the intent and returns success.
+   * Executes a workflow action — starts a workflow or sends an event to active workflows.
    */
   async executeWorkflowAction(action, event) {
     const resolvedContext = action.context_template ? resolveTemplate(action.context_template, event) : {};
-    log2.info("workflow action \u2014 integration placeholder", {
-      action_type: action.type,
-      workflow_definition: action.workflow_definition,
-      workflow_id: action.workflow_id,
-      context: resolvedContext,
-      triggered_by: event.id
-    });
-    return { success: true };
+    if (!this.workflowEngine) {
+      log2.info("workflow action: workflowEngine not set \u2014 logging intent only", {
+        action_type: action.type,
+        workflow_definition: action.workflow_definition,
+        context: resolvedContext,
+        triggered_by: event.id
+      });
+      return { success: true };
+    }
+    if (action.type === "start_workflow") {
+      if (!action.workflow_definition) {
+        return { success: false, error: "start_workflow: workflow_definition is required" };
+      }
+      try {
+        const instance = this.workflowEngine.create(
+          action.workflow_definition,
+          resolvedContext
+        );
+        log2.info("start_workflow action: workflow created", {
+          definition: action.workflow_definition,
+          instance_id: instance.id,
+          triggered_by: event.id
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log2.error("start_workflow action: failed to create workflow", { error: message });
+        return { success: false, error: message };
+      }
+      return { success: true };
+    }
+    if (action.type === "send_workflow_event") {
+      const activeWorkflows = this.workflowEngine.listActive();
+      let sentCount = 0;
+      for (const instance of activeWorkflows) {
+        try {
+          this.workflowEngine.sendEvent(instance.id, event);
+          sentCount++;
+        } catch (err) {
+          log2.warn("send_workflow_event: failed to send to workflow", {
+            workflow_id: instance.id,
+            error: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+      log2.info("send_workflow_event action: sent to active workflows", {
+        count: sentCount,
+        triggered_by: event.id
+      });
+      return { success: true };
+    }
+    return { success: false, error: `Unknown workflow action type: ${String(action.type)}` };
   }
   /**
    * Executes all actions in parallel via `Promise.all`.
@@ -24334,6 +24468,17 @@ var TriggerRegistry = class {
    */
   list() {
     return [...this.triggers.values()];
+  }
+  /**
+   * Returns the ActionExecutor instance.
+   *
+   * Used by ProcessManager to inject dependencies (DirectiveQueue, WorkflowEngine)
+   * after the registry has been constructed.
+   *
+   * @returns The internal ActionExecutor.
+   */
+  getActionExecutor() {
+    return this.executor;
   }
   /**
    * Registers a named action handler delegate.
@@ -24560,6 +24705,79 @@ function getBuiltinTriggers() {
       },
       cooldown_ms: 6e4,
       max_fires: 20,
+      fires_count: 0
+    },
+    // ─── 7. WRFC Spawn Reviewer ─────────────────────────────────────────
+    {
+      id: "builtin_wrfc_spawn_reviewer",
+      name: "wrfc_spawn_reviewer",
+      description: "Spawn a reviewer agent after an agent completes in a WRFC workflow",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "event",
+        event_type: "hook:agent:completed"
+      },
+      action: {
+        type: "invoke_handler",
+        handler: "wrfc_chain_next",
+        args_template: {
+          event_id: "$event.id",
+          event_type: "$event.type",
+          hook_input: "$event.payload.data"
+        }
+      },
+      cooldown_ms: 5e3,
+      max_fires: 50,
+      fires_count: 0
+    },
+    // ─── 8. WRFC Spawn Fixer ────────────────────────────────────────────
+    {
+      id: "builtin_wrfc_spawn_fixer",
+      name: "wrfc_spawn_fixer",
+      description: "Spawn an engineer agent to fix issues after a review completes with score < 10",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "event",
+        event_type: "wrfc:review_completed"
+      },
+      action: {
+        type: "invoke_handler",
+        handler: "wrfc_review_response",
+        args_template: {
+          event_id: "$event.id",
+          review_score: "$event.payload.data.review_score",
+          review_issues: "$event.payload.data.review_issues",
+          files_modified: "$event.payload.data.files_modified"
+        }
+      },
+      cooldown_ms: 5e3,
+      max_fires: 30,
+      fires_count: 0
+    },
+    // ─── 9. WRFC Fix-Review Loop ─────────────────────────────────────────
+    {
+      id: "builtin_wrfc_fix_review_loop",
+      name: "wrfc_fix_review_loop",
+      description: "Spawn a reviewer for re-review after a fix, or escalate if fix budget exhausted",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "event",
+        event_type: "wrfc:fix_completed"
+      },
+      action: {
+        type: "invoke_handler",
+        handler: "wrfc_fix_response",
+        args_template: {
+          event_id: "$event.id",
+          fix_attempts: "$event.payload.data.fix_attempts",
+          max_fix_attempts: "$event.payload.data.max_fix_attempts"
+        }
+      },
+      cooldown_ms: 5e3,
+      max_fires: 30,
       fires_count: 0
     }
   ];
@@ -25384,6 +25602,250 @@ var BudgetTracker = class {
   }
 };
 
+// src/directives/directive-queue.ts
+var DirectiveQueue = class {
+  static {
+    __name(this, "DirectiveQueue");
+  }
+  /** Per-target FIFO queues. */
+  queues = /* @__PURE__ */ new Map();
+  /**
+   * Add a directive to the end of the queue for `target`.
+   *
+   * @param target - Hook target name (e.g. `'subagent_stop'`).
+   * @param directive - The directive to enqueue.
+   */
+  enqueue(target, directive) {
+    const queue = this.queues.get(target);
+    if (queue) {
+      queue.push(directive);
+    } else {
+      this.queues.set(target, [directive]);
+    }
+  }
+  /**
+   * Return and remove all directives for `target`.
+   *
+   * @param target - Hook target name.
+   * @returns Array of directives in FIFO order (may be empty).
+   */
+  drain(target) {
+    const queue = this.queues.get(target);
+    if (!queue || queue.length === 0) return [];
+    const items = [...queue];
+    this.queues.delete(target);
+    return items;
+  }
+  /**
+   * Return all directives for `target` without removing them.
+   *
+   * @param target - Hook target name.
+   * @returns Snapshot of the queue (may be empty).
+   */
+  peek(target) {
+    return [...this.queues.get(target) ?? []];
+  }
+  /**
+   * Clear all queues.
+   */
+  clear() {
+    this.queues.clear();
+  }
+  /**
+   * Return the number of pending directives, optionally scoped to a target.
+   *
+   * @param target - Optional hook target name. If omitted, counts across all targets.
+   * @returns Total pending directive count.
+   */
+  size(target) {
+    if (target !== void 0) {
+      return this.queues.get(target)?.length ?? 0;
+    }
+    let total = 0;
+    for (const queue of this.queues.values()) {
+      total += queue.length;
+    }
+    return total;
+  }
+};
+
+// src/directives/wrfc-handlers.ts
+var log4 = createLogger("wrfc-handlers");
+var DEFAULT_BUDGET = { max_tokens: 5e4, max_turns: 20 };
+var REVIEWABLE_STATES = /* @__PURE__ */ new Set(["WRITING"]);
+function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCoordinator) {
+  registry2.registerHandler("wrfc_chain_next", async (args) => {
+    log4.debug("wrfc_chain_next invoked", { args });
+    if (!workflowEngine) {
+      log4.debug("wrfc_chain_next: no workflow engine, skipping");
+      return;
+    }
+    const workflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
+    let workflow = workflowId ? workflowEngine.get(workflowId) : null;
+    if (!workflow) {
+      const activeWorkflows = workflowEngine.listActive();
+      if (activeWorkflows.length === 0) {
+        log4.debug("wrfc_chain_next: no active workflows, skipping");
+        return;
+      }
+      workflow = activeWorkflows[activeWorkflows.length - 1];
+    }
+    const currentState = workflow.current_state.toUpperCase();
+    if (!REVIEWABLE_STATES.has(currentState)) {
+      log4.debug("wrfc_chain_next: workflow state not reviewable", {
+        workflow_id: workflow.id,
+        current_state: workflow.current_state
+      });
+      return;
+    }
+    const filesModified = Array.isArray(workflow.context.files_modified) ? workflow.context.files_modified : [];
+    const task = `Review the work completed in workflow ${workflow.id}. Current state: ${workflow.current_state}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
+    const message = buildSpawnDirectiveMessage("reviewer", task, DEFAULT_BUDGET, {
+      files_modified: filesModified,
+      workflow_id: workflow.id
+    });
+    directiveQueue.enqueue("subagent_stop", {
+      type: "inject_system_message",
+      content: message,
+      priority: 20,
+      source: "wrfc_chain_next"
+    });
+    log4.info("wrfc_chain_next: reviewer directive enqueued", {
+      workflow_id: workflow.id,
+      current_state: workflow.current_state
+    });
+  });
+  registry2.registerHandler("wrfc_review_response", async (args) => {
+    log4.debug("wrfc_review_response invoked", { args });
+    const rawScore = args["review_score"];
+    const reviewScore = typeof rawScore === "number" ? rawScore : Number(rawScore ?? 0);
+    let reviewIssues = [];
+    const rawIssues = args["review_issues"];
+    if (Array.isArray(rawIssues)) {
+      reviewIssues = rawIssues;
+    } else if (typeof rawIssues === "string" && rawIssues.length > 0) {
+      try {
+        const parsed = JSON.parse(rawIssues);
+        if (Array.isArray(parsed)) {
+          reviewIssues = parsed;
+        }
+      } catch {
+        log4.warn("wrfc_review_response: could not parse review_issues", { raw: rawIssues });
+      }
+    }
+    let filesModified = [];
+    const rawFiles = args["files_modified"];
+    if (Array.isArray(rawFiles)) {
+      filesModified = rawFiles;
+    } else if (typeof rawFiles === "string" && rawFiles.length > 0) {
+      try {
+        const parsed = JSON.parse(rawFiles);
+        if (Array.isArray(parsed)) filesModified = parsed;
+      } catch {
+        filesModified = [rawFiles];
+      }
+    }
+    const workflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : (() => {
+      const activeWorkflows = workflowEngine?.listActive() ?? [];
+      return activeWorkflows[activeWorkflows.length - 1]?.id ?? "unknown";
+    })();
+    if (reviewScore >= 10) {
+      const message2 = buildWorkflowCompleteMessage(workflowId, "completed");
+      directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: message2,
+        priority: 20,
+        source: "wrfc_review_response"
+      });
+      log4.info("wrfc_review_response: workflow complete directive enqueued", {
+        workflow_id: workflowId,
+        review_score: reviewScore
+      });
+      return;
+    }
+    const wf = workflowEngine?.get(workflowId);
+    const fixAttempts = typeof wf?.context.fix_attempts === "number" ? wf.context.fix_attempts : 0;
+    const maxFixAttempts = typeof wf?.context.max_fix_attempts === "number" ? wf.context.max_fix_attempts : 3;
+    const issuesSummary = reviewIssues.length > 0 ? reviewIssues.map((i) => `[${i.severity}] ${i.dimension}: ${i.description}`).join("; ") : "See previous review output for details.";
+    const task = `Fix the issues identified in the code review for workflow ${workflowId}. Review score: ${reviewScore}/10. Issues: ${issuesSummary}`;
+    const message = buildSpawnDirectiveMessage("engineer", task, DEFAULT_BUDGET, {
+      files_modified: filesModified,
+      review_score: reviewScore,
+      review_issues: reviewIssues,
+      fix_attempts: fixAttempts,
+      max_fix_attempts: maxFixAttempts,
+      workflow_id: workflowId
+    });
+    directiveQueue.enqueue("subagent_stop", {
+      type: "inject_system_message",
+      content: message,
+      priority: 20,
+      source: "wrfc_review_response"
+    });
+    log4.info("wrfc_review_response: engineer fix directive enqueued", {
+      workflow_id: workflowId,
+      review_score: reviewScore,
+      issues_count: reviewIssues.length
+    });
+  });
+  registry2.registerHandler("wrfc_fix_response", async (args) => {
+    log4.debug("wrfc_fix_response invoked", { args });
+    const rawFix = args["fix_attempts"];
+    const fixAttempts = typeof rawFix === "number" ? rawFix : Number(rawFix ?? 0);
+    const rawMax = args["max_fix_attempts"];
+    const maxFixAttempts = typeof rawMax === "number" ? rawMax : Number(rawMax ?? 3);
+    const fixWorkflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
+    let fixWorkflow = fixWorkflowId ? workflowEngine?.get(fixWorkflowId) ?? null : null;
+    if (!fixWorkflow) {
+      const activeWorkflows = workflowEngine?.listActive() ?? [];
+      fixWorkflow = activeWorkflows[activeWorkflows.length - 1] ?? null;
+    }
+    const workflowId = fixWorkflow?.id ?? "unknown";
+    const workflow = fixWorkflow;
+    const filesModified = Array.isArray(workflow?.context.files_modified) ? workflow.context.files_modified : [];
+    if (fixAttempts >= maxFixAttempts) {
+      const lastScore = typeof workflow?.context.review_score === "number" ? workflow.context.review_score : 0;
+      const message2 = buildEscalationMessage(workflowId, fixAttempts, lastScore);
+      directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: message2,
+        priority: 30,
+        source: "wrfc_fix_response"
+      });
+      log4.warn("wrfc_fix_response: escalation directive enqueued", {
+        workflow_id: workflowId,
+        fix_attempts: fixAttempts,
+        max_fix_attempts: maxFixAttempts
+      });
+      return;
+    }
+    const task = `Re-review the code after fix attempt ${fixAttempts} of ${maxFixAttempts} for workflow ${workflowId}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "Check all recently modified files.");
+    const message = buildSpawnDirectiveMessage("reviewer", task, DEFAULT_BUDGET, {
+      files_modified: filesModified,
+      fix_attempts: fixAttempts,
+      max_fix_attempts: maxFixAttempts,
+      workflow_id: workflowId
+    });
+    directiveQueue.enqueue("subagent_stop", {
+      type: "inject_system_message",
+      content: message,
+      priority: 20,
+      source: "wrfc_fix_response"
+    });
+    log4.info("wrfc_fix_response: re-review directive enqueued", {
+      workflow_id: workflowId,
+      fix_attempts: fixAttempts,
+      max_fix_attempts: maxFixAttempts
+    });
+  });
+  log4.debug("WRFC handlers registered", {
+    handlers: ["wrfc_chain_next", "wrfc_review_response", "wrfc_fix_response"],
+    has_workflow_engine: workflowEngine !== null,
+    has_agent_coordinator: agentCoordinator !== null
+  });
+}
+__name(registerWRFCHandlers, "registerWRFCHandlers");
+
 // src/lifecycle/process-manager.ts
 var logger7 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
@@ -25426,6 +25888,8 @@ var ProcessManager = class {
   agentCoordinator = null;
   /** Budget tracker for agent spending. */
   budgetTracker = null;
+  /** Directive queue for WRFC orchestration messages. */
+  directiveQueue = null;
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -25489,7 +25953,13 @@ var ProcessManager = class {
     for (const trigger of getBuiltinTriggers()) {
       this.triggerRegistry.register(trigger);
     }
+    this.directiveQueue = new DirectiveQueue();
+    this.triggerRegistry.getActionExecutor().setDirectiveQueue(this.directiveQueue);
+    if (this.workflowEngine) {
+      this.triggerRegistry.getActionExecutor().setWorkflowEngine(this.workflowEngine);
+    }
     this.eventBus.on("*", async (event) => {
+      if (event.source?.kind === "hook") return;
       try {
         if (this.triggerRegistry) {
           await this.triggerRegistry.evaluate(event);
@@ -25508,6 +25978,12 @@ var ProcessManager = class {
       );
       logger7.debug("Agent coordinator initialised");
     }
+    registerWRFCHandlers(
+      this.triggerRegistry,
+      this.directiveQueue,
+      this.workflowEngine,
+      this.agentCoordinator
+    );
     let ipcSocketPath = null;
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
@@ -25850,7 +26326,7 @@ var ProcessManager = class {
       this.ipcServer.onMessage(async (msg) => {
         logger7.debug("IPC message received", { id: msg.id, type: msg.type });
         if (msg.type === "hook_event") {
-          this.eventBus.emit({
+          const emittedEvent = {
             id: msg.id,
             timestamp: msg.timestamp,
             type: `hook:${msg.hook_name}`,
@@ -25858,17 +26334,42 @@ var ProcessManager = class {
             payload: {
               type: `hook:${msg.hook_name}`,
               data: msg.hook_input
+            },
+            metadata: {
+              sequence: 0,
+              version: 1
             }
-          });
+          };
+          this.eventBus.emit(emittedEvent);
+          if (this.triggerRegistry) {
+            try {
+              await this.triggerRegistry.evaluate(emittedEvent);
+            } catch (err) {
+              logger7.warn("IPC hook_event: trigger evaluation error", {
+                error: err instanceof Error ? err.message : String(err)
+              });
+            }
+          }
           return { id: msg.id, status: "ok", data: { kind: "ack" } };
         }
         if (msg.type === "query") {
           const q = msg.query;
-          if (q.kind === "get_system_message") {
+          if (q.kind === "get_directives") {
+            const directives = this.directiveQueue?.drain("subagent_stop") ?? [];
+            const message = directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
             return {
               id: msg.id,
               status: "ok",
-              data: { kind: "system_message", message: "", directives: [] }
+              data: { kind: "system_message", message, directives }
+            };
+          }
+          if (q.kind === "get_system_message") {
+            const directives = this.directiveQueue?.drain("subagent_stop") ?? [];
+            const directiveMessage = directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
+            return {
+              id: msg.id,
+              status: "ok",
+              data: { kind: "system_message", message: directiveMessage, directives }
             };
           }
           if (q.kind === "get_workflow_state") {

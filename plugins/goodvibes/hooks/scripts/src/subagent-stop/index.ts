@@ -269,22 +269,30 @@ async function runSubagentStopHook(): Promise<void> {
     debug('Raw input shape:', Object.keys(rawInput || {}));
     const input = rawInput as unknown as SubagentStopInput;
 
-    // ─── Phase 6: Runtime engine integration (fire-and-forget, additive only) ───
-    // Sends the completion event to the runtime engine for bookkeeping.
+    // ─── Phase 6: Runtime engine integration (additive only) ───
+    // Sends the completion event to the runtime engine, then queries for directives.
     // ALWAYS falls through to existing logic — this hook has no early-return.
+    let runtimeDirectiveMessage: string | undefined;
     try {
       const runtimeClient = new RuntimeClient();
       if (runtimeClient.isAvailable()) {
         const success = input.success !== false;
         const eventName = success ? 'agent:completed' : 'agent:failed';
         debug(`Phase 6: runtime engine available, sending ${eventName} event`);
-        void runtimeClient.sendHookEvent(
+        // Await the event so triggers evaluate before we query for directives
+        await runtimeClient.sendHookEvent(
           eventName,
           rawInput as unknown as Record<string, unknown>
         );
+        const queryResult = await runtimeClient.query({ kind: 'get_directives' });
+        if (queryResult?.kind === 'system_message' && queryResult.message) {
+          debug('Phase 6: runtime returned directive message for subagent stop');
+          runtimeDirectiveMessage = queryResult.message;
+        }
       }
-    } catch {
+    } catch (err) {
       // Runtime integration must never break the hook — always fall through
+      debug('Phase 6: runtime integration error, falling through to existing logic');
     }
     // ─── End Phase 6 integration ───
 
@@ -359,11 +367,15 @@ async function runSubagentStopHook(): Promise<void> {
       status === 'completed'
     );
 
-    // Combine issue warnings with orchestrator reminders
+    // Combine runtime directive, issue warnings, and orchestrator reminders
+    // Directive must come first so Claude sees it as the highest-priority instruction
     const issuesMessage = buildIssuesMessage(agentType, validationResult, testResult);
-    const systemMessage = issuesMessage
+    const baseSystemMessage = issuesMessage
       ? `${issuesMessage}\n\n${orchestratorContext.systemMessage}`
       : orchestratorContext.systemMessage;
+    const systemMessage = runtimeDirectiveMessage
+      ? `${runtimeDirectiveMessage}\n\n${baseSystemMessage}`
+      : baseSystemMessage;
 
     respond(
       createResponse({

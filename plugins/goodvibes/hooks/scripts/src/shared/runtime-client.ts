@@ -27,7 +27,7 @@ import { tmpdir } from 'os';
 const HOOK_EVENT_TIMEOUT_MS = 500;
 
 /** Timeout in ms for synchronous query calls. */
-const QUERY_TIMEOUT_MS = 200;
+const QUERY_TIMEOUT_MS = 500;
 
 /** Minimal IPC message structure (matches protocol.ts on the engine side). */
 interface IPCMessage {
@@ -157,7 +157,7 @@ export class RuntimeClient {
   /**
    * Query the runtime engine for state or a decision.
    *
-   * Times out after 200 ms. Returns null if the engine is unreachable or
+   * Times out after QUERY_TIMEOUT_MS milliseconds (default 500 ms). Returns null if the engine is unreachable or
    * the call fails for any reason. Errors are swallowed.
    *
    * @param query - The query to execute (discriminated by `kind`).

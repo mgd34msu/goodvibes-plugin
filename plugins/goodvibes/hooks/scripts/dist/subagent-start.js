@@ -579,7 +579,7 @@ import { existsSync, readFileSync } from "fs";
 import { join as join5 } from "path";
 import { tmpdir } from "os";
 var HOOK_EVENT_TIMEOUT_MS = 500;
-var QUERY_TIMEOUT_MS = 200;
+var QUERY_TIMEOUT_MS = 500;
 function generateId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -626,7 +626,7 @@ var RuntimeClient = class {
   /**
    * Query the runtime engine for state or a decision.
    *
-   * Times out after 200 ms. Returns null if the engine is unreachable or
+   * Times out after QUERY_TIMEOUT_MS milliseconds (default 500 ms). Returns null if the engine is unreachable or
    * the call fails for any reason. Errors are swallowed.
    *
    * @param query - The query to execute (discriminated by `kind`).

@@ -155,6 +155,18 @@ export class TriggerRegistry {
   }
 
   /**
+   * Returns the ActionExecutor instance.
+   *
+   * Used by ProcessManager to inject dependencies (DirectiveQueue, WorkflowEngine)
+   * after the registry has been constructed.
+   *
+   * @returns The internal ActionExecutor.
+   */
+  getActionExecutor(): ActionExecutor {
+    return this.executor;
+  }
+
+  /**
    * Registers a named action handler delegate.
    *
    * @param name - The handler name used in `InvokeHandlerAction.handler`.

@@ -11,6 +11,9 @@ import { generateEventId, timestamp } from '../shared/utils.js';
 import { createLogger } from '../shared/logger.js';
 import type { RuntimeEvent, EventType } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
+import type { DirectiveQueue } from '../directives/directive-queue.js';
+import type { WorkflowEngine } from '../workflow/workflow-engine.js';
+import { buildSpawnDirectiveMessage } from '../directives/directive-builder.js';
 import type {
   TriggerAction,
   TriggerActionHandler,
@@ -103,6 +106,10 @@ export class ActionExecutor {
   private readonly handlers: Map<string, TriggerActionHandler> = new Map();
   /** Event bus for emit_event actions. */
   private eventBus?: EventBus;
+  /** Directive queue for spawn_agent and workflow actions. */
+  private directiveQueue?: DirectiveQueue;
+  /** Workflow engine for start_workflow and send_workflow_event actions. */
+  private workflowEngine?: WorkflowEngine;
 
   /**
    * Injects the event bus. Call this once after construction.
@@ -111,6 +118,24 @@ export class ActionExecutor {
    */
   setEventBus(bus: EventBus): void {
     this.eventBus = bus;
+  }
+
+  /**
+   * Injects the directive queue. Call this once after construction.
+   *
+   * @param queue - The shared DirectiveQueue instance.
+   */
+  setDirectiveQueue(queue: DirectiveQueue): void {
+    this.directiveQueue = queue;
+  }
+
+  /**
+   * Injects the workflow engine. Call this once after construction.
+   *
+   * @param engine - The shared WorkflowEngine instance.
+   */
+  setWorkflowEngine(engine: WorkflowEngine): void {
+    this.workflowEngine = engine;
   }
 
   /**
@@ -194,15 +219,37 @@ export class ActionExecutor {
   }
 
   /**
-   * Placeholder for Phase 5 agent spawning.
-   * Logs the intent and returns success so triggers don't fail.
+   * Enqueues a spawn-agent directive into the DirectiveQueue so a hook can
+   * inject the system message into Claude's context.
    */
   private async executeSpawnAgent(action: SpawnAgentAction, event: RuntimeEvent): Promise<ActionResult> {
     const resolvedTask = resolveStringTemplate(action.task_template, event);
-    log.info('spawn_agent action — Phase 5 placeholder', {
+
+    if (!this.directiveQueue) {
+      log.warn('spawn_agent action: directiveQueue not set — logging intent only', {
+        agent_type: action.agent_type,
+        task: resolvedTask,
+        triggered_by: event.id,
+      });
+      return { success: true };
+    }
+
+    const message = buildSpawnDirectiveMessage(
+      action.agent_type,
+      resolvedTask,
+      action.budget,
+    );
+
+    this.directiveQueue.enqueue('subagent_stop', {
+      type: 'inject_system_message',
+      content: message,
+      priority: 10,
+      source: 'action-executor:spawn_agent',
+    });
+
+    log.info('spawn_agent action: directive enqueued', {
       agent_type: action.agent_type,
       task: resolvedTask,
-      budget: action.budget,
       triggered_by: event.id,
     });
     return { success: true };
@@ -224,22 +271,67 @@ export class ActionExecutor {
   }
 
   /**
-   * Placeholder for WorkflowEngine integration (Phase 5).
-   * Logs the intent and returns success.
+   * Executes a workflow action — starts a workflow or sends an event to active workflows.
    */
   private async executeWorkflowAction(action: WorkflowAction, event: RuntimeEvent): Promise<ActionResult> {
     const resolvedContext = action.context_template
       ? resolveTemplate(action.context_template, event)
       : {};
 
-    log.info('workflow action — integration placeholder', {
-      action_type: action.type,
-      workflow_definition: action.workflow_definition,
-      workflow_id: action.workflow_id,
-      context: resolvedContext,
-      triggered_by: event.id,
-    });
-    return { success: true };
+    if (!this.workflowEngine) {
+      log.info('workflow action: workflowEngine not set — logging intent only', {
+        action_type: action.type,
+        workflow_definition: action.workflow_definition,
+        context: resolvedContext,
+        triggered_by: event.id,
+      });
+      return { success: true };
+    }
+
+    if (action.type === 'start_workflow') {
+      if (!action.workflow_definition) {
+        return { success: false, error: 'start_workflow: workflow_definition is required' };
+      }
+      try {
+        const instance = this.workflowEngine.create(
+          action.workflow_definition,
+          resolvedContext,
+        );
+        log.info('start_workflow action: workflow created', {
+          definition: action.workflow_definition,
+          instance_id: instance.id,
+          triggered_by: event.id,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.error('start_workflow action: failed to create workflow', { error: message });
+        return { success: false, error: message };
+      }
+      return { success: true };
+    }
+
+    if (action.type === 'send_workflow_event') {
+      const activeWorkflows = this.workflowEngine.listActive();
+      let sentCount = 0;
+      for (const instance of activeWorkflows) {
+        try {
+          this.workflowEngine.sendEvent(instance.id, event);
+          sentCount++;
+        } catch (err) {
+          log.warn('send_workflow_event: failed to send to workflow', {
+            workflow_id: instance.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      log.info('send_workflow_event action: sent to active workflows', {
+        count: sentCount,
+        triggered_by: event.id,
+      });
+      return { success: true };
+    }
+
+    return { success: false, error: `Unknown workflow action type: ${String(action.type)}` };
   }
 
   /**

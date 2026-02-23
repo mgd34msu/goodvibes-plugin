@@ -1,9 +1,10 @@
 /**
  * Built-in Trigger Definitions
  *
- * Six pre-configured triggers that cover the most common automation scenarios:
+ * Nine pre-configured triggers that cover the most common automation scenarios:
  * build failure recovery, test failure recovery, budget monitoring,
- * spawn rate limiting, dev server recovery, and WRFC auto-review.
+ * spawn rate limiting, dev server recovery, WRFC auto-review chain,
+ * WRFC review response, and WRFC fix response.
  */
 
 import type { TriggerDefinition } from './types.js';
@@ -177,6 +178,82 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
       },
       cooldown_ms: 60_000,
       max_fires: 20,
+      fires_count: 0,
+    },
+
+    // ─── 7. WRFC Spawn Reviewer ─────────────────────────────────────────
+    {
+      id: 'builtin_wrfc_spawn_reviewer',
+      name: 'wrfc_spawn_reviewer',
+      description: 'Spawn a reviewer agent after an agent completes in a WRFC workflow',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'hook:agent:completed',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'wrfc_chain_next',
+        args_template: {
+          event_id: '$event.id',
+          event_type: '$event.type',
+          hook_input: '$event.payload.data',
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 50,
+      fires_count: 0,
+    },
+
+    // ─── 8. WRFC Spawn Fixer ────────────────────────────────────────────
+    {
+      id: 'builtin_wrfc_spawn_fixer',
+      name: 'wrfc_spawn_fixer',
+      description: 'Spawn an engineer agent to fix issues after a review completes with score < 10',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'wrfc:review_completed',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'wrfc_review_response',
+        args_template: {
+          event_id: '$event.id',
+          review_score: '$event.payload.data.review_score',
+          review_issues: '$event.payload.data.review_issues',
+          files_modified: '$event.payload.data.files_modified',
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 30,
+      fires_count: 0,
+    },
+
+    // ─── 9. WRFC Fix-Review Loop ─────────────────────────────────────────
+    {
+      id: 'builtin_wrfc_fix_review_loop',
+      name: 'wrfc_fix_review_loop',
+      description: 'Spawn a reviewer for re-review after a fix, or escalate if fix budget exhausted',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'wrfc:fix_completed',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'wrfc_fix_response',
+        args_template: {
+          event_id: '$event.id',
+          fix_attempts: '$event.payload.data.fix_attempts',
+          max_fix_attempts: '$event.payload.data.max_fix_attempts',
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 30,
       fires_count: 0,
     },
   ];

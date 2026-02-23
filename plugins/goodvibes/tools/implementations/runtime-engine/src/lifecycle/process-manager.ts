@@ -32,6 +32,7 @@ import { TriggerRegistry } from '../triggers/trigger-registry.js';
 import { getBuiltinTriggers } from '../triggers/builtins.js';
 import { AgentCoordinator } from '../agents/agent-coordinator.js';
 import { BudgetTracker } from '../agents/budget-tracker.js';
+import { DirectiveQueue, registerWRFCHandlers } from '../directives/index.js';
 
 const logger = createLogger('process-manager');
 
@@ -101,6 +102,9 @@ export class ProcessManager {
 
   /** Budget tracker for agent spending. */
   private budgetTracker: BudgetTracker | null = null;
+
+  /** Directive queue for WRFC orchestration messages. */
+  private directiveQueue: DirectiveQueue | null = null;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -182,7 +186,18 @@ export class ProcessManager {
     for (const trigger of getBuiltinTriggers()) {
       this.triggerRegistry.register(trigger);
     }
+
+    // Wire DirectiveQueue into the ActionExecutor
+    this.directiveQueue = new DirectiveQueue();
+    this.triggerRegistry.getActionExecutor().setDirectiveQueue(this.directiveQueue);
+    if (this.workflowEngine) {
+      this.triggerRegistry.getActionExecutor().setWorkflowEngine(this.workflowEngine);
+    }
+
     this.eventBus.on('*', async (event: import('../events/types.js').RuntimeEvent) => {
+      // IPC hook events are evaluated explicitly in the IPC handler (awaited for timing)
+      // Skip them here to prevent double evaluation
+      if (event.source?.kind === 'hook') return;
       try {
         if (this.triggerRegistry) {
           await this.triggerRegistry.evaluate(event);
@@ -203,6 +218,14 @@ export class ProcessManager {
       );
       logger.debug('Agent coordinator initialised');
     }
+
+    // Register WRFC automation handlers (must be after AgentCoordinator init)
+    registerWRFCHandlers(
+      this.triggerRegistry,
+      this.directiveQueue,
+      this.workflowEngine,
+      this.agentCoordinator,
+    );
 
     // 9. Start IPC server if enabled
     let ipcSocketPath: string | null = null;
@@ -603,7 +626,7 @@ export class ProcessManager {
 
         if (msg.type === 'hook_event') {
           // Emit as a hook:* event on the EventBus
-          this.eventBus.emit({
+          const emittedEvent: import('../events/types.js').RuntimeEvent = {
             id: msg.id,
             timestamp: msg.timestamp,
             type: `hook:${msg.hook_name}` as import('../events/types.js').EventType,
@@ -612,17 +635,52 @@ export class ProcessManager {
               type: `hook:${msg.hook_name}` as import('../events/types.js').EventType,
               data: msg.hook_input,
             } as import('../events/types.js').EventPayload,
-          });
+            metadata: {
+              sequence: 0,
+              version: 1,
+            },
+          };
+          this.eventBus.emit(emittedEvent);
+          // Await trigger evaluation so directives are enqueued before the hook's follow-up query
+          if (this.triggerRegistry) {
+            try {
+              await this.triggerRegistry.evaluate(emittedEvent);
+            } catch (err) {
+              logger.warn('IPC hook_event: trigger evaluation error', {
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
           return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
         }
 
         if (msg.type === 'query') {
           const q = msg.query;
-          if (q.kind === 'get_system_message') {
+          if (q.kind === 'get_directives') {
+            const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
+            const message = directives
+              .filter((d) => d.type === 'inject_system_message')
+              .sort((a, b) => b.priority - a.priority)
+              .map((d) => d.content)
+              .join('\n\n');
             return {
               id: msg.id,
               status: 'ok',
-              data: { kind: 'system_message', message: '', directives: [] },
+              data: { kind: 'system_message', message, directives },
+            };
+          }
+          if (q.kind === 'get_system_message') {
+            // Also drain directives for system_message queries
+            const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
+            const directiveMessage = directives
+              .filter((d) => d.type === 'inject_system_message')
+              .sort((a, b) => b.priority - a.priority)
+              .map((d) => d.content)
+              .join('\n\n');
+            return {
+              id: msg.id,
+              status: 'ok',
+              data: { kind: 'system_message', message: directiveMessage, directives },
             };
           }
           if (q.kind === 'get_workflow_state') {
