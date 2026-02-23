@@ -182,16 +182,10 @@ export class ProcessManager {
     }
 
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
-    this.triggerRegistry.setEventBus(this.eventBus);
+    this.directiveQueue = new DirectiveQueue();
+    this.triggerRegistry.setDependencies(this.eventBus, this.directiveQueue, this.workflowEngine);
     for (const trigger of getBuiltinTriggers()) {
       this.triggerRegistry.register(trigger);
-    }
-
-    // Wire DirectiveQueue into the ActionExecutor
-    this.directiveQueue = new DirectiveQueue();
-    this.triggerRegistry.getActionExecutor().setDirectiveQueue(this.directiveQueue);
-    if (this.workflowEngine) {
-      this.triggerRegistry.getActionExecutor().setWorkflowEngine(this.workflowEngine);
     }
 
     this.eventBus.on('*', async (event: import('../events/types.js').RuntimeEvent) => {

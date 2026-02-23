@@ -11,6 +11,8 @@ import { timestamp } from '../shared/utils.js';
 import type { RuntimeEvent } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { TriggersConfig } from '../shared/config.js';
+import type { DirectiveQueue } from '../directives/directive-queue.js';
+import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import { ConditionEvaluator } from './condition-evaluator.js';
 import { ActionExecutor } from './action-executor.js';
 import type {
@@ -26,7 +28,7 @@ const log = createLogger('trigger-registry');
  *
  * Lifecycle:
  * 1. Construct with a {@link TriggersConfig}.
- * 2. Inject the EventBus via `setEventBus`.
+ * 2. Inject all dependencies via `setDependencies`.
  * 3. Register built-in and user-defined triggers via `register`.
  * 4. Call `evaluate(event)` for every event that flows through the engine.
  */
@@ -36,7 +38,9 @@ export class TriggerRegistry {
   /** Stateful condition evaluator with recent-event ring buffer. */
   private readonly evaluator: ConditionEvaluator;
   /** Action executor with handler registry. */
-  private readonly executor: ActionExecutor;
+  private executor: ActionExecutor;
+  /** Named action handlers — mirrored here so they survive executor replacement. */
+  private readonly actionHandlers: Map<string, TriggerActionHandler> = new Map();
   /** Resolved triggers configuration. */
   private readonly config: TriggersConfig;
 
@@ -50,12 +54,26 @@ export class TriggerRegistry {
   }
 
   /**
-   * Injects the shared EventBus so `emit_event` actions can emit events.
+   * Injects all shared dependencies into the ActionExecutor.
+   *
+   * Replaces the internal ActionExecutor with a new instance wired to the
+   * provided dependencies. Any handlers registered before this call are
+   * preserved on the new executor.
    *
    * @param bus - The shared EventBus instance.
+   * @param directiveQueue - The shared DirectiveQueue instance, or null.
+   * @param workflowEngine - The shared WorkflowEngine instance, or null.
    */
-  setEventBus(bus: EventBus): void {
-    this.executor.setEventBus(bus);
+  setDependencies(
+    bus: EventBus,
+    directiveQueue: DirectiveQueue | null = null,
+    workflowEngine: WorkflowEngine | null = null,
+  ): void {
+    this.executor = new ActionExecutor(bus, directiveQueue, workflowEngine);
+    // Re-register any handlers registered before setDependencies was called
+    for (const [name, handler] of this.actionHandlers) {
+      this.executor.registerHandler(name, handler);
+    }
   }
 
   /**
@@ -157,8 +175,8 @@ export class TriggerRegistry {
   /**
    * Returns the ActionExecutor instance.
    *
-   * Used by ProcessManager to inject dependencies (DirectiveQueue, WorkflowEngine)
-   * after the registry has been constructed.
+   * Exposed for external handler registration. Dependency injection is handled
+   * via {@link setDependencies}.
    *
    * @returns The internal ActionExecutor.
    */
@@ -173,6 +191,7 @@ export class TriggerRegistry {
    * @param handler - The async handler function.
    */
   registerHandler(name: string, handler: TriggerActionHandler): void {
+    this.actionHandlers.set(name, handler);
     this.executor.registerHandler(name, handler);
     log.debug('Action handler registered', { name });
   }

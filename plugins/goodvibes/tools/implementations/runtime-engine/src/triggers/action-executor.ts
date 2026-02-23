@@ -98,44 +98,32 @@ function resolveValue(value: unknown, event: RuntimeEvent): unknown {
 /**
  * Executes trigger actions when conditions are met.
  *
- * Wire up the EventBus after construction via `setEventBus`. Register named
+ * All dependencies are injected via the constructor. Register named
  * handlers via `registerHandler` before any triggers that use `invoke_handler`.
  */
 export class ActionExecutor {
   /** Named handler registry. */
   private readonly handlers: Map<string, TriggerActionHandler> = new Map();
   /** Event bus for emit_event actions. */
-  private eventBus?: EventBus;
+  private readonly eventBus: EventBus | null;
   /** Directive queue for spawn_agent and workflow actions. */
-  private directiveQueue?: DirectiveQueue;
+  private readonly directiveQueue: DirectiveQueue | null;
   /** Workflow engine for start_workflow and send_workflow_event actions. */
-  private workflowEngine?: WorkflowEngine;
+  private readonly workflowEngine: WorkflowEngine | null;
 
   /**
-   * Injects the event bus. Call this once after construction.
-   *
-   * @param bus - The shared EventBus instance.
+   * @param eventBus - The shared EventBus instance, or null if not available.
+   * @param directiveQueue - The shared DirectiveQueue instance, or null if not available.
+   * @param workflowEngine - The shared WorkflowEngine instance, or null if not available.
    */
-  setEventBus(bus: EventBus): void {
-    this.eventBus = bus;
-  }
-
-  /**
-   * Injects the directive queue. Call this once after construction.
-   *
-   * @param queue - The shared DirectiveQueue instance.
-   */
-  setDirectiveQueue(queue: DirectiveQueue): void {
-    this.directiveQueue = queue;
-  }
-
-  /**
-   * Injects the workflow engine. Call this once after construction.
-   *
-   * @param engine - The shared WorkflowEngine instance.
-   */
-  setWorkflowEngine(engine: WorkflowEngine): void {
-    this.workflowEngine = engine;
+  constructor(
+    eventBus: EventBus | null = null,
+    directiveQueue: DirectiveQueue | null = null,
+    workflowEngine: WorkflowEngine | null = null,
+  ) {
+    this.eventBus = eventBus;
+    this.directiveQueue = directiveQueue;
+    this.workflowEngine = workflowEngine;
   }
 
   /**
@@ -191,7 +179,7 @@ export class ActionExecutor {
    */
   private async executeEmitEvent(action: EmitEventAction, event: RuntimeEvent): Promise<ActionResult> {
     if (!this.eventBus) {
-      return { success: false, error: 'EventBus not initialised — call setEventBus() first' };
+      return { success: false, error: 'EventBus not provided — pass it via the constructor' };
     }
 
     const resolvedPayload = resolveTemplate(action.payload_template, event);
