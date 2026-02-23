@@ -273,7 +273,10 @@ export class RuntimeClient {
       }
     }
 
-    // Strategy 3: Well-known tmpdir location (same-machine sessions)
+    // Strategy 3: Well-known tmpdir location — legacy fallback path for manual or
+    // external socket placement. Note: the process-manager does NOT create sockets
+    // here; it uses per-session paths under .goodvibes/<hash>/runtime.sock. This
+    // strategy will only match sockets placed here by external tooling.
     const defaultPath = join(tmpdir(), 'goodvibes-runtime', 'runtime.sock');
     if (existsSync(defaultPath)) {
       return defaultPath;

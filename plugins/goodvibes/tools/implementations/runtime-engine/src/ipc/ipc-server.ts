@@ -43,7 +43,7 @@ export type MessageHandler = (msg: IPCMessage) => Promise<IPCResponse>;
  *
  * @example
  * ```ts
- * const server = new IPCServer('/tmp/goodvibes/session-abc.sock');
+ * const server = new IPCServer('.goodvibes/gv-abc12345/runtime.sock');
  * server.onMessage(async (msg) => {
  *   return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
  * });

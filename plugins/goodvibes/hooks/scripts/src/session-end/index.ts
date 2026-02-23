@@ -7,8 +7,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import * as fs from 'fs/promises';
-import { basename, join } from 'path';
+import { writeFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 
 import {
   respond,
@@ -132,7 +132,7 @@ async function runSessionEndHook(): Promise<void> {
         CACHE_DIR,
         `session-${analytics.session_id}.json`
       );
-      await fs.writeFile(
+      await writeFile(
         summaryFile,
         JSON.stringify(
           {
