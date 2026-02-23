@@ -7,6 +7,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
+import type { HealthStatus } from '../../types.js';
 import type { RuntimeConfig } from '../../shared/config.js';
 import type { EventBus } from '../../events/event-bus.js';
 import type { EventLog } from '../../events/event-log.js';
@@ -31,7 +32,7 @@ export interface HandlerContext {
   /** Current runtime configuration snapshot. */
   getConfig: () => RuntimeConfig;
   /** Current health status snapshot. */
-  getHealth: () => import('../../types.js').HealthStatus;
+  getHealth: () => HealthStatus;
   /** Update the in-memory runtime configuration after a disk write. */
   updateConfig: (config: RuntimeConfig) => void;
   /** Absolute path to the project root. */
