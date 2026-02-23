@@ -355,7 +355,7 @@ describe('ensureClaudeMdImports', () => {
       const content = fs.readFileSync(filePath, 'utf-8');
       
       expect(content).toContain('## MANDATORY');
-      expect(content).toContain('WRFC Loops');
+      expect(content).toContain('<gv> directives');
       expect(content).toContain('precision_engine');
     });
 

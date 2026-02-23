@@ -1,6 +1,6 @@
 ## MANDATORY
 
-1. Maintain usage of WRFC Loops and goodvibes logging & memory functions
+1. Execute `<gv>` directives from the runtime engine and maintain goodvibes logging & memory functions
 2. Minimize unnecessary token usage:
   - Use appropriate precision_engine tool verbosity and output settings
   - ONLY request or send amount of data necessary to complete your task

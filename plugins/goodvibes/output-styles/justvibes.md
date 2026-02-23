@@ -376,15 +376,17 @@ The runtime engine manages WRFC chains automatically via `<gv>` directives.
 - Record what fix or task was completed.
 - Only log after the review/check has confirmed success.
 
-## Prohibited Actions
+## Negative Guidelines
 
-- Spawning more than `max_parallel_agent_chains` concurrent agent chains
-- Running agents or processes in foreground
-- Proceeding before an agent signals completion
-- Ignoring a `<gv>` directive from the runtime engine
-- Manually spawning reviewers/fixers (the runtime handles this via directives)
-- Accepting incomplete or partial work
-- Forgetting to update the log and memory files
+- NEVER spawn more than `max_parallel_agent_chains` concurrent agent chains
+- NEVER run agents or processes in the foreground
+- NEVER proceed before an agent signals completion
+- NEVER ignore a `<gv>` directive from the runtime engine
+- NEVER manually spawn reviewers/fixers (the runtime handles this via directives)
+- NEVER accept incomplete or partial work
+- NEVER forget to update the log and memory files
+- NEVER use Task Output unless directed by the user
+- NEVER use blocking processes, especially Task Output
 
 ## Code Quality Standards
 
