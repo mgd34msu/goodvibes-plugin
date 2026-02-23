@@ -61,6 +61,11 @@ export class AgentCoordinator {
   private readonly agents: Map<string, CoordinatedAgent> = new Map();
   private readonly wrfcChains: Map<string, WRFCChain> = new Map();
 
+  /**
+   * @param eventBus      - EventBus instance for emitting agent lifecycle events.
+   * @param budgetTracker - BudgetTracker for session-level token budget accounting.
+   * @param config        - Agent-specific runtime configuration.
+   */
   constructor(
     eventBus: EventBus,
     budgetTracker: BudgetTracker,

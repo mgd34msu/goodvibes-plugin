@@ -163,18 +163,98 @@ export const handleRuntimeStatus: ToolHandler = async (
   }
 
   try {
-    const uptime_ms = ctx.getUptime();
+    const uptimeMs = ctx.getUptime();
     // Delegate to HealthChecker via context to avoid duplicated logic
     const statusData = ctx.getHealth();
 
     logger.debug('runtime_status computed', { status: statusData.status });
-    return toSuccess(statusData, ctx.version, uptime_ms, Date.now() - start);
+    return toSuccess(statusData, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
     logger.error('runtime_status failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 };
+
+// ─── Config key validation ───────────────────────────────────────────────────
+
+/**
+ * Allowlist of valid dot-path config keys for runtime_config set.
+ * Derived from the RuntimeConfig interface in shared/config.ts.
+ */
+const VALID_CONFIG_KEYS: ReadonlySet<string> = new Set([
+  'ipc.socket_dir',
+  'ipc.connect_timeout_ms',
+  'ipc.query_timeout_ms',
+  'queue.max_size',
+  'queue.max_attempts',
+  'queue.backoff_base_ms',
+  'queue.backoff_multiplier',
+  'queue.process_interval_ms',
+  'persistence.checkpoint_interval_ms',
+  'persistence.event_log_max_size_mb',
+  'persistence.compact_after_hours',
+  'persistence.state_dir',
+  'workflows.max_active',
+  'workflows.max_transitions_per_workflow',
+  'workflows.wrfc_max_fix_iterations',
+  'workflows.fix_loop_max_attempts',
+  'triggers.max_triggers',
+  'triggers.default_cooldown_ms',
+  'triggers.max_fires_per_session',
+  'health.check_interval_ms',
+  'health.memory_warn_mb',
+  'health.memory_critical_mb',
+  'health.queue_depth_warn',
+  'features.ipc_enabled',
+  'features.workflows_enabled',
+  'features.agents_enabled',
+  'features.full_integration',
+  'agents.max_concurrent',
+  'agents.session_budget',
+  'agents.budget_thresholds',
+  'agents.default_budget',
+  'agents.max_review_iterations',
+]);
+
+/**
+ * Expected value types for each valid config key.
+ * Used to validate the type of incoming values before persisting.
+ */
+const CONFIG_KEY_TYPES: ReadonlyMap<string, 'boolean' | 'number' | 'string' | 'object'> = new Map([
+  ['ipc.socket_dir', 'string'],
+  ['ipc.connect_timeout_ms', 'number'],
+  ['ipc.query_timeout_ms', 'number'],
+  ['queue.max_size', 'number'],
+  ['queue.max_attempts', 'number'],
+  ['queue.backoff_base_ms', 'number'],
+  ['queue.backoff_multiplier', 'number'],
+  ['queue.process_interval_ms', 'number'],
+  ['persistence.checkpoint_interval_ms', 'number'],
+  ['persistence.event_log_max_size_mb', 'number'],
+  ['persistence.compact_after_hours', 'number'],
+  ['persistence.state_dir', 'string'],
+  ['workflows.max_active', 'number'],
+  ['workflows.max_transitions_per_workflow', 'number'],
+  ['workflows.wrfc_max_fix_iterations', 'number'],
+  ['workflows.fix_loop_max_attempts', 'number'],
+  ['triggers.max_triggers', 'number'],
+  ['triggers.default_cooldown_ms', 'number'],
+  ['triggers.max_fires_per_session', 'number'],
+  ['health.check_interval_ms', 'number'],
+  ['health.memory_warn_mb', 'number'],
+  ['health.memory_critical_mb', 'number'],
+  ['health.queue_depth_warn', 'number'],
+  ['features.ipc_enabled', 'boolean'],
+  ['features.workflows_enabled', 'boolean'],
+  ['features.agents_enabled', 'boolean'],
+  ['features.full_integration', 'boolean'],
+  ['agents.max_concurrent', 'number'],
+  ['agents.session_budget', 'number'],
+  ['agents.budget_thresholds', 'object'],
+  ['agents.default_budget', 'number'],
+  ['agents.max_review_iterations', 'number'],
+]);
 
 // ─── runtime_config handler ────────────────────────────────────────────────
 
@@ -193,7 +273,7 @@ export const handleRuntimeConfig: ToolHandler = async (
   ctx: HandlerContext
 ): Promise<CallToolResult> => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
 
   try {
     // Validate args before casting
@@ -201,7 +281,7 @@ export const handleRuntimeConfig: ToolHandler = async (
       return toError(
         'Invalid arguments: expected an object',
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
@@ -212,7 +292,7 @@ export const handleRuntimeConfig: ToolHandler = async (
       return toError(
         "Missing required field: action. Use 'get', 'set', or 'reset'.",
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
@@ -224,10 +304,10 @@ export const handleRuntimeConfig: ToolHandler = async (
 
       if (key) {
         const value = getNestedValue(config as unknown as Record<string, unknown>, key);
-        return toSuccess({ key, value }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
       }
 
-      return toSuccess({ config }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ config }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     // ── set ──────────────────────────────────────────────────────────────────
@@ -239,7 +319,7 @@ export const handleRuntimeConfig: ToolHandler = async (
         return toError(
           "Missing required field: key.",
           ctx.version,
-          uptime_ms,
+          uptimeMs,
           Date.now() - start
         );
       }
@@ -247,9 +327,33 @@ export const handleRuntimeConfig: ToolHandler = async (
         return toError(
           "Missing required field: value.",
           ctx.version,
-          uptime_ms,
+          uptimeMs,
           Date.now() - start
         );
+      }
+
+      // Validate key against allowlist (FIND-007)
+      if (!VALID_CONFIG_KEYS.has(key)) {
+        return toError(
+          `Invalid config key: '${key}'. Use runtime_config get to see valid keys.`,
+          ctx.version,
+          uptimeMs,
+          Date.now() - start
+        );
+      }
+
+      // Validate value type against expected type (FIND-008)
+      const expectedType = CONFIG_KEY_TYPES.get(key);
+      if (expectedType !== undefined) {
+        const actualType = Array.isArray(value) ? 'object' : typeof value;
+        if (actualType !== expectedType) {
+          return toError(
+            `Invalid value type for '${key}': expected ${expectedType}, got ${actualType}.`,
+            ctx.version,
+            uptimeMs,
+            Date.now() - start
+          );
+        }
       }
 
       // Build an updated config with the new key value applied (deep clone to
@@ -268,7 +372,7 @@ export const handleRuntimeConfig: ToolHandler = async (
       return toSuccess(
         { key, value, persisted: true },
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
@@ -281,7 +385,7 @@ export const handleRuntimeConfig: ToolHandler = async (
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
@@ -289,7 +393,7 @@ export const handleRuntimeConfig: ToolHandler = async (
     return toError(
       `Unknown action: '${action}'. Use 'get', 'set', or 'reset'.`,
       ctx.version,
-      uptime_ms,
+      uptimeMs,
       Date.now() - start
     );
   } catch (err) {
@@ -368,6 +472,11 @@ function setNestedValue(
 /**
  * Checks whether an event type matches a pattern.
  * Supports exact match, namespace wildcard ('hook:*'), and global wildcard ('*').
+ *
+ * @param eventType - The event type string to test (e.g. 'hook:pre_tool_use').
+ * @param pattern   - The pattern to match against. '*' matches all types;
+ *   'ns:*' matches any type in the 'ns' namespace; otherwise exact match.
+ * @returns True if the event type matches the pattern.
  */
 function matchesTypePattern(eventType: string, pattern: string): boolean {
   if (pattern === '*') return true;
@@ -393,11 +502,11 @@ export const handleRuntimeEvents: ToolHandler = async (
   ctx: HandlerContext
 ): Promise<CallToolResult> => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
 
   try {
     if (args === null || args === undefined || typeof args !== 'object') {
-      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+      return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
     const action = params.action as string | undefined;
@@ -405,7 +514,7 @@ export const handleRuntimeEvents: ToolHandler = async (
     if (!action) {
       return toError(
         "Missing required field: action. Use 'query', 'tail', or 'stats'.",
-        ctx.version, uptime_ms, Date.now() - start
+        ctx.version, uptimeMs, Date.now() - start
       );
     }
 
@@ -419,7 +528,7 @@ export const handleRuntimeEvents: ToolHandler = async (
       const data = verbosity === 'count_only'
         ? { event_count: logStats.total_events, queue_pending: queueStats.pending }
         : { log: logStats, queue: queueStats };
-      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
 
     // ── tail ──────────────────────────────────────────────────────────────────
@@ -453,7 +562,7 @@ export const handleRuntimeEvents: ToolHandler = async (
       }
 
       const data = applyVerbosity(events, verbosity);
-      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
 
     // ── query ─────────────────────────────────────────────────────────────────
@@ -503,12 +612,12 @@ export const handleRuntimeEvents: ToolHandler = async (
       }
 
       const data = applyVerbosity(events, verbosity);
-      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
 
     return toError(
       `Unknown action: '${action}'. Use 'query', 'tail', or 'stats'.`,
-      ctx.version, uptime_ms, Date.now() - start
+      ctx.version, uptimeMs, Date.now() - start
     );
   } catch (err) {
     const message = toErrorMessage(err);
@@ -520,6 +629,9 @@ export const handleRuntimeEvents: ToolHandler = async (
 /**
  * Resolves a time string to an ISO 8601 timestamp.
  * Supports ISO strings directly, or relative strings like '5m', '1h', '30s'.
+ *
+ * @param value - ISO timestamp string or relative duration (e.g. '5m', '1h', '30s').
+ * @returns An ISO 8601 timestamp string representing the resolved point in time.
  */
 function resolveTimestamp(value: string): string {
   // If it already looks like an ISO timestamp, pass through
@@ -536,6 +648,12 @@ function resolveTimestamp(value: string): string {
 
 /**
  * Applies verbosity to an events array for response shaping.
+ *
+ * @param events    - Array of RuntimeEvents to shape.
+ * @param verbosity - Verbosity level: 'count_only' returns only a count,
+ *   'minimal' returns id/type/timestamp/source_kind per event,
+ *   'standard' or 'verbose' returns the full event objects.
+ * @returns A shaped response object appropriate for the requested verbosity.
  */
 function applyVerbosity(
   events: import('../events/types.js').RuntimeEvent[],
@@ -573,11 +691,11 @@ export const handleRuntimeEmit: ToolHandler = async (
   ctx: HandlerContext
 ): Promise<CallToolResult> => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
 
   try {
     if (args === null || args === undefined || typeof args !== 'object') {
-      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+      return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
     const eventType = params.event_type as string | undefined;
@@ -585,15 +703,23 @@ export const handleRuntimeEmit: ToolHandler = async (
     if (!eventType) {
       return toError(
         'Missing required field: event_type.',
-        ctx.version, uptime_ms, Date.now() - start
+        ctx.version, uptimeMs, Date.now() - start
       );
     }
 
     const payload = (params.payload as Record<string, unknown> | undefined) ?? {};
     const correlationId = params.correlation_id as string | undefined;
 
+    // Block privileged system:* events — these must only originate from internal sources (FIND-009)
+    if (eventType.startsWith('system:')) {
+      return toError(
+        `Emitting system:* events via MCP tool is not permitted. Event type '${eventType}' is reserved for internal use.`,
+        ctx.version, uptimeMs, Date.now() - start
+      );
+    }
+
     // Validate event_type prefix — custom types are accepted but unknown prefixes are flagged
-    const knownPrefixes = ['session:', 'hook:', 'workflow:', 'wrfc:', 'fix:', 'agent:', 'trigger:', 'file:', 'build:', 'test:', 'devserver:', 'engine:', 'system:'];
+    const knownPrefixes = ['session:', 'hook:', 'workflow:', 'wrfc:', 'fix:', 'agent:', 'trigger:', 'file:', 'build:', 'test:', 'devserver:', 'engine:'];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
       logger.warn('runtime_emit: unknown event type prefix', { event_type: eventType });
@@ -609,7 +735,7 @@ export const handleRuntimeEmit: ToolHandler = async (
     });
 
     logger.info('runtime_emit: event emitted', { type: eventType, id: emitted.id });
-    return toSuccess({ emitted }, ctx.version, uptime_ms, Date.now() - start);
+    return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
     logger.error('runtime_emit failed', { error: message });
@@ -629,11 +755,11 @@ export const handleRuntimeWorkflow: ToolHandler = async (
   ctx: HandlerContext
 ): Promise<CallToolResult> => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
 
   try {
     if (args === null || args === undefined || typeof args !== 'object') {
-      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+      return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
     const action = params.action as string | undefined;
@@ -641,7 +767,7 @@ export const handleRuntimeWorkflow: ToolHandler = async (
     if (!action) {
       return toError(
         "Missing required field: action. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.",
-        ctx.version, uptime_ms, Date.now() - start
+        ctx.version, uptimeMs, Date.now() - start
       );
     }
 
@@ -649,11 +775,11 @@ export const handleRuntimeWorkflow: ToolHandler = async (
 
     if (action === 'create') {
       if (!engine) {
-        return toError('Workflow engine is disabled (set features.workflows_enabled = true to enable)', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Workflow engine is disabled (set features.workflows_enabled = true to enable)', ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowType = params.workflow_type as string | undefined;
       if (!workflowType) {
-        return toError('Missing required field: workflow_type', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: workflow_type', ctx.version, uptimeMs, Date.now() - start);
       }
       const definitionId = workflowType === 'wrfc_loop' ? 'wrfc_loop'
         : workflowType === 'fix_loop' ? 'fix_loop'
@@ -661,44 +787,44 @@ export const handleRuntimeWorkflow: ToolHandler = async (
       const context = (params.context as Record<string, unknown> | undefined) ?? {};
       const instance = engine.create(definitionId, context);
       logger.info('runtime_workflow: created', { id: instance.id, definition: definitionId });
-      return toSuccess({ instance }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'get') {
       if (!engine) {
-        return toSuccess({ instance: null }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ instance: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id as string | undefined;
       if (!workflowId) {
-        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.get(workflowId);
-      return toSuccess({ instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'list') {
       if (!engine) {
-        return toSuccess({ instances: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ instances: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const filter = params.filter as Record<string, unknown> | undefined;
       const statusFilter = filter?.status as string | undefined;
       const instances = statusFilter
         ? engine.listAll().filter((i) => i.status === statusFilter)
         : engine.listActive();
-      return toSuccess({ instances, count: instances.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ instances, count: instances.length }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'advance') {
       if (!engine) {
-        return toError('Workflow engine is disabled', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id as string | undefined;
       const event = params.event as string | undefined;
       if (!workflowId) {
-        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
       if (!event) {
-        return toError('Missing required field: event', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: event', ctx.version, uptimeMs, Date.now() - start);
       }
       const context = (params.context as Record<string, unknown> | undefined) ?? {};
       const transition = engine.sendEvent(workflowId, {
@@ -709,41 +835,41 @@ export const handleRuntimeWorkflow: ToolHandler = async (
         payload: { type: event as EventType, data: context } as import('../events/types.js').EventPayload,
       });
       const instance = engine.get(workflowId);
-      return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'cancel') {
       if (!engine) {
-        return toError('Workflow engine is disabled', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id as string | undefined;
       if (!workflowId) {
-        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = (params.reason as string | undefined) ?? 'cancelled via MCP';
       engine.cancel(workflowId, reason);
       const instance = engine.get(workflowId);
-      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'history') {
       if (!engine) {
-        return toSuccess({ history: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id as string | undefined;
       if (!workflowId) {
-        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.get(workflowId);
       if (!instance) {
-        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptime_ms, Date.now() - start);
+        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptimeMs, Date.now() - start);
       }
-      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     return toError(
       `Unknown action: '${action}'. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.`,
-      ctx.version, uptime_ms, Date.now() - start
+      ctx.version, uptimeMs, Date.now() - start
     );
   } catch (err) {
     const message = toErrorMessage(err);
@@ -751,6 +877,63 @@ export const handleRuntimeWorkflow: ToolHandler = async (
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 };
+
+// ─── Trigger definition validation ──────────────────────────────────────────
+
+/** Valid action type values for trigger definitions. */
+const VALID_TRIGGER_ACTION_TYPES: ReadonlySet<string> = new Set([
+  'emit_event',
+  'spawn_agent',
+  'invoke_handler',
+  'start_workflow',
+  'send_workflow_event',
+  'parallel',
+  'sequence',
+]);
+
+/**
+ * Validates an incoming trigger definition before registration.
+ * Returns null on success or an error message string on failure.
+ *
+ * @param def - The raw trigger definition value to validate (untyped input).
+ * @returns `null` if the definition is valid; a human-readable error string otherwise.
+ */
+function validateTriggerDefinition(def: unknown): string | null {
+  if (def === null || def === undefined || typeof def !== 'object') {
+    return 'Trigger definition must be an object.';
+  }
+  const d = def as Record<string, unknown>;
+
+  if (typeof d['id'] !== 'string' || d['id'].trim() === '') {
+    return "Trigger definition must have a non-empty string field 'id'.";
+  }
+  if (typeof d['name'] !== 'string' || d['name'].trim() === '') {
+    return "Trigger definition must have a non-empty string field 'name'.";
+  }
+
+  const condition = d['condition'];
+  if (condition === null || condition === undefined || typeof condition !== 'object') {
+    return "Trigger definition must have a 'condition' object.";
+  }
+  const cond = condition as Record<string, unknown>;
+  if (typeof cond['type'] !== 'string') {
+    return "Trigger 'condition' must have a string 'type' field.";
+  }
+
+  const action = d['action'];
+  if (action === null || action === undefined || typeof action !== 'object') {
+    return "Trigger definition must have an 'action' object.";
+  }
+  const act = action as Record<string, unknown>;
+  if (typeof act['type'] !== 'string') {
+    return "Trigger 'action' must have a string 'type' field.";
+  }
+  if (!VALID_TRIGGER_ACTION_TYPES.has(act['type'] as string)) {
+    return `Trigger 'action.type' must be one of: ${[...VALID_TRIGGER_ACTION_TYPES].join(', ')}. Got: '${act['type']}'.`;
+  }
+
+  return null;
+}
 
 // ─── runtime_triggers handler ─────────────────────────────────────────────────
 
@@ -764,11 +947,11 @@ export const handleRuntimeTriggers: ToolHandler = async (
   ctx: HandlerContext
 ): Promise<CallToolResult> => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
 
   try {
     if (args === null || args === undefined || typeof args !== 'object') {
-      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+      return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
     const action = params.action as string | undefined;
@@ -776,7 +959,7 @@ export const handleRuntimeTriggers: ToolHandler = async (
     if (!action) {
       return toError(
         "Missing required field: action. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.",
-        ctx.version, uptime_ms, Date.now() - start
+        ctx.version, uptimeMs, Date.now() - start
       );
     }
 
@@ -784,84 +967,92 @@ export const handleRuntimeTriggers: ToolHandler = async (
 
     if (action === 'list') {
       const triggers = registry ? registry.list() : [];
-      return toSuccess({ triggers, count: triggers.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ triggers, count: triggers.length }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'get') {
       const triggerId = params.trigger_id as string | undefined;
       if (!triggerId) {
-        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const trigger = registry?.get(triggerId) ?? null;
-      return toSuccess({ trigger }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ trigger }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'create') {
       if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerDef = params.trigger as TriggerDefinition | undefined;
       if (!triggerDef) {
-        return toError('Missing required field: trigger', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: trigger', ctx.version, uptimeMs, Date.now() - start);
+      }
+      const validationError = validateTriggerDefinition(triggerDef);
+      if (validationError !== null) {
+        return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
       registry.register(triggerDef);
       logger.info('runtime_triggers: registered', { id: triggerDef.id });
-      return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'update') {
       if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerDef = params.trigger as TriggerDefinition | undefined;
       if (!triggerDef) {
-        return toError('Missing required field: trigger', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: trigger', ctx.version, uptimeMs, Date.now() - start);
+      }
+      const validationError = validateTriggerDefinition(triggerDef);
+      if (validationError !== null) {
+        return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
       // Unregister old, register new
       registry.unregister(triggerDef.id);
       registry.register(triggerDef);
       logger.info('runtime_triggers: updated', { id: triggerDef.id });
-      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'delete') {
       if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerId = params.trigger_id as string | undefined;
       if (!triggerId) {
-        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
       registry.unregister(triggerId);
       logger.info('runtime_triggers: unregistered', { id: triggerId });
-      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'enable' || action === 'disable') {
       if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerId = params.trigger_id as string | undefined;
       if (!triggerId) {
-        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const enabled = action === 'enable';
       registry.setEnabled(triggerId, enabled);
       logger.info(`runtime_triggers: ${action}d`, { id: triggerId });
-      return toSuccess({ [action + 'd']: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ [action + 'd']: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'test') {
       if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerId = params.trigger_id as string | undefined;
       const testEvent = params.test_event as Record<string, unknown> | undefined;
       if (!triggerId) {
-        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
       if (!testEvent) {
-        return toError('Missing required field: test_event', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: test_event', ctx.version, uptimeMs, Date.now() - start);
       }
       const mockEvent = {
         id: generateEventId(),
@@ -872,12 +1063,12 @@ export const handleRuntimeTriggers: ToolHandler = async (
       };
       const results = await registry.evaluate(mockEvent);
       const result = results.find((r) => r.trigger_id === triggerId);
-      return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     return toError(
       `Unknown action: '${action}'. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.`,
-      ctx.version, uptime_ms, Date.now() - start
+      ctx.version, uptimeMs, Date.now() - start
     );
   } catch (err) {
     const message = toErrorMessage(err);
@@ -905,11 +1096,11 @@ export const handleRuntimeAgents: ToolHandler = async (
   ctx: HandlerContext
 ): Promise<CallToolResult> => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
 
   try {
     if (args === null || args === undefined || typeof args !== 'object') {
-      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+      return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
     const action = params.action as string | undefined;
@@ -917,7 +1108,7 @@ export const handleRuntimeAgents: ToolHandler = async (
     if (!action) {
       return toError(
         "Missing required field: action. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.",
-        ctx.version, uptime_ms, Date.now() - start
+        ctx.version, uptimeMs, Date.now() - start
       );
     }
 
@@ -927,17 +1118,17 @@ export const handleRuntimeAgents: ToolHandler = async (
       if (!coordinator) {
         return toSuccess(
           { stats: null, message: 'Agent coordinator is disabled (set features.agents_enabled = true)' },
-          ctx.version, uptime_ms, Date.now() - start
+          ctx.version, uptimeMs, Date.now() - start
         );
       }
       const stats = coordinator.getStats();
       const budget = coordinator.getBudgetSummary();
-      return toSuccess({ stats, budget }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ stats, budget }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'list') {
       if (!coordinator) {
-        return toSuccess({ agents: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ agents: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const filter = (params.filter as Record<string, unknown> | undefined) ?? {};
       const workflowId = (params.workflow_id as string | undefined) ?? (filter.workflow_id as string | undefined);
@@ -955,34 +1146,34 @@ export const handleRuntimeAgents: ToolHandler = async (
       if (typeFilter) {
         agents = agents.filter((a) => a.type === typeFilter);
       }
-      return toSuccess({ agents, count: agents.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ agents, count: agents.length }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'get') {
       const agentId = params.agent_id as string | undefined;
       if (!agentId) {
-        return toError('Missing required field: agent_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: agent_id', ctx.version, uptimeMs, Date.now() - start);
       }
       if (!coordinator) {
-        return toSuccess({ agent: null }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ agent: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const agent = coordinator.getAgent(agentId);
-      return toSuccess({ agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'spawn') {
       if (!coordinator) {
         return toError(
           'Agent coordinator is disabled (set features.agents_enabled = true to enable)',
-          ctx.version, uptime_ms, Date.now() - start
+          ctx.version, uptimeMs, Date.now() - start
         );
       }
       const spawnOpts = params.spawn as Record<string, unknown> | undefined;
       if (!spawnOpts) {
-        return toError('Missing required field: spawn', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: spawn', ctx.version, uptimeMs, Date.now() - start);
       }
       if (!spawnOpts.type || !spawnOpts.task) {
-        return toError('spawn.type and spawn.task are required', ctx.version, uptime_ms, Date.now() - start);
+        return toError('spawn.type and spawn.task are required', ctx.version, uptimeMs, Date.now() - start);
       }
       const options: CoordinatedSpawnOptions = {
         type: spawnOpts.type as string,
@@ -996,49 +1187,49 @@ export const handleRuntimeAgents: ToolHandler = async (
       const agentId = coordinator.spawn(options);
       const agent = coordinator.getAgent(agentId);
       logger.info('runtime_agents: spawned', { agentId, type: options.type });
-      return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'cancel') {
       const agentId = params.agent_id as string | undefined;
       if (!agentId) {
-        return toError('Missing required field: agent_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: agent_id', ctx.version, uptimeMs, Date.now() - start);
       }
       if (!coordinator) {
-        return toError('Agent coordinator is disabled', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Agent coordinator is disabled', ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = (params.reason as string | undefined) ?? 'cancelled via MCP';
       coordinator.cancel(agentId, reason);
       const agent = coordinator.getAgent(agentId);
-      return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'budget') {
       if (!coordinator) {
         return toSuccess(
           { summary: null, message: 'Agent coordinator is disabled' },
-          ctx.version, uptime_ms, Date.now() - start
+          ctx.version, uptimeMs, Date.now() - start
         );
       }
       const summary = coordinator.getBudgetSummary();
-      return toSuccess({ summary }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ summary }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'plan') {
       const workflowId = params.workflow_id as string | undefined;
       if (!workflowId) {
-        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+        return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
       if (!coordinator) {
-        return toSuccess({ plan: null }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ plan: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const plan = coordinator.getExecutionPlan(workflowId);
-      return toSuccess({ plan }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ plan }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     return toError(
       `Unknown action: '${action}'. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.`,
-      ctx.version, uptime_ms, Date.now() - start
+      ctx.version, uptimeMs, Date.now() - start
     );
   } catch (err) {
     const message = toErrorMessage(err);
