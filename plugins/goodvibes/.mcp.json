@@ -39,6 +39,14 @@
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"
       }
+    },
+    "runtime-engine": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/runtime-engine/dist/index.cjs"],
+      "env": {
+        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "NODE_ENV": "production"
+      }
     }
   }
 }

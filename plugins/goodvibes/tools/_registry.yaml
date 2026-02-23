@@ -1,6 +1,6 @@
 version: 2.0.0
 generated: '2026-02-22T19:04:39.698Z'
-total: 66
+total: 68
 servers:
   - name: precision-engine
     count: 12
@@ -347,6 +347,19 @@ servers:
           analyzes which component subtrees are protected, identifies missing error.tsx files in Next.js App Router
           route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
           boundaries, and async components without protection.
+  - name: runtime-engine
+    count: 2
+    tools:
+      - name: runtime_status
+        path: runtime-engine/runtime-status.yaml
+        description: >-
+          Get current runtime engine status including active workflows, agents, event queue stats, and system health.
+          Use to monitor orchestration state and diagnose issues.
+      - name: runtime_config
+        path: runtime-engine/runtime-config.yaml
+        description: >-
+          Get or set runtime engine configuration. Supports dot-separated key paths for nested values.
+          Use to adjust queue settings, trigger defaults, IPC config, and feature flags.
 search_index:
   - name: precision_write
     keywords:
@@ -2217,3 +2230,42 @@ search_index:
       and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad boundaries, and async
       components without protection.
     server: frontend-engine
+  - name: runtime_status
+    keywords:
+      - runtime
+      - status
+      - active
+      - workflows
+      - agents
+      - queue
+      - stats
+      - system
+      - health
+      - orchestration
+      - diagnose
+    path: runtime-engine/runtime-status.yaml
+    description: >-
+      Get current runtime engine status including active workflows, agents, event queue stats, and system health.
+      Use to monitor orchestration state and diagnose issues.
+    server: runtime-engine
+  - name: runtime_config
+    keywords:
+      - runtime
+      - config
+      - configuration
+      - dot
+      - separated
+      - key
+      - paths
+      - nested
+      - values
+      - queue
+      - triggers
+      - ipc
+      - feature
+      - flags
+    path: runtime-engine/runtime-config.yaml
+    description: >-
+      Get or set runtime engine configuration. Supports dot-separated key paths for nested values.
+      Use to adjust queue settings, trigger defaults, IPC config, and feature flags.
+    server: runtime-engine
