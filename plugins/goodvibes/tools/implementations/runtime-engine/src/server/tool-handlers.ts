@@ -13,6 +13,9 @@
  * - runtime_workflow — manage workflow instances (create, list, send events, get history)
  * - runtime_triggers — manage trigger definitions and view recent fires
  *
+ * Phase 5 tools:
+ * - runtime_agents  — workflow-aware agent coordination, budget tracking, WRFC chains
+ *
  * Architecture:
  * - Each handler is a function conforming to ToolHandler.
  * - Handlers are registered in the handlerRegistry Map.
@@ -34,6 +37,8 @@ import { generateEventId, timestamp, parseRelativeTime } from '../shared/utils.j
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { TriggerDefinition } from '../triggers/types.js';
+import type { AgentCoordinator } from '../agents/agent-coordinator.js';
+import type { CoordinatedSpawnOptions } from '../agents/types.js';
 
 const logger = createLogger('tool-handlers');
 
@@ -72,6 +77,8 @@ export interface HandlerContext {
   getWorkflowEngine: () => WorkflowEngine | null;
   /** The trigger registry. */
   getTriggerRegistry: () => TriggerRegistry | null;
+  /** The agent coordinator (may be null if agents_enabled is false). */
+  getAgentCoordinator: () => AgentCoordinator | null;
 }
 
 // ─── Result helpers ───────────────────────────────────────────────────────────
@@ -879,10 +886,171 @@ export const handleRuntimeTriggers: ToolHandler = async (
   }
 };
 
+// ─── runtime_agents handler ───────────────────────────────────────────────────
+
+/**
+ * Handle runtime_agents tool calls.
+ *
+ * Actions:
+ * - status  — coordinator stats (active, completed, budget summary)
+ * - list    — list agents with optional filters
+ * - get     — get single agent details
+ * - spawn   — register a new coordinated agent
+ * - cancel  — cancel an agent with a reason
+ * - budget  — get detailed budget summary
+ * - plan    — get execution plan for a workflow
+ */
+export const handleRuntimeAgents: ToolHandler = async (
+  args: unknown,
+  ctx: HandlerContext
+): Promise<CallToolResult> => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+
+  try {
+    if (args === null || args === undefined || typeof args !== 'object') {
+      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args as Record<string, unknown>;
+    const action = params.action as string | undefined;
+
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.",
+        ctx.version, uptime_ms, Date.now() - start
+      );
+    }
+
+    const coordinator = ctx.getAgentCoordinator() ?? null;
+
+    if (action === 'status') {
+      if (!coordinator) {
+        return toSuccess(
+          { stats: null, message: 'Agent coordinator is disabled (set features.agents_enabled = true)' },
+          ctx.version, uptime_ms, Date.now() - start
+        );
+      }
+      const stats = coordinator.getStats();
+      const budget = coordinator.getBudgetSummary();
+      return toSuccess({ stats, budget }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'list') {
+      if (!coordinator) {
+        return toSuccess({ agents: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const filter = (params.filter as Record<string, unknown> | undefined) ?? {};
+      const workflowId = (params.workflow_id as string | undefined) ?? (filter.workflow_id as string | undefined);
+      const statusFilter = filter.status as string | undefined;
+      const typeFilter = filter.type as string | undefined;
+
+      // Gather agents: if workflow specified, use listByWorkflow; otherwise listActive
+      let agents: ReturnType<typeof coordinator.listActive> = workflowId
+        ? coordinator.listByWorkflow(workflowId)
+        : coordinator.listActive();
+
+      if (statusFilter) {
+        agents = agents.filter((a) => a.status === statusFilter);
+      }
+      if (typeFilter) {
+        agents = agents.filter((a) => a.type === typeFilter);
+      }
+      return toSuccess({ agents, count: agents.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'get') {
+      const agentId = params.agent_id as string | undefined;
+      if (!agentId) {
+        return toError('Missing required field: agent_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!coordinator) {
+        return toSuccess({ agent: null }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const agent = coordinator.getAgent(agentId);
+      return toSuccess({ agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'spawn') {
+      if (!coordinator) {
+        return toError(
+          'Agent coordinator is disabled (set features.agents_enabled = true to enable)',
+          ctx.version, uptime_ms, Date.now() - start
+        );
+      }
+      const spawnOpts = params.spawn as Record<string, unknown> | undefined;
+      if (!spawnOpts) {
+        return toError('Missing required field: spawn', ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!spawnOpts.type || !spawnOpts.task) {
+        return toError('spawn.type and spawn.task are required', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const options: CoordinatedSpawnOptions = {
+        type: spawnOpts.type as string,
+        task: spawnOpts.task as string,
+        budget: spawnOpts.budget as number | undefined,
+        priority: spawnOpts.priority as number | undefined,
+        depends_on: spawnOpts.depends_on as string[] | undefined,
+        workflow_id: spawnOpts.workflow_id as string | undefined,
+        wrfc_phase: spawnOpts.wrfc_phase as CoordinatedSpawnOptions['wrfc_phase'],
+      };
+      const agentId = coordinator.spawn(options);
+      const agent = coordinator.getAgent(agentId);
+      logger.info('runtime_agents: spawned', { agentId, type: options.type });
+      return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'cancel') {
+      const agentId = params.agent_id as string | undefined;
+      if (!agentId) {
+        return toError('Missing required field: agent_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!coordinator) {
+        return toError('Agent coordinator is disabled', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const reason = (params.reason as string | undefined) ?? 'cancelled via MCP';
+      coordinator.cancel(agentId, reason);
+      const agent = coordinator.getAgent(agentId);
+      return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'budget') {
+      if (!coordinator) {
+        return toSuccess(
+          { summary: null, message: 'Agent coordinator is disabled' },
+          ctx.version, uptime_ms, Date.now() - start
+        );
+      }
+      const summary = coordinator.getBudgetSummary();
+      return toSuccess({ summary }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'plan') {
+      const workflowId = params.workflow_id as string | undefined;
+      if (!workflowId) {
+        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!coordinator) {
+        return toSuccess({ plan: null }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const plan = coordinator.getExecutionPlan(workflowId);
+      return toSuccess({ plan }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    return toError(
+      `Unknown action: '${action}'. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.`,
+      ctx.version, uptime_ms, Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('runtime_agents failed', { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+};
+
 // ─── Tool schemas ─────────────────────────────────────────────────────────────
 
 /**
- * MCP tool schema definitions for all runtime-engine tools (Phase 1-4).
+ * MCP tool schema definitions for all runtime-engine tools (Phase 1-5).
  * Returned verbatim in response to ListToolsRequestSchema.
  */
 export const allSchemas = [
@@ -1097,6 +1265,56 @@ export const allSchemas = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'runtime_agents',
+    description:
+      'Manage coordinated agents: spawn with workflow context, track WRFC chains, ' +
+      'monitor budgets, view execution plans. Workflow-aware agent orchestration.',
+    inputSchema: {
+      type: 'object',
+      required: ['action'],
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['status', 'list', 'get', 'spawn', 'cancel', 'budget', 'plan'],
+        },
+        agent_id: { type: 'string' },
+        workflow_id: { type: 'string' },
+        filter: {
+          type: 'object',
+          properties: {
+            status: {
+              type: 'string',
+              enum: ['pending', 'running', 'completed', 'failed', 'cancelled'],
+            },
+            type: { type: 'string' },
+            workflow_id: { type: 'string' },
+          },
+        },
+        spawn: {
+          type: 'object',
+          required: ['type', 'task'],
+          properties: {
+            type: { type: 'string' },
+            task: { type: 'string' },
+            budget: { type: 'number' },
+            priority: { type: 'number' },
+            depends_on: { type: 'array', items: { type: 'string' } },
+            workflow_id: { type: 'string' },
+            wrfc_phase: {
+              type: 'string',
+              enum: ['gather', 'plan', 'write', 'review', 'fix'],
+            },
+          },
+        },
+        reason: {
+          type: 'string',
+          description: 'Cancellation reason',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 // ─── Handler registry ─────────────────────────────────────────────────────────
@@ -1112,6 +1330,7 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['runtime_emit', handleRuntimeEmit],
   ['runtime_workflow', handleRuntimeWorkflow],
   ['runtime_triggers', handleRuntimeTriggers],
+  ['runtime_agents', handleRuntimeAgents],
 ]);
 
 /**

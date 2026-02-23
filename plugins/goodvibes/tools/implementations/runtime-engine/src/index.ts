@@ -44,3 +44,19 @@ export { IPCServer } from './ipc/ipc-server.js';
 export type { MessageHandler } from './ipc/ipc-server.js';
 export { RuntimeClient } from './ipc/client.js';
 export { FileFallback } from './ipc/file-fallback.js';
+export { AgentCoordinator } from './agents/agent-coordinator.js';
+export { BudgetTracker } from './agents/budget-tracker.js';
+export type {
+  CoordinatedAgent,
+  AgentBudgetSnapshot,
+  WRFCChain,
+  WRFCPhase,
+  WRFCPhaseName,
+  ExecutionPlan,
+  ExecutionPhaseInfo,
+  ExecutionPlanAgent,
+  BudgetSummary,
+  BudgetThreshold,
+  CoordinatorStats,
+  CoordinatedSpawnOptions,
+} from './agents/types.js';

@@ -133,6 +133,8 @@ export type EventType =
   | 'wrfc:escalated'
   /** The WRFC loop completed successfully. */
   | 'wrfc:completed'
+  /** The active phase of a WRFC chain changed. */
+  | 'wrfc:phase_changed'
 
   // ── Fix loop events ──────────────────────────────────────────────────────
   /** The fix loop is diagnosing the problem. */
@@ -163,6 +165,8 @@ export type EventType =
   | 'agent:budget_warning'
   /** An agent has exhausted its budget and stopped. */
   | 'agent:budget_exhausted'
+  /** An agent was cancelled. */
+  | 'agent:cancelled'
   /** A dependency of this agent has been resolved. */
   | 'agent:dependency_resolved'
 
@@ -507,7 +511,9 @@ export type EventPayload =
   // Fix loop events
   | { type: 'fix:diagnosing' | 'fix:applying' | 'fix:verifying' | 'fix:resolved' | 'fix:retrying' | 'fix:failed'; data: Record<string, unknown> }
   // Agent events without dedicated payloads
-  | { type: 'agent:started' | 'agent:completed' | 'agent:failed' | 'agent:budget_warning' | 'agent:budget_exhausted' | 'agent:dependency_resolved'; data: Record<string, unknown> }
+  | { type: 'agent:started' | 'agent:completed' | 'agent:failed' | 'agent:cancelled' | 'agent:budget_warning' | 'agent:budget_exhausted' | 'agent:dependency_resolved'; data: Record<string, unknown> }
+  // WRFC phase change event
+  | { type: 'wrfc:phase_changed'; data: Record<string, unknown> }
   // Trigger events already covered above; build:started and test:started covered above
   // Dev server events without dedicated payloads (covered above)
   // Engine events already covered above

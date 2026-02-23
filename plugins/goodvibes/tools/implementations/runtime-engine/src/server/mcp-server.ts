@@ -97,6 +97,7 @@ export class RuntimeEngineServer {
         getEventQueue: () => this.processManager.getEventQueue(),
         getWorkflowEngine: () => this.processManager.getWorkflowEngine(),
         getTriggerRegistry: () => this.processManager.getTriggerRegistry(),
+        getAgentCoordinator: () => this.processManager.getAgentCoordinator(),
       };
 
       try {

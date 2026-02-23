@@ -1,6 +1,6 @@
 version: 2.0.0
 generated: '2026-02-22T19:04:39.698Z'
-total: 72
+total: 73
 servers:
   - name: precision-engine
     count: 12
@@ -348,7 +348,7 @@ servers:
           route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
           boundaries, and async components without protection.
   - name: runtime-engine
-    count: 6
+    count: 7
     tools:
       - name: runtime_status
         path: runtime-engine/runtime-status.yaml
@@ -380,6 +380,11 @@ servers:
         description: >-
           Manage event triggers: list, create, enable/disable, test conditions.
           Declarative event-driven automation.
+      - name: runtime_agents
+        path: runtime-engine/runtime-agents.yaml
+        description: >-
+          Manage coordinated agents: spawn with workflow context, track WRFC chains,
+          monitor budgets, view execution plans. Workflow-aware agent orchestration.
 search_index:
   - name: precision_write
     keywords:
@@ -2361,4 +2366,21 @@ search_index:
     description: >-
       Manage event triggers: list, create, enable/disable, test conditions.
       Declarative event-driven automation.
+    server: runtime-engine
+  - name: runtime_agents
+    keywords:
+      - runtime
+      - agents
+      - coordinator
+      - workflow
+      - wrfc
+      - budget
+      - spawn
+      - orchestration
+      - execution
+      - plan
+    path: runtime-engine/runtime-agents.yaml
+    description: >-
+      Manage coordinated agents: spawn with workflow context, track WRFC chains,
+      monitor budgets, view execution plans. Workflow-aware agent orchestration.
     server: runtime-engine

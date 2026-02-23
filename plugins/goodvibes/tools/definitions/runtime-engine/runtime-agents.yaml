@@ -1,0 +1,55 @@
+name: runtime_agents
+description: >-
+  Manage coordinated agents: spawn with workflow context, track WRFC chains,
+  monitor budgets, view execution plans. Workflow-aware agent orchestration.
+category: runtime
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [status, list, get, spawn, cancel, budget, plan]
+    agent_id:
+      type: string
+    workflow_id:
+      type: string
+    filter:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        type:
+          type: string
+        workflow_id:
+          type: string
+    spawn:
+      type: object
+      properties:
+        type:
+          type: string
+        task:
+          type: string
+        budget:
+          type: number
+        priority:
+          type: number
+        depends_on:
+          type: array
+          items:
+            type: string
+        workflow_id:
+          type: string
+        wrfc_phase:
+          type: string
+          enum: [gather, plan, write, review, fix]
+      required: [type, task]
+    reason:
+      type: string
+      description: "Cancellation reason"
+  required: [action]
+mcp:
+  server: runtime-engine
+  method: runtime_agents
+defer_loading: true
+tags: [runtime, agents, workflow, budget, wrfc]

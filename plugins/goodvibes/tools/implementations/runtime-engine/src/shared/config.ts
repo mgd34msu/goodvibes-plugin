@@ -79,6 +79,20 @@ export interface HealthConfig {
   queue_depth_warn: number;
 }
 
+/** Agent coordinator configuration */
+export interface AgentsConfig {
+  /** Maximum number of concurrently active (pending + running) agents. */
+  max_concurrent: number;
+  /** Session-level token budget across all agents (0 = unlimited). */
+  session_budget: number;
+  /** Threshold percentages at which budget_warning events are emitted. */
+  budget_thresholds: number[];
+  /** Default token budget allocated to each agent when none is specified. */
+  default_budget: number;
+  /** Maximum number of WRFC review iterations before escalating. */
+  max_review_iterations: number;
+}
+
 /** Feature flags -- controls which subsystems are active */
 export interface FeaturesConfig {
   /** Whether IPC communication is enabled */
@@ -102,6 +116,7 @@ export interface RuntimeConfig {
   triggers: TriggersConfig;
   health: HealthConfig;
   features: FeaturesConfig;
+  agents: AgentsConfig;
 }
 
 /** Default configuration values -- safe for all environments */
@@ -147,6 +162,13 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     workflows_enabled: false,
     agents_enabled: false,
     full_integration: false,
+  },
+  agents: {
+    max_concurrent: 6,
+    session_budget: 0, // 0 = unlimited
+    budget_thresholds: [50, 80, 95],
+    default_budget: 200000, // tokens
+    max_review_iterations: 3,
   },
 };
 

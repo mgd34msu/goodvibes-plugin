@@ -30,6 +30,8 @@ import { WorkflowEngine } from '../workflow/workflow-engine.js';
 import { WRFC_LOOP_DEFINITION, FIX_LOOP_DEFINITION } from '../workflow/index.js';
 import { TriggerRegistry } from '../triggers/trigger-registry.js';
 import { getBuiltinTriggers } from '../triggers/builtins.js';
+import { AgentCoordinator } from '../agents/agent-coordinator.js';
+import { BudgetTracker } from '../agents/budget-tracker.js';
 
 const logger = createLogger('process-manager');
 
@@ -93,6 +95,12 @@ export class ProcessManager {
 
   /** Event trigger registry. */
   private triggerRegistry: TriggerRegistry | null = null;
+
+  /** Agent coordinator for workflow-aware agent management. */
+  private agentCoordinator: AgentCoordinator | null = null;
+
+  /** Budget tracker for agent spending. */
+  private budgetTracker: BudgetTracker | null = null;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -185,7 +193,18 @@ export class ProcessManager {
     });
     logger.debug('Trigger registry initialised');
 
-    // 8. Start IPC server if enabled
+    // 8. Initialise agent coordinator if enabled
+    if (this.config.features.agents_enabled) {
+      this.budgetTracker = new BudgetTracker(this.eventBus, this.config.agents);
+      this.agentCoordinator = new AgentCoordinator(
+        this.eventBus,
+        this.budgetTracker,
+        this.config.agents
+      );
+      logger.debug('Agent coordinator initialised');
+    }
+
+    // 9. Start IPC server if enabled
     let ipcSocketPath: string | null = null;
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
@@ -193,7 +212,7 @@ export class ProcessManager {
       logger.debug('IPC server disabled by feature flag');
     }
 
-    // 9. Emit startup event
+    // 10. Emit startup event
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
@@ -379,6 +398,9 @@ export class ProcessManager {
   updateConfig(config: RuntimeConfig): void {
     this.config = config;
     this.healthChecker.updateConfig(config);
+    if (this.agentCoordinator) {
+      this.agentCoordinator.updateConfig(config.agents);
+    }
   }
 
   /**
@@ -458,6 +480,13 @@ export class ProcessManager {
    */
   getTriggerRegistry(): TriggerRegistry | null {
     return this.triggerRegistry;
+  }
+
+  /**
+   * Return the agent coordinator, or null if agents are disabled.
+   */
+  getAgentCoordinator(): AgentCoordinator | null {
+    return this.agentCoordinator;
   }
 
   // ─── Private helpers ────────────────────────────────────────────────────────
