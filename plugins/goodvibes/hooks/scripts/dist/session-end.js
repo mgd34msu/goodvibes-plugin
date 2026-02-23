@@ -13,9 +13,9 @@ var init_gitignore = __esm({
 
 // src/session-end/index.ts
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync as existsSync2 } from "node:fs";
+import { readFileSync as readFileSync2, writeFileSync, existsSync as existsSync3 } from "node:fs";
 import * as fs3 from "fs/promises";
-import { basename, join as join3 } from "path";
+import { basename, join as join4 } from "path";
 
 // src/shared/hook-io.ts
 import { stdin } from "process";
@@ -451,16 +451,169 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
   ])
 );
 
+// src/shared/runtime-client.ts
+import * as net from "net";
+import { existsSync as existsSync2, readFileSync } from "fs";
+import { join as join3 } from "path";
+import { tmpdir } from "os";
+var HOOK_EVENT_TIMEOUT_MS = 500;
+var QUERY_TIMEOUT_MS = 200;
+function generateId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+var RuntimeClient = class {
+  /** Absolute path to the Unix domain socket, or null if not discoverable. */
+  socketPath;
+  constructor() {
+    this.socketPath = this.discoverSocket();
+  }
+  // ─── Public API ─────────────────────────────────────────────────────────────
+  /**
+   * Returns true if the runtime engine socket path was discovered and the
+   * socket file currently exists on disk.
+   *
+   * This is a fast synchronous check — it does NOT attempt a connection.
+   */
+  isAvailable() {
+    return this.socketPath !== null && existsSync2(this.socketPath);
+  }
+  /**
+   * Notify the runtime engine of a hook event.
+   *
+   * Fire-and-forget semantics with a 500 ms timeout. Returns the response
+   * data if the engine replies in time, or null otherwise. Errors are
+   * swallowed — the hook must never fail because of this call.
+   *
+   * @param hookName  - Logical hook event name (e.g. 'session:started').
+   * @param hookInput - Full hook input payload received from Claude Code.
+   * @returns Response data from the engine, or null on timeout/error.
+   */
+  async sendHookEvent(hookName, hookInput) {
+    if (!this.isAvailable()) return null;
+    const message = {
+      type: "hook_event",
+      id: generateId(),
+      hook_name: hookName,
+      hook_input: hookInput,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    const response = await this.sendMessage(message, HOOK_EVENT_TIMEOUT_MS);
+    if (!response || response.status === "error") return null;
+    return response.data ?? null;
+  }
+  /**
+   * Query the runtime engine for state or a decision.
+   *
+   * Times out after 200 ms. Returns null if the engine is unreachable or
+   * the call fails for any reason. Errors are swallowed.
+   *
+   * @param query - The query to execute (discriminated by `kind`).
+   * @returns Response data from the engine, or null on timeout/error.
+   */
+  async query(query) {
+    if (!this.isAvailable()) return null;
+    const message = {
+      type: "query",
+      id: generateId(),
+      query
+    };
+    const response = await this.sendMessage(message, QUERY_TIMEOUT_MS);
+    if (!response || response.status === "error") return null;
+    return response.data ?? null;
+  }
+  // ─── Private helpers ────────────────────────────────────────────────────────
+  /**
+   * Open a new Unix domain socket connection, write the JSON message
+   * (newline-terminated), read the JSON response (newline-terminated),
+   * then close. Returns null on timeout or any socket error.
+   *
+   * @param message   - The IPC message to send.
+   * @param timeoutMs - Maximum milliseconds to wait before giving up.
+   * @returns Parsed {@link IPCResponse}, or null on failure.
+   */
+  sendMessage(message, timeoutMs) {
+    const socketPath = this.socketPath;
+    return new Promise((resolve) => {
+      let resolved = false;
+      const done = (result) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timer);
+        resolve(result);
+      };
+      const timer = setTimeout(() => {
+        socket.destroy();
+        done(null);
+      }, timeoutMs);
+      const socket = net.createConnection({ path: socketPath });
+      socket.once("error", () => {
+        done(null);
+      });
+      socket.once("connect", () => {
+        const payload = JSON.stringify(message) + "\n";
+        socket.write(payload, "utf-8");
+      });
+      let rawData = "";
+      socket.on("data", (chunk) => {
+        rawData += chunk.toString("utf-8");
+        const newlineIdx = rawData.indexOf("\n");
+        if (newlineIdx === -1) return;
+        const line = rawData.slice(0, newlineIdx);
+        socket.destroy();
+        try {
+          const response = JSON.parse(line);
+          done(response);
+        } catch {
+          done(null);
+        }
+      });
+      socket.once("close", () => {
+        done(null);
+      });
+    });
+  }
+  /**
+   * Discover the runtime engine socket path using three strategies.
+   *
+   * Resolution order:
+   * 1. `GOODVIBES_RUNTIME_SOCKET` env var — set by runtime engine at startup.
+   * 2. `.goodvibes/state/runtime.socket` pointer file in cwd — contains path.
+   * 3. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
+   *
+   * @returns Absolute socket path string, or null if none is discoverable.
+   */
+  discoverSocket() {
+    const envPath = process.env["GOODVIBES_RUNTIME_SOCKET"];
+    if (envPath) {
+      return envPath;
+    }
+    const cwd = process.env["CLAUDE_PROJECT_DIR"] ?? process.cwd();
+    const pointerFile = join3(cwd, ".goodvibes", "state", "runtime.socket");
+    if (existsSync2(pointerFile)) {
+      try {
+        const socketPath = readFileSync(pointerFile, "utf-8").trim();
+        if (socketPath) return socketPath;
+      } catch {
+      }
+    }
+    const defaultPath = join3(tmpdir(), "goodvibes-runtime", "runtime.sock");
+    if (existsSync2(defaultPath)) {
+      return defaultPath;
+    }
+    return null;
+  }
+};
+
 // src/session-end/index.ts
 var MS_PER_MINUTE = 6e4;
 function cleanupDashboardPanes(sessionId) {
   try {
-    const goodvibesDir = process.env.GOODVIBES_DIR || join3(process.env.CLAUDE_PROJECT_DIR || process.cwd(), ".goodvibes");
-    const stateFile = join3(goodvibesDir, "active-panes.json");
-    if (!existsSync2(stateFile)) return;
+    const goodvibesDir = process.env.GOODVIBES_DIR || join4(process.env.CLAUDE_PROJECT_DIR || process.cwd(), ".goodvibes");
+    const stateFile = join4(goodvibesDir, "active-panes.json");
+    if (!existsSync3(stateFile)) return;
     let allState = {};
     try {
-      allState = JSON.parse(readFileSync(stateFile, "utf-8"));
+      allState = JSON.parse(readFileSync2(stateFile, "utf-8"));
     } catch {
       return;
     }
@@ -484,6 +637,17 @@ async function runSessionEndHook() {
     debug("SessionEnd hook starting");
     ensureGlobalAnalyticsDir();
     const input = await readHookInput();
+    try {
+      const runtimeClient = new RuntimeClient();
+      if (runtimeClient.isAvailable()) {
+        debug("Phase 6: runtime engine available, sending session:ending event");
+        void runtimeClient.sendHookEvent(
+          "session:ending",
+          input
+        );
+      }
+    } catch {
+    }
     debug("SessionEnd received input", {
       session_id: input.session_id
     });
@@ -496,7 +660,7 @@ async function runSessionEndHook() {
       const ended = new Date(analytics.ended_at).getTime();
       const durationMinutes = Math.round((ended - started) / MS_PER_MINUTE);
       await saveAnalytics(analytics);
-      const summaryFile = join3(
+      const summaryFile = join4(
         CACHE_DIR,
         `session-${analytics.session_id}.json`
       );

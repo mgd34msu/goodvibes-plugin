@@ -21,6 +21,7 @@ import { handleBashTool } from './bash-handler.js';
 import { processFileAutomation } from './file-automation.js';
 import { handleDetectStack, handleRecommendSkills, handleSearch, handleValidateImplementation, handleRunSmokeTest, handleCheckTypes, } from './mcp-handlers.js';
 import { createResponse, combineMessages } from './response.js';
+import { RuntimeClient } from '../shared/runtime-client.js';
 /**
  * Load automation configuration from .goodvibes/automation.json if it exists,
  * otherwise return default config from types/config.ts.
@@ -59,6 +60,27 @@ async function runPostToolUseHook() {
     try {
         const input = await readHookInput();
         debug('PostToolUse hook received input', { tool_name: input.tool_name });
+        // ─── Phase 6: Runtime engine integration (early-return when available) ───
+        // Sends the hook event to the runtime engine for workflow tracking.
+        // Falls through to existing automation logic when runtime is NOT available.
+        try {
+            const runtimeClient = new RuntimeClient();
+            if (runtimeClient.isAvailable()) {
+                debug('Phase 6: runtime engine available, sending hook:post_tool_use event');
+                await runtimeClient.sendHookEvent('hook:post_tool_use', input);
+                const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
+                if (queryResult?.kind === 'system_message') {
+                    debug('Phase 6: runtime returned system message, using it');
+                    respond(createResponse(queryResult.message));
+                    return;
+                }
+            }
+        }
+        catch {
+            // Runtime integration must never break the hook — fall through
+            debug('Phase 6: runtime integration error, falling through to existing logic');
+        }
+        // ─── End Phase 6 integration ───
         const cwd = input.cwd;
         // Load state and config
         let state = await loadState(cwd);

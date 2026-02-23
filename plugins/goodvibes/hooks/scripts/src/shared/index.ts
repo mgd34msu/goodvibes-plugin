@@ -133,3 +133,10 @@ export {
 /** Hook runner types for standardized hook execution */
 export type { HookHandler, RunHookOptions } from './hook-runner.js';
 export { runHook, runHookSync, isMainModule } from './hook-runner.js';
+
+// =============================================================================
+// Runtime Client (Phase 6 — Hook Slimming)
+// =============================================================================
+/** Runtime engine IPC client for Phase 6 hook integration */
+export type { Directive, IPCQueryKind, RuntimeResponseData } from './runtime-client.js';
+export { RuntimeClient } from './runtime-client.js';

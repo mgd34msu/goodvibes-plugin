@@ -26,3 +26,6 @@ export { KEYWORD_CATEGORIES, ALL_KEYWORDS, STACK_KEYWORD_CATEGORIES, TRANSCRIPT_
 /** Hook runner types for standardized hook execution */
 export type { HookHandler, RunHookOptions } from './hook-runner.js';
 export { runHook, runHookSync, isMainModule } from './hook-runner.js';
+/** Runtime engine IPC client for Phase 6 hook integration */
+export type { Directive, IPCQueryKind, RuntimeResponseData } from './runtime-client.js';
+export { RuntimeClient } from './runtime-client.js';

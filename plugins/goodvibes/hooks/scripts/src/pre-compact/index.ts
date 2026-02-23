@@ -27,6 +27,7 @@ import {
   saveSessionSummary,
   getFilesModifiedThisSession,
 } from './state-preservation.js';
+import { RuntimeClient } from '../shared/runtime-client.js';
 
 import type { SessionAnalytics } from '../shared/index.js';
 
@@ -99,6 +100,30 @@ async function runPreCompactHook(): Promise<void> {
     debug('PreCompact received input', {
       hook_event_name: input.hook_event_name,
     });
+
+    // ─── Phase 6: Runtime engine integration (early-return when available) ───
+    // Sends session:compact event and queries for a system message to inject
+    // after compaction. Falls through to existing logic when not available.
+    try {
+      const runtimeClient = new RuntimeClient();
+      if (runtimeClient.isAvailable()) {
+        debug('Phase 6: runtime engine available, sending session:compact event');
+        await runtimeClient.sendHookEvent(
+          'session:compact',
+          input as unknown as Record<string, unknown>
+        );
+        const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
+        if (queryResult?.kind === 'system_message') {
+          debug('Phase 6: runtime returned system message for compact, using it');
+          respond(createResponse({ systemMessage: queryResult.message }));
+          return;
+        }
+      }
+    } catch {
+      // Runtime integration must never break the hook — fall through
+      debug('Phase 6: runtime integration error, falling through to existing logic');
+    }
+    // ─── End Phase 6 integration ───
 
     const cwd = input.cwd || process.cwd();
 

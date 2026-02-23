@@ -4671,13 +4671,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger8) {
-      if (logger8 === false)
+    function getLogger(logger10) {
+      if (logger10 === false)
         return noLogs;
-      if (logger8 === void 0)
+      if (logger10 === void 0)
         return console;
-      if (logger8.log && logger8.warn && logger8.error)
-        return logger8;
+      if (logger10.log && logger10.warn && logger10.error)
+        return logger10;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -21580,6 +21580,15 @@ var DEFAULT_CONFIG = {
     workflows_enabled: false,
     agents_enabled: false,
     full_integration: false
+  },
+  agents: {
+    max_concurrent: 6,
+    session_budget: 0,
+    // 0 = unlimited
+    budget_thresholds: [50, 80, 95],
+    default_budget: 2e5,
+    // tokens
+    max_review_iterations: 3
   }
 };
 function deepMerge(base, override) {
@@ -23626,7 +23635,7 @@ var WorkflowEngine = class {
     if (!this.eventBus) return;
     try {
       this.eventBus.emit({
-        id: `evt_${Date.now()}`,
+        id: generateEventId(),
         timestamp: timestamp(),
         type,
         source: { kind: "workflow", workflow_id: instance.id },
@@ -24557,8 +24566,826 @@ function getBuiltinTriggers() {
 }
 __name(getBuiltinTriggers, "getBuiltinTriggers");
 
+// src/agents/agent-coordinator.ts
+var logger5 = createLogger("agent-coordinator");
+var DEFAULT_COST_PER_TOKEN = 3e-6;
+var VALID_TRANSITIONS = {
+  pending: /* @__PURE__ */ new Set(["running", "cancelled"]),
+  running: /* @__PURE__ */ new Set(["completed", "failed", "cancelled"]),
+  completed: /* @__PURE__ */ new Set(),
+  failed: /* @__PURE__ */ new Set(),
+  cancelled: /* @__PURE__ */ new Set()
+};
+var AgentCoordinator = class {
+  static {
+    __name(this, "AgentCoordinator");
+  }
+  eventBus;
+  budgetTracker;
+  config;
+  agents = /* @__PURE__ */ new Map();
+  wrfcChains = /* @__PURE__ */ new Map();
+  constructor(eventBus, budgetTracker, config2) {
+    this.eventBus = eventBus;
+    this.budgetTracker = budgetTracker;
+    this.config = config2;
+    logger5.debug("AgentCoordinator initialised", {
+      max_concurrent: config2.max_concurrent,
+      session_budget: config2.session_budget
+    });
+  }
+  // ─── Spawn ──────────────────────────────────────────────────────────────────
+  /**
+   * Register a new coordinated agent entry.
+   *
+   * Validates budget availability and concurrent agent limits before
+   * creating the registry entry. Emits `agent:spawned` on the EventBus.
+   *
+   * @param options - Spawn configuration.
+   * @returns The generated agent ID.
+   * @throws If budget is insufficient or concurrency limit is reached.
+   */
+  spawn(options) {
+    const budgetNeeded = options.budget ?? this.config.default_budget;
+    if (!this.budgetTracker.hasBudget(budgetNeeded)) {
+      throw new Error(
+        `Session budget exhausted \u2014 cannot spawn agent (type=${options.type}, needed=${budgetNeeded})`
+      );
+    }
+    const activeCount = this.listActive().length;
+    if (activeCount >= this.config.max_concurrent) {
+      throw new Error(
+        `Concurrency limit reached (max=${this.config.max_concurrent}, active=${activeCount})`
+      );
+    }
+    const id = `agent_${generateId()}`;
+    const agent = {
+      id,
+      type: options.type,
+      task: options.task,
+      status: "pending",
+      budget: {
+        allocated: budgetNeeded,
+        spent: 0,
+        remaining: budgetNeeded,
+        exhausted: false,
+        usage_percent: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_tokens: 0,
+        cost_usd: 0
+      },
+      workflow_id: options.workflow_id,
+      wrfc_phase: options.wrfc_phase,
+      depends_on: options.depends_on ?? [],
+      depended_by: [],
+      files_modified: [],
+      tools_called: 0
+    };
+    for (const depId of agent.depends_on) {
+      const dep = this.agents.get(depId);
+      if (dep) {
+        dep.depended_by.push(id);
+      }
+    }
+    this.agents.set(id, agent);
+    this.budgetTracker.registerAgent(id, options.type, options.workflow_id);
+    if (options.workflow_id && options.wrfc_phase) {
+      this.addAgentToWRFCChain(id, options.workflow_id, options.wrfc_phase, options.task);
+    }
+    this.emitEvent("agent:spawned", id, {
+      type: options.type,
+      task: options.task,
+      workflow_id: options.workflow_id,
+      wrfc_phase: options.wrfc_phase,
+      depends_on: agent.depends_on
+    });
+    logger5.info("Agent spawned", { id, type: options.type, workflow_id: options.workflow_id });
+    return id;
+  }
+  // ─── Status updates ─────────────────────────────────────────────────────────
+  /**
+   * Update an agent's status, validate the transition, and emit the
+   * appropriate lifecycle event.
+   *
+   * @param agentId - Target agent.
+   * @param status  - New status.
+   * @param details - Optional result, error, and telemetry details.
+   */
+  updateStatus(agentId, status, details) {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      logger5.warn("updateStatus called for unknown agent", { agentId });
+      return;
+    }
+    const allowed = VALID_TRANSITIONS[agent.status];
+    if (!allowed.has(status)) {
+      logger5.warn("Invalid status transition ignored", {
+        agentId,
+        from: agent.status,
+        to: status
+      });
+      return;
+    }
+    const prev = agent.status;
+    agent.status = status;
+    if (details?.files_modified) agent.files_modified = details.files_modified;
+    if (details?.tools_called !== void 0) agent.tools_called = details.tools_called;
+    if (status === "running" && !agent.started_at) {
+      agent.started_at = timestamp();
+    }
+    if (status === "completed" || status === "failed" || status === "cancelled") {
+      agent.completed_at = timestamp();
+      if (agent.started_at) {
+        agent.duration_ms = Date.now() - new Date(agent.started_at).getTime();
+      }
+    }
+    this.budgetTracker.updateAgentStatus(agentId, status);
+    const eventType = statusToEventType(status);
+    this.emitEvent(eventType, agentId, {
+      previous_status: prev,
+      result: details?.result,
+      error: details?.error,
+      files_modified: agent.files_modified,
+      tools_called: agent.tools_called,
+      duration_ms: agent.duration_ms
+    });
+    if (status === "completed") {
+      this.resolveDependencies(agentId);
+      this.updateWRFCPhaseOnCompletion(agentId);
+    }
+    logger5.info("Agent status updated", { agentId, from: prev, to: status });
+  }
+  // ─── Budget ──────────────────────────────────────────────────────────────────
+  /**
+   * Update the budget snapshot for an agent.
+   *
+   * @param agentId - Target agent.
+   * @param budget  - Updated budget snapshot.
+   */
+  updateBudget(agentId, budget) {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      logger5.warn("updateBudget called for unknown agent", { agentId });
+      return;
+    }
+    agent.budget = budget;
+    this.budgetTracker.updateAgentBudget(agentId, budget);
+  }
+  // ─── Cancel ──────────────────────────────────────────────────────────────────
+  /**
+   * Cancel an agent.
+   *
+   * @param agentId - Agent to cancel.
+   * @param reason  - Human-readable reason for cancellation.
+   */
+  cancel(agentId, reason) {
+    this.updateStatus(agentId, "cancelled", { error: reason });
+  }
+  // ─── Queries ─────────────────────────────────────────────────────────────────
+  /**
+   * Retrieve a single agent by ID.
+   *
+   * @param id - Agent ID.
+   * @returns The agent or undefined.
+   */
+  getAgent(id) {
+    return this.agents.get(id);
+  }
+  /**
+   * List all agents that are currently pending or running.
+   *
+   * @returns Array of active agents.
+   */
+  listActive() {
+    return Array.from(this.agents.values()).filter(
+      (a) => a.status === "pending" || a.status === "running"
+    );
+  }
+  /**
+   * List all agents registered with a given workflow ID.
+   *
+   * @param workflowId - Workflow to filter by.
+   * @returns Array of matching agents.
+   */
+  listByWorkflow(workflowId) {
+    return Array.from(this.agents.values()).filter(
+      (a) => a.workflow_id === workflowId
+    );
+  }
+  /**
+   * Build an execution plan for a workflow by analysing its agents
+   * and their dependency relationships.
+   *
+   * @param workflowId - Workflow to plan.
+   * @returns ExecutionPlan with critical path and cost estimates.
+   */
+  getExecutionPlan(workflowId) {
+    const workflowAgents = this.listByWorkflow(workflowId);
+    const phaseMap = /* @__PURE__ */ new Map();
+    for (const agent of workflowAgents) {
+      const phase = agent.wrfc_phase ?? "unknown";
+      if (!phaseMap.has(phase)) phaseMap.set(phase, []);
+      phaseMap.get(phase).push(agent);
+    }
+    const phases = [];
+    let maxParallelism = 1;
+    let totalTokens = 0;
+    for (const [phaseName, phaseAgents] of phaseMap) {
+      const agentsInPhase = phaseAgents.map((a) => ({
+        id: a.id,
+        type: a.type,
+        task: a.task,
+        parallel: a.depends_on.length === 0,
+        depends_on: a.depends_on
+      }));
+      const parallelAgents = agentsInPhase.filter((a) => a.parallel).length;
+      if (parallelAgents > maxParallelism) maxParallelism = parallelAgents;
+      const phaseTokens = phaseAgents.reduce(
+        (sum, a) => sum + a.budget.allocated,
+        0
+      );
+      totalTokens += phaseTokens;
+      phases.push({
+        name: phaseName,
+        agents: agentsInPhase,
+        estimated_tokens: phaseTokens
+      });
+    }
+    const criticalPath = this.computeCriticalPath(workflowAgents);
+    const estimatedCostUsd = totalTokens * DEFAULT_COST_PER_TOKEN;
+    return {
+      workflow_id: workflowId,
+      phases,
+      critical_path: criticalPath,
+      estimated_tokens: totalTokens,
+      estimated_cost_usd: estimatedCostUsd,
+      max_parallelism: maxParallelism
+    };
+  }
+  /**
+   * Get budget summary from the BudgetTracker.
+   *
+   * @returns BudgetSummary snapshot.
+   */
+  getBudgetSummary() {
+    return this.budgetTracker.getBudgetSummary();
+  }
+  /**
+   * Update the runtime configuration for this coordinator and its BudgetTracker.
+   *
+   * @param config - New agents configuration.
+   */
+  updateConfig(config2) {
+    this.config = config2;
+    this.budgetTracker.updateConfig(config2);
+    logger5.debug("AgentCoordinator config updated", {
+      max_concurrent: config2.max_concurrent,
+      session_budget: config2.session_budget
+    });
+  }
+  /**
+   * Get aggregate coordinator statistics.
+   *
+   * @returns CoordinatorStats snapshot.
+   */
+  getStats() {
+    let pending = 0, running = 0, completed = 0, failed = 0, cancelled = 0;
+    let totalTokensSpent = 0;
+    let totalCostUsd = 0;
+    const workflowIds = /* @__PURE__ */ new Set();
+    for (const agent of this.agents.values()) {
+      switch (agent.status) {
+        case "pending":
+          pending++;
+          break;
+        case "running":
+          running++;
+          break;
+        case "completed":
+          completed++;
+          break;
+        case "failed":
+          failed++;
+          break;
+        case "cancelled":
+          cancelled++;
+          break;
+      }
+      totalTokensSpent += agent.budget.spent;
+      totalCostUsd += agent.budget.cost_usd;
+      if (agent.workflow_id) workflowIds.add(agent.workflow_id);
+    }
+    return {
+      total_agents: this.agents.size,
+      pending,
+      running,
+      completed,
+      failed,
+      cancelled,
+      active_workflows: workflowIds.size,
+      total_tokens_spent: totalTokensSpent,
+      total_cost_usd: totalCostUsd
+    };
+  }
+  /**
+   * Retrieve the WRFC chain for a workflow, or undefined.
+   *
+   * @param workflowId - Workflow ID.
+   * @returns WRFCChain or undefined.
+   */
+  getWRFCChain(workflowId) {
+    return this.wrfcChains.get(workflowId);
+  }
+  /**
+   * Advance the active phase of a WRFC chain.
+   *
+   * Marks the current phase as completed and activates the next phase
+   * with the given name. Emits `wrfc:phase_changed` on the EventBus.
+   *
+   * @param workflowId - Workflow whose chain to advance.
+   * @param phase      - Name of the phase to transition to.
+   */
+  advanceWRFCPhase(workflowId, phase) {
+    const chain = this.wrfcChains.get(workflowId);
+    if (!chain) {
+      logger5.warn("advanceWRFCPhase: no chain found", { workflowId });
+      return;
+    }
+    if (chain.current_phase < chain.phases.length) {
+      const current = chain.phases[chain.current_phase];
+      if (current) {
+        current.status = "completed";
+        current.completed_at = timestamp();
+      }
+    }
+    let targetIdx = chain.phases.findIndex((p) => p.name === phase);
+    if (targetIdx === -1) {
+      chain.phases.push({
+        name: phase,
+        agent_ids: [],
+        status: "active",
+        started_at: timestamp()
+      });
+      targetIdx = chain.phases.length - 1;
+    } else {
+      chain.phases[targetIdx].status = "active";
+      chain.phases[targetIdx].started_at = timestamp();
+    }
+    const prevPhase = chain.phases[chain.current_phase]?.name;
+    chain.current_phase = targetIdx;
+    if (phase === "review") {
+      chain.review_iterations++;
+    }
+    this.emitEvent("wrfc:phase_changed", workflowId, {
+      from_phase: prevPhase,
+      to_phase: phase,
+      review_iterations: chain.review_iterations
+    });
+    logger5.info("WRFC phase advanced", { workflowId, from: prevPhase, to: phase });
+  }
+  /**
+   * Remove agents that completed or failed before a given age threshold.
+   *
+   * @param olderThanMs - Maximum age in ms of retained agents.
+   * @returns Number of agents pruned.
+   */
+  prune(olderThanMs) {
+    const cutoff = Date.now() - olderThanMs;
+    let count = 0;
+    for (const [id, agent] of this.agents) {
+      if ((agent.status === "completed" || agent.status === "failed" || agent.status === "cancelled") && agent.completed_at && new Date(agent.completed_at).getTime() < cutoff) {
+        this.agents.delete(id);
+        this.budgetTracker.removeAgent(id);
+        for (const remaining of this.agents.values()) {
+          remaining.depends_on = remaining.depends_on.filter((d) => d !== id);
+          remaining.depended_by = remaining.depended_by.filter((d) => d !== id);
+        }
+        count++;
+      }
+    }
+    if (count > 0) {
+      logger5.debug("Pruned old agent records", { count, olderThanMs });
+    }
+    return count;
+  }
+  // ─── Private helpers ────────────────────────────────────────────────────────
+  /**
+   * Emit a RuntimeEvent on the EventBus with source kind 'system'.
+   *
+   * @param type    - Event type string.
+   * @param subject - Agent ID or workflow ID, used as correlation subject.
+   * @param data    - Additional payload data.
+   */
+  emitEvent(type, subject, data) {
+    try {
+      this.eventBus.emit({
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type,
+        source: { kind: "system" },
+        payload: {
+          type,
+          data: { subject, ...data }
+        },
+        metadata: { correlation_id: subject }
+      });
+    } catch (err) {
+      logger5.error("Failed to emit agent event", {
+        type,
+        subject,
+        error: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }
+  /**
+   * Check if any pending agents become runnable after agentId completes.
+   * An agent is runnable when all its dependencies are completed.
+   *
+   * @param completedAgentId - The agent that just completed.
+   */
+  resolveDependencies(completedAgentId) {
+    const completed = this.agents.get(completedAgentId);
+    if (!completed) return;
+    for (const waitingId of completed.depended_by) {
+      const waiting = this.agents.get(waitingId);
+      if (!waiting || waiting.status !== "pending") continue;
+      const allDepsComplete = waiting.depends_on.every((depId) => {
+        const dep = this.agents.get(depId);
+        return dep?.status === "completed";
+      });
+      if (allDepsComplete) {
+        this.emitEvent("agent:dependency_resolved", waitingId, {
+          resolved_by: completedAgentId,
+          agent_id: waitingId
+        });
+        logger5.debug("Agent dependencies resolved \u2014 ready to run", {
+          agentId: waitingId,
+          resolvedBy: completedAgentId
+        });
+      }
+    }
+  }
+  /**
+   * Register an agent with its WRFC chain, creating the chain if needed.
+   *
+   * @param agentId    - Agent to register.
+   * @param workflowId - Parent workflow.
+   * @param phase      - WRFC phase the agent is in.
+   * @param task       - Task description (used for chain initialisation).
+   */
+  addAgentToWRFCChain(agentId, workflowId, phase, task) {
+    let chain = this.wrfcChains.get(workflowId);
+    if (!chain) {
+      chain = {
+        id: `wrfc_${generateId()}`,
+        workflow_id: workflowId,
+        task,
+        phases: [],
+        current_phase: 0,
+        review_iterations: 0,
+        max_review_iterations: this.config.max_review_iterations
+      };
+      this.wrfcChains.set(workflowId, chain);
+    }
+    let phaseEntry = chain.phases.find((p) => p.name === phase);
+    if (!phaseEntry) {
+      phaseEntry = {
+        name: phase,
+        agent_ids: [],
+        status: "pending"
+      };
+      chain.phases.push(phaseEntry);
+    }
+    phaseEntry.agent_ids.push(agentId);
+  }
+  /**
+   * When an agent completes, check if all agents in its WRFC phase
+   * are done and mark the phase complete.
+   *
+   * @param completedAgentId - The agent that just completed.
+   */
+  updateWRFCPhaseOnCompletion(completedAgentId) {
+    const agent = this.agents.get(completedAgentId);
+    if (!agent?.workflow_id || !agent.wrfc_phase) return;
+    const chain = this.wrfcChains.get(agent.workflow_id);
+    if (!chain) return;
+    const phase = chain.phases.find((p) => p.name === agent.wrfc_phase);
+    if (!phase || phase.status === "completed") return;
+    const allDone = phase.agent_ids.every((aid) => {
+      const a = this.agents.get(aid);
+      return a?.status === "completed" || a?.status === "failed" || a?.status === "cancelled";
+    });
+    if (allDone) {
+      phase.status = "completed";
+      phase.completed_at = timestamp();
+      logger5.debug("WRFC phase auto-completed", {
+        workflowId: agent.workflow_id,
+        phase: agent.wrfc_phase
+      });
+    }
+  }
+  /**
+   * Compute the critical path through an agent dependency graph.
+   * Returns agent IDs on the longest dependency chain.
+   *
+   * @param agentList - Agents to analyse.
+   * @returns Ordered list of agent IDs on the critical path.
+   */
+  computeCriticalPath(agentList) {
+    if (agentList.length === 0) return [];
+    const agentMap = new Map(agentList.map((a) => [a.id, a]));
+    const depths = /* @__PURE__ */ new Map();
+    const getDepth = /* @__PURE__ */ __name((id, visited = /* @__PURE__ */ new Set()) => {
+      if (depths.has(id)) return depths.get(id);
+      if (visited.has(id)) return 0;
+      visited.add(id);
+      const agent = agentMap.get(id);
+      if (!agent || agent.depends_on.length === 0) {
+        depths.set(id, 0);
+        return 0;
+      }
+      const maxDepDepth = Math.max(...agent.depends_on.map((d) => getDepth(d, new Set(visited))));
+      const depth = maxDepDepth + 1;
+      depths.set(id, depth);
+      return depth;
+    }, "getDepth");
+    for (const agent of agentList) {
+      getDepth(agent.id);
+    }
+    let maxDepth = -1;
+    let endNode = "";
+    for (const [id, depth] of depths) {
+      if (depth > maxDepth) {
+        maxDepth = depth;
+        endNode = id;
+      }
+    }
+    if (!endNode) return [];
+    const path = [];
+    let current = endNode;
+    while (current) {
+      path.unshift(current);
+      const agent = agentMap.get(current);
+      if (!agent || agent.depends_on.length === 0) break;
+      current = agent.depends_on.reduce((best, depId) => {
+        const bd = depths.get(best) ?? -1;
+        const dd = depths.get(depId) ?? -1;
+        return dd > bd ? depId : best;
+      }, agent.depends_on[0]);
+    }
+    return path;
+  }
+};
+function statusToEventType(status) {
+  switch (status) {
+    case "running":
+      return "agent:started";
+    case "completed":
+      return "agent:completed";
+    case "failed":
+      return "agent:failed";
+    case "cancelled":
+      return "agent:cancelled";
+    default:
+      return "agent:spawned";
+  }
+}
+__name(statusToEventType, "statusToEventType");
+
+// src/agents/budget-tracker.ts
+var logger6 = createLogger("budget-tracker");
+var BudgetTracker = class {
+  static {
+    __name(this, "BudgetTracker");
+  }
+  eventBus;
+  config;
+  records = /* @__PURE__ */ new Map();
+  constructor(eventBus, config2) {
+    this.eventBus = eventBus;
+    this.config = config2;
+    logger6.debug("BudgetTracker initialised", {
+      session_budget: config2.session_budget,
+      thresholds: config2.budget_thresholds
+    });
+  }
+  // ─── Public API ─────────────────────────────────────────────────────────────
+  /**
+   * Register a new agent for budget tracking.
+   *
+   * @param agentId - Unique agent identifier.
+   * @param agentType - Agent type string (e.g. "engineer").
+   * @param workflowId - Optional workflow the agent belongs to.
+   */
+  registerAgent(agentId, agentType, workflowId) {
+    if (this.records.has(agentId)) return;
+    this.records.set(agentId, {
+      agentId,
+      workflowId,
+      agentType,
+      status: "pending",
+      budget: {
+        allocated: this.config.default_budget,
+        spent: 0,
+        remaining: this.config.default_budget,
+        exhausted: false,
+        usage_percent: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_tokens: 0,
+        cost_usd: 0
+      },
+      firedThresholds: /* @__PURE__ */ new Set()
+    });
+    logger6.debug("Agent registered for budget tracking", { agentId, agentType, workflowId });
+  }
+  /**
+   * Update the budget snapshot for an agent and fire threshold alerts as needed.
+   *
+   * @param agentId - Agent whose budget changed.
+   * @param budget  - New budget snapshot.
+   */
+  updateAgentBudget(agentId, budget) {
+    const record2 = this.records.get(agentId);
+    if (!record2) {
+      logger6.warn("updateAgentBudget called for unregistered agent", { agentId });
+      return;
+    }
+    record2.budget = budget;
+    for (const threshold of this.config.budget_thresholds) {
+      if (!record2.firedThresholds.has(threshold) && budget.usage_percent >= threshold) {
+        this.emitBudgetWarning(record2, threshold);
+        record2.firedThresholds.add(threshold);
+      }
+    }
+  }
+  /**
+   * Remove an agent's budget record (called after completion / pruning).
+   *
+   * @param agentId - Agent to remove.
+   */
+  removeAgent(agentId) {
+    this.records.delete(agentId);
+  }
+  /**
+   * Update the status of a tracked agent. Used to populate per-workflow
+   * agents_completed and agents_active counts in budget summaries.
+   *
+   * @param agentId - Agent whose status changed.
+   * @param status  - New agent status.
+   */
+  updateAgentStatus(agentId, status) {
+    const record2 = this.records.get(agentId);
+    if (record2) record2.status = status;
+  }
+  /**
+   * Check whether sufficient session budget remains to spawn a new agent.
+   *
+   * A session_budget of 0 means unlimited — always returns true.
+   *
+   * @param requiredAmount - Additional tokens the new agent is expected to use.
+   *   Defaults to the configured default_budget.
+   * @returns True if the session budget allows spawning.
+   */
+  hasBudget(requiredAmount) {
+    if (this.config.session_budget === 0) return true;
+    const needed = requiredAmount ?? this.config.default_budget;
+    const spent = this.getTotalSpent();
+    return spent + needed <= this.config.session_budget;
+  }
+  /**
+   * Build a full budget summary across the session, by workflow, and by agent type.
+   *
+   * @returns BudgetSummary snapshot.
+   */
+  getBudgetSummary() {
+    let totalInput = 0;
+    let totalOutput = 0;
+    let totalCache = 0;
+    let totalCost = 0;
+    const byWorkflow = {};
+    const byAgentType = {};
+    for (const record2 of this.records.values()) {
+      const b = record2.budget;
+      totalInput += b.input_tokens;
+      totalOutput += b.output_tokens;
+      totalCache += b.cache_tokens;
+      totalCost += b.cost_usd;
+      if (record2.workflowId) {
+        if (!byWorkflow[record2.workflowId]) {
+          byWorkflow[record2.workflowId] = {
+            tokens: { input: 0, output: 0, cache: 0 },
+            cost_usd: 0,
+            agents_completed: 0,
+            agents_active: 0
+          };
+        }
+        const wf = byWorkflow[record2.workflowId];
+        wf.tokens.input += b.input_tokens;
+        wf.tokens.output += b.output_tokens;
+        wf.tokens.cache += b.cache_tokens;
+        wf.cost_usd += b.cost_usd;
+        if (record2.status === "completed") wf.agents_completed += 1;
+        if (record2.status === "running") wf.agents_active += 1;
+      }
+      if (!byAgentType[record2.agentType]) {
+        byAgentType[record2.agentType] = {
+          count: 0,
+          total_tokens: 0,
+          total_cost_usd: 0,
+          avg_tokens_per_agent: 0
+        };
+      }
+      const at = byAgentType[record2.agentType];
+      at.count += 1;
+      at.total_tokens += b.input_tokens + b.output_tokens;
+      at.total_cost_usd += b.cost_usd;
+      at.avg_tokens_per_agent = at.count > 0 ? at.total_tokens / at.count : 0;
+    }
+    const remaining = this.config.session_budget > 0 ? Math.max(0, this.config.session_budget - this.getTotalSpent()) : void 0;
+    return {
+      session: {
+        total_tokens: { input: totalInput, output: totalOutput, cache: totalCache },
+        total_cost_usd: totalCost,
+        budget_remaining_tokens: remaining
+      },
+      by_workflow: byWorkflow,
+      by_agent_type: byAgentType
+    };
+  }
+  /**
+   * Return the budget record for a specific agent, or undefined.
+   *
+   * @param agentId - Agent to look up.
+   */
+  getAgentBudget(agentId) {
+    return this.records.get(agentId)?.budget;
+  }
+  /**
+   * Update the config used by this tracker (e.g. after a live config reload).
+   *
+   * @param config - New agents configuration.
+   */
+  updateConfig(config2) {
+    this.config = config2;
+    logger6.debug("BudgetTracker config updated", {
+      session_budget: config2.session_budget
+    });
+  }
+  // ─── Private helpers ────────────────────────────────────────────────────────
+  /** Sum all spent tokens across all tracked agents. */
+  getTotalSpent() {
+    let total = 0;
+    for (const record2 of this.records.values()) {
+      total += record2.budget.spent;
+    }
+    return total;
+  }
+  /**
+   * Emit an `agent:budget_warning` event onto the EventBus.
+   *
+   * @param record    - The agent record that crossed the threshold.
+   * @param threshold - The threshold percentage that was crossed.
+   */
+  emitBudgetWarning(record2, threshold) {
+    try {
+      this.eventBus.emit({
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: "agent:budget_warning",
+        source: { kind: "system" },
+        payload: {
+          type: "agent:budget_warning",
+          data: {
+            agent_id: record2.agentId,
+            agent_type: record2.agentType,
+            workflow_id: record2.workflowId,
+            threshold_percent: threshold,
+            usage_percent: record2.budget.usage_percent,
+            spent: record2.budget.spent,
+            allocated: record2.budget.allocated,
+            cost_usd: record2.budget.cost_usd
+          }
+        }
+      });
+      logger6.warn("Budget threshold crossed", {
+        agentId: record2.agentId,
+        threshold,
+        usage_percent: record2.budget.usage_percent
+      });
+    } catch (err) {
+      logger6.error("Failed to emit budget warning event", {
+        error: err instanceof Error ? err.message : String(err),
+        agentId: record2.agentId,
+        threshold
+      });
+    }
+  }
+};
+
 // src/lifecycle/process-manager.ts
-var logger5 = createLogger("process-manager");
+var logger7 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
@@ -24595,6 +25422,10 @@ var ProcessManager = class {
   workflowEngine = null;
   /** Event trigger registry. */
   triggerRegistry = null;
+  /** Agent coordinator for workflow-aware agent management. */
+  agentCoordinator = null;
+  /** Budget tracker for agent spending. */
+  budgetTracker = null;
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -24619,19 +25450,19 @@ var ProcessManager = class {
    * @throws If any critical startup step fails.
    */
   async startup() {
-    logger5.info("Starting up");
+    logger7.info("Starting up");
     try {
       const diskConfig = loadConfig(this.projectRoot);
       this.config = diskConfig;
-      logger5.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger7.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger5.warn("Could not load config from disk \u2014 using defaults", {
+      logger7.warn("Could not load config from disk \u2014 using defaults", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
     this.stateStore = new JsonStateStore(this.config, this.projectRoot);
     await this.stateStore.initialize();
-    logger5.debug("State store initialised");
+    logger7.debug("State store initialised");
     this.eventBus = new EventBus();
     const stateDir = (0, import_path5.join)(this.projectRoot, this.config.persistence.state_dir);
     this.eventLog = new EventLog(stateDir, this.config.persistence);
@@ -24639,7 +25470,7 @@ var ProcessManager = class {
     this.eventBus.setEventLog(this.eventLog);
     this.eventQueue = new EventQueue(this.config.queue);
     this.eventQueue.start();
-    logger5.debug("Event system initialised");
+    logger7.debug("Event system initialised");
     await this.checkCrashRecovery();
     this.writePidFile();
     this.startCheckpointTimer();
@@ -24651,7 +25482,7 @@ var ProcessManager = class {
       this.workflowEngine.registerGuard("checkReviewScore", (context) => {
         return typeof context.review_score === "number" && context.review_score >= 10;
       });
-      logger5.debug("Workflow engine initialised");
+      logger7.debug("Workflow engine initialised");
     }
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
     this.triggerRegistry.setEventBus(this.eventBus);
@@ -24664,15 +25495,24 @@ var ProcessManager = class {
           await this.triggerRegistry.evaluate(event);
         }
       } catch (err) {
-        logger5.warn("Trigger evaluation error", { error: err instanceof Error ? err.message : String(err) });
+        logger7.warn("Trigger evaluation error", { error: err instanceof Error ? err.message : String(err) });
       }
     });
-    logger5.debug("Trigger registry initialised");
+    logger7.debug("Trigger registry initialised");
+    if (this.config.features.agents_enabled) {
+      this.budgetTracker = new BudgetTracker(this.eventBus, this.config.agents);
+      this.agentCoordinator = new AgentCoordinator(
+        this.eventBus,
+        this.budgetTracker,
+        this.config.agents
+      );
+      logger7.debug("Agent coordinator initialised");
+    }
     let ipcSocketPath = null;
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
     } else {
-      logger5.debug("IPC server disabled by feature flag");
+      logger7.debug("IPC server disabled by feature flag");
     }
     this.eventBus.emit({
       id: generateEventId(),
@@ -24690,7 +25530,7 @@ var ProcessManager = class {
       }
     });
     this.running = true;
-    logger5.info("Startup complete", {
+    logger7.info("Startup complete", {
       pid: process.pid,
       uptime_ms: this.getUptime()
     });
@@ -24705,7 +25545,7 @@ var ProcessManager = class {
    *   before forcing process exit.
    */
   async shutdown(timeout_ms = 1e4) {
-    logger5.info("Shutting down", { timeout_ms });
+    logger7.info("Shutting down", { timeout_ms });
     const watchdog = setTimeout(() => {
       process.stderr.write(
         `[runtime-engine] Shutdown timed out after ${timeout_ms} ms \u2014 forcing exit
@@ -24720,13 +25560,13 @@ var ProcessManager = class {
           try {
             this.workflowEngine.cancel(instance.id, "engine shutdown");
           } catch (err) {
-            logger5.warn("Failed to cancel workflow during shutdown", {
+            logger7.warn("Failed to cancel workflow during shutdown", {
               id: instance.id,
               err: err instanceof Error ? err.message : String(err)
             });
           }
         }
-        logger5.debug("Active workflows cancelled");
+        logger7.debug("Active workflows cancelled");
       }
       this.stopCheckpointTimer();
       if (this.eventBus) {
@@ -24739,7 +25579,7 @@ var ProcessManager = class {
             payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
           });
         } catch (err) {
-          logger5.warn("Failed to emit shutdown event", {
+          logger7.warn("Failed to emit shutdown event", {
             err: err instanceof Error ? err.message : String(err)
           });
         }
@@ -24749,9 +25589,9 @@ var ProcessManager = class {
           await this.ipcServer.close();
           this.removeSocketPointerFile();
           this.ipcServer = null;
-          logger5.debug("IPC server closed");
+          logger7.debug("IPC server closed");
         } catch (err) {
-          logger5.warn("IPC server close failed", {
+          logger7.warn("IPC server close failed", {
             err: err instanceof Error ? err.message : String(err)
           });
         }
@@ -24760,9 +25600,9 @@ var ProcessManager = class {
         try {
           await this.eventQueue.drain(5e3);
           this.eventQueue.stop();
-          logger5.debug("Event queue drained and stopped");
+          logger7.debug("Event queue drained and stopped");
         } catch (err) {
-          logger5.warn("Event queue drain failed", {
+          logger7.warn("Event queue drain failed", {
             err: err instanceof Error ? err.message : String(err)
           });
         }
@@ -24772,15 +25612,15 @@ var ProcessManager = class {
       }
       try {
         await this.saveCheckpoint();
-        logger5.debug("Final checkpoint saved");
+        logger7.debug("Final checkpoint saved");
       } catch (err) {
-        logger5.warn("Final checkpoint failed", {
+        logger7.warn("Final checkpoint failed", {
           err: err instanceof Error ? err.message : String(err)
         });
       }
       this.removePidFile();
       this.running = false;
-      logger5.info("Shutdown complete");
+      logger7.info("Shutdown complete");
     } finally {
       clearTimeout(watchdog);
     }
@@ -24833,6 +25673,9 @@ var ProcessManager = class {
   updateConfig(config2) {
     this.config = config2;
     this.healthChecker.updateConfig(config2);
+    if (this.agentCoordinator) {
+      this.agentCoordinator.updateConfig(config2.agents);
+    }
   }
   /**
    * Return the project root path used by this manager.
@@ -24905,6 +25748,12 @@ var ProcessManager = class {
   getTriggerRegistry() {
     return this.triggerRegistry;
   }
+  /**
+   * Return the agent coordinator, or null if agents are disabled.
+   */
+  getAgentCoordinator() {
+    return this.agentCoordinator;
+  }
   // ─── Private helpers ────────────────────────────────────────────────────────
   /**
    * Check whether a stale PID file exists from a previous crash and, if so,
@@ -24917,13 +25766,13 @@ var ProcessManager = class {
       const stalePid = (0, import_fs5.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
-        logger5.warn("Stale PID file detected \u2014 possible crash recovery", {
+        logger7.warn("Stale PID file detected \u2014 possible crash recovery", {
           stale_pid: stalePid
         });
         this.removePidFile();
       }
     } catch (err) {
-      logger5.warn("Could not read stale PID file", {
+      logger7.warn("Could not read stale PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -24936,9 +25785,9 @@ var ProcessManager = class {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
       (0, import_fs5.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
-      logger5.debug("PID file written", { path: pidFilePath, pid: process.pid });
+      logger7.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
-      logger5.warn("Could not write PID file", {
+      logger7.warn("Could not write PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -24952,10 +25801,10 @@ var ProcessManager = class {
     try {
       if ((0, import_fs5.existsSync)(pidFilePath)) {
         (0, import_fs5.unlinkSync)(pidFilePath);
-        logger5.debug("PID file removed", { path: pidFilePath });
+        logger7.debug("PID file removed", { path: pidFilePath });
       }
     } catch (err) {
-      logger5.warn("Could not remove PID file", {
+      logger7.warn("Could not remove PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -24967,13 +25816,13 @@ var ProcessManager = class {
   startCheckpointTimer() {
     this.checkpointTimer = setInterval(() => {
       this.saveCheckpoint().catch((err) => {
-        logger5.warn("Periodic checkpoint failed", {
+        logger7.warn("Periodic checkpoint failed", {
           err: err instanceof Error ? err.message : String(err)
         });
       });
     }, CHECKPOINT_INTERVAL_MS);
     this.checkpointTimer.unref();
-    logger5.debug("Checkpoint timer started", { interval_ms: CHECKPOINT_INTERVAL_MS });
+    logger7.debug("Checkpoint timer started", { interval_ms: CHECKPOINT_INTERVAL_MS });
   }
   /**
    * Stop the periodic checkpoint timer, preventing any further automatic saves.
@@ -24982,7 +25831,7 @@ var ProcessManager = class {
     if (this.checkpointTimer) {
       clearInterval(this.checkpointTimer);
       this.checkpointTimer = void 0;
-      logger5.debug("Checkpoint timer stopped");
+      logger7.debug("Checkpoint timer stopped");
     }
   }
   /**
@@ -24999,7 +25848,7 @@ var ProcessManager = class {
     try {
       this.ipcServer = new IPCServer(socketPath);
       this.ipcServer.onMessage(async (msg) => {
-        logger5.debug("IPC message received", { id: msg.id, type: msg.type });
+        logger7.debug("IPC message received", { id: msg.id, type: msg.type });
         if (msg.type === "hook_event") {
           this.eventBus.emit({
             id: msg.id,
@@ -25051,10 +25900,10 @@ var ProcessManager = class {
       (0, import_fs5.mkdirSync)(stateDir, { recursive: true });
       const pointerFile = (0, import_path5.join)(stateDir, "runtime.socket");
       (0, import_fs5.writeFileSync)(pointerFile, socketPath, "utf-8");
-      logger5.info("IPC server started", { socket: socketPath });
+      logger7.info("IPC server started", { socket: socketPath });
       return socketPath;
     } catch (err) {
-      logger5.error("Failed to start IPC server", {
+      logger7.error("Failed to start IPC server", {
         socket: socketPath,
         err: err instanceof Error ? err.message : String(err)
       });
@@ -25075,10 +25924,10 @@ var ProcessManager = class {
     try {
       if ((0, import_fs5.existsSync)(pointerFile)) {
         (0, import_fs5.unlinkSync)(pointerFile);
-        logger5.debug("Socket pointer file removed", { path: pointerFile });
+        logger7.debug("Socket pointer file removed", { path: pointerFile });
       }
     } catch (err) {
-      logger5.warn("Could not remove socket pointer file", {
+      logger7.warn("Could not remove socket pointer file", {
         path: pointerFile,
         err: err instanceof Error ? err.message : String(err)
       });
@@ -25104,7 +25953,7 @@ var ProcessManager = class {
       try {
         await this.eventLog.compact();
       } catch (err) {
-        logger5.warn("Event log compaction failed during checkpoint", {
+        logger7.warn("Event log compaction failed during checkpoint", {
           err: err instanceof Error ? err.message : String(err)
         });
       }
@@ -25192,7 +26041,7 @@ function setupSignalHandlers(onShutdown) {
 __name(setupSignalHandlers, "setupSignalHandlers");
 
 // src/server/tool-handlers.ts
-var logger6 = createLogger("tool-handlers");
+var logger8 = createLogger("tool-handlers");
 function toSuccess(data, version2, uptime_ms, execution_ms) {
   const result = {
     success: true,
@@ -25230,11 +26079,11 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   try {
     const uptime_ms = ctx.getUptime();
     const statusData = ctx.getHealth();
-    logger6.debug("runtime_status computed", { status: statusData.status });
+    logger8.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, ctx.version, uptime_ms, Date.now() - start);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger6.error("runtime_status failed", { error: message });
+    logger8.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
@@ -25296,7 +26145,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       );
       saveConfig(ctx.projectRoot, updated);
       ctx.updateConfig(updated);
-      logger6.info("Config key set", { key, value });
+      logger8.info("Config key set", { key, value });
       return toSuccess(
         { key, value, persisted: true },
         ctx.version,
@@ -25307,7 +26156,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     if (action === "reset") {
       saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
       ctx.updateConfig(DEFAULT_CONFIG);
-      logger6.info("Config reset to defaults");
+      logger8.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -25323,7 +26172,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger6.error("runtime_config failed", { error: message });
+    logger8.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
@@ -25456,7 +26305,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger6.error("runtime_events failed", { error: message });
+    logger8.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
@@ -25511,7 +26360,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:", "system:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger6.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
+      logger8.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
     }
     const emitted = ctx.getEventBus().emit({
       id: generateEventId(),
@@ -25521,11 +26370,11 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       payload: { type: eventType, data: payload },
       metadata: correlationId ? { correlation_id: correlationId } : void 0
     });
-    logger6.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    logger8.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptime_ms, Date.now() - start);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger6.error("runtime_emit failed", { error: message });
+    logger8.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
@@ -25558,7 +26407,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       const definitionId = workflowType === "wrfc_loop" ? "wrfc_loop" : workflowType === "fix_loop" ? "fix_loop" : workflowType;
       const context = params.context ?? {};
       const instance = engine.create(definitionId, context);
-      logger6.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      logger8.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptime_ms, Date.now() - start);
     }
     if (action === "get") {
@@ -25639,7 +26488,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger6.error("runtime_workflow failed", { error: message });
+    logger8.error("runtime_workflow failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeWorkflow");
@@ -25682,7 +26531,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Missing required field: trigger", ctx.version, uptime_ms, Date.now() - start);
       }
       registry2.register(triggerDef);
-      logger6.info("runtime_triggers: registered", { id: triggerDef.id });
+      logger8.info("runtime_triggers: registered", { id: triggerDef.id });
       return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
     }
     if (action === "update") {
@@ -25695,7 +26544,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       registry2.unregister(triggerDef.id);
       registry2.register(triggerDef);
-      logger6.info("runtime_triggers: updated", { id: triggerDef.id });
+      logger8.info("runtime_triggers: updated", { id: triggerDef.id });
       return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
     }
     if (action === "delete") {
@@ -25707,7 +26556,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
       }
       registry2.unregister(triggerId);
-      logger6.info("runtime_triggers: unregistered", { id: triggerId });
+      logger8.info("runtime_triggers: unregistered", { id: triggerId });
       return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
     }
     if (action === "enable" || action === "disable") {
@@ -25720,7 +26569,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       const enabled = action === "enable";
       registry2.setEnabled(triggerId, enabled);
-      logger6.info(`runtime_triggers: ${action}d`, { id: triggerId });
+      logger8.info(`runtime_triggers: ${action}d`, { id: triggerId });
       return toSuccess({ [action + "d"]: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
     }
     if (action === "test") {
@@ -25754,10 +26603,147 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger6.error("runtime_triggers failed", { error: message });
+    logger8.error("runtime_triggers failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeTriggers");
+var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+  try {
+    if (args === null || args === void 0 || typeof args !== "object") {
+      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args;
+    const action = params.action;
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.",
+        ctx.version,
+        uptime_ms,
+        Date.now() - start
+      );
+    }
+    const coordinator = ctx.getAgentCoordinator() ?? null;
+    if (action === "status") {
+      if (!coordinator) {
+        return toSuccess(
+          { stats: null, message: "Agent coordinator is disabled (set features.agents_enabled = true)" },
+          ctx.version,
+          uptime_ms,
+          Date.now() - start
+        );
+      }
+      const stats = coordinator.getStats();
+      const budget = coordinator.getBudgetSummary();
+      return toSuccess({ stats, budget }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "list") {
+      if (!coordinator) {
+        return toSuccess({ agents: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const filter = params.filter ?? {};
+      const workflowId = params.workflow_id ?? filter.workflow_id;
+      const statusFilter = filter.status;
+      const typeFilter = filter.type;
+      let agents = workflowId ? coordinator.listByWorkflow(workflowId) : coordinator.listActive();
+      if (statusFilter) {
+        agents = agents.filter((a) => a.status === statusFilter);
+      }
+      if (typeFilter) {
+        agents = agents.filter((a) => a.type === typeFilter);
+      }
+      return toSuccess({ agents, count: agents.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "get") {
+      const agentId = params.agent_id;
+      if (!agentId) {
+        return toError("Missing required field: agent_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!coordinator) {
+        return toSuccess({ agent: null }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const agent = coordinator.getAgent(agentId);
+      return toSuccess({ agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "spawn") {
+      if (!coordinator) {
+        return toError(
+          "Agent coordinator is disabled (set features.agents_enabled = true to enable)",
+          ctx.version,
+          uptime_ms,
+          Date.now() - start
+        );
+      }
+      const spawnOpts = params.spawn;
+      if (!spawnOpts) {
+        return toError("Missing required field: spawn", ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!spawnOpts.type || !spawnOpts.task) {
+        return toError("spawn.type and spawn.task are required", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const options = {
+        type: spawnOpts.type,
+        task: spawnOpts.task,
+        budget: spawnOpts.budget,
+        priority: spawnOpts.priority,
+        depends_on: spawnOpts.depends_on,
+        workflow_id: spawnOpts.workflow_id,
+        wrfc_phase: spawnOpts.wrfc_phase
+      };
+      const agentId = coordinator.spawn(options);
+      const agent = coordinator.getAgent(agentId);
+      logger8.info("runtime_agents: spawned", { agentId, type: options.type });
+      return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "cancel") {
+      const agentId = params.agent_id;
+      if (!agentId) {
+        return toError("Missing required field: agent_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!coordinator) {
+        return toError("Agent coordinator is disabled", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const reason = params.reason ?? "cancelled via MCP";
+      coordinator.cancel(agentId, reason);
+      const agent = coordinator.getAgent(agentId);
+      return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "budget") {
+      if (!coordinator) {
+        return toSuccess(
+          { summary: null, message: "Agent coordinator is disabled" },
+          ctx.version,
+          uptime_ms,
+          Date.now() - start
+        );
+      }
+      const summary = coordinator.getBudgetSummary();
+      return toSuccess({ summary }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "plan") {
+      const workflowId = params.workflow_id;
+      if (!workflowId) {
+        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!coordinator) {
+        return toSuccess({ plan: null }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const plan = coordinator.getExecutionPlan(workflowId);
+      return toSuccess({ plan }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    return toError(
+      `Unknown action: '${action}'. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.`,
+      ctx.version,
+      uptime_ms,
+      Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger8.error("runtime_agents failed", { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+}, "handleRuntimeAgents");
 var allSchemas = [
   {
     name: "runtime_status",
@@ -25948,6 +26934,54 @@ var allSchemas = [
       },
       additionalProperties: false
     }
+  },
+  {
+    name: "runtime_agents",
+    description: "Manage coordinated agents: spawn with workflow context, track WRFC chains, monitor budgets, view execution plans. Workflow-aware agent orchestration.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["status", "list", "get", "spawn", "cancel", "budget", "plan"]
+        },
+        agent_id: { type: "string" },
+        workflow_id: { type: "string" },
+        filter: {
+          type: "object",
+          properties: {
+            status: {
+              type: "string",
+              enum: ["pending", "running", "completed", "failed", "cancelled"]
+            },
+            type: { type: "string" },
+            workflow_id: { type: "string" }
+          }
+        },
+        spawn: {
+          type: "object",
+          required: ["type", "task"],
+          properties: {
+            type: { type: "string" },
+            task: { type: "string" },
+            budget: { type: "number" },
+            priority: { type: "number" },
+            depends_on: { type: "array", items: { type: "string" } },
+            workflow_id: { type: "string" },
+            wrfc_phase: {
+              type: "string",
+              enum: ["gather", "plan", "write", "review", "fix"]
+            }
+          }
+        },
+        reason: {
+          type: "string",
+          description: "Cancellation reason"
+        }
+      },
+      additionalProperties: false
+    }
   }
 ];
 var handlerRegistry = /* @__PURE__ */ new Map([
@@ -25956,7 +26990,8 @@ var handlerRegistry = /* @__PURE__ */ new Map([
   ["runtime_events", handleRuntimeEvents],
   ["runtime_emit", handleRuntimeEmit],
   ["runtime_workflow", handleRuntimeWorkflow],
-  ["runtime_triggers", handleRuntimeTriggers]
+  ["runtime_triggers", handleRuntimeTriggers],
+  ["runtime_agents", handleRuntimeAgents]
 ]);
 function getHandler(toolName) {
   return handlerRegistry.get(toolName);
@@ -25969,7 +27004,7 @@ __name(listHandlers, "listHandlers");
 
 // src/server/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger7 = createLogger("mcp-server");
+var logger9 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -25991,12 +27026,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger7.debug("ListTools request");
+      logger9.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger7.debug("CallTool request", { name });
+      logger9.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -26015,14 +27050,15 @@ var RuntimeEngineServer = class {
         getEventLog: /* @__PURE__ */ __name(() => this.processManager.getEventLog(), "getEventLog"),
         getEventQueue: /* @__PURE__ */ __name(() => this.processManager.getEventQueue(), "getEventQueue"),
         getWorkflowEngine: /* @__PURE__ */ __name(() => this.processManager.getWorkflowEngine(), "getWorkflowEngine"),
-        getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager.getTriggerRegistry(), "getTriggerRegistry")
+        getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager.getTriggerRegistry(), "getTriggerRegistry"),
+        getAgentCoordinator: /* @__PURE__ */ __name(() => this.processManager.getAgentCoordinator(), "getAgentCoordinator")
       };
       try {
         return await handler(args, ctx);
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = error2 instanceof Error ? error2.message : String(error2);
-        logger7.error(`Tool ${name} failed`, { error: message });
+        logger9.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -26034,7 +27070,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger7.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger9.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -26053,7 +27089,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger7.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger9.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid
     });
@@ -26067,22 +27103,22 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger7.info("Stopping runtime engine");
+    logger9.info("Stopping runtime engine");
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger7.warn("ProcessManager shutdown error", {
+      logger9.warn("ProcessManager shutdown error", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger7.warn("MCP server close error", {
+      logger9.warn("MCP server close error", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
-    logger7.info("Runtime engine stopped");
+    logger9.info("Runtime engine stopped");
   }
 };
 

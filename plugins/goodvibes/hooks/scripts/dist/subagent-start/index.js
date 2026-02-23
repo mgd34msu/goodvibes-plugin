@@ -18,6 +18,7 @@ import { saveAgentTracking } from '../subagent-stop/telemetry.js';
 import { cleanupStaleAgents, getGitInfo, deriveProjectName, } from '../telemetry/index.js';
 import { getActiveAgentsFilePath } from '../telemetry/index.js';
 import { buildSubagentContext } from './context-injection.js';
+import { RuntimeClient } from '../shared/runtime-client.js';
 /**
  * Creates a hook response with optional system message and additional context.
  *
@@ -184,6 +185,27 @@ async function runSubagentStartHook() {
         const rawInput = await readHookInput();
         debug('Raw input shape:', Object.keys(rawInput || {}));
         const input = rawInput;
+        // ─── Phase 6: Runtime engine integration (early-return when available) ───
+        // Sends agent:spawned event and queries for a system message / dossier.
+        // Falls through to existing context-injection logic when not available.
+        try {
+            const runtimeClient = new RuntimeClient();
+            if (runtimeClient.isAvailable()) {
+                debug('Phase 6: runtime engine available, sending agent:spawned event');
+                await runtimeClient.sendHookEvent('agent:spawned', rawInput);
+                const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
+                if (queryResult?.kind === 'system_message') {
+                    debug('Phase 6: runtime returned system message for subagent, using it');
+                    respond(createResponse({ systemMessage: queryResult.message }));
+                    return;
+                }
+            }
+        }
+        catch {
+            // Runtime integration must never break the hook — fall through
+            debug('Phase 6: runtime integration error, falling through to existing logic');
+        }
+        // ─── End Phase 6 integration ───
         const { agentId, agentType, taskDescription, cwd, sessionId } = extractStartInputFields(input);
         const TASK_PREVIEW_LENGTH = 100;
         debug('SubagentStart received input', {

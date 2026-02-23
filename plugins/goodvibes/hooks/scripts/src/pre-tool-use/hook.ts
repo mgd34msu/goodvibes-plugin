@@ -27,6 +27,7 @@ import {
   blockTool,
   logError,
 } from '../shared/index.js';
+import { RuntimeClient } from '../shared/runtime-client.js';
 
 import { isGitCommand } from './git-guards.js';
 import {
@@ -131,6 +132,35 @@ export async function runPreToolUseHook(): Promise<void> {
   try {
     const rawInput = await readHookInput();
     const input = rawInput as PreToolUseInput;
+
+    // ─── Phase 6: Runtime engine integration ───
+    // Notify the runtime engine of the pending tool call and query for a
+    // block directive. If the engine says to block, block immediately.
+    // Falls through to existing logic when the runtime is NOT available.
+    try {
+      const runtimeClient = new RuntimeClient();
+      if (runtimeClient.isAvailable()) {
+        await runtimeClient.sendHookEvent(
+          'hook:pre_tool_use',
+          input as unknown as Record<string, unknown>
+        );
+        const toolName = input.tool_name ?? '';
+        const toolInput = (input.tool_input ?? {}) as Record<string, unknown>;
+        const blockResult = await runtimeClient.query({
+          kind: 'should_block_tool',
+          tool_name: toolName,
+          tool_input: toolInput,
+        });
+        if (blockResult?.kind === 'tool_decision' && !blockResult.allow) {
+          const reason = blockResult.reason ?? 'Blocked by runtime engine';
+          blockTool(reason);
+          return;
+        }
+      }
+    } catch {
+      // Runtime integration must never break the hook — fall through
+    }
+    // ─── End Phase 6 integration ───
 
     // FIRST: Handle Bash tool
     if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {

@@ -55,6 +55,7 @@ import { fetchPricingIfStale } from './pricing-fetcher.js';
 import type { HooksState } from '../types/state.js';
 import { ensureClaudeMdImports } from './claude-md-manager.js';
 import { buildProjectIndex } from './project-indexer.js';
+import { RuntimeClient } from '../shared/runtime-client.js';
 
 
 /**
@@ -162,6 +163,33 @@ async function runSessionStartHook(): Promise<void> {
 
     // Read hook input from stdin (contains session info)
     const input = await readHookInput();
+
+    // ─── Phase 6: Runtime engine integration (early-return when available) ───
+    // When GOODVIBES_RUNTIME_FULL is active and the runtime engine IPC socket
+    // is reachable, delegate context injection to the runtime engine.
+    // Falls through to existing logic when the runtime is NOT available.
+    try {
+      const runtimeClient = new RuntimeClient();
+      if (runtimeClient.isAvailable()) {
+        debug('Phase 6: runtime engine available, sending session:started event');
+        await runtimeClient.sendHookEvent('session:started', input as unknown as Record<string, unknown>);
+        const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
+        if (queryResult?.kind === 'system_message') {
+          debug('Phase 6: runtime returned system message, using it');
+          respond(
+            createResponse({
+              systemMessage: queryResult.message,
+            })
+          );
+          return;
+        }
+      }
+    } catch {
+      // Runtime integration must never break the hook — fall through to existing logic
+      debug('Phase 6: runtime integration error, falling through to existing logic');
+    }
+    // ─── End Phase 6 integration ───
+
     debug('SessionStart received input', {
       session_id: input.session_id,
       hook_event_name: input.hook_event_name,

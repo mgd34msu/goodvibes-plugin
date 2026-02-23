@@ -27,6 +27,7 @@ import {
 import { loadState, saveState } from '../state/index.js';
 
 import { buildOrchestratorContext } from './context-injection.js';
+import { RuntimeClient } from '../shared/runtime-client.js';
 import { validateAgentOutput } from './output-validation.js';
 import {
   getAgentTracking,
@@ -267,6 +268,26 @@ async function runSubagentStopHook(): Promise<void> {
     const rawInput = await readHookInput();
     debug('Raw input shape:', Object.keys(rawInput || {}));
     const input = rawInput as unknown as SubagentStopInput;
+
+    // ─── Phase 6: Runtime engine integration (fire-and-forget, additive only) ───
+    // Sends the completion event to the runtime engine for bookkeeping.
+    // ALWAYS falls through to existing logic — this hook has no early-return.
+    try {
+      const runtimeClient = new RuntimeClient();
+      if (runtimeClient.isAvailable()) {
+        const success = input.success !== false;
+        const eventName = success ? 'agent:completed' : 'agent:failed';
+        debug(`Phase 6: runtime engine available, sending ${eventName} event`);
+        void runtimeClient.sendHookEvent(
+          eventName,
+          rawInput as unknown as Record<string, unknown>
+        );
+      }
+    } catch {
+      // Runtime integration must never break the hook — always fall through
+    }
+    // ─── End Phase 6 integration ───
+
 
     const { agentId, agentType, transcriptPath, cwd } = extractInputFields(input);
 

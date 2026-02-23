@@ -22,6 +22,7 @@ import {
   isTestEnvironment,
   ensureGlobalAnalyticsDir,
 } from '../shared/index.js';
+import { RuntimeClient } from '../shared/runtime-client.js';
 
 /** Milliseconds per minute for duration calculation. */
 const MS_PER_MINUTE = 60000;
@@ -81,6 +82,24 @@ async function runSessionEndHook(): Promise<void> {
     ensureGlobalAnalyticsDir();
 
     const input = await readHookInput();
+
+    // ─── Phase 6: Runtime engine integration (fire-and-forget, additive only) ───
+    // Sends session:ending event to the runtime engine for lifecycle tracking.
+    // ALWAYS falls through to existing cleanup logic — no early-return here.
+    try {
+      const runtimeClient = new RuntimeClient();
+      if (runtimeClient.isAvailable()) {
+        debug('Phase 6: runtime engine available, sending session:ending event');
+        void runtimeClient.sendHookEvent(
+          'session:ending',
+          input as unknown as Record<string, unknown>
+        );
+      }
+    } catch {
+      // Runtime integration must never break session-end cleanup
+    }
+    // ─── End Phase 6 integration ───
+
     debug('SessionEnd received input', {
       session_id: input.session_id,
     });
