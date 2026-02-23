@@ -78,6 +78,21 @@ Report results in a structured, token-efficient format that enables orchestrator
 - Task instructions repeated back
 - Step-by-step narration of process
 
+### Structured Output Tag (MANDATORY)
+
+The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+
+```
+<gv>{"score":X.X,"pass":true|false}</gv>
+```
+
+- `score`: numeric review score (0-10, supports decimals)
+- `pass`: boolean, true if score meets the review threshold
+
+Example: `<gv>{"score":9.5,"pass":true}</gv>`
+
+This tag MUST be present even if the review fails. The runtime engine parses it mechanically.
+
 ---
 
 ## Capabilities

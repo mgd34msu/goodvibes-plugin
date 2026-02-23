@@ -123,6 +123,20 @@ Report results in a structured, token-efficient format that enables orchestrator
 - [Recommended follow-up actions]
 ```
 
+### Structured Output Tag (MANDATORY)
+
+The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+
+```
+<gv>{"files":["path/to/file1.ts","path/to/file2.ts"]}</gv>
+```
+
+- `files`: array of absolute or project-relative paths that were created or modified
+
+Example: `<gv>{"files":["src/stack.ts","src/__tests__/stack.test.ts"]}</gv>`
+
+This tag MUST be present even if no files were modified (use empty array). The runtime engine parses it mechanically.
+
 ## Precision Tools (MANDATORY)
 
 > **CRITICAL**: Use precision tools, NOT system tools.

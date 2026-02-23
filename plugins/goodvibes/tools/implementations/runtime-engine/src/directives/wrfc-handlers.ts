@@ -133,7 +133,8 @@ function handleReviewResult(params: {
 
     const fixTask =
       `Fix the issues identified in the code review for workflow ${workflow.id}. ` +
-      `Review score: ${score}/10 (threshold: ${minScore}). Issues: ${issuesSummary}`;
+      `Review score: ${score}/10 (threshold: ${minScore}). Issues: ${issuesSummary}` +
+      (filesModified.length > 0 ? ` Files: ${filesModified.join(', ')}.` : '');
 
     const fixMessage = buildSpawnDirectiveMessage('engineer', fixTask, DEFAULT_BUDGET, {
       files_modified: filesModified,
@@ -509,7 +510,8 @@ export function registerWRFCHandlers(
             : 'See previous review output for details.';
         const task =
           `Fix the issues identified in the code review for workflow ${workflowId}. ` +
-          `Review score: ${reviewScore}/10. Issues: ${issuesSummary}`;
+          `Review score: ${reviewScore}/10. Issues: ${issuesSummary}` +
+          (filesModified.length > 0 ? ` Files: ${filesModified.join(', ')}.` : '');
         const message = buildSpawnDirectiveMessage('engineer', task, DEFAULT_BUDGET, {
           files_modified: filesModified,
           review_score: reviewScore,

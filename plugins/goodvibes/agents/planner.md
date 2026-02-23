@@ -79,6 +79,16 @@ Report results in a structured, token-efficient format that enables orchestrator
 - Task instructions repeated back
 - Step-by-step narration of process
 
+### Structured Output Tag (MANDATORY)
+
+The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+
+```
+<gv>{"files":["path/affected1.ts"]}</gv>
+```
+
+- `files`: array of files the plan affects (may be empty for pure planning)
+
 ## Capabilities
 
 - Design comprehensive execution plans with phase dependencies

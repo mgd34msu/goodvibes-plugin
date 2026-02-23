@@ -65,6 +65,16 @@ Report results in a structured, token-efficient format that enables orchestrator
 - Task instructions repeated back
 - Step-by-step narration of process
 
+### Structured Output Tag (MANDATORY)
+
+The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+
+```
+<gv>{"files":["path/to/file.ts"]}</gv>
+```
+
+- `files`: array of files created or modified
+
 ## MCP Tool Checklist (MANDATORY)
 
 **STOP. Before doing ANYTHING, complete this checklist.**

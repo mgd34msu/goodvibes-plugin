@@ -231,6 +231,17 @@ Report results in a structured, token-efficient format that enables orchestrator
 - [Recommended follow-up actions]
 ```
 
+### Structured Output Tag (MANDATORY)
+
+The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+
+```
+<gv>{"pass":true,"count":N}</gv>
+```
+
+- `pass`: boolean, all tests passing
+- `count`: number of tests written/run
+
 ## Capabilities
 
 - Write unit tests for functions and utilities

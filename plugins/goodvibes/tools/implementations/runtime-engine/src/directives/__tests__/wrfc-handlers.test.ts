@@ -230,7 +230,7 @@ describe('registerWRFCHandlers', () => {
 
         expect(directiveQueue.size('subagent_stop')).toBe(1);
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
 
       it('enqueues workflow-complete when score is exactly the threshold', async () => {
@@ -247,7 +247,7 @@ describe('registerWRFCHandlers', () => {
         } as HandlerArgs);
 
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
 
       it('enqueues spawn-fixer directive when reviewer score is below threshold', async () => {
@@ -266,7 +266,7 @@ describe('registerWRFCHandlers', () => {
         expect(directiveQueue.size('subagent_stop')).toBe(1);
         const [directive] = directiveQueue.drain('subagent_stop');
         expect(directive!.content).toContain('engineer');
-        expect(directive!.content).not.toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).not.toContain('"action":"complete"');
       });
 
       it('calls sendEvent with wrfc:review_completed when score is parsed', async () => {
@@ -334,7 +334,7 @@ describe('registerWRFCHandlers', () => {
         } as HandlerArgs);
 
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
 
       it('falls back to hook_input.result when task_output is absent', async () => {
@@ -351,7 +351,7 @@ describe('registerWRFCHandlers', () => {
         } as HandlerArgs);
 
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
 
       it('uses subagent_type as agent type when agent_type is absent', async () => {
@@ -387,7 +387,7 @@ describe('registerWRFCHandlers', () => {
         } as HandlerArgs);
 
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
     });
 
@@ -410,7 +410,7 @@ describe('registerWRFCHandlers', () => {
         expect(directiveQueue.size('subagent_stop')).toBe(1);
         const [directive] = directiveQueue.drain('subagent_stop');
         expect(directive!.content).toContain('reviewer');
-        expect(directive!.content).not.toContain('ESCALATION');
+        expect(directive!.content).not.toContain('"action":"escalate"');
       });
 
       it('increments fix_attempts in workflow context', async () => {
@@ -457,7 +457,7 @@ describe('registerWRFCHandlers', () => {
 
         expect(directiveQueue.size('subagent_stop')).toBe(1);
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('ESCALATION');
+        expect(directive!.content).toContain('"action":"escalate"');
         expect(directive!.priority).toBe(30);
       });
 
@@ -474,7 +474,7 @@ describe('registerWRFCHandlers', () => {
         } as HandlerArgs);
 
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('ESCALATION');
+        expect(directive!.content).toContain('"action":"escalate"');
       });
 
       it('does not enqueue anything when FIXING but agent is not an engineer', async () => {
@@ -565,7 +565,7 @@ describe('registerWRFCHandlers', () => {
 
         // Score 10 >= 9.5 → workflow complete
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
 
       it('parses decimal score "SCORE: 9.5/10" as 9.5', async () => {
@@ -583,7 +583,7 @@ describe('registerWRFCHandlers', () => {
 
         // Score 9.5 >= 9.5 threshold → workflow complete
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
 
       it('returns null (skips) when no SCORE pattern found in output', async () => {
@@ -631,7 +631,7 @@ describe('registerWRFCHandlers', () => {
         } as HandlerArgs);
 
         const [directive] = directiveQueue.drain('subagent_stop');
-        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+        expect(directive!.content).toContain('"action":"complete"');
       });
     });
   });
@@ -652,7 +652,7 @@ describe('registerWRFCHandlers', () => {
 
       expect(directiveQueue.size('subagent_stop')).toBe(1);
       const [directive] = directiveQueue.drain('subagent_stop');
-      expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      expect(directive!.content).toContain('"action":"complete"');
       expect(directive!.source).toBe('wrfc_review_response');
     });
 
@@ -667,7 +667,7 @@ describe('registerWRFCHandlers', () => {
       } as HandlerArgs);
 
       const [directive] = directiveQueue.drain('subagent_stop');
-      expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      expect(directive!.content).toContain('"action":"complete"');
     });
 
     it('enqueues spawn-fixer when review_score < 10', async () => {
@@ -685,7 +685,7 @@ describe('registerWRFCHandlers', () => {
       expect(directiveQueue.size('subagent_stop')).toBe(1);
       const [directive] = directiveQueue.drain('subagent_stop');
       expect(directive!.content).toContain('engineer');
-      expect(directive!.content).not.toContain('WORKFLOW COMPLETE');
+      expect(directive!.content).not.toContain('"action":"complete"');
     });
 
     it('includes issues summary in fixer task when review_issues is an array', async () => {
@@ -858,7 +858,7 @@ describe('registerWRFCHandlers', () => {
       } as HandlerArgs);
 
       const [directive] = directiveQueue.drain('subagent_stop');
-      expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      expect(directive!.content).toContain('"action":"complete"');
     });
 
     it('treats missing review_score as 0', async () => {
@@ -909,7 +909,7 @@ describe('registerWRFCHandlers', () => {
 
       expect(directiveQueue.size('subagent_stop')).toBe(1);
       const [directive] = directiveQueue.drain('subagent_stop');
-      expect(directive!.content).toContain('ESCALATION');
+      expect(directive!.content).toContain('"action":"escalate"');
       expect(directive!.priority).toBe(30);
     });
 
@@ -991,7 +991,7 @@ describe('registerWRFCHandlers', () => {
       } as HandlerArgs);
 
       const [directive] = directiveQueue.drain('subagent_stop');
-      expect(directive!.content).toContain('ESCALATION');
+      expect(directive!.content).toContain('"action":"escalate"');
     });
 
     it('converts string fix_attempts to number correctly', async () => {

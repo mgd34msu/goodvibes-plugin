@@ -116,6 +116,16 @@ Report results in a structured, token-efficient format that enables orchestrator
 - [Recommended follow-up actions]
 ```
 
+### Structured Output Tag (MANDATORY)
+
+The LAST line of your response MUST be a `<gv>` tag with structured JSON:
+
+```
+<gv>{"files":["path/to/file.ts"]}</gv>
+```
+
+- `files`: array of files created or modified
+
 ## Precision Tools (MANDATORY)
 
 > **CRITICAL**: Use precision tools, NOT system tools.
