@@ -7,7 +7,9 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'fs';
+import { toErrorMessage } from './utils.js';
 import { join } from 'path';
+import { userInfo, tmpdir } from 'os';
 
 /** IPC socket and timeout configuration */
 export interface IpcConfig {
@@ -123,7 +125,12 @@ export interface RuntimeConfig {
 export const DEFAULT_CONFIG: RuntimeConfig = {
   schema_version: '1.0.0',
   ipc: {
-    socket_dir: '/tmp/goodvibes',
+    socket_dir: (() => {
+      const xdg = process.env['XDG_RUNTIME_DIR'];
+      if (xdg) return `${xdg}/goodvibes`;
+      const uid = process.getuid?.() ?? (() => { try { return userInfo().uid; } catch { return 0; } })();
+      return `${tmpdir()}/goodvibes-${uid}`;
+    })(),
     connect_timeout_ms: 500,
     query_timeout_ms: 200,
   },
@@ -223,8 +230,19 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
     const raw = readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<RuntimeConfig>;
     return deepMerge(DEFAULT_CONFIG, parsed);
-  } catch (_err) {
-    // File not found or invalid JSON -- return defaults silently
+  } catch (err) {
+    // ENOENT means the config file does not exist yet (normal first-run).
+    // Any other error (parse failure, permission denied, etc.) is unexpected
+    // and should be surfaced so corrupted configs are not silently ignored.
+    if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+      // silent - normal first run
+    } else {
+      process.stderr.write(
+        `[runtime-engine] Warning: failed to load config at "${configPath}": ${
+          toErrorMessage(err)
+        } — using defaults\n`,
+      );
+    }
     return { ...DEFAULT_CONFIG };
   }
 }

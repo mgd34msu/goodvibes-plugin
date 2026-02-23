@@ -16,11 +16,12 @@
  */
 
 import * as net from 'net';
-import { mkdirSync, existsSync, unlinkSync } from 'fs';
+import { mkdirSync, existsSync, unlinkSync, chmodSync } from 'fs';
 import { dirname } from 'path';
 
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { createLogger } from '../shared/logger.js';
+import { toErrorMessage } from '../shared/utils.js';
 
 const logger = createLogger('ipc-server');
 
@@ -94,9 +95,10 @@ export class IPCServer {
    * @throws If the server cannot bind to the socket path.
    */
   async listen(): Promise<void> {
-    // 1. Ensure parent directory exists
+    // 1. Ensure parent directory exists with restricted permissions
     const dir = dirname(this.socketPath);
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    chmodSync(dir, 0o700);
 
     // 2. Remove stale socket file if present
     if (existsSync(this.socketPath)) {
@@ -106,7 +108,7 @@ export class IPCServer {
       } catch (err) {
         logger.warn('Could not remove stale socket file', {
           path: this.socketPath,
-          err: err instanceof Error ? err.message : String(err),
+          err: toErrorMessage(err),
         });
       }
     }
@@ -120,6 +122,8 @@ export class IPCServer {
 
     return new Promise<void>((resolve, reject) => {
       this.server!.listen(this.socketPath, () => {
+        // Restrict socket file to owner-only access
+        chmodSync(this.socketPath, 0o600);
         logger.info('IPC server listening', { path: this.socketPath });
         resolve();
       });
@@ -188,18 +192,25 @@ export class IPCServer {
     this.connections.add(socket);
     logger.debug('IPC client connected', { connections: this.connections.size });
 
+    // Idle connection timeout — declared before event handlers so all closures
+    // capture the same binding. Assigned immediately below.
+    let idleTimer: ReturnType<typeof setTimeout>;
+
     socket.once('close', () => {
+      clearTimeout(idleTimer);
       this.connections.delete(socket);
       logger.debug('IPC client disconnected', { connections: this.connections.size });
     });
 
     socket.on('error', (err) => {
+      clearTimeout(idleTimer);
       logger.warn('IPC socket error', { err: err.message });
       this.connections.delete(socket);
+      socket.destroy();
     });
 
-    // Idle connection timeout
-    const idleTimer = setTimeout(() => {
+    // Start the idle timeout. idleTimer binding is shared with all event handlers above.
+    idleTimer = setTimeout(() => {
       logger.warn('IPC connection timed out — closing', { timeout_ms: CONNECTION_TIMEOUT_MS });
       socket.destroy();
     }, CONNECTION_TIMEOUT_MS);
@@ -233,7 +244,7 @@ export class IPCServer {
       message = JSON.parse(line) as IPCMessage;
     } catch (err) {
       logger.warn('Failed to parse IPC message', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
       const errorResponse: IPCResponse = {
         id: 'unknown',
@@ -264,12 +275,12 @@ export class IPCServer {
       .catch((err) => {
         logger.error('IPC handler threw an error', {
           id: message.id,
-          err: err instanceof Error ? err.message : String(err),
+          err: toErrorMessage(err),
         });
         const errResponse: IPCResponse = {
           id: message.id,
           status: 'error',
-          error: err instanceof Error ? err.message : String(err),
+          error: toErrorMessage(err),
         };
         this.writeResponse(socket, errResponse);
       });
@@ -289,7 +300,7 @@ export class IPCServer {
     } catch (err) {
       logger.warn('Failed to write IPC response', {
         id: response.id,
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
       socket.destroy();
     }
@@ -307,7 +318,7 @@ export class IPCServer {
     } catch (err) {
       logger.warn('Could not remove socket file', {
         path: this.socketPath,
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
   }

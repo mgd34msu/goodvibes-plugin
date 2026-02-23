@@ -23,7 +23,7 @@ import { HealthChecker } from './health.js';
 import { EventBus } from '../events/event-bus.js';
 import { EventLog } from '../events/event-log.js';
 import { EventQueue } from '../events/event-queue.js';
-import { generateEventId, timestamp } from '../shared/utils.js';
+import { generateEventId, timestamp, toErrorMessage } from '../shared/utils.js';
 import { IPCServer } from '../ipc/ipc-server.js';
 import type { IPCMessage, IPCResponse } from '../ipc/protocol.js';
 import { WorkflowEngine } from '../workflow/workflow-engine.js';
@@ -141,7 +141,7 @@ export class ProcessManager {
       logger.debug('Configuration loaded', { version: ENGINE_VERSION });
     } catch (err) {
       logger.warn('Could not load config from disk — using defaults', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
 
@@ -203,7 +203,7 @@ export class ProcessManager {
           await this.triggerRegistry.evaluate(event);
         }
       } catch (err) {
-        logger.warn('Trigger evaluation error', { error: err instanceof Error ? err.message : String(err) });
+        logger.warn('Trigger evaluation error', { error: toErrorMessage(err) });
       }
     });
     logger.debug('Trigger registry initialised');
@@ -289,7 +289,7 @@ export class ProcessManager {
           } catch (err) {
             logger.warn('Failed to cancel workflow during shutdown', {
               id: instance.id,
-              err: err instanceof Error ? err.message : String(err),
+              err: toErrorMessage(err),
             });
           }
         }
@@ -311,7 +311,7 @@ export class ProcessManager {
           });
         } catch (err) {
           logger.warn('Failed to emit shutdown event', {
-            err: err instanceof Error ? err.message : String(err),
+            err: toErrorMessage(err),
           });
         }
       }
@@ -325,7 +325,7 @@ export class ProcessManager {
           logger.debug('IPC server closed');
         } catch (err) {
           logger.warn('IPC server close failed', {
-            err: err instanceof Error ? err.message : String(err),
+            err: toErrorMessage(err),
           });
         }
       }
@@ -338,7 +338,7 @@ export class ProcessManager {
           logger.debug('Event queue drained and stopped');
         } catch (err) {
           logger.warn('Event queue drain failed', {
-            err: err instanceof Error ? err.message : String(err),
+            err: toErrorMessage(err),
           });
         }
       }
@@ -348,17 +348,41 @@ export class ProcessManager {
         this.eventBus.removeAllListeners();
       }
 
-      // 7. Save final checkpoint
+      // 7. Flush event log buffer before final checkpoint
+      if (this.eventLog) {
+        try {
+          await this.eventLog.flush();
+          logger.debug('Event log flushed');
+        } catch (err) {
+          logger.warn('Event log flush failed during shutdown', {
+            err: toErrorMessage(err),
+          });
+        }
+      }
+
+      // 8. Save final checkpoint
       try {
         await this.saveCheckpoint();
         logger.debug('Final checkpoint saved');
       } catch (err) {
         logger.warn('Final checkpoint failed', {
-          err: err instanceof Error ? err.message : String(err),
+          err: toErrorMessage(err),
         });
       }
 
-      // 8. Remove PID lock file
+      // 9. Close event log write stream
+      if (this.eventLog) {
+        try {
+          await this.eventLog.close();
+          logger.debug('Event log closed');
+        } catch (err) {
+          logger.warn('Event log close failed during shutdown', {
+            err: toErrorMessage(err),
+          });
+        }
+      }
+
+      // 10. Remove PID lock file
       this.removePidFile();
 
       this.running = false;
@@ -535,7 +559,7 @@ export class ProcessManager {
       }
     } catch (err) {
       logger.warn('Could not read stale PID file', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
   }
@@ -551,7 +575,7 @@ export class ProcessManager {
       logger.debug('PID file written', { path: pidFilePath, pid: process.pid });
     } catch (err) {
       logger.warn('Could not write PID file', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
   }
@@ -569,7 +593,7 @@ export class ProcessManager {
       }
     } catch (err) {
       logger.warn('Could not remove PID file', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
   }
@@ -579,17 +603,18 @@ export class ProcessManager {
    * The timer is unref'd so it does not prevent natural process exit.
    */
   private startCheckpointTimer(): void {
+    const interval = Math.max(this.config.persistence.checkpoint_interval_ms ?? CHECKPOINT_INTERVAL_MS, 1000);
     this.checkpointTimer = setInterval(() => {
       this.saveCheckpoint().catch((err) => {
         logger.warn('Periodic checkpoint failed', {
-          err: err instanceof Error ? err.message : String(err),
+          err: toErrorMessage(err),
         });
       });
-    }, CHECKPOINT_INTERVAL_MS);
+    }, interval);
 
     // Unref so the timer does not prevent graceful exit
     this.checkpointTimer.unref();
-    logger.debug('Checkpoint timer started', { interval_ms: CHECKPOINT_INTERVAL_MS });
+    logger.debug('Checkpoint timer started', { interval_ms: interval });
   }
 
   /**
@@ -647,7 +672,7 @@ export class ProcessManager {
               await this.triggerRegistry.evaluate(emittedEvent);
             } catch (err) {
               logger.warn('IPC hook_event: trigger evaluation error', {
-                error: err instanceof Error ? err.message : String(err),
+                error: toErrorMessage(err),
               });
             }
           }
@@ -713,6 +738,8 @@ export class ProcessManager {
         return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
       });
 
+      // Pre-create socket directory with owner-only permissions (belt-and-suspenders)
+      mkdirSync(socketDir, { recursive: true, mode: 0o700 });
       await this.ipcServer.listen();
 
       // Write socket path to state file for hook discovery
@@ -725,7 +752,7 @@ export class ProcessManager {
     } catch (err) {
       logger.error('Failed to start IPC server', {
         socket: socketPath,
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
       this.ipcServer = null;
       return null;
@@ -750,7 +777,7 @@ export class ProcessManager {
     } catch (err) {
       logger.warn('Could not remove socket pointer file', {
         path: pointerFile,
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
   }
@@ -779,7 +806,7 @@ export class ProcessManager {
         await this.eventLog.compact();
       } catch (err) {
         logger.warn('Event log compaction failed during checkpoint', {
-          err: err instanceof Error ? err.message : String(err),
+          err: toErrorMessage(err),
         });
       }
     }
