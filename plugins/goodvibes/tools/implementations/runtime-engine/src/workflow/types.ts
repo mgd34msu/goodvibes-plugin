@@ -167,6 +167,8 @@ export interface WorkflowContext {
     /** Human-readable description of the issue. */
     description: string;
   }>;
+  /** Minimum review score required to pass (0–10). Defaults to 9.5. */
+  min_review_score?: number;
   /** Number of fix iterations completed so far in this WRFC cycle. */
   fix_attempts?: number;
   /** Maximum fix iterations allowed before escalating. */

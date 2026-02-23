@@ -6,16 +6,23 @@
  * directives into the DirectiveQueue.
  *
  * Handlers:
- * - `wrfc_chain_next`      — after an agent completes, spawn a reviewer
- * - `wrfc_review_response` — after review, either complete or spawn a fixer
- * - `wrfc_fix_response`    — after a fix, either escalate or re-review
+ * - `wrfc_chain_next`      — universal router: inspects workflow state (WRITING/REVIEWING/FIXING)
+ *                            and routes to the appropriate next action (reviewer, fixer, escalation,
+ *                            or workflow completion). Calls the shared handleReviewResult /
+ *                            handleFixResult helpers internally.
+ * - `wrfc_review_response` — after review (event-driven path), either complete or spawn a fixer.
+ *                            Delegates to handleReviewResult.
+ * - `wrfc_fix_response`    — after a fix (event-driven path), either escalate or re-review.
+ *                            Delegates to handleFixResult.
  */
 
 import { createLogger } from '../shared/logger.js';
+import { generateEventId, timestamp } from '../shared/utils.js';
 import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { DirectiveQueue } from './directive-queue.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
+import type { WorkflowInstance } from '../workflow/types.js';
 import {
   buildSpawnDirectiveMessage,
   buildWorkflowCompleteMessage,
@@ -27,9 +34,221 @@ const log = createLogger('wrfc-handlers');
 /** Default resource budget for spawned review/fix agents. */
 const DEFAULT_BUDGET = { max_tokens: 50_000, max_turns: 20 };
 
-// Only spawn reviewer when agent completes during the WRITING phase
-// GATHERING and PLANNING agents produce context, not reviewable code
-const REVIEWABLE_STATES = new Set(['WRITING']);
+/** Default minimum review score to pass (configurable per workflow). */
+const DEFAULT_MIN_REVIEW_SCORE = 9.5;
+
+/** Default maximum fix attempts before escalation. */
+const DEFAULT_MAX_FIX_ATTEMPTS = 3;
+
+/** Regex to extract a numeric score from reviewer output. */
+const SCORE_REGEX = /SCORE:\s*(\d+(?:\.\d+)?)\/10/i;
+
+/**
+ * Parses a review score from free-form text produced by a reviewer agent.
+ *
+ * @param text - Raw output string from the reviewer.
+ * @returns Parsed score (0–10), or null if not found.
+ */
+function parseReviewScore(text: string | undefined): number | null {
+  if (!text) return null;
+  const match = text.match(SCORE_REGEX);
+  return match ? parseFloat(match[1]) : null;
+}
+
+// ─── Shared Result-Handling Helpers ──────────────────────────────────────────
+
+/**
+ * Shared logic for handling a completed review.
+ *
+ * Sends the wrfc:review_completed state-machine event, writes
+ * min_review_score into workflow context so guards evaluate correctly,
+ * then either enqueues a workflow-complete directive or a fixer directive.
+ */
+function handleReviewResult(params: {
+  workflowEngine: WorkflowEngine;
+  directiveQueue: DirectiveQueue;
+  workflow: WorkflowInstance;
+  score: number;
+  filesModified: string[];
+  reviewIssues?: Array<{ dimension: string; severity: string; description: string }>;
+  source: string;
+}): void {
+  const { workflowEngine, directiveQueue, workflow, score, filesModified, reviewIssues = [], source } = params;
+
+  const minScore =
+    typeof workflow.context.min_review_score === 'number'
+      ? workflow.context.min_review_score
+      : DEFAULT_MIN_REVIEW_SCORE;
+
+  const maxFixAttempts =
+    typeof workflow.context.max_fix_attempts === 'number'
+      ? workflow.context.max_fix_attempts
+      : DEFAULT_MAX_FIX_ATTEMPTS;
+
+  const fixAttempts =
+    typeof workflow.context.fix_attempts === 'number' ? workflow.context.fix_attempts : 0;
+
+  // Write configurable thresholds into context BEFORE sendEvent so guards evaluate correctly
+  workflow.context.review_score = score;
+  workflow.context.min_review_score = minScore;
+  workflow.context.max_fix_attempts = maxFixAttempts;
+
+  // Advance state machine
+  workflowEngine.sendEvent(workflow.id, {
+    id: generateEventId(),
+    timestamp: timestamp(),
+    type: 'wrfc:review_completed',
+    source: { kind: 'system' },
+    payload: {
+      type: 'wrfc:review_completed',
+      data: { review_score: score },
+    },
+    metadata: { session_id: '', sequence: 0, version: 1 },
+  });
+
+  if (score >= minScore) {
+    // Score meets threshold → complete workflow
+    const message = buildWorkflowCompleteMessage(workflow.id, 'completed');
+    directiveQueue.enqueue('subagent_stop', {
+      type: 'inject_system_message',
+      content: message,
+      priority: 20,
+      source,
+    });
+    log.info(`${source}: workflow complete directive enqueued`, {
+      workflow_id: workflow.id,
+      review_score: score,
+      min_review_score: minScore,
+    });
+  } else {
+    // Score below threshold → spawn fixer
+    const issuesSummary =
+      reviewIssues.length > 0
+        ? reviewIssues.map((i) => `[${i.severity}] ${i.dimension}: ${i.description}`).join('; ')
+        : 'See previous review output for details.';
+
+    const fixTask =
+      `Fix the issues identified in the code review for workflow ${workflow.id}. ` +
+      `Review score: ${score}/10 (threshold: ${minScore}). Issues: ${issuesSummary}`;
+
+    const fixMessage = buildSpawnDirectiveMessage('engineer', fixTask, DEFAULT_BUDGET, {
+      files_modified: filesModified,
+      review_score: score,
+      review_issues: reviewIssues,
+      fix_attempts: fixAttempts,
+      max_fix_attempts: maxFixAttempts,
+      workflow_id: workflow.id,
+    });
+
+    directiveQueue.enqueue('subagent_stop', {
+      type: 'inject_system_message',
+      content: fixMessage,
+      priority: 20,
+      source,
+    });
+    log.info(`${source}: engineer fix directive enqueued`, {
+      workflow_id: workflow.id,
+      review_score: score,
+      min_review_score: minScore,
+      issues_count: reviewIssues.length,
+    });
+  }
+}
+
+/**
+ * Shared logic for handling a completed fix attempt.
+ *
+ * Increments fix_attempts in context, sends the wrfc:fix_completed
+ * state-machine event so guards (which compare fix_attempts against
+ * max_fix_attempts) evaluate against current values, then either
+ * enqueues an escalation directive or a re-review directive.
+ */
+function handleFixResult(params: {
+  workflowEngine: WorkflowEngine;
+  directiveQueue: DirectiveQueue;
+  workflow: WorkflowInstance;
+  incomingFixAttempts: number;
+  maxFixAttempts: number;
+  filesModified: string[];
+  source: string;
+}): void {
+  const { workflowEngine, directiveQueue, workflow, incomingFixAttempts, maxFixAttempts, filesModified, source } = params;
+
+  // Increment and persist fix attempts in context
+  const fixAttempts = incomingFixAttempts + 1;
+  workflow.context.fix_attempts = fixAttempts;
+  workflow.context.max_fix_attempts = maxFixAttempts;
+
+  if (fixAttempts >= maxFixAttempts) {
+    // Fix budget exhausted → send event to advance state, then escalate
+    const lastScore =
+      typeof workflow.context.review_score === 'number' ? workflow.context.review_score : 0;
+
+    // Advance state machine BEFORE enqueuing escalation directive
+    workflowEngine.sendEvent(workflow.id, {
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: 'wrfc:fix_completed',
+      source: { kind: 'system' },
+      payload: {
+        type: 'wrfc:fix_completed',
+        data: { fix_attempts: fixAttempts },
+      },
+      metadata: { session_id: '', sequence: 0, version: 1 },
+    });
+
+    const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
+    directiveQueue.enqueue('subagent_stop', {
+      type: 'inject_system_message',
+      content: escalationMessage,
+      priority: 30,
+      source,
+    });
+    log.warn(`${source}: escalation directive enqueued`, {
+      workflow_id: workflow.id,
+      fix_attempts: fixAttempts,
+      max_fix_attempts: maxFixAttempts,
+    });
+  } else {
+    // Still have fix budget → advance state machine and spawn reviewer for re-check
+    workflowEngine.sendEvent(workflow.id, {
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: 'wrfc:fix_completed',
+      source: { kind: 'system' },
+      payload: {
+        type: 'wrfc:fix_completed',
+        data: { fix_attempts: fixAttempts },
+      },
+      metadata: { session_id: '', sequence: 0, version: 1 },
+    });
+
+    const recheckTask =
+      `Re-review the code after fix attempt ${fixAttempts} of ${maxFixAttempts} for workflow ${workflow.id}. ` +
+      (filesModified.length > 0
+        ? `Files modified: ${filesModified.join(', ')}.`
+        : 'Check all recently modified files.');
+
+    const recheckMessage = buildSpawnDirectiveMessage('reviewer', recheckTask, DEFAULT_BUDGET, {
+      files_modified: filesModified,
+      fix_attempts: fixAttempts,
+      max_fix_attempts: maxFixAttempts,
+      workflow_id: workflow.id,
+    });
+
+    directiveQueue.enqueue('subagent_stop', {
+      type: 'inject_system_message',
+      content: recheckMessage,
+      priority: 20,
+      source,
+    });
+    log.info(`${source}: re-review directive enqueued`, {
+      workflow_id: workflow.id,
+      fix_attempts: fixAttempts,
+      max_fix_attempts: maxFixAttempts,
+    });
+  }
+}
 
 /**
  * Register the three WRFC handler functions with the TriggerRegistry.
@@ -46,8 +265,9 @@ export function registerWRFCHandlers(
   agentCoordinator: AgentCoordinator | null,
 ): void {
   // ─── Handler 1: wrfc_chain_next ─────────────────────────────────────────────
-  // Called when hook:agent:completed fires.
-  // If there is an active workflow in a reviewable state, spawn a reviewer.
+  // Universal router called when hook:agent:completed fires.
+  // Inspects the current workflow state (WRITING / REVIEWING / FIXING) and
+  // routes to the correct next action via the shared result-handling helpers.
   registry.registerHandler('wrfc_chain_next', async (args) => {
     log.debug('wrfc_chain_next invoked', { args });
 
@@ -69,46 +289,121 @@ export function registerWRFCHandlers(
     }
     const currentState = workflow.current_state.toUpperCase();
 
-    if (!REVIEWABLE_STATES.has(currentState)) {
-      log.debug('wrfc_chain_next: workflow state not reviewable', {
+    if (currentState === 'WRITING') {
+      // ── WRITING state: engineer completed → spawn reviewer ────────────────
+      const filesModified = Array.isArray(workflow.context.files_modified)
+        ? (workflow.context.files_modified as string[])
+        : [];
+
+      const task =
+        `Review the work completed in workflow ${workflow.id}. ` +
+        `Current state: ${workflow.current_state}. ` +
+        (filesModified.length > 0
+          ? `Files modified: ${filesModified.join(', ')}.`
+          : 'No files recorded yet.');
+
+      const message = buildSpawnDirectiveMessage('reviewer', task, DEFAULT_BUDGET, {
+        files_modified: filesModified,
+        workflow_id: workflow.id,
+      });
+
+      directiveQueue.enqueue('subagent_stop', {
+        type: 'inject_system_message',
+        content: message,
+        priority: 20,
+        source: 'wrfc_chain_next',
+      });
+
+      log.info('wrfc_chain_next: reviewer directive enqueued', {
         workflow_id: workflow.id,
         current_state: workflow.current_state,
       });
-      return;
+    } else if (currentState === 'REVIEWING') {
+      // ── REVIEWING state: reviewer completed → delegate to handleReviewResult
+      const hookInput = args['hook_input'] as Record<string, unknown> | undefined;
+      const agentType = (hookInput?.['agent_type'] ?? hookInput?.['subagent_type'] ?? '') as string;
+      const isReviewer = agentType.includes('reviewer');
+
+      if (!isReviewer) {
+        log.debug('wrfc_chain_next: REVIEWING state but agent is not a reviewer, skipping', {
+          workflow_id: workflow.id,
+          agent_type: agentType,
+        });
+        return;
+      }
+
+      // Extract score from task output or result
+      const taskOutput =
+        (hookInput?.['task_output'] as string | undefined) ??
+        (hookInput?.['result'] as string | undefined);
+      const score = parseReviewScore(taskOutput);
+
+      if (score === null) {
+        log.warn('wrfc_chain_next: could not parse review score from reviewer output', {
+          workflow_id: workflow.id,
+          task_output_preview: taskOutput?.slice(0, 200),
+        });
+        return;
+      }
+
+      const filesModified = Array.isArray(workflow.context.files_modified)
+        ? (workflow.context.files_modified as string[])
+        : [];
+
+      handleReviewResult({
+        workflowEngine,
+        directiveQueue,
+        workflow,
+        score,
+        filesModified,
+        source: 'wrfc_chain_next',
+      });
+    } else if (currentState === 'FIXING') {
+      // ── FIXING state: engineer completed fix → delegate to handleFixResult ─
+      const hookInput = args['hook_input'] as Record<string, unknown> | undefined;
+      const agentType = (hookInput?.['agent_type'] ?? hookInput?.['subagent_type'] ?? '') as string;
+      const isEngineer = agentType.includes('engineer');
+
+      if (!isEngineer) {
+        log.debug('wrfc_chain_next: FIXING state but agent is not an engineer, skipping', {
+          workflow_id: workflow.id,
+          agent_type: agentType,
+        });
+        return;
+      }
+
+      const prevAttempts =
+        typeof workflow.context.fix_attempts === 'number' ? workflow.context.fix_attempts : 0;
+
+      const maxFixAttempts =
+        typeof workflow.context.max_fix_attempts === 'number'
+          ? workflow.context.max_fix_attempts
+          : DEFAULT_MAX_FIX_ATTEMPTS;
+
+      const filesModified = Array.isArray(workflow.context.files_modified)
+        ? (workflow.context.files_modified as string[])
+        : [];
+
+      handleFixResult({
+        workflowEngine,
+        directiveQueue,
+        workflow,
+        incomingFixAttempts: prevAttempts,
+        maxFixAttempts,
+        filesModified,
+        source: 'wrfc_chain_next',
+      });
+    } else {
+      log.debug('wrfc_chain_next: workflow state not handled', {
+        workflow_id: workflow.id,
+        current_state: workflow.current_state,
+      });
     }
-
-    const filesModified = Array.isArray(workflow.context.files_modified)
-      ? (workflow.context.files_modified as string[])
-      : [];
-
-    const task =
-      `Review the work completed in workflow ${workflow.id}. ` +
-      `Current state: ${workflow.current_state}. ` +
-      (filesModified.length > 0
-        ? `Files modified: ${filesModified.join(', ')}.`
-        : 'No files recorded yet.');
-
-    const message = buildSpawnDirectiveMessage('reviewer', task, DEFAULT_BUDGET, {
-      files_modified: filesModified,
-      workflow_id: workflow.id,
-    });
-
-    directiveQueue.enqueue('subagent_stop', {
-      type: 'inject_system_message',
-      content: message,
-      priority: 20,
-      source: 'wrfc_chain_next',
-    });
-
-    log.info('wrfc_chain_next: reviewer directive enqueued', {
-      workflow_id: workflow.id,
-      current_state: workflow.current_state,
-    });
   });
 
   // ─── Handler 2: wrfc_review_response ────────────────────────────────────────
-  // Called when wrfc:review_completed fires.
-  // If score >= 10, complete the workflow; otherwise spawn an engineer fixer.
+  // Called when wrfc:review_completed fires (event-driven path).
+  // Delegates to handleReviewResult for score-based routing.
   registry.registerHandler('wrfc_review_response', async (args) => {
     log.debug('wrfc_review_response invoked', { args });
 
@@ -154,62 +449,65 @@ export function registerWRFCHandlers(
             return activeWorkflows[activeWorkflows.length - 1]?.id ?? 'unknown';
           })();
 
-    if (reviewScore >= 10) {
-      // Workflow complete — enqueue completion message
-      const message = buildWorkflowCompleteMessage(workflowId, 'completed');
-      directiveQueue.enqueue('subagent_stop', {
-        type: 'inject_system_message',
-        content: message,
-        priority: 20,
-        source: 'wrfc_review_response',
-      });
-      log.info('wrfc_review_response: workflow complete directive enqueued', {
-        workflow_id: workflowId,
-        review_score: reviewScore,
-      });
+    const wf = workflowEngine?.get(workflowId);
+    if (!wf || !workflowEngine) {
+      // No real workflow found — fall back to direct directive enqueue using the resolved ID.
+      // This preserves backward compatibility for callers that pass only a workflow_id string.
+      const minScore = DEFAULT_MIN_REVIEW_SCORE;
+      if (reviewScore >= minScore) {
+        const message = buildWorkflowCompleteMessage(workflowId, 'completed');
+        directiveQueue.enqueue('subagent_stop', {
+          type: 'inject_system_message',
+          content: message,
+          priority: 20,
+          source: 'wrfc_review_response',
+        });
+        log.info('wrfc_review_response: workflow complete directive enqueued (no workflow object)', {
+          workflow_id: workflowId,
+          review_score: reviewScore,
+        });
+      } else {
+        const issuesSummary =
+          reviewIssues.length > 0
+            ? reviewIssues.map((i) => `[${i.severity}] ${i.dimension}: ${i.description}`).join('; ')
+            : 'See previous review output for details.';
+        const task =
+          `Fix the issues identified in the code review for workflow ${workflowId}. ` +
+          `Review score: ${reviewScore}/10. Issues: ${issuesSummary}`;
+        const message = buildSpawnDirectiveMessage('engineer', task, DEFAULT_BUDGET, {
+          files_modified: filesModified,
+          review_score: reviewScore,
+          review_issues: reviewIssues,
+          workflow_id: workflowId,
+        });
+        directiveQueue.enqueue('subagent_stop', {
+          type: 'inject_system_message',
+          content: message,
+          priority: 20,
+          source: 'wrfc_review_response',
+        });
+        log.info('wrfc_review_response: engineer fix directive enqueued (no workflow object)', {
+          workflow_id: workflowId,
+          review_score: reviewScore,
+        });
+      }
       return;
     }
 
-    // Score < 10 — spawn an engineer to fix the issues
-    const wf = workflowEngine?.get(workflowId);
-    const fixAttempts = typeof wf?.context.fix_attempts === 'number' ? wf.context.fix_attempts : 0;
-    const maxFixAttempts = typeof wf?.context.max_fix_attempts === 'number' ? wf.context.max_fix_attempts : 3;
-
-    const issuesSummary =
-      reviewIssues.length > 0
-        ? reviewIssues.map((i) => `[${i.severity}] ${i.dimension}: ${i.description}`).join('; ')
-        : 'See previous review output for details.';
-
-    const task =
-      `Fix the issues identified in the code review for workflow ${workflowId}. ` +
-      `Review score: ${reviewScore}/10. Issues: ${issuesSummary}`;
-
-    const message = buildSpawnDirectiveMessage('engineer', task, DEFAULT_BUDGET, {
-      files_modified: filesModified,
-      review_score: reviewScore,
-      review_issues: reviewIssues,
-      fix_attempts: fixAttempts,
-      max_fix_attempts: maxFixAttempts,
-      workflow_id: workflowId,
-    });
-
-    directiveQueue.enqueue('subagent_stop', {
-      type: 'inject_system_message',
-      content: message,
-      priority: 20,
+    handleReviewResult({
+      workflowEngine,
+      directiveQueue,
+      workflow: wf,
+      score: reviewScore,
+      filesModified,
+      reviewIssues,
       source: 'wrfc_review_response',
-    });
-
-    log.info('wrfc_review_response: engineer fix directive enqueued', {
-      workflow_id: workflowId,
-      review_score: reviewScore,
-      issues_count: reviewIssues.length,
     });
   });
 
   // ─── Handler 3: wrfc_fix_response ───────────────────────────────────────────
-  // Called when wrfc:fix_completed fires.
-  // If fix budget exhausted, escalate; otherwise spawn a reviewer for re-review.
+  // Called when wrfc:fix_completed fires (event-driven path).
+  // Delegates to handleFixResult for budget-check routing.
   registry.registerHandler('wrfc_fix_response', async (args) => {
     log.debug('wrfc_fix_response invoked', { args });
 
@@ -217,7 +515,7 @@ export function registerWRFCHandlers(
     const fixAttempts = typeof rawFix === 'number' ? rawFix : Number(rawFix ?? 0);
 
     const rawMax = args['max_fix_attempts'];
-    const maxFixAttempts = typeof rawMax === 'number' ? rawMax : Number(rawMax ?? 3);
+    const maxFixAttempts = typeof rawMax === 'number' ? rawMax : Number(rawMax ?? DEFAULT_MAX_FIX_ATTEMPTS);
 
     // Find the target workflow - prefer explicit ID from event, fall back to most recent active
     const fixWorkflowId = typeof args['workflow_id'] === 'string' ? args['workflow_id'] : null;
@@ -226,60 +524,60 @@ export function registerWRFCHandlers(
       const activeWorkflows = workflowEngine?.listActive() ?? [];
       fixWorkflow = activeWorkflows[activeWorkflows.length - 1] ?? null;
     }
-    const workflowId = fixWorkflow?.id ?? 'unknown';
-    const workflow = fixWorkflow;
 
-    const filesModified = Array.isArray(workflow?.context.files_modified)
-      ? (workflow.context.files_modified as string[])
-      : [];
-
-    if (fixAttempts >= maxFixAttempts) {
-      // Escalate — fix budget exhausted
-      const lastScore =
-        typeof workflow?.context.review_score === 'number'
-          ? (workflow.context.review_score as number)
-          : 0;
-
-      const message = buildEscalationMessage(workflowId, fixAttempts, lastScore);
-      directiveQueue.enqueue('subagent_stop', {
-        type: 'inject_system_message',
-        content: message,
-        priority: 30,
-        source: 'wrfc_fix_response',
-      });
-      log.warn('wrfc_fix_response: escalation directive enqueued', {
-        workflow_id: workflowId,
-        fix_attempts: fixAttempts,
-        max_fix_attempts: maxFixAttempts,
-      });
+    if (!fixWorkflow || !workflowEngine) {
+      // No real workflow found — fall back to direct directive enqueue using resolved ID.
+      const fallbackId = fixWorkflowId ?? 'unknown';
+      const resolvedAttempts = fixAttempts + 1;
+      if (resolvedAttempts >= maxFixAttempts) {
+        const message = buildEscalationMessage(fallbackId, resolvedAttempts, 0);
+        directiveQueue.enqueue('subagent_stop', {
+          type: 'inject_system_message',
+          content: message,
+          priority: 30,
+          source: 'wrfc_fix_response',
+        });
+        log.warn('wrfc_fix_response: escalation directive enqueued (no workflow object)', {
+          workflow_id: fallbackId,
+          fix_attempts: resolvedAttempts,
+          max_fix_attempts: maxFixAttempts,
+        });
+      } else {
+        const recheckTask = `Re-review the code after fix attempt ${resolvedAttempts} of ${maxFixAttempts} for workflow ${fallbackId}. Check all recently modified files.`;
+        const recheckMessage = buildSpawnDirectiveMessage('reviewer', recheckTask, DEFAULT_BUDGET, {
+          fix_attempts: resolvedAttempts,
+          max_fix_attempts: maxFixAttempts,
+          workflow_id: fallbackId,
+        });
+        directiveQueue.enqueue('subagent_stop', {
+          type: 'inject_system_message',
+          content: recheckMessage,
+          priority: 20,
+          source: 'wrfc_fix_response',
+        });
+        log.info('wrfc_fix_response: re-review directive enqueued (no workflow object)', {
+          workflow_id: fallbackId,
+          fix_attempts: resolvedAttempts,
+          max_fix_attempts: maxFixAttempts,
+        });
+      }
       return;
     }
 
-    // More attempts available — spawn a reviewer for re-review
-    const task =
-      `Re-review the code after fix attempt ${fixAttempts} of ${maxFixAttempts} for workflow ${workflowId}. ` +
-      (filesModified.length > 0
-        ? `Files modified: ${filesModified.join(', ')}.`
-        : 'Check all recently modified files.');
+    const filesModified = Array.isArray(fixWorkflow.context.files_modified)
+      ? (fixWorkflow.context.files_modified as string[])
+      : [];
 
-    const message = buildSpawnDirectiveMessage('reviewer', task, DEFAULT_BUDGET, {
-      files_modified: filesModified,
-      fix_attempts: fixAttempts,
-      max_fix_attempts: maxFixAttempts,
-      workflow_id: workflowId,
-    });
-
-    directiveQueue.enqueue('subagent_stop', {
-      type: 'inject_system_message',
-      content: message,
-      priority: 20,
+    // fixAttempts from args is the count BEFORE this fix completed (passed in spawn message).
+    // handleFixResult will increment it to reflect the completed attempt.
+    handleFixResult({
+      workflowEngine,
+      directiveQueue,
+      workflow: fixWorkflow,
+      incomingFixAttempts: fixAttempts,
+      maxFixAttempts,
+      filesModified,
       source: 'wrfc_fix_response',
-    });
-
-    log.info('wrfc_fix_response: re-review directive enqueued', {
-      workflow_id: workflowId,
-      fix_attempts: fixAttempts,
-      max_fix_attempts: maxFixAttempts,
     });
   });
 

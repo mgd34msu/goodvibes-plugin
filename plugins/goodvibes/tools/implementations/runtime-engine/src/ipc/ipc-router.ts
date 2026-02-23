@@ -106,6 +106,36 @@ export class IPCRouter {
           });
         }
       }
+      // Store WRFC config when config:loaded event arrives
+      if (msg.hook_name === 'config:loaded' && this.directiveQueue) {
+        const wrfcConfig = (msg.hook_input as Record<string, unknown>)?.wrfc;
+        if (wrfcConfig && typeof wrfcConfig === 'object') {
+          const validated: Record<string, unknown> = {};
+          const raw = wrfcConfig as Record<string, unknown>;
+
+          if (typeof raw.min_review_score === 'number' && raw.min_review_score >= 0 && raw.min_review_score <= 10) {
+            validated.min_review_score = raw.min_review_score;
+          } else if (raw.min_review_score !== undefined) {
+            logger.warn('Invalid min_review_score rejected', { value: raw.min_review_score, expected: 'number 0-10' });
+          }
+          if (typeof raw.max_fix_attempts === 'number' && Number.isInteger(raw.max_fix_attempts) && raw.max_fix_attempts > 0) {
+            validated.max_fix_attempts = raw.max_fix_attempts;
+          } else if (raw.max_fix_attempts !== undefined) {
+            logger.warn('Invalid max_fix_attempts rejected', { value: raw.max_fix_attempts, expected: 'positive integer' });
+          }
+          if (typeof raw.auto_commit === 'boolean') {
+            validated.auto_commit = raw.auto_commit;
+          } else if (raw.auto_commit !== undefined) {
+            logger.warn('Invalid auto_commit rejected', { value: raw.auto_commit, expected: 'boolean' });
+          }
+
+          if (Object.keys(validated).length > 0) {
+            this.directiveQueue.setWRFCConfig(validated);
+            logger.debug('WRFC config stored from config:loaded event', { validated });
+          }
+        }
+      }
+
       return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
     }
 

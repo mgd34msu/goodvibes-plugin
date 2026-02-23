@@ -69,11 +69,29 @@ export class DirectiveQueue {
     return [...(this.queues.get(target) ?? [])];
   }
 
-  /**
-   * Clear all queues.
-   */
+  /** Clear all directive queues. WRFC config is preserved. */
   clear(): void {
     this.queues.clear();
+  }
+
+  /** Stored WRFC config from config:loaded event. */
+  private wrfcConfig: Record<string, unknown> = {};
+
+  /**
+   * Store the WRFC config delivered by the config:loaded hook event.
+   *
+   * @param config - The `wrfc` section of the merged goodvibes.json.
+   */
+  setWRFCConfig(config: Record<string, unknown>): void {
+    this.wrfcConfig = config;
+    logger.debug('WRFC config stored', { keys: Object.keys(config) });
+  }
+
+  /**
+   * Return the stored WRFC config (empty object if never set).
+   */
+  getWRFCConfig(): Record<string, unknown> {
+    return this.wrfcConfig;
   }
 
   /**

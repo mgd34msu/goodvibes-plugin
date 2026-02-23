@@ -5290,6 +5290,9 @@ async function buildProjectIndex(projectDir) {
 }
 
 // src/session-start/index.ts
+import { readFileSync as readFileSync4 } from "fs";
+import { join as join19 } from "path";
+import { homedir as homedir3 } from "os";
 var DEFAULT_RECOVERY_INFO = {
   needsRecovery: false,
   previousFeature: null,
@@ -5357,6 +5360,20 @@ function initializeAnalytics(sessionId, contextResult) {
   });
   debug(`Analytics initialized for session ${sessionId}`);
 }
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key]) && result[key] && typeof result[key] === "object" && !Array.isArray(result[key])) {
+      result[key] = deepMerge(
+        result[key],
+        source[key]
+      );
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
 async function runSessionStartHook() {
   const startTime = Date.now();
   try {
@@ -5367,6 +5384,29 @@ async function runSessionStartHook() {
       if (runtimeClient.isAvailable()) {
         debug("Phase 6: runtime engine available, sending session:started event");
         await runtimeClient.sendHookEvent("session:started", input);
+        try {
+          const cwd = input.cwd || PROJECT_ROOT;
+          const globalConfigPath = join19(homedir3(), ".claude", ".goodvibes", "goodvibes.json");
+          const projectConfigPath = join19(cwd, ".goodvibes", "goodvibes.json");
+          let config = {};
+          try {
+            const raw = readFileSync4(globalConfigPath, "utf-8");
+            config = JSON.parse(raw);
+          } catch {
+          }
+          try {
+            const raw = readFileSync4(projectConfigPath, "utf-8");
+            const projectConfig = JSON.parse(raw);
+            config = deepMerge(config, projectConfig);
+          } catch {
+          }
+          if (Object.keys(config).length > 0) {
+            debug("goodvibes.json config loaded", config);
+            await runtimeClient.sendHookEvent("config:loaded", config);
+          }
+        } catch (err) {
+          debug("goodvibes.json config load failed", err);
+        }
         const queryResult = await runtimeClient.query({ kind: "get_system_message" });
         if (queryResult?.kind === "system_message") {
           debug("Phase 6: runtime returned system message, using it");

@@ -176,7 +176,8 @@ export class ProcessManager {
       this.workflowEngine.registerDefinition(WRFC_LOOP_DEFINITION);
       this.workflowEngine.registerDefinition(FIX_LOOP_DEFINITION);
       this.workflowEngine.registerGuard('checkReviewScore', (context) => {
-        return typeof context.review_score === 'number' && context.review_score >= 10;
+        const threshold = typeof context.min_review_score === 'number' ? context.min_review_score : 9.5;
+        return typeof context.review_score === 'number' && context.review_score >= threshold;
       });
       logger.debug('Workflow engine initialised');
     }

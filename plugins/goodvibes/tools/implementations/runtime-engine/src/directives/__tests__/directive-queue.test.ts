@@ -217,6 +217,37 @@ describe('DirectiveQueue', () => {
     });
   });
 
+  // ─── WRFC Config ──────────────────────────────────────────────────────────────
+
+  describe('wrfcConfig', () => {
+    it('stores and retrieves WRFC config', () => {
+      const q = new DirectiveQueue();
+      q.setWRFCConfig({ min_review_score: 9.5, max_fix_attempts: 3 });
+      expect(q.getWRFCConfig()).toEqual({ min_review_score: 9.5, max_fix_attempts: 3 });
+    });
+
+    it('returns empty object when no config set', () => {
+      const q = new DirectiveQueue();
+      expect(q.getWRFCConfig()).toEqual({});
+    });
+
+    it('overwrites previous config', () => {
+      const q = new DirectiveQueue();
+      q.setWRFCConfig({ min_review_score: 8 });
+      q.setWRFCConfig({ min_review_score: 9.5 });
+      expect(q.getWRFCConfig()).toEqual({ min_review_score: 9.5 });
+    });
+
+    it('preserves config when clear() is called', () => {
+      const q = new DirectiveQueue();
+      q.setWRFCConfig({ min_review_score: 9.5 });
+      q.enqueue('test', { type: 'inject_system_message', content: 'test', priority: 1, source: 'test' });
+      q.clear();
+      expect(q.getWRFCConfig()).toEqual({ min_review_score: 9.5 });
+      expect(q.drain('test')).toEqual([]);
+    });
+  });
+
   // ─── Keyed Isolation ─────────────────────────────────────────────────────────
 
   describe('keyed isolation', () => {

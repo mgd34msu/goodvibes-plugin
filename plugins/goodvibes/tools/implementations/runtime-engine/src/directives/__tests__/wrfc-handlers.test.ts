@@ -1,0 +1,1017 @@
+/**
+ * WRFC Handlers Tests
+ *
+ * Comprehensive unit tests for the three WRFC handler functions registered by
+ * registerWRFCHandlers: wrfc_chain_next, wrfc_review_response, wrfc_fix_response.
+ *
+ * All tests use fully mocked dependencies — no real WorkflowEngine, TriggerRegistry,
+ * or DirectiveQueue internals are exercised here.
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { registerWRFCHandlers } from '../wrfc-handlers.js';
+import { DirectiveQueue } from '../directive-queue.js';
+
+// ─── Mock Factories ───────────────────────────────────────────────────────────
+
+/**
+ * Creates a minimal TriggerRegistry mock that captures registered handler
+ * functions so tests can invoke them directly.
+ */
+function createMockRegistry() {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<unknown>>();
+  return {
+    registerHandler: vi.fn((name: string, handler: (...args: unknown[]) => Promise<unknown>) => {
+      handlers.set(name, handler);
+    }),
+    /** Retrieve a registered handler by name for direct invocation in tests. */
+    getHandler: (name: string) => handlers.get(name),
+    handlers,
+  };
+}
+
+/** Typed alias so tests can call handlers with typed args records. */
+type HandlerArgs = Record<string, unknown>;
+
+/**
+ * Creates a mock WorkflowEngine.
+ *
+ * @param activeWorkflows - Array of workflow instances returned by listActive().
+ */
+function createMockWorkflowEngine(
+  activeWorkflows: ReturnType<typeof createWorkflow>[] = [],
+) {
+  return {
+    listActive: vi.fn(() => activeWorkflows),
+    get: vi.fn((id: string) => activeWorkflows.find((w) => w.id === id) ?? null),
+    sendEvent: vi.fn(),
+  };
+}
+
+/**
+ * Creates a minimal workflow instance for testing.
+ *
+ * @param state   - The current_state value (e.g. 'WRITING', 'REVIEWING', 'FIXING').
+ * @param context - Additional context properties to merge into the workflow context.
+ */
+function createWorkflow(
+  state: string,
+  context: Record<string, unknown> = {},
+) {
+  return {
+    id: `wf_test_${Math.random().toString(36).slice(2)}`,
+    current_state: state,
+    status: 'active' as const,
+    context: {
+      max_fix_attempts: 3,
+      min_review_score: 9.5,
+      fix_attempts: 0,
+      ...context,
+    },
+  };
+}
+
+// ─── Test Suite ───────────────────────────────────────────────────────────────
+
+describe('registerWRFCHandlers', () => {
+  let registry: ReturnType<typeof createMockRegistry>;
+  let directiveQueue: DirectiveQueue;
+
+  beforeEach(() => {
+    registry = createMockRegistry();
+    directiveQueue = new DirectiveQueue();
+  });
+
+  // ─── Registration ──────────────────────────────────────────────────────────
+
+  describe('registration', () => {
+    it('registers exactly 3 handlers on the registry', () => {
+      registerWRFCHandlers(registry as never, directiveQueue, null, null);
+      expect(registry.registerHandler).toHaveBeenCalledTimes(3);
+    });
+
+    it('registers wrfc_chain_next', () => {
+      registerWRFCHandlers(registry as never, directiveQueue, null, null);
+      const names = registry.registerHandler.mock.calls.map((c) => c[0]);
+      expect(names).toContain('wrfc_chain_next');
+    });
+
+    it('registers wrfc_review_response', () => {
+      registerWRFCHandlers(registry as never, directiveQueue, null, null);
+      const names = registry.registerHandler.mock.calls.map((c) => c[0]);
+      expect(names).toContain('wrfc_review_response');
+    });
+
+    it('registers wrfc_fix_response', () => {
+      registerWRFCHandlers(registry as never, directiveQueue, null, null);
+      const names = registry.registerHandler.mock.calls.map((c) => c[0]);
+      expect(names).toContain('wrfc_fix_response');
+    });
+  });
+
+  // ─── wrfc_chain_next ───────────────────────────────────────────────────────
+
+  describe('wrfc_chain_next', () => {
+    it('does nothing when no workflowEngine is provided', async () => {
+      registerWRFCHandlers(registry as never, directiveQueue, null, null);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({} as HandlerArgs);
+
+      expect(directiveQueue.size()).toBe(0);
+    });
+
+    it('does nothing when there are no active workflows and no workflow_id', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({} as HandlerArgs);
+
+      expect(directiveQueue.size()).toBe(0);
+    });
+
+    it('does nothing when workflow_id resolves to null and no active workflows', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_chain_next')!;
+
+      await handler({ workflow_id: 'wf_nonexistent' } as HandlerArgs);
+
+      // listActive returns [] → still skips
+      expect(directiveQueue.size()).toBe(0);
+    });
+
+    // ── WRITING state ────────────────────────────────────────────────────────
+
+    describe('WRITING state', () => {
+      it('enqueues a spawn-reviewer directive when workflow is in WRITING state', async () => {
+        const workflow = createWorkflow('WRITING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({} as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.type).toBe('inject_system_message');
+        expect(directive!.source).toBe('wrfc_chain_next');
+        expect(directive!.content).toContain('reviewer');
+      });
+
+      it('includes files_modified in the reviewer task when present', async () => {
+        const workflow = createWorkflow('WRITING', {
+          files_modified: ['src/foo.ts', 'src/bar.ts'],
+        });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({} as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('src/foo.ts');
+        expect(directive!.content).toContain('src/bar.ts');
+      });
+
+      it('uses the explicit workflow_id from args when provided', async () => {
+        const workflow = createWorkflow('WRITING');
+        const engine = createMockWorkflowEngine([workflow]);
+        engine.get.mockReturnValue(workflow as never);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({ workflow_id: workflow.id } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+      });
+
+      it('treats non-string workflow_id as absent and falls back to listActive', async () => {
+        const workflow = createWorkflow('WRITING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({ workflow_id: 42 } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+      });
+    });
+
+    // ── REVIEWING state ──────────────────────────────────────────────────────
+
+    describe('REVIEWING state', () => {
+      it('enqueues workflow-complete directive when reviewer score meets threshold', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'The code is excellent. SCORE: 9.5/10',
+          },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      });
+
+      it('enqueues workflow-complete when score is exactly the threshold', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'SCORE: 9.5/10',
+          },
+        } as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      });
+
+      it('enqueues spawn-fixer directive when reviewer score is below threshold', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'Needs improvement. SCORE: 7.0/10',
+          },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('engineer');
+        expect(directive!.content).not.toContain('WORKFLOW COMPLETE');
+      });
+
+      it('calls sendEvent with wrfc:review_completed when score is parsed', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'SCORE: 9.5/10',
+          },
+        } as HandlerArgs);
+
+        expect(engine.sendEvent).toHaveBeenCalledOnce();
+        const eventArg = engine.sendEvent.mock.calls[0]![1] as Record<string, unknown>;
+        expect(eventArg.type).toBe('wrfc:review_completed');
+      });
+
+      it('does not enqueue anything when agent type is not a reviewer', async () => {
+        const workflow = createWorkflow('REVIEWING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'engineer',
+            task_output: 'SCORE: 9.5/10',
+          },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size()).toBe(0);
+      });
+
+      it('does not enqueue anything when no review score is found in output', async () => {
+        const workflow = createWorkflow('REVIEWING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'The code looks okay but I cannot give a score.',
+          },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size()).toBe(0);
+      });
+
+      it('falls back to hook_input.result when task_output is absent', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            result: 'Excellent work. SCORE: 10/10',
+          },
+        } as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      });
+
+      it('uses subagent_type as agent type when agent_type is absent', async () => {
+        const workflow = createWorkflow('REVIEWING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        // subagent_type contains 'reviewer' → should be treated as reviewer
+        await handler({
+          hook_input: {
+            subagent_type: 'goodvibes:reviewer',
+            task_output: 'SCORE: 9.5/10',
+          },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+      });
+
+      it('uses default min_review_score of 9.5 when context does not specify it', async () => {
+        const workflow = createWorkflow('REVIEWING');
+        delete (workflow.context as Record<string, unknown>)['min_review_score'];
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        // Score of 9.5 should meet the default threshold of 9.5
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'SCORE: 9.5/10',
+          },
+        } as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      });
+    });
+
+    // ── FIXING state ─────────────────────────────────────────────────────────
+
+    describe('FIXING state', () => {
+      it('enqueues spawn-reviewer directive when fix_attempts is below max', async () => {
+        const workflow = createWorkflow('FIXING', {
+          fix_attempts: 1,
+          max_fix_attempts: 3,
+        });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'engineer' },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('reviewer');
+        expect(directive!.content).not.toContain('ESCALATION');
+      });
+
+      it('increments fix_attempts in workflow context', async () => {
+        const workflow = createWorkflow('FIXING', { fix_attempts: 1, max_fix_attempts: 3 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'engineer' },
+        } as HandlerArgs);
+
+        expect(workflow.context.fix_attempts).toBe(2);
+      });
+
+      it('calls sendEvent with wrfc:fix_completed when attempts remain', async () => {
+        const workflow = createWorkflow('FIXING', { fix_attempts: 0, max_fix_attempts: 3 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'engineer' },
+        } as HandlerArgs);
+
+        expect(engine.sendEvent).toHaveBeenCalledOnce();
+        const eventArg = engine.sendEvent.mock.calls[0]![1] as Record<string, unknown>;
+        expect(eventArg.type).toBe('wrfc:fix_completed');
+      });
+
+      it('enqueues escalation directive when fix_attempts reaches max', async () => {
+        const workflow = createWorkflow('FIXING', {
+          fix_attempts: 2,
+          max_fix_attempts: 3,
+          review_score: 6.0,
+        });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'engineer' },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size('subagent_stop')).toBe(1);
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('ESCALATION');
+        expect(directive!.priority).toBe(30);
+      });
+
+      it('uses default max_fix_attempts of 3 when context does not specify it', async () => {
+        // fix_attempts starts at 2 (context), after increment → 3 which equals default max 3
+        const workflow = createWorkflow('FIXING', { fix_attempts: 2 });
+        delete (workflow.context as Record<string, unknown>)['max_fix_attempts'];
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'engineer' },
+        } as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('ESCALATION');
+      });
+
+      it('does not enqueue anything when FIXING but agent is not an engineer', async () => {
+        const workflow = createWorkflow('FIXING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'reviewer' },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size()).toBe(0);
+      });
+
+      it('uses lastScore of 0 when context review_score is absent', async () => {
+        const workflow = createWorkflow('FIXING', {
+          fix_attempts: 2,
+          max_fix_attempts: 3,
+        });
+        // Ensure no review_score in context
+        delete (workflow.context as Record<string, unknown>)['review_score'];
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'engineer' },
+        } as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        // Escalation message should contain the score (0)
+        expect(directive!.content).toContain('0/10');
+      });
+
+      it('calls sendEvent with wrfc:fix_completed when escalating (budget exhausted)', async () => {
+        const workflow = createWorkflow('FIXING', { fix_attempts: 2, max_fix_attempts: 3 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: { agent_type: 'engineer' },
+        } as HandlerArgs);
+
+        // sendEvent MUST be called even on the escalation path so the state machine
+        // advances to ESCALATED (via the wrfc:fix_completed event + budget-exhausted guard).
+        expect(engine.sendEvent).toHaveBeenCalledWith(
+          workflow.id,
+          expect.objectContaining({ type: 'wrfc:fix_completed' }),
+        );
+      });
+    });
+
+    // ── Unknown / unhandled state ────────────────────────────────────────────
+
+    describe('unhandled states', () => {
+      it.each(['IDLE', 'GATHERING', 'COMPLETED', 'CANCELLED'])(
+        'does not enqueue anything when workflow state is %s',
+        async (state) => {
+          const workflow = createWorkflow(state);
+          const engine = createMockWorkflowEngine([workflow]);
+          registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+          const handler = registry.getHandler('wrfc_chain_next')!;
+
+          await handler({} as HandlerArgs);
+
+          expect(directiveQueue.size()).toBe(0);
+        },
+      );
+    });
+
+    // ── Score parsing ────────────────────────────────────────────────────────
+
+    describe('score parsing', () => {
+      it('parses integer score "SCORE: 10/10" as 10', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'SCORE: 10/10',
+          },
+        } as HandlerArgs);
+
+        // Score 10 >= 9.5 → workflow complete
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      });
+
+      it('parses decimal score "SCORE: 9.5/10" as 9.5', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'SCORE: 9.5/10',
+          },
+        } as HandlerArgs);
+
+        // Score 9.5 >= 9.5 threshold → workflow complete
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      });
+
+      it('returns null (skips) when no SCORE pattern found in output', async () => {
+        const workflow = createWorkflow('REVIEWING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'Looks great!',
+          },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size()).toBe(0);
+      });
+
+      it('returns null (skips) when task_output is undefined', async () => {
+        const workflow = createWorkflow('REVIEWING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+          },
+        } as HandlerArgs);
+
+        expect(directiveQueue.size()).toBe(0);
+      });
+
+      it('is case-insensitive for SCORE pattern', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            task_output: 'score: 10/10',
+          },
+        } as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      });
+    });
+  });
+
+  // ─── wrfc_review_response ──────────────────────────────────────────────────
+
+  describe('wrfc_review_response', () => {
+    it('enqueues workflow-complete when review_score >= 10', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 10,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('WORKFLOW COMPLETE');
+      expect(directive!.source).toBe('wrfc_review_response');
+    });
+
+    it('enqueues workflow-complete for score > 10 (out of range but still passes)', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 12,
+        workflow_id: 'wf_test',
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('WORKFLOW COMPLETE');
+    });
+
+    it('enqueues spawn-fixer when review_score < 10', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 7,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('engineer');
+      expect(directive!.content).not.toContain('WORKFLOW COMPLETE');
+    });
+
+    it('includes issues summary in fixer task when review_issues is an array', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 6,
+        workflow_id: workflow.id,
+        review_issues: [
+          { dimension: 'correctness', severity: 'critical', description: 'Bug in auth' },
+        ],
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('correctness');
+      expect(directive!.content).toContain('Bug in auth');
+    });
+
+    it('parses review_issues when provided as a JSON string', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      const issuesJson = JSON.stringify([
+        { dimension: 'performance', severity: 'major', description: 'Slow query' },
+      ]);
+
+      await handler({
+        review_score: 5,
+        workflow_id: workflow.id,
+        review_issues: issuesJson,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('performance');
+      expect(directive!.content).toContain('Slow query');
+    });
+
+    it('handles invalid JSON string for review_issues gracefully', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      // Should not throw; falls back to empty issues → generic summary
+      await expect(
+        handler({
+          review_score: 5,
+          workflow_id: workflow.id,
+          review_issues: 'not valid json {{{',
+        } as HandlerArgs),
+      ).resolves.not.toThrow();
+
+      // Directive should still be enqueued (with generic summary)
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('See previous review output');
+    });
+
+    it('uses generic summary when review_issues is missing (undefined)', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 8,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('See previous review output');
+    });
+
+    it('falls back to most recent active workflow_id when workflow_id arg is absent', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      // No workflow_id provided; score < 10 to trigger spawn-fixer path
+      await handler({ review_score: 7 } as HandlerArgs);
+
+      // Should still produce a directive — workflow_id resolved from listActive
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+    });
+
+    it('uses "unknown" workflow_id when no active workflows exist and workflow_id is absent', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      // Score >= 10 to trigger complete path (simpler)
+      await handler({ review_score: 10 } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('unknown');
+    });
+
+    it('handles files_modified as an array', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 6,
+        workflow_id: workflow.id,
+        files_modified: ['src/auth.ts', 'src/utils.ts'],
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('src/auth.ts');
+    });
+
+    it('handles files_modified as a JSON string', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 6,
+        workflow_id: workflow.id,
+        files_modified: JSON.stringify(['src/config.ts']),
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('src/config.ts');
+    });
+
+    it('handles files_modified as a plain string (non-JSON)', async () => {
+      const workflow = createWorkflow('REVIEWING');
+      const engine = createMockWorkflowEngine([workflow]);
+      engine.get.mockReturnValue(workflow as never);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      await handler({
+        review_score: 6,
+        workflow_id: workflow.id,
+        files_modified: 'src/index.ts',
+      } as HandlerArgs);
+
+      // Non-JSON string falls back to [rawFiles] (single element array)
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('src/index.ts');
+    });
+
+    it('converts numeric review_score string to number', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      // Pass score as string — should still be compared as number
+      await handler({
+        review_score: '10',
+        workflow_id: 'wf_test',
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('WORKFLOW COMPLETE');
+    });
+
+    it('treats missing review_score as 0', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_review_response')!;
+
+      // No review_score → defaults to 0 < 10 → spawn-fixer path
+      await handler({ workflow_id: 'wf_test' } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('engineer');
+    });
+  });
+
+  // ─── wrfc_fix_response ─────────────────────────────────────────────────────
+
+  describe('wrfc_fix_response', () => {
+    it('enqueues spawn-reviewer when fix_attempts < max_fix_attempts', async () => {
+      const workflow = createWorkflow('FIXING');
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      await handler({
+        fix_attempts: 1,
+        max_fix_attempts: 3,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('reviewer');
+      expect(directive!.source).toBe('wrfc_fix_response');
+    });
+
+    it('enqueues escalation directive when fix_attempts >= max_fix_attempts', async () => {
+      const workflow = createWorkflow('FIXING', { review_score: 5.5 });
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      await handler({
+        fix_attempts: 3,
+        max_fix_attempts: 3,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('ESCALATION');
+      expect(directive!.priority).toBe(30);
+    });
+
+    it('includes last review score in escalation message', async () => {
+      const workflow = createWorkflow('FIXING', { review_score: 6.5 });
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      await handler({
+        fix_attempts: 3,
+        max_fix_attempts: 3,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('6.5/10');
+    });
+
+    it('uses "unknown" workflow_id when no workflow found', async () => {
+      const engine = createMockWorkflowEngine([]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      await handler({
+        fix_attempts: 1,
+        max_fix_attempts: 3,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('unknown');
+    });
+
+    it('falls back to most recent active workflow when workflow_id not in args', async () => {
+      const workflow = createWorkflow('FIXING');
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      // No workflow_id in args
+      await handler({
+        fix_attempts: 1,
+        max_fix_attempts: 3,
+      } as HandlerArgs);
+
+      expect(directiveQueue.size('subagent_stop')).toBe(1);
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain(workflow.id);
+    });
+
+    it('includes files_modified in re-review task when present', async () => {
+      const workflow = createWorkflow('FIXING', {
+        files_modified: ['src/routes.ts'],
+      });
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      await handler({
+        fix_attempts: 1,
+        max_fix_attempts: 3,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('src/routes.ts');
+    });
+
+    it('uses default max_fix_attempts of 3 when max_fix_attempts is missing', async () => {
+      const workflow = createWorkflow('FIXING');
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      // fix_attempts = 3 (string) should coerce and equal default max of 3 → escalate
+      await handler({
+        fix_attempts: '3',
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('ESCALATION');
+    });
+
+    it('converts string fix_attempts to number correctly', async () => {
+      const workflow = createWorkflow('FIXING');
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      // String '1' < default max 3 → spawn-reviewer path
+      await handler({
+        fix_attempts: '1',
+        max_fix_attempts: '3',
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('reviewer');
+    });
+
+    it('uses 0 for lastScore when workflow context has no review_score', async () => {
+      const workflow = createWorkflow('FIXING');
+      // No review_score in context
+      delete (workflow.context as Record<string, unknown>)['review_score'];
+      const engine = createMockWorkflowEngine([workflow]);
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      await handler({
+        fix_attempts: 3,
+        max_fix_attempts: 3,
+        workflow_id: workflow.id,
+      } as HandlerArgs);
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('0/10');
+    });
+
+    it('works when workflowEngine is null (no workflow lookup)', async () => {
+      registerWRFCHandlers(registry as never, directiveQueue, null, null);
+      const handler = registry.getHandler('wrfc_fix_response')!;
+
+      // Should not throw; workflow resolves to null → 'unknown'
+      await expect(
+        handler({
+          fix_attempts: 1,
+          max_fix_attempts: 3,
+        } as HandlerArgs),
+      ).resolves.not.toThrow();
+
+      const [directive] = directiveQueue.drain('subagent_stop');
+      expect(directive!.content).toContain('unknown');
+    });
+  });
+});

@@ -26,6 +26,9 @@ import { fetchPricingIfStale } from './pricing-fetcher.js';
 import { ensureClaudeMdImports } from './claude-md-manager.js';
 import { buildProjectIndex } from './project-indexer.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 /**
  * Default recovery info when crash recovery check fails.
  * Used as a fallback to ensure the hook continues gracefully.
@@ -107,6 +110,26 @@ function initializeAnalytics(sessionId, contextResult) {
     });
     debug(`Analytics initialized for session ${sessionId}`);
 }
+/**
+ * Deep merge two plain objects, with source values winning over target.
+ */
+function deepMerge(target, source) {
+    const result = { ...target };
+    for (const key of Object.keys(source)) {
+        if (source[key] &&
+            typeof source[key] === 'object' &&
+            !Array.isArray(source[key]) &&
+            result[key] &&
+            typeof result[key] === 'object' &&
+            !Array.isArray(result[key])) {
+            result[key] = deepMerge(result[key], source[key]);
+        }
+        else {
+            result[key] = source[key];
+        }
+    }
+    return result;
+}
 /** Main entry point for session-start hook. Initializes plugin state and gathers project context. */
 async function runSessionStartHook() {
     const startTime = Date.now();
@@ -123,6 +146,33 @@ async function runSessionStartHook() {
             if (runtimeClient.isAvailable()) {
                 debug('Phase 6: runtime engine available, sending session:started event');
                 await runtimeClient.sendHookEvent('session:started', input);
+                // Load goodvibes.json config (global + project merge)
+                try {
+                    const cwd = input.cwd || PROJECT_ROOT;
+                    const globalConfigPath = join(homedir(), '.claude', '.goodvibes', 'goodvibes.json');
+                    const projectConfigPath = join(cwd, '.goodvibes', 'goodvibes.json');
+                    let config = {};
+                    // Load global config
+                    try {
+                        const raw = readFileSync(globalConfigPath, 'utf-8');
+                        config = JSON.parse(raw);
+                    }
+                    catch { /* no global config */ }
+                    // Load and merge project config (project wins)
+                    try {
+                        const raw = readFileSync(projectConfigPath, 'utf-8');
+                        const projectConfig = JSON.parse(raw);
+                        config = deepMerge(config, projectConfig);
+                    }
+                    catch { /* no project config */ }
+                    if (Object.keys(config).length > 0) {
+                        debug('goodvibes.json config loaded', config);
+                        await runtimeClient.sendHookEvent('config:loaded', config);
+                    }
+                }
+                catch (err) {
+                    debug('goodvibes.json config load failed', err);
+                }
                 const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
                 if (queryResult?.kind === 'system_message') {
                     debug('Phase 6: runtime returned system message, using it');
