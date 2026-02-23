@@ -273,9 +273,7 @@ export class ProcessManager {
 
     // Start a watchdog that force-exits if shutdown exceeds timeout_ms.
     const watchdog = setTimeout(() => {
-      process.stderr.write(
-        `[runtime-engine] Shutdown timed out after ${timeout_ms} ms — forcing exit\n`
-      );
+      logger.error('Shutdown timed out — forcing exit', { timeout_ms });
       process.exit(1);
     }, timeout_ms);
     watchdog.unref();
@@ -610,8 +608,12 @@ export class ProcessManager {
           err: toErrorMessage(err),
         });
       });
-      this.workflowEngine?.prune();
-      this.agentCoordinator?.prune();
+      try {
+        this.workflowEngine?.prune();
+        this.agentCoordinator?.prune();
+      } catch (err) {
+        logger.warn('Periodic prune failed', { err: toErrorMessage(err) });
+      }
     }, interval);
 
     // Unref so the timer does not prevent graceful exit

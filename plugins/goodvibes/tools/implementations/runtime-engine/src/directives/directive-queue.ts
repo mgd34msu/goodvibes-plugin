@@ -7,6 +7,12 @@
  */
 
 import type { Directive } from '../ipc/protocol.js';
+import { createLogger } from '../shared/logger.js';
+
+const logger = createLogger('directive-queue');
+
+/** Maximum number of directives retained per target before oldest are evicted. */
+const MAX_QUEUE_DEPTH = 100;
 
 /**
  * FIFO queue of Directives, partitioned by target hook name.
@@ -29,6 +35,10 @@ export class DirectiveQueue {
   enqueue(target: string, directive: Directive): void {
     const queue = this.queues.get(target);
     if (queue) {
+      if (queue.length >= MAX_QUEUE_DEPTH) {
+        queue.shift();
+        logger.warn('DirectiveQueue at capacity: oldest directive evicted', { target, max: MAX_QUEUE_DEPTH });
+      }
       queue.push(directive);
     } else {
       this.queues.set(target, [directive]);

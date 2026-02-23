@@ -365,6 +365,36 @@ export class WorkflowEngine {
   }
 
   /**
+   * Removes completed workflow instances older than `maxAge` ms.
+   *
+   * Only instances with status `'completed'` are eligible for removal.
+   * Active, failed, or cancelled instances are retained regardless of age.
+   *
+   * @param maxAge - Maximum age in milliseconds for completed instances
+   *   before they are pruned. Defaults to 3 600 000 ms (1 hour).
+   * @returns The number of instances removed.
+   */
+  prune(maxAge = 3_600_000): number {
+    const cutoff = Date.now() - maxAge;
+    let pruned = 0;
+    for (const [id, instance] of this.instances) {
+      if (instance.status === 'completed') {
+        const completedAt = instance.completed_at
+          ? new Date(instance.completed_at).getTime()
+          : new Date(instance.updated_at).getTime();
+        if (completedAt < cutoff) {
+          this.instances.delete(id);
+          pruned++;
+        }
+      }
+    }
+    if (pruned > 0) {
+      log.debug('Pruned completed workflow instances', { pruned });
+    }
+    return pruned;
+  }
+
+  /**
    * Registers a named guard function for use in workflow definitions.
    *
    * @param name - The function name referenced in GuardCondition.function.

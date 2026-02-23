@@ -491,7 +491,7 @@ export class AgentCoordinator {
    * @param olderThanMs - Maximum age in ms of retained agents.
    * @returns Number of agents pruned.
    */
-  prune(olderThanMs: number): number {
+  prune(olderThanMs = 3_600_000): number {
     const cutoff = Date.now() - olderThanMs;
     let count = 0;
 
