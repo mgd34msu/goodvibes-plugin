@@ -56,7 +56,12 @@ function resolveStringTemplate(value: string, event: RuntimeEvent): string {
       }
       current = (current as Record<string, unknown>)[part];
     }
-    return current !== undefined && current !== null ? String(current) : '';
+    // FIX-TRACE-C: Returns '' (empty string) for missing/null/object fields.
+    // Handlers using ?? fallback chains should use || instead if they need to
+    // fall through on empty strings (since ?? only checks null/undefined).
+    if (current === undefined || current === null) return '';
+    if (typeof current === 'object') return '';
+    return String(current);
   });
 }
 

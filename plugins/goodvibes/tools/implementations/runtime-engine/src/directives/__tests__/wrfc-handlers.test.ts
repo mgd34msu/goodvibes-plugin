@@ -160,6 +160,19 @@ describe('registerWRFCHandlers', () => {
         expect(directive!.content).toContain('reviewer');
       });
 
+      it('calls sendEvent with wrfc:review_started to advance WRITING→REVIEWING state', async () => {
+        const workflow = createWorkflow('WRITING');
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        await handler({} as HandlerArgs);
+
+        expect(engine.sendEvent).toHaveBeenCalledOnce();
+        const eventArg = engine.sendEvent.mock.calls[0]![1] as Record<string, unknown>;
+        expect(eventArg.type).toBe('wrfc:review_started');
+      });
+
       it('includes files_modified in the reviewer task when present', async () => {
         const workflow = createWorkflow('WRITING', {
           files_modified: ['src/foo.ts', 'src/bar.ts'],
@@ -304,6 +317,24 @@ describe('registerWRFCHandlers', () => {
         } as HandlerArgs);
 
         expect(directiveQueue.size()).toBe(0);
+      });
+
+      it('uses last_assistant_message as primary reviewer output source (FIX-TRACE-B)', async () => {
+        const workflow = createWorkflow('REVIEWING', { min_review_score: 9.5 });
+        const engine = createMockWorkflowEngine([workflow]);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+        const handler = registry.getHandler('wrfc_chain_next')!;
+
+        // last_assistant_message is the actual field SubagentStop populates
+        await handler({
+          hook_input: {
+            agent_type: 'reviewer',
+            last_assistant_message: 'Excellent work! SCORE: 10/10',
+          },
+        } as HandlerArgs);
+
+        const [directive] = directiveQueue.drain('subagent_stop');
+        expect(directive!.content).toContain('WORKFLOW COMPLETE');
       });
 
       it('falls back to hook_input.result when task_output is absent', async () => {

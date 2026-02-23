@@ -1,10 +1,10 @@
 /**
  * Built-in Trigger Definitions
  *
- * Nine pre-configured triggers that cover the most common automation scenarios:
+ * Ten pre-configured triggers that cover the most common automation scenarios:
  * build failure recovery, test failure recovery, budget monitoring,
  * spawn rate limiting, dev server recovery, WRFC auto-review chain,
- * WRFC review response, and WRFC fix response.
+ * WRFC review response, WRFC fix response, and WRFC workflow start on agent spawn.
  */
 
 import type { TriggerDefinition } from './types.js';
@@ -198,7 +198,18 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
         args_template: {
           event_id: '$event.id',
           event_type: '$event.type',
-          hook_input: '$event.payload.data',
+          // Pass individual hook_input fields to avoid template stringification of objects.
+          // wrfc_chain_next reads agent_type, subagent_type, task_output, result from hook_input.
+          // FIX-TRACE-A: Added last_assistant_message (the actual field SubagentStop sends)
+          // and kept task_output/result as fallbacks for other hook sources.
+          hook_input: {
+            agent_id: '$event.payload.data.agent_id',
+            agent_type: '$event.payload.data.agent_type',
+            subagent_type: '$event.payload.data.subagent_type',
+            last_assistant_message: '$event.payload.data.last_assistant_message',
+            task_output: '$event.payload.data.task_output',
+            result: '$event.payload.data.result',
+          },
         },
       },
       cooldown_ms: 5_000,
@@ -254,6 +265,33 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
       },
       cooldown_ms: 5_000,
       max_fires: 30,
+      fires_count: 0,
+    },
+
+    // ─── 10. WRFC Start Workflow on Agent Spawn ───────────────────────────
+    {
+      id: 'builtin_wrfc_start_workflow',
+      name: 'wrfc_start_workflow',
+      description: 'Start a wrfc_loop workflow when an agent spawns, initialising the WRFC chain',
+      enabled: true,
+      priority: 10,
+      condition: {
+        type: 'event',
+        event_type: 'hook:agent:spawned',
+      },
+      action: {
+        type: 'start_workflow',
+        workflow_definition: 'wrfc_loop',
+        context_template: {
+          trigger: 'agent_spawned',
+          event_id: '$event.id',
+          agent_id: '$event.payload.data.agent_id',
+          agent_type: '$event.payload.data.agent_type',
+          task: '$event.payload.data.task_description',
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 50,
       fires_count: 0,
     },
   ];

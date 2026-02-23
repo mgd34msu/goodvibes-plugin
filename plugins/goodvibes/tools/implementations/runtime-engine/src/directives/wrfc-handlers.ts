@@ -326,7 +326,28 @@ export function registerWRFCHandlers(
         source: 'wrfc_chain_next',
       });
 
-      log.info('wrfc_chain_next: reviewer directive enqueued', {
+      // Advance state machine: WRITING → REVIEWING so subsequent hook:agent:completed
+      // events route to the REVIEWING branch instead of re-spawning another reviewer.
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: 'wrfc:review_started',
+          source: { kind: 'system' },
+          payload: {
+            type: 'wrfc:review_started',
+            data: { workflow_id: workflow.id },
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 },
+        });
+      } catch (err) {
+        log.error('wrfc_chain_next: failed to advance workflow state WRITING→REVIEWING', {
+          workflow_id: workflow.id,
+          error: String(err),
+        });
+      }
+
+      log.info('wrfc_chain_next: reviewer directive enqueued, state advanced to REVIEWING', {
         workflow_id: workflow.id,
         current_state: workflow.current_state,
       });
@@ -344,9 +365,12 @@ export function registerWRFCHandlers(
         return;
       }
 
-      // Extract score from task output or result
+      // FIX-TRACE-B: Added last_assistant_message as the primary source of reviewer output.
+      // SubagentStop sends rawInput with last_assistant_message (not task_output/result).
+      // task_output and result are kept as fallbacks for other hook sources.
       const taskOutput =
-        (hookInput?.['task_output'] as string | undefined) ??
+        (hookInput?.['last_assistant_message'] as string | undefined) ||
+        (hookInput?.['task_output'] as string | undefined) ||
         (hookInput?.['result'] as string | undefined);
       const score = parseReviewScore(taskOutput);
 

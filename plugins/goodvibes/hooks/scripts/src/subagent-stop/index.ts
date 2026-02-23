@@ -58,6 +58,7 @@ interface SubagentStopInput {
   subagent_type?: string;
   agent_transcript_path?: string;
   subagent_transcript_path?: string;
+  last_assistant_message?: string;
   task_output?: string;
   result?: string;
   success?: boolean;
