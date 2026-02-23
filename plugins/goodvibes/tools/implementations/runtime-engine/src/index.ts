@@ -44,6 +44,8 @@ export { IPCServer } from './ipc/ipc-server.js';
 export type { MessageHandler } from './ipc/ipc-server.js';
 export { RuntimeClient } from './ipc/client.js';
 export { FileFallback } from './ipc/file-fallback.js';
+export { IPCRouter } from './ipc/ipc-router.js';
+export type { IPCRouterDeps } from './ipc/ipc-router.js';
 export { AgentCoordinator } from './agents/agent-coordinator.js';
 export { BudgetTracker } from './agents/budget-tracker.js';
 export type {

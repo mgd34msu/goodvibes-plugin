@@ -54,6 +54,22 @@ export class IPCRouter {
   }
 
   /**
+   * Drains directives from the queue and composes a system message string.
+   *
+   * Shared by get_directives and get_system_message query handlers.
+   * Returns both the joined message string and the raw directive array.
+   */
+  private drainDirectiveMessages(): { message: string; directives: ReturnType<NonNullable<DirectiveQueue>['drain']> } {
+    const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
+    const message = directives
+      .filter((d) => d.type === 'inject_system_message')
+      .sort((a, b) => b.priority - a.priority)
+      .map((d) => d.content)
+      .join('\n\n');
+    return { message, directives };
+  }
+
+  /**
    * Route an incoming IPC message to the appropriate handler and return a
    * response. This method is bound and passed directly to IPCServer.onMessage().
    *
@@ -96,12 +112,7 @@ export class IPCRouter {
     if (msg.type === 'query') {
       const q = msg.query;
       if (q.kind === 'get_directives') {
-        const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
-        const message = directives
-          .filter((d) => d.type === 'inject_system_message')
-          .sort((a, b) => b.priority - a.priority)
-          .map((d) => d.content)
-          .join('\n\n');
+        const { message, directives } = this.drainDirectiveMessages();
         return {
           id: msg.id,
           status: 'ok',
@@ -109,17 +120,11 @@ export class IPCRouter {
         };
       }
       if (q.kind === 'get_system_message') {
-        // Also drain directives for system_message queries
-        const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
-        const directiveMessage = directives
-          .filter((d) => d.type === 'inject_system_message')
-          .sort((a, b) => b.priority - a.priority)
-          .map((d) => d.content)
-          .join('\n\n');
+        const { message, directives } = this.drainDirectiveMessages();
         return {
           id: msg.id,
           status: 'ok',
-          data: { kind: 'system_message', message: directiveMessage, directives },
+          data: { kind: 'system_message', message, directives },
         };
       }
       if (q.kind === 'get_workflow_state') {
@@ -137,7 +142,8 @@ export class IPCRouter {
           data: { kind: 'tool_decision', allow: true },
         };
       }
-      // Default: ack unknown queries
+      // Default: log and ack unknown queries
+      logger.warn('Unhandled query kind', { kind: q.kind });
       return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
     }
 
