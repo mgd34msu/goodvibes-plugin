@@ -1,0 +1,13 @@
+{
+  "name": "cli-calculator",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "start": "node --experimental-strip-types src/index.ts"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
+}
