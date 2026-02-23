@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-02-22T19:04:39.698Z'
+generated: '2026-02-23T15:04:34.636Z'
 total: 73
 servers:
   - name: precision-engine
@@ -353,38 +353,38 @@ servers:
       - name: runtime_status
         path: runtime-engine/runtime-status.yaml
         description: >-
-          Get current runtime engine status including active workflows, agents, event queue stats, and system health.
-          Use to monitor orchestration state and diagnose issues.
+          Get the current health, uptime, and operational status of the runtime engine. ' + 'Returns process metrics,
+          feature flags, and individual health check results.
       - name: runtime_config
         path: runtime-engine/runtime-config.yaml
         description: >-
-          Get or set runtime engine configuration. Supports dot-separated key paths for nested values.
-          Use to adjust queue settings, trigger defaults, IPC config, and feature flags.
+          Read or modify runtime-engine configuration. ' + 'Use get to read (full config or a single dot-separated key),
+          ' + 'set to persist a single key-value pair, ' + 'or reset to restore factory defaults.
       - name: runtime_events
         path: runtime-engine/runtime-events.yaml
         description: >-
-          Query the runtime event log: filter by type, source, time range. Inspect event history
-          and queue statistics. Supports glob type patterns (hook:*, agent:*).
+          Query the runtime event log: filter by type, source, time range. ' + 'Inspect event history and queue
+          statistics.
       - name: runtime_emit
         path: runtime-engine/runtime-emit.yaml
         description: >-
-          Emit a custom event into the runtime event bus. Useful for manual workflow advancement,
-          trigger testing, or custom automation.
+          Emit a custom event into the runtime event bus. ' + 'Useful for manual workflow advancement, trigger testing,
+          or custom automation.
       - name: runtime_workflow
         path: runtime-engine/runtime-workflow.yaml
         description: >-
-          Manage WRFC and fix-loop workflows: create, query, advance state, cancel.
-          Formal state machines for orchestration.
+          Manage WRFC and fix-loop workflows: create, query, advance state, cancel. ' + 'Formal state machines for
+          orchestration.
       - name: runtime_triggers
         path: runtime-engine/runtime-triggers.yaml
         description: >-
-          Manage event triggers: list, create, enable/disable, test conditions.
-          Declarative event-driven automation.
+          Manage event triggers: list, create, enable/disable, test conditions. ' + 'Declarative event-driven
+          automation.
       - name: runtime_agents
         path: runtime-engine/runtime-agents.yaml
         description: >-
-          Manage coordinated agents: spawn with workflow context, track WRFC chains,
-          monitor budgets, view execution plans. Workflow-aware agent orchestration.
+          Manage coordinated agents: spawn with workflow context, track WRFC chains, ' + 'monitor budgets, view
+          execution plans. Workflow-aware agent orchestration.
 search_index:
   - name: precision_write
     keywords:
@@ -2259,48 +2259,57 @@ search_index:
     keywords:
       - runtime
       - status
-      - active
-      - workflows
-      - agents
-      - queue
-      - stats
-      - system
+      - get
+      - current
       - health
-      - orchestration
-      - diagnose
+      - uptime
+      - operational
+      - engine
+      - returns
+      - process
+      - metrics
+      - feature
+      - flags
+      - individual
+      - check
+      - results
     path: runtime-engine/runtime-status.yaml
     description: >-
-      Get current runtime engine status including active workflows, agents, event queue stats, and system health.
-      Use to monitor orchestration state and diagnose issues.
+      Get the current health, uptime, and operational status of the runtime engine. ' + 'Returns process metrics,
+      feature flags, and individual health check results.
     server: runtime-engine
   - name: runtime_config
     keywords:
       - runtime
       - config
+      - read
+      - modify
+      - engine
       - configuration
+      - get
+      - full
+      - single
       - dot
       - separated
       - key
-      - paths
-      - nested
-      - values
-      - queue
-      - triggers
-      - ipc
-      - feature
-      - flags
+      - set
+      - persist
+      - value
+      - pair
+      - reset
+      - restore
+      - factory
+      - defaults
     path: runtime-engine/runtime-config.yaml
     description: >-
-      Get or set runtime engine configuration. Supports dot-separated key paths for nested values.
-      Use to adjust queue settings, trigger defaults, IPC config, and feature flags.
+      Read or modify runtime-engine configuration. ' + 'Use get to read (full config or a single dot-separated key), ' +
+      'set to persist a single key-value pair, ' + 'or reset to restore factory defaults.
     server: runtime-engine
   - name: runtime_events
     keywords:
       - runtime
       - events
       - query
-      - tail
-      - stats
       - event
       - log
       - filter
@@ -2308,79 +2317,95 @@ search_index:
       - source
       - time
       - range
+      - inspect
       - history
       - queue
-      - monitoring
+      - statistics
     path: runtime-engine/runtime-events.yaml
-    description: >-
-      Query the runtime event log: filter by type, source, time range. Inspect event history
-      and queue statistics. Supports glob type patterns (hook:*, agent:*).
+    description: 'Query the runtime event log: filter by type, source, time range. '' + ''Inspect event history and queue statistics.'
     server: runtime-engine
   - name: runtime_emit
     keywords:
       - runtime
       - emit
-      - event
-      - bus
       - custom
-      - trigger
+      - event
+      - into
+      - bus
+      - useful
+      - manual
       - workflow
+      - advancement
+      - trigger
+      - testing
       - automation
-      - publish
-      - fire
     path: runtime-engine/runtime-emit.yaml
     description: >-
-      Emit a custom event into the runtime event bus. Useful for manual workflow advancement,
-      trigger testing, or custom automation.
+      Emit a custom event into the runtime event bus. ' + 'Useful for manual workflow advancement, trigger testing, or
+      custom automation.
     server: runtime-engine
   - name: runtime_workflow
     keywords:
       - runtime
       - workflow
+      - manage
       - wrfc
       - fix
       - loop
-      - state
-      - machine
+      - workflows
       - create
+      - query
       - advance
+      - state
       - cancel
+      - formal
+      - machines
       - orchestration
     path: runtime-engine/runtime-workflow.yaml
     description: >-
-      Manage WRFC and fix-loop workflows: create, query, advance state, cancel.
-      Formal state machines for orchestration.
+      Manage WRFC and fix-loop workflows: create, query, advance state, cancel. ' + 'Formal state machines for
+      orchestration.
     server: runtime-engine
   - name: runtime_triggers
     keywords:
       - runtime
       - triggers
-      - automation
-      - events
+      - manage
+      - event
+      - list
+      - create
       - enable
       - disable
       - test
       - conditions
       - declarative
+      - driven
+      - automation
     path: runtime-engine/runtime-triggers.yaml
-    description: >-
-      Manage event triggers: list, create, enable/disable, test conditions.
-      Declarative event-driven automation.
+    description: 'Manage event triggers: list, create, enable/disable, test conditions. '' + ''Declarative event-driven automation.'
     server: runtime-engine
   - name: runtime_agents
     keywords:
       - runtime
       - agents
-      - coordinator
-      - workflow
-      - wrfc
-      - budget
+      - manage
+      - coordinated
       - spawn
-      - orchestration
+      - workflow
+      - context
+      - track
+      - wrfc
+      - chains
+      - monitor
+      - budgets
+      - view
       - execution
-      - plan
+      - plans
+      - aware
+      - agent
+      - orchestration
     path: runtime-engine/runtime-agents.yaml
     description: >-
-      Manage coordinated agents: spawn with workflow context, track WRFC chains,
-      monitor budgets, view execution plans. Workflow-aware agent orchestration.
+      Manage coordinated agents: spawn with workflow context, track WRFC chains, ' + 'monitor budgets, view execution
+      plans. Workflow-aware agent orchestration.
     server: runtime-engine

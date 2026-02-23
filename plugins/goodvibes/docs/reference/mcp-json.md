@@ -142,7 +142,7 @@ The following variables are automatically substituted at runtime:
 
 ## GoodVibes MCP Servers
 
-GoodVibes provides 5 specialized MCP servers:
+GoodVibes provides 6 specialized MCP servers:
 
 ### 1. precision-engine
 **Purpose**: Token-efficient file operations with precision output control

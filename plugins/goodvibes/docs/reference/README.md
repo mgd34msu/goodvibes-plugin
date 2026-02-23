@@ -31,7 +31,7 @@ Configures Model Context Protocol servers that provide tools.
 **Key Topics**:
 - MCP server configuration (command, args, env)
 - Variable substitution (`${CLAUDE_PLUGIN_ROOT}`)
-- GoodVibes MCP servers (5 specialized engines)
+- GoodVibes MCP servers (6 specialized engines)
 - Tool namespacing and access
 - Common patterns and troubleshooting
 

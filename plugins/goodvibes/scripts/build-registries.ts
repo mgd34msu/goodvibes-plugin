@@ -224,6 +224,7 @@ const MCP_SERVERS = [
   'analytics-engine',
   'project-engine',
   'frontend-engine',
+  'runtime-engine',
 ] as const;
 
 /**
@@ -239,6 +240,7 @@ function parseTypeScriptSchemas(): Map<string, { name: string; description: stri
 
     let schemaFiles: string[] = [];
     let baseDir = schemasDir;
+    const toolHandlersPath = path.join(PLUGIN_ROOT, 'tools', 'implementations', server, 'src', 'server', 'tool-handlers.ts');
 
     if (fs.existsSync(schemasDir)) {
       schemaFiles = fs.readdirSync(schemasDir).filter(f => f.endsWith('.ts'));
@@ -246,6 +248,10 @@ function parseTypeScriptSchemas(): Map<string, { name: string; description: stri
       // Some servers define schemas in handlers/index.ts
       schemaFiles = ['index.ts'];
       baseDir = path.dirname(handlersIndexPath);
+    } else if (fs.existsSync(toolHandlersPath)) {
+      // runtime-engine defines schemas in server/tool-handlers.ts
+      schemaFiles = ['tool-handlers.ts'];
+      baseDir = path.dirname(toolHandlersPath);
     } else {
       console.warn(`  No schemas found for: ${server}`);
       continue;
@@ -284,6 +290,21 @@ function parseTypeScriptSchemas(): Map<string, { name: string; description: stri
         const description = match[2].replace(/\s+/g, ' ').trim();
         if (!tools.has(name)) {
           tools.set(name, { name, description, server });
+        }
+      }
+
+      // Handle string concatenation descriptions: description:\n  'line1 ' +\n  'line2',
+      const concatRegex = /\{\s*name:\s*['"]([^'"]+)['"]\s*,\s*description:\s*\n\s*(['"])([\s\S]*?)\s*,\s*inputSchema/g;
+      while ((match = concatRegex.exec(content)) !== null) {
+        const name = match[1];
+        if (!tools.has(name)) {
+          // Join concatenated string parts: 'part1 ' + 'part2' -> 'part1 part2'
+          const rawDesc = match[3]
+            .replace(/['"]\s*\+\s*['"]\s*/g, '')
+            .replace(/['"]\s*$/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          tools.set(name, { name, description: rawDesc, server });
         }
       }
     }
@@ -522,7 +543,7 @@ function main() {
   const skills = scanSkills();
   writeRegistry('skills', skills);
 
-  console.log('\nScanning tools from 6 MCP servers...');
+  console.log(`\nScanning tools from ${MCP_SERVERS.length} MCP servers...`);
   const tools = scanTools();
 
   // Organize tools by server

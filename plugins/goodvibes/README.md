@@ -1,12 +1,12 @@
 # GoodVibes Plugin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.2.30-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://claude.com/claude-code)
 
 > Plug in. Receive good vibes.
 
-A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 66 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
+A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 73 MCP tools across 6 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
 
 ## At a Glance
 
@@ -14,7 +14,7 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 |-----------|-------|--------------|
 | Agents | 11 | Specialized roles (Opus/Sonnet) for engineering, review, testing, architecture, deployment, integration, planning |
 | Skills | 25 | Tiered knowledge modules: protocol, orchestration, outcome, quality |
-| MCP Tools | 66 | Token-efficient tools across 5 specialized engines |
+| MCP Tools | 73 | Token-efficient tools across 6 specialized engines |
 | Hooks | 11 | Lifecycle automation (tool redirection, context injection, error recovery, setup) |
 | Output Styles | 2 | Interactive (vibecoding) or fully autonomous (justvibes) |
 | Templates | 3 | Production scaffolds |
@@ -327,7 +327,7 @@ Discovery and search layer for skills, agents, and tools. Uses Fuse.js fuzzy sea
 |------|-------------|
 | `search_skills` | Keyword/semantic search over the 25-skill registry |
 | `search_agents` | Search the 11-agent registry by expertise area |
-| `search_tools` | Search the 66-tool registry by functionality |
+| `search_tools` | Search the 73-tool registry by functionality |
 | `recommend_skills` | Analyze a task description and recommend relevant skills with context classification |
 | `get_skill_content` | Load a skill's full content into context for immediate use |
 | `get_agent_content` | Load an agent definition into context |
@@ -337,9 +337,34 @@ Key capabilities:
 - **Fuzzy search**: Fuse.js with weighted fields (description 0.4, name 0.3, keywords 0.3) and relevance scoring
 - **Lazy loading**: server starts instantly; registry indexes are loaded on first use (single-flight pattern)
 - **Deferred tools**: all 7 tools use `defer_loading: true` — loaded on-demand via `ToolSearch` to minimize startup cost
-- **Three registries**: skills (25), agents (11), tools (66) — each indexed independently with Fuse.js
+- **Three registries**: skills (25), agents (11), tools (73) — each indexed independently with Fuse.js
 
 > Full details: [registry-engine.md](registry-engine.md)
+
+## Runtime Engine — 7 Tools
+
+Event-driven orchestration engine providing persistent state, workflow state machines, and hook IPC. Runs as a long-lived MCP server with Unix domain socket communication for sub-5ms hook latency. Feature-flagged 6-phase migration.
+
+| Tool | Description |
+|------|-------------|
+| `runtime_status` | Engine health, uptime, component status, and resource usage |
+| `runtime_config` | View, update, or hot-reload runtime engine configuration |
+| `runtime_events` | Query event history, get stats, or inspect the dead-letter queue |
+| `runtime_emit` | Emit custom events into the event bus with optional priority and metadata |
+| `runtime_workflow` | Create, advance, query, or cancel workflow state machine instances |
+| `runtime_triggers` | Register, list, enable/disable declarative event-driven triggers |
+| `runtime_agents` | Spawn, track, cancel agents with budget enforcement and WRFC chain coordination |
+
+Key capabilities:
+- **EventBus**: Pub/sub with glob-pattern matching, O(1) circular buffer history, 59+ typed events across 13 namespaces
+- **EventQueue**: Priority queue (CRITICAL/HIGH/NORMAL/LOW), 3-attempt retry with exponential backoff, dead-letter queue
+- **EventLog**: JSONL append-only persistence with atomic compaction and crash recovery via replay
+- **Workflow Engine**: Formal state machines — WRFC loop (8 states), fix loop (6 states), custom workflows with safe expression evaluation
+- **Trigger System**: Declarative "when X do Y" automation with event, composite, threshold, and sequence conditions
+- **IPC Channel**: Unix domain socket for hook-to-runtime communication with file-based fallback
+- **Agent Coordinator**: Workflow-aware agent management with budget tracking at 50%/80%/95% thresholds
+
+> Full details: [runtime-engine.md](runtime-engine.md)
 
 ## Agents
 
