@@ -9,6 +9,60 @@
  * line, terminated with '\n'.
  */
 
+// ─── Message Validation ──────────────────────────────────────────────────────
+
+/** Valid IPC message type discriminants. */
+const VALID_IPC_MESSAGE_TYPES = new Set<string>([
+  'hook_event',
+  'query',
+  'state_update',
+  'heartbeat',
+]);
+
+/**
+ * Runtime type guard for IPCMessage.
+ *
+ * Validates that an unknown value conforms to the IPCMessage discriminated
+ * union. Checks the shared envelope fields (type, id) and the type-specific
+ * required fields for each message kind.
+ *
+ * @param obj - Value to validate.
+ * @returns `true` if `obj` is a well-formed IPCMessage.
+ */
+export function validateIPCMessage(obj: unknown): obj is IPCMessage {
+  if (typeof obj !== 'object' || obj === null) return false;
+
+  const msg = obj as Record<string, unknown>;
+
+  if (typeof msg['type'] !== 'string' || !VALID_IPC_MESSAGE_TYPES.has(msg['type'])) return false;
+  if (typeof msg['id'] !== 'string' || msg['id'].length === 0) return false;
+
+  switch (msg['type']) {
+    case 'hook_event':
+      return (
+        typeof msg['hook_name'] === 'string' &&
+        msg['hook_name'].length > 0 &&
+        typeof msg['hook_input'] === 'object' &&
+        msg['hook_input'] !== null &&
+        !Array.isArray(msg['hook_input']) &&
+        typeof msg['timestamp'] === 'string'
+      );
+    case 'query':
+      return (
+        typeof msg['query'] === 'object' &&
+        msg['query'] !== null &&
+        !Array.isArray(msg['query']) &&
+        typeof (msg['query'] as Record<string, unknown>)['kind'] === 'string'
+      );
+    case 'state_update':
+      return typeof msg['updates'] === 'object' && msg['updates'] !== null && !Array.isArray(msg['updates']);
+    case 'heartbeat':
+      return true;
+    default:
+      return false;
+  }
+}
+
 // ─── Messages: Hook → Runtime Engine ─────────────────────────────────────────
 
 /**

@@ -20,6 +20,7 @@ import { mkdirSync, existsSync, unlinkSync, chmodSync } from 'fs';
 import { dirname } from 'path';
 
 import type { IPCMessage, IPCResponse } from './protocol.js';
+import { validateIPCMessage } from './protocol.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
 
@@ -27,6 +28,9 @@ const logger = createLogger('ipc-server');
 
 /** Milliseconds before an idle connection is forcibly closed. */
 const CONNECTION_TIMEOUT_MS = 5_000;
+
+/** Maximum IPC message size in bytes. Messages exceeding this limit are rejected. */
+const MAX_MESSAGE_SIZE = 1_048_576; // 1 MB
 
 /**
  * Callback invoked for every well-formed IPC message received.
@@ -216,9 +220,20 @@ export class IPCServer {
     }, CONNECTION_TIMEOUT_MS);
 
     let rawData = '';
+    let rawBytes = 0;
 
     socket.on('data', (chunk) => {
+      rawBytes += chunk.length; // chunk is Buffer; .length is bytes
       rawData += chunk.toString('utf-8');
+
+      if (rawBytes > MAX_MESSAGE_SIZE) {
+        logger.warn('IPC message size limit exceeded — closing connection', {
+          size_bytes: rawBytes,
+          max_bytes: MAX_MESSAGE_SIZE,
+        });
+        socket.destroy();
+        return;
+      }
 
       const newlineIdx = rawData.indexOf('\n');
       if (newlineIdx === -1) return; // Message not yet complete
@@ -241,7 +256,25 @@ export class IPCServer {
   private processMessage(socket: net.Socket, line: string): void {
     let message: IPCMessage;
     try {
-      message = JSON.parse(line) as IPCMessage;
+      const parsed: unknown = JSON.parse(line);
+      if (!validateIPCMessage(parsed)) {
+        logger.warn('IPC message failed schema validation — dropping', {
+          type: typeof parsed === 'object' && parsed !== null
+            ? (parsed as Record<string, unknown>)['type']
+            : typeof parsed,
+        });
+        const validationErrorResponse: IPCResponse = {
+          id:
+            typeof parsed === 'object' && parsed !== null
+              ? String((parsed as Record<string, unknown>)['id'] ?? 'unknown')
+              : 'unknown',
+          status: 'error',
+          error: 'Invalid message schema',
+        };
+        this.writeResponse(socket, validationErrorResponse);
+        return;
+      }
+      message = parsed;
     } catch (err) {
       logger.warn('Failed to parse IPC message', {
         err: toErrorMessage(err),
