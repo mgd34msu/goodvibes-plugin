@@ -95,6 +95,8 @@ export class RuntimeEngineServer {
         getEventBus: () => this.processManager.getEventBus(),
         getEventLog: () => this.processManager.getEventLog(),
         getEventQueue: () => this.processManager.getEventQueue(),
+        getWorkflowEngine: () => this.processManager.getWorkflowEngine(),
+        getTriggerRegistry: () => this.processManager.getTriggerRegistry(),
       };
 
       try {

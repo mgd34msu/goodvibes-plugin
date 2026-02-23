@@ -9,6 +9,10 @@
  * - runtime_events  — query/tail the event log and queue statistics
  * - runtime_emit    — emit a custom event into the event bus
  *
+ * Phase 3+4 tools:
+ * - runtime_workflow — manage workflow instances (create, list, send events, get history)
+ * - runtime_triggers — manage trigger definitions and view recent fires
+ *
  * Architecture:
  * - Each handler is a function conforming to ToolHandler.
  * - Handlers are registered in the handlerRegistry Map.
@@ -27,6 +31,9 @@ import type { EventLog } from '../events/event-log.js';
 import type { EventQueue } from '../events/event-queue.js';
 import type { EventType, EventFilter } from '../events/types.js';
 import { generateEventId, timestamp, parseRelativeTime } from '../shared/utils.js';
+import type { WorkflowEngine } from '../workflow/workflow-engine.js';
+import type { TriggerRegistry } from '../triggers/trigger-registry.js';
+import type { TriggerDefinition } from '../triggers/types.js';
 
 const logger = createLogger('tool-handlers');
 
@@ -61,6 +68,10 @@ export interface HandlerContext {
   getEventLog: () => EventLog;
   /** The priority event queue. */
   getEventQueue: () => EventQueue;
+  /** The workflow engine (may be null if workflows_enabled is false). */
+  getWorkflowEngine: () => WorkflowEngine | null;
+  /** The trigger registry. */
+  getTriggerRegistry: () => TriggerRegistry | null;
 }
 
 // ─── Result helpers ───────────────────────────────────────────────────────────
@@ -599,10 +610,279 @@ export const handleRuntimeEmit: ToolHandler = async (
   }
 };
 
+// ─── runtime_workflow handler ─────────────────────────────────────────────────
+
+/**
+ * Handle runtime_workflow tool calls.
+ *
+ * Actions: create, get, list, advance, cancel, history
+ */
+export const handleRuntimeWorkflow: ToolHandler = async (
+  args: unknown,
+  ctx: HandlerContext
+): Promise<CallToolResult> => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+
+  try {
+    if (args === null || args === undefined || typeof args !== 'object') {
+      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args as Record<string, unknown>;
+    const action = params.action as string | undefined;
+
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.",
+        ctx.version, uptime_ms, Date.now() - start
+      );
+    }
+
+    const engine = ctx.getWorkflowEngine();
+
+    if (action === 'create') {
+      if (!engine) {
+        return toError('Workflow engine is disabled (set features.workflows_enabled = true to enable)', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowType = params.workflow_type as string | undefined;
+      if (!workflowType) {
+        return toError('Missing required field: workflow_type', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const definitionId = workflowType === 'wrfc_loop' ? 'wrfc_loop'
+        : workflowType === 'fix_loop' ? 'fix_loop'
+        : workflowType;
+      const context = (params.context as Record<string, unknown> | undefined) ?? {};
+      const instance = engine.create(definitionId, context);
+      logger.info('runtime_workflow: created', { id: instance.id, definition: definitionId });
+      return toSuccess({ instance }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'get') {
+      if (!engine) {
+        return toSuccess({ instance: null }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id as string | undefined;
+      if (!workflowId) {
+        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const instance = engine.get(workflowId);
+      return toSuccess({ instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'list') {
+      if (!engine) {
+        return toSuccess({ instances: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const filter = params.filter as Record<string, unknown> | undefined;
+      const statusFilter = filter?.status as string | undefined;
+      const instances = statusFilter
+        ? engine.listAll().filter((i) => i.status === statusFilter)
+        : engine.listActive();
+      return toSuccess({ instances, count: instances.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'advance') {
+      if (!engine) {
+        return toError('Workflow engine is disabled', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id as string | undefined;
+      const event = params.event as string | undefined;
+      if (!workflowId) {
+        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!event) {
+        return toError('Missing required field: event', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const context = (params.context as Record<string, unknown> | undefined) ?? {};
+      const transition = engine.sendEvent(workflowId, {
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: event as EventType,
+        source: { kind: 'mcp_tool', tool_name: 'runtime_workflow' } as import('../events/types.js').EventSource,
+        payload: { type: event as EventType, data: context } as import('../events/types.js').EventPayload,
+      });
+      const instance = engine.get(workflowId);
+      return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'cancel') {
+      if (!engine) {
+        return toError('Workflow engine is disabled', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id as string | undefined;
+      if (!workflowId) {
+        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const reason = (params.reason as string | undefined) ?? 'cancelled via MCP';
+      engine.cancel(workflowId, reason);
+      const instance = engine.get(workflowId);
+      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'history') {
+      if (!engine) {
+        return toSuccess({ history: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id as string | undefined;
+      if (!workflowId) {
+        return toError('Missing required field: workflow_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const instance = engine.get(workflowId);
+      if (!instance) {
+        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptime_ms, Date.now() - start);
+      }
+      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    return toError(
+      `Unknown action: '${action}'. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.`,
+      ctx.version, uptime_ms, Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('runtime_workflow failed', { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+};
+
+// ─── runtime_triggers handler ─────────────────────────────────────────────────
+
+/**
+ * Handle runtime_triggers tool calls.
+ *
+ * Actions: list, get, create, update, delete, enable, disable, test
+ */
+export const handleRuntimeTriggers: ToolHandler = async (
+  args: unknown,
+  ctx: HandlerContext
+): Promise<CallToolResult> => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+
+  try {
+    if (args === null || args === undefined || typeof args !== 'object') {
+      return toError('Invalid arguments: expected an object', ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args as Record<string, unknown>;
+    const action = params.action as string | undefined;
+
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.",
+        ctx.version, uptime_ms, Date.now() - start
+      );
+    }
+
+    const registry = ctx.getTriggerRegistry();
+
+    if (action === 'list') {
+      const triggers = registry ? registry.list() : [];
+      return toSuccess({ triggers, count: triggers.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'get') {
+      const triggerId = params.trigger_id as string | undefined;
+      if (!triggerId) {
+        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const trigger = registry?.get(triggerId) ?? null;
+      return toSuccess({ trigger }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'create') {
+      if (!registry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerDef = params.trigger as TriggerDefinition | undefined;
+      if (!triggerDef) {
+        return toError('Missing required field: trigger', ctx.version, uptime_ms, Date.now() - start);
+      }
+      registry.register(triggerDef);
+      logger.info('runtime_triggers: registered', { id: triggerDef.id });
+      return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'update') {
+      if (!registry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerDef = params.trigger as TriggerDefinition | undefined;
+      if (!triggerDef) {
+        return toError('Missing required field: trigger', ctx.version, uptime_ms, Date.now() - start);
+      }
+      // Unregister old, register new
+      registry.unregister(triggerDef.id);
+      registry.register(triggerDef);
+      logger.info('runtime_triggers: updated', { id: triggerDef.id });
+      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'delete') {
+      if (!registry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerId = params.trigger_id as string | undefined;
+      if (!triggerId) {
+        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      registry.unregister(triggerId);
+      logger.info('runtime_triggers: unregistered', { id: triggerId });
+      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'enable' || action === 'disable') {
+      if (!registry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerId = params.trigger_id as string | undefined;
+      if (!triggerId) {
+        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const enabled = action === 'enable';
+      registry.setEnabled(triggerId, enabled);
+      logger.info(`runtime_triggers: ${action}d`, { id: triggerId });
+      return toSuccess({ [action + 'd']: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    if (action === 'test') {
+      if (!registry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerId = params.trigger_id as string | undefined;
+      const testEvent = params.test_event as Record<string, unknown> | undefined;
+      if (!triggerId) {
+        return toError('Missing required field: trigger_id', ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!testEvent) {
+        return toError('Missing required field: test_event', ctx.version, uptime_ms, Date.now() - start);
+      }
+      const mockEvent = {
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: (testEvent.type as EventType) ?? 'test:mock' as EventType,
+        source: (testEvent.source as import('../events/types.js').EventSource) ?? { kind: 'mcp_tool', tool_name: 'runtime_triggers' } as import('../events/types.js').EventSource,
+        payload: (testEvent.payload as import('../events/types.js').EventPayload) ?? { type: 'test:mock' as EventType, data: {} } as import('../events/types.js').EventPayload,
+      };
+      const results = await registry.evaluate(mockEvent);
+      const result = results.find((r) => r.trigger_id === triggerId);
+      return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptime_ms, Date.now() - start);
+    }
+
+    return toError(
+      `Unknown action: '${action}'. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.`,
+      ctx.version, uptime_ms, Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('runtime_triggers failed', { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+};
+
 // ─── Tool schemas ─────────────────────────────────────────────────────────────
 
 /**
- * MCP tool schema definitions for all runtime-engine tools (Phase 1 + Phase 2).
+ * MCP tool schema definitions for all runtime-engine tools (Phase 1-4).
  * Returned verbatim in response to ListToolsRequestSchema.
  */
 export const allSchemas = [
@@ -747,6 +1027,76 @@ export const allSchemas = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'runtime_workflow',
+    description:
+      'Manage WRFC and fix-loop workflows: create, query, advance state, cancel. ' +
+      'Formal state machines for orchestration.',
+    inputSchema: {
+      type: 'object',
+      required: ['action'],
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['create', 'get', 'list', 'advance', 'cancel', 'history'],
+        },
+        workflow_type: {
+          type: 'string',
+          enum: ['wrfc_loop', 'fix_loop', 'custom'],
+          description: 'Workflow definition to instantiate (for create)',
+        },
+        workflow_id: { type: 'string' },
+        event: {
+          type: 'string',
+          description: 'Event type to send (for advance)',
+        },
+        context: {
+          type: 'object',
+          description: 'Context data (for create/advance)',
+        },
+        reason: {
+          type: 'string',
+          description: 'Cancellation reason (for cancel)',
+        },
+        filter: {
+          type: 'object',
+          properties: {
+            status: {
+              type: 'string',
+              enum: ['active', 'completed', 'failed', 'cancelled', 'timed_out'],
+            },
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'runtime_triggers',
+    description:
+      'Manage event triggers: list, create, enable/disable, test conditions. ' +
+      'Declarative event-driven automation.',
+    inputSchema: {
+      type: 'object',
+      required: ['action'],
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['list', 'get', 'create', 'update', 'delete', 'enable', 'disable', 'test'],
+        },
+        trigger_id: { type: 'string' },
+        trigger: {
+          type: 'object',
+          description: 'TriggerDefinition for create/update',
+        },
+        test_event: {
+          type: 'object',
+          description: 'Mock event to test conditions against',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 // ─── Handler registry ─────────────────────────────────────────────────────────
@@ -760,6 +1110,8 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['runtime_config', handleRuntimeConfig],
   ['runtime_events', handleRuntimeEvents],
   ['runtime_emit', handleRuntimeEmit],
+  ['runtime_workflow', handleRuntimeWorkflow],
+  ['runtime_triggers', handleRuntimeTriggers],
 ]);
 
 /**

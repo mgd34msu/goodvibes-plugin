@@ -18,3 +18,29 @@ export { EventLog } from './events/event-log.js';
 export type { EventLogStats } from './events/event-log.js';
 export * from './events/types.js';
 export { EventBus } from './events/event-bus.js';
+export { ConditionEvaluator } from './triggers/condition-evaluator.js';
+export { ActionExecutor } from './triggers/action-executor.js';
+export { TriggerRegistry } from './triggers/trigger-registry.js';
+export { getBuiltinTriggers } from './triggers/builtins.js';
+export type {
+  TriggerDefinition,
+  TriggerCondition,
+  EventCondition,
+  CompositeCondition,
+  ThresholdCondition,
+  PatternCondition,
+  TriggerAction,
+  EmitEventAction,
+  SpawnAgentAction,
+  InvokeHandlerAction,
+  WorkflowAction,
+  CompositeAction,
+  TriggerResult,
+  TriggerActionHandler,
+} from './triggers/types.js';
+export * from './workflow/index.js';
+export * from './ipc/protocol.js';
+export { IPCServer } from './ipc/ipc-server.js';
+export type { MessageHandler } from './ipc/ipc-server.js';
+export { RuntimeClient } from './ipc/client.js';
+export { FileFallback } from './ipc/file-fallback.js';

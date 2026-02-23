@@ -4614,11 +4614,11 @@ var require_core = __commonJS({
     Ajv2.ValidationError = validation_error_1.default;
     Ajv2.MissingRefError = ref_error_1.default;
     exports2.default = Ajv2;
-    function checkOptions(checkOpts, options, msg, log = "error") {
+    function checkOptions(checkOpts, options, msg, log4 = "error") {
       for (const key in checkOpts) {
         const opt = key;
         if (opt in options)
-          this.logger[log](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log4](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
     __name(checkOptions, "checkOptions");
@@ -4671,13 +4671,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger7) {
-      if (logger7 === false)
+    function getLogger(logger8) {
+      if (logger8 === false)
         return noLogs;
-      if (logger7 === void 0)
+      if (logger8 === void 0)
         return console;
-      if (logger7.log && logger7.warn && logger7.error)
-        return logger7;
+      if (logger8.log && logger8.warn && logger8.error)
+        return logger8;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -21662,9 +21662,9 @@ function createLogger(component) {
 __name(createLogger, "createLogger");
 
 // src/lifecycle/process-manager.ts
-var import_fs4 = require("fs");
+var import_fs5 = require("fs");
 var import_crypto2 = require("crypto");
-var import_path4 = require("path");
+var import_path5 = require("path");
 var import_os = require("os");
 
 // src/persistence/state-store.ts
@@ -21978,6 +21978,10 @@ function generateEventId() {
   return `evt_${(0, import_crypto.randomUUID)()}`;
 }
 __name(generateEventId, "generateEventId");
+function generateWorkflowId() {
+  return `wf_${(0, import_crypto.randomUUID)()}`;
+}
+__name(generateWorkflowId, "generateWorkflowId");
 var DURATION_UNITS = {
   s: 1e3,
   m: 6e4,
@@ -22037,8 +22041,8 @@ var EventBus = class {
    *
    * @param log - An object with an `append` method.
    */
-  setEventLog(log) {
-    this.eventLog = log;
+  setEventLog(log4) {
+    this.eventLog = log4;
   }
   /**
    * Emits a runtime event.
@@ -22898,12 +22902,1667 @@ var EventQueue = class {
   }
 };
 
+// src/ipc/ipc-server.ts
+var net = __toESM(require("net"), 1);
+var import_fs4 = require("fs");
+var import_path4 = require("path");
+var logger4 = createLogger("ipc-server");
+var CONNECTION_TIMEOUT_MS = 5e3;
+var IPCServer = class {
+  static {
+    __name(this, "IPCServer");
+  }
+  /** The underlying Node.js TCP/socket server. */
+  server = null;
+  /** Absolute path to the Unix domain socket file. */
+  socketPath;
+  /** Application-level handler for decoded IPC messages. */
+  handler = null;
+  /** Set of all currently open client sockets (for clean shutdown). */
+  connections = /* @__PURE__ */ new Set();
+  /**
+   * @param socketPath - Absolute path for the Unix domain socket file.
+   *   The parent directory is created automatically if it does not exist.
+   */
+  constructor(socketPath) {
+    this.socketPath = socketPath;
+  }
+  // ─── Public API ───────────────────────────────────────────────────────────
+  /**
+   * Register the message handler.
+   *
+   * Must be called before {@link listen}. Only one handler is supported;
+   * subsequent calls replace the previous one.
+   *
+   * @param handler - Async function that receives a decoded {@link IPCMessage}
+   *   and returns an {@link IPCResponse}.
+   */
+  onMessage(handler) {
+    this.handler = handler;
+  }
+  /**
+   * Start listening for incoming connections on the configured socket path.
+   *
+   * Steps:
+   * 1. Create the socket directory if it does not exist.
+   * 2. Remove any stale socket file left by a previous process.
+   * 3. Bind and start listening.
+   *
+   * @throws If the server cannot bind to the socket path.
+   */
+  async listen() {
+    const dir = (0, import_path4.dirname)(this.socketPath);
+    (0, import_fs4.mkdirSync)(dir, { recursive: true });
+    if ((0, import_fs4.existsSync)(this.socketPath)) {
+      try {
+        (0, import_fs4.unlinkSync)(this.socketPath);
+        logger4.debug("Removed stale socket file", { path: this.socketPath });
+      } catch (err) {
+        logger4.warn("Could not remove stale socket file", {
+          path: this.socketPath,
+          err: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
+    this.server = net.createServer((socket) => this.handleConnection(socket));
+    this.server.on("error", (err) => {
+      logger4.error("IPC server error", { err: err.message });
+    });
+    return new Promise((resolve, reject) => {
+      this.server.listen(this.socketPath, () => {
+        logger4.info("IPC server listening", { path: this.socketPath });
+        resolve();
+      });
+      this.server.once("error", reject);
+    });
+  }
+  /**
+   * Stop accepting new connections and close all existing ones.
+   *
+   * Destroys all tracked sockets immediately, then waits for the server
+   * to finish closing before resolving.
+   */
+  async close() {
+    logger4.info("Closing IPC server", {
+      path: this.socketPath,
+      connections: this.connections.size
+    });
+    for (const socket of this.connections) {
+      socket.destroy();
+    }
+    this.connections.clear();
+    return new Promise((resolve) => {
+      if (!this.server) {
+        resolve();
+        return;
+      }
+      this.server.close(() => {
+        this.removeSocketFile();
+        logger4.info("IPC server closed");
+        resolve();
+      });
+      this.server = null;
+    });
+  }
+  /**
+   * The number of currently open client connections.
+   */
+  get clientCount() {
+    return this.connections.size;
+  }
+  /**
+   * The absolute path of the Unix domain socket file.
+   */
+  getSocketPath() {
+    return this.socketPath;
+  }
+  // ─── Private helpers ───────────────────────────────────────────────────────
+  /**
+   * Handle a new incoming client connection.
+   *
+   * Reads a complete newline-delimited JSON message, dispatches it to the
+   * handler, writes the JSON response, then closes the socket.
+   *
+   * @param socket - The accepted client socket.
+   */
+  handleConnection(socket) {
+    this.connections.add(socket);
+    logger4.debug("IPC client connected", { connections: this.connections.size });
+    socket.once("close", () => {
+      this.connections.delete(socket);
+      logger4.debug("IPC client disconnected", { connections: this.connections.size });
+    });
+    socket.on("error", (err) => {
+      logger4.warn("IPC socket error", { err: err.message });
+      this.connections.delete(socket);
+    });
+    const idleTimer = setTimeout(() => {
+      logger4.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
+      socket.destroy();
+    }, CONNECTION_TIMEOUT_MS);
+    let rawData = "";
+    socket.on("data", (chunk) => {
+      rawData += chunk.toString("utf-8");
+      const newlineIdx = rawData.indexOf("\n");
+      if (newlineIdx === -1) return;
+      clearTimeout(idleTimer);
+      socket.pause();
+      const line = rawData.slice(0, newlineIdx);
+      this.processMessage(socket, line);
+    });
+  }
+  /**
+   * Parse and dispatch a raw JSON line, then write the response.
+   *
+   * @param socket - The client socket to write the response to.
+   * @param line   - Raw JSON string (without the trailing newline).
+   */
+  processMessage(socket, line) {
+    let message;
+    try {
+      message = JSON.parse(line);
+    } catch (err) {
+      logger4.warn("Failed to parse IPC message", {
+        err: err instanceof Error ? err.message : String(err)
+      });
+      const errorResponse = {
+        id: "unknown",
+        status: "error",
+        error: "Invalid JSON"
+      };
+      this.writeResponse(socket, errorResponse);
+      return;
+    }
+    if (!this.handler) {
+      logger4.warn("No IPC message handler registered", { msg_type: message.type });
+      const noHandlerResponse = {
+        id: message.id,
+        status: "error",
+        error: "No handler registered"
+      };
+      this.writeResponse(socket, noHandlerResponse);
+      return;
+    }
+    logger4.debug("Dispatching IPC message", { id: message.id, type: message.type });
+    this.handler(message).then((response) => {
+      this.writeResponse(socket, response);
+    }).catch((err) => {
+      logger4.error("IPC handler threw an error", {
+        id: message.id,
+        err: err instanceof Error ? err.message : String(err)
+      });
+      const errResponse = {
+        id: message.id,
+        status: "error",
+        error: err instanceof Error ? err.message : String(err)
+      };
+      this.writeResponse(socket, errResponse);
+    });
+  }
+  /**
+   * Serialise and write an {@link IPCResponse} to the client socket, then
+   * close the socket half (FIN).
+   *
+   * @param socket   - The client socket.
+   * @param response - The response to send.
+   */
+  writeResponse(socket, response) {
+    const payload = JSON.stringify(response) + "\n";
+    try {
+      socket.end(payload, "utf-8");
+    } catch (err) {
+      logger4.warn("Failed to write IPC response", {
+        id: response.id,
+        err: err instanceof Error ? err.message : String(err)
+      });
+      socket.destroy();
+    }
+  }
+  /**
+   * Remove the socket file from the filesystem, ignoring errors.
+   */
+  removeSocketFile() {
+    try {
+      if ((0, import_fs4.existsSync)(this.socketPath)) {
+        (0, import_fs4.unlinkSync)(this.socketPath);
+        logger4.debug("Socket file removed", { path: this.socketPath });
+      }
+    } catch (err) {
+      logger4.warn("Could not remove socket file", {
+        path: this.socketPath,
+        err: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }
+};
+
+// src/workflow/workflow-engine.ts
+var log = createLogger("workflow-engine");
+var WorkflowEngine = class {
+  static {
+    __name(this, "WorkflowEngine");
+  }
+  definitions = /* @__PURE__ */ new Map();
+  instances = /* @__PURE__ */ new Map();
+  guards = /* @__PURE__ */ new Map();
+  actionHandlers = /* @__PURE__ */ new Map();
+  maxActive;
+  maxTransitions;
+  eventBus;
+  /**
+   * @param config - Workflow-specific configuration from the runtime config.
+   */
+  constructor(config2) {
+    this.maxActive = config2.max_active;
+    this.maxTransitions = config2.max_transitions_per_workflow;
+  }
+  // ─── Public API ────────────────────────────────────────────────────────
+  /**
+   * Injects an EventBus for emitting workflow lifecycle events.
+   *
+   * This dependency is optional. When not set, no external events are emitted
+   * but the engine functions correctly for state management.
+   *
+   * @param bus - The EventBus instance to use for event emission.
+   */
+  setEventBus(bus) {
+    this.eventBus = bus;
+  }
+  /**
+   * Registers a workflow definition so instances can be created from it.
+   *
+   * @param def - The WorkflowDefinition to register.
+   * @throws {Error} If a definition with the same `id` is already registered.
+   */
+  registerDefinition(def) {
+    if (this.definitions.has(def.id)) {
+      throw new Error(`WorkflowDefinition '${def.id}' is already registered`);
+    }
+    this.definitions.set(def.id, def);
+    log.info("Registered workflow definition", { id: def.id, name: def.name, version: def.version });
+  }
+  /**
+   * Retrieves a registered WorkflowDefinition by its ID.
+   *
+   * @param id - The definition ID to look up.
+   * @returns The definition, or `undefined` if not registered.
+   */
+  getDefinition(id) {
+    return this.definitions.get(id);
+  }
+  /**
+   * Creates a new workflow instance from a registered definition.
+   *
+   * The instance starts in `initial_state` and executes any `on_enter`
+   * actions for that state. A `workflow:created` event is emitted via
+   * the EventBus if one is set.
+   *
+   * @param definitionId    - ID of the WorkflowDefinition to instantiate.
+   * @param initialContext  - Optional initial context values.
+   * @returns The new WorkflowInstance in its initial state.
+   * @throws {Error} If the definition is not found or max active limit is reached.
+   */
+  create(definitionId, initialContext = {}) {
+    const def = this.definitions.get(definitionId);
+    if (!def) {
+      throw new Error(`WorkflowDefinition '${definitionId}' is not registered`);
+    }
+    const activeCount = this.listActive().length;
+    if (activeCount >= this.maxActive) {
+      throw new Error(
+        `Cannot create workflow: max_active limit (${this.maxActive}) reached`
+      );
+    }
+    const now = timestamp();
+    const instance = {
+      id: generateWorkflowId(),
+      definition_id: definitionId,
+      current_state: def.initial_state,
+      context: { ...initialContext },
+      history: [],
+      created_at: now,
+      updated_at: now,
+      status: "active"
+    };
+    this.instances.set(instance.id, instance);
+    log.info("Workflow instance created", {
+      id: instance.id,
+      definition_id: definitionId,
+      initial_state: def.initial_state
+    });
+    const initialState = def.states[def.initial_state];
+    if (initialState?.on_enter) {
+      void this.executeActions(initialState.on_enter, instance.context);
+    }
+    this.emitWorkflowEvent("workflow:created", instance, {});
+    return instance;
+  }
+  /**
+   * Sends a RuntimeEvent to a specific workflow instance, potentially
+   * triggering a state transition.
+   *
+   * Transition selection:
+   * 1. Find all transitions in the current state matching `event.type`
+   * 2. For each, evaluate the guard condition (if any)
+   * 3. Execute the first transition whose guard passes
+   * 4. Run on_exit actions → transition actions → on_enter actions
+   * 5. Update history and emit `workflow:state_changed`
+   *
+   * @param workflowId - ID of the workflow instance to send the event to.
+   * @param event      - The RuntimeEvent that may trigger a transition.
+   * @returns The WorkflowTransition that was applied, or `null` if no
+   *          matching transition was found or the instance is not active.
+   */
+  sendEvent(workflowId, event) {
+    const instance = this.instances.get(workflowId);
+    if (!instance) {
+      log.warn("sendEvent: workflow instance not found", { workflowId });
+      return null;
+    }
+    if (instance.status !== "active") {
+      log.warn("sendEvent: workflow is not active", { workflowId, status: instance.status });
+      return null;
+    }
+    const def = this.definitions.get(instance.definition_id);
+    if (!def) {
+      log.error("sendEvent: definition not found for instance", {
+        workflowId,
+        definition_id: instance.definition_id
+      });
+      return null;
+    }
+    const maxTransitions = def.max_transitions ?? this.maxTransitions;
+    if (instance.history.length >= maxTransitions) {
+      log.warn("Workflow exceeded max transitions; halting", {
+        workflowId,
+        transitions: instance.history.length,
+        max: maxTransitions
+      });
+      instance.status = "failed";
+      instance.error = `Exceeded max transitions (${maxTransitions})`;
+      instance.updated_at = timestamp();
+      this.emitWorkflowEvent("workflow:failed", instance, {});
+      return null;
+    }
+    const currentStateDef = def.states[instance.current_state];
+    if (!currentStateDef) {
+      log.error("sendEvent: current state not found in definition", {
+        workflowId,
+        current_state: instance.current_state
+      });
+      return null;
+    }
+    const matchingTransition = currentStateDef.transitions.find((t) => {
+      if (t.event !== event.type) return false;
+      if (!t.guard) return true;
+      return this.evaluateGuard(t.guard, instance.context, event);
+    });
+    if (!matchingTransition) {
+      log.debug("No matching transition found", {
+        workflowId,
+        state: instance.current_state,
+        event: event.type
+      });
+      return null;
+    }
+    const fromState = instance.current_state;
+    const toState = matchingTransition.target;
+    const transitionTimestamp = timestamp();
+    const contextBefore = { ...instance.context };
+    if (currentStateDef.on_exit) {
+      void this.executeActions(currentStateDef.on_exit, instance.context);
+    }
+    if (matchingTransition.actions) {
+      void this.executeActions(matchingTransition.actions, instance.context);
+    }
+    instance.current_state = toState;
+    instance.updated_at = transitionTimestamp;
+    const targetStateDef = def.states[toState];
+    if (targetStateDef?.on_enter) {
+      void this.executeActions(targetStateDef.on_enter, instance.context);
+    }
+    const contextChanges = {};
+    for (const key of Object.keys(instance.context)) {
+      if (instance.context[key] !== contextBefore[key]) {
+        contextChanges[key] = instance.context[key];
+      }
+    }
+    const transition = {
+      from_state: fromState,
+      to_state: toState,
+      event: event.type,
+      timestamp: transitionTimestamp,
+      context_changes: contextChanges
+    };
+    instance.history.push(transition);
+    log.info("Workflow state transition", {
+      id: workflowId,
+      from: fromState,
+      to: toState,
+      event: event.type
+    });
+    this.emitWorkflowEvent("workflow:state_changed", instance, {
+      previous_state: fromState,
+      current_state: toState
+    });
+    if (def.terminal_states.includes(toState)) {
+      instance.status = "completed";
+      instance.completed_at = transitionTimestamp;
+      log.info("Workflow completed", { id: workflowId, terminal_state: toState });
+      this.emitWorkflowEvent("workflow:completed", instance, {});
+    }
+    return transition;
+  }
+  /**
+   * Retrieves a workflow instance by its ID.
+   *
+   * @param workflowId - The instance ID to look up.
+   * @returns The WorkflowInstance, or `undefined` if not found.
+   */
+  get(workflowId) {
+    return this.instances.get(workflowId);
+  }
+  /**
+   * Lists all currently active (non-terminal) workflow instances.
+   *
+   * @returns Array of WorkflowInstances with status 'active'.
+   */
+  listActive() {
+    return Array.from(this.instances.values()).filter((i) => i.status === "active");
+  }
+  /**
+   * Lists all workflow instances, including completed and cancelled ones.
+   *
+   * @returns Array of all WorkflowInstances sorted by creation time (oldest first).
+   */
+  listAll() {
+    return Array.from(this.instances.values()).sort(
+      (a, b) => a.created_at.localeCompare(b.created_at)
+    );
+  }
+  /**
+   * Cancels an active workflow instance.
+   *
+   * The instance status is set to 'cancelled' and a `workflow:cancelled`
+   * event is emitted via the EventBus if one is set.
+   *
+   * @param workflowId - ID of the workflow instance to cancel.
+   * @param reason     - Human-readable reason for cancellation.
+   */
+  cancel(workflowId, reason) {
+    const instance = this.instances.get(workflowId);
+    if (!instance) {
+      log.warn("cancel: workflow instance not found", { workflowId });
+      return;
+    }
+    if (instance.status !== "active") {
+      log.warn("cancel: workflow is not active", { workflowId, status: instance.status });
+      return;
+    }
+    instance.status = "cancelled";
+    instance.error = reason;
+    instance.updated_at = timestamp();
+    log.info("Workflow cancelled", { id: workflowId, reason });
+    this.emitWorkflowEvent("workflow:cancelled", instance, { reason });
+  }
+  /**
+   * Registers a named guard function for use in workflow definitions.
+   *
+   * @param name - The function name referenced in GuardCondition.function.
+   * @param fn   - The guard implementation.
+   */
+  registerGuard(name, fn) {
+    this.guards.set(name, fn);
+    log.debug("Registered guard function", { name });
+  }
+  /**
+   * Registers a named action handler for use in workflow definitions.
+   *
+   * @param name - The handler name referenced in ActionDefinition.config.
+   * @param fn   - The async action implementation.
+   */
+  registerAction(name, fn) {
+    this.actionHandlers.set(name, fn);
+    log.debug("Registered action handler", { name });
+  }
+  // ─── Private Helpers ───────────────────────────────────────────────────
+  /**
+   * Evaluates a guard condition against the current context and triggering event.
+   *
+   * @param guard   - The guard condition to evaluate.
+   * @param context - Current workflow context.
+   * @param event   - The event that triggered the transition check.
+   * @returns `true` if the guard passes; `false` otherwise.
+   */
+  evaluateGuard(guard, context, event) {
+    try {
+      if (guard.type === "function") {
+        const fn = this.guards.get(guard.function ?? "");
+        if (!fn) {
+          log.warn("Guard function not registered", { name: guard.function });
+          return false;
+        }
+        return fn(context, event);
+      }
+      if (guard.type === "expression" && guard.expression) {
+        return this.evaluateExpression(guard.expression, context);
+      }
+      log.warn("Guard has no valid evaluation strategy", { guard });
+      return false;
+    } catch (err) {
+      log.error("Guard evaluation error", {
+        guard,
+        error: err instanceof Error ? err.message : String(err)
+      });
+      return false;
+    }
+  }
+  /**
+   * Executes a list of ActionDefinitions against the current context.
+   *
+   * Actions run sequentially. Failures are logged but do not abort
+   * subsequent actions or the enclosing transition.
+   *
+   * Supported action types:
+   * - `emit_event`     — emits a runtime event via the injected EventBus
+   * - `update_context` — shallow-merges config into the workflow context
+   * - `invoke_handler` — calls a registered action handler by name
+   * - `spawn_agent`    — placeholder; logs a warning (Phase 5)
+   *
+   * @param actions - Ordered list of ActionDefinitions to execute.
+   * @param context - Workflow context (mutated in-place by update_context).
+   */
+  async executeActions(actions, context) {
+    for (const action of actions) {
+      try {
+        switch (action.type) {
+          case "emit_event": {
+            const eventType = action.config["event_type"];
+            if (eventType && this.eventBus) {
+              this.eventBus.emit({
+                id: generateEventId(),
+                timestamp: timestamp(),
+                type: eventType,
+                source: { kind: "system" },
+                payload: { type: eventType, data: { ...action.config } }
+              });
+            }
+            break;
+          }
+          case "update_context": {
+            Object.assign(context, action.config);
+            break;
+          }
+          case "invoke_handler": {
+            const handlerName = action.config["handler"];
+            if (!handlerName) {
+              log.warn("invoke_handler action missing handler name", { config: action.config });
+              break;
+            }
+            const handler = this.actionHandlers.get(handlerName);
+            if (!handler) {
+              log.warn("Action handler not registered", { name: handlerName });
+              break;
+            }
+            await handler(context, action.config);
+            break;
+          }
+          case "spawn_agent": {
+            log.warn("spawn_agent action is not yet implemented (Phase 5)", {
+              config: action.config
+            });
+            break;
+          }
+          default: {
+            log.warn("Unknown action type", { type: action.type });
+          }
+        }
+      } catch (err) {
+        log.error("Action execution error", {
+          action_type: action.type,
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
+  }
+  /**
+   * Safe expression evaluator for guard conditions.
+   *
+   * Supports the pattern: `context.field op value` or
+   * `context.field op context.otherField`.
+   *
+   * Operators: `>=`, `<=`, `>`, `<`, `===`, `!==`
+   *
+   * Value types recognized on the right-hand side:
+   * - Numeric literals: `9.5`, `0`, `-1`
+   * - Boolean literals: `true`, `false`
+   * - Null literal: `null`
+   * - Context references: `context.someField`
+   * - Unquoted strings (fallback)
+   *
+   * NO eval(), NO Function() — all parsing is explicit string manipulation.
+   *
+   * @param expr    - Expression string to evaluate.
+   * @param context - Workflow context to read values from.
+   * @returns Boolean result of the expression.
+   * @throws {Error} If the expression format is not recognized.
+   */
+  evaluateExpression(expr, context) {
+    const trimmed = expr.trim();
+    const OPERATORS = [">=", "<=", "===", "!==", ">", "<"];
+    let lhsRaw;
+    let op;
+    let rhsRaw;
+    for (const candidate of OPERATORS) {
+      const idx = trimmed.indexOf(candidate);
+      if (idx === -1) continue;
+      lhsRaw = trimmed.slice(0, idx).trim();
+      op = candidate;
+      rhsRaw = trimmed.slice(idx + candidate.length).trim();
+      break;
+    }
+    if (!lhsRaw || !op || rhsRaw === void 0) {
+      throw new Error(`Unrecognised guard expression format: "${expr}"`);
+    }
+    const lhsValue = this.resolveValue(lhsRaw, context);
+    const rhsValue = this.resolveValue(rhsRaw, context);
+    switch (op) {
+      case ">=":
+        return lhsValue >= rhsValue;
+      case "<=":
+        return lhsValue <= rhsValue;
+      case ">":
+        return lhsValue > rhsValue;
+      case "<":
+        return lhsValue < rhsValue;
+      case "===":
+        return lhsValue === rhsValue;
+      case "!==":
+        return lhsValue !== rhsValue;
+    }
+  }
+  /**
+   * Resolves a raw expression token to its runtime value.
+   *
+   * Handles:
+   * - `context.field` — reads from the workflow context
+   * - `true` / `false` — boolean literals
+   * - `null` — null literal
+   * - Numeric strings — parsed as float
+   * - Everything else — returned as-is (string)
+   *
+   * @param raw     - Raw string token from the expression.
+   * @param context - Workflow context for context.field lookups.
+   * @returns The resolved value.
+   */
+  resolveValue(raw, context) {
+    if (raw.startsWith("context.")) {
+      const fieldPath = raw.slice("context.".length);
+      const parts = fieldPath.split(".");
+      let value = context;
+      for (const part of parts) {
+        if (value === null || value === void 0) return void 0;
+        value = value[part];
+      }
+      return value;
+    }
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+    if (raw === "null") return null;
+    const asNumber = Number(raw);
+    if (!isNaN(asNumber) && raw !== "") return asNumber;
+    return raw;
+  }
+  /**
+   * Emits a workflow lifecycle event via the injected EventBus.
+   *
+   * If no EventBus has been set, this is a no-op.
+   *
+   * @param type     - The workflow EventType to emit.
+   * @param instance - The workflow instance the event relates to.
+   * @param extra    - Additional data to include in the event payload.
+   */
+  emitWorkflowEvent(type, instance, extra) {
+    if (!this.eventBus) return;
+    try {
+      this.eventBus.emit({
+        id: `evt_${Date.now()}`,
+        timestamp: timestamp(),
+        type,
+        source: { kind: "workflow", workflow_id: instance.id },
+        payload: {
+          type,
+          data: {
+            workflow_id: instance.id,
+            workflow_type: instance.definition_id,
+            current_state: instance.current_state,
+            status: instance.status,
+            ...extra
+          }
+        }
+      });
+    } catch (err) {
+      log.error("Failed to emit workflow event", {
+        type,
+        workflowId: instance.id,
+        error: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }
+};
+
+// src/workflow/definitions/wrfc-loop.ts
+var WRFC_LOOP_DEFINITION = {
+  id: "wrfc_loop",
+  name: "Write-Review-Fix-Check Loop",
+  version: 1,
+  initial_state: "IDLE",
+  terminal_states: ["COMPLETE", "ESCALATED"],
+  max_transitions: 100,
+  states: {
+    IDLE: {
+      name: "IDLE",
+      transitions: [
+        {
+          event: "workflow:created",
+          target: "GATHERING"
+        }
+      ]
+    },
+    GATHERING: {
+      name: "GATHERING",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "wrfc:gathering_started" }
+        }
+      ],
+      transitions: [
+        {
+          event: "wrfc:plan_submitted",
+          target: "PLANNING"
+        }
+      ]
+    },
+    PLANNING: {
+      name: "PLANNING",
+      transitions: [
+        {
+          event: "wrfc:writing_started",
+          target: "WRITING"
+        }
+      ]
+    },
+    WRITING: {
+      name: "WRITING",
+      transitions: [
+        {
+          event: "wrfc:review_started",
+          target: "REVIEWING"
+        }
+      ]
+    },
+    REVIEWING: {
+      name: "REVIEWING",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "wrfc:review_started" }
+        }
+      ],
+      transitions: [
+        {
+          // Perfect score — work is done
+          event: "wrfc:review_completed",
+          target: "COMPLETE",
+          guard: {
+            type: "expression",
+            expression: "context.review_score >= 10"
+          }
+        },
+        {
+          // Score below threshold — enter fix cycle
+          event: "wrfc:review_completed",
+          target: "FIXING",
+          guard: {
+            type: "expression",
+            expression: "context.review_score < 10"
+          }
+        }
+      ]
+    },
+    FIXING: {
+      name: "FIXING",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "wrfc:fix_started" }
+        }
+      ],
+      transitions: [
+        {
+          // Still have fix budget — return to review
+          event: "wrfc:fix_completed",
+          target: "REVIEWING",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts < context.max_fix_attempts"
+          }
+        },
+        {
+          // Budget exhausted — escalate
+          event: "wrfc:fix_completed",
+          target: "ESCALATED",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts >= context.max_fix_attempts"
+          }
+        }
+      ]
+    },
+    ESCALATED: {
+      name: "ESCALATED",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "wrfc:escalated" }
+        }
+      ],
+      transitions: []
+    },
+    COMPLETE: {
+      name: "COMPLETE",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "wrfc:completed" }
+        }
+      ],
+      transitions: []
+    }
+  }
+};
+
+// src/workflow/definitions/fix-loop.ts
+var FIX_LOOP_DEFINITION = {
+  id: "fix_loop",
+  name: "Fix Loop",
+  version: 1,
+  initial_state: "IDLE",
+  terminal_states: ["RESOLVED", "FAILED"],
+  max_transitions: 50,
+  states: {
+    IDLE: {
+      name: "IDLE",
+      transitions: [
+        {
+          event: "fix:diagnosing",
+          target: "DIAGNOSING"
+        }
+      ]
+    },
+    DIAGNOSING: {
+      name: "DIAGNOSING",
+      transitions: [
+        {
+          event: "fix:applying",
+          target: "APPLYING"
+        }
+      ]
+    },
+    APPLYING: {
+      name: "APPLYING",
+      transitions: [
+        {
+          event: "fix:verifying",
+          target: "VERIFYING"
+        }
+      ]
+    },
+    VERIFYING: {
+      name: "VERIFYING",
+      transitions: [
+        {
+          // Verification passed — fix is done
+          event: "fix:resolved",
+          target: "RESOLVED"
+        },
+        {
+          // Verification failed, still have budget — retry
+          event: "fix:retrying",
+          target: "RETRYING",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts < context.max_fix_attempts"
+          }
+        },
+        {
+          // Budget exhausted after failure
+          event: "fix:failed",
+          target: "FAILED",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts >= context.max_fix_attempts"
+          }
+        }
+      ]
+    },
+    RETRYING: {
+      name: "RETRYING",
+      transitions: [
+        {
+          // Loop back to diagnosis with updated context
+          event: "fix:diagnosing",
+          target: "DIAGNOSING"
+        }
+      ]
+    },
+    RESOLVED: {
+      name: "RESOLVED",
+      transitions: []
+    },
+    FAILED: {
+      name: "FAILED",
+      transitions: []
+    }
+  }
+};
+
+// src/triggers/condition-evaluator.ts
+var ConditionEvaluator = class {
+  static {
+    __name(this, "ConditionEvaluator");
+  }
+  /** Ring buffer of recent events for threshold/sequence evaluation. */
+  recentEvents = [];
+  /** Maximum number of recent events to retain. */
+  maxRecentEvents;
+  /**
+   * @param maxRecentEvents - Maximum events to retain in the buffer (default: 1000).
+   */
+  constructor(maxRecentEvents = 1e3) {
+    this.maxRecentEvents = maxRecentEvents;
+  }
+  /**
+   * Records an event in the recent-events buffer.
+   *
+   * Must be called before `evaluate` so threshold and sequence conditions
+   * have access to the full event history including the current event.
+   *
+   * @param event - The event to record.
+   */
+  recordEvent(event) {
+    this.recentEvents.push({ event, timestamp: Date.now() });
+    if (this.recentEvents.length > this.maxRecentEvents) {
+      this.recentEvents.shift();
+    }
+  }
+  /**
+   * Evaluates a condition against the given event.
+   *
+   * @param condition - The condition to evaluate.
+   * @param event - The triggering event.
+   * @returns `true` if the condition is satisfied.
+   */
+  evaluate(condition, event) {
+    switch (condition.type) {
+      case "event":
+        return this.evaluateEvent(condition, event);
+      case "and":
+        return condition.conditions.every((c) => this.evaluate(c, event));
+      case "or":
+        return condition.conditions.some((c) => this.evaluate(c, event));
+      case "not": {
+        const first = condition.conditions[0];
+        return first !== void 0 ? !this.evaluate(first, event) : false;
+      }
+      case "threshold":
+        return this.evaluateThreshold(condition, event);
+      case "sequence":
+        return this.evaluateSequence(condition, event);
+      default:
+        return false;
+    }
+  }
+  /**
+   * Tests whether `eventType` matches `pattern`.
+   *
+   * - `'*'` matches any event type
+   * - `'namespace:*'` matches any event whose type starts with `namespace:`
+   * - An exact string matches only that specific type
+   */
+  matchEventType(eventType, pattern) {
+    if (pattern === "*") return true;
+    if (pattern.endsWith(":*")) {
+      return eventType.startsWith(pattern.slice(0, -1));
+    }
+    return eventType === pattern;
+  }
+  /**
+   * Evaluates a simple event condition: type match + optional payload filter.
+   */
+  evaluateEvent(cond, event) {
+    if (!this.matchEventType(event.type, cond.event_type)) return false;
+    if (cond.filter) {
+      const data = event.payload.data ?? {};
+      for (const [key, expected] of Object.entries(cond.filter)) {
+        if (data[key] !== expected) return false;
+      }
+    }
+    return true;
+  }
+  /**
+   * Evaluates a threshold condition: at least `count` matching events
+   * within the last `window_ms` milliseconds (including the current event).
+   */
+  evaluateThreshold(cond, event) {
+    if (!this.matchEventType(event.type, cond.event_type)) return false;
+    const now = Date.now();
+    const windowStart = now - cond.window_ms;
+    let matchCount = 0;
+    for (const entry of this.recentEvents) {
+      if (entry.timestamp < windowStart) continue;
+      if (!this.matchEventType(entry.event.type, cond.event_type)) continue;
+      matchCount++;
+      if (matchCount >= cond.count) return true;
+    }
+    return false;
+  }
+  /**
+   * Evaluates a sequence condition: all events in `cond.events` must have
+   * occurred in order within the last `window_ms` milliseconds, with the
+   * current event matching the final pattern in the sequence.
+   */
+  evaluateSequence(cond, event) {
+    if (cond.events.length === 0) return false;
+    const lastPattern = cond.events[cond.events.length - 1];
+    if (!this.matchEventType(event.type, lastPattern)) return false;
+    if (cond.events.length === 1) return true;
+    const now = Date.now();
+    const windowStart = now - cond.window_ms;
+    const windowEvents = this.recentEvents.filter(
+      (e) => e.timestamp >= windowStart
+    );
+    let patternIndex = 0;
+    const patternsToMatch = cond.events.slice(0, -1);
+    for (const entry of windowEvents) {
+      if (patternIndex >= patternsToMatch.length) break;
+      const pattern = patternsToMatch[patternIndex];
+      if (this.matchEventType(entry.event.type, pattern)) {
+        patternIndex++;
+      }
+    }
+    return patternIndex >= patternsToMatch.length;
+  }
+  /**
+   * Removes events older than `maxAgeMs` from the buffer.
+   *
+   * Called periodically to prevent unbounded growth when the trigger
+   * registry evaluates infrequently-fired triggers.
+   *
+   * @param maxAgeMs - Maximum age in milliseconds. Events older than this are removed.
+   */
+  pruneOldEvents(maxAgeMs) {
+    const cutoff = Date.now() - maxAgeMs;
+    const firstKeep = this.recentEvents.findIndex((e) => e.timestamp >= cutoff);
+    if (firstKeep > 0) {
+      this.recentEvents.splice(0, firstKeep);
+    } else if (firstKeep === -1) {
+      this.recentEvents = [];
+    }
+  }
+};
+
+// src/triggers/action-executor.ts
+var log2 = createLogger("action-executor");
+function resolveStringTemplate(value, event) {
+  return value.replace(/\$event\.([\w.]+)/g, (_match, path) => {
+    const parts = path.split(".");
+    let current = event;
+    for (const part of parts) {
+      if (current === null || current === void 0 || typeof current !== "object") {
+        return "";
+      }
+      current = current[part];
+    }
+    return current !== void 0 && current !== null ? String(current) : "";
+  });
+}
+__name(resolveStringTemplate, "resolveStringTemplate");
+function resolveTemplate(template, event) {
+  const result = {};
+  for (const [key, value] of Object.entries(template)) {
+    result[key] = resolveValue(value, event);
+  }
+  return result;
+}
+__name(resolveTemplate, "resolveTemplate");
+function resolveValue(value, event) {
+  if (typeof value === "string") {
+    return resolveStringTemplate(value, event);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveValue(item, event));
+  }
+  if (value !== null && typeof value === "object") {
+    return resolveTemplate(value, event);
+  }
+  return value;
+}
+__name(resolveValue, "resolveValue");
+var ActionExecutor = class {
+  static {
+    __name(this, "ActionExecutor");
+  }
+  /** Named handler registry. */
+  handlers = /* @__PURE__ */ new Map();
+  /** Event bus for emit_event actions. */
+  eventBus;
+  /**
+   * Injects the event bus. Call this once after construction.
+   *
+   * @param bus - The shared EventBus instance.
+   */
+  setEventBus(bus) {
+    this.eventBus = bus;
+  }
+  /**
+   * Registers a named action handler.
+   *
+   * @param name - The handler name used in `InvokeHandlerAction.handler`.
+   * @param handler - The async function to invoke.
+   */
+  registerHandler(name, handler) {
+    this.handlers.set(name, handler);
+  }
+  /**
+   * Executes a trigger action.
+   *
+   * All errors are caught and returned as `{ success: false, error }` rather
+   * than thrown, so a failing action does not propagate to the registry.
+   *
+   * @param action - The action to execute.
+   * @param event - The event that triggered this action.
+   * @returns Execution result.
+   */
+  async execute(action, event) {
+    try {
+      switch (action.type) {
+        case "emit_event":
+          return await this.executeEmitEvent(action, event);
+        case "spawn_agent":
+          return await this.executeSpawnAgent(action, event);
+        case "invoke_handler":
+          return await this.executeInvokeHandler(action, event);
+        case "start_workflow":
+        case "send_workflow_event":
+          return await this.executeWorkflowAction(action, event);
+        case "parallel":
+          return await this.executeParallel(action, event);
+        case "sequence":
+          return await this.executeSequence(action, event);
+        default: {
+          const exhaustiveCheck = action;
+          return { success: false, error: `Unknown action type: ${String(exhaustiveCheck.type)}` };
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log2.error("Action execution threw unexpected error", { error: message });
+      return { success: false, error: message };
+    }
+  }
+  /**
+   * Emits a runtime event via the EventBus with resolved template payload.
+   */
+  async executeEmitEvent(action, event) {
+    if (!this.eventBus) {
+      return { success: false, error: "EventBus not initialised \u2014 call setEventBus() first" };
+    }
+    const resolvedPayload = resolveTemplate(action.payload_template, event);
+    this.eventBus.emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: action.event_type,
+      source: { kind: "trigger", trigger_id: event.id },
+      payload: {
+        type: action.event_type,
+        data: resolvedPayload
+      },
+      metadata: {
+        causation_id: event.id,
+        correlation_id: event.metadata?.correlation_id,
+        session_id: event.metadata?.session_id,
+        sequence: 0,
+        // Will be overwritten by EventBus
+        version: 1
+      }
+    });
+    log2.debug("emit_event action executed", { event_type: action.event_type });
+    return { success: true };
+  }
+  /**
+   * Placeholder for Phase 5 agent spawning.
+   * Logs the intent and returns success so triggers don't fail.
+   */
+  async executeSpawnAgent(action, event) {
+    const resolvedTask = resolveStringTemplate(action.task_template, event);
+    log2.info("spawn_agent action \u2014 Phase 5 placeholder", {
+      agent_type: action.agent_type,
+      task: resolvedTask,
+      budget: action.budget,
+      triggered_by: event.id
+    });
+    return { success: true };
+  }
+  /**
+   * Invokes a named handler registered via `registerHandler`.
+   */
+  async executeInvokeHandler(action, event) {
+    const handler = this.handlers.get(action.handler);
+    if (!handler) {
+      return { success: false, error: `Handler '${action.handler}' not registered` };
+    }
+    const resolvedArgs = resolveTemplate(action.args_template, event);
+    await handler(resolvedArgs, event);
+    log2.debug("invoke_handler action executed", { handler: action.handler });
+    return { success: true };
+  }
+  /**
+   * Placeholder for WorkflowEngine integration (Phase 5).
+   * Logs the intent and returns success.
+   */
+  async executeWorkflowAction(action, event) {
+    const resolvedContext = action.context_template ? resolveTemplate(action.context_template, event) : {};
+    log2.info("workflow action \u2014 integration placeholder", {
+      action_type: action.type,
+      workflow_definition: action.workflow_definition,
+      workflow_id: action.workflow_id,
+      context: resolvedContext,
+      triggered_by: event.id
+    });
+    return { success: true };
+  }
+  /**
+   * Executes all actions in parallel via `Promise.all`.
+   * Returns success only if all actions succeed.
+   */
+  async executeParallel(action, event) {
+    const results = await Promise.all(
+      action.actions.map((a) => this.execute(a, event))
+    );
+    const failed = results.filter((r) => !r.success);
+    if (failed.length > 0) {
+      return {
+        success: false,
+        error: `${failed.length} of ${results.length} parallel actions failed: ${failed.map((r) => r.error).join("; ")}`
+      };
+    }
+    return { success: true };
+  }
+  /**
+   * Executes actions sequentially, stopping on the first failure.
+   */
+  async executeSequence(action, event) {
+    for (const subAction of action.actions) {
+      const result = await this.execute(subAction, event);
+      if (!result.success) {
+        return result;
+      }
+    }
+    return { success: true };
+  }
+};
+
+// src/triggers/trigger-registry.ts
+var log3 = createLogger("trigger-registry");
+var TriggerRegistry = class {
+  static {
+    __name(this, "TriggerRegistry");
+  }
+  /** All registered trigger definitions, keyed by trigger ID. */
+  triggers = /* @__PURE__ */ new Map();
+  /** Stateful condition evaluator with recent-event ring buffer. */
+  evaluator;
+  /** Action executor with handler registry. */
+  executor;
+  /** Resolved triggers configuration. */
+  config;
+  /**
+   * @param config - Triggers section of the resolved {@link RuntimeConfig}.
+   */
+  constructor(config2) {
+    this.config = config2;
+    this.evaluator = new ConditionEvaluator();
+    this.executor = new ActionExecutor();
+  }
+  /**
+   * Injects the shared EventBus so `emit_event` actions can emit events.
+   *
+   * @param bus - The shared EventBus instance.
+   */
+  setEventBus(bus) {
+    this.executor.setEventBus(bus);
+  }
+  /**
+   * Registers a trigger definition.
+   *
+   * Rejects the registration if the `max_triggers` limit would be exceeded.
+   *
+   * @param trigger - The trigger definition to register.
+   * @throws {Error} If the trigger limit is reached.
+   */
+  register(trigger) {
+    if (this.triggers.size >= this.config.max_triggers) {
+      throw new Error(
+        `TriggerRegistry: max_triggers limit reached (${this.config.max_triggers}). Cannot register '${trigger.id}'.`
+      );
+    }
+    this.triggers.set(trigger.id, trigger);
+    log3.debug("Trigger registered", { id: trigger.id, name: trigger.name, priority: trigger.priority });
+  }
+  /**
+   * Removes a trigger by ID. No-op if the trigger does not exist.
+   *
+   * @param triggerId - ID of the trigger to remove.
+   */
+  unregister(triggerId) {
+    const existed = this.triggers.delete(triggerId);
+    if (existed) {
+      log3.debug("Trigger unregistered", { id: triggerId });
+    }
+  }
+  /**
+   * Enables or disables a trigger.
+   *
+   * @param triggerId - ID of the trigger to update.
+   * @param enabled - `true` to enable, `false` to disable.
+   */
+  setEnabled(triggerId, enabled) {
+    const trigger = this.triggers.get(triggerId);
+    if (!trigger) {
+      log3.warn("setEnabled: trigger not found", { id: triggerId });
+      return;
+    }
+    trigger.enabled = enabled;
+    log3.debug("Trigger enabled state updated", { id: triggerId, enabled });
+  }
+  /**
+   * Evaluates all enabled triggers against the incoming event.
+   *
+   * Processing order:
+   * 1. Record the event in the condition evaluator.
+   * 2. Sort enabled triggers by priority (ascending — lower = first).
+   * 3. For each trigger, check cooldown and max_fires before evaluating.
+   * 4. If condition met, execute action and record the fire.
+   *
+   * @param event - The event to evaluate against all triggers.
+   * @returns Results for every trigger that was checked (fired or skipped).
+   */
+  async evaluate(event) {
+    this.evaluator.recordEvent(event);
+    const results = [];
+    const sorted = [...this.triggers.values()].filter((t) => t.enabled).sort((a, b) => a.priority - b.priority);
+    for (const trigger of sorted) {
+      const result = await this.evaluateTrigger(trigger, event);
+      results.push(result);
+    }
+    return results;
+  }
+  /**
+   * Retrieves a trigger definition by ID.
+   *
+   * @param triggerId - The trigger ID to look up.
+   * @returns The trigger definition, or `undefined` if not found.
+   */
+  get(triggerId) {
+    return this.triggers.get(triggerId);
+  }
+  /**
+   * Lists all registered triggers in registration order.
+   *
+   * @returns An array of all trigger definitions.
+   */
+  list() {
+    return [...this.triggers.values()];
+  }
+  /**
+   * Registers a named action handler delegate.
+   *
+   * @param name - The handler name used in `InvokeHandlerAction.handler`.
+   * @param handler - The async handler function.
+   */
+  registerHandler(name, handler) {
+    this.executor.registerHandler(name, handler);
+    log3.debug("Action handler registered", { name });
+  }
+  // ─── Private Helpers ──────────────────────────────────────────────────────────
+  /**
+   * Evaluates a single trigger against an event, applying guards and recording fires.
+   */
+  async evaluateTrigger(trigger, event) {
+    if (trigger.last_fired && trigger.cooldown_ms !== void 0) {
+      const lastFiredMs = new Date(trigger.last_fired).getTime();
+      if (Date.now() - lastFiredMs < trigger.cooldown_ms) {
+        return {
+          trigger_id: trigger.id,
+          trigger_name: trigger.name,
+          fired: false,
+          skipped_reason: "cooldown"
+        };
+      }
+    }
+    const effectiveMaxFires = trigger.max_fires ?? this.config.max_fires_per_session;
+    if (trigger.fires_count >= effectiveMaxFires) {
+      return {
+        trigger_id: trigger.id,
+        trigger_name: trigger.name,
+        fired: false,
+        skipped_reason: "max_fires"
+      };
+    }
+    const conditionMet = this.evaluator.evaluate(trigger.condition, event);
+    if (!conditionMet) {
+      return {
+        trigger_id: trigger.id,
+        trigger_name: trigger.name,
+        fired: false
+      };
+    }
+    log3.info("Trigger condition met, executing action", {
+      trigger_id: trigger.id,
+      trigger_name: trigger.name,
+      event_type: event.type,
+      event_id: event.id
+    });
+    const actionResult = await this.executor.execute(trigger.action, event);
+    trigger.fires_count++;
+    trigger.last_fired = timestamp();
+    if (!actionResult.success) {
+      log3.warn("Trigger action failed", {
+        trigger_id: trigger.id,
+        error: actionResult.error
+      });
+    }
+    return {
+      trigger_id: trigger.id,
+      trigger_name: trigger.name,
+      fired: true,
+      action_result: actionResult
+    };
+  }
+};
+
+// src/triggers/builtins.ts
+function getBuiltinTriggers() {
+  return [
+    // ─── 1. Auto Fix Build ────────────────────────────────────────────────────
+    {
+      id: "builtin_auto_fix_build",
+      name: "auto_fix_build",
+      description: "Start fix loop when build fails 2 times within 60 seconds",
+      enabled: true,
+      priority: 10,
+      condition: {
+        type: "threshold",
+        event_type: "build:failed",
+        count: 2,
+        window_ms: 6e4
+      },
+      action: {
+        type: "start_workflow",
+        workflow_definition: "fix_loop",
+        context_template: {
+          trigger: "build_failure",
+          event_id: "$event.id",
+          event_type: "$event.type"
+        }
+      },
+      cooldown_ms: 12e4,
+      max_fires: 5,
+      fires_count: 0
+    },
+    // ─── 2. Auto Fix Test ─────────────────────────────────────────────────────
+    {
+      id: "builtin_auto_fix_test",
+      name: "auto_fix_test",
+      description: "Start fix loop when a test fails after an agent completes",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "sequence",
+        events: ["agent:completed", "test:failed"],
+        window_ms: 12e4
+      },
+      action: {
+        type: "start_workflow",
+        workflow_definition: "fix_loop",
+        context_template: {
+          trigger: "test_failure",
+          event_id: "$event.id",
+          event_type: "$event.type"
+        }
+      },
+      cooldown_ms: 12e4,
+      max_fires: 5,
+      fires_count: 0
+    },
+    // ─── 3. Budget Warning ────────────────────────────────────────────────────
+    {
+      id: "builtin_budget_warning",
+      name: "budget_warning",
+      description: "Fire on any agent:progress event. NOTE: this trigger fires on every agent:progress event regardless of cost level \u2014 actual budget threshold checks (cost > 80%) must be implemented in the invoke_handler action or by filtering payload fields in the handler, not in this condition.",
+      enabled: true,
+      priority: 30,
+      condition: {
+        type: "event",
+        event_type: "agent:progress"
+        // Note: deep payload filtering is not supported in EventCondition —
+        // the TriggerRegistry/ConditionEvaluator filter checks top-level data fields.
+        // Budget threshold logic requires the invoke_handler approach for real use;
+        // here we demonstrate a basic field match.
+      },
+      action: {
+        type: "emit_event",
+        event_type: "agent:budget_warning",
+        payload_template: {
+          source_event_id: "$event.id",
+          agent_id: "$event.payload.data.agent_id",
+          triggered_by: "budget_warning_trigger"
+        }
+      },
+      cooldown_ms: 3e4,
+      max_fires: 20,
+      fires_count: 0
+    },
+    // ─── 4. Sequential Spawn Alert ────────────────────────────────────────────
+    {
+      id: "builtin_sequential_spawn_alert",
+      name: "sequential_spawn_alert",
+      description: "Emit system:error (warning severity) when 3 or more agents are spawned within 30 seconds",
+      enabled: true,
+      priority: 40,
+      condition: {
+        type: "threshold",
+        event_type: "agent:spawned",
+        count: 3,
+        window_ms: 3e4
+      },
+      action: {
+        type: "emit_event",
+        event_type: "system:error",
+        payload_template: {
+          error: "High agent spawn rate detected: 3+ agents spawned within 30 seconds",
+          component: "trigger-registry",
+          severity: "warning",
+          triggered_by_event: "$event.id"
+        }
+      },
+      cooldown_ms: 6e4,
+      max_fires: 10,
+      fires_count: 0
+    },
+    // ─── 5. Dev Server Recovery ───────────────────────────────────────────────
+    {
+      id: "builtin_devserver_recovery",
+      name: "devserver_recovery",
+      description: "Invoke the restartDevServer handler when the dev server reports an error",
+      enabled: true,
+      priority: 15,
+      condition: {
+        type: "event",
+        event_type: "devserver:error"
+      },
+      action: {
+        type: "invoke_handler",
+        handler: "restartDevServer",
+        args_template: {
+          event_id: "$event.id",
+          error: "$event.payload.data.error",
+          pid: "$event.payload.data.pid",
+          port: "$event.payload.data.port",
+          command: "$event.payload.data.command"
+        }
+      },
+      cooldown_ms: 3e4,
+      max_fires: 10,
+      fires_count: 0
+    },
+    // ─── 6. WRFC Auto Review ──────────────────────────────────────────────────
+    {
+      id: "builtin_wrfc_auto_review",
+      name: "wrfc_auto_review",
+      description: "Send wrfc:review_started to the workflow when writing starts then an agent completes",
+      enabled: true,
+      priority: 25,
+      condition: {
+        type: "sequence",
+        events: ["wrfc:writing_started", "agent:completed"],
+        window_ms: 6e5
+        // 10 minutes
+      },
+      action: {
+        type: "send_workflow_event",
+        context_template: {
+          event: "wrfc:review_started",
+          triggered_by: "$event.id",
+          agent_event_type: "$event.type"
+        }
+      },
+      cooldown_ms: 6e4,
+      max_fires: 20,
+      fires_count: 0
+    }
+  ];
+}
+__name(getBuiltinTriggers, "getBuiltinTriggers");
+
 // src/lifecycle/process-manager.ts
-var logger4 = createLogger("process-manager");
+var logger5 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_path4.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
+  return (0, import_path5.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 var ProcessManager = class {
@@ -22930,6 +24589,12 @@ var ProcessManager = class {
   eventLog;
   /** Priority event queue for deferred processing. */
   eventQueue;
+  /** Unix domain socket IPC server (only active when ipc_enabled). */
+  ipcServer = null;
+  /** Workflow state machine engine. */
+  workflowEngine = null;
+  /** Event trigger registry. */
+  triggerRegistry = null;
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -22954,39 +24619,78 @@ var ProcessManager = class {
    * @throws If any critical startup step fails.
    */
   async startup() {
-    logger4.info("Starting up");
+    logger5.info("Starting up");
     try {
       const diskConfig = loadConfig(this.projectRoot);
       this.config = diskConfig;
-      logger4.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger5.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger4.warn("Could not load config from disk \u2014 using defaults", {
+      logger5.warn("Could not load config from disk \u2014 using defaults", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
     this.stateStore = new JsonStateStore(this.config, this.projectRoot);
     await this.stateStore.initialize();
-    logger4.debug("State store initialised");
+    logger5.debug("State store initialised");
     this.eventBus = new EventBus();
-    const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
+    const stateDir = (0, import_path5.join)(this.projectRoot, this.config.persistence.state_dir);
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
     this.eventBus.setEventLog(this.eventLog);
     this.eventQueue = new EventQueue(this.config.queue);
     this.eventQueue.start();
-    logger4.debug("Event system initialised");
+    logger5.debug("Event system initialised");
     await this.checkCrashRecovery();
     this.writePidFile();
     this.startCheckpointTimer();
+    if (this.config.features.workflows_enabled) {
+      this.workflowEngine = new WorkflowEngine(this.config.workflows);
+      this.workflowEngine.setEventBus(this.eventBus);
+      this.workflowEngine.registerDefinition(WRFC_LOOP_DEFINITION);
+      this.workflowEngine.registerDefinition(FIX_LOOP_DEFINITION);
+      this.workflowEngine.registerGuard("checkReviewScore", (context) => {
+        return typeof context.review_score === "number" && context.review_score >= 10;
+      });
+      logger5.debug("Workflow engine initialised");
+    }
+    this.triggerRegistry = new TriggerRegistry(this.config.triggers);
+    this.triggerRegistry.setEventBus(this.eventBus);
+    for (const trigger of getBuiltinTriggers()) {
+      this.triggerRegistry.register(trigger);
+    }
+    this.eventBus.on("*", async (event) => {
+      try {
+        if (this.triggerRegistry) {
+          await this.triggerRegistry.evaluate(event);
+        }
+      } catch (err) {
+        logger5.warn("Trigger evaluation error", { error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+    logger5.debug("Trigger registry initialised");
+    let ipcSocketPath = null;
+    if (this.config.features.ipc_enabled) {
+      ipcSocketPath = await this.startIPCServer();
+    } else {
+      logger5.debug("IPC server disabled by feature flag");
+    }
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
       type: "system:startup",
       source: { kind: "system" },
-      payload: { type: "system:startup", data: { pid: process.pid, uptime_ms: 0 } }
+      payload: {
+        type: "system:startup",
+        data: {
+          pid: process.pid,
+          uptime_ms: 0,
+          ipc_enabled: this.config.features.ipc_enabled,
+          ipc_socket: ipcSocketPath ?? void 0
+        }
+      }
     });
     this.running = true;
-    logger4.info("Startup complete", {
+    logger5.info("Startup complete", {
       pid: process.pid,
       uptime_ms: this.getUptime()
     });
@@ -23001,7 +24705,7 @@ var ProcessManager = class {
    *   before forcing process exit.
    */
   async shutdown(timeout_ms = 1e4) {
-    logger4.info("Shutting down", { timeout_ms });
+    logger5.info("Shutting down", { timeout_ms });
     const watchdog = setTimeout(() => {
       process.stderr.write(
         `[runtime-engine] Shutdown timed out after ${timeout_ms} ms \u2014 forcing exit
@@ -23011,6 +24715,19 @@ var ProcessManager = class {
     }, timeout_ms);
     watchdog.unref();
     try {
+      if (this.workflowEngine) {
+        for (const instance of this.workflowEngine.listActive()) {
+          try {
+            this.workflowEngine.cancel(instance.id, "engine shutdown");
+          } catch (err) {
+            logger5.warn("Failed to cancel workflow during shutdown", {
+              id: instance.id,
+              err: err instanceof Error ? err.message : String(err)
+            });
+          }
+        }
+        logger5.debug("Active workflows cancelled");
+      }
       this.stopCheckpointTimer();
       if (this.eventBus) {
         try {
@@ -23022,7 +24739,19 @@ var ProcessManager = class {
             payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
           });
         } catch (err) {
-          logger4.warn("Failed to emit shutdown event", {
+          logger5.warn("Failed to emit shutdown event", {
+            err: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+      if (this.ipcServer) {
+        try {
+          await this.ipcServer.close();
+          this.removeSocketPointerFile();
+          this.ipcServer = null;
+          logger5.debug("IPC server closed");
+        } catch (err) {
+          logger5.warn("IPC server close failed", {
             err: err instanceof Error ? err.message : String(err)
           });
         }
@@ -23031,9 +24760,9 @@ var ProcessManager = class {
         try {
           await this.eventQueue.drain(5e3);
           this.eventQueue.stop();
-          logger4.debug("Event queue drained and stopped");
+          logger5.debug("Event queue drained and stopped");
         } catch (err) {
-          logger4.warn("Event queue drain failed", {
+          logger5.warn("Event queue drain failed", {
             err: err instanceof Error ? err.message : String(err)
           });
         }
@@ -23043,15 +24772,15 @@ var ProcessManager = class {
       }
       try {
         await this.saveCheckpoint();
-        logger4.debug("Final checkpoint saved");
+        logger5.debug("Final checkpoint saved");
       } catch (err) {
-        logger4.warn("Final checkpoint failed", {
+        logger5.warn("Final checkpoint failed", {
           err: err instanceof Error ? err.message : String(err)
         });
       }
       this.removePidFile();
       this.running = false;
-      logger4.info("Shutdown complete");
+      logger5.info("Shutdown complete");
     } finally {
       clearTimeout(watchdog);
     }
@@ -23154,6 +24883,28 @@ var ProcessManager = class {
     }
     return this.eventQueue;
   }
+  /**
+   * Return the IPC server if it was started, or null if IPC is disabled.
+   */
+  getIPCServer() {
+    return this.ipcServer;
+  }
+  /**
+   * Return the workflow engine, or null if workflows are disabled.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getWorkflowEngine() {
+    return this.workflowEngine;
+  }
+  /**
+   * Return the trigger registry.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getTriggerRegistry() {
+    return this.triggerRegistry;
+  }
   // ─── Private helpers ────────────────────────────────────────────────────────
   /**
    * Check whether a stale PID file exists from a previous crash and, if so,
@@ -23161,18 +24912,18 @@ var ProcessManager = class {
    */
   async checkCrashRecovery() {
     const pidFilePath = getPidFilePath(this.projectRoot);
-    if (!(0, import_fs4.existsSync)(pidFilePath)) return;
+    if (!(0, import_fs5.existsSync)(pidFilePath)) return;
     try {
-      const stalePid = (0, import_fs4.readFileSync)(pidFilePath, "utf-8").trim();
+      const stalePid = (0, import_fs5.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
-        logger4.warn("Stale PID file detected \u2014 possible crash recovery", {
+        logger5.warn("Stale PID file detected \u2014 possible crash recovery", {
           stale_pid: stalePid
         });
         this.removePidFile();
       }
     } catch (err) {
-      logger4.warn("Could not read stale PID file", {
+      logger5.warn("Could not read stale PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -23184,10 +24935,10 @@ var ProcessManager = class {
   writePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_fs4.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
-      logger4.debug("PID file written", { path: pidFilePath, pid: process.pid });
+      (0, import_fs5.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
+      logger5.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
-      logger4.warn("Could not write PID file", {
+      logger5.warn("Could not write PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -23199,12 +24950,12 @@ var ProcessManager = class {
   removePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      if ((0, import_fs4.existsSync)(pidFilePath)) {
-        (0, import_fs4.unlinkSync)(pidFilePath);
-        logger4.debug("PID file removed", { path: pidFilePath });
+      if ((0, import_fs5.existsSync)(pidFilePath)) {
+        (0, import_fs5.unlinkSync)(pidFilePath);
+        logger5.debug("PID file removed", { path: pidFilePath });
       }
     } catch (err) {
-      logger4.warn("Could not remove PID file", {
+      logger5.warn("Could not remove PID file", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
@@ -23216,13 +24967,13 @@ var ProcessManager = class {
   startCheckpointTimer() {
     this.checkpointTimer = setInterval(() => {
       this.saveCheckpoint().catch((err) => {
-        logger4.warn("Periodic checkpoint failed", {
+        logger5.warn("Periodic checkpoint failed", {
           err: err instanceof Error ? err.message : String(err)
         });
       });
     }, CHECKPOINT_INTERVAL_MS);
     this.checkpointTimer.unref();
-    logger4.debug("Checkpoint timer started", { interval_ms: CHECKPOINT_INTERVAL_MS });
+    logger5.debug("Checkpoint timer started", { interval_ms: CHECKPOINT_INTERVAL_MS });
   }
   /**
    * Stop the periodic checkpoint timer, preventing any further automatic saves.
@@ -23231,7 +24982,106 @@ var ProcessManager = class {
     if (this.checkpointTimer) {
       clearInterval(this.checkpointTimer);
       this.checkpointTimer = void 0;
-      logger4.debug("Checkpoint timer stopped");
+      logger5.debug("Checkpoint timer stopped");
+    }
+  }
+  /**
+   * Start the IPC server, bind it to a session-scoped socket path, and write
+   * the socket path to the state directory so hooks can discover it.
+   *
+   * @returns The absolute socket path, or null if startup fails.
+   */
+  async startIPCServer() {
+    const stateDir = (0, import_path5.join)(this.projectRoot, this.config.persistence.state_dir);
+    const socketDir = this.config.ipc.socket_dir;
+    const hash2 = (0, import_crypto2.createHash)("sha256").update(this.projectRoot).digest("hex").slice(0, 8);
+    const socketPath = (0, import_path5.join)(socketDir, `goodvibes-runtime-${hash2}.sock`);
+    try {
+      this.ipcServer = new IPCServer(socketPath);
+      this.ipcServer.onMessage(async (msg) => {
+        logger5.debug("IPC message received", { id: msg.id, type: msg.type });
+        if (msg.type === "hook_event") {
+          this.eventBus.emit({
+            id: msg.id,
+            timestamp: msg.timestamp,
+            type: `hook:${msg.hook_name}`,
+            source: { kind: "hook", hook_name: msg.hook_name },
+            payload: {
+              type: `hook:${msg.hook_name}`,
+              data: msg.hook_input
+            }
+          });
+          return { id: msg.id, status: "ok", data: { kind: "ack" } };
+        }
+        if (msg.type === "query") {
+          const q = msg.query;
+          if (q.kind === "get_system_message") {
+            return {
+              id: msg.id,
+              status: "ok",
+              data: { kind: "system_message", message: "", directives: [] }
+            };
+          }
+          if (q.kind === "get_workflow_state") {
+            const instance = this.workflowEngine?.get(q.workflow_id);
+            return {
+              id: msg.id,
+              status: "ok",
+              data: { kind: "workflow_state", instance: instance ?? {} }
+            };
+          }
+          if (q.kind === "should_block_tool") {
+            return {
+              id: msg.id,
+              status: "ok",
+              data: { kind: "tool_decision", allow: true }
+            };
+          }
+          return { id: msg.id, status: "ok", data: { kind: "ack" } };
+        }
+        if (msg.type === "heartbeat") {
+          return { id: msg.id, status: "ok", data: { kind: "ack" } };
+        }
+        if (msg.type === "state_update") {
+          return { id: msg.id, status: "ok", data: { kind: "ack" } };
+        }
+        return { id: msg.id, status: "ok", data: { kind: "ack" } };
+      });
+      await this.ipcServer.listen();
+      (0, import_fs5.mkdirSync)(stateDir, { recursive: true });
+      const pointerFile = (0, import_path5.join)(stateDir, "runtime.socket");
+      (0, import_fs5.writeFileSync)(pointerFile, socketPath, "utf-8");
+      logger5.info("IPC server started", { socket: socketPath });
+      return socketPath;
+    } catch (err) {
+      logger5.error("Failed to start IPC server", {
+        socket: socketPath,
+        err: err instanceof Error ? err.message : String(err)
+      });
+      this.ipcServer = null;
+      return null;
+    }
+  }
+  /**
+   * Remove the socket pointer file written during {@link startIPCServer}.
+   * Silently ignores errors (e.g. file already removed).
+   */
+  removeSocketPointerFile() {
+    const pointerFile = (0, import_path5.join)(
+      this.projectRoot,
+      this.config.persistence.state_dir,
+      "runtime.socket"
+    );
+    try {
+      if ((0, import_fs5.existsSync)(pointerFile)) {
+        (0, import_fs5.unlinkSync)(pointerFile);
+        logger5.debug("Socket pointer file removed", { path: pointerFile });
+      }
+    } catch (err) {
+      logger5.warn("Could not remove socket pointer file", {
+        path: pointerFile,
+        err: err instanceof Error ? err.message : String(err)
+      });
     }
   }
   /**
@@ -23254,7 +25104,7 @@ var ProcessManager = class {
       try {
         await this.eventLog.compact();
       } catch (err) {
-        logger4.warn("Event log compaction failed during checkpoint", {
+        logger5.warn("Event log compaction failed during checkpoint", {
           err: err instanceof Error ? err.message : String(err)
         });
       }
@@ -23342,7 +25192,7 @@ function setupSignalHandlers(onShutdown) {
 __name(setupSignalHandlers, "setupSignalHandlers");
 
 // src/server/tool-handlers.ts
-var logger5 = createLogger("tool-handlers");
+var logger6 = createLogger("tool-handlers");
 function toSuccess(data, version2, uptime_ms, execution_ms) {
   const result = {
     success: true,
@@ -23380,11 +25230,11 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   try {
     const uptime_ms = ctx.getUptime();
     const statusData = ctx.getHealth();
-    logger5.debug("runtime_status computed", { status: statusData.status });
+    logger6.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, ctx.version, uptime_ms, Date.now() - start);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger5.error("runtime_status failed", { error: message });
+    logger6.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
@@ -23446,7 +25296,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       );
       saveConfig(ctx.projectRoot, updated);
       ctx.updateConfig(updated);
-      logger5.info("Config key set", { key, value });
+      logger6.info("Config key set", { key, value });
       return toSuccess(
         { key, value, persisted: true },
         ctx.version,
@@ -23457,7 +25307,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     if (action === "reset") {
       saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
       ctx.updateConfig(DEFAULT_CONFIG);
-      logger5.info("Config reset to defaults");
+      logger6.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -23473,7 +25323,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger5.error("runtime_config failed", { error: message });
+    logger6.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
@@ -23606,7 +25456,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger5.error("runtime_events failed", { error: message });
+    logger6.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
@@ -23661,7 +25511,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:", "system:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger5.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
+      logger6.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
     }
     const emitted = ctx.getEventBus().emit({
       id: generateEventId(),
@@ -23671,14 +25521,243 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       payload: { type: eventType, data: payload },
       metadata: correlationId ? { correlation_id: correlationId } : void 0
     });
-    logger5.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    logger6.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptime_ms, Date.now() - start);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger5.error("runtime_emit failed", { error: message });
+    logger6.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
+var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+  try {
+    if (args === null || args === void 0 || typeof args !== "object") {
+      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args;
+    const action = params.action;
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.",
+        ctx.version,
+        uptime_ms,
+        Date.now() - start
+      );
+    }
+    const engine = ctx.getWorkflowEngine();
+    if (action === "create") {
+      if (!engine) {
+        return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowType = params.workflow_type;
+      if (!workflowType) {
+        return toError("Missing required field: workflow_type", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const definitionId = workflowType === "wrfc_loop" ? "wrfc_loop" : workflowType === "fix_loop" ? "fix_loop" : workflowType;
+      const context = params.context ?? {};
+      const instance = engine.create(definitionId, context);
+      logger6.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      return toSuccess({ instance }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "get") {
+      if (!engine) {
+        return toSuccess({ instance: null }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id;
+      if (!workflowId) {
+        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const instance = engine.get(workflowId);
+      return toSuccess({ instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "list") {
+      if (!engine) {
+        return toSuccess({ instances: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const filter = params.filter;
+      const statusFilter = filter?.status;
+      const instances = statusFilter ? engine.listAll().filter((i) => i.status === statusFilter) : engine.listActive();
+      return toSuccess({ instances, count: instances.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "advance") {
+      if (!engine) {
+        return toError("Workflow engine is disabled", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id;
+      const event = params.event;
+      if (!workflowId) {
+        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!event) {
+        return toError("Missing required field: event", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const context = params.context ?? {};
+      const transition = engine.sendEvent(workflowId, {
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: event,
+        source: { kind: "mcp_tool", tool_name: "runtime_workflow" },
+        payload: { type: event, data: context }
+      });
+      const instance = engine.get(workflowId);
+      return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "cancel") {
+      if (!engine) {
+        return toError("Workflow engine is disabled", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id;
+      if (!workflowId) {
+        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const reason = params.reason ?? "cancelled via MCP";
+      engine.cancel(workflowId, reason);
+      const instance = engine.get(workflowId);
+      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "history") {
+      if (!engine) {
+        return toSuccess({ history: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+      }
+      const workflowId = params.workflow_id;
+      if (!workflowId) {
+        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const instance = engine.get(workflowId);
+      if (!instance) {
+        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptime_ms, Date.now() - start);
+      }
+      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    return toError(
+      `Unknown action: '${action}'. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.`,
+      ctx.version,
+      uptime_ms,
+      Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger6.error("runtime_workflow failed", { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+}, "handleRuntimeWorkflow");
+var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const uptime_ms = ctx.getUptime();
+  try {
+    if (args === null || args === void 0 || typeof args !== "object") {
+      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+    }
+    const params = args;
+    const action = params.action;
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.",
+        ctx.version,
+        uptime_ms,
+        Date.now() - start
+      );
+    }
+    const registry2 = ctx.getTriggerRegistry();
+    if (action === "list") {
+      const triggers = registry2 ? registry2.list() : [];
+      return toSuccess({ triggers, count: triggers.length }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "get") {
+      const triggerId = params.trigger_id;
+      if (!triggerId) {
+        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const trigger = registry2?.get(triggerId) ?? null;
+      return toSuccess({ trigger }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "create") {
+      if (!registry2) {
+        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerDef = params.trigger;
+      if (!triggerDef) {
+        return toError("Missing required field: trigger", ctx.version, uptime_ms, Date.now() - start);
+      }
+      registry2.register(triggerDef);
+      logger6.info("runtime_triggers: registered", { id: triggerDef.id });
+      return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "update") {
+      if (!registry2) {
+        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerDef = params.trigger;
+      if (!triggerDef) {
+        return toError("Missing required field: trigger", ctx.version, uptime_ms, Date.now() - start);
+      }
+      registry2.unregister(triggerDef.id);
+      registry2.register(triggerDef);
+      logger6.info("runtime_triggers: updated", { id: triggerDef.id });
+      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "delete") {
+      if (!registry2) {
+        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerId = params.trigger_id;
+      if (!triggerId) {
+        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      registry2.unregister(triggerId);
+      logger6.info("runtime_triggers: unregistered", { id: triggerId });
+      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "enable" || action === "disable") {
+      if (!registry2) {
+        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerId = params.trigger_id;
+      if (!triggerId) {
+        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const enabled = action === "enable";
+      registry2.setEnabled(triggerId, enabled);
+      logger6.info(`runtime_triggers: ${action}d`, { id: triggerId });
+      return toSuccess({ [action + "d"]: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    if (action === "test") {
+      if (!registry2) {
+        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const triggerId = params.trigger_id;
+      const testEvent = params.test_event;
+      if (!triggerId) {
+        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+      }
+      if (!testEvent) {
+        return toError("Missing required field: test_event", ctx.version, uptime_ms, Date.now() - start);
+      }
+      const mockEvent = {
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: testEvent.type ?? "test:mock",
+        source: testEvent.source ?? { kind: "mcp_tool", tool_name: "runtime_triggers" },
+        payload: testEvent.payload ?? { type: "test:mock", data: {} }
+      };
+      const results = await registry2.evaluate(mockEvent);
+      const result = results.find((r) => r.trigger_id === triggerId);
+      return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptime_ms, Date.now() - start);
+    }
+    return toError(
+      `Unknown action: '${action}'. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.`,
+      ctx.version,
+      uptime_ms,
+      Date.now() - start
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger6.error("runtime_triggers failed", { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+}, "handleRuntimeTriggers");
 var allSchemas = [
   {
     name: "runtime_status",
@@ -23803,13 +25882,81 @@ var allSchemas = [
       },
       additionalProperties: false
     }
+  },
+  {
+    name: "runtime_workflow",
+    description: "Manage WRFC and fix-loop workflows: create, query, advance state, cancel. Formal state machines for orchestration.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["create", "get", "list", "advance", "cancel", "history"]
+        },
+        workflow_type: {
+          type: "string",
+          enum: ["wrfc_loop", "fix_loop", "custom"],
+          description: "Workflow definition to instantiate (for create)"
+        },
+        workflow_id: { type: "string" },
+        event: {
+          type: "string",
+          description: "Event type to send (for advance)"
+        },
+        context: {
+          type: "object",
+          description: "Context data (for create/advance)"
+        },
+        reason: {
+          type: "string",
+          description: "Cancellation reason (for cancel)"
+        },
+        filter: {
+          type: "object",
+          properties: {
+            status: {
+              type: "string",
+              enum: ["active", "completed", "failed", "cancelled", "timed_out"]
+            }
+          }
+        }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "runtime_triggers",
+    description: "Manage event triggers: list, create, enable/disable, test conditions. Declarative event-driven automation.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["list", "get", "create", "update", "delete", "enable", "disable", "test"]
+        },
+        trigger_id: { type: "string" },
+        trigger: {
+          type: "object",
+          description: "TriggerDefinition for create/update"
+        },
+        test_event: {
+          type: "object",
+          description: "Mock event to test conditions against"
+        }
+      },
+      additionalProperties: false
+    }
   }
 ];
 var handlerRegistry = /* @__PURE__ */ new Map([
   ["runtime_status", handleRuntimeStatus],
   ["runtime_config", handleRuntimeConfig],
   ["runtime_events", handleRuntimeEvents],
-  ["runtime_emit", handleRuntimeEmit]
+  ["runtime_emit", handleRuntimeEmit],
+  ["runtime_workflow", handleRuntimeWorkflow],
+  ["runtime_triggers", handleRuntimeTriggers]
 ]);
 function getHandler(toolName) {
   return handlerRegistry.get(toolName);
@@ -23822,7 +25969,7 @@ __name(listHandlers, "listHandlers");
 
 // src/server/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger6 = createLogger("mcp-server");
+var logger7 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -23844,12 +25991,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger6.debug("ListTools request");
+      logger7.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger6.debug("CallTool request", { name });
+      logger7.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -23866,14 +26013,16 @@ var RuntimeEngineServer = class {
         version: ENGINE_VERSION,
         getEventBus: /* @__PURE__ */ __name(() => this.processManager.getEventBus(), "getEventBus"),
         getEventLog: /* @__PURE__ */ __name(() => this.processManager.getEventLog(), "getEventLog"),
-        getEventQueue: /* @__PURE__ */ __name(() => this.processManager.getEventQueue(), "getEventQueue")
+        getEventQueue: /* @__PURE__ */ __name(() => this.processManager.getEventQueue(), "getEventQueue"),
+        getWorkflowEngine: /* @__PURE__ */ __name(() => this.processManager.getWorkflowEngine(), "getWorkflowEngine"),
+        getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager.getTriggerRegistry(), "getTriggerRegistry")
       };
       try {
         return await handler(args, ctx);
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = error2 instanceof Error ? error2.message : String(error2);
-        logger6.error(`Tool ${name} failed`, { error: message });
+        logger7.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -23885,7 +26034,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger6.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger7.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -23904,7 +26053,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger6.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger7.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid
     });
@@ -23918,22 +26067,22 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger6.info("Stopping runtime engine");
+    logger7.info("Stopping runtime engine");
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger6.warn("ProcessManager shutdown error", {
+      logger7.warn("ProcessManager shutdown error", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger6.warn("MCP server close error", {
+      logger7.warn("MCP server close error", {
         err: err instanceof Error ? err.message : String(err)
       });
     }
-    logger6.info("Runtime engine stopped");
+    logger7.info("Runtime engine stopped");
   }
 };
 

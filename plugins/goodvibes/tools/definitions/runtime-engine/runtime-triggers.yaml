@@ -1,0 +1,25 @@
+name: runtime_triggers
+description: >-
+  Manage event triggers: list, create, enable/disable, test conditions.
+  Declarative event-driven automation.
+category: runtime
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [list, get, create, update, delete, enable, disable, test]
+    trigger_id:
+      type: string
+    trigger:
+      type: object
+      description: "TriggerDefinition for create/update"
+    test_event:
+      type: object
+      description: "Mock event to test conditions against"
+  required: [action]
+mcp:
+  server: runtime-engine
+  method: runtime_triggers
+defer_loading: true
+tags: [runtime, triggers, automation, events]

@@ -1,0 +1,258 @@
+/**
+ * RuntimeClient
+ *
+ * Thin IPC client used by hook scripts to communicate with the runtime engine
+ * over a Unix domain socket. Designed for minimal latency and graceful
+ * degradation: if the runtime engine is not reachable, all methods return
+ * null rather than throwing, so hooks continue to work without the engine.
+ *
+ * Connection protocol:
+ * - One connection per request (no persistent connection)
+ * - Write one newline-delimited JSON message
+ * - Read one newline-delimited JSON response
+ * - Close the connection
+ *
+ * Discovery order for the socket path:
+ * 1. GOODVIBES_RUNTIME_SOCKET environment variable
+ * 2. .goodvibes/state/runtime.socket file in the current working directory
+ * 3. Well-known tmpdir path ({tmpdir}/goodvibes-runtime/runtime.sock)
+ */
+
+import * as net from 'net';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+
+import type { IPCMessage, IPCResponse, IPCQuery, IPCResponseData } from './protocol.js';
+import { generateId, timestamp } from '../shared/utils.js';
+import { createLogger } from '../shared/logger.js';
+
+const logger = createLogger('ipc-client');
+
+/** Timeout in ms for sendHookEvent (hooks must be fast). */
+const HOOK_EVENT_TIMEOUT_MS = 500;
+
+/** Timeout in ms for query calls. */
+const QUERY_TIMEOUT_MS = 200;
+
+/**
+ * Thin IPC client for hook scripts.
+ *
+ * Automatically discovers the runtime engine socket on construction. All
+ * public methods return `null` when the engine is unreachable, so callers
+ * can simply ignore the return value in the common case.
+ *
+ * @example
+ * ```ts
+ * const client = new RuntimeClient();
+ * if (client.isAvailable()) {
+ *   const result = await client.sendHookEvent('pre_tool_use', hookInput);
+ *   // result is IPCResponseData | null
+ * }
+ * ```
+ */
+export class RuntimeClient {
+  /** Absolute path to the Unix domain socket, or null if not discoverable. */
+  private readonly socketPath: string | null;
+
+  constructor() {
+    this.socketPath = this.discoverSocket();
+    if (this.socketPath) {
+      logger.debug('Discovered runtime socket', { path: this.socketPath });
+    } else {
+      logger.debug('Runtime engine socket not found — operating without IPC');
+    }
+  }
+
+  // ─── Public API ───────────────────────────────────────────────────────────
+
+  /**
+   * Returns true if the runtime engine socket path was discovered and the
+   * socket file exists on disk.
+   *
+   * This is a fast synchronous check — it does not attempt a connection.
+   */
+  isAvailable(): boolean {
+    return this.socketPath !== null && existsSync(this.socketPath);
+  }
+
+  /**
+   * Notify the runtime engine of a hook event and receive optional directives.
+   *
+   * Times out after 500 ms. Returns null if the engine is unreachable or the
+   * call fails for any reason.
+   *
+   * @param hookName  - Hook name as reported by Claude Code (e.g. 'pre_tool_use').
+   * @param hookInput - The full hook input payload from Claude Code.
+   * @returns The response data from the engine, or null.
+   */
+  async sendHookEvent(
+    hookName: string,
+    hookInput: Record<string, unknown>
+  ): Promise<IPCResponseData | null> {
+    if (!this.isAvailable()) return null;
+
+    const message: IPCMessage = {
+      type: 'hook_event',
+      id: generateId(),
+      hook_name: hookName,
+      hook_input: hookInput,
+      timestamp: timestamp(),
+    };
+
+    const response = await this.send(message, HOOK_EVENT_TIMEOUT_MS);
+    if (!response || response.status === 'error') {
+      if (response?.error) {
+        logger.warn('Hook event rejected by runtime engine', {
+          hook: hookName,
+          error: response.error,
+        });
+      }
+      return null;
+    }
+    return response.data ?? null;
+  }
+
+  /**
+   * Query the runtime engine for state or a decision.
+   *
+   * Times out after 200 ms. Returns null if the engine is unreachable or the
+   * call fails for any reason.
+   *
+   * @param query - The query to execute (discriminated by `kind`).
+   * @returns The response data from the engine, or null.
+   */
+  async query(query: IPCQuery): Promise<IPCResponseData | null> {
+    if (!this.isAvailable()) return null;
+
+    const message: IPCMessage = {
+      type: 'query',
+      id: generateId(),
+      query,
+    };
+
+    const response = await this.send(message, QUERY_TIMEOUT_MS);
+    if (!response || response.status === 'error') {
+      if (response?.error) {
+        logger.warn('Query rejected by runtime engine', {
+          kind: query.kind,
+          error: response.error,
+        });
+      }
+      return null;
+    }
+    return response.data ?? null;
+  }
+
+  // ─── Private helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Send a single IPC message to the runtime engine and return its response.
+   *
+   * Opens a new Unix domain socket connection, writes the JSON message
+   * (newline-terminated), reads the JSON response (newline-terminated), then
+   * closes the connection. Returns null on timeout or any socket error.
+   *
+   * @param message   - The IPC message to send.
+   * @param timeoutMs - Maximum ms to wait for a response before giving up.
+   * @returns Parsed {@link IPCResponse}, or null on failure.
+   */
+  private async send(message: IPCMessage, timeoutMs: number): Promise<IPCResponse | null> {
+    const socketPath = this.socketPath!;
+
+    return new Promise<IPCResponse | null>((resolve) => {
+      let resolved = false;
+
+      const done = (result: IPCResponse | null): void => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timer);
+        resolve(result);
+      };
+
+      const timer = setTimeout(() => {
+        logger.debug('IPC send timed out', { id: message.id, timeout_ms: timeoutMs });
+        socket.destroy();
+        done(null);
+      }, timeoutMs);
+
+      const socket = net.createConnection({ path: socketPath });
+
+      socket.once('error', (err) => {
+        logger.debug('IPC socket error', {
+          id: message.id,
+          err: err.message,
+        });
+        done(null);
+      });
+
+      socket.once('connect', () => {
+        const payload = JSON.stringify(message) + '\n';
+        socket.write(payload, 'utf-8');
+      });
+
+      let rawData = '';
+      socket.on('data', (chunk) => {
+        rawData += chunk.toString('utf-8');
+
+        const newlineIdx = rawData.indexOf('\n');
+        if (newlineIdx === -1) return; // Response not yet complete
+
+        const line = rawData.slice(0, newlineIdx);
+        socket.destroy();
+
+        try {
+          const response = JSON.parse(line) as IPCResponse;
+          done(response);
+        } catch (err) {
+          logger.warn('Failed to parse IPC response', {
+            id: message.id,
+            err: err instanceof Error ? err.message : String(err),
+          });
+          done(null);
+        }
+      });
+
+      socket.once('close', () => {
+        done(null);
+      });
+    });
+  }
+
+  /**
+   * Discover the runtime engine socket path.
+   *
+   * Resolution order:
+   * 1. `GOODVIBES_RUNTIME_SOCKET` environment variable.
+   * 2. `.goodvibes/state/runtime.socket` file in `process.cwd()` (contains the path).
+   * 3. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
+   *
+   * @returns Absolute socket path, or null if none is discoverable.
+   */
+  private discoverSocket(): string | null {
+    // 1. Environment variable (set by runtime engine at startup)
+    const envPath = process.env['GOODVIBES_RUNTIME_SOCKET'];
+    if (envPath) {
+      return envPath;
+    }
+
+    // 2. Well-known pointer file written by the runtime engine
+    const pointerFile = join(process.cwd(), '.goodvibes', 'state', 'runtime.socket');
+    if (existsSync(pointerFile)) {
+      try {
+        const socketPath = readFileSync(pointerFile, 'utf-8').trim();
+        if (socketPath) return socketPath;
+      } catch {
+        // Ignore — fall through to next strategy
+      }
+    }
+
+    // 3. Well-known tmpdir path (fallback for same-machine sessions)
+    const defaultPath = join(tmpdir(), 'goodvibes-runtime', 'runtime.sock');
+    if (existsSync(defaultPath)) {
+      return defaultPath;
+    }
+
+    return null;
+  }
+}

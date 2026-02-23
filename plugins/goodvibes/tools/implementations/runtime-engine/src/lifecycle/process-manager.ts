@@ -9,7 +9,7 @@
  * - Coordinating graceful startup and shutdown sequences
  */
 
-import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { createHash } from 'crypto';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -24,6 +24,12 @@ import { EventBus } from '../events/event-bus.js';
 import { EventLog } from '../events/event-log.js';
 import { EventQueue } from '../events/event-queue.js';
 import { generateEventId, timestamp } from '../shared/utils.js';
+import { IPCServer } from '../ipc/ipc-server.js';
+import type { IPCMessage, IPCResponse } from '../ipc/protocol.js';
+import { WorkflowEngine } from '../workflow/workflow-engine.js';
+import { WRFC_LOOP_DEFINITION, FIX_LOOP_DEFINITION } from '../workflow/index.js';
+import { TriggerRegistry } from '../triggers/trigger-registry.js';
+import { getBuiltinTriggers } from '../triggers/builtins.js';
 
 const logger = createLogger('process-manager');
 
@@ -78,6 +84,15 @@ export class ProcessManager {
 
   /** Priority event queue for deferred processing. */
   private eventQueue!: EventQueue;
+
+  /** Unix domain socket IPC server (only active when ipc_enabled). */
+  private ipcServer: IPCServer | null = null;
+
+  /** Workflow state machine engine. */
+  private workflowEngine: WorkflowEngine | null = null;
+
+  /** Event trigger registry. */
+  private triggerRegistry: TriggerRegistry | null = null;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -142,13 +157,57 @@ export class ProcessManager {
     // 6. Start periodic checkpoint timer
     this.startCheckpointTimer();
 
-    // 7. Emit startup event
+    // 7. Initialise workflow engine and trigger registry
+    if (this.config.features.workflows_enabled) {
+      this.workflowEngine = new WorkflowEngine(this.config.workflows);
+      this.workflowEngine.setEventBus(this.eventBus);
+      this.workflowEngine.registerDefinition(WRFC_LOOP_DEFINITION);
+      this.workflowEngine.registerDefinition(FIX_LOOP_DEFINITION);
+      this.workflowEngine.registerGuard('checkReviewScore', (context) => {
+        return typeof context.review_score === 'number' && context.review_score >= 10;
+      });
+      logger.debug('Workflow engine initialised');
+    }
+
+    this.triggerRegistry = new TriggerRegistry(this.config.triggers);
+    this.triggerRegistry.setEventBus(this.eventBus);
+    for (const trigger of getBuiltinTriggers()) {
+      this.triggerRegistry.register(trigger);
+    }
+    this.eventBus.on('*', async (event: import('../events/types.js').RuntimeEvent) => {
+      try {
+        if (this.triggerRegistry) {
+          await this.triggerRegistry.evaluate(event);
+        }
+      } catch (err) {
+        logger.warn('Trigger evaluation error', { error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+    logger.debug('Trigger registry initialised');
+
+    // 8. Start IPC server if enabled
+    let ipcSocketPath: string | null = null;
+    if (this.config.features.ipc_enabled) {
+      ipcSocketPath = await this.startIPCServer();
+    } else {
+      logger.debug('IPC server disabled by feature flag');
+    }
+
+    // 9. Emit startup event
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
       type: 'system:startup',
       source: { kind: 'system' },
-      payload: { type: 'system:startup', data: { pid: process.pid, uptime_ms: 0 } },
+      payload: {
+        type: 'system:startup',
+        data: {
+          pid: process.pid,
+          uptime_ms: 0,
+          ipc_enabled: this.config.features.ipc_enabled,
+          ipc_socket: ipcSocketPath ?? undefined,
+        },
+      },
     });
 
     this.running = true;
@@ -180,10 +239,25 @@ export class ProcessManager {
     watchdog.unref();
 
     try {
-      // 1. Stop checkpoint timer
+      // 1. Cancel all active workflows
+      if (this.workflowEngine) {
+        for (const instance of this.workflowEngine.listActive()) {
+          try {
+            this.workflowEngine.cancel(instance.id, 'engine shutdown');
+          } catch (err) {
+            logger.warn('Failed to cancel workflow during shutdown', {
+              id: instance.id,
+              err: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        logger.debug('Active workflows cancelled');
+      }
+
+      // 2. Stop checkpoint timer
       this.stopCheckpointTimer();
 
-      // 2. Emit shutdown event (before draining)
+      // 3. Emit shutdown event (before draining)
       if (this.eventBus) {
         try {
           this.eventBus.emit({
@@ -200,7 +274,21 @@ export class ProcessManager {
         }
       }
 
-      // 3. Drain and stop the event queue
+      // 4. Close IPC server
+      if (this.ipcServer) {
+        try {
+          await this.ipcServer.close();
+          this.removeSocketPointerFile();
+          this.ipcServer = null;
+          logger.debug('IPC server closed');
+        } catch (err) {
+          logger.warn('IPC server close failed', {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // 5. Drain and stop the event queue
       if (this.eventQueue) {
         try {
           await this.eventQueue.drain(5_000);
@@ -213,12 +301,12 @@ export class ProcessManager {
         }
       }
 
-      // 4. Remove all event bus listeners
+      // 6. Remove all event bus listeners
       if (this.eventBus) {
         this.eventBus.removeAllListeners();
       }
 
-      // 5. Save final checkpoint
+      // 7. Save final checkpoint
       try {
         await this.saveCheckpoint();
         logger.debug('Final checkpoint saved');
@@ -228,7 +316,7 @@ export class ProcessManager {
         });
       }
 
-      // 6. Remove PID lock file
+      // 8. Remove PID lock file
       this.removePidFile();
 
       this.running = false;
@@ -347,6 +435,31 @@ export class ProcessManager {
     return this.eventQueue;
   }
 
+  /**
+   * Return the IPC server if it was started, or null if IPC is disabled.
+   */
+  getIPCServer(): IPCServer | null {
+    return this.ipcServer;
+  }
+
+  /**
+   * Return the workflow engine, or null if workflows are disabled.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getWorkflowEngine(): WorkflowEngine | null {
+    return this.workflowEngine;
+  }
+
+  /**
+   * Return the trigger registry.
+   *
+   * @throws If called before startup() has completed.
+   */
+  getTriggerRegistry(): TriggerRegistry | null {
+    return this.triggerRegistry;
+  }
+
   // ─── Private helpers ────────────────────────────────────────────────────────
 
   /**
@@ -435,6 +548,123 @@ export class ProcessManager {
       clearInterval(this.checkpointTimer);
       this.checkpointTimer = undefined;
       logger.debug('Checkpoint timer stopped');
+    }
+  }
+
+  /**
+   * Start the IPC server, bind it to a session-scoped socket path, and write
+   * the socket path to the state directory so hooks can discover it.
+   *
+   * @returns The absolute socket path, or null if startup fails.
+   */
+  private async startIPCServer(): Promise<string | null> {
+    const stateDir = join(this.projectRoot, this.config.persistence.state_dir);
+    const socketDir = this.config.ipc.socket_dir;
+
+    // Derive a session-scoped socket filename from a hash of the project root
+    const hash = createHash('sha256').update(this.projectRoot).digest('hex').slice(0, 8);
+    const socketPath = join(socketDir, `goodvibes-runtime-${hash}.sock`);
+
+    try {
+      this.ipcServer = new IPCServer(socketPath);
+
+      // Wire IPC message handler
+      this.ipcServer.onMessage(async (msg: IPCMessage): Promise<IPCResponse> => {
+        logger.debug('IPC message received', { id: msg.id, type: msg.type });
+
+        if (msg.type === 'hook_event') {
+          // Emit as a hook:* event on the EventBus
+          this.eventBus.emit({
+            id: msg.id,
+            timestamp: msg.timestamp,
+            type: `hook:${msg.hook_name}` as import('../events/types.js').EventType,
+            source: { kind: 'hook', hook_name: msg.hook_name } as import('../events/types.js').EventSource,
+            payload: {
+              type: `hook:${msg.hook_name}` as import('../events/types.js').EventType,
+              data: msg.hook_input,
+            } as import('../events/types.js').EventPayload,
+          });
+          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
+        }
+
+        if (msg.type === 'query') {
+          const q = msg.query;
+          if (q.kind === 'get_system_message') {
+            return {
+              id: msg.id,
+              status: 'ok',
+              data: { kind: 'system_message', message: '', directives: [] },
+            };
+          }
+          if (q.kind === 'get_workflow_state') {
+            const instance = this.workflowEngine?.get(q.workflow_id);
+            return {
+              id: msg.id,
+              status: 'ok',
+              data: { kind: 'workflow_state', instance: (instance ?? {}) as Record<string, unknown> },
+            };
+          }
+          if (q.kind === 'should_block_tool') {
+            return {
+              id: msg.id,
+              status: 'ok',
+              data: { kind: 'tool_decision', allow: true },
+            };
+          }
+          // Default: ack unknown queries
+          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
+        }
+
+        if (msg.type === 'heartbeat') {
+          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
+        }
+
+        if (msg.type === 'state_update') {
+          return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
+        }
+
+        return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
+      });
+
+      await this.ipcServer.listen();
+
+      // Write socket path to state file for hook discovery
+      mkdirSync(stateDir, { recursive: true });
+      const pointerFile = join(stateDir, 'runtime.socket');
+      writeFileSync(pointerFile, socketPath, 'utf-8');
+
+      logger.info('IPC server started', { socket: socketPath });
+      return socketPath;
+    } catch (err) {
+      logger.error('Failed to start IPC server', {
+        socket: socketPath,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      this.ipcServer = null;
+      return null;
+    }
+  }
+
+  /**
+   * Remove the socket pointer file written during {@link startIPCServer}.
+   * Silently ignores errors (e.g. file already removed).
+   */
+  private removeSocketPointerFile(): void {
+    const pointerFile = join(
+      this.projectRoot,
+      this.config.persistence.state_dir,
+      'runtime.socket'
+    );
+    try {
+      if (existsSync(pointerFile)) {
+        unlinkSync(pointerFile);
+        logger.debug('Socket pointer file removed', { path: pointerFile });
+      }
+    } catch (err) {
+      logger.warn('Could not remove socket pointer file', {
+        path: pointerFile,
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

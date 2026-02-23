@@ -1,6 +1,6 @@
 version: 2.0.0
 generated: '2026-02-22T19:04:39.698Z'
-total: 70
+total: 72
 servers:
   - name: precision-engine
     count: 12
@@ -348,7 +348,7 @@ servers:
           route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
           boundaries, and async components without protection.
   - name: runtime-engine
-    count: 4
+    count: 6
     tools:
       - name: runtime_status
         path: runtime-engine/runtime-status.yaml
@@ -370,6 +370,16 @@ servers:
         description: >-
           Emit a custom event into the runtime event bus. Useful for manual workflow advancement,
           trigger testing, or custom automation.
+      - name: runtime_workflow
+        path: runtime-engine/runtime-workflow.yaml
+        description: >-
+          Manage WRFC and fix-loop workflows: create, query, advance state, cancel.
+          Formal state machines for orchestration.
+      - name: runtime_triggers
+        path: runtime-engine/runtime-triggers.yaml
+        description: >-
+          Manage event triggers: list, create, enable/disable, test conditions.
+          Declarative event-driven automation.
 search_index:
   - name: precision_write
     keywords:
@@ -2317,4 +2327,38 @@ search_index:
     description: >-
       Emit a custom event into the runtime event bus. Useful for manual workflow advancement,
       trigger testing, or custom automation.
+    server: runtime-engine
+  - name: runtime_workflow
+    keywords:
+      - runtime
+      - workflow
+      - wrfc
+      - fix
+      - loop
+      - state
+      - machine
+      - create
+      - advance
+      - cancel
+      - orchestration
+    path: runtime-engine/runtime-workflow.yaml
+    description: >-
+      Manage WRFC and fix-loop workflows: create, query, advance state, cancel.
+      Formal state machines for orchestration.
+    server: runtime-engine
+  - name: runtime_triggers
+    keywords:
+      - runtime
+      - triggers
+      - automation
+      - events
+      - enable
+      - disable
+      - test
+      - conditions
+      - declarative
+    path: runtime-engine/runtime-triggers.yaml
+    description: >-
+      Manage event triggers: list, create, enable/disable, test conditions.
+      Declarative event-driven automation.
     server: runtime-engine
