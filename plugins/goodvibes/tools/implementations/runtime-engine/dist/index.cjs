@@ -23536,7 +23536,7 @@ var IPCRouter = class {
       }
       if (msg.hook_name === "config:loaded" && this.directiveQueue) {
         const wrfcConfig = msg.hook_input?.wrfc;
-        if (wrfcConfig && typeof wrfcConfig === "object") {
+        if (wrfcConfig && typeof wrfcConfig === "object" && !Array.isArray(wrfcConfig)) {
           const validated = {};
           const raw = wrfcConfig;
           if (typeof raw.min_review_score === "number" && raw.min_review_score >= 0 && raw.min_review_score <= 10) {
@@ -26236,17 +26236,21 @@ function handleReviewResult(params) {
   workflow.context.review_score = score;
   workflow.context.min_review_score = minScore;
   workflow.context.max_fix_attempts = maxFixAttempts;
-  workflowEngine.sendEvent(workflow.id, {
-    id: generateEventId(),
-    timestamp: timestamp(),
-    type: "wrfc:review_completed",
-    source: { kind: "system" },
-    payload: {
+  try {
+    workflowEngine.sendEvent(workflow.id, {
+      id: generateEventId(),
+      timestamp: timestamp(),
       type: "wrfc:review_completed",
-      data: { review_score: score }
-    },
-    metadata: { session_id: "", sequence: 0, version: 1 }
-  });
+      source: { kind: "system" },
+      payload: {
+        type: "wrfc:review_completed",
+        data: { review_score: score }
+      },
+      metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+    });
+  } catch (err) {
+    log4.error("handleReviewResult: failed to advance workflow state", { workflow_id: workflow.id, error: String(err) });
+  }
   if (score >= minScore) {
     const message = buildWorkflowCompleteMessage(workflow.id, "completed");
     directiveQueue.enqueue("subagent_stop", {
@@ -26293,17 +26297,21 @@ function handleFixResult(params) {
   workflow.context.max_fix_attempts = maxFixAttempts;
   if (fixAttempts >= maxFixAttempts) {
     const lastScore = typeof workflow.context.review_score === "number" ? workflow.context.review_score : 0;
-    workflowEngine.sendEvent(workflow.id, {
-      id: generateEventId(),
-      timestamp: timestamp(),
-      type: "wrfc:fix_completed",
-      source: { kind: "system" },
-      payload: {
+    try {
+      workflowEngine.sendEvent(workflow.id, {
+        id: generateEventId(),
+        timestamp: timestamp(),
         type: "wrfc:fix_completed",
-        data: { fix_attempts: fixAttempts }
-      },
-      metadata: { session_id: "", sequence: 0, version: 1 }
-    });
+        source: { kind: "system" },
+        payload: {
+          type: "wrfc:fix_completed",
+          data: { fix_attempts: fixAttempts }
+        },
+        metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+      });
+    } catch (err) {
+      log4.error("handleFixResult: failed to advance workflow state (escalation path)", { workflow_id: workflow.id, error: String(err) });
+    }
     const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
     directiveQueue.enqueue("subagent_stop", {
       type: "inject_system_message",
@@ -26317,17 +26325,21 @@ function handleFixResult(params) {
       max_fix_attempts: maxFixAttempts
     });
   } else {
-    workflowEngine.sendEvent(workflow.id, {
-      id: generateEventId(),
-      timestamp: timestamp(),
-      type: "wrfc:fix_completed",
-      source: { kind: "system" },
-      payload: {
+    try {
+      workflowEngine.sendEvent(workflow.id, {
+        id: generateEventId(),
+        timestamp: timestamp(),
         type: "wrfc:fix_completed",
-        data: { fix_attempts: fixAttempts }
-      },
-      metadata: { session_id: "", sequence: 0, version: 1 }
-    });
+        source: { kind: "system" },
+        payload: {
+          type: "wrfc:fix_completed",
+          data: { fix_attempts: fixAttempts }
+        },
+        metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+      });
+    } catch (err) {
+      log4.error("handleFixResult: failed to advance workflow state (re-review path)", { workflow_id: workflow.id, error: String(err) });
+    }
     const recheckTask = `Re-review the code after fix attempt ${fixAttempts} of ${maxFixAttempts} for workflow ${workflow.id}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "Check all recently modified files.");
     const recheckMessage = buildSpawnDirectiveMessage("reviewer", recheckTask, DEFAULT_BUDGET, {
       files_modified: filesModified,
@@ -26479,7 +26491,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     })();
     const wf = workflowEngine?.get(workflowId);
     if (!wf || !workflowEngine) {
-      const minScore = DEFAULT_MIN_REVIEW_SCORE;
+      const minScore = typeof args["min_review_score"] === "number" ? args["min_review_score"] : DEFAULT_MIN_REVIEW_SCORE;
       if (reviewScore >= minScore) {
         const message = buildWorkflowCompleteMessage(workflowId, "completed");
         directiveQueue.enqueue("subagent_stop", {

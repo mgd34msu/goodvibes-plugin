@@ -109,7 +109,7 @@ export class IPCRouter {
       // Store WRFC config when config:loaded event arrives
       if (msg.hook_name === 'config:loaded' && this.directiveQueue) {
         const wrfcConfig = (msg.hook_input as Record<string, unknown>)?.wrfc;
-        if (wrfcConfig && typeof wrfcConfig === 'object') {
+        if (wrfcConfig && typeof wrfcConfig === 'object' && !Array.isArray(wrfcConfig)) {
           const validated: Record<string, unknown> = {};
           const raw = wrfcConfig as Record<string, unknown>;
 

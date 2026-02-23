@@ -94,17 +94,21 @@ function handleReviewResult(params: {
   workflow.context.max_fix_attempts = maxFixAttempts;
 
   // Advance state machine
-  workflowEngine.sendEvent(workflow.id, {
-    id: generateEventId(),
-    timestamp: timestamp(),
-    type: 'wrfc:review_completed',
-    source: { kind: 'system' },
-    payload: {
+  try {
+    workflowEngine.sendEvent(workflow.id, {
+      id: generateEventId(),
+      timestamp: timestamp(),
       type: 'wrfc:review_completed',
-      data: { review_score: score },
-    },
-    metadata: { session_id: '', sequence: 0, version: 1 },
-  });
+      source: { kind: 'system' },
+      payload: {
+        type: 'wrfc:review_completed',
+        data: { review_score: score },
+      },
+      metadata: { session_id: workflow.id, sequence: 0, version: 1 },
+    });
+  } catch (err) {
+    log.error('handleReviewResult: failed to advance workflow state', { workflow_id: workflow.id, error: String(err) });
+  }
 
   if (score >= minScore) {
     // Score meets threshold → complete workflow
@@ -185,17 +189,21 @@ function handleFixResult(params: {
       typeof workflow.context.review_score === 'number' ? workflow.context.review_score : 0;
 
     // Advance state machine BEFORE enqueuing escalation directive
-    workflowEngine.sendEvent(workflow.id, {
-      id: generateEventId(),
-      timestamp: timestamp(),
-      type: 'wrfc:fix_completed',
-      source: { kind: 'system' },
-      payload: {
+    try {
+      workflowEngine.sendEvent(workflow.id, {
+        id: generateEventId(),
+        timestamp: timestamp(),
         type: 'wrfc:fix_completed',
-        data: { fix_attempts: fixAttempts },
-      },
-      metadata: { session_id: '', sequence: 0, version: 1 },
-    });
+        source: { kind: 'system' },
+        payload: {
+          type: 'wrfc:fix_completed',
+          data: { fix_attempts: fixAttempts },
+        },
+        metadata: { session_id: workflow.id, sequence: 0, version: 1 },
+      });
+    } catch (err) {
+      log.error('handleFixResult: failed to advance workflow state (escalation path)', { workflow_id: workflow.id, error: String(err) });
+    }
 
     const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
     directiveQueue.enqueue('subagent_stop', {
@@ -211,17 +219,21 @@ function handleFixResult(params: {
     });
   } else {
     // Still have fix budget → advance state machine and spawn reviewer for re-check
-    workflowEngine.sendEvent(workflow.id, {
-      id: generateEventId(),
-      timestamp: timestamp(),
-      type: 'wrfc:fix_completed',
-      source: { kind: 'system' },
-      payload: {
+    try {
+      workflowEngine.sendEvent(workflow.id, {
+        id: generateEventId(),
+        timestamp: timestamp(),
         type: 'wrfc:fix_completed',
-        data: { fix_attempts: fixAttempts },
-      },
-      metadata: { session_id: '', sequence: 0, version: 1 },
-    });
+        source: { kind: 'system' },
+        payload: {
+          type: 'wrfc:fix_completed',
+          data: { fix_attempts: fixAttempts },
+        },
+        metadata: { session_id: workflow.id, sequence: 0, version: 1 },
+      });
+    } catch (err) {
+      log.error('handleFixResult: failed to advance workflow state (re-review path)', { workflow_id: workflow.id, error: String(err) });
+    }
 
     const recheckTask =
       `Re-review the code after fix attempt ${fixAttempts} of ${maxFixAttempts} for workflow ${workflow.id}. ` +
@@ -451,9 +463,9 @@ export function registerWRFCHandlers(
 
     const wf = workflowEngine?.get(workflowId);
     if (!wf || !workflowEngine) {
-      // No real workflow found — fall back to direct directive enqueue using the resolved ID.
-      // This preserves backward compatibility for callers that pass only a workflow_id string.
-      const minScore = DEFAULT_MIN_REVIEW_SCORE;
+      // Fallback: no workflow object available (e.g., triggered by event without active workflow).
+      // Enqueue directive directly without advancing state machine — backward compatibility path.
+      const minScore = (typeof args['min_review_score'] === 'number') ? args['min_review_score'] : DEFAULT_MIN_REVIEW_SCORE;
       if (reviewScore >= minScore) {
         const message = buildWorkflowCompleteMessage(workflowId, 'completed');
         directiveQueue.enqueue('subagent_stop', {
@@ -526,7 +538,8 @@ export function registerWRFCHandlers(
     }
 
     if (!fixWorkflow || !workflowEngine) {
-      // No real workflow found — fall back to direct directive enqueue using resolved ID.
+      // Fallback: no workflow object available (e.g., triggered by event without active workflow).
+      // Enqueue directive directly without advancing state machine — backward compatibility path.
       const fallbackId = fixWorkflowId ?? 'unknown';
       const resolvedAttempts = fixAttempts + 1;
       if (resolvedAttempts >= maxFixAttempts) {
