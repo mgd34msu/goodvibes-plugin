@@ -20,6 +20,7 @@ import {
 import { DEFAULT_CONFIG } from '../shared/config.js';
 import { ENGINE_VERSION } from '../shared/constants.js';
 import { createLogger } from '../shared/logger.js';
+import { toErrorMessage } from '../shared/utils.js';
 import { ProcessManager } from '../lifecycle/process-manager.js';
 import { setupSignalHandlers } from '../lifecycle/signals.js';
 import {
@@ -104,7 +105,7 @@ export class RuntimeEngineServer {
         return await handler(args, ctx);
       } catch (error) {
         if (error instanceof McpError) throw error;
-        const message = error instanceof Error ? error.message : String(error);
+        const message = toErrorMessage(error);
         logger.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
@@ -169,7 +170,7 @@ export class RuntimeEngineServer {
       await this.processManager.shutdown();
     } catch (err) {
       logger.warn('ProcessManager shutdown error', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
 
@@ -178,7 +179,7 @@ export class RuntimeEngineServer {
       await this.server.close();
     } catch (err) {
       logger.warn('MCP server close error', {
-        err: err instanceof Error ? err.message : String(err),
+        err: toErrorMessage(err),
       });
     }
 

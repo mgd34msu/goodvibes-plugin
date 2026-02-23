@@ -24,7 +24,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 import type { IPCMessage, IPCResponse, IPCQuery, IPCResponseData } from './protocol.js';
-import { generateId, timestamp } from '../shared/utils.js';
+import { generateId, timestamp, toErrorMessage } from '../shared/utils.js';
 import { createLogger } from '../shared/logger.js';
 
 const logger = createLogger('ipc-client');
@@ -207,7 +207,7 @@ export class RuntimeClient {
         } catch (err) {
           logger.warn('Failed to parse IPC response', {
             id: message.id,
-            err: err instanceof Error ? err.message : String(err),
+            err: toErrorMessage(err),
           });
           done(null);
         }

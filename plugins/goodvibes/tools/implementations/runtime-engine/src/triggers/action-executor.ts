@@ -7,7 +7,7 @@
  * against the triggering event before execution.
  */
 
-import { generateEventId, timestamp } from '../shared/utils.js';
+import { generateEventId, timestamp, toErrorMessage } from '../shared/utils.js';
 import { createLogger } from '../shared/logger.js';
 import type { RuntimeEvent, EventType } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
@@ -180,7 +180,7 @@ export class ActionExecutor {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       log.error('Action execution threw unexpected error', { error: message });
       return { success: false, error: message };
     }
@@ -303,7 +303,7 @@ export class ActionExecutor {
           triggered_by: event.id,
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = toErrorMessage(err);
         log.error('start_workflow action: failed to create workflow', { error: message });
         return { success: false, error: message };
       }
@@ -320,7 +320,7 @@ export class ActionExecutor {
         } catch (err) {
           log.warn('send_workflow_event: failed to send to workflow', {
             workflow_id: instance.id,
-            error: err instanceof Error ? err.message : String(err),
+            error: toErrorMessage(err),
           });
         }
       }

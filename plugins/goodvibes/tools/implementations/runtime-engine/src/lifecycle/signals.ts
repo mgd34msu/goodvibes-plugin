@@ -6,6 +6,8 @@
  * before the process exits.
  */
 
+import { toErrorMessage } from '../shared/utils.js';
+
 /** Grace period in milliseconds before a forced exit after SIGTERM. */
 const SIGTERM_GRACE_MS = 10_000;
 
@@ -67,7 +69,7 @@ export function setupSignalHandlers(
       process.stderr.write('[runtime-engine] Graceful shutdown complete\n');
     } catch (err) {
       process.stderr.write(
-        `[runtime-engine] Error during shutdown: ${err instanceof Error ? err.message : String(err)}\n`
+        `[runtime-engine] Error during shutdown: ${toErrorMessage(err)}\n`
       );
       exitCode = 1;
     } finally {

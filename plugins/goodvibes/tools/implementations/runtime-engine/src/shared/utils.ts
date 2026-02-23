@@ -43,6 +43,11 @@ export function generateWorkflowId(): string {
   return `wf_${randomUUID()}`;
 }
 
+/** Extract a human-readable message from an unknown caught value. */
+export function toErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** Supported duration unit suffixes for {@link parseRelativeTime} */
 const DURATION_UNITS: Record<string, number> = {
   s: 1_000,

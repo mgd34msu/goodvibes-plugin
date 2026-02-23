@@ -4,26 +4,37 @@
  * JSONL append-only event log with query, compaction, and statistics.
  *
  * Each event is written as a single JSON line followed by a newline character.
- * The `append()` method is synchronous (appendFileSync) because it is called
- * directly from EventBus.emit() in the hot path.
+ * Writes are buffered (non-blocking): the `append()` method is synchronous from
+ * the caller's perspective (adds to an in-memory buffer) but the underlying
+ * file I/O is non-blocking. The buffer is flushed on a 100 ms interval or when
+ * it exceeds 64 KB.
  *
  * Compaction moves events older than the configured threshold to per-day archive
  * files, atomically replacing the main log with only the retained events.
  */
 
 import {
-  appendFileSync,
-  readFileSync,
   writeFileSync,
   renameSync,
   mkdirSync,
   statSync,
+  createWriteStream,
+  createReadStream,
 } from 'fs';
+import * as readline from 'readline';
 import { join } from 'path';
+import type { WriteStream } from 'fs';
 import type { RuntimeEvent, EventFilter } from './types.js';
 import { createLogger } from '../shared/logger.js';
+import { toErrorMessage } from '../shared/utils.js';
 
 const logger = createLogger('event-log');
+
+/** Flush interval in milliseconds. */
+const FLUSH_INTERVAL_MS = 100;
+
+/** Flush buffer when it exceeds this many bytes. */
+const FLUSH_THRESHOLD_BYTES = 64 * 1024; // 64 KB
 
 /** Statistics snapshot for the event log. */
 export interface EventLogStats {
@@ -68,6 +79,23 @@ export class EventLog {
   /** Events older than this many hours are eligible for compaction. */
   private readonly compactAfterHours: number;
 
+  // ─── Async write state ──────────────────────────────────────────────────────
+
+  /** Active write stream for non-blocking appends. Created lazily. */
+  private writeStream: WriteStream | null = null;
+  /** Pending write buffer (not yet flushed to disk). */
+  private writeBuffer: string = '';
+  /** Size of writeBuffer in bytes. */
+  private writeBufferBytes: number = 0;
+  /** NodeJS timer handle for the periodic flush. */
+  private flushTimer: NodeJS.Timeout | null = null;
+  /** Whether the stream has been closed (post-shutdown). */
+  private closed: boolean = false;
+  /** Whether we are currently draining the buffer to disk (prevents re-entry). */
+  private flushing: boolean = false;
+  /** Queue of flush waiters (resolve callbacks). */
+  private flushWaiters: Array<() => void> = [];
+
   constructor(
     stateDir: string,
     config: { event_log_max_size_mb: number; compact_after_hours: number },
@@ -79,43 +107,36 @@ export class EventLog {
   }
 
   /**
-   * Initialises the event log by reading the existing file (if any) to recover
+   * Initialises the event log by streaming the existing file (if any) to recover
    * the latest sequence number, event count, and oldest/newest timestamps.
    *
    * Safe to call on a fresh (non-existent) log file.
    */
   async initialize(): Promise<void> {
     try {
-      const content = readFileSync(this.logPath, 'utf-8');
-      const lines = content.split('\n').filter((l) => l.trim().length > 0);
-      this.eventCount = lines.length;
-
-      const typeCount: Record<string, number> = {};
-      let oldestTs: string | undefined;
-      let newestTs: string | undefined;
-
-      for (const line of lines) {
+      let skippedLines = 0;
+      await this.streamLines(this.logPath, (line) => {
         try {
           const event = JSON.parse(line) as RuntimeEvent;
           if (typeof event.metadata?.sequence === 'number' && event.metadata.sequence > this.latestSeq) {
             this.latestSeq = event.metadata.sequence;
           }
           if (event.type) {
-            typeCount[event.type] = (typeCount[event.type] ?? 0) + 1;
+            this.typeCountCache[event.type] = (this.typeCountCache[event.type] ?? 0) + 1;
           }
           const ts = event.timestamp;
           if (ts) {
-            if (!oldestTs || ts < oldestTs) oldestTs = ts;
-            if (!newestTs || ts > newestTs) newestTs = ts;
+            if (!this.oldestEvent || ts < this.oldestEvent) this.oldestEvent = ts;
+            if (!this.newestEvent || ts > this.newestEvent) this.newestEvent = ts;
           }
+          this.eventCount++;
         } catch {
-          // Skip malformed lines silently
+          skippedLines++;
         }
+      });
+      if (skippedLines > 0) {
+        logger.warn('Skipped %d malformed lines in %s', skippedLines, this.logPath);
       }
-
-      this.typeCountCache = typeCount;
-      this.oldestEvent = oldestTs;
-      this.newestEvent = newestTs;
 
       logger.info('Event log initialised', {
         events: this.eventCount,
@@ -130,29 +151,29 @@ export class EventLog {
         // Fresh log — nothing to recover
         logger.debug('Event log file not found, starting fresh');
       } else {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.warn('Error reading event log on init', { error: msg });
+        logger.warn('Error reading event log on init', { error: toErrorMessage(err) });
       }
     }
+
+    // Open the write stream now that the directory is guaranteed to exist
+    this.openWriteStream();
   }
 
   /**
-   * Appends an event to the log synchronously.
+   * Appends an event to the write buffer.
    *
-   * This method is called from the EventBus hot path and must not block
-   * the event loop with async I/O. Uses `appendFileSync` for durability.
+   * This method is synchronous from the caller's perspective — it adds
+   * the serialised event to an in-memory buffer and triggers a background
+   * flush if the buffer exceeds the threshold. Actual disk I/O is async.
    *
    * @param event - The event to persist.
    */
   append(event: RuntimeEvent): void {
+    if (this.closed) return;
+
     const line = JSON.stringify(event) + '\n';
-    try {
-      appendFileSync(this.logPath, line, 'utf-8');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error('Failed to append event to log', { error: msg, event_id: event.id });
-      return;
-    }
+    this.writeBuffer += line;
+    this.writeBufferBytes += Buffer.byteLength(line, 'utf-8');
 
     // Update in-memory state
     if (typeof event.metadata?.sequence === 'number' && event.metadata.sequence > this.latestSeq) {
@@ -166,21 +187,96 @@ export class EventLog {
       if (!this.oldestEvent) this.oldestEvent = event.timestamp;
       this.newestEvent = event.timestamp;
     }
+
+    // Flush immediately if buffer exceeds threshold
+    if (this.writeBufferBytes >= FLUSH_THRESHOLD_BYTES) {
+      this.scheduleFlush();
+    }
+
+    // Ensure the interval flush timer is running
+    this.ensureFlushTimer();
   }
 
   /**
-   * Queries the log, returning events that match the given filter.
+   * Explicitly flushes the write buffer to disk.
    *
-   * Reads the entire log file; suitable for Phase 2. Future phases should
-   * add an index for high-frequency queries.
+   * Call before checkpoint saves or shutdown to guarantee durability.
+   *
+   * @returns A Promise that resolves once the buffer has been written.
+   */
+  async flush(): Promise<void> {
+    if (this.writeBuffer.length === 0) return;
+
+    return new Promise<void>((resolve) => {
+      this.flushWaiters.push(resolve);
+      this.scheduleFlush();
+    });
+  }
+
+  /**
+   * Flushes the buffer and closes the write stream.
+   *
+   * Should be called during engine shutdown after all appends are complete.
+   *
+   * @returns A Promise that resolves once the stream is fully closed.
+   */
+  async close(): Promise<void> {
+    this.closed = true;
+    this.stopFlushTimer();
+
+    // Flush remaining buffer
+    if (this.writeBuffer.length > 0) {
+      await this.drainBuffer();
+    }
+
+    // Close the write stream
+    if (this.writeStream) {
+      await new Promise<void>((resolve) => {
+        this.writeStream!.end(() => {
+          this.writeStream = null;
+          resolve();
+        });
+      });
+    }
+  }
+
+  /**
+   * Queries the log using streaming reads, applying filters during streaming.
+   *
+   * Supports early termination when `limit` is reached without reading the
+   * full file.
    *
    * @param filter - Optional filter criteria.
    * @returns Array of matching events in chronological order.
    */
   async query(filter: EventFilter = {}): Promise<RuntimeEvent[]> {
-    let content: string;
+    // Flush buffered writes so newly appended events are visible in the query
+    if (this.writeBuffer.length > 0) {
+      await this.drainBuffer();
+    }
+
+    const results: RuntimeEvent[] = [];
+    const limit = filter.limit;
+
+    let skippedLines = 0;
     try {
-      content = readFileSync(this.logPath, 'utf-8');
+      await this.streamLines(this.logPath, (line) => {
+        if (limit !== undefined && results.length >= limit) {
+          return false; // signal early termination
+        }
+        try {
+          const event = JSON.parse(line) as RuntimeEvent;
+          if (this.matchesFilter(event, filter)) {
+            results.push(event);
+          }
+        } catch {
+          skippedLines++;
+        }
+        return true; // continue
+      });
+      if (skippedLines > 0) {
+        logger.warn('Skipped %d malformed lines in %s', skippedLines, this.logPath);
+      }
     } catch (err) {
       if (
         err instanceof Error &&
@@ -190,21 +286,6 @@ export class EventLog {
         return [];
       }
       throw err;
-    }
-
-    const lines = content.split('\n').filter((l) => l.trim().length > 0);
-    const results: RuntimeEvent[] = [];
-
-    for (const line of lines) {
-      try {
-        const event = JSON.parse(line) as RuntimeEvent;
-        if (this.matchesFilter(event, filter)) {
-          results.push(event);
-          if (filter.limit !== undefined && results.length >= filter.limit) break;
-        }
-      } catch {
-        // Skip malformed lines
-      }
     }
 
     return results;
@@ -248,15 +329,41 @@ export class EventLog {
   async compact(
     beforeTimestamp?: string,
   ): Promise<{ archived: number; remaining: number }> {
+    // Flush any buffered writes before reading the file for compaction
+    if (this.writeBuffer.length > 0) {
+      await this.drainBuffer();
+    }
+
     const cutoff =
       beforeTimestamp ??
       new Date(
         Date.now() - this.compactAfterHours * 60 * 60 * 1000,
       ).toISOString();
 
-    let content: string;
+    const toArchive: string[] = [];
+    const toKeep: string[] = [];
+
+    let skippedLines = 0;
     try {
-      content = readFileSync(this.logPath, 'utf-8');
+      await this.streamLines(this.logPath, (line) => {
+        try {
+          const event = JSON.parse(line) as RuntimeEvent;
+          const ts = event.timestamp ?? '';
+          if (ts < cutoff) {
+            toArchive.push(line);
+          } else {
+            toKeep.push(line);
+          }
+        } catch {
+          // Keep malformed lines in the main log (don't lose data)
+          toKeep.push(line);
+          skippedLines++;
+        }
+        return true;
+      });
+      if (skippedLines > 0) {
+        logger.warn('Skipped %d malformed lines in %s', skippedLines, this.logPath);
+      }
     } catch (err) {
       if (
         err instanceof Error &&
@@ -268,30 +375,13 @@ export class EventLog {
       throw err;
     }
 
-    const lines = content.split('\n').filter((l) => l.trim().length > 0);
-
-    const toArchive: string[] = [];
-    const toKeep: string[] = [];
-
-    for (const line of lines) {
-      try {
-        const event = JSON.parse(line) as RuntimeEvent;
-        const ts = event.timestamp ?? '';
-        if (ts < cutoff) {
-          toArchive.push(line);
-        } else {
-          toKeep.push(line);
-        }
-      } catch {
-        // Keep malformed lines in the main log (don't lose data)
-        toKeep.push(line);
-      }
-    }
-
     if (toArchive.length === 0) {
       logger.debug('Compaction: no events to archive');
       return { archived: 0, remaining: toKeep.length };
     }
+
+    // Close write stream before replacing the main log file
+    await this.closeWriteStream();
 
     // Write archive file
     mkdirSync(this.archiveDir, { recursive: true });
@@ -304,7 +394,10 @@ export class EventLog {
     // Append to archive if it already exists for today
     let existingArchive = '';
     try {
-      existingArchive = readFileSync(archivePath, 'utf-8');
+      await this.streamLines(archivePath, (line) => {
+        existingArchive += line + '\n';
+        return true;
+      });
     } catch {
       // New archive file
     }
@@ -322,6 +415,11 @@ export class EventLog {
     const tmpPath = this.logPath + '.tmp';
     writeFileSync(tmpPath, toKeep.join('\n') + (toKeep.length > 0 ? '\n' : ''), 'utf-8');
     renameSync(tmpPath, this.logPath);
+
+    // Reopen write stream after file replacement
+    if (!this.closed) {
+      this.openWriteStream();
+    }
 
     // Update in-memory counters
     this.eventCount = toKeep.length;
@@ -349,6 +447,8 @@ export class EventLog {
     } catch {
       // File doesn't exist yet
     }
+    // Include buffered but not yet flushed bytes in the size estimate
+    fileSizeBytes += this.writeBufferBytes;
 
     return {
       total_events: this.eventCount,
@@ -362,6 +462,181 @@ export class EventLog {
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
+
+  /**
+   * Opens (or re-opens) the write stream in append mode.
+   * Silently ignores errors so appends remain safe even if the stream fails.
+   */
+  private openWriteStream(): void {
+    try {
+      // Ensure the parent directory exists
+      const dir = this.logPath.substring(0, this.logPath.lastIndexOf('/'));
+      mkdirSync(dir, { recursive: true });
+
+      this.writeStream = createWriteStream(this.logPath, { flags: 'a', encoding: 'utf-8' });
+      this.writeStream.on('error', (err) => {
+        logger.error('Write stream error', { error: err.message });
+        this.writeStream = null;
+      });
+    } catch (err) {
+      logger.error('Failed to open event log write stream', { error: toErrorMessage(err) });
+      this.writeStream = null;
+    }
+  }
+
+  /**
+   * Closes the write stream without closing the EventLog itself.
+   * Used before compaction to safely replace the underlying file.
+   */
+  private async closeWriteStream(): Promise<void> {
+    if (!this.writeStream) return;
+    const stream = this.writeStream;
+    this.writeStream = null;
+    await new Promise<void>((resolve) => {
+      stream.end(() => resolve());
+    });
+  }
+
+  /**
+   * Ensures the periodic flush timer is running.
+   */
+  private ensureFlushTimer(): void {
+    if (this.flushTimer !== null || this.closed) return;
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      this.scheduleFlush();
+    }, FLUSH_INTERVAL_MS);
+    // Unref so the timer does not prevent process exit
+    this.flushTimer.unref();
+  }
+
+  /**
+   * Stops the periodic flush timer.
+   */
+  private stopFlushTimer(): void {
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+  }
+
+  /**
+   * Schedules an async flush of the write buffer.
+   * If a flush is already in progress, it will drain again when done.
+   */
+  private scheduleFlush(): void {
+    if (this.flushing || this.writeBuffer.length === 0) {
+      // Resolve waiters if buffer is empty
+      if (this.writeBuffer.length === 0 && this.flushWaiters.length > 0) {
+        const waiters = this.flushWaiters.splice(0);
+        for (const resolve of waiters) resolve();
+      }
+      return;
+    }
+    // Kick off async drain — do not await
+    this.drainBuffer().catch((err) => {
+      logger.warn('Event log flush error', { error: toErrorMessage(err) });
+    });
+  }
+
+  /**
+   * Drains the write buffer to disk.
+   * Resolves all queued flush waiters once complete.
+   */
+  private async drainBuffer(): Promise<void> {
+    if (this.flushing || this.writeBuffer.length === 0) return;
+    this.flushing = true;
+
+    const data = this.writeBuffer;
+    this.writeBuffer = '';
+    this.writeBufferBytes = 0;
+
+    try {
+      if (this.writeStream) {
+        await new Promise<void>((resolve, reject) => {
+          this.writeStream!.write(data, (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      } else {
+        // Fallback: open stream was not available (e.g., before initialize or after stream error)
+        // Write synchronously as a safety net
+        const { appendFileSync } = await import('fs');
+        appendFileSync(this.logPath, data, 'utf-8');
+      }
+    } catch (err) {
+      logger.error('Failed to flush event log buffer', { error: toErrorMessage(err) });
+      // Restore buffer so data is not lost
+      this.writeBuffer = data + this.writeBuffer;
+      this.writeBufferBytes = Buffer.byteLength(this.writeBuffer, 'utf-8');
+    } finally {
+      this.flushing = false;
+
+      // Notify waiters
+      if (this.flushWaiters.length > 0) {
+        const waiters = this.flushWaiters.splice(0);
+        for (const resolve of waiters) resolve();
+      }
+
+      // If more data arrived while we were flushing, schedule another flush
+      if (this.writeBuffer.length > 0) {
+        this.scheduleFlush();
+      }
+    }
+  }
+
+  /**
+   * Streams a JSONL file line by line, invoking `onLine` for each non-empty line.
+   *
+   * If `onLine` returns `false`, streaming stops early (for limit support).
+   * Rejects if the file cannot be opened.
+   *
+   * @param filePath - Absolute path to the JSONL file.
+   * @param onLine   - Callback for each non-empty line. Return false to stop early.
+   */
+  private streamLines(
+    filePath: string,
+    onLine: (line: string) => boolean | void,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const stream = createReadStream(filePath, { encoding: 'utf-8' });
+      const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+      let done = false;
+
+      const cleanup = () => {
+        if (!done) {
+          done = true;
+          rl.close();
+          stream.destroy();
+        }
+      };
+
+      rl.on('line', (line) => {
+        if (done) return;
+        const trimmed = line.trim();
+        if (trimmed.length === 0) return;
+        const result = onLine(trimmed);
+        if (result === false) {
+          cleanup();
+          resolve();
+        }
+      });
+
+      rl.on('close', () => {
+        if (!done) {
+          done = true;
+          resolve();
+        }
+      });
+
+      stream.on('error', (err) => {
+        cleanup();
+        reject(err);
+      });
+    });
+  }
 
   /** Returns true when `event` matches all criteria in `filter`. */
   private matchesFilter(event: RuntimeEvent, filter: EventFilter): boolean {
@@ -402,6 +677,7 @@ export class EventLog {
     let oldest: string | undefined;
     let newest: string | undefined;
 
+    let skippedLines = 0;
     for (const line of lines) {
       try {
         const event = JSON.parse(line) as RuntimeEvent;
@@ -414,8 +690,11 @@ export class EventLog {
           if (!newest || ts > newest) newest = ts;
         }
       } catch {
-        // Skip malformed lines
+        skippedLines++;
       }
+    }
+    if (skippedLines > 0) {
+      logger.warn('Skipped %d malformed lines during cache rebuild', skippedLines);
     }
 
     this.typeCountCache = typeCount;

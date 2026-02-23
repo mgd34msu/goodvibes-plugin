@@ -17,6 +17,9 @@ import { createLogger } from '../shared/logger.js';
 
 const logger = createLogger('event-queue');
 
+/** Maximum number of entries the dead-letter queue will retain (oldest evicted first). */
+const MAX_DEAD_LETTERS = 1000;
+
 /** Priority levels for queue entries. Lower number = higher priority. */
 export enum QueuePriority {
   CRITICAL = 0, // Agent failures, workflow errors
@@ -451,6 +454,9 @@ export class EventQueue {
             errorMessage,
           ],
         };
+        if (this.deadLetters.length >= MAX_DEAD_LETTERS) {
+          this.deadLetters.shift();
+        }
         this.deadLetters.push(dlEntry);
         logger.error('Entry dead-lettered', {
           id: entry.id,

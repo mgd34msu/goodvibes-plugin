@@ -21,7 +21,7 @@
 import type { EventBus } from '../events/event-bus.js';
 import type { AgentsConfig } from '../shared/config.js';
 import { createLogger } from '../shared/logger.js';
-import { generateEventId, generateId, timestamp } from '../shared/utils.js';
+import { generateEventId, generateId, timestamp, toErrorMessage } from '../shared/utils.js';
 import type { EventType } from '../events/types.js';
 import { BudgetTracker } from './budget-tracker.js';
 import type {
@@ -544,7 +544,7 @@ export class AgentCoordinator {
       logger.error('Failed to emit agent event', {
         type,
         subject,
-        error: err instanceof Error ? err.message : String(err),
+        error: toErrorMessage(err),
       });
     }
   }

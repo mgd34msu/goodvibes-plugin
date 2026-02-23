@@ -33,7 +33,7 @@ import type { EventBus } from '../events/event-bus.js';
 import type { EventLog } from '../events/event-log.js';
 import type { EventQueue } from '../events/event-queue.js';
 import type { EventType, EventFilter } from '../events/types.js';
-import { generateEventId, timestamp, parseRelativeTime } from '../shared/utils.js';
+import { generateEventId, timestamp, parseRelativeTime, toErrorMessage } from '../shared/utils.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { TriggerDefinition } from '../triggers/types.js';
@@ -170,7 +170,7 @@ export const handleRuntimeStatus: ToolHandler = async (
     logger.debug('runtime_status computed', { status: statusData.status });
     return toSuccess(statusData, ctx.version, uptime_ms, Date.now() - start);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     logger.error('runtime_status failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
@@ -293,7 +293,7 @@ export const handleRuntimeConfig: ToolHandler = async (
       Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     logger.error('runtime_config failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
@@ -511,7 +511,7 @@ export const handleRuntimeEvents: ToolHandler = async (
       ctx.version, uptime_ms, Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     logger.error('runtime_events failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
@@ -611,7 +611,7 @@ export const handleRuntimeEmit: ToolHandler = async (
     logger.info('runtime_emit: event emitted', { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptime_ms, Date.now() - start);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     logger.error('runtime_emit failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
@@ -746,7 +746,7 @@ export const handleRuntimeWorkflow: ToolHandler = async (
       ctx.version, uptime_ms, Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     logger.error('runtime_workflow failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
@@ -880,7 +880,7 @@ export const handleRuntimeTriggers: ToolHandler = async (
       ctx.version, uptime_ms, Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     logger.error('runtime_triggers failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
@@ -1041,7 +1041,7 @@ export const handleRuntimeAgents: ToolHandler = async (
       ctx.version, uptime_ms, Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     logger.error('runtime_agents failed', { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }

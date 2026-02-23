@@ -21,6 +21,7 @@ import { join, isAbsolute, basename } from 'path';
 import type { RuntimeConfig } from '../shared/config.js';
 import type { StateStore } from './types.js';
 import { createLogger } from '../shared/logger.js';
+import { toErrorMessage } from '../shared/utils.js';
 
 const logger = createLogger('state-store');
 
@@ -115,7 +116,7 @@ export class JsonStateStore implements StateStore {
     } catch (err) {
       // Clean up the tmp file if it was written but rename failed
       try { unlinkSync(tmp); } catch { /* ignore cleanup errors */ }
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error('Failed to save state', { key, error: message });
       throw new Error(`StateStore.set failed for key "${key}": ${message}`);
     }
@@ -140,7 +141,7 @@ export class JsonStateStore implements StateStore {
       ) {
         return null;
       }
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error('Failed to load state', { key, error: message });
       throw new Error(`StateStore.get failed for key "${key}": ${message}`);
     }
@@ -164,7 +165,7 @@ export class JsonStateStore implements StateStore {
       ) {
         return; // Already gone -- not an error
       }
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error('Failed to delete state', { key, error: message });
       throw new Error(`StateStore.delete failed for key "${key}": ${message}`);
     }
@@ -184,7 +185,7 @@ export class JsonStateStore implements StateStore {
         .filter((f) => f.endsWith('.json') && !f.endsWith('.json.tmp'))
         .map((f) => basename(f, '.json'));
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error('Failed to list state keys', { error: message });
       throw new Error(`StateStore.keys failed: ${message}`);
     }

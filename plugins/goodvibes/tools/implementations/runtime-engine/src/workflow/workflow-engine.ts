@@ -13,7 +13,7 @@
  */
 
 import { createLogger } from '../shared/logger.js';
-import { generateEventId, generateWorkflowId, timestamp } from '../shared/utils.js';
+import { generateEventId, generateWorkflowId, timestamp, toErrorMessage } from '../shared/utils.js';
 import type { WorkflowsConfig } from '../shared/config.js';
 import type { RuntimeEvent, EventType } from '../events/types.js';
 import type {
@@ -420,7 +420,7 @@ export class WorkflowEngine {
     } catch (err) {
       log.error('Guard evaluation error', {
         guard,
-        error: err instanceof Error ? err.message : String(err),
+        error: toErrorMessage(err),
       });
       return false;
     }
@@ -493,7 +493,7 @@ export class WorkflowEngine {
       } catch (err) {
         log.error('Action execution error', {
           action_type: action.type,
-          error: err instanceof Error ? err.message : String(err),
+          error: toErrorMessage(err),
         });
       }
     }
@@ -637,7 +637,7 @@ export class WorkflowEngine {
       log.error('Failed to emit workflow event', {
         type,
         workflowId: instance.id,
-        error: err instanceof Error ? err.message : String(err),
+        error: toErrorMessage(err),
       });
     }
   }

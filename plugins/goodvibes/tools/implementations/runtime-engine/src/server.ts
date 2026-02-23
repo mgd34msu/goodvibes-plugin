@@ -9,6 +9,7 @@
  */
 
 import { RuntimeEngineServer } from './server/mcp-server.js';
+import { toErrorMessage } from './shared/utils.js';
 
 async function main(): Promise<void> {
   const server = new RuntimeEngineServer();
@@ -17,7 +18,7 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   process.stderr.write(
-    `[runtime-engine] Fatal: ${err instanceof Error ? err.message : String(err)}\n`
+    `[runtime-engine] Fatal: ${toErrorMessage(err)}\n`
   );
   process.exit(1);
 });

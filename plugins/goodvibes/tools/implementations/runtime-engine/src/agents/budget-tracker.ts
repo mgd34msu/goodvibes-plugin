@@ -12,7 +12,7 @@
 import type { EventBus } from '../events/event-bus.js';
 import type { AgentsConfig } from '../shared/config.js';
 import { createLogger } from '../shared/logger.js';
-import { generateEventId, timestamp } from '../shared/utils.js';
+import { generateEventId, timestamp, toErrorMessage } from '../shared/utils.js';
 import type {
   AgentBudgetSnapshot,
   BudgetSummary,
@@ -281,7 +281,7 @@ export class BudgetTracker {
       });
     } catch (err) {
       logger.error('Failed to emit budget warning event', {
-        error: err instanceof Error ? err.message : String(err),
+        error: toErrorMessage(err),
         agentId: record.agentId,
         threshold,
       });
