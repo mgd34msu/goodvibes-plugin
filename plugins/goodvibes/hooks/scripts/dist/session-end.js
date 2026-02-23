@@ -14,8 +14,8 @@ var init_gitignore = __esm({
 // src/session-end/index.ts
 import { execFileSync } from "node:child_process";
 import { readFileSync as readFileSync2, writeFileSync, existsSync as existsSync3 } from "node:fs";
-import * as fs3 from "fs/promises";
-import { basename, join as join4 } from "path";
+import { writeFile as writeFile3 } from "node:fs/promises";
+import { basename, join as join4 } from "node:path";
 
 // src/shared/hook-io.ts
 import { stdin } from "process";
@@ -664,7 +664,7 @@ async function runSessionEndHook() {
         CACHE_DIR,
         `session-${analytics.session_id}.json`
       );
-      await fs3.writeFile(
+      await writeFile3(
         summaryFile,
         JSON.stringify(
           {
