@@ -4671,13 +4671,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger10) {
-      if (logger10 === false)
+    function getLogger(logger19) {
+      if (logger19 === false)
         return noLogs;
-      if (logger10 === void 0)
+      if (logger19 === void 0)
         return console;
-      if (logger10.log && logger10.warn && logger10.error)
-        return logger10;
+      if (logger19.log && logger19.warn && logger19.error)
+        return logger19;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -21537,11 +21537,67 @@ var StdioServerTransport = class {
 
 // src/shared/config.ts
 var import_fs = require("fs");
+
+// src/shared/utils.ts
+var import_crypto = require("crypto");
+function generateId() {
+  return (0, import_crypto.randomUUID)();
+}
+__name(generateId, "generateId");
+function timestamp() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+__name(timestamp, "timestamp");
+function generateEventId() {
+  return `evt_${(0, import_crypto.randomUUID)()}`;
+}
+__name(generateEventId, "generateEventId");
+function generateWorkflowId() {
+  return `wf_${(0, import_crypto.randomUUID)()}`;
+}
+__name(generateWorkflowId, "generateWorkflowId");
+function toErrorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+__name(toErrorMessage, "toErrorMessage");
+var DURATION_UNITS = {
+  s: 1e3,
+  m: 6e4,
+  h: 36e5,
+  d: 864e5
+};
+function parseRelativeTime(input) {
+  const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
+  if (!match) {
+    throw new Error(
+      `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
+    );
+  }
+  const value = parseFloat(match[1]);
+  const unit = match[2];
+  const ms = value * DURATION_UNITS[unit];
+  return new Date(Date.now() + ms);
+}
+__name(parseRelativeTime, "parseRelativeTime");
+
+// src/shared/config.ts
 var import_path = require("path");
+var import_os = require("os");
 var DEFAULT_CONFIG = {
   schema_version: "1.0.0",
   ipc: {
-    socket_dir: "/tmp/goodvibes",
+    socket_dir: (() => {
+      const xdg = process.env["XDG_RUNTIME_DIR"];
+      if (xdg) return `${xdg}/goodvibes`;
+      const uid = process.getuid?.() ?? (() => {
+        try {
+          return (0, import_os.userInfo)().uid;
+        } catch {
+          return 0;
+        }
+      })();
+      return `${(0, import_os.tmpdir)()}/goodvibes-${uid}`;
+    })(),
     connect_timeout_ms: 500,
     query_timeout_ms: 200
   },
@@ -21616,7 +21672,14 @@ function loadConfig(projectRoot) {
     const raw = (0, import_fs.readFileSync)(configPath, "utf-8");
     const parsed = JSON.parse(raw);
     return deepMerge(DEFAULT_CONFIG, parsed);
-  } catch (_err) {
+  } catch (err) {
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+    } else {
+      process.stderr.write(
+        `[runtime-engine] Warning: failed to load config at "${configPath}": ${toErrorMessage(err)} \u2014 using defaults
+`
+      );
+    }
     return { ...DEFAULT_CONFIG };
   }
 }
@@ -21674,7 +21737,7 @@ __name(createLogger, "createLogger");
 var import_fs5 = require("fs");
 var import_crypto2 = require("crypto");
 var import_path5 = require("path");
-var import_os = require("os");
+var import_os2 = require("os");
 
 // src/persistence/state-store.ts
 var import_fs2 = require("fs");
@@ -21738,6 +21801,8 @@ var JsonStateStore = class {
    *
    * Writes atomically: serialises to JSON, writes to a `.tmp` file, then
    * renames the `.tmp` file to the final path.
+   *
+   * @throws {Error} If the write or rename operation fails.
    */
   async set(key, state) {
     this.ensureDir();
@@ -21753,7 +21818,7 @@ var JsonStateStore = class {
         (0, import_fs2.unlinkSync)(tmp);
       } catch {
       }
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error("Failed to save state", { key, error: message });
       throw new Error(`StateStore.set failed for key "${key}": ${message}`);
     }
@@ -21763,6 +21828,8 @@ var JsonStateStore = class {
    *
    * Returns `null` (not an error) when the key does not exist. Throws on
    * unexpected I/O errors or JSON parse failures.
+   *
+   * @throws {Error} If a non-ENOENT I/O error or JSON parse failure occurs.
    */
   async get(key) {
     const path = this.keyPath(key);
@@ -21773,7 +21840,7 @@ var JsonStateStore = class {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
         return null;
       }
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error("Failed to load state", { key, error: message });
       throw new Error(`StateStore.get failed for key "${key}": ${message}`);
     }
@@ -21782,6 +21849,8 @@ var JsonStateStore = class {
    * {@inheritdoc StateStore.delete}
    *
    * Silently succeeds if the key does not exist (ENOENT is not an error).
+   *
+   * @throws {Error} If a non-ENOENT I/O error occurs.
    */
   async delete(key) {
     const path = this.keyPath(key);
@@ -21792,7 +21861,7 @@ var JsonStateStore = class {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
         return;
       }
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error("Failed to delete state", { key, error: message });
       throw new Error(`StateStore.delete failed for key "${key}": ${message}`);
     }
@@ -21802,6 +21871,8 @@ var JsonStateStore = class {
    *
    * Lists all `.json` files in the state directory (excluding `.tmp` files)
    * and strips the `.json` extension to return the key names.
+   *
+   * @throws {Error} If the directory cannot be read.
    */
   async keys() {
     this.ensureDir();
@@ -21809,7 +21880,7 @@ var JsonStateStore = class {
       const entries = (0, import_fs2.readdirSync)(this.stateDir);
       return entries.filter((f) => f.endsWith(".json") && !f.endsWith(".json.tmp")).map((f) => (0, import_path2.basename)(f, ".json"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       logger.error("Failed to list state keys", { error: message });
       throw new Error(`StateStore.keys failed: ${message}`);
     }
@@ -21973,45 +22044,8 @@ var HealthChecker = class {
   }
 };
 
-// src/shared/utils.ts
-var import_crypto = require("crypto");
-function generateId() {
-  return (0, import_crypto.randomUUID)();
-}
-__name(generateId, "generateId");
-function timestamp() {
-  return (/* @__PURE__ */ new Date()).toISOString();
-}
-__name(timestamp, "timestamp");
-function generateEventId() {
-  return `evt_${(0, import_crypto.randomUUID)()}`;
-}
-__name(generateEventId, "generateEventId");
-function generateWorkflowId() {
-  return `wf_${(0, import_crypto.randomUUID)()}`;
-}
-__name(generateWorkflowId, "generateWorkflowId");
-var DURATION_UNITS = {
-  s: 1e3,
-  m: 6e4,
-  h: 36e5,
-  d: 864e5
-};
-function parseRelativeTime(input) {
-  const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
-  if (!match) {
-    throw new Error(
-      `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
-    );
-  }
-  const value = parseFloat(match[1]);
-  const unit = match[2];
-  const ms = value * DURATION_UNITS[unit];
-  return new Date(Date.now() + ms);
-}
-__name(parseRelativeTime, "parseRelativeTime");
-
 // src/events/event-bus.ts
+var logger2 = createLogger("event-bus");
 var EventBus = class {
   static {
     __name(this, "EventBus");
@@ -22058,7 +22092,7 @@ var EventBus = class {
    *
    * Automatically fills in missing metadata fields and assigns the next
    * sequence number. Matching handlers execute synchronously in registration
-   * order; async handlers are fire-and-forget with errors swallowed to stderr.
+   * order; async handlers are fire-and-forget with errors logged via structured logger.
    *
    * @param event - Partial event. The `id`, `timestamp`, and full `metadata`
    *   may be omitted — the bus will generate or backfill them.
@@ -22084,10 +22118,7 @@ var EventBus = class {
       try {
         this.eventLog.append(full);
       } catch (err) {
-        process.stderr.write(
-          `[EventBus] event log append failed: ${String(err)}
-`
-        );
+        logger2.error("Event log append failed", { error: toErrorMessage(err) });
       }
     }
     this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
@@ -22100,17 +22131,11 @@ var EventBus = class {
             const result = handler(full);
             if (result instanceof Promise) {
               result.catch((err) => {
-                process.stderr.write(
-                  `[EventBus] async handler error (${pattern}): ${String(err)}
-`
-                );
+                logger2.warn("Async handler error", { pattern, error: toErrorMessage(err) });
               });
             }
           } catch (err) {
-            process.stderr.write(
-              `[EventBus] handler error (${pattern}): ${String(err)}
-`
-            );
+            logger2.warn("Sync handler error", { pattern, error: toErrorMessage(err) });
           }
         }
       }
@@ -22151,10 +22176,7 @@ var EventBus = class {
       const result = handler(event);
       if (result instanceof Promise) {
         result.catch((err) => {
-          process.stderr.write(
-            `[EventBus] once handler error (${pattern}): ${String(err)}
-`
-          );
+          logger2.warn("Once handler error", { pattern, error: toErrorMessage(err) });
         });
       }
     });
@@ -22268,8 +22290,11 @@ var EventBus = class {
 
 // src/events/event-log.ts
 var import_fs3 = require("fs");
+var readline = __toESM(require("readline"), 1);
 var import_path3 = require("path");
-var logger2 = createLogger("event-log");
+var logger3 = createLogger("event-log");
+var FLUSH_INTERVAL_MS = 100;
+var FLUSH_THRESHOLD_BYTES = 64 * 1024;
 var EventLog = class {
   static {
     __name(this, "EventLog");
@@ -22292,6 +22317,21 @@ var EventLog = class {
   maxSizeMb;
   /** Events older than this many hours are eligible for compaction. */
   compactAfterHours;
+  // ─── Async write state ──────────────────────────────────────────────────────
+  /** Active write stream for non-blocking appends. Created lazily. */
+  writeStream = null;
+  /** Pending write buffer (not yet flushed to disk). */
+  writeBuffer = "";
+  /** Size of writeBuffer in bytes. */
+  writeBufferBytes = 0;
+  /** NodeJS timer handle for the periodic flush. */
+  flushTimer = null;
+  /** Whether the stream has been closed (post-shutdown). */
+  closed = false;
+  /** Whether we are currently draining the buffer to disk (prevents re-entry). */
+  flushing = false;
+  /** Queue of flush waiters (resolve/reject pairs). */
+  flushWaiters = [];
   constructor(stateDir, config2) {
     this.logPath = (0, import_path3.join)(stateDir, "events.jsonl");
     this.archiveDir = (0, import_path3.join)(stateDir, "event-archives");
@@ -22299,69 +22339,63 @@ var EventLog = class {
     this.compactAfterHours = config2.compact_after_hours;
   }
   /**
-   * Initialises the event log by reading the existing file (if any) to recover
+   * Initialises the event log by streaming the existing file (if any) to recover
    * the latest sequence number, event count, and oldest/newest timestamps.
    *
    * Safe to call on a fresh (non-existent) log file.
    */
   async initialize() {
     try {
-      const content = (0, import_fs3.readFileSync)(this.logPath, "utf-8");
-      const lines = content.split("\n").filter((l) => l.trim().length > 0);
-      this.eventCount = lines.length;
-      const typeCount = {};
-      let oldestTs;
-      let newestTs;
-      for (const line of lines) {
+      let skippedLines = 0;
+      await this.streamLines(this.logPath, (line) => {
         try {
           const event = JSON.parse(line);
           if (typeof event.metadata?.sequence === "number" && event.metadata.sequence > this.latestSeq) {
             this.latestSeq = event.metadata.sequence;
           }
           if (event.type) {
-            typeCount[event.type] = (typeCount[event.type] ?? 0) + 1;
+            this.typeCountCache[event.type] = (this.typeCountCache[event.type] ?? 0) + 1;
           }
           const ts = event.timestamp;
           if (ts) {
-            if (!oldestTs || ts < oldestTs) oldestTs = ts;
-            if (!newestTs || ts > newestTs) newestTs = ts;
+            if (!this.oldestEvent || ts < this.oldestEvent) this.oldestEvent = ts;
+            if (!this.newestEvent || ts > this.newestEvent) this.newestEvent = ts;
           }
+          this.eventCount++;
         } catch {
+          skippedLines++;
         }
+      });
+      if (skippedLines > 0) {
+        logger3.warn("Skipped malformed lines during initialize", { count: skippedLines, file: this.logPath });
       }
-      this.typeCountCache = typeCount;
-      this.oldestEvent = oldestTs;
-      this.newestEvent = newestTs;
-      logger2.info("Event log initialised", {
+      logger3.info("Event log initialised", {
         events: this.eventCount,
         latest_seq: this.latestSeq
       });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-        logger2.debug("Event log file not found, starting fresh");
+        logger3.debug("Event log file not found, starting fresh");
       } else {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger2.warn("Error reading event log on init", { error: msg });
+        logger3.warn("Error reading event log on init", { error: toErrorMessage(err) });
       }
     }
+    this.openWriteStream();
   }
   /**
-   * Appends an event to the log synchronously.
+   * Appends an event to the write buffer.
    *
-   * This method is called from the EventBus hot path and must not block
-   * the event loop with async I/O. Uses `appendFileSync` for durability.
+   * This method is synchronous from the caller's perspective — it adds
+   * the serialised event to an in-memory buffer and triggers a background
+   * flush if the buffer exceeds the threshold. Actual disk I/O is async.
    *
    * @param event - The event to persist.
    */
   append(event) {
+    if (this.closed) return;
     const line = JSON.stringify(event) + "\n";
-    try {
-      (0, import_fs3.appendFileSync)(this.logPath, line, "utf-8");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger2.error("Failed to append event to log", { error: msg, event_id: event.id });
-      return;
-    }
+    this.writeBuffer += line;
+    this.writeBufferBytes += Buffer.byteLength(line, "utf-8");
     if (typeof event.metadata?.sequence === "number" && event.metadata.sequence > this.latestSeq) {
       this.latestSeq = event.metadata.sequence;
     }
@@ -22373,37 +22407,95 @@ var EventLog = class {
       if (!this.oldestEvent) this.oldestEvent = event.timestamp;
       this.newestEvent = event.timestamp;
     }
+    if (this.writeBufferBytes >= FLUSH_THRESHOLD_BYTES) {
+      this.scheduleFlush();
+    }
+    this.ensureFlushTimer();
   }
   /**
-   * Queries the log, returning events that match the given filter.
+   * Explicitly flushes the write buffer to disk.
    *
-   * Reads the entire log file; suitable for Phase 2. Future phases should
-   * add an index for high-frequency queries.
+   * Call before checkpoint saves or shutdown to guarantee durability.
+   *
+   * @returns A Promise that resolves once the buffer has been written.
+   */
+  async flush() {
+    if (this.writeBuffer.length === 0) return;
+    return new Promise((resolve, reject) => {
+      this.flushWaiters.push({ resolve, reject });
+      this.scheduleFlush();
+    });
+  }
+  /**
+   * Flushes the buffer and closes the write stream.
+   *
+   * Should be called during engine shutdown after all appends are complete.
+   *
+   * @returns A Promise that resolves once the stream is fully closed.
+   */
+  async close() {
+    this.closed = true;
+    this.stopFlushTimer();
+    if (this.writeBuffer.length > 0) {
+      await this.drainBuffer();
+    }
+    if (this.writeBuffer.length > 0) {
+      try {
+        const { appendFileSync } = await import("fs");
+        appendFileSync(this.logPath, this.writeBuffer, "utf-8");
+        this.writeBuffer = "";
+        this.writeBufferBytes = 0;
+      } catch {
+      }
+    }
+    if (this.writeStream) {
+      await new Promise((resolve) => {
+        this.writeStream.end(() => {
+          this.writeStream = null;
+          resolve();
+        });
+      });
+    }
+  }
+  /**
+   * Queries the log using streaming reads, applying filters during streaming.
+   *
+   * Supports early termination when `limit` is reached without reading the
+   * full file.
    *
    * @param filter - Optional filter criteria.
    * @returns Array of matching events in chronological order.
    */
   async query(filter = {}) {
-    let content;
+    if (this.writeBuffer.length > 0) {
+      await this.drainBuffer();
+    }
+    const results = [];
+    const limit = filter.limit;
+    let skippedLines = 0;
     try {
-      content = (0, import_fs3.readFileSync)(this.logPath, "utf-8");
+      await this.streamLines(this.logPath, (line) => {
+        if (limit !== void 0 && results.length >= limit) {
+          return false;
+        }
+        try {
+          const event = JSON.parse(line);
+          if (this.matchesFilter(event, filter)) {
+            results.push(event);
+          }
+        } catch {
+          skippedLines++;
+        }
+        return true;
+      });
+      if (skippedLines > 0) {
+        logger3.warn("Skipped malformed lines during query", { count: skippedLines, file: this.logPath });
+      }
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
         return [];
       }
       throw err;
-    }
-    const lines = content.split("\n").filter((l) => l.trim().length > 0);
-    const results = [];
-    for (const line of lines) {
-      try {
-        const event = JSON.parse(line);
-        if (this.matchesFilter(event, filter)) {
-          results.push(event);
-          if (filter.limit !== void 0 && results.length >= filter.limit) break;
-        }
-      } catch {
-      }
     }
     return results;
   }
@@ -22441,38 +22533,45 @@ var EventLog = class {
    * @returns Counts of archived and remaining events.
    */
   async compact(beforeTimestamp) {
+    if (this.writeBuffer.length > 0) {
+      await this.drainBuffer();
+    }
     const cutoff = beforeTimestamp ?? new Date(
       Date.now() - this.compactAfterHours * 60 * 60 * 1e3
     ).toISOString();
-    let content;
+    const toArchive = [];
+    const toKeep = [];
+    let skippedLines = 0;
     try {
-      content = (0, import_fs3.readFileSync)(this.logPath, "utf-8");
+      await this.streamLines(this.logPath, (line) => {
+        try {
+          const event = JSON.parse(line);
+          const ts = event.timestamp ?? "";
+          if (ts < cutoff) {
+            toArchive.push(line);
+          } else {
+            toKeep.push(line);
+          }
+        } catch {
+          toKeep.push(line);
+          skippedLines++;
+        }
+        return true;
+      });
+      if (skippedLines > 0) {
+        logger3.warn("Skipped malformed lines during compact", { count: skippedLines, file: this.logPath });
+      }
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
         return { archived: 0, remaining: 0 };
       }
       throw err;
     }
-    const lines = content.split("\n").filter((l) => l.trim().length > 0);
-    const toArchive = [];
-    const toKeep = [];
-    for (const line of lines) {
-      try {
-        const event = JSON.parse(line);
-        const ts = event.timestamp ?? "";
-        if (ts < cutoff) {
-          toArchive.push(line);
-        } else {
-          toKeep.push(line);
-        }
-      } catch {
-        toKeep.push(line);
-      }
-    }
     if (toArchive.length === 0) {
-      logger2.debug("Compaction: no events to archive");
+      logger3.debug("Compaction: no events to archive");
       return { archived: 0, remaining: toKeep.length };
     }
+    await this.closeWriteStream();
     (0, import_fs3.mkdirSync)(this.archiveDir, { recursive: true });
     const archiveDate = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const archivePath = (0, import_path3.join)(
@@ -22481,7 +22580,10 @@ var EventLog = class {
     );
     let existingArchive = "";
     try {
-      existingArchive = (0, import_fs3.readFileSync)(archivePath, "utf-8");
+      await this.streamLines(archivePath, (line) => {
+        existingArchive += line + "\n";
+        return true;
+      });
     } catch {
     }
     const archiveContent = (existingArchive.endsWith("\n") || existingArchive.length === 0 ? existingArchive : existingArchive + "\n") + toArchive.join("\n") + "\n";
@@ -22491,9 +22593,12 @@ var EventLog = class {
     const tmpPath = this.logPath + ".tmp";
     (0, import_fs3.writeFileSync)(tmpPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""), "utf-8");
     (0, import_fs3.renameSync)(tmpPath, this.logPath);
+    if (!this.closed) {
+      this.openWriteStream();
+    }
     this.eventCount = toKeep.length;
     this.rebuildCacheFromLines(toKeep);
-    logger2.info("Compaction complete", {
+    logger3.info("Compaction complete", {
       archived: toArchive.length,
       remaining: toKeep.length,
       archive_file: archivePath
@@ -22511,6 +22616,7 @@ var EventLog = class {
       fileSizeBytes = (0, import_fs3.statSync)(this.logPath).size;
     } catch {
     }
+    fileSizeBytes += this.writeBufferBytes;
     return {
       total_events: this.eventCount,
       file_size_bytes: fileSizeBytes,
@@ -22522,6 +22628,158 @@ var EventLog = class {
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
+  /**
+   * Opens (or re-opens) the write stream in append mode.
+   * Silently ignores errors so appends remain safe even if the stream fails.
+   */
+  openWriteStream() {
+    try {
+      const dir = this.logPath.substring(0, this.logPath.lastIndexOf("/"));
+      (0, import_fs3.mkdirSync)(dir, { recursive: true });
+      this.writeStream = (0, import_fs3.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
+      this.writeStream.on("error", (err) => {
+        logger3.error("Write stream error", { error: err.message });
+        this.writeStream = null;
+      });
+    } catch (err) {
+      logger3.error("Failed to open event log write stream", { error: toErrorMessage(err) });
+      this.writeStream = null;
+    }
+  }
+  /**
+   * Closes the write stream without closing the EventLog itself.
+   * Used before compaction to safely replace the underlying file.
+   */
+  async closeWriteStream() {
+    if (!this.writeStream) return;
+    const stream = this.writeStream;
+    this.writeStream = null;
+    await new Promise((resolve) => {
+      stream.end(() => resolve());
+    });
+  }
+  /**
+   * Ensures the periodic flush timer is running.
+   */
+  ensureFlushTimer() {
+    if (this.flushTimer !== null || this.closed) return;
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      this.scheduleFlush();
+    }, FLUSH_INTERVAL_MS);
+    this.flushTimer.unref();
+  }
+  /**
+   * Stops the periodic flush timer.
+   */
+  stopFlushTimer() {
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+  }
+  /**
+   * Schedules an async flush of the write buffer.
+   * If a flush is already in progress, it will drain again when done.
+   */
+  scheduleFlush() {
+    if (this.flushing || this.writeBuffer.length === 0) {
+      if (this.writeBuffer.length === 0 && this.flushWaiters.length > 0) {
+        const waiters = this.flushWaiters.splice(0);
+        for (const { resolve } of waiters) resolve();
+      }
+      return;
+    }
+    this.drainBuffer().catch((err) => {
+      logger3.warn("Event log flush error", { error: toErrorMessage(err) });
+    });
+  }
+  /**
+   * Drains the write buffer to disk.
+   * Resolves all queued flush waiters once complete.
+   */
+  async drainBuffer() {
+    if (this.flushing || this.writeBuffer.length === 0) return;
+    this.flushing = true;
+    const data = this.writeBuffer;
+    this.writeBuffer = "";
+    this.writeBufferBytes = 0;
+    let drainError;
+    try {
+      if (this.writeStream) {
+        await new Promise((resolve, reject) => {
+          this.writeStream.write(data, (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      } else {
+        const { appendFileSync } = await import("fs");
+        appendFileSync(this.logPath, data, "utf-8");
+      }
+    } catch (err) {
+      drainError = err instanceof Error ? err : new Error(toErrorMessage(err));
+      logger3.error("Failed to flush event log buffer", { error: toErrorMessage(err) });
+      this.writeBuffer = data + this.writeBuffer;
+      this.writeBufferBytes = Buffer.byteLength(this.writeBuffer, "utf-8");
+    } finally {
+      this.flushing = false;
+      if (this.flushWaiters.length > 0) {
+        const waiters = this.flushWaiters.splice(0);
+        if (drainError) {
+          for (const { reject } of waiters) reject(drainError);
+        } else {
+          for (const { resolve } of waiters) resolve();
+        }
+      }
+      if (this.writeBuffer.length > 0) {
+        this.scheduleFlush();
+      }
+    }
+  }
+  /**
+   * Streams a JSONL file line by line, invoking `onLine` for each non-empty line.
+   *
+   * If `onLine` returns `false`, streaming stops early (for limit support).
+   * Rejects if the file cannot be opened.
+   *
+   * @param filePath - Absolute path to the JSONL file.
+   * @param onLine   - Callback for each non-empty line. Return false to stop early.
+   */
+  streamLines(filePath, onLine) {
+    return new Promise((resolve, reject) => {
+      const stream = (0, import_fs3.createReadStream)(filePath, { encoding: "utf-8" });
+      const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+      let done = false;
+      const cleanup = /* @__PURE__ */ __name(() => {
+        if (!done) {
+          done = true;
+          rl.close();
+          stream.destroy();
+        }
+      }, "cleanup");
+      rl.on("line", (line) => {
+        if (done) return;
+        const trimmed = line.trim();
+        if (trimmed.length === 0) return;
+        const result = onLine(trimmed);
+        if (result === false) {
+          cleanup();
+          resolve();
+        }
+      });
+      rl.on("close", () => {
+        if (!done) {
+          done = true;
+          resolve();
+        }
+      });
+      stream.on("error", (err) => {
+        cleanup();
+        reject(err);
+      });
+    });
+  }
   /** Returns true when `event` matches all criteria in `filter`. */
   matchesFilter(event, filter) {
     if (filter.types && filter.types.length > 0) {
@@ -22559,6 +22817,7 @@ var EventLog = class {
     const typeCount = {};
     let oldest;
     let newest;
+    let skippedLines = 0;
     for (const line of lines) {
       try {
         const event = JSON.parse(line);
@@ -22571,7 +22830,11 @@ var EventLog = class {
           if (!newest || ts > newest) newest = ts;
         }
       } catch {
+        skippedLines++;
       }
+    }
+    if (skippedLines > 0) {
+      logger3.warn("Skipped malformed lines during cache rebuild", { count: skippedLines, file: this.logPath });
     }
     this.typeCountCache = typeCount;
     this.oldestEvent = oldest;
@@ -22580,7 +22843,8 @@ var EventLog = class {
 };
 
 // src/events/event-queue.ts
-var logger3 = createLogger("event-queue");
+var logger4 = createLogger("event-queue");
+var MAX_DEAD_LETTERS = 1e3;
 var EventQueue = class {
   static {
     __name(this, "EventQueue");
@@ -22625,7 +22889,7 @@ var EventQueue = class {
    */
   registerHandler(name, handler) {
     this.handlers.set(name, handler);
-    logger3.debug("Handler registered", { name });
+    logger4.debug("Handler registered", { name });
   }
   /**
    * Adds an event to the queue for deferred processing.
@@ -22652,7 +22916,7 @@ var EventQueue = class {
       backoff_ms: this.backoffBase
     };
     this.insertSorted(fullEntry);
-    logger3.debug("Entry enqueued", {
+    logger4.debug("Entry enqueued", {
       id: fullEntry.id,
       priority: fullEntry.priority,
       handler: fullEntry.handler,
@@ -22671,7 +22935,7 @@ var EventQueue = class {
   start() {
     if (this.running) return;
     this.running = true;
-    logger3.info("Event queue started");
+    logger4.info("Event queue started");
     if (this.queue.length > 0) {
       this.scheduleNext(0);
     }
@@ -22688,7 +22952,7 @@ var EventQueue = class {
       clearTimeout(this.processTimer);
       this.processTimer = null;
     }
-    logger3.info("Event queue stopped");
+    logger4.info("Event queue stopped");
   }
   /**
    * Returns current queue statistics.
@@ -22747,7 +23011,7 @@ var EventQueue = class {
       deadline: dead.deadline
     };
     this.insertSorted(retryEntry);
-    logger3.info("Dead-letter entry re-queued", { id });
+    logger4.info("Dead-letter entry re-queued", { id });
     if (this.running && !this.processing && this.processTimer === null) {
       this.scheduleNext(0);
     }
@@ -22839,7 +23103,7 @@ var EventQueue = class {
     let retryBackoffMs = 0;
     try {
       if (entry.deadline && new Date(entry.deadline).getTime() < Date.now()) {
-        logger3.warn("Entry dropped: deadline exceeded", {
+        logger4.warn("Entry dropped: deadline exceeded", {
           id: entry.id,
           deadline: entry.deadline
         });
@@ -22849,7 +23113,7 @@ var EventQueue = class {
       }
       const handler = this.handlers.get(entry.handler);
       if (!handler) {
-        logger3.warn("No handler registered for entry", {
+        logger4.warn("No handler registered for entry", {
           id: entry.id,
           handler: entry.handler
         });
@@ -22861,13 +23125,13 @@ var EventQueue = class {
       const durationMs = Date.now() - startMs;
       this.completedCount++;
       this.totalProcessingMs += durationMs;
-      logger3.debug("Entry processed", {
+      logger4.debug("Entry processed", {
         id: entry.id,
         handler: entry.handler,
         duration_ms: durationMs
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorMessage = toErrorMessage(err);
       const updatedEntry = {
         ...entry,
         attempts: entry.attempts + 1,
@@ -22884,8 +23148,11 @@ var EventQueue = class {
             errorMessage
           ]
         };
+        if (this.deadLetters.length >= MAX_DEAD_LETTERS) {
+          this.deadLetters.shift();
+        }
         this.deadLetters.push(dlEntry);
-        logger3.error("Entry dead-lettered", {
+        logger4.error("Entry dead-lettered", {
           id: entry.id,
           handler: entry.handler,
           attempts: updatedEntry.attempts,
@@ -22893,7 +23160,7 @@ var EventQueue = class {
         });
       } else {
         retryBackoffMs = updatedEntry.backoff_ms;
-        logger3.warn("Entry failed, will retry", {
+        logger4.warn("Entry failed, will retry", {
           id: entry.id,
           handler: entry.handler,
           attempts: updatedEntry.attempts,
@@ -22905,7 +23172,7 @@ var EventQueue = class {
     } finally {
       this.processing = false;
       if (this.running && this.queue.length > 0) {
-        this.scheduleNext(retryBackoffMs > 0 ? retryBackoffMs : 0);
+        this.scheduleNext(retryBackoffMs > 0 ? retryBackoffMs : this.processIntervalMs);
       }
     }
   }
@@ -22915,8 +23182,38 @@ var EventQueue = class {
 var net = __toESM(require("net"), 1);
 var import_fs4 = require("fs");
 var import_path4 = require("path");
-var logger4 = createLogger("ipc-server");
+
+// src/ipc/protocol.ts
+var VALID_IPC_MESSAGE_TYPES = /* @__PURE__ */ new Set([
+  "hook_event",
+  "query",
+  "state_update",
+  "heartbeat"
+]);
+function validateIPCMessage(obj) {
+  if (typeof obj !== "object" || obj === null) return false;
+  const msg = obj;
+  if (typeof msg["type"] !== "string" || !VALID_IPC_MESSAGE_TYPES.has(msg["type"])) return false;
+  if (typeof msg["id"] !== "string" || msg["id"].length === 0) return false;
+  switch (msg["type"]) {
+    case "hook_event":
+      return typeof msg["hook_name"] === "string" && msg["hook_name"].length > 0 && typeof msg["hook_input"] === "object" && msg["hook_input"] !== null && !Array.isArray(msg["hook_input"]) && typeof msg["timestamp"] === "string";
+    case "query":
+      return typeof msg["query"] === "object" && msg["query"] !== null && !Array.isArray(msg["query"]) && typeof msg["query"]["kind"] === "string";
+    case "state_update":
+      return typeof msg["updates"] === "object" && msg["updates"] !== null && !Array.isArray(msg["updates"]);
+    case "heartbeat":
+      return true;
+    default:
+      return false;
+  }
+}
+__name(validateIPCMessage, "validateIPCMessage");
+
+// src/ipc/ipc-server.ts
+var logger5 = createLogger("ipc-server");
 var CONNECTION_TIMEOUT_MS = 5e3;
+var MAX_MESSAGE_SIZE = 1048576;
 var IPCServer = class {
   static {
     __name(this, "IPCServer");
@@ -22961,25 +23258,27 @@ var IPCServer = class {
    */
   async listen() {
     const dir = (0, import_path4.dirname)(this.socketPath);
-    (0, import_fs4.mkdirSync)(dir, { recursive: true });
+    (0, import_fs4.mkdirSync)(dir, { recursive: true, mode: 448 });
+    (0, import_fs4.chmodSync)(dir, 448);
     if ((0, import_fs4.existsSync)(this.socketPath)) {
       try {
         (0, import_fs4.unlinkSync)(this.socketPath);
-        logger4.debug("Removed stale socket file", { path: this.socketPath });
+        logger5.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
-        logger4.warn("Could not remove stale socket file", {
+        logger5.warn("Could not remove stale socket file", {
           path: this.socketPath,
-          err: err instanceof Error ? err.message : String(err)
+          err: toErrorMessage(err)
         });
       }
     }
     this.server = net.createServer((socket) => this.handleConnection(socket));
     this.server.on("error", (err) => {
-      logger4.error("IPC server error", { err: err.message });
+      logger5.error("IPC server error", { err: err.message });
     });
     return new Promise((resolve, reject) => {
       this.server.listen(this.socketPath, () => {
-        logger4.info("IPC server listening", { path: this.socketPath });
+        (0, import_fs4.chmodSync)(this.socketPath, 384);
+        logger5.info("IPC server listening", { path: this.socketPath });
         resolve();
       });
       this.server.once("error", reject);
@@ -22992,7 +23291,7 @@ var IPCServer = class {
    * to finish closing before resolving.
    */
   async close() {
-    logger4.info("Closing IPC server", {
+    logger5.info("Closing IPC server", {
       path: this.socketPath,
       connections: this.connections.size
     });
@@ -23007,7 +23306,7 @@ var IPCServer = class {
       }
       this.server.close(() => {
         this.removeSocketFile();
-        logger4.info("IPC server closed");
+        logger5.info("IPC server closed");
         resolve();
       });
       this.server = null;
@@ -23036,22 +23335,36 @@ var IPCServer = class {
    */
   handleConnection(socket) {
     this.connections.add(socket);
-    logger4.debug("IPC client connected", { connections: this.connections.size });
+    logger5.debug("IPC client connected", { connections: this.connections.size });
+    let idleTimer;
     socket.once("close", () => {
+      clearTimeout(idleTimer);
       this.connections.delete(socket);
-      logger4.debug("IPC client disconnected", { connections: this.connections.size });
+      logger5.debug("IPC client disconnected", { connections: this.connections.size });
     });
     socket.on("error", (err) => {
-      logger4.warn("IPC socket error", { err: err.message });
+      clearTimeout(idleTimer);
+      logger5.warn("IPC socket error", { err: err.message });
       this.connections.delete(socket);
+      socket.destroy();
     });
-    const idleTimer = setTimeout(() => {
-      logger4.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
+    idleTimer = setTimeout(() => {
+      logger5.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
       socket.destroy();
     }, CONNECTION_TIMEOUT_MS);
     let rawData = "";
+    let rawBytes = 0;
     socket.on("data", (chunk) => {
+      rawBytes += chunk.length;
       rawData += chunk.toString("utf-8");
+      if (rawBytes > MAX_MESSAGE_SIZE) {
+        logger5.warn("IPC message size limit exceeded \u2014 closing connection", {
+          size_bytes: rawBytes,
+          max_bytes: MAX_MESSAGE_SIZE
+        });
+        socket.destroy();
+        return;
+      }
       const newlineIdx = rawData.indexOf("\n");
       if (newlineIdx === -1) return;
       clearTimeout(idleTimer);
@@ -23069,10 +23382,23 @@ var IPCServer = class {
   processMessage(socket, line) {
     let message;
     try {
-      message = JSON.parse(line);
+      const parsed = JSON.parse(line);
+      if (!validateIPCMessage(parsed)) {
+        logger5.warn("IPC message failed schema validation \u2014 dropping", {
+          type: typeof parsed === "object" && parsed !== null ? parsed["type"] : typeof parsed
+        });
+        const validationErrorResponse = {
+          id: typeof parsed === "object" && parsed !== null ? String(parsed["id"] ?? "unknown") : "unknown",
+          status: "error",
+          error: "Invalid message schema"
+        };
+        this.writeResponse(socket, validationErrorResponse);
+        return;
+      }
+      message = parsed;
     } catch (err) {
-      logger4.warn("Failed to parse IPC message", {
-        err: err instanceof Error ? err.message : String(err)
+      logger5.warn("Failed to parse IPC message", {
+        err: toErrorMessage(err)
       });
       const errorResponse = {
         id: "unknown",
@@ -23083,7 +23409,7 @@ var IPCServer = class {
       return;
     }
     if (!this.handler) {
-      logger4.warn("No IPC message handler registered", { msg_type: message.type });
+      logger5.warn("No IPC message handler registered", { msg_type: message.type });
       const noHandlerResponse = {
         id: message.id,
         status: "error",
@@ -23092,18 +23418,18 @@ var IPCServer = class {
       this.writeResponse(socket, noHandlerResponse);
       return;
     }
-    logger4.debug("Dispatching IPC message", { id: message.id, type: message.type });
+    logger5.debug("Dispatching IPC message", { id: message.id, type: message.type });
     this.handler(message).then((response) => {
       this.writeResponse(socket, response);
     }).catch((err) => {
-      logger4.error("IPC handler threw an error", {
+      logger5.error("IPC handler threw an error", {
         id: message.id,
-        err: err instanceof Error ? err.message : String(err)
+        err: toErrorMessage(err)
       });
       const errResponse = {
         id: message.id,
         status: "error",
-        error: err instanceof Error ? err.message : String(err)
+        error: toErrorMessage(err)
       };
       this.writeResponse(socket, errResponse);
     });
@@ -23120,9 +23446,9 @@ var IPCServer = class {
     try {
       socket.end(payload, "utf-8");
     } catch (err) {
-      logger4.warn("Failed to write IPC response", {
+      logger5.warn("Failed to write IPC response", {
         id: response.id,
-        err: err instanceof Error ? err.message : String(err)
+        err: toErrorMessage(err)
       });
       socket.destroy();
     }
@@ -23134,14 +23460,125 @@ var IPCServer = class {
     try {
       if ((0, import_fs4.existsSync)(this.socketPath)) {
         (0, import_fs4.unlinkSync)(this.socketPath);
-        logger4.debug("Socket file removed", { path: this.socketPath });
+        logger5.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
-      logger4.warn("Could not remove socket file", {
+      logger5.warn("Could not remove socket file", {
         path: this.socketPath,
-        err: err instanceof Error ? err.message : String(err)
+        err: toErrorMessage(err)
       });
     }
+  }
+};
+
+// src/ipc/ipc-router.ts
+var logger6 = createLogger("ipc-router");
+var IPCRouter = class {
+  static {
+    __name(this, "IPCRouter");
+  }
+  eventBus;
+  triggerRegistry;
+  workflowEngine;
+  agentCoordinator;
+  directiveQueue;
+  constructor(deps) {
+    this.eventBus = deps.eventBus;
+    this.triggerRegistry = deps.triggerRegistry;
+    this.workflowEngine = deps.workflowEngine;
+    this.agentCoordinator = deps.agentCoordinator;
+    this.directiveQueue = deps.directiveQueue;
+  }
+  /**
+   * Drains directives from the queue and composes a system message string.
+   *
+   * Shared by get_directives and get_system_message query handlers.
+   * Returns both the joined message string and the raw directive array.
+   */
+  drainDirectiveMessages() {
+    const directives = this.directiveQueue?.drain("subagent_stop") ?? [];
+    const message = directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
+    return { message, directives };
+  }
+  /**
+   * Route an incoming IPC message to the appropriate handler and return a
+   * response. This method is bound and passed directly to IPCServer.onMessage().
+   *
+   * @param msg - The validated IPC message received from a hook script.
+   * @returns A promise resolving to the IPCResponse to send back.
+   */
+  async route(msg) {
+    logger6.debug("IPC message received", { id: msg.id, type: msg.type });
+    if (msg.type === "hook_event") {
+      const emittedEvent = {
+        id: msg.id,
+        timestamp: msg.timestamp,
+        type: `hook:${msg.hook_name}`,
+        source: { kind: "hook", hook_name: msg.hook_name },
+        payload: {
+          type: `hook:${msg.hook_name}`,
+          data: msg.hook_input
+        },
+        metadata: {
+          sequence: 0,
+          version: 1
+        }
+      };
+      this.eventBus.emit(emittedEvent);
+      if (this.triggerRegistry) {
+        try {
+          await this.triggerRegistry.evaluate(emittedEvent);
+        } catch (err) {
+          logger6.warn("IPC hook_event: trigger evaluation error", {
+            error: toErrorMessage(err)
+          });
+        }
+      }
+      return { id: msg.id, status: "ok", data: { kind: "ack" } };
+    }
+    if (msg.type === "query") {
+      const q = msg.query;
+      if (q.kind === "get_directives") {
+        const { message, directives } = this.drainDirectiveMessages();
+        return {
+          id: msg.id,
+          status: "ok",
+          data: { kind: "system_message", message, directives }
+        };
+      }
+      if (q.kind === "get_system_message") {
+        const { message, directives } = this.drainDirectiveMessages();
+        return {
+          id: msg.id,
+          status: "ok",
+          data: { kind: "system_message", message, directives }
+        };
+      }
+      if (q.kind === "get_workflow_state") {
+        const instance = this.workflowEngine?.get(q.workflow_id);
+        return {
+          id: msg.id,
+          status: "ok",
+          data: { kind: "workflow_state", instance: instance ?? {} }
+        };
+      }
+      if (q.kind === "should_block_tool") {
+        return {
+          id: msg.id,
+          status: "ok",
+          data: { kind: "tool_decision", allow: true }
+        };
+      }
+      logger6.warn("Unhandled query kind", { kind: q.kind });
+      return { id: msg.id, status: "ok", data: { kind: "ack" } };
+    }
+    if (msg.type === "heartbeat") {
+      return { id: msg.id, status: "ok", data: { kind: "ack" } };
+    }
+    if (msg.type === "state_update") {
+      return { id: msg.id, status: "ok", data: { kind: "ack" } };
+    }
+    return { id: msg.id, status: "ok", data: { kind: "ack" } };
   }
 };
 
@@ -23415,6 +23852,33 @@ var WorkflowEngine = class {
     this.emitWorkflowEvent("workflow:cancelled", instance, { reason });
   }
   /**
+   * Removes completed workflow instances older than `maxAge` ms.
+   *
+   * Only instances with status `'completed'` are eligible for removal.
+   * Active, failed, or cancelled instances are retained regardless of age.
+   *
+   * @param maxAge - Maximum age in milliseconds for completed instances
+   *   before they are pruned. Defaults to 3 600 000 ms (1 hour).
+   * @returns The number of instances removed.
+   */
+  prune(maxAge = 36e5) {
+    const cutoff = Date.now() - maxAge;
+    let pruned = 0;
+    for (const [id, instance] of this.instances) {
+      if (instance.status === "completed") {
+        const completedAt = instance.completed_at ? new Date(instance.completed_at).getTime() : new Date(instance.updated_at).getTime();
+        if (completedAt < cutoff) {
+          this.instances.delete(id);
+          pruned++;
+        }
+      }
+    }
+    if (pruned > 0) {
+      log.debug("Pruned completed workflow instances", { pruned });
+    }
+    return pruned;
+  }
+  /**
    * Registers a named guard function for use in workflow definitions.
    *
    * @param name - The function name referenced in GuardCondition.function.
@@ -23461,7 +23925,7 @@ var WorkflowEngine = class {
     } catch (err) {
       log.error("Guard evaluation error", {
         guard,
-        error: err instanceof Error ? err.message : String(err)
+        error: toErrorMessage(err)
       });
       return false;
     }
@@ -23529,7 +23993,7 @@ var WorkflowEngine = class {
       } catch (err) {
         log.error("Action execution error", {
           action_type: action.type,
-          error: err instanceof Error ? err.message : String(err)
+          error: toErrorMessage(err)
         });
       }
     }
@@ -23654,7 +24118,7 @@ var WorkflowEngine = class {
       log.error("Failed to emit workflow event", {
         type,
         workflowId: instance.id,
-        error: err instanceof Error ? err.message : String(err)
+        error: toErrorMessage(err)
       });
     }
   }
@@ -23882,8 +24346,12 @@ var ConditionEvaluator = class {
   static {
     __name(this, "ConditionEvaluator");
   }
-  /** Ring buffer of recent events for threshold/sequence evaluation. */
-  recentEvents = [];
+  /** Pre-allocated ring buffer storage for recent events. */
+  recentEventsBuffer;
+  /** Next write index into the circular buffer (monotonically increasing). */
+  recentEventsHead = 0;
+  /** Number of events currently stored in the buffer. */
+  recentEventsCount = 0;
   /** Maximum number of recent events to retain. */
   maxRecentEvents;
   /**
@@ -23891,6 +24359,7 @@ var ConditionEvaluator = class {
    */
   constructor(maxRecentEvents = 1e3) {
     this.maxRecentEvents = maxRecentEvents;
+    this.recentEventsBuffer = new Array(maxRecentEvents);
   }
   /**
    * Records an event in the recent-events buffer.
@@ -23901,9 +24370,13 @@ var ConditionEvaluator = class {
    * @param event - The event to record.
    */
   recordEvent(event) {
-    this.recentEvents.push({ event, timestamp: Date.now() });
-    if (this.recentEvents.length > this.maxRecentEvents) {
-      this.recentEvents.shift();
+    this.recentEventsBuffer[this.recentEventsHead % this.maxRecentEvents] = {
+      event,
+      timestamp: Date.now()
+    };
+    this.recentEventsHead++;
+    if (this.recentEventsCount < this.maxRecentEvents) {
+      this.recentEventsCount++;
     }
   }
   /**
@@ -23961,6 +24434,20 @@ var ConditionEvaluator = class {
     return true;
   }
   /**
+   * Returns the contents of the ring buffer in chronological order (oldest first).
+   */
+  getRecentEventsInOrder() {
+    if (this.recentEventsCount === 0) return [];
+    const capacity = this.maxRecentEvents;
+    const startIndex = this.recentEventsCount < capacity ? 0 : this.recentEventsHead % capacity;
+    const result = [];
+    for (let i = 0; i < this.recentEventsCount; i++) {
+      const entry = this.recentEventsBuffer[(startIndex + i) % capacity];
+      if (entry !== void 0) result.push(entry);
+    }
+    return result;
+  }
+  /**
    * Evaluates a threshold condition: at least `count` matching events
    * within the last `window_ms` milliseconds (including the current event).
    */
@@ -23969,7 +24456,7 @@ var ConditionEvaluator = class {
     const now = Date.now();
     const windowStart = now - cond.window_ms;
     let matchCount = 0;
-    for (const entry of this.recentEvents) {
+    for (const entry of this.getRecentEventsInOrder()) {
       if (entry.timestamp < windowStart) continue;
       if (!this.matchEventType(entry.event.type, cond.event_type)) continue;
       matchCount++;
@@ -23989,7 +24476,7 @@ var ConditionEvaluator = class {
     if (cond.events.length === 1) return true;
     const now = Date.now();
     const windowStart = now - cond.window_ms;
-    const windowEvents = this.recentEvents.filter(
+    const windowEvents = this.getRecentEventsInOrder().filter(
       (e) => e.timestamp >= windowStart
     );
     let patternIndex = 0;
@@ -24013,11 +24500,21 @@ var ConditionEvaluator = class {
    */
   pruneOldEvents(maxAgeMs) {
     const cutoff = Date.now() - maxAgeMs;
-    const firstKeep = this.recentEvents.findIndex((e) => e.timestamp >= cutoff);
-    if (firstKeep > 0) {
-      this.recentEvents.splice(0, firstKeep);
-    } else if (firstKeep === -1) {
-      this.recentEvents = [];
+    const capacity = this.maxRecentEvents;
+    let pruned = 0;
+    while (pruned < this.recentEventsCount) {
+      const oldestSlot = ((this.recentEventsHead - this.recentEventsCount + pruned) % capacity + capacity) % capacity;
+      const entry = this.recentEventsBuffer[oldestSlot];
+      if (entry === void 0 || entry.timestamp < cutoff) {
+        this.recentEventsBuffer[oldestSlot] = void 0;
+        pruned++;
+      } else {
+        break;
+      }
+    }
+    this.recentEventsCount -= pruned;
+    if (this.recentEventsCount === 0) {
+      this.recentEventsHead = 0;
     }
   }
 };
@@ -24126,28 +24623,14 @@ var ActionExecutor = class {
   /** Workflow engine for start_workflow and send_workflow_event actions. */
   workflowEngine;
   /**
-   * Injects the event bus. Call this once after construction.
-   *
-   * @param bus - The shared EventBus instance.
+   * @param eventBus - The shared EventBus instance, or null if not available.
+   * @param directiveQueue - The shared DirectiveQueue instance, or null if not available.
+   * @param workflowEngine - The shared WorkflowEngine instance, or null if not available.
    */
-  setEventBus(bus) {
-    this.eventBus = bus;
-  }
-  /**
-   * Injects the directive queue. Call this once after construction.
-   *
-   * @param queue - The shared DirectiveQueue instance.
-   */
-  setDirectiveQueue(queue) {
-    this.directiveQueue = queue;
-  }
-  /**
-   * Injects the workflow engine. Call this once after construction.
-   *
-   * @param engine - The shared WorkflowEngine instance.
-   */
-  setWorkflowEngine(engine) {
-    this.workflowEngine = engine;
+  constructor(eventBus = null, directiveQueue = null, workflowEngine = null) {
+    this.eventBus = eventBus;
+    this.directiveQueue = directiveQueue;
+    this.workflowEngine = workflowEngine;
   }
   /**
    * Registers a named action handler.
@@ -24190,7 +24673,7 @@ var ActionExecutor = class {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       log2.error("Action execution threw unexpected error", { error: message });
       return { success: false, error: message };
     }
@@ -24200,7 +24683,7 @@ var ActionExecutor = class {
    */
   async executeEmitEvent(action, event) {
     if (!this.eventBus) {
-      return { success: false, error: "EventBus not initialised \u2014 call setEventBus() first" };
+      return { success: false, error: "EventBus not provided \u2014 pass it via the constructor" };
     }
     const resolvedPayload = resolveTemplate(action.payload_template, event);
     this.eventBus.emit({
@@ -24298,7 +24781,7 @@ var ActionExecutor = class {
           triggered_by: event.id
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = toErrorMessage(err);
         log2.error("start_workflow action: failed to create workflow", { error: message });
         return { success: false, error: message };
       }
@@ -24314,7 +24797,7 @@ var ActionExecutor = class {
         } catch (err) {
           log2.warn("send_workflow_event: failed to send to workflow", {
             workflow_id: instance.id,
-            error: err instanceof Error ? err.message : String(err)
+            error: toErrorMessage(err)
           });
         }
       }
@@ -24369,6 +24852,8 @@ var TriggerRegistry = class {
   evaluator;
   /** Action executor with handler registry. */
   executor;
+  /** Named action handlers — mirrored here so they survive executor replacement. */
+  actionHandlers = /* @__PURE__ */ new Map();
   /** Resolved triggers configuration. */
   config;
   /**
@@ -24380,12 +24865,21 @@ var TriggerRegistry = class {
     this.executor = new ActionExecutor();
   }
   /**
-   * Injects the shared EventBus so `emit_event` actions can emit events.
+   * Injects all shared dependencies into the ActionExecutor.
+   *
+   * Replaces the internal ActionExecutor with a new instance wired to the
+   * provided dependencies. Any handlers registered before this call are
+   * preserved on the new executor.
    *
    * @param bus - The shared EventBus instance.
+   * @param directiveQueue - The shared DirectiveQueue instance, or null.
+   * @param workflowEngine - The shared WorkflowEngine instance, or null.
    */
-  setEventBus(bus) {
-    this.executor.setEventBus(bus);
+  setDependencies(bus, directiveQueue = null, workflowEngine = null) {
+    this.executor = new ActionExecutor(bus, directiveQueue, workflowEngine);
+    for (const [name, handler] of this.actionHandlers) {
+      this.executor.registerHandler(name, handler);
+    }
   }
   /**
    * Registers a trigger definition.
@@ -24472,8 +24966,8 @@ var TriggerRegistry = class {
   /**
    * Returns the ActionExecutor instance.
    *
-   * Used by ProcessManager to inject dependencies (DirectiveQueue, WorkflowEngine)
-   * after the registry has been constructed.
+   * Exposed for external handler registration. Dependency injection is handled
+   * via {@link setDependencies}.
    *
    * @returns The internal ActionExecutor.
    */
@@ -24487,6 +24981,7 @@ var TriggerRegistry = class {
    * @param handler - The async handler function.
    */
   registerHandler(name, handler) {
+    this.actionHandlers.set(name, handler);
     this.executor.registerHandler(name, handler);
     log3.debug("Action handler registered", { name });
   }
@@ -24785,7 +25280,7 @@ function getBuiltinTriggers() {
 __name(getBuiltinTriggers, "getBuiltinTriggers");
 
 // src/agents/agent-coordinator.ts
-var logger5 = createLogger("agent-coordinator");
+var logger7 = createLogger("agent-coordinator");
 var DEFAULT_COST_PER_TOKEN = 3e-6;
 var VALID_TRANSITIONS = {
   pending: /* @__PURE__ */ new Set(["running", "cancelled"]),
@@ -24803,11 +25298,16 @@ var AgentCoordinator = class {
   config;
   agents = /* @__PURE__ */ new Map();
   wrfcChains = /* @__PURE__ */ new Map();
+  /**
+   * @param eventBus      - EventBus instance for emitting agent lifecycle events.
+   * @param budgetTracker - BudgetTracker for session-level token budget accounting.
+   * @param config        - Agent-specific runtime configuration.
+   */
   constructor(eventBus, budgetTracker, config2) {
     this.eventBus = eventBus;
     this.budgetTracker = budgetTracker;
     this.config = config2;
-    logger5.debug("AgentCoordinator initialised", {
+    logger7.debug("AgentCoordinator initialised", {
       max_concurrent: config2.max_concurrent,
       session_budget: config2.session_budget
     });
@@ -24878,7 +25378,7 @@ var AgentCoordinator = class {
       wrfc_phase: options.wrfc_phase,
       depends_on: agent.depends_on
     });
-    logger5.info("Agent spawned", { id, type: options.type, workflow_id: options.workflow_id });
+    logger7.info("Agent spawned", { id, type: options.type, workflow_id: options.workflow_id });
     return id;
   }
   // ─── Status updates ─────────────────────────────────────────────────────────
@@ -24893,12 +25393,12 @@ var AgentCoordinator = class {
   updateStatus(agentId, status, details) {
     const agent = this.agents.get(agentId);
     if (!agent) {
-      logger5.warn("updateStatus called for unknown agent", { agentId });
+      logger7.warn("updateStatus called for unknown agent", { agentId });
       return;
     }
     const allowed = VALID_TRANSITIONS[agent.status];
     if (!allowed.has(status)) {
-      logger5.warn("Invalid status transition ignored", {
+      logger7.warn("Invalid status transition ignored", {
         agentId,
         from: agent.status,
         to: status
@@ -24932,7 +25432,7 @@ var AgentCoordinator = class {
       this.resolveDependencies(agentId);
       this.updateWRFCPhaseOnCompletion(agentId);
     }
-    logger5.info("Agent status updated", { agentId, from: prev, to: status });
+    logger7.info("Agent status updated", { agentId, from: prev, to: status });
   }
   // ─── Budget ──────────────────────────────────────────────────────────────────
   /**
@@ -24944,7 +25444,7 @@ var AgentCoordinator = class {
   updateBudget(agentId, budget) {
     const agent = this.agents.get(agentId);
     if (!agent) {
-      logger5.warn("updateBudget called for unknown agent", { agentId });
+      logger7.warn("updateBudget called for unknown agent", { agentId });
       return;
     }
     agent.budget = budget;
@@ -25057,7 +25557,7 @@ var AgentCoordinator = class {
   updateConfig(config2) {
     this.config = config2;
     this.budgetTracker.updateConfig(config2);
-    logger5.debug("AgentCoordinator config updated", {
+    logger7.debug("AgentCoordinator config updated", {
       max_concurrent: config2.max_concurrent,
       session_budget: config2.session_budget
     });
@@ -25127,7 +25627,7 @@ var AgentCoordinator = class {
   advanceWRFCPhase(workflowId, phase) {
     const chain = this.wrfcChains.get(workflowId);
     if (!chain) {
-      logger5.warn("advanceWRFCPhase: no chain found", { workflowId });
+      logger7.warn("advanceWRFCPhase: no chain found", { workflowId });
       return;
     }
     if (chain.current_phase < chain.phases.length) {
@@ -25160,7 +25660,7 @@ var AgentCoordinator = class {
       to_phase: phase,
       review_iterations: chain.review_iterations
     });
-    logger5.info("WRFC phase advanced", { workflowId, from: prevPhase, to: phase });
+    logger7.info("WRFC phase advanced", { workflowId, from: prevPhase, to: phase });
   }
   /**
    * Remove agents that completed or failed before a given age threshold.
@@ -25168,7 +25668,7 @@ var AgentCoordinator = class {
    * @param olderThanMs - Maximum age in ms of retained agents.
    * @returns Number of agents pruned.
    */
-  prune(olderThanMs) {
+  prune(olderThanMs = 36e5) {
     const cutoff = Date.now() - olderThanMs;
     let count = 0;
     for (const [id, agent] of this.agents) {
@@ -25183,7 +25683,7 @@ var AgentCoordinator = class {
       }
     }
     if (count > 0) {
-      logger5.debug("Pruned old agent records", { count, olderThanMs });
+      logger7.debug("Pruned old agent records", { count, olderThanMs });
     }
     return count;
   }
@@ -25209,10 +25709,10 @@ var AgentCoordinator = class {
         metadata: { correlation_id: subject }
       });
     } catch (err) {
-      logger5.error("Failed to emit agent event", {
+      logger7.error("Failed to emit agent event", {
         type,
         subject,
-        error: err instanceof Error ? err.message : String(err)
+        error: toErrorMessage(err)
       });
     }
   }
@@ -25237,7 +25737,7 @@ var AgentCoordinator = class {
           resolved_by: completedAgentId,
           agent_id: waitingId
         });
-        logger5.debug("Agent dependencies resolved \u2014 ready to run", {
+        logger7.debug("Agent dependencies resolved \u2014 ready to run", {
           agentId: waitingId,
           resolvedBy: completedAgentId
         });
@@ -25297,7 +25797,7 @@ var AgentCoordinator = class {
     if (allDone) {
       phase.status = "completed";
       phase.completed_at = timestamp();
-      logger5.debug("WRFC phase auto-completed", {
+      logger7.debug("WRFC phase auto-completed", {
         workflowId: agent.workflow_id,
         phase: agent.wrfc_phase
       });
@@ -25372,7 +25872,7 @@ function statusToEventType(status) {
 __name(statusToEventType, "statusToEventType");
 
 // src/agents/budget-tracker.ts
-var logger6 = createLogger("budget-tracker");
+var logger8 = createLogger("budget-tracker");
 var BudgetTracker = class {
   static {
     __name(this, "BudgetTracker");
@@ -25383,7 +25883,7 @@ var BudgetTracker = class {
   constructor(eventBus, config2) {
     this.eventBus = eventBus;
     this.config = config2;
-    logger6.debug("BudgetTracker initialised", {
+    logger8.debug("BudgetTracker initialised", {
       session_budget: config2.session_budget,
       thresholds: config2.budget_thresholds
     });
@@ -25416,7 +25916,7 @@ var BudgetTracker = class {
       },
       firedThresholds: /* @__PURE__ */ new Set()
     });
-    logger6.debug("Agent registered for budget tracking", { agentId, agentType, workflowId });
+    logger8.debug("Agent registered for budget tracking", { agentId, agentType, workflowId });
   }
   /**
    * Update the budget snapshot for an agent and fire threshold alerts as needed.
@@ -25427,7 +25927,7 @@ var BudgetTracker = class {
   updateAgentBudget(agentId, budget) {
     const record2 = this.records.get(agentId);
     if (!record2) {
-      logger6.warn("updateAgentBudget called for unregistered agent", { agentId });
+      logger8.warn("updateAgentBudget called for unregistered agent", { agentId });
       return;
     }
     record2.budget = budget;
@@ -25547,7 +26047,7 @@ var BudgetTracker = class {
    */
   updateConfig(config2) {
     this.config = config2;
-    logger6.debug("BudgetTracker config updated", {
+    logger8.debug("BudgetTracker config updated", {
       session_budget: config2.session_budget
     });
   }
@@ -25587,14 +26087,14 @@ var BudgetTracker = class {
           }
         }
       });
-      logger6.warn("Budget threshold crossed", {
+      logger8.warn("Budget threshold crossed", {
         agentId: record2.agentId,
         threshold,
         usage_percent: record2.budget.usage_percent
       });
     } catch (err) {
-      logger6.error("Failed to emit budget warning event", {
-        error: err instanceof Error ? err.message : String(err),
+      logger8.error("Failed to emit budget warning event", {
+        error: toErrorMessage(err),
         agentId: record2.agentId,
         threshold
       });
@@ -25603,6 +26103,8 @@ var BudgetTracker = class {
 };
 
 // src/directives/directive-queue.ts
+var logger9 = createLogger("directive-queue");
+var MAX_QUEUE_DEPTH = 100;
 var DirectiveQueue = class {
   static {
     __name(this, "DirectiveQueue");
@@ -25618,6 +26120,10 @@ var DirectiveQueue = class {
   enqueue(target, directive) {
     const queue = this.queues.get(target);
     if (queue) {
+      if (queue.length >= MAX_QUEUE_DEPTH) {
+        queue.shift();
+        logger9.warn("DirectiveQueue at capacity: oldest directive evicted", { target, max: MAX_QUEUE_DEPTH });
+      }
       queue.push(directive);
     } else {
       this.queues.set(target, [directive]);
@@ -25847,11 +26353,11 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
 __name(registerWRFCHandlers, "registerWRFCHandlers");
 
 // src/lifecycle/process-manager.ts
-var logger7 = createLogger("process-manager");
+var logger10 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_path5.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
+  return (0, import_path5.join)((0, import_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 var ProcessManager = class {
@@ -25914,19 +26420,19 @@ var ProcessManager = class {
    * @throws If any critical startup step fails.
    */
   async startup() {
-    logger7.info("Starting up");
+    logger10.info("Starting up");
     try {
       const diskConfig = loadConfig(this.projectRoot);
       this.config = diskConfig;
-      logger7.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger10.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger7.warn("Could not load config from disk \u2014 using defaults", {
-        err: err instanceof Error ? err.message : String(err)
+      logger10.warn("Could not load config from disk \u2014 using defaults", {
+        err: toErrorMessage(err)
       });
     }
     this.stateStore = new JsonStateStore(this.config, this.projectRoot);
     await this.stateStore.initialize();
-    logger7.debug("State store initialised");
+    logger10.debug("State store initialised");
     this.eventBus = new EventBus();
     const stateDir = (0, import_path5.join)(this.projectRoot, this.config.persistence.state_dir);
     this.eventLog = new EventLog(stateDir, this.config.persistence);
@@ -25934,7 +26440,7 @@ var ProcessManager = class {
     this.eventBus.setEventLog(this.eventLog);
     this.eventQueue = new EventQueue(this.config.queue);
     this.eventQueue.start();
-    logger7.debug("Event system initialised");
+    logger10.debug("Event system initialised");
     await this.checkCrashRecovery();
     this.writePidFile();
     this.startCheckpointTimer();
@@ -25946,17 +26452,13 @@ var ProcessManager = class {
       this.workflowEngine.registerGuard("checkReviewScore", (context) => {
         return typeof context.review_score === "number" && context.review_score >= 10;
       });
-      logger7.debug("Workflow engine initialised");
+      logger10.debug("Workflow engine initialised");
     }
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
-    this.triggerRegistry.setEventBus(this.eventBus);
+    this.directiveQueue = new DirectiveQueue();
+    this.triggerRegistry.setDependencies(this.eventBus, this.directiveQueue, this.workflowEngine);
     for (const trigger of getBuiltinTriggers()) {
       this.triggerRegistry.register(trigger);
-    }
-    this.directiveQueue = new DirectiveQueue();
-    this.triggerRegistry.getActionExecutor().setDirectiveQueue(this.directiveQueue);
-    if (this.workflowEngine) {
-      this.triggerRegistry.getActionExecutor().setWorkflowEngine(this.workflowEngine);
     }
     this.eventBus.on("*", async (event) => {
       if (event.source?.kind === "hook") return;
@@ -25965,10 +26467,10 @@ var ProcessManager = class {
           await this.triggerRegistry.evaluate(event);
         }
       } catch (err) {
-        logger7.warn("Trigger evaluation error", { error: err instanceof Error ? err.message : String(err) });
+        logger10.warn("Trigger evaluation error", { error: toErrorMessage(err) });
       }
     });
-    logger7.debug("Trigger registry initialised");
+    logger10.debug("Trigger registry initialised");
     if (this.config.features.agents_enabled) {
       this.budgetTracker = new BudgetTracker(this.eventBus, this.config.agents);
       this.agentCoordinator = new AgentCoordinator(
@@ -25976,7 +26478,7 @@ var ProcessManager = class {
         this.budgetTracker,
         this.config.agents
       );
-      logger7.debug("Agent coordinator initialised");
+      logger10.debug("Agent coordinator initialised");
     }
     registerWRFCHandlers(
       this.triggerRegistry,
@@ -25988,7 +26490,7 @@ var ProcessManager = class {
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
     } else {
-      logger7.debug("IPC server disabled by feature flag");
+      logger10.debug("IPC server disabled by feature flag");
     }
     this.eventBus.emit({
       id: generateEventId(),
@@ -26006,7 +26508,7 @@ var ProcessManager = class {
       }
     });
     this.running = true;
-    logger7.info("Startup complete", {
+    logger10.info("Startup complete", {
       pid: process.pid,
       uptime_ms: this.getUptime()
     });
@@ -26021,12 +26523,9 @@ var ProcessManager = class {
    *   before forcing process exit.
    */
   async shutdown(timeout_ms = 1e4) {
-    logger7.info("Shutting down", { timeout_ms });
+    logger10.info("Shutting down", { timeout_ms });
     const watchdog = setTimeout(() => {
-      process.stderr.write(
-        `[runtime-engine] Shutdown timed out after ${timeout_ms} ms \u2014 forcing exit
-`
-      );
+      logger10.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
       process.exit(1);
     }, timeout_ms);
     watchdog.unref();
@@ -26036,13 +26535,13 @@ var ProcessManager = class {
           try {
             this.workflowEngine.cancel(instance.id, "engine shutdown");
           } catch (err) {
-            logger7.warn("Failed to cancel workflow during shutdown", {
+            logger10.warn("Failed to cancel workflow during shutdown", {
               id: instance.id,
-              err: err instanceof Error ? err.message : String(err)
+              err: toErrorMessage(err)
             });
           }
         }
-        logger7.debug("Active workflows cancelled");
+        logger10.debug("Active workflows cancelled");
       }
       this.stopCheckpointTimer();
       if (this.eventBus) {
@@ -26055,8 +26554,8 @@ var ProcessManager = class {
             payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
           });
         } catch (err) {
-          logger7.warn("Failed to emit shutdown event", {
-            err: err instanceof Error ? err.message : String(err)
+          logger10.warn("Failed to emit shutdown event", {
+            err: toErrorMessage(err)
           });
         }
       }
@@ -26065,10 +26564,10 @@ var ProcessManager = class {
           await this.ipcServer.close();
           this.removeSocketPointerFile();
           this.ipcServer = null;
-          logger7.debug("IPC server closed");
+          logger10.debug("IPC server closed");
         } catch (err) {
-          logger7.warn("IPC server close failed", {
-            err: err instanceof Error ? err.message : String(err)
+          logger10.warn("IPC server close failed", {
+            err: toErrorMessage(err)
           });
         }
       }
@@ -26076,27 +26575,47 @@ var ProcessManager = class {
         try {
           await this.eventQueue.drain(5e3);
           this.eventQueue.stop();
-          logger7.debug("Event queue drained and stopped");
+          logger10.debug("Event queue drained and stopped");
         } catch (err) {
-          logger7.warn("Event queue drain failed", {
-            err: err instanceof Error ? err.message : String(err)
+          logger10.warn("Event queue drain failed", {
+            err: toErrorMessage(err)
           });
         }
       }
       if (this.eventBus) {
         this.eventBus.removeAllListeners();
       }
+      if (this.eventLog) {
+        try {
+          await this.eventLog.flush();
+          logger10.debug("Event log flushed");
+        } catch (err) {
+          logger10.warn("Event log flush failed during shutdown", {
+            err: toErrorMessage(err)
+          });
+        }
+      }
       try {
         await this.saveCheckpoint();
-        logger7.debug("Final checkpoint saved");
+        logger10.debug("Final checkpoint saved");
       } catch (err) {
-        logger7.warn("Final checkpoint failed", {
-          err: err instanceof Error ? err.message : String(err)
+        logger10.warn("Final checkpoint failed", {
+          err: toErrorMessage(err)
         });
+      }
+      if (this.eventLog) {
+        try {
+          await this.eventLog.close();
+          logger10.debug("Event log closed");
+        } catch (err) {
+          logger10.warn("Event log close failed during shutdown", {
+            err: toErrorMessage(err)
+          });
+        }
       }
       this.removePidFile();
       this.running = false;
-      logger7.info("Shutdown complete");
+      logger10.info("Shutdown complete");
     } finally {
       clearTimeout(watchdog);
     }
@@ -26242,14 +26761,14 @@ var ProcessManager = class {
       const stalePid = (0, import_fs5.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
-        logger7.warn("Stale PID file detected \u2014 possible crash recovery", {
+        logger10.warn("Stale PID file detected \u2014 possible crash recovery", {
           stale_pid: stalePid
         });
         this.removePidFile();
       }
     } catch (err) {
-      logger7.warn("Could not read stale PID file", {
-        err: err instanceof Error ? err.message : String(err)
+      logger10.warn("Could not read stale PID file", {
+        err: toErrorMessage(err)
       });
     }
   }
@@ -26261,10 +26780,10 @@ var ProcessManager = class {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
       (0, import_fs5.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
-      logger7.debug("PID file written", { path: pidFilePath, pid: process.pid });
+      logger10.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
-      logger7.warn("Could not write PID file", {
-        err: err instanceof Error ? err.message : String(err)
+      logger10.warn("Could not write PID file", {
+        err: toErrorMessage(err)
       });
     }
   }
@@ -26277,11 +26796,11 @@ var ProcessManager = class {
     try {
       if ((0, import_fs5.existsSync)(pidFilePath)) {
         (0, import_fs5.unlinkSync)(pidFilePath);
-        logger7.debug("PID file removed", { path: pidFilePath });
+        logger10.debug("PID file removed", { path: pidFilePath });
       }
     } catch (err) {
-      logger7.warn("Could not remove PID file", {
-        err: err instanceof Error ? err.message : String(err)
+      logger10.warn("Could not remove PID file", {
+        err: toErrorMessage(err)
       });
     }
   }
@@ -26290,15 +26809,22 @@ var ProcessManager = class {
    * The timer is unref'd so it does not prevent natural process exit.
    */
   startCheckpointTimer() {
+    const interval = Math.max(this.config.persistence.checkpoint_interval_ms ?? CHECKPOINT_INTERVAL_MS, 1e3);
     this.checkpointTimer = setInterval(() => {
       this.saveCheckpoint().catch((err) => {
-        logger7.warn("Periodic checkpoint failed", {
-          err: err instanceof Error ? err.message : String(err)
+        logger10.warn("Periodic checkpoint failed", {
+          err: toErrorMessage(err)
         });
       });
-    }, CHECKPOINT_INTERVAL_MS);
+      try {
+        this.workflowEngine?.prune();
+        this.agentCoordinator?.prune();
+      } catch (err) {
+        logger10.warn("Periodic prune failed", { err: toErrorMessage(err) });
+      }
+    }, interval);
     this.checkpointTimer.unref();
-    logger7.debug("Checkpoint timer started", { interval_ms: CHECKPOINT_INTERVAL_MS });
+    logger10.debug("Checkpoint timer started", { interval_ms: interval });
   }
   /**
    * Stop the periodic checkpoint timer, preventing any further automatic saves.
@@ -26307,7 +26833,7 @@ var ProcessManager = class {
     if (this.checkpointTimer) {
       clearInterval(this.checkpointTimer);
       this.checkpointTimer = void 0;
-      logger7.debug("Checkpoint timer stopped");
+      logger10.debug("Checkpoint timer stopped");
     }
   }
   /**
@@ -26323,90 +26849,25 @@ var ProcessManager = class {
     const socketPath = (0, import_path5.join)(socketDir, `goodvibes-runtime-${hash2}.sock`);
     try {
       this.ipcServer = new IPCServer(socketPath);
-      this.ipcServer.onMessage(async (msg) => {
-        logger7.debug("IPC message received", { id: msg.id, type: msg.type });
-        if (msg.type === "hook_event") {
-          const emittedEvent = {
-            id: msg.id,
-            timestamp: msg.timestamp,
-            type: `hook:${msg.hook_name}`,
-            source: { kind: "hook", hook_name: msg.hook_name },
-            payload: {
-              type: `hook:${msg.hook_name}`,
-              data: msg.hook_input
-            },
-            metadata: {
-              sequence: 0,
-              version: 1
-            }
-          };
-          this.eventBus.emit(emittedEvent);
-          if (this.triggerRegistry) {
-            try {
-              await this.triggerRegistry.evaluate(emittedEvent);
-            } catch (err) {
-              logger7.warn("IPC hook_event: trigger evaluation error", {
-                error: err instanceof Error ? err.message : String(err)
-              });
-            }
-          }
-          return { id: msg.id, status: "ok", data: { kind: "ack" } };
-        }
-        if (msg.type === "query") {
-          const q = msg.query;
-          if (q.kind === "get_directives") {
-            const directives = this.directiveQueue?.drain("subagent_stop") ?? [];
-            const message = directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
-            return {
-              id: msg.id,
-              status: "ok",
-              data: { kind: "system_message", message, directives }
-            };
-          }
-          if (q.kind === "get_system_message") {
-            const directives = this.directiveQueue?.drain("subagent_stop") ?? [];
-            const directiveMessage = directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
-            return {
-              id: msg.id,
-              status: "ok",
-              data: { kind: "system_message", message: directiveMessage, directives }
-            };
-          }
-          if (q.kind === "get_workflow_state") {
-            const instance = this.workflowEngine?.get(q.workflow_id);
-            return {
-              id: msg.id,
-              status: "ok",
-              data: { kind: "workflow_state", instance: instance ?? {} }
-            };
-          }
-          if (q.kind === "should_block_tool") {
-            return {
-              id: msg.id,
-              status: "ok",
-              data: { kind: "tool_decision", allow: true }
-            };
-          }
-          return { id: msg.id, status: "ok", data: { kind: "ack" } };
-        }
-        if (msg.type === "heartbeat") {
-          return { id: msg.id, status: "ok", data: { kind: "ack" } };
-        }
-        if (msg.type === "state_update") {
-          return { id: msg.id, status: "ok", data: { kind: "ack" } };
-        }
-        return { id: msg.id, status: "ok", data: { kind: "ack" } };
+      const router = new IPCRouter({
+        eventBus: this.eventBus,
+        triggerRegistry: this.triggerRegistry,
+        workflowEngine: this.workflowEngine,
+        agentCoordinator: this.agentCoordinator,
+        directiveQueue: this.directiveQueue
       });
+      this.ipcServer.onMessage(router.route.bind(router));
+      (0, import_fs5.mkdirSync)(socketDir, { recursive: true, mode: 448 });
       await this.ipcServer.listen();
       (0, import_fs5.mkdirSync)(stateDir, { recursive: true });
       const pointerFile = (0, import_path5.join)(stateDir, "runtime.socket");
       (0, import_fs5.writeFileSync)(pointerFile, socketPath, "utf-8");
-      logger7.info("IPC server started", { socket: socketPath });
+      logger10.info("IPC server started", { socket: socketPath });
       return socketPath;
     } catch (err) {
-      logger7.error("Failed to start IPC server", {
+      logger10.error("Failed to start IPC server", {
         socket: socketPath,
-        err: err instanceof Error ? err.message : String(err)
+        err: toErrorMessage(err)
       });
       this.ipcServer = null;
       return null;
@@ -26425,12 +26886,12 @@ var ProcessManager = class {
     try {
       if ((0, import_fs5.existsSync)(pointerFile)) {
         (0, import_fs5.unlinkSync)(pointerFile);
-        logger7.debug("Socket pointer file removed", { path: pointerFile });
+        logger10.debug("Socket pointer file removed", { path: pointerFile });
       }
     } catch (err) {
-      logger7.warn("Could not remove socket pointer file", {
+      logger10.warn("Could not remove socket pointer file", {
         path: pointerFile,
-        err: err instanceof Error ? err.message : String(err)
+        err: toErrorMessage(err)
       });
     }
   }
@@ -26454,8 +26915,8 @@ var ProcessManager = class {
       try {
         await this.eventLog.compact();
       } catch (err) {
-        logger7.warn("Event log compaction failed during checkpoint", {
-          err: err instanceof Error ? err.message : String(err)
+        logger10.warn("Event log compaction failed during checkpoint", {
+          err: toErrorMessage(err)
         });
       }
     }
@@ -26488,7 +26949,7 @@ function setupSignalHandlers(onShutdown) {
       process.stderr.write("[runtime-engine] Graceful shutdown complete\n");
     } catch (err) {
       process.stderr.write(
-        `[runtime-engine] Error during shutdown: ${err instanceof Error ? err.message : String(err)}
+        `[runtime-engine] Error during shutdown: ${toErrorMessage(err)}
 `
       );
       exitCode = 1;
@@ -26541,8 +27002,7 @@ function setupSignalHandlers(onShutdown) {
 }
 __name(setupSignalHandlers, "setupSignalHandlers");
 
-// src/server/tool-handlers.ts
-var logger8 = createLogger("tool-handlers");
+// src/server/handlers/shared.ts
 function toSuccess(data, version2, uptime_ms, execution_ms) {
   const result = {
     success: true,
@@ -26567,6 +27027,9 @@ function toError(error2, version2, uptime_ms, execution_ms) {
   };
 }
 __name(toError, "toError");
+
+// src/server/handlers/status.ts
+var logger11 = createLogger("tool-handlers:status");
 var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   if (args !== null && args !== void 0 && typeof args !== "object") {
@@ -26578,105 +27041,87 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   }
   try {
-    const uptime_ms = ctx.getUptime();
+    const uptimeMs = ctx.getUptime();
     const statusData = ctx.getHealth();
-    logger8.debug("runtime_status computed", { status: statusData.status });
-    return toSuccess(statusData, ctx.version, uptime_ms, Date.now() - start);
+    logger11.debug("runtime_status computed", { status: statusData.status });
+    return toSuccess(statusData, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger8.error("runtime_status failed", { error: message });
+    const message = toErrorMessage(err);
+    logger11.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
-var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
-  const start = Date.now();
-  const uptime_ms = ctx.getUptime();
-  try {
-    if (args === null || args === void 0 || typeof args !== "object") {
-      return toError(
-        "Invalid arguments: expected an object",
-        ctx.version,
-        uptime_ms,
-        Date.now() - start
-      );
-    }
-    const params = args;
-    const action = params.action;
-    if (!action) {
-      return toError(
-        "Missing required field: action. Use 'get', 'set', or 'reset'.",
-        ctx.version,
-        uptime_ms,
-        Date.now() - start
-      );
-    }
-    if (action === "get") {
-      const key = params.key;
-      const config2 = ctx.getConfig();
-      if (key) {
-        const value = getNestedValue(config2, key);
-        return toSuccess({ key, value }, ctx.version, uptime_ms, Date.now() - start);
-      }
-      return toSuccess({ config: config2 }, ctx.version, uptime_ms, Date.now() - start);
-    }
-    if (action === "set") {
-      const key = params.key;
-      const value = params.value;
-      if (!key) {
-        return toError(
-          "Missing required field: key.",
-          ctx.version,
-          uptime_ms,
-          Date.now() - start
-        );
-      }
-      if (value === void 0) {
-        return toError(
-          "Missing required field: value.",
-          ctx.version,
-          uptime_ms,
-          Date.now() - start
-        );
-      }
-      const current = ctx.getConfig();
-      const updated = setNestedValue(
-        JSON.parse(JSON.stringify(current)),
-        key,
-        value
-      );
-      saveConfig(ctx.projectRoot, updated);
-      ctx.updateConfig(updated);
-      logger8.info("Config key set", { key, value });
-      return toSuccess(
-        { key, value, persisted: true },
-        ctx.version,
-        uptime_ms,
-        Date.now() - start
-      );
-    }
-    if (action === "reset") {
-      saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
-      ctx.updateConfig(DEFAULT_CONFIG);
-      logger8.info("Config reset to defaults");
-      return toSuccess(
-        { config: DEFAULT_CONFIG, reset: true },
-        ctx.version,
-        uptime_ms,
-        Date.now() - start
-      );
-    }
-    return toError(
-      `Unknown action: '${action}'. Use 'get', 'set', or 'reset'.`,
-      ctx.version,
-      uptime_ms,
-      Date.now() - start
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger8.error("runtime_config failed", { error: message });
-    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
-  }
-}, "handleRuntimeConfig");
+
+// src/server/handlers/config.ts
+var logger12 = createLogger("tool-handlers:config");
+var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
+  "ipc.socket_dir",
+  "ipc.connect_timeout_ms",
+  "ipc.query_timeout_ms",
+  "queue.max_size",
+  "queue.max_attempts",
+  "queue.backoff_base_ms",
+  "queue.backoff_multiplier",
+  "queue.process_interval_ms",
+  "persistence.checkpoint_interval_ms",
+  "persistence.event_log_max_size_mb",
+  "persistence.compact_after_hours",
+  "persistence.state_dir",
+  "workflows.max_active",
+  "workflows.max_transitions_per_workflow",
+  "workflows.wrfc_max_fix_iterations",
+  "workflows.fix_loop_max_attempts",
+  "triggers.max_triggers",
+  "triggers.default_cooldown_ms",
+  "triggers.max_fires_per_session",
+  "health.check_interval_ms",
+  "health.memory_warn_mb",
+  "health.memory_critical_mb",
+  "health.queue_depth_warn",
+  "features.ipc_enabled",
+  "features.workflows_enabled",
+  "features.agents_enabled",
+  "features.full_integration",
+  "agents.max_concurrent",
+  "agents.session_budget",
+  "agents.budget_thresholds",
+  "agents.default_budget",
+  "agents.max_review_iterations"
+]);
+var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
+  ["ipc.socket_dir", "string"],
+  ["ipc.connect_timeout_ms", "number"],
+  ["ipc.query_timeout_ms", "number"],
+  ["queue.max_size", "number"],
+  ["queue.max_attempts", "number"],
+  ["queue.backoff_base_ms", "number"],
+  ["queue.backoff_multiplier", "number"],
+  ["queue.process_interval_ms", "number"],
+  ["persistence.checkpoint_interval_ms", "number"],
+  ["persistence.event_log_max_size_mb", "number"],
+  ["persistence.compact_after_hours", "number"],
+  ["persistence.state_dir", "string"],
+  ["workflows.max_active", "number"],
+  ["workflows.max_transitions_per_workflow", "number"],
+  ["workflows.wrfc_max_fix_iterations", "number"],
+  ["workflows.fix_loop_max_attempts", "number"],
+  ["triggers.max_triggers", "number"],
+  ["triggers.default_cooldown_ms", "number"],
+  ["triggers.max_fires_per_session", "number"],
+  ["health.check_interval_ms", "number"],
+  ["health.memory_warn_mb", "number"],
+  ["health.memory_critical_mb", "number"],
+  ["health.queue_depth_warn", "number"],
+  ["features.ipc_enabled", "boolean"],
+  ["features.workflows_enabled", "boolean"],
+  ["features.agents_enabled", "boolean"],
+  ["features.full_integration", "boolean"],
+  ["agents.max_concurrent", "number"],
+  ["agents.session_budget", "number"],
+  ["agents.budget_thresholds", "object"],
+  ["agents.default_budget", "number"],
+  ["agents.max_review_iterations", "number"]
+]);
 function getNestedValue(obj, path) {
   const segments = path.split(".");
   let current = obj;
@@ -26707,6 +27152,118 @@ function setNestedValue(obj, path, value) {
   return obj;
 }
 __name(setNestedValue, "setNestedValue");
+var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const uptimeMs = ctx.getUptime();
+  try {
+    if (args === null || args === void 0 || typeof args !== "object") {
+      return toError(
+        "Invalid arguments: expected an object",
+        ctx.version,
+        uptimeMs,
+        Date.now() - start
+      );
+    }
+    const params = args;
+    const action = params.action;
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'get', 'set', or 'reset'.",
+        ctx.version,
+        uptimeMs,
+        Date.now() - start
+      );
+    }
+    if (action === "get") {
+      const key = params.key;
+      const config2 = ctx.getConfig();
+      if (key) {
+        const value = getNestedValue(config2, key);
+        return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      return toSuccess({ config: config2 }, ctx.version, uptimeMs, Date.now() - start);
+    }
+    if (action === "set") {
+      const key = params.key;
+      const value = params.value;
+      if (!key) {
+        return toError(
+          "Missing required field: key.",
+          ctx.version,
+          uptimeMs,
+          Date.now() - start
+        );
+      }
+      if (value === void 0) {
+        return toError(
+          "Missing required field: value.",
+          ctx.version,
+          uptimeMs,
+          Date.now() - start
+        );
+      }
+      if (!VALID_CONFIG_KEYS.has(key)) {
+        return toError(
+          `Invalid config key: '${key}'. Use runtime_config get to see valid keys.`,
+          ctx.version,
+          uptimeMs,
+          Date.now() - start
+        );
+      }
+      const expectedType = CONFIG_KEY_TYPES.get(key);
+      if (expectedType !== void 0) {
+        const actualType = Array.isArray(value) ? "object" : typeof value;
+        if (actualType !== expectedType) {
+          return toError(
+            `Invalid value type for '${key}': expected ${expectedType}, got ${actualType}.`,
+            ctx.version,
+            uptimeMs,
+            Date.now() - start
+          );
+        }
+      }
+      const current = ctx.getConfig();
+      const updated = setNestedValue(
+        JSON.parse(JSON.stringify(current)),
+        key,
+        value
+      );
+      saveConfig(ctx.projectRoot, updated);
+      ctx.updateConfig(updated);
+      logger12.info("Config key set", { key, value });
+      return toSuccess(
+        { key, value, persisted: true },
+        ctx.version,
+        uptimeMs,
+        Date.now() - start
+      );
+    }
+    if (action === "reset") {
+      saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
+      ctx.updateConfig(DEFAULT_CONFIG);
+      logger12.info("Config reset to defaults");
+      return toSuccess(
+        { config: DEFAULT_CONFIG, reset: true },
+        ctx.version,
+        uptimeMs,
+        Date.now() - start
+      );
+    }
+    return toError(
+      `Unknown action: '${action}'. Use 'get', 'set', or 'reset'.`,
+      ctx.version,
+      uptimeMs,
+      Date.now() - start
+    );
+  } catch (err) {
+    const message = toErrorMessage(err);
+    logger12.error("runtime_config failed", { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+}, "handleRuntimeConfig");
+
+// src/server/handlers/events.ts
+var logger13 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
   if (pattern === "*") return true;
   if (pattern.endsWith(":*")) {
@@ -26716,12 +27273,41 @@ function matchesTypePattern(eventType, pattern) {
   return eventType === pattern;
 }
 __name(matchesTypePattern, "matchesTypePattern");
+function resolveTimestamp(value) {
+  if (value.includes("T") || value.includes("-")) return value;
+  try {
+    const futureDate = parseRelativeTime(value);
+    const durationMs = futureDate.getTime() - Date.now();
+    return new Date(Date.now() - durationMs).toISOString();
+  } catch {
+    return value;
+  }
+}
+__name(resolveTimestamp, "resolveTimestamp");
+function applyVerbosity(events, verbosity) {
+  if (verbosity === "count_only") {
+    return { count: events.length };
+  }
+  if (verbosity === "minimal") {
+    return {
+      count: events.length,
+      events: events.map((e) => ({
+        id: e.id,
+        type: e.type,
+        timestamp: e.timestamp,
+        source_kind: e.source.kind
+      }))
+    };
+  }
+  return { count: events.length, events };
+}
+__name(applyVerbosity, "applyVerbosity");
 var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
   try {
     if (args === null || args === void 0 || typeof args !== "object") {
-      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+      return toError("Invalid arguments: expected an object", ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args;
     const action = params.action;
@@ -26729,7 +27315,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
       return toError(
         "Missing required field: action. Use 'query', 'tail', or 'stats'.",
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
@@ -26739,7 +27325,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
       const logStats = ctx.getEventLog().getStats();
       const queueStats = ctx.getEventQueue().getStats();
       const data = verbosity === "count_only" ? { event_count: logStats.total_events, queue_pending: queueStats.pending } : { log: logStats, queue: queueStats };
-      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "tail") {
       const limit = typeof filterRaw.limit === "number" ? filterRaw.limit : 50;
@@ -26760,7 +27346,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
         events = events.filter((e) => e.source.kind === filterRaw.source_kind);
       }
       const data = applyVerbosity(events, verbosity);
-      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "query") {
       const typePatterns = Array.isArray(filterRaw.types) ? filterRaw.types : void 0;
@@ -26796,55 +27382,29 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
         events = events.filter((e) => e.source.kind === filterRaw.source_kind);
       }
       const data = applyVerbosity(events, verbosity);
-      return toSuccess(data, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
     return toError(
       `Unknown action: '${action}'. Use 'query', 'tail', or 'stats'.`,
       ctx.version,
-      uptime_ms,
+      uptimeMs,
       Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger8.error("runtime_events failed", { error: message });
+    const message = toErrorMessage(err);
+    logger13.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
-function resolveTimestamp(value) {
-  if (value.includes("T") || value.includes("-")) return value;
-  try {
-    const futureDate = parseRelativeTime(value);
-    const durationMs = futureDate.getTime() - Date.now();
-    return new Date(Date.now() - durationMs).toISOString();
-  } catch {
-    return value;
-  }
-}
-__name(resolveTimestamp, "resolveTimestamp");
-function applyVerbosity(events, verbosity) {
-  if (verbosity === "count_only") {
-    return { count: events.length };
-  }
-  if (verbosity === "minimal") {
-    return {
-      count: events.length,
-      events: events.map((e) => ({
-        id: e.id,
-        type: e.type,
-        timestamp: e.timestamp,
-        source_kind: e.source.kind
-      }))
-    };
-  }
-  return { count: events.length, events };
-}
-__name(applyVerbosity, "applyVerbosity");
+
+// src/server/handlers/emit.ts
+var logger14 = createLogger("tool-handlers:emit");
 var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
   try {
     if (args === null || args === void 0 || typeof args !== "object") {
-      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+      return toError("Invalid arguments: expected an object", ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args;
     const eventType = params.event_type;
@@ -26852,16 +27412,24 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       return toError(
         "Missing required field: event_type.",
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
     const payload = params.payload ?? {};
     const correlationId = params.correlation_id;
-    const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:", "system:"];
+    if (eventType.startsWith("system:")) {
+      return toError(
+        `Emitting system:* events via MCP tool is not permitted. Event type '${eventType}' is reserved for internal use.`,
+        ctx.version,
+        uptimeMs,
+        Date.now() - start
+      );
+    }
+    const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger8.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
+      logger14.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
     }
     const emitted = ctx.getEventBus().emit({
       id: generateEventId(),
@@ -26871,20 +27439,23 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       payload: { type: eventType, data: payload },
       metadata: correlationId ? { correlation_id: correlationId } : void 0
     });
-    logger8.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
-    return toSuccess({ emitted }, ctx.version, uptime_ms, Date.now() - start);
+    logger14.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger8.error("runtime_emit failed", { error: message });
+    const message = toErrorMessage(err);
+    logger14.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
+
+// src/server/handlers/workflow.ts
+var logger15 = createLogger("tool-handlers:workflow");
 var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
   try {
     if (args === null || args === void 0 || typeof args !== "object") {
-      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+      return toError("Invalid arguments: expected an object", ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args;
     const action = params.action;
@@ -26892,56 +27463,56 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       return toError(
         "Missing required field: action. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.",
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
     const engine = ctx.getWorkflowEngine();
     if (action === "create") {
       if (!engine) {
-        return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowType = params.workflow_type;
       if (!workflowType) {
-        return toError("Missing required field: workflow_type", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: workflow_type", ctx.version, uptimeMs, Date.now() - start);
       }
       const definitionId = workflowType === "wrfc_loop" ? "wrfc_loop" : workflowType === "fix_loop" ? "fix_loop" : workflowType;
       const context = params.context ?? {};
       const instance = engine.create(definitionId, context);
-      logger8.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
-      return toSuccess({ instance }, ctx.version, uptime_ms, Date.now() - start);
+      logger15.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
       if (!engine) {
-        return toSuccess({ instance: null }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ instance: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id;
       if (!workflowId) {
-        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.get(workflowId);
-      return toSuccess({ instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "list") {
       if (!engine) {
-        return toSuccess({ instances: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ instances: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const filter = params.filter;
       const statusFilter = filter?.status;
       const instances = statusFilter ? engine.listAll().filter((i) => i.status === statusFilter) : engine.listActive();
-      return toSuccess({ instances, count: instances.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ instances, count: instances.length }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "advance") {
       if (!engine) {
-        return toError("Workflow engine is disabled", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Workflow engine is disabled", ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id;
       const event = params.event;
       if (!workflowId) {
-        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
       if (!event) {
-        return toError("Missing required field: event", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: event", ctx.version, uptimeMs, Date.now() - start);
       }
       const context = params.context ?? {};
       const transition = engine.sendEvent(workflowId, {
@@ -26952,53 +27523,98 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
         payload: { type: event, data: context }
       });
       const instance = engine.get(workflowId);
-      return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
       if (!engine) {
-        return toError("Workflow engine is disabled", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Workflow engine is disabled", ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id;
       if (!workflowId) {
-        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = params.reason ?? "cancelled via MCP";
       engine.cancel(workflowId, reason);
       const instance = engine.get(workflowId);
-      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "history") {
       if (!engine) {
-        return toSuccess({ history: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const workflowId = params.workflow_id;
       if (!workflowId) {
-        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.get(workflowId);
       if (!instance) {
-        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptime_ms, Date.now() - start);
+        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptimeMs, Date.now() - start);
       }
-      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptimeMs, Date.now() - start);
     }
     return toError(
       `Unknown action: '${action}'. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.`,
       ctx.version,
-      uptime_ms,
+      uptimeMs,
       Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger8.error("runtime_workflow failed", { error: message });
+    const message = toErrorMessage(err);
+    logger15.error("runtime_workflow failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeWorkflow");
+
+// src/server/handlers/triggers.ts
+var logger16 = createLogger("tool-handlers:triggers");
+var VALID_TRIGGER_ACTION_TYPES = /* @__PURE__ */ new Set([
+  "emit_event",
+  "spawn_agent",
+  "invoke_handler",
+  "start_workflow",
+  "send_workflow_event",
+  "parallel",
+  "sequence"
+]);
+function validateTriggerDefinition(def) {
+  if (def === null || def === void 0 || typeof def !== "object") {
+    return "Trigger definition must be an object.";
+  }
+  const d = def;
+  if (typeof d["id"] !== "string" || d["id"].trim() === "") {
+    return "Trigger definition must have a non-empty string field 'id'.";
+  }
+  if (typeof d["name"] !== "string" || d["name"].trim() === "") {
+    return "Trigger definition must have a non-empty string field 'name'.";
+  }
+  const condition = d["condition"];
+  if (condition === null || condition === void 0 || typeof condition !== "object") {
+    return "Trigger definition must have a 'condition' object.";
+  }
+  const cond = condition;
+  if (typeof cond["type"] !== "string") {
+    return "Trigger 'condition' must have a string 'type' field.";
+  }
+  const action = d["action"];
+  if (action === null || action === void 0 || typeof action !== "object") {
+    return "Trigger definition must have an 'action' object.";
+  }
+  const act = action;
+  if (typeof act["type"] !== "string") {
+    return "Trigger 'action' must have a string 'type' field.";
+  }
+  if (!VALID_TRIGGER_ACTION_TYPES.has(act["type"])) {
+    return `Trigger 'action.type' must be one of: ${[...VALID_TRIGGER_ACTION_TYPES].join(", ")}. Got: '${act["type"]}'.`;
+  }
+  return null;
+}
+__name(validateTriggerDefinition, "validateTriggerDefinition");
 var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
   try {
     if (args === null || args === void 0 || typeof args !== "object") {
-      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+      return toError("Invalid arguments: expected an object", ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args;
     const action = params.action;
@@ -27006,84 +27622,92 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       return toError(
         "Missing required field: action. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.",
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
     const registry2 = ctx.getTriggerRegistry();
     if (action === "list") {
       const triggers = registry2 ? registry2.list() : [];
-      return toSuccess({ triggers, count: triggers.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ triggers, count: triggers.length }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
       const triggerId = params.trigger_id;
       if (!triggerId) {
-        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const trigger = registry2?.get(triggerId) ?? null;
-      return toSuccess({ trigger }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ trigger }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "create") {
       if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerDef = params.trigger;
       if (!triggerDef) {
-        return toError("Missing required field: trigger", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: trigger", ctx.version, uptimeMs, Date.now() - start);
+      }
+      const validationError = validateTriggerDefinition(triggerDef);
+      if (validationError !== null) {
+        return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.register(triggerDef);
-      logger8.info("runtime_triggers: registered", { id: triggerDef.id });
-      return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+      logger16.info("runtime_triggers: registered", { id: triggerDef.id });
+      return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "update") {
       if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerDef = params.trigger;
       if (!triggerDef) {
-        return toError("Missing required field: trigger", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: trigger", ctx.version, uptimeMs, Date.now() - start);
+      }
+      const validationError = validateTriggerDefinition(triggerDef);
+      if (validationError !== null) {
+        return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.unregister(triggerDef.id);
       registry2.register(triggerDef);
-      logger8.info("runtime_triggers: updated", { id: triggerDef.id });
-      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptime_ms, Date.now() - start);
+      logger16.info("runtime_triggers: updated", { id: triggerDef.id });
+      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "delete") {
       if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerId = params.trigger_id;
       if (!triggerId) {
-        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.unregister(triggerId);
-      logger8.info("runtime_triggers: unregistered", { id: triggerId });
-      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+      logger16.info("runtime_triggers: unregistered", { id: triggerId });
+      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "enable" || action === "disable") {
       if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerId = params.trigger_id;
       if (!triggerId) {
-        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const enabled = action === "enable";
       registry2.setEnabled(triggerId, enabled);
-      logger8.info(`runtime_triggers: ${action}d`, { id: triggerId });
-      return toSuccess({ [action + "d"]: true, id: triggerId }, ctx.version, uptime_ms, Date.now() - start);
+      logger16.info(`runtime_triggers: ${action}d`, { id: triggerId });
+      return toSuccess({ [action + "d"]: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "test") {
       if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       const triggerId = params.trigger_id;
       const testEvent = params.test_event;
       if (!triggerId) {
-        return toError("Missing required field: trigger_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       if (!testEvent) {
-        return toError("Missing required field: test_event", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: test_event", ctx.version, uptimeMs, Date.now() - start);
       }
       const mockEvent = {
         id: generateEventId(),
@@ -27094,26 +27718,29 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       };
       const results = await registry2.evaluate(mockEvent);
       const result = results.find((r) => r.trigger_id === triggerId);
-      return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptimeMs, Date.now() - start);
     }
     return toError(
       `Unknown action: '${action}'. Use 'list', 'get', 'create', 'update', 'delete', 'enable', 'disable', or 'test'.`,
       ctx.version,
-      uptime_ms,
+      uptimeMs,
       Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger8.error("runtime_triggers failed", { error: message });
+    const message = toErrorMessage(err);
+    logger16.error("runtime_triggers failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeTriggers");
+
+// src/server/handlers/agents.ts
+var logger17 = createLogger("tool-handlers:agents");
 var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
-  const uptime_ms = ctx.getUptime();
+  const uptimeMs = ctx.getUptime();
   try {
     if (args === null || args === void 0 || typeof args !== "object") {
-      return toError("Invalid arguments: expected an object", ctx.version, uptime_ms, Date.now() - start);
+      return toError("Invalid arguments: expected an object", ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args;
     const action = params.action;
@@ -27121,7 +27748,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       return toError(
         "Missing required field: action. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.",
         ctx.version,
-        uptime_ms,
+        uptimeMs,
         Date.now() - start
       );
     }
@@ -27131,17 +27758,17 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
         return toSuccess(
           { stats: null, message: "Agent coordinator is disabled (set features.agents_enabled = true)" },
           ctx.version,
-          uptime_ms,
+          uptimeMs,
           Date.now() - start
         );
       }
       const stats = coordinator.getStats();
       const budget = coordinator.getBudgetSummary();
-      return toSuccess({ stats, budget }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ stats, budget }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "list") {
       if (!coordinator) {
-        return toSuccess({ agents: [], count: 0 }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ agents: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const filter = params.filter ?? {};
       const workflowId = params.workflow_id ?? filter.workflow_id;
@@ -27154,34 +27781,34 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       if (typeFilter) {
         agents = agents.filter((a) => a.type === typeFilter);
       }
-      return toSuccess({ agents, count: agents.length }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ agents, count: agents.length }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
       const agentId = params.agent_id;
       if (!agentId) {
-        return toError("Missing required field: agent_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: agent_id", ctx.version, uptimeMs, Date.now() - start);
       }
       if (!coordinator) {
-        return toSuccess({ agent: null }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ agent: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const agent = coordinator.getAgent(agentId);
-      return toSuccess({ agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "spawn") {
       if (!coordinator) {
         return toError(
           "Agent coordinator is disabled (set features.agents_enabled = true to enable)",
           ctx.version,
-          uptime_ms,
+          uptimeMs,
           Date.now() - start
         );
       }
       const spawnOpts = params.spawn;
       if (!spawnOpts) {
-        return toError("Missing required field: spawn", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: spawn", ctx.version, uptimeMs, Date.now() - start);
       }
       if (!spawnOpts.type || !spawnOpts.task) {
-        return toError("spawn.type and spawn.task are required", ctx.version, uptime_ms, Date.now() - start);
+        return toError("spawn.type and spawn.task are required", ctx.version, uptimeMs, Date.now() - start);
       }
       const options = {
         type: spawnOpts.type,
@@ -27194,57 +27821,59 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       };
       const agentId = coordinator.spawn(options);
       const agent = coordinator.getAgent(agentId);
-      logger8.info("runtime_agents: spawned", { agentId, type: options.type });
-      return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      logger17.info("runtime_agents: spawned", { agentId, type: options.type });
+      return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
       const agentId = params.agent_id;
       if (!agentId) {
-        return toError("Missing required field: agent_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: agent_id", ctx.version, uptimeMs, Date.now() - start);
       }
       if (!coordinator) {
-        return toError("Agent coordinator is disabled", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Agent coordinator is disabled", ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = params.reason ?? "cancelled via MCP";
       coordinator.cancel(agentId, reason);
       const agent = coordinator.getAgent(agentId);
-      return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "budget") {
       if (!coordinator) {
         return toSuccess(
           { summary: null, message: "Agent coordinator is disabled" },
           ctx.version,
-          uptime_ms,
+          uptimeMs,
           Date.now() - start
         );
       }
       const summary = coordinator.getBudgetSummary();
-      return toSuccess({ summary }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ summary }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "plan") {
       const workflowId = params.workflow_id;
       if (!workflowId) {
-        return toError("Missing required field: workflow_id", ctx.version, uptime_ms, Date.now() - start);
+        return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
       if (!coordinator) {
-        return toSuccess({ plan: null }, ctx.version, uptime_ms, Date.now() - start);
+        return toSuccess({ plan: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const plan = coordinator.getExecutionPlan(workflowId);
-      return toSuccess({ plan }, ctx.version, uptime_ms, Date.now() - start);
+      return toSuccess({ plan }, ctx.version, uptimeMs, Date.now() - start);
     }
     return toError(
       `Unknown action: '${action}'. Use 'status', 'list', 'get', 'spawn', 'cancel', 'budget', or 'plan'.`,
       ctx.version,
-      uptime_ms,
+      uptimeMs,
       Date.now() - start
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger8.error("runtime_agents failed", { error: message });
+    const message = toErrorMessage(err);
+    logger17.error("runtime_agents failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeAgents");
+
+// src/server/handlers/schemas.ts
 var allSchemas = [
   {
     name: "runtime_status",
@@ -27485,6 +28114,8 @@ var allSchemas = [
     }
   }
 ];
+
+// src/server/handlers/index.ts
 var handlerRegistry = /* @__PURE__ */ new Map([
   ["runtime_status", handleRuntimeStatus],
   ["runtime_config", handleRuntimeConfig],
@@ -27505,7 +28136,7 @@ __name(listHandlers, "listHandlers");
 
 // src/server/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger9 = createLogger("mcp-server");
+var logger18 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -27527,12 +28158,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger9.debug("ListTools request");
+      logger18.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger9.debug("CallTool request", { name });
+      logger18.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -27558,8 +28189,8 @@ var RuntimeEngineServer = class {
         return await handler(args, ctx);
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
-        const message = error2 instanceof Error ? error2.message : String(error2);
-        logger9.error(`Tool ${name} failed`, { error: message });
+        const message = toErrorMessage(error2);
+        logger18.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -27571,7 +28202,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger9.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger18.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -27590,7 +28221,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger9.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger18.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid
     });
@@ -27604,22 +28235,22 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger9.info("Stopping runtime engine");
+    logger18.info("Stopping runtime engine");
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger9.warn("ProcessManager shutdown error", {
-        err: err instanceof Error ? err.message : String(err)
+      logger18.warn("ProcessManager shutdown error", {
+        err: toErrorMessage(err)
       });
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger9.warn("MCP server close error", {
-        err: err instanceof Error ? err.message : String(err)
+      logger18.warn("MCP server close error", {
+        err: toErrorMessage(err)
       });
     }
-    logger9.info("Runtime engine stopped");
+    logger18.info("Runtime engine stopped");
   }
 };
 
@@ -27631,7 +28262,7 @@ async function main() {
 __name(main, "main");
 main().catch((err) => {
   process.stderr.write(
-    `[runtime-engine] Fatal: ${err instanceof Error ? err.message : String(err)}
+    `[runtime-engine] Fatal: ${toErrorMessage(err)}
 `
   );
   process.exit(1);
