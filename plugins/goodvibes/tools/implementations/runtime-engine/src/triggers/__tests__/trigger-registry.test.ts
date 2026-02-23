@@ -346,7 +346,7 @@ describe('TriggerRegistry', () => {
     });
   });
 
-  // ── setEventBus ──────────────────────────────────────────────────────────
+  // ── setDependencies ──────────────────────────────────────────────────────
 
   describe('setDependencies', () => {
     it('wires the EventBus into the ActionExecutor for emit_event actions', async () => {

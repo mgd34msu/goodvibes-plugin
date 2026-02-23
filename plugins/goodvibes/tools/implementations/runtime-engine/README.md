@@ -24,7 +24,7 @@ Unix domain socket; Claude Code interacts with it through seven MCP tools.
  │      │              │                  │                             │
  │      ▼              ▼                  ▼                             │
  │  ┌────────┐  ┌─────────────┐  ┌────────────────┐                   │
- │  │EventLog│  │TriggerRegistr│  │ WorkflowEngine │                   │
+ │  │EventLog│  │TriggerReg.   │  │ WorkflowEngine │                   │
  │  │(JSONL) │  │(conditions + │  │(state machines)│                   │
  │  └────────┘  │ actions)    │  └───────┬────────┘                   │
  │              └──────┬───────┘          │                             │
@@ -83,6 +83,8 @@ Unix domain socket; Claude Code interacts with it through seven MCP tools.
 | Utils | `src/shared/utils.ts` | ID generation, timestamps, relative time parsing |
 | Constants | `src/shared/constants.ts` | ENGINE_VERSION and other compile-time constants |
 | Types | `src/types.ts` | Top-level RuntimeResult, HealthStatus, and related types |
+| Barrel Export | `src/index.ts` | Package entry point, re-exports public API |
+| MCP Server Entry | `src/server.ts` | Bootstrap, error boundary, starts ProcessManager |
 
 ## Startup Sequence
 
