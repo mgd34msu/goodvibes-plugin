@@ -300,9 +300,16 @@ export class ActionExecutor {
         return { success: false, error: 'start_workflow: workflow_definition is required' };
       }
       try {
+        // Seed WRFC config (min_review_score, max_fix_attempts) from user's goodvibes.json
+        // so all workflow types respect the user's configured thresholds.
+        const wrfcDefaults = this.directiveQueue ? this.getWRFCContextDefaults() : {};
+        // WRFC config defaults are spread first so trigger context_templates can override.
+        // This is safe because downstream consumers validate types — if a template resolves
+        // to a non-numeric value (e.g. empty string from unresolvable $event reference),
+        // the typeof+isFinite guard falls through to the hardcoded default.
         const instance = this.workflowEngine.create(
           action.workflow_definition,
-          resolvedContext,
+          { ...wrfcDefaults, ...resolvedContext },
         );
         log.info('start_workflow action: workflow created', {
           definition: action.workflow_definition,
@@ -339,6 +346,23 @@ export class ActionExecutor {
     }
 
     return { success: false, error: `Unknown workflow action type: ${String(action.type)}` };
+  }
+
+  /**
+   * Extract WRFC-relevant config values from DirectiveQueue for workflow context seeding.
+   * Returns only numeric, finite values — omits keys that aren't set in the user's config.
+   */
+  private getWRFCContextDefaults(): Record<string, unknown> {
+    if (!this.directiveQueue) return {};
+    const config = this.directiveQueue.getWRFCConfig();
+    const defaults: Record<string, unknown> = {};
+    if (typeof config.min_review_score === 'number' && Number.isFinite(config.min_review_score)) {
+      defaults.min_review_score = config.min_review_score;
+    }
+    if (typeof config.max_fix_attempts === 'number' && Number.isFinite(config.max_fix_attempts)) {
+      defaults.max_fix_attempts = config.max_fix_attempts;
+    }
+    return defaults;
   }
 
   /**

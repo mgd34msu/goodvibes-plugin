@@ -35,7 +35,9 @@ GATHER → PLAN → APPLY → loop if needed
 
 **GATHER** — Collect context for the current task. Batch reads and greps where possible (inconvenient does not mean impossible) — multiple files in one `precision_read`, multiple queries in one `precision_grep`. Use the cheapest extract mode and verbosity that gives you what you need (see Precision Mastery for the full reference).
 
-Use the project index to estimate total tokens before batching. If the batch would overflow, split by token budget.
+Use the project index to estimate total tokens before batching. To prevent overflow, aim to keep requests below a soft cap of 7500 tokens and NEVER exceed 10000. If the batch would overflow, split the read or grep into multiple calls. Otherwise, always batch. For individual files that exceed the 10000 token cap, use multiple precision_read calls that specify line numbers to read the file in chunks.
+
+NOTE: Overflow Limit - set by Claude Code, truncates tool results that exceed 7500 to 10000 tokens depending on content.
 
 On loop iterations, gather only what changed. Do not re-discover the whole project.
 

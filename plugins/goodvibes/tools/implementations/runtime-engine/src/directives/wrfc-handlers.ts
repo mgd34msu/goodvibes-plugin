@@ -105,13 +105,13 @@ function handleReviewResult(params: {
   } = params;
 
   const minScore =
-    typeof workflow.context.min_review_score === 'number'
-      ? workflow.context.min_review_score
+    typeof workflow.context.min_review_score === 'number' && Number.isFinite(workflow.context.min_review_score as number)
+      ? workflow.context.min_review_score as number
       : DEFAULT_MIN_REVIEW_SCORE;
 
   const maxFixAttempts =
-    typeof workflow.context.max_fix_attempts === 'number'
-      ? workflow.context.max_fix_attempts
+    typeof workflow.context.max_fix_attempts === 'number' && Number.isFinite(workflow.context.max_fix_attempts as number)
+      ? workflow.context.max_fix_attempts as number
       : DEFAULT_MAX_FIX_ATTEMPTS;
 
   const fixAttempts =
@@ -354,6 +354,9 @@ export function registerWRFCHandlers(
     // Only create a new workflow instance for chain originators (no incoming workflow_id)
     if (!incomingWorkflowId && workflowEngine) {
       try {
+        // Seed WRFC config (min_review_score, max_fix_attempts) from user's goodvibes.json.
+        // DirectiveQueue stores validated config received via the config:loaded IPC event.
+        const wrfcConfig = directiveQueue.getWRFCConfig();
         workflowEngine.create(
           'wrfc_loop',
           {
@@ -361,6 +364,8 @@ export function registerWRFCHandlers(
             agent_id: agentId,
             agent_type: agentType,
             task: typeof args['task'] === 'string' ? args['task'] : '',
+            ...(typeof wrfcConfig.min_review_score === 'number' && Number.isFinite(wrfcConfig.min_review_score) ? { min_review_score: wrfcConfig.min_review_score } : {}),
+            ...(typeof wrfcConfig.max_fix_attempts === 'number' && Number.isFinite(wrfcConfig.max_fix_attempts) ? { max_fix_attempts: wrfcConfig.max_fix_attempts } : {}),
           },
           workflowId,
         );
@@ -667,8 +672,8 @@ export function registerWRFCHandlers(
         typeof workflow.context.fix_attempts === 'number' ? workflow.context.fix_attempts : 0;
 
       const maxFixAttempts =
-        typeof workflow.context.max_fix_attempts === 'number'
-          ? workflow.context.max_fix_attempts
+        typeof workflow.context.max_fix_attempts === 'number' && Number.isFinite(workflow.context.max_fix_attempts as number)
+          ? workflow.context.max_fix_attempts as number
           : DEFAULT_MAX_FIX_ATTEMPTS;
 
       const filesModified = Array.isArray(workflow.context.files_modified)
@@ -752,7 +757,7 @@ export function registerWRFCHandlers(
     if (!wf || !workflowEngine) {
       // Fallback: no workflow object available (e.g., triggered by event without active workflow).
       // Enqueue directive directly without advancing state machine — backward compatibility path.
-      const minScore = (typeof args['min_review_score'] === 'number') ? args['min_review_score'] : DEFAULT_MIN_REVIEW_SCORE;
+      const minScore = (typeof args['min_review_score'] === 'number' && Number.isFinite(args['min_review_score'] as number)) ? args['min_review_score'] as number : DEFAULT_MIN_REVIEW_SCORE;
       if (reviewScore >= minScore) {
         const message = buildWorkflowCompleteMessage(workflowId, 'completed');
         directiveQueue.enqueue('subagent_stop', {

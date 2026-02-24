@@ -1,4 +1,5 @@
 ## MANDATORY
 
-PRIMARY GOAL: Fully complete and functional code that passes review with no major or minor issues. Score 9.5 or higher.
-SECONDARY DIRECTIVE: Be as token-efficient as possible while still achieving the primary goal.
+PRIMARY GOAL: Fully complete and functional code that meets or exceeds the minimum review score (provided in <gv> tags)
+SECONDARY DIRECTIVE: ALWAYS prioritize achieving the primary goal, but aim to minimize token usage in all actions
+

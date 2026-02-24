@@ -17,7 +17,7 @@ import type {
 } from '../types.js';
 import type { RuntimeEvent } from '../../events/types.js';
 import type { EventBus } from '../../events/event-bus.js';
-import type { DirectiveQueue } from '../../directives/directive-queue.js';
+import { DirectiveQueue } from '../../directives/directive-queue.js';
 import type { WorkflowEngine } from '../../workflow/workflow-engine.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -312,6 +312,54 @@ describe('ActionExecutor', () => {
       await ex.execute(makeStartWorkflowAction({ context_template: { eventId: '$event.id' } }), event);
       const [, ctx] = createFn.mock.calls[0] as [string, Record<string, string>];
       expect(ctx.eventId).toBe(event.id);
+    });
+
+    it('seeds WRFC config into context when directiveQueue has config set', async () => {
+      const createFn = vi.fn().mockReturnValue({ id: 'wf_123' });
+      const mockEngine = { create: createFn, listActive: vi.fn().mockReturnValue([]) } as unknown as WorkflowEngine;
+      const queue = new DirectiveQueue();
+      queue.setWRFCConfig({ min_review_score: 8.5, max_fix_attempts: 4 });
+      const ex = makeExecutor(null, queue, mockEngine);
+      await ex.execute(makeStartWorkflowAction(), event);
+      const [, ctx] = createFn.mock.calls[0] as [string, Record<string, unknown>];
+      expect(ctx['min_review_score']).toBe(8.5);
+      expect(ctx['max_fix_attempts']).toBe(4);
+    });
+
+    it('allows resolvedContext to override WRFC defaults', async () => {
+      const createFn = vi.fn().mockReturnValue({ id: 'wf_123' });
+      const mockEngine = { create: createFn, listActive: vi.fn().mockReturnValue([]) } as unknown as WorkflowEngine;
+      const queue = new DirectiveQueue();
+      queue.setWRFCConfig({ min_review_score: 8.5, max_fix_attempts: 4 });
+      const ex = makeExecutor(null, queue, mockEngine);
+      // context_template overrides the WRFC default for min_review_score
+      await ex.execute(makeStartWorkflowAction({ context_template: { min_review_score: 9.5 } }), event);
+      const [, ctx] = createFn.mock.calls[0] as [string, Record<string, unknown>];
+      expect(ctx['min_review_score']).toBe(9.5);
+      expect(ctx['max_fix_attempts']).toBe(4);
+    });
+
+    it('works without WRFC config when directiveQueue is null', async () => {
+      const createFn = vi.fn().mockReturnValue({ id: 'wf_123' });
+      const mockEngine = { create: createFn, listActive: vi.fn().mockReturnValue([]) } as unknown as WorkflowEngine;
+      const ex = makeExecutor(null, null, mockEngine);
+      const result = await ex.execute(makeStartWorkflowAction(), event);
+      expect(result.success).toBe(true);
+      const [, ctx] = createFn.mock.calls[0] as [string, Record<string, unknown>];
+      expect(ctx['min_review_score']).toBeUndefined();
+      expect(ctx['max_fix_attempts']).toBeUndefined();
+    });
+
+    it('does not seed WRFC config when directiveQueue has no config set', async () => {
+      const createFn = vi.fn().mockReturnValue({ id: 'wf_123' });
+      const mockEngine = { create: createFn, listActive: vi.fn().mockReturnValue([]) } as unknown as WorkflowEngine;
+      const queue = new DirectiveQueue();
+      // queue has default empty config
+      const ex = makeExecutor(null, queue, mockEngine);
+      await ex.execute(makeStartWorkflowAction(), event);
+      const [, ctx] = createFn.mock.calls[0] as [string, Record<string, unknown>];
+      expect(ctx['min_review_score']).toBeUndefined();
+      expect(ctx['max_fix_attempts']).toBeUndefined();
     });
   });
 

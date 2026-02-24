@@ -197,8 +197,8 @@ export function registerTestFixHandlers(
       const fixAttempts =
         typeof workflow.context['fix_attempts'] === 'number' ? workflow.context['fix_attempts'] : 0;
       const maxFixAttempts =
-        typeof workflow.context['max_fix_attempts'] === 'number'
-          ? workflow.context['max_fix_attempts']
+        typeof workflow.context['max_fix_attempts'] === 'number' && Number.isFinite(workflow.context['max_fix_attempts'] as number)
+          ? workflow.context['max_fix_attempts'] as number
           : DEFAULT_MAX_FIX_ATTEMPTS;
 
       log.info('test_fix_agent_completed: tests failed', {
@@ -262,8 +262,8 @@ export function registerTestFixHandlers(
     const fixAttempts =
       typeof workflow.context['fix_attempts'] === 'number' ? workflow.context['fix_attempts'] : 0;
     const maxFixAttempts =
-      typeof workflow.context['max_fix_attempts'] === 'number'
-        ? workflow.context['max_fix_attempts']
+      typeof workflow.context['max_fix_attempts'] === 'number' && Number.isFinite(workflow.context['max_fix_attempts'] as number)
+        ? workflow.context['max_fix_attempts'] as number
         : DEFAULT_MAX_FIX_ATTEMPTS;
 
     // Increment fix attempts
@@ -377,8 +377,8 @@ export function registerTestFixHandlers(
     const fixAttempts =
       typeof workflow.context['fix_attempts'] === 'number' ? workflow.context['fix_attempts'] : 0;
     const maxFixAttempts =
-      typeof workflow.context['max_fix_attempts'] === 'number'
-        ? workflow.context['max_fix_attempts']
+      typeof workflow.context['max_fix_attempts'] === 'number' && Number.isFinite(workflow.context['max_fix_attempts'] as number)
+        ? workflow.context['max_fix_attempts'] as number
         : DEFAULT_MAX_FIX_ATTEMPTS;
 
     if (passed) {

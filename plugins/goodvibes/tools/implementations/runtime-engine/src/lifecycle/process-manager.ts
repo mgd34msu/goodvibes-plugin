@@ -198,7 +198,7 @@ export class ProcessManager {
       this.workflowEngine.registerDefinition(TEST_THEN_FIX_DEFINITION);
       this.workflowEngine.registerDefinition(REVIEW_ONLY_DEFINITION);
       this.workflowEngine.registerGuard('checkReviewScore', (context) => {
-        const threshold = typeof context.min_review_score === 'number' ? context.min_review_score : 9.5;
+        const threshold = typeof context.min_review_score === 'number' && Number.isFinite(context.min_review_score as number) ? context.min_review_score as number : 9.5;
         return typeof context.review_score === 'number' && context.review_score >= threshold;
       });
 

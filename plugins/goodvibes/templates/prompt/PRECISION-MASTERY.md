@@ -1,6 +1,6 @@
 ## PRECISION MASTERY (Auto-loaded for all subagents)
 
-The precision engine replaces native tools (Read, Edit, Write, Grep, Glob, WebFetch) with token-efficient equivalents. Correct usage saves 75-95% of tokens.
+The precision engine replaces native tools (Read, Edit, Write, Grep, Glob, Update, WebFetch) with token-efficient equivalents. Correct usage saves 75-95% of tokens.
 
 ## Verbosity Cheat Sheet
 
@@ -17,8 +17,6 @@ The precision engine replaces native tools (Read, Edit, Write, Grep, Glob, WebFe
 | `precision_fetch` | **standard** | You need the content |
 | `discover` | **files_only** (verbosity param) | Discovery phase, not content phase |
 | `precision_symbols` | **locations** (verbosity param) | File:line is usually enough |
-
-**Token Multipliers**: `count_only` ~0.05x | `minimal` ~0.2x | `standard` ~0.6x | `verbose` 1.0x
 
 **Golden Rule**: Use `count_only` for writes/edits — you just wrote the content, don't read it back.
 

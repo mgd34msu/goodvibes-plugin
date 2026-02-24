@@ -1185,6 +1185,72 @@ describe('registerWRFCHandlers', () => {
       // Workflow should be created even without a map
       expect(engine.create).toHaveBeenCalledOnce();
     });
+
+    it('seeds min_review_score and max_fix_attempts from WRFC config into workflow context', async () => {
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      directiveQueue.setWRFCConfig({ min_review_score: 8.0, max_fix_attempts: 5 });
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({ agent_id: 'agent_cfg', agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+      expect(engine.create).toHaveBeenCalledOnce();
+      const context = engine.create.mock.calls[0]![1] as Record<string, unknown>;
+      expect(context['min_review_score']).toBe(8.0);
+      expect(context['max_fix_attempts']).toBe(5);
+    });
+
+    it('does not seed min_review_score or max_fix_attempts when WRFC config is empty', async () => {
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      // directiveQueue starts with empty WRFC config (default)
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({ agent_id: 'agent_nocfg', agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+      expect(engine.create).toHaveBeenCalledOnce();
+      const context = engine.create.mock.calls[0]![1] as Record<string, unknown>;
+      expect(context['min_review_score']).toBeUndefined();
+      expect(context['max_fix_attempts']).toBeUndefined();
+    });
+
+    // NOTE: min_review_score: 0 is valid per IPC validation (accepts 0-10).
+    // max_fix_attempts: 0 is rejected by IPC validation (requires > 0).
+    // This test verifies the seeding guard in isolation — Number.isFinite(0) === true.
+    it('seeds min_review_score: 0 and max_fix_attempts: 0 from WRFC config (boundary test)', async () => {
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      directiveQueue.setWRFCConfig({ min_review_score: 0, max_fix_attempts: 0 });
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({ agent_id: 'agent_zero', agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+      expect(engine.create).toHaveBeenCalledOnce();
+      const context = engine.create.mock.calls[0]![1] as Record<string, unknown>;
+      // 0 is a valid finite number — must be seeded even though it's falsy
+      expect(context['min_review_score']).toBe(0);
+      expect(context['max_fix_attempts']).toBe(0);
+    });
+
+    it('falls back to defaults when WRFC config has not been loaded yet', async () => {
+      // Do NOT call setWRFCConfig — simulates config:loaded not yet arrived
+      const engine = createMockWorkflowEngine([]);
+      const agentMap = new AgentWorkflowMap();
+      registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+      const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+      await handler({ agent_id: 'agent_unloaded', agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+      expect(engine.create).toHaveBeenCalledOnce();
+      const context = engine.create.mock.calls[0]![1] as Record<string, unknown>;
+      // Config not loaded yet — context should NOT carry min_review_score or max_fix_attempts.
+      // Downstream consumers will use DEFAULT_MIN_REVIEW_SCORE=9.5 and DEFAULT_MAX_FIX_ATTEMPTS=3.
+      expect(context['min_review_score']).toBeUndefined();
+      expect(context['max_fix_attempts']).toBeUndefined();
+    });
   });
 
   // ─── Decision 2: agent_id-based workflow lookup in wrfc_chain_next ───────────────
