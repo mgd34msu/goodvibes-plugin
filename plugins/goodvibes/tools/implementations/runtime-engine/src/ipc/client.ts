@@ -18,10 +18,10 @@
  * 3. Well-known tmpdir path ({tmpdir}/goodvibes-runtime/runtime.sock)
  */
 
-import * as net from 'net';
-import { readFileSync, readdirSync, existsSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import * as net from 'node:net';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import type { IPCMessage, IPCResponse, IPCQuery, IPCResponseData } from './protocol.js';
 import { generateId, timestamp, toErrorMessage } from '../shared/utils.js';

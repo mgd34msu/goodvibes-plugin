@@ -21751,10 +21751,10 @@ function createLogger(component) {
 __name(createLogger, "createLogger");
 
 // src/lifecycle/process-manager.ts
-var import_fs4 = require("fs");
-var import_crypto = require("crypto");
-var import_path4 = require("path");
-var import_os = require("os");
+var import_node_fs3 = require("node:fs");
+var import_node_crypto2 = require("node:crypto");
+var import_node_path3 = require("node:path");
+var import_node_os2 = require("node:os");
 
 // src/persistence/state-store.ts
 var import_fs = require("fs");
@@ -22321,9 +22321,9 @@ var EventBus = class {
 };
 
 // src/events/event-log.ts
-var import_fs2 = require("fs");
-var readline = __toESM(require("readline"), 1);
-var import_path2 = require("path");
+var import_node_fs2 = require("node:fs");
+var readline = __toESM(require("node:readline"), 1);
+var import_node_path2 = require("node:path");
 var logger3 = createLogger("event-log");
 var FLUSH_INTERVAL_MS = 100;
 var FLUSH_THRESHOLD_BYTES = 64 * 1024;
@@ -22382,8 +22382,8 @@ var EventLog = class {
    *     aggressive — use with care in production.
    */
   constructor(stateDir, config2) {
-    this.logPath = (0, import_path2.join)(stateDir, "events.jsonl");
-    this.archiveDir = (0, import_path2.join)(stateDir, "event-archives");
+    this.logPath = (0, import_node_path2.join)(stateDir, "events.jsonl");
+    this.archiveDir = (0, import_node_path2.join)(stateDir, "event-archives");
     this.maxSizeMb = config2.event_log_max_size_mb;
     this.compactAfterHours = config2.compact_after_hours;
   }
@@ -22618,9 +22618,9 @@ var EventLog = class {
       return { archived: 0, remaining: toKeep.length };
     }
     await this.closeWriteStream();
-    (0, import_fs2.mkdirSync)(this.archiveDir, { recursive: true });
+    (0, import_node_fs2.mkdirSync)(this.archiveDir, { recursive: true });
     const archiveDate = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const archivePath = (0, import_path2.join)(
+    const archivePath = (0, import_node_path2.join)(
       this.archiveDir,
       `events-archive-${archiveDate}.jsonl`
     );
@@ -22629,11 +22629,11 @@ var EventLog = class {
       appendFileSync(archivePath, toArchive.join("\n") + "\n", "utf-8");
     } catch (archiveErr) {
       logger3.debug("Archive append failed, creating new archive file", { error: toErrorMessage(archiveErr) });
-      (0, import_fs2.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
+      (0, import_node_fs2.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
     }
     const tmpPath = this.logPath + ".tmp";
-    (0, import_fs2.writeFileSync)(tmpPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""), "utf-8");
-    (0, import_fs2.renameSync)(tmpPath, this.logPath);
+    (0, import_node_fs2.writeFileSync)(tmpPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""), "utf-8");
+    (0, import_node_fs2.renameSync)(tmpPath, this.logPath);
     if (!this.closed) {
       this.openWriteStream();
     }
@@ -22654,7 +22654,7 @@ var EventLog = class {
   getStats() {
     let fileSizeBytes = 0;
     try {
-      fileSizeBytes = (0, import_fs2.statSync)(this.logPath).size;
+      fileSizeBytes = (0, import_node_fs2.statSync)(this.logPath).size;
     } catch {
     }
     fileSizeBytes += this.writeBufferBytes;
@@ -22675,9 +22675,9 @@ var EventLog = class {
    */
   openWriteStream() {
     try {
-      const dir = (0, import_path2.dirname)(this.logPath);
-      (0, import_fs2.mkdirSync)(dir, { recursive: true });
-      this.writeStream = (0, import_fs2.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
+      const dir = (0, import_node_path2.dirname)(this.logPath);
+      (0, import_node_fs2.mkdirSync)(dir, { recursive: true });
+      this.writeStream = (0, import_node_fs2.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
       this.writeStream.on("error", (err) => {
         logger3.error("Write stream error", { error: err.message });
         this.writeStream = null;
@@ -22789,7 +22789,7 @@ var EventLog = class {
    */
   streamLines(filePath, onLine) {
     return new Promise((resolve, reject) => {
-      const stream = (0, import_fs2.createReadStream)(filePath, { encoding: "utf-8" });
+      const stream = (0, import_node_fs2.createReadStream)(filePath, { encoding: "utf-8" });
       const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
       let done = false;
       const cleanup = /* @__PURE__ */ __name(() => {
@@ -23232,8 +23232,8 @@ var EventQueue = class {
 
 // src/ipc/ipc-server.ts
 var net = __toESM(require("net"), 1);
-var import_fs3 = require("fs");
-var import_path3 = require("path");
+var import_fs2 = require("fs");
+var import_path2 = require("path");
 
 // src/ipc/protocol.ts
 var VALID_IPC_MESSAGE_TYPES = /* @__PURE__ */ new Set([
@@ -23309,12 +23309,12 @@ var IPCServer = class {
    * @throws If the server cannot bind to the socket path.
    */
   async listen() {
-    const dir = (0, import_path3.dirname)(this.socketPath);
-    (0, import_fs3.mkdirSync)(dir, { recursive: true, mode: 448 });
-    (0, import_fs3.chmodSync)(dir, 448);
-    if ((0, import_fs3.existsSync)(this.socketPath)) {
+    const dir = (0, import_path2.dirname)(this.socketPath);
+    (0, import_fs2.mkdirSync)(dir, { recursive: true, mode: 448 });
+    (0, import_fs2.chmodSync)(dir, 448);
+    if ((0, import_fs2.existsSync)(this.socketPath)) {
       try {
-        (0, import_fs3.unlinkSync)(this.socketPath);
+        (0, import_fs2.unlinkSync)(this.socketPath);
         logger5.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
         logger5.warn("Could not remove stale socket file", {
@@ -23330,7 +23330,7 @@ var IPCServer = class {
     return new Promise((resolve, reject) => {
       this.server.once("error", reject);
       this.server.listen(this.socketPath, () => {
-        (0, import_fs3.chmodSync)(this.socketPath, 384);
+        (0, import_fs2.chmodSync)(this.socketPath, 384);
         logger5.info("IPC server listening", { path: this.socketPath });
         this.server.removeListener("error", reject);
         resolve();
@@ -23515,8 +23515,8 @@ var IPCServer = class {
    */
   removeSocketFile() {
     try {
-      if ((0, import_fs3.existsSync)(this.socketPath)) {
-        (0, import_fs3.unlinkSync)(this.socketPath);
+      if ((0, import_fs2.existsSync)(this.socketPath)) {
+        (0, import_fs2.unlinkSync)(this.socketPath);
         logger5.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
@@ -26594,6 +26594,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           { type: "wrfc:writing_started" }
           // PLANNING → WRITING
         ];
+        let advanceSuccess = true;
         for (const evt of advanceEvents) {
           try {
             workflowEngine.sendEvent(workflowId, {
@@ -26608,6 +26609,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
               metadata: { session_id: workflowId, sequence: 0, version: 1 }
             });
           } catch (advErr) {
+            advanceSuccess = false;
             log4.error("wrfc_agent_spawned: failed to advance workflow state", {
               workflow_id: workflowId,
               event: evt.type,
@@ -26616,9 +26618,13 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
             break;
           }
         }
-        log4.info("wrfc_agent_spawned: workflow advanced to WRITING", {
-          workflow_id: workflowId
-        });
+        if (advanceSuccess) {
+          log4.info("wrfc_agent_spawned: workflow advanced to WRITING", {
+            workflow_id: workflowId
+          });
+        } else {
+          log4.warn("wrfc_agent_spawned: workflow advance incomplete", { workflow_id: workflowId });
+        }
       } catch (err) {
         log4.error("wrfc_agent_spawned: failed to create workflow", {
           agent_id: agentId,
@@ -26859,10 +26865,14 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       }
     }
     const rawWid = args["workflow_id"];
-    const workflowId = typeof rawWid === "string" && rawWid.length > 0 ? rawWid : (() => {
+    let workflowId;
+    if (typeof rawWid === "string" && rawWid.length > 0) {
+      workflowId = rawWid;
+    } else {
       const active = workflowEngine?.listActive() ?? [];
-      return active[active.length - 1]?.id ?? "unknown";
-    })();
+      workflowId = active[active.length - 1]?.id ?? "unknown";
+    }
+    ;
     const wf = workflowEngine?.get(workflowId);
     if (!wf || !workflowEngine) {
       const minScore = typeof args["min_review_score"] === "number" ? args["min_review_score"] : DEFAULT_MIN_REVIEW_SCORE;
@@ -27060,8 +27070,8 @@ var AgentWorkflowMap = class {
 var logger10 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
-  const hash2 = (0, import_crypto.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_path4.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
+  const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
+  return (0, import_node_path3.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 var ProcessManager = class {
@@ -27140,8 +27150,8 @@ var ProcessManager = class {
     await this.stateStore.initialize();
     logger10.debug("State store initialised");
     this.eventBus = new EventBus();
-    const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
-    (0, import_fs4.mkdirSync)(stateDir, { recursive: true });
+    const stateDir = (0, import_node_path3.join)(this.projectRoot, this.config.persistence.state_dir);
+    (0, import_node_fs3.mkdirSync)(stateDir, { recursive: true });
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
     this.eventBus.setEventLog(this.eventLog);
@@ -27472,9 +27482,9 @@ var ProcessManager = class {
    */
   async checkCrashRecovery() {
     const pidFilePath = getPidFilePath(this.projectRoot);
-    if (!(0, import_fs4.existsSync)(pidFilePath)) return;
+    if (!(0, import_node_fs3.existsSync)(pidFilePath)) return;
     try {
-      const stalePid = (0, import_fs4.readFileSync)(pidFilePath, "utf-8").trim();
+      const stalePid = (0, import_node_fs3.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
         const pid = Number(stalePid);
@@ -27517,7 +27527,7 @@ var ProcessManager = class {
   writePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_fs4.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
+      (0, import_node_fs3.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
       logger10.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
       logger10.warn("Could not write PID file", {
@@ -27532,7 +27542,7 @@ var ProcessManager = class {
   removePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_fs4.unlinkSync)(pidFilePath);
+      (0, import_node_fs3.unlinkSync)(pidFilePath);
       logger10.debug("PID file removed", { path: pidFilePath });
     } catch (err) {
       if (err.code !== "ENOENT") {
@@ -27579,10 +27589,10 @@ var ProcessManager = class {
    * @returns The absolute socket path, or null if startup fails.
    */
   async startIPCServer() {
-    const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
+    const stateDir = (0, import_node_path3.join)(this.projectRoot, this.config.persistence.state_dir);
     const socketDir = this.config.ipc.socket_dir;
-    const hash2 = (0, import_crypto.createHash)("sha256").update(this.projectRoot).digest("hex").slice(0, 8);
-    const socketPath = (0, import_path4.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
+    const hash2 = (0, import_node_crypto2.createHash)("sha256").update(this.projectRoot).digest("hex").slice(0, 8);
+    const socketPath = (0, import_node_path3.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
     try {
       this.ipcServer = new IPCServer(socketPath);
       const router = new IPCRouter({
@@ -27593,11 +27603,11 @@ var ProcessManager = class {
         directiveQueue: this.directiveQueue
       });
       this.ipcServer.onMessage(router.route.bind(router));
-      (0, import_fs4.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+      (0, import_node_fs3.mkdirSync)(socketDir, { recursive: true, mode: 448 });
       await this.ipcServer.listen();
-      (0, import_fs4.mkdirSync)(stateDir, { recursive: true });
-      const pointerFile = (0, import_path4.join)(stateDir, `runtime-${process.pid}.socket`);
-      (0, import_fs4.writeFileSync)(pointerFile, socketPath, "utf-8");
+      (0, import_node_fs3.mkdirSync)(stateDir, { recursive: true });
+      const pointerFile = (0, import_node_path3.join)(stateDir, `runtime-${process.pid}.socket`);
+      (0, import_node_fs3.writeFileSync)(pointerFile, socketPath, "utf-8");
       logger10.info("IPC server started", { socket: socketPath });
       return socketPath;
     } catch (err) {
@@ -27614,13 +27624,13 @@ var ProcessManager = class {
    * Silently ignores errors (e.g. file already removed).
    */
   removeSocketPointerFile() {
-    const pointerFile = (0, import_path4.join)(
+    const pointerFile = (0, import_node_path3.join)(
       this.projectRoot,
       this.config.persistence.state_dir,
       `runtime-${process.pid}.socket`
     );
     try {
-      (0, import_fs4.unlinkSync)(pointerFile);
+      (0, import_node_fs3.unlinkSync)(pointerFile);
       logger10.debug("Socket pointer file removed", { path: pointerFile });
     } catch (err) {
       if (err.code !== "ENOENT") {

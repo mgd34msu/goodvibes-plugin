@@ -193,14 +193,6 @@ function handleReviewResult(params: {
   }
 }
 
-/**
- * Shared logic for handling a completed fix attempt.
- *
- * Increments fix_attempts in context, sends the wrfc:fix_completed
- * state-machine event so guards (which compare fix_attempts against
- * max_fix_attempts) evaluate against current values, then either
- * enqueues an escalation directive or a re-review directive.
- */
 /** Sends the wrfc:fix_completed state-machine event. */
 function sendFixCompletedEvent(
   workflowEngine: WorkflowEngine,
@@ -385,6 +377,7 @@ export function registerWRFCHandlers(
           { type: 'wrfc:plan_submitted' as const }, // GATHERING → PLANNING
           { type: 'wrfc:writing_started' as const }, // PLANNING → WRITING
         ];
+        let advanceSuccess = true;
         for (const evt of advanceEvents) {
           try {
             workflowEngine.sendEvent(workflowId, {
@@ -399,6 +392,7 @@ export function registerWRFCHandlers(
               metadata: { session_id: workflowId, sequence: 0, version: 1 },
             });
           } catch (advErr) {
+            advanceSuccess = false;
             log.error('wrfc_agent_spawned: failed to advance workflow state', {
               workflow_id: workflowId,
               event: evt.type,
@@ -407,9 +401,13 @@ export function registerWRFCHandlers(
             break; // Stop advancing on first failure
           }
         }
-        log.info('wrfc_agent_spawned: workflow advanced to WRITING', {
-          workflow_id: workflowId,
-        });
+        if (advanceSuccess) {
+          log.info('wrfc_agent_spawned: workflow advanced to WRITING', {
+            workflow_id: workflowId,
+          });
+        } else {
+          log.warn('wrfc_agent_spawned: workflow advance incomplete', { workflow_id: workflowId });
+        }
       } catch (err) {
         log.error('wrfc_agent_spawned: failed to create workflow', {
           agent_id: agentId,
@@ -738,9 +736,13 @@ export function registerWRFCHandlers(
 
     // Find the target workflow - prefer explicit ID from event, fall back to most recent active
     const rawWid = args['workflow_id'];
-    const workflowId = (typeof rawWid === 'string' && rawWid.length > 0)
-      ? rawWid
-      : (() => { const active = workflowEngine?.listActive() ?? []; return active[active.length - 1]?.id ?? 'unknown'; })();
+    let workflowId: string;
+    if (typeof rawWid === 'string' && rawWid.length > 0) {
+      workflowId = rawWid;
+    } else {
+      const active = workflowEngine?.listActive() ?? [];
+      workflowId = active[active.length - 1]?.id ?? 'unknown';
+    };
 
     const wf = workflowEngine?.get(workflowId);
     if (!wf || !workflowEngine) {

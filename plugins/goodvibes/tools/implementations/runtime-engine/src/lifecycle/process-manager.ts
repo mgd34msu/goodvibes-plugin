@@ -9,10 +9,10 @@
  * - Coordinating graceful startup and shutdown sequences
  */
 
-import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
-import { createHash } from 'crypto';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import type { RuntimeConfig } from '../shared/config.js';
 import { loadConfig } from '../shared/config.js';

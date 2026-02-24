@@ -20,10 +20,10 @@ import {
   statSync,
   createWriteStream,
   createReadStream,
-} from 'fs';
-import * as readline from 'readline';
-import { join, dirname } from 'path';
-import type { WriteStream } from 'fs';
+} from 'node:fs';
+import * as readline from 'node:readline';
+import { join, dirname } from 'node:path';
+import type { WriteStream } from 'node:fs';
 import type { RuntimeEvent, EventFilter } from './types.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';

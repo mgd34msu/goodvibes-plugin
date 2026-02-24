@@ -18,10 +18,10 @@
  * path, os) so it can be safely imported by any hook script.
  */
 
-import * as net from 'net';
-import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import * as net from 'node:net';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 /** Timeout in ms for hook event sends (fire-and-forget with short wait). */
 const HOOK_EVENT_TIMEOUT_MS = 500;
@@ -46,7 +46,7 @@ interface IPCResponse {
 
 /** Response data discriminated union — mirrors protocol.ts IPCResponseData. */
 type IPCResponseData =
-  | { kind: 'system_message'; message: string; directives: Directive[] }
+  | { kind: 'system_message'; message: string; directives?: Directive[] }
   | { kind: 'workflow_state'; instance: Record<string, unknown> }
   | { kind: 'agent_status'; agent: Record<string, unknown> }
   | { kind: 'tool_decision'; allow: boolean; reason?: string; modified_input?: Record<string, unknown> }
