@@ -28,6 +28,7 @@ import {
   buildWorkflowCompleteMessage,
   buildEscalationMessage,
 } from './directive-builder.js';
+import { parseGvTag } from './gv-tag-parser.js';
 
 const log = createLogger('test-fix-handlers');
 
@@ -39,6 +40,39 @@ const DEFAULT_MAX_FIX_ATTEMPTS = 3;
 
 /** Workflow definition ID for the test-then-fix chain. */
 const TEST_THEN_FIX_DEFINITION_ID = 'test_then_fix';
+
+/** Synthetic score assigned when tests pass (used in review_score context field). */
+const SCORE_PASS = 10;
+
+/** Synthetic score assigned when tests fail (used in review_score context field). */
+const SCORE_FAIL = 0;
+
+/**
+ * Parses test pass/fail status from agent output text.
+ * Tries `<gv>` tag parsing first (via the `pass` field), then falls back to
+ * regex heuristics for backward compatibility with agents that do not emit tags.
+ *
+ * @param text - Raw output text from an agent.
+ * @returns Object with `passed` boolean and optional numeric `score`, or null if
+ *   neither strategy produced a usable result (caller should apply its own heuristic).
+ */
+export function parseGvTestResult(text: string): { passed: boolean; score?: number } | null {
+  if (!text) return null;
+
+  // Try <gv> tag first
+  const gvResult = parseGvTag(text);
+  if (gvResult.found && gvResult.data !== null && gvResult.data.pass !== undefined) {
+    const passed = gvResult.data.pass === true;
+    const score = typeof gvResult.data.score === 'number' ? gvResult.data.score : (passed ? SCORE_PASS : SCORE_FAIL);
+    return { passed, score };
+  }
+
+  // Fallback: regex heuristic
+  const hasFailures =
+    /\b(FAIL|FAILED|failing|test.*fail|\d+ fail)/i.test(text) ||
+    /error:/i.test(text);
+  return { passed: !hasFailures };
+}
 
 /**
  * Register the three test-then-fix handler functions with the TriggerRegistry.
@@ -107,11 +141,9 @@ export function registerTestFixHandlers(
       (hookInput?.['result'] as string | undefined) ||
       '';
 
-    // Heuristic: look for common failure signals in agent output.
-    // The engineer agent should report test results in its output.
-    const hasFailures =
-      /\b(FAIL|FAILED|failing|test.*fail|\d+ fail)/i.test(agentOutput) ||
-      /error:/i.test(agentOutput);
+    // Parse test result: <gv> tag first, regex fallback.
+    const testResult = parseGvTestResult(agentOutput);
+    const hasFailures = testResult !== null ? !testResult.passed : false;
 
     const testCommand =
       typeof workflow.context['test_command'] === 'string'
@@ -146,6 +178,9 @@ export function registerTestFixHandlers(
         });
       }
 
+      // Set synthetic review_score so downstream logic and escalation messages work consistently
+      workflow.context['review_score'] = SCORE_PASS;
+
       // Enqueue workflow complete directive
       const message = buildWorkflowCompleteMessage(workflow.id, 'completed');
       directiveQueue.enqueue('subagent_stop', {
@@ -154,7 +189,7 @@ export function registerTestFixHandlers(
         priority: 20,
         source: 'test_fix_agent_completed',
       });
-      if (agentId && agentWorkflowMap) {
+      if (agentId !== null && agentWorkflowMap !== null && agentWorkflowMap !== undefined) {
         agentWorkflowMap.unbind(agentId);
       }
     } else {
@@ -173,6 +208,8 @@ export function registerTestFixHandlers(
         test_command: testCommand,
       });
 
+      // Set synthetic review_score so downstream escalation messages have a score to reference
+      workflow.context['review_score'] = SCORE_FAIL;
       // Store failure info in context
       workflow.context['test_failures'] = [{ test: testCommand, error: agentOutput.slice(0, 500) }];
 
@@ -199,53 +236,7 @@ export function registerTestFixHandlers(
           error: String(err),
         });
       }
-
-      if (fixAttempts >= maxFixAttempts) {
-        // Budget exhausted — escalate
-        const lastScore =
-          typeof workflow.context['review_score'] === 'number' ? workflow.context['review_score'] : 0;
-        const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
-        directiveQueue.enqueue('subagent_stop', {
-          type: 'inject_system_message',
-          content: escalationMessage,
-          priority: 30,
-          source: 'test_fix_agent_completed',
-        });
-        if (agentId && agentWorkflowMap) {
-          agentWorkflowMap.unbind(agentId);
-        }
-        log.warn('test_fix_agent_completed: fix budget exhausted, escalating', {
-          workflow_id: workflow.id,
-          fix_attempts: fixAttempts,
-          max_fix_attempts: maxFixAttempts,
-        });
-      } else {
-        // Spawn engineer to fix test failures
-        const failureInfo = agentOutput.slice(0, 500);
-        const fixTask =
-          `Fix failing tests for workflow ${workflow.id}. ` +
-          `Test command: ${testCommand}. ` +
-          `Fix attempt ${fixAttempts + 1} of ${maxFixAttempts}. ` +
-          `Failure output: ${failureInfo}`;
-
-        const fixMessage = buildSpawnDirectiveMessage('engineer', fixTask, DEFAULT_BUDGET, {
-          fix_attempts: fixAttempts,
-          max_fix_attempts: maxFixAttempts,
-          workflow_id: workflow.id,
-          test_command: testCommand,
-        });
-        directiveQueue.enqueue('subagent_stop', {
-          type: 'inject_system_message',
-          content: fixMessage,
-          priority: 20,
-          source: 'test_fix_agent_completed',
-        });
-        log.info('test_fix_agent_completed: engineer fix directive enqueued', {
-          workflow_id: workflow.id,
-          fix_attempts: fixAttempts,
-          max_fix_attempts: maxFixAttempts,
-        });
-      }
+      // Spawning/escalation is handled by trigger 14 → test_fix_handle_failure
     }
   });
 
@@ -376,6 +367,7 @@ export function registerTestFixHandlers(
     }
 
     // Inspect fix result from args — 'passed' signals the engineer confirmed tests pass
+    // Accept both boolean and string 'true' since event payloads may stringify booleans
     const passed = args['passed'] === true || args['passed'] === 'true';
     const testCommand =
       typeof workflow.context['test_command'] === 'string'
@@ -454,45 +446,7 @@ export function registerTestFixHandlers(
         });
       }
 
-      // If budget allows, enqueue another fix; otherwise escalate
-      if (fixAttempts < maxFixAttempts) {
-        const fixTask =
-          `Fix remaining test failures for workflow ${workflow.id}. ` +
-          `Test command: ${testCommand}. ` +
-          `Fix attempt ${fixAttempts + 1} of ${maxFixAttempts}.`;
-        const fixMessage = buildSpawnDirectiveMessage('engineer', fixTask, DEFAULT_BUDGET, {
-          fix_attempts: fixAttempts,
-          max_fix_attempts: maxFixAttempts,
-          workflow_id: workflow.id,
-          test_command: testCommand,
-        });
-        directiveQueue.enqueue('subagent_stop', {
-          type: 'inject_system_message',
-          content: fixMessage,
-          priority: 20,
-          source: 'test_fix_handle_retest',
-        });
-        log.info('test_fix_handle_retest: additional engineer fix directive enqueued', {
-          workflow_id: workflow.id,
-          fix_attempts: fixAttempts,
-          max_fix_attempts: maxFixAttempts,
-        });
-      } else {
-        const lastScore =
-          typeof workflow.context['review_score'] === 'number' ? workflow.context['review_score'] : 0;
-        const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
-        directiveQueue.enqueue('subagent_stop', {
-          type: 'inject_system_message',
-          content: escalationMessage,
-          priority: 30,
-          source: 'test_fix_handle_retest',
-        });
-        log.warn('test_fix_handle_retest: escalation directive enqueued', {
-          workflow_id: workflow.id,
-          fix_attempts: fixAttempts,
-          max_fix_attempts: maxFixAttempts,
-        });
-      }
+      // Spawning/escalation is handled by trigger 14 → test_fix_handle_failure
     }
   });
 

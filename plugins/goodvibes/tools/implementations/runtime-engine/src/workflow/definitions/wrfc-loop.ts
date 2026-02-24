@@ -20,6 +20,7 @@
  */
 
 import type { WorkflowDefinition } from '../types.js';
+import { CHAIN_MAX_TRANSITIONS } from './chain-types.js';
 
 /**
  * Built-in WRFC loop workflow definition.
@@ -42,7 +43,7 @@ export const WRFC_LOOP_DEFINITION: WorkflowDefinition = {
   version: 1,
   initial_state: 'IDLE',
   terminal_states: ['COMPLETE', 'ESCALATED'],
-  max_transitions: 100,
+  max_transitions: CHAIN_MAX_TRANSITIONS.wrfc_loop,
   states: {
     IDLE: {
       name: 'IDLE',

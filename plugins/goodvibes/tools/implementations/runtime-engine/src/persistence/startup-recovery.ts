@@ -89,15 +89,31 @@ export async function recoverState(
 
   logger.info('Starting startup recovery');
 
-  // Check if there are any events at all
+  // Invariant: EventLog must be initialized (via eventLog.initialize()) before
+  // recoverState() is called. If getLatestSequence() returns 0, it may mean
+  // either (a) truly no events exist (legitimate cold start) or (b) EventLog
+  // was not initialized. Check the event log stats as a secondary signal.
   const latestSequence = eventLog.getLatestSequence();
   if (latestSequence === 0) {
-    const result: RecoveryResult = {
-      method: 'cold_start',
-      recoveryDurationMs: Date.now() - startMs,
-    };
-    logger.info('Cold start — no events to replay', { recoveryDurationMs: result.recoveryDurationMs });
-    return result;
+    // Secondary check: if the event log file exists and has non-zero size,
+    // getLatestSequence() returning 0 likely means EventLog was not initialized.
+    // Warn and attempt a full replay anyway so we don't silently skip recovery.
+    const stats = eventLog.getStats();
+    if (stats.file_size_bytes > 0) {
+      logger.warn(
+        'EventLog reports sequence=0 but log file is non-empty — EventLog may not be initialized. ' +
+        'Attempting full replay to avoid skipping recovery.',
+        { file_size_bytes: stats.file_size_bytes }
+      );
+      // Fall through to full-replay path below
+    } else {
+      const result: RecoveryResult = {
+        method: 'cold_start',
+        recoveryDurationMs: Date.now() - startMs,
+      };
+      logger.info('Cold start — no events to replay', { recoveryDurationMs: result.recoveryDurationMs });
+      return result;
+    }
   }
 
   // Try to load a snapshot

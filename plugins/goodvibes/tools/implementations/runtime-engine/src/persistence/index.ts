@@ -17,7 +17,6 @@ export { replayEvents } from './replay-engine.js';
 
 export type {
   TriggerStateSnapshot,
-  AgentStateSnapshot,
   RuntimeSnapshot,
   SnapshotDeps,
 } from './snapshot-manager.js';
@@ -27,6 +26,6 @@ export type {
   RecoveryMethod,
   SnapshotRecoveryInfo,
   ReplayRecoveryInfo,
-  RecoveryResult,
+  RecoveryResult as StartupRecoveryResult,
 } from './startup-recovery.js';
 export { recoverState } from './startup-recovery.js';

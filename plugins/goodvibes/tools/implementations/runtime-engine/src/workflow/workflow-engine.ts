@@ -176,7 +176,7 @@ export class WorkflowEngine {
     }
 
     // Emit workflow:created
-    this.emitWorkflowEvent('workflow:created', instance, {});
+    this.emitWorkflowEvent('workflow:created', instance, { initial_state: def.initial_state, context: { ...instance.context } });
 
     return instance;
   }
@@ -241,7 +241,7 @@ export class WorkflowEngine {
       instance.status = 'failed';
       instance.error = `Exceeded max transitions (${maxTransitions})`;
       instance.updated_at = timestamp();
-      this.emitWorkflowEvent('workflow:failed', instance, {});
+      this.emitWorkflowEvent('workflow:failed', instance, { error: instance.error });
       return null;
     }
 
@@ -325,10 +325,13 @@ export class WorkflowEngine {
       event: event.type,
     });
 
-    // Emit state_changed event
+    // Emit state_changed event.
+    // `context` is included so replay-engine can reconstruct context state
+    // during recovery (replay reads data.context to merge into the instance).
     this.emitWorkflowEvent('workflow:state_changed', instance, {
       previous_state: fromState,
       current_state: toState,
+      context: { ...instance.context },
     });
 
     // Check if new state is terminal

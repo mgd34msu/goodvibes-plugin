@@ -125,6 +125,8 @@ const mocks = vi.hoisted(() => {
   });
   const AgentWorkflowMap = vi.fn().mockImplementation(function() { return {}; });
   const registerWRFCHandlers = vi.fn();
+  const registerTestFixHandlers = vi.fn();
+  const registerReviewOnlyHandlers = vi.fn();
 
   // loadConfig
   const loadConfig = vi.fn().mockReturnValue({
@@ -167,6 +169,7 @@ const mocks = vi.hoisted(() => {
     // directives
     directiveQueueDrain, directiveQueueEnqueue, directiveQueueSetWRFCConfig,
     DirectiveQueue, AgentWorkflowMap, registerWRFCHandlers,
+    registerTestFixHandlers, registerReviewOnlyHandlers,
     // config
     loadConfig,
   };
@@ -205,6 +208,9 @@ vi.mock('../../workflow/workflow-engine.js', () => ({ WorkflowEngine: mocks.Work
 vi.mock('../../workflow/index.js', () => ({
   WRFC_LOOP_DEFINITION: { id: 'wrfc_loop', name: 'Write-Review-Fix-Check Loop', version: 1, states: {} },
   FIX_LOOP_DEFINITION: { id: 'fix_loop', name: 'Fix Loop', version: 1, states: {} },
+  TEST_THEN_FIX_DEFINITION: { id: 'test_then_fix', name: 'Test-Then-Fix Loop', version: 1, states: {} },
+  REVIEW_ONLY_DEFINITION: { id: 'review_only', name: 'Review Only', version: 1, states: {} },
+  loadCustomWorkflows: vi.fn().mockResolvedValue([]),
 }));
 vi.mock('../../triggers/trigger-registry.js', () => ({ TriggerRegistry: mocks.TriggerRegistry }));
 vi.mock('../../triggers/builtins.js', () => ({ getBuiltinTriggers: mocks.getBuiltinTriggers }));
@@ -214,6 +220,8 @@ vi.mock('../../directives/index.js', () => ({
   DirectiveQueue: mocks.DirectiveQueue,
   AgentWorkflowMap: mocks.AgentWorkflowMap,
   registerWRFCHandlers: mocks.registerWRFCHandlers,
+  registerTestFixHandlers: mocks.registerTestFixHandlers,
+  registerReviewOnlyHandlers: mocks.registerReviewOnlyHandlers,
 }));
 vi.mock('../../shared/config.js', () => ({ loadConfig: mocks.loadConfig }));
 vi.mock('../../shared/logger.js', () => ({
@@ -733,7 +741,7 @@ describe('ProcessManager — startup()', () => {
 
     expect(mocks.WorkflowEngine).toHaveBeenCalledOnce();
     expect(mocks.workflowEngineSetEventBus).toHaveBeenCalledOnce();
-    expect(mocks.workflowEngineRegisterDefinition).toHaveBeenCalledTimes(2);
+    expect(mocks.workflowEngineRegisterDefinition).toHaveBeenCalledTimes(4);
   });
 
   it('registers the checkReviewScore guard on the workflow engine', async () => {

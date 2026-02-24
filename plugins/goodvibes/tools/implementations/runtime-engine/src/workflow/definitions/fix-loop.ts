@@ -18,6 +18,7 @@
  */
 
 import type { WorkflowDefinition } from '../types.js';
+import { CHAIN_MAX_TRANSITIONS } from './chain-types.js';
 
 /**
  * Built-in fix loop workflow definition.
@@ -41,7 +42,7 @@ export const FIX_LOOP_DEFINITION: WorkflowDefinition = {
   version: 1,
   initial_state: 'IDLE',
   terminal_states: ['RESOLVED', 'FAILED'],
-  max_transitions: 50,
+  max_transitions: CHAIN_MAX_TRANSITIONS.fix_loop,
   states: {
     IDLE: {
       name: 'IDLE',

@@ -13,12 +13,34 @@
  * - every transition target must be present in the states map
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { promises as fsPromises, existsSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { createLogger } from '../../shared/logger.js';
 import type { WorkflowDefinition } from '../types.js';
 
 const log = createLogger('custom-loader');
+
+/**
+ * Type guard that checks whether an unknown value is a structurally valid
+ * WorkflowDefinition (has non-empty string id, name, numeric version,
+ * object states, string initial_state, and array terminal_states).
+ *
+ * @param obj - The value to check.
+ * @returns True if the object satisfies the WorkflowDefinition shape.
+ */
+export function isValidWorkflowDefinition(obj: unknown): obj is WorkflowDefinition {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return false;
+  const d = obj as Record<string, unknown>;
+  return (
+    typeof d['id'] === 'string' && d['id'].length > 0 &&
+    typeof d['name'] === 'string' && d['name'].length > 0 &&
+    typeof d['version'] === 'number' &&
+    typeof d['states'] === 'object' && d['states'] !== null && !Array.isArray(d['states']) &&
+    typeof d['initial_state'] === 'string' && d['initial_state'].length > 0 &&
+    Array.isArray(d['terminal_states'])
+  );
+}
 
 /**
  * Validates a candidate workflow definition object.
@@ -122,6 +144,7 @@ export function validateWorkflowDefinition(def: unknown): string[] {
 export async function loadCustomWorkflows(configPath: string): Promise<WorkflowDefinition[]> {
   const configFile = join(configPath, 'goodvibes.json');
 
+  // existsSync is a fast stat call used as a guard before async reads — acceptable pattern
   if (!existsSync(configFile)) {
     log.debug('loadCustomWorkflows: no goodvibes.json found, skipping custom workflow loading', {
       config_file: configFile,
@@ -131,7 +154,7 @@ export async function loadCustomWorkflows(configPath: string): Promise<WorkflowD
 
   let raw: string;
   try {
-    raw = readFileSync(configFile, 'utf-8');
+    raw = await fsPromises.readFile(configFile, 'utf-8');
   } catch (err) {
     log.warn('loadCustomWorkflows: failed to read goodvibes.json', {
       config_file: configFile,

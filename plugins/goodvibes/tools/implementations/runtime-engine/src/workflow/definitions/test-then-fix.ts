@@ -21,6 +21,7 @@
  */
 
 import type { WorkflowDefinition } from '../types.js';
+import { CHAIN_MAX_TRANSITIONS } from './chain-types.js';
 
 /**
  * Built-in test-then-fix workflow definition.
@@ -43,7 +44,7 @@ export const TEST_THEN_FIX_DEFINITION: WorkflowDefinition = {
   version: 1,
   initial_state: 'IDLE',
   terminal_states: ['COMPLETE', 'ESCALATED'],
-  max_transitions: 60,
+  max_transitions: CHAIN_MAX_TRANSITIONS.test_then_fix,
   states: {
     IDLE: {
       name: 'IDLE',

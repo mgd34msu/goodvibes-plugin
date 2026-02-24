@@ -122,7 +122,8 @@ function handleReviewResult(params: {
   workflow.context.min_review_score = minScore;
   workflow.context.max_fix_attempts = maxFixAttempts;
 
-  // Advance state machine
+  // Advance state machine — directive enqueue only happens on success
+  let transitionSucceeded = false;
   try {
     workflowEngine.sendEvent(workflow.id, {
       id: generateEventId(),
@@ -135,9 +136,12 @@ function handleReviewResult(params: {
       },
       metadata: { session_id: workflow.id, sequence: 0, version: 1 },
     });
+    transitionSucceeded = true;
   } catch (err) {
-    log.error('handleReviewResult: failed to advance workflow state', { workflow_id: workflow.id, error: String(err) });
+    log.error('handleReviewResult: failed to advance workflow state — skipping directive enqueue', { workflow_id: workflow.id, error: String(err) });
   }
+
+  if (!transitionSucceeded) return;
 
   if (score >= minScore) {
     // Score meets threshold → complete workflow

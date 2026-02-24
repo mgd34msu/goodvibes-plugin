@@ -32,6 +32,7 @@ import {
   FIX_LOOP_DEFINITION,
   TEST_THEN_FIX_DEFINITION,
   REVIEW_ONLY_DEFINITION,
+  loadCustomWorkflows,
 } from '../workflow/index.js';
 import { TriggerRegistry } from '../triggers/trigger-registry.js';
 import { getBuiltinTriggers } from '../triggers/builtins.js';
@@ -200,6 +201,21 @@ export class ProcessManager {
         const threshold = typeof context.min_review_score === 'number' ? context.min_review_score : 9.5;
         return typeof context.review_score === 'number' && context.review_score >= threshold;
       });
+
+      // Load and register user-defined custom workflows from goodvibes.json
+      try {
+        const customDefinitions = await loadCustomWorkflows(this.projectRoot);
+        for (const def of customDefinitions) {
+          this.workflowEngine.registerDefinition(def);
+          logger.info('Custom workflow definition registered', { id: def.id, name: def.name });
+        }
+        logger.debug('Custom workflow definitions loaded', { count: customDefinitions.length });
+      } catch (err) {
+        logger.warn('Failed to load custom workflow definitions — continuing without them', {
+          err: toErrorMessage(err),
+        });
+      }
+
       logger.debug('Workflow engine initialised');
     }
 
@@ -263,12 +279,7 @@ export class ProcessManager {
       const recoveryResult = await recoverState(
         this.eventLog,
         this.snapshotManager,
-        {
-          workflowEngine: this.workflowEngine,
-          triggerRegistry: this.triggerRegistry,
-          agentCoordinator: this.agentCoordinator,
-          agentWorkflowMap: this.agentWorkflowMap,
-        },
+        this.getSnapshotDeps(),
       );
       logger.info('Startup recovery complete', {
         method: recoveryResult.method,
@@ -282,12 +293,7 @@ export class ProcessManager {
 
     // Start periodic snapshots (every 60s)
     this.snapshotManager.startPeriodicSnapshots(
-      {
-        workflowEngine: this.workflowEngine,
-        triggerRegistry: this.triggerRegistry,
-        agentCoordinator: this.agentCoordinator,
-        agentWorkflowMap: this.agentWorkflowMap,
-      },
+      this.getSnapshotDeps(),
       () => this.eventLog.getLatestSequence(),
       60_000,
     );
@@ -430,12 +436,7 @@ export class ProcessManager {
       if (this.snapshotManager && this.eventLog) {
         try {
           await this.snapshotManager.takeSnapshot(
-            {
-              workflowEngine: this.workflowEngine,
-              triggerRegistry: this.triggerRegistry,
-              agentCoordinator: this.agentCoordinator,
-              agentWorkflowMap: this.agentWorkflowMap,
-            },
+            this.getSnapshotDeps(),
             this.eventLog.getLatestSequence(),
           );
           logger.debug('Final snapshot saved');
@@ -744,6 +745,23 @@ export class ProcessManager {
       this.checkpointTimer = undefined;
       logger.debug('Checkpoint timer stopped');
     }
+  }
+
+  /**
+   * Build the SnapshotDeps object from current subsystem state.
+   *
+   * Extracted to a helper to avoid duplicating the same literal object
+   * in startup recovery, periodic snapshots, and shutdown snapshot paths.
+   *
+   * @returns SnapshotDeps with current subsystem references.
+   */
+  private getSnapshotDeps() {
+    return {
+      workflowEngine: this.workflowEngine,
+      triggerRegistry: this.triggerRegistry,
+      agentCoordinator: this.agentCoordinator,
+      agentWorkflowMap: this.agentWorkflowMap,
+    };
   }
 
   /**

@@ -424,12 +424,6 @@ export class AgentCoordinator {
   }
 
   /**
-   * Retrieve the WRFC chain for a workflow, or undefined.
-   *
-   * @param workflowId - Workflow ID.
-   * @returns WRFCChain or undefined.
-   */
-  /**
    * Returns all agents tracked by the coordinator, regardless of status.
    *
    * Used for snapshotting to capture a full picture of agent state.
@@ -440,6 +434,12 @@ export class AgentCoordinator {
     return Array.from(this.agents.values());
   }
 
+  /**
+   * Retrieve the WRFC chain for a workflow, or undefined.
+   *
+   * @param workflowId - Workflow ID.
+   * @returns WRFCChain or undefined.
+   */
   getWRFCChain(workflowId: string): WRFCChain | undefined {
     return this.wrfcChains.get(workflowId);
   }

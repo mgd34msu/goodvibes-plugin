@@ -18,3 +18,4 @@ export { registerReviewOnlyHandlers } from './review-only-handlers.js';
 export { AgentWorkflowMap } from './agent-workflow-map.js';
 export { parseGvTag, parseAllGvTags, extractReviewScore, extractFiles, extractTestResults } from './gv-tag-parser.js';
 export type { GvTagData, GvParseResult } from './gv-tag-parser.js';
+export { parseGvTestResult } from './test-fix-handlers.js';

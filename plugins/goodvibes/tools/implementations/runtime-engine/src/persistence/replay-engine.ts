@@ -16,7 +16,7 @@ import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
-import type { RuntimeEvent } from '../events/types.js';
+import type { EventType, RuntimeEvent } from '../events/types.js';
 import type { WorkflowInstance } from '../workflow/types.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
@@ -256,9 +256,9 @@ function processEvent(
   if (type === 'workflow:created') {
     const payload = event.payload as { data?: Record<string, unknown> };
     const data = payload?.data ?? {};
-    const instanceId = data.instance_id as string | undefined;
-    const definitionId = data.definition_id as string | undefined;
-    const initialState = data.initial_state as string | undefined;
+    const instanceId = data.workflow_id as string | undefined;
+    const definitionId = data.workflow_type as string | undefined;
+    const initialState = data.current_state as string | undefined;
     const context = (data.context as Record<string, unknown> | undefined) ?? {};
     const createdAt = event.timestamp;
 
@@ -284,9 +284,10 @@ function processEvent(
   if (type === 'workflow:state_changed') {
     const payload = event.payload as { data?: Record<string, unknown> };
     const data = payload?.data ?? {};
-    const instanceId = data.instance_id as string | undefined;
-    const newState = data.to_state as string | undefined;
-    const contextChanges = (data.context_changes as Record<string, unknown> | undefined) ?? {};
+    const instanceId = data.workflow_id as string | undefined;
+    const newState = data.current_state as string | undefined;
+    // context is emitted as the full context snapshot; treat it as the context changes for replay
+    const contextChanges = (data.context as Record<string, unknown> | undefined) ?? {};
 
     if (instanceId && newState) {
       const instance = restoredWorkflows.get(instanceId);
@@ -294,7 +295,7 @@ function processEvent(
         const transition = {
           from_state: instance.current_state,
           to_state: newState,
-          event: event.type as import('../events/types.js').EventType,
+          event: event.type,
           timestamp: event.timestamp,
           context_changes: contextChanges,
         };
@@ -312,7 +313,7 @@ function processEvent(
   if (type === 'workflow:completed') {
     const payload = event.payload as { data?: Record<string, unknown> };
     const data = payload?.data ?? {};
-    const instanceId = data.instance_id as string | undefined;
+    const instanceId = data.workflow_id as string | undefined;
     if (instanceId) {
       const instance = restoredWorkflows.get(instanceId);
       if (instance) {
@@ -328,7 +329,7 @@ function processEvent(
   if (type === 'workflow:failed') {
     const payload = event.payload as { data?: Record<string, unknown> };
     const data = payload?.data ?? {};
-    const instanceId = data.instance_id as string | undefined;
+    const instanceId = data.workflow_id as string | undefined;
     const errorMsg = data.error as string | undefined;
     if (instanceId) {
       const instance = restoredWorkflows.get(instanceId);
@@ -345,7 +346,7 @@ function processEvent(
   if (type === 'workflow:cancelled') {
     const payload = event.payload as { data?: Record<string, unknown> };
     const data = payload?.data ?? {};
-    const instanceId = data.instance_id as string | undefined;
+    const instanceId = data.workflow_id as string | undefined;
     if (instanceId) {
       const instance = restoredWorkflows.get(instanceId);
       if (instance) {

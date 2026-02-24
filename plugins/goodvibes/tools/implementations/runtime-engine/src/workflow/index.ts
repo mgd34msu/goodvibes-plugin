@@ -12,4 +12,4 @@ export { WRFC_LOOP_DEFINITION } from './definitions/wrfc-loop.js';
 export { FIX_LOOP_DEFINITION } from './definitions/fix-loop.js';
 export { TEST_THEN_FIX_DEFINITION } from './definitions/test-then-fix.js';
 export { REVIEW_ONLY_DEFINITION } from './definitions/review-only.js';
-export { loadCustomWorkflows, validateWorkflowDefinition } from './definitions/custom-loader.js';
+export { loadCustomWorkflows, validateWorkflowDefinition, isValidWorkflowDefinition } from './definitions/custom-loader.js';

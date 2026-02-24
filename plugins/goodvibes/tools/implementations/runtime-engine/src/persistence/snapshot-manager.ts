@@ -15,7 +15,6 @@ import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 import type { WorkflowInstance } from '../workflow/types.js';
-import type { CoordinatedAgent } from '../agents/types.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
 
@@ -32,18 +31,6 @@ export interface TriggerStateSnapshot {
   triggerId: string;
   firesCount: number;
   lastFired?: number;
-}
-
-/** Agent state snapshot for recovery. */
-export interface AgentStateSnapshot {
-  id: string;
-  type: string;
-  task: string;
-  status: CoordinatedAgent['status'];
-  workflowId?: string;
-  wrfcPhase?: CoordinatedAgent['wrfc_phase'];
-  startedAt?: string;
-  completedAt?: string;
 }
 
 /** Full runtime state snapshot. */
@@ -63,8 +50,12 @@ export interface RuntimeSnapshot {
   agentWorkflowBindings: Record<string, string>;
   /** Trigger fire counts and last-fired timestamps at snapshot time. */
   triggerState: TriggerStateSnapshot[];
-  /** Agent state for recovery (active and recently completed agents). */
-  agentState: AgentStateSnapshot[];
+  /**
+   * Agent state is intentionally NOT persisted in snapshots.
+   * Agents are bound to Claude Code sessions and do not survive process
+   * restarts — there is nothing meaningful to restore. Workflow state
+   * (which persists across restarts) is captured in the `workflows` field.
+   */
 }
 
 /** Dependencies required to take a snapshot. */
@@ -113,7 +104,6 @@ export class SnapshotManager {
         workflows: captureWorkflowState(deps.workflowEngine),
         agentWorkflowBindings: captureAgentWorkflowBindings(deps.agentWorkflowMap),
         triggerState: captureTriggerState(deps.triggerRegistry),
-        agentState: captureAgentState(deps.agentCoordinator),
       };
 
       await this.stateStore.set(SNAPSHOT_KEY, snapshot);
@@ -162,6 +152,7 @@ export class SnapshotManager {
         typeof raw.lastEventSequence !== 'number' ||
         !Array.isArray(raw.workflows) ||
         typeof raw.agentWorkflowBindings !== 'object' ||
+        raw.agentWorkflowBindings === null ||
         !Array.isArray(raw.triggerState)
       ) {
         logger.warn('Snapshot failed structural validation — discarding');
@@ -317,21 +308,4 @@ function captureTriggerState(registry: TriggerRegistry | null): TriggerStateSnap
   }
 }
 
-function captureAgentState(coordinator: AgentCoordinator | null): AgentStateSnapshot[] {
-  if (!coordinator) return [];
-  try {
-    return coordinator.getAllAgents().map((agent) => ({
-      id: agent.id,
-      type: agent.type,
-      task: agent.task,
-      status: agent.status,
-      workflowId: agent.workflow_id,
-      wrfcPhase: agent.wrfc_phase,
-      startedAt: agent.started_at,
-      completedAt: agent.completed_at,
-    }));
-  } catch (err) {
-    logger.warn('Failed to capture agent state', { error: toErrorMessage(err) });
-    return [];
-  }
-}
+

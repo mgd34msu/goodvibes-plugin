@@ -1,16 +1,18 @@
 /**
  * Built-in Trigger Definitions
  *
- * Ten pre-configured triggers that cover the most common automation scenarios:
+ * Sixteen pre-configured triggers that cover the most common automation scenarios:
  * build failure recovery, test failure recovery, budget monitoring,
  * spawn rate limiting, dev server recovery, WRFC auto-review chain,
- * WRFC review response, WRFC fix response, and WRFC workflow start on agent spawn.
+ * WRFC review response, WRFC fix response, WRFC workflow start on agent spawn,
+ * test-then-fix start, test-then-fix agent completed, test-then-fix failure handler,
+ * test-then-fix retest handler, review-only start, and review-only agent completed.
  */
 
 import type { TriggerDefinition } from './types.js';
 
 /**
- * Returns the full list of built-in trigger definitions.
+ * Returns the full list of built-in trigger definitions (16 total).
  *
  * These are registered into the TriggerRegistry at engine startup.
  * All built-in triggers use `builtin_` prefix in their IDs.
@@ -378,7 +380,57 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
       fires_count: 0,
     },
 
-    // ─── 14. Review-Only Agent Completed ───────────────────────────────────────────────
+    // ─── 14. Test-Fix Handle Failure ─────────────────────────────────────────────────
+    {
+      id: 'builtin_test_fix_handle_failure',
+      name: 'test_fix_handle_failure',
+      description: 'Invoke test_fix_handle_failure handler when tests fail in a test_then_fix workflow',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'test_fix:tests_failed',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'test_fix_handle_failure',
+        args_template: {
+          workflow_id: '$event.payload.data.workflow_id',
+          test_output: '$event.payload.data.test_output',
+          fix_attempts: '$event.payload.data.fix_attempts',
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 50,
+      fires_count: 0,
+    },
+
+    // ─── 15. Test-Fix Handle Retest ───────────────────────────────────────────────────
+    {
+      id: 'builtin_test_fix_handle_retest',
+      name: 'test_fix_handle_retest',
+      description: 'Invoke test_fix_handle_retest handler when a fix completes in a test_then_fix workflow',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'test_fix:fix_completed',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'test_fix_handle_retest',
+        args_template: {
+          workflow_id: '$event.payload.data.workflow_id',
+          passed: '$event.payload.data.passed',
+          fix_attempts: '$event.payload.data.fix_attempts',
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 50,
+      fires_count: 0,
+    },
+
+    // ─── 16. Review-Only Agent Completed ───────────────────────────────────────────────
     {
       id: 'builtin_review_only_agent_completed',
       name: 'review_only_agent_completed',

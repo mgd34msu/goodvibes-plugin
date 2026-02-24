@@ -12,6 +12,7 @@
  */
 
 import type { WorkflowDefinition } from '../types.js';
+import { CHAIN_MAX_TRANSITIONS } from './chain-types.js';
 
 /**
  * Built-in review-only workflow definition.
@@ -33,7 +34,7 @@ export const REVIEW_ONLY_DEFINITION: WorkflowDefinition = {
   version: 1,
   initial_state: 'IDLE',
   terminal_states: ['COMPLETE'],
-  max_transitions: 10,
+  max_transitions: CHAIN_MAX_TRANSITIONS.review_only,
   states: {
     IDLE: {
       name: 'IDLE',
