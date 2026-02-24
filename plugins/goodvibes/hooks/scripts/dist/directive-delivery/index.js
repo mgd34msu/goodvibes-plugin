@@ -3,8 +3,8 @@
  *
  * PreToolUse hook with matcher "*" that fires on every tool call.
  * Queries the runtime engine for pending directives (WRFC spawn/complete
- * instructions) and injects them as <gv> tags in the systemMessage so
- * the orchestrator receives them on its next tool call.
+ * instructions) and injects them as <gv> tags via hookSpecificOutput.additionalContext
+ * so the orchestrator receives them in its conversation context on the next tool call.
  *
  * Fast path: if the runtime engine is not available, responds immediately
  * with allowTool to avoid any IPC overhead.
@@ -28,13 +28,13 @@ export async function runDirectiveDeliveryHook() {
         // Query runtime for pending directives
         const result = await runtimeClient.query({ kind: 'get_directives' });
         if (result?.kind === 'system_message' && result.message) {
-            // Wrap the pre-formatted directive message in a <gv> tag
+            // Wrap the pre-formatted directive message in a <gv> tag and inject via additionalContext
             const gvPayload = JSON.stringify({
                 action: 'directive',
                 message: result.message,
             });
-            const systemMessage = `<gv>${gvPayload}</gv>`;
-            respond(allowTool('PreToolUse', systemMessage));
+            const additionalContext = `<gv>${gvPayload}</gv>`;
+            respond(allowTool('PreToolUse', additionalContext));
             return;
         }
         // No directives pending — allow the tool call

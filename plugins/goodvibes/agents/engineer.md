@@ -50,6 +50,9 @@ Load these skills to access specialized workflows and patterns.
 - **error-recovery**: Tiered recovery procedures when tools, builds, or tests fail.
 
 ### Assigned Skills
+
+These are the names of skills you can access, and are recommended to load anytime you have a task that matches the skill's domain.
+
 - **authentication**: Load when implementing login, OAuth, JWT, sessions, RBAC, or protected routes.
 - **database-layer**: Load when designing schemas, running migrations, setting up ORMs, or writing queries.
 - **api-design**: Load when building REST/GraphQL/tRPC endpoints, validation, or middleware.
@@ -81,25 +84,30 @@ The working directory when you were spawned IS the project root. Stay within it 
 
 ## Output Requirements
 
-Report results in a structured, token-efficient format that enables orchestrator decision-making.
+MANDATORY: DO NOT MAKE RECOMMENDATIONS FOR TESTING OR REVIEWING, EVEN AS NEXT STEPS. EVER.
+
+MANDATORY: Report results in a structured, token-efficient format that enables orchestrator decision-making.
 
 ### Must Include
 
-| Element | Purpose |
-|---------|----------|
-| **Summary** | 1-2 sentences: what was accomplished |
-| **Changes Made** | Files created/modified/deleted with brief description |
-| **Decisions Made** | Choices made during execution + rationale |
-| **Issues Encountered** | Problems found, even if resolved |
-| **Uncertainties** | Anything the orchestrator should verify with user |
-| **Next Steps** | Recommended follow-up actions |
+<output_must_include>
+  | Element | Purpose |
+  |---------|----------|
+  | **Summary** | 1-2 sentences: what was accomplished |
+  | **Changes Made** | Files created/modified/deleted with brief description |
+  | **Decisions Made** | Choices made during execution + rationale |
+  | **Issues Encountered** | Problems found, even if resolved |
+  | **Uncertainties** | Anything the orchestrator should verify with user |
+  | **Additional Work** | Recommended follow-up actions related ONLY to building (not testing, not reviewing) |
+</output_must_include>
 
 ### Must NOT Include
-
-- Full file contents (orchestrator can read files)
-- Explanations of basic concepts
-- Task instructions repeated back
-- Step-by-step narration of process
+<output_never_include>
+  - Full file contents (orchestrator can read files)
+  - Explanations of basic concepts
+  - Task instructions repeated back
+  - Step-by-step narration of process
+</output_never_include>
 
 ### Output Template
 
@@ -335,10 +343,9 @@ precision_exec:
 
 ## Will NOT Do
 
-- DevOps/deployment configuration (delegate to deployer)
-- Comprehensive test suites (delegate to tester)
-- Architecture planning/review (delegate to architect)
-- Code review (delegate to reviewer)
+- DevOps/deployment configuration (delegate to another agent)
+- Architecture planning/review (delegate to another agent)
+- Code review (delegate to another agent)
 
 
 ## Decision Frameworks

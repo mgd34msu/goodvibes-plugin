@@ -298,28 +298,30 @@ describe('hook-io', () => {
   });
 
   describe('allowTool', () => {
-    it('should create an allow response without system message', () => {
+    it('should create an allow response without additional context', () => {
       const response = allowTool('PreToolUse');
 
       expect(response).toEqual({
         continue: true,
-        systemMessage: undefined,
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
           permissionDecision: 'allow',
+          additionalContext: undefined,
+          updatedInput: undefined,
         },
       });
     });
 
-    it('should create an allow response with system message', () => {
+    it('should create an allow response with additional context', () => {
       const response = allowTool('PreToolUse', 'Remember to run tests');
 
       expect(response).toEqual({
         continue: true,
-        systemMessage: 'Remember to run tests',
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
           permissionDecision: 'allow',
+          additionalContext: 'Remember to run tests',
+          updatedInput: undefined,
         },
       });
     });
@@ -332,10 +334,10 @@ describe('hook-io', () => {
       );
     });
 
-    it('should handle empty string system message', () => {
+    it('should handle empty string additional context', () => {
       const response = allowTool('PreToolUse', '');
 
-      expect(response.systemMessage).toBe('');
+      expect(response.hookSpecificOutput?.additionalContext).toBe('');
     });
   });
 
@@ -415,7 +417,7 @@ describe('hook-io', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.continue).toBe(true);
-      expect(parsed.systemMessage).toBe('Good to go');
+      expect(parsed.hookSpecificOutput?.additionalContext).toBe('Good to go');
     });
 
     it('should format a block response', () => {

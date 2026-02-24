@@ -1111,6 +1111,22 @@ async function buildSubagentContext(cwd, agentType, _sessionId) {
   };
 }
 
+// src/subagent-start/wrfc-utils.ts
+var WRFC_REGEX = /\[WRFC:([^\]]+)\]/;
+function extractWorkflowId(taskDescription) {
+  const match = WRFC_REGEX.exec(taskDescription);
+  return match ? match[1] : null;
+}
+function normalizeAgentFields(input) {
+  return {
+    agent_id: input.agent_id ?? input.subagent_id,
+    agent_type: input.agent_type ?? input.subagent_type
+  };
+}
+function mergeSystemMessages(runtimeMessage, hookMessage) {
+  return runtimeMessage ? hookMessage ? runtimeMessage + "\n\n" + hookMessage : runtimeMessage : hookMessage;
+}
+
 // src/subagent-start/index.ts
 function createResponse2(options) {
   const response = {
@@ -1201,19 +1217,28 @@ async function runSubagentStartHook() {
     const rawInput = await readHookInput();
     debug("Raw input shape:", Object.keys(rawInput || {}));
     const input = rawInput;
+    let runtimeSystemMessage;
     try {
       const runtimeClient = new RuntimeClient();
       if (runtimeClient.isAvailable()) {
         debug("Phase 6: runtime engine available, sending agent:spawned event");
-        await runtimeClient.sendHookEvent(
-          "agent:spawned",
-          rawInput
-        );
+        const taskDesc = input.task_description ?? input.task ?? "";
+        const workflowId = extractWorkflowId(taskDesc);
+        const { agent_id, agent_type } = normalizeAgentFields(input);
+        const spawnedData = {
+          ...rawInput,
+          agent_id,
+          agent_type
+        };
+        if (workflowId) {
+          spawnedData["workflow_id"] = workflowId;
+          debug("Phase 6: extracted workflow_id from task description", { workflow_id: workflowId });
+        }
+        await runtimeClient.sendHookEvent("agent:spawned", spawnedData);
         const queryResult = await runtimeClient.query({ kind: "get_system_message" });
         if (queryResult?.kind === "system_message") {
-          debug("Phase 6: runtime returned system message for subagent, using it");
-          respond(createResponse2({ systemMessage: queryResult.message }));
-          return;
+          debug("Phase 6: runtime returned system message for subagent, storing for merge");
+          runtimeSystemMessage = queryResult.message;
         }
       }
     } catch {
@@ -1250,7 +1275,8 @@ async function runSubagentStartHook() {
     const reminders = buildReminders(projectName, gitInfo.branch, analytics?.detected_stack);
     const additionalContext = buildAdditionalContext(subagentContext, reminders);
     const systemMessage = buildSystemMessage(agentType, projectName, gitInfo.branch);
-    respond(createResponse2({ systemMessage, additionalContext }));
+    const mergedSystemMessage = mergeSystemMessages(runtimeSystemMessage, systemMessage);
+    respond(createResponse2({ systemMessage: mergedSystemMessage, additionalContext }));
   } catch (error) {
     logError("SubagentStart main", error);
     respond(createResponse2());

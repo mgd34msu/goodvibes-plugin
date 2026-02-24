@@ -31,13 +31,13 @@ async function readHookInput() {
   }
   return parsed;
 }
-function allowTool(hookEventName, systemMessage, updatedInput) {
+function allowTool(hookEventName, additionalContext, updatedInput) {
   return {
     continue: true,
-    systemMessage,
     hookSpecificOutput: {
       hookEventName,
       permissionDecision: "allow",
+      additionalContext,
       updatedInput
     }
   };

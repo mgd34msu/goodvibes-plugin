@@ -49,6 +49,7 @@ export interface HookSpecificOutput {
   hookEventName: string;
   permissionDecision?: 'allow' | 'deny' | 'ask';
   permissionDecisionReason?: string;
+  additionalContext?: string;
   updatedInput?: Record<string, unknown>;
 }
 
@@ -81,15 +82,15 @@ export async function readHookInput(): Promise<HookInput> {
  */
 export function allowTool(
   hookEventName: string,
-  systemMessage?: string,
+  additionalContext?: string,
   updatedInput?: Record<string, unknown>
 ): HookResponse {
   return {
     continue: true,
-    systemMessage,
     hookSpecificOutput: {
       hookEventName,
       permissionDecision: 'allow',
+      additionalContext,
       updatedInput,
     },
   };

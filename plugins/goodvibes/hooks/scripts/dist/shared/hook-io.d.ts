@@ -22,6 +22,7 @@ export interface HookSpecificOutput {
     hookEventName: string;
     permissionDecision?: 'allow' | 'deny' | 'ask';
     permissionDecisionReason?: string;
+    additionalContext?: string;
     updatedInput?: Record<string, unknown>;
 }
 /** Hook response type (official Claude Code schema). */
@@ -39,7 +40,7 @@ export declare function readHookInput(): Promise<HookInput>;
 /**
  * Creates a hook response that allows the tool to proceed with execution.
  */
-export declare function allowTool(hookEventName: string, systemMessage?: string, updatedInput?: Record<string, unknown>): HookResponse;
+export declare function allowTool(hookEventName: string, additionalContext?: string, updatedInput?: Record<string, unknown>): HookResponse;
 /**
  * Creates a hook response that blocks the tool from executing.
  */

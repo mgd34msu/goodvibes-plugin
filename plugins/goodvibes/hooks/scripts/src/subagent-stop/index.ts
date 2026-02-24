@@ -28,6 +28,7 @@ import { loadState, saveState } from '../state/index.js';
 
 import { buildOrchestratorContext } from './context-injection.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
+import { normalizeAgentFields } from '../subagent-start/wrfc-utils.js';
 import { validateAgentOutput } from './output-validation.js';
 import {
   getAgentTracking,
@@ -281,18 +282,21 @@ async function runSubagentStopHook(): Promise<void> {
       if (runtimeClient.isAvailable()) {
         const success = input.success !== false;
         const eventName = success ? 'agent:completed' : 'agent:failed';
-        debug(`Phase 6: runtime engine available, sending ${eventName} event`);
-        await runtimeClient.sendHookEvent(
-          eventName,
-          rawInput as unknown as Record<string, unknown>
-        );
+        debug('Phase 6: runtime engine available, sending ' + eventName + ' event');
+        // Normalize agent fields so the runtime trigger system can look up the workflow
+        const { agent_id, agent_type } = normalizeAgentFields(input);
+        const normalizedData: Record<string, unknown> = {
+          ...(rawInput as unknown as Record<string, unknown>),
+          agent_id,
+          agent_type,
+        };
+        await runtimeClient.sendHookEvent(eventName, normalizedData);
       }
-    } catch (err) {
+    } catch {
       // Runtime integration must never break the hook — always fall through
       debug('Phase 6: runtime integration error, falling through to existing logic');
     }
     // ─── End Phase 6 integration ───
-
 
     const { agentId, agentType, transcriptPath, cwd } = extractInputFields(input);
 

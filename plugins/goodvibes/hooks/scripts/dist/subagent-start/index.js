@@ -19,6 +19,7 @@ import { cleanupStaleAgents, getGitInfo, deriveProjectName, } from '../telemetry
 import { getActiveAgentsFilePath } from '../telemetry/index.js';
 import { buildSubagentContext } from './context-injection.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
+import { extractWorkflowId, normalizeAgentFields, mergeSystemMessages } from './wrfc-utils.js';
 /**
  * Creates a hook response with optional system message and additional context.
  *
@@ -185,19 +186,33 @@ async function runSubagentStartHook() {
         const rawInput = await readHookInput();
         debug('Raw input shape:', Object.keys(rawInput || {}));
         const input = rawInput;
-        // ─── Phase 6: Runtime engine integration (early-return when available) ───
+        // ─── Phase 6: Runtime engine integration (non-blocking, no early-return) ───
         // Sends agent:spawned event and queries for a system message / dossier.
-        // Falls through to existing context-injection logic when not available.
+        // Falls through to existing context-injection logic always.
+        // Normalizes agent fields and extracts workflow_id from [WRFC:wid] in task description.
+        let runtimeSystemMessage;
         try {
             const runtimeClient = new RuntimeClient();
             if (runtimeClient.isAvailable()) {
                 debug('Phase 6: runtime engine available, sending agent:spawned event');
-                await runtimeClient.sendHookEvent('agent:spawned', rawInput);
+                // Normalize fields so the runtime always receives agent_id, agent_type, and workflow_id
+                const taskDesc = input.task_description ?? input.task ?? '';
+                const workflowId = extractWorkflowId(taskDesc);
+                const { agent_id, agent_type } = normalizeAgentFields(input);
+                const spawnedData = {
+                    ...rawInput,
+                    agent_id,
+                    agent_type,
+                };
+                if (workflowId) {
+                    spawnedData['workflow_id'] = workflowId;
+                    debug('Phase 6: extracted workflow_id from task description', { workflow_id: workflowId });
+                }
+                await runtimeClient.sendHookEvent('agent:spawned', spawnedData);
                 const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
                 if (queryResult?.kind === 'system_message') {
-                    debug('Phase 6: runtime returned system message for subagent, using it');
-                    respond(createResponse({ systemMessage: queryResult.message }));
-                    return;
+                    debug('Phase 6: runtime returned system message for subagent, storing for merge');
+                    runtimeSystemMessage = queryResult.message;
                 }
             }
         }
@@ -239,7 +254,9 @@ async function runSubagentStartHook() {
         const reminders = buildReminders(projectName, gitInfo.branch, analytics?.detected_stack);
         const additionalContext = buildAdditionalContext(subagentContext, reminders);
         const systemMessage = buildSystemMessage(agentType, projectName, gitInfo.branch);
-        respond(createResponse({ systemMessage, additionalContext }));
+        // Merge runtime system message (if any) with the hook-built system message
+        const mergedSystemMessage = mergeSystemMessages(runtimeSystemMessage, systemMessage);
+        respond(createResponse({ systemMessage: mergedSystemMessage, additionalContext }));
     }
     catch (error) {
         logError('SubagentStart main', error);

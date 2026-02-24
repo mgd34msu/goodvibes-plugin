@@ -15,13 +15,13 @@ var init_gitignore = __esm({
 function isTestEnvironment() {
   return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
 }
-function allowTool(hookEventName, systemMessage, updatedInput) {
+function allowTool(hookEventName, additionalContext, updatedInput) {
   return {
     continue: true,
-    systemMessage,
     hookSpecificOutput: {
       hookEventName,
       permissionDecision: "allow",
+      additionalContext,
       updatedInput
     }
   };
@@ -533,8 +533,8 @@ async function runDirectiveDeliveryHook() {
         action: "directive",
         message: result.message
       });
-      const systemMessage = `<gv>${gvPayload}</gv>`;
-      respond(allowTool("PreToolUse", systemMessage));
+      const additionalContext = `<gv>${gvPayload}</gv>`;
+      respond(allowTool("PreToolUse", additionalContext));
       return;
     }
     respond(allowTool("PreToolUse"));

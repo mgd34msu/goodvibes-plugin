@@ -190,7 +190,7 @@ describe('shared utilities', () => {
       const result = allowTool('PreToolUse', 'Tool allowed');
 
       expect(result.continue).toBe(true);
-      expect(result.systemMessage).toBe('Tool allowed');
+      expect(result.hookSpecificOutput?.additionalContext).toBe('Tool allowed');
       expect(result.hookSpecificOutput?.permissionDecision).toBe('allow');
     });
   });

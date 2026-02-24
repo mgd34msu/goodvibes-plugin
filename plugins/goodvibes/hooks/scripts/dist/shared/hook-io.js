@@ -42,13 +42,13 @@ export async function readHookInput() {
 /**
  * Creates a hook response that allows the tool to proceed with execution.
  */
-export function allowTool(hookEventName, systemMessage, updatedInput) {
+export function allowTool(hookEventName, additionalContext, updatedInput) {
     return {
         continue: true,
-        systemMessage,
         hookSpecificOutput: {
             hookEventName,
             permissionDecision: 'allow',
+            additionalContext,
             updatedInput,
         },
     };

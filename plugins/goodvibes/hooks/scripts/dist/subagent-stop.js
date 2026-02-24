@@ -862,6 +862,14 @@ function getAgentChainingReminder(agentType, success) {
   return null;
 }
 
+// src/subagent-start/wrfc-utils.ts
+function normalizeAgentFields(input) {
+  return {
+    agent_id: input.agent_id ?? input.subagent_id,
+    agent_type: input.agent_type ?? input.subagent_type
+  };
+}
+
 // src/automation/build-runner.ts
 import { exec as exec2 } from "child_process";
 import { promisify as promisify2 } from "util";
@@ -1196,13 +1204,16 @@ async function runSubagentStopHook() {
       if (runtimeClient.isAvailable()) {
         const success = input.success !== false;
         const eventName = success ? "agent:completed" : "agent:failed";
-        debug(`Phase 6: runtime engine available, sending ${eventName} event`);
-        await runtimeClient.sendHookEvent(
-          eventName,
-          rawInput
-        );
+        debug("Phase 6: runtime engine available, sending " + eventName + " event");
+        const { agent_id, agent_type } = normalizeAgentFields(input);
+        const normalizedData = {
+          ...rawInput,
+          agent_id,
+          agent_type
+        };
+        await runtimeClient.sendHookEvent(eventName, normalizedData);
       }
-    } catch (err) {
+    } catch {
       debug("Phase 6: runtime integration error, falling through to existing logic");
     }
     const { agentId, agentType, transcriptPath, cwd } = extractInputFields(input);
