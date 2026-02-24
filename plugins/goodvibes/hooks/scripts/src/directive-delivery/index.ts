@@ -19,20 +19,12 @@ import { RuntimeClient } from '../shared/runtime-client.js';
 import { stdin } from 'node:process';
 
 /**
- * Drain stdin without validation — this hook doesn't use the input
- * but must consume it to avoid broken pipe errors.
- */
-async function drainStdin(): Promise<void> {
-  for await (const _chunk of stdin) { /* discard */ }
-}
-
-/**
  * Main entry point for the directive-delivery hook.
  */
 export async function runDirectiveDeliveryHook(): Promise<void> {
   try {
-    // Drain stdin (required to avoid broken pipe, but we don't need the data)
-    await drainStdin();
+    // Put stdin into flowing mode to discard data without blocking
+    stdin.resume();
 
     const runtimeClient = new RuntimeClient();
 
