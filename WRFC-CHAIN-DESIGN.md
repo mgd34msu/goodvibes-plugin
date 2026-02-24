@@ -1,7 +1,7 @@
 # WRFC Chain Architecture Design
 
 ## Date: 2026-02-23
-## Status: In Progress — Decisions captured, implementation pending
+## Status: V1 Complete — All decisions implemented, all questions resolved. Non-WRFC chains deferred to v2.
 
 ---
 
@@ -118,8 +118,13 @@ The workflow engine already supports multiple workflow definitions. The chain bi
 
 2. ~~**Auto-complete criteria:**~~ RESOLVED — Decision 3 whitelist: Explore, Plan, Bash, general-purpose auto-complete. All others enter WRFC. Implemented in commit 4de4c5e1.
 
-3. **Review score trigger:** How does the review score get extracted and fed back into the chain? Separate trigger that reacts to review score data?
+3. ~~**Review score trigger:**~~ RESOLVED — `<gv>` tag parser (`gv-tag-parser.ts`) extracts structured JSON from agent output. `extractReviewScore()` tries `<gv>` tag first, falls back to legacy `SCORE: X/10` regex. Score fed to `handleReviewResult()` which writes to workflow context and fires `wrfc:review_completed`. Implemented in commit c3cd65ff.
 
-4. **Multiple chain types:** How are different chain types selected? Per-agent? Per-workflow definition? Orchestrator-specified?
+4. ~~**Multiple chain types:**~~ DEFERRED TO V2 — Only WRFC loop implemented for v1. Fix loop, test-then-fix, review-only, and custom chains deferred until WRFC is validated end-to-end. Builtin triggers 1-2 reference `fix_loop` definition but are inert (no `build:failed`/`test:failed` events emitted yet).
 
-5. **State machine transitions:** Full set of transitions needed for WRFC and other chain types.
+5. ~~**State machine transitions:**~~ RESOLVED — All WRFC transitions fully wired in v1:
+   - REVIEWING → FIXING: `handleReviewResult` writes `review_score` to context, fires `wrfc:review_completed`, guard evaluates `score < min`
+   - FIXING → REVIEWING: `handleFixResult` increments `fix_attempts`, fires `wrfc:fix_completed`, guard evaluates `attempts < max`
+   - FIXING → ESCALATED: same event, guard `attempts >= max`
+   - REVIEWING → COMPLETE: same event, guard `score >= min`
+   - Non-WRFC chain transitions deferred to v2.
