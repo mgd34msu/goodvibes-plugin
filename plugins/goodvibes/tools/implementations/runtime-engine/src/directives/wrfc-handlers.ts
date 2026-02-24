@@ -41,6 +41,12 @@ const log = createLogger('wrfc-handlers');
 /** Default resource budget for spawned review/fix agents. */
 const DEFAULT_BUDGET = { max_tokens: 50_000, max_turns: 20 };
 
+/** Agent type identifiers that are treated as reviewers. */
+const REVIEWER_AGENT_TYPES = new Set(['reviewer', 'goodvibes:reviewer']);
+
+/** Agent type identifiers that are treated as engineers (fixers). */
+const ENGINEER_AGENT_TYPES = new Set(['engineer', 'goodvibes:engineer']);
+
 /** Default minimum review score to pass (configurable per workflow). */
 const DEFAULT_MIN_REVIEW_SCORE = 9.5;
 
@@ -86,7 +92,17 @@ function handleReviewResult(params: {
   agentWorkflowMap?: AgentWorkflowMap | null;
   agentId?: string;
 }): void {
-  const { workflowEngine, directiveQueue, workflow, score, filesModified, reviewIssues = [], source, agentWorkflowMap, agentId } = params;
+  const {
+    workflowEngine,
+    directiveQueue,
+    workflow,
+    score,
+    filesModified,
+    reviewIssues = [],
+    source,
+    agentWorkflowMap,
+    agentId,
+  } = params;
 
   const minScore =
     typeof workflow.context.min_review_score === 'number'
@@ -185,6 +201,30 @@ function handleReviewResult(params: {
  * max_fix_attempts) evaluate against current values, then either
  * enqueues an escalation directive or a re-review directive.
  */
+/** Sends the wrfc:fix_completed state-machine event. */
+function sendFixCompletedEvent(
+  workflowEngine: WorkflowEngine,
+  workflowId: string,
+  fixAttempts: number,
+  logContext: { source: string },
+): void {
+  try {
+    workflowEngine.sendEvent(workflowId, {
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: 'wrfc:fix_completed',
+      source: { kind: 'system' },
+      payload: {
+        type: 'wrfc:fix_completed',
+        data: { fix_attempts: fixAttempts },
+      },
+      metadata: { session_id: workflowId, sequence: 0, version: 1 },
+    });
+  } catch (err) {
+    log.error(`${logContext.source}: failed to advance workflow state (fix_completed)`, { workflow_id: workflowId, error: String(err) });
+  }
+}
+
 function handleFixResult(params: {
   workflowEngine: WorkflowEngine;
   directiveQueue: DirectiveQueue;
@@ -196,7 +236,17 @@ function handleFixResult(params: {
   agentWorkflowMap?: AgentWorkflowMap | null;
   agentId?: string;
 }): void {
-  const { workflowEngine, directiveQueue, workflow, incomingFixAttempts, maxFixAttempts, filesModified, source, agentWorkflowMap, agentId } = params;
+  const {
+    workflowEngine,
+    directiveQueue,
+    workflow,
+    incomingFixAttempts,
+    maxFixAttempts,
+    filesModified,
+    source,
+    agentWorkflowMap,
+    agentId,
+  } = params;
 
   // Increment and persist fix attempts in context
   const fixAttempts = incomingFixAttempts + 1;
@@ -209,21 +259,7 @@ function handleFixResult(params: {
       typeof workflow.context.review_score === 'number' ? workflow.context.review_score : 0;
 
     // Advance state machine BEFORE enqueuing escalation directive
-    try {
-      workflowEngine.sendEvent(workflow.id, {
-        id: generateEventId(),
-        timestamp: timestamp(),
-        type: 'wrfc:fix_completed',
-        source: { kind: 'system' },
-        payload: {
-          type: 'wrfc:fix_completed',
-          data: { fix_attempts: fixAttempts },
-        },
-        metadata: { session_id: workflow.id, sequence: 0, version: 1 },
-      });
-    } catch (err) {
-      log.error('handleFixResult: failed to advance workflow state (escalation path)', { workflow_id: workflow.id, error: String(err) });
-    }
+    sendFixCompletedEvent(workflowEngine, workflow.id, fixAttempts, { source: 'handleFixResult' });
 
     const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
     directiveQueue.enqueue('subagent_stop', {
@@ -243,21 +279,7 @@ function handleFixResult(params: {
     });
   } else {
     // Still have fix budget → advance state machine and spawn reviewer for re-check
-    try {
-      workflowEngine.sendEvent(workflow.id, {
-        id: generateEventId(),
-        timestamp: timestamp(),
-        type: 'wrfc:fix_completed',
-        source: { kind: 'system' },
-        payload: {
-          type: 'wrfc:fix_completed',
-          data: { fix_attempts: fixAttempts },
-        },
-        metadata: { session_id: workflow.id, sequence: 0, version: 1 },
-      });
-    } catch (err) {
-      log.error('handleFixResult: failed to advance workflow state (re-review path)', { workflow_id: workflow.id, error: String(err) });
-    }
+    sendFixCompletedEvent(workflowEngine, workflow.id, fixAttempts, { source: 'handleFixResult' });
 
     const recheckTask =
       `Re-review the code after fix attempt ${fixAttempts} of ${maxFixAttempts} for workflow ${workflow.id}. ` +
@@ -488,7 +510,7 @@ export function registerWRFCHandlers(
       });
     } else if (currentState === 'REVIEWING') {
       // ── REVIEWING state: reviewer completed → delegate to handleReviewResult
-      const isReviewer = agentType.includes('reviewer');
+      const isReviewer = REVIEWER_AGENT_TYPES.has(agentType);
 
       if (!isReviewer) {
         log.debug('wrfc_chain_next: REVIEWING state but agent is not a reviewer, skipping', {
@@ -531,7 +553,7 @@ export function registerWRFCHandlers(
       });
     } else if (currentState === 'FIXING') {
       // ── FIXING state: engineer completed fix → delegate to handleFixResult ─
-      const isEngineer = agentType.includes('engineer');
+      const isEngineer = ENGINEER_AGENT_TYPES.has(agentType);
 
       if (!isEngineer) {
         log.debug('wrfc_chain_next: FIXING state but agent is not an engineer, skipping', {
@@ -630,7 +652,8 @@ export function registerWRFCHandlers(
       try {
         const parsed: unknown = JSON.parse(rawFiles);
         if (Array.isArray(parsed)) filesModified = parsed as string[];
-      } catch {
+      } catch (err) {
+        log.debug('wrfc_review_response: JSON.parse failed for files_modified, treating as single path', { raw: rawFiles, error: String(err) });
         filesModified = [rawFiles];
       }
     }

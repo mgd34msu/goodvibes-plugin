@@ -558,6 +558,11 @@ export interface EventFilter {
   correlation_id?: string;
   /** Maximum number of events to return. */
   limit?: number;
+  /**
+   * Include only events with a sequence number greater than this value.
+   * Enables efficient stream filtering without re-reading all events.
+   */
+  since_sequence?: number;
 }
 
 // ─── Core Event Interface ─────────────────────────────────────────────────────

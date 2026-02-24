@@ -320,9 +320,9 @@ describe('EventQueue', () => {
       const dead = queue.getDeadLetters();
       expect(dead).toHaveLength(1);
       expect(dead[0]!.last_error).toMatch(/always fails/);
-      // The implementation only accumulates the final error in all_errors
-      // (retry entries don't carry all_errors forward, so only 1 entry)
-      expect(dead[0]!.all_errors).toHaveLength(1);
+      // all_errors must contain one entry per failed attempt (max_attempts: 2)
+      expect(dead[0]!.all_errors).toHaveLength(2);
+      expect(dead[0]!.all_errors.every((e) => /always fails/.test(e))).toBe(true);
     }, 10000);
 
     it('applies exponential backoff: subsequent backoff_ms grows', async () => {

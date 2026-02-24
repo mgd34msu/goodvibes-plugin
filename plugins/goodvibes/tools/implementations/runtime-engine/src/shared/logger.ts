@@ -44,14 +44,23 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
   error: 3,
 };
 
+/** Cached resolved log level with a short TTL to avoid repeated env lookups */
+let _cachedLevel: LogLevel | undefined;
+let _cacheExpiresAt = 0;
+const LOG_LEVEL_CACHE_TTL_MS = 5000;
+
 /**
  * Resolves the active log level from the GOODVIBES_LOG_LEVEL environment variable.
+ * Result is cached for 5 seconds to avoid repeated computation on every log call.
  * Defaults to "info" if unset or invalid.
  */
 function resolveActiveLevel(): LogLevel {
+  const now = Date.now();
+  if (_cachedLevel !== undefined && now < _cacheExpiresAt) return _cachedLevel;
   const raw = (process.env['GOODVIBES_LOG_LEVEL'] ?? 'info').toLowerCase();
-  if (raw in LEVEL_ORDER) return raw as LogLevel;
-  return 'info';
+  _cachedLevel = (raw in LEVEL_ORDER ? raw : 'info') as LogLevel;
+  _cacheExpiresAt = now + LOG_LEVEL_CACHE_TTL_MS;
+  return _cachedLevel;
 }
 
 /**

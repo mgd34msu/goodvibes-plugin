@@ -5,7 +5,7 @@
  * are synchronous and side-effect free unless otherwise noted.
  */
 
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Generates a universally unique identifier using Node's built-in crypto module.

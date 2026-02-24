@@ -7,7 +7,6 @@
  */
 
 import { createLogger } from '../shared/logger.js';
-import { timestamp } from '../shared/utils.js';
 import type { RuntimeEvent } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { TriggersConfig } from '../shared/config.js';
@@ -128,8 +127,8 @@ export class TriggerRegistry {
    * Processing order:
    * 1. Record the event in the condition evaluator.
    * 2. Sort enabled triggers by priority (ascending — lower = first).
-   * 3. For each trigger, check cooldown and max_fires before evaluating.
-   * 4. If condition met, execute action and record the fire.
+   * 3. Evaluate all enabled triggers in parallel (guards + condition + action).
+   * 4. Collect results; log any unexpected rejections.
    *
    * @param event - The event to evaluate against all triggers.
    * @returns Results for every trigger that was checked (fired or skipped).
@@ -145,9 +144,16 @@ export class TriggerRegistry {
       .filter((t) => t.enabled)
       .sort((a, b) => a.priority - b.priority);
 
-    for (const trigger of sorted) {
-      const result = await this.evaluateTrigger(trigger, event);
-      results.push(result);
+    const settled = await Promise.allSettled(
+      sorted.map((trigger) => this.evaluateTrigger(trigger, event)),
+    );
+
+    for (const outcome of settled) {
+      if (outcome.status === 'fulfilled') {
+        results.push(outcome.value);
+      } else {
+        log.error('Unexpected error evaluating trigger', { error: outcome.reason });
+      }
     }
 
     return results;
@@ -207,8 +213,7 @@ export class TriggerRegistry {
   ): Promise<TriggerResult> {
     // Guard: cooldown check
     if (trigger.last_fired && trigger.cooldown_ms !== undefined) {
-      const lastFiredMs = new Date(trigger.last_fired).getTime();
-      if (Date.now() - lastFiredMs < trigger.cooldown_ms) {
+      if (Date.now() - trigger.last_fired < trigger.cooldown_ms) {
         return {
           trigger_id: trigger.id,
           trigger_name: trigger.name,
@@ -251,8 +256,9 @@ export class TriggerRegistry {
     const actionResult = await this.executor.execute(trigger.action, event);
 
     // Record fire regardless of action success
+    // Safe without a mutex: Node.js is single-threaded — no concurrent mutation possible.
     trigger.fires_count++;
-    trigger.last_fired = timestamp();
+    trigger.last_fired = Date.now();
 
     if (!actionResult.success) {
       log.warn('Trigger action failed', {

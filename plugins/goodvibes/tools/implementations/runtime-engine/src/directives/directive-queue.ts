@@ -11,7 +11,16 @@ import { createLogger } from '../shared/logger.js';
 
 const logger = createLogger('directive-queue');
 
-/** Maximum number of directives retained per target before oldest are evicted. */
+/**
+ * Maximum number of directives retained per target before the oldest is evicted.
+ *
+ * This is a compile-time constant rather than a configurable value by design:
+ * making it runtime-configurable would require surfacing it through the public
+ * API or config schema, adding complexity for a limit that protects against
+ * runaway memory growth. If the default proves too low or too high for a
+ * specific deployment, it should be adjusted here with a code review rather
+ * than through user configuration.
+ */
 const MAX_QUEUE_DEPTH = 100;
 
 /**
@@ -74,7 +83,16 @@ export class DirectiveQueue {
     this.queues.clear();
   }
 
-  /** Stored WRFC config from config:loaded event. */
+  /**
+   * Stored WRFC config from the `config:loaded` hook event.
+   *
+   * @v1-design-note Storing WRFC-specific configuration (min review score,
+   * max fix attempts, etc.) inside `DirectiveQueue` violates the Single
+   * Responsibility Principle — a queue should only manage queueing. This was
+   * a pragmatic choice in v1 to avoid a separate config-store module. In v2
+   * this should be extracted to a dedicated `WRFCConfig` service or singleton
+   * so that `DirectiveQueue` only owns directive lifecycle.
+   */
   private wrfcConfig: Record<string, unknown> = {};
 
   /**

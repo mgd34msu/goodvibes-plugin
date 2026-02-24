@@ -7,8 +7,8 @@
  * Priority ordering: CRITICAL (0) > HIGH (1) > NORMAL (2) > LOW (3).
  * Within the same priority, entries are processed FIFO (oldest first).
  *
- * Processing uses setImmediate to yield to the Node.js event loop between
- * items, preventing the queue processor from monopolising the CPU.
+ * Processing uses setTimeout to schedule each item, yielding to the Node.js
+ * event loop between items to prevent the queue from monopolising the CPU.
  */
 
 import type { RuntimeEvent } from './types.js';
@@ -48,6 +48,8 @@ export interface QueueEntry {
   backoff_ms: number;
   /** Optional ISO-8601 deadline — entry is dropped if processing starts after this. */
   deadline?: string;
+  /** Internal: accumulated error messages across retry attempts (not part of public API). */
+  _accumulated_errors?: string[];
 }
 
 /** A queue entry that has exhausted all retry attempts. */
@@ -106,8 +108,13 @@ export interface EventQueueConfig {
  * queue.enqueue({ event, priority: QueuePriority.NORMAL, handler: 'onHook', max_attempts: 3 });
  */
 export class EventQueue {
-  /** The active queue, maintained in priority+FIFO order. */
-  private queue: QueueEntry[] = [];
+  /**
+   * Priority buckets: index matches QueuePriority value.
+   * buckets[0] = CRITICAL, [1] = HIGH, [2] = NORMAL, [3] = LOW.
+   * Each bucket is a FIFO array; dequeue always takes from the lowest-index
+   * non-empty bucket.
+   */
+  private buckets: [QueueEntry[], QueueEntry[], QueueEntry[], QueueEntry[]] = [[], [], [], []];
   /** Entries that exhausted all retry attempts. */
   private deadLetters: DeadLetterEntry[] = [];
   /** Registered handler functions keyed by name. */
@@ -126,14 +133,12 @@ export class EventQueue {
 
   // Configuration
   private readonly maxSize: number;
-  private readonly maxAttempts: number;
   private readonly backoffBase: number;
   private readonly backoffMultiplier: number;
   private readonly processIntervalMs: number;
 
   constructor(config: EventQueueConfig) {
     this.maxSize = config.max_size;
-    this.maxAttempts = config.max_attempts;
     this.backoffBase = config.backoff_base_ms;
     this.backoffMultiplier = config.backoff_multiplier;
     this.processIntervalMs = config.process_interval_ms;
@@ -156,8 +161,8 @@ export class EventQueue {
   /**
    * Adds an event to the queue for deferred processing.
    *
-   * The entry is inserted at the correct position to maintain priority+FIFO
-   * ordering. If the queue is at capacity the entry is rejected.
+   * The entry is pushed to the appropriate priority bucket (FIFO within each
+   * bucket). Dequeue always takes from the highest non-empty priority bucket. If the queue is at capacity the entry is rejected.
    *
    * @param entry - Entry fields; `id`, `enqueued_at`, `attempts`, and `backoff_ms`
    *   are populated automatically if omitted.
@@ -167,7 +172,7 @@ export class EventQueue {
   enqueue(
     entry: Omit<QueueEntry, 'id' | 'enqueued_at' | 'attempts' | 'backoff_ms'> & { id?: string },
   ): string {
-    if (this.queue.length >= this.maxSize) {
+    if (this.totalPending() >= this.maxSize) {
       throw new Error(
         `EventQueue is full (max_size=${this.maxSize}). Entry rejected for handler "${entry.handler}".`,
       );
@@ -181,13 +186,13 @@ export class EventQueue {
       backoff_ms: this.backoffBase,
     };
 
-    this.insertSorted(fullEntry);
+    this.insertBucket(fullEntry);
 
     logger.debug('Entry enqueued', {
       id: fullEntry.id,
       priority: fullEntry.priority,
       handler: fullEntry.handler,
-      queue_depth: this.queue.length,
+      queue_depth: this.totalPending(),
     });
 
     // Kick off processing if the queue is running but idle
@@ -207,7 +212,7 @@ export class EventQueue {
     if (this.running) return;
     this.running = true;
     logger.info('Event queue started');
-    if (this.queue.length > 0) {
+    if (this.totalPending() > 0) {
       this.scheduleNext(0);
     }
   }
@@ -237,16 +242,17 @@ export class EventQueue {
       [QueuePriority.NORMAL]: 0,
       [QueuePriority.LOW]: 0,
     };
-    for (const entry of this.queue) {
-      byPriority[entry.priority] = (byPriority[entry.priority] ?? 0) + 1;
+    for (let p = 0; p < 4; p++) {
+      byPriority[p] = this.buckets[p as QueuePriority]!.length;
     }
 
     const now = Date.now();
-    const oldest = this.queue[0];
+    const firstBucket = this.buckets.find((b) => b.length > 0);
+    const oldest = firstBucket?.[0];
     const oldestAgeMs = oldest ? now - new Date(oldest.enqueued_at).getTime() : 0;
 
     return {
-      pending: this.queue.length,
+      pending: this.totalPending(),
       processing: this.processing ? 1 : 0,
       completed: this.completedCount,
       failed: this.failedCount,
@@ -292,7 +298,7 @@ export class EventQueue {
       deadline: dead.deadline,
     };
 
-    this.insertSorted(retryEntry);
+    this.insertBucket(retryEntry);
     logger.info('Dead-letter entry re-queued', { id });
 
     if (this.running && !this.processing && this.processTimer === null) {
@@ -319,7 +325,7 @@ export class EventQueue {
       this.running = true;
     }
 
-    while (this.queue.length > 0 && Date.now() < deadline) {
+    while (this.totalPending() > 0 && Date.now() < deadline) {
       await this.processNext();
       // Yield briefly to allow backoff-delayed re-queued items to settle
       await new Promise<void>((resolve) => setImmediate(resolve));
@@ -331,42 +337,40 @@ export class EventQueue {
 
     return {
       processed: this.completedCount - initialCompleted,
-      remaining: this.queue.length,
+      remaining: this.totalPending(),
     };
   }
 
   /** Number of entries currently in the pending queue. */
   get size(): number {
-    return this.queue.length;
+    return this.totalPending();
   }
 
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /**
-   * Inserts an entry into the queue maintaining priority+FIFO order.
-   *
-   * Entries with a lower priority number are placed before entries with a
-   * higher number. Within the same priority, newer entries go after older ones.
-   */
-  private insertSorted(entry: QueueEntry): void {
-    // Find the insertion point: after all entries with same or higher priority
-    let insertAt = this.queue.length;
-    for (let i = this.queue.length - 1; i >= 0; i--) {
-      if ((this.queue[i] as QueueEntry).priority <= entry.priority) {
-        insertAt = i + 1;
-        break;
-      }
-      insertAt = i;
-    }
-    this.queue.splice(insertAt, 0, entry);
+  /** Returns total number of pending entries across all priority buckets. */
+  private totalPending(): number {
+    return this.buckets[0]!.length + this.buckets[1]!.length + this.buckets[2]!.length + this.buckets[3]!.length;
   }
 
   /**
-   * Schedules the next `processNext` call.
+   * Pushes an entry into the appropriate priority bucket.
    *
-   * Uses `setImmediate` for zero-delay and `setTimeout` for positive delays.
+   * Each bucket is a FIFO array corresponding to a QueuePriority level.
+   * Dequeue always takes from the lowest-index non-empty bucket, so
+   * CRITICAL (0) is always served before HIGH (1), NORMAL (2), and LOW (3).
+   */
+  private insertBucket(entry: QueueEntry): void {
+    this.buckets[entry.priority]!.push(entry);
+  }
+
+  /**
+   * Schedules the next `processNext` call via `setTimeout`.
+   *
+   * A delay of 0 yields to the event loop before the next item is processed.
+   * A positive delay implements the retry backoff or inter-cycle interval.
    */
   private scheduleNext(delayMs: number): void {
     if (this.processTimer !== null) return;
@@ -391,11 +395,12 @@ export class EventQueue {
    * re-queues with delay or moves to the dead-letter queue.
    */
   private async processNext(): Promise<void> {
-    if (!this.running || this.queue.length === 0) return;
+    if (!this.running || this.totalPending() === 0) return;
     if (this.processing) return;
 
     this.processing = true;
-    const entry = this.queue.shift()!;
+    const bucket = this.buckets.find((b) => b.length > 0)!;
+    const entry = bucket.shift()!;
     const startMs = Date.now();
     let retryBackoffMs = 0;
 
@@ -439,20 +444,18 @@ export class EventQueue {
         ...entry,
         attempts: entry.attempts + 1,
         backoff_ms: Math.round(entry.backoff_ms * this.backoffMultiplier),
+        _accumulated_errors: [...(entry._accumulated_errors ?? []), errorMessage],
       };
 
       this.failedCount++;
 
-      if (updatedEntry.attempts >= (entry.max_attempts ?? this.maxAttempts)) {
+      if (updatedEntry.attempts >= entry.max_attempts) {
         // Move to dead-letter queue
         const dlEntry: DeadLetterEntry = {
           ...updatedEntry,
           failed_at: timestamp(),
           last_error: errorMessage,
-          all_errors: [
-            ...((entry as Partial<DeadLetterEntry>).all_errors ?? []),
-            errorMessage,
-          ],
+          all_errors: updatedEntry._accumulated_errors ?? [errorMessage],
         };
         if (this.deadLetters.length >= MAX_DEAD_LETTERS) {
           this.deadLetters.shift();
@@ -475,13 +478,13 @@ export class EventQueue {
           error: errorMessage,
         });
         // Insert back — will schedule with backoff
-        this.insertSorted(updatedEntry);
+        this.insertBucket(updatedEntry);
       }
     } finally {
       this.processing = false;
 
       // Schedule next item if queue is non-empty and running
-      if (this.running && this.queue.length > 0) {
+      if (this.running && this.totalPending() > 0) {
         // Use the retry backoff from the catch block if this was a retry,
         // otherwise use the configured process interval between cycles.
         this.scheduleNext(retryBackoffMs > 0 ? retryBackoffMs : this.processIntervalMs);

@@ -125,13 +125,15 @@ export class IPCServer {
     });
 
     return new Promise<void>((resolve, reject) => {
+      this.server!.once('error', reject);
       this.server!.listen(this.socketPath, () => {
         // Restrict socket file to owner-only access
         chmodSync(this.socketPath, 0o600);
         logger.info('IPC server listening', { path: this.socketPath });
+        // Remove the startup error listener now that we have bound successfully
+        this.server!.removeListener('error', reject);
         resolve();
       });
-      this.server!.once('error', reject);
     });
   }
 
@@ -159,12 +161,13 @@ export class IPCServer {
         resolve();
         return;
       }
-      this.server.close(() => {
+      const srv = this.server;
+      this.server = null;
+      srv.close(() => {
         this.removeSocketFile();
         logger.info('IPC server closed');
         resolve();
       });
-      this.server = null;
     });
   }
 
@@ -219,12 +222,11 @@ export class IPCServer {
       socket.destroy();
     }, CONNECTION_TIMEOUT_MS);
 
-    let rawData = '';
+    const chunks: Buffer[] = [];
     let rawBytes = 0;
 
-    socket.on('data', (chunk) => {
+    socket.on('data', (chunk: Buffer) => {
       rawBytes += chunk.length; // chunk is Buffer; .length is bytes
-      rawData += chunk.toString('utf-8');
 
       if (rawBytes > MAX_MESSAGE_SIZE) {
         logger.warn('IPC message size limit exceeded — closing connection', {
@@ -235,14 +237,24 @@ export class IPCServer {
         return;
       }
 
-      const newlineIdx = rawData.indexOf('\n');
-      if (newlineIdx === -1) return; // Message not yet complete
+      // Check for newline in the incoming chunk before buffering
+      const newlinePos = chunk.indexOf(0x0a); // 0x0a = '\n'
+      if (newlinePos === -1) {
+        // No newline yet — buffer the whole chunk and wait for more data
+        chunks.push(chunk);
+        return;
+      }
 
-      // Message complete — cancel idle timer and stop collecting data
+      // Message complete — push the portion up to (not including) the newline
+      chunks.push(chunk.subarray(0, newlinePos));
+
+      // Decode once via Buffer.concat — O(n) instead of O(n^2)
+      const line = Buffer.concat(chunks).toString('utf-8');
+
+      // Cancel idle timer and stop collecting data
       clearTimeout(idleTimer);
       socket.pause();
 
-      const line = rawData.slice(0, newlineIdx);
       this.processMessage(socket, line);
     });
   }

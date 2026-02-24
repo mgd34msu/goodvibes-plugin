@@ -6,10 +6,10 @@
  * .goodvibes/state/runtime-config.json in the project root.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { toErrorMessage } from './utils.js';
-import { join } from 'path';
-import { userInfo, tmpdir } from 'os';
+import { join } from 'node:path';
+import { userInfo, tmpdir } from 'node:os';
 
 /** IPC socket and timeout configuration */
 export interface IpcConfig {
@@ -126,10 +126,14 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
   schema_version: '1.0.0',
   ipc: {
     socket_dir: (() => {
-      const xdg = process.env['XDG_RUNTIME_DIR'];
-      if (xdg) return `${xdg}/goodvibes`;
-      const uid = process.getuid?.() ?? (() => { try { return userInfo().uid; } catch { return 0; } })();
-      return `${tmpdir()}/goodvibes-${uid}`;
+      try {
+        const xdg = process.env['XDG_RUNTIME_DIR'];
+        if (xdg) return `${xdg}/goodvibes`;
+        const uid = process.getuid?.() ?? (() => { try { return userInfo().uid; } catch { return 0; } })();
+        return `${tmpdir()}/goodvibes-${uid}`;
+      } catch {
+        return `${tmpdir()}/goodvibes`;
+      }
     })(),
     connect_timeout_ms: 500,
     query_timeout_ms: 200,
@@ -190,6 +194,7 @@ function deepMerge<T extends object>(base: T, override: Partial<T>): T {
     const overrideVal = override[key];
     if (
       overrideVal !== undefined &&
+      overrideVal !== null &&
       typeof overrideVal === 'object' &&
       !Array.isArray(overrideVal) &&
       typeof baseVal === 'object' &&
@@ -228,8 +233,14 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
   const configPath = join(root, '.goodvibes', 'state', 'runtime-config.json');
   try {
     const raw = readFileSync(configPath, 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<RuntimeConfig>;
-    return deepMerge(DEFAULT_CONFIG, parsed);
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      process.stderr.write(
+        `[runtime-engine] Warning: config at "${configPath}" is not an object — using defaults\n`,
+      );
+      return { ...DEFAULT_CONFIG };
+    }
+    return deepMerge(DEFAULT_CONFIG, parsed as Partial<RuntimeConfig>);
   } catch (err) {
     // ENOENT means the config file does not exist yet (normal first-run).
     // Any other error (parse failure, permission denied, etc.) is unexpected

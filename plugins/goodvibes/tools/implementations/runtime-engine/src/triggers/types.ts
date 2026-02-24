@@ -33,8 +33,8 @@ export interface TriggerDefinition {
   max_fires?: number;
   /** Number of times this trigger has fired in the current session. */
   fires_count: number;
-  /** ISO timestamp of the last time this trigger fired. */
-  last_fired?: string;
+  /** Epoch milliseconds of the last time this trigger fired (from `Date.now()`). */
+  last_fired?: number;
 }
 
 // ─── Condition Types ───────────────────────────────────────────────────────────

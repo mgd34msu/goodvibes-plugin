@@ -218,7 +218,7 @@ describe('TriggerRegistry', () => {
     });
 
     it('skips trigger due to cooldown', async () => {
-      const recentFired = new Date(Date.now() - 100).toISOString();
+      const recentFired = Date.now() - 100; // 100ms ago — within 5s cooldown
       const t = makeTrigger({
         id: 'cooldown-test',
         cooldown_ms: 5000,
@@ -231,7 +231,7 @@ describe('TriggerRegistry', () => {
     });
 
     it('fires after cooldown has expired', async () => {
-      const oldFired = new Date(Date.now() - 10000).toISOString(); // 10s ago
+      const oldFired = Date.now() - 10000; // 10s ago — well past 1s cooldown
       const t = makeTrigger({
         id: 'cooldown-expired',
         cooldown_ms: 1000, // 1s cooldown, well past
@@ -265,7 +265,7 @@ describe('TriggerRegistry', () => {
       expect(results[0]!.skipped_reason).toBe('max_fires');
     });
 
-    it('evaluates triggers in priority order (lower number first)', async () => {
+    it('starts trigger evaluation in priority order (lower number first)', async () => {
       const handlerA = vi.fn().mockResolvedValue(undefined);
       const handlerB = vi.fn().mockResolvedValue(undefined);
       registry.registerHandler('handlerA', handlerA);

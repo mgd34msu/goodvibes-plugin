@@ -33,27 +33,39 @@ export interface SpawnDirectiveContext {
 }
 
 /**
+ * Typed structure for a spawn directive emitted to the orchestrator.
+ */
+interface SpawnDirective {
+  action: 'spawn';
+  wid: string;
+  type: string;
+  task: string;
+}
+
+/**
  * Build a structured <gv> spawn directive instructing the orchestrator to
  * spawn an agent of the given type.
  *
  * @param agentType  - Short agent type label (e.g. "reviewer", "engineer").
  * @param task       - Task description/instructions for the spawned agent.
- * @param budget     - Token and turn budget (kept for API compat, not emitted).
+ * @param budget     - Token and turn budget. Not emitted in the directive.
+ * @deprecated The `budget` parameter is unused and will be removed in v2.
+ *   Pass `undefined` for new call sites.
  * @param context    - Optional WRFC context (files, score, issues, attempts).
  * @returns Structured <gv> directive string.
  */
 export function buildSpawnDirectiveMessage(
   agentType: string,
   task: string,
-  budget: { max_tokens: number; max_turns: number },
+  budget?: { max_tokens: number; max_turns: number },
   context?: SpawnDirectiveContext,
 ): string {
   // budget param kept for backward-compatible call signature
   void budget;
 
-  const directive: Record<string, unknown> = {
-    action: "spawn",
-    wid: context?.workflow_id ?? "unknown",
+  const directive: SpawnDirective = {
+    action: 'spawn',
+    wid: context?.workflow_id ?? 'unknown',
     type: agentType,
     task,
   };
@@ -66,10 +78,12 @@ export function buildSpawnDirectiveMessage(
  * has passed review and the WRFC chain is done.
  *
  * @param workflowId - ID of the completed workflow instance.
- * @param state      - Terminal state name (kept for API compat, not emitted).
+ * @param state      - Terminal state name. Not emitted in the directive.
+ * @deprecated The `state` parameter is unused and will be removed in v2.
+ *   Pass `undefined` for new call sites.
  * @returns Structured <gv> directive string.
  */
-export function buildWorkflowCompleteMessage(workflowId: string, state: string): string {
+export function buildWorkflowCompleteMessage(workflowId: string, state?: string): string {
   // state param kept for backward-compatible call signature
   void state;
 

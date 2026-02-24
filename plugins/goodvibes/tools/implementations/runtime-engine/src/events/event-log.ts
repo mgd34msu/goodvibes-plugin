@@ -22,7 +22,7 @@ import {
   createReadStream,
 } from 'fs';
 import * as readline from 'readline';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import type { WriteStream } from 'fs';
 import type { RuntimeEvent, EventFilter } from './types.js';
 import { createLogger } from '../shared/logger.js';
@@ -236,7 +236,9 @@ export class EventLog {
         appendFileSync(this.logPath, this.writeBuffer, 'utf-8');
         this.writeBuffer = '';
         this.writeBufferBytes = 0;
-      } catch { /* last resort failed */ }
+      } catch (syncErr) {
+        logger.debug('Sync fallback write failed during close', { error: toErrorMessage(syncErr) });
+      }
     }
 
     // Close the write stream
@@ -309,13 +311,9 @@ export class EventLog {
    */
   async since(sequence: number, limit?: number): Promise<RuntimeEvent[]> {
     return this.query({
-      since: undefined,
+      since_sequence: sequence,
       limit,
-    }).then((events) =>
-      events.filter(
-        (e) => typeof e.metadata?.sequence === 'number' && e.metadata.sequence > sequence,
-      ),
-    );
+    });
   }
 
   /**
@@ -358,6 +356,8 @@ export class EventLog {
       await this.streamLines(this.logPath, (line) => {
         try {
           const event = JSON.parse(line) as RuntimeEvent;
+          // Timestamps are compared as ISO 8601 strings (UTC); lexicographic order
+          // matches chronological order only when all values share the same UTC offset.
           const ts = event.timestamp ?? '';
           if (ts < cutoff) {
             toArchive.push(line);
@@ -401,25 +401,14 @@ export class EventLog {
       `events-archive-${archiveDate}.jsonl`,
     );
 
-    // Append to archive if it already exists for today
-    let existingArchive = '';
+    // Append to archive if it already exists for today (O(1) append, no re-read)
     try {
-      await this.streamLines(archivePath, (line) => {
-        existingArchive += line + '\n';
-        return true;
-      });
-    } catch {
-      // New archive file
+      const { appendFileSync } = await import('fs');
+      appendFileSync(archivePath, toArchive.join('\n') + '\n', 'utf-8');
+    } catch (archiveErr) {
+      logger.debug('Archive append failed, creating new archive file', { error: toErrorMessage(archiveErr) });
+      writeFileSync(archivePath, toArchive.join('\n') + '\n', 'utf-8');
     }
-    const archiveContent =
-      (existingArchive.endsWith('\n') || existingArchive.length === 0
-        ? existingArchive
-        : existingArchive + '\n') +
-      toArchive.join('\n') +
-      '\n';
-    const tmpArchive = archivePath + '.tmp';
-    writeFileSync(tmpArchive, archiveContent, 'utf-8');
-    renameSync(tmpArchive, archivePath);
 
     // Atomically replace the main log
     const tmpPath = this.logPath + '.tmp';
@@ -480,7 +469,7 @@ export class EventLog {
   private openWriteStream(): void {
     try {
       // Ensure the parent directory exists
-      const dir = this.logPath.substring(0, this.logPath.lastIndexOf('/'));
+      const dir = dirname(this.logPath);
       mkdirSync(dir, { recursive: true });
 
       this.writeStream = createWriteStream(this.logPath, { flags: 'a', encoding: 'utf-8' });
@@ -661,6 +650,10 @@ export class EventLog {
     }
     if (filter.since && event.timestamp && event.timestamp < filter.since) return false;
     if (filter.until && event.timestamp && event.timestamp > filter.until) return false;
+    if (filter.since_sequence !== undefined && (
+      typeof event.metadata?.sequence !== 'number' ||
+      event.metadata.sequence <= filter.since_sequence
+    )) return false;
     if (filter.correlation_id && event.metadata?.correlation_id !== filter.correlation_id) return false;
     if (filter.source) {
       const src = filter.source;

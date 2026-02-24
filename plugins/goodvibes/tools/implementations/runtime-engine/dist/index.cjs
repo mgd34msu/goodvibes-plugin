@@ -21536,12 +21536,12 @@ var StdioServerTransport = class {
 };
 
 // src/shared/config.ts
-var import_fs = require("fs");
+var import_node_fs = require("node:fs");
 
 // src/shared/utils.ts
-var import_crypto = require("crypto");
+var import_node_crypto = require("node:crypto");
 function generateId() {
-  return (0, import_crypto.randomUUID)();
+  return (0, import_node_crypto.randomUUID)();
 }
 __name(generateId, "generateId");
 function timestamp() {
@@ -21549,11 +21549,11 @@ function timestamp() {
 }
 __name(timestamp, "timestamp");
 function generateEventId() {
-  return `evt_${(0, import_crypto.randomUUID)()}`;
+  return `evt_${(0, import_node_crypto.randomUUID)()}`;
 }
 __name(generateEventId, "generateEventId");
 function generateWorkflowId() {
-  return `wf_${(0, import_crypto.randomUUID)()}`;
+  return `wf_${(0, import_node_crypto.randomUUID)()}`;
 }
 __name(generateWorkflowId, "generateWorkflowId");
 function toErrorMessage(err) {
@@ -21581,22 +21581,26 @@ function parseRelativeTime(input) {
 __name(parseRelativeTime, "parseRelativeTime");
 
 // src/shared/config.ts
-var import_path = require("path");
-var import_os = require("os");
+var import_node_path = require("node:path");
+var import_node_os = require("node:os");
 var DEFAULT_CONFIG = {
   schema_version: "1.0.0",
   ipc: {
     socket_dir: (() => {
-      const xdg = process.env["XDG_RUNTIME_DIR"];
-      if (xdg) return `${xdg}/goodvibes`;
-      const uid = process.getuid?.() ?? (() => {
-        try {
-          return (0, import_os.userInfo)().uid;
-        } catch {
-          return 0;
-        }
-      })();
-      return `${(0, import_os.tmpdir)()}/goodvibes-${uid}`;
+      try {
+        const xdg = process.env["XDG_RUNTIME_DIR"];
+        if (xdg) return `${xdg}/goodvibes`;
+        const uid = process.getuid?.() ?? (() => {
+          try {
+            return (0, import_node_os.userInfo)().uid;
+          } catch {
+            return 0;
+          }
+        })();
+        return `${(0, import_node_os.tmpdir)()}/goodvibes-${uid}`;
+      } catch {
+        return `${(0, import_node_os.tmpdir)()}/goodvibes`;
+      }
     })(),
     connect_timeout_ms: 500,
     query_timeout_ms: 200
@@ -21652,7 +21656,7 @@ function deepMerge(base, override) {
   for (const key of Object.keys(override)) {
     const baseVal = base[key];
     const overrideVal = override[key];
-    if (overrideVal !== void 0 && typeof overrideVal === "object" && !Array.isArray(overrideVal) && typeof baseVal === "object" && baseVal !== null) {
+    if (overrideVal !== void 0 && overrideVal !== null && typeof overrideVal === "object" && !Array.isArray(overrideVal) && typeof baseVal === "object" && baseVal !== null) {
       result[key] = deepMerge(baseVal, overrideVal);
     } else if (overrideVal !== void 0) {
       result[key] = overrideVal;
@@ -21667,10 +21671,17 @@ function resolveRoot(projectRoot) {
 __name(resolveRoot, "resolveRoot");
 function loadConfig(projectRoot) {
   const root = resolveRoot(projectRoot);
-  const configPath = (0, import_path.join)(root, ".goodvibes", "state", "runtime-config.json");
+  const configPath = (0, import_node_path.join)(root, ".goodvibes", "state", "runtime-config.json");
   try {
-    const raw = (0, import_fs.readFileSync)(configPath, "utf-8");
+    const raw = (0, import_node_fs.readFileSync)(configPath, "utf-8");
     const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      process.stderr.write(
+        `[runtime-engine] Warning: config at "${configPath}" is not an object \u2014 using defaults
+`
+      );
+      return { ...DEFAULT_CONFIG };
+    }
     return deepMerge(DEFAULT_CONFIG, parsed);
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -21685,12 +21696,12 @@ function loadConfig(projectRoot) {
 }
 __name(loadConfig, "loadConfig");
 function saveConfig(projectRoot, config2) {
-  const stateDir = (0, import_path.join)(projectRoot, ".goodvibes", "state");
-  const configPath = (0, import_path.join)(stateDir, "runtime-config.json");
+  const stateDir = (0, import_node_path.join)(projectRoot, ".goodvibes", "state");
+  const configPath = (0, import_node_path.join)(stateDir, "runtime-config.json");
   const tmpPath = configPath + ".tmp";
-  (0, import_fs.mkdirSync)(stateDir, { recursive: true });
-  (0, import_fs.writeFileSync)(tmpPath, JSON.stringify(config2, null, 2) + "\n", "utf-8");
-  (0, import_fs.renameSync)(tmpPath, configPath);
+  (0, import_node_fs.mkdirSync)(stateDir, { recursive: true });
+  (0, import_node_fs.writeFileSync)(tmpPath, JSON.stringify(config2, null, 2) + "\n", "utf-8");
+  (0, import_node_fs.renameSync)(tmpPath, configPath);
 }
 __name(saveConfig, "saveConfig");
 
@@ -21704,10 +21715,16 @@ var LEVEL_ORDER = {
   warn: 2,
   error: 3
 };
+var _cachedLevel;
+var _cacheExpiresAt = 0;
+var LOG_LEVEL_CACHE_TTL_MS = 5e3;
 function resolveActiveLevel() {
+  const now = Date.now();
+  if (_cachedLevel !== void 0 && now < _cacheExpiresAt) return _cachedLevel;
   const raw = (process.env["GOODVIBES_LOG_LEVEL"] ?? "info").toLowerCase();
-  if (raw in LEVEL_ORDER) return raw;
-  return "info";
+  _cachedLevel = raw in LEVEL_ORDER ? raw : "info";
+  _cacheExpiresAt = now + LOG_LEVEL_CACHE_TTL_MS;
+  return _cachedLevel;
 }
 __name(resolveActiveLevel, "resolveActiveLevel");
 function createLogger(component) {
@@ -21734,14 +21751,14 @@ function createLogger(component) {
 __name(createLogger, "createLogger");
 
 // src/lifecycle/process-manager.ts
-var import_fs5 = require("fs");
-var import_crypto2 = require("crypto");
-var import_path5 = require("path");
-var import_os2 = require("os");
+var import_fs4 = require("fs");
+var import_crypto = require("crypto");
+var import_path4 = require("path");
+var import_os = require("os");
 
 // src/persistence/state-store.ts
-var import_fs2 = require("fs");
-var import_path2 = require("path");
+var import_fs = require("fs");
+var import_path = require("path");
 var logger = createLogger("state-store");
 var JsonStateStore = class {
   static {
@@ -21757,7 +21774,7 @@ var JsonStateStore = class {
    *   Defaults to `process.cwd()` when omitted.
    */
   constructor(config2, projectRoot = process.cwd()) {
-    this.stateDir = (0, import_path2.isAbsolute)(config2.persistence.state_dir) ? config2.persistence.state_dir : (0, import_path2.join)(projectRoot, config2.persistence.state_dir);
+    this.stateDir = (0, import_path.isAbsolute)(config2.persistence.state_dir) ? config2.persistence.state_dir : (0, import_path.join)(projectRoot, config2.persistence.state_dir);
   }
   /**
    * {@inheritdoc StateStore.initialize}
@@ -21767,7 +21784,7 @@ var JsonStateStore = class {
    */
   async initialize() {
     if (this.initialised) return;
-    (0, import_fs2.mkdirSync)(this.stateDir, { recursive: true });
+    (0, import_fs.mkdirSync)(this.stateDir, { recursive: true });
     this.initialised = true;
     logger.debug("State store initialised", { stateDir: this.stateDir });
   }
@@ -21776,7 +21793,7 @@ var JsonStateStore = class {
    * a defensive guard in case {@link initialize} was not called first.
    */
   ensureDir() {
-    (0, import_fs2.mkdirSync)(this.stateDir, { recursive: true });
+    (0, import_fs.mkdirSync)(this.stateDir, { recursive: true });
   }
   /**
    * Resolves the canonical path for a given key.
@@ -21785,7 +21802,7 @@ var JsonStateStore = class {
    * @returns Path to the corresponding `.json` file.
    */
   keyPath(key) {
-    return (0, import_path2.join)(this.stateDir, `${key}.json`);
+    return (0, import_path.join)(this.stateDir, `${key}.json`);
   }
   /**
    * Resolves the temporary staging path used during atomic writes.
@@ -21794,7 +21811,7 @@ var JsonStateStore = class {
    * @returns Path to the `.tmp` file for this key.
    */
   tmpPath(key) {
-    return (0, import_path2.join)(this.stateDir, `${key}.json.tmp`);
+    return (0, import_path.join)(this.stateDir, `${key}.json.tmp`);
   }
   /**
    * {@inheritdoc StateStore.set}
@@ -21810,12 +21827,12 @@ var JsonStateStore = class {
     const tmp = this.tmpPath(key);
     const dest = this.keyPath(key);
     try {
-      (0, import_fs2.writeFileSync)(tmp, content, "utf-8");
-      (0, import_fs2.renameSync)(tmp, dest);
+      (0, import_fs.writeFileSync)(tmp, content, "utf-8");
+      (0, import_fs.renameSync)(tmp, dest);
       logger.debug("Saved state", { key });
     } catch (err) {
       try {
-        (0, import_fs2.unlinkSync)(tmp);
+        (0, import_fs.unlinkSync)(tmp);
       } catch {
       }
       const message = toErrorMessage(err);
@@ -21834,7 +21851,7 @@ var JsonStateStore = class {
   async get(key) {
     const path = this.keyPath(key);
     try {
-      const content = (0, import_fs2.readFileSync)(path, "utf-8");
+      const content = (0, import_fs.readFileSync)(path, "utf-8");
       return JSON.parse(content);
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -21855,7 +21872,7 @@ var JsonStateStore = class {
   async delete(key) {
     const path = this.keyPath(key);
     try {
-      (0, import_fs2.unlinkSync)(path);
+      (0, import_fs.unlinkSync)(path);
       logger.debug("Deleted state", { key });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -21877,8 +21894,8 @@ var JsonStateStore = class {
   async keys() {
     this.ensureDir();
     try {
-      const entries = (0, import_fs2.readdirSync)(this.stateDir);
-      return entries.filter((f) => f.endsWith(".json") && !f.endsWith(".json.tmp")).map((f) => (0, import_path2.basename)(f, ".json"));
+      const entries = (0, import_fs.readdirSync)(this.stateDir);
+      return entries.filter((f) => f.endsWith(".json") && !f.endsWith(".json.tmp")).map((f) => (0, import_path.basename)(f, ".json"));
     } catch (err) {
       const message = toErrorMessage(err);
       logger.error("Failed to list state keys", { error: message });
@@ -22292,9 +22309,9 @@ var EventBus = class {
 };
 
 // src/events/event-log.ts
-var import_fs3 = require("fs");
+var import_fs2 = require("fs");
 var readline = __toESM(require("readline"), 1);
-var import_path3 = require("path");
+var import_path2 = require("path");
 var logger3 = createLogger("event-log");
 var FLUSH_INTERVAL_MS = 100;
 var FLUSH_THRESHOLD_BYTES = 64 * 1024;
@@ -22336,8 +22353,8 @@ var EventLog = class {
   /** Queue of flush waiters (resolve/reject pairs). */
   flushWaiters = [];
   constructor(stateDir, config2) {
-    this.logPath = (0, import_path3.join)(stateDir, "events.jsonl");
-    this.archiveDir = (0, import_path3.join)(stateDir, "event-archives");
+    this.logPath = (0, import_path2.join)(stateDir, "events.jsonl");
+    this.archiveDir = (0, import_path2.join)(stateDir, "event-archives");
     this.maxSizeMb = config2.event_log_max_size_mb;
     this.compactAfterHours = config2.compact_after_hours;
   }
@@ -22448,7 +22465,8 @@ var EventLog = class {
         appendFileSync(this.logPath, this.writeBuffer, "utf-8");
         this.writeBuffer = "";
         this.writeBufferBytes = 0;
-      } catch {
+      } catch (syncErr) {
+        logger3.debug("Sync fallback write failed during close", { error: toErrorMessage(syncErr) });
       }
     }
     if (this.writeStream) {
@@ -22510,13 +22528,9 @@ var EventLog = class {
    */
   async since(sequence, limit) {
     return this.query({
-      since: void 0,
+      since_sequence: sequence,
       limit
-    }).then(
-      (events) => events.filter(
-        (e) => typeof e.metadata?.sequence === "number" && e.metadata.sequence > sequence
-      )
-    );
+    });
   }
   /**
    * Returns the latest sequence number seen in the log.
@@ -22575,27 +22589,22 @@ var EventLog = class {
       return { archived: 0, remaining: toKeep.length };
     }
     await this.closeWriteStream();
-    (0, import_fs3.mkdirSync)(this.archiveDir, { recursive: true });
+    (0, import_fs2.mkdirSync)(this.archiveDir, { recursive: true });
     const archiveDate = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const archivePath = (0, import_path3.join)(
+    const archivePath = (0, import_path2.join)(
       this.archiveDir,
       `events-archive-${archiveDate}.jsonl`
     );
-    let existingArchive = "";
     try {
-      await this.streamLines(archivePath, (line) => {
-        existingArchive += line + "\n";
-        return true;
-      });
-    } catch {
+      const { appendFileSync } = await import("fs");
+      appendFileSync(archivePath, toArchive.join("\n") + "\n", "utf-8");
+    } catch (archiveErr) {
+      logger3.debug("Archive append failed, creating new archive file", { error: toErrorMessage(archiveErr) });
+      (0, import_fs2.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
     }
-    const archiveContent = (existingArchive.endsWith("\n") || existingArchive.length === 0 ? existingArchive : existingArchive + "\n") + toArchive.join("\n") + "\n";
-    const tmpArchive = archivePath + ".tmp";
-    (0, import_fs3.writeFileSync)(tmpArchive, archiveContent, "utf-8");
-    (0, import_fs3.renameSync)(tmpArchive, archivePath);
     const tmpPath = this.logPath + ".tmp";
-    (0, import_fs3.writeFileSync)(tmpPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""), "utf-8");
-    (0, import_fs3.renameSync)(tmpPath, this.logPath);
+    (0, import_fs2.writeFileSync)(tmpPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""), "utf-8");
+    (0, import_fs2.renameSync)(tmpPath, this.logPath);
     if (!this.closed) {
       this.openWriteStream();
     }
@@ -22616,7 +22625,7 @@ var EventLog = class {
   getStats() {
     let fileSizeBytes = 0;
     try {
-      fileSizeBytes = (0, import_fs3.statSync)(this.logPath).size;
+      fileSizeBytes = (0, import_fs2.statSync)(this.logPath).size;
     } catch {
     }
     fileSizeBytes += this.writeBufferBytes;
@@ -22637,9 +22646,9 @@ var EventLog = class {
    */
   openWriteStream() {
     try {
-      const dir = this.logPath.substring(0, this.logPath.lastIndexOf("/"));
-      (0, import_fs3.mkdirSync)(dir, { recursive: true });
-      this.writeStream = (0, import_fs3.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
+      const dir = (0, import_path2.dirname)(this.logPath);
+      (0, import_fs2.mkdirSync)(dir, { recursive: true });
+      this.writeStream = (0, import_fs2.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
       this.writeStream.on("error", (err) => {
         logger3.error("Write stream error", { error: err.message });
         this.writeStream = null;
@@ -22751,7 +22760,7 @@ var EventLog = class {
    */
   streamLines(filePath, onLine) {
     return new Promise((resolve, reject) => {
-      const stream = (0, import_fs3.createReadStream)(filePath, { encoding: "utf-8" });
+      const stream = (0, import_fs2.createReadStream)(filePath, { encoding: "utf-8" });
       const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
       let done = false;
       const cleanup = /* @__PURE__ */ __name(() => {
@@ -22790,6 +22799,7 @@ var EventLog = class {
     }
     if (filter.since && event.timestamp && event.timestamp < filter.since) return false;
     if (filter.until && event.timestamp && event.timestamp > filter.until) return false;
+    if (filter.since_sequence !== void 0 && (typeof event.metadata?.sequence !== "number" || event.metadata.sequence <= filter.since_sequence)) return false;
     if (filter.correlation_id && event.metadata?.correlation_id !== filter.correlation_id) return false;
     if (filter.source) {
       const src = filter.source;
@@ -22852,8 +22862,13 @@ var EventQueue = class {
   static {
     __name(this, "EventQueue");
   }
-  /** The active queue, maintained in priority+FIFO order. */
-  queue = [];
+  /**
+   * Priority buckets: index matches QueuePriority value.
+   * buckets[0] = CRITICAL, [1] = HIGH, [2] = NORMAL, [3] = LOW.
+   * Each bucket is a FIFO array; dequeue always takes from the lowest-index
+   * non-empty bucket.
+   */
+  buckets = [[], [], [], []];
   /** Entries that exhausted all retry attempts. */
   deadLetters = [];
   /** Registered handler functions keyed by name. */
@@ -22870,13 +22885,11 @@ var EventQueue = class {
   totalProcessingMs = 0;
   // Configuration
   maxSize;
-  maxAttempts;
   backoffBase;
   backoffMultiplier;
   processIntervalMs;
   constructor(config2) {
     this.maxSize = config2.max_size;
-    this.maxAttempts = config2.max_attempts;
     this.backoffBase = config2.backoff_base_ms;
     this.backoffMultiplier = config2.backoff_multiplier;
     this.processIntervalMs = config2.process_interval_ms;
@@ -22897,8 +22910,8 @@ var EventQueue = class {
   /**
    * Adds an event to the queue for deferred processing.
    *
-   * The entry is inserted at the correct position to maintain priority+FIFO
-   * ordering. If the queue is at capacity the entry is rejected.
+   * The entry is pushed to the appropriate priority bucket (FIFO within each
+   * bucket). Dequeue always takes from the highest non-empty priority bucket. If the queue is at capacity the entry is rejected.
    *
    * @param entry - Entry fields; `id`, `enqueued_at`, `attempts`, and `backoff_ms`
    *   are populated automatically if omitted.
@@ -22906,7 +22919,7 @@ var EventQueue = class {
    * @throws {Error} When the queue has reached its maximum capacity.
    */
   enqueue(entry) {
-    if (this.queue.length >= this.maxSize) {
+    if (this.totalPending() >= this.maxSize) {
       throw new Error(
         `EventQueue is full (max_size=${this.maxSize}). Entry rejected for handler "${entry.handler}".`
       );
@@ -22918,12 +22931,12 @@ var EventQueue = class {
       attempts: 0,
       backoff_ms: this.backoffBase
     };
-    this.insertSorted(fullEntry);
+    this.insertBucket(fullEntry);
     logger4.debug("Entry enqueued", {
       id: fullEntry.id,
       priority: fullEntry.priority,
       handler: fullEntry.handler,
-      queue_depth: this.queue.length
+      queue_depth: this.totalPending()
     });
     if (this.running && !this.processing && this.processTimer === null) {
       this.scheduleNext(0);
@@ -22939,7 +22952,7 @@ var EventQueue = class {
     if (this.running) return;
     this.running = true;
     logger4.info("Event queue started");
-    if (this.queue.length > 0) {
+    if (this.totalPending() > 0) {
       this.scheduleNext(0);
     }
   }
@@ -22967,14 +22980,15 @@ var EventQueue = class {
       [2 /* NORMAL */]: 0,
       [3 /* LOW */]: 0
     };
-    for (const entry of this.queue) {
-      byPriority[entry.priority] = (byPriority[entry.priority] ?? 0) + 1;
+    for (let p = 0; p < 4; p++) {
+      byPriority[p] = this.buckets[p].length;
     }
     const now = Date.now();
-    const oldest = this.queue[0];
+    const firstBucket = this.buckets.find((b) => b.length > 0);
+    const oldest = firstBucket?.[0];
     const oldestAgeMs = oldest ? now - new Date(oldest.enqueued_at).getTime() : 0;
     return {
-      pending: this.queue.length,
+      pending: this.totalPending(),
       processing: this.processing ? 1 : 0,
       completed: this.completedCount,
       failed: this.failedCount,
@@ -23013,7 +23027,7 @@ var EventQueue = class {
       backoff_ms: this.backoffBase,
       deadline: dead.deadline
     };
-    this.insertSorted(retryEntry);
+    this.insertBucket(retryEntry);
     logger4.info("Dead-letter entry re-queued", { id });
     if (this.running && !this.processing && this.processTimer === null) {
       this.scheduleNext(0);
@@ -23035,7 +23049,7 @@ var EventQueue = class {
     if (!wasRunning) {
       this.running = true;
     }
-    while (this.queue.length > 0 && Date.now() < deadline) {
+    while (this.totalPending() > 0 && Date.now() < deadline) {
       await this.processNext();
       await new Promise((resolve) => setImmediate(resolve));
     }
@@ -23044,37 +23058,35 @@ var EventQueue = class {
     }
     return {
       processed: this.completedCount - initialCompleted,
-      remaining: this.queue.length
+      remaining: this.totalPending()
     };
   }
   /** Number of entries currently in the pending queue. */
   get size() {
-    return this.queue.length;
+    return this.totalPending();
   }
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
-  /**
-   * Inserts an entry into the queue maintaining priority+FIFO order.
-   *
-   * Entries with a lower priority number are placed before entries with a
-   * higher number. Within the same priority, newer entries go after older ones.
-   */
-  insertSorted(entry) {
-    let insertAt = this.queue.length;
-    for (let i = this.queue.length - 1; i >= 0; i--) {
-      if (this.queue[i].priority <= entry.priority) {
-        insertAt = i + 1;
-        break;
-      }
-      insertAt = i;
-    }
-    this.queue.splice(insertAt, 0, entry);
+  /** Returns total number of pending entries across all priority buckets. */
+  totalPending() {
+    return this.buckets[0].length + this.buckets[1].length + this.buckets[2].length + this.buckets[3].length;
   }
   /**
-   * Schedules the next `processNext` call.
+   * Pushes an entry into the appropriate priority bucket.
    *
-   * Uses `setImmediate` for zero-delay and `setTimeout` for positive delays.
+   * Each bucket is a FIFO array corresponding to a QueuePriority level.
+   * Dequeue always takes from the lowest-index non-empty bucket, so
+   * CRITICAL (0) is always served before HIGH (1), NORMAL (2), and LOW (3).
+   */
+  insertBucket(entry) {
+    this.buckets[entry.priority].push(entry);
+  }
+  /**
+   * Schedules the next `processNext` call via `setTimeout`.
+   *
+   * A delay of 0 yields to the event loop before the next item is processed.
+   * A positive delay implements the retry backoff or inter-cycle interval.
    */
   scheduleNext(delayMs) {
     if (this.processTimer !== null) return;
@@ -23098,10 +23110,11 @@ var EventQueue = class {
    * re-queues with delay or moves to the dead-letter queue.
    */
   async processNext() {
-    if (!this.running || this.queue.length === 0) return;
+    if (!this.running || this.totalPending() === 0) return;
     if (this.processing) return;
     this.processing = true;
-    const entry = this.queue.shift();
+    const bucket = this.buckets.find((b) => b.length > 0);
+    const entry = bucket.shift();
     const startMs = Date.now();
     let retryBackoffMs = 0;
     try {
@@ -23138,18 +23151,16 @@ var EventQueue = class {
       const updatedEntry = {
         ...entry,
         attempts: entry.attempts + 1,
-        backoff_ms: Math.round(entry.backoff_ms * this.backoffMultiplier)
+        backoff_ms: Math.round(entry.backoff_ms * this.backoffMultiplier),
+        _accumulated_errors: [...entry._accumulated_errors ?? [], errorMessage]
       };
       this.failedCount++;
-      if (updatedEntry.attempts >= (entry.max_attempts ?? this.maxAttempts)) {
+      if (updatedEntry.attempts >= entry.max_attempts) {
         const dlEntry = {
           ...updatedEntry,
           failed_at: timestamp(),
           last_error: errorMessage,
-          all_errors: [
-            ...entry.all_errors ?? [],
-            errorMessage
-          ]
+          all_errors: updatedEntry._accumulated_errors ?? [errorMessage]
         };
         if (this.deadLetters.length >= MAX_DEAD_LETTERS) {
           this.deadLetters.shift();
@@ -23170,11 +23181,11 @@ var EventQueue = class {
           backoff_ms: updatedEntry.backoff_ms,
           error: errorMessage
         });
-        this.insertSorted(updatedEntry);
+        this.insertBucket(updatedEntry);
       }
     } finally {
       this.processing = false;
-      if (this.running && this.queue.length > 0) {
+      if (this.running && this.totalPending() > 0) {
         this.scheduleNext(retryBackoffMs > 0 ? retryBackoffMs : this.processIntervalMs);
       }
     }
@@ -23183,8 +23194,8 @@ var EventQueue = class {
 
 // src/ipc/ipc-server.ts
 var net = __toESM(require("net"), 1);
-var import_fs4 = require("fs");
-var import_path4 = require("path");
+var import_fs3 = require("fs");
+var import_path3 = require("path");
 
 // src/ipc/protocol.ts
 var VALID_IPC_MESSAGE_TYPES = /* @__PURE__ */ new Set([
@@ -23260,12 +23271,12 @@ var IPCServer = class {
    * @throws If the server cannot bind to the socket path.
    */
   async listen() {
-    const dir = (0, import_path4.dirname)(this.socketPath);
-    (0, import_fs4.mkdirSync)(dir, { recursive: true, mode: 448 });
-    (0, import_fs4.chmodSync)(dir, 448);
-    if ((0, import_fs4.existsSync)(this.socketPath)) {
+    const dir = (0, import_path3.dirname)(this.socketPath);
+    (0, import_fs3.mkdirSync)(dir, { recursive: true, mode: 448 });
+    (0, import_fs3.chmodSync)(dir, 448);
+    if ((0, import_fs3.existsSync)(this.socketPath)) {
       try {
-        (0, import_fs4.unlinkSync)(this.socketPath);
+        (0, import_fs3.unlinkSync)(this.socketPath);
         logger5.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
         logger5.warn("Could not remove stale socket file", {
@@ -23279,12 +23290,13 @@ var IPCServer = class {
       logger5.error("IPC server error", { err: err.message });
     });
     return new Promise((resolve, reject) => {
+      this.server.once("error", reject);
       this.server.listen(this.socketPath, () => {
-        (0, import_fs4.chmodSync)(this.socketPath, 384);
+        (0, import_fs3.chmodSync)(this.socketPath, 384);
         logger5.info("IPC server listening", { path: this.socketPath });
+        this.server.removeListener("error", reject);
         resolve();
       });
-      this.server.once("error", reject);
     });
   }
   /**
@@ -23307,12 +23319,13 @@ var IPCServer = class {
         resolve();
         return;
       }
-      this.server.close(() => {
+      const srv = this.server;
+      this.server = null;
+      srv.close(() => {
         this.removeSocketFile();
         logger5.info("IPC server closed");
         resolve();
       });
-      this.server = null;
     });
   }
   /**
@@ -23355,11 +23368,10 @@ var IPCServer = class {
       logger5.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
       socket.destroy();
     }, CONNECTION_TIMEOUT_MS);
-    let rawData = "";
+    const chunks = [];
     let rawBytes = 0;
     socket.on("data", (chunk) => {
       rawBytes += chunk.length;
-      rawData += chunk.toString("utf-8");
       if (rawBytes > MAX_MESSAGE_SIZE) {
         logger5.warn("IPC message size limit exceeded \u2014 closing connection", {
           size_bytes: rawBytes,
@@ -23368,11 +23380,15 @@ var IPCServer = class {
         socket.destroy();
         return;
       }
-      const newlineIdx = rawData.indexOf("\n");
-      if (newlineIdx === -1) return;
+      const newlinePos = chunk.indexOf(10);
+      if (newlinePos === -1) {
+        chunks.push(chunk);
+        return;
+      }
+      chunks.push(chunk.subarray(0, newlinePos));
+      const line = Buffer.concat(chunks).toString("utf-8");
       clearTimeout(idleTimer);
       socket.pause();
-      const line = rawData.slice(0, newlineIdx);
       this.processMessage(socket, line);
     });
   }
@@ -23461,8 +23477,8 @@ var IPCServer = class {
    */
   removeSocketFile() {
     try {
-      if ((0, import_fs4.existsSync)(this.socketPath)) {
-        (0, import_fs4.unlinkSync)(this.socketPath);
+      if ((0, import_fs3.existsSync)(this.socketPath)) {
+        (0, import_fs3.unlinkSync)(this.socketPath);
         logger5.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
@@ -24968,8 +24984,8 @@ var TriggerRegistry = class {
    * Processing order:
    * 1. Record the event in the condition evaluator.
    * 2. Sort enabled triggers by priority (ascending — lower = first).
-   * 3. For each trigger, check cooldown and max_fires before evaluating.
-   * 4. If condition met, execute action and record the fire.
+   * 3. Evaluate all enabled triggers in parallel (guards + condition + action).
+   * 4. Collect results; log any unexpected rejections.
    *
    * @param event - The event to evaluate against all triggers.
    * @returns Results for every trigger that was checked (fired or skipped).
@@ -24978,9 +24994,15 @@ var TriggerRegistry = class {
     this.evaluator.recordEvent(event);
     const results = [];
     const sorted = [...this.triggers.values()].filter((t) => t.enabled).sort((a, b) => a.priority - b.priority);
-    for (const trigger of sorted) {
-      const result = await this.evaluateTrigger(trigger, event);
-      results.push(result);
+    const settled = await Promise.allSettled(
+      sorted.map((trigger) => this.evaluateTrigger(trigger, event))
+    );
+    for (const outcome of settled) {
+      if (outcome.status === "fulfilled") {
+        results.push(outcome.value);
+      } else {
+        log3.error("Unexpected error evaluating trigger", { error: outcome.reason });
+      }
     }
     return results;
   }
@@ -25029,8 +25051,7 @@ var TriggerRegistry = class {
    */
   async evaluateTrigger(trigger, event) {
     if (trigger.last_fired && trigger.cooldown_ms !== void 0) {
-      const lastFiredMs = new Date(trigger.last_fired).getTime();
-      if (Date.now() - lastFiredMs < trigger.cooldown_ms) {
+      if (Date.now() - trigger.last_fired < trigger.cooldown_ms) {
         return {
           trigger_id: trigger.id,
           trigger_name: trigger.name,
@@ -25064,7 +25085,7 @@ var TriggerRegistry = class {
     });
     const actionResult = await this.executor.execute(trigger.action, event);
     trigger.fires_count++;
-    trigger.last_fired = timestamp();
+    trigger.last_fired = Date.now();
     if (!actionResult.success) {
       log3.warn("Trigger action failed", {
         trigger_id: trigger.id,
@@ -26233,7 +26254,16 @@ var DirectiveQueue = class {
   clear() {
     this.queues.clear();
   }
-  /** Stored WRFC config from config:loaded event. */
+  /**
+   * Stored WRFC config from the `config:loaded` hook event.
+   *
+   * @v1-design-note Storing WRFC-specific configuration (min review score,
+   * max fix attempts, etc.) inside `DirectiveQueue` violates the Single
+   * Responsibility Principle — a queue should only manage queueing. This was
+   * a pragmatic choice in v1 to avoid a separate config-store module. In v2
+   * this should be extracted to a dedicated `WRFCConfig` service or singleton
+   * so that `DirectiveQueue` only owns directive lifecycle.
+   */
   wrfcConfig = {};
   /**
    * Store the WRFC config delivered by the config:loaded hook event.
@@ -26328,6 +26358,8 @@ __name(extractFiles, "extractFiles");
 // src/directives/wrfc-handlers.ts
 var log4 = createLogger("wrfc-handlers");
 var DEFAULT_BUDGET = { max_tokens: 5e4, max_turns: 20 };
+var REVIEWER_AGENT_TYPES = /* @__PURE__ */ new Set(["reviewer", "goodvibes:reviewer"]);
+var ENGINEER_AGENT_TYPES = /* @__PURE__ */ new Set(["engineer", "goodvibes:engineer"]);
 var DEFAULT_MIN_REVIEW_SCORE = 9.5;
 var DEFAULT_MAX_FIX_ATTEMPTS = 3;
 var AUTO_COMPLETE_AGENT_TYPES = /* @__PURE__ */ new Set([
@@ -26337,7 +26369,17 @@ var AUTO_COMPLETE_AGENT_TYPES = /* @__PURE__ */ new Set([
   "general-purpose"
 ]);
 function handleReviewResult(params) {
-  const { workflowEngine, directiveQueue, workflow, score, filesModified, reviewIssues = [], source, agentWorkflowMap, agentId } = params;
+  const {
+    workflowEngine,
+    directiveQueue,
+    workflow,
+    score,
+    filesModified,
+    reviewIssues = [],
+    source,
+    agentWorkflowMap,
+    agentId
+  } = params;
   const minScore = typeof workflow.context.min_review_score === "number" ? workflow.context.min_review_score : DEFAULT_MIN_REVIEW_SCORE;
   const maxFixAttempts = typeof workflow.context.max_fix_attempts === "number" ? workflow.context.max_fix_attempts : DEFAULT_MAX_FIX_ATTEMPTS;
   const fixAttempts = typeof workflow.context.fix_attempts === "number" ? workflow.context.fix_attempts : 0;
@@ -26401,28 +26443,42 @@ function handleReviewResult(params) {
   }
 }
 __name(handleReviewResult, "handleReviewResult");
+function sendFixCompletedEvent(workflowEngine, workflowId, fixAttempts, logContext) {
+  try {
+    workflowEngine.sendEvent(workflowId, {
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: "wrfc:fix_completed",
+      source: { kind: "system" },
+      payload: {
+        type: "wrfc:fix_completed",
+        data: { fix_attempts: fixAttempts }
+      },
+      metadata: { session_id: workflowId, sequence: 0, version: 1 }
+    });
+  } catch (err) {
+    log4.error(`${logContext.source}: failed to advance workflow state (fix_completed)`, { workflow_id: workflowId, error: String(err) });
+  }
+}
+__name(sendFixCompletedEvent, "sendFixCompletedEvent");
 function handleFixResult(params) {
-  const { workflowEngine, directiveQueue, workflow, incomingFixAttempts, maxFixAttempts, filesModified, source, agentWorkflowMap, agentId } = params;
+  const {
+    workflowEngine,
+    directiveQueue,
+    workflow,
+    incomingFixAttempts,
+    maxFixAttempts,
+    filesModified,
+    source,
+    agentWorkflowMap,
+    agentId
+  } = params;
   const fixAttempts = incomingFixAttempts + 1;
   workflow.context.fix_attempts = fixAttempts;
   workflow.context.max_fix_attempts = maxFixAttempts;
   if (fixAttempts >= maxFixAttempts) {
     const lastScore = typeof workflow.context.review_score === "number" ? workflow.context.review_score : 0;
-    try {
-      workflowEngine.sendEvent(workflow.id, {
-        id: generateEventId(),
-        timestamp: timestamp(),
-        type: "wrfc:fix_completed",
-        source: { kind: "system" },
-        payload: {
-          type: "wrfc:fix_completed",
-          data: { fix_attempts: fixAttempts }
-        },
-        metadata: { session_id: workflow.id, sequence: 0, version: 1 }
-      });
-    } catch (err) {
-      log4.error("handleFixResult: failed to advance workflow state (escalation path)", { workflow_id: workflow.id, error: String(err) });
-    }
+    sendFixCompletedEvent(workflowEngine, workflow.id, fixAttempts, { source: "handleFixResult" });
     const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
     directiveQueue.enqueue("subagent_stop", {
       type: "inject_system_message",
@@ -26439,21 +26495,7 @@ function handleFixResult(params) {
       max_fix_attempts: maxFixAttempts
     });
   } else {
-    try {
-      workflowEngine.sendEvent(workflow.id, {
-        id: generateEventId(),
-        timestamp: timestamp(),
-        type: "wrfc:fix_completed",
-        source: { kind: "system" },
-        payload: {
-          type: "wrfc:fix_completed",
-          data: { fix_attempts: fixAttempts }
-        },
-        metadata: { session_id: workflow.id, sequence: 0, version: 1 }
-      });
-    } catch (err) {
-      log4.error("handleFixResult: failed to advance workflow state (re-review path)", { workflow_id: workflow.id, error: String(err) });
-    }
+    sendFixCompletedEvent(workflowEngine, workflow.id, fixAttempts, { source: "handleFixResult" });
     const recheckTask = `Re-review the code after fix attempt ${fixAttempts} of ${maxFixAttempts} for workflow ${workflow.id}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "Check all recently modified files.");
     const recheckMessage = buildSpawnDirectiveMessage("reviewer", recheckTask, DEFAULT_BUDGET, {
       files_modified: filesModified,
@@ -26605,7 +26647,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         current_state: workflow.current_state
       });
     } else if (currentState === "REVIEWING") {
-      const isReviewer = agentType.includes("reviewer");
+      const isReviewer = REVIEWER_AGENT_TYPES.has(agentType);
       if (!isReviewer) {
         log4.debug("wrfc_chain_next: REVIEWING state but agent is not a reviewer, skipping", {
           workflow_id: workflow.id,
@@ -26634,7 +26676,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         agentId
       });
     } else if (currentState === "FIXING") {
-      const isEngineer = agentType.includes("engineer");
+      const isEngineer = ENGINEER_AGENT_TYPES.has(agentType);
       if (!isEngineer) {
         log4.debug("wrfc_chain_next: FIXING state but agent is not an engineer, skipping", {
           workflow_id: workflow.id,
@@ -26705,7 +26747,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       try {
         const parsed = JSON.parse(rawFiles);
         if (Array.isArray(parsed)) filesModified = parsed;
-      } catch {
+      } catch (err) {
+        log4.debug("wrfc_review_response: JSON.parse failed for files_modified, treating as single path", { raw: rawFiles, error: String(err) });
         filesModified = [rawFiles];
       }
     }
@@ -26911,8 +26954,8 @@ var AgentWorkflowMap = class {
 var logger10 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
-  const hash2 = (0, import_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_path5.join)((0, import_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
+  const hash2 = (0, import_crypto.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
+  return (0, import_path4.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 var ProcessManager = class {
@@ -26991,7 +27034,7 @@ var ProcessManager = class {
     await this.stateStore.initialize();
     logger10.debug("State store initialised");
     this.eventBus = new EventBus();
-    const stateDir = (0, import_path5.join)(this.projectRoot, this.config.persistence.state_dir);
+    const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
     this.eventBus.setEventLog(this.eventLog);
@@ -27316,9 +27359,9 @@ var ProcessManager = class {
    */
   async checkCrashRecovery() {
     const pidFilePath = getPidFilePath(this.projectRoot);
-    if (!(0, import_fs5.existsSync)(pidFilePath)) return;
+    if (!(0, import_fs4.existsSync)(pidFilePath)) return;
     try {
-      const stalePid = (0, import_fs5.readFileSync)(pidFilePath, "utf-8").trim();
+      const stalePid = (0, import_fs4.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
         const pid = Number(stalePid);
@@ -27361,7 +27404,7 @@ var ProcessManager = class {
   writePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_fs5.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
+      (0, import_fs4.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
       logger10.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
       logger10.warn("Could not write PID file", {
@@ -27376,7 +27419,7 @@ var ProcessManager = class {
   removePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_fs5.unlinkSync)(pidFilePath);
+      (0, import_fs4.unlinkSync)(pidFilePath);
       logger10.debug("PID file removed", { path: pidFilePath });
     } catch (err) {
       if (err.code !== "ENOENT") {
@@ -27423,10 +27466,10 @@ var ProcessManager = class {
    * @returns The absolute socket path, or null if startup fails.
    */
   async startIPCServer() {
-    const stateDir = (0, import_path5.join)(this.projectRoot, this.config.persistence.state_dir);
+    const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
     const socketDir = this.config.ipc.socket_dir;
-    const hash2 = (0, import_crypto2.createHash)("sha256").update(this.projectRoot).digest("hex").slice(0, 8);
-    const socketPath = (0, import_path5.join)(socketDir, `goodvibes-runtime-${hash2}.sock`);
+    const hash2 = (0, import_crypto.createHash)("sha256").update(this.projectRoot).digest("hex").slice(0, 8);
+    const socketPath = (0, import_path4.join)(socketDir, `goodvibes-runtime-${hash2}.sock`);
     try {
       this.ipcServer = new IPCServer(socketPath);
       const router = new IPCRouter({
@@ -27437,11 +27480,11 @@ var ProcessManager = class {
         directiveQueue: this.directiveQueue
       });
       this.ipcServer.onMessage(router.route.bind(router));
-      (0, import_fs5.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+      (0, import_fs4.mkdirSync)(socketDir, { recursive: true, mode: 448 });
       await this.ipcServer.listen();
-      (0, import_fs5.mkdirSync)(stateDir, { recursive: true });
-      const pointerFile = (0, import_path5.join)(stateDir, "runtime.socket");
-      (0, import_fs5.writeFileSync)(pointerFile, socketPath, "utf-8");
+      (0, import_fs4.mkdirSync)(stateDir, { recursive: true });
+      const pointerFile = (0, import_path4.join)(stateDir, "runtime.socket");
+      (0, import_fs4.writeFileSync)(pointerFile, socketPath, "utf-8");
       logger10.info("IPC server started", { socket: socketPath });
       return socketPath;
     } catch (err) {
@@ -27458,13 +27501,13 @@ var ProcessManager = class {
    * Silently ignores errors (e.g. file already removed).
    */
   removeSocketPointerFile() {
-    const pointerFile = (0, import_path5.join)(
+    const pointerFile = (0, import_path4.join)(
       this.projectRoot,
       this.config.persistence.state_dir,
       "runtime.socket"
     );
     try {
-      (0, import_fs5.unlinkSync)(pointerFile);
+      (0, import_fs4.unlinkSync)(pointerFile);
       logger10.debug("Socket pointer file removed", { path: pointerFile });
     } catch (err) {
       if (err.code !== "ENOENT") {
