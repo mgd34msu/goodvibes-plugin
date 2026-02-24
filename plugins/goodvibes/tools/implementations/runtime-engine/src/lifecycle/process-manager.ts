@@ -27,12 +27,24 @@ import { generateEventId, timestamp, toErrorMessage } from '../shared/utils.js';
 import { IPCServer } from '../ipc/ipc-server.js';
 import { IPCRouter } from '../ipc/ipc-router.js';
 import { WorkflowEngine } from '../workflow/workflow-engine.js';
-import { WRFC_LOOP_DEFINITION, FIX_LOOP_DEFINITION } from '../workflow/index.js';
+import {
+  WRFC_LOOP_DEFINITION,
+  FIX_LOOP_DEFINITION,
+  TEST_THEN_FIX_DEFINITION,
+  REVIEW_ONLY_DEFINITION,
+} from '../workflow/index.js';
 import { TriggerRegistry } from '../triggers/trigger-registry.js';
 import { getBuiltinTriggers } from '../triggers/builtins.js';
 import { AgentCoordinator } from '../agents/agent-coordinator.js';
 import { BudgetTracker } from '../agents/budget-tracker.js';
-import { DirectiveQueue, registerWRFCHandlers, AgentWorkflowMap } from '../directives/index.js';
+import {
+  DirectiveQueue,
+  registerWRFCHandlers,
+  registerTestFixHandlers,
+  registerReviewOnlyHandlers,
+  AgentWorkflowMap,
+} from '../directives/index.js';
+import { SnapshotManager, recoverState } from '../persistence/index.js';
 
 const logger = createLogger('process-manager');
 
@@ -109,6 +121,9 @@ export class ProcessManager {
   /** Agent-to-workflow binding map for deterministic WRFC chain routing. */
   private agentWorkflowMap: AgentWorkflowMap | null = null;
 
+  /** Snapshot manager for periodic state snapshots and recovery. */
+  private snapshotManager: SnapshotManager | null = null;
+
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -179,6 +194,8 @@ export class ProcessManager {
       this.workflowEngine.setEventBus(this.eventBus);
       this.workflowEngine.registerDefinition(WRFC_LOOP_DEFINITION);
       this.workflowEngine.registerDefinition(FIX_LOOP_DEFINITION);
+      this.workflowEngine.registerDefinition(TEST_THEN_FIX_DEFINITION);
+      this.workflowEngine.registerDefinition(REVIEW_ONLY_DEFINITION);
       this.workflowEngine.registerGuard('checkReviewScore', (context) => {
         const threshold = typeof context.min_review_score === 'number' ? context.min_review_score : 9.5;
         return typeof context.review_score === 'number' && context.review_score >= threshold;
@@ -227,8 +244,55 @@ export class ProcessManager {
       this.agentCoordinator,
       this.agentWorkflowMap,
     );
+    registerTestFixHandlers(
+      this.triggerRegistry,
+      this.directiveQueue,
+      this.workflowEngine,
+      this.agentWorkflowMap,
+    );
+    registerReviewOnlyHandlers(
+      this.triggerRegistry,
+      this.directiveQueue,
+      this.workflowEngine,
+      this.agentWorkflowMap,
+    );
 
-    // 9. Start IPC server if enabled
+    // 9. Initialise snapshot manager and perform startup recovery
+    this.snapshotManager = new SnapshotManager(this.stateStore);
+    try {
+      const recoveryResult = await recoverState(
+        this.eventLog,
+        this.snapshotManager,
+        {
+          workflowEngine: this.workflowEngine,
+          triggerRegistry: this.triggerRegistry,
+          agentCoordinator: this.agentCoordinator,
+          agentWorkflowMap: this.agentWorkflowMap,
+        },
+      );
+      logger.info('Startup recovery complete', {
+        method: recoveryResult.method,
+        durationMs: recoveryResult.recoveryDurationMs,
+      });
+    } catch (err) {
+      logger.warn('Startup recovery failed — continuing with cold start', {
+        err: toErrorMessage(err),
+      });
+    }
+
+    // Start periodic snapshots (every 60s)
+    this.snapshotManager.startPeriodicSnapshots(
+      {
+        workflowEngine: this.workflowEngine,
+        triggerRegistry: this.triggerRegistry,
+        agentCoordinator: this.agentCoordinator,
+        agentWorkflowMap: this.agentWorkflowMap,
+      },
+      () => this.eventLog.getLatestSequence(),
+      60_000,
+    );
+
+    // 10. Start IPC server if enabled
     let ipcSocketPath: string | null = null;
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
@@ -236,7 +300,7 @@ export class ProcessManager {
       logger.debug('IPC server disabled by feature flag');
     }
 
-    // 10. Emit startup event
+    // 11. Emit startup event
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
@@ -295,8 +359,11 @@ export class ProcessManager {
         logger.debug('Active workflows cancelled');
       }
 
-      // 2. Stop checkpoint timer
+      // 2. Stop checkpoint timer and periodic snapshots
       this.stopCheckpointTimer();
+      if (this.snapshotManager) {
+        this.snapshotManager.stopPeriodicSnapshots();
+      }
 
       // 3. Emit shutdown event (before draining)
       if (this.eventBus) {
@@ -359,7 +426,23 @@ export class ProcessManager {
         }
       }
 
-      // 8. Save final checkpoint
+      // 8. Save final snapshot + checkpoint
+      if (this.snapshotManager && this.eventLog) {
+        try {
+          await this.snapshotManager.takeSnapshot(
+            {
+              workflowEngine: this.workflowEngine,
+              triggerRegistry: this.triggerRegistry,
+              agentCoordinator: this.agentCoordinator,
+              agentWorkflowMap: this.agentWorkflowMap,
+            },
+            this.eventLog.getLatestSequence(),
+          );
+          logger.debug('Final snapshot saved');
+        } catch (err) {
+          logger.warn('Final snapshot failed', { err: toErrorMessage(err) });
+        }
+      }
       try {
         await this.saveCheckpoint();
         logger.debug('Final checkpoint saved');

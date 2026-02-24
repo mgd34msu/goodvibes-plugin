@@ -297,5 +297,115 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
       max_fires: 50,
       fires_count: 0,
     },
+
+    // ─── 11. Test-Then-Fix Start ──────────────────────────────────────────────────────────
+    {
+      id: 'builtin_test_fix_start',
+      name: 'test_fix_start',
+      description: 'Start a test_then_fix workflow when a test:failed event fires',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'test:failed',
+      },
+      action: {
+        type: 'start_workflow',
+        workflow_definition: 'test_then_fix',
+        context_template: {
+          trigger: 'test_failed',
+          event_id: '$event.id',
+          event_type: '$event.type',
+        },
+      },
+      cooldown_ms: 60_000,
+      max_fires: 10,
+      fires_count: 0,
+    },
+
+    // ─── 12. Test-Then-Fix Agent Completed ──────────────────────────────────────────────
+    {
+      id: 'builtin_test_fix_agent_completed',
+      name: 'test_fix_agent_completed',
+      description: 'Route hook:agent:completed to the test_fix_agent_completed handler for test_then_fix workflows',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'hook:agent:completed',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'test_fix_agent_completed',
+        args_template: {
+          hook_input: {
+            agent_id: '$event.payload.data.agent_id',
+            agent_type: '$event.payload.data.agent_type',
+            subagent_type: '$event.payload.data.subagent_type',
+            last_assistant_message: '$event.payload.data.last_assistant_message',
+            task_output: '$event.payload.data.task_output',
+            result: '$event.payload.data.result',
+          },
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 50,
+      fires_count: 0,
+    },
+
+    // ─── 13. Review-Only Start ────────────────────────────────────────────────────────────
+    {
+      id: 'builtin_review_only_start',
+      name: 'review_only_start',
+      description: 'Start a review_only workflow when a review:requested event fires',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'review:requested',
+      },
+      action: {
+        type: 'start_workflow',
+        workflow_definition: 'review_only',
+        context_template: {
+          trigger: 'review_requested',
+          event_id: '$event.id',
+          event_type: '$event.type',
+        },
+      },
+      cooldown_ms: 60_000,
+      max_fires: 20,
+      fires_count: 0,
+    },
+
+    // ─── 14. Review-Only Agent Completed ───────────────────────────────────────────────
+    {
+      id: 'builtin_review_only_agent_completed',
+      name: 'review_only_agent_completed',
+      description: 'Route hook:agent:completed to the review_only_agent_completed handler for review_only workflows',
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: 'event',
+        event_type: 'hook:agent:completed',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'review_only_agent_completed',
+        args_template: {
+          hook_input: {
+            agent_id: '$event.payload.data.agent_id',
+            agent_type: '$event.payload.data.agent_type',
+            subagent_type: '$event.payload.data.subagent_type',
+            last_assistant_message: '$event.payload.data.last_assistant_message',
+            task_output: '$event.payload.data.task_output',
+            result: '$event.payload.data.result',
+          },
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 50,
+      fires_count: 0,
+    },
   ];
 }

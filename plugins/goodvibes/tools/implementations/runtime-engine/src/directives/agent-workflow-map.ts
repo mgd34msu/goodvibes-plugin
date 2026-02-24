@@ -94,4 +94,23 @@ export class AgentWorkflowMap {
   snapshot(): Record<string, string> {
     return Object.fromEntries(this.map.entries());
   }
+
+  /**
+   * Restores bindings from a snapshot. Existing bindings are preserved;
+   * entries in the snapshot are added or overwrite existing entries.
+   *
+   * Used during startup recovery to repopulate the map from a persisted snapshot.
+   *
+   * @param bindings - Map of agentId → workflowId to restore.
+   */
+  restoreBindings(bindings: Record<string, string>): void {
+    let count = 0;
+    for (const [agentId, workflowId] of Object.entries(bindings)) {
+      if (agentId && workflowId) {
+        this.map.set(agentId, workflowId);
+        count++;
+      }
+    }
+    log.debug('Agent-workflow bindings restored', { count });
+  }
 }

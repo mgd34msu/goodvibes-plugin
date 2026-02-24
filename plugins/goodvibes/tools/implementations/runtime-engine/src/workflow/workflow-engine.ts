@@ -373,6 +373,49 @@ export class WorkflowEngine {
   }
 
   /**
+   * Directly restores a workflow instance into the instances map.
+   *
+   * Used during startup recovery to re-populate engine state without
+   * triggering on_enter actions or emitting events. If an instance with the
+   * same ID already exists it is silently overwritten (last-write wins).
+   *
+   * @param instance - The WorkflowInstance to restore.
+   */
+  restoreInstance(instance: WorkflowInstance): void {
+    this.instances.set(instance.id, instance);
+    log.debug('Workflow instance restored', {
+      id: instance.id,
+      definition_id: instance.definition_id,
+      current_state: instance.current_state,
+      status: instance.status,
+    });
+  }
+
+  /**
+   * Returns all active (non-terminal) workflow instances.
+   *
+   * Alias for `listActive()` with a more descriptive name for use in
+   * snapshotting and recovery code.
+   *
+   * @returns Array of WorkflowInstances with status 'active'.
+   */
+  getActiveInstances(): WorkflowInstance[] {
+    return this.listActive();
+  }
+
+  /**
+   * Returns all workflow instances regardless of status.
+   *
+   * Alias for `listAll()` with a more descriptive name for use in
+   * snapshotting and recovery code.
+   *
+   * @returns Array of all WorkflowInstances.
+   */
+  getAllInstances(): WorkflowInstance[] {
+    return this.listAll();
+  }
+
+  /**
    * Cancels an active workflow instance.
    *
    * The instance status is set to 'cancelled' and a `workflow:cancelled`

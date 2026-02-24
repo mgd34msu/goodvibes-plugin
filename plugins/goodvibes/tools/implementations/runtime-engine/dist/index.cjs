@@ -4614,11 +4614,11 @@ var require_core = __commonJS({
     Ajv2.ValidationError = validation_error_1.default;
     Ajv2.MissingRefError = ref_error_1.default;
     exports2.default = Ajv2;
-    function checkOptions(checkOpts, options, msg, log6 = "error") {
+    function checkOptions(checkOpts, options, msg, log9 = "error") {
       for (const key in checkOpts) {
         const opt = key;
         if (opt in options)
-          this.logger[log6](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log9](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
     __name(checkOptions, "checkOptions");
@@ -4671,13 +4671,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger19) {
-      if (logger19 === false)
+    function getLogger(logger22) {
+      if (logger22 === false)
         return noLogs;
-      if (logger19 === void 0)
+      if (logger22 === void 0)
         return console;
-      if (logger19.log && logger19.warn && logger19.error)
-        return logger19;
+      if (logger22.log && logger22.warn && logger22.error)
+        return logger22;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -22111,8 +22111,8 @@ var EventBus = class {
    *
    * @param log - An object with an `append` method.
    */
-  setEventLog(log6) {
-    this.eventLog = log6;
+  setEventLog(log9) {
+    this.eventLog = log9;
   }
   /**
    * Emits a runtime event.
@@ -23926,6 +23926,46 @@ var WorkflowEngine = class {
     );
   }
   /**
+   * Directly restores a workflow instance into the instances map.
+   *
+   * Used during startup recovery to re-populate engine state without
+   * triggering on_enter actions or emitting events. If an instance with the
+   * same ID already exists it is silently overwritten (last-write wins).
+   *
+   * @param instance - The WorkflowInstance to restore.
+   */
+  restoreInstance(instance) {
+    this.instances.set(instance.id, instance);
+    log.debug("Workflow instance restored", {
+      id: instance.id,
+      definition_id: instance.definition_id,
+      current_state: instance.current_state,
+      status: instance.status
+    });
+  }
+  /**
+   * Returns all active (non-terminal) workflow instances.
+   *
+   * Alias for `listActive()` with a more descriptive name for use in
+   * snapshotting and recovery code.
+   *
+   * @returns Array of WorkflowInstances with status 'active'.
+   */
+  getActiveInstances() {
+    return this.listActive();
+  }
+  /**
+   * Returns all workflow instances regardless of status.
+   *
+   * Alias for `listAll()` with a more descriptive name for use in
+   * snapshotting and recovery code.
+   *
+   * @returns Array of all WorkflowInstances.
+   */
+  getAllInstances() {
+    return this.listAll();
+  }
+  /**
    * Cancels an active workflow instance.
    *
    * The instance status is set to 'cancelled' and a `workflow:cancelled`
@@ -24440,6 +24480,180 @@ var FIX_LOOP_DEFINITION = {
   }
 };
 
+// src/workflow/definitions/test-then-fix.ts
+var TEST_THEN_FIX_DEFINITION = {
+  id: "test_then_fix",
+  name: "Test-Then-Fix Loop",
+  version: 1,
+  initial_state: "IDLE",
+  terminal_states: ["COMPLETE", "ESCALATED"],
+  max_transitions: 60,
+  states: {
+    IDLE: {
+      name: "IDLE",
+      transitions: [
+        {
+          event: "workflow:created",
+          target: "TESTING"
+        }
+      ]
+    },
+    TESTING: {
+      name: "TESTING",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "test_fix:testing_started" }
+        }
+      ],
+      transitions: [
+        {
+          // Tests passed — work is done
+          event: "test_fix:tests_passed",
+          target: "COMPLETE"
+        },
+        {
+          // Tests failed — enter fix cycle
+          event: "test_fix:tests_failed",
+          target: "FIXING"
+        }
+      ]
+    },
+    FIXING: {
+      name: "FIXING",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "test_fix:fix_started" }
+        }
+      ],
+      transitions: [
+        {
+          // Still have fix budget — re-run tests
+          event: "test_fix:fix_completed",
+          target: "RE_TESTING",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts < context.max_fix_attempts"
+          }
+        },
+        {
+          // Budget exhausted — escalate
+          event: "test_fix:fix_completed",
+          target: "ESCALATED",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts >= context.max_fix_attempts"
+          }
+        }
+      ]
+    },
+    RE_TESTING: {
+      name: "RE_TESTING",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "test_fix:retesting_started" }
+        }
+      ],
+      transitions: [
+        {
+          // Tests pass after fix — complete
+          event: "test_fix:tests_passed",
+          target: "COMPLETE"
+        },
+        {
+          // Tests still failing, still have budget — fix again
+          event: "test_fix:tests_failed",
+          target: "FIXING",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts < context.max_fix_attempts"
+          }
+        },
+        {
+          // Tests still failing, budget exhausted — escalate
+          event: "test_fix:tests_failed",
+          target: "ESCALATED",
+          guard: {
+            type: "expression",
+            expression: "context.fix_attempts >= context.max_fix_attempts"
+          }
+        }
+      ]
+    },
+    COMPLETE: {
+      name: "COMPLETE",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "test_fix:completed" }
+        }
+      ],
+      transitions: []
+    },
+    ESCALATED: {
+      name: "ESCALATED",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "test_fix:escalated" }
+        }
+      ],
+      transitions: []
+    }
+  }
+};
+
+// src/workflow/definitions/review-only.ts
+var REVIEW_ONLY_DEFINITION = {
+  id: "review_only",
+  name: "Review Only",
+  version: 1,
+  initial_state: "IDLE",
+  terminal_states: ["COMPLETE"],
+  max_transitions: 10,
+  states: {
+    IDLE: {
+      name: "IDLE",
+      transitions: [
+        {
+          event: "workflow:created",
+          target: "REVIEWING"
+        }
+      ]
+    },
+    REVIEWING: {
+      name: "REVIEWING",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "review_only:review_started" }
+        }
+      ],
+      transitions: [
+        {
+          event: "review_only:review_completed",
+          target: "COMPLETE"
+        }
+      ]
+    },
+    COMPLETE: {
+      name: "COMPLETE",
+      on_enter: [
+        {
+          type: "emit_event",
+          config: { event_type: "review_only:completed" }
+        }
+      ],
+      transitions: []
+    }
+  }
+};
+
+// src/workflow/definitions/custom-loader.ts
+var log2 = createLogger("custom-loader");
+
 // src/triggers/condition-evaluator.ts
 var ConditionEvaluator = class {
   static {
@@ -24653,13 +24867,13 @@ function buildEscalationMessage(workflowId, fixAttempts, lastScore) {
 __name(buildEscalationMessage, "buildEscalationMessage");
 
 // src/triggers/action-executor.ts
-var log2 = createLogger("action-executor");
+var log3 = createLogger("action-executor");
 var DENIED_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 function resolveStringTemplate(value, event) {
   return value.replace(/\$event\.([\w.]+)/g, (_match, path) => {
     const parts = path.split(".");
     if (parts.some((part) => DENIED_PATH_SEGMENTS.has(part))) {
-      log2.warn("Blocked prototype chain traversal attempt in template", { path, template: value });
+      log3.warn("Blocked prototype chain traversal attempt in template", { path, template: value });
       return "";
     }
     let current = event;
@@ -24670,11 +24884,11 @@ function resolveStringTemplate(value, event) {
       current = current[part];
     }
     if (current === void 0 || current === null) {
-      log2.debug("Template reference resolved to null/undefined", { path, template: value });
+      log3.debug("Template reference resolved to null/undefined", { path, template: value });
       return "";
     }
     if (typeof current === "object") {
-      log2.debug("Template reference resolved to object (not serializable)", { path, template: value });
+      log3.debug("Template reference resolved to object (not serializable)", { path, template: value });
       return "";
     }
     return String(current);
@@ -24766,7 +24980,7 @@ var ActionExecutor = class {
       }
     } catch (err) {
       const message = toErrorMessage(err);
-      log2.error("Action execution threw unexpected error", { error: message });
+      log3.error("Action execution threw unexpected error", { error: message });
       return { success: false, error: message };
     }
   }
@@ -24796,7 +25010,7 @@ var ActionExecutor = class {
         version: 1
       }
     });
-    log2.debug("emit_event action executed", { event_type: action.event_type });
+    log3.debug("emit_event action executed", { event_type: action.event_type });
     return { success: true };
   }
   /**
@@ -24806,7 +25020,7 @@ var ActionExecutor = class {
   async executeSpawnAgent(action, event) {
     const resolvedTask = resolveStringTemplate(action.task_template, event);
     if (!this.directiveQueue) {
-      log2.warn("spawn_agent action: directiveQueue not set \u2014 logging intent only", {
+      log3.warn("spawn_agent action: directiveQueue not set \u2014 logging intent only", {
         agent_type: action.agent_type,
         task: resolvedTask,
         triggered_by: event.id
@@ -24824,7 +25038,7 @@ var ActionExecutor = class {
       priority: 10,
       source: "action-executor:spawn_agent"
     });
-    log2.info("spawn_agent action: directive enqueued", {
+    log3.info("spawn_agent action: directive enqueued", {
       agent_type: action.agent_type,
       task: resolvedTask,
       triggered_by: event.id
@@ -24841,7 +25055,7 @@ var ActionExecutor = class {
     }
     const resolvedArgs = resolveTemplate(action.args_template, event);
     await handler(resolvedArgs, event);
-    log2.debug("invoke_handler action executed", { handler: action.handler });
+    log3.debug("invoke_handler action executed", { handler: action.handler });
     return { success: true };
   }
   /**
@@ -24850,7 +25064,7 @@ var ActionExecutor = class {
   async executeWorkflowAction(action, event) {
     const resolvedContext = action.context_template ? resolveTemplate(action.context_template, event) : {};
     if (!this.workflowEngine) {
-      log2.info("workflow action: workflowEngine not set \u2014 logging intent only", {
+      log3.info("workflow action: workflowEngine not set \u2014 logging intent only", {
         action_type: action.type,
         workflow_definition: action.workflow_definition,
         context: resolvedContext,
@@ -24867,14 +25081,14 @@ var ActionExecutor = class {
           action.workflow_definition,
           resolvedContext
         );
-        log2.info("start_workflow action: workflow created", {
+        log3.info("start_workflow action: workflow created", {
           definition: action.workflow_definition,
           instance_id: instance.id,
           triggered_by: event.id
         });
       } catch (err) {
         const message = toErrorMessage(err);
-        log2.error("start_workflow action: failed to create workflow", { error: message });
+        log3.error("start_workflow action: failed to create workflow", { error: message });
         return { success: false, error: message };
       }
       return { success: true };
@@ -24887,13 +25101,13 @@ var ActionExecutor = class {
           this.workflowEngine.sendEvent(instance.id, event);
           sentCount++;
         } catch (err) {
-          log2.warn("send_workflow_event: failed to send to workflow", {
+          log3.warn("send_workflow_event: failed to send to workflow", {
             workflow_id: instance.id,
             error: toErrorMessage(err)
           });
         }
       }
-      log2.info("send_workflow_event action: sent to active workflows", {
+      log3.info("send_workflow_event action: sent to active workflows", {
         count: sentCount,
         triggered_by: event.id
       });
@@ -24933,7 +25147,7 @@ var ActionExecutor = class {
 };
 
 // src/triggers/trigger-registry.ts
-var log3 = createLogger("trigger-registry");
+var log4 = createLogger("trigger-registry");
 var TriggerRegistry = class {
   static {
     __name(this, "TriggerRegistry");
@@ -24988,7 +25202,7 @@ var TriggerRegistry = class {
       );
     }
     this.triggers.set(trigger.id, trigger);
-    log3.debug("Trigger registered", { id: trigger.id, name: trigger.name, priority: trigger.priority });
+    log4.debug("Trigger registered", { id: trigger.id, name: trigger.name, priority: trigger.priority });
   }
   /**
    * Removes a trigger by ID. No-op if the trigger does not exist.
@@ -24998,7 +25212,7 @@ var TriggerRegistry = class {
   unregister(triggerId) {
     const existed = this.triggers.delete(triggerId);
     if (existed) {
-      log3.debug("Trigger unregistered", { id: triggerId });
+      log4.debug("Trigger unregistered", { id: triggerId });
     }
   }
   /**
@@ -25010,11 +25224,11 @@ var TriggerRegistry = class {
   setEnabled(triggerId, enabled) {
     const trigger = this.triggers.get(triggerId);
     if (!trigger) {
-      log3.warn("setEnabled: trigger not found", { id: triggerId });
+      log4.warn("setEnabled: trigger not found", { id: triggerId });
       return;
     }
     trigger.enabled = enabled;
-    log3.debug("Trigger enabled state updated", { id: triggerId, enabled });
+    log4.debug("Trigger enabled state updated", { id: triggerId, enabled });
   }
   /**
    * Evaluates all enabled triggers against the incoming event.
@@ -25039,7 +25253,7 @@ var TriggerRegistry = class {
       if (outcome.status === "fulfilled") {
         results.push(outcome.value);
       } else {
-        log3.error("Unexpected error evaluating trigger", { error: outcome.reason });
+        log4.error("Unexpected error evaluating trigger", { error: outcome.reason });
       }
     }
     return results;
@@ -25081,7 +25295,43 @@ var TriggerRegistry = class {
   registerHandler(name, handler) {
     this.actionHandlers.set(name, handler);
     this.executor.registerHandler(name, handler);
-    log3.debug("Action handler registered", { name });
+    log4.debug("Action handler registered", { name });
+  }
+  /**
+   * Restores trigger fire counts and last-fired timestamps from a previous
+   * session. Only updates triggers that are already registered; unknown
+   * trigger IDs are silently ignored.
+   *
+   * @param state - Array of trigger state entries to restore.
+   */
+  restoreTriggerState(state) {
+    let restored = 0;
+    for (const entry of state) {
+      const trigger = this.triggers.get(entry.triggerId);
+      if (trigger) {
+        trigger.fires_count = entry.firesCount;
+        if (entry.lastFired !== void 0) {
+          trigger.last_fired = entry.lastFired;
+        }
+        restored++;
+      } else {
+        log4.debug("restoreTriggerState: trigger not found, skipping", { id: entry.triggerId });
+      }
+    }
+    log4.info("Trigger states restored", { restored, total: state.length });
+  }
+  /**
+   * Returns a snapshot of the current fire counts and last-fired timestamps
+   * for all registered triggers. Used for snapshotting.
+   *
+   * @returns Array of trigger state snapshots.
+   */
+  getTriggerStates() {
+    return Array.from(this.triggers.values()).map((trigger) => ({
+      triggerId: trigger.id,
+      firesCount: trigger.fires_count,
+      lastFired: trigger.last_fired
+    }));
   }
   // ─── Private Helpers ──────────────────────────────────────────────────────────
   /**
@@ -25115,7 +25365,7 @@ var TriggerRegistry = class {
         fired: false
       };
     }
-    log3.info("Trigger condition met, executing action", {
+    log4.info("Trigger condition met, executing action", {
       trigger_id: trigger.id,
       trigger_name: trigger.name,
       event_type: event.type,
@@ -25125,7 +25375,7 @@ var TriggerRegistry = class {
     trigger.fires_count++;
     trigger.last_fired = Date.now();
     if (!actionResult.success) {
-      log3.warn("Trigger action failed", {
+      log4.warn("Trigger action failed", {
         trigger_id: trigger.id,
         error: actionResult.error
       });
@@ -25406,6 +25656,112 @@ function getBuiltinTriggers() {
           agent_type: "$event.payload.data.agent_type",
           workflow_id: "$event.payload.data.workflow_id",
           task: "$event.payload.data.task_description"
+        }
+      },
+      cooldown_ms: 5e3,
+      max_fires: 50,
+      fires_count: 0
+    },
+    // ─── 11. Test-Then-Fix Start ──────────────────────────────────────────────────────────
+    {
+      id: "builtin_test_fix_start",
+      name: "test_fix_start",
+      description: "Start a test_then_fix workflow when a test:failed event fires",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "event",
+        event_type: "test:failed"
+      },
+      action: {
+        type: "start_workflow",
+        workflow_definition: "test_then_fix",
+        context_template: {
+          trigger: "test_failed",
+          event_id: "$event.id",
+          event_type: "$event.type"
+        }
+      },
+      cooldown_ms: 6e4,
+      max_fires: 10,
+      fires_count: 0
+    },
+    // ─── 12. Test-Then-Fix Agent Completed ──────────────────────────────────────────────
+    {
+      id: "builtin_test_fix_agent_completed",
+      name: "test_fix_agent_completed",
+      description: "Route hook:agent:completed to the test_fix_agent_completed handler for test_then_fix workflows",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "event",
+        event_type: "hook:agent:completed"
+      },
+      action: {
+        type: "invoke_handler",
+        handler: "test_fix_agent_completed",
+        args_template: {
+          hook_input: {
+            agent_id: "$event.payload.data.agent_id",
+            agent_type: "$event.payload.data.agent_type",
+            subagent_type: "$event.payload.data.subagent_type",
+            last_assistant_message: "$event.payload.data.last_assistant_message",
+            task_output: "$event.payload.data.task_output",
+            result: "$event.payload.data.result"
+          }
+        }
+      },
+      cooldown_ms: 5e3,
+      max_fires: 50,
+      fires_count: 0
+    },
+    // ─── 13. Review-Only Start ────────────────────────────────────────────────────────────
+    {
+      id: "builtin_review_only_start",
+      name: "review_only_start",
+      description: "Start a review_only workflow when a review:requested event fires",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "event",
+        event_type: "review:requested"
+      },
+      action: {
+        type: "start_workflow",
+        workflow_definition: "review_only",
+        context_template: {
+          trigger: "review_requested",
+          event_id: "$event.id",
+          event_type: "$event.type"
+        }
+      },
+      cooldown_ms: 6e4,
+      max_fires: 20,
+      fires_count: 0
+    },
+    // ─── 14. Review-Only Agent Completed ───────────────────────────────────────────────
+    {
+      id: "builtin_review_only_agent_completed",
+      name: "review_only_agent_completed",
+      description: "Route hook:agent:completed to the review_only_agent_completed handler for review_only workflows",
+      enabled: true,
+      priority: 20,
+      condition: {
+        type: "event",
+        event_type: "hook:agent:completed"
+      },
+      action: {
+        type: "invoke_handler",
+        handler: "review_only_agent_completed",
+        args_template: {
+          hook_input: {
+            agent_id: "$event.payload.data.agent_id",
+            agent_type: "$event.payload.data.agent_type",
+            subagent_type: "$event.payload.data.subagent_type",
+            last_assistant_message: "$event.payload.data.last_assistant_message",
+            task_output: "$event.payload.data.task_output",
+            result: "$event.payload.data.result"
+          }
         }
       },
       cooldown_ms: 5e3,
@@ -25749,6 +26105,16 @@ var AgentCoordinator = class {
    * @param workflowId - Workflow ID.
    * @returns WRFCChain or undefined.
    */
+  /**
+   * Returns all agents tracked by the coordinator, regardless of status.
+   *
+   * Used for snapshotting to capture a full picture of agent state.
+   *
+   * @returns Array of all CoordinatedAgent instances.
+   */
+  getAllAgents() {
+    return Array.from(this.agents.values());
+  }
   getWRFCChain(workflowId) {
     return this.wrfcChains.get(workflowId);
   }
@@ -26394,7 +26760,7 @@ function extractFiles(text) {
 __name(extractFiles, "extractFiles");
 
 // src/directives/wrfc-handlers.ts
-var log4 = createLogger("wrfc-handlers");
+var log5 = createLogger("wrfc-handlers");
 var DEFAULT_BUDGET = { max_tokens: 5e4, max_turns: 20 };
 var REVIEWER_AGENT_TYPES = /* @__PURE__ */ new Set(["reviewer", "goodvibes:reviewer"]);
 var ENGINEER_AGENT_TYPES = /* @__PURE__ */ new Set(["engineer", "goodvibes:engineer"]);
@@ -26437,7 +26803,7 @@ function handleReviewResult(params) {
       metadata: { session_id: workflow.id, sequence: 0, version: 1 }
     });
   } catch (err) {
-    log4.error("handleReviewResult: failed to advance workflow state", { workflow_id: workflow.id, error: String(err) });
+    log5.error("handleReviewResult: failed to advance workflow state", { workflow_id: workflow.id, error: String(err) });
   }
   if (score >= minScore) {
     const message = buildWorkflowCompleteMessage(workflow.id, "completed");
@@ -26450,7 +26816,7 @@ function handleReviewResult(params) {
     if (agentId && agentWorkflowMap) {
       agentWorkflowMap.unbind(agentId);
     }
-    log4.info(`${source}: workflow complete directive enqueued`, {
+    log5.info(`${source}: workflow complete directive enqueued`, {
       workflow_id: workflow.id,
       review_score: score,
       min_review_score: minScore
@@ -26472,7 +26838,7 @@ function handleReviewResult(params) {
       priority: 20,
       source
     });
-    log4.info(`${source}: engineer fix directive enqueued`, {
+    log5.info(`${source}: engineer fix directive enqueued`, {
       workflow_id: workflow.id,
       review_score: score,
       min_review_score: minScore,
@@ -26495,7 +26861,7 @@ function sendFixCompletedEvent(workflowEngine, workflowId, fixAttempts, logConte
       metadata: { session_id: workflowId, sequence: 0, version: 1 }
     });
   } catch (err) {
-    log4.error(`${logContext.source}: failed to advance workflow state (fix_completed)`, { workflow_id: workflowId, error: String(err) });
+    log5.error(`${logContext.source}: failed to advance workflow state (fix_completed)`, { workflow_id: workflowId, error: String(err) });
   }
 }
 __name(sendFixCompletedEvent, "sendFixCompletedEvent");
@@ -26527,7 +26893,7 @@ function handleFixResult(params) {
     if (agentId && agentWorkflowMap) {
       agentWorkflowMap.unbind(agentId);
     }
-    log4.warn(`${source}: escalation directive enqueued`, {
+    log5.warn(`${source}: escalation directive enqueued`, {
       workflow_id: workflow.id,
       fix_attempts: fixAttempts,
       max_fix_attempts: maxFixAttempts
@@ -26547,7 +26913,7 @@ function handleFixResult(params) {
       priority: 20,
       source
     });
-    log4.info(`${source}: re-review directive enqueued`, {
+    log5.info(`${source}: re-review directive enqueued`, {
       workflow_id: workflow.id,
       fix_attempts: fixAttempts,
       max_fix_attempts: maxFixAttempts
@@ -26557,10 +26923,10 @@ function handleFixResult(params) {
 __name(handleFixResult, "handleFixResult");
 function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCoordinator, agentWorkflowMap) {
   registry2.registerHandler("wrfc_agent_spawned", async (args) => {
-    log4.debug("wrfc_agent_spawned invoked", { args });
+    log5.debug("wrfc_agent_spawned invoked", { args });
     const agentId = typeof args["agent_id"] === "string" ? args["agent_id"] : null;
     if (!agentId) {
-      log4.debug("wrfc_agent_spawned: no agent_id in args, skipping");
+      log5.debug("wrfc_agent_spawned: no agent_id in args, skipping");
       return;
     }
     const agentType = typeof args["agent_type"] === "string" ? args["agent_type"] : "";
@@ -26581,7 +26947,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           },
           workflowId
         );
-        log4.info("wrfc_agent_spawned: created workflow for originator agent", {
+        log5.info("wrfc_agent_spawned: created workflow for originator agent", {
           agent_id: agentId,
           agent_type: agentType,
           workflow_id: workflowId
@@ -26610,7 +26976,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
             });
           } catch (advErr) {
             advanceSuccess = false;
-            log4.error("wrfc_agent_spawned: failed to advance workflow state", {
+            log5.error("wrfc_agent_spawned: failed to advance workflow state", {
               workflow_id: workflowId,
               event: evt.type,
               error: String(advErr)
@@ -26619,14 +26985,14 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           }
         }
         if (advanceSuccess) {
-          log4.info("wrfc_agent_spawned: workflow advanced to WRITING", {
+          log5.info("wrfc_agent_spawned: workflow advanced to WRITING", {
             workflow_id: workflowId
           });
         } else {
-          log4.warn("wrfc_agent_spawned: workflow advance incomplete", { workflow_id: workflowId });
+          log5.warn("wrfc_agent_spawned: workflow advance incomplete", { workflow_id: workflowId });
         }
       } catch (err) {
-        log4.error("wrfc_agent_spawned: failed to create workflow", {
+        log5.error("wrfc_agent_spawned: failed to create workflow", {
           agent_id: agentId,
           workflow_id: workflowId,
           error: String(err)
@@ -26636,7 +27002,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         }
       }
     } else if (incomingWorkflowId) {
-      log4.info("wrfc_agent_spawned: bound chain agent to existing workflow", {
+      log5.info("wrfc_agent_spawned: bound chain agent to existing workflow", {
         agent_id: agentId,
         agent_type: agentType,
         workflow_id: workflowId
@@ -26644,9 +27010,9 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     }
   });
   registry2.registerHandler("wrfc_chain_next", async (args) => {
-    log4.debug("wrfc_chain_next invoked", { args });
+    log5.debug("wrfc_chain_next invoked", { args });
     if (!workflowEngine) {
-      log4.debug("wrfc_chain_next: no workflow engine, skipping");
+      log5.debug("wrfc_chain_next: no workflow engine, skipping");
       return;
     }
     const rawHookInput = args["hook_input"];
@@ -26664,7 +27030,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     if (!workflow) {
       const activeWorkflows = workflowEngine.listActive();
       if (activeWorkflows.length === 0) {
-        log4.debug("wrfc_chain_next: no active workflows, skipping");
+        log5.debug("wrfc_chain_next: no active workflows, skipping");
         return;
       }
       workflow = activeWorkflows[activeWorkflows.length - 1];
@@ -26673,7 +27039,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     const earlyStates = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
     const effectiveState = earlyStates.has(currentState) ? "WRITING" : currentState;
     if (earlyStates.has(currentState)) {
-      log4.warn("wrfc_chain_next: workflow stuck in early state, treating as WRITING", {
+      log5.warn("wrfc_chain_next: workflow stuck in early state, treating as WRITING", {
         workflow_id: workflow.id,
         actual_state: currentState,
         effective_state: "WRITING"
@@ -26697,7 +27063,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
             metadata: { session_id: workflow.id, sequence: 0, version: 1 }
           });
         } catch (recErr) {
-          log4.debug("wrfc_chain_next: recovery advance failed (best-effort)", {
+          log5.debug("wrfc_chain_next: recovery advance failed (best-effort)", {
             workflow_id: workflow.id,
             event: evt.type,
             error: String(recErr)
@@ -26716,7 +27082,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       if (agentId && agentWorkflowMap) {
         agentWorkflowMap.unbind(agentId);
       }
-      log4.info("wrfc_chain_next: auto-complete for whitelisted agent type", {
+      log5.info("wrfc_chain_next: auto-complete for whitelisted agent type", {
         workflow_id: workflow.id,
         agent_type: agentType,
         agent_id: agentId
@@ -26749,19 +27115,19 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           metadata: { session_id: workflow.id, sequence: 0, version: 1 }
         });
       } catch (err) {
-        log4.error("wrfc_chain_next: failed to advance workflow state WRITING\u2192REVIEWING", {
+        log5.error("wrfc_chain_next: failed to advance workflow state WRITING\u2192REVIEWING", {
           workflow_id: workflow.id,
           error: String(err)
         });
       }
-      log4.info("wrfc_chain_next: reviewer directive enqueued, state advanced to REVIEWING", {
+      log5.info("wrfc_chain_next: reviewer directive enqueued, state advanced to REVIEWING", {
         workflow_id: workflow.id,
         current_state: workflow.current_state
       });
     } else if (effectiveState === "REVIEWING") {
       const isReviewer = REVIEWER_AGENT_TYPES.has(agentType);
       if (!isReviewer) {
-        log4.debug("wrfc_chain_next: REVIEWING state but agent is not a reviewer, skipping", {
+        log5.debug("wrfc_chain_next: REVIEWING state but agent is not a reviewer, skipping", {
           workflow_id: workflow.id,
           agent_type: agentType
         });
@@ -26770,7 +27136,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       const taskOutput = hookInput?.["last_assistant_message"] || hookInput?.["task_output"] || hookInput?.["result"];
       const score = extractReviewScore(taskOutput);
       if (score === null) {
-        log4.warn("wrfc_chain_next: could not parse review score from reviewer output", {
+        log5.warn("wrfc_chain_next: could not parse review score from reviewer output", {
           workflow_id: workflow.id,
           task_output_preview: taskOutput?.slice(0, 200)
         });
@@ -26790,7 +27156,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     } else if (effectiveState === "FIXING") {
       const isEngineer = ENGINEER_AGENT_TYPES.has(agentType);
       if (!isEngineer) {
-        log4.debug("wrfc_chain_next: FIXING state but agent is not an engineer, skipping", {
+        log5.debug("wrfc_chain_next: FIXING state but agent is not an engineer, skipping", {
           workflow_id: workflow.id,
           agent_type: agentType
         });
@@ -26802,7 +27168,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         const existingFiles = Array.isArray(workflow.context.files_modified) ? workflow.context.files_modified : [];
         const mergedFiles = [.../* @__PURE__ */ new Set([...existingFiles, ...engineerFiles])];
         workflow.context.files_modified = mergedFiles;
-        log4.debug("wrfc_chain_next: updated files_modified from engineer <gv> tag", {
+        log5.debug("wrfc_chain_next: updated files_modified from engineer <gv> tag", {
           workflow_id: workflow.id,
           new_files: engineerFiles,
           total_files: mergedFiles.length
@@ -26823,18 +27189,18 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         agentId
       });
     } else {
-      log4.debug("wrfc_chain_next: workflow state not handled", {
+      log5.debug("wrfc_chain_next: workflow state not handled", {
         workflow_id: workflow.id,
         current_state: workflow.current_state
       });
     }
   });
   registry2.registerHandler("wrfc_review_response", async (args) => {
-    log4.debug("wrfc_review_response invoked", { args });
+    log5.debug("wrfc_review_response invoked", { args });
     const rawScore = args["review_score"];
     const reviewScore = typeof rawScore === "number" ? rawScore : parseFloat(String(rawScore ?? ""));
     if (isNaN(reviewScore)) {
-      log4.warn("wrfc_review_response: invalid review_score, cannot route", { raw_score: rawScore });
+      log5.warn("wrfc_review_response: invalid review_score, cannot route", { raw_score: rawScore });
       return;
     }
     let reviewIssues = [];
@@ -26848,7 +27214,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           reviewIssues = parsed;
         }
       } catch {
-        log4.warn("wrfc_review_response: could not parse review_issues", { raw: rawIssues });
+        log5.warn("wrfc_review_response: could not parse review_issues", { raw: rawIssues });
       }
     }
     let filesModified = [];
@@ -26860,7 +27226,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         const parsed = JSON.parse(rawFiles);
         if (Array.isArray(parsed)) filesModified = parsed;
       } catch (err) {
-        log4.debug("wrfc_review_response: JSON.parse failed for files_modified, treating as single path", { raw: rawFiles, error: String(err) });
+        log5.debug("wrfc_review_response: JSON.parse failed for files_modified, treating as single path", { raw: rawFiles, error: String(err) });
         filesModified = [rawFiles];
       }
     }
@@ -26884,7 +27250,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           priority: 20,
           source: "wrfc_review_response"
         });
-        log4.info("wrfc_review_response: workflow complete directive enqueued (no workflow object)", {
+        log5.info("wrfc_review_response: workflow complete directive enqueued (no workflow object)", {
           workflow_id: workflowId,
           review_score: reviewScore
         });
@@ -26903,7 +27269,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           priority: 20,
           source: "wrfc_review_response"
         });
-        log4.info("wrfc_review_response: engineer fix directive enqueued (no workflow object)", {
+        log5.info("wrfc_review_response: engineer fix directive enqueued (no workflow object)", {
           workflow_id: workflowId,
           review_score: reviewScore
         });
@@ -26921,11 +27287,11 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     });
   });
   registry2.registerHandler("wrfc_fix_response", async (args) => {
-    log4.debug("wrfc_fix_response invoked", { args });
+    log5.debug("wrfc_fix_response invoked", { args });
     const rawFix = args["fix_attempts"];
     const fixAttempts = typeof rawFix === "number" ? rawFix : parseInt(String(rawFix ?? "0"), 10);
     if (isNaN(fixAttempts)) {
-      log4.warn("wrfc_fix_response: invalid fix_attempts, cannot route", { raw_fix: rawFix });
+      log5.warn("wrfc_fix_response: invalid fix_attempts, cannot route", { raw_fix: rawFix });
       return;
     }
     const rawMax = args["max_fix_attempts"];
@@ -26948,7 +27314,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           priority: 30,
           source: "wrfc_fix_response"
         });
-        log4.warn("wrfc_fix_response: escalation directive enqueued (no workflow object)", {
+        log5.warn("wrfc_fix_response: escalation directive enqueued (no workflow object)", {
           workflow_id: fallbackId,
           fix_attempts: resolvedAttempts,
           max_fix_attempts: maxFixAttempts
@@ -26966,7 +27332,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           priority: 20,
           source: "wrfc_fix_response"
         });
-        log4.info("wrfc_fix_response: re-review directive enqueued (no workflow object)", {
+        log5.info("wrfc_fix_response: re-review directive enqueued (no workflow object)", {
           workflow_id: fallbackId,
           fix_attempts: resolvedAttempts,
           max_fix_attempts: maxFixAttempts
@@ -26985,7 +27351,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       source: "wrfc_fix_response"
     });
   });
-  log4.debug("WRFC handlers registered", {
+  log5.debug("WRFC handlers registered", {
     handlers: ["wrfc_agent_spawned", "wrfc_chain_next", "wrfc_review_response", "wrfc_fix_response"],
     has_workflow_engine: workflowEngine !== null,
     has_agent_coordinator: agentCoordinator !== null,
@@ -26994,8 +27360,445 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
 }
 __name(registerWRFCHandlers, "registerWRFCHandlers");
 
+// src/directives/test-fix-handlers.ts
+var log6 = createLogger("test-fix-handlers");
+var DEFAULT_BUDGET2 = { max_tokens: 5e4, max_turns: 20 };
+var DEFAULT_MAX_FIX_ATTEMPTS2 = 3;
+var TEST_THEN_FIX_DEFINITION_ID = "test_then_fix";
+function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agentWorkflowMap) {
+  registry2.registerHandler("test_fix_agent_completed", async (args) => {
+    log6.debug("test_fix_agent_completed invoked", { args });
+    if (!workflowEngine) {
+      log6.debug("test_fix_agent_completed: no workflow engine, skipping");
+      return;
+    }
+    const rawHookInput = args["hook_input"];
+    const hookInput = typeof rawHookInput === "object" && rawHookInput !== null && !Array.isArray(rawHookInput) ? rawHookInput : null;
+    const agentId = typeof hookInput?.["agent_id"] === "string" ? hookInput["agent_id"] : null;
+    let workflowId = null;
+    if (agentId && agentWorkflowMap) {
+      workflowId = agentWorkflowMap.lookup(agentId) ?? null;
+    }
+    if (!workflowId) {
+      workflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
+    }
+    const workflow = workflowId ? workflowEngine.get(workflowId) : null;
+    if (!workflow) {
+      log6.debug("test_fix_agent_completed: no test_then_fix workflow found for agent", {
+        agent_id: agentId
+      });
+      return;
+    }
+    if (workflow.definition_id !== TEST_THEN_FIX_DEFINITION_ID) {
+      log6.debug("test_fix_agent_completed: workflow is not test_then_fix, skipping", {
+        workflow_id: workflow.id,
+        definition_id: workflow.definition_id
+      });
+      return;
+    }
+    const agentOutput = hookInput?.["last_assistant_message"] || hookInput?.["task_output"] || hookInput?.["result"] || "";
+    const hasFailures = /\b(FAIL|FAILED|failing|test.*fail|\d+ fail)/i.test(agentOutput) || /error:/i.test(agentOutput);
+    const testCommand = typeof workflow.context["test_command"] === "string" ? workflow.context["test_command"] : "test suite";
+    workflow.context["test_output"] = agentOutput.slice(0, 2e3);
+    if (!hasFailures) {
+      log6.info("test_fix_agent_completed: tests passed", {
+        workflow_id: workflow.id,
+        test_command: testCommand
+      });
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "test_fix:tests_passed",
+          source: { kind: "system" },
+          payload: {
+            type: "test_fix:tests_passed",
+            data: { workflow_id: workflow.id, test_command: testCommand }
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+        });
+      } catch (err) {
+        log6.error("test_fix_agent_completed: failed to emit tests_passed event", {
+          workflow_id: workflow.id,
+          error: String(err)
+        });
+      }
+      const message = buildWorkflowCompleteMessage(workflow.id, "completed");
+      directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: message,
+        priority: 20,
+        source: "test_fix_agent_completed"
+      });
+      if (agentId && agentWorkflowMap) {
+        agentWorkflowMap.unbind(agentId);
+      }
+    } else {
+      const fixAttempts = typeof workflow.context["fix_attempts"] === "number" ? workflow.context["fix_attempts"] : 0;
+      const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
+      log6.info("test_fix_agent_completed: tests failed", {
+        workflow_id: workflow.id,
+        fix_attempts: fixAttempts,
+        max_fix_attempts: maxFixAttempts,
+        test_command: testCommand
+      });
+      workflow.context["test_failures"] = [{ test: testCommand, error: agentOutput.slice(0, 500) }];
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "test_fix:tests_failed",
+          source: { kind: "system" },
+          payload: {
+            type: "test_fix:tests_failed",
+            data: {
+              workflow_id: workflow.id,
+              fix_attempts: fixAttempts,
+              max_fix_attempts: maxFixAttempts,
+              test_command: testCommand
+            }
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+        });
+      } catch (err) {
+        log6.error("test_fix_agent_completed: failed to emit tests_failed event", {
+          workflow_id: workflow.id,
+          error: String(err)
+        });
+      }
+      if (fixAttempts >= maxFixAttempts) {
+        const lastScore = typeof workflow.context["review_score"] === "number" ? workflow.context["review_score"] : 0;
+        const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
+        directiveQueue.enqueue("subagent_stop", {
+          type: "inject_system_message",
+          content: escalationMessage,
+          priority: 30,
+          source: "test_fix_agent_completed"
+        });
+        if (agentId && agentWorkflowMap) {
+          agentWorkflowMap.unbind(agentId);
+        }
+        log6.warn("test_fix_agent_completed: fix budget exhausted, escalating", {
+          workflow_id: workflow.id,
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts
+        });
+      } else {
+        const failureInfo = agentOutput.slice(0, 500);
+        const fixTask = `Fix failing tests for workflow ${workflow.id}. Test command: ${testCommand}. Fix attempt ${fixAttempts + 1} of ${maxFixAttempts}. Failure output: ${failureInfo}`;
+        const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, DEFAULT_BUDGET2, {
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts,
+          workflow_id: workflow.id,
+          test_command: testCommand
+        });
+        directiveQueue.enqueue("subagent_stop", {
+          type: "inject_system_message",
+          content: fixMessage,
+          priority: 20,
+          source: "test_fix_agent_completed"
+        });
+        log6.info("test_fix_agent_completed: engineer fix directive enqueued", {
+          workflow_id: workflow.id,
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts
+        });
+      }
+    }
+  });
+  registry2.registerHandler("test_fix_handle_failure", async (args) => {
+    log6.debug("test_fix_handle_failure invoked", { args });
+    if (!workflowEngine) {
+      log6.debug("test_fix_handle_failure: no workflow engine, skipping");
+      return;
+    }
+    const workflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
+    const workflow = workflowId ? workflowEngine.get(workflowId) : null;
+    if (!workflow) {
+      log6.warn("test_fix_handle_failure: no workflow found", { workflow_id: workflowId });
+      return;
+    }
+    const fixAttempts = typeof workflow.context["fix_attempts"] === "number" ? workflow.context["fix_attempts"] : 0;
+    const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
+    const nextFixAttempts = fixAttempts + 1;
+    workflow.context["fix_attempts"] = nextFixAttempts;
+    const testCommand = typeof workflow.context["test_command"] === "string" ? workflow.context["test_command"] : "test suite";
+    const testOutput = typeof args["test_output"] === "string" ? args["test_output"] : typeof workflow.context["test_output"] === "string" ? workflow.context["test_output"] : "";
+    if (nextFixAttempts > maxFixAttempts) {
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "test_fix:fix_completed",
+          source: { kind: "system" },
+          payload: {
+            type: "test_fix:fix_completed",
+            data: { workflow_id: workflow.id, fix_attempts: nextFixAttempts }
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+        });
+      } catch (err) {
+        log6.error("test_fix_handle_failure: failed to emit fix_completed event (escalation path)", {
+          workflow_id: workflow.id,
+          error: String(err)
+        });
+      }
+      const lastScore = typeof workflow.context["review_score"] === "number" ? workflow.context["review_score"] : 0;
+      const escalationMessage = buildEscalationMessage(workflow.id, nextFixAttempts, lastScore);
+      directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: escalationMessage,
+        priority: 30,
+        source: "test_fix_handle_failure"
+      });
+      log6.warn("test_fix_handle_failure: escalating after fix budget exhausted", {
+        workflow_id: workflow.id,
+        fix_attempts: nextFixAttempts,
+        max_fix_attempts: maxFixAttempts
+      });
+      return;
+    }
+    const fixTask = `Fix failing tests for workflow ${workflow.id}. Test command: ${testCommand}. Fix attempt ${nextFixAttempts} of ${maxFixAttempts}. ` + (testOutput ? `Failure output: ${testOutput.slice(0, 500)}` : "Review test output for failures.");
+    const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, DEFAULT_BUDGET2, {
+      fix_attempts: nextFixAttempts,
+      max_fix_attempts: maxFixAttempts,
+      workflow_id: workflow.id,
+      test_command: testCommand
+    });
+    directiveQueue.enqueue("subagent_stop", {
+      type: "inject_system_message",
+      content: fixMessage,
+      priority: 20,
+      source: "test_fix_handle_failure"
+    });
+    log6.info("test_fix_handle_failure: engineer fix directive enqueued", {
+      workflow_id: workflow.id,
+      fix_attempts: nextFixAttempts,
+      max_fix_attempts: maxFixAttempts
+    });
+  });
+  registry2.registerHandler("test_fix_handle_retest", async (args) => {
+    log6.debug("test_fix_handle_retest invoked", { args });
+    if (!workflowEngine) {
+      log6.debug("test_fix_handle_retest: no workflow engine, skipping");
+      return;
+    }
+    const workflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
+    const workflow = workflowId ? workflowEngine.get(workflowId) : null;
+    if (!workflow) {
+      log6.warn("test_fix_handle_retest: no workflow found", { workflow_id: workflowId });
+      return;
+    }
+    const passed = args["passed"] === true || args["passed"] === "true";
+    const testCommand = typeof workflow.context["test_command"] === "string" ? workflow.context["test_command"] : "test suite";
+    const fixAttempts = typeof workflow.context["fix_attempts"] === "number" ? workflow.context["fix_attempts"] : 0;
+    const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
+    if (passed) {
+      log6.info("test_fix_handle_retest: tests passed after fix", {
+        workflow_id: workflow.id,
+        fix_attempts: fixAttempts,
+        test_command: testCommand
+      });
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "test_fix:tests_passed",
+          source: { kind: "system" },
+          payload: {
+            type: "test_fix:tests_passed",
+            data: { workflow_id: workflow.id, test_command: testCommand, after_fix: true }
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+        });
+      } catch (err) {
+        log6.error("test_fix_handle_retest: failed to emit tests_passed event", {
+          workflow_id: workflow.id,
+          error: String(err)
+        });
+      }
+      const message = buildWorkflowCompleteMessage(workflow.id, "completed");
+      directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: message,
+        priority: 20,
+        source: "test_fix_handle_retest"
+      });
+    } else {
+      log6.info("test_fix_handle_retest: tests still failing after fix", {
+        workflow_id: workflow.id,
+        fix_attempts: fixAttempts,
+        max_fix_attempts: maxFixAttempts,
+        test_command: testCommand
+      });
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "test_fix:tests_failed",
+          source: { kind: "system" },
+          payload: {
+            type: "test_fix:tests_failed",
+            data: {
+              workflow_id: workflow.id,
+              fix_attempts: fixAttempts,
+              max_fix_attempts: maxFixAttempts,
+              test_command: testCommand,
+              after_fix: true
+            }
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+        });
+      } catch (err) {
+        log6.error("test_fix_handle_retest: failed to emit tests_failed event", {
+          workflow_id: workflow.id,
+          error: String(err)
+        });
+      }
+      if (fixAttempts < maxFixAttempts) {
+        const fixTask = `Fix remaining test failures for workflow ${workflow.id}. Test command: ${testCommand}. Fix attempt ${fixAttempts + 1} of ${maxFixAttempts}.`;
+        const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, DEFAULT_BUDGET2, {
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts,
+          workflow_id: workflow.id,
+          test_command: testCommand
+        });
+        directiveQueue.enqueue("subagent_stop", {
+          type: "inject_system_message",
+          content: fixMessage,
+          priority: 20,
+          source: "test_fix_handle_retest"
+        });
+        log6.info("test_fix_handle_retest: additional engineer fix directive enqueued", {
+          workflow_id: workflow.id,
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts
+        });
+      } else {
+        const lastScore = typeof workflow.context["review_score"] === "number" ? workflow.context["review_score"] : 0;
+        const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
+        directiveQueue.enqueue("subagent_stop", {
+          type: "inject_system_message",
+          content: escalationMessage,
+          priority: 30,
+          source: "test_fix_handle_retest"
+        });
+        log6.warn("test_fix_handle_retest: escalation directive enqueued", {
+          workflow_id: workflow.id,
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts
+        });
+      }
+    }
+  });
+  log6.debug("Test-then-fix handlers registered", {
+    handlers: ["test_fix_agent_completed", "test_fix_handle_failure", "test_fix_handle_retest"],
+    has_workflow_engine: workflowEngine !== null,
+    has_agent_workflow_map: agentWorkflowMap != null
+  });
+}
+__name(registerTestFixHandlers, "registerTestFixHandlers");
+
+// src/directives/review-only-handlers.ts
+var log7 = createLogger("review-only-handlers");
+var REVIEW_ONLY_DEFINITION_ID = "review_only";
+function registerReviewOnlyHandlers(registry2, directiveQueue, workflowEngine, agentWorkflowMap) {
+  registry2.registerHandler("review_only_agent_completed", async (args) => {
+    log7.debug("review_only_agent_completed invoked", { args });
+    if (!workflowEngine) {
+      log7.debug("review_only_agent_completed: no workflow engine, skipping");
+      return;
+    }
+    const rawHookInput = args["hook_input"];
+    const hookInput = typeof rawHookInput === "object" && rawHookInput !== null && !Array.isArray(rawHookInput) ? rawHookInput : null;
+    const agentId = typeof hookInput?.["agent_id"] === "string" ? hookInput["agent_id"] : null;
+    let workflowId = null;
+    if (agentId && agentWorkflowMap) {
+      workflowId = agentWorkflowMap.lookup(agentId) ?? null;
+    }
+    if (!workflowId) {
+      workflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
+    }
+    const workflow = workflowId ? workflowEngine.get(workflowId) : null;
+    if (!workflow) {
+      log7.debug("review_only_agent_completed: no review_only workflow found for agent", {
+        agent_id: agentId
+      });
+      return;
+    }
+    if (workflow.definition_id !== REVIEW_ONLY_DEFINITION_ID) {
+      log7.debug("review_only_agent_completed: workflow is not review_only, skipping", {
+        workflow_id: workflow.id,
+        definition_id: workflow.definition_id
+      });
+      return;
+    }
+    const agentOutput = hookInput?.["last_assistant_message"] || hookInput?.["task_output"] || hookInput?.["result"];
+    const score = extractReviewScore(agentOutput);
+    if (score !== null) {
+      workflow.context["review_score"] = score;
+      log7.info("review_only_agent_completed: review score extracted", {
+        workflow_id: workflow.id,
+        review_score: score,
+        agent_id: agentId
+      });
+    } else {
+      log7.warn("review_only_agent_completed: could not parse review score from output", {
+        workflow_id: workflow.id,
+        output_preview: agentOutput?.slice(0, 200)
+      });
+    }
+    if (agentOutput) {
+      workflow.context["review_output"] = agentOutput.slice(0, 2e3);
+    }
+    try {
+      workflowEngine.sendEvent(workflow.id, {
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: "review_only:review_completed",
+        source: { kind: "system" },
+        payload: {
+          type: "review_only:review_completed",
+          data: {
+            workflow_id: workflow.id,
+            review_score: score,
+            agent_id: agentId
+          }
+        },
+        metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+      });
+    } catch (err) {
+      log7.error("review_only_agent_completed: failed to emit review_completed event", {
+        workflow_id: workflow.id,
+        error: String(err)
+      });
+    }
+    const message = buildWorkflowCompleteMessage(workflow.id, "completed");
+    directiveQueue.enqueue("subagent_stop", {
+      type: "inject_system_message",
+      content: message,
+      priority: 20,
+      source: "review_only_agent_completed"
+    });
+    if (agentId && agentWorkflowMap) {
+      agentWorkflowMap.unbind(agentId);
+    }
+    log7.info("review_only_agent_completed: review workflow complete directive enqueued", {
+      workflow_id: workflow.id,
+      review_score: score,
+      agent_id: agentId
+    });
+  });
+  log7.debug("Review-only handlers registered", {
+    handlers: ["review_only_agent_completed"],
+    has_workflow_engine: workflowEngine !== null,
+    has_agent_workflow_map: agentWorkflowMap != null
+  });
+}
+__name(registerReviewOnlyHandlers, "registerReviewOnlyHandlers");
+
 // src/directives/agent-workflow-map.ts
-var log5 = createLogger("agent-workflow-map");
+var log8 = createLogger("agent-workflow-map");
 var AgentWorkflowMap = class {
   static {
     __name(this, "AgentWorkflowMap");
@@ -27012,7 +27815,7 @@ var AgentWorkflowMap = class {
    */
   bind(agentId, workflowId) {
     if (this.map.has(agentId)) {
-      log5.warn("AgentWorkflowMap.bind: agent already bound, ignoring duplicate", {
+      log8.warn("AgentWorkflowMap.bind: agent already bound, ignoring duplicate", {
         agent_id: agentId,
         existing_workflow_id: this.map.get(agentId),
         new_workflow_id: workflowId
@@ -27020,7 +27823,7 @@ var AgentWorkflowMap = class {
       return;
     }
     this.map.set(agentId, workflowId);
-    log5.debug("AgentWorkflowMap.bind: bound agent to workflow", {
+    log8.debug("AgentWorkflowMap.bind: bound agent to workflow", {
       agent_id: agentId,
       workflow_id: workflowId
     });
@@ -27045,7 +27848,7 @@ var AgentWorkflowMap = class {
   unbind(agentId) {
     const had = this.map.delete(agentId);
     if (had) {
-      log5.debug("AgentWorkflowMap.unbind: removed binding", { agent_id: agentId });
+      log8.debug("AgentWorkflowMap.unbind: removed binding", { agent_id: agentId });
     }
   }
   /**
@@ -27064,10 +27867,607 @@ var AgentWorkflowMap = class {
   snapshot() {
     return Object.fromEntries(this.map.entries());
   }
+  /**
+   * Restores bindings from a snapshot. Existing bindings are preserved;
+   * entries in the snapshot are added or overwrite existing entries.
+   *
+   * Used during startup recovery to repopulate the map from a persisted snapshot.
+   *
+   * @param bindings - Map of agentId → workflowId to restore.
+   */
+  restoreBindings(bindings) {
+    let count = 0;
+    for (const [agentId, workflowId] of Object.entries(bindings)) {
+      if (agentId && workflowId) {
+        this.map.set(agentId, workflowId);
+        count++;
+      }
+    }
+    log8.debug("Agent-workflow bindings restored", { count });
+  }
 };
 
+// src/persistence/replay-engine.ts
+var logger10 = createLogger("replay-engine");
+async function replayEvents(eventLog, deps, options = {}) {
+  const startMs = Date.now();
+  const { skipActions = true, afterSequence, eventTypes } = options;
+  let eventsReplayed = 0;
+  let workflowsRestored = 0;
+  let agentBindingsRestored = 0;
+  let triggerCountsRestored = 0;
+  let lastSequence = afterSequence ?? 0;
+  let skippedEvents = 0;
+  const restoredWorkflows = /* @__PURE__ */ new Map();
+  const restoredAgentBindings = /* @__PURE__ */ new Set();
+  const triggerStateMap = /* @__PURE__ */ new Map();
+  logger10.info("Starting event replay", {
+    afterSequence: afterSequence ?? 0,
+    skipActions
+  });
+  let events;
+  try {
+    if (afterSequence !== void 0) {
+      events = await eventLog.since(afterSequence);
+    } else {
+      events = await eventLog.query({});
+    }
+  } catch (err) {
+    logger10.error("Failed to read events from event log", { error: toErrorMessage(err) });
+    return {
+      eventsReplayed: 0,
+      workflowsRestored: 0,
+      agentBindingsRestored: 0,
+      triggerCountsRestored: 0,
+      replayDurationMs: Date.now() - startMs,
+      lastSequence: afterSequence ?? 0,
+      skippedEvents: 0
+    };
+  }
+  events.sort((a, b) => {
+    const seqA = a.metadata?.sequence ?? 0;
+    const seqB = b.metadata?.sequence ?? 0;
+    return seqA - seqB;
+  });
+  for (const event of events) {
+    const seq = event.metadata?.sequence;
+    if (typeof seq === "number" && seq > lastSequence) {
+      lastSequence = seq;
+    }
+    if (eventTypes && eventTypes.length > 0) {
+      const typeMatches = eventTypes.some((prefix) => event.type.startsWith(prefix));
+      if (!typeMatches) continue;
+    }
+    try {
+      const processed = processEvent(event, deps, restoredWorkflows, restoredAgentBindings, triggerStateMap, skipActions);
+      if (processed) {
+        eventsReplayed++;
+      }
+    } catch (err) {
+      logger10.warn("Skipping event during replay due to error", {
+        event_id: event.id,
+        event_type: event.type,
+        sequence: seq,
+        error: toErrorMessage(err)
+      });
+      skippedEvents++;
+    }
+  }
+  if (deps.workflowEngine && restoredWorkflows.size > 0) {
+    for (const instance of restoredWorkflows.values()) {
+      try {
+        deps.workflowEngine.restoreInstance(instance);
+        workflowsRestored++;
+      } catch (err) {
+        logger10.warn("Failed to restore workflow instance", {
+          id: instance.id,
+          error: toErrorMessage(err)
+        });
+        skippedEvents++;
+      }
+    }
+  }
+  if (deps.agentWorkflowMap && restoredAgentBindings.size > 0) {
+    for (const binding of restoredAgentBindings) {
+      const [agentId, workflowId] = binding.split("::", 2);
+      if (agentId && workflowId) {
+        try {
+          deps.agentWorkflowMap.bind(agentId, workflowId);
+          agentBindingsRestored++;
+        } catch (err) {
+          logger10.warn("Failed to restore agent binding", { agentId, workflowId, error: toErrorMessage(err) });
+        }
+      }
+    }
+  }
+  if (deps.triggerRegistry && triggerStateMap.size > 0) {
+    const triggerStates = Array.from(triggerStateMap.entries()).map(([triggerId, state]) => ({
+      triggerId,
+      firesCount: state.firesCount,
+      lastFired: state.lastFired
+    }));
+    try {
+      deps.triggerRegistry.restoreTriggerState(triggerStates);
+      triggerCountsRestored = triggerStates.length;
+    } catch (err) {
+      logger10.warn("Failed to restore trigger states", { error: toErrorMessage(err) });
+    }
+  }
+  const replayDurationMs = Date.now() - startMs;
+  logger10.info("Event replay complete", {
+    eventsReplayed,
+    workflowsRestored,
+    agentBindingsRestored,
+    triggerCountsRestored,
+    skippedEvents,
+    replayDurationMs,
+    lastSequence
+  });
+  return {
+    eventsReplayed,
+    workflowsRestored,
+    agentBindingsRestored,
+    triggerCountsRestored,
+    replayDurationMs,
+    lastSequence,
+    skippedEvents
+  };
+}
+__name(replayEvents, "replayEvents");
+function processEvent(event, _deps, restoredWorkflows, restoredAgentBindings, triggerStateMap, _skipActions) {
+  const { type } = event;
+  if (type === "workflow:created") {
+    const payload = event.payload;
+    const data = payload?.data ?? {};
+    const instanceId = data.instance_id;
+    const definitionId = data.definition_id;
+    const initialState = data.initial_state;
+    const context = data.context ?? {};
+    const createdAt = event.timestamp;
+    if (instanceId && definitionId && initialState) {
+      const existing = restoredWorkflows.get(instanceId);
+      if (!existing) {
+        restoredWorkflows.set(instanceId, {
+          id: instanceId,
+          definition_id: definitionId,
+          current_state: initialState,
+          context,
+          history: [],
+          created_at: createdAt,
+          updated_at: createdAt,
+          status: "active"
+        });
+      }
+      return true;
+    }
+    return false;
+  }
+  if (type === "workflow:state_changed") {
+    const payload = event.payload;
+    const data = payload?.data ?? {};
+    const instanceId = data.instance_id;
+    const newState = data.to_state;
+    const contextChanges = data.context_changes ?? {};
+    if (instanceId && newState) {
+      const instance = restoredWorkflows.get(instanceId);
+      if (instance) {
+        const transition = {
+          from_state: instance.current_state,
+          to_state: newState,
+          event: event.type,
+          timestamp: event.timestamp,
+          context_changes: contextChanges
+        };
+        instance.history.push(transition);
+        instance.current_state = newState;
+        instance.updated_at = event.timestamp;
+        Object.assign(instance.context, contextChanges);
+      }
+      return true;
+    }
+    return false;
+  }
+  if (type === "workflow:completed") {
+    const payload = event.payload;
+    const data = payload?.data ?? {};
+    const instanceId = data.instance_id;
+    if (instanceId) {
+      const instance = restoredWorkflows.get(instanceId);
+      if (instance) {
+        instance.status = "completed";
+        instance.completed_at = event.timestamp;
+        instance.updated_at = event.timestamp;
+      }
+      return true;
+    }
+    return false;
+  }
+  if (type === "workflow:failed") {
+    const payload = event.payload;
+    const data = payload?.data ?? {};
+    const instanceId = data.instance_id;
+    const errorMsg = data.error;
+    if (instanceId) {
+      const instance = restoredWorkflows.get(instanceId);
+      if (instance) {
+        instance.status = "failed";
+        instance.error = errorMsg;
+        instance.updated_at = event.timestamp;
+      }
+      return true;
+    }
+    return false;
+  }
+  if (type === "workflow:cancelled") {
+    const payload = event.payload;
+    const data = payload?.data ?? {};
+    const instanceId = data.instance_id;
+    if (instanceId) {
+      const instance = restoredWorkflows.get(instanceId);
+      if (instance) {
+        instance.status = "cancelled";
+        instance.updated_at = event.timestamp;
+      }
+      return true;
+    }
+    return false;
+  }
+  if (type === "agent:spawned") {
+    const payload = event.payload;
+    const data = payload?.data ?? {};
+    const agentId = event.source.kind === "agent" ? event.source.agent_id : data.agent_id;
+    const workflowId = data.workflow_id;
+    if (agentId && workflowId) {
+      restoredAgentBindings.add(`${agentId}::${workflowId}`);
+      return true;
+    }
+    return false;
+  }
+  if (type === "trigger:fired") {
+    const payload = event.payload;
+    const data = payload?.data ?? {};
+    const triggerId = data.trigger_id ?? (event.source.kind === "trigger" ? event.source.trigger_id : void 0);
+    if (triggerId) {
+      const existing = triggerStateMap.get(triggerId);
+      const lastFiredTs = event.timestamp ? new Date(event.timestamp).getTime() : void 0;
+      if (existing) {
+        existing.firesCount++;
+        if (lastFiredTs !== void 0) existing.lastFired = lastFiredTs;
+      } else {
+        triggerStateMap.set(triggerId, {
+          firesCount: 1,
+          lastFired: lastFiredTs
+        });
+      }
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+__name(processEvent, "processEvent");
+
+// src/persistence/snapshot-manager.ts
+var logger11 = createLogger("snapshot-manager");
+var SNAPSHOT_KEY = "runtime_snapshot";
+var SNAPSHOT_VERSION = 1;
+var SnapshotManager = class {
+  static {
+    __name(this, "SnapshotManager");
+  }
+  stateStore;
+  periodicTimer = null;
+  constructor(stateStore) {
+    this.stateStore = stateStore;
+  }
+  /**
+   * Captures a full snapshot of the current runtime state and persists it
+   * to the StateStore.
+   *
+   * @param deps          - The subsystems to snapshot.
+   * @param eventSequence - The current event log sequence number.
+   */
+  async takeSnapshot(deps, eventSequence) {
+    const startMs = Date.now();
+    try {
+      const snapshot = {
+        version: SNAPSHOT_VERSION,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        lastEventSequence: eventSequence,
+        workflows: captureWorkflowState(deps.workflowEngine),
+        agentWorkflowBindings: captureAgentWorkflowBindings(deps.agentWorkflowMap),
+        triggerState: captureTriggerState(deps.triggerRegistry),
+        agentState: captureAgentState(deps.agentCoordinator)
+      };
+      await this.stateStore.set(SNAPSHOT_KEY, snapshot);
+      logger11.info("Runtime snapshot saved", {
+        version: snapshot.version,
+        lastEventSequence: snapshot.lastEventSequence,
+        workflows: snapshot.workflows.length,
+        agentBindings: Object.keys(snapshot.agentWorkflowBindings).length,
+        triggers: snapshot.triggerState.length,
+        durationMs: Date.now() - startMs
+      });
+    } catch (err) {
+      logger11.error("Failed to take runtime snapshot", { error: toErrorMessage(err) });
+      throw err;
+    }
+  }
+  /**
+   * Loads the most recent snapshot from the StateStore.
+   *
+   * Returns null if no snapshot exists or if the snapshot fails version
+   * validation (allowing fallback to full event replay).
+   *
+   * @returns The snapshot, or null if not available / incompatible.
+   */
+  async loadSnapshot() {
+    try {
+      const raw = await this.stateStore.get(SNAPSHOT_KEY);
+      if (!raw) {
+        logger11.debug("No snapshot found in state store");
+        return null;
+      }
+      if (raw.version !== SNAPSHOT_VERSION) {
+        logger11.warn("Snapshot version mismatch \u2014 discarding", {
+          stored: raw.version,
+          expected: SNAPSHOT_VERSION
+        });
+        return null;
+      }
+      if (typeof raw.lastEventSequence !== "number" || !Array.isArray(raw.workflows) || typeof raw.agentWorkflowBindings !== "object" || !Array.isArray(raw.triggerState)) {
+        logger11.warn("Snapshot failed structural validation \u2014 discarding");
+        return null;
+      }
+      logger11.info("Snapshot loaded", {
+        timestamp: raw.timestamp,
+        lastEventSequence: raw.lastEventSequence,
+        workflows: raw.workflows.length,
+        triggers: raw.triggerState.length
+      });
+      return raw;
+    } catch (err) {
+      logger11.warn("Failed to load snapshot \u2014 will fall back to full replay", {
+        error: toErrorMessage(err)
+      });
+      return null;
+    }
+  }
+  /**
+   * Starts a periodic snapshot timer that takes a snapshot every `intervalMs`.
+   *
+   * The timer is unref'd so it does not prevent natural process exit.
+   * Call stopPeriodicSnapshots() to cancel.
+   *
+   * @param deps        - Subsystem dependencies for snapshotting.
+   * @param getSequence - Callback that returns the current event sequence number.
+   * @param intervalMs  - Interval between snapshots in ms. Defaults to 60,000 (1 min).
+   */
+  startPeriodicSnapshots(deps, getSequence, intervalMs = 6e4) {
+    if (this.periodicTimer) {
+      logger11.warn("Periodic snapshots already running \u2014 call stopPeriodicSnapshots() first");
+      return;
+    }
+    const safeInterval = Math.max(intervalMs, 5e3);
+    this.periodicTimer = setInterval(() => {
+      const seq = getSequence();
+      this.takeSnapshot(deps, seq).catch((err) => {
+        logger11.warn("Periodic snapshot failed", { error: toErrorMessage(err) });
+      });
+    }, safeInterval);
+    this.periodicTimer.unref();
+    logger11.debug("Periodic snapshots started", { intervalMs: safeInterval });
+  }
+  /**
+   * Stops the periodic snapshot timer.
+   */
+  stopPeriodicSnapshots() {
+    if (this.periodicTimer) {
+      clearInterval(this.periodicTimer);
+      this.periodicTimer = null;
+      logger11.debug("Periodic snapshots stopped");
+    }
+  }
+  /**
+   * Restores runtime subsystem state from a snapshot.
+   *
+   * This populates WorkflowEngine, AgentWorkflowMap, TriggerRegistry, and
+   * AgentCoordinator from the snapshot data without replaying any events.
+   *
+   * @param snapshot - The snapshot to restore from.
+   * @param deps     - The subsystems to populate.
+   */
+  restoreFromSnapshot(snapshot, deps) {
+    logger11.info("Restoring from snapshot", {
+      timestamp: snapshot.timestamp,
+      lastEventSequence: snapshot.lastEventSequence
+    });
+    if (deps.workflowEngine && snapshot.workflows.length > 0) {
+      let restoredCount = 0;
+      for (const instance of snapshot.workflows) {
+        try {
+          deps.workflowEngine.restoreInstance(instance);
+          restoredCount++;
+        } catch (err) {
+          logger11.warn("Failed to restore workflow instance from snapshot", {
+            id: instance.id,
+            error: toErrorMessage(err)
+          });
+        }
+      }
+      logger11.debug("Workflow instances restored from snapshot", { count: restoredCount });
+    }
+    if (deps.agentWorkflowMap) {
+      const bindingEntries = Object.entries(snapshot.agentWorkflowBindings);
+      if (bindingEntries.length > 0) {
+        deps.agentWorkflowMap.restoreBindings(snapshot.agentWorkflowBindings);
+        logger11.debug("Agent-workflow bindings restored from snapshot", { count: bindingEntries.length });
+      }
+    }
+    if (deps.triggerRegistry && snapshot.triggerState.length > 0) {
+      try {
+        deps.triggerRegistry.restoreTriggerState(snapshot.triggerState);
+        logger11.debug("Trigger states restored from snapshot", { count: snapshot.triggerState.length });
+      } catch (err) {
+        logger11.warn("Failed to restore trigger states from snapshot", { error: toErrorMessage(err) });
+      }
+    }
+    logger11.info("Snapshot restoration complete");
+  }
+};
+function captureWorkflowState(engine) {
+  if (!engine) return [];
+  try {
+    return engine.getAllInstances();
+  } catch (err) {
+    logger11.warn("Failed to capture workflow state", { error: toErrorMessage(err) });
+    return [];
+  }
+}
+__name(captureWorkflowState, "captureWorkflowState");
+function captureAgentWorkflowBindings(map2) {
+  if (!map2) return {};
+  try {
+    return map2.snapshot();
+  } catch (err) {
+    logger11.warn("Failed to capture agent-workflow bindings", { error: toErrorMessage(err) });
+    return {};
+  }
+}
+__name(captureAgentWorkflowBindings, "captureAgentWorkflowBindings");
+function captureTriggerState(registry2) {
+  if (!registry2) return [];
+  try {
+    return registry2.getTriggerStates();
+  } catch (err) {
+    logger11.warn("Failed to capture trigger state", { error: toErrorMessage(err) });
+    return [];
+  }
+}
+__name(captureTriggerState, "captureTriggerState");
+function captureAgentState(coordinator) {
+  if (!coordinator) return [];
+  try {
+    return coordinator.getAllAgents().map((agent) => ({
+      id: agent.id,
+      type: agent.type,
+      task: agent.task,
+      status: agent.status,
+      workflowId: agent.workflow_id,
+      wrfcPhase: agent.wrfc_phase,
+      startedAt: agent.started_at,
+      completedAt: agent.completed_at
+    }));
+  } catch (err) {
+    logger11.warn("Failed to capture agent state", { error: toErrorMessage(err) });
+    return [];
+  }
+}
+__name(captureAgentState, "captureAgentState");
+
+// src/persistence/startup-recovery.ts
+var logger12 = createLogger("startup-recovery");
+async function recoverState(eventLog, snapshotManager, deps) {
+  const startMs = Date.now();
+  logger12.info("Starting startup recovery");
+  const latestSequence = eventLog.getLatestSequence();
+  if (latestSequence === 0) {
+    const result2 = {
+      method: "cold_start",
+      recoveryDurationMs: Date.now() - startMs
+    };
+    logger12.info("Cold start \u2014 no events to replay", { recoveryDurationMs: result2.recoveryDurationMs });
+    return result2;
+  }
+  let snapshot = null;
+  try {
+    snapshot = await snapshotManager.loadSnapshot();
+  } catch (err) {
+    logger12.warn("Snapshot load failed \u2014 will attempt full replay", { error: toErrorMessage(err) });
+  }
+  if (snapshot) {
+    logger12.info("Recovering from snapshot + delta replay", {
+      snapshotTimestamp: snapshot.timestamp,
+      snapshotSequence: snapshot.lastEventSequence,
+      currentSequence: latestSequence
+    });
+    snapshotManager.restoreFromSnapshot(snapshot, deps);
+    const snapshotInfo = {
+      timestamp: snapshot.timestamp,
+      lastEventSequence: snapshot.lastEventSequence,
+      workflowsRestored: snapshot.workflows.length,
+      agentBindingsRestored: Object.keys(snapshot.agentWorkflowBindings).length,
+      triggerStatesRestored: snapshot.triggerState.length
+    };
+    let replayInfo2;
+    if (snapshot.lastEventSequence < latestSequence) {
+      try {
+        const replayResult = await replayEvents(eventLog, deps, {
+          skipActions: true,
+          afterSequence: snapshot.lastEventSequence
+        });
+        replayInfo2 = {
+          eventsReplayed: replayResult.eventsReplayed,
+          workflowsRestored: replayResult.workflowsRestored,
+          agentBindingsRestored: replayResult.agentBindingsRestored,
+          triggerCountsRestored: replayResult.triggerCountsRestored,
+          lastSequence: replayResult.lastSequence,
+          skippedEvents: replayResult.skippedEvents
+        };
+      } catch (err) {
+        logger12.warn("Delta replay failed after snapshot restore", { error: toErrorMessage(err) });
+      }
+    } else {
+      logger12.debug("Snapshot is up-to-date \u2014 no delta events to replay");
+    }
+    const result2 = {
+      method: "snapshot_plus_replay",
+      snapshot: snapshotInfo,
+      replay: replayInfo2,
+      recoveryDurationMs: Date.now() - startMs
+    };
+    logger12.info("Recovery complete (snapshot + replay)", {
+      method: result2.method,
+      snapshotWorkflows: snapshotInfo.workflowsRestored,
+      deltaEventsReplayed: replayInfo2?.eventsReplayed ?? 0,
+      recoveryDurationMs: result2.recoveryDurationMs
+    });
+    return result2;
+  }
+  logger12.info("No snapshot available \u2014 performing full event replay", {
+    totalEvents: latestSequence
+  });
+  let replayInfo;
+  try {
+    const replayResult = await replayEvents(eventLog, deps, { skipActions: true });
+    replayInfo = {
+      eventsReplayed: replayResult.eventsReplayed,
+      workflowsRestored: replayResult.workflowsRestored,
+      agentBindingsRestored: replayResult.agentBindingsRestored,
+      triggerCountsRestored: replayResult.triggerCountsRestored,
+      lastSequence: replayResult.lastSequence,
+      skippedEvents: replayResult.skippedEvents
+    };
+  } catch (err) {
+    logger12.error("Full event replay failed", { error: toErrorMessage(err) });
+  }
+  const result = {
+    method: "full_replay",
+    replay: replayInfo,
+    recoveryDurationMs: Date.now() - startMs
+  };
+  logger12.info("Recovery complete (full replay)", {
+    method: result.method,
+    eventsReplayed: replayInfo?.eventsReplayed ?? 0,
+    workflowsRestored: replayInfo?.workflowsRestored ?? 0,
+    recoveryDurationMs: result.recoveryDurationMs
+  });
+  return result;
+}
+__name(recoverState, "recoverState");
+
 // src/lifecycle/process-manager.ts
-var logger10 = createLogger("process-manager");
+var logger13 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
@@ -27112,6 +28512,8 @@ var ProcessManager = class {
   directiveQueue = null;
   /** Agent-to-workflow binding map for deterministic WRFC chain routing. */
   agentWorkflowMap = null;
+  /** Snapshot manager for periodic state snapshots and recovery. */
+  snapshotManager = null;
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -27136,19 +28538,19 @@ var ProcessManager = class {
    * @throws If any critical startup step fails.
    */
   async startup() {
-    logger10.info("Starting up");
+    logger13.info("Starting up");
     try {
       const diskConfig = loadConfig(this.projectRoot);
       this.config = diskConfig;
-      logger10.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger13.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger10.warn("Could not load config from disk \u2014 using defaults", {
+      logger13.warn("Could not load config from disk \u2014 using defaults", {
         err: toErrorMessage(err)
       });
     }
     this.stateStore = new JsonStateStore(this.config, this.projectRoot);
     await this.stateStore.initialize();
-    logger10.debug("State store initialised");
+    logger13.debug("State store initialised");
     this.eventBus = new EventBus();
     const stateDir = (0, import_node_path3.join)(this.projectRoot, this.config.persistence.state_dir);
     (0, import_node_fs3.mkdirSync)(stateDir, { recursive: true });
@@ -27157,7 +28559,7 @@ var ProcessManager = class {
     this.eventBus.setEventLog(this.eventLog);
     this.eventQueue = new EventQueue(this.config.queue);
     this.eventQueue.start();
-    logger10.debug("Event system initialised");
+    logger13.debug("Event system initialised");
     await this.checkCrashRecovery();
     this.writePidFile();
     this.startCheckpointTimer();
@@ -27166,11 +28568,13 @@ var ProcessManager = class {
       this.workflowEngine.setEventBus(this.eventBus);
       this.workflowEngine.registerDefinition(WRFC_LOOP_DEFINITION);
       this.workflowEngine.registerDefinition(FIX_LOOP_DEFINITION);
+      this.workflowEngine.registerDefinition(TEST_THEN_FIX_DEFINITION);
+      this.workflowEngine.registerDefinition(REVIEW_ONLY_DEFINITION);
       this.workflowEngine.registerGuard("checkReviewScore", (context) => {
         const threshold = typeof context.min_review_score === "number" ? context.min_review_score : 9.5;
         return typeof context.review_score === "number" && context.review_score >= threshold;
       });
-      logger10.debug("Workflow engine initialised");
+      logger13.debug("Workflow engine initialised");
     }
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
     this.directiveQueue = new DirectiveQueue();
@@ -27185,10 +28589,10 @@ var ProcessManager = class {
           await this.triggerRegistry.evaluate(event);
         }
       } catch (err) {
-        logger10.warn("Trigger evaluation error", { error: toErrorMessage(err) });
+        logger13.warn("Trigger evaluation error", { error: toErrorMessage(err) });
       }
     });
-    logger10.debug("Trigger registry initialised");
+    logger13.debug("Trigger registry initialised");
     if (this.config.features.agents_enabled) {
       this.budgetTracker = new BudgetTracker(this.eventBus, this.config.agents);
       this.agentCoordinator = new AgentCoordinator(
@@ -27196,7 +28600,7 @@ var ProcessManager = class {
         this.budgetTracker,
         this.config.agents
       );
-      logger10.debug("Agent coordinator initialised");
+      logger13.debug("Agent coordinator initialised");
     }
     this.agentWorkflowMap = new AgentWorkflowMap();
     registerWRFCHandlers(
@@ -27206,11 +28610,54 @@ var ProcessManager = class {
       this.agentCoordinator,
       this.agentWorkflowMap
     );
+    registerTestFixHandlers(
+      this.triggerRegistry,
+      this.directiveQueue,
+      this.workflowEngine,
+      this.agentWorkflowMap
+    );
+    registerReviewOnlyHandlers(
+      this.triggerRegistry,
+      this.directiveQueue,
+      this.workflowEngine,
+      this.agentWorkflowMap
+    );
+    this.snapshotManager = new SnapshotManager(this.stateStore);
+    try {
+      const recoveryResult = await recoverState(
+        this.eventLog,
+        this.snapshotManager,
+        {
+          workflowEngine: this.workflowEngine,
+          triggerRegistry: this.triggerRegistry,
+          agentCoordinator: this.agentCoordinator,
+          agentWorkflowMap: this.agentWorkflowMap
+        }
+      );
+      logger13.info("Startup recovery complete", {
+        method: recoveryResult.method,
+        durationMs: recoveryResult.recoveryDurationMs
+      });
+    } catch (err) {
+      logger13.warn("Startup recovery failed \u2014 continuing with cold start", {
+        err: toErrorMessage(err)
+      });
+    }
+    this.snapshotManager.startPeriodicSnapshots(
+      {
+        workflowEngine: this.workflowEngine,
+        triggerRegistry: this.triggerRegistry,
+        agentCoordinator: this.agentCoordinator,
+        agentWorkflowMap: this.agentWorkflowMap
+      },
+      () => this.eventLog.getLatestSequence(),
+      6e4
+    );
     let ipcSocketPath = null;
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
     } else {
-      logger10.debug("IPC server disabled by feature flag");
+      logger13.debug("IPC server disabled by feature flag");
     }
     this.eventBus.emit({
       id: generateEventId(),
@@ -27228,7 +28675,7 @@ var ProcessManager = class {
       }
     });
     this.running = true;
-    logger10.info("Startup complete", {
+    logger13.info("Startup complete", {
       pid: process.pid,
       uptime_ms: this.getUptime()
     });
@@ -27243,9 +28690,9 @@ var ProcessManager = class {
    *   before forcing process exit.
    */
   async shutdown(timeout_ms = 1e4) {
-    logger10.info("Shutting down", { timeout_ms });
+    logger13.info("Shutting down", { timeout_ms });
     const watchdog = setTimeout(() => {
-      logger10.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
+      logger13.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
       process.exit(1);
     }, timeout_ms);
     watchdog.unref();
@@ -27255,15 +28702,18 @@ var ProcessManager = class {
           try {
             this.workflowEngine.cancel(instance.id, "engine shutdown");
           } catch (err) {
-            logger10.warn("Failed to cancel workflow during shutdown", {
+            logger13.warn("Failed to cancel workflow during shutdown", {
               id: instance.id,
               err: toErrorMessage(err)
             });
           }
         }
-        logger10.debug("Active workflows cancelled");
+        logger13.debug("Active workflows cancelled");
       }
       this.stopCheckpointTimer();
+      if (this.snapshotManager) {
+        this.snapshotManager.stopPeriodicSnapshots();
+      }
       if (this.eventBus) {
         try {
           this.eventBus.emit({
@@ -27274,7 +28724,7 @@ var ProcessManager = class {
             payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
           });
         } catch (err) {
-          logger10.warn("Failed to emit shutdown event", {
+          logger13.warn("Failed to emit shutdown event", {
             err: toErrorMessage(err)
           });
         }
@@ -27284,9 +28734,9 @@ var ProcessManager = class {
           await this.ipcServer.close();
           this.removeSocketPointerFile();
           this.ipcServer = null;
-          logger10.debug("IPC server closed");
+          logger13.debug("IPC server closed");
         } catch (err) {
-          logger10.warn("IPC server close failed", {
+          logger13.warn("IPC server close failed", {
             err: toErrorMessage(err)
           });
         }
@@ -27295,9 +28745,9 @@ var ProcessManager = class {
         try {
           await this.eventQueue.drain(5e3);
           this.eventQueue.stop();
-          logger10.debug("Event queue drained and stopped");
+          logger13.debug("Event queue drained and stopped");
         } catch (err) {
-          logger10.warn("Event queue drain failed", {
+          logger13.warn("Event queue drain failed", {
             err: toErrorMessage(err)
           });
         }
@@ -27308,34 +28758,50 @@ var ProcessManager = class {
       if (this.eventLog) {
         try {
           await this.eventLog.flush();
-          logger10.debug("Event log flushed");
+          logger13.debug("Event log flushed");
         } catch (err) {
-          logger10.warn("Event log flush failed during shutdown", {
+          logger13.warn("Event log flush failed during shutdown", {
             err: toErrorMessage(err)
           });
         }
       }
+      if (this.snapshotManager && this.eventLog) {
+        try {
+          await this.snapshotManager.takeSnapshot(
+            {
+              workflowEngine: this.workflowEngine,
+              triggerRegistry: this.triggerRegistry,
+              agentCoordinator: this.agentCoordinator,
+              agentWorkflowMap: this.agentWorkflowMap
+            },
+            this.eventLog.getLatestSequence()
+          );
+          logger13.debug("Final snapshot saved");
+        } catch (err) {
+          logger13.warn("Final snapshot failed", { err: toErrorMessage(err) });
+        }
+      }
       try {
         await this.saveCheckpoint();
-        logger10.debug("Final checkpoint saved");
+        logger13.debug("Final checkpoint saved");
       } catch (err) {
-        logger10.warn("Final checkpoint failed", {
+        logger13.warn("Final checkpoint failed", {
           err: toErrorMessage(err)
         });
       }
       if (this.eventLog) {
         try {
           await this.eventLog.close();
-          logger10.debug("Event log closed");
+          logger13.debug("Event log closed");
         } catch (err) {
-          logger10.warn("Event log close failed during shutdown", {
+          logger13.warn("Event log close failed during shutdown", {
             err: toErrorMessage(err)
           });
         }
       }
       this.removePidFile();
       this.running = false;
-      logger10.info("Shutdown complete");
+      logger13.info("Shutdown complete");
     } finally {
       clearTimeout(watchdog);
     }
@@ -27489,7 +28955,7 @@ var ProcessManager = class {
       if (stalePid !== currentPid) {
         const pid = Number(stalePid);
         if (Number.isNaN(pid) || pid <= 0 || !Number.isInteger(pid)) {
-          logger10.warn("Stale PID file contains invalid data \u2014 removing", {
+          logger13.warn("Stale PID file contains invalid data \u2014 removing", {
             content: stalePid.slice(0, 20),
             pid_file: pidFilePath
           });
@@ -27503,19 +28969,19 @@ var ProcessManager = class {
         } catch {
         }
         if (staleProcessAlive) {
-          logger10.warn("Stale PID file points to a running process \u2014 another instance may be active", {
+          logger13.warn("Stale PID file points to a running process \u2014 another instance may be active", {
             stale_pid: stalePid,
             pid_file: pidFilePath
           });
         } else {
-          logger10.warn("Stale PID file detected \u2014 possible crash recovery", {
+          logger13.warn("Stale PID file detected \u2014 possible crash recovery", {
             stale_pid: stalePid
           });
         }
         this.removePidFile();
       }
     } catch (err) {
-      logger10.warn("Could not read stale PID file", {
+      logger13.warn("Could not read stale PID file", {
         err: toErrorMessage(err)
       });
     }
@@ -27528,9 +28994,9 @@ var ProcessManager = class {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
       (0, import_node_fs3.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
-      logger10.debug("PID file written", { path: pidFilePath, pid: process.pid });
+      logger13.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
-      logger10.warn("Could not write PID file", {
+      logger13.warn("Could not write PID file", {
         err: toErrorMessage(err)
       });
     }
@@ -27543,10 +29009,10 @@ var ProcessManager = class {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
       (0, import_node_fs3.unlinkSync)(pidFilePath);
-      logger10.debug("PID file removed", { path: pidFilePath });
+      logger13.debug("PID file removed", { path: pidFilePath });
     } catch (err) {
       if (err.code !== "ENOENT") {
-        logger10.warn("Could not remove PID file", { err: toErrorMessage(err) });
+        logger13.warn("Could not remove PID file", { err: toErrorMessage(err) });
       }
     }
   }
@@ -27558,7 +29024,7 @@ var ProcessManager = class {
     const interval = Math.max(this.config.persistence.checkpoint_interval_ms ?? CHECKPOINT_INTERVAL_MS, 1e3);
     this.checkpointTimer = setInterval(() => {
       this.saveCheckpoint().catch((err) => {
-        logger10.warn("Periodic checkpoint failed", {
+        logger13.warn("Periodic checkpoint failed", {
           err: toErrorMessage(err)
         });
       });
@@ -27566,11 +29032,11 @@ var ProcessManager = class {
         this.workflowEngine?.prune();
         this.agentCoordinator?.prune();
       } catch (err) {
-        logger10.warn("Periodic prune failed", { err: toErrorMessage(err) });
+        logger13.warn("Periodic prune failed", { err: toErrorMessage(err) });
       }
     }, interval);
     this.checkpointTimer.unref();
-    logger10.debug("Checkpoint timer started", { interval_ms: interval });
+    logger13.debug("Checkpoint timer started", { interval_ms: interval });
   }
   /**
    * Stop the periodic checkpoint timer, preventing any further automatic saves.
@@ -27579,7 +29045,7 @@ var ProcessManager = class {
     if (this.checkpointTimer) {
       clearInterval(this.checkpointTimer);
       this.checkpointTimer = void 0;
-      logger10.debug("Checkpoint timer stopped");
+      logger13.debug("Checkpoint timer stopped");
     }
   }
   /**
@@ -27608,10 +29074,10 @@ var ProcessManager = class {
       (0, import_node_fs3.mkdirSync)(stateDir, { recursive: true });
       const pointerFile = (0, import_node_path3.join)(stateDir, `runtime-${process.pid}.socket`);
       (0, import_node_fs3.writeFileSync)(pointerFile, socketPath, "utf-8");
-      logger10.info("IPC server started", { socket: socketPath });
+      logger13.info("IPC server started", { socket: socketPath });
       return socketPath;
     } catch (err) {
-      logger10.error("Failed to start IPC server", {
+      logger13.error("Failed to start IPC server", {
         socket: socketPath,
         err: toErrorMessage(err)
       });
@@ -27631,10 +29097,10 @@ var ProcessManager = class {
     );
     try {
       (0, import_node_fs3.unlinkSync)(pointerFile);
-      logger10.debug("Socket pointer file removed", { path: pointerFile });
+      logger13.debug("Socket pointer file removed", { path: pointerFile });
     } catch (err) {
       if (err.code !== "ENOENT") {
-        logger10.warn("Could not remove socket pointer file", {
+        logger13.warn("Could not remove socket pointer file", {
           path: pointerFile,
           err: toErrorMessage(err)
         });
@@ -27661,7 +29127,7 @@ var ProcessManager = class {
       try {
         await this.eventLog.compact();
       } catch (err) {
-        logger10.warn("Event log compaction failed during checkpoint", {
+        logger13.warn("Event log compaction failed during checkpoint", {
           err: toErrorMessage(err)
         });
       }
@@ -27775,7 +29241,7 @@ function toError(error2, version2, uptime_ms, execution_ms) {
 __name(toError, "toError");
 
 // src/server/handlers/status.ts
-var logger11 = createLogger("tool-handlers:status");
+var logger14 = createLogger("tool-handlers:status");
 var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   if (args !== null && args !== void 0 && typeof args !== "object") {
@@ -27789,17 +29255,17 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   try {
     const uptimeMs = ctx.getUptime();
     const statusData = ctx.getHealth();
-    logger11.debug("runtime_status computed", { status: statusData.status });
+    logger14.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger11.error("runtime_status failed", { error: message });
+    logger14.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
 
 // src/server/handlers/config.ts
-var logger12 = createLogger("tool-handlers:config");
+var logger15 = createLogger("tool-handlers:config");
 var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "ipc.socket_dir",
   "ipc.connect_timeout_ms",
@@ -27976,7 +29442,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       );
       saveConfig(ctx.projectRoot, updated);
       ctx.updateConfig(updated);
-      logger12.info("Config key set", { key, value });
+      logger15.info("Config key set", { key, value });
       return toSuccess(
         { key, value, persisted: true },
         ctx.version,
@@ -27987,7 +29453,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     if (action === "reset") {
       saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
       ctx.updateConfig(DEFAULT_CONFIG);
-      logger12.info("Config reset to defaults");
+      logger15.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -28003,13 +29469,13 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger12.error("runtime_config failed", { error: message });
+    logger15.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
 
 // src/server/handlers/events.ts
-var logger13 = createLogger("tool-handlers:events");
+var logger16 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
   if (pattern === "*") return true;
   if (pattern.endsWith(":*")) {
@@ -28171,13 +29637,13 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger13.error("runtime_events failed", { error: message });
+    logger16.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
 
 // src/server/handlers/emit.ts
-var logger14 = createLogger("tool-handlers:emit");
+var logger17 = createLogger("tool-handlers:emit");
 var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -28208,7 +29674,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger14.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
+      logger17.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
     }
     const emitted = ctx.getEventBus().emit({
       id: generateEventId(),
@@ -28218,17 +29684,17 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       payload: { type: eventType, data: payload },
       metadata: correlationId ? { correlation_id: correlationId } : void 0
     });
-    logger14.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    logger17.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger14.error("runtime_emit failed", { error: message });
+    logger17.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
 
 // src/server/handlers/workflow.ts
-var logger15 = createLogger("tool-handlers:workflow");
+var logger18 = createLogger("tool-handlers:workflow");
 var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -28258,7 +29724,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       const definitionId = workflowType === "wrfc_loop" ? "wrfc_loop" : workflowType === "fix_loop" ? "fix_loop" : workflowType;
       const context = params.context ?? {};
       const instance = engine.create(definitionId, context);
-      logger15.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      logger18.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
@@ -28339,13 +29805,13 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger15.error("runtime_workflow failed", { error: message });
+    logger18.error("runtime_workflow failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeWorkflow");
 
 // src/server/handlers/triggers.ts
-var logger16 = createLogger("tool-handlers:triggers");
+var logger19 = createLogger("tool-handlers:triggers");
 var VALID_TRIGGER_ACTION_TYPES = /* @__PURE__ */ new Set([
   "emit_event",
   "spawn_agent",
@@ -28431,7 +29897,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.register(triggerDef);
-      logger16.info("runtime_triggers: registered", { id: triggerDef.id });
+      logger19.info("runtime_triggers: registered", { id: triggerDef.id });
       return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "update") {
@@ -28448,7 +29914,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       registry2.unregister(triggerDef.id);
       registry2.register(triggerDef);
-      logger16.info("runtime_triggers: updated", { id: triggerDef.id });
+      logger19.info("runtime_triggers: updated", { id: triggerDef.id });
       return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "delete") {
@@ -28460,7 +29926,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.unregister(triggerId);
-      logger16.info("runtime_triggers: unregistered", { id: triggerId });
+      logger19.info("runtime_triggers: unregistered", { id: triggerId });
       return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "enable" || action === "disable") {
@@ -28473,7 +29939,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       const enabled = action === "enable";
       registry2.setEnabled(triggerId, enabled);
-      logger16.info(`runtime_triggers: ${action}d`, { id: triggerId });
+      logger19.info(`runtime_triggers: ${action}d`, { id: triggerId });
       return toSuccess({ [action + "d"]: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "test") {
@@ -28507,13 +29973,13 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger16.error("runtime_triggers failed", { error: message });
+    logger19.error("runtime_triggers failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeTriggers");
 
 // src/server/handlers/agents.ts
-var logger17 = createLogger("tool-handlers:agents");
+var logger20 = createLogger("tool-handlers:agents");
 var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -28600,7 +30066,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       };
       const agentId = coordinator.spawn(options);
       const agent = coordinator.getAgent(agentId);
-      logger17.info("runtime_agents: spawned", { agentId, type: options.type });
+      logger20.info("runtime_agents: spawned", { agentId, type: options.type });
       return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
@@ -28647,7 +30113,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger17.error("runtime_agents failed", { error: message });
+    logger20.error("runtime_agents failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeAgents");
@@ -28926,7 +30392,7 @@ __name(listHandlers, "listHandlers");
 
 // src/server/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger18 = createLogger("mcp-server");
+var logger21 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -28948,12 +30414,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger18.debug("ListTools request");
+      logger21.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger18.debug("CallTool request", { name });
+      logger21.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -28981,7 +30447,7 @@ var RuntimeEngineServer = class {
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = toErrorMessage(error2);
-        logger18.error(`Tool ${name} failed`, { error: message });
+        logger21.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -28993,7 +30459,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger18.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger21.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -29012,7 +30478,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger18.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger21.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid
     });
@@ -29026,22 +30492,22 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger18.info("Stopping runtime engine");
+    logger21.info("Stopping runtime engine");
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger18.warn("ProcessManager shutdown error", {
+      logger21.warn("ProcessManager shutdown error", {
         err: toErrorMessage(err)
       });
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger18.warn("MCP server close error", {
+      logger21.warn("MCP server close error", {
         err: toErrorMessage(err)
       });
     }
-    logger18.info("Runtime engine stopped");
+    logger21.info("Runtime engine stopped");
   }
 };
 

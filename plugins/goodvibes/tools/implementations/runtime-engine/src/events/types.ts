@@ -136,6 +136,36 @@ export type EventType =
   /** The active phase of a WRFC chain changed. */
   | 'wrfc:phase_changed'
 
+  // ── Test-then-fix events ────────────────────────────────────────────────
+  /** The test-then-fix workflow has started its initial test run. */
+  | 'test_fix:testing_started'
+  /** The initial test run passed. */
+  | 'test_fix:tests_passed'
+  /** The initial test run failed. */
+  | 'test_fix:tests_failed'
+  /** The fix phase has started. */
+  | 'test_fix:fix_started'
+  /** The fix phase has completed. */
+  | 'test_fix:fix_completed'
+  /** The re-test phase has started after a fix. */
+  | 'test_fix:retesting_started'
+  /** The test-then-fix loop completed successfully. */
+  | 'test_fix:completed'
+  /** The test-then-fix loop escalated due to too many fix iterations. */
+  | 'test_fix:escalated'
+
+  // ── Review-only events ───────────────────────────────────────────────────
+  /** The review-only workflow review phase has started. */
+  | 'review_only:review_started'
+  /** The review-only workflow review phase has completed. */
+  | 'review_only:review_completed'
+  /** The review-only workflow completed. */
+  | 'review_only:completed'
+
+  // ── Generic trigger events ───────────────────────────────────────────────
+  /** A review was requested externally. */
+  | 'review:requested'
+
   // ── Fix loop events ──────────────────────────────────────────────────────
   /** The fix loop is diagnosing the problem. */
   | 'fix:diagnosing'
@@ -510,6 +540,12 @@ export type EventPayload =
   | { type: 'wrfc:gathering_started' | 'wrfc:plan_submitted' | 'wrfc:writing_started' | 'wrfc:review_started' | 'wrfc:review_completed' | 'wrfc:fix_started' | 'wrfc:fix_completed' | 'wrfc:escalated' | 'wrfc:completed'; data: Record<string, unknown> }
   // Fix loop events
   | { type: 'fix:diagnosing' | 'fix:applying' | 'fix:verifying' | 'fix:resolved' | 'fix:retrying' | 'fix:failed'; data: Record<string, unknown> }
+  // Test-then-fix events
+  | { type: 'test_fix:testing_started' | 'test_fix:tests_passed' | 'test_fix:tests_failed' | 'test_fix:fix_started' | 'test_fix:fix_completed' | 'test_fix:retesting_started' | 'test_fix:completed' | 'test_fix:escalated'; data: Record<string, unknown> }
+  // Review-only events
+  | { type: 'review_only:review_started' | 'review_only:review_completed' | 'review_only:completed'; data: Record<string, unknown> }
+  // Generic trigger events
+  | { type: 'review:requested'; data: Record<string, unknown> }
   // Agent events without dedicated payloads
   | { type: 'agent:started' | 'agent:completed' | 'agent:failed' | 'agent:cancelled' | 'agent:budget_warning' | 'agent:budget_exhausted' | 'agent:dependency_resolved'; data: Record<string, unknown> }
   // WRFC phase change event

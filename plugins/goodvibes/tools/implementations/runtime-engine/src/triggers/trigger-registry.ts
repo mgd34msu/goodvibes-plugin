@@ -202,6 +202,44 @@ export class TriggerRegistry {
     log.debug('Action handler registered', { name });
   }
 
+  /**
+   * Restores trigger fire counts and last-fired timestamps from a previous
+   * session. Only updates triggers that are already registered; unknown
+   * trigger IDs are silently ignored.
+   *
+   * @param state - Array of trigger state entries to restore.
+   */
+  restoreTriggerState(state: Array<{ triggerId: string; firesCount: number; lastFired?: number }>): void {
+    let restored = 0;
+    for (const entry of state) {
+      const trigger = this.triggers.get(entry.triggerId);
+      if (trigger) {
+        trigger.fires_count = entry.firesCount;
+        if (entry.lastFired !== undefined) {
+          trigger.last_fired = entry.lastFired;
+        }
+        restored++;
+      } else {
+        log.debug('restoreTriggerState: trigger not found, skipping', { id: entry.triggerId });
+      }
+    }
+    log.info('Trigger states restored', { restored, total: state.length });
+  }
+
+  /**
+   * Returns a snapshot of the current fire counts and last-fired timestamps
+   * for all registered triggers. Used for snapshotting.
+   *
+   * @returns Array of trigger state snapshots.
+   */
+  getTriggerStates(): Array<{ triggerId: string; firesCount: number; lastFired?: number }> {
+    return Array.from(this.triggers.values()).map((trigger) => ({
+      triggerId: trigger.id,
+      firesCount: trigger.fires_count,
+      lastFired: trigger.last_fired,
+    }));
+  }
+
   // ─── Private Helpers ──────────────────────────────────────────────────────────
 
   /**
