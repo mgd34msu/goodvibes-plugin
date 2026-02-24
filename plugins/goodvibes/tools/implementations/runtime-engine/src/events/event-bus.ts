@@ -84,11 +84,21 @@ export class EventBus {
    * @param maxHistorySize - Maximum number of events to retain in the in-memory
    *   ring buffer. Older events are evicted when the buffer is full.
    *   Defaults to 10,000.
+   *
+   * @remarks
+   * When `maxHistorySize` is `0`, the ring buffer is disabled entirely: events
+   * are still emitted and dispatched to subscribers, but no history is retained.
+   * `getHistory()` will always return an empty array. This is a valid
+   * configuration when in-memory history is not needed.
+   *
+   * Negative values are treated identically to `0` (no history). Passing a
+   * fractional value is coerced to an integer via `Math.max(0, Math.floor(...))`.
    */
   constructor(maxHistorySize = 10_000) {
     this.handlers = new Map();
-    this.historyBuffer = new Array(maxHistorySize);
-    this.maxHistorySize = maxHistorySize;
+    const safeSize = Math.max(0, Math.floor(maxHistorySize));
+    this.historyBuffer = safeSize > 0 ? new Array(safeSize) : [];
+    this.maxHistorySize = safeSize;
   }
 
   /**
@@ -148,13 +158,16 @@ export class EventBus {
     }
 
     // Maintain ring buffer (O(1) circular buffer)
-    this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
-    this.historyWriteIndex++;
-    // Prevent integer overflow on long-running processes
-    if (this.historyWriteIndex >= Number.MAX_SAFE_INTEGER - this.maxHistorySize) {
-      this.historyWriteIndex = this.historyWriteIndex % this.maxHistorySize;
+    // Skip if history is disabled (maxHistorySize=0)
+    if (this.maxHistorySize > 0) {
+      this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
+      this.historyWriteIndex++;
+      // Prevent integer overflow on long-running processes
+      if (this.historyWriteIndex >= Number.MAX_SAFE_INTEGER - this.maxHistorySize) {
+        this.historyWriteIndex = this.historyWriteIndex % this.maxHistorySize;
+      }
+      if (this.historyCount < this.maxHistorySize) this.historyCount++;
     }
-    if (this.historyCount < this.maxHistorySize) this.historyCount++;
 
     // Dispatch to matching handlers
     for (const [pattern, handlerSet] of this.handlers) {

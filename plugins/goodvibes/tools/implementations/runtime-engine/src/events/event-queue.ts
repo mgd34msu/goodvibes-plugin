@@ -90,6 +90,15 @@ export type QueueHandler = (entry: QueueEntry) => void | Promise<void>;
 
 /** Queue configuration — subset of RuntimeConfig.queue */
 export interface EventQueueConfig {
+  /**
+   * Maximum number of entries that may be pending across all priority buckets.
+   *
+   * @remarks
+   * Must be at least 1. Passing `0` (or any value less than 1) is invalid and
+   * will cause the constructor to throw an `Error`. A queue with `max_size=0`
+   * can never hold any items — every `enqueue()` call would immediately throw,
+   * which is never a useful configuration.
+   */
   max_size: number;
   max_attempts: number;
   backoff_base_ms: number;
@@ -138,6 +147,12 @@ export class EventQueue {
   private readonly processIntervalMs: number;
 
   constructor(config: EventQueueConfig) {
+    if (config.max_size < 1) {
+      throw new Error(
+        `EventQueue: max_size must be at least 1, got ${config.max_size}. ` +
+          'A queue with max_size=0 rejects every enqueue call immediately.',
+      );
+    }
     this.maxSize = config.max_size;
     this.backoffBase = config.backoff_base_ms;
     this.backoffMultiplier = config.backoff_multiplier;

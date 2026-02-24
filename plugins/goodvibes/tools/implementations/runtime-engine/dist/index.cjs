@@ -22087,11 +22087,21 @@ var EventBus = class {
    * @param maxHistorySize - Maximum number of events to retain in the in-memory
    *   ring buffer. Older events are evicted when the buffer is full.
    *   Defaults to 10,000.
+   *
+   * @remarks
+   * When `maxHistorySize` is `0`, the ring buffer is disabled entirely: events
+   * are still emitted and dispatched to subscribers, but no history is retained.
+   * `getHistory()` will always return an empty array. This is a valid
+   * configuration when in-memory history is not needed.
+   *
+   * Negative values are treated identically to `0` (no history). Passing a
+   * fractional value is coerced to an integer via `Math.max(0, Math.floor(...))`.
    */
   constructor(maxHistorySize = 1e4) {
     this.handlers = /* @__PURE__ */ new Map();
-    this.historyBuffer = new Array(maxHistorySize);
-    this.maxHistorySize = maxHistorySize;
+    const safeSize = Math.max(0, Math.floor(maxHistorySize));
+    this.historyBuffer = safeSize > 0 ? new Array(safeSize) : [];
+    this.maxHistorySize = safeSize;
   }
   /**
    * Injects a persistent event log.
@@ -22138,12 +22148,14 @@ var EventBus = class {
         logger2.error("Event log append failed", { error: toErrorMessage(err) });
       }
     }
-    this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
-    this.historyWriteIndex++;
-    if (this.historyWriteIndex >= Number.MAX_SAFE_INTEGER - this.maxHistorySize) {
-      this.historyWriteIndex = this.historyWriteIndex % this.maxHistorySize;
+    if (this.maxHistorySize > 0) {
+      this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
+      this.historyWriteIndex++;
+      if (this.historyWriteIndex >= Number.MAX_SAFE_INTEGER - this.maxHistorySize) {
+        this.historyWriteIndex = this.historyWriteIndex % this.maxHistorySize;
+      }
+      if (this.historyCount < this.maxHistorySize) this.historyCount++;
     }
-    if (this.historyCount < this.maxHistorySize) this.historyCount++;
     for (const [pattern, handlerSet] of this.handlers) {
       if (this.matchPattern(full.type, pattern)) {
         for (const handler of handlerSet) {
@@ -22352,6 +22364,23 @@ var EventLog = class {
   flushing = false;
   /** Queue of flush waiters (resolve/reject pairs). */
   flushWaiters = [];
+  /**
+   * Creates a new EventLog instance.
+   *
+   * @param stateDir - Absolute path to the directory where the JSONL log file
+   *   and archive subdirectory will be stored. Created on first write if absent.
+   * @param config - Configuration for log size and compaction:
+   *   - `event_log_max_size_mb`: Informational threshold for triggering log
+   *     rotation. Currently not actively enforced inside `append()` — it is
+   *     the caller's responsibility to call `compact()` or rotate when the
+   *     reported `file_size_bytes` exceeds this value. Passing `0` does not
+   *     cause errors; it simply means no size-based rotation threshold is set.
+   *   - `compact_after_hours`: Events older than this many hours are eligible
+   *     for archival when `compact()` is called. Passing `0` means the cutoff
+   *     is `now`, so **every** existing event will be archived on the next
+   *     `compact()` call, leaving the main log empty. This is valid but
+   *     aggressive — use with care in production.
+   */
   constructor(stateDir, config2) {
     this.logPath = (0, import_path2.join)(stateDir, "events.jsonl");
     this.archiveDir = (0, import_path2.join)(stateDir, "event-archives");
@@ -22889,6 +22918,11 @@ var EventQueue = class {
   backoffMultiplier;
   processIntervalMs;
   constructor(config2) {
+    if (config2.max_size < 1) {
+      throw new Error(
+        `EventQueue: max_size must be at least 1, got ${config2.max_size}. A queue with max_size=0 rejects every enqueue call immediately.`
+      );
+    }
     this.maxSize = config2.max_size;
     this.backoffBase = config2.backoff_base_ms;
     this.backoffMultiplier = config2.backoff_multiplier;

@@ -96,6 +96,23 @@ export class EventLog {
   /** Queue of flush waiters (resolve/reject pairs). */
   private flushWaiters: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
 
+  /**
+   * Creates a new EventLog instance.
+   *
+   * @param stateDir - Absolute path to the directory where the JSONL log file
+   *   and archive subdirectory will be stored. Created on first write if absent.
+   * @param config - Configuration for log size and compaction:
+   *   - `event_log_max_size_mb`: Informational threshold for triggering log
+   *     rotation. Currently not actively enforced inside `append()` — it is
+   *     the caller's responsibility to call `compact()` or rotate when the
+   *     reported `file_size_bytes` exceeds this value. Passing `0` does not
+   *     cause errors; it simply means no size-based rotation threshold is set.
+   *   - `compact_after_hours`: Events older than this many hours are eligible
+   *     for archival when `compact()` is called. Passing `0` means the cutoff
+   *     is `now`, so **every** existing event will be archived on the next
+   *     `compact()` call, leaving the main log empty. This is valid but
+   *     aggressive — use with care in production.
+   */
   constructor(
     stateDir: string,
     config: { event_log_max_size_mb: number; compact_after_hours: number },
