@@ -519,10 +519,10 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
 );
 
 // src/shared/runtime-client.ts
-import * as net from "net";
-import { existsSync as existsSync2, readFileSync, readdirSync } from "fs";
-import { join as join5 } from "path";
-import { tmpdir } from "os";
+import * as net from "node:net";
+import { existsSync as existsSync2, readFileSync, readdirSync } from "node:fs";
+import { join as join5 } from "node:path";
+import { tmpdir } from "node:os";
 var HOOK_EVENT_TIMEOUT_MS = 500;
 var QUERY_TIMEOUT_MS = 500;
 function generateId() {

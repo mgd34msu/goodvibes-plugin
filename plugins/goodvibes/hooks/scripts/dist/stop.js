@@ -421,6 +421,12 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
   ])
 );
 
+// src/shared/runtime-client.ts
+import * as net from "node:net";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join as join2 } from "node:path";
+import { tmpdir } from "node:os";
+
 // src/lifecycle/stop.ts
 function createResponse2(options) {
   return {
