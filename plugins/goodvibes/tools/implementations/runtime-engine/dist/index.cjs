@@ -27141,6 +27141,7 @@ var ProcessManager = class {
     logger10.debug("State store initialised");
     this.eventBus = new EventBus();
     const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
+    (0, import_fs4.mkdirSync)(stateDir, { recursive: true });
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
     this.eventBus.setEventLog(this.eventLog);

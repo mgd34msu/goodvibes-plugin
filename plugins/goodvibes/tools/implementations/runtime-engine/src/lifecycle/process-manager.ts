@@ -156,6 +156,7 @@ export class ProcessManager {
     // 3. Initialise event system
     this.eventBus = new EventBus();
     const stateDir = join(this.projectRoot, this.config.persistence.state_dir);
+    mkdirSync(stateDir, { recursive: true });
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
     this.eventBus.setEventLog(this.eventLog);
