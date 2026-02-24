@@ -572,14 +572,14 @@ describe('hook-io', () => {
       expect(capturedExitCode).toBe(0);
     });
 
-    it('should output JSON and exit with code 2 when blocking', async () => {
+    it('should output JSON and exit with code 0 when blocking', async () => {
       const { respond, blockTool } = await import('../shared/hook-io.js');
 
       const response = blockTool('PreToolUse', 'Blocked for security');
 
       expect(() => respond(response, true)).toThrow('process.exit called');
       expect(capturedOutput).toBe(JSON.stringify(response));
-      expect(capturedExitCode).toBe(2);
+      expect(capturedExitCode).toBe(0);
     });
 
     it('should handle response with all fields', async () => {

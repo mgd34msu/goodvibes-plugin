@@ -41,9 +41,9 @@ export declare function readHookInput(): Promise<HookInput>;
  */
 export declare function allowTool(hookEventName: string, systemMessage?: string, updatedInput?: Record<string, unknown>): HookResponse;
 /**
- * Blocks the tool from executing.
+ * Creates a hook response that blocks the tool from executing.
  */
-export declare function blockTool(reason: string): never;
+export declare function blockTool(hookEventName: string, reason: string): HookResponse;
 /**
  * Formats a hook response as JSON string.
  */

@@ -267,7 +267,7 @@ export function handleNativeToolBlocking(input: PreToolUseInput): boolean {
   const replacement = TOOL_REPLACEMENTS[toolName];
   if (replacement) {
     const blockMessage = formatBlockMessage(toolName, replacement);
-    blockTool(blockMessage);
+    respond(blockTool('PreToolUse', blockMessage));
     return true;
   }
 

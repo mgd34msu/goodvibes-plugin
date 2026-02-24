@@ -90,7 +90,7 @@ async function handleBashTool(input: HookInput): Promise<void> {
     if (!analysis.safe) {
       const toolName = analysis.toolName || 'precision_tool';
       const message = formatBlockMessage(analysis.issues, toolName);
-      blockTool(message);
+      respond(blockTool('PreToolUse', message));
       return;
     }
   }
@@ -153,7 +153,7 @@ export async function runPreToolUseHook(): Promise<void> {
         });
         if (blockResult?.kind === 'tool_decision' && !blockResult.allow) {
           const reason = blockResult.reason ?? 'Blocked by runtime engine';
-          blockTool(reason);
+          respond(blockTool('PreToolUse', reason));
           return;
         }
       }

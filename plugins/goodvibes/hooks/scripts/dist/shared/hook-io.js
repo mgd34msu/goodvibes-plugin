@@ -54,11 +54,17 @@ export function allowTool(hookEventName, systemMessage, updatedInput) {
     };
 }
 /**
- * Blocks the tool from executing.
+ * Creates a hook response that blocks the tool from executing.
  */
-export function blockTool(reason) {
-    console.error(reason);
-    process.exit(2);
+export function blockTool(hookEventName, reason) {
+    return {
+        continue: false,
+        hookSpecificOutput: {
+            hookEventName,
+            permissionDecision: 'deny',
+            permissionDecisionReason: reason,
+        },
+    };
 }
 /**
  * Formats a hook response as JSON string.

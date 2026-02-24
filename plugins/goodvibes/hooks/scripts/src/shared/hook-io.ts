@@ -96,11 +96,17 @@ export function allowTool(
 }
 
 /**
- * Blocks the tool from executing.
+ * Creates a hook response that blocks the tool from executing.
  */
-export function blockTool(reason: string): never {
-  console.error(reason);
-  process.exit(2);
+export function blockTool(hookEventName: string, reason: string): HookResponse {
+  return {
+    continue: false,
+    hookSpecificOutput: {
+      hookEventName,
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason,
+    },
+  };
 }
 
 /**

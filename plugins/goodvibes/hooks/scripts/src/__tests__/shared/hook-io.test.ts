@@ -439,13 +439,13 @@ describe('hook-io', () => {
       expect(process.exit).toHaveBeenCalledWith(0);
     });
 
-    it('should output JSON and exit with code 2 for blocking response', () => {
+    it('should output JSON and exit with code 0 for blocking response', () => {
       const response = blockTool('PreToolUse', 'Blocked');
 
       respond(response, true);
 
       expect(consoleLogSpy).toHaveBeenCalledWith(JSON.stringify(response));
-      expect(process.exit).toHaveBeenCalledWith(2);
+      expect(process.exit).toHaveBeenCalledWith(0);
     });
 
     it('should default to non-blocking (exit 0) when block is not specified', () => {

@@ -186,6 +186,7 @@ describe('subagent-blockers', () => {
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringContaining('precision_read')
       );
     });
@@ -206,6 +207,7 @@ describe('subagent-blockers', () => {
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringContaining('precision_read')
       );
     });
@@ -225,6 +227,7 @@ describe('subagent-blockers', () => {
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringContaining('precision_edit')
       );
     });
@@ -244,6 +247,7 @@ describe('subagent-blockers', () => {
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringContaining('precision_write')
       );
     });
@@ -263,6 +267,7 @@ describe('subagent-blockers', () => {
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringContaining('precision_glob')
       );
     });
@@ -282,6 +287,7 @@ describe('subagent-blockers', () => {
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringContaining('precision_grep')
       );
     });
@@ -301,6 +307,7 @@ describe('subagent-blockers', () => {
 
       expect(result).toBe(true);
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringContaining('precision_fetch')
       );
     });
@@ -444,6 +451,7 @@ describe('subagent-blockers', () => {
 
       // Verify the block message contains proper usage instructions
       expect(mockedBlockTool).toHaveBeenCalledWith(
+        'PreToolUse',
         expect.stringMatching(/precision_read.*discover.*batch/s)
       );
     });
