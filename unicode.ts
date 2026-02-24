@@ -1,0 +1,1 @@
+const emoji = "abc123";

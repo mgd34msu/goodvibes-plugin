@@ -5027,7 +5027,7 @@ SECONDARY DIRECTIVE: Be token-efficient.
 `,
   "CORE-PRINCIPLES.md": `## MANDATORY
 
-1. Maintain usage of WRFC Loops
+1. Execute <gv> directives from the runtime engine
 2. Minimize token usage
 3. NEVER block main conversation
 4. Always have a plan
