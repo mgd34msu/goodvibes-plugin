@@ -25219,9 +25219,10 @@ var ActionExecutor = class {
         return { success: false, error: "start_workflow: workflow_definition is required" };
       }
       try {
+        const wrfcDefaults = this.directiveQueue ? this.getWRFCContextDefaults() : {};
         const instance = this.workflowEngine.create(
           action.workflow_definition,
-          resolvedContext
+          { ...wrfcDefaults, ...resolvedContext }
         );
         log3.info("start_workflow action: workflow created", {
           definition: action.workflow_definition,
@@ -25256,6 +25257,22 @@ var ActionExecutor = class {
       return { success: true };
     }
     return { success: false, error: `Unknown workflow action type: ${String(action.type)}` };
+  }
+  /**
+   * Extract WRFC-relevant config values from DirectiveQueue for workflow context seeding.
+   * Returns only numeric, finite values — omits keys that aren't set in the user's config.
+   */
+  getWRFCContextDefaults() {
+    if (!this.directiveQueue) return {};
+    const config2 = this.directiveQueue.getWRFCConfig();
+    const defaults = {};
+    if (typeof config2.min_review_score === "number" && Number.isFinite(config2.min_review_score)) {
+      defaults.min_review_score = config2.min_review_score;
+    }
+    if (typeof config2.max_fix_attempts === "number" && Number.isFinite(config2.max_fix_attempts)) {
+      defaults.max_fix_attempts = config2.max_fix_attempts;
+    }
+    return defaults;
   }
   /**
    * Executes all actions in parallel via `Promise.all`.
@@ -26974,8 +26991,8 @@ function handleReviewResult(params) {
     agentWorkflowMap,
     agentId
   } = params;
-  const minScore = typeof workflow.context.min_review_score === "number" ? workflow.context.min_review_score : DEFAULT_MIN_REVIEW_SCORE;
-  const maxFixAttempts = typeof workflow.context.max_fix_attempts === "number" ? workflow.context.max_fix_attempts : DEFAULT_MAX_FIX_ATTEMPTS;
+  const minScore = typeof workflow.context.min_review_score === "number" && Number.isFinite(workflow.context.min_review_score) ? workflow.context.min_review_score : DEFAULT_MIN_REVIEW_SCORE;
+  const maxFixAttempts = typeof workflow.context.max_fix_attempts === "number" && Number.isFinite(workflow.context.max_fix_attempts) ? workflow.context.max_fix_attempts : DEFAULT_MAX_FIX_ATTEMPTS;
   const fixAttempts = typeof workflow.context.fix_attempts === "number" ? workflow.context.fix_attempts : 0;
   workflow.context.review_score = score;
   workflow.context.min_review_score = minScore;
@@ -27130,13 +27147,16 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     }
     if (!incomingWorkflowId && workflowEngine) {
       try {
+        const wrfcConfig = directiveQueue.getWRFCConfig();
         workflowEngine.create(
           "wrfc_loop",
           {
             trigger: "agent_spawned",
             agent_id: agentId,
             agent_type: agentType,
-            task: typeof args["task"] === "string" ? args["task"] : ""
+            task: typeof args["task"] === "string" ? args["task"] : "",
+            ...typeof wrfcConfig.min_review_score === "number" && Number.isFinite(wrfcConfig.min_review_score) ? { min_review_score: wrfcConfig.min_review_score } : {},
+            ...typeof wrfcConfig.max_fix_attempts === "number" && Number.isFinite(wrfcConfig.max_fix_attempts) ? { max_fix_attempts: wrfcConfig.max_fix_attempts } : {}
           },
           workflowId
         );
@@ -27368,7 +27388,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         });
       }
       const prevAttempts = typeof workflow.context.fix_attempts === "number" ? workflow.context.fix_attempts : 0;
-      const maxFixAttempts = typeof workflow.context.max_fix_attempts === "number" ? workflow.context.max_fix_attempts : DEFAULT_MAX_FIX_ATTEMPTS;
+      const maxFixAttempts = typeof workflow.context.max_fix_attempts === "number" && Number.isFinite(workflow.context.max_fix_attempts) ? workflow.context.max_fix_attempts : DEFAULT_MAX_FIX_ATTEMPTS;
       const filesModified = Array.isArray(workflow.context.files_modified) ? workflow.context.files_modified : [];
       handleFixResult({
         workflowEngine,
@@ -27434,7 +27454,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     ;
     const wf = workflowEngine?.get(workflowId);
     if (!wf || !workflowEngine) {
-      const minScore = typeof args["min_review_score"] === "number" ? args["min_review_score"] : DEFAULT_MIN_REVIEW_SCORE;
+      const minScore = typeof args["min_review_score"] === "number" && Number.isFinite(args["min_review_score"]) ? args["min_review_score"] : DEFAULT_MIN_REVIEW_SCORE;
       if (reviewScore >= minScore) {
         const message = buildWorkflowCompleteMessage(workflowId, "completed");
         directiveQueue.enqueue("subagent_stop", {
@@ -27488,8 +27508,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       return;
     }
     const rawMax = args["max_fix_attempts"];
-    const rawMaxParsed = typeof rawMax === "number" ? rawMax : parseInt(String(rawMax ?? ""), 10);
-    const maxFixAttempts = isNaN(rawMaxParsed) ? DEFAULT_MAX_FIX_ATTEMPTS : rawMaxParsed;
+    const maxFixAttempts = typeof rawMax === "number" && Number.isFinite(rawMax) ? rawMax : DEFAULT_MAX_FIX_ATTEMPTS;
     const fixWorkflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
     let fixWorkflow = fixWorkflowId ? workflowEngine?.get(fixWorkflowId) ?? null : null;
     if (!fixWorkflow) {
@@ -27644,7 +27663,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
       }
     } else {
       const fixAttempts = typeof workflow.context["fix_attempts"] === "number" ? workflow.context["fix_attempts"] : 0;
-      const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
+      const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" && Number.isFinite(workflow.context["max_fix_attempts"]) ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
       log6.info("test_fix_agent_completed: tests failed", {
         workflow_id: workflow.id,
         fix_attempts: fixAttempts,
@@ -27691,7 +27710,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
       return;
     }
     const fixAttempts = typeof workflow.context["fix_attempts"] === "number" ? workflow.context["fix_attempts"] : 0;
-    const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
+    const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" && Number.isFinite(workflow.context["max_fix_attempts"]) ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
     const nextFixAttempts = fixAttempts + 1;
     workflow.context["fix_attempts"] = nextFixAttempts;
     const testCommand = typeof workflow.context["test_command"] === "string" ? workflow.context["test_command"] : "test suite";
@@ -27764,7 +27783,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
     const passed = args["passed"] === true || args["passed"] === "true";
     const testCommand = typeof workflow.context["test_command"] === "string" ? workflow.context["test_command"] : "test suite";
     const fixAttempts = typeof workflow.context["fix_attempts"] === "number" ? workflow.context["fix_attempts"] : 0;
-    const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
+    const maxFixAttempts = typeof workflow.context["max_fix_attempts"] === "number" && Number.isFinite(workflow.context["max_fix_attempts"]) ? workflow.context["max_fix_attempts"] : DEFAULT_MAX_FIX_ATTEMPTS2;
     if (passed) {
       log6.info("test_fix_handle_retest: tests passed after fix", {
         workflow_id: workflow.id,
@@ -28697,7 +28716,7 @@ var ProcessManager = class {
       this.workflowEngine.registerDefinition(TEST_THEN_FIX_DEFINITION);
       this.workflowEngine.registerDefinition(REVIEW_ONLY_DEFINITION);
       this.workflowEngine.registerGuard("checkReviewScore", (context) => {
-        const threshold = typeof context.min_review_score === "number" ? context.min_review_score : 9.5;
+        const threshold = typeof context.min_review_score === "number" && Number.isFinite(context.min_review_score) ? context.min_review_score : 9.5;
         return typeof context.review_score === "number" && context.review_score >= threshold;
       });
       try {

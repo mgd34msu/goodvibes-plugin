@@ -1,5 +1,5 @@
 version: 1.0.0
-generated: '2026-02-24T16:15:04.266Z'
+generated: '2026-02-24T23:14:04.808Z'
 total: 25
 categories:
   orchestration:
@@ -10,7 +10,8 @@ categories:
           Load PROACTIVELY when task involves building a complete feature across multiple layers. Use when user says
           "build a feature", "add user profiles", "create a dashboard", or any request spanning database, API, UI, and
           tests. Orchestrates multi-agent work sequentially: schema and migrations, API endpoints, UI components, tests,
-          and review. Handles dependency ordering and cross-layer type sharing.
+          and review. The runtime engine handles WRFC chains automatically via <gv> directives. Handles dependency
+          ordering and cross-layer type sharing.
         triggers: &ref_0
           - fullstack
           - feature
@@ -46,7 +47,14 @@ categories:
           - endpoints
           - components
           - review
+          - runtime
+          - engine
           - handles
+          - wrfc
+          - chains
+          - automatically
+          - via
+          - directives
           - dependency
           - ordering
           - cross
@@ -59,7 +67,7 @@ categories:
           Load PROACTIVELY when decomposing a user request into parallel agent work. Use when user says "build this",
           "implement this feature", or any request requiring multiple agents working concurrently. Guides task
           decomposition into parallelizable units, agent assignment with skill matching, dependency graph construction,
-          WRFC loop coordination across up to 6 concurrent agent chains, and result aggregation.
+          and result aggregation. The runtime engine handles WRFC chain coordination automatically via <gv> directives.
         triggers: &ref_1
           - task
           - orchestration
@@ -93,14 +101,17 @@ categories:
           - dependency
           - graph
           - construction
-          - wrfc
-          - loop
-          - coordination
-          - across
-          - concurrent
-          - chains
           - result
           - aggregation
+          - runtime
+          - engine
+          - handles
+          - wrfc
+          - chain
+          - coordination
+          - automatically
+          - via
+          - directives
   outcome:
     _items:
       - name: ai-integration
@@ -1275,15 +1286,16 @@ search_index:
       Load PROACTIVELY when task involves building a complete feature across multiple layers. Use when user says "build
       a feature", "add user profiles", "create a dashboard", or any request spanning database, API, UI, and tests.
       Orchestrates multi-agent work sequentially: schema and migrations, API endpoints, UI components, tests, and
-      review. Handles dependency ordering and cross-layer type sharing.
+      review. The runtime engine handles WRFC chains automatically via <gv> directives. Handles dependency ordering and
+      cross-layer type sharing.
   - name: task-orchestration
     keywords: *ref_1
     path: orchestration/task-orchestration
     description: >-
       Load PROACTIVELY when decomposing a user request into parallel agent work. Use when user says "build this",
       "implement this feature", or any request requiring multiple agents working concurrently. Guides task decomposition
-      into parallelizable units, agent assignment with skill matching, dependency graph construction, WRFC loop
-      coordination across up to 6 concurrent agent chains, and result aggregation.
+      into parallelizable units, agent assignment with skill matching, dependency graph construction, and result
+      aggregation. The runtime engine handles WRFC chain coordination automatically via <gv> directives.
   - name: ai-integration
     keywords: *ref_2
     path: outcome/ai-integration

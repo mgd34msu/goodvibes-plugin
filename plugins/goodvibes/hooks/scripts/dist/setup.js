@@ -453,19 +453,29 @@ var GOODVIBES_MD = `<!-- UPGRADE NOTIFICATIONS -->
 var FALLBACK_PROMPT_FILES = {
   "UPGRADE-NOTIFICATIONS.md": `## IMPORTANT!
 
-TOOL UPGRADES AVAILABLE! Use precision_engine tools.
+### TOOL UPGRADES NOW AVAILABLE:
+
+Precision_engine tools are a superset of native tools, with transaction support, batching, and token-efficient output. Prioritize their use over the deprecated native tools (Read, Edit, Write, Glob, Grep, Update, WebFetch). Always use precision_engine equivalents. WebSearch has no replacement \u2014 use it directly.
+
+### DEPRECATION NOTICE:
+
+Native tools (Read, Edit, Write, Glob, Grep, Update, WebFetch) have been deprecated as of 2026-01-01. Use precision_engine tools as a replacement.
 `,
   "PRIMARY-GOALS.md": `## MANDATORY
 
-PRIMARY GOAL: Fully complete and functional code.
-SECONDARY DIRECTIVE: Be token-efficient.
+PRIMARY GOAL: Fully complete and functional code that meets or exceeds the minimum review score (provided in <gv> tags)
+SECONDARY DIRECTIVE: ALWAYS prioritize achieving the primary goal, but aim to minimize token usage in all actions
 `,
   "CORE-PRINCIPLES.md": `## MANDATORY
 
-1. Execute <gv> directives from the runtime engine
-2. Minimize token usage
-3. NEVER block main conversation
-4. Always have a plan
+1. Directives are IMMEDIATE: NEVER defer, reorder, or condition a directive on another event
+2. Execute directives BEFORE any other action. NO intervening tool calls or agent spawns
+3. Orchestrator autonomy ends when directives begin. ONLY initial task decomposition is self-directed
+4. Runtime workflow logic ALWAYS supersedes orchestrator judgment
+5. ALWAYS Execute <gv> directives from the runtime engine and maintain goodvibes logging, memory, and state functions
+6. MINIMIZE unnecessary token usage: use precision_engine verbosity settings, only request/send data necessary
+7. NEVER block main conversation: ALL subagents run in background, Task Output only by explicit user request
+8. ALWAYS think before you act. Time is cheap, tokens are expensive. Always have a plan.
 `,
   "SUBAGENT-PROTOCOL.md": `## MANDATORY
 
@@ -519,10 +529,9 @@ If a skill doesn't load automatically, use ToolSearch to find get_skill_content 
 `,
   "PRECISION-MASTERY.md": `## PRECISION MASTERY (Auto-loaded for all subagents)
 
-Use precision_engine tools instead of native tools. Saves 75-95% tokens.
+The precision engine replaces native tools (Read, Edit, Write, Grep, Glob, Update, WebFetch) with token-efficient equivalents. Correct usage saves 75-95% of tokens.
 
 Verbosity: write/edit=count_only, read=standard, grep(discovery)=files_only, grep(content)=matches, glob=paths_only, exec=minimal.
-Token multipliers: count_only ~0.05x | minimal ~0.2x | standard ~0.6x | verbose 1.0x
 
 Extract modes: outline (structure, 60-80% savings), symbols (exports, 70-90%), lines (ranges, 80-95%), content (full file, 0%).
 
@@ -546,7 +555,7 @@ Hard Rules:
 - Never make sequential single-item calls when arrays are available -- batch them
 - Never re-read content you just wrote
 
-Overflow: truncated results go to .goodvibes/.overflow/ -- paginate with precision_read line ranges.
+Overflow: truncated results go to .goodvibes/.overflow/ -- paginate with precision_read line ranges. Aim below 7500 tokens per request, NEVER exceed 10000.
 `
 };
 async function loadPromptFiles() {
