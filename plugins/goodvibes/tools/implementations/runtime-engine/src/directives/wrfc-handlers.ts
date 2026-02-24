@@ -824,8 +824,10 @@ export function registerWRFCHandlers(
     }
 
     const rawMax = args['max_fix_attempts'];
-    const rawMaxParsed = typeof rawMax === 'number' ? rawMax : parseInt(String(rawMax ?? ''), 10);
-    const maxFixAttempts = isNaN(rawMaxParsed) ? DEFAULT_MAX_FIX_ATTEMPTS : rawMaxParsed;
+    const maxFixAttempts =
+      typeof rawMax === 'number' && Number.isFinite(rawMax)
+        ? rawMax
+        : DEFAULT_MAX_FIX_ATTEMPTS;
 
     // Find the target workflow - prefer explicit ID from event, fall back to most recent active
     const fixWorkflowId = typeof args['workflow_id'] === 'string' ? args['workflow_id'] : null;

@@ -1235,6 +1235,28 @@ describe('registerWRFCHandlers', () => {
       expect(context['max_fix_attempts']).toBe(0);
     });
 
+    it('does not seed min_review_score or max_fix_attempts when values are NaN or Infinity', async () => {
+      for (const badValue of [NaN, Infinity, -Infinity]) {
+        const engine = createMockWorkflowEngine([]);
+        const agentMap = new AgentWorkflowMap();
+        // setWRFCConfig accepts unknown — cast to bypass compile-time type guard
+        directiveQueue.setWRFCConfig({
+          min_review_score: badValue,
+          max_fix_attempts: badValue,
+        } as never);
+        registerWRFCHandlers(registry as never, directiveQueue, engine as never, null, agentMap);
+        const handler = registry.getHandler('wrfc_agent_spawned')!;
+
+        await handler({ agent_id: `agent_bad_${badValue}`, agent_type: 'goodvibes:engineer' } as HandlerArgs);
+
+        expect(engine.create).toHaveBeenCalledOnce();
+        const context = engine.create.mock.calls[0]![1] as Record<string, unknown>;
+        // NaN and Infinity are not finite — guard must reject them; context must not carry them
+        expect(context['min_review_score']).toBeUndefined();
+        expect(context['max_fix_attempts']).toBeUndefined();
+      }
+    });
+
     it('falls back to defaults when WRFC config has not been loaded yet', async () => {
       // Do NOT call setWRFCConfig — simulates config:loaded not yet arrived
       const engine = createMockWorkflowEngine([]);
