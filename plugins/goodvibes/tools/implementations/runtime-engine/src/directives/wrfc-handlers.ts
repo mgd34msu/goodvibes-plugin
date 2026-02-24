@@ -373,6 +373,43 @@ export function registerWRFCHandlers(
           agent_type: agentType,
           workflow_id: workflowId,
         });
+
+        // Advance state machine through IDLE → GATHERING → PLANNING → WRITING.
+        // The originator agent IS the writer — gathering/planning phases are
+        // conceptually complete by the time the orchestrator spawns an agent.
+        // Without these sendEvent calls, the workflow stays in IDLE forever
+        // because WorkflowEngine.create() only emits workflow:created to the
+        // EventBus (external notification), NOT through sendEvent() (state machine).
+        const advanceEvents = [
+          { type: 'workflow:created' as const },   // IDLE → GATHERING
+          { type: 'wrfc:plan_submitted' as const }, // GATHERING → PLANNING
+          { type: 'wrfc:writing_started' as const }, // PLANNING → WRITING
+        ];
+        for (const evt of advanceEvents) {
+          try {
+            workflowEngine.sendEvent(workflowId, {
+              id: generateEventId(),
+              timestamp: timestamp(),
+              type: evt.type,
+              source: { kind: 'system' },
+              payload: {
+                type: evt.type,
+                data: { workflow_id: workflowId, auto_advance: true },
+              },
+              metadata: { session_id: workflowId, sequence: 0, version: 1 },
+            });
+          } catch (advErr) {
+            log.error('wrfc_agent_spawned: failed to advance workflow state', {
+              workflow_id: workflowId,
+              event: evt.type,
+              error: String(advErr),
+            });
+            break; // Stop advancing on first failure
+          }
+        }
+        log.info('wrfc_agent_spawned: workflow advanced to WRITING', {
+          workflow_id: workflowId,
+        });
       } catch (err) {
         log.error('wrfc_agent_spawned: failed to create workflow', {
           agent_id: agentId,
@@ -438,7 +475,42 @@ export function registerWRFCHandlers(
     // Decision 3: Auto-complete whitelist check.
     // Only applies when the agent just completed (WRITING state = agent did work).
     // If the agent type is on the whitelist, skip review and auto-complete.
-    if (currentState === 'WRITING' && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
+    // Safety-net: if the workflow is still in an early state (IDLE, GATHERING, PLANNING),
+    // treat it the same as WRITING — the agent already did work, we just failed to
+    // advance the state machine. This prevents silent fall-through.
+    const earlyStates = new Set(['IDLE', 'GATHERING', 'PLANNING']);
+    const effectiveState = earlyStates.has(currentState) ? 'WRITING' : currentState;
+
+    if (earlyStates.has(currentState)) {
+      log.warn('wrfc_chain_next: workflow stuck in early state, treating as WRITING', {
+        workflow_id: workflow.id,
+        actual_state: currentState,
+        effective_state: 'WRITING',
+      });
+      // Try to advance the workflow to WRITING before proceeding
+      const advanceEvents = [
+        ...(currentState === 'IDLE' ? [{ type: 'workflow:created' as const }] : []),
+        ...(currentState === 'IDLE' || currentState === 'GATHERING' ? [{ type: 'wrfc:plan_submitted' as const }] : []),
+        { type: 'wrfc:writing_started' as const },
+      ];
+      for (const evt of advanceEvents) {
+        try {
+          workflowEngine.sendEvent(workflow.id, {
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: evt.type,
+            source: { kind: 'system' },
+            payload: {
+              type: evt.type,
+              data: { workflow_id: workflow.id, recovery_advance: true },
+            },
+            metadata: { session_id: workflow.id, sequence: 0, version: 1 },
+          });
+        } catch { /* best-effort recovery */ }
+      }
+    }
+
+    if (effectiveState === 'WRITING' && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
       const message = buildWorkflowCompleteMessage(workflow.id, 'completed');
       directiveQueue.enqueue('subagent_stop', {
         type: 'inject_system_message',
@@ -458,7 +530,7 @@ export function registerWRFCHandlers(
       return;
     }
 
-    if (currentState === 'WRITING') {
+    if (effectiveState === 'WRITING') {
       // ── WRITING state: engineer completed → spawn reviewer ─────────────────────
       const filesModified = Array.isArray(workflow.context.files_modified)
         ? (workflow.context.files_modified as string[])
@@ -508,7 +580,7 @@ export function registerWRFCHandlers(
         workflow_id: workflow.id,
         current_state: workflow.current_state,
       });
-    } else if (currentState === 'REVIEWING') {
+    } else if (effectiveState === 'REVIEWING') {
       // ── REVIEWING state: reviewer completed → delegate to handleReviewResult
       const isReviewer = REVIEWER_AGENT_TYPES.has(agentType);
 
@@ -551,7 +623,7 @@ export function registerWRFCHandlers(
         agentWorkflowMap,
         agentId,
       });
-    } else if (currentState === 'FIXING') {
+    } else if (effectiveState === 'FIXING') {
       // ── FIXING state: engineer completed fix → delegate to handleFixResult ─
       const isEngineer = ENGINEER_AGENT_TYPES.has(agentType);
 

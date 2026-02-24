@@ -547,10 +547,47 @@ describe('registerWRFCHandlers', () => {
       });
     });
 
-    // ── Unknown / unhandled state ────────────────────────────────────────────
+    // ── Early states (safety-net recovery) ──────────────────────────────────────
+
+    describe('early state recovery', () => {
+      it.each(['IDLE', 'GATHERING', 'PLANNING'])(
+        'treats %s as WRITING and enqueues a reviewer directive',
+        async (state) => {
+          const workflow = createWorkflow(state);
+          const engine = createMockWorkflowEngine([workflow]);
+          registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+          const handler = registry.getHandler('wrfc_chain_next')!;
+
+          await handler({} as HandlerArgs);
+
+          // Early states are treated as WRITING — a reviewer directive should be enqueued
+          const directives = directiveQueue.drain('subagent_stop');
+          expect(directives.length).toBeGreaterThan(0);
+          expect(directives[0]!.content).toContain('"action":"spawn"');
+          expect(directives[0]!.content).toContain('reviewer');
+        },
+      );
+
+      it.each(['IDLE', 'GATHERING', 'PLANNING'])(
+        'attempts to advance workflow state machine when in %s',
+        async (state) => {
+          const workflow = createWorkflow(state);
+          const engine = createMockWorkflowEngine([workflow]);
+          registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
+          const handler = registry.getHandler('wrfc_chain_next')!;
+
+          await handler({} as HandlerArgs);
+
+          // Should have called sendEvent to try advancing the state
+          expect(engine.sendEvent).toHaveBeenCalled();
+        },
+      );
+    });
+
+    // ── Terminal / unknown states ──────────────────────────────────────────────
 
     describe('unhandled states', () => {
-      it.each(['IDLE', 'GATHERING', 'COMPLETED', 'CANCELLED'])(
+      it.each(['COMPLETED', 'CANCELLED', 'ESCALATED'])(
         'does not enqueue anything when workflow state is %s',
         async (state) => {
           const workflow = createWorkflow(state);

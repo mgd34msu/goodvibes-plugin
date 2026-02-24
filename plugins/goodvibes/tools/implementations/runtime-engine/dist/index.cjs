@@ -26582,6 +26582,39 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           agent_type: agentType,
           workflow_id: workflowId
         });
+        const advanceEvents = [
+          { type: "workflow:created" },
+          // IDLE → GATHERING
+          { type: "wrfc:plan_submitted" },
+          // GATHERING → PLANNING
+          { type: "wrfc:writing_started" }
+          // PLANNING → WRITING
+        ];
+        for (const evt of advanceEvents) {
+          try {
+            workflowEngine.sendEvent(workflowId, {
+              id: generateEventId(),
+              timestamp: timestamp(),
+              type: evt.type,
+              source: { kind: "system" },
+              payload: {
+                type: evt.type,
+                data: { workflow_id: workflowId, auto_advance: true }
+              },
+              metadata: { session_id: workflowId, sequence: 0, version: 1 }
+            });
+          } catch (advErr) {
+            log4.error("wrfc_agent_spawned: failed to advance workflow state", {
+              workflow_id: workflowId,
+              event: evt.type,
+              error: String(advErr)
+            });
+            break;
+          }
+        }
+        log4.info("wrfc_agent_spawned: workflow advanced to WRITING", {
+          workflow_id: workflowId
+        });
       } catch (err) {
         log4.error("wrfc_agent_spawned: failed to create workflow", {
           agent_id: agentId,
@@ -26627,7 +26660,37 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       workflow = activeWorkflows[activeWorkflows.length - 1];
     }
     const currentState = (workflow.current_state ?? "").toUpperCase();
-    if (currentState === "WRITING" && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
+    const earlyStates = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
+    const effectiveState = earlyStates.has(currentState) ? "WRITING" : currentState;
+    if (earlyStates.has(currentState)) {
+      log4.warn("wrfc_chain_next: workflow stuck in early state, treating as WRITING", {
+        workflow_id: workflow.id,
+        actual_state: currentState,
+        effective_state: "WRITING"
+      });
+      const advanceEvents = [
+        ...currentState === "IDLE" ? [{ type: "workflow:created" }] : [],
+        ...currentState === "IDLE" || currentState === "GATHERING" ? [{ type: "wrfc:plan_submitted" }] : [],
+        { type: "wrfc:writing_started" }
+      ];
+      for (const evt of advanceEvents) {
+        try {
+          workflowEngine.sendEvent(workflow.id, {
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: evt.type,
+            source: { kind: "system" },
+            payload: {
+              type: evt.type,
+              data: { workflow_id: workflow.id, recovery_advance: true }
+            },
+            metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+          });
+        } catch {
+        }
+      }
+    }
+    if (effectiveState === "WRITING" && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
       const message = buildWorkflowCompleteMessage(workflow.id, "completed");
       directiveQueue.enqueue("subagent_stop", {
         type: "inject_system_message",
@@ -26645,7 +26708,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       });
       return;
     }
-    if (currentState === "WRITING") {
+    if (effectiveState === "WRITING") {
       const filesModified = Array.isArray(workflow.context.files_modified) ? workflow.context.files_modified : [];
       const task = `Review the work completed in workflow ${workflow.id}. Current state: ${workflow.current_state}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
       const message = buildSpawnDirectiveMessage("reviewer", task, DEFAULT_BUDGET, {
@@ -26680,7 +26743,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         workflow_id: workflow.id,
         current_state: workflow.current_state
       });
-    } else if (currentState === "REVIEWING") {
+    } else if (effectiveState === "REVIEWING") {
       const isReviewer = REVIEWER_AGENT_TYPES.has(agentType);
       if (!isReviewer) {
         log4.debug("wrfc_chain_next: REVIEWING state but agent is not a reviewer, skipping", {
@@ -26709,7 +26772,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         agentWorkflowMap,
         agentId
       });
-    } else if (currentState === "FIXING") {
+    } else if (effectiveState === "FIXING") {
       const isEngineer = ENGINEER_AGENT_TYPES.has(agentType);
       if (!isEngineer) {
         log4.debug("wrfc_chain_next: FIXING state but agent is not an engineer, skipping", {
