@@ -385,7 +385,10 @@ export function registerWRFCHandlers(
     }
 
     // Extract agent metadata from hook_input
-    const hookInput = args['hook_input'] as Record<string, unknown> | undefined;
+    const rawHookInput = args['hook_input'];
+    const hookInput = (typeof rawHookInput === 'object' && rawHookInput !== null && !Array.isArray(rawHookInput))
+      ? rawHookInput as Record<string, unknown>
+      : null;
     const agentId = typeof hookInput?.['agent_id'] === 'string' ? hookInput['agent_id'] : null;
     const agentType = (hookInput?.['agent_type'] ?? hookInput?.['subagent_type'] ?? '') as string;
 
@@ -408,7 +411,7 @@ export function registerWRFCHandlers(
       }
       workflow = activeWorkflows[activeWorkflows.length - 1];
     }
-    const currentState = workflow.current_state.toUpperCase();
+    const currentState = (workflow.current_state ?? '').toUpperCase();
 
     // Decision 3: Auto-complete whitelist check.
     // Only applies when the agent just completed (WRITING state = agent did work).
@@ -596,7 +599,11 @@ export function registerWRFCHandlers(
     log.debug('wrfc_review_response invoked', { args });
 
     const rawScore = args['review_score'];
-    const reviewScore = typeof rawScore === 'number' ? rawScore : Number(rawScore ?? 0);
+    const reviewScore = typeof rawScore === 'number' ? rawScore : parseFloat(String(rawScore ?? ''));
+    if (isNaN(reviewScore)) {
+      log.warn('wrfc_review_response: invalid review_score, cannot route', { raw_score: rawScore });
+      return;
+    }
 
     // Parse review_issues — may arrive as a string from template resolution
     let reviewIssues: Array<{ dimension: string; severity: string; description: string }> = [];
@@ -629,13 +636,10 @@ export function registerWRFCHandlers(
     }
 
     // Find the target workflow - prefer explicit ID from event, fall back to most recent active
-    const workflowId =
-      typeof args['workflow_id'] === 'string'
-        ? args['workflow_id']
-        : (() => {
-            const activeWorkflows = workflowEngine?.listActive() ?? [];
-            return activeWorkflows[activeWorkflows.length - 1]?.id ?? 'unknown';
-          })();
+    const rawWid = args['workflow_id'];
+    const workflowId = (typeof rawWid === 'string' && rawWid.length > 0)
+      ? rawWid
+      : (() => { const active = workflowEngine?.listActive() ?? []; return active[active.length - 1]?.id ?? 'unknown'; })();
 
     const wf = workflowEngine?.get(workflowId);
     if (!wf || !workflowEngine) {
@@ -701,10 +705,15 @@ export function registerWRFCHandlers(
     log.debug('wrfc_fix_response invoked', { args });
 
     const rawFix = args['fix_attempts'];
-    const fixAttempts = typeof rawFix === 'number' ? rawFix : Number(rawFix ?? 0);
+    const fixAttempts = typeof rawFix === 'number' ? rawFix : parseInt(String(rawFix ?? '0'), 10);
+    if (isNaN(fixAttempts)) {
+      log.warn('wrfc_fix_response: invalid fix_attempts, cannot route', { raw_fix: rawFix });
+      return;
+    }
 
     const rawMax = args['max_fix_attempts'];
-    const maxFixAttempts = typeof rawMax === 'number' ? rawMax : Number(rawMax ?? DEFAULT_MAX_FIX_ATTEMPTS);
+    const rawMaxParsed = typeof rawMax === 'number' ? rawMax : parseInt(String(rawMax ?? ''), 10);
+    const maxFixAttempts = isNaN(rawMaxParsed) ? DEFAULT_MAX_FIX_ATTEMPTS : rawMaxParsed;
 
     // Find the target workflow - prefer explicit ID from event, fall back to most recent active
     const fixWorkflowId = typeof args['workflow_id'] === 'string' ? args['workflow_id'] : null;

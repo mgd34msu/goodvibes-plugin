@@ -26,6 +26,9 @@ import type {
 
 const log = createLogger('action-executor');
 
+/** Path segments that must never be resolved in event templates. */
+const DENIED_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /** Result of a single action execution. */
 interface ActionResult {
   success: boolean;
@@ -48,6 +51,11 @@ interface ActionResult {
 function resolveStringTemplate(value: string, event: RuntimeEvent): string {
   return value.replace(/\$event\.([\w.]+)/g, (_match, path: string) => {
     const parts = path.split('.');
+    // Block prototype chain traversal
+    if (parts.some(part => DENIED_PATH_SEGMENTS.has(part))) {
+      log.warn('Blocked prototype chain traversal attempt in template', { path, template: value });
+      return '';
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let current: unknown = event;
     for (const part of parts) {
@@ -59,8 +67,14 @@ function resolveStringTemplate(value: string, event: RuntimeEvent): string {
     // FIX-TRACE-C: Returns '' (empty string) for missing/null/object fields.
     // Handlers using ?? fallback chains should use || instead if they need to
     // fall through on empty strings (since ?? only checks null/undefined).
-    if (current === undefined || current === null) return '';
-    if (typeof current === 'object') return '';
+    if (current === undefined || current === null) {
+      log.debug('Template reference resolved to null/undefined', { path, template: value });
+      return '';
+    }
+    if (typeof current === 'object') {
+      log.debug('Template reference resolved to object (not serializable)', { path, template: value });
+      return '';
+    }
     return String(current);
   });
 }

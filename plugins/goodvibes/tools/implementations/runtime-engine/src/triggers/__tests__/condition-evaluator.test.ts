@@ -466,4 +466,36 @@ describe('ConditionEvaluator', () => {
       expect(evaluator.evaluate(unknown, makeEvent('hook:pre_tool_use'))).toBe(false);
     });
   });
+
+  // ─── Ring Buffer Overflow Protection ─────────────────────────────────────────
+
+  describe('ring buffer overflow protection', () => {
+    it('resets recentEventsHead near MAX_SAFE_INTEGER to prevent overflow', () => {
+      const smallEval = new ConditionEvaluator(3);
+      // Fill the buffer
+      for (let i = 0; i < 3; i++) smallEval.recordEvent(makeEvent('hook:pre_tool_use'));
+      // Simulate near-overflow: place head just at the guard threshold
+      (smallEval as any).recentEventsHead = Number.MAX_SAFE_INTEGER - 3;
+      // recordEvent triggers the overflow guard during increment
+      smallEval.recordEvent(makeEvent('hook:pre_tool_use'));
+      // Guard resets via modulo — head must now be well below the threshold
+      expect((smallEval as any).recentEventsHead).toBeLessThan(Number.MAX_SAFE_INTEGER - 3);
+    });
+
+    it('evaluate still works correctly after recentEventsHead overflow reset', () => {
+      const smallEval = new ConditionEvaluator(3);
+      for (let i = 0; i < 3; i++) smallEval.recordEvent(makeEvent('hook:pre_tool_use'));
+      (smallEval as any).recentEventsHead = Number.MAX_SAFE_INTEGER - 3;
+      const event = makeEvent('hook:pre_tool_use');
+      smallEval.recordEvent(event);
+      // Buffer should still be queryable via threshold evaluate
+      const cond: ThresholdCondition = {
+        type: 'threshold',
+        event_type: 'hook:pre_tool_use',
+        count: 1,
+        window_ms: 10_000,
+      };
+      expect(smallEval.evaluate(cond, event)).toBe(true);
+    });
+  });
 });

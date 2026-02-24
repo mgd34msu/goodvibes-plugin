@@ -471,6 +471,59 @@ describe('ActionExecutor', () => {
     });
   });
 
+  // ── prototype chain traversal protection ────────────────────────────────
+
+  describe('prototype chain traversal protection', () => {
+    it('blocks __proto__ traversal in template resolution', async () => {
+      const emitFn = vi.fn();
+      const ex = makeExecutor({ emit: emitFn } as unknown as EventBus);
+      const action = makeEmitAction({
+        payload_template: { val: '$event.__proto__.polluted' },
+      });
+      await ex.execute(action, event);
+      const emitted = emitFn.mock.calls[0][0] as { payload: { data: Record<string, string> } };
+      expect(emitted.payload.data.val).toBe('');
+      expect(emitFn).toHaveBeenCalledOnce();
+    });
+
+    it('blocks constructor traversal in template resolution', async () => {
+      const emitFn = vi.fn();
+      const ex = makeExecutor({ emit: emitFn } as unknown as EventBus);
+      const action = makeEmitAction({
+        payload_template: { val: '$event.constructor.name' },
+      });
+      await ex.execute(action, event);
+      const emitted = emitFn.mock.calls[0][0] as { payload: { data: Record<string, string> } };
+      expect(emitted.payload.data.val).toBe('');
+      expect(emitFn).toHaveBeenCalledOnce();
+    });
+
+    it('blocks prototype traversal in template resolution', async () => {
+      const emitFn = vi.fn();
+      const ex = makeExecutor({ emit: emitFn } as unknown as EventBus);
+      const action = makeEmitAction({
+        payload_template: { val: '$event.prototype.method' },
+      });
+      await ex.execute(action, event);
+      const emitted = emitFn.mock.calls[0][0] as { payload: { data: Record<string, string> } };
+      expect(emitted.payload.data.val).toBe('');
+      expect(emitFn).toHaveBeenCalledOnce();
+    });
+
+    it('blocks denied segments in nested paths', async () => {
+      const emitFn = vi.fn();
+      const ex = makeExecutor({ emit: emitFn } as unknown as EventBus);
+      const action = makeEmitAction({
+        payload_template: { val: '$event.payload.__proto__.polluted' },
+      });
+      await ex.execute(action, event);
+      const emitted = emitFn.mock.calls[0][0] as { payload: { data: Record<string, string> } };
+      expect(emitted.payload.data.val).toBe('');
+      // Event is still emitted despite the blocked traversal
+      expect(emitFn).toHaveBeenCalledOnce();
+    });
+  });
+
   // ── constructor injection ─────────────────────────────────────────────────
 
   describe('dependency injection via constructor', () => {

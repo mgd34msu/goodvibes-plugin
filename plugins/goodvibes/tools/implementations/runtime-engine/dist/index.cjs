@@ -22123,6 +22123,9 @@ var EventBus = class {
     }
     this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
     this.historyWriteIndex++;
+    if (this.historyWriteIndex >= Number.MAX_SAFE_INTEGER - this.maxHistorySize) {
+      this.historyWriteIndex = this.historyWriteIndex % this.maxHistorySize;
+    }
     if (this.historyCount < this.maxHistorySize) this.historyCount++;
     for (const [pattern, handlerSet] of this.handlers) {
       if (this.matchPattern(full.type, pattern)) {
@@ -23723,6 +23726,19 @@ var WorkflowEngine = class {
    * 4. Run on_exit actions → transition actions → on_enter actions
    * 5. Update history and emit `workflow:state_changed`
    *
+   * **Important: Action execution is fire-and-forget.**
+   * State actions (on_enter, on_exit) and transition actions execute
+   * asynchronously after the transition completes. This means:
+   * - State transitions are synchronous — the new state is set before actions run.
+   * - Action execution errors are logged but do not affect the transition.
+   * - `on_exit` actions from the previous state may run concurrently with
+   *   `on_enter` actions for the next state.
+   * - `update_context` actions may not be visible in the returned `contextChanges`,
+   *   since context is captured before the async actions resolve.
+   *
+   * For use cases requiring action completion before proceeding, consider awaiting
+   * `executeActions` directly (v2 consideration).
+   *
    * @param workflowId - ID of the workflow instance to send the event to.
    * @param event      - The RuntimeEvent that may trigger a transition.
    * @returns The WorkflowTransition that was applied, or `null` if no
@@ -23992,7 +24008,8 @@ var WorkflowEngine = class {
             break;
           }
           case "update_context": {
-            Object.assign(context, action.config);
+            const { type: _type, ...values } = action.config;
+            Object.assign(context, values);
             break;
           }
           case "invoke_handler": {
@@ -24010,8 +24027,9 @@ var WorkflowEngine = class {
             break;
           }
           case "spawn_agent": {
-            log.warn("spawn_agent action is not yet implemented (Phase 5)", {
-              config: action.config
+            log.error("spawn_agent action type is not yet implemented (Phase 5 stub)", {
+              action_type: action.type,
+              workflow_id: context.workflow_id ?? "unknown"
             });
             break;
           }
@@ -24051,19 +24069,17 @@ var WorkflowEngine = class {
    */
   evaluateExpression(expr, context) {
     const trimmed = expr.trim();
-    const OPERATORS = [">=", "<=", "===", "!==", ">", "<"];
-    let lhsRaw;
-    let op;
-    let rhsRaw;
-    for (const candidate of OPERATORS) {
-      const idx = trimmed.indexOf(candidate);
-      if (idx === -1) continue;
-      lhsRaw = trimmed.slice(0, idx).trim();
-      op = candidate;
-      rhsRaw = trimmed.slice(idx + candidate.length).trim();
-      break;
+    const operatorRegex = /\s+(>=|<=|===|!==|>|<)\s+/;
+    const opMatch = trimmed.match(operatorRegex);
+    if (!opMatch || opMatch.index === void 0) {
+      log.warn("Guard expression has no recognized operator", { expression: trimmed });
+      return false;
     }
-    if (!lhsRaw || !op || rhsRaw === void 0) {
+    const operator = opMatch[1];
+    const lhsRaw = trimmed.slice(0, opMatch.index).trim();
+    const rhsRaw = trimmed.slice(opMatch.index + opMatch[0].length).trim();
+    const op = operator;
+    if (!lhsRaw || !rhsRaw) {
       throw new Error(`Unrecognised guard expression format: "${expr}"`);
     }
     const lhsValue = this.resolveValue(lhsRaw, context);
@@ -24404,6 +24420,9 @@ var ConditionEvaluator = class {
       timestamp: Date.now()
     };
     this.recentEventsHead++;
+    if (this.recentEventsHead >= Number.MAX_SAFE_INTEGER - this.maxRecentEvents) {
+      this.recentEventsHead = this.recentEventsHead % this.maxRecentEvents;
+    }
     if (this.recentEventsCount < this.maxRecentEvents) {
       this.recentEventsCount++;
     }
@@ -24581,9 +24600,14 @@ __name(buildEscalationMessage, "buildEscalationMessage");
 
 // src/triggers/action-executor.ts
 var log2 = createLogger("action-executor");
+var DENIED_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 function resolveStringTemplate(value, event) {
   return value.replace(/\$event\.([\w.]+)/g, (_match, path) => {
     const parts = path.split(".");
+    if (parts.some((part) => DENIED_PATH_SEGMENTS.has(part))) {
+      log2.warn("Blocked prototype chain traversal attempt in template", { path, template: value });
+      return "";
+    }
     let current = event;
     for (const part of parts) {
       if (current === null || current === void 0 || typeof current !== "object") {
@@ -24591,8 +24615,14 @@ function resolveStringTemplate(value, event) {
       }
       current = current[part];
     }
-    if (current === void 0 || current === null) return "";
-    if (typeof current === "object") return "";
+    if (current === void 0 || current === null) {
+      log2.debug("Template reference resolved to null/undefined", { path, template: value });
+      return "";
+    }
+    if (typeof current === "object") {
+      log2.debug("Template reference resolved to object (not serializable)", { path, template: value });
+      return "";
+    }
     return String(current);
   });
 }
@@ -26500,7 +26530,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       log4.debug("wrfc_chain_next: no workflow engine, skipping");
       return;
     }
-    const hookInput = args["hook_input"];
+    const rawHookInput = args["hook_input"];
+    const hookInput = typeof rawHookInput === "object" && rawHookInput !== null && !Array.isArray(rawHookInput) ? rawHookInput : null;
     const agentId = typeof hookInput?.["agent_id"] === "string" ? hookInput["agent_id"] : null;
     const agentType = hookInput?.["agent_type"] ?? hookInput?.["subagent_type"] ?? "";
     let workflowId = null;
@@ -26519,7 +26550,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       }
       workflow = activeWorkflows[activeWorkflows.length - 1];
     }
-    const currentState = workflow.current_state.toUpperCase();
+    const currentState = (workflow.current_state ?? "").toUpperCase();
     if (currentState === "WRITING" && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
       const message = buildWorkflowCompleteMessage(workflow.id, "completed");
       directiveQueue.enqueue("subagent_stop", {
@@ -26647,7 +26678,11 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
   registry2.registerHandler("wrfc_review_response", async (args) => {
     log4.debug("wrfc_review_response invoked", { args });
     const rawScore = args["review_score"];
-    const reviewScore = typeof rawScore === "number" ? rawScore : Number(rawScore ?? 0);
+    const reviewScore = typeof rawScore === "number" ? rawScore : parseFloat(String(rawScore ?? ""));
+    if (isNaN(reviewScore)) {
+      log4.warn("wrfc_review_response: invalid review_score, cannot route", { raw_score: rawScore });
+      return;
+    }
     let reviewIssues = [];
     const rawIssues = args["review_issues"];
     if (Array.isArray(rawIssues)) {
@@ -26674,9 +26709,10 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         filesModified = [rawFiles];
       }
     }
-    const workflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : (() => {
-      const activeWorkflows = workflowEngine?.listActive() ?? [];
-      return activeWorkflows[activeWorkflows.length - 1]?.id ?? "unknown";
+    const rawWid = args["workflow_id"];
+    const workflowId = typeof rawWid === "string" && rawWid.length > 0 ? rawWid : (() => {
+      const active = workflowEngine?.listActive() ?? [];
+      return active[active.length - 1]?.id ?? "unknown";
     })();
     const wf = workflowEngine?.get(workflowId);
     if (!wf || !workflowEngine) {
@@ -26728,9 +26764,14 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
   registry2.registerHandler("wrfc_fix_response", async (args) => {
     log4.debug("wrfc_fix_response invoked", { args });
     const rawFix = args["fix_attempts"];
-    const fixAttempts = typeof rawFix === "number" ? rawFix : Number(rawFix ?? 0);
+    const fixAttempts = typeof rawFix === "number" ? rawFix : parseInt(String(rawFix ?? "0"), 10);
+    if (isNaN(fixAttempts)) {
+      log4.warn("wrfc_fix_response: invalid fix_attempts, cannot route", { raw_fix: rawFix });
+      return;
+    }
     const rawMax = args["max_fix_attempts"];
-    const maxFixAttempts = typeof rawMax === "number" ? rawMax : Number(rawMax ?? DEFAULT_MAX_FIX_ATTEMPTS);
+    const rawMaxParsed = typeof rawMax === "number" ? rawMax : parseInt(String(rawMax ?? ""), 10);
+    const maxFixAttempts = isNaN(rawMaxParsed) ? DEFAULT_MAX_FIX_ATTEMPTS : rawMaxParsed;
     const fixWorkflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
     let fixWorkflow = fixWorkflowId ? workflowEngine?.get(fixWorkflowId) ?? null : null;
     if (!fixWorkflow) {
@@ -27280,9 +27321,31 @@ var ProcessManager = class {
       const stalePid = (0, import_fs5.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
-        logger10.warn("Stale PID file detected \u2014 possible crash recovery", {
-          stale_pid: stalePid
-        });
+        const pid = Number(stalePid);
+        if (Number.isNaN(pid) || pid <= 0 || !Number.isInteger(pid)) {
+          logger10.warn("Stale PID file contains invalid data \u2014 removing", {
+            content: stalePid.slice(0, 20),
+            pid_file: pidFilePath
+          });
+          this.removePidFile();
+          return;
+        }
+        let staleProcessAlive = false;
+        try {
+          process.kill(pid, 0);
+          staleProcessAlive = true;
+        } catch {
+        }
+        if (staleProcessAlive) {
+          logger10.warn("Stale PID file points to a running process \u2014 another instance may be active", {
+            stale_pid: stalePid,
+            pid_file: pidFilePath
+          });
+        } else {
+          logger10.warn("Stale PID file detected \u2014 possible crash recovery", {
+            stale_pid: stalePid
+          });
+        }
         this.removePidFile();
       }
     } catch (err) {
@@ -27298,7 +27361,7 @@ var ProcessManager = class {
   writePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_fs5.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
+      (0, import_fs5.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
       logger10.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
       logger10.warn("Could not write PID file", {
@@ -27313,14 +27376,12 @@ var ProcessManager = class {
   removePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      if ((0, import_fs5.existsSync)(pidFilePath)) {
-        (0, import_fs5.unlinkSync)(pidFilePath);
-        logger10.debug("PID file removed", { path: pidFilePath });
-      }
+      (0, import_fs5.unlinkSync)(pidFilePath);
+      logger10.debug("PID file removed", { path: pidFilePath });
     } catch (err) {
-      logger10.warn("Could not remove PID file", {
-        err: toErrorMessage(err)
-      });
+      if (err.code !== "ENOENT") {
+        logger10.warn("Could not remove PID file", { err: toErrorMessage(err) });
+      }
     }
   }
   /**
@@ -27403,15 +27464,15 @@ var ProcessManager = class {
       "runtime.socket"
     );
     try {
-      if ((0, import_fs5.existsSync)(pointerFile)) {
-        (0, import_fs5.unlinkSync)(pointerFile);
-        logger10.debug("Socket pointer file removed", { path: pointerFile });
-      }
+      (0, import_fs5.unlinkSync)(pointerFile);
+      logger10.debug("Socket pointer file removed", { path: pointerFile });
     } catch (err) {
-      logger10.warn("Could not remove socket pointer file", {
-        path: pointerFile,
-        err: toErrorMessage(err)
-      });
+      if (err.code !== "ENOENT") {
+        logger10.warn("Could not remove socket pointer file", {
+          path: pointerFile,
+          err: toErrorMessage(err)
+        });
+      }
     }
   }
   /**

@@ -524,6 +524,38 @@ describe('WorkflowEngine', () => {
       expect(instance.current_state).toBe('fail');
     });
 
+    it('evaluates <= operator correctly', () => {
+      const def = makeGuardDef({ type: 'expression', expression: 'context.score <= 5' });
+      engine.registerDefinition(def);
+      const pass = engine.create('guard-test', { score: 5 });
+      engine.sendEvent(pass.id, makeEvent('session:started'));
+      expect(pass.current_state).toBe('pass');
+
+      const fail = engine.create('guard-test', { score: 6 });
+      engine.sendEvent(fail.id, makeEvent('session:started'));
+      expect(fail.current_state).toBe('fail');
+    });
+
+    it('evaluates > operator correctly', () => {
+      const def = makeGuardDef({ type: 'expression', expression: 'context.score > 5' });
+      engine.registerDefinition(def);
+      const pass = engine.create('guard-test', { score: 6 });
+      engine.sendEvent(pass.id, makeEvent('session:started'));
+      expect(pass.current_state).toBe('pass');
+
+      const fail = engine.create('guard-test', { score: 5 });
+      engine.sendEvent(fail.id, makeEvent('session:started'));
+      expect(fail.current_state).toBe('fail');
+    });
+
+    it('handles multiple whitespace around operators', () => {
+      const def = makeGuardDef({ type: 'expression', expression: 'context.score  >=  9' });
+      engine.registerDefinition(def);
+      const instance = engine.create('guard-test', { score: 10 });
+      engine.sendEvent(instance.id, makeEvent('session:started'));
+      expect(instance.current_state).toBe('pass');
+    });
+
     it('evaluates function guard that returns true', () => {
       const def = makeGuardDef({ type: 'function', function: 'myGuard' });
       engine.registerDefinition(def);

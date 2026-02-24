@@ -879,16 +879,15 @@ describe('registerWRFCHandlers', () => {
       expect(directive!.content).toContain('"action":"complete"');
     });
 
-    it('treats missing review_score as 0', async () => {
+    it('returns early and enqueues nothing when review_score is missing', async () => {
       const engine = createMockWorkflowEngine([]);
       registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
       const handler = registry.getHandler('wrfc_review_response')!;
 
-      // No review_score → defaults to 0 < 10 → spawn-fixer path
+      // No review_score → NaN guard triggers warn log + early return → no directive enqueued
       await handler({ workflow_id: 'wf_test' } as HandlerArgs);
 
-      const [directive] = directiveQueue.drain('subagent_stop');
-      expect(directive!.content).toContain('engineer');
+      expect(directiveQueue.size('subagent_stop')).toBe(0);
     });
   });
 

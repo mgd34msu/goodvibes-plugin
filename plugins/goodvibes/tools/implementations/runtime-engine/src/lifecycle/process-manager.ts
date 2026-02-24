@@ -549,9 +549,34 @@ export class ProcessManager {
       const currentPid = String(process.pid);
 
       if (stalePid !== currentPid) {
-        logger.warn('Stale PID file detected — possible crash recovery', {
-          stale_pid: stalePid,
-        });
+        const pid = Number(stalePid);
+        if (Number.isNaN(pid) || pid <= 0 || !Number.isInteger(pid)) {
+          logger.warn('Stale PID file contains invalid data — removing', {
+            content: stalePid.slice(0, 20),
+            pid_file: pidFilePath,
+          });
+          this.removePidFile();
+          return;
+        }
+
+        let staleProcessAlive = false;
+        try {
+          process.kill(pid, 0); // Signal 0 = check existence without killing
+          staleProcessAlive = true;
+        } catch {
+          // Process not running — safe to proceed
+        }
+
+        if (staleProcessAlive) {
+          logger.warn('Stale PID file points to a running process — another instance may be active', {
+            stale_pid: stalePid,
+            pid_file: pidFilePath,
+          });
+        } else {
+          logger.warn('Stale PID file detected — possible crash recovery', {
+            stale_pid: stalePid,
+          });
+        }
         // Remove stale lock so writePidFile() starts fresh
         this.removePidFile();
       }
@@ -569,7 +594,7 @@ export class ProcessManager {
   private writePidFile(): void {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      writeFileSync(pidFilePath, String(process.pid), 'utf-8');
+      writeFileSync(pidFilePath, String(process.pid), { encoding: 'utf-8', mode: 0o600 });
       logger.debug('PID file written', { path: pidFilePath, pid: process.pid });
     } catch (err) {
       logger.warn('Could not write PID file', {
@@ -585,14 +610,12 @@ export class ProcessManager {
   private removePidFile(): void {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      if (existsSync(pidFilePath)) {
-        unlinkSync(pidFilePath);
-        logger.debug('PID file removed', { path: pidFilePath });
+      unlinkSync(pidFilePath);
+      logger.debug('PID file removed', { path: pidFilePath });
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.warn('Could not remove PID file', { err: toErrorMessage(err) });
       }
-    } catch (err) {
-      logger.warn('Could not remove PID file', {
-        err: toErrorMessage(err),
-      });
     }
   }
 
@@ -691,15 +714,15 @@ export class ProcessManager {
       'runtime.socket'
     );
     try {
-      if (existsSync(pointerFile)) {
-        unlinkSync(pointerFile);
-        logger.debug('Socket pointer file removed', { path: pointerFile });
+      unlinkSync(pointerFile);
+      logger.debug('Socket pointer file removed', { path: pointerFile });
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.warn('Could not remove socket pointer file', {
+          path: pointerFile,
+          err: toErrorMessage(err),
+        });
       }
-    } catch (err) {
-      logger.warn('Could not remove socket pointer file', {
-        path: pointerFile,
-        err: toErrorMessage(err),
-      });
     }
   }
 

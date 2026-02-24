@@ -67,6 +67,10 @@ export class ConditionEvaluator {
       timestamp: Date.now(),
     };
     this.recentEventsHead++;
+    // Prevent integer overflow on long-running processes
+    if (this.recentEventsHead >= Number.MAX_SAFE_INTEGER - this.maxRecentEvents) {
+      this.recentEventsHead = this.recentEventsHead % this.maxRecentEvents;
+    }
     if (this.recentEventsCount < this.maxRecentEvents) {
       this.recentEventsCount++;
     }

@@ -430,4 +430,30 @@ describe('EventBus', () => {
       expect(received).toHaveLength(1);
     });
   });
+
+  // ─── Ring Buffer Overflow Protection ─────────────────────────────────────────
+
+  describe('ring buffer overflow protection', () => {
+    it('resets historyWriteIndex near MAX_SAFE_INTEGER to prevent overflow', () => {
+      const smallBus = new EventBus(3);
+      // Fill the buffer
+      for (let i = 0; i < 3; i++) smallBus.emit(makeEvent());
+      // Simulate near-overflow: place index just at the guard threshold
+      (smallBus as any).historyWriteIndex = Number.MAX_SAFE_INTEGER - 3;
+      // Emit triggers the overflow guard during increment
+      smallBus.emit(makeEvent());
+      // Guard resets via modulo — index must now be well below the threshold
+      expect((smallBus as any).historyWriteIndex).toBeLessThan(Number.MAX_SAFE_INTEGER - 3);
+    });
+
+    it('history remains readable after overflow guard reset', () => {
+      const smallBus = new EventBus(3);
+      for (let i = 0; i < 3; i++) smallBus.emit(makeEvent());
+      (smallBus as any).historyWriteIndex = Number.MAX_SAFE_INTEGER - 3;
+      smallBus.emit(makeEvent());
+      // Buffer should still contain events
+      const history = smallBus.getHistory();
+      expect(history.length).toBeGreaterThan(0);
+    });
+  });
 });

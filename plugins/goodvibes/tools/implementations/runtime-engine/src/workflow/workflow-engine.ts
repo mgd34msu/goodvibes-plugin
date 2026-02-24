@@ -12,6 +12,16 @@
  * - Instances are kept in-memory; persistence is the caller's responsibility
  */
 
+/**
+ * Design Note: Synchronous Transitions, Async Actions
+ *
+ * sendEvent() transitions state synchronously but executes state actions
+ * (on_enter, on_exit) asynchronously via fire-and-forget. This design choice
+ * ensures transitions are fast and predictable while allowing actions to perform
+ * I/O (emit events, update context). Action errors are logged but do not block
+ * or revert transitions. See sendEvent() JSDoc for details.
+ */
+
 import { createLogger } from '../shared/logger.js';
 import { generateEventId, generateWorkflowId, timestamp, toErrorMessage } from '../shared/utils.js';
 import type { WorkflowsConfig } from '../shared/config.js';
@@ -161,6 +171,7 @@ export class WorkflowEngine {
     // Execute on_enter actions for the initial state
     const initialState = def.states[def.initial_state];
     if (initialState?.on_enter) {
+      // Fire-and-forget: actions run async; errors logged, not propagated
       void this.executeActions(initialState.on_enter, instance.context);
     }
 
@@ -180,6 +191,19 @@ export class WorkflowEngine {
    * 3. Execute the first transition whose guard passes
    * 4. Run on_exit actions → transition actions → on_enter actions
    * 5. Update history and emit `workflow:state_changed`
+   *
+   * **Important: Action execution is fire-and-forget.**
+   * State actions (on_enter, on_exit) and transition actions execute
+   * asynchronously after the transition completes. This means:
+   * - State transitions are synchronous — the new state is set before actions run.
+   * - Action execution errors are logged but do not affect the transition.
+   * - `on_exit` actions from the previous state may run concurrently with
+   *   `on_enter` actions for the next state.
+   * - `update_context` actions may not be visible in the returned `contextChanges`,
+   *   since context is captured before the async actions resolve.
+   *
+   * For use cases requiring action completion before proceeding, consider awaiting
+   * `executeActions` directly (v2 consideration).
    *
    * @param workflowId - ID of the workflow instance to send the event to.
    * @param event      - The RuntimeEvent that may trigger a transition.
@@ -255,11 +279,13 @@ export class WorkflowEngine {
 
     // Execute on_exit actions for current state
     if (currentStateDef.on_exit) {
+      // Fire-and-forget: actions run async after transition (see sendEvent JSDoc)
       void this.executeActions(currentStateDef.on_exit, instance.context);
     }
 
     // Execute transition actions
     if (matchingTransition.actions) {
+      // Fire-and-forget: actions run async after transition (see sendEvent JSDoc)
       void this.executeActions(matchingTransition.actions, instance.context);
     }
 
@@ -270,6 +296,7 @@ export class WorkflowEngine {
     // Execute on_enter actions for new state
     const targetStateDef = def.states[toState];
     if (targetStateDef?.on_enter) {
+      // Fire-and-forget: actions run async after transition (see sendEvent JSDoc)
       void this.executeActions(targetStateDef.on_enter, instance.context);
     }
 
@@ -499,7 +526,8 @@ export class WorkflowEngine {
             break;
           }
           case 'update_context': {
-            Object.assign(context, action.config);
+            const { type: _type, ...values } = action.config as Record<string, unknown>;
+            Object.assign(context, values);
             break;
           }
           case 'invoke_handler': {
@@ -518,8 +546,9 @@ export class WorkflowEngine {
           }
           case 'spawn_agent': {
             // Placeholder for Phase 5 — agent spawning not yet implemented
-            log.warn('spawn_agent action is not yet implemented (Phase 5)', {
-              config: action.config,
+            log.error('spawn_agent action type is not yet implemented (Phase 5 stub)', {
+              action_type: action.type,
+              workflow_id: (context.workflow_id as string | undefined) ?? 'unknown',
             });
             break;
           }
@@ -563,25 +592,22 @@ export class WorkflowEngine {
 
     // Match: context.field op rhs (where rhs is value or context.field)
     // Operators sorted longest-first to avoid partial matching (>= before >).
-    // NOTE: Field names on the left-hand side must not contain operator characters
-    // (>, <, =, !) as the parser uses simple string indexOf — no quoting support.
-    const OPERATORS = ['>=', '<=', '===', '!==', '>', '<'] as const;
-    type Operator = (typeof OPERATORS)[number];
+    // NOTE: Operators are matched only when surrounded by whitespace, so operator
+    // characters inside field names (e.g. context.gt_value) are not misidentified.
+    const operatorRegex = /\s+(>=|<=|===|!==|>|<)\s+/;
+    const opMatch = trimmed.match(operatorRegex);
 
-    let lhsRaw: string | undefined;
-    let op: Operator | undefined;
-    let rhsRaw: string | undefined;
-
-    for (const candidate of OPERATORS) {
-      const idx = trimmed.indexOf(candidate);
-      if (idx === -1) continue;
-      lhsRaw = trimmed.slice(0, idx).trim();
-      op = candidate;
-      rhsRaw = trimmed.slice(idx + candidate.length).trim();
-      break;
+    if (!opMatch || opMatch.index === undefined) {
+      log.warn('Guard expression has no recognized operator', { expression: trimmed });
+      return false;
     }
 
-    if (!lhsRaw || !op || rhsRaw === undefined) {
+    const operator = opMatch[1] as '>=' | '<=' | '===' | '!==' | '>' | '<';
+    const lhsRaw = trimmed.slice(0, opMatch.index).trim();
+    const rhsRaw = trimmed.slice(opMatch.index + opMatch[0].length).trim();
+    const op = operator;
+
+    if (!lhsRaw || !rhsRaw) {
       throw new Error(`Unrecognised guard expression format: "${expr}"`);
     }
 

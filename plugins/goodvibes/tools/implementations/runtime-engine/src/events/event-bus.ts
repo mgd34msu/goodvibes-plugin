@@ -150,6 +150,10 @@ export class EventBus {
     // Maintain ring buffer (O(1) circular buffer)
     this.historyBuffer[this.historyWriteIndex % this.maxHistorySize] = full;
     this.historyWriteIndex++;
+    // Prevent integer overflow on long-running processes
+    if (this.historyWriteIndex >= Number.MAX_SAFE_INTEGER - this.maxHistorySize) {
+      this.historyWriteIndex = this.historyWriteIndex % this.maxHistorySize;
+    }
     if (this.historyCount < this.maxHistorySize) this.historyCount++;
 
     // Dispatch to matching handlers
