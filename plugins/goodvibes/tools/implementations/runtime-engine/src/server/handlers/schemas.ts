@@ -71,11 +71,23 @@ export const allSchemas = [
       properties: {
         action: {
           type: 'string',
-          enum: ['query', 'tail', 'stats'],
+          enum: ['query', 'tail', 'stats', 'directives'],
           description:
             'query: filter event log (persistent), ' +
             'tail: recent events from in-memory bus history, ' +
-            'stats: log and queue statistics.',
+            'stats: log and queue statistics, ' +
+            'directives: query the DirectiveQueue for pending orchestrator directives.',
+        },
+        mode: {
+          type: 'string',
+          enum: ['peek', 'drain'],
+          default: 'peek',
+          description: '(directives action only) peek: return directives without removing them (default), drain: return and remove directives.'
+        },
+        target: {
+          type: 'string',
+          default: 'subagent_stop',
+          description: '(directives action only) Hook target queue to query (e.g. subagent_stop).',
         },
         filter: {
           type: 'object',

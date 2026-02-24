@@ -6,8 +6,17 @@ input_schema:
   properties:
     action:
       type: string
-      enum: [query, tail, stats]
-      description: "query: filter event log (persistent), tail: recent events from in-memory bus history, stats: log and queue statistics"
+      enum: [query, tail, stats, directives]
+      description: "query: filter event log (persistent), tail: recent events from in-memory bus history, stats: log and queue statistics, directives: query the DirectiveQueue for pending orchestrator directives"
+    mode:
+      type: string
+      enum: [peek, drain]
+      default: peek
+      description: "peek: return directives without removing them (default), drain: return and remove directives. Only used with the directives action."
+    target:
+      type: string
+      default: subagent_stop
+      description: "Hook target queue to query (e.g. subagent_stop). Only used with the directives action."
     filter:
       type: object
       properties:

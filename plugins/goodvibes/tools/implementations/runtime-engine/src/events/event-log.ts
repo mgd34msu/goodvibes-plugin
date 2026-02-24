@@ -635,6 +635,17 @@ export class EventLog {
         }
       };
 
+      // Unified error handler — readline re-emits stream errors on the
+      // Interface instance.  Without a handler on `rl`, Node throws an
+      // unhandled 'error' event and crashes the process.  The `done`
+      // guard prevents double-reject when both listeners fire.
+      const onError = (err: Error) => {
+        if (!done) {
+          cleanup();
+          reject(err);
+        }
+      };
+
       rl.on('line', (line) => {
         if (done) return;
         const trimmed = line.trim();
@@ -653,10 +664,8 @@ export class EventLog {
         }
       });
 
-      stream.on('error', (err) => {
-        cleanup();
-        reject(err);
-      });
+      rl.on('error', onError);
+      stream.on('error', onError);
     });
   }
 

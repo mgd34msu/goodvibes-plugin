@@ -22799,6 +22799,12 @@ var EventLog = class {
           stream.destroy();
         }
       }, "cleanup");
+      const onError = /* @__PURE__ */ __name((err) => {
+        if (!done) {
+          cleanup();
+          reject(err);
+        }
+      }, "onError");
       rl.on("line", (line) => {
         if (done) return;
         const trimmed = line.trim();
@@ -22815,10 +22821,8 @@ var EventLog = class {
           resolve();
         }
       });
-      stream.on("error", (err) => {
-        cleanup();
-        reject(err);
-      });
+      rl.on("error", onError);
+      stream.on("error", onError);
     });
   }
   /** Returns true when `event` matches all criteria in `filter`. */
@@ -26686,7 +26690,12 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
             },
             metadata: { session_id: workflow.id, sequence: 0, version: 1 }
           });
-        } catch {
+        } catch (recErr) {
+          log4.debug("wrfc_chain_next: recovery advance failed (best-effort)", {
+            workflow_id: workflow.id,
+            event: evt.type,
+            error: String(recErr)
+          });
         }
       }
     }
@@ -27052,7 +27061,7 @@ var logger10 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_crypto.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_path4.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}.pid`);
+  return (0, import_path4.join)((0, import_os.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 var ProcessManager = class {
@@ -27449,6 +27458,12 @@ var ProcessManager = class {
   getAgentCoordinator() {
     return this.agentCoordinator;
   }
+  /**
+   * Return the directive queue, or null if it has not been initialised.
+   */
+  getDirectiveQueue() {
+    return this.directiveQueue;
+  }
   // ─── Private helpers ────────────────────────────────────────────────────────
   /**
    * Check whether a stale PID file exists from a previous crash and, if so,
@@ -27566,7 +27581,7 @@ var ProcessManager = class {
     const stateDir = (0, import_path4.join)(this.projectRoot, this.config.persistence.state_dir);
     const socketDir = this.config.ipc.socket_dir;
     const hash2 = (0, import_crypto.createHash)("sha256").update(this.projectRoot).digest("hex").slice(0, 8);
-    const socketPath = (0, import_path4.join)(socketDir, `goodvibes-runtime-${hash2}.sock`);
+    const socketPath = (0, import_path4.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
     try {
       this.ipcServer = new IPCServer(socketPath);
       const router = new IPCRouter({
@@ -27580,7 +27595,7 @@ var ProcessManager = class {
       (0, import_fs4.mkdirSync)(socketDir, { recursive: true, mode: 448 });
       await this.ipcServer.listen();
       (0, import_fs4.mkdirSync)(stateDir, { recursive: true });
-      const pointerFile = (0, import_path4.join)(stateDir, "runtime.socket");
+      const pointerFile = (0, import_path4.join)(stateDir, `runtime-${process.pid}.socket`);
       (0, import_fs4.writeFileSync)(pointerFile, socketPath, "utf-8");
       logger10.info("IPC server started", { socket: socketPath });
       return socketPath;
@@ -27601,7 +27616,7 @@ var ProcessManager = class {
     const pointerFile = (0, import_path4.join)(
       this.projectRoot,
       this.config.persistence.state_dir,
-      "runtime.socket"
+      `runtime-${process.pid}.socket`
     );
     try {
       (0, import_fs4.unlinkSync)(pointerFile);
@@ -28033,7 +28048,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     const action = params.action;
     if (!action) {
       return toError(
-        "Missing required field: action. Use 'query', 'tail', or 'stats'.",
+        "Missing required field: action. Use 'query', 'tail', 'stats', or 'directives'.",
         ctx.version,
         uptimeMs,
         Date.now() - start
@@ -28104,8 +28119,41 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
       const data = applyVerbosity(events, verbosity);
       return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
+    if (action === "directives") {
+      const mode = params.mode ?? "peek";
+      const target = params.target ?? "subagent_stop";
+      const queue = ctx.getDirectiveQueue();
+      if (!queue) {
+        return toError(
+          "Directive queue not initialized",
+          ctx.version,
+          uptimeMs,
+          Date.now() - start
+        );
+      }
+      const directives = mode === "drain" ? queue.drain(target) : queue.peek(target);
+      const count = directives.length;
+      let data;
+      if (verbosity === "count_only") {
+        data = { count, target, mode };
+      } else if (verbosity === "minimal") {
+        data = {
+          count,
+          target,
+          mode,
+          directives: directives.map((d) => ({
+            type: d.type,
+            priority: d.priority,
+            source: d.source
+          }))
+        };
+      } else {
+        data = { count, target, mode, directives };
+      }
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
+    }
     return toError(
-      `Unknown action: '${action}'. Use 'query', 'tail', or 'stats'.`,
+      `Unknown action: '${action}'. Use 'query', 'tail', 'stats', or 'directives'.`,
       ctx.version,
       uptimeMs,
       Date.now() - start
@@ -28651,8 +28699,19 @@ var allSchemas = [
       properties: {
         action: {
           type: "string",
-          enum: ["query", "tail", "stats"],
-          description: "query: filter event log (persistent), tail: recent events from in-memory bus history, stats: log and queue statistics."
+          enum: ["query", "tail", "stats", "directives"],
+          description: "query: filter event log (persistent), tail: recent events from in-memory bus history, stats: log and queue statistics, directives: query the DirectiveQueue for pending orchestrator directives."
+        },
+        mode: {
+          type: "string",
+          enum: ["peek", "drain"],
+          default: "peek",
+          description: "(directives action only) peek: return directives without removing them (default), drain: return and remove directives."
+        },
+        target: {
+          type: "string",
+          default: "subagent_stop",
+          description: "(directives action only) Hook target queue to query (e.g. subagent_stop)."
         },
         filter: {
           type: "object",
@@ -28903,7 +28962,8 @@ var RuntimeEngineServer = class {
         getEventQueue: /* @__PURE__ */ __name(() => this.processManager.getEventQueue(), "getEventQueue"),
         getWorkflowEngine: /* @__PURE__ */ __name(() => this.processManager.getWorkflowEngine(), "getWorkflowEngine"),
         getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager.getTriggerRegistry(), "getTriggerRegistry"),
-        getAgentCoordinator: /* @__PURE__ */ __name(() => this.processManager.getAgentCoordinator(), "getAgentCoordinator")
+        getAgentCoordinator: /* @__PURE__ */ __name(() => this.processManager.getAgentCoordinator(), "getAgentCoordinator"),
+        getDirectiveQueue: /* @__PURE__ */ __name(() => this.processManager.getDirectiveQueue(), "getDirectiveQueue")
       };
       try {
         return await handler(args, ctx);

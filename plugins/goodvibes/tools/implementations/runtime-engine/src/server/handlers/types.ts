@@ -15,6 +15,7 @@ import type { EventQueue } from '../../events/event-queue.js';
 import type { WorkflowEngine } from '../../workflow/workflow-engine.js';
 import type { TriggerRegistry } from '../../triggers/trigger-registry.js';
 import type { AgentCoordinator } from '../../agents/agent-coordinator.js';
+import type { DirectiveQueue } from '../../directives/directive-queue.js';
 
 /**
  * A runtime-engine tool handler.
@@ -51,4 +52,6 @@ export interface HandlerContext {
   getTriggerRegistry: () => TriggerRegistry | null;
   /** The agent coordinator (may be null if agents_enabled is false). */
   getAgentCoordinator: () => AgentCoordinator | null;
+  /** The directive queue (may be null if not yet initialised). */
+  getDirectiveQueue: () => DirectiveQueue | null;
 }

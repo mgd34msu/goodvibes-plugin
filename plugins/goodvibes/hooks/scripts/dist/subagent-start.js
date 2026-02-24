@@ -575,7 +575,7 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
 
 // src/shared/runtime-client.ts
 import * as net from "net";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { join as join5 } from "path";
 import { tmpdir } from "os";
 var HOOK_EVENT_TIMEOUT_MS = 500;
@@ -710,10 +710,26 @@ var RuntimeClient = class {
       return envPath;
     }
     const cwd = process.env["CLAUDE_PROJECT_DIR"] ?? process.cwd();
-    const pointerFile = join5(cwd, ".goodvibes", "state", "runtime.socket");
-    if (existsSync(pointerFile)) {
+    const stateDir = join5(cwd, ".goodvibes", "state");
+    if (existsSync(stateDir)) {
       try {
-        const socketPath = readFileSync(pointerFile, "utf-8").trim();
+        const entries = readdirSync(stateDir);
+        for (const entry of entries) {
+          if (/^runtime-\d+\.socket$/.test(entry)) {
+            try {
+              const socketPath = readFileSync(join5(stateDir, entry), "utf-8").trim();
+              if (socketPath && existsSync(socketPath)) return socketPath;
+            } catch {
+            }
+          }
+        }
+      } catch {
+      }
+    }
+    const legacyPointerFile = join5(stateDir, "runtime.socket");
+    if (existsSync(legacyPointerFile)) {
+      try {
+        const socketPath = readFileSync(legacyPointerFile, "utf-8").trim();
         if (socketPath) return socketPath;
       } catch {
       }

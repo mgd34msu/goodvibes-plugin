@@ -99,6 +99,7 @@ export class RuntimeEngineServer {
         getWorkflowEngine: () => this.processManager.getWorkflowEngine(),
         getTriggerRegistry: () => this.processManager.getTriggerRegistry(),
         getAgentCoordinator: () => this.processManager.getAgentCoordinator(),
+        getDirectiveQueue: () => this.processManager.getDirectiveQueue(),
       };
 
       try {

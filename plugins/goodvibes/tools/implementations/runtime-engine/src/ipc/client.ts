@@ -19,7 +19,7 @@
  */
 
 import * as net from 'net';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -224,8 +224,10 @@ export class RuntimeClient {
    *
    * Resolution order:
    * 1. `GOODVIBES_RUNTIME_SOCKET` environment variable.
-   * 2. `.goodvibes/state/runtime.socket` file in `process.cwd()` (contains the path).
-   * 3. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
+   * 2. Per-PID pointer files `runtime-{pid}.socket` in `.goodvibes/state/` (supports
+   *    multiple concurrent sessions for the same project).
+   * 3. Legacy `runtime.socket` pointer file for backward compatibility.
+   * 4. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
    *
    * @returns Absolute socket path, or null if none is discoverable.
    */
@@ -236,18 +238,39 @@ export class RuntimeClient {
       return envPath;
     }
 
-    // 2. Well-known pointer file written by the runtime engine
-    const pointerFile = join(process.cwd(), '.goodvibes', 'state', 'runtime.socket');
-    if (existsSync(pointerFile)) {
+    const stateDir = join(process.cwd(), '.goodvibes', 'state');
+
+    // 2. Scan for per-PID pointer files written by concurrent runtime engine sessions
+    if (existsSync(stateDir)) {
       try {
-        const socketPath = readFileSync(pointerFile, 'utf-8').trim();
+        const entries = readdirSync(stateDir);
+        for (const entry of entries) {
+          if (/^runtime-\d+\.socket$/.test(entry)) {
+            try {
+              const socketPath = readFileSync(join(stateDir, entry), 'utf-8').trim();
+              if (socketPath && existsSync(socketPath)) return socketPath;
+            } catch {
+              // Ignore — try next entry
+            }
+          }
+        }
+      } catch {
+        // Ignore — fall through to next strategy
+      }
+    }
+
+    // 3. Legacy pointer file (backward compatibility)
+    const legacyPointerFile = join(stateDir, 'runtime.socket');
+    if (existsSync(legacyPointerFile)) {
+      try {
+        const socketPath = readFileSync(legacyPointerFile, 'utf-8').trim();
         if (socketPath) return socketPath;
       } catch {
         // Ignore — fall through to next strategy
       }
     }
 
-    // 3. Well-known tmpdir path (fallback for same-machine sessions)
+    // 4. Well-known tmpdir path (fallback for same-machine sessions)
     const defaultPath = join(tmpdir(), 'goodvibes-runtime', 'runtime.sock');
     if (existsSync(defaultPath)) {
       return defaultPath;

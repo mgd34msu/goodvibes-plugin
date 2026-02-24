@@ -506,7 +506,13 @@ export function registerWRFCHandlers(
             },
             metadata: { session_id: workflow.id, sequence: 0, version: 1 },
           });
-        } catch { /* best-effort recovery */ }
+        } catch (recErr) {
+          log.debug('wrfc_chain_next: recovery advance failed (best-effort)', {
+            workflow_id: workflow.id,
+            event: evt.type,
+            error: String(recErr),
+          });
+        }
       }
     }
 

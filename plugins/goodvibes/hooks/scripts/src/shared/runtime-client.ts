@@ -19,7 +19,7 @@
  */
 
 import * as net from 'net';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -261,22 +261,47 @@ export class RuntimeClient {
       return envPath;
     }
 
-    // Strategy 2: Pointer file written by the runtime engine into the project
     const cwd = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd();
-    const pointerFile = join(cwd, '.goodvibes', 'state', 'runtime.socket');
-    if (existsSync(pointerFile)) {
+    const stateDir = join(cwd, '.goodvibes', 'state');
+
+    // Strategy 2: Scan for per-PID pointer files written by concurrent sessions.
+    // Multiple Claude Code sessions for the same project each write their own
+    // runtime-{pid}.socket file. We pick the first one that points to an
+    // existing socket file.
+    if (existsSync(stateDir)) {
       try {
-        const socketPath = readFileSync(pointerFile, 'utf-8').trim();
+        const entries = readdirSync(stateDir);
+        for (const entry of entries) {
+          if (/^runtime-\d+\.socket$/.test(entry)) {
+            try {
+              const socketPath = readFileSync(join(stateDir, entry), 'utf-8').trim();
+              if (socketPath && existsSync(socketPath)) return socketPath;
+            } catch {
+              // Ignore — try next entry
+            }
+          }
+        }
+      } catch {
+        // Ignore — fall through to next strategy
+      }
+    }
+
+    // Strategy 3: Legacy pointer file for backward compatibility with older
+    // runtime engine versions that wrote a single shared runtime.socket file.
+    const legacyPointerFile = join(stateDir, 'runtime.socket');
+    if (existsSync(legacyPointerFile)) {
+      try {
+        const socketPath = readFileSync(legacyPointerFile, 'utf-8').trim();
         if (socketPath) return socketPath;
       } catch {
         // Ignore — fall through to next strategy
       }
     }
 
-    // Strategy 3: Well-known tmpdir location — legacy fallback path for manual or
+    // Strategy 4: Well-known tmpdir location — legacy fallback path for manual or
     // external socket placement. Note: the process-manager does NOT create sockets
-    // here; it uses per-session paths under .goodvibes/<hash>/runtime.sock. This
-    // strategy will only match sockets placed here by external tooling.
+    // here; it uses per-session paths. This strategy will only match sockets
+    // placed here by external tooling.
     const defaultPath = join(tmpdir(), 'goodvibes-runtime', 'runtime.sock');
     if (existsSync(defaultPath)) {
       return defaultPath;

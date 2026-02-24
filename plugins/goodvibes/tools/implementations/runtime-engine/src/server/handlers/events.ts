@@ -5,8 +5,9 @@
  * - query: filter the persistent event log using the provided filter
  * - tail: retrieve last N events from the in-memory EventBus history
  * - stats: return EventLog stats + EventQueue stats
+ * - directives: query the DirectiveQueue for pending orchestrator directives
  *
- * Input schema: { action: 'query'|'tail'|'stats', filter?: {...}, verbosity?: string }
+ * Input schema: { action: 'query'|'tail'|'stats'|'directives', filter?: {...}, mode?: string, target?: string, verbosity?: string }
  */
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -14,6 +15,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createLogger } from '../../shared/logger.js';
 import { parseRelativeTime, toErrorMessage } from '../../shared/utils.js';
 import type { EventFilter, RuntimeEvent } from '../../events/types.js';
+import type { Directive } from '../../ipc/protocol.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
 
@@ -90,6 +92,12 @@ export function applyVerbosity(
 
 /**
  * Handle runtime_events tool calls.
+ *
+ * Actions:
+ * - query: filter the persistent event log using the provided filter
+ * - tail: retrieve last N events from the in-memory EventBus history
+ * - stats: return EventLog stats + EventQueue stats
+ * - directives: query the DirectiveQueue (peek or drain)
  */
 export const handleRuntimeEvents = async (
   args: unknown,
@@ -107,7 +115,7 @@ export const handleRuntimeEvents = async (
 
     if (!action) {
       return toError(
-        "Missing required field: action. Use 'query', 'tail', or 'stats'.",
+        "Missing required field: action. Use 'query', 'tail', 'stats', or 'directives'.",
         ctx.version, uptimeMs, Date.now() - start
       );
     }
@@ -209,8 +217,45 @@ export const handleRuntimeEvents = async (
       return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
 
+    // ── directives ──────────────────────────────────────────────────────────────────────────────
+    if (action === 'directives') {
+      const mode = (params.mode as string | undefined) ?? 'peek';
+      const target = (params.target as string | undefined) ?? 'subagent_stop';
+
+      const queue = ctx.getDirectiveQueue();
+      if (!queue) {
+        return toError(
+          'Directive queue not initialized',
+          ctx.version, uptimeMs, Date.now() - start
+        );
+      }
+
+      const directives = mode === 'drain' ? queue.drain(target) : queue.peek(target);
+      const count = directives.length;
+
+      let data: unknown;
+      if (verbosity === 'count_only') {
+        data = { count, target, mode };
+      } else if (verbosity === 'minimal') {
+        data = {
+          count,
+          target,
+          mode,
+          directives: directives.map((d: Directive) => ({
+            type: d.type,
+            priority: d.priority,
+            source: d.source,
+          })),
+        };
+      } else {
+        data = { count, target, mode, directives };
+      }
+
+      return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
+    }
+
     return toError(
-      `Unknown action: '${action}'. Use 'query', 'tail', or 'stats'.`,
+      `Unknown action: '${action}'. Use 'query', 'tail', 'stats', or 'directives'.`,
       ctx.version, uptimeMs, Date.now() - start
     );
   } catch (err) {

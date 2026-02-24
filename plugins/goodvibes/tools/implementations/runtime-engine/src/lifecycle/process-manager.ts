@@ -49,7 +49,7 @@ const CHECKPOINT_INTERVAL_MS = 30_000;
  */
 function getPidFilePath(projectRoot: string): string {
   const hash = createHash('sha256').update(projectRoot).digest('hex').slice(0, 8);
-  return join(tmpdir(), `goodvibes-runtime-engine-${hash}.pid`);
+  return join(tmpdir(), `goodvibes-runtime-engine-${hash}-${process.pid}.pid`);
 }
 
 /**
@@ -534,6 +534,13 @@ export class ProcessManager {
     return this.agentCoordinator;
   }
 
+  /**
+   * Return the directive queue, or null if it has not been initialised.
+   */
+  getDirectiveQueue(): DirectiveQueue | null {
+    return this.directiveQueue;
+  }
+
   // ─── Private helpers ────────────────────────────────────────────────────────
 
   /**
@@ -665,9 +672,11 @@ export class ProcessManager {
     const stateDir = join(this.projectRoot, this.config.persistence.state_dir);
     const socketDir = this.config.ipc.socket_dir;
 
-    // Derive a session-scoped socket filename from a hash of the project root
+    // Derive a session-scoped socket filename from a hash of the project root + PID
+    // Including the PID ensures multiple concurrent sessions for the same project
+    // each get a unique socket path.
     const hash = createHash('sha256').update(this.projectRoot).digest('hex').slice(0, 8);
-    const socketPath = join(socketDir, `goodvibes-runtime-${hash}.sock`);
+    const socketPath = join(socketDir, `goodvibes-runtime-${hash}-${process.pid}.sock`);
 
     try {
       this.ipcServer = new IPCServer(socketPath);
@@ -686,9 +695,11 @@ export class ProcessManager {
       mkdirSync(socketDir, { recursive: true, mode: 0o700 });
       await this.ipcServer.listen();
 
-      // Write socket path to state file for hook discovery
+      // Write socket path to per-PID pointer file for hook discovery.
+      // Using a per-PID file (rather than a single shared file) allows multiple
+      // concurrent sessions for the same project to coexist.
       mkdirSync(stateDir, { recursive: true });
-      const pointerFile = join(stateDir, 'runtime.socket');
+      const pointerFile = join(stateDir, `runtime-${process.pid}.socket`);
       writeFileSync(pointerFile, socketPath, 'utf-8');
 
       logger.info('IPC server started', { socket: socketPath });
@@ -711,7 +722,7 @@ export class ProcessManager {
     const pointerFile = join(
       this.projectRoot,
       this.config.persistence.state_dir,
-      'runtime.socket'
+      `runtime-${process.pid}.socket`
     );
     try {
       unlinkSync(pointerFile);

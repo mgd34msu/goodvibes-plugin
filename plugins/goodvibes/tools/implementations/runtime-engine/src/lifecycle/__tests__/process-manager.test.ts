@@ -252,11 +252,11 @@ const TEST_PROJECT_ROOT = '/tmp/test-project-root';
 
 function getPidFilePath(projectRoot: string): string {
   const hash = createHash('sha256').update(projectRoot).digest('hex').slice(0, 8);
-  return join(tmpdir(), `goodvibes-runtime-engine-${hash}.pid`);
+  return join(tmpdir(), `goodvibes-runtime-engine-${hash}-${process.pid}.pid`);
 }
 
 function getSocketPointerPath(projectRoot: string, stateDir: string): string {
-  return join(projectRoot, stateDir, 'runtime.socket');
+  return join(projectRoot, stateDir, `runtime-${process.pid}.socket`);
 }
 
 /** Re-apply default return values on all mocks after vi.clearAllMocks(). */
@@ -1193,7 +1193,7 @@ describe('ProcessManager — IPC handler wiring', () => {
     await pm.startup();
 
     const socketPath = mocks.IPCServer.mock.calls[0][0] as string;
-    expect(socketPath).toMatch(/\/tmp\/test-sockets\/goodvibes-runtime-[a-f0-9]{8}\.sock/);
+    expect(socketPath).toMatch(/\/tmp\/test-sockets\/goodvibes-runtime-[a-f0-9]{8}-\d+\.sock/);
   });
 
   it('socket path hash matches hash of project root', async () => {
@@ -1293,5 +1293,16 @@ describe('ProcessManager — accessors', () => {
     const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
     await pm.startup();
     expect(pm.getEventQueue()).toBeDefined();
+  });
+
+  it('getDirectiveQueue() returns null before startup', () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    expect(pm.getDirectiveQueue()).toBeNull();
+  });
+
+  it('getDirectiveQueue() returns the DirectiveQueue instance after startup', async () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    await pm.startup();
+    expect(pm.getDirectiveQueue()).not.toBeNull();
   });
 });
