@@ -1,1 +1,0 @@
-const mod = await import('./module-v2');
