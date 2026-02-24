@@ -117,32 +117,17 @@ tasks:
         - src/components/LoginButton.tsx
         - src/components/LogoutButton.tsx
         - src/components/UserProfile.tsx
-    blocking: [review-auth-implementation]
+    blocking: []
     blocked_by: [add-session-wrapper]
     expected_outcome: UI components for auth, using session data
-
-  - task_id: review-auth-implementation
-    agent: reviewer
-    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling, async-patterns]
-    description: Review authentication implementation for security and best practices
-    scope:
-      files:
-        - src/app/api/auth/[...nextauth]/route.ts
-        - src/lib/auth.ts
-        - src/middleware.ts
-        - src/components/LoginButton.tsx
-        - src/components/LogoutButton.tsx
-        - src/components/UserProfile.tsx
-    blocking: []
-    blocked_by: [add-auth-components]
-    expected_outcome: Review report with security assessment, no major issues
 ```
 
 **Parallelism:**
 - Wave 1: setup-nextauth-config
 - Wave 2: add-session-wrapper + protect-routes (parallel)
 - Wave 3: add-auth-components
-- Wave 4: review-auth-implementation
+
+**Note:** The runtime engine automatically creates a WRFC chain for each agent. Review and fix cycles are issued as `<gv>` directives and executed mechanically by the orchestrator.
 
 ### Example 2: Create CRUD API for Posts
 
@@ -518,7 +503,7 @@ Add based on what the task touches:
 
 ### Review Skills
 
-For reviewer agent tasks:
+For reviewer agent tasks (spawned via runtime directives):
 - review-scoring (always)
 - type-safety (if TypeScript)
 - error-handling (if async code)
@@ -535,8 +520,11 @@ Every agent prompt must include:
 - [ ] Skills list with usage guidance
 - [ ] Expected outcome (concrete success criteria)
 - [ ] Blocking/blocked_by relationships
-- [ ] WRFC participation guidance (agent does WRITE+REPORT)
-- [ ] Structured output format template
+
+**Do NOT include:**
+- WRFC participation guidance — the runtime engine handles this automatically
+- Instructions to spawn reviewers — the runtime issues those directives
+- Score thresholds — the runtime reads these from `goodvibes.json`
 
 ## Common Mistakes
 
@@ -623,4 +611,34 @@ blocking: [create-api]
 
 task_id: create-api
 blocked_by: [create-types]
+```
+
+### Mistake 6: Manually Scheduling Reviewers
+
+**Bad:**
+```yaml
+# Orchestrator schedules reviewers as part of decomposition
+- task_id: review-auth-implementation
+  agent: reviewer
+  blocked_by: [add-auth-components]
+```
+
+**Good:**
+```
+Do not include reviewer tasks in the initial decomposition.
+The runtime engine automatically creates WRFC chains for each work agent.
+Reviewers are spawned via <gv> directives when the runtime decides.
+```
+
+### Mistake 7: Deferring a Directive
+
+**Bad:**
+```
+I'll execute this review directive after the other agents finish...
+```
+
+**Good:**
+```
+Directive received. Spawning reviewer now.
+[spawns reviewer immediately]
 ```

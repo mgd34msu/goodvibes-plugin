@@ -1,8 +1,8 @@
 ---
 name: fullstack-feature
-description: "Load PROACTIVELY when task involves building a complete feature across multiple layers. Use when user says \"build a feature\", \"add user profiles\", \"create a dashboard\", or any request spanning database, API, UI, and tests. Orchestrates multi-agent work sequentially: schema and migrations, API endpoints, UI components, tests, and review. Handles dependency ordering and cross-layer type sharing."
+description: "Load PROACTIVELY when task involves building a complete feature across multiple layers. Use when user says \"build a feature\", \"add user profiles\", \"create a dashboard\", or any request spanning database, API, UI, and tests. Orchestrates multi-agent work sequentially: schema and migrations, API endpoints, UI components, tests, and review. The runtime engine handles WRFC chains automatically via <gv> directives. Handles dependency ordering and cross-layer type sharing."
 metadata:
-  version: 1.0.0
+  version: 2.0.0
   category: orchestration
   tags: [fullstack, feature, end-to-end, workflow, multi-agent]
 ---
@@ -43,8 +43,32 @@ The fullstack feature workflow consists of 7 phases:
 3. **Core Implementation** (parallel) - API endpoints, UI components, state management
 4. **Integration** (sequential) - Wire UI to API, state to UI, verify data flow
 5. **Quality** (parallel) - Tests, security check, accessibility check
-6. **Review** (WRFC) - Full code review, fix issues, re-review until score >= 9.5
-7. **Commit + Log** - Git commit, update goodvibes memory/logs, report to user
+6. **Review** (runtime-driven) - WRFC chains from prior phases complete via runtime `<gv>` directives
+7. **Commit + Log** - Triggered when runtime issues `complete` directives; git commit, update memory/logs, report to user
+
+## Runtime Engine and WRFC Chains
+
+The runtime engine automatically creates a WRFC (Work-Review-Fix-Complete) chain for each work agent. When an agent completes its work and emits a `<gv>` tag, the runtime:
+
+1. Evaluates the output against the configured `min_review_score` (default: 9.5 from `goodvibes.json`)
+2. Issues directives to the orchestrator via system messages
+3. Orchestrator executes those directives mechanically
+
+**Directive types:**
+```json
+{"action":"spawn","wid":"wrfc_xxx","type":"reviewer","task":"Review the code..."}
+{"action":"spawn","wid":"wrfc_xxx","type":"engineer","task":"Fix the issues..."}
+{"action":"complete","wid":"wrfc_xxx"}
+{"action":"escalate","wid":"wrfc_xxx","reason":"Max fix attempts reached"}
+```
+
+**Directive compliance rules (absolute):**
+1. **Immediate**: Execute directives the moment they arrive. NEVER defer, queue, or delay.
+2. **First**: Execute directives BEFORE any other action. No intervening tool calls, no additional agent spawns, no user messages first.
+3. **Autonomy ends**: Once the first directive arrives for a WRFC chain, the orchestrator has no further judgment over that chain. Only directives drive it.
+4. **Runtime supersedes**: Runtime workflow logic ALWAYS supersedes orchestrator judgment. If a directive says review, review. If it says complete, complete.
+
+The orchestrator does NOT manually spawn reviewers or fix agents. These come exclusively from runtime directives.
 
 ## Phase 1: Understand
 
@@ -282,7 +306,7 @@ Protocol skills (required for all agents): gather-plan-apply, precision-mastery,
 
 ### Purpose
 
-Verify the implementation meets quality standards across multiple dimensions. These checks run in parallel.
+Verify the implementation meets quality standards across multiple dimensions. These checks run in parallel. Each spawned agent will have its own WRFC chain managed by the runtime engine.
 
 ### Sub-Phases
 
@@ -338,84 +362,46 @@ Protocol skills (required for all agents): gather-plan-apply, precision-mastery,
 ### Mode-Specific Behavior
 
 **Vibecoding**: Checkpoint after this phase. Commit with message `checkpoint: quality checks`.
-**Justvibes**: Auto-proceed to Phase 6.
+**Justvibes**: Auto-proceed; runtime handles review cycles.
 
-## Phase 6: Review (WRFC Loop)
+## Phase 6: Review (Runtime-Driven)
 
 ### Purpose
 
-Ensure all code meets production standards through systematic review and fix. Use the Work-Review-Fix-Check loop until score >= 9.5.
+Ensure all code meets production standards through systematic review and fix. The runtime engine manages this phase automatically via `<gv>` directives.
 
-### WRFC Loop
+### How It Works
 
-1. **Review** (Reviewer agent):
-   - Apply `review-scoring` skill to all new code
-   - Score across all 10 dimensions
-   - Produce structured review with issues and verdict
+The orchestrator does NOT manually spawn reviewers. Instead:
 
-2. **Fix** (Fix agent):
-   - Address all Critical and Major issues
-   - Address Minor issues unless explicitly deprioritized
-   - Produce fix report
+1. Each work agent from Phases 2-5 completes and emits a `<gv>` tag
+2. The runtime engine evaluates the output and issues directives:
+   - If review is needed: `{"action":"spawn","type":"reviewer","task":"..."}`
+   - If fixes are needed after review: `{"action":"spawn","type":"engineer","task":"Fix: ..."}`
+   - If the score meets `min_review_score` (configured in `goodvibes.json`): `{"action":"complete"}`
+   - If `max_fix_attempts` is exhausted: `{"action":"escalate","reason":"..."}`
+3. The orchestrator executes each directive immediately and mechanically
 
-3. **Check** (Re-reviewer agent):
-   - Verify all issues were fixed
-   - Re-score all 10 dimensions
-   - Identify new issues (if any)
-   - Determine verdict: PASS (>= 9.5), CONDITIONAL PASS (8.0-9.49), FAIL (< 8.0)
+### Orchestrator Behavior
 
-4. **Loop**:
-   - If FAIL or CONDITIONAL PASS, repeat from step 1
-   - If PASS, exit the loop
-
-### Agent Instructions
-
-**Reviewer agent**:
-
-Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
-
-- Use `review-scoring` skill
-- Score objectively, use the rubric literally
-- Provide specific FILE:LINE references
-- Provide specific fix suggestions
-- Categorize issues as Critical/Major/Minor
-
-**Fix agent**:
-
-Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
-
-- Address all Critical and Major issues
-- Document fixes applied
-- Document issues not fixed (with reasons)
-- Do not claim fixed without actual changes
-- Use `gather-plan-apply` protocol
-
-**Re-reviewer agent**:
-
-Protocol skills (required for all agents): gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory
-
-- Verify each previously flagged issue was fixed
-- Re-score from scratch (DO NOT copy previous scores)
-- Identify new issues
-- Use `review-scoring` skill
+- On `spawn` directive: spawn the specified agent with the provided task prompt
+- On `complete` directive: mark the chain done, proceed to Phase 7 when all chains complete
+- On `escalate` directive: report to user with the escalation reason; do not attempt to fix the chain manually
 
 ### Clear Definition of Done
 
-- Overall score >= 9.5/10
-- Verdict: PASS
-- All Critical and Major issues resolved
-- All files committed
+- All WRFC chains have received `complete` directives from the runtime
+- No chains are pending escalation resolution
 
 ### Mode-Specific Behavior
 
-**Vibecoding**: No checkpoint here. Commit only when PASS verdict reached.
-**Justvibes**: Auto-loop until PASS.
+Both vibecoding and justvibes modes follow directives identically. The runtime engine determines when review cycles end. The orchestrator has no mode-specific behavior in this phase beyond executing directives.
 
 ## Phase 7: Commit + Log
 
 ### Purpose
 
-Finalize the feature by committing to git and updating project memory.
+Finalize the feature by committing to git and updating project memory. This phase is triggered when the runtime issues `complete` directives for all WRFC chains from Phases 2-5.
 
 ### Steps
 
@@ -439,7 +425,6 @@ Finalize the feature by committing to git and updating project memory.
    - Summarize what was built
    - List files created/modified
    - List commit SHA
-   - List final review score
    - Provide next steps (if any)
 
 ### Clear Definition of Done
@@ -465,6 +450,8 @@ Vibecoding mode is collaborative. The orchestrator:
 - **Confirms** commit message before final commit in Phase 7
 - Pauses for approval if uncertainties arise
 
+Once agents are spawned, the runtime engine drives WRFC chains automatically. The orchestrator executes directives mechanically regardless of mode.
+
 Checkpoint commit messages:
 - `checkpoint: foundation - schema and types`
 - `checkpoint: core implementation`
@@ -477,19 +464,19 @@ Justvibes mode is autonomous. The orchestrator:
 
 - **Auto-proceeds** through all phases without user input
 - Pauses only if requirements are ambiguous or critical decisions are needed
-- Auto-loops in Phase 6 (until PASS verdict)
 - Auto-commits in Phase 7 (generates commit message)
+
+The runtime engine manages all WRFC cycles in both modes identically.
 
 ## Agent Orchestration Patterns
 
 ### Sequential Phases
 
-Phases 2, 4, 6, 7 must be sequential:
+Phases 2, 4, 7 must be sequential:
 
 - **Phase 2 (Foundation)**: Must complete before Phase 3 because API/UI code depends on types
 - **Phase 4 (Integration)**: Must come after Phase 3 because it connects API+UI
-- **Phase 6 (Review)**: Must come after Phase 5 because it reviews completed work
-- **Phase 7 (Commit+Log)**: Must be last because it finalizes everything
+- **Phase 7 (Commit+Log)**: Must be last; triggered by `complete` directives for all chains
 
 ### Parallel Phases
 
@@ -498,7 +485,7 @@ Phases 3 and 5 spawn multiple agents in parallel:
 - **Phase 3 (Core)**: API agent, UI agent, State agent run in parallel
 - **Phase 5 (Quality)**: Tester agent, Security agent, A11y agent run in parallel
 
-All agents in a parallel phase must complete before proceeding to the next phase.
+All agents in a parallel phase must receive `complete` directives before proceeding to the next phase.
 
 ### Agent Communication
 
@@ -523,15 +510,9 @@ See `gather-plan-apply` skill for details.
 
 ### Review-Scoring (WRFC)
 
-Phase 6 uses the Work-Review-Fix-Check loop:
+The runtime engine uses the review-scoring rubric internally when spawning reviewers. The orchestrator does not score code directly. Review thresholds are configured in `goodvibes.json` (`min_review_score`, `max_fix_attempts`).
 
-1. **Work**: Phases 2-5 produce the work
-2. **Review**: Reviewer agent scores using review-scoring rubric
-3. **Fix**: Fix agent addresses issues
-4. **Check**: Re-reviewer agent verifies fixes
-5. Loop until score >= 9.5
-
-See `review-scoring` skill for details.
+See `review-scoring` skill for details on what the reviewer agent does.
 
 ### Goodvibes Memory
 
@@ -555,13 +536,17 @@ Do not run Phases 2 and 3 in parallel. Phase 3 depends on Phase 2 types.
 
 Do not skip Phase 5. Tests are not optional. Security is not optional.
 
-### Accepting Low Review Scores
+### Manually Scheduling Reviewers
 
-Do not exit Phase 6 until score >= 9.5. Loop until standards are met.
+Do not add reviewer tasks to Phase 6 manually. The runtime engine issues reviewer spawn directives automatically when each work agent completes. Manual scheduling bypasses the runtime's threshold enforcement.
 
-### Committing Without Review
+### Deferring Directives
 
-Do not commit in Phase 7 until Phase 6 is complete. All code must be reviewed.
+Do not defer, reorder, or skip `<gv>` directives. Execute them immediately as the first action when received.
+
+### Committing Without All Chains Complete
+
+Do not commit in Phase 7 until all WRFC chains have received `complete` directives. Partial completions are not done.
 
 ### Forgetting to Update Memory
 

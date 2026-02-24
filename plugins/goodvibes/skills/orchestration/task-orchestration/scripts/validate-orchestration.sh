@@ -108,30 +108,54 @@ else
 fi
 printf '\n'
 
-# Check 3: WRFC loop maintained
-printf '[CHECK 3] Verifying WRFC loop coordination...\n'
-WRITE_PATTERNS="(spawn.*agent|WRITE phase|agent.*running)"
-REPORT_PATTERNS="(agent.*report|REPORT phase|agent.*complete|Summary:|Changes Made:)"
-FIX_PATTERNS="(FIX phase|analyzing.*report|issue.*found)"
-CONTINUE_PATTERNS="(CONTINUE phase|next.*wave|spawn.*next)"
+# Check 3: <gv> directive compliance
+printf '[CHECK 3] Verifying <gv> directive compliance...\n'
+GV_TAG_PATTERN='<gv>'
 
-WRITE_FOUND=$(grep -c -i -E "$WRITE_PATTERNS" -- "$TRANSCRIPT" 2>/dev/null || true)
-REPORT_FOUND=$(grep -c -i -E "$REPORT_PATTERNS" -- "$TRANSCRIPT" 2>/dev/null || true)
+# Check for <gv> tags in transcript (agents emitting structured output)
+GV_TAGS_FOUND=$(grep -c -F '<gv>' -- "$TRANSCRIPT" 2>/dev/null || true)
+[[ -z "$GV_TAGS_FOUND" ]] && GV_TAGS_FOUND=0
 
-# Normalize empty results to 0
-[[ -z "$WRITE_FOUND" ]] && WRITE_FOUND=0
-[[ -z "$REPORT_FOUND" ]] && REPORT_FOUND=0
-
-# WRFC loop should have balanced WRITE and REPORT phases
 if [[ "$FIRST_SPAWN_LINE" -gt 0 ]]; then
-  if [[ "$WRITE_FOUND" -gt 0 ]] && [[ "$REPORT_FOUND" -eq 0 ]]; then
-    VIOLATIONS+=("WRITE phase detected but no REPORT phase found")
-    PASS=false
-    printf '  %s[FAIL]%s Incomplete WRFC loop (missing REPORT)\n' "$RED" "$NC"
-  elif [[ "$WRITE_FOUND" -gt 0 ]] && [[ "$REPORT_FOUND" -gt 0 ]]; then
-    printf '  %s[PASS]%s WRFC loop phases present\n' "$GREEN" "$NC"
+  if [[ "$GV_TAGS_FOUND" -gt 0 ]]; then
+    # Check that spawn directives from runtime are followed by Task tool calls (execution)
+    SPAWN_DIRECTIVE_LINES=$(grep -n -i -E '"action".*"spawn"' -- "$TRANSCRIPT" | cut -d: -f1 || true)
+    DEFERRED_DIRECTIVES=false
+    
+    if [[ -n "$SPAWN_DIRECTIVE_LINES" ]]; then
+      while IFS= read -r dir_line; do
+        # Look for Task tool call within 5 lines of directive
+        EXEC_WINDOW_END=$((dir_line + 5))
+        TASK_AFTER=$(sed -n "${dir_line},${EXEC_WINDOW_END}p" -- "$TRANSCRIPT" | grep -i -E "(Task tool|spawn.*agent|new.*agent)" || true)
+        
+        if [[ -z "$TASK_AFTER" ]]; then
+          DEFERRED_DIRECTIVES=true
+          break
+        fi
+      done <<< "$SPAWN_DIRECTIVE_LINES"
+    fi
+    
+    if [[ "$DEFERRED_DIRECTIVES" == "true" ]]; then
+      VIOLATIONS+=("Directive spawn not immediately followed by agent execution")
+      PASS=false
+      printf '  %s[FAIL]%s Directive not executed immediately\n' "$RED" "$NC"
+    else
+      printf '  %s[PASS]%s <gv> directives present and appear to be executed\n' "$GREEN" "$NC"
+    fi
   else
-    printf '  %s[PASS]%s No WRFC loop detected (simple task)\n' "$GREEN" "$NC"
+    # No <gv> tags: check if agents ran at all (simple task may not have completed)
+    printf '  %s[PASS]%s No <gv> tags detected (agents may still be running or simple task)\n' "$YELLOW" "$NC"
+  fi
+
+  # Check: orchestrator should NOT manually schedule reviewers before directives arrive
+  MANUAL_REVIEWER_PATTERN="(spawn.*reviewer|schedule.*reviewer|type.*reviewer.*task|reviewer.*agent.*spawn)"
+  MANUAL_REVIEWER=$(grep -i -E "$MANUAL_REVIEWER_PATTERN" -- "$TRANSCRIPT" || true)
+  if [[ -n "$MANUAL_REVIEWER" ]]; then
+    VIOLATIONS+=("Orchestrator manually scheduled reviewer tasks in decomposition (should come from runtime directives)")
+    PASS=false
+    printf '  %s[FAIL]%s Manual reviewer scheduling found — runtime issues these via directives\n' "$RED" "$NC"
+  else
+    printf '  %s[PASS]%s No manual reviewer scheduling in decomposition\n' "$GREEN" "$NC"
   fi
 else
   printf '  %s[PASS]%s No agent spawns detected (not applicable)\n' "$GREEN" "$NC"
@@ -150,7 +174,7 @@ if [[ -n "$CONCURRENT_MENTIONS" ]]; then
   OVER_LIMIT=$(printf '%s' "$CONCURRENT_MENTIONS" | grep -E "(concurrent|parallel|active).*([7-9]|[1-9][0-9]+).*agent" || true)
   
   if [[ -n "$OVER_LIMIT" ]]; then
-    VIOLATIONS+=("More than 6 concurrent agents detected")
+    VIOLATIONS+=("More than 6 concurrent agent chains detected")
     PASS=false
     printf '  %s[FAIL]%s Concurrent agent limit exceeded\n' "$RED" "$NC"
   else
@@ -158,27 +182,6 @@ if [[ -n "$CONCURRENT_MENTIONS" ]]; then
   fi
 else
   printf '  %s[PASS]%s No concurrent agent tracking detected (likely <=6)\n' "$GREEN" "$NC"
-fi
-printf '\n'
-
-# Check 5: Structured output format from agents
-printf '[CHECK 5] Verifying agents use structured output format...\n'
-STRUCTURED_OUTPUT_PATTERNS="(## Summary|### Changes Made|### Decisions Made|### Issues Encountered|### Next Steps)"
-
-if [[ "$FIRST_SPAWN_LINE" -gt 0 ]] && [[ "$REPORT_FOUND" -gt 0 ]]; then
-  STRUCTURED_OUTPUT=$(grep -c -E "$STRUCTURED_OUTPUT_PATTERNS" -- "$TRANSCRIPT" 2>/dev/null || true)
-  [[ -z "$STRUCTURED_OUTPUT" ]] && STRUCTURED_OUTPUT=0
-  
-  # Should have at least 3 of the 5 sections
-  if [[ "$STRUCTURED_OUTPUT" -lt 3 ]]; then
-    VIOLATIONS+=("Agent reports missing structured output format")
-    PASS=false
-    printf '  %s[FAIL]%s Structured output format not used\n' "$RED" "$NC"
-  else
-    printf '  %s[PASS]%s Agents use structured output format\n' "$GREEN" "$NC"
-  fi
-else
-  printf '  %s[PASS]%s No agent reports detected (not applicable)\n' "$GREEN" "$NC"
 fi
 printf '\n'
 
@@ -199,8 +202,8 @@ else
   printf 'Review the orchestrator transcript and ensure:\n'
   printf '  1. Tasks are decomposed before spawning agents\n'
   printf '  2. Agent prompts include skill references (especially protocol skills)\n'
-  printf '  3. WRFC loop is maintained (WRITE -> REPORT -> FIX -> CONTINUE)\n'
+  printf '  3. <gv> directives from the runtime are executed immediately (no deferral)\n'
   printf '  4. No more than 6 concurrent agent chains\n'
-  printf '  5. Agents use structured output format\n'
+  printf '  5. Reviewer tasks are NOT manually scheduled in decomposition\n'
   exit 1
 fi

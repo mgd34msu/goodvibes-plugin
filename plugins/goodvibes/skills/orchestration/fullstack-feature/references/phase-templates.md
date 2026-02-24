@@ -300,46 +300,60 @@ Deliverables:
 - All tests pass
 ```
 
-### Phase 6: Review - Reviewer Agent Prompt Template
+### Phase 6: Review - Runtime-Driven (No Manual Template)
+
+Phase 6 is managed entirely by the runtime engine via `<gv>` directives. The orchestrator does not spawn reviewers manually.
+
+**How it works:**
+
+1. Each work agent (from Phases 2-5) emits a `<gv>` tag when complete
+2. The runtime evaluates the output and issues a directive:
+   - `{"action":"spawn","type":"reviewer","task":"..."}` — orchestrator spawns the reviewer
+   - After review, if fixes needed: `{"action":"spawn","type":"engineer","task":"Fix: ..."}` — orchestrator spawns fixer
+   - When score meets `min_review_score` from `goodvibes.json`: `{"action":"complete"}` — chain is done
+   - If `max_fix_attempts` exceeded: `{"action":"escalate","reason":"..."}` — report to user
+
+**Orchestrator actions:**
+- Execute each directive immediately upon receipt
+- No judgment, no reordering, no deferral
+- On `complete`: mark chain done, advance to Phase 7 when all chains complete
+- On `escalate`: present reason to user, await guidance
+
+### Phase 7: Commit + Log
+
+Triggered when all WRFC chains from Phases 2-5 have received `complete` directives.
 
 ```
-Your task is to review code for: {FEATURE_NAME}
-
-Use the review-scoring skill.
+All WRFC chains complete. Finalize the feature.
 
 Steps:
-1. Identify all files changed in this feature:
-   Use git diff or precision_grep to find new/modified files
+1. Stage all new/modified files:
+   precision_exec:
+     commands:
+       - cmd: "git add {$CHANGED_FILES}"
+     verbosity: minimal
 
-2. Read all changed files using precision_read
+2. Create commit:
+   precision_exec:
+     commands:
+       - cmd: "git commit -m '{$COMMIT_MESSAGE}\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>'"
+         expect:
+           exit_code: 0
+     verbosity: minimal
 
-3. Score across all 10 dimensions:
-   - Correctness (20%)
-   - Completeness (15%)
-   - Security (15%)
-   - Performance (10%)
-   - Conventions (10%)
-   - Testability (10%)
-   - Readability (5%)
-   - Error Handling (5%)
-   - Type Safety (5%)
-   - Integration (5%)
+3. Update memory:
+   - Write new patterns to .goodvibes/memory/patterns.json
+   - Write new decisions to .goodvibes/memory/decisions.json
 
-4. Categorize issues as Critical/Major/Minor
+4. Log to tasks:
+   - Append entry to .goodvibes/logs/tasks.jsonl
+   - Include: feature name, files changed
 
-5. Provide specific FILE:LINE references
-
-6. Provide specific fix suggestions
-
-7. Calculate overall score and verdict:
-   - >= 9.5 => PASS
-   - 8.0-9.49 => CONDITIONAL PASS
-   - < 8.0 => FAIL
-
-Deliverables:
-- Structured review following review-scoring output format
-- Clear verdict
-- Actionable issues list
+5. Report to user:
+   - What was built
+   - Files created/modified
+   - Commit SHA
+   - Next steps (if any)
 ```
 
 ## Worked Examples
@@ -371,8 +385,7 @@ Implementation plan:
    - UI: Create LoginForm, SignupForm, dashboard layout
 3. Integration: Wrap app with SessionProvider, add middleware for protected routes
 4. Quality (parallel): Tests, security check (password hashing), a11y check (forms)
-5. Review: WRFC loop
-6. Commit: `feat: add user authentication with NextAuth`
+5. Commit when all `complete` directives received
 
 **Phase 2: Foundation**
 
@@ -383,6 +396,8 @@ Database agent output:
 - Types: `npx prisma generate` run
 
 Typecheck: PASS
+
+Runtime: WRFC chain started for database agent.
 
 **Phase 3: Core Implementation** (Parallel)
 
@@ -405,6 +420,8 @@ State agent output:
 
 Typecheck: PASS
 Lint: PASS
+
+Runtime: WRFC chains started for each agent.
 
 **Phase 4: Integration**
 
@@ -436,40 +453,36 @@ A11y agent output:
 - Verified focus indicators present
 - No critical issues
 
-**Phase 6: Review**
+**Phase 6: Review (Runtime-Driven)**
 
-Reviewer agent output:
-- Overall Score: 6.8/10
-- Verdict: FAIL
-- Issues:
-  - Critical: SignupForm doesn't validate password strength
-  - Major: No rate limiting on login endpoint
-  - Major: Error messages expose too much info ("User not found" vs "Invalid credentials")
-  
+Runtime issued directives for each Phase 5 agent chain.
 
-Fix agent output:
-- Added password strength validation (min 8 chars, 1 upper, 1 lower, 1 number)
-- Added `next-rate-limit` to login endpoint (max number attempts/pm)
-- Generalized error messages to "Invalid credentials"
+Example for security agent chain:
+- Runtime: `{"action":"spawn","type":"reviewer","task":"Review security checks..."}`
+- Orchestrator spawns reviewer immediately
+- Reviewer scores 6.8 (below threshold)
+- Runtime: `{"action":"spawn","type":"engineer","task":"Fix: SignupForm missing password strength validation..."}`
+- Orchestrator spawns fix engineer immediately
+- Fix engineer: added password validation, rate limiting, generalized error messages
+- Runtime: `{"action":"spawn","type":"reviewer","task":"Re-review..."}`
+- Re-reviewer scores 9.7 (meets threshold)
+- Runtime: `{"action":"complete"}`
 
-Re-reviewer agent output:
-- Overall Score: 9.6/10
-- Verdict: PASS
-- All previous issues resolved
+All chains received `complete` directives.
 
 **Phase 7: Commit + Log**
 
 - Git commit:
   ```
   feat: add user authentication with NextAuth
-  
+
   - Add email/password fields to User table
   - Implement NextAuth with Credentials provider
   - Add login/signup forms with accessibility
   - Add protected route middleware
   - Add rate limiting and password validation
   - Add comprehensive test suite (85% coverage)
-  
+
   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
   ```
 
@@ -494,8 +507,8 @@ Re-reviewer agent output:
    - UI: PricingPage, CheckoutButton
 3. Integration: Connect buttons to checkout API, test webhooks
 4. Quality (parallel): Test webhooks, security check (API key handling)
-5. Review: WRFC
-6. Commit: `feat: add Stripe payment integration`
+5. Runtime handles WRFC chains for each agent
+6. Commit when all `complete` directives received: `feat: add Stripe payment integration`
 
 ### Example 3: Analytics Dashboard
 
@@ -515,8 +528,8 @@ Re-reviewer agent output:
    - State: Zustand store for filters
 3. Integration: Wire filters to API, charts to data
 4. Quality (parallel): Tests for aggregation logic, a11y for charts
-5. Review: WRFC
-6. Commit: `feat: add analytics dashboard`
+5. Runtime handles WRFC chains for each agent
+6. Commit when all `complete` directives received: `feat: add analytics dashboard`
 
 ## Dependency Diagrams
 
@@ -552,13 +565,12 @@ Phase 5: Quality (PARALLEL)
     |-- Security agent
     +-- A11y agent
     v
-    | (Tests + checks passing)
+    | (Each agent -> runtime WRFC chain -> complete directive)
     v
-Phase 6: Review (SEQUENTIAL - WRFC loop)
-    | - Review
-    | - Fix
-    | - Check
-    v (loop until score >= 9.5)
+Phase 6: Review (RUNTIME-DRIVEN)
+    | Runtime issues directives per chain
+    | Orchestrator executes mechanically
+    v (all chains receive complete)
     v
 Phase 7: Commit + Log (SEQUENTIAL)
     | - Git commit
@@ -576,8 +588,8 @@ Phase 7: Commit + Log (SEQUENTIAL)
 | 2. Foundation | Phase 1 | 3 (core needs types) |
 | 3. Core Implementation | Phase 2 | 4 (integration needs API+UI) |
 | 4. Integration | Phase 3 | 5 (quality needs working feature) |
-| 5. Quality | Phase 4 | 6 (review needs tests) |
-| 6. Review | Phase 5 | 7 (commit needs PASS) |
+| 5. Quality | Phase 4 | 6 (runtime reviews completed work) |
+| 6. Review | Phase 5 | 7 (commit needs all complete directives) |
 | 7. Commit+Log | Phase 6 | None (final) |
 
 ## Common Pitfalls by Phase
@@ -613,11 +625,12 @@ Phase 7: Commit + Log (SEQUENTIAL)
 
 ### Phase 6: Review
 
-- **Accepting low scores**: Don't exit until >= 9.5
-- **Not fixing Critical issues**: All Critical and Major issues must be fixed
-- **Skipping re-review**: After fixes, always re-review
+- **Manually spawning reviewers**: Do not add reviewer tasks manually. The runtime issues these via directives.
+- **Deferring directives**: Execute directives immediately upon receipt, no exceptions
+- **Ignoring escalations**: If runtime issues `escalate`, surface to user immediately
 
 ### Phase 7: Commit+Log
 
+- **Committing before all complete directives**: Wait for all chains to receive `complete`
 - **Forgetting memory updates**: Always update decisions/patterns/logs
 - **Poor commit messages**: Follow project conventions, be clear and concise

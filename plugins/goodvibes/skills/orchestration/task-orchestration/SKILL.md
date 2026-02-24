@@ -1,8 +1,8 @@
 ---
 name: task-orchestration
-description: "Load PROACTIVELY when decomposing a user request into parallel agent work. Use when user says \"build this\", \"implement this feature\", or any request requiring multiple agents working concurrently. Guides task decomposition into parallelizable units, agent assignment with skill matching, dependency graph construction, WRFC loop coordination across up to 6 concurrent agent chains, and result aggregation."
+description: "Load PROACTIVELY when decomposing a user request into parallel agent work. Use when user says \"build this\", \"implement this feature\", or any request requiring multiple agents working concurrently. Guides task decomposition into parallelizable units, agent assignment with skill matching, dependency graph construction, and result aggregation. The runtime engine handles WRFC chain coordination automatically via <gv> directives."
 metadata:
-  version: 1.0.0
+  version: 2.0.0
   category: orchestration
   tags: [orchestration, decomposition, agents, parallel, wrfc, coordination]
 ---
@@ -17,7 +17,7 @@ references/
 
 # Task Orchestration Protocol
 
-The task orchestration protocol defines how the GoodVibes orchestrator decomposes feature requests into agent tasks, assigns agents and skills, manages parallel execution, and coordinates WRFC loops. This is the orchestrator's primary workflow for multi-agent feature delivery.
+The task orchestration protocol defines how the GoodVibes orchestrator decomposes feature requests into agent tasks, assigns agents and skills, manages parallel execution, and interacts with the runtime engine's WRFC chain system. This is the orchestrator's primary workflow for multi-agent feature delivery.
 
 ## When to Use This Skill
 
@@ -33,6 +33,44 @@ Do NOT use this skill for:
 - Simple single-file edits (handle directly)
 - Pure analysis tasks without code changes
 - Tasks already decomposed by the user
+
+## Runtime Engine and WRFC Chains
+
+The runtime engine manages Work-Review-Fix-Complete (WRFC) chains automatically. The orchestrator's role is:
+
+1. **Decompose** the task into work agents
+2. **Spawn** the initial work agents
+3. **Execute `<gv>` directives** issued by the runtime engine — mechanically, immediately, without judgment
+
+The runtime engine handles all review, fix, and completion decisions. The orchestrator does NOT manually spawn reviewers or fix agents. These come exclusively from runtime directives after each work agent completes.
+
+### Directive Types
+
+The runtime engine issues directives to the orchestrator via system messages containing `<gv>` tags:
+
+```json
+{"action":"spawn","wid":"wrfc_xxx","type":"reviewer","task":"Review the code..."}
+{"action":"spawn","wid":"wrfc_xxx","type":"engineer","task":"Fix the issues..."}
+{"action":"complete","wid":"wrfc_xxx"}
+{"action":"escalate","wid":"wrfc_xxx","reason":"Max fix attempts reached"}
+```
+
+### Directive Compliance Rules
+
+**These 4 rules are absolute and non-negotiable:**
+
+1. **Immediate**: Execute directives the moment they arrive. NEVER defer, queue, or delay.
+2. **First**: Execute directives BEFORE any other action. No intervening tool calls, no additional agent spawns, no user messages first.
+3. **Autonomy ends**: Once the first directive arrives for a WRFC chain, the orchestrator has no further judgment over that chain. Only directives drive it.
+4. **Runtime supersedes**: Runtime workflow logic ALWAYS supersedes orchestrator judgment. If a directive says review, review. If it says complete, complete.
+
+### Configurable Thresholds
+
+The runtime reads `goodvibes.json` for:
+- `min_review_score` (default: 9.5) — score threshold for PASS
+- `max_fix_attempts` (default: 3) — max fix cycles before escalation
+
+The orchestrator never hardcodes these values. The runtime engine enforces them.
 
 ## Decomposition Process
 
@@ -136,7 +174,7 @@ For each task, assign the appropriate agent type and skills using this decision 
 **Agent Type Selection:**
 
 | Work Type | Agent Type | Rationale |
-|-----------|------------|------------|
+|-----------|------------|-----------|
 | Implement API, components, features | engineer | Code creation and implementation |
 | Review code quality, standards | reviewer | Code quality and standards enforcement |
 | Write tests, test coverage | tester | Testing and validation |
@@ -201,40 +239,15 @@ When spawning agents, ALWAYS include these elements in the agent prompt:
 ## Blocking/Blocked By
 **This task blocks:** [list of downstream tasks waiting for this]
 **This task is blocked by:** [list of upstream tasks this waits for]
-
-## WRFC Participation
-You are participating in a WRFC loop coordinated by the orchestrator:
-- WRITE: Complete your assigned task
-- REPORT: Use the structured output format below
-- The orchestrator will handle FIX and CONTINUE based on your report
-
-## Output Format
-Use this format when reporting completion:
-
-### Summary
-[1-2 sentences on what was accomplished]
-
-### Changes Made
-- path/to/file.ts - [what was done]
-
-### Decisions Made
-- Chose X over Y: [rationale]
-
-### Issues Encountered
-- [Issue] -> [resolution or "unresolved"]
-
-### Uncertainties
-- [Items for orchestrator to verify with user]
-
-### Next Steps
-- [Recommended follow-up actions]
 ```
 
 **Critical elements:**
 1. Scope is explicit (file paths, not vague descriptions)
 2. Skills are listed with usage guidance
-3. WRFC role is clear (agent does WRITE+REPORT, orchestrator does FIX+CONTINUE)
-4. Output format is structured for orchestrator consumption
+3. Expected outcome is concrete and verifiable
+4. Output format includes the `<gv>` tag (emitted automatically by the runtime hook; the orchestrator does not need to instruct agents about this)
+
+**Note:** Do NOT add WRFC participation instructions to agent prompts. Agents only need to complete their work and emit a `<gv>` tag. The runtime engine handles the WRFC chain automatically.
 
 ## Monitoring and Coordination
 
@@ -259,12 +272,14 @@ active_tasks:
 
 ### Agent Concurrency Limits
 
-**Hard limit: 6 concurrent agent chains**
+**Hard limit: 6 concurrent agent chains (from `max_parallel_agent_chains` in output style config)**
+
+A "chain" includes the work agent plus its entire WRFC chain (review, fix, re-review). Each initial work agent spawn creates one chain. Count chains, not individual agents.
 
 When you have more than 6 tasks:
 1. Prioritize by dependency order (unblock downstream tasks first)
 2. Queue remaining tasks
-3. Spawn new agents as slots free up
+3. Spawn new agents as chains complete (when runtime issues `complete` directive)
 
 **Task priority formula:**
 ```
@@ -273,38 +288,27 @@ priority = (number of tasks it blocks) - (number of tasks blocking it)
 
 Higher priority = spawn first
 
-### WRFC Loop Coordination
+### Executing `<gv>` Directives
 
-The WRFC loop is the orchestrator's pattern:
+When the runtime engine issues a directive:
 
-**WRITE Phase:**
-- Orchestrator spawns agents with task prompts
-- Each agent executes their task (discover, plan, batch)
-- Agents run in parallel (up to 6 concurrent)
+1. **Stop everything** — do not complete any in-progress reasoning about other tasks
+2. **Read the directive** — identify the `action`, `wid`, `type`, and `task` fields
+3. **Execute immediately**:
+   - `spawn`: Spawn the specified agent type with the provided task prompt
+   - `complete`: Mark the WRFC chain as done, unblock any dependent tasks, spawn next queued task if slot available
+   - `escalate`: Report to user with the escalation reason, do not spawn further agents for this chain
+4. **Then resume** other orchestration work
 
-**REPORT Phase:**
-- Agents return structured results
-- Orchestrator collects all agent reports
-- Orchestrator aggregates changes, decisions, issues
+**No exceptions.** A directive is never skipped, reordered, or conditioned on another event.
 
-**FIX Phase:**
-- Orchestrator analyzes reports for issues
-- If issues found: spawn fix tasks or escalate to user
-- If uncertainties exist: query user for clarification
-- If all clear: proceed to CONTINUE
+### WRFC Spawn Rules
 
-**CONTINUE Phase:**
-- Orchestrator spawns next wave of tasks (unblocked by completed tasks)
-- Loop back to WRITE
-- Exit when all tasks complete successfully
-
-**WRFC Spawn Rules:**
-
-1. Spawn parallel tasks together in WRITE phase
-2. Wait for all in-flight tasks to REPORT before FIX
-3. Do NOT spawn dependent tasks until blockers complete
-4. Do NOT spawn more than 6 concurrent agent chains
-5. If agent fails 3 times, escalate to user (don't loop indefinitely)
+1. **Initial spawns only**: Orchestrator spawns ONLY the initial work agents from task decomposition. All reviewer and fix agent spawns come from runtime directives.
+2. **Parallel when possible**: Spawn all tasks in the same dependency wave together
+3. **Wait for blockers**: Do NOT spawn dependent tasks until blocking tasks have received `complete` directives
+4. **Respect the limit**: Do NOT exceed 6 concurrent chains
+5. **Escalation handling**: If runtime issues `escalate`, report to user — do not attempt to fix the chain yourself
 
 ### Agent Communication
 
@@ -313,7 +317,7 @@ Agents do NOT communicate directly. All coordination flows through the orchestra
 **Inter-agent dependencies:**
 - Task A produces types.ts
 - Task B needs types.ts
-- Orchestrator: waits for A to complete, then spawns B with reference to types.ts location
+- Orchestrator: waits for A to receive `complete` directive, then spawns B with reference to types.ts location
 
 **Shared state:**
 - All agents read/write .goodvibes/memory/
@@ -324,41 +328,31 @@ Agents do NOT communicate directly. All coordination flows through the orchestra
 
 ### Vibecoding Mode (Default)
 
-In vibecoding mode, the orchestrator has more autonomy:
+**Confirm before initial decomposition:**
+- Show task breakdown to user before spawning any agents
+- Allow user to modify the decomposition
+- Only the initial decomposition requires user confirmation; once agents are running, the runtime drives the process
 
 **Auto-spawn on ambiguity:**
 - If task decomposition has multiple valid approaches, pick the most common pattern from memory
 - If no pattern exists, make a decision and log it to decisions.json
 - Only escalate to user for architectural decisions (auth provider, database choice, etc.)
 
-**Checkpointing:**
-- No automatic checkpoints
-- Let agents run to completion
-- Only checkpoint on user request or before risky operations
-
 **Error handling:**
-- Agents retry up to 3 times with error-recovery protocol
-- If agent fails 3 times, orchestrator tries alternate approach
-- Only escalate after 2 alternate approaches fail
+- Agent retries are managed by the runtime engine (up to `max_fix_attempts`)
+- Runtime will issue `escalate` directive if max attempts are reached
+- On `escalate`, present to user with context from the directive's `reason` field
 
 ### Justvibes Mode (Strict)
 
-In justvibes mode, the orchestrator asks before acting:
-
-**Confirm before spawn:**
-- Show task decomposition plan to user
-- Wait for approval before spawning agents
-- Allow user to modify task breakdown
-
-**Checkpointing:**
-- Checkpoint after each WRFC cycle
-- Allow user to review changes before continuing
-- Offer rollback if user rejects changes
+**Auto-proceed:**
+- Skip the pre-decomposition confirmation
+- Spawn agents immediately after decomposition is complete
+- Runtime engine handles all WRFC cycles automatically
 
 **Error handling:**
-- Escalate to user immediately on first error
-- Do not retry without user approval
-- Show full error context and proposed fix
+- Same as vibecoding — runtime manages fix attempts and issues `escalate` when exhausted
+- Present escalation to user when received
 
 ## Decomposition Examples
 
@@ -396,17 +390,8 @@ tasks:
     description: Build profile page with edit form
     scope:
       files: [src/app/profile/page.tsx, src/components/ProfileForm.tsx]
-    blocking: [review-profile-implementation]
+    blocking: []
     blocked_by: [create-profile-types]
-    
-  - task_id: review-profile-implementation
-    agent: reviewer
-    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, review-scoring, type-safety, error-handling]
-    description: Review all profile implementation for code quality
-    scope:
-      files: [src/types/profile.ts, src/server/routers/profile.ts, src/app/profile/page.tsx, src/components/ProfileForm.tsx]
-    blocking: [test-profile-feature]
-    blocked_by: [create-profile-api, create-profile-ui]
     
   - task_id: test-profile-feature
     agent: tester
@@ -415,21 +400,21 @@ tasks:
     scope:
       files: [src/server/routers/profile.test.ts, src/components/ProfileForm.test.tsx]
     blocking: []
-    blocked_by: [review-profile-implementation]
+    blocked_by: [create-profile-api, create-profile-ui]
 ```
 
 **Execution plan:**
 1. Spawn create-profile-types (no blockers)
-2. Wait for types to complete
+2. Wait for `complete` directive for create-profile-types
 3. Spawn create-profile-api and create-profile-ui in parallel (both unblocked)
-4. Wait for both to complete
-5. Spawn review-profile-implementation (blocked by API + UI)
-6. Wait for review to complete
-7. Spawn test-profile-feature (blocked by review)
-8. Wait for tests to complete
-9. Aggregate results and return to user
+4. Wait for `complete` directives for both
+5. Spawn test-profile-feature (blocked by API + UI)
+6. Wait for `complete` directive for test-profile-feature
+7. Aggregate results and return to user
 
-**Parallelism:** 4 waves (types solo -> API + UI parallel -> review solo -> tests solo)
+**Note:** Review and fix cycles for each agent are handled automatically by the runtime engine via directives. The orchestrator does not schedule them.
+
+**Parallelism:** 3 waves (types solo -> API + UI parallel -> tests solo)
 
 ### Example 2: Bug Fix
 
@@ -456,29 +441,18 @@ tasks:
     description: Apply fix based on diagnosis
     scope:
       files: [determined by diagnosis]
-    blocking: [verify-fix]
-    blocked_by: [diagnose-redirect-loop]
-    
-  - task_id: verify-fix
-    agent: reviewer
-    skills: [gather-plan-apply, precision-mastery, error-recovery, goodvibes-memory, review-scoring, async-patterns, error-handling]
-    description: Verify the fix resolves the redirect loop and doesn't introduce regressions
-    scope:
-      files: [determined by fix task]
     blocking: []
-    blocked_by: [fix-redirect-loop]
+    blocked_by: [diagnose-redirect-loop]
 ```
 
 **Execution plan:**
 1. Spawn diagnose-redirect-loop
-2. Wait for diagnosis with root cause analysis
+2. Wait for `complete` directive for diagnosis
 3. Spawn fix-redirect-loop with diagnosis context
-4. Wait for fix to complete
-5. Spawn verify-fix (blocked by fix)
-6. Wait for verification to complete
-7. Return to user
+4. Wait for `complete` directive for fix
+5. Return to user
 
-**Parallelism:** None (fully sequential: diagnose -> fix -> verify)
+**Parallelism:** None (fully sequential: diagnose -> fix)
 
 ### Example 3: Refactoring
 
@@ -538,13 +512,13 @@ tasks:
 
 **Execution plan:**
 1. Spawn plan-refactoring-approach (architect)
-2. Wait for planning to complete
-3. Spawn analyze-auth-patterns (blocked by planning)
-4. Wait for pattern analysis
-5. Spawn create-auth-hooks (blocked by analysis)
-6. Wait for hooks to complete
+2. Wait for `complete` directive for planning
+3. Spawn analyze-auth-patterns
+4. Wait for `complete` directive for analysis
+5. Spawn create-auth-hooks
+6. Wait for `complete` directive for hooks
 7. Spawn refactor-components-1 and refactor-components-2 in parallel
-8. Wait for both to complete
+8. Wait for `complete` directives for both
 9. Return to user
 
 **Parallelism:** 4 waves (planning -> analysis -> hooks -> 2 refactors parallel)
@@ -565,9 +539,9 @@ Escalate to user immediately when:
    - Example: "Adding profile page requires new database schema and migration"
    - Escalation: Show expanded scope, request approval
 
-4. **Agent failure after alternates** - Agent failed 3 times, alternate approach also failed
-   - Example: "Cannot fix type error after trying 2 different approaches"
-   - Escalation: Show attempts, request guidance or manual intervention
+4. **Runtime escalation** - Runtime engine issues `escalate` directive
+   - Example: Max fix attempts reached on a work agent
+   - Escalation: Present the `reason` from the directive, request guidance or manual intervention
 
 5. **Conflicting requirements** - Discovered constraints contradict each other
    - Example: "User wants Prisma but codebase uses Drizzle"
@@ -580,14 +554,15 @@ Escalate to user immediately when:
 2. Identify parallel opportunities (domains, files, research)
 3. Define agent tasks (task structure with blocking/blocked_by)
 4. Assign agents and skills (use decision table)
-5. Spawn agents with structured prompts (include WRFC guidance)
-6. Monitor active agents (up to 6 concurrent)
-7. Coordinate WRFC loops (WRITE -> REPORT -> FIX -> CONTINUE)
-8. Aggregate results and return to user
+5. Spawn initial work agents with structured prompts
+6. Monitor active chains (up to 6 concurrent)
+7. Execute `<gv>` directives from runtime immediately and mechanically
+8. Aggregate results when all chains receive `complete` directives
 
 **Key principles:**
 - Explicit > implicit (file paths, not vague descriptions)
 - Parallel when possible, sequential when necessary
-- WRFC loop is orchestrator's pattern, agents participate in one step
-- Escalate on ambiguity in justvibes, decide in vibecoding
+- Orchestrator handles initial decomposition; runtime engine handles all WRFC cycles
+- Execute directives before any other action — no exceptions
+- Escalate on ambiguity in vibecoding, auto-proceed in justvibes
 - Use memory to inform decisions and avoid repeating failures

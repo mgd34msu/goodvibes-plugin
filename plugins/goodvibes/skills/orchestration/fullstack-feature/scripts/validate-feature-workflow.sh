@@ -86,24 +86,33 @@ else
   fi
 fi
 
-# Check Phase 6: Review (WRFC loop)
-if ! grep -qi -- 'phase 6\|review\|WRFC\|work-review-fix-check\|review.*score\|verdict' "$TRANSCRIPT"; then
-  printf '[FAIL] Phase 6 (Review/WRFC) not found in transcript\n' >&2
+# Check Phase 6: Review (runtime-driven via <gv> directives)
+if ! grep -qi -- 'phase 6\|review\|directive\|<gv>\|complete.*directive\|runtime' "$TRANSCRIPT"; then
+  printf '[FAIL] Phase 6 (Review) not found in transcript\n' >&2
   FAILURES=$((FAILURES + 1))
 else
-  printf '[PASS] Phase 6 (Review/WRFC) found\n'
+  printf '[PASS] Phase 6 (Review) found\n'
   
-  # Check score mentioned
-  if ! grep -qi -- 'score.*9\.5\|verdict.*PASS\|overall score' "$TRANSCRIPT"; then
-    printf '[FAIL] Phase 6 (Review) must include scoring and verdict\n' >&2
+  # Check for <gv> tags (agents emitting structured output for runtime)
+  GV_COUNT=$(grep -c -F '<gv>' "$TRANSCRIPT" 2>/dev/null || printf '0')
+  if [ "$GV_COUNT" -eq 0 ]; then
+    printf '[FAIL] Phase 6 (Review) requires <gv> tags from agents for runtime WRFC chains\n' >&2
     FAILURES=$((FAILURES + 1))
   else
-    printf '[PASS] Phase 6 (Review) includes scoring\n'
+    printf '[PASS] Phase 6 (Review) <gv> tags present (%d found)\n' "$GV_COUNT"
+  fi
+  
+  # Check that orchestrator did NOT manually schedule reviewer tasks in decomposition
+  if grep -qiE -- '(spawn.*reviewer|schedule.*reviewer|type.*reviewer.*task|reviewer.*agent.*spawn)' "$TRANSCRIPT"; then
+    printf '[FAIL] Phase 6 (Review) reviewers must be spawned via runtime directives, not manual scheduling\n' >&2
+    FAILURES=$((FAILURES + 1))
+  else
+    printf '[PASS] Phase 6 (Review) no manual reviewer scheduling found\n'
   fi
 fi
 
-# Check Phase 7: Commit + Log
-if ! grep -qi -- 'phase 7\|commit.*log\|git commit\|update.*memory' "$TRANSCRIPT"; then
+# Check Phase 7: Commit + Log (triggered by complete directives)
+if ! grep -qi -- 'phase 7\|commit.*log\|git commit\|update.*memory\|complete.*directive' "$TRANSCRIPT"; then
   printf '[FAIL] Phase 7 (Commit + Log) not found in transcript\n' >&2
   FAILURES=$((FAILURES + 1))
 else
