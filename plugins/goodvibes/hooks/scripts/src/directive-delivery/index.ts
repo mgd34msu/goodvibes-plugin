@@ -12,20 +12,27 @@
 
 import {
   respond,
-  readHookInput,
   allowTool,
-  logError,
   isTestEnvironment,
 } from '../shared/index.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
+import { stdin } from 'node:process';
+
+/**
+ * Drain stdin without validation — this hook doesn't use the input
+ * but must consume it to avoid broken pipe errors.
+ */
+async function drainStdin(): Promise<void> {
+  for await (const _chunk of stdin) { /* discard */ }
+}
 
 /**
  * Main entry point for the directive-delivery hook.
  */
 export async function runDirectiveDeliveryHook(): Promise<void> {
   try {
-    // Read hook input (required even if unused — drains stdin)
-    await readHookInput();
+    // Drain stdin (required to avoid broken pipe, but we don't need the data)
+    await drainStdin();
 
     const runtimeClient = new RuntimeClient();
 
@@ -51,17 +58,15 @@ export async function runDirectiveDeliveryHook(): Promise<void> {
 
     // No directives pending — allow the tool call
     respond(allowTool('PreToolUse'));
-  } catch (error: unknown) {
-    logError('DirectiveDelivery main', error);
-    // Never block the tool call due to a directive delivery error
+  } catch {
+    // Silently allow — never block a tool call or write to stderr
     respond(allowTool('PreToolUse'));
   }
 }
 
 // Only run when not in a test environment
 if (!isTestEnvironment()) {
-  runDirectiveDeliveryHook().catch((error: unknown) => {
-    logError('DirectiveDelivery uncaught', error);
+  runDirectiveDeliveryHook().catch(() => {
     respond(allowTool('PreToolUse'));
   });
 }
