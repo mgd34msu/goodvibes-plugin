@@ -165,20 +165,25 @@ try {
 
   // Fast path: runtime not available
   if (!socketPath || !existsSync(socketPath)) {
+    console.error('[PostToolUse] EXIT 1: no socket found');
     respond(allowResponse());
   } else {
+    console.error(`[PostToolUse] Socket found: ${socketPath}`);
     // Query runtime for pending directives
     const result = await queryDirectives(socketPath);
+    console.error(`[PostToolUse] queryDirectives result: ${JSON.stringify(result)}`);
 
     if (result && result.kind === 'system_message' && result.message) {
       const additionalContext = buildGvDirectiveTag(result.message);
-      respond(allowResponse(additionalContext));
+      const resp = allowResponse(additionalContext);
+      console.error(`[PostToolUse] EXIT 2 (with directive): ${JSON.stringify(resp)}`);
+      respond(resp);
     } else {
-      // No directives pending
+      console.error('[PostToolUse] EXIT 3: socket found, no pending directives');
       respond(allowResponse());
     }
   }
-} catch {
-  // Never block — silently allow
+} catch (err) {
+  console.error(`[PostToolUse] EXIT 4 (error): ${err}`);
   respond(allowResponse());
 }
