@@ -113,14 +113,14 @@ export function blockTool(hookEventName: string, reason: string): HookResponse {
 /**
  * Formats a hook response as JSON string.
  */
-export function formatResponse(response: HookResponse | ExtendedHookResponse): string {
+export function formatResponse(response: HookResponse): string {
   return JSON.stringify(response);
 }
 
 /**
  * Outputs the hook response as JSON to stdout and exits.
  */
-export function respond(response: ExtendedHookResponse, _block: boolean = false): never {
+export function respond(response: HookResponse, _block: boolean = false): never {
   console.log(formatResponse(response));
   process.exit(0);
 }

@@ -14,7 +14,6 @@ import {
   respond,
   allowTool,
   isTestEnvironment,
-  buildGvDirectiveTag,
 } from '../shared/index.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
 import { stdin } from 'node:process';
@@ -40,7 +39,11 @@ export async function runDirectiveDeliveryHook(): Promise<void> {
 
     if (result?.kind === 'system_message' && result.message) {
       // Wrap the pre-formatted directive message in a <gv> tag and inject via additionalContext
-      const additionalContext = buildGvDirectiveTag(result.message);
+      const gvPayload = JSON.stringify({
+        action: 'directive',
+        message: result.message,
+      });
+      const additionalContext = `<gv>${gvPayload}</gv>`;
       respond(allowTool('PreToolUse', additionalContext));
       return;
     }

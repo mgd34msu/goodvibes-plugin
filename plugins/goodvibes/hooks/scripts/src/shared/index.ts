@@ -135,11 +135,6 @@ export type { HookHandler, RunHookOptions } from './hook-runner.js';
 export { runHook, runHookSync, isMainModule } from './hook-runner.js';
 
 // =============================================================================
-// Directive Utilities
-// =============================================================================
-export { buildGvDirectiveTag } from './directive-utils.js';
-
-// =============================================================================
 // Runtime Client (Phase 6 — Hook Slimming)
 // =============================================================================
 /** Runtime engine IPC client for Phase 6 hook integration */

@@ -36,7 +36,7 @@ import { buildSubagentContext } from './context-injection.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
 import { extractWorkflowId, normalizeAgentFields, mergeSystemMessages } from './wrfc-utils.js';
 
-import type { HookResponse, ExtendedHookResponse } from '../shared/index.js';
+import type { HookResponse } from '../shared/index.js';
 import type { TelemetryTracking } from '../types/telemetry.js';
 
 /**
@@ -62,7 +62,10 @@ interface SubagentStartInput {
  * Response structure for the SubagentStart hook.
  * Extends HookResponse with optional additional context for injection.
  */
-interface SubagentStartResponse extends ExtendedHookResponse {}
+interface SubagentStartResponse extends HookResponse {
+  /** Additional context to inject into the subagent session */
+  additionalContext?: string;
+}
 
 /**
  * Creates a hook response with optional system message and additional context.
