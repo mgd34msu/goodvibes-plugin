@@ -31,13 +31,9 @@ const QUERY_TIMEOUT_MS = 500;
 function allowResponse(additionalContext) {
   const response = {
     continue: true,
-    hookSpecificOutput: {
-      hookEventName: 'PostToolUse',
-      permissionDecision: 'allow',
-    },
   };
   if (additionalContext) {
-    response.hookSpecificOutput.additionalContext = additionalContext;
+    response.additionalContext = additionalContext;
   }
   return response;
 }

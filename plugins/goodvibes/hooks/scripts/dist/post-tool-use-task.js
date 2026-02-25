@@ -15,23 +15,24 @@ var init_gitignore = __esm({
 function isTestEnvironment() {
   return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
 }
-function allowTool(hookEventName, additionalContext, updatedInput) {
-  return {
-    continue: true,
-    hookSpecificOutput: {
-      hookEventName,
-      permissionDecision: "allow",
-      additionalContext,
-      updatedInput
-    }
-  };
-}
 function formatResponse(response) {
   return JSON.stringify(response);
 }
 function respond(response, _block = false) {
   console.log(formatResponse(response));
   process.exit(0);
+}
+function createResponse(options = {}) {
+  const response = {
+    continue: true
+  };
+  if (options.systemMessage !== void 0) {
+    response.systemMessage = options.systemMessage;
+  }
+  if (options.additionalContext !== void 0) {
+    response.additionalContext = options.additionalContext;
+  }
+  return response;
 }
 
 // src/shared/file-utils.ts
@@ -533,23 +534,23 @@ async function runPostToolUseTaskHook() {
     stdin.resume();
     const runtimeClient = new RuntimeClient();
     if (!runtimeClient.isAvailable()) {
-      respond(allowTool("PostToolUse"));
+      respond(createResponse());
       return;
     }
     const result = await runtimeClient.query({ kind: "get_directives" });
     if (result?.kind === "system_message" && result.message) {
       const additionalContext = buildGvDirectiveTag(result.message);
-      respond(allowTool("PostToolUse", additionalContext));
+      respond(createResponse({ additionalContext }));
       return;
     }
-    respond(allowTool("PostToolUse"));
+    respond(createResponse());
   } catch {
-    respond(allowTool("PostToolUse"));
+    respond(createResponse());
   }
 }
 if (!isTestEnvironment()) {
   runPostToolUseTaskHook().catch(() => {
-    respond(allowTool("PostToolUse"));
+    respond(createResponse());
   });
 }
 export {

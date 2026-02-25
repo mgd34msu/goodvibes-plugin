@@ -16,7 +16,7 @@
 
 import {
   respond,
-  allowTool,
+  createResponse,
   isTestEnvironment,
   buildGvDirectiveTag,
 } from './shared/index.js';
@@ -32,7 +32,7 @@ export async function runPostToolUseTaskHook(): Promise<void> {
 
     // Fast path: runtime not available — no IPC overhead
     if (!runtimeClient.isAvailable()) {
-      respond(allowTool('PostToolUse'));
+      respond(createResponse());
       return;
     }
 
@@ -41,22 +41,22 @@ export async function runPostToolUseTaskHook(): Promise<void> {
 
     if (result?.kind === 'system_message' && result.message) {
       const additionalContext = buildGvDirectiveTag(result.message);
-      respond(allowTool('PostToolUse', additionalContext));
+      respond(createResponse({ additionalContext }));
       return;
     }
 
     // No directives pending
-    respond(allowTool('PostToolUse'));
+    respond(createResponse());
   } catch {
     // Never block — silently allow
-    respond(allowTool('PostToolUse'));
+    respond(createResponse());
   }
 }
 
 /* v8 ignore start - test environment guard */
 if (!isTestEnvironment()) {
   runPostToolUseTaskHook().catch(() => {
-    respond(allowTool('PostToolUse'));
+    respond(createResponse());
   });
 }
 /* v8 ignore stop */
