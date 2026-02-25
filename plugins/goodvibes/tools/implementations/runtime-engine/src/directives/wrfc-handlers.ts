@@ -60,11 +60,12 @@ const DEFAULT_MAX_FIX_ATTEMPTS = 3;
  * Non-work agent types (Explore, Plan, Bash, general-purpose) produce no
  * reviewable output and auto-complete trivially.
  *
- * Reviewer agent types are also listed here because their own work does not
- * need to be reviewed — their role is to evaluate others' work. When a
- * reviewer is spawned as part of a WRFC chain it binds to the PARENT workflow
- * and drives the REVIEWING branch there. Only the reviewer's OWN workflow
- * auto-completes; the parent workflow it is reviewing continues normally.
+ * Reviewer agent types are derived from REVIEWER_AGENT_TYPES to stay in sync.
+ * Their own WRFC auto-completes because their role is to evaluate others' work,
+ * not produce reviewable output themselves. When a reviewer is spawned as part
+ * of a WRFC chain it binds to the PARENT workflow and drives the REVIEWING
+ * branch there. Only the reviewer's OWN workflow auto-completes; the parent
+ * workflow it is reviewing continues normally.
  *
  * When in doubt, err toward review (false negatives are harmless;
  * false positives — skipping review on real work — are dangerous).
@@ -75,10 +76,10 @@ export const AUTO_COMPLETE_AGENT_TYPES = new Set([
   'Plan',
   'Bash',
   'general-purpose',
-  // Review agents — their own WRFC auto-completes, but they still
-  // drive score evaluation on the PARENT workflow via the REVIEWING branch
-  'reviewer',
-  'goodvibes:reviewer',
+  // Review agents — derived from REVIEWER_AGENT_TYPES to stay in sync.
+  // Their own WRFC auto-completes, but they still drive score evaluation
+  // on the PARENT workflow via the REVIEWING branch.
+  ...REVIEWER_AGENT_TYPES,
 ]);
 
 

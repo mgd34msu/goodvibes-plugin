@@ -1352,8 +1352,9 @@ describe('registerWRFCHandlers', () => {
       expect(directive!.content).not.toContain('"action":"complete"');
     });
 
-    it('spawns a reviewer (does NOT auto-complete) for goodvibes:reviewer', async () => {
-      // A reviewer completing in WRITING state is unusual but should not auto-complete
+    it('auto-completes for goodvibes:reviewer (reviewer types skip WRFC review)', async () => {
+      // goodvibes:reviewer is in AUTO_COMPLETE_AGENT_TYPES — their own workflow
+      // auto-completes; they drive score evaluation on the PARENT workflow.
       const workflow = createWorkflow('WRITING', {});
       const engine = createMockWorkflowEngine([workflow]);
       registerWRFCHandlers(registry as never, directiveQueue, engine as never, null);
@@ -1364,8 +1365,7 @@ describe('registerWRFCHandlers', () => {
       } as HandlerArgs);
 
       const [directive] = directiveQueue.drain('subagent_stop');
-      expect(directive!.content).toContain('reviewer');
-      expect(directive!.content).not.toContain('"action":"complete"');
+      expect(directive!.content).toContain('"action":"complete"');
     });
 
     it('unbinds the agent_id from the map on auto-complete', async () => {
@@ -1405,9 +1405,11 @@ describe('registerWRFCHandlers', () => {
       expect(AUTO_COMPLETE_AGENT_TYPES.has('Plan')).toBe(true);
       expect(AUTO_COMPLETE_AGENT_TYPES.has('Bash')).toBe(true);
       expect(AUTO_COMPLETE_AGENT_TYPES.has('general-purpose')).toBe(true);
-      // Goodvibes agents must NOT be in the whitelist
+      // Reviewer types ARE in the whitelist (auto-complete their own WRFC)
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('reviewer')).toBe(true);
+      expect(AUTO_COMPLETE_AGENT_TYPES.has('goodvibes:reviewer')).toBe(true);
+      // Engineer types must NOT be in the whitelist (engineers get reviewed)
       expect(AUTO_COMPLETE_AGENT_TYPES.has('goodvibes:engineer')).toBe(false);
-      expect(AUTO_COMPLETE_AGENT_TYPES.has('goodvibes:reviewer')).toBe(false);
     });
   });
 });
