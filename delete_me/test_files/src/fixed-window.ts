@@ -1,12 +1,7 @@
-/**
- * Fixed Window Counter rate limiter implementation.
- */
+import { RateLimiterError } from './errors.js';
+import type { RateLimitResult, RateLimiter } from './types.js';
 
-import { RateLimiter, RateLimitResult, RateLimiterError } from './types.js';
-
-/**
- * Configuration options for {@link FixedWindowCounter}.
- */
+/** Configuration options for {@link FixedWindowLimiter}. */
 export interface FixedWindowOptions {
   /** Window duration in milliseconds. Must be a positive finite number. */
   windowMs: number;
@@ -14,111 +9,130 @@ export interface FixedWindowOptions {
   maxRequests: number;
 }
 
-/** Internal state stored per key per window. */
-interface WindowEntry {
-  /** The window start timestamp (aligned to clock boundary). */
+/** Internal per-key window state. */
+interface WindowState {
+  /** The start timestamp of the current window (clock-aligned). */
   windowStart: number;
   /** Number of requests made in the current window. */
   count: number;
 }
 
 /**
- * Fixed Window Counter rate limiter.
+ * Fixed window counter rate limiter.
  *
- * Each key is tracked within a fixed-duration window that aligns to clock
- * boundaries. When the window expires, the counter resets.
+ * Divides time into fixed, clock-aligned windows of `windowMs` duration.
+ * Each key gets `maxRequests` allowance per window. When the current window
+ * expires a new one starts automatically.
  *
  * @example
  * ```ts
- * const limiter = new FixedWindowCounter({ windowMs: 60_000, maxRequests: 100 });
- * const result = limiter.check(req.ip);
- * if (!result.allowed) {
- *   console.log(`Window resets at ${new Date(result.resetAt!).toISOString()}`);
- * }
+ * const limiter = new FixedWindowLimiter({ windowMs: 60_000, maxRequests: 100 });
+ * const result = limiter.check('user-123'); // { allowed: true, remaining: 99, resetAt: ... }
  * ```
  */
-export class FixedWindowCounter implements RateLimiter {
+export class FixedWindowLimiter implements RateLimiter {
   private readonly windowMs: number;
   private readonly maxRequests: number;
-  /** Map from key to the current window entry. */
-  private readonly counters: Map<string, WindowEntry>;
+  /** Map from key to current window state */
+  private readonly windows: Map<string, WindowState> = new Map();
 
-  /**
-   * @param options - Counter configuration.
-   * @throws {@link RateLimiterError} if any option is invalid.
-   */
   constructor(options: FixedWindowOptions) {
-    validatePositiveFinite(options.windowMs, 'windowMs');
-    validatePositiveFinite(options.maxRequests, 'maxRequests');
+    const { windowMs, maxRequests } = options;
+    FixedWindowLimiter.validatePositiveFinite(windowMs, 'windowMs');
+    FixedWindowLimiter.validatePositiveFinite(maxRequests, 'maxRequests');
+    this.windowMs = windowMs;
+    this.maxRequests = maxRequests;
+  }
 
-    this.windowMs = options.windowMs;
-    this.maxRequests = options.maxRequests;
-    this.counters = new Map();
+  private static validatePositiveFinite(value: unknown, name: string): void {
+    if (typeof value !== 'number') {
+      throw new RateLimiterError(
+        `${name} must be a number, got ${typeof value}`,
+        'INVALID_TYPE',
+      );
+    }
+    if (!isFinite(value)) {
+      throw new RateLimiterError(
+        `${name} must be a finite number, got ${value}`,
+        'NON_FINITE',
+      );
+    }
+    if (value <= 0) {
+      throw new RateLimiterError(
+        `${name} must be positive, got ${value}`,
+        'NON_POSITIVE',
+      );
+    }
+  }
+
+  /** Compute the start of the clock-aligned window containing `now`. */
+  private currentWindowStart(now: number): number {
+    return Math.floor(now / this.windowMs) * this.windowMs;
   }
 
   /**
-   * Check whether a request for the given key is allowed.
+   * Check whether a request for `key` is allowed in the current fixed window.
+   * Records the request if allowed. Expired windows are replaced automatically.
    *
-   * If the current window has expired, the counter is reset before checking.
-   *
-   * @param key - Per-user or per-IP identifier.
-   * @returns Result indicating whether the request was allowed.
+   * @param key - Identifier for the requester
    */
   check(key: string): RateLimitResult {
     const now = Date.now();
-    const windowStart = Math.floor(now / this.windowMs) * this.windowMs;
+    const windowStart = this.currentWindowStart(now);
     const resetAt = windowStart + this.windowMs;
 
-    let entry = this.counters.get(key);
+    let state = this.windows.get(key);
 
-    // Start fresh if no entry exists or the window has rolled over.
-    if (entry === undefined || entry.windowStart < windowStart) {
-      entry = { windowStart, count: 0 };
+    // If no state or window has expired, start a fresh window
+    if (state === undefined || state.windowStart !== windowStart) {
+      state = { windowStart, count: 0 };
     }
 
-    if (entry.count < this.maxRequests) {
-      entry.count += 1;
-      this.counters.set(key, entry);
+    if (state.count < this.maxRequests) {
+      state.count++;
+      this.windows.set(key, state);
       return {
         allowed: true,
-        remaining: this.maxRequests - entry.count,
+        remaining: this.maxRequests - state.count,
         resetAt,
       };
     }
 
-    // Denied: window has not rolled over yet.
+    // Denied: retry after current window resets
     const retryAfter = resetAt - now;
     return {
       allowed: false,
       remaining: 0,
-      retryAfter,
+      retryAfter: Math.max(1, retryAfter),
       resetAt,
     };
   }
 
   /**
-   * Reset counter state.
+   * Reset state for a specific key or all keys.
+   * Also prunes any expired windows (garbage collection).
    *
-   * @param key - If provided, clears only that key. Otherwise clears all keys.
+   * @param key - If provided, clears only that key; otherwise clears all keys
    */
   reset(key?: string): void {
     if (key !== undefined) {
-      this.counters.delete(key);
+      this.windows.delete(key);
     } else {
-      this.counters.clear();
+      this.windows.clear();
     }
   }
-}
 
-/** Validate that a value is a positive, finite number. */
-function validatePositiveFinite(value: unknown, name: string): void {
-  if (typeof value !== 'number') {
-    throw new RateLimiterError(`${name} must be a number, got ${typeof value}`);
-  }
-  if (!Number.isFinite(value)) {
-    throw new RateLimiterError(`${name} must be a finite number, got ${value}`);
-  }
-  if (value <= 0) {
-    throw new RateLimiterError(`${name} must be positive, got ${value}`);
+  /**
+   * Prune expired window entries to prevent memory leaks.
+   * Called automatically on `reset()` when clearing all keys.
+   */
+  prune(): void {
+    const now = Date.now();
+    const currentStart = this.currentWindowStart(now);
+    for (const [k, state] of this.windows) {
+      if (state.windowStart < currentStart) {
+        this.windows.delete(k);
+      }
+    }
   }
 }

@@ -1,64 +1,52 @@
-/**
- * Express-compatible middleware factory for rate limiting.
- */
-
-import { RateLimiter } from './types.js';
+import type { RateLimiter } from './types.js';
 
 /**
- * Minimal Express-style request shape the middleware operates on.
+ * Minimal Express-style request type accepted by the middleware.
  */
 export interface MiddlewareRequest {
-  /** Client IP address used as the default rate limit key. */
   ip: string;
-  /** Request headers map. */
   headers: Record<string, string>;
 }
 
 /**
- * Minimal Express-style response shape the middleware operates on.
+ * Minimal Express-style response type accepted by the middleware.
  */
 export interface MiddlewareResponse {
-  /** Set the HTTP status code. */
-  status: (code: number) => void;
-  /** Send a JSON body. */
-  json: (body: unknown) => void;
-  /** Optional response headers map for setting rate limit headers. */
+  status(code: number): void;
+  json(body: unknown): void;
+  /** Optional headers object. When present, rate-limit headers are written to it. */
   headers?: Record<string, string>;
 }
 
-/**
- * Express-style middleware function signature.
- */
+/** Express-style middleware function signature. */
 export type Middleware = (
   req: MiddlewareRequest,
   res: MiddlewareResponse,
   next: () => void,
 ) => void;
 
-/**
- * Options for {@link createRateLimitMiddleware}.
- */
-export interface MiddlewareOptions {
+/** Options for {@link createRateLimitMiddleware}. */
+export interface RateLimitMiddlewareOptions {
   /**
-   * Custom function to extract a rate limit key from the request.
-   * Defaults to using `req.ip`.
+   * Custom key extractor. Defaults to `(req) => req.ip`.
+   * @param req - The incoming request
    */
   keyExtractor?: (req: MiddlewareRequest) => string;
 }
 
 /**
- * Create an Express-style rate limiting middleware from any {@link RateLimiter}.
+ * Factory that wraps any {@link RateLimiter} into an Express-style middleware.
  *
- * When a request is allowed, the `next` callback is invoked and
- * `X-RateLimit-Remaining` / `X-RateLimit-Reset` headers are set on the
- * response (when `res.headers` is available).
+ * When a request is denied (429) the response body is:
+ * `{ error: 'Too Many Requests', retryAfter: <ms> }`
  *
- * When a request is denied, the middleware responds with HTTP 429 and a JSON
- * body containing `{ error: 'Too Many Requests', retryAfter }`.
+ * When allowed, the following headers are set on `res.headers` if it exists:
+ * - `X-RateLimit-Remaining`
+ * - `X-RateLimit-Reset`
  *
- * @param limiter - Any object implementing the {@link RateLimiter} interface.
- * @param options - Optional middleware configuration.
- * @returns An Express-compatible middleware function.
+ * @param limiter - Any object implementing the {@link RateLimiter} interface
+ * @param options - Optional configuration
+ * @returns Express-compatible middleware function
  *
  * @example
  * ```ts
@@ -68,29 +56,28 @@ export interface MiddlewareOptions {
  */
 export function createRateLimitMiddleware(
   limiter: RateLimiter,
-  options: MiddlewareOptions = {},
+  options: RateLimitMiddlewareOptions = {},
 ): Middleware {
-  const extractKey = options.keyExtractor ?? ((req: MiddlewareRequest) => req.ip);
+  const { keyExtractor = (req: MiddlewareRequest) => req.ip } = options;
 
   return (req: MiddlewareRequest, res: MiddlewareResponse, next: () => void): void => {
-    const key = extractKey(req);
+    const key = keyExtractor(req);
     const result = limiter.check(key);
 
-    if (result.allowed) {
-      // Attach rate limit headers when the response supports them.
-      if (res.headers !== undefined) {
-        res.headers['X-RateLimit-Remaining'] = String(result.remaining);
-        if (result.resetAt !== undefined) {
-          res.headers['X-RateLimit-Reset'] = String(result.resetAt);
-        }
-      }
-      next();
-    } else {
+    if (!result.allowed) {
       res.status(429);
-      res.json({
-        error: 'Too Many Requests',
-        retryAfter: result.retryAfter,
-      });
+      res.json({ error: 'Too Many Requests', retryAfter: result.retryAfter });
+      return;
     }
+
+    // Set informational headers when the response object supports them
+    if (res.headers !== undefined) {
+      res.headers['X-RateLimit-Remaining'] = String(result.remaining);
+      if (result.resetAt !== undefined) {
+        res.headers['X-RateLimit-Reset'] = String(result.resetAt);
+      }
+    }
+
+    next();
   };
 }
