@@ -206,7 +206,7 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    respond(continueResponse({ gv_directive: gvTag }));
+    respond(continueResponse(gvTag));
   } else {
     respond(continueResponse());
   }
