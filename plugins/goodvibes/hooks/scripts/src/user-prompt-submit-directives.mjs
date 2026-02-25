@@ -181,43 +181,51 @@ function readStdin() {
 try {
   const hookInput = await readStdin();
 
-  // Debug: dump stdin to stderr and temp file
-  const debugData = JSON.stringify(hookInput, null, 2);
-  console.error(`[UPS-Directives] stdin keys: ${hookInput ? Object.keys(hookInput).join(', ') : 'null'}`);
-  try { writeFileSync('/tmp/ups-directives-debug.json', debugData); } catch {}
+  // The prompt field contains the user message / task-notification content
+  const prompt = hookInput?.prompt || '';
 
   // Fast path: not a task-notification → exit immediately
-  const userMessage = hookInput?.user_message || hookInput?.content || hookInput?.prompt || '';
-  if (!userMessage.includes(TASK_NOTIFICATION_PATTERN)) {
+  if (!prompt.includes(TASK_NOTIFICATION_PATTERN)) {
     respond(continueResponse());
   }
 
   const projectDir = hookInput?.cwd || null;
   const sessionId = hookInput?.session_id || null;
 
-  console.error(`[UPS-Directives] task-notification detected, querying runtime (session: ${sessionId})`);
-
   const socketPath = discoverSocket(projectDir, sessionId);
 
+  // Debug: dump full trace to temp file
+  const debugTrace = {
+    timestamp: new Date().toISOString(),
+    prompt_preview: prompt.slice(0, 200),
+    projectDir,
+    sessionId,
+    socketPath,
+    socketExists: socketPath ? existsSync(socketPath) : false,
+  };
+
   if (!socketPath || !existsSync(socketPath)) {
-    console.error('[UPS-Directives] no socket found');
+    debugTrace.exit = 'no_socket';
+    try { writeFileSync('/tmp/ups-directives-trace.json', JSON.stringify(debugTrace, null, 2)); } catch {}
     respond(continueResponse());
   }
 
   const result = await queryDirectives(socketPath);
-  console.error(`[UPS-Directives] queryDirectives result: ${JSON.stringify(result)}`);
+  debugTrace.queryResult = result;
 
   if (result && result.directives && result.directives.length > 0) {
-    // Build additionalContext with directives
     const directivePayload = JSON.stringify({
       action: 'directives',
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    console.error(`[UPS-Directives] injecting ${result.directives.length} directive(s)`);
+    debugTrace.exit = 'injected';
+    debugTrace.directiveCount = result.directives.length;
+    try { writeFileSync('/tmp/ups-directives-trace.json', JSON.stringify(debugTrace, null, 2)); } catch {}
     respond(continueResponse({ gv_directive: gvTag }));
   } else {
-    console.error('[UPS-Directives] no pending directives');
+    debugTrace.exit = 'no_directives';
+    try { writeFileSync('/tmp/ups-directives-trace.json', JSON.stringify(debugTrace, null, 2)); } catch {}
     respond(continueResponse());
   }
 } catch (err) {
