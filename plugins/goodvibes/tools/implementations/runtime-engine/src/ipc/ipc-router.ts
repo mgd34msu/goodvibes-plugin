@@ -15,6 +15,8 @@ import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
 
 const logger = createLogger('ipc-router');
 
@@ -29,6 +31,10 @@ export interface IPCRouterDeps {
   workflowEngine: WorkflowEngine | null;
   agentCoordinator: AgentCoordinator | null;
   directiveQueue: DirectiveQueue | null;
+  /** Absolute path to the IPC socket file. Used to write session-keyed pointer files. */
+  socketPath: string | null;
+  /** Absolute path to the .goodvibes/state/ directory. */
+  stateDir: string | null;
 }
 
 /**
@@ -44,6 +50,11 @@ export class IPCRouter {
   private readonly workflowEngine: WorkflowEngine | null;
   private readonly agentCoordinator: AgentCoordinator | null;
   private readonly directiveQueue: DirectiveQueue | null;
+  private readonly socketPath: string | null;
+  private readonly stateDir: string | null;
+
+  /** Session IDs that have been registered via session:started events. */
+  private readonly registeredSessions: Set<string> = new Set();
 
   constructor(deps: IPCRouterDeps) {
     this.eventBus = deps.eventBus;
@@ -51,6 +62,31 @@ export class IPCRouter {
     this.workflowEngine = deps.workflowEngine;
     this.agentCoordinator = deps.agentCoordinator;
     this.directiveQueue = deps.directiveQueue;
+    this.socketPath = deps.socketPath;
+    this.stateDir = deps.stateDir;
+  }
+
+  /**
+   * Remove all session-keyed pointer files written by this router.
+   * Called during shutdown to prevent stale session pointers.
+   */
+  removeSessionPointers(): void {
+    if (!this.stateDir) return;
+    for (const sessionId of this.registeredSessions) {
+      const pointerFile = join(this.stateDir, `runtime-${sessionId}.socket`);
+      try {
+        unlinkSync(pointerFile);
+        logger.debug('Session pointer file removed', { sessionId });
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          logger.warn('Could not remove session pointer file', {
+            sessionId,
+            err: toErrorMessage(err),
+          });
+        }
+      }
+    }
+    this.registeredSessions.clear();
   }
 
   /**
@@ -104,6 +140,23 @@ export class IPCRouter {
           logger.warn('IPC hook_event: trigger evaluation error', {
             error: toErrorMessage(err),
           });
+        }
+      }
+      // Write session-keyed pointer file when session:started arrives
+      if (msg.hook_name === 'session:started' && this.socketPath && this.stateDir) {
+        const sessionId = (msg.hook_input as Record<string, unknown>)?.session_id;
+        if (typeof sessionId === 'string' && sessionId.length > 0) {
+          try {
+            const pointerFile = join(this.stateDir, `runtime-${sessionId}.socket`);
+            writeFileSync(pointerFile, this.socketPath, 'utf-8');
+            this.registeredSessions.add(sessionId);
+            logger.info('Session pointer file written', { sessionId, pointer: pointerFile });
+          } catch (err) {
+            logger.warn('Failed to write session pointer file', {
+              sessionId,
+              err: toErrorMessage(err),
+            });
+          }
         }
       }
       // Store WRFC config when config:loaded event arrives

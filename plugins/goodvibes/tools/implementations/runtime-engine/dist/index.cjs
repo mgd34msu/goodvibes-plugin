@@ -21751,9 +21751,9 @@ function createLogger(component) {
 __name(createLogger, "createLogger");
 
 // src/lifecycle/process-manager.ts
-var import_node_fs4 = require("node:fs");
+var import_node_fs5 = require("node:fs");
 var import_node_crypto2 = require("node:crypto");
-var import_node_path4 = require("node:path");
+var import_node_path5 = require("node:path");
 var import_node_os2 = require("node:os");
 
 // src/persistence/state-store.ts
@@ -23529,6 +23529,8 @@ var IPCServer = class {
 };
 
 // src/ipc/ipc-router.ts
+var import_node_fs3 = require("node:fs");
+var import_node_path3 = require("node:path");
 var logger6 = createLogger("ipc-router");
 var IPCRouter = class {
   static {
@@ -23539,12 +23541,40 @@ var IPCRouter = class {
   workflowEngine;
   agentCoordinator;
   directiveQueue;
+  socketPath;
+  stateDir;
+  /** Session IDs that have been registered via session:started events. */
+  registeredSessions = /* @__PURE__ */ new Set();
   constructor(deps) {
     this.eventBus = deps.eventBus;
     this.triggerRegistry = deps.triggerRegistry;
     this.workflowEngine = deps.workflowEngine;
     this.agentCoordinator = deps.agentCoordinator;
     this.directiveQueue = deps.directiveQueue;
+    this.socketPath = deps.socketPath;
+    this.stateDir = deps.stateDir;
+  }
+  /**
+   * Remove all session-keyed pointer files written by this router.
+   * Called during shutdown to prevent stale session pointers.
+   */
+  removeSessionPointers() {
+    if (!this.stateDir) return;
+    for (const sessionId of this.registeredSessions) {
+      const pointerFile = (0, import_node_path3.join)(this.stateDir, `runtime-${sessionId}.socket`);
+      try {
+        (0, import_node_fs3.unlinkSync)(pointerFile);
+        logger6.debug("Session pointer file removed", { sessionId });
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          logger6.warn("Could not remove session pointer file", {
+            sessionId,
+            err: toErrorMessage(err)
+          });
+        }
+      }
+    }
+    this.registeredSessions.clear();
   }
   /**
    * Drains directives from the queue and composes a system message string.
@@ -23589,6 +23619,22 @@ var IPCRouter = class {
           logger6.warn("IPC hook_event: trigger evaluation error", {
             error: toErrorMessage(err)
           });
+        }
+      }
+      if (msg.hook_name === "session:started" && this.socketPath && this.stateDir) {
+        const sessionId = msg.hook_input?.session_id;
+        if (typeof sessionId === "string" && sessionId.length > 0) {
+          try {
+            const pointerFile = (0, import_node_path3.join)(this.stateDir, `runtime-${sessionId}.socket`);
+            (0, import_node_fs3.writeFileSync)(pointerFile, this.socketPath, "utf-8");
+            this.registeredSessions.add(sessionId);
+            logger6.info("Session pointer file written", { sessionId, pointer: pointerFile });
+          } catch (err) {
+            logger6.warn("Failed to write session pointer file", {
+              sessionId,
+              err: toErrorMessage(err)
+            });
+          }
         }
       }
       if (msg.hook_name === "config:loaded" && this.directiveQueue) {
@@ -24661,8 +24707,8 @@ var REVIEW_ONLY_DEFINITION = {
 };
 
 // src/workflow/definitions/custom-loader.ts
-var import_node_fs3 = require("node:fs");
-var import_node_path3 = require("node:path");
+var import_node_fs4 = require("node:fs");
+var import_node_path4 = require("node:path");
 var log2 = createLogger("custom-loader");
 function validateWorkflowDefinition(def) {
   const errors = [];
@@ -24730,8 +24776,8 @@ function validateWorkflowDefinition(def) {
 }
 __name(validateWorkflowDefinition, "validateWorkflowDefinition");
 async function loadCustomWorkflows(configPath) {
-  const configFile = (0, import_node_path3.join)(configPath, "goodvibes.json");
-  if (!(0, import_node_fs3.existsSync)(configFile)) {
+  const configFile = (0, import_node_path4.join)(configPath, "goodvibes.json");
+  if (!(0, import_node_fs4.existsSync)(configFile)) {
     log2.debug("loadCustomWorkflows: no goodvibes.json found, skipping custom workflow loading", {
       config_file: configFile
     });
@@ -24739,7 +24785,7 @@ async function loadCustomWorkflows(configPath) {
   }
   let raw;
   try {
-    raw = await import_node_fs3.promises.readFile(configFile, "utf-8");
+    raw = await import_node_fs4.promises.readFile(configFile, "utf-8");
   } catch (err) {
     log2.warn("loadCustomWorkflows: failed to read goodvibes.json", {
       config_file: configFile,
@@ -28621,7 +28667,7 @@ var logger13 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_node_path4.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
+  return (0, import_node_path5.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 var ProcessManager = class {
@@ -28650,6 +28696,8 @@ var ProcessManager = class {
   eventQueue;
   /** Unix domain socket IPC server (only active when ipc_enabled). */
   ipcServer = null;
+  /** IPC router instance (kept for session pointer cleanup on shutdown). */
+  ipcRouter = null;
   /** Workflow state machine engine. */
   workflowEngine = null;
   /** Event trigger registry. */
@@ -28702,8 +28750,8 @@ var ProcessManager = class {
     await this.stateStore.initialize();
     logger13.debug("State store initialised");
     this.eventBus = new EventBus();
-    const stateDir = (0, import_node_path4.join)(this.projectRoot, this.config.persistence.state_dir);
-    (0, import_node_fs4.mkdirSync)(stateDir, { recursive: true });
+    const stateDir = (0, import_node_path5.join)(this.projectRoot, this.config.persistence.state_dir);
+    (0, import_node_fs5.mkdirSync)(stateDir, { recursive: true });
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
     this.eventBus.setEventLog(this.eventLog);
@@ -28885,6 +28933,10 @@ var ProcessManager = class {
         try {
           await this.ipcServer.close();
           this.removeSocketPointerFile();
+          if (this.ipcRouter) {
+            this.ipcRouter.removeSessionPointers();
+            this.ipcRouter = null;
+          }
           this.ipcServer = null;
           logger13.debug("IPC server closed");
         } catch (err) {
@@ -29095,9 +29147,9 @@ var ProcessManager = class {
    */
   async checkCrashRecovery() {
     const pidFilePath = getPidFilePath(this.projectRoot);
-    if (!(0, import_node_fs4.existsSync)(pidFilePath)) return;
+    if (!(0, import_node_fs5.existsSync)(pidFilePath)) return;
     try {
-      const stalePid = (0, import_node_fs4.readFileSync)(pidFilePath, "utf-8").trim();
+      const stalePid = (0, import_node_fs5.readFileSync)(pidFilePath, "utf-8").trim();
       const currentPid = String(process.pid);
       if (stalePid !== currentPid) {
         const pid = Number(stalePid);
@@ -29140,7 +29192,7 @@ var ProcessManager = class {
   writePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_node_fs4.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
+      (0, import_node_fs5.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
       logger13.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
       logger13.warn("Could not write PID file", {
@@ -29155,7 +29207,7 @@ var ProcessManager = class {
   removePidFile() {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
-      (0, import_node_fs4.unlinkSync)(pidFilePath);
+      (0, import_node_fs5.unlinkSync)(pidFilePath);
       logger13.debug("PID file removed", { path: pidFilePath });
     } catch (err) {
       if (err.code !== "ENOENT") {
@@ -29218,25 +29270,27 @@ var ProcessManager = class {
    * @returns The absolute socket path, or null if startup fails.
    */
   async startIPCServer() {
-    const stateDir = (0, import_node_path4.join)(this.projectRoot, this.config.persistence.state_dir);
+    const stateDir = (0, import_node_path5.join)(this.projectRoot, this.config.persistence.state_dir);
     const socketDir = this.config.ipc.socket_dir;
     const hash2 = (0, import_node_crypto2.createHash)("sha256").update(this.projectRoot).digest("hex").slice(0, 8);
-    const socketPath = (0, import_node_path4.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
+    const socketPath = (0, import_node_path5.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
     try {
       this.ipcServer = new IPCServer(socketPath);
-      const router = new IPCRouter({
+      this.ipcRouter = new IPCRouter({
         eventBus: this.eventBus,
         triggerRegistry: this.triggerRegistry,
         workflowEngine: this.workflowEngine,
         agentCoordinator: this.agentCoordinator,
-        directiveQueue: this.directiveQueue
+        directiveQueue: this.directiveQueue,
+        socketPath,
+        stateDir
       });
-      this.ipcServer.onMessage(router.route.bind(router));
-      (0, import_node_fs4.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+      this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
+      (0, import_node_fs5.mkdirSync)(socketDir, { recursive: true, mode: 448 });
       await this.ipcServer.listen();
-      (0, import_node_fs4.mkdirSync)(stateDir, { recursive: true });
-      const pointerFile = (0, import_node_path4.join)(stateDir, `runtime-${process.pid}.socket`);
-      (0, import_node_fs4.writeFileSync)(pointerFile, socketPath, "utf-8");
+      (0, import_node_fs5.mkdirSync)(stateDir, { recursive: true });
+      const pointerFile = (0, import_node_path5.join)(stateDir, `runtime-${process.pid}.socket`);
+      (0, import_node_fs5.writeFileSync)(pointerFile, socketPath, "utf-8");
       logger13.info("IPC server started", { socket: socketPath });
       return socketPath;
     } catch (err) {
@@ -29253,13 +29307,13 @@ var ProcessManager = class {
    * Silently ignores errors (e.g. file already removed).
    */
   removeSocketPointerFile() {
-    const pointerFile = (0, import_node_path4.join)(
+    const pointerFile = (0, import_node_path5.join)(
       this.projectRoot,
       this.config.persistence.state_dir,
       `runtime-${process.pid}.socket`
     );
     try {
-      (0, import_node_fs4.unlinkSync)(pointerFile);
+      (0, import_node_fs5.unlinkSync)(pointerFile);
       logger13.debug("Socket pointer file removed", { path: pointerFile });
     } catch (err) {
       if (err.code !== "ENOENT") {

@@ -104,6 +104,9 @@ export class ProcessManager {
   /** Unix domain socket IPC server (only active when ipc_enabled). */
   private ipcServer: IPCServer | null = null;
 
+  /** IPC router instance (kept for session pointer cleanup on shutdown). */
+  private ipcRouter: IPCRouter | null = null;
+
   /** Workflow state machine engine. */
   private workflowEngine: WorkflowEngine | null = null;
 
@@ -393,6 +396,10 @@ export class ProcessManager {
         try {
           await this.ipcServer.close();
           this.removeSocketPointerFile();
+          if (this.ipcRouter) {
+            this.ipcRouter.removeSessionPointers();
+            this.ipcRouter = null;
+          }
           this.ipcServer = null;
           logger.debug('IPC server closed');
         } catch (err) {
@@ -784,14 +791,16 @@ export class ProcessManager {
       this.ipcServer = new IPCServer(socketPath);
 
       // Wire IPC message routing via dedicated IPCRouter
-      const router = new IPCRouter({
+      this.ipcRouter = new IPCRouter({
         eventBus: this.eventBus,
         triggerRegistry: this.triggerRegistry,
         workflowEngine: this.workflowEngine,
         agentCoordinator: this.agentCoordinator,
         directiveQueue: this.directiveQueue,
+        socketPath,
+        stateDir,
       });
-      this.ipcServer.onMessage(router.route.bind(router));
+      this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
 
       // Pre-create socket directory with owner-only permissions (belt-and-suspenders)
       mkdirSync(socketDir, { recursive: true, mode: 0o700 });
