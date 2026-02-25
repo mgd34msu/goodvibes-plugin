@@ -45,6 +45,18 @@ function respond(response, _block = false) {
   console.log(formatResponse(response));
   process.exit(0);
 }
+function createResponse(options = {}) {
+  const response = {
+    continue: true
+  };
+  if (options.systemMessage !== void 0) {
+    response.systemMessage = options.systemMessage;
+  }
+  if (options.additionalContext !== void 0) {
+    response.additionalContext = options.additionalContext;
+  }
+  return response;
+}
 
 // src/shared/logging.ts
 function debug(message, data) {
@@ -428,12 +440,6 @@ import { join as join2 } from "node:path";
 import { tmpdir } from "node:os";
 
 // src/lifecycle/stop.ts
-function createResponse2(options) {
-  return {
-    continue: true,
-    systemMessage: options?.systemMessage
-  };
-}
 var MS_PER_MINUTE = 6e4;
 async function runStopHook() {
   try {
@@ -485,11 +491,11 @@ async function runStopHook() {
         debug(`Cleaned up temp file: ${file}`);
       }
     }
-    respond(createResponse2({}));
+    respond(createResponse());
   } catch (error) {
     logError("Stop main", error);
     respond(
-      createResponse2({
+      createResponse({
         systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`
       })
     );
@@ -499,7 +505,7 @@ if (!isTestEnvironment()) {
   runStopHook().catch((error) => {
     logError("Stop uncaught", error);
     respond(
-      createResponse2({
+      createResponse({
         systemMessage: `Cleanup error: ${error instanceof Error ? error.message : String(error)}`
       })
     );

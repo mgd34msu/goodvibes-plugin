@@ -20,22 +20,8 @@ import {
   CACHE_DIR,
   fileExists,
   isTestEnvironment,
+  createResponse,
 } from '../shared/index.js';
-
-import type { HookResponse } from '../shared/index.js';
-
-/**
- * Creates a hook response with optional system message.
- *
- * @param options - Optional configuration with systemMessage
- * @returns A HookResponse object with continue=true
- */
-function createResponse(options?: { systemMessage?: string }): HookResponse {
-  return {
-    continue: true,
-    systemMessage: options?.systemMessage,
-  };
-}
 
 /**
  * Milliseconds per minute for duration calculation.
@@ -117,7 +103,7 @@ async function runStopHook(): Promise<void> {
     }
 
     // Respond with success
-    respond(createResponse({}));
+    respond(createResponse());
   } catch (error: unknown) {
     logError('Stop main', error);
     respond(

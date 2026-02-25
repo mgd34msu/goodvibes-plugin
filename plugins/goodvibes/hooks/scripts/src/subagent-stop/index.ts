@@ -274,8 +274,8 @@ async function runSubagentStopHook(): Promise<void> {
     // ─── Phase 6: Runtime engine integration (additive only) ───
     // Sends the completion event to the runtime engine (agent:completed or agent:failed).
     // This triggers the WRFC chain in the runtime engine.
-    // NOTE: Directive delivery is handled by the PreToolUse directive-delivery hook, which queries
-    // the runtime for pending directives on the next tool call.
+    // NOTE: Directive delivery is handled by the PostToolUse Task hook, which queries
+    // the runtime for pending directives when the Task tool returns to the parent.
     // ALWAYS falls through to existing logic — this hook has no early-return.
     try {
       const runtimeClient = new RuntimeClient();

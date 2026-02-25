@@ -8,19 +8,7 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, fileExists, isTestEnvironment, } from '../shared/index.js';
-/**
- * Creates a hook response with optional system message.
- *
- * @param options - Optional configuration with systemMessage
- * @returns A HookResponse object with continue=true
- */
-function createResponse(options) {
-    return {
-        continue: true,
-        systemMessage: options?.systemMessage,
-    };
-}
+import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, fileExists, isTestEnvironment, createResponse, } from '../shared/index.js';
 /**
  * Milliseconds per minute for duration calculation.
  * @internal
@@ -81,7 +69,7 @@ async function runStopHook() {
             }
         }
         // Respond with success
-        respond(createResponse({}));
+        respond(createResponse());
     }
     catch (error) {
         logError('Stop main', error);

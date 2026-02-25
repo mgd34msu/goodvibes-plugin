@@ -5,7 +5,7 @@
  */
 /**
  * Builds a <gv> directive tag from a runtime directive message.
- * Used by both SubagentStop and directive-delivery hooks to format
+ * Used by PostToolUse Task hook to format
  * directives for injection via additionalContext.
  *
  * @param message - The pre-formatted directive message from the runtime engine

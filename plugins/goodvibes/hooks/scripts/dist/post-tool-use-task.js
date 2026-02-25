@@ -526,30 +526,33 @@ var RuntimeClient = class {
   }
 };
 
-// src/directive-delivery/index.ts
+// src/post-tool-use-task.ts
 import { stdin } from "node:process";
-async function runDirectiveDeliveryHook() {
+async function runPostToolUseTaskHook() {
   try {
     stdin.resume();
     const runtimeClient = new RuntimeClient();
     if (!runtimeClient.isAvailable()) {
-      respond(allowTool("PreToolUse"));
+      respond(allowTool("PostToolUse"));
       return;
     }
     const result = await runtimeClient.query({ kind: "get_directives" });
     if (result?.kind === "system_message" && result.message) {
       const additionalContext = buildGvDirectiveTag(result.message);
-      respond(allowTool("PreToolUse", additionalContext));
+      respond(allowTool("PostToolUse", additionalContext));
       return;
     }
-    respond(allowTool("PreToolUse"));
+    respond(allowTool("PostToolUse"));
   } catch {
-    respond(allowTool("PreToolUse"));
+    respond(allowTool("PostToolUse"));
   }
 }
 if (!isTestEnvironment()) {
-  runDirectiveDeliveryHook().catch(() => {
-    respond(allowTool("PreToolUse"));
+  runPostToolUseTaskHook().catch(() => {
+    respond(allowTool("PostToolUse"));
   });
 }
+export {
+  runPostToolUseTaskHook
+};
 /* v8 ignore next 2 -- @preserve __dirname is always defined in Node.js CJS */
