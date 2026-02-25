@@ -9,7 +9,7 @@
  * Fast path: if the runtime engine is not available, responds immediately
  * with allowTool to avoid any IPC overhead.
  */
-import { respond, allowTool, isTestEnvironment, } from '../shared/index.js';
+import { respond, allowTool, isTestEnvironment, buildGvDirectiveTag, } from '../shared/index.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
 import { stdin } from 'node:process';
 /**
@@ -29,11 +29,7 @@ export async function runDirectiveDeliveryHook() {
         const result = await runtimeClient.query({ kind: 'get_directives' });
         if (result?.kind === 'system_message' && result.message) {
             // Wrap the pre-formatted directive message in a <gv> tag and inject via additionalContext
-            const gvPayload = JSON.stringify({
-                action: 'directive',
-                message: result.message,
-            });
-            const additionalContext = `<gv>${gvPayload}</gv>`;
+            const additionalContext = buildGvDirectiveTag(result.message);
             respond(allowTool('PreToolUse', additionalContext));
             return;
         }

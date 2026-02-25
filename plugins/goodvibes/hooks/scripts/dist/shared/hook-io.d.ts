@@ -48,11 +48,11 @@ export declare function blockTool(hookEventName: string, reason: string): HookRe
 /**
  * Formats a hook response as JSON string.
  */
-export declare function formatResponse(response: HookResponse): string;
+export declare function formatResponse(response: HookResponse | ExtendedHookResponse): string;
 /**
  * Outputs the hook response as JSON to stdout and exits.
  */
-export declare function respond(response: HookResponse, _block?: boolean): never;
+export declare function respond(response: ExtendedHookResponse, _block?: boolean): never;
 /**
  * Options for creating a hook response.
  */

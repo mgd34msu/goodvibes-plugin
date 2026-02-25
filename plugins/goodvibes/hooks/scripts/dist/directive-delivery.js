@@ -348,6 +348,15 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
   ])
 );
 
+// src/shared/directive-utils.ts
+function buildGvDirectiveTag(message) {
+  const gvPayload = JSON.stringify({
+    action: "directive",
+    message
+  });
+  return `<gv>${gvPayload}</gv>`;
+}
+
 // src/shared/runtime-client.ts
 import * as net from "node:net";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -529,11 +538,7 @@ async function runDirectiveDeliveryHook() {
     }
     const result = await runtimeClient.query({ kind: "get_directives" });
     if (result?.kind === "system_message" && result.message) {
-      const gvPayload = JSON.stringify({
-        action: "directive",
-        message: result.message
-      });
-      const additionalContext = `<gv>${gvPayload}</gv>`;
+      const additionalContext = buildGvDirectiveTag(result.message);
       respond(allowTool("PreToolUse", additionalContext));
       return;
     }

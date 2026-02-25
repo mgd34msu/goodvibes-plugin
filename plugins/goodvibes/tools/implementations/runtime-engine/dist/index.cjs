@@ -26974,10 +26974,15 @@ var ENGINEER_AGENT_TYPES = /* @__PURE__ */ new Set(["engineer", "goodvibes:engin
 var DEFAULT_MIN_REVIEW_SCORE = 9.5;
 var DEFAULT_MAX_FIX_ATTEMPTS = 3;
 var AUTO_COMPLETE_AGENT_TYPES = /* @__PURE__ */ new Set([
+  // Non-work agent types — no reviewable output
   "Explore",
   "Plan",
   "Bash",
-  "general-purpose"
+  "general-purpose",
+  // Review agents — derived from REVIEWER_AGENT_TYPES to stay in sync.
+  // Their own WRFC auto-completes, but they still drive score evaluation
+  // on the PARENT workflow via the REVIEWING branch.
+  ...REVIEWER_AGENT_TYPES
 ]);
 function handleReviewResult(params) {
   const {

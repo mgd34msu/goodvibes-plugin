@@ -549,6 +549,15 @@ function extractStackKeywords(text) {
   return Array.from(found).slice(0, MAX_EXTRACTED_KEYWORDS);
 }
 
+// src/shared/directive-utils.ts
+function buildGvDirectiveTag(message) {
+  const gvPayload = JSON.stringify({
+    action: "directive",
+    message
+  });
+  return `<gv>${gvPayload}</gv>`;
+}
+
 // src/shared/runtime-client.ts
 import * as net from "node:net";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -1125,6 +1134,9 @@ function createResponse2(options) {
   if (options?.systemMessage) {
     response.systemMessage = options.systemMessage;
   }
+  if (options?.additionalContext) {
+    response.additionalContext = options.additionalContext;
+  }
   if (options?.output) {
     response.output = options.output;
   }
@@ -1199,6 +1211,7 @@ async function runSubagentStopHook() {
     const rawInput = await readHookInput();
     debug("Raw input shape:", Object.keys(rawInput || {}));
     const input = rawInput;
+    let directiveContext;
     try {
       const runtimeClient = new RuntimeClient();
       if (runtimeClient.isAvailable()) {
@@ -1212,6 +1225,11 @@ async function runSubagentStopHook() {
           agent_type
         };
         await runtimeClient.sendHookEvent(eventName, normalizedData);
+        const directiveResult = await runtimeClient.query({ kind: "get_directives" });
+        if (directiveResult?.kind === "system_message" && directiveResult.message) {
+          directiveContext = buildGvDirectiveTag(directiveResult.message);
+          debug("Phase 6: directive received, will inject via additionalContext");
+        }
       }
     } catch {
       debug("Phase 6: runtime integration error, falling through to existing logic");
@@ -1274,10 +1292,10 @@ async function runSubagentStopHook() {
     const baseSystemMessage = issuesMessage ? `${issuesMessage}
 
 ${orchestratorContext.systemMessage}` : orchestratorContext.systemMessage;
-    const systemMessage = baseSystemMessage;
     respond(
       createResponse2({
-        systemMessage,
+        systemMessage: baseSystemMessage,
+        additionalContext: directiveContext,
         output: {
           validation: validationResult,
           tests: testResult,
