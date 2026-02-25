@@ -1,27 +1,25 @@
-import { RateLimiterError } from './errors.js';
-import type { RateLimitResult, RateLimiter } from './types.js';
+/**
+ * Token Bucket rate limiting algorithm.
+ *
+ * Tokens are refilled continuously at a constant rate. Requests consume tokens.
+ * When the bucket is empty, requests are denied until enough tokens refill.
+ */
 
-/** Configuration options for {@link TokenBucket}. */
+import type { RateLimitResult, RateLimiter } from './types.js';
+import { validatePositiveFinite } from './errors.js';
+
 export interface TokenBucketOptions {
-  /** Maximum number of tokens the bucket can hold. Must be a positive finite number. */
+  /** Maximum number of tokens the bucket can hold. */
   capacity: number;
-  /** Number of tokens added per second (continuous). Must be a positive finite number. */
+  /** Number of tokens added per second (continuous refill). */
   refillRate: number;
 }
 
 /**
- * Token bucket rate limiter.
+ * Token Bucket rate limiter.
  *
- * Tokens accumulate continuously at `refillRate` tokens per second up to
- * `capacity`. Each call to `consume()` attempts to spend tokens. Implements
- * the `RateLimiter` interface — `check(key)` delegates to `consume(1)`,
- * ignoring the key (single-bucket semantics).
- *
- * @example
- * ```ts
- * const bucket = new TokenBucket({ capacity: 10, refillRate: 1 });
- * const result = bucket.consume(); // { allowed: true, remaining: 9 }
- * ```
+ * Implements continuous token refill. Suitable for bursty traffic that should
+ * be smoothed over time.
  */
 export class TokenBucket implements RateLimiter {
   private readonly capacity: number;
@@ -30,53 +28,50 @@ export class TokenBucket implements RateLimiter {
   private lastRefillTime: number;
 
   constructor(options: TokenBucketOptions) {
-    const { capacity, refillRate } = options;
-    TokenBucket.validatePositiveFinite(capacity, 'capacity');
-    TokenBucket.validatePositiveFinite(refillRate, 'refillRate');
-    this.capacity = capacity;
-    this.refillRate = refillRate;
-    this.tokens = capacity;
+    validatePositiveFinite(options.capacity, 'capacity');
+    validatePositiveFinite(options.refillRate, 'refillRate');
+
+    this.capacity = options.capacity;
+    this.refillRate = options.refillRate;
+    this.tokens = options.capacity;
     this.lastRefillTime = Date.now();
   }
 
-  private static validatePositiveFinite(value: unknown, name: string): void {
-    if (typeof value !== 'number') {
-      throw new RateLimiterError(
-        `${name} must be a number, got ${typeof value}`,
-        'INVALID_TYPE',
-      );
-    }
-    if (!isFinite(value)) {
-      throw new RateLimiterError(
-        `${name} must be a finite number, got ${value}`,
-        'NON_FINITE',
-      );
-    }
-    if (value <= 0) {
-      throw new RateLimiterError(
-        `${name} must be positive, got ${value}`,
-        'NON_POSITIVE',
-      );
-    }
-  }
-
-  /** Refill tokens based on elapsed time since last refill. */
+  /**
+   * Refill tokens based on elapsed time since the last refill.
+   */
   private refill(): void {
     const now = Date.now();
     const elapsed = (now - this.lastRefillTime) / 1000; // seconds
-    const newTokens = elapsed * this.refillRate;
-    this.tokens = Math.min(this.capacity, this.tokens + newTokens);
+    const tokensToAdd = elapsed * this.refillRate;
+    this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
     this.lastRefillTime = now;
   }
 
   /**
-   * Attempt to consume `tokens` from the bucket.
+   * Attempt to consume tokens from the bucket.
    *
    * @param tokens - Number of tokens to consume (default: 1)
-   * @returns Result indicating whether consumption was allowed
+   * @returns RateLimitResult indicating whether the request was allowed.
    */
-  consume(tokens: number = 1): RateLimitResult {
+  consume(tokens = 1): RateLimitResult {
+    if (tokens <= 0) {
+      throw new RangeError('tokens must be positive');
+    }
+
     this.refill();
+
+    if (tokens > this.capacity) {
+      // Can never be satisfied
+      const retryAfter = Math.ceil(((tokens - this.capacity) / this.refillRate) * 1000);
+      return {
+        allowed: false,
+        remaining: Math.floor(this.tokens),
+        retryAfter,
+        resetAt: Date.now() + retryAfter,
+      };
+    }
+
     if (this.tokens >= tokens) {
       this.tokens -= tokens;
       return {
@@ -84,30 +79,34 @@ export class TokenBucket implements RateLimiter {
         remaining: Math.floor(this.tokens),
       };
     }
-    // Denied: compute how long until enough tokens are available
-    const deficit = tokens - this.tokens;
-    const retryAfter = Math.ceil((deficit / this.refillRate) * 1000);
+
+    // Calculate time until enough tokens are available
+    const tokensNeeded = tokens - this.tokens;
+    const retryAfter = Math.ceil((tokensNeeded / this.refillRate) * 1000);
     return {
       allowed: false,
       remaining: Math.floor(this.tokens),
       retryAfter,
+      resetAt: Date.now() + retryAfter,
     };
   }
 
   /**
-   * Implements {@link RateLimiter.check}. Ignores `key` (single-bucket semantics).
-   * Equivalent to calling `consume(1)`.
+   * Implements RateLimiter.check — delegates to consume(1), ignores key.
+   *
+   * @param _key - Not used (token bucket is a single global bucket)
    */
   check(_key: string): RateLimitResult {
-    return this.consume(1);
+    return this.consume();
   }
 
   /**
    * Reset the bucket to full capacity.
-   * Ignores `key` parameter (single-bucket semantics).
+   * The key parameter is ignored (single bucket).
    */
   reset(_key?: string): void {
     this.tokens = this.capacity;
     this.lastRefillTime = Date.now();
   }
+
 }

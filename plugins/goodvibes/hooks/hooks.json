@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/post-tool-use-task.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/src/post-tool-use-task.mjs\"",
             "timeout": 10
           }
         ]

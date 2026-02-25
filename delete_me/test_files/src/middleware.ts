@@ -1,20 +1,19 @@
-import type { RateLimiter } from './types.js';
-
 /**
- * Minimal Express-style request type accepted by the middleware.
+ * Middleware factory for integrating any RateLimiter with HTTP frameworks.
  */
+
+import type { RateLimiter, RateLimitResult } from './types.js';
+
+/** Minimal HTTP request shape expected by the middleware. */
 export interface MiddlewareRequest {
   ip: string;
   headers: Record<string, string>;
 }
 
-/**
- * Minimal Express-style response type accepted by the middleware.
- */
+/** Minimal HTTP response shape expected by the middleware. */
 export interface MiddlewareResponse {
   status(code: number): void;
   json(body: unknown): void;
-  /** Optional headers object. When present, rate-limit headers are written to it. */
   headers?: Record<string, string>;
 }
 
@@ -22,60 +21,64 @@ export interface MiddlewareResponse {
 export type Middleware = (
   req: MiddlewareRequest,
   res: MiddlewareResponse,
-  next: () => void,
+  next: () => void
 ) => void;
 
-/** Options for {@link createRateLimitMiddleware}. */
 export interface RateLimitMiddlewareOptions {
+  /** The rate limiter instance to use. */
+  limiter: RateLimiter;
   /**
-   * Custom key extractor. Defaults to `(req) => req.ip`.
+   * Custom key extractor. Defaults to `req.ip`.
    * @param req - The incoming request
    */
   keyExtractor?: (req: MiddlewareRequest) => string;
 }
 
 /**
- * Factory that wraps any {@link RateLimiter} into an Express-style middleware.
+ * Create an Express-compatible rate limiting middleware.
  *
- * When a request is denied (429) the response body is:
- * `{ error: 'Too Many Requests', retryAfter: <ms> }`
+ * Sets `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers when
+ * the response object supports them. Returns 429 with a JSON body when the
+ * request is denied.
  *
- * When allowed, the following headers are set on `res.headers` if it exists:
- * - `X-RateLimit-Remaining`
- * - `X-RateLimit-Reset`
- *
- * @param limiter - Any object implementing the {@link RateLimiter} interface
- * @param options - Optional configuration
- * @returns Express-compatible middleware function
+ * @param options - Configuration options
+ * @returns Express-style middleware function
  *
  * @example
  * ```ts
- * const limiter = new SlidingWindowLimiter({ windowMs: 60_000, maxRequests: 100 });
- * app.use(createRateLimitMiddleware(limiter));
+ * const middleware = createRateLimitMiddleware({
+ *   limiter: new SlidingWindow({ windowMs: 60_000, maxRequests: 100 }),
+ * });
+ * app.use(middleware);
  * ```
  */
-export function createRateLimitMiddleware(
-  limiter: RateLimiter,
-  options: RateLimitMiddlewareOptions = {},
-): Middleware {
-  const { keyExtractor = (req: MiddlewareRequest) => req.ip } = options;
+export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions): Middleware {
+  const { limiter, keyExtractor } = options;
+  const getKey = keyExtractor ?? ((req: MiddlewareRequest) => req.ip);
 
-  return (req: MiddlewareRequest, res: MiddlewareResponse, next: () => void): void => {
-    const key = keyExtractor(req);
-    const result = limiter.check(key);
+  return function rateLimitMiddleware(
+    req: MiddlewareRequest,
+    res: MiddlewareResponse,
+    next: () => void
+  ): void {
+    const key = getKey(req);
+    const result: RateLimitResult = limiter.check(key);
 
-    if (!result.allowed) {
-      res.status(429);
-      res.json({ error: 'Too Many Requests', retryAfter: result.retryAfter });
-      return;
-    }
-
-    // Set informational headers when the response object supports them
+    // Set rate limit headers if the response supports them.
     if (res.headers !== undefined) {
       res.headers['X-RateLimit-Remaining'] = String(result.remaining);
       if (result.resetAt !== undefined) {
         res.headers['X-RateLimit-Reset'] = String(result.resetAt);
       }
+    }
+
+    if (!result.allowed) {
+      res.status(429);
+      res.json({
+        error: 'Too Many Requests',
+        retryAfter: result.retryAfter,
+      });
+      return;
     }
 
     next();

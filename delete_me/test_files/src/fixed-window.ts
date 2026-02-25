@@ -1,138 +1,118 @@
-import { RateLimiterError } from './errors.js';
-import type { RateLimitResult, RateLimiter } from './types.js';
+/**
+ * Fixed Window Counter rate limiting algorithm.
+ *
+ * Divides time into fixed-size windows aligned to clock boundaries.
+ * Counts requests per window and resets when the window expires.
+ */
 
-/** Configuration options for {@link FixedWindowLimiter}. */
+import type { RateLimitResult, RateLimiter } from './types.js';
+import { validatePositiveFinite } from './errors.js';
+
 export interface FixedWindowOptions {
-  /** Window duration in milliseconds. Must be a positive finite number. */
+  /** Duration of each fixed window in milliseconds. */
   windowMs: number;
-  /** Maximum requests per window. Must be a positive finite number. */
+  /** Maximum number of requests allowed within each window. */
   maxRequests: number;
 }
 
-/** Internal per-key window state. */
-interface WindowState {
-  /** The start timestamp of the current window (clock-aligned). */
-  windowStart: number;
-  /** Number of requests made in the current window. */
+interface WindowEntry {
   count: number;
+  windowStart: number;
 }
 
 /**
- * Fixed window counter rate limiter.
+ * Fixed Window Counter rate limiter.
  *
- * Divides time into fixed, clock-aligned windows of `windowMs` duration.
- * Each key gets `maxRequests` allowance per window. When the current window
- * expires a new one starts automatically.
- *
- * @example
- * ```ts
- * const limiter = new FixedWindowLimiter({ windowMs: 60_000, maxRequests: 100 });
- * const result = limiter.check('user-123'); // { allowed: true, remaining: 99, resetAt: ... }
- * ```
+ * Each key gets an independent window counter that resets at clock-aligned
+ * boundaries (e.g. every minute, aligned to the minute). Expired windows are
+ * pruned to prevent memory leaks.
  */
-export class FixedWindowLimiter implements RateLimiter {
+export class FixedWindow implements RateLimiter {
   private readonly windowMs: number;
   private readonly maxRequests: number;
-  /** Map from key to current window state */
-  private readonly windows: Map<string, WindowState> = new Map();
+  private readonly entries: Map<string, WindowEntry>;
+  private lastPruneTime: number;
 
   constructor(options: FixedWindowOptions) {
-    const { windowMs, maxRequests } = options;
-    FixedWindowLimiter.validatePositiveFinite(windowMs, 'windowMs');
-    FixedWindowLimiter.validatePositiveFinite(maxRequests, 'maxRequests');
-    this.windowMs = windowMs;
-    this.maxRequests = maxRequests;
+    validatePositiveFinite(options.windowMs, 'windowMs');
+    validatePositiveFinite(options.maxRequests, 'maxRequests');
+
+    this.windowMs = options.windowMs;
+    this.maxRequests = options.maxRequests;
+    this.entries = new Map();
+    this.lastPruneTime = Date.now();
   }
 
-  private static validatePositiveFinite(value: unknown, name: string): void {
-    if (typeof value !== 'number') {
-      throw new RateLimiterError(
-        `${name} must be a number, got ${typeof value}`,
-        'INVALID_TYPE',
-      );
-    }
-    if (!isFinite(value)) {
-      throw new RateLimiterError(
-        `${name} must be a finite number, got ${value}`,
-        'NON_FINITE',
-      );
-    }
-    if (value <= 0) {
-      throw new RateLimiterError(
-        `${name} must be positive, got ${value}`,
-        'NON_POSITIVE',
-      );
-    }
-  }
-
-  /** Compute the start of the clock-aligned window containing `now`. */
-  private currentWindowStart(now: number): number {
+  /**
+   * Get the start of the current window for a given timestamp.
+   * Windows are aligned to multiples of windowMs from the Unix epoch.
+   */
+  private getWindowStart(now: number): number {
     return Math.floor(now / this.windowMs) * this.windowMs;
   }
 
   /**
-   * Check whether a request for `key` is allowed in the current fixed window.
-   * Records the request if allowed. Expired windows are replaced automatically.
+   * Remove all stale entries.
+   * Only prunes if at least one full window has elapsed since the last prune.
+   * Since entries are only inserted at check() time (current window), any entry
+   * in the map when a subsequent window's prune fires is by definition stale.
+   */
+  private maybePrune(now: number): void {
+    if (now - this.lastPruneTime < this.windowMs) return;
+    this.lastPruneTime = now;
+    this.entries.clear();
+  }
+
+  /**
+   * Check whether a request from `key` is allowed within the current window.
    *
-   * @param key - Identifier for the requester
+   * @param key - Unique identifier (e.g. user ID, IP address)
+   * @returns RateLimitResult with remaining count and resetAt timestamp.
    */
   check(key: string): RateLimitResult {
     const now = Date.now();
-    const windowStart = this.currentWindowStart(now);
+    this.maybePrune(now);
+
+    const windowStart = this.getWindowStart(now);
     const resetAt = windowStart + this.windowMs;
 
-    let state = this.windows.get(key);
+    let entry = this.entries.get(key);
 
-    // If no state or window has expired, start a fresh window
-    if (state === undefined || state.windowStart !== windowStart) {
-      state = { windowStart, count: 0 };
+    // New window or no entry — start fresh.
+    if (entry === undefined || entry.windowStart !== windowStart) {
+      entry = { count: 0, windowStart };
     }
 
-    if (state.count < this.maxRequests) {
-      state.count++;
-      this.windows.set(key, state);
+    if (entry.count >= this.maxRequests) {
+      this.entries.set(key, entry);
       return {
-        allowed: true,
-        remaining: this.maxRequests - state.count,
+        allowed: false,
+        remaining: 0,
+        retryAfter: resetAt - now,
         resetAt,
       };
     }
 
-    // Denied: retry after current window resets
-    const retryAfter = resetAt - now;
+    entry.count++;
+    this.entries.set(key, entry);
+
     return {
-      allowed: false,
-      remaining: 0,
-      retryAfter: Math.max(1, retryAfter),
+      allowed: true,
+      remaining: this.maxRequests - entry.count,
       resetAt,
     };
   }
 
   /**
-   * Reset state for a specific key or all keys.
-   * Also prunes any expired windows (garbage collection).
+   * Reset rate-limit state.
    *
-   * @param key - If provided, clears only that key; otherwise clears all keys
+   * @param key - When provided, resets only that key; otherwise clears all keys.
    */
   reset(key?: string): void {
     if (key !== undefined) {
-      this.windows.delete(key);
+      this.entries.delete(key);
     } else {
-      this.windows.clear();
-    }
-  }
-
-  /**
-   * Prune expired window entries to prevent memory leaks.
-   * Called automatically on `reset()` when clearing all keys.
-   */
-  prune(): void {
-    const now = Date.now();
-    const currentStart = this.currentWindowStart(now);
-    for (const [k, state] of this.windows) {
-      if (state.windowStart < currentStart) {
-        this.windows.delete(k);
-      }
+      this.entries.clear();
     }
   }
 }
