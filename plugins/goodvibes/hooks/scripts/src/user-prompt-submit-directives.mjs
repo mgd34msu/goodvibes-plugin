@@ -17,7 +17,7 @@
  */
 
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -181,8 +181,13 @@ function readStdin() {
 try {
   const hookInput = await readStdin();
 
+  // Debug: dump stdin to stderr and temp file
+  const debugData = JSON.stringify(hookInput, null, 2);
+  console.error(`[UPS-Directives] stdin keys: ${hookInput ? Object.keys(hookInput).join(', ') : 'null'}`);
+  try { writeFileSync('/tmp/ups-directives-debug.json', debugData); } catch {}
+
   // Fast path: not a task-notification → exit immediately
-  const userMessage = hookInput?.user_message || hookInput?.content || '';
+  const userMessage = hookInput?.user_message || hookInput?.content || hookInput?.prompt || '';
   if (!userMessage.includes(TASK_NOTIFICATION_PATTERN)) {
     respond(continueResponse());
   }
