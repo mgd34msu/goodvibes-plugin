@@ -444,6 +444,10 @@ The orchestrator uses the numeric score and verdict to make decisions:
 **Wrong**: "Fix the type safety issues"
 **Right**: "Replace `any` with `User` type and add runtime validation with zod schema"
 
+### Subjective Score Withholding
+**Wrong**: Scoring 9.5 instead of 10 because "the domain is complex" or "staying below perfection"
+**Right**: If no issues are identified, the score is 10. Scores must be objective and based solely on identified, actionable issues. A 10/10 is always achievable and must be awarded when no deficiencies are found. Never withhold points for subjective reasons like domain complexity, code novelty, or philosophical caution.
+
 ### Ignoring Positive Observations
 **Wrong**: Only listing problems
 **Right**: Also document what was done well (encourages good patterns)
