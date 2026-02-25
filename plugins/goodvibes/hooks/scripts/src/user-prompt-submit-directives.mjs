@@ -43,9 +43,12 @@ function respond(response) {
 }
 
 function continueResponse(additionalContext) {
-  const response = { continue: true };
+  const response = {};
   if (additionalContext) {
-    response.additionalContext = additionalContext;
+    response.hookSpecificOutput = {
+      hookEventName: 'UserPromptSubmit',
+      additionalContext,
+    };
   }
   return response;
 }
