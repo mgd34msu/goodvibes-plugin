@@ -23621,6 +23621,9 @@ var IPCRouter = class {
           });
         }
       }
+      if (msg.hook_name === "session:started" && this.triggerRegistry) {
+        this.triggerRegistry.resetAllFireCounts();
+      }
       if (msg.hook_name === "session:started" && this.socketPath && this.stateDir) {
         const sessionId = msg.hook_input?.session_id;
         if (typeof sessionId === "string" && sessionId.length > 0) {
@@ -25538,6 +25541,21 @@ var TriggerRegistry = class {
       lastFired: trigger.last_fired
     }));
   }
+  /**
+   * Resets fire counts and last-fired timestamps for all registered triggers.
+   *
+   * Called at session start to ensure trigger budgets are per-session, not
+   * accumulated across snapshot recoveries.
+   */
+  resetAllFireCounts() {
+    let reset = 0;
+    for (const trigger of this.triggers.values()) {
+      trigger.fires_count = 0;
+      trigger.last_fired = void 0;
+      reset++;
+    }
+    log4.info("All trigger fire counts reset", { count: reset });
+  }
   // ─── Private Helpers ──────────────────────────────────────────────────────────
   /**
    * Evaluates a single trigger against an event, applying guards and recording fires.
@@ -25786,7 +25804,7 @@ function getBuiltinTriggers() {
         }
       },
       cooldown_ms: 5e3,
-      max_fires: 50,
+      max_fires: 500,
       fires_count: 0
     },
     // ─── 8. WRFC Spawn Fixer ────────────────────────────────────────────
@@ -25811,7 +25829,7 @@ function getBuiltinTriggers() {
         }
       },
       cooldown_ms: 5e3,
-      max_fires: 30,
+      max_fires: 500,
       fires_count: 0
     },
     // ─── 9. WRFC Fix-Review Loop ─────────────────────────────────────────
@@ -25835,7 +25853,7 @@ function getBuiltinTriggers() {
         }
       },
       cooldown_ms: 5e3,
-      max_fires: 30,
+      max_fires: 500,
       fires_count: 0
     },
     // ─── 10. WRFC Start Workflow on Agent Spawn ───────────────────────────
@@ -25864,7 +25882,7 @@ function getBuiltinTriggers() {
         }
       },
       cooldown_ms: 5e3,
-      max_fires: 50,
+      max_fires: 500,
       fires_count: 0
     },
     // ─── 11. Test-Then-Fix Start ──────────────────────────────────────────────────────────

@@ -142,6 +142,10 @@ export class IPCRouter {
           });
         }
       }
+      // Reset trigger fire counts on new session so budgets are per-session
+      if (msg.hook_name === 'session:started' && this.triggerRegistry) {
+        this.triggerRegistry.resetAllFireCounts();
+      }
       // Write session-keyed pointer file when session:started arrives
       if (msg.hook_name === 'session:started' && this.socketPath && this.stateDir) {
         const sessionId = (msg.hook_input as Record<string, unknown>)?.session_id;

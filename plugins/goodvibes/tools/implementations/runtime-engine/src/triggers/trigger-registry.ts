@@ -240,6 +240,22 @@ export class TriggerRegistry {
     }));
   }
 
+  /**
+   * Resets fire counts and last-fired timestamps for all registered triggers.
+   *
+   * Called at session start to ensure trigger budgets are per-session, not
+   * accumulated across snapshot recoveries.
+   */
+  resetAllFireCounts(): void {
+    let reset = 0;
+    for (const trigger of this.triggers.values()) {
+      trigger.fires_count = 0;
+      trigger.last_fired = undefined;
+      reset++;
+    }
+    log.info('All trigger fire counts reset', { count: reset });
+  }
+
   // ─── Private Helpers ──────────────────────────────────────────────────────────
 
   /**

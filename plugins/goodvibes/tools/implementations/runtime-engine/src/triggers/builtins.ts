@@ -215,7 +215,7 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
         },
       },
       cooldown_ms: 5_000,
-      max_fires: 50,
+      max_fires: 500,
       fires_count: 0,
     },
 
@@ -241,7 +241,7 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
         },
       },
       cooldown_ms: 5_000,
-      max_fires: 30,
+      max_fires: 500,
       fires_count: 0,
     },
 
@@ -266,7 +266,7 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
         },
       },
       cooldown_ms: 5_000,
-      max_fires: 30,
+      max_fires: 500,
       fires_count: 0,
     },
 
@@ -296,7 +296,7 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
         },
       },
       cooldown_ms: 5_000,
-      max_fires: 50,
+      max_fires: 500,
       fires_count: 0,
     },
 

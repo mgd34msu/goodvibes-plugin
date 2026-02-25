@@ -7,7 +7,7 @@
  *
  * Flow:
  * 1. Agent completes → SubagentStop sends agent:completed to runtime
- * 2. Runtime generates WRFC directive, queues it
+ * 2. Runtime triggers fire → WRFC handler enqueues directive
  * 3. Claude Code delivers task-notification as user message
  * 4. THIS HOOK fires → detects <task-notification> → queries get_directives
  * 5. Directive injected via additionalContext → orchestrator sees it
@@ -17,7 +17,7 @@
  */
 
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -194,24 +194,11 @@ try {
 
   const socketPath = discoverSocket(projectDir, sessionId);
 
-  // Debug: dump full trace to temp file
-  const debugTrace = {
-    timestamp: new Date().toISOString(),
-    prompt_preview: prompt.slice(0, 200),
-    projectDir,
-    sessionId,
-    socketPath,
-    socketExists: socketPath ? existsSync(socketPath) : false,
-  };
-
   if (!socketPath || !existsSync(socketPath)) {
-    debugTrace.exit = 'no_socket';
-    try { writeFileSync('/tmp/ups-directives-trace.json', JSON.stringify(debugTrace, null, 2)); } catch {}
     respond(continueResponse());
   }
 
   const result = await queryDirectives(socketPath);
-  debugTrace.queryResult = result;
 
   if (result && result.directives && result.directives.length > 0) {
     const directivePayload = JSON.stringify({
@@ -219,13 +206,8 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    debugTrace.exit = 'injected';
-    debugTrace.directiveCount = result.directives.length;
-    try { writeFileSync('/tmp/ups-directives-trace.json', JSON.stringify(debugTrace, null, 2)); } catch {}
     respond(continueResponse({ gv_directive: gvTag }));
   } else {
-    debugTrace.exit = 'no_directives';
-    try { writeFileSync('/tmp/ups-directives-trace.json', JSON.stringify(debugTrace, null, 2)); } catch {}
     respond(continueResponse());
   }
 } catch (err) {
