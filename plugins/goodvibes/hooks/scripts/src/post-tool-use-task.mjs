@@ -33,7 +33,7 @@ function allowResponse(additionalContext) {
     continue: true,
   };
   if (additionalContext) {
-    response.additionalContext = additionalContext;
+    response.additionalContext = { gv_directive: additionalContext };
   }
   return response;
 }
@@ -166,18 +166,18 @@ try {
   // Fast path: runtime not available
   if (!socketPath || !existsSync(socketPath)) {
     respond(allowResponse());
+  } else {
+    // Query runtime for pending directives
+    const result = await queryDirectives(socketPath);
+
+    if (result && result.kind === 'system_message' && result.message) {
+      const additionalContext = buildGvDirectiveTag(result.message);
+      respond(allowResponse(additionalContext));
+    } else {
+      // No directives pending
+      respond(allowResponse());
+    }
   }
-
-  // Query runtime for pending directives
-  const result = await queryDirectives(socketPath);
-
-  if (result && result.kind === 'system_message' && result.message) {
-    const additionalContext = buildGvDirectiveTag(result.message);
-    respond(allowResponse(additionalContext));
-  }
-
-  // No directives pending
-  respond(allowResponse());
 } catch {
   // Never block — silently allow
   respond(allowResponse());

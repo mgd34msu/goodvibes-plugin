@@ -58,13 +58,13 @@ export declare function respond(response: ExtendedHookResponse, _block?: boolean
  */
 export interface CreateResponseOptions {
     systemMessage?: string;
-    additionalContext?: string;
+    additionalContext?: string | Record<string, string>;
 }
 /**
  * Extended hook response that includes additionalContext for session-start.
  */
 export interface ExtendedHookResponse extends HookResponse {
-    additionalContext?: string;
+    additionalContext?: string | Record<string, string>;
 }
 /**
  * Creates a standard hook response that allows the hook to continue.

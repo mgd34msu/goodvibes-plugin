@@ -40,8 +40,8 @@ export async function runPostToolUseTaskHook(): Promise<void> {
     const result = await runtimeClient.query({ kind: 'get_directives' });
 
     if (result?.kind === 'system_message' && result.message) {
-      const additionalContext = buildGvDirectiveTag(result.message);
-      respond(createResponse({ additionalContext }));
+      const gvDirective = buildGvDirectiveTag(result.message);
+      respond(createResponse({ additionalContext: { gv_directive: gvDirective } }));
       return;
     }
 
