@@ -14,6 +14,7 @@ import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 import type { IPCMessage, IPCResponse } from './protocol.js';
+import type { HookProcessor } from '../plugins/hooks/hook-processor.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -38,6 +39,12 @@ export interface IPCRouterDeps {
   stateDir: string | null;
   /** Agent-to-workflow binding map — used by resolve_pending_bind queries. */
   agentWorkflowMap?: AgentWorkflowMap | null;
+  /**
+   * Optional v3 HookProcessor. When provided, hook_event messages are also
+   * routed through it, bridging the v2 EventBus path with the v3 plugin layer.
+   * Falls back to EventBus-only handling when null.
+   */
+  hookProcessor?: HookProcessor | null;
 }
 
 /**
@@ -56,6 +63,8 @@ export class IPCRouter {
   private readonly socketPath: string | null;
   private readonly stateDir: string | null;
   private readonly agentWorkflowMap: AgentWorkflowMap | null;
+  /** Optional v3 HookProcessor for bridging hook events to the plugin layer. */
+  private readonly hookProcessor: HookProcessor | null;
 
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
@@ -69,6 +78,7 @@ export class IPCRouter {
     this.socketPath = deps.socketPath;
     this.stateDir = deps.stateDir;
     this.agentWorkflowMap = deps.agentWorkflowMap ?? null;
+    this.hookProcessor = deps.hookProcessor ?? null;
   }
 
   /**
@@ -195,6 +205,21 @@ export class IPCRouter {
             this.directiveQueue.setWRFCConfig(validated);
             logger.debug('WRFC config stored from config:loaded event', { validated });
           }
+        }
+      }
+
+      // Optionally route through v3 HookProcessor (bridge v2→v3)
+      if (this.hookProcessor) {
+        try {
+          const hookInput = (typeof msg.hook_input === 'object' && msg.hook_input !== null)
+            ? msg.hook_input as Record<string, unknown>
+            : {};
+          await this.hookProcessor.process(msg.hook_name, hookInput);
+        } catch (err) {
+          logger.warn('IPC hook_event: v3 HookProcessor error', {
+            hookName: msg.hook_name,
+            error: toErrorMessage(err),
+          });
         }
       }
 

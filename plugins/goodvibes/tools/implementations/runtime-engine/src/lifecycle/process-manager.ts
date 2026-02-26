@@ -47,6 +47,32 @@ import {
 } from '../directives/index.js';
 import { SnapshotManager, recoverState } from '../persistence/index.js';
 
+// ─── v3 Core imports (aliased to avoid collision with v2 names) ────────────────
+import {
+  EventQueue as CoreEventQueue,
+  TriggerRegistry as CoreTriggerRegistry,
+  CoreStateStore,
+  LoopLifecycleManager,
+  EventMetrics,
+  DeadLetterQueue,
+  ErrorHandler,
+  EventProcessor,
+} from '../core/index.js';
+
+// ─── v3 Plugin imports ─────────────────────────────────────────────────────────
+// Imported from barrel (plugins/index.js) for a stable, unified public surface.
+import {
+  registerWRFCPlugin,
+  getDefaultWRFCConfig,
+  HookProcessor,
+  HookRegistry,
+  registerDefaultHandlers,
+  TimePlugin,
+  getDefaultTimeConfig,
+  ExternalPlugin,
+  createDefaultExternalPluginConfig,
+} from '../plugins/index.js';
+
 const logger = createLogger('process-manager');
 
 /** How often to write a state checkpoint in milliseconds. */
@@ -127,6 +153,37 @@ export class ProcessManager {
 
   /** Snapshot manager for periodic state snapshots and recovery. */
   private snapshotManager: SnapshotManager | null = null;
+
+  // ─── v3 Core components ──────────────────────────────────────────────────────
+
+  /** v3 core event queue (priority-heap based, separate from v2 EventQueue). */
+  private v3EventQueue: CoreEventQueue | null = null;
+
+  /** v3 core trigger registry (interface-compatible v3 design). */
+  private v3TriggerRegistry: CoreTriggerRegistry | null = null;
+
+  /** v3 core state store (lightweight in-memory + file store). */
+  private v3StateStore: CoreStateStore | null = null;
+
+  /** v3 core event processor (drives trigger evaluation from the queue). */
+  private v3EventProcessor: EventProcessor | null = null;
+
+  // ─── v3 Plugin instances ─────────────────────────────────────────────────────
+
+  /** v3 HookProcessor: bridges IPC hook events to the v3 plugin layer. */
+  private v3HookProcessor: HookProcessor | null = null;
+
+  /** v3 HookRegistry: holds registered hook handlers. */
+  private v3HookRegistry: HookRegistry | null = null;
+
+  /** v3 TimePlugin: emits heartbeat and scheduled events on each tick. */
+  private v3TimePlugin: TimePlugin | null = null;
+
+  /** v3 ExternalPlugin: ingests file-drop and HTTP webhook events. */
+  private v3ExternalPlugin: ExternalPlugin | null = null;
+
+  /** NodeJS timer handle for the v3 tick loop. */
+  private v3TickTimer?: NodeJS.Timeout;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -301,7 +358,11 @@ export class ProcessManager {
       60_000,
     );
 
-    // 10. Start IPC server if enabled
+    // 10. Initialize v3 plugins (additive — runs alongside v2 subsystems)
+    // Must run before IPC server so HookProcessor is available for router wiring.
+    await this.initializeV3Plugins();
+
+    // 11. Start IPC server if enabled
     let ipcSocketPath: string | null = null;
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
@@ -309,7 +370,10 @@ export class ProcessManager {
       logger.debug('IPC server disabled by feature flag');
     }
 
-    // 11. Emit startup event
+    // 12. Start v3 tick timer
+    this.startV3TickTimer();
+
+    // 13. Emit startup event
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
@@ -368,8 +432,10 @@ export class ProcessManager {
         logger.debug('Active workflows cancelled');
       }
 
-      // 2. Stop checkpoint timer and periodic snapshots
+      // 2. Stop checkpoint and v3 tick timers, and periodic snapshots
       this.stopCheckpointTimer();
+      this.stopV3TickTimer();
+      this.cleanupV3Plugins();
       if (this.snapshotManager) {
         this.snapshotManager.stopPeriodicSnapshots();
       }
@@ -800,6 +866,8 @@ export class ProcessManager {
         socketPath,
         stateDir,
         agentWorkflowMap: this.agentWorkflowMap,
+        // Bridge v2→v3: route hook events through v3 HookProcessor when available
+        hookProcessor: this.v3HookProcessor ?? null,
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
 
@@ -877,5 +945,227 @@ export class ProcessManager {
         });
       }
     }
+  }
+
+  // ─── v3 Initialization ─────────────────────────────────────────────────────────
+
+  /**
+   * Initialize all v3 core components and Layer 3 plugins.
+   *
+   * This runs alongside the v2 system — it is purely additive.
+   * Failure of any v3 component is logged and swallowed to preserve
+   * v2 backward compatibility; the engine degrades gracefully.
+   *
+   * Initialization order:
+   *   1. v3 core: EventQueue
+   *   2. v3 core: TriggerRegistry
+   *   3. v3 core: CoreStateStore
+   *   4. v3 core: LoopLifecycleManager, EventMetrics, DeadLetterQueue, ErrorHandler
+   *   5. v3 core: EventProcessor (wires the above together)
+   *   6. WRFC plugin: registers triggers and handlers with the v3 processor
+   *   7. Hooks plugin: HookRegistry + HookProcessor + default handlers
+   *   8. Time plugin: heartbeat + scheduler
+   *   9. External plugin: file-drop ingestion (initialize dirs)
+   */
+  private async initializeV3Plugins(): Promise<void> {
+    try {
+      // 1. v3 core: EventQueue (priority-heap, separate from v2 EventQueue)
+      this.v3EventQueue = new CoreEventQueue();
+
+      // 2. v3 core: TriggerRegistry
+      this.v3TriggerRegistry = new CoreTriggerRegistry();
+
+      // 3. v3 core: CoreStateStore (lightweight in-memory + JSON file store)
+      this.v3StateStore = new CoreStateStore();
+
+      // 4. v3 core: supporting components
+      const lifecycle = new LoopLifecycleManager();
+      const metrics = new EventMetrics();
+      const deadLetter = new DeadLetterQueue();
+      const errorHandler = new ErrorHandler({ deadLetter });
+
+      // 5. v3 core: EventProcessor (the central processing loop)
+      this.v3EventProcessor = new EventProcessor(
+        this.v3EventQueue,
+        this.v3TriggerRegistry,
+        this.v3StateStore,
+        lifecycle,
+        metrics,
+        errorHandler,
+        deadLetter,
+      );
+
+      logger.debug('v3 core components initialised');
+
+      // 6. WRFC plugin
+      registerWRFCPlugin({
+        processor: this.v3EventProcessor,
+        registry: this.v3TriggerRegistry,
+        store: this.v3StateStore,
+        config: getDefaultWRFCConfig(),
+      });
+      logger.debug('v3 WRFC plugin registered');
+
+      // 7. Hooks plugin: HookRegistry + default handlers wired to v2 subsystems
+      this.v3HookRegistry = new HookRegistry();
+      this.v3HookProcessor = new HookProcessor({
+        registry: this.v3HookRegistry,
+        sessionId: '',  // Empty — handlers receive session context from hook input payload
+      });
+      registerDefaultHandlers(this.v3HookRegistry, {
+        eventBus: this.eventBus ?? null,
+        directiveQueue: this.directiveQueue ?? null,
+        agentWorkflowMap: this.agentWorkflowMap ?? null,
+      });
+      logger.debug('v3 hooks plugin registered', {
+        handlerCount: this.v3HookRegistry.count(),
+      });
+
+      // 8. Time plugin
+      this.v3TimePlugin = new TimePlugin({
+        queue: this.v3EventQueue,
+        store: this.v3StateStore,
+        config: getDefaultTimeConfig(),
+      });
+      logger.debug('v3 time plugin initialised');
+
+      // 9. External plugin (file-drop ingestion)
+      this.v3ExternalPlugin = new ExternalPlugin(
+        this.v3EventQueue,
+        createDefaultExternalPluginConfig(),
+      );
+      // Ensure drop directories exist
+      try {
+        await this.v3ExternalPlugin.initialize();
+      } catch (err) {
+        logger.warn('v3 external plugin directory initialisation failed', {
+          err: toErrorMessage(err),
+        });
+      }
+      logger.debug('v3 external plugin initialised');
+
+      logger.info('v3 plugins fully initialised');
+    } catch (err) {
+      logger.warn('v3 plugin initialisation failed — continuing without v3 layer', {
+        err: toErrorMessage(err),
+      });
+      // Reset all v3 state to null so the engine degrades gracefully
+      this.v3EventQueue = null;
+      this.v3TriggerRegistry = null;
+      this.v3StateStore = null;
+      this.v3EventProcessor = null;
+      this.v3HookProcessor = null;
+      this.v3HookRegistry = null;
+      this.v3TimePlugin = null;
+      this.v3ExternalPlugin = null;
+    }
+  }
+
+  /**
+   * Start the v3 tick timer.
+   *
+   * On each tick:
+   *   1. TimePlugin emits heartbeat and scheduled events into the v3 queue.
+   *   2. ExternalPlugin scans the file-drop directory.
+   *   3. EventProcessor drains a batch from the v3 queue through registered triggers.
+   *
+   * Default tick interval: 10 seconds.
+   * The timer is unref'd so it does not prevent graceful process exit.
+   */
+  private startV3TickTimer(): void {
+    // All three fields are set together in initializeV3Plugins (all-or-nothing), so
+    // checking all three with && is intentional: if any one is present, the full v3
+    // layer initialised successfully and the tick should proceed.
+    if (!this.v3EventProcessor && !this.v3TimePlugin && !this.v3ExternalPlugin) {
+      // Nothing to tick — v3 failed to initialise
+      return;
+    }
+
+    const TICK_INTERVAL_MS = 10_000;
+
+    this.v3TickTimer = setInterval(() => {
+      this.tickV3().catch((err) => {
+        logger.warn('v3 tick error', { err: toErrorMessage(err) });
+      });
+    }, TICK_INTERVAL_MS);
+
+    this.v3TickTimer.unref();
+    logger.debug('v3 tick timer started', { interval_ms: TICK_INTERVAL_MS });
+  }
+
+  /**
+   * Execute one v3 tick cycle.
+   *
+   * Order matters: produce events first (time + external), then process them.
+   */
+  private async tickV3(): Promise<void> {
+    // 1. Emit time events (heartbeat, scheduled) into v3 queue
+    if (this.v3TimePlugin) {
+      try {
+        this.v3TimePlugin.onTick();
+      } catch (err) {
+        logger.warn('v3 time plugin tick error', { err: toErrorMessage(err) });
+      }
+    }
+
+    // 2. Scan file-drop directory for external events
+    if (this.v3ExternalPlugin) {
+      try {
+        await this.v3ExternalPlugin.onTick();
+      } catch (err) {
+        logger.warn('v3 external plugin tick error', { err: toErrorMessage(err) });
+      }
+    }
+
+    // 3. Process the next batch of queued events through registered triggers
+    if (this.v3EventProcessor) {
+      try {
+        await this.v3EventProcessor.processBatch();
+      } catch (err) {
+        logger.warn('v3 event processor batch error', { err: toErrorMessage(err) });
+      }
+    }
+  }
+
+  /**
+   * Stop the v3 tick timer.
+   */
+  private stopV3TickTimer(): void {
+    if (this.v3TickTimer) {
+      clearInterval(this.v3TickTimer);
+      this.v3TickTimer = undefined;
+      logger.debug('v3 tick timer stopped');
+    }
+  }
+
+  /**
+   * Nullify all v3 plugin fields after shutdown to release references
+   * and prevent any post-shutdown access to disposed instances.
+   */
+  private cleanupV3Plugins(): void {
+    this.v3EventQueue = null;
+    this.v3TriggerRegistry = null;
+    this.v3StateStore = null;
+    this.v3EventProcessor = null;
+    this.v3HookProcessor = null;
+    this.v3HookRegistry = null;
+    this.v3TimePlugin = null;
+    this.v3ExternalPlugin = null;
+  }
+
+  /**
+   * Return the v3 HookProcessor, or null if it has not been initialised.
+   * Exposed for inspection and testing.
+   */
+  getV3HookProcessor(): HookProcessor | null {
+    return this.v3HookProcessor;
+  }
+
+  /**
+   * Return the v3 EventProcessor, or null if it has not been initialised.
+   * Exposed for inspection and testing.
+   */
+  getV3EventProcessor(): EventProcessor | null {
+    return this.v3EventProcessor;
   }
 }
