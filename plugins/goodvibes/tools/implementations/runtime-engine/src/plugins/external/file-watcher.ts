@@ -155,7 +155,7 @@ export class FileWatcher {
           try {
             await fs.unlink(filepath);
           } catch {
-            // Best effort — cannot do more
+            // intentionally empty: best-effort cleanup
           }
         }
         // Error file moved; continue processing remaining files

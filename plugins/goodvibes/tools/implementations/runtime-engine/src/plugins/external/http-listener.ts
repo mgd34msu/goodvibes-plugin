@@ -88,7 +88,7 @@ export class HttpListener {
           try {
             sendJson(res, 500, { error: 'Internal server error' });
           } catch {
-            // Response may already be closed
+            // intentionally empty: best-effort cleanup
           }
         });
       });
@@ -219,7 +219,7 @@ export class HttpListener {
 
       await fs.writeFile(filepath, JSON.stringify(dropPayload, null, 2), 'utf-8');
 
-      sendJson(res, 202, { accepted: true, id: crypto.randomUUID() });
+      sendJson(res, 202, { accepted: true, id: fileId });
       return;
     }
 

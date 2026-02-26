@@ -97,18 +97,12 @@ export class ExternalPlugin {
    */
   async startHttpListener(): Promise<void> {
     if (this.listener === null) {
-      if (this.config.http_listener === undefined) {
-        // Create listener on-demand with default config
-        this.listener = new HttpListener(
-          this.config.file_watcher.incoming_dir,
-          DEFAULT_HTTP_LISTENER_CONFIG,
-        );
-      } else {
-        this.listener = new HttpListener(
-          this.config.file_watcher.incoming_dir,
-          this.config.http_listener,
-        );
-      }
+      // Fall back to default config when http_listener was omitted from constructor config.
+      const listenerConfig = this.config.http_listener ?? DEFAULT_HTTP_LISTENER_CONFIG;
+      this.listener = new HttpListener(
+        this.config.file_watcher.incoming_dir,
+        listenerConfig,
+      );
     }
     await this.listener.start();
   }

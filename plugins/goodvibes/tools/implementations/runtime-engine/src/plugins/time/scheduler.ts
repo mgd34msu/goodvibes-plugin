@@ -43,7 +43,7 @@ export interface ScheduledItem {
     /**
      * Optional UTC offset in hours to apply when evaluating active_hours.
      * Defaults to system local time (getHours()) when omitted.
-     * Document: pass 0 for UTC, or the appropriate offset for a fixed timezone.
+     * Pass 0 for UTC, or the appropriate offset for a fixed timezone (e.g. -5 for EST).
      */
     timezone_offset_hours?: number;
   };
@@ -85,6 +85,7 @@ export class EventScheduler {
     ttl?: number;
     payload?: unknown;
     ref?: string;
+    priority?: number;
   }): ScheduledItem {
     this._assertCapacity();
     if (this.items.has(params.id)) {
@@ -105,6 +106,7 @@ export class EventScheduler {
       }),
       ...(params.payload !== undefined && { payload: params.payload }),
       ...(params.ref !== undefined && { ref: params.ref }),
+      ...(params.priority !== undefined && { priority: params.priority }),
     };
     this.items.set(params.id, item);
     return item;
@@ -120,6 +122,7 @@ export class EventScheduler {
     delay_ms: number;
     payload?: unknown;
     ref?: string;
+    priority?: number;
   }): ScheduledItem {
     this._assertCapacity();
     if (this.items.has(params.id)) {
@@ -137,6 +140,7 @@ export class EventScheduler {
       max_fires: 1,
       ...(params.payload !== undefined && { payload: params.payload }),
       ...(params.ref !== undefined && { ref: params.ref }),
+      ...(params.priority !== undefined && { priority: params.priority }),
     };
     this.items.set(params.id, item);
     return item;
@@ -155,7 +159,8 @@ export class EventScheduler {
     payload?: unknown;
     ref?: string;
     /** Hour range (0–23) during which the event may fire. */
-    active_hours?: { start: number; end: number };
+    active_hours?: { start: number; end: number; timezone_offset_hours?: number };
+    priority?: number;
   }): ScheduledItem {
     this._assertCapacity();
     if (this.items.has(params.id)) {
@@ -172,6 +177,7 @@ export class EventScheduler {
       ...(params.payload !== undefined && { payload: params.payload }),
       ...(params.ref !== undefined && { ref: params.ref }),
       ...(params.active_hours !== undefined && { active_hours: params.active_hours }),
+      ...(params.priority !== undefined && { priority: params.priority }),
     };
     this.items.set(params.id, item);
     return item;
