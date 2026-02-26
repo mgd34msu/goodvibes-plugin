@@ -139,6 +139,11 @@ const mocks = vi.hoisted(() => {
     health: { check_interval_ms: 60000, memory_warn_mb: 256, memory_critical_mb: 512, queue_depth_warn: 100 },
     features: { ipc_enabled: true, workflows_enabled: true, agents_enabled: true, full_integration: true },
     agents: { max_concurrent: 6, session_budget: 0, budget_thresholds: [50, 80, 95], default_budget: 200000, max_review_iterations: 3 },
+    executor: {
+      mode: 'engaged',
+      daemon: { clear_context_after_batch: false, tmux_session_name: 'goodvibes', tick_command: '/tick' },
+      budget: { warning_threshold: 0.8, daily_reset_hour: 0 },
+    },
   });
 
   return {
@@ -252,6 +257,11 @@ function makeConfig(overrides: Partial<RuntimeConfig> = {}): RuntimeConfig {
     health: { check_interval_ms: 60000, memory_warn_mb: 256, memory_critical_mb: 512, queue_depth_warn: 100 },
     features: { ipc_enabled: true, workflows_enabled: true, agents_enabled: true, full_integration: true },
     agents: { max_concurrent: 6, session_budget: 0, budget_thresholds: [50, 80, 95], default_budget: 200000, max_review_iterations: 3 },
+    executor: {
+      mode: 'engaged',
+      daemon: { clear_context_after_batch: false, tmux_session_name: 'goodvibes', tick_command: '/tick' },
+      budget: { warning_threshold: 0.8, daily_reset_hour: 0 },
+    },
     ...overrides,
   } as RuntimeConfig;
 }
@@ -1312,5 +1322,65 @@ describe('ProcessManager — accessors', () => {
     const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
     await pm.startup();
     expect(pm.getDirectiveQueue()).not.toBeNull();
+  });
+
+  it('getExecutorMode() returns the ExecutorModeManager after startup', async () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    await pm.startup();
+    expect(pm.getExecutorMode()).not.toBeNull();
+  });
+
+  it('getExecutorMode() returns null before startup', () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    expect(pm.getExecutorMode()).toBeNull();
+  });
+
+  it('getExecutorBudget() returns the ExecutorBudgetManager after startup', async () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    await pm.startup();
+    expect(pm.getExecutorBudget()).not.toBeNull();
+  });
+
+  it('getExecutorBudget() returns null before startup', () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    expect(pm.getExecutorBudget()).toBeNull();
+  });
+
+  it('getDaemonTickHandler() returns the DaemonTickHandler after startup', async () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    await pm.startup();
+    expect(pm.getDaemonTickHandler()).not.toBeNull();
+  });
+
+  it('getDaemonTickHandler() returns null before startup', () => {
+    const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    expect(pm.getDaemonTickHandler()).toBeNull();
+  });
+
+  it('executor mode defaults to engaged after startup', async () => {
+    // Explicitly set GOODVIBES_EXECUTOR_MODE and clear TMUX to prevent
+    // environment-based daemon inference in CI and TMUX developer sessions.
+    const prevMode = process.env['GOODVIBES_EXECUTOR_MODE'];
+    const prevTmux = process.env['TMUX'];
+    process.env['GOODVIBES_EXECUTOR_MODE'] = 'engaged';
+    delete process.env['TMUX'];
+    try {
+      const pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+      await pm.startup();
+      const executorMode = pm.getExecutorMode();
+      expect(executorMode).not.toBeNull();
+      expect(executorMode!.getMode()).toBe('engaged');
+    } finally {
+      if (prevMode === undefined) {
+        delete process.env['GOODVIBES_EXECUTOR_MODE'];
+      } else {
+        process.env['GOODVIBES_EXECUTOR_MODE'] = prevMode;
+      }
+      if (prevTmux === undefined) {
+        delete process.env['TMUX'];
+      } else {
+        process.env['TMUX'] = prevTmux;
+      }
+    }
   });
 });

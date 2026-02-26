@@ -724,4 +724,4 @@ The result: production-ready code at unprecedented speed, with enterprise-grade 
 ---
 
 *Document generated from codebase analysis of the GoodVibes plugin, v1.0*
-*Path: `plugins/goodvibes/` | 74 MCP tools | 9 agents | 173 skills*
+*Path: `plugins/goodvibes/` | 73 MCP tools | 9 agents | 173 skills*

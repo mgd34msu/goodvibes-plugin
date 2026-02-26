@@ -151,7 +151,7 @@ Flatter structure — all agents under `categories._items`. **Agents total: 11**
 ```yaml
 version: 2.0.0
 generated: '2026-02-22T05:53:24.203Z'
-total: 66
+total: 73
 servers:
   - name: precision-engine
     count: 12
@@ -161,7 +161,7 @@ servers:
         description: Create or write files...
 ```
 
-Grouped by MCP server. **Tools total: 66** across 5 servers (precision-engine, project-engine, frontend-engine, analytics-engine, registry-engine). Each entry links to its YAML definition file.
+Grouped by MCP server. **Tools total: 73** across 6 servers (precision-engine, project-engine, frontend-engine, analytics-engine, registry-engine, runtime-engine). Each entry links to its YAML definition file.
 
 ### Tool Definition Files (`tools/definitions/registry-engine/*.yaml`)
 
@@ -231,7 +231,7 @@ examples:                   # illustrative usage
 
 ### 3. `search_tools`
 
-**Purpose:** Search the 66-tool registry by functionality.
+**Purpose:** Search the 73-tool registry by functionality.
 
 **Parameters:**
 | Parameter | Type | Default | Description |
@@ -444,7 +444,7 @@ All output goes to `stderr` via the `logger` singleton. Levels: `debug`, `info`,
 ## Design Notes
 
 - **No runtime code generation** — the registries are pre-generated YAML files (`generated:` timestamp field), not dynamically scanned at search time.
-- **Fuse.js vs TF-IDF** — Fuse.js uses a bitap approximate string matching algorithm, not TF-IDF. It is simpler and works well for the small corpus sizes here (25 skills, 11 agents, 66 tools). It handles typos and partial matches via the `threshold: 0.4` setting.
+- **Fuse.js vs TF-IDF** — Fuse.js uses a bitap approximate string matching algorithm, not TF-IDF. It is simpler and works well for the small corpus sizes here (25 skills, 11 agents, 73 tools). It handles typos and partial matches via the `threshold: 0.4` setting.
 - **Category filtering is post-search** — `search_skills` applies the `category` filter after Fuse ranking, not as a pre-filter on the index. This means ranked relevance is still computed over the full set; category only narrows the returned list.
 - **Dependency depth is shallow by design** — the max useful depth is 2 (default), with the implementation capping nested deps at 3 per level to avoid explosive fan-out on larger skill graphs.
 - **Tools are all deferred** — all 7 registry-engine tools use `defer_loading: true`, meaning they are not pre-loaded by the Claude plugin system. They must be discovered via `ToolSearch` before use.

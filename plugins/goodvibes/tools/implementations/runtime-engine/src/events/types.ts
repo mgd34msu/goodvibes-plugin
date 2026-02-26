@@ -268,7 +268,27 @@ export type EventType =
   /** An internal engine error occurred. */
   | 'system:error'
   /** A garbage collection cycle ran. */
-  | 'system:gc';
+  | 'system:gc'
+
+  // ── Executor events ────────────────────────────────────────────────────
+  /** Executor mode was determined or changed. */
+  | 'executor:mode_set'
+  /** A daemon tick was received and processing started. */
+  | 'executor:tick_received'
+  /** A daemon tick batch completed processing. */
+  | 'executor:tick_completed'
+  /** Context clearing was initiated (daemon/hybrid mode). */
+  | 'executor:context_clearing'
+  /** Executor budget warning threshold reached. */
+  | 'executor:budget_warning'
+  /** Executor budget cap reached; processing paused. */
+  | 'executor:budget_exceeded'
+  /** Executor daily budget reset occurred. */
+  | 'executor:budget_reset'
+  /** Executor processing was paused due to budget. */
+  | 'executor:paused'
+  /** Executor processing was resumed (budget increased or reset). */
+  | 'executor:resumed';
 
 // ─── Payload Types ────────────────────────────────────────────────────────────
 
@@ -554,7 +574,16 @@ export type EventPayload =
   // Dev server events without dedicated payloads (covered above)
   // Engine events already covered above
   // System events without dedicated payloads
-  | { type: 'system:startup' | 'system:shutdown' | 'system:health_check' | 'system:gc'; data: Record<string, unknown> };
+  | { type: 'system:startup' | 'system:shutdown' | 'system:health_check' | 'system:gc'; data: Record<string, unknown> }
+  // Executor events
+  | { type: 'executor:mode_set'; data: { mode: 'engaged' | 'daemon' | 'hybrid'; previous_mode?: 'engaged' | 'daemon' | 'hybrid'; detection_method: 'explicit' | 'inferred' | 'default' } }
+  | { type: 'executor:tick_received'; data: { tick_number: number; pending_events: number } }
+  | { type: 'executor:tick_completed'; data: { tick_number: number; events_processed: number; duration_ms: number } }
+  | { type: 'executor:context_clearing'; data: { method: 'tmux' | 'queue_injection'; success: boolean } }
+  | { type: 'executor:budget_warning'; data: { cap_type: 'flat' | 'daily'; spent_usd: number; cap_usd: number; threshold: number } }
+  | { type: 'executor:budget_exceeded'; data: { cap_type: 'flat' | 'daily'; spent_usd: number; cap_usd: number } }
+  | { type: 'executor:budget_reset'; data: { previous_daily_spent: number; reset_hour: number } }
+  | { type: 'executor:paused' | 'executor:resumed'; data: { reason: string } };
 
 // ─── EventBus Support Types ───────────────────────────────────────────────────
 

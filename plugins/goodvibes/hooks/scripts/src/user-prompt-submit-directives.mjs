@@ -25,6 +25,7 @@ import { tmpdir } from 'node:os';
 
 const QUERY_TIMEOUT_MS = 500;
 const TASK_NOTIFICATION_PATTERN = '<task-notification>';
+const DEFAULT_TICK_COMMAND = 'tick';
 
 // ─── Response helpers ────────────────────────────────────────────────────────
 
@@ -153,6 +154,28 @@ async function queryDirectives(socketPath) {
   return response.data || null;
 }
 
+async function queryExecutorMode(socketPath) {
+  const message = {
+    type: 'query',
+    id: generateId(),
+    query: { kind: 'get_executor_mode' },
+  };
+  const response = await sendMessage(socketPath, message, QUERY_TIMEOUT_MS);
+  if (!response || response.status === 'error') return null;
+  return response.data?.mode ?? null;
+}
+
+async function sendProcessTick(socketPath) {
+  const message = {
+    type: 'query',
+    id: generateId(),
+    query: { kind: 'process_tick' },
+  };
+  const response = await sendMessage(socketPath, message, QUERY_TIMEOUT_MS);
+  if (!response || response.status === 'error') return null;
+  return response.data?.result ?? null;
+}
+
 // ─── Stdin reader ────────────────────────────────────────────────────────────
 
 function readStdin() {
@@ -187,8 +210,22 @@ try {
   // The prompt field contains the user message / task-notification content
   const prompt = hookInput?.prompt || '';
 
-  // Fast path: not a task-notification → exit immediately
+  // Fast path: not a task-notification → check for daemon tick, then exit
   if (!prompt.includes(TASK_NOTIFICATION_PATTERN)) {
+    const tickCommand = process.env['GOODVIBES_TICK_COMMAND'] || DEFAULT_TICK_COMMAND;
+    const trimmedPrompt = prompt.trim();
+    if (trimmedPrompt === tickCommand) {
+      const projectDir = hookInput?.cwd || null;
+      const sessionId = hookInput?.session_id || null;
+      const socketPath = discoverSocket(projectDir, sessionId);
+
+      if (socketPath && existsSync(socketPath)) {
+        const mode = await queryExecutorMode(socketPath);
+        if (mode === 'daemon' || mode === 'hybrid') {
+          await sendProcessTick(socketPath);
+        }
+      }
+    }
     respond(continueResponse());
   }
 

@@ -67,7 +67,7 @@ Unix domain socket; Claude Code interacts with it through seven MCP tools.
 | File Fallback | `src/ipc/file-fallback.ts` | File-based fallback when the socket is unavailable |
 | WorkflowEngine | `src/workflow/workflow-engine.ts` | Formal state machine executor (no eval) |
 | Workflow Types | `src/workflow/types.ts` | WorkflowDefinition, WorkflowInstance, transitions |
-| WRFC Definition | `src/workflow/definitions/wrfc-loop.ts` | Built-in Write-Review-Fix-Complete loop definition |
+| WRFC Definition | `src/workflow/definitions/wrfc-loop.ts` | Built-in Work-Review-Fix-Check loop definition |
 | Fix Loop | `src/workflow/definitions/fix-loop.ts` | Built-in iterative fix loop definition |
 | TriggerRegistry | `src/triggers/trigger-registry.ts` | Registers, evaluates, and fires trigger definitions |
 | ConditionEvaluator | `src/triggers/condition-evaluator.ts` | Evaluates event/composite/threshold/pattern conditions |

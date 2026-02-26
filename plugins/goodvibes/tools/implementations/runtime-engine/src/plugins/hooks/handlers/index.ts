@@ -25,6 +25,8 @@ import type { HookRegistry } from '../hook-registry.js';
 import type { EventBus } from '../../../events/event-bus.js';
 import type { DirectiveQueue } from '../../../directives/directive-queue.js';
 import type { AgentWorkflowMap } from '../../../directives/agent-workflow-map.js';
+import type { DaemonTickHandler } from '../../../lifecycle/daemon-tick-handler.js';
+import type { ExecutorModeManager } from '../../../lifecycle/executor-mode.js';
 
 export {
   handlePreToolUse,
@@ -55,6 +57,10 @@ export interface DefaultHandlerDeps {
   agentWorkflowMap: AgentWorkflowMap | null;
   minReviewScore?: number;
   snapshotState?: () => Record<string, unknown>;
+  /** DaemonTickHandler for daemon tick detection in UserPromptSubmit. */
+  daemonTickHandler?: DaemonTickHandler | null;
+  /** ExecutorModeManager for mode-aware tick handling in UserPromptSubmit. */
+  executorMode?: ExecutorModeManager | null;
 }
 
 /**
@@ -84,7 +90,11 @@ export function registerDefaultHandlers(
   registry.register({
     id: 'default:user-prompt-submit:directive-delivery',
     hook_type: 'UserPromptSubmit',
-    handler: createUserPromptSubmitHandler({ directiveQueue: deps.directiveQueue }),
+    handler: createUserPromptSubmitHandler({
+      directiveQueue: deps.directiveQueue,
+      daemonTickHandler: deps.daemonTickHandler ?? null,
+      executorMode: deps.executorMode ?? null,
+    }),
     priority: 80,
     enabled: true,
   });

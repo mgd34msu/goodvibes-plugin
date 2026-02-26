@@ -15,6 +15,9 @@ import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import type { HookProcessor } from '../plugins/hooks/hook-processor.js';
+import type { ExecutorModeManager } from '../lifecycle/executor-mode.js';
+import type { ExecutorBudgetManager } from '../lifecycle/executor-budget.js';
+import type { DaemonTickHandler } from '../lifecycle/daemon-tick-handler.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -45,6 +48,12 @@ export interface IPCRouterDeps {
    * Falls back to EventBus-only handling when null.
    */
   hookProcessor?: HookProcessor | null;
+  /** Executor mode manager for get_executor_mode queries. */
+  executorMode?: ExecutorModeManager | null;
+  /** Executor budget manager for get_executor_budget queries. */
+  executorBudget?: ExecutorBudgetManager | null;
+  /** Daemon tick handler for process_tick queries. */
+  daemonTickHandler?: DaemonTickHandler | null;
 }
 
 /** Return type for {@link IPCRouter.drainDirectiveMessages}. */
@@ -68,6 +77,12 @@ export class IPCRouter {
   private readonly agentWorkflowMap: AgentWorkflowMap | null;
   /** Optional v3 HookProcessor for bridging hook events to the plugin layer. */
   private readonly hookProcessor: HookProcessor | null;
+  /** Optional ExecutorModeManager for get_executor_mode queries. */
+  private readonly executorMode: ExecutorModeManager | null;
+  /** Optional ExecutorBudgetManager for get_executor_budget queries. */
+  private readonly executorBudget: ExecutorBudgetManager | null;
+  /** Optional DaemonTickHandler for process_tick queries. */
+  private readonly daemonTickHandler: DaemonTickHandler | null;
 
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
@@ -82,6 +97,9 @@ export class IPCRouter {
     this.stateDir = deps.stateDir;
     this.agentWorkflowMap = deps.agentWorkflowMap ?? null;
     this.hookProcessor = deps.hookProcessor ?? null;
+    this.executorMode = deps.executorMode ?? null;
+    this.executorBudget = deps.executorBudget ?? null;
+    this.daemonTickHandler = deps.daemonTickHandler ?? null;
   }
 
   /**
@@ -270,6 +288,28 @@ export class IPCRouter {
         }
         const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType) ?? null;
         return { id: msg.id, status: 'ok', data: { kind: 'pending_bind', workflow_id: workflowId } };
+      }
+      if (q.kind === 'get_executor_mode') {
+        const mode = this.executorMode?.getMode() ?? 'engaged';
+        return { id: msg.id, status: 'ok', data: { kind: 'executor_mode', mode } };
+      }
+      if (q.kind === 'get_executor_budget') {
+        const spending = this.executorBudget?.getSpending() ?? null;
+        const canProcess = this.executorBudget?.canProcess() ?? true;
+        return {
+          id: msg.id,
+          status: 'ok',
+          data: { kind: 'executor_budget', spending: spending as Record<string, unknown> | null, can_process: canProcess },
+        };
+      }
+      if (q.kind === 'process_tick') {
+        const result = await this.daemonTickHandler?.handleTick();
+        return {
+          id: msg.id,
+          status: 'ok',
+          // TickResult serialized to JSON for IPC transport — type erased intentionally
+          data: { kind: 'tick_result', result: result as Record<string, unknown> | undefined },
+        };
       }
       // Default: log and ack unknown queries
       logger.warn('Unhandled query kind', { kind: q.kind });

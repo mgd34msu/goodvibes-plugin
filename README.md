@@ -1,12 +1,12 @@
 # GoodVibes Plugin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://claude.com/claude-code)
 
 > Plug in. Receive good vibes.
 
-A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 66 MCP tools across 5 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
+A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 73 MCP tools across 6 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
 
 ## At a Glance
 
@@ -14,7 +14,7 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 |-----------|-------|--------------|
 | Agents | 11 | Specialized roles (Opus/Sonnet) for engineering, review, testing, architecture, deployment, integration, planning |
 | Skills | 25 | Tiered knowledge modules: protocol, orchestration, outcome, quality |
-| MCP Tools | 66 | Token-efficient tools across 5 specialized engines |
+| MCP Tools | 73 | Token-efficient tools across 6 specialized engines |
 | Hooks | 11 | Lifecycle automation (tool redirection, context injection, error recovery, setup) |
 | Output Styles | 2 | Interactive (vibecoding) or fully autonomous (justvibes) |
 | Templates | 3 | Production scaffolds |
@@ -119,8 +119,8 @@ The output style enforces patterns that keep the entire agent tree efficient.
 
 - **Orchestrator stays lean**: "You ARE the orchestrator. Coordination, NOT implementation." The main context — the most expensive one because it persists across the whole session — never bloats with file contents or grep results. All implementation happens in subagent contexts that are discarded after completion.
 - **Mandatory precision tools for all agents**: The output style and PreToolUse hook force precision tools across the entire agent tree. One rogue subagent using native `Read` in a loop would burn thousands of tokens. This prevents it.
-- **Planned execution**: "Plan all work" instruction means agents execute targeted operations instead of speculative exploration. Pre-meditated work = fewer wasted reads and searches.
-- **Parallel agents with background execution**: Up to 6 agents run concurrently in background. Parallel execution plus explicit instructions not to monitor agents via Task Output unless absolutely necessary (and even then to use the non-blocking version), and to wait for a Task Completion notification means fewer wasted tokens and the ability to keep conversing and planning in the main conversation context while work is done in the background.
+- **Planned execution**: "Gather->Plan->Apply Workflow" means agents execute targeted operations instead of speculative exploration. Pre-meditated work = fewer wasted reads and searches.
+- **Parallel agents with background execution**: Agents run concurrently in the background (Default = 6 concurrent, can be increased). Parallel execution plus explicit instructions not to monitor agents via Task Output unless absolutely necessary (and even then to use the non-blocking version), and to wait for a Task Completion notification means fewer wasted tokens and the ability to keep conversing and planning in the main conversation context while work is done in the background.
 
 #### Summary
 
@@ -128,7 +128,7 @@ These seven layers compound: per-operation savings reduce round-trip overhead, w
 
 ### Transparent Tool Upgrade
 
-A PreToolUse hook intercepts Claude's native Read, Edit, Write, Glob, and Grep calls and redirects them to precision equivalents. The hook fires on every tool call — Claude requests `Read`, the hook blocks it and tells Claude to use `precision_read` instead. This happens for all agents including subagents.
+A PreToolUse hook intercepts Claude's native Read, Edit, Write, Glob, and Grep calls and redirects them to precision equivalents. The hook fires on every tool call — Claude requests `Read`, the hook blocks it and tells Claude to use `precision_read` instead. This happens for all agents including subagents. Once this behavior has been recorded in memory, native tool use is rarely attempted.
 
 This means the efficiency gains are automatic — Claude uses precision tools without configuration.
 
@@ -142,34 +142,27 @@ A two-tier memory system stores decisions, patterns, failures, and preferences i
 
 ### Quality Loops
 
-WRFC (Write-Review-Fix-Check) loops enforce a mandatory review cycle on every unit of work. No code reaches a commit without passing review.
+WRFC (Work-Review-Fix-Check) is a mandatory quality cycle enforced on every unit of work. The runtime engine drives these loops autonomously — the orchestrator spawns work, and the engine handles review, fix, and completion via directives.
 
-**The loop:**
+**The cycle:**
 
 ```
-1. WORK   ->  Spawn agent to implement the task (background)
-2. REVIEW ->  Spawn reviewer to check the work (background)
-3. Evaluate:
-   |  PASS -> Proceed to step 5
-   |  FAIL -> Enter Fix-Check cycle:
-   |         FIX   ->  Spawn agent to address all issues (background)
-   |         CHECK ->  Spawn reviewer to re-check (background)
-   |         Repeat until PASS (or max attempts reached)
-4. COMMIT ->  Git commit the verified work
-5. LOG    ->  Update .goodvibes/ memory and logs
-6. REPORT ->  Report complete, loop for next task
+1. WORK    →  Orchestrator spawns agent to implement the task
+2. REVIEW  →  Runtime engine auto-spawns reviewer (directive-driven)
+3. FIX     →  If issues found, engine spawns fixer (directive-driven)
+4. CHECK   →  Engine re-reviews until zero issues remain
+5. COMPLETE →  Engine issues complete directive → git commit + log update
 ```
 
-**Key properties:**
+**How it works:**
 
-- **Per-task, not per-batch.** Each unit of work gets its own WRFC cycle. A phase with 4 tasks runs 4 independent loops.
-- **All agents run in background.** The orchestrator coordinates; it never implements. Up to 6 agents run concurrently.
-- **No issue is too minor.** Reviewers flag everything — major, minor, nitpick. All must be addressed before the loop passes.
-- **Fix-Check is iterative.** If the fix introduces new issues, the reviewer catches them. The loop continues until the reviewer returns zero issues.
-- **Failures are logged.** If max fix attempts are exhausted, the failure is recorded in `.goodvibes/memory/failures.json` with root cause and prevention guidance.
-- **Commit gates on review.** Code is only committed after the reviewer confirms zero issues. No exceptions.
-
-The orchestrator maintains WRFC loops across concurrent tasks — when one task's reviewer returns PASS, the orchestrator commits that work and checks for newly unblocked tasks, keeping agent utilization high.
+- **Directive-driven**: The runtime engine's WRFC plugin evaluates review scores, decides whether to fix or complete, and issues `<gv>` directives that the orchestrator executes mechanically. The orchestrator does not decide when to review or fix — the engine does.
+- **Per-task isolation**: Each unit of work gets its own WRFC workflow with independent state tracking.
+- **All agents run in background**: The orchestrator coordinates; it never implements. Up to 6 concurrent WRFC chains. (Default = 6, can be configured)
+- **No issue is too minor**: Reviewers flag everything — major, minor, nitpick. All must be addressed before the chain completes. (Minimum review score can be configured)
+- **Iterative convergence**: Fix → Check repeats until the reviewer returns zero issues or max attempts are reached. Default for max attempts is 3 loops where a single loop contains 4 separate attempts to fix a problem by gathering additional information and retrying. In an interactive Vibecoding session, the user can direct the flow after max retries; In an automated Justvibes session, failures are documented for later examination.
+- **Failure logging**: If max fix attempts are exhausted, the failure is recorded in `.goodvibes/memory/failures.json` with root cause and prevention guidance.
+- **Score-gated completion**: Code is only committed after the reviewer confirms a passing score. The threshold is configurable per workflow.
 
 ### Two Execution Modes
 
@@ -191,7 +184,7 @@ This ensures all GoodVibes instruction files are in place before your first sess
 - Detects your project stack (frameworks, languages, tools)
 - Analyzes git status (branch, uncommitted changes)
 - Checks project health (missing dependencies, build issues)
-- Verifies CLAUDE.md chain files (writes any that are missing)
+- Verifies CLAUDE.md chain files (writes/appends any that are missing)
 - Injects project context into Claude's system message
 
 Set your output style:
@@ -224,8 +217,6 @@ Key capabilities:
 - **Atomic transactions**: if any operation in a batch fails, all changes roll back (rollback ID provided for manual undo)
 - **AST-Grep matching**: structural code patterns with captures across 18 languages
 - **Multi-format reading**: images (returned as visual blocks), PDFs (per-page), Jupyter notebooks (structured cell output)
-
-> Full details: [precision-engine.md](precision-engine.md)
 
 ## Project Engine — 26 Tools
 
@@ -266,8 +257,6 @@ Key capabilities:
 - **LLM-powered analysis**: breaking change detection and semantic diff with configurable model (haiku/sonnet/opus)
 - **Security scanning**: 40+ secret patterns, 330+ permission patterns, env var auditing
 
-> Full details: [project-engine.md](project-engine.md)
-
 ## Frontend Engine — 14 Tools
 
 Static analysis tools for React/TypeScript frontends. All analysis is AST-based — no runtime, no DOM, no browser required.
@@ -295,8 +284,6 @@ Key capabilities:
 - **Next.js App Router support**: client/server boundary analysis, route segment error boundary coverage
 - **WCAG 2.1 AA**: checks roles, focus order, keyboard interactions, and ARIA composite patterns
 
-> Full details: [frontend-engine.md](frontend-engine.md)
-
 ## Analytics Engine — 7 Tools
 
 Session intelligence daemon. Tracks token usage, API costs, tool call metrics, agent lifecycle, file hotspots, and anomalies. Renders into tmux panes via a mini (4-line) or full (4-page interactive) TUI dashboard.
@@ -317,7 +304,67 @@ Key capabilities:
 - **Cross-session history**: global SQLite DB (`~/.claude/.goodvibes/analytics/analytics.db`) with tag filtering
 - **TUI dashboards**: spawns standalone tmux pane processes (mini: 4-line statusline; full: 4-page interactive Ink/React app)
 
-> Full details: [analytics-engine.md](analytics-engine.md)
+## Runtime Engine — 7 Tools
+
+Event-driven orchestration backbone. Manages WRFC quality loops, event-driven triggers, workflow state machines, and agent coordination. Runs as a persistent process with Unix domain socket IPC.
+
+| Tool | Description |
+|------|-------------|
+| `runtime_status` | Get runtime status: active workflows, agents, event queue stats, system health. Configurable sections and verbosity |
+| `runtime_config` | Get/set runtime configuration with dot-separated key paths. Queue settings, trigger defaults, IPC config, feature flags |
+| `runtime_events` | Query event log (filter by type/source/time), tail recent events, view queue stats, query directive queue |
+| `runtime_emit` | Emit custom events into the event bus. Manual workflow advancement, trigger testing, custom automation |
+| `runtime_workflow` | Manage WRFC and fix-loop workflows: create, query, advance state, cancel. Formal state machines |
+| `runtime_triggers` | Manage event triggers: list, create, enable/disable, test conditions. Declarative event-driven automation |
+| `runtime_agents` | Manage coordinated agents: spawn with workflow context, track WRFC chains, monitor budgets, view execution plans |
+
+### Architecture
+
+Three-layer design separating generic event processing from domain-specific behavior:
+
+**Layer 1 — Core** (generic event loop):
+- **EventQueue**: Binary min-heap with O(log n) enqueue, priority ordering, dedup TTL, cancel by ID/ref
+- **EventProcessor**: Tick-driven processing loop with backpressure detection and budget limits
+- **TriggerRegistry**: Pattern-based event matching with glob support and LRU cache
+- **StateStore**: Debounced JSON persistence with structuredClone snapshots
+- **LoopLifecycleManager**: State machine (stopped → running → paused → draining → stopped)
+- **ErrorHandler**: Retry engine (fixed/exponential backoff) with dead-letter queue routing
+- **EventMetrics**: Rolling window statistics (latency, chain depth, per-trigger/per-type counts)
+- **DeadLetterQueue**: Failed event storage with max-size eviction and optional disk persistence
+
+**Layer 2 — Extensions** (typed event/trigger factories):
+- 5 event factories: agent, hook, time, external, human — each producing typed `RuntimeEvent` payloads
+- 4 trigger factories: WRFC, cron, webhook, and generic — with condition builders and type guards
+
+**Layer 3 — Plugins** (domain implementations):
+- **WRFC Plugin**: Score evaluation, directive building, quality gate handlers, review/fix orchestration
+- **Time Plugin**: Heartbeat monitoring, cron-style scheduling with dirty-flag persistence
+- **External Plugin**: File watcher (polling with dedup), HTTP webhook listener (SHA-256 auth), pluggable normalizers
+- **Hook Processing Plugin**: Maps Claude Code hook events to runtime events via priority-sorted registry
+
+### Executor Modes
+
+The runtime engine supports three execution modes that determine how events are processed:
+
+| | Engaged | Daemon | Hybrid |
+|---|---|---|---|
+| **When** | Human present, interactive session | Session processes event queue autonomously | Engaged session that also processes queued events |
+| **Context** | Accumulates naturally | Clears after each event batch | Accumulates, processes queue between interactions |
+| **Event sources** | `human:*`, `internal:*`, `agent:*` | `time:*`, `external:*`, `agent:*` | All sources |
+| **Tick mechanism** | Human drives the session | System scheduler (systemd/cron/launchd) sends ticks | Human drives + queue drains between interactions |
+| **Memory injection** | At session start + compaction recovery | Before every event batch | Both |
+
+**Mode selection**: Explicit via config/command, inferred from session origin (tmux cron tick → daemon, human → engaged), or hybrid by default in engaged sessions with queued events.
+
+### Key Capabilities
+
+- **Directive-driven WRFC**: Autonomous Work → Review → Fix → Check loops managed by the engine, not the orchestrator
+- **Event-driven triggers**: Declarative conditions that fire handlers when matching events arrive
+- **Workflow state machines**: Formal state tracking for WRFC chains and fix loops with cancellation support
+- **Five event sources**: Time (heartbeats, crons), human (prompts, approvals), external (webhooks), internal (hooks), and agent (inter-agent) — all entering a single priority queue
+- **Circuit breakers**: Chain depth limits, max fires per trigger, cooldowns, global queue depth limits, and cost budgets
+- **Unix socket IPC**: Low-latency communication between hooks, MCP tools, and the runtime process
+- **Plugin architecture**: Layer 3 plugins register event types, triggers, and handlers at startup — extensible without modifying core
 
 ## Registry Engine — 7 Tools
 
@@ -327,7 +374,7 @@ Discovery and search layer for skills, agents, and tools. Uses Fuse.js fuzzy sea
 |------|-------------|
 | `search_skills` | Keyword/semantic search over the 25-skill registry |
 | `search_agents` | Search the 11-agent registry by expertise area |
-| `search_tools` | Search the 66-tool registry by functionality |
+| `search_tools` | Search the 73-tool registry by functionality |
 | `recommend_skills` | Analyze a task description and recommend relevant skills with context classification |
 | `get_skill_content` | Load a skill's full content into context for immediate use |
 | `get_agent_content` | Load an agent definition into context |
@@ -337,9 +384,7 @@ Key capabilities:
 - **Fuzzy search**: Fuse.js with weighted fields (description 0.4, name 0.3, keywords 0.3) and relevance scoring
 - **Lazy loading**: server starts instantly; registry indexes are loaded on first use (single-flight pattern)
 - **Deferred tools**: all 7 tools use `defer_loading: true` — loaded on-demand via `ToolSearch` to minimize startup cost
-- **Three registries**: skills (25), agents (11), tools (66) — each indexed independently with Fuse.js
-
-> Full details: [registry-engine.md](registry-engine.md)
+- **Three registries**: skills (25), agents (11), tools (73) — each indexed independently with Fuse.js
 
 ## Agents
 
@@ -388,11 +433,11 @@ Lifecycle hooks run transparently on every session. They're the mechanism behind
 | PostToolUseFailure | After Bash failure | 3-phase progressive fix loop: Phase 1 (internal knowledge) -> Phase 2 (official docs hints) -> Phase 3 (community docs hints). Logs failures to `.goodvibes/memory/failures.json` after all phases exhausted |
 | SessionStart | Session begins | Detects project stack, analyzes git status, checks project health, creates/updates CLAUDE.md, injects context into system message, builds project file index |
 | SessionEnd | Session ends | Persists session state |
-| SubagentStart | Agent spawns | Injects context for GoodVibes agents (stack info, git branch, project name), tracks agent telemetry |
-| SubagentStop | Agent completes | Cleans up agent tracking, updates analytics |
+| SubagentStart | Agent spawns | Injects context for GoodVibes agents (stack info, git branch, project name), emits agent:spawned event to runtime engine |
+| SubagentStop | Agent completes | Emits agent:completed event to runtime engine, triggers WRFC directive evaluation |
 | PreCompact | Before context compaction | Creates checkpoint commit if uncommitted changes exist, generates session summary |
 | Stop | Stop button pressed | Saves current state |
-| UserPromptSubmit | User sends message | Processes user input |
+| UserPromptSubmit | User sends message | Drains pending WRFC directives from runtime engine, injects into orchestrator context |
 
 ## Output Styles
 
@@ -458,9 +503,9 @@ Controls whether precision tools can access files outside the project root. Disa
 Named API services with stored credentials for precision_fetch auto-auth:
 
 ```bash
-/goodvibes:services add OpenAI    # Configure a new API service
-/goodvibes:services list           # Show registered services
-/goodvibes:services test OpenAI    # Test service connectivity
+/goodvibes:services add Github    # Configure a new API service
+/goodvibes:services list          # Show registered services
+/goodvibes:services test Github   # Test service connectivity
 ```
 
 ### Output Style
@@ -495,4 +540,6 @@ MIT License - see [LICENSE](LICENSE) for details.
   <code>claude plugin marketplace add mgd34msu/goodvibes-plugin</code>
   <br>
   <code>claude plugin install goodvibes@goodvibes-market</code>
+  <br>
+  <code>claude --init-only</code>
 </p>

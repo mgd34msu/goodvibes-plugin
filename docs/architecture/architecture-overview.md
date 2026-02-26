@@ -16,7 +16,7 @@ This document provides a technical overview of the GoodVibes plugin architecture
 
 ## System Overview
 
-GoodVibes is a comprehensive plugin for Claude Code that enhances AI-assisted development through specialized tools, agents, and workflows. It extends Claude Code's capabilities with 74 MCP tools across 6 engines, 9 specialized agents, 173 skills, and 9 lifecycle hooks.
+GoodVibes is a comprehensive plugin for Claude Code that enhances AI-assisted development through specialized tools, agents, and workflows. It extends Claude Code's capabilities with 73 MCP tools across 6 engines, 9 specialized agents, 173 skills, and 9 lifecycle hooks.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -31,7 +31,7 @@ GoodVibes is a comprehensive plugin for Claude Code that enhances AI-assisted de
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
 │  │ MCP Engines  │  │    Agents    │  │    Skills    │     │
 │  │  (6 engines) │  │  (9 agents)  │  │ (173 skills) │     │
-│  │   74 tools   │  └──────┬───────┘  └──────┬───────┘     │
+│  │   73 tools   │  └──────┬───────┘  └──────┬───────┘     │
 │  └──────┬───────┘         │                  │             │
 │         │                 │                  │             │
 │         └─────────────────┼──────────────────┘             │
@@ -70,7 +70,7 @@ GoodVibes integrates with Claude Code through the Model Context Protocol (MCP), 
 
 ```
 plugins/goodvibes/
-├── engines/           # MCP servers (6 engines, 74 tools)
+├── engines/           # MCP servers (6 engines, 73 tools)
 ├── agents/            # Specialized agent personas (9 agents)
 ├── skills/            # Domain knowledge library (173 skills)
 ├── hooks/             # Lifecycle event handlers (9 hooks)
@@ -81,7 +81,7 @@ plugins/goodvibes/
 
 ## Component Types
 
-### 1. MCP Engines (6 Engines, 74 Tools)
+### 1. MCP Engines (6 Engines, 73 Tools)
 
 MCP engines are specialized tool servers that expose capabilities through the Model Context Protocol.
 
@@ -394,7 +394,7 @@ agentContext.relevantDecisions = relevantDecisions;
 
 ## WRFC Loop
 
-**Write-Review-Fix-Check** - A continuous validation cycle ensuring code quality.
+**Work-Review-Fix-Check** - A continuous validation cycle ensuring code quality.
 
 ### Loop Phases
 
@@ -521,7 +521,7 @@ agentContext.relevantDecisions = relevantDecisions;
 
 The GoodVibes plugin architecture provides a comprehensive framework for AI-assisted development through:
 
-- **Specialized Tools**: 74 MCP tools across 6 engines for every development task
+- **Specialized Tools**: 73 MCP tools across 6 engines for every development task
 - **Expert Agents**: 9 specialized agents with domain expertise
 - **Just-in-Time Knowledge**: 173 skills loaded dynamically based on context
 - **Lifecycle Hooks**: 9 hooks for behavior customization and enforcement

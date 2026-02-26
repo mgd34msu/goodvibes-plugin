@@ -30,7 +30,7 @@ All 25 skills rewritten to achieve 10/10 review scores. 5 protocol skills (alway
 
 ### 6. Infrastructure & Workflow
 
-GPA Loop (Gather-Plan-Apply) introduced, renamed from DPB (Discover-Plan-Batch), and relaxed from strict 3-call cycle to practical batching. Setup hook for session initialization. Subagent protocol split into chain-loaded files. Progressive disclosure model for context injection. Native tool blocking (WebFetch, Update redirected to precision equivalents). Sandbox mode protection (agents prohibited from enabling). Deep-dive documentation for all 5 engines.
+GPA Loop (Gather-Plan-Apply) introduced, renamed from DPB (Discover-Plan-Batch), and relaxed from strict 3-call cycle to practical batching. Setup hook for session initialization. Subagent protocol split into chain-loaded files. Progressive disclosure model for context injection. Native tool blocking (WebFetch, Update redirected to precision equivalents). Sandbox mode protection (agents prohibited from enabling). Deep-dive documentation for all 6 engines.
 
 ---
 
@@ -279,7 +279,7 @@ GPA Loop (Gather-Plan-Apply) introduced, renamed from DPB (Discover-Plan-Batch),
 | Refactors | 13 |
 | New engines | 1 (Analytics) |
 | Rebuilt engines | 2 (Project, Frontend) |
-| Total MCP tools | 66 (across 5 engines) |
+| Total MCP tools | 73 (across 6 engines) |
 | Skills at 10/10 | 25 |
 | Patch versions | v1.2.5 through v1.2.62 |
 

@@ -95,6 +95,41 @@ export interface AgentsConfig {
   max_review_iterations: number;
 }
 
+/** Executor mode for the runtime engine session. */
+export type ExecutorMode = 'engaged' | 'daemon' | 'hybrid';
+
+/** Daemon-specific configuration. */
+export interface DaemonConfig {
+  /** Whether to clear context after processing each event batch. */
+  clear_context_after_batch: boolean;
+  /** Name of the tmux session running the daemon. */
+  tmux_session_name: string;
+  /** Command string that triggers a tick (typed into the session). */
+  tick_command: string;
+}
+
+/** Two-tier budget configuration for executor cost controls. */
+export interface ExecutorBudgetConfig {
+  /** Total spending ceiling in USD. When hit, processing pauses. Optional. */
+  flat_cap_usd?: number;
+  /** Per-day spending limit in USD. Resets at reset_hour. Optional. */
+  daily_cap_usd?: number;
+  /** Fraction (0-1) at which a warning event fires. Default: 0.8 (80%). */
+  warning_threshold: number;
+  /** Hour of day (0-23) at which the daily cap resets. Default: 0 (midnight). */
+  daily_reset_hour: number;
+}
+
+/** Complete executor configuration section. */
+export interface ExecutorConfig {
+  /** Current executor mode. Default: 'engaged'. */
+  mode: ExecutorMode;
+  /** Daemon-specific settings. Only consulted when mode is 'daemon' or 'hybrid'. */
+  daemon: DaemonConfig;
+  /** Two-tier cost controls. Active in all modes. */
+  budget: ExecutorBudgetConfig;
+}
+
 /** Feature flags -- controls which subsystems are active */
 export interface FeaturesConfig {
   /** Whether IPC communication is enabled */
@@ -119,6 +154,7 @@ export interface RuntimeConfig {
   health: HealthConfig;
   features: FeaturesConfig;
   agents: AgentsConfig;
+  executor: ExecutorConfig;
 }
 
 /** Default configuration values -- safe for all environments */
@@ -180,6 +216,20 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     budget_thresholds: [50, 80, 95],
     default_budget: 200000, // tokens
     max_review_iterations: 3,
+  },
+  executor: {
+    mode: 'engaged',
+    daemon: {
+      clear_context_after_batch: true,
+      tmux_session_name: 'claude-daemon',
+      tick_command: 'tick',
+    },
+    budget: {
+      flat_cap_usd: undefined,
+      daily_cap_usd: undefined,
+      warning_threshold: 0.8,
+      daily_reset_hour: 0,
+    },
   },
 };
 

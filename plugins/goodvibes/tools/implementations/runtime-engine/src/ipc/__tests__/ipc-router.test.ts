@@ -24,6 +24,15 @@ function makeConfigLoadedEvent(hookInput: Record<string, unknown>): HookEventMes
   };
 }
 
+function makeQueryMsg(kind: string) {
+  return {
+    type: 'query' as const,
+    id: 'msg-query-001',
+    query: { kind },
+    timestamp: new Date().toISOString(),
+  };
+}
+
 function makeDeps(overrides: Partial<IPCRouterDeps> = {}): IPCRouterDeps {
   const setWRFCConfig = vi.fn();
   const drain = vi.fn().mockReturnValue([]);
@@ -292,5 +301,155 @@ describe('IPCRouter — WRFC config:loaded — missing wrfc key', () => {
 
     expect(response.status).toBe('ok');
     expect(response.data.kind).toBe('ack');
+  });
+});
+
+// ─── get_executor_mode ────────────────────────────────────────────────────────
+
+describe('IPCRouter — query get_executor_mode', () => {
+  it('returns executor_mode kind with mode from executorMode dep', async () => {
+    const deps = makeDeps({
+      executorMode: { getMode: vi.fn().mockReturnValue('paused') } as unknown as IPCRouterDeps['executorMode'],
+    });
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('get_executor_mode'));
+
+    expect(response.status).toBe('ok');
+    expect(response.data.kind).toBe('executor_mode');
+    expect((response.data as { mode: string }).mode).toBe('paused');
+  });
+
+  it('defaults mode to engaged when executorMode dep is absent', async () => {
+    const deps = makeDeps();
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('get_executor_mode'));
+
+    expect(response.status).toBe('ok');
+    expect(response.data.kind).toBe('executor_mode');
+    expect((response.data as { mode: string }).mode).toBe('engaged');
+  });
+
+  it('defaults mode to engaged when executorMode dep is null', async () => {
+    const deps = makeDeps({ executorMode: null });
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('get_executor_mode'));
+
+    expect(response.status).toBe('ok');
+    expect((response.data as { mode: string }).mode).toBe('engaged');
+  });
+});
+
+// ─── get_executor_budget ──────────────────────────────────────────────────────
+
+describe('IPCRouter — query get_executor_budget', () => {
+  it('returns spending and can_process from executorBudget dep', async () => {
+    const mockSpending = { total_usd: 1.5, daily_usd: 0.5, daily_reset_at: 0, last_updated: 0 };
+    const deps = makeDeps({
+      executorBudget: {
+        getSpending: vi.fn().mockReturnValue(mockSpending),
+        canProcess: vi.fn().mockReturnValue(true),
+      } as unknown as IPCRouterDeps['executorBudget'],
+    });
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('get_executor_budget'));
+
+    expect(response.status).toBe('ok');
+    expect(response.data.kind).toBe('executor_budget');
+    const data = response.data as { spending: unknown; can_process: boolean };
+    expect(data.spending).toEqual(mockSpending);
+    expect(data.can_process).toBe(true);
+  });
+
+  it('returns spending: null and can_process: true when executorBudget dep is absent', async () => {
+    const deps = makeDeps();
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('get_executor_budget'));
+
+    expect(response.status).toBe('ok');
+    const data = response.data as { spending: unknown; can_process: boolean };
+    expect(data.spending).toBeNull();
+    expect(data.can_process).toBe(true);
+  });
+
+  it('returns can_process: false when budget dep reports exhausted', async () => {
+    const deps = makeDeps({
+      executorBudget: {
+        getSpending: vi.fn().mockReturnValue({ total_usd: 100, daily_usd: 10, daily_reset_at: 0, last_updated: 0 }),
+        canProcess: vi.fn().mockReturnValue(false),
+      } as unknown as IPCRouterDeps['executorBudget'],
+    });
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('get_executor_budget'));
+
+    expect((response.data as { can_process: boolean }).can_process).toBe(false);
+  });
+
+  it('returns spending: null and can_process: true when executorBudget dep is null', async () => {
+    const deps = makeDeps({ executorBudget: null });
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('get_executor_budget'));
+
+    const data = response.data as { spending: unknown; can_process: boolean };
+    expect(data.spending).toBeNull();
+    expect(data.can_process).toBe(true);
+  });
+});
+
+// ─── process_tick ─────────────────────────────────────────────────────────────
+
+describe('IPCRouter — query process_tick', () => {
+  it('returns tick_result kind with result from daemonTickHandler.handleTick()', async () => {
+    const tickResult = { tick_number: 1, events_processed: 2, duration_ms: 5, context_cleared: false, budget_status: 'ok' };
+    const deps = makeDeps({
+      daemonTickHandler: {
+        handleTick: vi.fn().mockResolvedValue(tickResult),
+      } as unknown as IPCRouterDeps['daemonTickHandler'],
+    });
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('process_tick'));
+
+    expect(response.status).toBe('ok');
+    expect(response.data.kind).toBe('tick_result');
+    expect((response.data as { result: unknown }).result).toEqual(tickResult);
+  });
+
+  it('awaits handleTick() asynchronously and returns result', async () => {
+    const handleTick = vi.fn().mockResolvedValue({ tick_number: 5, events_processed: 0, duration_ms: 1, context_cleared: false, budget_status: 'ok' });
+    const deps = makeDeps({
+      daemonTickHandler: { handleTick } as unknown as IPCRouterDeps['daemonTickHandler'],
+    });
+    const router = new IPCRouter(deps);
+
+    await router.route(makeQueryMsg('process_tick'));
+
+    expect(handleTick).toHaveBeenCalledOnce();
+  });
+
+  it('returns result: undefined when daemonTickHandler dep is absent', async () => {
+    const deps = makeDeps();
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('process_tick'));
+
+    expect(response.status).toBe('ok');
+    expect(response.data.kind).toBe('tick_result');
+    expect((response.data as { result: unknown }).result).toBeUndefined();
+  });
+
+  it('returns result: undefined when daemonTickHandler dep is null', async () => {
+    const deps = makeDeps({ daemonTickHandler: null });
+    const router = new IPCRouter(deps);
+
+    const response = await router.route(makeQueryMsg('process_tick'));
+
+    expect((response.data as { result: unknown }).result).toBeUndefined();
   });
 });

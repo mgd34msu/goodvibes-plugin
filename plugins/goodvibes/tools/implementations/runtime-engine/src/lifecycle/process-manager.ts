@@ -73,6 +73,11 @@ import {
   createDefaultExternalPluginConfig,
 } from '../plugins/index.js';
 
+// ─── Executor module imports ──────────────────────────────────────────────────
+import { ExecutorModeManager } from './executor-mode.js';
+import { ExecutorBudgetManager } from './executor-budget.js';
+import { DaemonTickHandler } from './daemon-tick-handler.js';
+
 const logger = createLogger('process-manager');
 
 /** How often to write a state checkpoint in milliseconds. */
@@ -184,6 +189,17 @@ export class ProcessManager {
 
   /** NodeJS timer handle for the v3 tick loop. */
   private v3TickTimer?: NodeJS.Timeout;
+
+  // ─── Executor subsystem fields ───────────────────────────────────────────────────────
+
+  /** Executor mode manager — determines engaged/daemon/hybrid mode. */
+  private executorMode: ExecutorModeManager | null = null;
+
+  /** Executor budget manager — enforces flat and daily USD caps. */
+  private executorBudget: ExecutorBudgetManager | null = null;
+
+  /** Daemon tick handler — processes daemon tick cycles. */
+  private daemonTickHandler: DaemonTickHandler | null = null;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -358,9 +374,20 @@ export class ProcessManager {
       60_000,
     );
 
-    // 10. Initialize v3 plugins (additive — runs alongside v2 subsystems)
+    // 10. Initialize executor subsystem before v3 plugins so that
+    // registerDefaultHandlers() receives live executor deps (daemonTickHandler,
+    // executorMode) rather than null closures.
+    this.initializeExecutor();
+
+    // 10b. Initialize v3 plugins (additive — runs alongside v2 subsystems)
     // Must run before IPC server so HookProcessor is available for router wiring.
     await this.initializeV3Plugins();
+
+    // 10c. Restore executor budget from v3StateStore now that it has been created.
+    // This is a post-init step — v3StateStore is null during initializeExecutor().
+    if (this.executorBudget && this.v3StateStore) {
+      this.executorBudget.restore(this.v3StateStore);
+    }
 
     // 11. Start IPC server if enabled
     let ipcSocketPath: string | null = null;
@@ -502,6 +529,16 @@ export class ProcessManager {
           logger.warn('Event log flush failed during shutdown', {
             err: toErrorMessage(err),
           });
+        }
+      }
+
+      // 7b. Persist executor budget spending before final checkpoint
+      if (this.executorBudget && this.v3StateStore) {
+        try {
+          this.executorBudget.persist(this.v3StateStore);
+          logger.debug('Executor budget state persisted');
+        } catch (err) {
+          logger.warn('Executor budget persistence failed', { err: toErrorMessage(err) });
         }
       }
 
@@ -868,6 +905,10 @@ export class ProcessManager {
         agentWorkflowMap: this.agentWorkflowMap,
         // Bridge v2→v3: route hook events through v3 HookProcessor when available
         hookProcessor: this.v3HookProcessor ?? null,
+        // Executor subsystem
+        executorMode: this.executorMode ?? null,
+        executorBudget: this.executorBudget ?? null,
+        daemonTickHandler: this.daemonTickHandler ?? null,
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
 
@@ -1029,6 +1070,8 @@ export class ProcessManager {
         eventBus: this.eventBus ?? null,
         directiveQueue: this.directiveQueue ?? null,
         agentWorkflowMap: this.agentWorkflowMap ?? null,
+        daemonTickHandler: this.daemonTickHandler ?? null,
+        executorMode: this.executorMode ?? null,
       });
       logger.debug('v3 hooks plugin registered', {
         handlerCount: this.v3HookRegistry.count(),
@@ -1093,6 +1136,13 @@ export class ProcessManager {
     // state, rather than proceeding with nulls.
     if (!this.v3EventProcessor || !this.v3TimePlugin || !this.v3ExternalPlugin) {
       // Nothing to tick — v3 failed to initialise
+      return;
+    }
+
+    // In daemon mode, the external scheduler drives ticks via DaemonTickHandler.
+    // The internal timer is not used — skip it to avoid double-ticking.
+    if (this.executorMode?.getMode() === 'daemon') {
+      logger.debug('v3 tick timer skipped — daemon mode uses external scheduler');
       return;
     }
 
@@ -1182,5 +1232,88 @@ export class ProcessManager {
    */
   getV3EventProcessor(): EventProcessor | null {
     return this.v3EventProcessor;
+  }
+
+  // ─── Executor Accessors ───────────────────────────────────────────────────────────────
+
+  /**
+   * Return the ExecutorModeManager, or null if not initialised.
+   */
+  getExecutorMode(): ExecutorModeManager | null {
+    return this.executorMode;
+  }
+
+  /**
+   * Return the ExecutorBudgetManager, or null if not initialised.
+   */
+  getExecutorBudget(): ExecutorBudgetManager | null {
+    return this.executorBudget;
+  }
+
+  /**
+   * Return the DaemonTickHandler, or null if not initialised.
+   */
+  getDaemonTickHandler(): DaemonTickHandler | null {
+    return this.daemonTickHandler;
+  }
+
+  // ─── Executor Initialization ─────────────────────────────────────────────────────────
+
+  /**
+   * Initialize the executor subsystem (mode, budget, daemon tick handler).
+   *
+   * Runs BEFORE initializeV3Plugins() so that registerDefaultHandlers() receives
+   * live executor deps (daemonTickHandler, executorMode) rather than null closures.
+   * Budget restore from v3StateStore is deferred to a post-v3-init step in startup().
+   * Failure is logged and swallowed — executor degrades gracefully.
+   */
+  private initializeExecutor(): void {
+    try {
+      // Create ExecutorModeManager and detect mode
+      this.executorMode = new ExecutorModeManager(this.config.executor, this.eventBus);
+      const mode = this.executorMode.getMode();
+
+      // Create ExecutorBudgetManager
+      this.executorBudget = new ExecutorBudgetManager(
+        this.config.executor.budget,
+        this.eventBus,
+      );
+
+      // Create DaemonTickHandler with all executor deps
+      this.daemonTickHandler = new DaemonTickHandler({
+        executorMode: this.executorMode,
+        budgetManager: this.executorBudget,
+        eventBus: this.eventBus,
+        config: this.config.executor,
+      });
+
+      // Emit executor:mode_set event
+      this.eventBus.emit({
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: 'executor:mode_set',
+        source: { kind: 'system' },
+        payload: {
+          type: 'executor:mode_set',
+          data: {
+            mode,
+            previous_mode: mode,
+            detection_method: this.executorMode.getDetectionMethod(),
+          },
+        },
+      });
+
+      logger.info('Executor subsystem initialised', {
+        mode,
+        detection_method: this.executorMode.getDetectionMethod(),
+      });
+    } catch (err) {
+      logger.warn('Executor subsystem initialisation failed — continuing without executor', {
+        err: toErrorMessage(err),
+      });
+      this.executorMode = null;
+      this.executorBudget = null;
+      this.daemonTickHandler = null;
+    }
   }
 }

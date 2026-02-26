@@ -151,7 +151,10 @@ export type IPCQuery =
   | { kind: 'get_agent_status'; agent_id: string }
   | { kind: 'should_block_tool'; tool_name: string; tool_input: Record<string, unknown> }
   | { kind: 'get_context_injection' }
-  | { kind: 'resolve_pending_bind'; agent_type: string };
+  | { kind: 'resolve_pending_bind'; agent_type: string }
+  | { kind: 'get_executor_mode' }
+  | { kind: 'get_executor_budget' }
+  | { kind: 'process_tick' };
 
 // ─── Responses: Runtime Engine → Hook ────────────────────────────────────────
 
@@ -187,7 +190,10 @@ export type IPCResponseData =
   | { kind: 'tool_decision'; allow: boolean; reason?: string; modified_input?: Record<string, unknown> }
   | { kind: 'context_injection'; context: string; priority: number }
   | { kind: 'ack' }
-  | { kind: 'pending_bind'; workflow_id: string | null };
+  | { kind: 'pending_bind'; workflow_id: string | null }
+  | { kind: 'executor_mode'; mode: string }
+  | { kind: 'executor_budget'; spending: Record<string, unknown> | null; can_process: boolean }
+  | { kind: 'tick_result'; result: Record<string, unknown> | undefined };
 
 // ─── Directive ────────────────────────────────────────────────────────────────
 

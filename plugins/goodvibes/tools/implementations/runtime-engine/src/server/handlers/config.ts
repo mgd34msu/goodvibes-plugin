@@ -58,6 +58,14 @@ export const VALID_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'agents.budget_thresholds',
   'agents.default_budget',
   'agents.max_review_iterations',
+  'executor.mode',
+  'executor.daemon.clear_context_after_batch',
+  'executor.daemon.tmux_session_name',
+  'executor.daemon.tick_command',
+  'executor.budget.flat_cap_usd',
+  'executor.budget.daily_cap_usd',
+  'executor.budget.warning_threshold',
+  'executor.budget.daily_reset_hour',
 ]);
 
 /**
@@ -97,6 +105,14 @@ export const CONFIG_KEY_TYPES: ReadonlyMap<string, 'boolean' | 'number' | 'strin
   ['agents.budget_thresholds', 'object'],
   ['agents.default_budget', 'number'],
   ['agents.max_review_iterations', 'number'],
+  ['executor.mode', 'string'],
+  ['executor.daemon.clear_context_after_batch', 'boolean'],
+  ['executor.daemon.tmux_session_name', 'string'],
+  ['executor.daemon.tick_command', 'string'],
+  ['executor.budget.flat_cap_usd', 'number'],
+  ['executor.budget.daily_cap_usd', 'number'],
+  ['executor.budget.warning_threshold', 'number'],
+  ['executor.budget.daily_reset_hour', 'number'],
 ]);
 
 // ─── Nested key helpers ────────────────────────────────────────────────────
