@@ -19,7 +19,7 @@ import type { RuntimeEvent } from '../../core/types.js';
 // ─── Shared Minimal Trigger Fixture ──────────────────────────────────────────
 
 /** Build a minimal RuntimeEvent-shaped object for type guard rejection tests. */
-function makeMinimalEvent(overrides: Partial<RuntimeEvent>): RuntimeEvent {
+function makeMinimalEvent(overrides: Record<string, unknown>): RuntimeEvent {
   return {
     id: 'test-id',
     source: 'internal',
@@ -183,7 +183,7 @@ describe('HookEvent', () => {
     });
 
     it('returns false when source is not "internal"', () => {
-      const evt = makeMinimalEvent({ source: 'agent', hook_type: 'PreToolUse', hook_input: {} } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'agent', hook_type: 'PreToolUse', hook_input: {} });
       expect(isHookEvent(evt)).toBe(false);
     });
 
@@ -193,7 +193,7 @@ describe('HookEvent', () => {
     });
 
     it('returns false when hook_input field is missing', () => {
-      const evt = makeMinimalEvent({ source: 'internal', hook_type: 'PreToolUse' } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'internal', hook_type: 'PreToolUse' });
       expect(isHookEvent(evt)).toBe(false);
     });
 
@@ -343,7 +343,7 @@ describe('TimeEvent', () => {
     });
 
     it('returns false when source is not "time"', () => {
-      const evt = makeMinimalEvent({ source: 'internal', time_type: 'heartbeat' } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'internal', time_type: 'heartbeat' });
       expect(isTimeEvent(evt)).toBe(false);
     });
 
@@ -480,17 +480,17 @@ describe('AgentEvent', () => {
     });
 
     it('returns false when source is not "agent"', () => {
-      const evt = makeMinimalEvent({ source: 'internal', agent_id: 'a1', agent_type: 'eng' } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'internal', agent_id: 'a1', agent_type: 'eng' });
       expect(isAgentEvent(evt)).toBe(false);
     });
 
     it('returns false when agent_id field is missing', () => {
-      const evt = makeMinimalEvent({ source: 'agent', agent_type: 'eng' } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'agent', agent_type: 'eng' });
       expect(isAgentEvent(evt)).toBe(false);
     });
 
     it('returns false when agent_type field is missing', () => {
-      const evt = makeMinimalEvent({ source: 'agent', agent_id: 'a1' } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'agent', agent_id: 'a1' });
       expect(isAgentEvent(evt)).toBe(false);
     });
 
@@ -742,12 +742,12 @@ describe('ExternalEvent', () => {
     });
 
     it('returns false when external_source field is missing', () => {
-      const evt = makeMinimalEvent({ source: 'external', raw_payload: {} } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'external', raw_payload: {} });
       expect(isExternalEvent(evt)).toBe(false);
     });
 
     it('returns false when raw_payload field is missing', () => {
-      const evt = makeMinimalEvent({ source: 'external', external_source: 'github' } as RuntimeEvent);
+      const evt = makeMinimalEvent({ source: 'external', external_source: 'github' });
       expect(isExternalEvent(evt)).toBe(false);
     });
 

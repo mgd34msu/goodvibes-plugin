@@ -47,6 +47,9 @@ export interface IPCRouterDeps {
   hookProcessor?: HookProcessor | null;
 }
 
+/** Return type for {@link IPCRouter.drainDirectiveMessages}. */
+type DrainResult = { message: string; directives: ReturnType<NonNullable<DirectiveQueue>['drain']> };
+
 /**
  * Routes IPC messages from hook scripts to the appropriate runtime engine
  * subsystem and returns the corresponding response.
@@ -110,7 +113,7 @@ export class IPCRouter {
    * Shared by get_directives and get_system_message query handlers.
    * Returns both the joined message string and the raw directive array.
    */
-  private drainDirectiveMessages(): { message: string; directives: ReturnType<NonNullable<DirectiveQueue>['drain']> } {
+  private drainDirectiveMessages(): DrainResult {
     const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
     const message = directives
       .filter((d) => d.type === 'inject_system_message')
@@ -118,6 +121,20 @@ export class IPCRouter {
       .map((d) => d.content)
       .join('\n\n');
     return { message, directives };
+  }
+
+  /**
+   * Build the IPC response for directive-query kinds (get_directives,
+   * get_system_message). Both query kinds are semantically equivalent
+   * and return the same payload; this helper centralises that logic.
+   */
+  private buildDirectivesResponse(msgId: string): IPCResponse {
+    const { message, directives } = this.drainDirectiveMessages();
+    return {
+      id: msgId,
+      status: 'ok',
+      data: { kind: 'system_message', message, directives },
+    };
   }
 
   /**
@@ -228,21 +245,8 @@ export class IPCRouter {
 
     if (msg.type === 'query') {
       const q = msg.query;
-      if (q.kind === 'get_directives') {
-        const { message, directives } = this.drainDirectiveMessages();
-        return {
-          id: msg.id,
-          status: 'ok',
-          data: { kind: 'system_message', message, directives },
-        };
-      }
-      if (q.kind === 'get_system_message') {
-        const { message, directives } = this.drainDirectiveMessages();
-        return {
-          id: msg.id,
-          status: 'ok',
-          data: { kind: 'system_message', message, directives },
-        };
+      if (q.kind === 'get_directives' || q.kind === 'get_system_message') {
+        return this.buildDirectivesResponse(msg.id);
       }
       if (q.kind === 'get_workflow_state') {
         const instance = this.workflowEngine?.get(q.workflow_id);
@@ -277,6 +281,7 @@ export class IPCRouter {
     }
 
     if (msg.type === 'state_update') {
+      logger.debug('IPC state_update received', { id: msg.id });
       return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
     }
 

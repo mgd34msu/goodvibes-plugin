@@ -16,7 +16,7 @@
 import { createLogger } from '../../shared/logger.js';
 import type { EventProcessor } from '../../core/event-processor.js';
 import type { TriggerRegistry } from '../../core/trigger-registry.js';
-import type { StateStoreInterface, TriggerHandlerFn } from '../../core/types.js';
+import type { StateStoreInterface, TriggerHandlerFn, HandlerResult } from '../../core/types.js';
 import { createWRFCTrigger } from '../../extensions/triggers/wrfc-trigger.js';
 import {
   handleWorkflowCreated,
@@ -145,31 +145,25 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
   // The trigger is retrieved from the registry for callers that need it.
 
   const spawned_trigger = registry.get(TRIGGER_IDS.AGENT_SPAWNED);
-  processor.registerHandler(
-    TRIGGER_IDS.AGENT_SPAWNED,
-    (async (event) => {
-      if (!spawned_trigger) return {};
-      return handleWorkflowCreated(event, spawned_trigger, store);
-    }) as TriggerHandlerFn,
-  );
+  const spawnedHandler: TriggerHandlerFn = async (event): Promise<HandlerResult> => {
+    if (!spawned_trigger) return {};
+    return handleWorkflowCreated(event, spawned_trigger, store);
+  };
+  processor.registerHandler(TRIGGER_IDS.AGENT_SPAWNED, spawnedHandler);
 
   const completed_trigger = registry.get(TRIGGER_IDS.AGENT_COMPLETED);
-  processor.registerHandler(
-    TRIGGER_IDS.AGENT_COMPLETED,
-    (async (event) => {
-      if (!completed_trigger) return {};
-      return handleAgentCompleted(event, completed_trigger, store);
-    }) as TriggerHandlerFn,
-  );
+  const completedHandler: TriggerHandlerFn = async (event): Promise<HandlerResult> => {
+    if (!completed_trigger) return {};
+    return handleAgentCompleted(event, completed_trigger, store);
+  };
+  processor.registerHandler(TRIGGER_IDS.AGENT_COMPLETED, completedHandler);
 
   const quality_gate_trigger = registry.get(TRIGGER_IDS.REVIEW_COMPLETED);
-  processor.registerHandler(
-    TRIGGER_IDS.REVIEW_COMPLETED,
-    (async (event) => {
-      if (!quality_gate_trigger) return {};
-      return handleQualityGate(event, quality_gate_trigger, store);
-    }) as TriggerHandlerFn,
-  );
+  const qualityGateHandler: TriggerHandlerFn = async (event): Promise<HandlerResult> => {
+    if (!quality_gate_trigger) return {};
+    return handleQualityGate(event, quality_gate_trigger, store);
+  };
+  processor.registerHandler(TRIGGER_IDS.REVIEW_COMPLETED, qualityGateHandler);
 
   log.info('WRFC plugin registered', {
     triggers: Object.values(TRIGGER_IDS),

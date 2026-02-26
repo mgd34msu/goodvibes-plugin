@@ -31,7 +31,7 @@ function makeQueue(): EventQueueInterface {
 function makeStore(): StateStoreInterface {
   const data = new Map<string, unknown>();
   return {
-    get: vi.fn(<T>(key: string) => data.get(key) as T | undefined),
+    get: vi.fn(<T>(key: string): T | null => (data.has(key) ? (data.get(key) as T) : null)),
     set: vi.fn(<T>(key: string, value: T) => { data.set(key, value); }),
     delete: vi.fn((key: string) => data.delete(key)),
     merge: vi.fn(),
@@ -521,20 +521,20 @@ describe('EventScheduler', () => {
       });
 
       it('uses local time (getHours) when no timezone_offset_hours provided', () => {
-        // Without timezone_offset_hours the code calls new Date(now).getHours()
-        // We can confirm this branch runs by omitting timezone_offset_hours entirely.
-        // Use a 0-23 window to always fire in whichever local hour we're in.
+        // Without timezone_offset_hours the code calls new Date(now).getHours().
+        // Mock getHours to a known value (4) so the test is falsifiable.
+        const MOCK_HOUR = 4;
+        const getHoursSpy = vi.spyOn(Date.prototype, 'getHours').mockReturnValue(MOCK_HOUR);
         scheduler.scheduleCron({
           id: 'tz-local',
           event_type: 'tick:local',
           interval_ms: 100,
-          active_hours: { start: 0, end: 23 }, // always inside
+          active_hours: { start: MOCK_HOUR, end: MOCK_HOUR + 1 }, // narrow window around known hour
         });
         vi.advanceTimersByTime(101);
-        // Should fire regardless of local time (window covers 0-22 inclusive)
         const events = scheduler.tick();
-        // Accept either 0 or 1 — if local hour happens to be 23 it is excluded
-        expect(events.length).toBeGreaterThanOrEqual(0);
+        expect(events.length).toBe(1);
+        getHoursSpy.mockRestore();
       });
     });
   });

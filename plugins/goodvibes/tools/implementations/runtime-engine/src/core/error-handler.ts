@@ -28,6 +28,7 @@ const logger = createLogger('core:error-handler');
 /**
  * Re-export for backwards compatibility — prefer TriggerHandlerFn from types.ts.
  * @deprecated Use TriggerHandlerFn from './types.js'
+ * @removal v2.0.0
  */
 export type TriggerHandler = TriggerHandlerFn;
 
@@ -39,6 +40,7 @@ export interface ErrorHandlerOptions {
 /**
  * Re-export for backwards compatibility — prefer ErrorHandlerResult from types.ts.
  * @deprecated Use ErrorHandlerResult from './types.js'
+ * @removal v2.0.0
  */
 export type ExecutionResult = ErrorHandlerResult;
 

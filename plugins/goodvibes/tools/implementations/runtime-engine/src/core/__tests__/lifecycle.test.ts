@@ -98,8 +98,6 @@ describe('LoopLifecycleManager', () => {
 
   describe('running → draining → stopped (drain)', () => {
     it('transitions to draining then stopped', async () => {
-      const lcm = makeLCM();
-      lcm.start();
       const statuses: LoopStatus[] = [];
       // Capture intermediate state via onTransition
       const lcm2 = new LoopLifecycleManager({
@@ -237,8 +235,6 @@ describe('LoopLifecycleManager', () => {
     });
 
     it('throws when pausing from draining', async () => {
-      const lcm = new LoopLifecycleManager({});
-      lcm.start();
       // Start drain but intercept before completion
       const drainStarted = vi.fn();
       const drainDone = new Promise<void>((resolve) => setTimeout(resolve, 0));

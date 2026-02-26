@@ -53,6 +53,11 @@ export function extractScore(text: string | undefined | null): number | null {
 /**
  * Parses a <gv> tag string (already extracted content) into a ScoreResult.
  *
+ * Public API for external consumers (e.g. analytics dashboards, custom review
+ * hooks) that have already extracted the raw <gv> tag content and want a
+ * typed ScoreResult without going through the full agent output pipeline.
+ * Internal handlers use extractScore() + evaluateScore() instead.
+ *
  * @param gvContent - JSON string from inside a <gv> tag.
  * @param threshold - Minimum passing score.
  * @returns ScoreResult, or null if parsing fails.
@@ -79,6 +84,11 @@ export function parseScoreFromGvTag(gvContent: string, threshold: number): Score
 
 /**
  * Evaluates raw agent output against a score threshold.
+ *
+ * Public API for external consumers (e.g. custom triggers, analytics hooks)
+ * that need a structured pass/fail result from raw agent output. Returns a
+ * guaranteed ScoreResult even when parsing fails (score: -1, pass: false).
+ * Internal handlers use extractScore() directly when they need null-on-failure.
  *
  * @param reviewOutput - Raw output from a reviewer agent (string or unknown).
  * @param threshold    - Minimum score required to pass (e.g. 9.9).

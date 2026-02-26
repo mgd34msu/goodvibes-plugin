@@ -166,7 +166,29 @@ export class DeadLetterQueue implements DeadLetterQueueInterface {
       const content = readFileSync(this.filePath, 'utf-8');
       const parsed = JSON.parse(content) as unknown;
       if (Array.isArray(parsed)) {
-        this.entries = parsed as DeadLetterEntry[];
+        // Validate each entry has required fields before accepting
+        const valid = (parsed as unknown[]).filter((item): item is DeadLetterEntry => {
+          if (typeof item !== 'object' || item === null) return false;
+          const entry = item as Record<string, unknown>;
+          return (
+            typeof entry['error'] === 'string' &&
+            typeof entry['trigger_id'] === 'string' &&
+            typeof entry['dead_lettered_at'] === 'number' &&
+            typeof entry['attempt_count'] === 'number' &&
+            typeof entry['event'] === 'object' &&
+            entry['event'] !== null &&
+            typeof (entry['event'] as Record<string, unknown>)['id'] === 'string'
+          );
+        });
+        const skipped = parsed.length - valid.length;
+        if (skipped > 0) {
+          logger.warn('Skipped invalid dead-letter entries during load', {
+            path: this.filePath,
+            skipped,
+            loaded: valid.length,
+          });
+        }
+        this.entries = valid;
         logger.debug('Loaded dead-letter queue from disk', {
           path: this.filePath,
           count: this.entries.length,

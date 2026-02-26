@@ -15,7 +15,8 @@ const logger = createLogger('handler:subagent-stop');
 
 /**
  * Minimum review score required to pass the quality gate.
- * TODO: Import from shared WRFC config when integration layer is wired.
+ * This default applies when no explicit minReviewScore is provided via deps.
+ * Override via SubagentStopDeps.minReviewScore to match WRFC workflow config.
  */
 const DEFAULT_MIN_REVIEW_SCORE = 9.5;
 

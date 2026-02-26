@@ -36,8 +36,8 @@ import type {
   TriggerHandlerFn,
   EventQueueInterface,
   LoopLifecycle,
+  MetricsCollector,
 } from './types.js';
-import type { EventMetrics } from './metrics.js';
 
 const logger = createLogger('core:event-processor');
 
@@ -133,20 +133,6 @@ function applyStateUpdates(store: StateStoreInterface, updates: StateUpdate[]): 
 }
 
 /**
- * Builds an internal event emitted when the queue depth crosses a threshold.
- */
-function buildBackpressureEvent(depth: number): RuntimeEvent {
-  return {
-    id: generateEventId(),
-    source: 'internal',
-    type: 'core:queue_backpressure',
-    payload: { depth },
-    timestamp: Date.now(),
-    priority: 5,
-  };
-}
-
-/**
  * Builds an internal event emitted when the chain depth limit is exceeded.
  */
 function buildChainDepthExceededEvent(event: RuntimeEvent, maxDepth: number): RuntimeEvent {
@@ -190,7 +176,7 @@ export class EventProcessor {
   private readonly registry: TriggerRegistryInterface;
   private readonly store: StateStoreInterface;
   private readonly lifecycle: LoopLifecycle;
-  private readonly metrics: EventMetrics;
+  private readonly metrics: MetricsCollector;
   private readonly errorHandler: ErrorHandlerInterface;
   // DeadLetterQueueInterface is satisfied by EventProcessor itself not using it directly;
   // the ErrorHandler holds the DLQ reference. Kept here for inspection/testing.
@@ -210,6 +196,8 @@ export class EventProcessor {
 
   /** Count of tokens consumed (for budget tracking). */
   private tokensConsumed = 0;
+  /** True once the budget warning has been sent; reset when tokens are replenished. */
+  private budgetWarningSent = false;
 
   /** Rate limiter state: events processed in the current window. */
   private rateLimitCount = 0;
@@ -220,7 +208,7 @@ export class EventProcessor {
     registry: TriggerRegistryInterface,
     store: StateStoreInterface,
     lifecycle: LoopLifecycle,
-    metrics: EventMetrics,
+    metrics: MetricsCollector,
     errorHandler: ErrorHandlerInterface,
     deadLetter: DeadLetterQueueInterface,
     options: EventProcessorOptions = {},
@@ -286,7 +274,7 @@ export class EventProcessor {
         threshold: this.queueDepthWarning,
       });
       const warning = buildQueueDepthWarningEvent(currentDepth, this.queueDepthWarning);
-      try { this.queue.enqueue(warning); } catch { /* ignore — queue may be full */ }
+      try { this.queue.enqueue(warning); } catch (err) { logger.debug('Failed to enqueue queue depth warning event', { error: err instanceof Error ? err.message : String(err) }); }
     }
 
     // Drain the queue
@@ -300,7 +288,7 @@ export class EventProcessor {
     if (events.length > this.options.max_events_per_batch) {
       try {
         this.queue.requeue(events.slice(this.options.max_events_per_batch));
-      } catch { /* backpressure already logged in requeue */ }
+      } catch (err) { logger.debug('Failed to requeue overflow batch events', { error: err instanceof Error ? err.message : String(err) }); }
     }
 
     let processed = 0;
@@ -332,7 +320,7 @@ export class EventProcessor {
           });
           // Re-queue the remaining events in this batch
           const remaining = toProcess.slice(toProcess.indexOf(event));
-          try { this.queue.requeue(remaining); } catch { /* backpressure */ }
+          try { this.queue.requeue(remaining); } catch (err) { logger.debug('Failed to requeue rate-limited events', { error: err instanceof Error ? err.message : String(err) }); }
           break;
         }
         this.rateLimitCount++;
@@ -348,7 +336,7 @@ export class EventProcessor {
           max: this.options.max_chain_depth,
         });
         const exceeded = buildChainDepthExceededEvent(event, this.options.max_chain_depth);
-        try { this.queue.enqueue(exceeded); } catch { /* ignore */ }
+        try { this.queue.enqueue(exceeded); } catch (err) { logger.debug('Failed to enqueue chain_depth_exceeded event', { error: err instanceof Error ? err.message : String(err) }); }
         continue;
       }
 
@@ -359,8 +347,8 @@ export class EventProcessor {
         if (lockAcquiredAt !== undefined) {
           const lockAge = Date.now() - lockAcquiredAt;
           if (lockAge < this.options.lock_timeout_ms) {
-            // Lock is held and not stale — re-enqueue for next batch
-            try { this.queue.enqueue(event); } catch { /* backpressure */ }
+            // Lock is held and not stale — re-enqueue for next batch bypassing dedup
+            try { this.queue.requeue([event]); } catch (err) { logger.debug('Failed to requeue workflow-locked event', { event_id: event.id, error: err instanceof Error ? err.message : String(err) }); }
             continue;
           }
           // Lock is stale — release and proceed
@@ -395,12 +383,26 @@ export class EventProcessor {
     if (!this.budget || this.budget.total === 0) return;
     this.tokensConsumed += count;
     const fraction = this.tokensConsumed / this.budget.total;
-    if (fraction >= this.budget.warn_threshold) {
+    if (!this.budgetWarningSent && fraction >= this.budget.warn_threshold) {
+      this.budgetWarningSent = true;
       logger.warn('Budget warning threshold reached', {
         consumed: this.tokensConsumed,
         total: this.budget.total,
         fraction,
       });
+    }
+  }
+
+  /**
+   * Replenish the token budget and reset the warning flag.
+   * Call this when tokens are added back to the budget.
+   */
+  replenishTokens(count: number): void {
+    if (!this.budget || this.budget.total === 0) return;
+    this.tokensConsumed = Math.max(0, this.tokensConsumed - count);
+    const fraction = this.tokensConsumed / this.budget.total;
+    if (fraction < this.budget.warn_threshold) {
+      this.budgetWarningSent = false;
     }
   }
 
@@ -442,7 +444,7 @@ export class EventProcessor {
           this.metrics.onHandlerError(trigger.id, execResult.error!, event);
           // Enqueue error events
           for (const errEvt of execResult.error_events) {
-            try { this.queue.enqueue(errEvt); } catch { /* ignore */ }
+            try { this.queue.enqueue(errEvt); } catch (err) { logger.debug('Failed to enqueue error event', { error: err instanceof Error ? err.message : String(err) }); }
           }
           continue;
         }
@@ -474,11 +476,9 @@ export class EventProcessor {
         logger.warn('Failed to enqueue chained event (backpressure)', {
           event_id: chained.id,
           event_type: chained.type,
+          queue_depth: this.queue.depth(),
           error: err instanceof Error ? err.message : String(err),
         });
-        // Emit backpressure event
-        const bp = buildBackpressureEvent(this.queue.depth());
-        try { this.queue.enqueue(bp); } catch { /* ignore */ }
       }
     }
 

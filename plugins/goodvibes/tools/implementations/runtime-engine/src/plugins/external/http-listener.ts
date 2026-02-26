@@ -21,6 +21,9 @@ import * as http from 'node:http';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
+import { createLogger } from '../../shared/logger.js';
+
+const logger = createLogger('http-listener');
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -87,8 +90,8 @@ export class HttpListener {
           // Catch unhandled errors to prevent server crash
           try {
             sendJson(res, 500, { error: 'Internal server error' });
-          } catch {
-            // intentionally empty: best-effort cleanup
+          } catch (innerErr) {
+            logger.debug('Failed to send 500 response after request handler error', { error: innerErr });
           }
         });
       });
@@ -97,11 +100,12 @@ export class HttpListener {
       // Post-listen: switch to a persistent error handler for runtime errors.
       this.server.once('error', reject);
 
-      this.server.listen(this.config.port, this.config.host, () => {
-        this.server!.removeListener('error', reject);
-        this.server!.on('error', (err) => {
+      const server = this.server;
+      server.listen(this.config.port, this.config.host, () => {
+        server.removeListener('error', reject);
+        server.on('error', (err) => {
           // Log post-start server errors (e.g. ECONNRESET, keep-alive teardown).
-          console.error('[HttpListener] Server error:', err);
+          logger.error('Server error', { error: err });
         });
         this.running = true;
         resolve();
@@ -118,11 +122,12 @@ export class HttpListener {
       return;
     }
 
+    const server = this.server;
     return new Promise<void>((resolve, reject) => {
-      this.server!.close((err) => {
+      server.close((err) => {
         this.running = false;
         this.server = null;
-        if (err !== undefined) {
+        if (err) {
           reject(err);
         } else {
           resolve();
@@ -190,7 +195,8 @@ export class HttpListener {
       let parsedPayload: unknown;
       try {
         parsedPayload = JSON.parse(body);
-      } catch {
+      } catch (e) {
+        logger.debug('Failed to parse JSON body', { error: e instanceof Error ? e.message : String(e) });
         sendJson(res, 400, { error: 'Invalid JSON body' });
         return;
       }
@@ -236,6 +242,7 @@ export class HttpListener {
       const chunks: Buffer[] = [];
       let totalBytes = 0;
       let limitExceeded = false;
+      let resolved = false;
 
       req.on('data', (chunk: Buffer) => {
         if (limitExceeded) return;
@@ -244,7 +251,7 @@ export class HttpListener {
           limitExceeded = true;
           // Drain the stream to avoid hanging connection
           req.resume();
-          resolve(null);
+          if (!resolved) { resolved = true; resolve(null); }
           return;
         }
         chunks.push(chunk);
@@ -252,10 +259,12 @@ export class HttpListener {
 
       req.on('end', () => {
         if (limitExceeded) return;
-        resolve(Buffer.concat(chunks).toString('utf-8'));
+        if (!resolved) { resolved = true; resolve(Buffer.concat(chunks).toString('utf-8')); }
       });
 
-      req.on('error', reject);
+      req.on('error', (err) => {
+        if (!resolved) { resolved = true; reject(err); }
+      });
     });
   }
 }

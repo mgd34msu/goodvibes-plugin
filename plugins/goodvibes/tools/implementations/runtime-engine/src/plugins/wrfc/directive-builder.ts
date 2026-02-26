@@ -68,18 +68,39 @@ export function buildCompleteAction(wid: string): Action {
 }
 
 /**
+ * Structured params for buildEscalateAction.
+ * Prefer this over embedding counts in a reason string.
+ */
+export interface EscalateParams {
+  /** Number of fix attempts made before escalation. */
+  fix_attempts?: number;
+  /** Last known review score before escalation. */
+  last_score?: number;
+}
+
+/**
  * Builds an escalate directive Action.
  *
  * @param wid    - ID of the workflow that exhausted its fix budget.
  * @param reason - Human-readable reason for escalation.
+ * @param params - Optional structured params (preferred over parsing from reason string).
  * @returns Action with type 'send_message'.
  */
-export function buildEscalateAction(wid: string, reason: string): Action {
-  // Parse fix count and score from reason string if possible, else use defaults
-  const fixMatch = reason.match(/(\d+)\s+fix/i);
-  const scoreMatch = reason.match(/score[:\s]*(\d+(?:\.\d+)?)/i);
-  const fixAttempts = fixMatch ? parseInt(fixMatch[1], 10) : 0;
-  const lastScore = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
+export function buildEscalateAction(wid: string, reason: string, params?: EscalateParams): Action {
+  let fixAttempts: number;
+  let lastScore: number;
+
+  if (params !== undefined) {
+    // Prefer structured params when provided
+    fixAttempts = params.fix_attempts ?? 0;
+    lastScore = params.last_score ?? 0;
+  } else {
+    // Fallback: parse from reason string for backward compatibility
+    const fixMatch = reason.match(/(\d+)\s+fix/i);
+    const scoreMatch = reason.match(/score[:\s]*(\d+(?:\.\d+)?)\/10/i);
+    fixAttempts = fixMatch ? parseInt(fixMatch[1], 10) : 0;
+    lastScore = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
+  }
 
   const content = buildEscalationMessage(wid, fixAttempts, lastScore);
   return {
@@ -91,6 +112,8 @@ export function buildEscalateAction(wid: string, reason: string): Action {
 /**
  * Builds a complete directive as a structured object (for direct use).
  * @deprecated Prefer buildCompleteAction for v3 HandlerResult integration.
+ * @since v1.3.0
+ * @removal Planned removal in v2.0.0 — migrate to buildCompleteAction.
  */
 export function buildCompleteDirective(wid: string): Action {
   return buildCompleteAction(wid);
@@ -99,6 +122,8 @@ export function buildCompleteDirective(wid: string): Action {
 /**
  * Builds an escalate directive as a structured object (for direct use).
  * @deprecated Prefer buildEscalateAction for v3 HandlerResult integration.
+ * @since v1.3.0
+ * @removal Planned removal in v2.0.0 — migrate to buildEscalateAction.
  */
 export function buildEscalateDirective(wid: string, reason: string): Action {
   return buildEscalateAction(wid, reason);
@@ -107,6 +132,8 @@ export function buildEscalateDirective(wid: string, reason: string): Action {
 /**
  * Builds a spawn directive as a structured object (for direct use).
  * @deprecated Prefer buildSpawnAction for v3 HandlerResult integration.
+ * @since v1.3.0
+ * @removal Planned removal in v2.0.0 — migrate to buildSpawnAction.
  */
 export function buildSpawnDirective(params: {
   wid: string;

@@ -22,9 +22,10 @@ import type {
 
 // ─── Mock factories ───────────────────────────────────────────────────────────
 
+let _evtCounter = 0;
 function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
-    id: overrides.id ?? `evt-${Math.random().toString(36).slice(2)}`,
+    id: overrides.id ?? `evt-${++_evtCounter}`,
     source: overrides.source ?? 'internal',
     type: overrides.type ?? 'test:event',
     payload: overrides.payload ?? {},
@@ -160,6 +161,13 @@ function makeProcessor(
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
+// Helper to get all enqueued events from a mocked queue
+function getEnqueuedEvents(queue: EventQueueInterface): RuntimeEvent[] {
+  return (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls.map(
+    (c: unknown[]) => c[0] as RuntimeEvent,
+  );
+}
+
 describe('EventProcessor', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -232,18 +240,24 @@ describe('EventProcessor', () => {
   // ── Handler execution ──────────────────────────────────────────────────────
 
   describe('handler execution', () => {
-    it('invokes registered handler when trigger matches', async () => {
+    it('passes registered handler to errorHandler.execute', async () => {
       const trigger = makeTrigger({ id: 'my-trigger' });
       const handler = vi.fn().mockResolvedValue({ actions: [] } as HandlerResult);
       const events = [makeEvent()];
-      const { processor } = makeProcessor({
+      const { processor, errorHandler } = makeProcessor({
         events,
         triggers: [trigger],
         handlers: new Map([['my-trigger', handler]]),
       });
       await processor.processBatch();
-      expect(handler).not.toHaveBeenCalled(); // handler is called via errorHandler.execute
-      // errorHandler.execute is called
+      // handler is invoked via errorHandler.execute, not called directly
+      expect(handler).not.toHaveBeenCalled();
+      expect(errorHandler.execute).toHaveBeenCalledWith(
+        'my-trigger',
+        handler,
+        expect.objectContaining({ type: 'test:event' }),
+        trigger.retry,
+      );
     });
 
     it('uses trigger.actions as result when no handler registered', async () => {
@@ -319,8 +333,7 @@ describe('EventProcessor', () => {
       });
       await processor.processBatch();
       // queue.enqueue called with the error event
-      const calls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const enqueuedTypes = calls.map((c: unknown[]) => (c[0] as RuntimeEvent).type);
+      const enqueuedTypes = getEnqueuedEvents(queue).map((e) => e.type);
       expect(enqueuedTypes).toContain('core:handler_error');
     });
   });
@@ -345,8 +358,7 @@ describe('EventProcessor', () => {
         },
       });
       await processor.processBatch();
-      const calls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const types = calls.map((c: unknown[]) => (c[0] as RuntimeEvent).type);
+      const types = getEnqueuedEvents(queue).map((e) => e.type);
       expect(types).toContain('child:event');
     });
 
@@ -367,10 +379,7 @@ describe('EventProcessor', () => {
         },
       });
       await processor.processBatch();
-      const calls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const enqueuedChild = calls.find(
-        (c: unknown[]) => (c[0] as RuntimeEvent).type === 'child:event',
-      )?.[0] as RuntimeEvent | undefined;
+      const enqueuedChild = getEnqueuedEvents(queue).find((e) => e.type === 'child:event');
       expect(enqueuedChild?.context?.chain_depth).toBe(3); // parent depth 2 + 1
     });
 
@@ -391,10 +400,7 @@ describe('EventProcessor', () => {
         },
       });
       await processor.processBatch();
-      const calls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const enqueuedChild = calls.find(
-        (c: unknown[]) => (c[0] as RuntimeEvent).type === 'child:event',
-      )?.[0] as RuntimeEvent | undefined;
+      const enqueuedChild = getEnqueuedEvents(queue).find((e) => e.type === 'child:event');
       expect(enqueuedChild?.context?.parent_event_id).toBe('the-parent');
     });
 
@@ -415,10 +421,7 @@ describe('EventProcessor', () => {
         },
       });
       await processor.processBatch();
-      const calls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const enqueuedChild = calls.find(
-        (c: unknown[]) => (c[0] as RuntimeEvent).type === 'child:event',
-      )?.[0] as RuntimeEvent | undefined;
+      const enqueuedChild = getEnqueuedEvents(queue).find((e) => e.type === 'child:event');
       expect(enqueuedChild?.context?.workflow_id).toBe('wf-42');
     });
   });
@@ -534,8 +537,7 @@ describe('EventProcessor', () => {
         processorOptions: { max_chain_depth: 10 },
       });
       await processor.processBatch();
-      const calls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const types = calls.map((c: unknown[]) => (c[0] as RuntimeEvent).type);
+      const types = getEnqueuedEvents(queue).map((e) => e.type);
       expect(types).toContain('core:chain_depth_exceeded');
     });
 
@@ -561,76 +563,78 @@ describe('EventProcessor', () => {
       expect(processor.activeWorkflowCount()).toBe(0);
     });
 
-    it('re-enqueues event when same workflow is locked by a concurrent batch', async () => {
-      // Workflow locking protects against concurrent processBatch calls processing
-      // the same workflow_id simultaneously. We test this by:
-      // 1. Starting batch A with event "first" (acquires lock for wf-99, then blocks)
-      // 2. Starting batch B with event "second" before batch A finishes
-      //    -> batch B sees the lock held and re-enqueues "second"
-      vi.useRealTimers(); // Use real timers for this async coordination test
+    describe('workflow lock concurrency (real timers)', () => {
+      beforeEach(() => { vi.useRealTimers(); });
+      afterEach(() => { vi.useFakeTimers(); });
 
-      const trigger = makeTrigger({ id: 'wf-trigger' });
+      it('re-enqueues event when same workflow is locked by a concurrent batch', async () => {
+        // Workflow locking protects against concurrent processBatch calls processing
+        // the same workflow_id simultaneously. We test this by:
+        // 1. Starting batch A with event "first" (acquires lock for wf-99, then blocks)
+        // 2. Starting batch B with event "second" before batch A finishes
+        //    -> batch B sees the lock held and re-enqueues "second"
+        const trigger = makeTrigger({ id: 'wf-trigger' });
 
-      let resolveFirst!: () => void;
-      const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
+        let resolveFirst!: () => void;
+        const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
 
-      let callCount = 0;
-      const blockingErrorHandler: ErrorHandlerInterface = {
-        execute: vi.fn().mockImplementation(async () => {
-          callCount++;
-          if (callCount === 1) {
-            await firstDone; // block until we signal
-          }
-          return {
-            success: true,
-            result: { actions: [] } as HandlerResult,
-            attempts: 1,
-            error_events: [],
-          };
-        }),
-      };
+        let callCount = 0;
+        const blockingErrorHandler: ErrorHandlerInterface = {
+          execute: vi.fn().mockImplementation(async () => {
+            callCount++;
+            if (callCount === 1) {
+              await firstDone; // block until we signal
+            }
+            return {
+              success: true,
+              result: { actions: [] } as HandlerResult,
+              attempts: 1,
+              error_events: [],
+            };
+          }),
+        };
 
-      // Batch A queue: just event "first"
-      const queueA = makeQueue([makeEvent({ id: 'first', context: { workflow_id: 'wf-99' } })]);
-      const registry = makeRegistry([trigger]);
-      const store = makeStore();
-      const lifecycle = makeLifecycle(true);
-      const metrics = new EventMetrics();
-      const dlq = makeDLQ();
+        // Batch A queue: just event "first"
+        const queueA = makeQueue([makeEvent({ id: 'first', context: { workflow_id: 'wf-99' } })]);
+        const registry = makeRegistry([trigger]);
+        const store = makeStore();
+        const lifecycle = makeLifecycle(true);
+        const metrics = new EventMetrics();
+        const dlq = makeDLQ();
 
-      const processor = new EventProcessor(
-        queueA, registry, store, lifecycle, metrics,
-        blockingErrorHandler, dlq,
-        { lock_timeout_ms: 30000 },
-      );
-      processor.registerHandler('wf-trigger', vi.fn());
+        const processor = new EventProcessor(
+          queueA, registry, store, lifecycle, metrics,
+          blockingErrorHandler, dlq,
+          { lock_timeout_ms: 30000 },
+        );
+        processor.registerHandler('wf-trigger', vi.fn());
 
-      // Start batch A — event "first" acquires lock and blocks
-      const batchAPromise = processor.processBatch();
+        // Start batch A — event "first" acquires lock and blocks
+        const batchAPromise = processor.processBatch();
 
-      // Yield so the lock is acquired
-      await new Promise<void>((r) => setImmediate(r));
+        // Yield so the lock is acquired
+        await new Promise<void>((r) => setImmediate(r));
 
-      // Now add "second" to the queue and run batch B while lock is held
-      queueA.enqueue(makeEvent({ id: 'second', context: { workflow_id: 'wf-99' } }));
-      // Clear the enqueue spy calls so we only see batch B re-enqueues
-      (queueA.enqueue as ReturnType<typeof vi.fn>).mockClear();
+        // Now add "second" to the queue and run batch B while lock is held
+        queueA.enqueue(makeEvent({ id: 'second', context: { workflow_id: 'wf-99' } }));
+        // Clear the requeue spy calls so we only see batch B re-enqueues
+        (queueA.requeue as ReturnType<typeof vi.fn>).mockClear();
 
-      // Start batch B — "second" should see the lock and be re-enqueued
-      const batchBPromise = processor.processBatch();
+        // Start batch B — "second" should see the lock and be re-queued via requeue() (bypassing dedup)
+        const batchBPromise = processor.processBatch();
 
-      // Release first event and wait for both batches
-      resolveFirst();
-      await Promise.all([batchAPromise, batchBPromise]);
+        // Release first event and wait for both batches
+        resolveFirst();
+        await Promise.all([batchAPromise, batchBPromise]);
 
-      // "second" should have been re-enqueued by batch B (lock was held)
-      const enqueueCalls = (queueA.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const reenqueued = enqueueCalls.find(
-        (c: unknown[]) => (c[0] as RuntimeEvent).id === 'second',
-      );
-      expect(reenqueued).toBeDefined();
-
-      vi.useFakeTimers(); // restore fake timers for remaining tests
+        // "second" should have been re-queued via requeue() by batch B (lock was held)
+        // requeue() is used instead of enqueue() to bypass dedup and prevent silent event loss
+        const requeueCalls = (queueA.requeue as ReturnType<typeof vi.fn>).mock.calls;
+        const reenqueued = requeueCalls.find(
+          (c: unknown[]) => Array.isArray(c[0]) && (c[0] as RuntimeEvent[]).some((e) => e.id === 'second'),
+        );
+        expect(reenqueued).toBeDefined();
+      });
     });
 
     it('events without workflow_id are processed freely (no lock)', async () => {
@@ -643,20 +647,24 @@ describe('EventProcessor', () => {
       expect(count).toBe(2);
     });
 
-    it('releases stale lock and processes event', async () => {
-      // Set an extremely short lock timeout so it expires immediately
+    it('releases stale lock and processes both events in same batch', async () => {
+      // lock_timeout_ms: 0 means any held lock is immediately stale.
+      // When event2 encounters the "held" lock for wf-stale it sees it as stale,
+      // releases it, and processes event2 normally — both events are handled.
       const event1 = makeEvent({ id: 'old', context: { workflow_id: 'wf-stale' } });
       const event2 = makeEvent({ id: 'new', context: { workflow_id: 'wf-stale' } });
 
-      const { processor, queue } = makeProcessor({
+      const { processor, registry } = makeProcessor({
         events: [event1, event2],
-        processorOptions: { lock_timeout_ms: 0 }, // expires immediately
+        processorOptions: { lock_timeout_ms: 0 }, // lock is stale the moment it is set
       });
 
-      // Run first batch to process event1 (lock acquired and released)
-      await processor.processBatch();
-      // Both events should be processed since lock_timeout=0 causes stale immediately on 2nd
+      const count = await processor.processBatch();
+      // Both events processed; no lock should remain held
+      expect(count).toBe(2);
       expect(processor.activeWorkflowCount()).toBe(0);
+      // registry.match called once per event
+      expect(registry.match).toHaveBeenCalledTimes(2);
     });
   });
 

@@ -549,7 +549,7 @@ describe('handleAgentCompleted', () => {
       expect(result).toEqual({});
     });
 
-    it('returns empty when score cannot be parsed', () => {
+    it('escalates and emits wrfc:review_parse_failed when score cannot be parsed', () => {
       const agentId = 'agent-rev';
       const wid = `wrfc_${agentId}`;
       const store = createMockStore({
@@ -566,7 +566,17 @@ describe('handleAgentCompleted', () => {
         },
       });
       const result = handleAgentCompleted(event, trigger, store);
-      expect(result).toEqual({});
+      // Should escalate rather than silently stall the workflow
+      expect(result.state_updates).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: `wrfc.workflows.${wid}.phase`, value: 'ESCALATED' }),
+      ]));
+      expect(result.actions).toHaveLength(1);
+      expect(result.events).toHaveLength(1);
+      expect(result.events![0].type).toBe('wrfc:review_parse_failed');
+      expect(result.events![0].payload).toMatchObject({
+        workflow_id: wid,
+        agent_id: agentId,
+      });
     });
 
     it('completes workflow when score passes threshold', () => {

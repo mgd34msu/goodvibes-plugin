@@ -949,6 +949,11 @@ export class ProcessManager {
 
   // ─── v3 Initialization ─────────────────────────────────────────────────────────
 
+  // TODO: Unit tests for v3 lifecycle methods (initializeV3Plugins, cleanupV3Plugins,
+  // startV3TickTimer, tickV3) are not yet written. These methods depend on heavy
+  // constructor dependencies (EventProcessor, TimePlugin, ExternalPlugin) that require
+  // additional test scaffolding. Tracked for follow-up in the test coverage backlog.
+
   /**
    * Initialize all v3 core components and Layer 3 plugins.
    *
@@ -979,6 +984,10 @@ export class ProcessManager {
       this.v3StateStore = new CoreStateStore();
 
       // 4. v3 core: supporting components
+      // Intentionally kept as locals: they are wired into EventProcessor and do not
+      // need to be addressed independently after construction. If future observability
+      // work (metrics export, dead-letter inspection) requires direct access, promote
+      // these to class fields at that point.
       const lifecycle = new LoopLifecycleManager();
       const metrics = new EventMetrics();
       const deadLetter = new DeadLetterQueue();
@@ -1010,7 +1019,11 @@ export class ProcessManager {
       this.v3HookRegistry = new HookRegistry();
       this.v3HookProcessor = new HookProcessor({
         registry: this.v3HookRegistry,
-        sessionId: '',  // Empty — handlers receive session context from hook input payload
+        // sessionId is intentionally empty here: the HookProcessor is initialised once
+        // at startup, before any session exists. Each hook invocation carries its own
+        // session context in the input payload, so no session ID is needed at
+        // construction time. An empty string is the required sentinel for "no session".
+        sessionId: '',  // sentinel: no session at construction time
       });
       registerDefaultHandlers(this.v3HookRegistry, {
         eventBus: this.eventBus ?? null,
@@ -1073,10 +1086,12 @@ export class ProcessManager {
    * The timer is unref'd so it does not prevent graceful process exit.
    */
   private startV3TickTimer(): void {
-    // All three fields are set together in initializeV3Plugins (all-or-nothing), so
-    // checking all three with && is intentional: if any one is present, the full v3
-    // layer initialised successfully and the tick should proceed.
-    if (!this.v3EventProcessor && !this.v3TimePlugin && !this.v3ExternalPlugin) {
+    // All three fields are set together in initializeV3Plugins (all-or-nothing).
+    // Skip ticking if all three v3 components are null (v3 init failed or was not
+    // attempted). Using || provides defensive safety so that a partial init — where
+    // only some fields were set before failure — also skips ticking with incomplete
+    // state, rather than proceeding with nulls.
+    if (!this.v3EventProcessor || !this.v3TimePlugin || !this.v3ExternalPlugin) {
       // Nothing to tick — v3 failed to initialise
       return;
     }

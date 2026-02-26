@@ -28,8 +28,11 @@ export interface HeartbeatConfig {
 export class HeartbeatManager {
   private lastTickAt: number = 0;
   private tickCount: number = 0;
+  private readonly now: () => number;
 
-  constructor(private config: HeartbeatConfig) {}
+  constructor(private config: HeartbeatConfig & { now?: () => number }) {
+    this.now = config.now ?? (() => Date.now());
+  }
 
   /**
    * Called on each external tick.
@@ -39,7 +42,7 @@ export class HeartbeatManager {
   tick(): TimeEvent | null {
     if (!this.config.enabled) return null;
 
-    const now = Date.now();
+    const now = this.now();
     // Debounce: require at least 80% of the interval to have elapsed
     if (this.lastTickAt > 0 && now - this.lastTickAt < this.config.interval_ms * 0.8) {
       return null;

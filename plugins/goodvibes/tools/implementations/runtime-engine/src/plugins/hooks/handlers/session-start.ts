@@ -47,6 +47,8 @@ export function createSessionStartHandler(
               session_id: sessionId,
               cwd,
               project_root: cwd,
+              // Known modes: 'vibecoding' (default) and 'justvibes'.
+              // Any unrecognised value falls back to 'vibecoding'.
               mode: (input['mode'] === 'justvibes' ? 'justvibes' : 'vibecoding'),
             },
           },

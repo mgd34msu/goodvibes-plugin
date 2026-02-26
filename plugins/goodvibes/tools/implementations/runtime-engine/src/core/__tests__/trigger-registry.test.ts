@@ -7,10 +7,9 @@
  * priority ordering in match().
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TriggerRegistry } from '../trigger-registry.js';
-import { CoreStateStore } from '../state-store.js';
-import type { Trigger, RuntimeEvent } from '../types.js';
+import type { Trigger, RuntimeEvent, StateStoreInterface } from '../types.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -24,27 +23,39 @@ function makeTrigger(overrides: Partial<Trigger> & { id: string }): Trigger {
   };
 }
 
+let _evtCounter = 0;
 function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
-    id: `evt_${Math.random().toString(36).slice(2)}`,
-    source: 'internal',
-    type: 'test:event',
-    payload: null,
-    timestamp: Date.now(),
-    priority: 0,
+    id: overrides.id ?? `evt_${++_evtCounter}`,
+    source: overrides.source ?? 'internal',
+    type: overrides.type ?? 'test:event',
+    payload: overrides.payload ?? null,
+    timestamp: overrides.timestamp ?? Date.now(),
+    priority: overrides.priority ?? 0,
     ...overrides,
   };
 }
 
-// Minimal in-memory state store for testing conditions
-function makeStore(data: Record<string, unknown> = {}): CoreStateStore {
-  // Use a temp file path to avoid real disk I/O
-  const store = new CoreStateStore({ file_path: `/tmp/gv-test-${Math.random().toString(36).slice(2)}.json` });
-  // Populate state directly via set calls
-  for (const [key, value] of Object.entries(data)) {
-    store.set(key, value);
-  }
-  return store;
+// Minimal in-memory state store mock — no filesystem I/O
+function makeStore(data: Record<string, unknown> = {}): StateStoreInterface {
+  const internal = new Map<string, unknown>(Object.entries(data));
+  return {
+    get: vi.fn(<T>(key: string): T | null => {
+      // Support dot-path traversal for nested state used by conditions
+      const parts = key.split('.');
+      let cur: unknown = Object.fromEntries(internal);
+      for (const part of parts) {
+        if (cur === null || typeof cur !== 'object') return null as T;
+        cur = (cur as Record<string, unknown>)[part];
+      }
+      return (cur ?? null) as T;
+    }),
+    set: vi.fn(<T>(k: string, v: T) => { internal.set(k, v as unknown); }),
+    delete: vi.fn((k: string) => { internal.delete(k); }),
+    merge: vi.fn(),
+    snapshot: vi.fn(() => Object.fromEntries(internal)),
+    restore: vi.fn(),
+  };
 }
 
 // ─── Registration ────────────────────────────────────────────────────────────
@@ -722,5 +733,21 @@ describe('TriggerRegistry — LRU glob cache', () => {
     const agentMatched = registry.match(makeEvent({ type: 'agent:spawned' }), store);
     expect(agentMatched.map((t) => t.id)).toContain('t_agent');
     expect(agentMatched.map((t) => t.id)).not.toContain('t_user');
+  });
+
+  it('evicts LRU entries when more than 500 distinct glob patterns are used', () => {
+    // Register 510 triggers each with a unique glob pattern to force LRU eviction
+    const registry = new TriggerRegistry();
+    const store = makeStore();
+    for (let i = 0; i < 510; i++) {
+      registry.register(makeTrigger({ id: `t${i}`, event_match: { type: `ns${i}:*` } }));
+    }
+    // The first 10 patterns should have been evicted from the LRU cache by now.
+    // Matching against a surviving pattern should still work correctly.
+    const matched = registry.match(makeEvent({ type: 'ns509:action' }), store);
+    expect(matched.map((t) => t.id)).toContain('t509');
+    // Matching against one of the evicted patterns should recompile and still work
+    const matched2 = registry.match(makeEvent({ type: 'ns0:action' }), store);
+    expect(matched2.map((t) => t.id)).toContain('t0');
   });
 });

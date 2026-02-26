@@ -21,6 +21,7 @@ vi.mock('node:fs/promises', () => ({
 }));
 
 // The http mock uses a stable object reference so tests can mutate listen/close etc.
+// Individual method mocks are reset in beforeEach of the HttpListener suite.
 const mockServer = {
   listen: vi.fn(),
   close: vi.fn(),
@@ -528,10 +529,12 @@ describe('FileWatcher', () => {
     mockReaddir(['event.json']);
     mockReadFile(JSON.stringify(dropPayload));
     (fsMock.rename as unknown as MockInstance).mockRejectedValueOnce(new Error('rename-fail'));
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const result = await watcher.scan();
     expect(result.events_ingested).toBe(1);
-    consoleSpy.mockRestore();
+    // The structured logger writes to process.stderr
+    expect(stderrSpy).toHaveBeenCalled();
+    stderrSpy.mockRestore();
   });
 
   it('ensureDirs creates all three directories', async () => {
@@ -558,6 +561,17 @@ describe('FileWatcher', () => {
  * 4. Use captured handler to simulate HTTP requests
  */
 describe('HttpListener', () => {
+  beforeEach(() => {
+    // Reset all mockServer method spies before each test so prior test state
+    // does not leak into subsequent tests.
+    mockServer.listen.mockReset();
+    mockServer.close.mockReset();
+    mockServer.once.mockReset();
+    mockServer.on.mockReset();
+    mockServer.removeListener.mockReset();
+    (httpMock.createServer as unknown as MockInstance).mockReturnValue(mockServer);
+  });
+
   /**
    * Start an HttpListener by triggering the listen callback.
    * Returns the captured request handler for simulating requests.
@@ -982,10 +996,11 @@ describe('ExternalPlugin', () => {
     await plugin.startHttpListener();
   }
 
-  it('startHttpListener creates and starts a listener using default config', async () => {
+  it('startHttpListener is a no-op when http_listener is not configured', async () => {
+    // When http_listener is omitted, startHttpListener() is a true no-op.
     const plugin = new ExternalPlugin(queue, { file_watcher: BASE_WATCHER_CONFIG });
-    await startPluginListener(plugin);
-    expect(plugin.isHttpListenerRunning()).toBe(true);
+    await plugin.startHttpListener();
+    expect(plugin.isHttpListenerRunning()).toBe(false);
   });
 
   it('startHttpListener uses http_listener config from constructor when provided', async () => {
@@ -1003,7 +1018,10 @@ describe('ExternalPlugin', () => {
   });
 
   it('stopHttpListener stops a running listener', async () => {
-    const plugin = new ExternalPlugin(queue, { file_watcher: BASE_WATCHER_CONFIG });
+    const plugin = new ExternalPlugin(queue, {
+      file_watcher: BASE_WATCHER_CONFIG,
+      http_listener: BASE_HTTP_CONFIG,
+    });
     await startPluginListener(plugin);
     expect(plugin.isHttpListenerRunning()).toBe(true);
     const stopP = plugin.stopHttpListener();

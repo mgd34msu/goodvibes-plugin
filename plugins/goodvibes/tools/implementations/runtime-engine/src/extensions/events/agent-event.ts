@@ -21,7 +21,10 @@ export interface AgentEvent extends RuntimeEvent {
   agent_type: string;
   /** Agent output or return value, if applicable. */
   result?: unknown;
-  /** Review score emitted by the agent (0–10), if applicable. */
+  /**
+   * Review score emitted by the agent, if applicable.
+   * @range 0-10
+   */
   score?: number;
   /** File paths or identifiers produced as output artifacts. */
   artifacts?: string[];
@@ -64,7 +67,7 @@ export function createAgentEvent(params: {
   });
   return {
     ...base,
-    source: 'agent' as const,
+    source: 'agent',
     agent_id: params.agent_id,
     agent_type: params.agent_type,
     ...(params.result !== undefined && { result: params.result }),

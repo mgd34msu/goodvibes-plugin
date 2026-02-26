@@ -139,6 +139,22 @@ describe('WRFCTrigger', () => {
       const trigger = createWRFCTrigger({ ...BASE_PARAMS, conditions });
       expect(trigger.conditions).toEqual(conditions);
     });
+
+    it('throws RangeError for score_threshold -1 (below minimum)', () => {
+      expect(() => createWRFCTrigger({ ...BASE_PARAMS, score_threshold: -1 })).toThrow(RangeError);
+    });
+
+    it('throws RangeError for score_threshold 11 (above maximum)', () => {
+      expect(() => createWRFCTrigger({ ...BASE_PARAMS, score_threshold: 11 })).toThrow(RangeError);
+    });
+
+    it('does not throw for score_threshold 0 (boundary minimum)', () => {
+      expect(() => createWRFCTrigger({ ...BASE_PARAMS, score_threshold: 0 })).not.toThrow();
+    });
+
+    it('does not throw for score_threshold 10 (boundary maximum)', () => {
+      expect(() => createWRFCTrigger({ ...BASE_PARAMS, score_threshold: 10 })).not.toThrow();
+    });
   });
 
   describe('isWRFCTrigger', () => {

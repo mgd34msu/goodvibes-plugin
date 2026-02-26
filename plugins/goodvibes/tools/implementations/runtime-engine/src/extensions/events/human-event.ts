@@ -60,7 +60,7 @@ export function createHumanEvent(params: {
   });
   return {
     ...base,
-    source: 'human' as const,
+    source: 'human',
     ...(params.prompt !== undefined && { prompt: params.prompt }),
     ...(params.command !== undefined && { command: params.command }),
     ...(params.approval !== undefined && { approval: params.approval }),

@@ -15,7 +15,6 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
-import { generateEventId } from '../../shared/utils.js';
 import type { RuntimeEvent, HandlerResult, StateUpdate, Action, StateStoreInterface } from '../../core/types.js';
 import { createEvent } from '../../core/types.js';
 import type { Trigger } from '../../core/types.js';
@@ -107,10 +106,9 @@ function phaseUpdate(wid: string, phase: string): StateUpdate[] {
  */
 export function handleWorkflowCreated(
   event: RuntimeEvent,
-  trigger: Trigger,
+  _trigger: Trigger,
   store: StateStoreInterface,
 ): HandlerResult {
-  void trigger;
 
   const payload = event.payload as Record<string, unknown>;
   const agentId = typeof payload['agent_id'] === 'string' ? payload['agent_id'] : null;
@@ -172,10 +170,9 @@ export function handleWorkflowCreated(
  */
 export function handleAgentCompleted(
   event: RuntimeEvent,
-  trigger: Trigger,
+  _trigger: Trigger,
   store: StateStoreInterface,
 ): HandlerResult {
-  void trigger;
 
   const payload = event.payload as Record<string, unknown>;
 
@@ -269,7 +266,23 @@ export function handleAgentCompleted(
       log.warn('handleAgentCompleted: could not parse review score', {
         wid, output_preview: agentOutput?.slice(0, 200),
       });
-      return {};
+      // Emit error event and escalate — returning {} would stall the workflow permanently
+      const fixAttempts = storeGet(store, WS(wid, 'fix_attempts'), 0);
+      const errorEvent = createEvent({
+        source: 'internal',
+        type: 'wrfc:review_parse_failed',
+        payload: {
+          workflow_id: wid,
+          agent_id: agentId,
+          output_preview: agentOutput?.slice(0, 200) ?? null,
+          attempt_count: fixAttempts,
+        },
+        priority: 80,
+        context: { workflow_id: wid },
+      });
+      const state_updates: StateUpdate[] = phaseUpdate(wid, 'ESCALATED');
+      const actions: Action[] = [buildEscalateAction(wid, `review score parse failed after ${fixAttempts} attempts`)];
+      return { state_updates, actions, events: [errorEvent] };
     }
 
     if (score >= minScore) {
@@ -377,10 +390,9 @@ export function handleAgentCompleted(
  */
 export function handleQualityGate(
   event: RuntimeEvent,
-  trigger: Trigger,
+  _trigger: Trigger,
   store: StateStoreInterface,
 ): HandlerResult {
-  void trigger;
 
   const payload = event.payload as Record<string, unknown>;
   const wid = typeof payload['workflow_id'] === 'string' ? payload['workflow_id'] : null;
@@ -433,11 +445,12 @@ export function handleQualityGate(
 
   const actions: Action[] = [buildSpawnAction({ wid, type: 'engineer', task, files: filesModified })];
   state_updates.push(...phaseUpdate(wid, 'FIXING'));
+  const events: RuntimeEvent[] = [makeChainEvent('wrfc:fix_started', wid, event)];
 
   log.info('handleQualityGate: quality gate failed, spawning fixer', {
     wid, score, threshold: minScore, fix_attempts: newFixAttempts,
   });
-  return { actions, state_updates };
+  return { actions, state_updates, events };
 }
 
 /**

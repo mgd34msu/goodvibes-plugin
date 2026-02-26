@@ -45,6 +45,12 @@ export interface LifecycleOptions {
  */
 const VALID_TRANSITIONS: Record<LoopStatus, LoopStatus[]> = {
   stopped: ['running'],
+  /**
+   * 'stopped' is included here to support forceTransition() during shutdown
+   * (which bypasses this table). It is NOT reachable via the public API —
+   * the only public path to 'stopped' is through drain() or shutdown().
+   * Reserved for future use if a direct stop() method is added.
+   */
   running: ['paused', 'draining', 'stopped'],
   paused: ['running', 'stopped'],
   draining: ['stopped'],

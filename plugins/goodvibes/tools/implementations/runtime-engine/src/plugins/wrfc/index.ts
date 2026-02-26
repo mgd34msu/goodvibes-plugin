@@ -42,4 +42,4 @@ export {
   buildCompleteDirective,
   buildEscalateDirective,
 } from './directive-builder.js';
-export type { SpawnDirectiveContext } from './directive-builder.js';
+export type { SpawnDirectiveContext, EscalateParams } from './directive-builder.js';

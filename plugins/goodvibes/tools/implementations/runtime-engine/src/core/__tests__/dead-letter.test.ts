@@ -4,15 +4,27 @@
  * All tests disable persistence (persist: false) to avoid disk I/O.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DeadLetterQueue } from '../dead-letter.js';
 import type { DeadLetterEntry, RuntimeEvent } from '../types.js';
 
+// Mock node:fs at the module level (vi.mock is hoisted by Vitest)
+// Tests that use persist:false are unaffected since fs is never called.
+vi.mock('node:fs', () => ({
+  readFileSync: vi.fn(() => { throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); }),
+  writeFileSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  renameSync: vi.fn(),
+}));
+
+import * as fsMod from 'node:fs';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+let _evtCounter = 0;
 function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
   return {
-    id: overrides.id ?? `evt-${Math.random().toString(36).slice(2)}`,
+    id: overrides.id ?? `evt-${++_evtCounter}`,
     source: 'internal',
     type: overrides.type ?? 'test:event',
     payload: {},
@@ -283,6 +295,34 @@ describe('DeadLetterQueue', () => {
       // With persist:false this should simply succeed.
       const q = new DeadLetterQueue({ persist: false, file_path: '/nonexistent/path/dlq.json' });
       expect(q.size()).toBe(0);
+    });
+  });
+
+  describe('persistence (enabled) load/persist round-trip', () => {
+    beforeEach(() => {
+      vi.mocked(fsMod.writeFileSync).mockReset();
+      vi.mocked(fsMod.mkdirSync).mockReset();
+      vi.mocked(fsMod.renameSync).mockReset();
+      // Default: readFileSync throws ENOENT (no file on disk)
+      vi.mocked(fsMod.readFileSync).mockImplementation(() => {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+    });
+
+    it('calls writeFileSync when adding an entry with persist: true', () => {
+      const q = new DeadLetterQueue({ persist: true, file_path: '/tmp/dlq-test.json' });
+      q.add(makeEntry({ event: makeEvent({ id: 'persist-test' }) }));
+      expect(vi.mocked(fsMod.writeFileSync)).toHaveBeenCalled();
+    });
+
+    it('loads entries from disk when file exists on construction with persist: true', () => {
+      const event = makeEvent({ id: 'loaded-event' });
+      const entry = makeEntry({ event });
+      vi.mocked(fsMod.readFileSync).mockReturnValue(JSON.stringify([entry]));
+
+      const q = new DeadLetterQueue({ persist: true, file_path: '/tmp/dlq-test.json' });
+      expect(q.size()).toBe(1);
+      expect(q.getById('loaded-event')).toBeDefined();
     });
   });
 });

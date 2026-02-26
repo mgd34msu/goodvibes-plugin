@@ -21,7 +21,7 @@ export function normalizeGeneric(
   // Attempt to extract a meaningful event type from payload if it has one
   let eventType = `webhook:${source}:event`;
 
-  if (rawPayload !== null && typeof rawPayload === 'object') {
+  if (rawPayload !== null && typeof rawPayload === 'object' && !Array.isArray(rawPayload)) {
     const p = rawPayload as Record<string, unknown>;
     // Common convention: payload has an 'event', 'type', or 'action' field
     const extracted = p['event'] ?? p['type'] ?? p['action'];

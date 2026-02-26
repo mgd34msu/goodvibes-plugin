@@ -58,14 +58,29 @@ export function isHookEvent(event: RuntimeEvent): event is HookEvent {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Converts a HookType (PascalCase) to a snake_case string segment.
+ * Exhaustive lookup map from HookType to its snake_case slug.
+ * The `satisfies` check ensures all HookType members are covered at compile time.
+ */
+const hookTypeSlugMap = {
+  PreToolUse: 'pre_tool_use',
+  PostToolUse: 'post_tool_use',
+  PostToolUseFailure: 'post_tool_use_failure',
+  SubagentStart: 'subagent_start',
+  SubagentStop: 'subagent_stop',
+  SessionStart: 'session_start',
+  SessionEnd: 'session_end',
+  PreCompact: 'pre_compact',
+  UserPromptSubmit: 'user_prompt_submit',
+  Notification: 'notification',
+  Stop: 'stop',
+} satisfies Record<HookType, string>;
+
+/**
+ * Returns the snake_case slug for a given HookType.
  * Example: 'PreToolUse' → 'pre_tool_use', 'SubagentStop' → 'subagent_stop'
  */
 function hookTypeToSlug(hookType: HookType): string {
-  return hookType
-    .replace(/([A-Z])/g, '_$1')
-    .replace(/^_/, '')
-    .toLowerCase();
+  return hookTypeSlugMap[hookType];
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -78,7 +93,10 @@ export function createHookEvent(params: {
   hook_type: HookType;
   hook_input: Record<string, unknown>;
   session_id: string;
-  /** Defaults to `hook:${hook_type_as_snake_case}` */
+  /**
+   * Defaults to `hook:${hook_type_as_snake_case}`. Intentionally loose string
+   * to allow Layer 3 extensions to supply custom type identifiers.
+   */
   type?: string;
   payload?: unknown;
   priority?: number;
@@ -93,7 +111,7 @@ export function createHookEvent(params: {
   });
   return {
     ...base,
-    source: 'internal' as const,
+    source: 'internal',
     hook_type: params.hook_type,
     hook_input: params.hook_input,
     session_id: params.session_id,

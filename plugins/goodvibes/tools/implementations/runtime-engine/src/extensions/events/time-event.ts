@@ -67,7 +67,11 @@ function defaultTimeEventType(timeType: TimeType): string {
  */
 export function createTimeEvent(params: {
   time_type: TimeType;
-  /** Defaults to `time:<time_type>` */
+  /**
+   * Defaults to the category-specific type: `tick:heartbeat`, `cron:tick`,
+   * `schedule:tick`, or `schedule:one_shot`. Intentionally loose string
+   * to allow Layer 3 extensions to supply custom type identifiers.
+   */
   type?: string;
   interval_ms?: number;
   schedule?: string;
@@ -88,7 +92,7 @@ export function createTimeEvent(params: {
   });
   return {
     ...base,
-    source: 'time' as const,
+    source: 'time',
     time_type: params.time_type,
     ...(params.interval_ms !== undefined && { interval_ms: params.interval_ms }),
     ...(params.schedule !== undefined && { schedule: params.schedule }),

@@ -34,7 +34,7 @@ export interface MetricsOptions {
  *  - average: O(n)
  *  - max:     O(n)
  */
-class RollingWindow {
+export class RollingWindow {
   /** Fixed-size circular buffer. */
   private readonly buffer: number[];
   /** Index of the oldest element (write head). */
@@ -43,7 +43,7 @@ class RollingWindow {
   private count = 0;
 
   constructor(private readonly capacity: number) {
-    this.buffer = new Array<number>(capacity);
+    this.buffer = Array.from({ length: capacity }, () => 0);
   }
 
   push(value: number): void {
@@ -59,6 +59,7 @@ class RollingWindow {
   average(): number {
     if (this.count === 0) return 0;
     let sum = 0;
+    // Safe: index is always within [0, count) and count <= capacity
     for (let i = 0; i < this.count; i++) {
       sum += this.buffer[(this.head + i) % this.capacity]!;
     }
@@ -68,6 +69,7 @@ class RollingWindow {
   max(): number {
     if (this.count === 0) return 0;
     let best = -Infinity;
+    // Safe: index is always within [0, count) and count <= capacity
     for (let i = 0; i < this.count; i++) {
       const v = this.buffer[(this.head + i) % this.capacity]!;
       if (v > best) best = v;

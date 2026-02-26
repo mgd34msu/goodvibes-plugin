@@ -278,14 +278,16 @@ describe('ErrorHandler', () => {
       expect(entry.error).toBe('specific failure message');
     });
 
-    it('dead-letter entry has a dead_lettered_at timestamp', async () => {
-      const before = Date.now();
+    it('dead-letter entry has a dead_lettered_at timestamp matching the fake clock', async () => {
+      // Set fake clock to a known fixed time so we can assert exact equality
+      const FIXED_TIME = 1_700_000_000_000;
+      vi.setSystemTime(FIXED_TIME);
       const h = makeThrowingHandler(new Error('x'));
       const promise = handler.execute('t1', h, makeEvent());
       await vi.runAllTimersAsync();
       await promise;
       const entry = dlq.entries[0]!;
-      expect(entry.dead_lettered_at).toBeGreaterThanOrEqual(before);
+      expect(entry.dead_lettered_at).toBe(FIXED_TIME);
     });
   });
 

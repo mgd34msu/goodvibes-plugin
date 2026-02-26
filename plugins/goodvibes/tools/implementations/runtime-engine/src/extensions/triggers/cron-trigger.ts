@@ -6,17 +6,7 @@
  */
 
 import { Trigger, createTrigger } from '../../core/types.js';
-
-// ─── Utility Type ─────────────────────────────────────────────────────────────
-
-/**
- * Utility type for trigger factory params.
- * Inherits required base fields, makes optional base fields optional, and merges extension-specific fields.
- */
-type TriggerFactoryParams<T> = Pick<Trigger, 'id' | 'event_match' | 'actions'> &
-  Partial<Omit<Trigger, 'id' | 'event_match' | 'actions' | 'enabled'>> &
-  { enabled?: boolean } &
-  T;
+import { TriggerFactoryParams } from './shared.js';
 
 // ─── CronTrigger Interface ────────────────────────────────────────────────────
 
@@ -68,7 +58,7 @@ export function createCronTrigger(params: TriggerFactoryParams<{
   });
   return {
     ...base,
-    trigger_type: 'cron' as const,
+    trigger_type: 'cron',
     schedule: params.schedule,
     ...(params.active_hours !== undefined && { active_hours: params.active_hours }),
     ...(params.timezone !== undefined && { timezone: params.timezone }),

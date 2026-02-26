@@ -14,6 +14,9 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { EventQueueInterface } from '../../core/types.js';
 import { NormalizerRegistry } from './normalizers/index.js';
+import { createLogger } from '../../shared/logger.js';
+
+const logger = createLogger('file-watcher');
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -68,8 +71,12 @@ function isDropFilePayload(value: unknown): value is DropFilePayload {
 // ─── FileWatcher Class ──────────────────────────────────────────────────────────────
 
 export class FileWatcher {
-  /** Tracks filenames enqueued in the current scan cycle to prevent duplicate ingestion. */
-  private readonly enqueuedInScan = new Set<string>();
+  /**
+   * Persistent set of filenames that have been successfully enqueued.
+   * Only cleared when a file is confirmed moved or deleted, preventing
+   * re-ingestion if a rename fails and the file remains in incoming.
+   */
+  private readonly enqueuedFiles = new Set<string>();
 
   constructor(
     private readonly queue: EventQueueInterface,
@@ -108,8 +115,10 @@ export class FileWatcher {
     const batch = entries.slice(0, this.config.max_files_per_scan);
     let events_ingested = 0;
 
-    // Reset per-scan dedup set before processing this batch.
-    this.enqueuedInScan.clear();
+    // Collect filenames confirmed moved/deleted this scan. Deferred removal from
+    // enqueuedFiles ensures within-scan dedup still works even if readdir returns
+    // the same filename more than once.
+    const confirmedRemoved = new Set<string>();
 
     for (const filename of batch) {
       const filepath = path.join(this.config.incoming_dir, filename);
@@ -136,26 +145,30 @@ export class FileWatcher {
           parsed.headers,
         );
 
-        // 5. Enqueue (skip if already enqueued this scan cycle to prevent duplicates on rename failure)
-        if (!this.enqueuedInScan.has(filename)) {
+        // 5. Enqueue — skip if already enqueued. The persistent enqueuedFiles set
+        // survives across scan cycles to prevent re-ingestion when a rename fails
+        // and the file remains in incoming.
+        if (!this.enqueuedFiles.has(filename)) {
           this.queue.enqueue(event);
-          this.enqueuedInScan.add(filename);
+          this.enqueuedFiles.add(filename);
           events_ingested++;
         }
         succeeded = true;
       } catch (scanErr) {
         // Log the error to aid debugging, then move the file for manual inspection
-        console.error(`[FileWatcher] Failed to process file '${filename}':`, scanErr);
+        logger.error(`Failed to process file '${filename}'`, { error: scanErr });
         // Failure: move to errors directory for manual inspection
         const errorPath = path.join(this.config.error_dir, filename);
         try {
           await fs.rename(filepath, errorPath);
+          confirmedRemoved.add(filename);
         } catch (moveErr) {
           // If move fails (e.g. cross-device), attempt removal to unblock queue
           try {
             await fs.unlink(filepath);
+            confirmedRemoved.add(filename);
           } catch {
-            // intentionally empty: best-effort cleanup
+            logger.debug(`Failed to remove error file '${filename}' after move failure`, { error: moveErr });
           }
         }
         // Error file moved; continue processing remaining files
@@ -167,12 +180,19 @@ export class FileWatcher {
         const processedPath = path.join(this.config.processed_dir, processedName);
         try {
           await fs.rename(filepath, processedPath);
+          confirmedRemoved.add(filename);
         } catch (moveErr) {
-          // Processed but couldn't move — non-fatal; the enqueuedInScan set prevents
+          // Processed but couldn't move — non-fatal; the enqueuedFiles set prevents
           // duplicate ingestion if the file is seen again on the next scan cycle.
-          console.error(`[FileWatcher] Failed to move processed file '${filename}':`, moveErr);
+          logger.error(`Failed to move processed file '${filename}'`, { error: moveErr });
         }
       }
+    }
+
+    // Remove confirmed-moved filenames from the persistent set now that the
+    // batch is complete. Deferred to here so within-scan dedup remains effective.
+    for (const filename of confirmedRemoved) {
+      this.enqueuedFiles.delete(filename);
     }
 
     return { events_ingested };

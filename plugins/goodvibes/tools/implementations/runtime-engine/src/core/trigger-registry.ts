@@ -55,7 +55,12 @@ function getGlobRegex(pattern: string): RegExp {
     }
     const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
     const regexStr = '^' + escaped.replace(/\*\*/g, '.+').replace(/\*/g, '[^:]+') + '$';
-    regex = new RegExp(regexStr);
+    try {
+      regex = new RegExp(regexStr);
+    } catch {
+      logger.warn('Failed to compile glob pattern; using never-matching fallback', { pattern, regexStr });
+      regex = /(?!)/; // never-matching regex
+    }
     globCache.set(pattern, regex);
   }
   return regex;
@@ -83,7 +88,7 @@ function deepPartialMatch(obj: unknown, partial: Record<string, unknown>): boole
     if (expected !== null && typeof expected === 'object' && !Array.isArray(expected)) {
       if (!deepPartialMatch(actual, expected as Record<string, unknown>)) return false;
     } else if (Array.isArray(expected)) {
-      if (!Array.isArray(actual) || JSON.stringify(actual) !== JSON.stringify(expected)) return false;
+      if (!Array.isArray(actual) || actual.length !== expected.length || !actual.every((v, i) => v === expected[i])) return false;
     } else {
       if (actual !== expected) return false;
     }
@@ -253,7 +258,11 @@ export class TriggerRegistry implements TriggerRegistryInterface {
     }
 
     // 2. Circuit breaker: max_fires
-    const state = this.states.get(trigger.id)!;
+    const state = this.states.get(trigger.id);
+    if (!state) {
+      logger.warn('matchOne called for trigger with no state record', { trigger_id: trigger.id });
+      return { trigger, matched: false, skip_reason: 'disabled' };
+    }
     if (trigger.max_fires !== undefined && trigger.max_fires > 0 && state.fire_count >= trigger.max_fires) {
       return { trigger, matched: false, skip_reason: 'max_fires' };
     }

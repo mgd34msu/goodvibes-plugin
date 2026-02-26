@@ -48,7 +48,7 @@ export function createPostToolUseHandler(
       for (const path of paths) {
         try {
           deps.eventBus.emit({
-            id: `evt_file_modified_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            id: `evt_file_modified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             timestamp: new Date().toISOString(),
             type: 'file:modified',
             source: { kind: 'hook', hook_name: 'post_tool_use' },

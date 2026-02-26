@@ -64,7 +64,7 @@ export function createExternalEvent(params: {
   });
   return {
     ...base,
-    source: 'external' as const,
+    source: 'external',
     external_source: params.external_source,
     raw_payload: params.raw_payload,
     normalized: params.normalized ?? false,

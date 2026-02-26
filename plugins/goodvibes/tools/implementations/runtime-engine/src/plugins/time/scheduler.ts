@@ -87,6 +87,9 @@ export class EventScheduler {
     ref?: string;
     priority?: number;
   }): ScheduledItem {
+    if (params.interval_ms <= 0) {
+      throw new RangeError(`EventScheduler.scheduleHeartbeat: interval_ms must be > 0, got ${params.interval_ms}`);
+    }
     this._assertCapacity();
     if (this.items.has(params.id)) {
       throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
@@ -124,6 +127,9 @@ export class EventScheduler {
     ref?: string;
     priority?: number;
   }): ScheduledItem {
+    if (params.delay_ms <= 0) {
+      throw new RangeError(`EventScheduler.scheduleOneShot: delay_ms must be > 0, got ${params.delay_ms}`);
+    }
     this._assertCapacity();
     if (this.items.has(params.id)) {
       throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
@@ -162,6 +168,9 @@ export class EventScheduler {
     active_hours?: { start: number; end: number; timezone_offset_hours?: number };
     priority?: number;
   }): ScheduledItem {
+    if (params.interval_ms <= 0) {
+      throw new RangeError(`EventScheduler.scheduleCron: interval_ms must be > 0, got ${params.interval_ms}`);
+    }
     this._assertCapacity();
     if (this.items.has(params.id)) {
       throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
@@ -207,14 +216,19 @@ export class EventScheduler {
         const hour = timezone_offset_hours !== undefined
           ? ((utcHour + timezone_offset_hours) % 24 + 24) % 24
           : new Date(now).getHours();
+        // start === end means "all hours active" (no restriction).
+        // An intentional "never fire" window is not supported; use cancel() instead.
         // Support overnight windows (e.g. start=22, end=6)
-        const inWindow = start <= end
-          ? hour >= start && hour < end
-          : hour >= start || hour < end;
+        const inWindow = start === end
+          ? true
+          : start <= end
+            ? hour >= start && hour < end
+            : hour >= start || hour < end;
         if (!inWindow) {
           // Outside active window — advance next_fire_at and skip
           if (item.interval_ms !== undefined) {
             item.next_fire_at = now + item.interval_ms;
+            this.dirty = true;
           }
           continue;
         }
@@ -234,8 +248,9 @@ export class EventScheduler {
       });
       events.push(event);
 
-      // Update state
+      // Update state — mark dirty since item state has mutated
       item.last_fired_at = now;
+      this.dirty = true;
 
       // Decrement fires_remaining for items with a TTL
       if (item.fires_remaining !== undefined) {
@@ -251,6 +266,9 @@ export class EventScheduler {
         item.next_fire_at = now + item.interval_ms;
       }
     }
+
+    // Also mark dirty when advancing next_fire_at for items outside the active window
+    // (handled in the active_hours branch above — mark dirty there too)
 
     for (const id of toRemove) {
       this.items.delete(id);
@@ -316,8 +334,11 @@ export class EventScheduler {
     if (!Array.isArray(snapshot)) return;
 
     const now = Date.now();
-    this.items.clear();
+    // Merge restored items with existing items — items already in memory take
+    // precedence (they are more recent). This prevents non-persisted items
+    // added before restore() was called from being silently destroyed.
     for (const item of snapshot) {
+      if (this.items.has(item.id)) continue; // existing item wins
       // Re-schedule stale items to fire on the next tick
       if (item.next_fire_at < now) {
         item.next_fire_at = now;
@@ -326,9 +347,40 @@ export class EventScheduler {
     }
   }
 
+  // ─── Lifecycle ───────────────────────────────────────────────────────────────
+
+  /**
+   * Remove all scheduled items without destroying the scheduler.
+   * The scheduler remains usable after clear() — new items may be added.
+   */
+  clear(): void {
+    this.items.clear();
+  }
+
+  /**
+   * Clear all scheduled items and mark the scheduler as destroyed.
+   * Subsequent calls to any scheduling method will throw.
+   */
+  destroy(): void {
+    this.items.clear();
+    this.destroyed = true;
+  }
+
   // ─── Internal ────────────────────────────────────────────────────────────────
 
+  private destroyed = false;
+  private dirty = false;
+
+  /** Returns true if any item state has mutated since the last clearDirty() call. */
+  isDirty(): boolean { return this.dirty; }
+
+  /** Resets the dirty flag after persisting. */
+  clearDirty(): void { this.dirty = false; }
+
   private _assertCapacity(): void {
+    if (this.destroyed) {
+      throw new Error('EventScheduler: cannot schedule items on a destroyed scheduler');
+    }
     if (this.items.size >= this.config.max_scheduled_items) {
       throw new Error(
         `EventScheduler capacity exceeded: max ${this.config.max_scheduled_items} items`,

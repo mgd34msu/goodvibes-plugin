@@ -6,17 +6,7 @@
  */
 
 import { Trigger, createTrigger } from '../../core/types.js';
-
-// ─── Utility Type ─────────────────────────────────────────────────────────────
-
-/**
- * Utility type for trigger factory params.
- * Inherits required base fields, makes optional base fields optional, and merges extension-specific fields.
- */
-type TriggerFactoryParams<T> = Pick<Trigger, 'id' | 'event_match' | 'actions'> &
-  Partial<Omit<Trigger, 'id' | 'event_match' | 'actions' | 'enabled'>> &
-  { enabled?: boolean } &
-  T;
+import { TriggerFactoryParams } from './shared.js';
 
 // ─── WebhookTrigger Interface ─────────────────────────────────────────────────
 
@@ -68,7 +58,7 @@ export function createWebhookTrigger(params: TriggerFactoryParams<{
   });
   return {
     ...base,
-    trigger_type: 'webhook' as const,
+    trigger_type: 'webhook',
     ...(params.url_pattern !== undefined && { url_pattern: params.url_pattern }),
     ...(params.payload_schema !== undefined && { payload_schema: params.payload_schema }),
     ...(params.normalize_with !== undefined && { normalize_with: params.normalize_with }),

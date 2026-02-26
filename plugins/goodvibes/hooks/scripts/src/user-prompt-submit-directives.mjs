@@ -17,18 +17,9 @@
  */
 
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-
-function trace(label, data) {
-  try {
-    const logFile = '/tmp/ups-directives-trace.json';
-    const existing = existsSync(logFile) ? JSON.parse(readFileSync(logFile, 'utf-8')) : [];
-    existing.push({ ts: new Date().toISOString(), label, data });
-    writeFileSync(logFile, JSON.stringify(existing, null, 2));
-  } catch { /* ignore */ }
-}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -196,11 +187,8 @@ try {
   // The prompt field contains the user message / task-notification content
   const prompt = hookInput?.prompt || '';
 
-  trace('hook_fired', { has_task_notification: prompt.includes(TASK_NOTIFICATION_PATTERN), prompt_length: prompt.length, prompt_preview: prompt.slice(0, 200) });
-
   // Fast path: not a task-notification → exit immediately
   if (!prompt.includes(TASK_NOTIFICATION_PATTERN)) {
-    trace('fast_path_exit', { reason: 'no task-notification' });
     respond(continueResponse());
   }
 
@@ -208,15 +196,12 @@ try {
   const sessionId = hookInput?.session_id || null;
 
   const socketPath = discoverSocket(projectDir, sessionId);
-  trace('socket_discovery', { socketPath, exists: socketPath ? existsSync(socketPath) : false, projectDir, sessionId });
 
   if (!socketPath || !existsSync(socketPath)) {
-    trace('no_socket_exit', { socketPath });
     respond(continueResponse());
   }
 
   const result = await queryDirectives(socketPath);
-  trace('query_result', { hasResult: !!result, directives: result?.directives?.length ?? 0, message: result?.message?.slice(0, 200) });
 
   if (result && result.directives && result.directives.length > 0) {
     const directivePayload = JSON.stringify({

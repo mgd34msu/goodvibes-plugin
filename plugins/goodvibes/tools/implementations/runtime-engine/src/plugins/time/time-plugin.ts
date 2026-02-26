@@ -67,9 +67,13 @@ export class TimePlugin {
       scheduled_emitted++;
     }
 
-    // 3. Persist updated schedule state (only when something changed)
-    if (scheduled_emitted > 0) {
+    // 3. Persist updated schedule state when anything changed.
+    // Heartbeat ticks may mutate scheduler item state (next_fire_at, last_fired_at,
+    // fires_remaining) even when no scheduled events fired, so we check the dirty
+    // flag rather than relying solely on scheduled_emitted > 0.
+    if (this.scheduler.isDirty()) {
       this.scheduler.persist();
+      this.scheduler.clearDirty();
     }
 
     return { heartbeat_emitted, scheduled_emitted };

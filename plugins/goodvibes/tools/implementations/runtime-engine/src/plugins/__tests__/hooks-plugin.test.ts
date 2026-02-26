@@ -274,7 +274,8 @@ describe('HookProcessor: response merging', () => {
       { hookSpecificOutput: { source: 'second' } },
     ]);
     // Last one registered has lower priority (50-1=49), runs second
-    expect(result.hookSpecificOutput).toBeDefined();
+    // mergeResponses iterates in order so the last value written wins
+    expect(result.hookSpecificOutput).toEqual({ source: 'second' });
   });
 
   it('suppressOutput true wins over false', async () => {

@@ -215,6 +215,8 @@ export class EventQueue implements EventQueueInterface {
 
   // ─── Heap Helpers ─────────────────────────────────────────────────────────
 
+  // Non-null assertions in heap operations are safe: indices are always bounds-checked
+
   /**
    * Returns true if entry `a` should be higher in priority than entry `b`.
    * Higher priority number = drain first. For equal priority: lower seq = drain first.

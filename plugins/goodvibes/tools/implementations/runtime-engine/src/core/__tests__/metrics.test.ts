@@ -92,17 +92,17 @@ describe('EventMetrics', () => {
     it('rounds avg_latency_ms to 2 decimal places', () => {
       metrics.onEventProcessed(makeEvent(), 1);
       metrics.onEventProcessed(makeEvent({ id: 'e2' }), 2);
-      metrics.onEventProcessed(makeEvent({ id: 'e3' }), 3);
-      // Average = 2 exactly
-      expect(metrics.getStats().avg_latency_ms).toBe(2);
+      metrics.onEventProcessed(makeEvent({ id: 'e3' }), 4);
+      // Average of 1, 2, 4 = 2.33 (rounds to 2 decimal places)
+      expect(metrics.getStats().avg_latency_ms).toBe(2.33);
     });
 
     it('tracks avg_latency_ms with fractional result', () => {
       metrics.onEventProcessed(makeEvent(), 10);
       metrics.onEventProcessed(makeEvent({ id: 'e2' }), 11);
-      metrics.onEventProcessed(makeEvent({ id: 'e3' }), 12);
-      // Average = 11
-      expect(metrics.getStats().avg_latency_ms).toBe(11);
+      metrics.onEventProcessed(makeEvent({ id: 'e3' }), 13);
+      // Average of 10, 11, 13 = 11.33 (fractional, rounds to 2 decimal places)
+      expect(metrics.getStats().avg_latency_ms).toBe(11.33);
     });
 
     it('increments per-type event count', () => {

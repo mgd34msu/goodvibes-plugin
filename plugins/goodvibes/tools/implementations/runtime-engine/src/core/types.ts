@@ -378,6 +378,10 @@ export interface MetricsCollector {
   getStats(): MetricsSnapshot;
   /** Reset all counters and rolling windows. */
   reset(): void;
+  /** Update the count of active event chains. */
+  setActiveChains(count: number): void;
+  /** Update the count of active workflows. */
+  setActiveWorkflows(count: number): void;
 }
 
 // ─── Type Guards ──────────────────────────────────────────────────────────────

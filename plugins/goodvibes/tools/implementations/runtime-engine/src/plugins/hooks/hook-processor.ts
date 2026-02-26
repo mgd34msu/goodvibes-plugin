@@ -115,7 +115,7 @@ export class HookProcessor {
     hookName: string,
     hookInput: Record<string, unknown>,
   ): Promise<ClaudeHookResponse> {
-    const hookType = this.normalizeHookName(hookName);
+    const hookType = normalizeHookName(hookName);
     if (!hookType) {
       logger.debug('Unknown hook name — no-op', { hookName });
       return {};
@@ -158,14 +158,6 @@ export class HookProcessor {
   }
 
   /**
-   * Normalise a raw hook name string to HookType.
-   * Returns null for unknown hook names.
-   */
-  private normalizeHookName(name: string): HookType | null {
-    return normalizeHookName(name);
-  }
-
-  /**
    * Merge multiple handler responses into one.
    *
    * Rules:
@@ -177,7 +169,7 @@ export class HookProcessor {
    */
   private mergeResponses(responses: ClaudeHookResponse[]): ClaudeHookResponse {
     if (responses.length === 0) return {};
-    if (responses.length === 1) return { ...responses[0]! };
+    if (responses.length === 1) return { ...responses[0] };
 
     const merged: ClaudeHookResponse = {};
 

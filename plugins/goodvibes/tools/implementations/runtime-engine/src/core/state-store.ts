@@ -111,7 +111,7 @@ function deepMerge(base: Record<string, unknown>, override: Record<string, unkno
 export class CoreStateStore implements StateStoreInterface {
   private data: Record<string, unknown> = {};
   private readonly filePath: string;
-  private readonly saveDebouncMs: number;
+  private readonly saveDebounceMs: number;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: CoreStateStoreOptions = {}) {
@@ -122,7 +122,7 @@ export class CoreStateStore implements StateStoreInterface {
         ? options.file_path
         : join(cwd, options.file_path)
       : defaultPath;
-    this.saveDebouncMs = options.save_debounce_ms ?? 1000;
+    this.saveDebounceMs = options.save_debounce_ms ?? 1000;
     this.load();
   }
 
@@ -170,7 +170,7 @@ export class CoreStateStore implements StateStoreInterface {
    * Take a deep-copy snapshot of all state.
    */
   snapshot(): Record<string, unknown> {
-    return JSON.parse(JSON.stringify(this.data)) as Record<string, unknown>;
+    return structuredClone(this.data);
   }
 
   /**
@@ -178,7 +178,7 @@ export class CoreStateStore implements StateStoreInterface {
    * Schedules a debounced auto-save.
    */
   restore(snapshot: Record<string, unknown>): void {
-    this.data = JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown>;
+    this.data = structuredClone(snapshot);
     this.scheduleSave();
   }
 
@@ -229,7 +229,7 @@ export class CoreStateStore implements StateStoreInterface {
     this.saveTimer = setTimeout(() => {
       this.saveTimer = null;
       this.persist();
-    }, this.saveDebouncMs);
+    }, this.saveDebounceMs);
   }
 
   /** Atomically write state to disk (write tmp then rename). */

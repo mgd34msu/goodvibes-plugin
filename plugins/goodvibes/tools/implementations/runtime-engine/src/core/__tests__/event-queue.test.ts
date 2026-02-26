@@ -6,13 +6,12 @@
  * size/peek/clear operations.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventQueue } from '../event-queue.js';
 import type { RuntimeEvent } from '../types.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-let _seq = 0;
 function makeEvent(overrides: Partial<RuntimeEvent> & Pick<RuntimeEvent, 'id'>): RuntimeEvent {
   return {
     source: 'internal',
@@ -406,5 +405,28 @@ describe('EventQueue — backpressure', () => {
     // Re-enqueuing the same event should NOT throw backpressure — it should be deduped first
     expect(() => q.enqueue(e)).not.toThrow();
     expect(q.depth()).toBe(1);
+  });
+});
+
+// ─── Dedup Cache Sweep ────────────────────────────────────────────────────────
+
+describe('EventQueue — dedup cache sweep (maybeCleanDedup)', () => {
+  it('sweeps expired entries from the dedup cache after 30 seconds', () => {
+    vi.useFakeTimers();
+    const q = new EventQueue({ dedup_ttl_ms: 5000 });
+    const e = evt('sweep_id', 5);
+    q.enqueue(e);
+    q.drain(); // clear the queue but dedup cache still has the entry
+
+    // Within TTL — should still be a duplicate
+    vi.advanceTimersByTime(4000);
+    expect(q.deduplicate(evt('sweep_id', 5))).toBe(true);
+
+    // Advance past the 30s sweep interval — maybeCleanDedup fires
+    vi.advanceTimersByTime(30000);
+
+    // After TTL has also expired (5000ms < 34000ms elapsed), entry should be swept
+    expect(q.deduplicate(evt('sweep_id', 5))).toBe(false);
+    vi.useRealTimers();
   });
 });

@@ -19,8 +19,11 @@
 
 import { EventQueueInterface } from '../../core/types.js';
 import { FileWatcher, FileWatcherConfig, DEFAULT_FILE_WATCHER_CONFIG } from './file-watcher.js';
-import { HttpListener, HttpListenerConfig, DEFAULT_HTTP_LISTENER_CONFIG } from './http-listener.js';
+import { HttpListener, HttpListenerConfig } from './http-listener.js';
 import { NormalizerRegistry, createDefaultRegistry } from './normalizers/index.js';
+import { createLogger } from '../../shared/logger.js';
+
+const logger = createLogger('external-plugin');
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -92,16 +95,21 @@ export class ExternalPlugin {
 
   /**
    * Start the HTTP listener (if configured).
-   * No-op if http_listener was not included in config.
+   * No-op if http_listener was not included in config — HTTP ingestion is disabled
+   * unless explicitly opted in via ExternalPluginConfig.http_listener.
    * Throws if the listener is already running.
    */
   async startHttpListener(): Promise<void> {
+    if (this.config.http_listener === undefined) {
+      // HTTP listener not configured — file-drop mode only.
+      // Callers must set http_listener in config to enable HTTP ingestion.
+      logger.warn('startHttpListener called but http_listener is not configured — no-op');
+      return;
+    }
     if (this.listener === null) {
-      // Fall back to default config when http_listener was omitted from constructor config.
-      const listenerConfig = this.config.http_listener ?? DEFAULT_HTTP_LISTENER_CONFIG;
       this.listener = new HttpListener(
         this.config.file_watcher.incoming_dir,
-        listenerConfig,
+        this.config.http_listener,
       );
     }
     await this.listener.start();

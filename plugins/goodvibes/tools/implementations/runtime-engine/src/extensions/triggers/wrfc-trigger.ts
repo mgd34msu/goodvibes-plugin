@@ -6,17 +6,7 @@
  */
 
 import { Trigger, createTrigger } from '../../core/types.js';
-
-// ─── Utility Type ─────────────────────────────────────────────────────────────
-
-/**
- * Utility type for trigger factory params.
- * Inherits required base fields, makes optional base fields optional, and merges extension-specific fields.
- */
-type TriggerFactoryParams<T> = Pick<Trigger, 'id' | 'event_match' | 'actions'> &
-  Partial<Omit<Trigger, 'id' | 'event_match' | 'actions' | 'enabled'>> &
-  { enabled?: boolean } &
-  T;
+import { TriggerFactoryParams } from './shared.js';
 
 // ─── WRFCTrigger Interface ────────────────────────────────────────────────────
 
@@ -55,6 +45,9 @@ export function createWRFCTrigger(params: TriggerFactoryParams<{
   max_fix_attempts?: number;
   workflow_state_filter?: string[];
 }>): WRFCTrigger {
+  if (params.score_threshold !== undefined && (params.score_threshold < 0 || params.score_threshold > 10)) {
+    throw new RangeError(`score_threshold must be between 0 and 10, got ${params.score_threshold}`);
+  }
   const base = createTrigger({
     id: params.id,
     event_match: params.event_match,
@@ -69,7 +62,7 @@ export function createWRFCTrigger(params: TriggerFactoryParams<{
   });
   return {
     ...base,
-    trigger_type: 'wrfc' as const,
+    trigger_type: 'wrfc',
     ...(params.score_threshold !== undefined && { score_threshold: params.score_threshold }),
     ...(params.max_fix_attempts !== undefined && { max_fix_attempts: params.max_fix_attempts }),
     ...(params.workflow_state_filter !== undefined && { workflow_state_filter: params.workflow_state_filter }),
