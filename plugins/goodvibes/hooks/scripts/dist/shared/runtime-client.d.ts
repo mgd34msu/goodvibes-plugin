@@ -39,6 +39,9 @@ type IPCResponseData = {
     priority: number;
 } | {
     kind: 'ack';
+} | {
+    kind: 'pending_bind';
+    workflow_id: string | null;
 };
 /** Directive from runtime engine to hook. */
 export interface Directive {
@@ -68,6 +71,9 @@ export type IPCQueryKind = {
     tool_input: Record<string, unknown>;
 } | {
     kind: 'get_context_injection';
+} | {
+    kind: 'resolve_pending_bind';
+    agent_type: string;
 };
 /** Exported response data type for callers. */
 export type RuntimeResponseData = IPCResponseData;

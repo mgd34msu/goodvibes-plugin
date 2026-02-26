@@ -26,6 +26,12 @@ const log = createLogger('agent-workflow-map');
 export class AgentWorkflowMap {
   private readonly map: Map<string, string> = new Map();
 
+  /** Pending binds queue: agentType → workflowId, stored FIFO with timestamp. */
+  private pendingBinds: Array<{ agentType: string; workflowId: string; timestamp: number }> = [];
+
+  /** Stale pending bind TTL in milliseconds. */
+  private static readonly PENDING_BIND_TTL_MS = 60_000;
+
   /**
    * Binds an agent_id to a workflow_id.
    *
@@ -112,5 +118,74 @@ export class AgentWorkflowMap {
       }
     }
     log.debug('Agent-workflow bindings restored', { count });
+  }
+
+  /**
+   * Enqueues a pending bind so that when a reviewer/fixer agent spawns, it can
+   * query the runtime to get the workflow_id it should bind to.
+   *
+   * Called immediately after enqueuing a spawn directive so the bind is ready
+   * before SubagentStart fires for the spawned agent.
+   *
+   * @param agentType  - The agent type to expect (e.g. 'reviewer', 'engineer').
+   * @param workflowId - The workflow this agent should bind to.
+   */
+  addPendingBind(agentType: string, workflowId: string): void {
+    this.pendingBinds.push({ agentType, workflowId, timestamp: Date.now() });
+    log.debug('AgentWorkflowMap.addPendingBind: enqueued pending bind', {
+      agent_type: agentType,
+      workflow_id: workflowId,
+      queue_length: this.pendingBinds.length,
+    });
+  }
+
+  /**
+   * Resolves a pending bind for the given agent type (FIFO).
+   *
+   * Removes the first matching entry from the queue, prunes stale entries
+   * older than 60 seconds, and returns the workflow_id or null.
+   *
+   * @param agentType - The agent type queried by SubagentStart.
+   * @returns The workflow_id if a pending bind exists, or null.
+   */
+  resolvePendingBind(agentType: string): string | null {
+    const now = Date.now();
+    // Prune stale entries first
+    this.pendingBinds = this.pendingBinds.filter(
+      (entry) => now - entry.timestamp < AgentWorkflowMap.PENDING_BIND_TTL_MS
+    );
+
+    const idx = this.pendingBinds.findIndex((entry) => entry.agentType === agentType);
+    if (idx === -1) {
+      log.debug('AgentWorkflowMap.resolvePendingBind: no pending bind found', { agent_type: agentType });
+      return null;
+    }
+
+    const [resolved] = this.pendingBinds.splice(idx, 1);
+    log.info('AgentWorkflowMap.resolvePendingBind: resolved pending bind', {
+      agent_type: agentType,
+      workflow_id: resolved.workflowId,
+      remaining_queue_length: this.pendingBinds.length,
+    });
+
+    // Clean up sibling entries with the same workflowId (dual-key pattern).
+    // When both 'reviewer' and 'goodvibes:reviewer' are enqueued for the same
+    // workflow, consuming one makes the other redundant — remove it now rather
+    // than waiting for TTL expiry.
+    const siblingCount = this.pendingBinds.filter(
+      (entry) => entry.workflowId === resolved.workflowId
+    ).length;
+    if (siblingCount > 0) {
+      this.pendingBinds = this.pendingBinds.filter(
+        (entry) => entry.workflowId !== resolved.workflowId
+      );
+      log.debug('AgentWorkflowMap.resolvePendingBind: removed sibling pending bind entries', {
+        workflow_id: resolved.workflowId,
+        siblings_removed: siblingCount,
+        remaining_queue_length: this.pendingBinds.length,
+      });
+    }
+
+    return resolved.workflowId;
   }
 }

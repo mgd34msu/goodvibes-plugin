@@ -288,24 +288,43 @@ async function runSubagentStartHook(): Promise<void> {
     // ─── Phase 6: Runtime engine integration (non-blocking, no early-return) ───
     // Sends agent:spawned event and queries for a system message / dossier.
     // Falls through to existing context-injection logic always.
-    // Normalizes agent fields and extracts workflow_id from [WRFC:wid] in task description.
+    // Resolves workflow_id via pending bind queue before sending agent:spawned.
     let runtimeSystemMessage: string | undefined;
+    let resolvedWorkflowId: string | null = null;
     try {
       const runtimeClient = new RuntimeClient();
       if (runtimeClient.isAvailable()) {
         debug('Phase 6: runtime engine available, sending agent:spawned event');
-        // Normalize fields so the runtime always receives agent_id, agent_type, and workflow_id
-        const taskDesc = input.task_description ?? input.task ?? '';
-        const workflowId = extractWorkflowId(taskDesc);
+        // Normalize fields so the runtime always receives agent_id and agent_type
         const { agent_id, agent_type } = normalizeAgentFields(input);
+
+        // Query pending bind queue first — resolves workflow_id for spawned reviewer/fixer agents.
+        // Skip the query when agent_type is falsy — an empty string never matches any pending bind.
+        let pendingBindResult = null;
+        if (agent_type) {
+          pendingBindResult = await runtimeClient.query({ kind: 'resolve_pending_bind', agent_type });
+        }
+        if (pendingBindResult?.kind === 'pending_bind' && pendingBindResult.workflow_id) {
+          resolvedWorkflowId = pendingBindResult.workflow_id;
+          debug('Phase 6: resolved pending bind from runtime', { workflow_id: resolvedWorkflowId, agent_type });
+        }
+
+        // Fall back to [WRFC:wid] extraction from task description if no pending bind resolved
+        if (!resolvedWorkflowId) {
+          const taskDesc = input.task_description ?? input.task ?? '';
+          resolvedWorkflowId = extractWorkflowId(taskDesc);
+          if (resolvedWorkflowId) {
+            debug('Phase 6: extracted workflow_id from task description', { workflow_id: resolvedWorkflowId });
+          }
+        }
+
         const spawnedData: Record<string, unknown> = {
           ...(rawInput as unknown as Record<string, unknown>),
           agent_id,
           agent_type,
         };
-        if (workflowId) {
-          spawnedData['workflow_id'] = workflowId;
-          debug('Phase 6: extracted workflow_id from task description', { workflow_id: workflowId });
+        if (resolvedWorkflowId) {
+          spawnedData['workflow_id'] = resolvedWorkflowId;
         }
         await runtimeClient.sendHookEvent('agent:spawned', spawnedData);
         const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
@@ -359,8 +378,14 @@ async function runSubagentStartHook(): Promise<void> {
 
     const subagentContext = await buildSubagentContext(cwd, agentType, sessionId);
     const reminders = buildReminders(projectName, gitInfo.branch, analytics?.detected_stack);
-    const additionalContext = buildAdditionalContext(subagentContext, reminders);
+    let additionalContext = buildAdditionalContext(subagentContext, reminders);
     const systemMessage = buildSystemMessage(agentType, projectName, gitInfo.branch);
+
+    // Inject WRFC workflow binding into additionalContext so the agent knows its wid
+    if (resolvedWorkflowId) {
+      additionalContext += '\n\n[WRFC Binding] This agent is bound to workflow ' + resolvedWorkflowId + '. Include [WRFC:' + resolvedWorkflowId + '] in your output.';
+      debug('Phase 6: injecting WRFC workflow binding into additionalContext', { workflow_id: resolvedWorkflowId });
+    }
 
     // Merge runtime system message (if any) with the hook-built system message
     const mergedSystemMessage = mergeSystemMessages(runtimeSystemMessage, systemMessage);

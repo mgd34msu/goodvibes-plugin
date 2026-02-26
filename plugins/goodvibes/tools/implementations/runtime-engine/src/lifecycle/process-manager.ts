@@ -799,6 +799,7 @@ export class ProcessManager {
         directiveQueue: this.directiveQueue,
         socketPath,
         stateDir,
+        agentWorkflowMap: this.agentWorkflowMap,
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
 

@@ -51,7 +51,8 @@ type IPCResponseData =
   | { kind: 'agent_status'; agent: Record<string, unknown> }
   | { kind: 'tool_decision'; allow: boolean; reason?: string; modified_input?: Record<string, unknown> }
   | { kind: 'context_injection'; context: string; priority: number }
-  | { kind: 'ack' };
+  | { kind: 'ack' }
+  | { kind: 'pending_bind'; workflow_id: string | null };
 
 /** Directive from runtime engine to hook. */
 export interface Directive {
@@ -72,7 +73,8 @@ export type IPCQueryKind =
   | { kind: 'get_workflow_state'; workflow_id: string }
   | { kind: 'get_agent_status'; agent_id: string }
   | { kind: 'should_block_tool'; tool_name: string; tool_input: Record<string, unknown> }
-  | { kind: 'get_context_injection' };
+  | { kind: 'get_context_injection' }
+  | { kind: 'resolve_pending_bind'; agent_type: string };
 
 /** Exported response data type for callers. */
 export type RuntimeResponseData = IPCResponseData;

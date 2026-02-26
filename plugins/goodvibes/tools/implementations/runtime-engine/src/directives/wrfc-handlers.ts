@@ -199,6 +199,10 @@ function handleReviewResult(params: {
       priority: 20,
       source,
     });
+    if (agentWorkflowMap) {
+      agentWorkflowMap.addPendingBind('engineer', workflow.id);
+      agentWorkflowMap.addPendingBind('goodvibes:engineer', workflow.id);
+    }
     log.info(`${source}: engineer fix directive enqueued`, {
       workflow_id: workflow.id,
       review_score: score,
@@ -307,6 +311,10 @@ function handleFixResult(params: {
       priority: 20,
       source,
     });
+    if (agentWorkflowMap) {
+      agentWorkflowMap.addPendingBind('reviewer', workflow.id);
+      agentWorkflowMap.addPendingBind('goodvibes:reviewer', workflow.id);
+    }
     log.info(`${source}: re-review directive enqueued`, {
       workflow_id: workflow.id,
       fix_attempts: fixAttempts,
@@ -578,6 +586,10 @@ export function registerWRFCHandlers(
         priority: 20,
         source: 'wrfc_chain_next',
       });
+      if (agentWorkflowMap) {
+        agentWorkflowMap.addPendingBind('reviewer', workflow.id);
+        agentWorkflowMap.addPendingBind('goodvibes:reviewer', workflow.id);
+      }
 
       // Advance state machine: WRITING → REVIEWING so subsequent hook:agent:completed
       // events route to the REVIEWING branch instead of re-spawning another reviewer.
@@ -802,6 +814,10 @@ export function registerWRFCHandlers(
           priority: 20,
           source: 'wrfc_review_response',
         });
+        if (agentWorkflowMap) {
+          agentWorkflowMap.addPendingBind('engineer', workflowId);
+          agentWorkflowMap.addPendingBind('goodvibes:engineer', workflowId);
+        }
         log.info('wrfc_review_response: engineer fix directive enqueued (no workflow object)', {
           workflow_id: workflowId,
           review_score: reviewScore,
@@ -879,6 +895,10 @@ export function registerWRFCHandlers(
           priority: 20,
           source: 'wrfc_fix_response',
         });
+        if (agentWorkflowMap) {
+          agentWorkflowMap.addPendingBind('reviewer', fallbackId);
+          agentWorkflowMap.addPendingBind('goodvibes:reviewer', fallbackId);
+        }
         log.info('wrfc_fix_response: re-review directive enqueued (no workflow object)', {
           workflow_id: fallbackId,
           fix_attempts: resolvedAttempts,
@@ -909,6 +929,6 @@ export function registerWRFCHandlers(
     handlers: ['wrfc_agent_spawned', 'wrfc_chain_next', 'wrfc_review_response', 'wrfc_fix_response'],
     has_workflow_engine: workflowEngine !== null,
     has_agent_coordinator: agentCoordinator !== null,
-    has_agent_workflow_map: agentWorkflowMap != null,
+    has_agent_workflow_map: !!agentWorkflowMap,
   });
 }

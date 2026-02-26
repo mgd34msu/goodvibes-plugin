@@ -142,6 +142,7 @@ export type IPCMessage =
  * - `get_agent_status`      — Retrieve the current status of an agent instance.
  * - `should_block_tool`     — Ask whether a tool call should be allowed or blocked.
  * - `get_context_injection` — Retrieve context to inject into the next turn.
+ * - `resolve_pending_bind`  — Resolve a pending agent-type → workflow-id bind from the queue.
  */
 export type IPCQuery =
   | { kind: 'get_system_message' }
@@ -149,7 +150,8 @@ export type IPCQuery =
   | { kind: 'get_workflow_state'; workflow_id: string }
   | { kind: 'get_agent_status'; agent_id: string }
   | { kind: 'should_block_tool'; tool_name: string; tool_input: Record<string, unknown> }
-  | { kind: 'get_context_injection' };
+  | { kind: 'get_context_injection' }
+  | { kind: 'resolve_pending_bind'; agent_type: string };
 
 // ─── Responses: Runtime Engine → Hook ────────────────────────────────────────
 
@@ -184,7 +186,8 @@ export type IPCResponseData =
   | { kind: 'agent_status'; agent: Record<string, unknown> }
   | { kind: 'tool_decision'; allow: boolean; reason?: string; modified_input?: Record<string, unknown> }
   | { kind: 'context_injection'; context: string; priority: number }
-  | { kind: 'ack' };
+  | { kind: 'ack' }
+  | { kind: 'pending_bind'; workflow_id: string | null };
 
 // ─── Directive ────────────────────────────────────────────────────────────────
 

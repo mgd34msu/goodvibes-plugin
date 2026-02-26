@@ -12,6 +12,7 @@ import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
+import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
@@ -35,6 +36,8 @@ export interface IPCRouterDeps {
   socketPath: string | null;
   /** Absolute path to the .goodvibes/state/ directory. */
   stateDir: string | null;
+  /** Agent-to-workflow binding map — used by resolve_pending_bind queries. */
+  agentWorkflowMap?: AgentWorkflowMap | null;
 }
 
 /**
@@ -52,6 +55,7 @@ export class IPCRouter {
   private readonly directiveQueue: DirectiveQueue | null;
   private readonly socketPath: string | null;
   private readonly stateDir: string | null;
+  private readonly agentWorkflowMap: AgentWorkflowMap | null;
 
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
@@ -64,6 +68,7 @@ export class IPCRouter {
     this.directiveQueue = deps.directiveQueue;
     this.socketPath = deps.socketPath;
     this.stateDir = deps.stateDir;
+    this.agentWorkflowMap = deps.agentWorkflowMap ?? null;
   }
 
   /**
@@ -228,6 +233,14 @@ export class IPCRouter {
           status: 'ok',
           data: { kind: 'tool_decision', allow: true },
         };
+      }
+      if (q.kind === 'resolve_pending_bind') {
+        const agentType = typeof q.agent_type === 'string' ? q.agent_type : '';
+        if (!agentType) {
+          return { id: msg.id, status: 'ok', data: { kind: 'pending_bind', workflow_id: null } };
+        }
+        const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType) ?? null;
+        return { id: msg.id, status: 'ok', data: { kind: 'pending_bind', workflow_id: workflowId } };
       }
       // Default: log and ack unknown queries
       logger.warn('Unhandled query kind', { kind: q.kind });

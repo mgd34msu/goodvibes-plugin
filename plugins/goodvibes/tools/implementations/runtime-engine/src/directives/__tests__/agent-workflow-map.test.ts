@@ -135,4 +135,83 @@ describe('AgentWorkflowMap', () => {
       expect(map.snapshot()).toEqual({ agent_b: 'wrfc_b' });
     });
   });
+
+  // ─── addPendingBind + resolvePendingBind ────────────────────────────────────────────────────
+
+  describe('addPendingBind and resolvePendingBind', () => {
+    it('resolves a pending bind returning the correct workflow_id', () => {
+      map.addPendingBind('reviewer', 'wrfc_123');
+      expect(map.resolvePendingBind('reviewer')).toBe('wrfc_123');
+    });
+
+    it('returns null when no pending bind exists for the agent type', () => {
+      expect(map.resolvePendingBind('reviewer')).toBeNull();
+    });
+
+    it('returns null for an unrelated agent type when a bind exists for another type', () => {
+      map.addPendingBind('engineer', 'wrfc_abc');
+      expect(map.resolvePendingBind('reviewer')).toBeNull();
+      // engineer bind still available
+      expect(map.resolvePendingBind('engineer')).toBe('wrfc_abc');
+    });
+
+    it('resolves in FIFO order when multiple binds exist for the same agent type', () => {
+      map.addPendingBind('reviewer', 'wrfc_first');
+      map.addPendingBind('reviewer', 'wrfc_second');
+      expect(map.resolvePendingBind('reviewer')).toBe('wrfc_first');
+      expect(map.resolvePendingBind('reviewer')).toBe('wrfc_second');
+    });
+
+    it('does not leak after many add/resolve cycles', () => {
+      for (let i = 0; i < 100; i++) {
+        map.addPendingBind('reviewer', `wrfc_${i}`);
+        map.resolvePendingBind('reviewer');
+      }
+      // After draining, no binds remain
+      expect(map.resolvePendingBind('reviewer')).toBeNull();
+    });
+
+    it('removes sibling entries (same workflowId, different agentType) on resolve', () => {
+      // Dual-key pattern: both reviewer and goodvibes:reviewer added for same workflow
+      map.addPendingBind('reviewer', 'wrfc_xyz');
+      map.addPendingBind('goodvibes:reviewer', 'wrfc_xyz');
+
+      // Resolving one should clean up the sibling
+      expect(map.resolvePendingBind('reviewer')).toBe('wrfc_xyz');
+      // Sibling should be gone
+      expect(map.resolvePendingBind('goodvibes:reviewer')).toBeNull();
+    });
+
+    it('only cleans sibling entries for the resolved workflowId, not other workflows', () => {
+      map.addPendingBind('reviewer', 'wrfc_A');
+      map.addPendingBind('goodvibes:reviewer', 'wrfc_A');
+      map.addPendingBind('reviewer', 'wrfc_B'); // different workflow, same type
+
+      // Resolve wrfc_A’s reviewer; only wrfc_A siblings removed, wrfc_B untouched
+      expect(map.resolvePendingBind('reviewer')).toBe('wrfc_A');
+      // goodvibes:reviewer for wrfc_A should be cleaned up
+      expect(map.resolvePendingBind('goodvibes:reviewer')).toBeNull();
+      // reviewer for wrfc_B should still be available
+      expect(map.resolvePendingBind('reviewer')).toBe('wrfc_B');
+    });
+
+    it('prunes stale entries older than 60s during resolve', () => {
+      // Directly manipulate internal queue via addPendingBind then mutate timestamp
+      map.addPendingBind('reviewer', 'wrfc_stale');
+      // Access internal state by casting to any (test only)
+      const internal = map as unknown as {
+        pendingBinds: Array<{ agentType: string; workflowId: string; timestamp: number }>;
+      };
+      // Set timestamp 61 seconds in the past
+      internal.pendingBinds[0]!.timestamp = Date.now() - 61_000;
+
+      // Add a fresh bind so there’s something to trigger pruning
+      map.addPendingBind('engineer', 'wrfc_fresh');
+
+      // Resolving engineer prunes the stale reviewer entry
+      expect(map.resolvePendingBind('engineer')).toBe('wrfc_fresh');
+      // Stale reviewer should be gone
+      expect(map.resolvePendingBind('reviewer')).toBeNull();
+    });
+  });
 });

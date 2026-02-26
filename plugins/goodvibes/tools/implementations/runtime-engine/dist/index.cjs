@@ -23543,6 +23543,7 @@ var IPCRouter = class {
   directiveQueue;
   socketPath;
   stateDir;
+  agentWorkflowMap;
   /** Session IDs that have been registered via session:started events. */
   registeredSessions = /* @__PURE__ */ new Set();
   constructor(deps) {
@@ -23553,6 +23554,7 @@ var IPCRouter = class {
     this.directiveQueue = deps.directiveQueue;
     this.socketPath = deps.socketPath;
     this.stateDir = deps.stateDir;
+    this.agentWorkflowMap = deps.agentWorkflowMap ?? null;
   }
   /**
    * Remove all session-keyed pointer files written by this router.
@@ -23700,6 +23702,14 @@ var IPCRouter = class {
           status: "ok",
           data: { kind: "tool_decision", allow: true }
         };
+      }
+      if (q.kind === "resolve_pending_bind") {
+        const agentType = typeof q.agent_type === "string" ? q.agent_type : "";
+        if (!agentType) {
+          return { id: msg.id, status: "ok", data: { kind: "pending_bind", workflow_id: null } };
+        }
+        const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType) ?? null;
+        return { id: msg.id, status: "ok", data: { kind: "pending_bind", workflow_id: workflowId } };
       }
       logger6.warn("Unhandled query kind", { kind: q.kind });
       return { id: msg.id, status: "ok", data: { kind: "ack" } };
@@ -27117,6 +27127,10 @@ function handleReviewResult(params) {
       priority: 20,
       source
     });
+    if (agentWorkflowMap) {
+      agentWorkflowMap.addPendingBind("engineer", workflow.id);
+      agentWorkflowMap.addPendingBind("goodvibes:engineer", workflow.id);
+    }
     log5.info(`${source}: engineer fix directive enqueued`, {
       workflow_id: workflow.id,
       review_score: score,
@@ -27192,6 +27206,10 @@ function handleFixResult(params) {
       priority: 20,
       source
     });
+    if (agentWorkflowMap) {
+      agentWorkflowMap.addPendingBind("reviewer", workflow.id);
+      agentWorkflowMap.addPendingBind("goodvibes:reviewer", workflow.id);
+    }
     log5.info(`${source}: re-review directive enqueued`, {
       workflow_id: workflow.id,
       fix_attempts: fixAttempts,
@@ -27384,6 +27402,10 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         priority: 20,
         source: "wrfc_chain_next"
       });
+      if (agentWorkflowMap) {
+        agentWorkflowMap.addPendingBind("reviewer", workflow.id);
+        agentWorkflowMap.addPendingBind("goodvibes:reviewer", workflow.id);
+      }
       try {
         workflowEngine.sendEvent(workflow.id, {
           id: generateEventId(),
@@ -27551,6 +27573,10 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           priority: 20,
           source: "wrfc_review_response"
         });
+        if (agentWorkflowMap) {
+          agentWorkflowMap.addPendingBind("engineer", workflowId);
+          agentWorkflowMap.addPendingBind("goodvibes:engineer", workflowId);
+        }
         log5.info("wrfc_review_response: engineer fix directive enqueued (no workflow object)", {
           workflow_id: workflowId,
           review_score: reviewScore
@@ -27613,6 +27639,10 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           priority: 20,
           source: "wrfc_fix_response"
         });
+        if (agentWorkflowMap) {
+          agentWorkflowMap.addPendingBind("reviewer", fallbackId);
+          agentWorkflowMap.addPendingBind("goodvibes:reviewer", fallbackId);
+        }
         log5.info("wrfc_fix_response: re-review directive enqueued (no workflow object)", {
           workflow_id: fallbackId,
           fix_attempts: resolvedAttempts,
@@ -27636,7 +27666,7 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     handlers: ["wrfc_agent_spawned", "wrfc_chain_next", "wrfc_review_response", "wrfc_fix_response"],
     has_workflow_engine: workflowEngine !== null,
     has_agent_coordinator: agentCoordinator !== null,
-    has_agent_workflow_map: agentWorkflowMap != null
+    has_agent_workflow_map: !!agentWorkflowMap
   });
 }
 __name(registerWRFCHandlers, "registerWRFCHandlers");
@@ -28025,11 +28055,15 @@ __name(registerReviewOnlyHandlers, "registerReviewOnlyHandlers");
 
 // src/directives/agent-workflow-map.ts
 var log8 = createLogger("agent-workflow-map");
-var AgentWorkflowMap = class {
+var AgentWorkflowMap = class _AgentWorkflowMap {
   static {
     __name(this, "AgentWorkflowMap");
   }
   map = /* @__PURE__ */ new Map();
+  /** Pending binds queue: agentType → workflowId, stored FIFO with timestamp. */
+  pendingBinds = [];
+  /** Stale pending bind TTL in milliseconds. */
+  static PENDING_BIND_TTL_MS = 6e4;
   /**
    * Binds an agent_id to a workflow_id.
    *
@@ -28110,6 +28144,64 @@ var AgentWorkflowMap = class {
       }
     }
     log8.debug("Agent-workflow bindings restored", { count });
+  }
+  /**
+   * Enqueues a pending bind so that when a reviewer/fixer agent spawns, it can
+   * query the runtime to get the workflow_id it should bind to.
+   *
+   * Called immediately after enqueuing a spawn directive so the bind is ready
+   * before SubagentStart fires for the spawned agent.
+   *
+   * @param agentType  - The agent type to expect (e.g. 'reviewer', 'engineer').
+   * @param workflowId - The workflow this agent should bind to.
+   */
+  addPendingBind(agentType, workflowId) {
+    this.pendingBinds.push({ agentType, workflowId, timestamp: Date.now() });
+    log8.debug("AgentWorkflowMap.addPendingBind: enqueued pending bind", {
+      agent_type: agentType,
+      workflow_id: workflowId,
+      queue_length: this.pendingBinds.length
+    });
+  }
+  /**
+   * Resolves a pending bind for the given agent type (FIFO).
+   *
+   * Removes the first matching entry from the queue, prunes stale entries
+   * older than 60 seconds, and returns the workflow_id or null.
+   *
+   * @param agentType - The agent type queried by SubagentStart.
+   * @returns The workflow_id if a pending bind exists, or null.
+   */
+  resolvePendingBind(agentType) {
+    const now = Date.now();
+    this.pendingBinds = this.pendingBinds.filter(
+      (entry) => now - entry.timestamp < _AgentWorkflowMap.PENDING_BIND_TTL_MS
+    );
+    const idx = this.pendingBinds.findIndex((entry) => entry.agentType === agentType);
+    if (idx === -1) {
+      log8.debug("AgentWorkflowMap.resolvePendingBind: no pending bind found", { agent_type: agentType });
+      return null;
+    }
+    const [resolved] = this.pendingBinds.splice(idx, 1);
+    log8.info("AgentWorkflowMap.resolvePendingBind: resolved pending bind", {
+      agent_type: agentType,
+      workflow_id: resolved.workflowId,
+      remaining_queue_length: this.pendingBinds.length
+    });
+    const siblingCount = this.pendingBinds.filter(
+      (entry) => entry.workflowId === resolved.workflowId
+    ).length;
+    if (siblingCount > 0) {
+      this.pendingBinds = this.pendingBinds.filter(
+        (entry) => entry.workflowId !== resolved.workflowId
+      );
+      log8.debug("AgentWorkflowMap.resolvePendingBind: removed sibling pending bind entries", {
+        workflow_id: resolved.workflowId,
+        siblings_removed: siblingCount,
+        remaining_queue_length: this.pendingBinds.length
+      });
+    }
+    return resolved.workflowId;
   }
 };
 
@@ -29301,7 +29393,8 @@ var ProcessManager = class {
         agentCoordinator: this.agentCoordinator,
         directiveQueue: this.directiveQueue,
         socketPath,
-        stateDir
+        stateDir,
+        agentWorkflowMap: this.agentWorkflowMap
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
       (0, import_node_fs5.mkdirSync)(socketDir, { recursive: true, mode: 448 });
