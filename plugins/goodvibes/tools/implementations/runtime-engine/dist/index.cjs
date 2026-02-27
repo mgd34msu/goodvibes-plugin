@@ -4671,13 +4671,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger47) {
-      if (logger47 === false)
+    function getLogger(logger48) {
+      if (logger48 === false)
         return noLogs;
-      if (logger47 === void 0)
+      if (logger48 === void 0)
         return console;
-      if (logger47.log && logger47.warn && logger47.error)
-        return logger47;
+      if (logger48.log && logger48.warn && logger48.error)
+        return logger48;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -21655,7 +21655,9 @@ var DEFAULT_CONFIG = {
     daemon: {
       clear_context_after_batch: true,
       tmux_session_name: "claude-daemon",
-      tick_command: "tick"
+      tick_command: "tick",
+      tick_interval_ms: 3e4,
+      auto_tick: true
     },
     budget: {
       flat_cap_usd: void 0,
@@ -33214,8 +33216,208 @@ var DaemonTickHandler = class {
   }
 };
 
+// src/lifecycle/daemon-tick-scheduler.ts
+var import_node_child_process2 = require("node:child_process");
+var logger38 = createLogger("daemon-tick-scheduler");
+var EVAL_INTERVAL_MS = 5e3;
+var TMUX_TIMEOUT_MS2 = 5e3;
+var DAEMON_HEARTBEAT_ID = "daemon:auto_tick";
+var DAEMON_HEARTBEAT_EVENT = "daemon:tick";
+var DaemonTickScheduler = class _DaemonTickScheduler {
+  static {
+    __name(this, "DaemonTickScheduler");
+  }
+  static SAFE_SESSION_NAME = /^[a-zA-Z0-9_.-]+$/;
+  static SAFE_TICK_COMMAND = /^[a-zA-Z0-9\/_. -]+$/;
+  evalTimer = null;
+  config;
+  executorMode;
+  timePlugin;
+  constructor(deps) {
+    this.config = deps.config;
+    this.executorMode = deps.executorMode;
+    this.timePlugin = deps.timePlugin;
+  }
+  /**
+   * Start the daemon tick scheduler.
+   *
+   * Guards:
+   * - Only runs in daemon mode
+   * - Only runs when tick_interval_ms > 0
+   * - Only runs when tmux is available
+   * - Idempotent: no-op if already running
+   */
+  start() {
+    if (this.evalTimer) return;
+    const mode = this.executorMode.getMode();
+    if (mode !== "daemon") {
+      logger38.debug("not starting \u2014 mode is not daemon", { mode });
+      return;
+    }
+    if (!this.config.daemon.auto_tick) {
+      logger38.info("daemon tick scheduler disabled \u2014 auto_tick is false");
+      return;
+    }
+    const intervalMs = this.config.daemon.tick_interval_ms;
+    if (!intervalMs || intervalMs <= 0) {
+      logger38.info("daemon tick scheduler disabled \u2014 tick_interval_ms is 0 or unset");
+      return;
+    }
+    if (!this.isTmuxAvailable()) {
+      logger38.warn("not starting \u2014 tmux not available or no active sessions");
+      return;
+    }
+    const sessionName = this.config.daemon.tmux_session_name;
+    const tickCommand = this.config.daemon.tick_command;
+    if (!_DaemonTickScheduler.SAFE_SESSION_NAME.test(sessionName)) {
+      logger38.warn("not starting \u2014 tmux_session_name contains invalid characters", { sessionName });
+      return;
+    }
+    if (!_DaemonTickScheduler.SAFE_TICK_COMMAND.test(tickCommand)) {
+      logger38.warn("not starting \u2014 tick_command contains invalid characters", { tickCommand });
+      return;
+    }
+    const scheduler = this.timePlugin.getScheduler();
+    if (!scheduler.getItem(DAEMON_HEARTBEAT_ID)) {
+      scheduler.scheduleHeartbeat({
+        id: DAEMON_HEARTBEAT_ID,
+        event_type: DAEMON_HEARTBEAT_EVENT,
+        interval_ms: intervalMs
+        // No ttl — runs indefinitely until stop() is called
+      });
+    }
+    this.evalTimer = setInterval(() => {
+      this.evalAndSend();
+    }, EVAL_INTERVAL_MS);
+    this.evalTimer.unref();
+    logger38.info("daemon tick scheduler started", {
+      eval_interval_ms: EVAL_INTERVAL_MS,
+      tick_interval_ms: intervalMs,
+      session: this.config.daemon.tmux_session_name
+    });
+  }
+  /**
+   * Stop the daemon tick scheduler.
+   * Cancels the eval timer, removes the event bus subscription, and removes
+   * the scheduled heartbeat from the EventScheduler.
+   */
+  stop() {
+    if (this.evalTimer) {
+      clearInterval(this.evalTimer);
+      this.evalTimer = null;
+    }
+    const removed = this.timePlugin.getScheduler().cancel(DAEMON_HEARTBEAT_ID);
+    if (!removed) {
+      logger38.debug("daemon heartbeat was already removed");
+    }
+    logger38.info("daemon tick scheduler stopped");
+  }
+  /** Returns true if the eval timer is running. */
+  isRunning() {
+    return this.evalTimer !== null;
+  }
+  /**
+   * Apply a new ExecutorConfig at runtime without restarting the process.
+   *
+   * Handles three cases:
+   * - auto_tick toggled off → stop (if running)
+   * - auto_tick toggled on → start (if not running)
+   * - tick_interval_ms changed while running → reschedule heartbeat
+   */
+  reconfigure(newConfig) {
+    const wasRunning = this.isRunning();
+    const oldInterval = this.config.daemon.tick_interval_ms;
+    const oldAutoTick = this.config.daemon.auto_tick;
+    this.config = newConfig;
+    const newAutoTick = newConfig.daemon.auto_tick;
+    const newInterval = newConfig.daemon.tick_interval_ms;
+    if (newAutoTick && !wasRunning) {
+      logger38.info("auto_tick enabled via reconfigure \u2014 starting scheduler");
+      this.start();
+    } else if (!newAutoTick && wasRunning) {
+      logger38.info("auto_tick disabled via reconfigure \u2014 stopping scheduler");
+      this.stop();
+    } else if (wasRunning && newInterval !== oldInterval) {
+      this.rescheduleHeartbeat(newInterval);
+    }
+    logger38.debug("daemon tick scheduler reconfigured", {
+      old_auto_tick: oldAutoTick,
+      new_auto_tick: newAutoTick,
+      old_interval_ms: oldInterval,
+      new_interval_ms: newInterval
+    });
+  }
+  /**
+   * Cancel the existing daemon heartbeat and reschedule with a new interval.
+   * Only called when the scheduler is already running.
+   */
+  rescheduleHeartbeat(intervalMs) {
+    const scheduler = this.timePlugin.getScheduler();
+    scheduler.cancel(DAEMON_HEARTBEAT_ID);
+    scheduler.scheduleHeartbeat({
+      id: DAEMON_HEARTBEAT_ID,
+      event_type: DAEMON_HEARTBEAT_EVENT,
+      interval_ms: intervalMs
+    });
+    logger38.info("daemon heartbeat rescheduled", { interval_ms: intervalMs });
+  }
+  /**
+   * Called by the eval timer on every EVAL_INTERVAL_MS tick.
+   *
+   * Drives timePlugin.onTick() (evaluates all scheduled items) and sends a
+   * tmux tick if any scheduled events were emitted (i.e. the daemon heartbeat
+   * fired this evaluation cycle).
+   */
+  evalAndSend() {
+    let result = { heartbeat_emitted: false, scheduled_emitted: 0 };
+    try {
+      result = this.timePlugin.onTick();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger38.warn("timePlugin.onTick() error in daemon tick scheduler", { error: msg });
+      return;
+    }
+    if (result.scheduled_emitted > 0) {
+      logger38.debug("daemon heartbeat fired \u2014 sending tmux tick", {
+        scheduled_emitted: result.scheduled_emitted
+      });
+      this.sendTick();
+    }
+  }
+  /**
+   * Send the tick command to the tmux session.
+   * Uses execFileSync with a short timeout — failures are logged as warnings.
+   */
+  sendTick() {
+    const sessionName = this.config.daemon.tmux_session_name;
+    const tickCommand = this.config.daemon.tick_command;
+    try {
+      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, tickCommand, "Enter"], {
+        timeout: TMUX_TIMEOUT_MS2,
+        stdio: "pipe"
+      });
+      logger38.debug("tick sent via tmux", { session: sessionName });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger38.warn("failed to send tick via tmux", { error: msg });
+    }
+  }
+  /**
+   * Check whether tmux is available and has at least one active session.
+   * Used as a start-up guard to avoid scheduling when tmux isn't running.
+   */
+  isTmuxAvailable() {
+    try {
+      (0, import_node_child_process2.execFileSync)("tmux", ["list-sessions"], { timeout: 2e3, stdio: "pipe" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
+
 // src/lifecycle/process-manager.ts
-var logger38 = createLogger("process-manager");
+var logger39 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 var WATCHDOG_STALE_MS = 12e4;
 var WATCHDOG_COOLDOWN_MS = 12e4;
@@ -33301,6 +33503,7 @@ var ProcessManager = class {
   executorBudget = null;
   /** Daemon tick handler — processes daemon tick cycles. */
   daemonTickHandler = null;
+  daemonTickScheduler = null;
   /**
    * @param config - Initial runtime configuration (merged with disk values
    *   during startup()).
@@ -33325,19 +33528,19 @@ var ProcessManager = class {
    * @throws If any critical startup step fails.
    */
   async startup() {
-    logger38.info("Starting up");
+    logger39.info("Starting up");
     try {
       const diskConfig = loadConfig(this.projectRoot);
       this.config = diskConfig;
-      logger38.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger39.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger38.warn("Could not load config from disk \u2014 using defaults", {
+      logger39.warn("Could not load config from disk \u2014 using defaults", {
         err: toErrorMessage(err)
       });
     }
     this.stateStore = new JsonStateStore(this.config, this.projectRoot);
     await this.stateStore.initialize();
-    logger38.debug("State store initialised");
+    logger39.debug("State store initialised");
     this.eventBus = new EventBus();
     const stateDir = (0, import_node_path7.join)(this.projectRoot, this.config.persistence.state_dir);
     (0, import_node_fs7.mkdirSync)(stateDir, { recursive: true });
@@ -33346,7 +33549,7 @@ var ProcessManager = class {
     this.eventBus.setEventLog(this.eventLog);
     this.eventQueue = new EventQueue(this.config.queue);
     this.eventQueue.start();
-    logger38.debug("Event system initialised");
+    logger39.debug("Event system initialised");
     await this.checkCrashRecovery();
     this.writePidFile();
     this.startCheckpointTimer();
@@ -33365,15 +33568,15 @@ var ProcessManager = class {
         const customDefinitions = await loadCustomWorkflows(this.projectRoot);
         for (const def of customDefinitions) {
           this.workflowEngine.registerDefinition(def);
-          logger38.info("Custom workflow definition registered", { id: def.id, name: def.name });
+          logger39.info("Custom workflow definition registered", { id: def.id, name: def.name });
         }
-        logger38.debug("Custom workflow definitions loaded", { count: customDefinitions.length });
+        logger39.debug("Custom workflow definitions loaded", { count: customDefinitions.length });
       } catch (err) {
-        logger38.warn("Failed to load custom workflow definitions \u2014 continuing without them", {
+        logger39.warn("Failed to load custom workflow definitions \u2014 continuing without them", {
           err: toErrorMessage(err)
         });
       }
-      logger38.debug("Workflow engine initialised");
+      logger39.debug("Workflow engine initialised");
     }
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
     this.directiveQueue = new DirectiveQueue();
@@ -33388,10 +33591,10 @@ var ProcessManager = class {
           await this.triggerRegistry.evaluate(event);
         }
       } catch (err) {
-        logger38.warn("Trigger evaluation error", { error: toErrorMessage(err) });
+        logger39.warn("Trigger evaluation error", { error: toErrorMessage(err) });
       }
     });
-    logger38.debug("Trigger registry initialised");
+    logger39.debug("Trigger registry initialised");
     if (this.config.features.agents_enabled) {
       this.budgetTracker = new BudgetTracker(this.eventBus, this.config.agents);
       this.agentCoordinator = new AgentCoordinator(
@@ -33399,7 +33602,7 @@ var ProcessManager = class {
         this.budgetTracker,
         this.config.agents
       );
-      logger38.debug("Agent coordinator initialised");
+      logger39.debug("Agent coordinator initialised");
     }
     this.agentWorkflowMap = new AgentWorkflowMap();
     registerWRFCHandlers(
@@ -33428,12 +33631,12 @@ var ProcessManager = class {
         this.snapshotManager,
         this.getSnapshotDeps()
       );
-      logger38.info("Startup recovery complete", {
+      logger39.info("Startup recovery complete", {
         method: recoveryResult.method,
         durationMs: recoveryResult.recoveryDurationMs
       });
     } catch (err) {
-      logger38.warn("Startup recovery failed \u2014 continuing with cold start", {
+      logger39.warn("Startup recovery failed \u2014 continuing with cold start", {
         err: toErrorMessage(err)
       });
     }
@@ -33451,7 +33654,7 @@ var ProcessManager = class {
     if (this.config.features.ipc_enabled) {
       ipcSocketPath = await this.startIPCServer();
     } else {
-      logger38.debug("IPC server disabled by feature flag");
+      logger39.debug("IPC server disabled by feature flag");
     }
     this.startV3TickTimer();
     this.eventBus.emit({
@@ -33470,7 +33673,7 @@ var ProcessManager = class {
       }
     });
     this.running = true;
-    logger38.info("Startup complete", {
+    logger39.info("Startup complete", {
       pid: process.pid,
       uptime_ms: this.getUptime()
     });
@@ -33485,9 +33688,9 @@ var ProcessManager = class {
    *   before forcing process exit.
    */
   async shutdown(timeout_ms = 1e4) {
-    logger38.info("Shutting down", { timeout_ms });
+    logger39.info("Shutting down", { timeout_ms });
     const watchdog = setTimeout(() => {
-      logger38.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
+      logger39.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
       process.exit(1);
     }, timeout_ms);
     watchdog.unref();
@@ -33497,16 +33700,17 @@ var ProcessManager = class {
           try {
             this.workflowEngine.cancel(instance.id, "engine shutdown");
           } catch (err) {
-            logger38.warn("Failed to cancel workflow during shutdown", {
+            logger39.warn("Failed to cancel workflow during shutdown", {
               id: instance.id,
               err: toErrorMessage(err)
             });
           }
         }
-        logger38.debug("Active workflows cancelled");
+        logger39.debug("Active workflows cancelled");
       }
       this.stopCheckpointTimer();
       this.stopV3TickTimer();
+      this.daemonTickScheduler?.stop();
       this.cleanupV3Plugins();
       if (this.snapshotManager) {
         this.snapshotManager.stopPeriodicSnapshots();
@@ -33521,7 +33725,7 @@ var ProcessManager = class {
             payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
           });
         } catch (err) {
-          logger38.warn("Failed to emit shutdown event", {
+          logger39.warn("Failed to emit shutdown event", {
             err: toErrorMessage(err)
           });
         }
@@ -33535,9 +33739,9 @@ var ProcessManager = class {
             this.ipcRouter = null;
           }
           this.ipcServer = null;
-          logger38.debug("IPC server closed");
+          logger39.debug("IPC server closed");
         } catch (err) {
-          logger38.warn("IPC server close failed", {
+          logger39.warn("IPC server close failed", {
             err: toErrorMessage(err)
           });
         }
@@ -33546,9 +33750,9 @@ var ProcessManager = class {
         try {
           await this.eventQueue.drain(5e3);
           this.eventQueue.stop();
-          logger38.debug("Event queue drained and stopped");
+          logger39.debug("Event queue drained and stopped");
         } catch (err) {
-          logger38.warn("Event queue drain failed", {
+          logger39.warn("Event queue drain failed", {
             err: toErrorMessage(err)
           });
         }
@@ -33559,9 +33763,9 @@ var ProcessManager = class {
       if (this.eventLog) {
         try {
           await this.eventLog.flush();
-          logger38.debug("Event log flushed");
+          logger39.debug("Event log flushed");
         } catch (err) {
-          logger38.warn("Event log flush failed during shutdown", {
+          logger39.warn("Event log flush failed during shutdown", {
             err: toErrorMessage(err)
           });
         }
@@ -33569,9 +33773,9 @@ var ProcessManager = class {
       if (this.executorBudget && this.v3StateStore) {
         try {
           this.executorBudget.persist(this.v3StateStore);
-          logger38.debug("Executor budget state persisted");
+          logger39.debug("Executor budget state persisted");
         } catch (err) {
-          logger38.warn("Executor budget persistence failed", { err: toErrorMessage(err) });
+          logger39.warn("Executor budget persistence failed", { err: toErrorMessage(err) });
         }
       }
       if (this.snapshotManager && this.eventLog) {
@@ -33580,32 +33784,32 @@ var ProcessManager = class {
             this.getSnapshotDeps(),
             this.eventLog.getLatestSequence()
           );
-          logger38.debug("Final snapshot saved");
+          logger39.debug("Final snapshot saved");
         } catch (err) {
-          logger38.warn("Final snapshot failed", { err: toErrorMessage(err) });
+          logger39.warn("Final snapshot failed", { err: toErrorMessage(err) });
         }
       }
       try {
         await this.saveCheckpoint();
-        logger38.debug("Final checkpoint saved");
+        logger39.debug("Final checkpoint saved");
       } catch (err) {
-        logger38.warn("Final checkpoint failed", {
+        logger39.warn("Final checkpoint failed", {
           err: toErrorMessage(err)
         });
       }
       if (this.eventLog) {
         try {
           await this.eventLog.close();
-          logger38.debug("Event log closed");
+          logger39.debug("Event log closed");
         } catch (err) {
-          logger38.warn("Event log close failed during shutdown", {
+          logger39.warn("Event log close failed during shutdown", {
             err: toErrorMessage(err)
           });
         }
       }
       this.removePidFile();
       this.running = false;
-      logger38.info("Shutdown complete");
+      logger39.info("Shutdown complete");
     } finally {
       clearTimeout(watchdog);
     }
@@ -33660,6 +33864,9 @@ var ProcessManager = class {
     this.healthChecker.updateConfig(config2);
     if (this.agentCoordinator) {
       this.agentCoordinator.updateConfig(config2.agents);
+    }
+    if (this.daemonTickScheduler) {
+      this.daemonTickScheduler.reconfigure(config2.executor);
     }
   }
   /**
@@ -33759,7 +33966,7 @@ var ProcessManager = class {
       if (stalePid !== currentPid) {
         const pid = Number(stalePid);
         if (Number.isNaN(pid) || pid <= 0 || !Number.isInteger(pid)) {
-          logger38.warn("Stale PID file contains invalid data \u2014 removing", {
+          logger39.warn("Stale PID file contains invalid data \u2014 removing", {
             content: stalePid.slice(0, 20),
             pid_file: pidFilePath
           });
@@ -33773,19 +33980,19 @@ var ProcessManager = class {
         } catch {
         }
         if (staleProcessAlive) {
-          logger38.warn("Stale PID file points to a running process \u2014 another instance may be active", {
+          logger39.warn("Stale PID file points to a running process \u2014 another instance may be active", {
             stale_pid: stalePid,
             pid_file: pidFilePath
           });
         } else {
-          logger38.warn("Stale PID file detected \u2014 possible crash recovery", {
+          logger39.warn("Stale PID file detected \u2014 possible crash recovery", {
             stale_pid: stalePid
           });
         }
         this.removePidFile();
       }
     } catch (err) {
-      logger38.warn("Could not read stale PID file", {
+      logger39.warn("Could not read stale PID file", {
         err: toErrorMessage(err)
       });
     }
@@ -33798,9 +34005,9 @@ var ProcessManager = class {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
       (0, import_node_fs7.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
-      logger38.debug("PID file written", { path: pidFilePath, pid: process.pid });
+      logger39.debug("PID file written", { path: pidFilePath, pid: process.pid });
     } catch (err) {
-      logger38.warn("Could not write PID file", {
+      logger39.warn("Could not write PID file", {
         err: toErrorMessage(err)
       });
     }
@@ -33813,10 +34020,10 @@ var ProcessManager = class {
     const pidFilePath = getPidFilePath(this.projectRoot);
     try {
       (0, import_node_fs7.unlinkSync)(pidFilePath);
-      logger38.debug("PID file removed", { path: pidFilePath });
+      logger39.debug("PID file removed", { path: pidFilePath });
     } catch (err) {
       if (err.code !== "ENOENT") {
-        logger38.warn("Could not remove PID file", { err: toErrorMessage(err) });
+        logger39.warn("Could not remove PID file", { err: toErrorMessage(err) });
       }
     }
   }
@@ -33828,7 +34035,7 @@ var ProcessManager = class {
     const interval = Math.max(this.config.persistence.checkpoint_interval_ms ?? CHECKPOINT_INTERVAL_MS, 1e3);
     this.checkpointTimer = setInterval(() => {
       this.saveCheckpoint().catch((err) => {
-        logger38.warn("Periodic checkpoint failed", {
+        logger39.warn("Periodic checkpoint failed", {
           err: toErrorMessage(err)
         });
       });
@@ -33836,11 +34043,11 @@ var ProcessManager = class {
         this.workflowEngine?.prune();
         this.agentCoordinator?.prune();
       } catch (err) {
-        logger38.warn("Periodic prune failed", { err: toErrorMessage(err) });
+        logger39.warn("Periodic prune failed", { err: toErrorMessage(err) });
       }
     }, interval);
     this.checkpointTimer.unref();
-    logger38.debug("Checkpoint timer started", { interval_ms: interval });
+    logger39.debug("Checkpoint timer started", { interval_ms: interval });
   }
   /**
    * Stop the periodic checkpoint timer, preventing any further automatic saves.
@@ -33849,7 +34056,7 @@ var ProcessManager = class {
     if (this.checkpointTimer) {
       clearInterval(this.checkpointTimer);
       this.checkpointTimer = void 0;
-      logger38.debug("Checkpoint timer stopped");
+      logger39.debug("Checkpoint timer stopped");
     }
   }
   /**
@@ -33903,10 +34110,10 @@ var ProcessManager = class {
       (0, import_node_fs7.mkdirSync)(stateDir, { recursive: true });
       const pointerFile = (0, import_node_path7.join)(stateDir, `runtime-${process.pid}.socket`);
       (0, import_node_fs7.writeFileSync)(pointerFile, socketPath, "utf-8");
-      logger38.info("IPC server started", { socket: socketPath });
+      logger39.info("IPC server started", { socket: socketPath });
       return socketPath;
     } catch (err) {
-      logger38.error("Failed to start IPC server", {
+      logger39.error("Failed to start IPC server", {
         socket: socketPath,
         err: toErrorMessage(err)
       });
@@ -33926,10 +34133,10 @@ var ProcessManager = class {
     );
     try {
       (0, import_node_fs7.unlinkSync)(pointerFile);
-      logger38.debug("Socket pointer file removed", { path: pointerFile });
+      logger39.debug("Socket pointer file removed", { path: pointerFile });
     } catch (err) {
       if (err.code !== "ENOENT") {
-        logger38.warn("Could not remove socket pointer file", {
+        logger39.warn("Could not remove socket pointer file", {
           path: pointerFile,
           err: toErrorMessage(err)
         });
@@ -33956,7 +34163,7 @@ var ProcessManager = class {
       try {
         await this.eventLog.compact();
       } catch (err) {
-        logger38.warn("Event log compaction failed during checkpoint", {
+        logger39.warn("Event log compaction failed during checkpoint", {
           err: toErrorMessage(err)
         });
       }
@@ -34003,14 +34210,14 @@ var ProcessManager = class {
         errorHandler,
         deadLetter
       );
-      logger38.debug("v3 core components initialised");
+      logger39.debug("v3 core components initialised");
       registerWRFCPlugin({
         processor: this.v3EventProcessor,
         registry: this.v3TriggerRegistry,
         store: this.v3StateStore,
         config: getDefaultWRFCConfig()
       });
-      logger38.debug("v3 WRFC plugin registered");
+      logger39.debug("v3 WRFC plugin registered");
       this.v3HookRegistry = new HookRegistry();
       this.v3HookProcessor = new HookProcessor({
         registry: this.v3HookRegistry,
@@ -34028,7 +34235,7 @@ var ProcessManager = class {
         daemonTickHandler: this.daemonTickHandler ?? null,
         executorMode: this.executorMode ?? null
       });
-      logger38.debug("v3 hooks plugin registered", {
+      logger39.debug("v3 hooks plugin registered", {
         handlerCount: this.v3HookRegistry.count()
       });
       this.v3TimePlugin = new TimePlugin({
@@ -34036,7 +34243,15 @@ var ProcessManager = class {
         store: this.v3StateStore,
         config: getDefaultTimeConfig()
       });
-      logger38.debug("v3 time plugin initialised");
+      logger39.debug("v3 time plugin initialised");
+      if (this.executorMode && this.daemonTickHandler) {
+        this.daemonTickScheduler = new DaemonTickScheduler({
+          config: this.config.executor,
+          executorMode: this.executorMode,
+          timePlugin: this.v3TimePlugin
+        });
+        logger39.debug("daemon tick scheduler created");
+      }
       this.v3ExternalPlugin = new ExternalPlugin(
         this.v3EventQueue,
         createDefaultExternalPluginConfig()
@@ -34044,14 +34259,14 @@ var ProcessManager = class {
       try {
         await this.v3ExternalPlugin.initialize();
       } catch (err) {
-        logger38.warn("v3 external plugin directory initialisation failed", {
+        logger39.warn("v3 external plugin directory initialisation failed", {
           err: toErrorMessage(err)
         });
       }
-      logger38.debug("v3 external plugin initialised");
-      logger38.info("v3 plugins fully initialised");
+      logger39.debug("v3 external plugin initialised");
+      logger39.info("v3 plugins fully initialised");
     } catch (err) {
-      logger38.warn("v3 plugin initialisation failed \u2014 continuing without v3 layer", {
+      logger39.warn("v3 plugin initialisation failed \u2014 continuing without v3 layer", {
         err: toErrorMessage(err)
       });
       this.v3EventQueue = null;
@@ -34062,6 +34277,7 @@ var ProcessManager = class {
       this.v3HookRegistry = null;
       this.v3TimePlugin = null;
       this.v3ExternalPlugin = null;
+      this.daemonTickScheduler = null;
     }
   }
   /**
@@ -34080,17 +34296,18 @@ var ProcessManager = class {
       return;
     }
     if (this.executorMode?.getMode() === "daemon") {
-      logger38.debug("v3 tick timer skipped \u2014 daemon mode uses external scheduler");
+      logger39.debug("v3 tick timer skipped \u2014 daemon mode uses DaemonTickScheduler");
+      this.daemonTickScheduler?.start();
       return;
     }
     const TICK_INTERVAL_MS = 1e4;
     this.v3TickTimer = setInterval(() => {
       this.tickV3().catch((err) => {
-        logger38.warn("v3 tick error", { err: toErrorMessage(err) });
+        logger39.warn("v3 tick error", { err: toErrorMessage(err) });
       });
     }, TICK_INTERVAL_MS);
     this.v3TickTimer.unref();
-    logger38.debug("v3 tick timer started", { interval_ms: TICK_INTERVAL_MS });
+    logger39.debug("v3 tick timer started", { interval_ms: TICK_INTERVAL_MS });
   }
   /**
    * Execute one v3 tick cycle.
@@ -34102,21 +34319,21 @@ var ProcessManager = class {
       try {
         this.v3TimePlugin.onTick();
       } catch (err) {
-        logger38.warn("v3 time plugin tick error", { err: toErrorMessage(err) });
+        logger39.warn("v3 time plugin tick error", { err: toErrorMessage(err) });
       }
     }
     if (this.v3ExternalPlugin) {
       try {
         await this.v3ExternalPlugin.onTick();
       } catch (err) {
-        logger38.warn("v3 external plugin tick error", { err: toErrorMessage(err) });
+        logger39.warn("v3 external plugin tick error", { err: toErrorMessage(err) });
       }
     }
     if (this.v3EventProcessor) {
       try {
         await this.v3EventProcessor.processBatch();
       } catch (err) {
-        logger38.warn("v3 event processor batch error", { err: toErrorMessage(err) });
+        logger39.warn("v3 event processor batch error", { err: toErrorMessage(err) });
       }
     }
     this.checkStaleWorkflows();
@@ -34167,7 +34384,7 @@ var ProcessManager = class {
         const stuckCount = (this.drainStuckCounts.get(workflow.id) ?? 0) + 1;
         this.drainStuckCounts.set(workflow.id, stuckCount);
         if (stuckCount >= 3) {
-          logger38.warn("Watchdog: drain-stuck escalation \u2014 writing urgent directive file", {
+          logger39.warn("Watchdog: drain-stuck escalation \u2014 writing urgent directive file", {
             workflow_id: workflow.id,
             current_state: state,
             state_age_ms: stateAge,
@@ -34176,7 +34393,7 @@ var ProcessManager = class {
           this.writeUrgentDirectives(workflow.id);
           this.drainStuckCounts.delete(workflow.id);
         } else {
-          logger38.warn("Watchdog: stale workflow with pending directive \u2014 drain may be stuck", {
+          logger39.warn("Watchdog: stale workflow with pending directive \u2014 drain may be stuck", {
             workflow_id: workflow.id,
             current_state: state,
             state_age_ms: stateAge,
@@ -34186,7 +34403,7 @@ var ProcessManager = class {
         }
         continue;
       }
-      logger38.warn("Watchdog: recovering stale workflow \u2014 re-enqueueing directive", {
+      logger39.warn("Watchdog: recovering stale workflow \u2014 re-enqueueing directive", {
         workflow_id: workflow.id,
         current_state: state,
         state_age_ms: stateAge
@@ -34220,7 +34437,7 @@ var ProcessManager = class {
         this.agentWorkflowMap.addPendingBind("reviewer", workflow.id);
         this.agentWorkflowMap.addPendingBind("goodvibes:reviewer", workflow.id);
       }
-      logger38.info("Watchdog: reviewer spawn directive re-enqueued", {
+      logger39.info("Watchdog: reviewer spawn directive re-enqueued", {
         workflow_id: workflow.id
       });
     } else if (state === "FIXING") {
@@ -34235,7 +34452,7 @@ var ProcessManager = class {
           priority: 30,
           source: "watchdog"
         });
-        logger38.warn("Watchdog: escalation directive re-enqueued (fix budget exhausted)", {
+        logger39.warn("Watchdog: escalation directive re-enqueued (fix budget exhausted)", {
           workflow_id: workflow.id,
           fix_attempts: fixAttempts,
           max_fix_attempts: maxFixAttempts
@@ -34262,7 +34479,7 @@ var ProcessManager = class {
           this.agentWorkflowMap.addPendingBind("engineer", workflow.id);
           this.agentWorkflowMap.addPendingBind("goodvibes:engineer", workflow.id);
         }
-        logger38.info("Watchdog: engineer fix directive re-enqueued", {
+        logger39.info("Watchdog: engineer fix directive re-enqueued", {
           workflow_id: workflow.id,
           fix_attempts: fixAttempts,
           max_fix_attempts: maxFixAttempts
@@ -34310,7 +34527,7 @@ var ProcessManager = class {
           existingDirectives = parsed.directives;
         }
       } catch (readErr) {
-        logger38.debug("Watchdog: no existing urgent-directives file (expected on first write)", {
+        logger39.debug("Watchdog: no existing urgent-directives file (expected on first write)", {
           workflow_id: workflowId,
           error: readErr instanceof Error ? readErr.message : String(readErr)
         });
@@ -34328,7 +34545,7 @@ var ProcessManager = class {
         ),
         "utf-8"
       );
-      logger38.info("Watchdog: urgent directives written to file", {
+      logger39.info("Watchdog: urgent directives written to file", {
         workflow_id: workflowId,
         directive_count: matching.length,
         total_in_file: merged.length,
@@ -34336,7 +34553,7 @@ var ProcessManager = class {
       });
       writeSucceeded = true;
     } catch (err) {
-      logger38.error("Watchdog: failed to write urgent directives file", {
+      logger39.error("Watchdog: failed to write urgent directives file", {
         workflow_id: workflowId,
         error: err instanceof Error ? err.message : String(err)
       });
@@ -34358,7 +34575,7 @@ var ProcessManager = class {
     if (this.v3TickTimer) {
       clearInterval(this.v3TickTimer);
       this.v3TickTimer = void 0;
-      logger38.debug("v3 tick timer stopped");
+      logger39.debug("v3 tick timer stopped");
     }
   }
   /**
@@ -34374,6 +34591,7 @@ var ProcessManager = class {
     this.v3HookRegistry = null;
     this.v3TimePlugin = null;
     this.v3ExternalPlugin = null;
+    this.daemonTickScheduler = null;
   }
   /**
    * Return the v3 HookProcessor, or null if it has not been initialised.
@@ -34445,12 +34663,12 @@ var ProcessManager = class {
           }
         }
       });
-      logger38.info("Executor subsystem initialised", {
+      logger39.info("Executor subsystem initialised", {
         mode,
         detection_method: this.executorMode.getDetectionMethod()
       });
     } catch (err) {
-      logger38.warn("Executor subsystem initialisation failed \u2014 continuing without executor", {
+      logger39.warn("Executor subsystem initialisation failed \u2014 continuing without executor", {
         err: toErrorMessage(err)
       });
       this.executorMode = null;
@@ -34566,7 +34784,7 @@ function toError(error2, version2, uptime_ms, execution_ms) {
 __name(toError, "toError");
 
 // src/server/handlers/status.ts
-var logger39 = createLogger("tool-handlers:status");
+var logger40 = createLogger("tool-handlers:status");
 var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   if (args !== null && args !== void 0 && typeof args !== "object") {
@@ -34580,17 +34798,17 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   try {
     const uptimeMs = ctx.getUptime();
     const statusData = ctx.getHealth();
-    logger39.debug("runtime_status computed", { status: statusData.status });
+    logger40.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger39.error("runtime_status failed", { error: message });
+    logger40.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
 
 // src/server/handlers/config.ts
-var logger40 = createLogger("tool-handlers:config");
+var logger41 = createLogger("tool-handlers:config");
 var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "ipc.socket_dir",
   "ipc.connect_timeout_ms",
@@ -34628,6 +34846,8 @@ var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "executor.daemon.clear_context_after_batch",
   "executor.daemon.tmux_session_name",
   "executor.daemon.tick_command",
+  "executor.daemon.tick_interval_ms",
+  "executor.daemon.auto_tick",
   "executor.budget.flat_cap_usd",
   "executor.budget.daily_cap_usd",
   "executor.budget.warning_threshold",
@@ -34670,6 +34890,8 @@ var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["executor.daemon.clear_context_after_batch", "boolean"],
   ["executor.daemon.tmux_session_name", "string"],
   ["executor.daemon.tick_command", "string"],
+  ["executor.daemon.tick_interval_ms", "number"],
+  ["executor.daemon.auto_tick", "boolean"],
   ["executor.budget.flat_cap_usd", "number"],
   ["executor.budget.daily_cap_usd", "number"],
   ["executor.budget.warning_threshold", "number"],
@@ -34783,7 +35005,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       );
       saveConfig(ctx.projectRoot, updated);
       ctx.updateConfig(updated);
-      logger40.info("Config key set", { key, value });
+      logger41.info("Config key set", { key, value });
       return toSuccess(
         { key, value, persisted: true },
         ctx.version,
@@ -34794,7 +35016,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     if (action === "reset") {
       saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
       ctx.updateConfig(DEFAULT_CONFIG);
-      logger40.info("Config reset to defaults");
+      logger41.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -34810,13 +35032,13 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger40.error("runtime_config failed", { error: message });
+    logger41.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
 
 // src/server/handlers/events.ts
-var logger41 = createLogger("tool-handlers:events");
+var logger42 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
   if (pattern === "*") return true;
   if (pattern.endsWith(":*")) {
@@ -34978,13 +35200,13 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger41.error("runtime_events failed", { error: message });
+    logger42.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
 
 // src/server/handlers/emit.ts
-var logger42 = createLogger("tool-handlers:emit");
+var logger43 = createLogger("tool-handlers:emit");
 var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -35015,7 +35237,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger42.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
+      logger43.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
     }
     const emitted = ctx.getEventBus().emit({
       id: generateEventId(),
@@ -35025,17 +35247,17 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       payload: { type: eventType, data: payload },
       metadata: correlationId ? { correlation_id: correlationId } : void 0
     });
-    logger42.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    logger43.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger42.error("runtime_emit failed", { error: message });
+    logger43.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
 
 // src/server/handlers/workflow.ts
-var logger43 = createLogger("tool-handlers:workflow");
+var logger44 = createLogger("tool-handlers:workflow");
 var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -35065,7 +35287,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       const definitionId = workflowType === "wrfc_loop" ? "wrfc_loop" : workflowType === "fix_loop" ? "fix_loop" : workflowType;
       const context = params.context ?? {};
       const instance = engine.create(definitionId, context);
-      logger43.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      logger44.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
@@ -35146,13 +35368,13 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger43.error("runtime_workflow failed", { error: message });
+    logger44.error("runtime_workflow failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeWorkflow");
 
 // src/server/handlers/triggers.ts
-var logger44 = createLogger("tool-handlers:triggers");
+var logger45 = createLogger("tool-handlers:triggers");
 var VALID_TRIGGER_ACTION_TYPES = /* @__PURE__ */ new Set([
   "emit_event",
   "spawn_agent",
@@ -35238,7 +35460,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.register(triggerDef);
-      logger44.info("runtime_triggers: registered", { id: triggerDef.id });
+      logger45.info("runtime_triggers: registered", { id: triggerDef.id });
       return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "update") {
@@ -35255,7 +35477,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       registry2.unregister(triggerDef.id);
       registry2.register(triggerDef);
-      logger44.info("runtime_triggers: updated", { id: triggerDef.id });
+      logger45.info("runtime_triggers: updated", { id: triggerDef.id });
       return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "delete") {
@@ -35267,7 +35489,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.unregister(triggerId);
-      logger44.info("runtime_triggers: unregistered", { id: triggerId });
+      logger45.info("runtime_triggers: unregistered", { id: triggerId });
       return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "enable" || action === "disable") {
@@ -35280,7 +35502,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       const enabled = action === "enable";
       registry2.setEnabled(triggerId, enabled);
-      logger44.info(`runtime_triggers: ${action}d`, { id: triggerId });
+      logger45.info(`runtime_triggers: ${action}d`, { id: triggerId });
       return toSuccess({ [action + "d"]: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "test") {
@@ -35314,13 +35536,13 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger44.error("runtime_triggers failed", { error: message });
+    logger45.error("runtime_triggers failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeTriggers");
 
 // src/server/handlers/agents.ts
-var logger45 = createLogger("tool-handlers:agents");
+var logger46 = createLogger("tool-handlers:agents");
 var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -35407,7 +35629,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       };
       const agentId = coordinator.spawn(options);
       const agent = coordinator.getAgent(agentId);
-      logger45.info("runtime_agents: spawned", { agentId, type: options.type });
+      logger46.info("runtime_agents: spawned", { agentId, type: options.type });
       return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
@@ -35454,7 +35676,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger45.error("runtime_agents failed", { error: message });
+    logger46.error("runtime_agents failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeAgents");
@@ -35733,7 +35955,7 @@ __name(listHandlers, "listHandlers");
 
 // src/server/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger46 = createLogger("mcp-server");
+var logger47 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -35755,12 +35977,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger46.debug("ListTools request");
+      logger47.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger46.debug("CallTool request", { name });
+      logger47.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -35788,7 +36010,7 @@ var RuntimeEngineServer = class {
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = toErrorMessage(error2);
-        logger46.error(`Tool ${name} failed`, { error: message });
+        logger47.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -35800,7 +36022,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger46.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger47.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -35819,7 +36041,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger46.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger47.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid
     });
@@ -35833,22 +36055,22 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger46.info("Stopping runtime engine");
+    logger47.info("Stopping runtime engine");
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger46.warn("ProcessManager shutdown error", {
+      logger47.warn("ProcessManager shutdown error", {
         err: toErrorMessage(err)
       });
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger46.warn("MCP server close error", {
+      logger47.warn("MCP server close error", {
         err: toErrorMessage(err)
       });
     }
-    logger46.info("Runtime engine stopped");
+    logger47.info("Runtime engine stopped");
   }
 };
 
