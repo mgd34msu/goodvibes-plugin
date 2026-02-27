@@ -35998,7 +35998,7 @@ var RuntimeEngineServer = class {
       { name: SERVER_NAME, version: ENGINE_VERSION },
       { capabilities: { tools: {} } }
     );
-    this.processManager = new ProcessManager(DEFAULT_CONFIG);
+    this.processManager = new ProcessManager(loadConfig());
     this.setupHandlers();
     this.setupErrorHandling();
   }

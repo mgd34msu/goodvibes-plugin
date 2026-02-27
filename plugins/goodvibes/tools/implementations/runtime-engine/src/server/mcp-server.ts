@@ -17,7 +17,7 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { DEFAULT_CONFIG } from '../shared/config.js';
+import { loadConfig } from '../shared/config.js';
 import { ENGINE_VERSION } from '../shared/constants.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
@@ -54,7 +54,7 @@ export class RuntimeEngineServer {
       { capabilities: { tools: {} } }
     );
 
-    this.processManager = new ProcessManager(DEFAULT_CONFIG);
+    this.processManager = new ProcessManager(loadConfig());
 
     this.setupHandlers();
     this.setupErrorHandling();
