@@ -9,8 +9,9 @@
  * - Coordinating graceful startup and shutdown sequences
  */
 
-import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, unlinkSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { ensureDirSync } from '../core/fs-utils.js';
+import { writeJsonSync } from '../core/file-io.js';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -1464,18 +1465,10 @@ export class ProcessManager {
 
       const merged = [...existingDirectives, ...matching];
 
-      writeFileSync(
-        urgentPath,
-        JSON.stringify(
-          {
-            written_at: new Date().toISOString(),
-            directives: merged,
-          },
-          null,
-          2,
-        ),
-        'utf-8',
-      );
+      writeJsonSync(urgentPath, {
+        written_at: new Date().toISOString(),
+        directives: merged,
+      });
 
       logger.info('Watchdog: urgent directives written to file', {
         workflow_id: workflowId,

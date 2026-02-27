@@ -69,6 +69,12 @@ function resolveActiveLevel(): LogLevel {
  * Each log method writes a JSON {@link LogEntry} to `process.stderr`. Log entries
  * below the active level (set via `GOODVIBES_LOG_LEVEL`) are silently dropped.
  *
+ * Logger instances are created fresh on every call — there is no instance-level
+ * cache. Each caller receives its own closure capturing the component name.
+ * The underlying log-level resolution IS cached (see {@link resolveActiveLevel}),
+ * so repeated calls to the same log method do not re-parse the environment
+ * variable on every invocation.
+ *
  * Note: `process.stderr.write` is used intentionally in this module. The logger
  * itself is the lowest-level output primitive in the runtime engine — it cannot
  * depend on another logger instance. Direct stderr writes are the correct

@@ -176,8 +176,11 @@ export class DaemonTickHandler {
    * Build the additionalContext payload for daemon tick injection.
    * Includes: active workflows, pending events summary, memory state.
    *
-   * This is a stub — full implementation requires queue and workflow
-   * subsystem injection which happens in Phase 4 (ProcessManager wiring).
+   * @deferred Pending event count and active workflow count are hardcoded to 0
+   * until ProcessManager exposes v3EventQueue.size() and WorkflowRegistry.activeCount().
+   * Wire these in Phase 4 (ProcessManager wiring) by injecting the queue and registry
+   * into DaemonTickHandler and replacing the hardcoded 0 values in handleTick() and
+   * buildTickContext().
    */
   buildTickContext(): string {
     const spending = this.budgetManager.getSpending();

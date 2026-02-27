@@ -21721,7 +21721,8 @@ var DEFAULT_CONFIG = {
     http_listener: {
       enabled: false,
       port: 3847,
-      host: "127.0.0.1",
+      bind_mode: "localhost",
+      address: "127.0.0.1",
       max_payload_bytes: 1 * 1024 * 1024
       // 1MB
     }
@@ -21877,6 +21878,66 @@ var JsonStateStore = class {
     return (0, import_path.join)(this.stateDir, `${key}.json`);
   }
   /**
+   * Resolves the advisory lock path for a given state file path.
+   *
+   * @param statePath - Path to the `.json` state file.
+   * @returns Path to the corresponding `.lock` file.
+   */
+  lockPath(statePath) {
+    return `${statePath}.lock`;
+  }
+  /**
+   * Acquires an advisory lockfile for the given path.
+   *
+   * Uses `writeFileSync` with the exclusive-create (`wx`) flag so that only
+   * one process can create the file at a time. Retries up to `maxAttempts`
+   * times with `backoffMs` delay between attempts.
+   *
+   * @param lockFilePath - Path to the lockfile to create.
+   * @param maxAttempts  - Maximum number of acquisition attempts (default 3).
+   * @param backoffMs    - Delay in ms between attempts (default 50).
+   * @throws {Error} If the lock cannot be acquired after all retries.
+   */
+  async acquireLock(lockFilePath, maxAttempts = 3, backoffMs = 50) {
+    const content = String(process.pid);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        (0, import_fs.writeFileSync)(lockFilePath, content, { flag: "wx" });
+        return;
+      } catch (err) {
+        const isLockHeld = err instanceof Error && "code" in err && err.code === "EEXIST";
+        if (!isLockHeld) {
+          throw err;
+        }
+        if (attempt < maxAttempts) {
+          logger.debug("Lock contention \u2014 retrying", {
+            lockFilePath,
+            attempt,
+            backoffMs
+          });
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
+      }
+    }
+    throw new Error(
+      `StateStore: could not acquire lock at "${lockFilePath}" after ${maxAttempts} attempts`
+    );
+  }
+  /**
+   * Releases an advisory lockfile by deleting it.
+   *
+   * Silently ignores ENOENT (lock already gone). Any other error is swallowed
+   * to ensure `finally` blocks never mask the original exception.
+   *
+   * @param lockFilePath - Path to the lockfile to delete.
+   */
+  releaseLock(lockFilePath) {
+    try {
+      (0, import_fs.unlinkSync)(lockFilePath);
+    } catch {
+    }
+  }
+  /**
    * {@inheritdoc StateStore.set}
    *
    * Writes atomically via {@link writeJsonSync} (tmp + rename).
@@ -21961,13 +22022,27 @@ var JsonStateStore = class {
    * {@inheritdoc StateStore.update}
    *
    * Loads the current value, passes it to `updater`, then saves the result
-   * atomically. The load and save are not transactional across processes, but
-   * the write itself is atomic (tmp + rename).
+   * atomically. An advisory lockfile (`{statePath}.lock`) is acquired before
+   * the read-modify-write cycle and released in a `finally` block, guarding
+   * against concurrent updates from multiple processes sharing the same state
+   * directory. The lock is acquired exclusively via `writeFileSync` with the
+   * `wx` flag; if another process holds the lock, up to 3 retries are made
+   * with a 50 ms backoff before an error is thrown.
+   *
+   * Note: the write itself is separately atomic (tmp + rename); this lock
+   * protects the full read-modify-write cycle.
    */
   async update(key, updater) {
-    const current = await this.get(key);
-    const next = updater(current);
-    await this.set(key, next);
+    const statePath = this.keyPath(key);
+    const lockFilePath = this.lockPath(statePath);
+    await this.acquireLock(lockFilePath);
+    try {
+      const current = await this.get(key);
+      const next = updater(current);
+      await this.set(key, next);
+    } finally {
+      this.releaseLock(lockFilePath);
+    }
   }
 };
 
@@ -24891,20 +24966,20 @@ function validateWorkflowDefinition(def) {
 __name(validateWorkflowDefinition, "validateWorkflowDefinition");
 async function loadCustomWorkflows(configPath) {
   const configFile = (0, import_node_path5.join)(configPath, "goodvibes.json");
-  if (!(0, import_node_fs6.existsSync)(configFile)) {
-    log2.debug("loadCustomWorkflows: no goodvibes.json found, skipping custom workflow loading", {
-      config_file: configFile
-    });
-    return [];
-  }
   let raw;
   try {
     raw = await import_node_fs6.promises.readFile(configFile, "utf-8");
   } catch (err) {
-    log2.warn("loadCustomWorkflows: failed to read goodvibes.json", {
-      config_file: configFile,
-      error: String(err)
-    });
+    if (err.code === "ENOENT") {
+      log2.debug("loadCustomWorkflows: no goodvibes.json found, skipping custom workflow loading", {
+        config_file: configFile
+      });
+    } else {
+      log2.warn("loadCustomWorkflows: failed to read goodvibes.json", {
+        config_file: configFile,
+        error: String(err)
+      });
+    }
     return [];
   }
   let parsed;
@@ -32357,7 +32432,8 @@ var crypto2 = __toESM(require("node:crypto"), 1);
 var logger35 = createLogger("http-listener");
 var DEFAULT_HTTP_LISTENER_CONFIG = {
   port: 3847,
-  host: "127.0.0.1",
+  bind_mode: "localhost",
+  address: "127.0.0.1",
   max_payload_bytes: 1 * 1024 * 1024
   // 1MB
 };
@@ -32402,7 +32478,8 @@ var HttpListener = class {
       });
       this.server.once("error", reject);
       const server = this.server;
-      server.listen(this.config.port, this.config.host, () => {
+      const bindAddress = this.config.bind_mode === "localhost" ? "127.0.0.1" : this.config.bind_mode === "local_network" ? "0.0.0.0" : this.config.address;
+      server.listen(this.config.port, bindAddress, () => {
         server.removeListener("error", reject);
         server.on("error", (err) => {
           logger35.error("Server error", { error: err });
@@ -33347,8 +33424,11 @@ var DaemonTickHandler = class {
    * Build the additionalContext payload for daemon tick injection.
    * Includes: active workflows, pending events summary, memory state.
    *
-   * This is a stub — full implementation requires queue and workflow
-   * subsystem injection which happens in Phase 4 (ProcessManager wiring).
+   * @deferred Pending event count and active workflow count are hardcoded to 0
+   * until ProcessManager exposes v3EventQueue.size() and WorkflowRegistry.activeCount().
+   * Wire these in Phase 4 (ProcessManager wiring) by injecting the queue and registry
+   * into DaemonTickHandler and replacing the hardcoded 0 values in handleTick() and
+   * buildTickContext().
    */
   buildTickContext() {
     const spending = this.budgetManager.getSpending();
@@ -34726,18 +34806,10 @@ var ProcessManager = class {
         });
       }
       const merged = [...existingDirectives, ...matching];
-      (0, import_node_fs9.writeFileSync)(
-        urgentPath,
-        JSON.stringify(
-          {
-            written_at: (/* @__PURE__ */ new Date()).toISOString(),
-            directives: merged
-          },
-          null,
-          2
-        ),
-        "utf-8"
-      );
+      writeJsonSync(urgentPath, {
+        written_at: (/* @__PURE__ */ new Date()).toISOString(),
+        directives: merged
+      });
       logger42.info("Watchdog: urgent directives written to file", {
         workflow_id: workflowId,
         directive_count: matching.length,
@@ -35034,7 +35106,22 @@ var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "executor.budget.flat_cap_usd",
   "executor.budget.daily_cap_usd",
   "executor.budget.warning_threshold",
-  "executor.budget.daily_reset_hour"
+  "executor.budget.daily_reset_hour",
+  "time.heartbeat.interval_ms",
+  "time.heartbeat.enabled",
+  "time.heartbeat.priority",
+  "time.scheduler.max_scheduled_items",
+  "time.scheduler.persist_schedules",
+  "external.file_watcher.incoming_dir",
+  "external.file_watcher.processed_dir",
+  "external.file_watcher.error_dir",
+  "external.file_watcher.max_files_per_scan",
+  "external.http_listener.enabled",
+  "external.http_listener.port",
+  "external.http_listener.bind_mode",
+  "external.http_listener.address",
+  "external.http_listener.auth_token",
+  "external.http_listener.max_payload_bytes"
 ]);
 var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["ipc.socket_dir", "string"],
@@ -35078,7 +35165,22 @@ var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["executor.budget.flat_cap_usd", "number"],
   ["executor.budget.daily_cap_usd", "number"],
   ["executor.budget.warning_threshold", "number"],
-  ["executor.budget.daily_reset_hour", "number"]
+  ["executor.budget.daily_reset_hour", "number"],
+  ["time.heartbeat.interval_ms", "number"],
+  ["time.heartbeat.enabled", "boolean"],
+  ["time.heartbeat.priority", "number"],
+  ["time.scheduler.max_scheduled_items", "number"],
+  ["time.scheduler.persist_schedules", "boolean"],
+  ["external.file_watcher.incoming_dir", "string"],
+  ["external.file_watcher.processed_dir", "string"],
+  ["external.file_watcher.error_dir", "string"],
+  ["external.file_watcher.max_files_per_scan", "number"],
+  ["external.http_listener.enabled", "boolean"],
+  ["external.http_listener.port", "number"],
+  ["external.http_listener.bind_mode", "string"],
+  ["external.http_listener.address", "string"],
+  ["external.http_listener.auth_token", "string"],
+  ["external.http_listener.max_payload_bytes", "number"]
 ]);
 function getNestedValue(obj, path3) {
   const segments = path3.split(".");

@@ -11,6 +11,7 @@
 
 import {
   readFileSync,
+  writeFileSync,
   unlinkSync,
   readdirSync,
 } from 'fs';
@@ -85,6 +86,77 @@ export class JsonStateStore implements StateStore {
    */
   private keyPath(key: string): string {
     return join(this.stateDir, `${key}.json`);
+  }
+
+  /**
+   * Resolves the advisory lock path for a given state file path.
+   *
+   * @param statePath - Path to the `.json` state file.
+   * @returns Path to the corresponding `.lock` file.
+   */
+  private lockPath(statePath: string): string {
+    return `${statePath}.lock`;
+  }
+
+  /**
+   * Acquires an advisory lockfile for the given path.
+   *
+   * Uses `writeFileSync` with the exclusive-create (`wx`) flag so that only
+   * one process can create the file at a time. Retries up to `maxAttempts`
+   * times with `backoffMs` delay between attempts.
+   *
+   * @param lockFilePath - Path to the lockfile to create.
+   * @param maxAttempts  - Maximum number of acquisition attempts (default 3).
+   * @param backoffMs    - Delay in ms between attempts (default 50).
+   * @throws {Error} If the lock cannot be acquired after all retries.
+   */
+  private async acquireLock(
+    lockFilePath: string,
+    maxAttempts = 3,
+    backoffMs = 50,
+  ): Promise<void> {
+    const content = String(process.pid);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        writeFileSync(lockFilePath, content, { flag: 'wx' });
+        return; // Lock acquired
+      } catch (err) {
+        const isLockHeld =
+          err instanceof Error &&
+          'code' in err &&
+          (err as NodeJS.ErrnoException).code === 'EEXIST';
+        if (!isLockHeld) {
+          throw err; // Unexpected error — propagate immediately
+        }
+        if (attempt < maxAttempts) {
+          logger.debug('Lock contention — retrying', {
+            lockFilePath,
+            attempt,
+            backoffMs,
+          });
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
+      }
+    }
+    throw new Error(
+      `StateStore: could not acquire lock at "${lockFilePath}" after ${maxAttempts} attempts`,
+    );
+  }
+
+  /**
+   * Releases an advisory lockfile by deleting it.
+   *
+   * Silently ignores ENOENT (lock already gone). Any other error is swallowed
+   * to ensure `finally` blocks never mask the original exception.
+   *
+   * @param lockFilePath - Path to the lockfile to delete.
+   */
+  private releaseLock(lockFilePath: string): void {
+    try {
+      unlinkSync(lockFilePath);
+    } catch {
+      // Swallow — lock already gone or unlink failed; do not mask caller error
+    }
   }
 
   /**
@@ -186,12 +258,26 @@ export class JsonStateStore implements StateStore {
    * {@inheritdoc StateStore.update}
    *
    * Loads the current value, passes it to `updater`, then saves the result
-   * atomically. The load and save are not transactional across processes, but
-   * the write itself is atomic (tmp + rename).
+   * atomically. An advisory lockfile (`{statePath}.lock`) is acquired before
+   * the read-modify-write cycle and released in a `finally` block, guarding
+   * against concurrent updates from multiple processes sharing the same state
+   * directory. The lock is acquired exclusively via `writeFileSync` with the
+   * `wx` flag; if another process holds the lock, up to 3 retries are made
+   * with a 50 ms backoff before an error is thrown.
+   *
+   * Note: the write itself is separately atomic (tmp + rename); this lock
+   * protects the full read-modify-write cycle.
    */
   async update<T>(key: string, updater: (current: T | null) => T): Promise<void> {
-    const current = await this.get<T>(key);
-    const next = updater(current);
-    await this.set(key, next);
+    const statePath = this.keyPath(key);
+    const lockFilePath = this.lockPath(statePath);
+    await this.acquireLock(lockFilePath);
+    try {
+      const current = await this.get<T>(key);
+      const next = updater(current);
+      await this.set(key, next);
+    } finally {
+      this.releaseLock(lockFilePath);
+    }
   }
 }

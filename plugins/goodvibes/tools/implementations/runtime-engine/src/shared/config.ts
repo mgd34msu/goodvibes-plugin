@@ -183,8 +183,10 @@ export interface HttpListenerPluginConfig {
   enabled: boolean;
   /** Port to listen on. Default: 3847. */
   port: number;
-  /** Host/IP to bind to. Default: '127.0.0.1' (localhost only). */
-  host: string;
+  /** Bind strategy: localhost (127.0.0.1), local_network (0.0.0.0), or other (custom address). */
+  bind_mode: 'localhost' | 'local_network' | 'other';
+  /** Resolved bind address. Set automatically for localhost/local_network; user-provided for 'other'. */
+  address: string;
   /** Optional bearer token for webhook authentication. */
   auth_token?: string;
   /** Maximum request body size in bytes. Default: 1MB. */
@@ -328,7 +330,8 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     http_listener: {
       enabled: false,
       port: 3847,
-      host: '127.0.0.1',
+      bind_mode: 'localhost' as const,
+      address: '127.0.0.1',
       max_payload_bytes: 1 * 1024 * 1024, // 1MB
     },
   },

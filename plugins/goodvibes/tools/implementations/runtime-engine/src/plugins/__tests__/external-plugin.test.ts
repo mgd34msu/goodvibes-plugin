@@ -75,7 +75,8 @@ const BASE_WATCHER_CONFIG: FileWatcherConfig = {
 
 const BASE_HTTP_CONFIG: HttpListenerConfig = {
   port: 3847,
-  host: '127.0.0.1',
+  bind_mode: 'localhost',
+  address: '127.0.0.1',
   max_payload_bytes: 1024 * 1024,
 };
 
@@ -946,6 +947,24 @@ describe('HttpListener', () => {
     const stopP = listener.stop();
     (mockServer.close.mock.calls[0]![0] as (e?: Error) => void)();
     await stopP;
+  });
+
+  it('bind_mode localhost resolves to 127.0.0.1', async () => {
+    await startAndGetHandler({ ...BASE_HTTP_CONFIG, bind_mode: 'localhost', address: '127.0.0.1' });
+    const listenArgs = mockServer.listen.mock.calls[0] as unknown[];
+    expect(listenArgs[1]).toBe('127.0.0.1');
+  });
+
+  it('bind_mode local_network resolves to 0.0.0.0', async () => {
+    await startAndGetHandler({ ...BASE_HTTP_CONFIG, bind_mode: 'local_network', address: '0.0.0.0' });
+    const listenArgs = mockServer.listen.mock.calls[0] as unknown[];
+    expect(listenArgs[1]).toBe('0.0.0.0');
+  });
+
+  it('bind_mode other uses custom address as-is', async () => {
+    await startAndGetHandler({ ...BASE_HTTP_CONFIG, bind_mode: 'other', address: '192.168.1.10' });
+    const listenArgs = mockServer.listen.mock.calls[0] as unknown[];
+    expect(listenArgs[1]).toBe('192.168.1.10');
   });
 });
 

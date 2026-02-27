@@ -52,13 +52,18 @@ const QUERY_TIMEOUT_MS = 200;
  * ```
  */
 export class RuntimeClient {
-  /** Absolute path to the Unix domain socket, or null if not discoverable. */
-  private readonly socketPath: string | null;
+  /**
+   * Cached socket path discovered on first connection attempt.
+   * Cleared on ECONNREFUSED so the next call re-discovers the path
+   * (handles the case where the daemon restarts at a new socket location).
+   */
+  private cachedSocketPath: string | null = null;
 
   constructor() {
-    this.socketPath = this.discoverSocket();
-    if (this.socketPath) {
-      logger.debug('Discovered runtime socket', { path: this.socketPath });
+    // Eagerly discover so isAvailable() can answer synchronously before any send().
+    this.cachedSocketPath = this.discoverSocket();
+    if (this.cachedSocketPath) {
+      logger.debug('Discovered runtime socket', { path: this.cachedSocketPath });
     } else {
       logger.debug('Runtime engine socket not found — operating without IPC');
     }
@@ -73,7 +78,7 @@ export class RuntimeClient {
    * This is a fast synchronous check — it does not attempt a connection.
    */
   isAvailable(): boolean {
-    return this.socketPath !== null && existsSync(this.socketPath);
+    return this.cachedSocketPath !== null && existsSync(this.cachedSocketPath);
   }
 
   /**
@@ -90,7 +95,8 @@ export class RuntimeClient {
     hookName: string,
     hookInput: Record<string, unknown>
   ): Promise<IPCResponseData | null> {
-    if (!this.isAvailable()) return null;
+    const socketPath = this.resolveSocket();
+    if (!socketPath) return null;
 
     const message: IPCMessage = {
       type: 'hook_event',
@@ -100,7 +106,7 @@ export class RuntimeClient {
       timestamp: timestamp(),
     };
 
-    const response = await this.send(message, HOOK_EVENT_TIMEOUT_MS);
+    const response = await this.send(socketPath, message, HOOK_EVENT_TIMEOUT_MS);
     if (!response || response.status === 'error') {
       if (response?.error) {
         logger.warn('Hook event rejected by runtime engine', {
@@ -123,7 +129,8 @@ export class RuntimeClient {
    * @returns The response data from the engine, or null.
    */
   async query(query: IPCQuery): Promise<IPCResponseData | null> {
-    if (!this.isAvailable()) return null;
+    const socketPath = this.resolveSocket();
+    if (!socketPath) return null;
 
     const message: IPCMessage = {
       type: 'query',
@@ -131,7 +138,7 @@ export class RuntimeClient {
       query,
     };
 
-    const response = await this.send(message, QUERY_TIMEOUT_MS);
+    const response = await this.send(socketPath, message, QUERY_TIMEOUT_MS);
     if (!response || response.status === 'error') {
       if (response?.error) {
         logger.warn('Query rejected by runtime engine', {
@@ -147,19 +154,36 @@ export class RuntimeClient {
   // ─── Private helpers ───────────────────────────────────────────────────────
 
   /**
+   * Resolves the socket path for the next connection attempt.
+   *
+   * Returns the cached path if available, otherwise re-discovers. Returns
+   * null if no socket path can be found (engine not running).
+   */
+  private resolveSocket(): string | null {
+    if (this.cachedSocketPath) return this.cachedSocketPath;
+    this.cachedSocketPath = this.discoverSocket();
+    if (this.cachedSocketPath) {
+      logger.debug('Re-discovered runtime socket', { path: this.cachedSocketPath });
+    }
+    return this.cachedSocketPath;
+  }
+
+  /**
    * Send a single IPC message to the runtime engine and return its response.
    *
    * Opens a new Unix domain socket connection, writes the JSON message
    * (newline-terminated), reads the JSON response (newline-terminated), then
    * closes the connection. Returns null on timeout or any socket error.
    *
-   * @param message   - The IPC message to send.
-   * @param timeoutMs - Maximum ms to wait for a response before giving up.
+   * On ECONNREFUSED the cached socket path is cleared so the next call will
+   * re-discover the socket (handles daemon restarts at a new socket location).
+   *
+   * @param socketPath - Resolved socket path to connect to.
+   * @param message    - The IPC message to send.
+   * @param timeoutMs  - Maximum ms to wait for a response before giving up.
    * @returns Parsed {@link IPCResponse}, or null on failure.
    */
-  private async send(message: IPCMessage, timeoutMs: number): Promise<IPCResponse | null> {
-    const socketPath = this.socketPath!;
-
+  private async send(socketPath: string, message: IPCMessage, timeoutMs: number): Promise<IPCResponse | null> {
     return new Promise<IPCResponse | null>((resolve) => {
       let resolved = false;
 
@@ -178,11 +202,19 @@ export class RuntimeClient {
 
       const socket = net.createConnection({ path: socketPath });
 
-      socket.once('error', (err) => {
-        logger.debug('IPC socket error', {
-          id: message.id,
-          err: err.message,
-        });
+      socket.once('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'ECONNREFUSED') {
+          logger.debug('IPC connection refused — clearing socket cache for re-discovery', {
+            id: message.id,
+            path: socketPath,
+          });
+          this.cachedSocketPath = null;
+        } else {
+          logger.debug('IPC socket error', {
+            id: message.id,
+            err: err.message,
+          });
+        }
         done(null);
       });
 

@@ -13,7 +13,7 @@
  * - every transition target must be present in the states map
  */
 
-import { promises as fsPromises, existsSync } from 'node:fs';
+import { promises as fsPromises } from 'node:fs';
 import { join } from 'node:path';
 
 import { createLogger } from '../../shared/logger.js';
@@ -144,22 +144,22 @@ export function validateWorkflowDefinition(def: unknown): string[] {
 export async function loadCustomWorkflows(configPath: string): Promise<WorkflowDefinition[]> {
   const configFile = join(configPath, 'goodvibes.json');
 
-  // existsSync is a fast stat call used as a guard before async reads — acceptable pattern
-  if (!existsSync(configFile)) {
-    log.debug('loadCustomWorkflows: no goodvibes.json found, skipping custom workflow loading', {
-      config_file: configFile,
-    });
-    return [];
-  }
-
   let raw: string;
   try {
     raw = await fsPromises.readFile(configFile, 'utf-8');
   } catch (err) {
-    log.warn('loadCustomWorkflows: failed to read goodvibes.json', {
-      config_file: configFile,
-      error: String(err),
-    });
+    // ENOENT means no goodvibes.json — not an error, just skip silently.
+    // Any other error (permission denied, etc.) is logged as a warning.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      log.debug('loadCustomWorkflows: no goodvibes.json found, skipping custom workflow loading', {
+        config_file: configFile,
+      });
+    } else {
+      log.warn('loadCustomWorkflows: failed to read goodvibes.json', {
+        config_file: configFile,
+        error: String(err),
+      });
+    }
     return [];
   }
 

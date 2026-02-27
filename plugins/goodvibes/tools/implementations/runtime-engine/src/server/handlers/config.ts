@@ -68,6 +68,21 @@ export const VALID_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'executor.budget.daily_cap_usd',
   'executor.budget.warning_threshold',
   'executor.budget.daily_reset_hour',
+  'time.heartbeat.interval_ms',
+  'time.heartbeat.enabled',
+  'time.heartbeat.priority',
+  'time.scheduler.max_scheduled_items',
+  'time.scheduler.persist_schedules',
+  'external.file_watcher.incoming_dir',
+  'external.file_watcher.processed_dir',
+  'external.file_watcher.error_dir',
+  'external.file_watcher.max_files_per_scan',
+  'external.http_listener.enabled',
+  'external.http_listener.port',
+  'external.http_listener.bind_mode',
+  'external.http_listener.address',
+  'external.http_listener.auth_token',
+  'external.http_listener.max_payload_bytes',
 ]);
 
 /**
@@ -117,6 +132,21 @@ export const CONFIG_KEY_TYPES: ReadonlyMap<string, 'boolean' | 'number' | 'strin
   ['executor.budget.daily_cap_usd', 'number'],
   ['executor.budget.warning_threshold', 'number'],
   ['executor.budget.daily_reset_hour', 'number'],
+  ['time.heartbeat.interval_ms', 'number'],
+  ['time.heartbeat.enabled', 'boolean'],
+  ['time.heartbeat.priority', 'number'],
+  ['time.scheduler.max_scheduled_items', 'number'],
+  ['time.scheduler.persist_schedules', 'boolean'],
+  ['external.file_watcher.incoming_dir', 'string'],
+  ['external.file_watcher.processed_dir', 'string'],
+  ['external.file_watcher.error_dir', 'string'],
+  ['external.file_watcher.max_files_per_scan', 'number'],
+  ['external.http_listener.enabled', 'boolean'],
+  ['external.http_listener.port', 'number'],
+  ['external.http_listener.bind_mode', 'string'],
+  ['external.http_listener.address', 'string'],
+  ['external.http_listener.auth_token', 'string'],
+  ['external.http_listener.max_payload_bytes', 'number'],
 ]);
 
 // ─── Nested key helpers ────────────────────────────────────────────────────

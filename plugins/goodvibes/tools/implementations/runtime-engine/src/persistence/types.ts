@@ -91,9 +91,9 @@ export interface CrashRecovery {
   /**
    * Attempts to recover state from the most recent checkpoint.
    *
-   * @returns A {@link RecoveryResult} describing what was restored.
+   * @returns A {@link PersistenceRecoveryResult} describing what was restored.
    */
-  recover(): Promise<RecoveryResult>;
+  recover(): Promise<PersistenceRecoveryResult>;
 
   /**
    * Determines whether the previous session ended uncleanly (i.e. whether
@@ -105,7 +105,7 @@ export interface CrashRecovery {
 }
 
 /** Describes the outcome of a crash recovery operation */
-export interface RecoveryResult {
+export interface PersistenceRecoveryResult {
   /** Number of workflow instances that were successfully restored */
   recovered_workflows: number;
   /** Number of agent sessions that were successfully restored */

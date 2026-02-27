@@ -26,6 +26,9 @@ const mocks = vi.hoisted(() => {
   const existsSync = vi.fn().mockReturnValue(false);
   const mkdirSync = vi.fn();
 
+  // file-io
+  const writeJsonSync = vi.fn();
+
   // state store
   const stateStoreInitialize = vi.fn().mockResolvedValue(undefined);
   const stateStoreSet = vi.fn().mockResolvedValue(undefined);
@@ -150,6 +153,8 @@ const mocks = vi.hoisted(() => {
   return {
     // fs
     writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync,
+    // file-io
+    writeJsonSync,
     // state store
     stateStoreInitialize, stateStoreSet, JsonStateStore,
     // health
@@ -202,6 +207,12 @@ vi.mock('fs', async (importOriginal) => {
     },
   };
 });
+
+vi.mock('../../core/file-io.js', () => ({
+  writeJsonSync: (...args: unknown[]) => mocks.writeJsonSync(...args),
+  writeAtomicSync: vi.fn(),
+  readJsonSync: vi.fn().mockReturnValue(null),
+}));
 
 vi.mock('../../persistence/state-store.js', () => ({ JsonStateStore: mocks.JsonStateStore }));
 vi.mock('../health.js', () => ({ HealthChecker: mocks.HealthChecker }));
@@ -1441,7 +1452,7 @@ describe('ProcessManager — checkStaleWorkflows (watchdog)', () => {
     // Tick 1 and 2 — below threshold, no file written
     ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
     ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
-    expect(mocks.writeFileSync).not.toHaveBeenCalledWith(expectedStatePath, expect.anything(), 'utf-8');
+    expect(mocks.writeJsonSync).not.toHaveBeenCalledWith(expectedStatePath, expect.anything());
 
     // Tick 3 — threshold reached, file written
     ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
@@ -1450,16 +1461,15 @@ describe('ProcessManager — checkStaleWorkflows (watchdog)', () => {
       join(TEST_PROJECT_ROOT, '.goodvibes/state'),
       { recursive: true },
     );
-    expect(mocks.writeFileSync).toHaveBeenCalledWith(
+    expect(mocks.writeJsonSync).toHaveBeenCalledWith(
       expectedStatePath,
-      expect.stringContaining(workflowId),
-      'utf-8',
+      expect.objectContaining({ directives: expect.arrayContaining([expect.objectContaining({ content: expect.stringContaining(workflowId) })]) }),
     );
-    const writeCall = mocks.writeFileSync.mock.calls.find(
+    const writeCall = mocks.writeJsonSync.mock.calls.find(
       (c) => typeof c[0] === 'string' && (c[0] as string).endsWith('urgent-directives.json'),
     );
     expect(writeCall).toBeDefined();
-    const payload = JSON.parse(writeCall![1] as string) as { directives: unknown[]; written_at: string };
+    const payload = writeCall![1] as { directives: unknown[]; written_at: string };
     expect(payload.directives).toHaveLength(1);
     expect(payload.written_at).toBeDefined();
   });
@@ -1482,11 +1492,11 @@ describe('ProcessManager — checkStaleWorkflows (watchdog)', () => {
     ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
 
     const urgentPath = join(TEST_PROJECT_ROOT, '.goodvibes/state', 'urgent-directives.json');
-    const urgentWrite = mocks.writeFileSync.mock.calls.find(
+    const urgentWrite = mocks.writeJsonSync.mock.calls.find(
       (c) => typeof c[0] === 'string' && (c[0] as string).endsWith('urgent-directives.json'),
     );
     expect(urgentWrite).toBeUndefined();
-    expect(mocks.writeFileSync).not.toHaveBeenCalledWith(urgentPath, expect.anything(), 'utf-8');
+    expect(mocks.writeJsonSync).not.toHaveBeenCalledWith(urgentPath, expect.anything());
   });
 
   it('merges with existing urgent directives', () => {
@@ -1519,11 +1529,11 @@ describe('ProcessManager — checkStaleWorkflows (watchdog)', () => {
     ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
     ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
 
-    const writeCall = mocks.writeFileSync.mock.calls.find(
+    const writeCall = mocks.writeJsonSync.mock.calls.find(
       (c) => typeof c[0] === 'string' && (c[0] as string).endsWith('urgent-directives.json'),
     );
     expect(writeCall).toBeDefined();
-    const payload = JSON.parse(writeCall![1] as string) as { directives: unknown[] };
+    const payload = writeCall![1] as { directives: unknown[] };
     expect(payload.directives).toHaveLength(2);
   });
 
@@ -1581,8 +1591,8 @@ describe('ProcessManager — checkStaleWorkflows (watchdog)', () => {
     mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(targetWorkflowId, 'REVIEWING')]);
     mocks.directiveQueuePeek.mockReturnValue([targetDirective, otherDirective]);
     mocks.directiveQueueDrain.mockReturnValue([targetDirective, otherDirective]);
-    // Make writeFileSync throw on the urgent-directives file
-    mocks.writeFileSync.mockImplementation((p: unknown) => {
+    // Make writeJsonSync throw on the urgent-directives file
+    mocks.writeJsonSync.mockImplementation((p: unknown) => {
       if (typeof p === 'string' && (p as string).endsWith('urgent-directives.json')) {
         throw new Error('Simulated disk write failure');
       }
@@ -1618,7 +1628,7 @@ describe('ProcessManager — checkStaleWorkflows (watchdog)', () => {
 
     // No file should be written
     const urgentPath = join(TEST_PROJECT_ROOT, '.goodvibes/state', 'urgent-directives.json');
-    expect(mocks.writeFileSync).not.toHaveBeenCalledWith(urgentPath, expect.anything(), 'utf-8');
+    expect(mocks.writeJsonSync).not.toHaveBeenCalledWith(urgentPath, expect.anything());
     // No re-enqueue (nonMatching was empty too)
     expect(mocks.directiveQueueEnqueue).not.toHaveBeenCalled();
   });

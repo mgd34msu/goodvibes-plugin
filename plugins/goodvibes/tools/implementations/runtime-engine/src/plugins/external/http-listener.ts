@@ -31,8 +31,10 @@ const logger = createLogger('http-listener');
 export interface HttpListenerConfig {
   /** Port to listen on. Default: 3847 */
   port: number;
-  /** Host/IP to bind to. Default: '127.0.0.1' (localhost only for security) */
-  host: string;
+  /** Bind strategy: localhost (127.0.0.1), local_network (0.0.0.0), or other (custom address). */
+  bind_mode: 'localhost' | 'local_network' | 'other';
+  /** Resolved bind address. Set automatically for localhost/local_network; user-provided for 'other'. */
+  address: string;
   /** Optional bearer token. If set, all requests must include it. */
   auth_token?: string;
   /** Maximum accepted request body size in bytes. Default: 1MB */
@@ -41,7 +43,8 @@ export interface HttpListenerConfig {
 
 export const DEFAULT_HTTP_LISTENER_CONFIG: HttpListenerConfig = {
   port: 3847,
-  host: '127.0.0.1',
+  bind_mode: 'localhost',
+  address: '127.0.0.1',
   max_payload_bytes: 1 * 1024 * 1024, // 1MB
 };
 
@@ -102,7 +105,13 @@ export class HttpListener {
       this.server.once('error', reject);
 
       const server = this.server;
-      server.listen(this.config.port, this.config.host, () => {
+      const bindAddress =
+        this.config.bind_mode === 'localhost'
+          ? '127.0.0.1'
+          : this.config.bind_mode === 'local_network'
+            ? '0.0.0.0'
+            : this.config.address;
+      server.listen(this.config.port, bindAddress, () => {
         server.removeListener('error', reject);
         server.on('error', (err) => {
           // Log post-start server errors (e.g. ECONNRESET, keep-alive teardown).

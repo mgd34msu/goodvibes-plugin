@@ -6,7 +6,7 @@
  *
  * Strategy:
  * - vi.hoisted() declares mock variables before vi.mock() hoisting fires.
- * - node:child_process execSync is fully mocked.
+ * - node:child_process execFileSync is fully mocked.
  * - process.env['TMUX'] is manipulated per-test and restored in afterEach.
  */
 
@@ -15,19 +15,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ─── Hoisted mock variables ──────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => {
-  const execSync = vi.fn();
+  const execFileSync = vi.fn();
   const createLogger = vi.fn().mockReturnValue({
     info: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
   });
-  return { execSync, createLogger };
+  return { execFileSync, createLogger };
 });
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-vi.mock('node:child_process', () => ({ execSync: mocks.execSync }));
+vi.mock('node:child_process', () => ({ execFileSync: mocks.execFileSync }));
 vi.mock('../shared/logger.js', () => ({ createLogger: mocks.createLogger }));
 
 // ─── Subject under test ───────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ describe('ContextClearer', () => {
   describe('tmux availability', () => {
     it('uses tmux path when TMUX env var is set to non-empty string', async () => {
       process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      mocks.execSync.mockReturnValue(undefined);
+      mocks.execFileSync.mockReturnValue(undefined);
       const clearer = new ContextClearer(makeConfig());
       const result = await clearer.clearContext();
       expect(result.method).toBe('tmux');
@@ -96,17 +96,17 @@ describe('ContextClearer', () => {
   // ── clearContext ─────────────────────────────────────────────────────────
 
   describe('clearContext', () => {
-    it('returns method tmux and success true when execSync succeeds', async () => {
+    it('returns method tmux and success true when execFileSync succeeds', async () => {
       process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      mocks.execSync.mockReturnValue(undefined);
+      mocks.execFileSync.mockReturnValue(undefined);
       const clearer = new ContextClearer(makeConfig());
       const result = await clearer.clearContext();
       expect(result).toEqual({ method: 'tmux', success: true });
     });
 
-    it('falls back to queue_injection when execSync throws', async () => {
+    it('falls back to queue_injection when execFileSync throws', async () => {
       process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      mocks.execSync.mockImplementation(() => { throw new Error('tmux not found'); });
+      mocks.execFileSync.mockImplementation(() => { throw new Error('tmux not found'); });
       const clearer = new ContextClearer(makeConfig());
       const result = await clearer.clearContext();
       expect(result.method).toBe('queue_injection');
@@ -122,37 +122,45 @@ describe('ContextClearer', () => {
 
     it('uses the configured tmux_session_name in the command', async () => {
       process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      mocks.execSync.mockReturnValue(undefined);
+      mocks.execFileSync.mockReturnValue(undefined);
       const clearer = new ContextClearer(makeConfig({ tmux_session_name: 'my-session' }));
       await clearer.clearContext();
-      expect(mocks.execSync).toHaveBeenCalledWith(
-        expect.stringContaining('my-session'),
+      // execFileSync signature: (file, args[], options)
+      // session name appears in the args array (3rd element: '-t', sessionName)
+      expect(mocks.execFileSync).toHaveBeenCalledWith(
+        'tmux',
+        expect.arrayContaining(['my-session']),
         expect.any(Object),
       );
     });
 
     it('includes /clear in the tmux send-keys command', async () => {
       process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      mocks.execSync.mockReturnValue(undefined);
+      mocks.execFileSync.mockReturnValue(undefined);
       const clearer = new ContextClearer(makeConfig());
       await clearer.clearContext();
-      const cmd = mocks.execSync.mock.calls[0][0] as string;
-      expect(cmd).toContain('/clear');
-      expect(cmd).toContain('tmux send-keys');
+      // execFileSync signature: (file, args[], options)
+      // file is 'tmux', args contain 'send-keys' and '/clear'
+      const file = mocks.execFileSync.mock.calls[0][0] as string;
+      const args = mocks.execFileSync.mock.calls[0][1] as string[];
+      expect(file).toBe('tmux');
+      expect(args).toContain('send-keys');
+      expect(args).toContain('/clear');
     });
 
-    it('passes a 5000ms timeout to execSync', async () => {
+    it('passes a 5000ms timeout to execFileSync', async () => {
       process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      mocks.execSync.mockReturnValue(undefined);
+      mocks.execFileSync.mockReturnValue(undefined);
       const clearer = new ContextClearer(makeConfig());
       await clearer.clearContext();
-      const opts = mocks.execSync.mock.calls[0][1] as { timeout: number };
+      // execFileSync signature: (file, args[], options) — opts is calls[0][2]
+      const opts = mocks.execFileSync.mock.calls[0][2] as { timeout: number };
       expect(opts.timeout).toBe(5000);
     });
 
-    it('handles execSync throwing non-Error objects gracefully', async () => {
+    it('handles execFileSync throwing non-Error objects gracefully', async () => {
       process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      mocks.execSync.mockImplementation(() => { throw 'string error'; });
+      mocks.execFileSync.mockImplementation(() => { throw 'string error'; });
       const clearer = new ContextClearer(makeConfig());
       // Should not throw and should fall back
       await expect(clearer.clearContext()).resolves.toEqual({
@@ -161,11 +169,11 @@ describe('ContextClearer', () => {
       });
     });
 
-    it('does not call execSync when TMUX is unavailable', async () => {
+    it('does not call execFileSync when TMUX is unavailable', async () => {
       delete process.env['TMUX'];
       const clearer = new ContextClearer(makeConfig());
       await clearer.clearContext();
-      expect(mocks.execSync).not.toHaveBeenCalled();
+      expect(mocks.execFileSync).not.toHaveBeenCalled();
     });
   });
 });
