@@ -5,7 +5,7 @@
  */
 
 export type { StateStore } from './types.js';
-export type { EventLogStats, CrashRecovery, PersistenceRecoveryResult as CrashRecoveryResult } from './types.js';
+export type { EventLogStats, CrashRecovery, PersistenceRecoveryResult } from './types.js';
 export { JsonStateStore } from './state-store.js';
 
 export type {
@@ -26,6 +26,6 @@ export type {
   RecoveryMethod,
   SnapshotRecoveryInfo,
   ReplayRecoveryInfo,
-  RecoveryResult as StartupRecoveryResult,
+  RecoveryResult,
 } from './startup-recovery.js';
 export { recoverState } from './startup-recovery.js';

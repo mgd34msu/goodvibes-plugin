@@ -29,11 +29,30 @@ import { createLogger } from '../shared/logger.js';
 
 const logger = createLogger('ipc-client');
 
-/** Timeout in ms for sendHookEvent (hooks must be fast). */
-const HOOK_EVENT_TIMEOUT_MS = 500;
+/** Default timeout in ms for sendHookEvent (hooks must be fast). */
+const DEFAULT_HOOK_EVENT_TIMEOUT_MS = 500;
 
-/** Timeout in ms for query calls. */
-const QUERY_TIMEOUT_MS = 200;
+/** Default timeout in ms for query calls. */
+const DEFAULT_QUERY_TIMEOUT_MS = 200;
+
+/**
+ * Optional configuration for {@link RuntimeClient}.
+ *
+ * All fields have sensible defaults and are safe to omit.
+ */
+export interface RuntimeClientConfig {
+  /**
+   * Timeout in ms for {@link RuntimeClient.sendHookEvent} calls.
+   * Hooks run synchronously in Claude Code; keep this low.
+   * @default 500
+   */
+  hookEventTimeoutMs?: number;
+  /**
+   * Timeout in ms for {@link RuntimeClient.query} calls.
+   * @default 200
+   */
+  queryTimeoutMs?: number;
+}
 
 /**
  * Thin IPC client for hook scripts.
@@ -59,7 +78,15 @@ export class RuntimeClient {
    */
   private cachedSocketPath: string | null = null;
 
-  constructor() {
+  /** Resolved hook-event timeout (ms). */
+  private readonly hookEventTimeoutMs: number;
+
+  /** Resolved query timeout (ms). */
+  private readonly queryTimeoutMs: number;
+
+  constructor(config: RuntimeClientConfig = {}) {
+    this.hookEventTimeoutMs = config.hookEventTimeoutMs ?? DEFAULT_HOOK_EVENT_TIMEOUT_MS;
+    this.queryTimeoutMs = config.queryTimeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS;
     // Eagerly discover so isAvailable() can answer synchronously before any send().
     this.cachedSocketPath = this.discoverSocket();
     if (this.cachedSocketPath) {
@@ -106,7 +133,7 @@ export class RuntimeClient {
       timestamp: timestamp(),
     };
 
-    const response = await this.send(socketPath, message, HOOK_EVENT_TIMEOUT_MS);
+    const response = await this.send(socketPath, message, this.hookEventTimeoutMs);
     if (!response || response.status === 'error') {
       if (response?.error) {
         logger.warn('Hook event rejected by runtime engine', {
@@ -138,7 +165,7 @@ export class RuntimeClient {
       query,
     };
 
-    const response = await this.send(socketPath, message, QUERY_TIMEOUT_MS);
+    const response = await this.send(socketPath, message, this.queryTimeoutMs);
     if (!response || response.status === 'error') {
       if (response?.error) {
         logger.warn('Query rejected by runtime engine', {

@@ -38,21 +38,31 @@ export function pollUntil<T>(
   return new Promise<T | null>((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
+    /** Cancel any pending interval timer. Called before every resolve/reject. */
+    const cleanup = (): void => {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
     const tick = (): void => {
       try {
         const result = check();
         if (result !== null && result !== undefined) {
+          cleanup();
           resolve(result);
           return;
         }
       } catch (err) {
-        if (timer) clearTimeout(timer);
+        cleanup();
         reject(err);
         return;
       }
 
       if (Date.now() >= deadline) {
         logger.debug('pollUntil timed out', { timeoutMs: opts.timeoutMs });
+        cleanup();
         resolve(null);
         return;
       }

@@ -145,15 +145,23 @@ export class AgentWorkflowMap {
    * Removes the first matching entry from the queue, prunes stale entries
    * older than 60 seconds, and returns the workflow_id or null.
    *
+   * Complexity: O(n) on the pending-bind queue length per call (filter + findIndex).
+   * In practice the queue is small (typically 1-4 entries per WRFC cycle) so this
+   * is not a concern. If queue growth becomes an issue, consider maintaining a
+   * separate Set indexed by workflowId for O(1) sibling cleanup.
+   *
    * @param agentType - The agent type queried by SubagentStart.
    * @returns The workflow_id if a pending bind exists, or null.
    */
   resolvePendingBind(agentType: string): string | null {
     const now = Date.now();
-    // Prune stale entries first
-    this.pendingBinds = this.pendingBinds.filter(
-      (entry) => now - entry.timestamp < AgentWorkflowMap.PENDING_BIND_TTL_MS
-    );
+    // Prune stale entries only when the queue is non-trivially large to avoid
+    // unnecessary allocations on every call when the queue is empty or has one entry.
+    if (this.pendingBinds.length > 0) {
+      this.pendingBinds = this.pendingBinds.filter(
+        (entry) => now - entry.timestamp < AgentWorkflowMap.PENDING_BIND_TTL_MS
+      );
+    }
 
     const idx = this.pendingBinds.findIndex((entry) => entry.agentType === agentType);
     if (idx === -1) {

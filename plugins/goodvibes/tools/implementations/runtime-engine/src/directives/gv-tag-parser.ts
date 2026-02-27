@@ -31,11 +31,16 @@ export interface GvParseResult {
 }
 
 /**
- * Regex to find <gv>...</gv> tags. Non-greedy to handle multiple tags.
- * Known limitation: if a JSON value contains literal "</gv>", the match truncates early.
- * This is acceptable because <gv> tags contain agent-structured JSON, not freetext.
+ * Regex to find <gv>...</gv> tags.
+ * Uses a character-class exclusion `[^<]` to prevent matching across nested tags:
+ * `[^<]*` matches any character except `<`, which stops at the first `<` inside
+ * the tag content. This avoids false matches when a `<gv>` tag appears inside
+ * another XML-like element, or when the text contains literal `<` characters.
+ * Known limitation: if a JSON value contains a literal `<` character (e.g. in a
+ * string comparison), the match will truncate. This is acceptable because <gv>
+ * tags contain structured JSON with no reason to embed raw `<`.
  */
-const GV_TAG_REGEX = /<gv>([\s\S]*?)<\/gv>/;
+const GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
 
 /** Known <gv> tag fields — anything else goes to the index signature. */
 const KNOWN_FIELDS = new Set(['score', 'pass', 'files', 'count']);
@@ -95,7 +100,7 @@ export function parseGvTag(text: string | undefined | null): GvParseResult {
 export function parseAllGvTags(text: string | undefined | null): GvParseResult[] {
   if (!text) return [];
 
-  const GV_TAG_REGEX_GLOBAL = /<gv>([\s\S]*?)<\/gv>/g;
+  const GV_TAG_REGEX_GLOBAL = /<gv>([^<]*)<\/gv>/g;
   const results: GvParseResult[] = [];
   let match: RegExpExecArray | null;
 

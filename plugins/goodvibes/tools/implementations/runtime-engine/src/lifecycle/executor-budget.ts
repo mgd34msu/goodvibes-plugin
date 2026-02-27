@@ -29,6 +29,61 @@ export interface SpendingRecord {
 /** State store key for persisting budget data. */
 const BUDGET_STATE_KEY = 'executor.budget.spending';
 
+// ─── Internal helpers ────────────────────────────────────────────────────────
+
+/** Parameters for `checkCapThreshold` helper. */
+interface CapCheckParams {
+  /** Current amount spent against this cap. */
+  spent: number;
+  /** Cap limit in USD (must be > 0). */
+  cap: number;
+  /** Fraction at which to emit a warning (0–1). */
+  warningThreshold: number;
+  /** Whether the warning for this cap has already fired this period. */
+  warningFired: boolean;
+  /** Human-readable cap label for log messages ('flat' | 'daily'). */
+  capType: 'flat' | 'daily';
+  /** Whether processing is already paused. */
+  paused: boolean;
+  /** Callback to emit a warning event. */
+  onWarning: () => void;
+  /** Callback to emit a cap-exceeded + paused event. */
+  onExceeded: () => void;
+}
+
+/** Result from `checkCapThreshold`. */
+interface CapCheckResult {
+  /** True if the warning threshold was newly crossed (and onWarning was called). */
+  warningFired: boolean;
+  /** True if the cap was newly exceeded (and onExceeded was called). */
+  exceeded: boolean;
+}
+
+/**
+ * Shared threshold-and-cap evaluation logic.
+ * Fires the warning callback once when the warning threshold is crossed,
+ * then fires the exceeded callback once when the cap is reached.
+ * Returns updated state flags.
+ */
+function checkCapThreshold(params: CapCheckParams): CapCheckResult {
+  let { warningFired } = params;
+  let exceeded = false;
+
+  const ratio = params.spent / params.cap;
+
+  if (ratio >= params.warningThreshold && !warningFired) {
+    warningFired = true;
+    params.onWarning();
+  }
+
+  if (params.spent >= params.cap && !params.paused) {
+    exceeded = true;
+    params.onExceeded();
+  }
+
+  return { warningFired, exceeded };
+}
+
 export class ExecutorBudgetManager {
   private config: ExecutorBudgetConfig;
   private eventBus: EventBus;
@@ -68,129 +123,135 @@ export class ExecutorBudgetManager {
 
     // Check flat cap
     if (this.config.flat_cap_usd !== undefined && this.config.flat_cap_usd > 0) {
-      const flatRatio = this.spending.total_usd / this.config.flat_cap_usd;
-
-      // Warning threshold (fired once)
-      if (flatRatio >= this.config.warning_threshold && !this.warningFired.flat) {
-        this.warningFired.flat = true;
-        logger.warn('Executor flat cap warning threshold reached', {
-          spent_usd: this.spending.total_usd,
-          cap_usd: this.config.flat_cap_usd,
-          threshold: this.config.warning_threshold,
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: 'executor:budget_warning',
-          source: { kind: 'system' },
-          payload: {
+      const flatResult = checkCapThreshold({
+        spent: this.spending.total_usd,
+        cap: this.config.flat_cap_usd,
+        warningThreshold: this.config.warning_threshold,
+        warningFired: this.warningFired.flat,
+        capType: 'flat',
+        paused: this.paused,
+        onWarning: () => {
+          logger.warn('Executor flat cap warning threshold reached', {
+            spent_usd: this.spending.total_usd,
+            cap_usd: this.config.flat_cap_usd,
+            threshold: this.config.warning_threshold,
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: 'executor:budget_warning',
-            data: {
-              cap_type: 'flat',
-              spent_usd: this.spending.total_usd,
-              cap_usd: this.config.flat_cap_usd,
-              threshold: this.config.warning_threshold,
+            source: { kind: 'system' },
+            payload: {
+              type: 'executor:budget_warning',
+              data: {
+                cap_type: 'flat',
+                spent_usd: this.spending.total_usd,
+                cap_usd: this.config.flat_cap_usd,
+                threshold: this.config.warning_threshold,
+              },
             },
-          },
-        });
-      }
-
-      // Flat cap exceeded
-      if (this.spending.total_usd >= this.config.flat_cap_usd && !this.paused) {
-        this.paused = true;
-        logger.warn('Executor flat cap exceeded — processing paused', {
-          spent_usd: this.spending.total_usd,
-          cap_usd: this.config.flat_cap_usd,
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: 'executor:budget_exceeded',
-          source: { kind: 'system' },
-          payload: {
+          });
+        },
+        onExceeded: () => {
+          this.paused = true;
+          logger.warn('Executor flat cap exceeded — processing paused', {
+            spent_usd: this.spending.total_usd,
+            cap_usd: this.config.flat_cap_usd,
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: 'executor:budget_exceeded',
-            data: {
-              cap_type: 'flat',
-              spent_usd: this.spending.total_usd,
-              cap_usd: this.config.flat_cap_usd,
+            source: { kind: 'system' },
+            payload: {
+              type: 'executor:budget_exceeded',
+              data: {
+                cap_type: 'flat',
+                spent_usd: this.spending.total_usd,
+                cap_usd: this.config.flat_cap_usd,
+              },
             },
-          },
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: 'executor:paused',
-          source: { kind: 'system' },
-          payload: {
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: 'executor:paused',
-            data: { reason: 'flat_cap_exceeded' },
-          },
-        });
-        return;
-      }
+            source: { kind: 'system' },
+            payload: {
+              type: 'executor:paused',
+              data: { reason: 'flat_cap_exceeded' },
+            },
+          });
+        },
+      });
+      this.warningFired.flat = flatResult.warningFired;
+      if (flatResult.exceeded) return;
     }
 
     // Check daily cap
     if (this.config.daily_cap_usd !== undefined && this.config.daily_cap_usd > 0) {
-      const dailyRatio = this.spending.daily_usd / this.config.daily_cap_usd;
-
-      // Warning threshold (fired once per day)
-      if (dailyRatio >= this.config.warning_threshold && !this.warningFired.daily) {
-        this.warningFired.daily = true;
-        logger.warn('Executor daily cap warning threshold reached', {
-          spent_usd: this.spending.daily_usd,
-          cap_usd: this.config.daily_cap_usd,
-          threshold: this.config.warning_threshold,
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: 'executor:budget_warning',
-          source: { kind: 'system' },
-          payload: {
+      const dailyResult = checkCapThreshold({
+        spent: this.spending.daily_usd,
+        cap: this.config.daily_cap_usd,
+        warningThreshold: this.config.warning_threshold,
+        warningFired: this.warningFired.daily,
+        capType: 'daily',
+        paused: this.paused,
+        onWarning: () => {
+          logger.warn('Executor daily cap warning threshold reached', {
+            spent_usd: this.spending.daily_usd,
+            cap_usd: this.config.daily_cap_usd,
+            threshold: this.config.warning_threshold,
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: 'executor:budget_warning',
-            data: {
-              cap_type: 'daily',
-              spent_usd: this.spending.daily_usd,
-              cap_usd: this.config.daily_cap_usd,
-              threshold: this.config.warning_threshold,
+            source: { kind: 'system' },
+            payload: {
+              type: 'executor:budget_warning',
+              data: {
+                cap_type: 'daily',
+                spent_usd: this.spending.daily_usd,
+                cap_usd: this.config.daily_cap_usd,
+                threshold: this.config.warning_threshold,
+              },
             },
-          },
-        });
-      }
-
-      // Daily cap exceeded
-      if (this.spending.daily_usd >= this.config.daily_cap_usd && !this.paused) {
-        this.paused = true;
-        logger.warn('Executor daily cap exceeded — processing paused', {
-          spent_usd: this.spending.daily_usd,
-          cap_usd: this.config.daily_cap_usd,
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: 'executor:budget_exceeded',
-          source: { kind: 'system' },
-          payload: {
+          });
+        },
+        onExceeded: () => {
+          this.paused = true;
+          logger.warn('Executor daily cap exceeded — processing paused', {
+            spent_usd: this.spending.daily_usd,
+            cap_usd: this.config.daily_cap_usd,
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: 'executor:budget_exceeded',
-            data: {
-              cap_type: 'daily',
-              spent_usd: this.spending.daily_usd,
-              cap_usd: this.config.daily_cap_usd,
+            source: { kind: 'system' },
+            payload: {
+              type: 'executor:budget_exceeded',
+              data: {
+                cap_type: 'daily',
+                spent_usd: this.spending.daily_usd,
+                cap_usd: this.config.daily_cap_usd,
+              },
             },
-          },
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: 'executor:paused',
-          source: { kind: 'system' },
-          payload: {
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: 'executor:paused',
-            data: { reason: 'daily_cap_exceeded' },
-          },
-        });
-      }
+            source: { kind: 'system' },
+            payload: {
+              type: 'executor:paused',
+              data: { reason: 'daily_cap_exceeded' },
+            },
+          });
+        },
+      });
+      this.warningFired.daily = dailyResult.warningFired;
     }
   }
 

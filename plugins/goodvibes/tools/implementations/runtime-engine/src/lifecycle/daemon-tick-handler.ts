@@ -185,15 +185,16 @@ export class DaemonTickHandler {
   buildTickContext(): string {
     const spending = this.budgetManager.getSpending();
     const canProcess = this.budgetManager.canProcess();
-    const lines: string[] = [
-      '--- Daemon Tick Context ---',
-      `Tick #${this.tickCount}`,
-      `Mode: ${this.executorMode.getMode()}`,
-      `Budget: total=$${spending.total_usd.toFixed(4)} daily=$${spending.daily_usd.toFixed(4)} (can_process=${canProcess})`,
-      'Pending events: 0', // TODO: Wire to v3EventQueue.size() when ProcessManager exposes it
-      'Active workflows: 0', // TODO: Wire to WorkflowRegistry.activeCount() when ProcessManager exposes it
-    ];
-    return lines.join('\n');
+    // TODO: Wire pendingEvents to v3EventQueue.size() and activeWorkflows to
+    // WorkflowRegistry.activeCount() when ProcessManager exposes them.
+    const pendingEvents = 0;
+    const activeWorkflows = 0;
+    return `--- Daemon Tick Context ---
+Tick #${this.tickCount}
+Mode: ${this.executorMode.getMode()}
+Budget: total=$${spending.total_usd.toFixed(4)} daily=$${spending.daily_usd.toFixed(4)} (can_process=${canProcess})
+Pending events: ${pendingEvents}
+Active workflows: ${activeWorkflows}`;
   }
 
   /** Get cumulative tick count for metrics. */

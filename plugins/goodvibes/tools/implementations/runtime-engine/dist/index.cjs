@@ -7202,11 +7202,11 @@ var util;
   }
   __name(assertIs2, "assertIs");
   util2.assertIs = assertIs2;
-  function assertNever2(_x) {
+  function assertNever3(_x) {
     throw new Error();
   }
-  __name(assertNever2, "assertNever");
-  util2.assertNever = assertNever2;
+  __name(assertNever3, "assertNever");
+  util2.assertNever = assertNever3;
   util2.arrayToEnum = (items) => {
     const obj = {};
     for (const item of items) {
@@ -21593,6 +21593,10 @@ function toErrorMessage(err) {
   return err instanceof Error ? err.message : String(err);
 }
 __name(toErrorMessage, "toErrorMessage");
+function assertNever2(value) {
+  throw new Error(`Unhandled discriminated union member: ${String(value)}`);
+}
+__name(assertNever2, "assertNever");
 var DURATION_UNITS = {
   s: 1e3,
   m: 6e4,
@@ -22048,12 +22052,15 @@ var JsonStateStore = class {
 
 // src/lifecycle/health.ts
 var MIN_HEALTHY_UPTIME_MS = 1e3;
+var MEMORY_CACHE_TTL_MS = 5e3;
 var HealthChecker = class {
   static {
     __name(this, "HealthChecker");
   }
   config;
   startTime;
+  cachedMemoryMb = 0;
+  memoryCachedAt = 0;
   /**
    * @param config - Runtime configuration (used for feature flags and version).
    * @param startTime - Engine start time as a Unix epoch millisecond timestamp.
@@ -22086,7 +22093,12 @@ var HealthChecker = class {
   check() {
     const uptime_ms = Date.now() - this.startTime;
     const pid = process.pid;
-    const memoryMb = process.memoryUsage().rss / (1024 * 1024);
+    const now = Date.now();
+    if (now - this.memoryCachedAt > MEMORY_CACHE_TTL_MS) {
+      this.cachedMemoryMb = process.memoryUsage().rss / (1024 * 1024);
+      this.memoryCachedAt = now;
+    }
+    const memoryMb = this.cachedMemoryMb;
     const checks = [
       this.checkMemory(memoryMb),
       this.checkUptime(uptime_ms)
@@ -23384,6 +23396,10 @@ function validateIPCMessage(obj) {
     case "heartbeat":
       return true;
     default:
+      console.warn(
+        "[ipc-protocol] validateIPCMessage: unrecognised message type:",
+        typeof msg["type"] === "string" ? msg["type"] : typeof msg["type"]
+      );
       return false;
   }
 }
@@ -26868,6 +26884,12 @@ var BudgetTracker = class {
   eventBus;
   config;
   records = /* @__PURE__ */ new Map();
+  /**
+   * Running total of spent tokens across all tracked agents.
+   * Updated incrementally on every `updateAgentBudget` and `removeAgent` call
+   * to avoid O(n) iteration in `getTotalSpent()` / `hasBudget()`.
+   */
+  runningTotal = 0;
   constructor(eventBus, config2) {
     this.eventBus = eventBus;
     this.config = config2;
@@ -26918,7 +26940,9 @@ var BudgetTracker = class {
       logger8.warn("updateAgentBudget called for unregistered agent", { agentId });
       return;
     }
+    const previousSpent = record2.budget.spent;
     record2.budget = budget;
+    this.runningTotal += budget.spent - previousSpent;
     for (const threshold of this.config.budget_thresholds) {
       if (!record2.firedThresholds.has(threshold) && budget.usage_percent >= threshold) {
         this.emitBudgetWarning(record2, threshold);
@@ -26932,6 +26956,10 @@ var BudgetTracker = class {
    * @param agentId - Agent to remove.
    */
   removeAgent(agentId) {
+    const record2 = this.records.get(agentId);
+    if (record2) {
+      this.runningTotal -= record2.budget.spent;
+    }
     this.records.delete(agentId);
   }
   /**
@@ -27040,13 +27068,12 @@ var BudgetTracker = class {
     });
   }
   // ─── Private helpers ────────────────────────────────────────────────────────
-  /** Sum all spent tokens across all tracked agents. */
+  /**
+   * Returns the cached running total of spent tokens across all tracked agents.
+   * O(1) — maintained incrementally via `updateAgentBudget` and `removeAgent`.
+   */
   getTotalSpent() {
-    let total = 0;
-    for (const record2 of this.records.values()) {
-      total += record2.budget.spent;
-    }
-    return total;
+    return this.runningTotal;
   }
   /**
    * Emit an `agent:budget_warning` event onto the EventBus.
@@ -27189,7 +27216,7 @@ var DirectiveQueue = class {
 };
 
 // src/directives/gv-tag-parser.ts
-var GV_TAG_REGEX = /<gv>([\s\S]*?)<\/gv>/;
+var GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
 var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "pass", "files", "count"]);
 function parseRawJson(raw) {
   try {
@@ -28374,14 +28401,21 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
    * Removes the first matching entry from the queue, prunes stale entries
    * older than 60 seconds, and returns the workflow_id or null.
    *
+   * Complexity: O(n) on the pending-bind queue length per call (filter + findIndex).
+   * In practice the queue is small (typically 1-4 entries per WRFC cycle) so this
+   * is not a concern. If queue growth becomes an issue, consider maintaining a
+   * separate Set indexed by workflowId for O(1) sibling cleanup.
+   *
    * @param agentType - The agent type queried by SubagentStart.
    * @returns The workflow_id if a pending bind exists, or null.
    */
   resolvePendingBind(agentType) {
     const now = Date.now();
-    this.pendingBinds = this.pendingBinds.filter(
-      (entry) => now - entry.timestamp < _AgentWorkflowMap.PENDING_BIND_TTL_MS
-    );
+    if (this.pendingBinds.length > 0) {
+      this.pendingBinds = this.pendingBinds.filter(
+        (entry) => now - entry.timestamp < _AgentWorkflowMap.PENDING_BIND_TTL_MS
+      );
+    }
     const idx = this.pendingBinds.findIndex((entry) => entry.agentType === agentType);
     if (idx === -1) {
       log8.debug("AgentWorkflowMap.resolvePendingBind: no pending bind found", { agent_type: agentType });
@@ -28414,19 +28448,21 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
 var logger10 = createLogger("replay-engine");
 async function replayEvents(eventLog, deps, options = {}) {
   const startMs = Date.now();
-  const { skipActions = true, afterSequence, eventTypes } = options;
+  const { skipActions = true, afterSequence, eventTypes, maxReplayErrors = 10 } = options;
   let eventsReplayed = 0;
   let workflowsRestored = 0;
   let agentBindingsRestored = 0;
   let triggerCountsRestored = 0;
   let lastSequence = afterSequence ?? 0;
   let skippedEvents = 0;
+  const replayErrors = [];
   const restoredWorkflows = /* @__PURE__ */ new Map();
   const restoredAgentBindings = /* @__PURE__ */ new Set();
   const triggerStateMap = /* @__PURE__ */ new Map();
   logger10.info("Starting event replay", {
     afterSequence: afterSequence ?? 0,
-    skipActions
+    skipActions,
+    maxReplayErrors
   });
   let events;
   try {
@@ -28444,7 +28480,9 @@ async function replayEvents(eventLog, deps, options = {}) {
       triggerCountsRestored: 0,
       replayDurationMs: Date.now() - startMs,
       lastSequence: afterSequence ?? 0,
-      skippedEvents: 0
+      skippedEvents: 0,
+      aborted: false,
+      errors: []
     };
   }
   events.sort((a, b) => {
@@ -28452,6 +28490,8 @@ async function replayEvents(eventLog, deps, options = {}) {
     const seqB = b.metadata?.sequence ?? 0;
     return seqA - seqB;
   });
+  const warnThreshold = Math.floor(maxReplayErrors * 0.8);
+  let aborted2 = false;
   for (const event of events) {
     const seq = event.metadata?.sequence;
     if (typeof seq === "number" && seq > lastSequence) {
@@ -28467,13 +28507,29 @@ async function replayEvents(eventLog, deps, options = {}) {
         eventsReplayed++;
       }
     } catch (err) {
+      const errMsg = toErrorMessage(err);
       logger10.warn("Skipping event during replay due to error", {
         event_id: event.id,
         event_type: event.type,
         sequence: seq,
-        error: toErrorMessage(err)
+        error: errMsg
       });
       skippedEvents++;
+      replayErrors.push(errMsg);
+      if (replayErrors.length === warnThreshold) {
+        logger10.warn("Replay error count approaching threshold \u2014 replay may be aborted", {
+          errorCount: replayErrors.length,
+          maxReplayErrors
+        });
+      }
+      if (replayErrors.length >= maxReplayErrors) {
+        logger10.warn("Replay aborted: error threshold exceeded", {
+          errorCount: replayErrors.length,
+          maxReplayErrors
+        });
+        aborted2 = true;
+        break;
+      }
     }
   }
   if (deps.workflowEngine && restoredWorkflows.size > 0) {
@@ -28524,7 +28580,8 @@ async function replayEvents(eventLog, deps, options = {}) {
     triggerCountsRestored,
     skippedEvents,
     replayDurationMs,
-    lastSequence
+    lastSequence,
+    aborted: aborted2
   });
   return {
     eventsReplayed,
@@ -28533,7 +28590,9 @@ async function replayEvents(eventLog, deps, options = {}) {
     triggerCountsRestored,
     replayDurationMs,
     lastSequence,
-    skippedEvents
+    skippedEvents,
+    aborted: aborted2,
+    errors: aborted2 ? replayErrors : []
   };
 }
 __name(replayEvents, "replayEvents");
@@ -28696,7 +28755,14 @@ var Timer = class {
       return;
     }
     this.handle = setInterval(() => {
-      this.callback();
+      try {
+        this.callback();
+      } catch (err) {
+        logger11.warn("timer callback threw", {
+          label: this.label,
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
     }, this.intervalMs);
     this.handle.unref();
     logger11.debug("timer started", { label: this.label, intervalMs: this.intervalMs });
@@ -28749,6 +28815,12 @@ var SnapshotManager = class {
   /**
    * Captures a full snapshot of the current runtime state and persists it
    * to the StateStore.
+   *
+   * Agent state is intentionally excluded from snapshots. Agents are
+   * ephemeral — they are bound to a Claude Code session and do not
+   * survive process restarts. There is no meaningful state to restore;
+   * agents re-register themselves on the next startup. Workflow state
+   * (which does survive restarts) is captured in the `workflows` field.
    *
    * @param deps          - The subsystems to snapshot.
    * @param eventSequence - The current event log sequence number.
@@ -28944,17 +29016,17 @@ async function recoverState(eventLog, snapshotManager, deps) {
   if (latestSequence === 0) {
     const stats = eventLog.getStats();
     if (stats.file_size_bytes > 0) {
-      logger13.warn(
-        "EventLog reports sequence=0 but log file is non-empty \u2014 EventLog may not be initialized. Attempting full replay to avoid skipping recovery.",
-        { file_size_bytes: stats.file_size_bytes }
-      );
+      const warnMsg = "EventLog reports sequence=0 but log file is non-empty \u2014 EventLog may not be initialized. Attempting full replay to avoid skipping recovery.";
+      logger13.warn(warnMsg, { file_size_bytes: stats.file_size_bytes });
+      const replayResultWithWarning = await _doFullReplay(eventLog, deps, startMs);
+      return { ...replayResultWithWarning, warnings: [warnMsg] };
     } else {
-      const result2 = {
+      const result = {
         method: "cold_start",
         recoveryDurationMs: Date.now() - startMs
       };
-      logger13.info("Cold start \u2014 no events to replay", { recoveryDurationMs: result2.recoveryDurationMs });
-      return result2;
+      logger13.info("Cold start \u2014 no events to replay", { recoveryDurationMs: result.recoveryDurationMs });
+      return result;
     }
   }
   let snapshot = null;
@@ -28977,14 +29049,14 @@ async function recoverState(eventLog, snapshotManager, deps) {
       agentBindingsRestored: Object.keys(snapshot.agentWorkflowBindings).length,
       triggerStatesRestored: snapshot.triggerState.length
     };
-    let replayInfo2;
+    let replayInfo;
     if (snapshot.lastEventSequence < latestSequence) {
       try {
         const replayResult = await replayEvents(eventLog, deps, {
           skipActions: true,
           afterSequence: snapshot.lastEventSequence
         });
-        replayInfo2 = {
+        replayInfo = {
           eventsReplayed: replayResult.eventsReplayed,
           workflowsRestored: replayResult.workflowsRestored,
           agentBindingsRestored: replayResult.agentBindingsRestored,
@@ -28998,23 +29070,27 @@ async function recoverState(eventLog, snapshotManager, deps) {
     } else {
       logger13.debug("Snapshot is up-to-date \u2014 no delta events to replay");
     }
-    const result2 = {
+    const result = {
       method: "snapshot_plus_replay",
       snapshot: snapshotInfo,
-      replay: replayInfo2,
+      replay: replayInfo,
       recoveryDurationMs: Date.now() - startMs
     };
     logger13.info("Recovery complete (snapshot + replay)", {
-      method: result2.method,
+      method: result.method,
       snapshotWorkflows: snapshotInfo.workflowsRestored,
-      deltaEventsReplayed: replayInfo2?.eventsReplayed ?? 0,
-      recoveryDurationMs: result2.recoveryDurationMs
+      deltaEventsReplayed: replayInfo?.eventsReplayed ?? 0,
+      recoveryDurationMs: result.recoveryDurationMs
     });
-    return result2;
+    return result;
   }
   logger13.info("No snapshot available \u2014 performing full event replay", {
     totalEvents: latestSequence
   });
+  return _doFullReplay(eventLog, deps, startMs);
+}
+__name(recoverState, "recoverState");
+async function _doFullReplay(eventLog, deps, startMs) {
   let replayInfo;
   try {
     const replayResult = await replayEvents(eventLog, deps, { skipActions: true });
@@ -29042,7 +29118,7 @@ async function recoverState(eventLog, snapshotManager, deps) {
   });
   return result;
 }
-__name(recoverState, "recoverState");
+__name(_doFullReplay, "_doFullReplay");
 
 // src/core/types.ts
 function createEvent(overrides) {
@@ -29065,6 +29141,8 @@ __name(createTrigger, "createTrigger");
 
 // src/core/event-queue.ts
 var logger14 = createLogger("core:event-queue");
+var DEFAULT_MAX_DEPTH = 1e3;
+var DEFAULT_DEDUP_TTL_MS = 6e4;
 var EventQueue2 = class _EventQueue {
   static {
     __name(this, "EventQueue");
@@ -29084,8 +29162,8 @@ var EventQueue2 = class _EventQueue {
   /** How often to sweep the dedup cache (ms). */
   static DEDUP_CLEAN_INTERVAL_MS = 3e4;
   constructor(options = {}) {
-    this.maxDepth = options.max_depth ?? 1e3;
-    this.dedupTtlMs = options.dedup_ttl_ms ?? 6e4;
+    this.maxDepth = options.max_depth ?? DEFAULT_MAX_DEPTH;
+    this.dedupTtlMs = options.dedup_ttl_ms ?? DEFAULT_DEDUP_TTL_MS;
   }
   /**
    * Enqueue an event.
@@ -29132,6 +29210,11 @@ var EventQueue2 = class _EventQueue {
   /**
    * Drain all pending events in processing order.
    * Returns all non-cancelled events and clears the heap.
+   *
+   * Complexity: O(n log n) total — n heapPop calls each O(log n).
+   * This is optimal for a priority queue drain; no additional sort is applied.
+   * The heap maintains priority ordering intrinsically, so no O(n log n) sort
+   * is needed on top of the drain itself.
    */
   drain() {
     const result = [];
@@ -29276,10 +29359,12 @@ var EventQueue2 = class _EventQueue {
   // ─── Dedup Helpers ────────────────────────────────────────────────────────
   /**
    * Sweep expired dedup-cache entries every DEDUP_CLEAN_INTERVAL_MS.
+   * Skips the sweep entirely when the cache is empty (no entries to expire).
    */
   maybeCleanDedup() {
     const now = Date.now();
     if (now - this.lastDedupClean < _EventQueue.DEDUP_CLEAN_INTERVAL_MS) return;
+    if (this.dedupCache.size === 0) return;
     this.lastDedupClean = now;
     const cutoff = now - this.dedupTtlMs;
     for (const [id, record2] of this.dedupCache) {
@@ -29353,25 +29438,50 @@ function evaluateCondition(condition, state) {
     case "exists":
       return actual !== void 0 && actual !== null;
     case "eq":
+      if (actual === void 0) {
+        logger15.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        return false;
+      }
       return actual === expected;
     case "neq":
+      if (actual === void 0) {
+        logger15.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        return false;
+      }
       return actual !== expected;
     case "gt":
+      if (actual === void 0) {
+        logger15.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        return false;
+      }
       return typeof actual === "number" && typeof expected === "number" && actual > expected;
     case "lt":
+      if (actual === void 0) {
+        logger15.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        return false;
+      }
       return typeof actual === "number" && typeof expected === "number" && actual < expected;
     case "gte":
+      if (actual === void 0) {
+        logger15.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        return false;
+      }
       return typeof actual === "number" && typeof expected === "number" && actual >= expected;
     case "lte":
+      if (actual === void 0) {
+        logger15.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        return false;
+      }
       return typeof actual === "number" && typeof expected === "number" && actual <= expected;
     case "in":
+      if (actual === void 0) {
+        logger15.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        return false;
+      }
       if (!Array.isArray(expected)) return false;
       return expected.includes(actual);
-    default: {
-      const _exhaustive = op;
-      logger15.warn("Unknown condition op", { op: _exhaustive });
-      return false;
-    }
+    default:
+      assertNever2(op);
   }
 }
 __name(evaluateCondition, "evaluateCondition");
@@ -29617,13 +29727,19 @@ function deletePath(obj, path3) {
   }
 }
 __name(deletePath, "deletePath");
-function deepMerge2(base, override) {
+var DEEP_MERGE_MAX_DEPTH = 20;
+function deepMerge2(base, override, depth = 0) {
+  if (depth >= DEEP_MERGE_MAX_DEPTH) {
+    logger16.warn("deepMerge depth limit exceeded; using override value as-is", { depth });
+    return { ...base, ...override };
+  }
   const result = { ...base };
   for (const [key, value] of Object.entries(override)) {
     if (typeof value === "object" && value !== null && !Array.isArray(value) && typeof result[key] === "object" && result[key] !== null && !Array.isArray(result[key])) {
       result[key] = deepMerge2(
         result[key],
-        value
+        value,
+        depth + 1
       );
     } else {
       result[key] = value;
@@ -29896,8 +30012,14 @@ var LoopLifecycleManager = class {
   }
   /**
    * Force a state transition regardless of the transition table.
-   * Logs a warning so that unexpected forced transitions are visible.
-   * Only use for shutdown — do not add new callers without justification.
+   *
+   * **INTENTIONALLY UNSAFE** — bypasses all state validation.
+   * This method exists solely for error recovery during shutdown, where the loop
+   * must always reach 'stopped' regardless of its current state. It MUST NOT be
+   * called in normal flow; add new call sites only with explicit justification.
+   *
+   * A `logger.warn` is emitted whenever the transition bypasses the table so
+   * that forced transitions are always visible in production logs.
    */
   forceTransition(to) {
     const from = this._status;
@@ -29925,7 +30047,11 @@ var RollingWindow = class {
   buffer;
   /** Index of the oldest element (write head). */
   head = 0;
-  /** Number of valid samples currently stored (up to capacity). */
+  /**
+   * Number of valid samples currently in the buffer (0 <= count <= capacity).
+   * Tracks filled slots so average() and max() iterate only valid entries,
+   * avoiding divide-by-zero and inaccurate results when the window is partial.
+   */
   count = 0;
   push(value) {
     this.buffer[(this.head + this.count) % this.capacity] = value;
@@ -30169,7 +30295,10 @@ var DeadLetterQueue = class {
   }
   /**
    * Retrieve all dead-letter entries.
-   * Returns a shallow copy so callers cannot mutate internal state.
+   * Returns a shallow copy of the internal array so callers cannot mutate
+   * the queue's internal state (e.g. push/splice). Note that the individual
+   * {@link DeadLetterEntry} objects within the array are still shared
+   * references — callers should not mutate entry properties directly.
    */
   getAll() {
     return [...this.entries];
@@ -30407,6 +30536,7 @@ var MAX_EVENTS_PER_BATCH = 100;
 var MAX_CHAIN_DEPTH = 10;
 var RATE_LIMIT_WINDOW_MS = 1e3;
 var STALE_LOCK_TIMEOUT_MS = 3e4;
+var INTERNAL_EVENT_PRIORITY = 5;
 function chainEvent(child, parent) {
   return {
     ...child,
@@ -30451,7 +30581,7 @@ function buildChainDepthExceededEvent(event, maxDepth) {
       max_depth: maxDepth
     },
     timestamp: Date.now(),
-    priority: 5
+    priority: INTERNAL_EVENT_PRIORITY
   };
 }
 __name(buildChainDepthExceededEvent, "buildChainDepthExceededEvent");
@@ -30462,7 +30592,7 @@ function buildQueueDepthWarningEvent(depth, threshold) {
     type: "core:queue_depth_warning",
     payload: { depth, threshold },
     timestamp: Date.now(),
-    priority: 5
+    priority: INTERNAL_EVENT_PRIORITY
   };
 }
 __name(buildQueueDepthWarningEvent, "buildQueueDepthWarningEvent");
@@ -32033,6 +32163,19 @@ var HeartbeatManager = class {
     this.lastTickAt = 0;
     this.tickCount = 0;
   }
+  /**
+   * Stop the heartbeat manager and release any pending state.
+   *
+   * The debounce in this class is timestamp-based (no internal `setTimeout`
+   * is held), so there is no timer handle to clear. This method disables the
+   * heartbeat and resets state to ensure a clean shutdown when the parent
+   * plugin stops.
+   */
+  stop() {
+    this.config.enabled = false;
+    this.lastTickAt = 0;
+    this.tickCount = 0;
+  }
 };
 
 // src/plugins/time/scheduler.ts
@@ -32985,6 +33128,21 @@ var ExecutorModeManager = class {
 // src/lifecycle/executor-budget.ts
 var logger38 = createLogger("executor-budget");
 var BUDGET_STATE_KEY = "executor.budget.spending";
+function checkCapThreshold(params) {
+  let { warningFired } = params;
+  let exceeded = false;
+  const ratio = params.spent / params.cap;
+  if (ratio >= params.warningThreshold && !warningFired) {
+    warningFired = true;
+    params.onWarning();
+  }
+  if (params.spent >= params.cap && !params.paused) {
+    exceeded = true;
+    params.onExceeded();
+  }
+  return { warningFired, exceeded };
+}
+__name(checkCapThreshold, "checkCapThreshold");
 var ExecutorBudgetManager = class {
   static {
     __name(this, "ExecutorBudgetManager");
@@ -33021,119 +33179,133 @@ var ExecutorBudgetManager = class {
       daily_usd: this.spending.daily_usd
     });
     if (this.config.flat_cap_usd !== void 0 && this.config.flat_cap_usd > 0) {
-      const flatRatio = this.spending.total_usd / this.config.flat_cap_usd;
-      if (flatRatio >= this.config.warning_threshold && !this.warningFired.flat) {
-        this.warningFired.flat = true;
-        logger38.warn("Executor flat cap warning threshold reached", {
-          spent_usd: this.spending.total_usd,
-          cap_usd: this.config.flat_cap_usd,
-          threshold: this.config.warning_threshold
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:budget_warning",
-          source: { kind: "system" },
-          payload: {
+      const flatResult = checkCapThreshold({
+        spent: this.spending.total_usd,
+        cap: this.config.flat_cap_usd,
+        warningThreshold: this.config.warning_threshold,
+        warningFired: this.warningFired.flat,
+        capType: "flat",
+        paused: this.paused,
+        onWarning: /* @__PURE__ */ __name(() => {
+          logger38.warn("Executor flat cap warning threshold reached", {
+            spent_usd: this.spending.total_usd,
+            cap_usd: this.config.flat_cap_usd,
+            threshold: this.config.warning_threshold
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: "executor:budget_warning",
-            data: {
-              cap_type: "flat",
-              spent_usd: this.spending.total_usd,
-              cap_usd: this.config.flat_cap_usd,
-              threshold: this.config.warning_threshold
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_warning",
+              data: {
+                cap_type: "flat",
+                spent_usd: this.spending.total_usd,
+                cap_usd: this.config.flat_cap_usd,
+                threshold: this.config.warning_threshold
+              }
             }
-          }
-        });
-      }
-      if (this.spending.total_usd >= this.config.flat_cap_usd && !this.paused) {
-        this.paused = true;
-        logger38.warn("Executor flat cap exceeded \u2014 processing paused", {
-          spent_usd: this.spending.total_usd,
-          cap_usd: this.config.flat_cap_usd
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:budget_exceeded",
-          source: { kind: "system" },
-          payload: {
+          });
+        }, "onWarning"),
+        onExceeded: /* @__PURE__ */ __name(() => {
+          this.paused = true;
+          logger38.warn("Executor flat cap exceeded \u2014 processing paused", {
+            spent_usd: this.spending.total_usd,
+            cap_usd: this.config.flat_cap_usd
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: "executor:budget_exceeded",
-            data: {
-              cap_type: "flat",
-              spent_usd: this.spending.total_usd,
-              cap_usd: this.config.flat_cap_usd
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_exceeded",
+              data: {
+                cap_type: "flat",
+                spent_usd: this.spending.total_usd,
+                cap_usd: this.config.flat_cap_usd
+              }
             }
-          }
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:paused",
-          source: { kind: "system" },
-          payload: {
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: "executor:paused",
-            data: { reason: "flat_cap_exceeded" }
-          }
-        });
-        return;
-      }
+            source: { kind: "system" },
+            payload: {
+              type: "executor:paused",
+              data: { reason: "flat_cap_exceeded" }
+            }
+          });
+        }, "onExceeded")
+      });
+      this.warningFired.flat = flatResult.warningFired;
+      if (flatResult.exceeded) return;
     }
     if (this.config.daily_cap_usd !== void 0 && this.config.daily_cap_usd > 0) {
-      const dailyRatio = this.spending.daily_usd / this.config.daily_cap_usd;
-      if (dailyRatio >= this.config.warning_threshold && !this.warningFired.daily) {
-        this.warningFired.daily = true;
-        logger38.warn("Executor daily cap warning threshold reached", {
-          spent_usd: this.spending.daily_usd,
-          cap_usd: this.config.daily_cap_usd,
-          threshold: this.config.warning_threshold
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:budget_warning",
-          source: { kind: "system" },
-          payload: {
+      const dailyResult = checkCapThreshold({
+        spent: this.spending.daily_usd,
+        cap: this.config.daily_cap_usd,
+        warningThreshold: this.config.warning_threshold,
+        warningFired: this.warningFired.daily,
+        capType: "daily",
+        paused: this.paused,
+        onWarning: /* @__PURE__ */ __name(() => {
+          logger38.warn("Executor daily cap warning threshold reached", {
+            spent_usd: this.spending.daily_usd,
+            cap_usd: this.config.daily_cap_usd,
+            threshold: this.config.warning_threshold
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: "executor:budget_warning",
-            data: {
-              cap_type: "daily",
-              spent_usd: this.spending.daily_usd,
-              cap_usd: this.config.daily_cap_usd,
-              threshold: this.config.warning_threshold
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_warning",
+              data: {
+                cap_type: "daily",
+                spent_usd: this.spending.daily_usd,
+                cap_usd: this.config.daily_cap_usd,
+                threshold: this.config.warning_threshold
+              }
             }
-          }
-        });
-      }
-      if (this.spending.daily_usd >= this.config.daily_cap_usd && !this.paused) {
-        this.paused = true;
-        logger38.warn("Executor daily cap exceeded \u2014 processing paused", {
-          spent_usd: this.spending.daily_usd,
-          cap_usd: this.config.daily_cap_usd
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:budget_exceeded",
-          source: { kind: "system" },
-          payload: {
+          });
+        }, "onWarning"),
+        onExceeded: /* @__PURE__ */ __name(() => {
+          this.paused = true;
+          logger38.warn("Executor daily cap exceeded \u2014 processing paused", {
+            spent_usd: this.spending.daily_usd,
+            cap_usd: this.config.daily_cap_usd
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: "executor:budget_exceeded",
-            data: {
-              cap_type: "daily",
-              spent_usd: this.spending.daily_usd,
-              cap_usd: this.config.daily_cap_usd
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_exceeded",
+              data: {
+                cap_type: "daily",
+                spent_usd: this.spending.daily_usd,
+                cap_usd: this.config.daily_cap_usd
+              }
             }
-          }
-        });
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:paused",
-          source: { kind: "system" },
-          payload: {
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
             type: "executor:paused",
-            data: { reason: "daily_cap_exceeded" }
-          }
-        });
-      }
+            source: { kind: "system" },
+            payload: {
+              type: "executor:paused",
+              data: { reason: "daily_cap_exceeded" }
+            }
+          });
+        }, "onExceeded")
+      });
+      this.warningFired.daily = dailyResult.warningFired;
     }
   }
   /**
@@ -33467,17 +33639,14 @@ var DaemonTickHandler = class {
   buildTickContext() {
     const spending = this.budgetManager.getSpending();
     const canProcess = this.budgetManager.canProcess();
-    const lines = [
-      "--- Daemon Tick Context ---",
-      `Tick #${this.tickCount}`,
-      `Mode: ${this.executorMode.getMode()}`,
-      `Budget: total=$${spending.total_usd.toFixed(4)} daily=$${spending.daily_usd.toFixed(4)} (can_process=${canProcess})`,
-      "Pending events: 0",
-      // TODO: Wire to v3EventQueue.size() when ProcessManager exposes it
-      "Active workflows: 0"
-      // TODO: Wire to WorkflowRegistry.activeCount() when ProcessManager exposes it
-    ];
-    return lines.join("\n");
+    const pendingEvents = 0;
+    const activeWorkflows = 0;
+    return `--- Daemon Tick Context ---
+Tick #${this.tickCount}
+Mode: ${this.executorMode.getMode()}
+Budget: total=$${spending.total_usd.toFixed(4)} daily=$${spending.daily_usd.toFixed(4)} (can_process=${canProcess})
+Pending events: ${pendingEvents}
+Active workflows: ${activeWorkflows}`;
   }
   /** Get cumulative tick count for metrics. */
   getTickCount() {
@@ -33728,22 +33897,24 @@ var TickDriver = class _TickDriver {
     }
   }
   /**
-   * Send the tick command to the tmux session.
-   * Uses execFileSync with a short timeout — failures are logged as warnings.
+   * Send the tick command to the tmux session asynchronously.
+   * Fire-and-forget — failures are logged as warnings without blocking the eval loop.
    */
   sendTick() {
     const sessionName = this.config.daemon.tmux_session_name;
     const tickCommand = this.config.daemon.tick_command;
-    try {
-      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, tickCommand, "Enter"], {
-        timeout: TMUX_TIMEOUT_MS2,
-        stdio: "pipe"
-      });
-      logger41.debug("tick sent via tmux", { session: sessionName });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger41.warn("failed to send tick via tmux", { error: msg });
-    }
+    (0, import_node_child_process2.execFile)(
+      "tmux",
+      ["send-keys", "-t", sessionName, tickCommand, "Enter"],
+      { timeout: TMUX_TIMEOUT_MS2 },
+      (err) => {
+        if (err) {
+          logger41.warn("failed to send tick via tmux", { error: err.message });
+        } else {
+          logger41.debug("tick sent via tmux", { session: sessionName });
+        }
+      }
+    );
   }
   /**
    * Check whether tmux is available and has at least one active session.
@@ -35011,7 +35182,7 @@ function setupSignalHandlers(onShutdown) {
   });
   process.on("SIGUSR1", () => {
     process.stderr.write(
-      "[runtime-engine] Received SIGUSR1 \u2014 checkpoint requested (Phase 1 stub)\n"
+      "[runtime-engine] Received SIGUSR1 \u2014 checkpoint requested (not yet implemented; see @todo in signals.ts)\n"
     );
   });
   process.on("SIGUSR2", () => {
@@ -35553,10 +35724,11 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
         Date.now() - start
       );
     }
+    const safeEventType = eventType.slice(0, 100).replace(/[\x00-\x1F\x7F]/g, "");
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger46.warn("runtime_emit: unknown event type prefix", { event_type: eventType });
+      logger46.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
     }
     const emitted = ctx.getEventBus().emit({
       id: generateEventId(),

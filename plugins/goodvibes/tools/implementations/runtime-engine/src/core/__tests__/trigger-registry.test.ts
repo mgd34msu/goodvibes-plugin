@@ -507,6 +507,43 @@ describe('TriggerRegistry — condition evaluation', () => {
     const t = triggerWithConditions('t11', [{ field: 'a.b.missing', op: 'exists', value: null }]);
     expect(registry.matchOne(t, makeEvent(), { a: { b: {} } }).matched).toBe(false);
   });
+
+  it('eq: returns false (not met) when field is undefined in state', () => {
+    const t = triggerWithConditions('t12', [{ field: 'nonexistent.path', op: 'eq', value: 'anything' }]);
+    const result = registry.matchOne(t, makeEvent(), {});
+    expect(result.matched).toBe(false);
+    expect(result.skip_reason).toBe('conditions');
+  });
+
+  it('neq: returns false (not met) when field is undefined in state', () => {
+    const t = triggerWithConditions('t13', [{ field: 'missing', op: 'neq', value: 'x' }]);
+    expect(registry.matchOne(t, makeEvent(), {}).matched).toBe(false);
+  });
+
+  it('gt: returns false (not met) when field is undefined in state', () => {
+    const t = triggerWithConditions('t14', [{ field: 'missing', op: 'gt', value: 0 }]);
+    expect(registry.matchOne(t, makeEvent(), {}).matched).toBe(false);
+  });
+
+  it('lt: returns false (not met) when field is undefined in state', () => {
+    const t = triggerWithConditions('t15', [{ field: 'missing', op: 'lt', value: 100 }]);
+    expect(registry.matchOne(t, makeEvent(), {}).matched).toBe(false);
+  });
+
+  it('gte: returns false (not met) when field is undefined in state', () => {
+    const t = triggerWithConditions('t16', [{ field: 'missing', op: 'gte', value: 1 }]);
+    expect(registry.matchOne(t, makeEvent(), {}).matched).toBe(false);
+  });
+
+  it('lte: returns false (not met) when field is undefined in state', () => {
+    const t = triggerWithConditions('t17', [{ field: 'missing', op: 'lte', value: 100 }]);
+    expect(registry.matchOne(t, makeEvent(), {}).matched).toBe(false);
+  });
+
+  it('in: returns false (not met) when field is undefined in state', () => {
+    const t = triggerWithConditions('t18', [{ field: 'missing', op: 'in', value: ['a', 'b'] }]);
+    expect(registry.matchOne(t, makeEvent(), {}).matched).toBe(false);
+  });
 });
 
 // ─── Circuit Breakers ───────────────────────────────────────────────────────────

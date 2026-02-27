@@ -65,6 +65,14 @@ export interface RecoveryResult {
   replay?: ReplayRecoveryInfo;
   /** Total time taken for the recovery operation in ms. */
   recoveryDurationMs: number;
+  /**
+   * Non-fatal warnings generated during recovery.
+   *
+   * Examples: EventLog sequence=0 with non-empty log file (possible
+   * un-initialised EventLog), snapshot load failure with fallback to replay.
+   * Empty when no warnings were produced.
+   */
+  warnings?: string[];
 }
 
 /**
@@ -100,12 +108,13 @@ export async function recoverState(
     // Warn and attempt a full replay anyway so we don't silently skip recovery.
     const stats = eventLog.getStats();
     if (stats.file_size_bytes > 0) {
-      logger.warn(
+      const warnMsg =
         'EventLog reports sequence=0 but log file is non-empty — EventLog may not be initialized. ' +
-        'Attempting full replay to avoid skipping recovery.',
-        { file_size_bytes: stats.file_size_bytes }
-      );
-      // Fall through to full-replay path below
+        'Attempting full replay to avoid skipping recovery.';
+      logger.warn(warnMsg, { file_size_bytes: stats.file_size_bytes });
+      // Fall through to full-replay path below, carrying the warning
+      const replayResultWithWarning = await _doFullReplay(eventLog, deps, startMs);
+      return { ...replayResultWithWarning, warnings: [warnMsg] };
     } else {
       const result: RecoveryResult = {
         method: 'cold_start',
@@ -188,6 +197,23 @@ export async function recoverState(
     totalEvents: latestSequence,
   });
 
+  return _doFullReplay(eventLog, deps, startMs);
+}
+
+// ---------------------------------------------------------------------------
+// Private helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Executes a full event replay and returns a RecoveryResult with
+ * method='full_replay'. Shared by the normal full-replay path and the
+ * sequence=0/non-empty-file warning path.
+ */
+async function _doFullReplay(
+  eventLog: EventLog,
+  deps: SnapshotDeps,
+  startMs: number,
+): Promise<RecoveryResult> {
   let replayInfo: ReplayRecoveryInfo | undefined;
   try {
     const replayResult = await replayEvents(eventLog, deps, { skipActions: true });

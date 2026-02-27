@@ -51,6 +51,11 @@ const MAX_CHAIN_DEPTH = 10;
 const RATE_LIMIT_WINDOW_MS = 1_000;
 /** Default workflow lock timeout in ms. Locks held longer are considered stale. */
 const STALE_LOCK_TIMEOUT_MS = 30_000;
+/**
+ * Priority assigned to internally generated diagnostic events (chain-depth exceeded,
+ * queue-depth warning). Lower than normal user events so they don't starve real work.
+ */
+const INTERNAL_EVENT_PRIORITY = 5;
 
 export interface BudgetConfig {
   /** Total token budget (0 = unlimited). */
@@ -158,7 +163,7 @@ function buildChainDepthExceededEvent(event: RuntimeEvent, maxDepth: number): Ru
       max_depth: maxDepth,
     },
     timestamp: Date.now(),
-    priority: 5,
+    priority: INTERNAL_EVENT_PRIORITY,
   };
 }
 
@@ -172,7 +177,7 @@ function buildQueueDepthWarningEvent(depth: number, threshold: number): RuntimeE
     type: 'core:queue_depth_warning',
     payload: { depth, threshold },
     timestamp: Date.now(),
-    priority: 5,
+    priority: INTERNAL_EVENT_PRIORITY,
   };
 }
 

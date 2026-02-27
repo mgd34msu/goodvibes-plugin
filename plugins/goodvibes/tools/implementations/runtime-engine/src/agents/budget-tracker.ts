@@ -40,6 +40,12 @@ export class BudgetTracker {
   private readonly eventBus: EventBus;
   private config: AgentsConfig;
   private readonly records: Map<string, AgentBudgetRecord> = new Map();
+  /**
+   * Running total of spent tokens across all tracked agents.
+   * Updated incrementally on every `updateAgentBudget` and `removeAgent` call
+   * to avoid O(n) iteration in `getTotalSpent()` / `hasBudget()`.
+   */
+  private runningTotal = 0;
 
   constructor(eventBus: EventBus, config: AgentsConfig) {
     this.eventBus = eventBus;
@@ -95,7 +101,10 @@ export class BudgetTracker {
       return;
     }
 
+    const previousSpent = record.budget.spent;
     record.budget = budget;
+    // Maintain running total incrementally to keep getTotalSpent() O(1)
+    this.runningTotal += budget.spent - previousSpent;
 
     // Check and fire thresholds that have not yet been emitted
     for (const threshold of this.config.budget_thresholds) {
@@ -112,6 +121,11 @@ export class BudgetTracker {
    * @param agentId - Agent to remove.
    */
   removeAgent(agentId: string): void {
+    const record = this.records.get(agentId);
+    if (record) {
+      // Deduct this agent's contribution from the running total
+      this.runningTotal -= record.budget.spent;
+    }
     this.records.delete(agentId);
   }
 
@@ -238,13 +252,12 @@ export class BudgetTracker {
 
   // ─── Private helpers ────────────────────────────────────────────────────────
 
-  /** Sum all spent tokens across all tracked agents. */
+  /**
+   * Returns the cached running total of spent tokens across all tracked agents.
+   * O(1) — maintained incrementally via `updateAgentBudget` and `removeAgent`.
+   */
   private getTotalSpent(): number {
-    let total = 0;
-    for (const record of this.records.values()) {
-      total += record.budget.spent;
-    }
-    return total;
+    return this.runningTotal;
   }
 
   /**

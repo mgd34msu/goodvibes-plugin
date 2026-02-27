@@ -31,15 +31,23 @@ export interface MetricsOptions {
  *
  * Complexity:
  *  - push:    O(1)
- *  - average: O(n)
- *  - max:     O(n)
+ *  - average: O(count) where count is filled slots (not capacity)
+ *  - max:     O(count) where count is filled slots (not capacity)
+ *
+ * When the buffer is partially filled, only `count` valid slots are iterated.
+ * This avoids divide-by-zero and ensures accurate results before the window
+ * reaches full capacity.
  */
 export class RollingWindow {
   /** Fixed-size circular buffer. */
   private readonly buffer: number[];
   /** Index of the oldest element (write head). */
   private head = 0;
-  /** Number of valid samples currently stored (up to capacity). */
+  /**
+   * Number of valid samples currently in the buffer (0 <= count <= capacity).
+   * Tracks filled slots so average() and max() iterate only valid entries,
+   * avoiding divide-by-zero and inaccurate results when the window is partial.
+   */
   private count = 0;
 
   constructor(private readonly capacity: number) {

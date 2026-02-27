@@ -111,7 +111,10 @@ export class DeadLetterQueue implements DeadLetterQueueInterface {
 
   /**
    * Retrieve all dead-letter entries.
-   * Returns a shallow copy so callers cannot mutate internal state.
+   * Returns a shallow copy of the internal array so callers cannot mutate
+   * the queue's internal state (e.g. push/splice). Note that the individual
+   * {@link DeadLetterEntry} objects within the array are still shared
+   * references — callers should not mutate entry properties directly.
    */
   getAll(): DeadLetterEntry[] {
     return [...this.entries];

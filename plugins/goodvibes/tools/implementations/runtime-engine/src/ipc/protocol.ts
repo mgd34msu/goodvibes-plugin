@@ -26,6 +26,12 @@ const VALID_IPC_MESSAGE_TYPES = new Set<string>([
  * union. Checks the shared envelope fields (type, id) and the type-specific
  * required fields for each message kind.
  *
+ * Design: Uses manual property checks rather than a schema library (e.g. Zod)
+ * to keep this module zero-dependency and low-overhead. The IPC hot path
+ * processes every hook call, so the marginal cost of schema parsing is
+ * avoided. The Set-based type discriminant guard rejects unknown types before
+ * the switch, making the `default` branch a safety net for future additions.
+ *
  * @param obj - Value to validate.
  * @returns `true` if `obj` is a well-formed IPCMessage.
  */
@@ -59,6 +65,13 @@ export function validateIPCMessage(obj: unknown): obj is IPCMessage {
     case 'heartbeat':
       return true;
     default:
+      // Unrecognised type discriminant — log a warning so operators can catch
+      // mismatches between hook-script and engine versions at runtime.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[ipc-protocol] validateIPCMessage: unrecognised message type:',
+        typeof msg['type'] === 'string' ? msg['type'] : typeof msg['type'],
+      );
       return false;
   }
 }

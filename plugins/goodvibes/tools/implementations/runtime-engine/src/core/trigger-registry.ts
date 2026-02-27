@@ -15,6 +15,7 @@
  */
 
 import { createLogger } from '../shared/logger.js';
+import { assertNever } from '../shared/utils.js';
 import type { RuntimeEvent, Trigger, Condition, ConditionOp, StateStoreInterface, TriggerRegistryInterface } from './types.js';
 
 const logger = createLogger('core:trigger-registry');
@@ -122,25 +123,50 @@ function evaluateCondition(condition: Condition, state: Record<string, unknown>)
     case 'exists':
       return actual !== undefined && actual !== null;
     case 'eq':
+      if (actual === undefined) {
+        logger.debug('Condition LHS is undefined; treating as not met', { field: condition.field, op });
+        return false;
+      }
       return actual === expected;
     case 'neq':
+      if (actual === undefined) {
+        logger.debug('Condition LHS is undefined; treating as not met', { field: condition.field, op });
+        return false;
+      }
       return actual !== expected;
     case 'gt':
+      if (actual === undefined) {
+        logger.debug('Condition LHS is undefined; treating as not met', { field: condition.field, op });
+        return false;
+      }
       return typeof actual === 'number' && typeof expected === 'number' && actual > expected;
     case 'lt':
+      if (actual === undefined) {
+        logger.debug('Condition LHS is undefined; treating as not met', { field: condition.field, op });
+        return false;
+      }
       return typeof actual === 'number' && typeof expected === 'number' && actual < expected;
     case 'gte':
+      if (actual === undefined) {
+        logger.debug('Condition LHS is undefined; treating as not met', { field: condition.field, op });
+        return false;
+      }
       return typeof actual === 'number' && typeof expected === 'number' && actual >= expected;
     case 'lte':
+      if (actual === undefined) {
+        logger.debug('Condition LHS is undefined; treating as not met', { field: condition.field, op });
+        return false;
+      }
       return typeof actual === 'number' && typeof expected === 'number' && actual <= expected;
     case 'in':
+      if (actual === undefined) {
+        logger.debug('Condition LHS is undefined; treating as not met', { field: condition.field, op });
+        return false;
+      }
       if (!Array.isArray(expected)) return false;
       return expected.includes(actual);
-    default: {
-      const _exhaustive: never = op;
-      logger.warn('Unknown condition op', { op: _exhaustive });
-      return false;
-    }
+    default:
+      assertNever(op);
   }
 }
 

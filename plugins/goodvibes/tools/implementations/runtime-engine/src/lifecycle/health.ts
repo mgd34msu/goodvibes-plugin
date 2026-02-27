@@ -18,9 +18,14 @@ const MIN_HEALTHY_UPTIME_MS = 1000;
  * All checks are synchronous and non-blocking; each check records its own
  * duration_ms so callers can identify slow checks.
  */
+/** Memory cache TTL in milliseconds — avoids calling memoryUsage() on every check. */
+const MEMORY_CACHE_TTL_MS = 5_000;
+
 export class HealthChecker {
   private config: RuntimeConfig;
   private readonly startTime: number;
+  private cachedMemoryMb: number = 0;
+  private memoryCachedAt: number = 0;
 
   /**
    * @param config - Runtime configuration (used for feature flags and version).
@@ -56,7 +61,12 @@ export class HealthChecker {
   check(): HealthStatus {
     const uptime_ms = Date.now() - this.startTime;
     const pid = process.pid;
-    const memoryMb = process.memoryUsage().rss / (1024 * 1024);
+    const now = Date.now();
+    if (now - this.memoryCachedAt > MEMORY_CACHE_TTL_MS) {
+      this.cachedMemoryMb = process.memoryUsage().rss / (1024 * 1024);
+      this.memoryCachedAt = now;
+    }
+    const memoryMb = this.cachedMemoryMb;
 
     const checks: HealthCheck[] = [
       this.checkMemory(memoryMb),

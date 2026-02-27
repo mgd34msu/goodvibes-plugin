@@ -1,7 +1,12 @@
 /**
  * Core Type Definitions — Layer 1
  *
- * Base schemas for all events and triggers in the runtime engine.
+ * Shared type definitions for the runtime engine core layer.
+ * Defines the base event schema (RuntimeEvent, EventContext, EventSource),
+ * trigger and handler contracts (Trigger, HandlerResult, TriggerHandlerFn),
+ * component interfaces (EventQueueInterface, StateStoreInterface, etc.),
+ * conditions and actions, metrics, and factory helpers.
+ *
  * Layer 2 (extensions) and Layer 3 (plugins) extend these interfaces.
  * This file NEVER changes after v3 stabilises.
  */

@@ -211,6 +211,15 @@ describe('recoverState — sequence=0 but non-empty log (uninitialized EventLog 
     expect(result.method).toBe('full_replay');
     expect(mocks.replayEvents).toHaveBeenCalledOnce();
   });
+
+  it('records the warning in result.warnings when sequence=0 but file is non-empty', async () => {
+    const eventLog = makeEventLog(0, 1024);
+    const result = await recoverState(eventLog, makeSnapshotManager(), makeDeps());
+
+    expect(result.warnings).toBeDefined();
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings?.[0]).toContain('EventLog may not be initialized');
+  });
 });
 
 // ─── Full replay (no snapshot) ──────────────────────────────────────────

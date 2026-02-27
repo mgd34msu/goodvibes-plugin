@@ -24,10 +24,23 @@ import type { RuntimeEvent, EventQueueInterface } from './types.js';
 
 const logger = createLogger('core:event-queue');
 
+/**
+ * Default maximum queue depth before backpressure triggers.
+ * Chosen to bound memory usage while providing headroom for burst traffic.
+ */
+export const DEFAULT_MAX_DEPTH = 1000;
+
+/**
+ * Default deduplication TTL in milliseconds (60 seconds).
+ * Events with the same ID seen within this window are dropped.
+ * Set long enough to cover typical retry windows without growing unbounded.
+ */
+export const DEFAULT_DEDUP_TTL_MS = 60_000;
+
 export interface EventQueueOptions {
-  /** Maximum pending events before backpressure kicks in. Default: 1000. */
+  /** Maximum pending events before backpressure kicks in. Default: {@link DEFAULT_MAX_DEPTH} (1000). */
   max_depth?: number;
-  /** How long to remember seen event IDs for deduplication, in ms. Default: 60_000. */
+  /** How long to remember seen event IDs for deduplication, in ms. Default: {@link DEFAULT_DEDUP_TTL_MS} (60_000). */
   dedup_ttl_ms?: number;
 }
 
@@ -70,8 +83,8 @@ export class EventQueue implements EventQueueInterface {
   private static readonly DEDUP_CLEAN_INTERVAL_MS = 30_000;
 
   constructor(options: EventQueueOptions = {}) {
-    this.maxDepth = options.max_depth ?? 1000;
-    this.dedupTtlMs = options.dedup_ttl_ms ?? 60_000;
+    this.maxDepth = options.max_depth ?? DEFAULT_MAX_DEPTH;
+    this.dedupTtlMs = options.dedup_ttl_ms ?? DEFAULT_DEDUP_TTL_MS;
   }
 
   /**
@@ -127,6 +140,11 @@ export class EventQueue implements EventQueueInterface {
   /**
    * Drain all pending events in processing order.
    * Returns all non-cancelled events and clears the heap.
+   *
+   * Complexity: O(n log n) total — n heapPop calls each O(log n).
+   * This is optimal for a priority queue drain; no additional sort is applied.
+   * The heap maintains priority ordering intrinsically, so no O(n log n) sort
+   * is needed on top of the drain itself.
    */
   drain(): RuntimeEvent[] {
     const result: RuntimeEvent[] = [];
@@ -283,10 +301,13 @@ export class EventQueue implements EventQueueInterface {
 
   /**
    * Sweep expired dedup-cache entries every DEDUP_CLEAN_INTERVAL_MS.
+   * Skips the sweep entirely when the cache is empty (no entries to expire).
    */
   private maybeCleanDedup(): void {
     const now = Date.now();
     if (now - this.lastDedupClean < EventQueue.DEDUP_CLEAN_INTERVAL_MS) return;
+    // Skip sweep when cache is empty — no entries can possibly be expired
+    if (this.dedupCache.size === 0) return;
     this.lastDedupClean = now;
     const cutoff = now - this.dedupTtlMs;
     for (const [id, record] of this.dedupCache) {

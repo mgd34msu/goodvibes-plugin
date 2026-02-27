@@ -91,6 +91,12 @@ export class SnapshotManager {
    * Captures a full snapshot of the current runtime state and persists it
    * to the StateStore.
    *
+   * Agent state is intentionally excluded from snapshots. Agents are
+   * ephemeral — they are bound to a Claude Code session and do not
+   * survive process restarts. There is no meaningful state to restore;
+   * agents re-register themselves on the next startup. Workflow state
+   * (which does survive restarts) is captured in the `workflows` field.
+   *
    * @param deps          - The subsystems to snapshot.
    * @param eventSequence - The current event log sequence number.
    */

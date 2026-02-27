@@ -27,8 +27,27 @@ const logger = createLogger('ipc-router');
 
 /**
  * Dependencies injected into the IPCRouter at construction time.
- * All fields are optional to mirror the nullable state of ProcessManager's
- * subsystems — routing degrades gracefully when a subsystem is disabled.
+ *
+ * **Required deps** (always present, but some allow null to mean "disabled"):
+ * - `eventBus` — the core event bus; always non-null.
+ * - `triggerRegistry` — set once triggers are initialised (null when the
+ *   trigger subsystem is disabled in config).
+ * - `workflowEngine` — set once workflows are initialised (null when disabled).
+ * - `agentCoordinator` — set once agent coordination is initialised (null when disabled).
+ * - `directiveQueue` — set once directive processing is initialised (null when disabled).
+ * - `socketPath` — the socket file path for writing session pointers; null until
+ *   the server is bound.
+ * - `stateDir` — the `.goodvibes/state/` path; null when state dir is unavailable.
+ *
+ * **Optional deps** (may be absent in stripped-down environments):
+ * - `agentWorkflowMap` — bridges agent-type bindings; absent when WRFC is disabled.
+ * - `hookProcessor` — v3 plugin layer bridge; absent when plugins are disabled.
+ * - `executorMode` — executor mode manager; absent when executor mode is disabled.
+ * - `executorBudget` — executor budget manager; absent when budget tracking is off.
+ * - `daemonTickHandler` — daemon tick handler; absent in non-daemon mode.
+ *
+ * All nullable/absent deps are handled with graceful degradation — routing
+ * continues with reduced functionality rather than throwing.
  */
 export interface IPCRouterDeps {
   eventBus: EventBus;

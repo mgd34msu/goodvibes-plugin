@@ -52,6 +52,19 @@ export interface ReplayOptions {
    * When omitted, all event types relevant to state reconstruction are processed.
    */
   eventTypes?: string[];
+  /**
+   * Maximum number of per-event errors allowed before the replay is aborted.
+   *
+   * When the error count reaches this threshold the replay loop stops immediately
+   * and the returned {@link ReplayResult} will have `aborted: true` and an
+   * `errors` array containing the accumulated error messages.
+   *
+   * A warning is logged when the count reaches 80 % of the threshold so
+   * operators have early visibility of a degraded replay.
+   *
+   * Default: 10.
+   */
+  maxReplayErrors?: number;
 }
 
 /** Result of a replay operation. */
@@ -70,6 +83,16 @@ export interface ReplayResult {
   lastSequence: number;
   /** Number of events that were skipped due to parse errors or unknown types. */
   skippedEvents: number;
+  /**
+   * Whether the replay was aborted early because the per-event error count
+   * exceeded `maxReplayErrors`. When true, `errors` contains the messages.
+   */
+  aborted: boolean;
+  /**
+   * Error messages collected from skipped events. Populated only when the
+   * replay is aborted due to exceeding `maxReplayErrors`.
+   */
+  errors: string[];
 }
 
 /**
@@ -87,7 +110,7 @@ export async function replayEvents(
   options: ReplayOptions = {},
 ): Promise<ReplayResult> {
   const startMs = Date.now();
-  const { skipActions = true, afterSequence, eventTypes } = options;
+  const { skipActions = true, afterSequence, eventTypes, maxReplayErrors = 10 } = options;
 
   let eventsReplayed = 0;
   let workflowsRestored = 0;
@@ -95,6 +118,7 @@ export async function replayEvents(
   let triggerCountsRestored = 0;
   let lastSequence = afterSequence ?? 0;
   let skippedEvents = 0;
+  const replayErrors: string[] = [];
 
   // Track restored workflow instances by ID to avoid double-restore
   const restoredWorkflows = new Map<string, WorkflowInstance>();
@@ -106,6 +130,7 @@ export async function replayEvents(
   logger.info('Starting event replay', {
     afterSequence: afterSequence ?? 0,
     skipActions,
+    maxReplayErrors,
   });
 
   let events: RuntimeEvent[];
@@ -125,6 +150,8 @@ export async function replayEvents(
       replayDurationMs: Date.now() - startMs,
       lastSequence: afterSequence ?? 0,
       skippedEvents: 0,
+      aborted: false,
+      errors: [],
     };
   }
 
@@ -134,6 +161,9 @@ export async function replayEvents(
     const seqB = b.metadata?.sequence ?? 0;
     return seqA - seqB;
   });
+
+  const warnThreshold = Math.floor(maxReplayErrors * 0.8);
+  let aborted = false;
 
   for (const event of events) {
     // Track sequence
@@ -154,13 +184,33 @@ export async function replayEvents(
         eventsReplayed++;
       }
     } catch (err) {
+      const errMsg = toErrorMessage(err);
       logger.warn('Skipping event during replay due to error', {
         event_id: event.id,
         event_type: event.type,
         sequence: seq,
-        error: toErrorMessage(err),
+        error: errMsg,
       });
       skippedEvents++;
+      replayErrors.push(errMsg);
+
+      // Warn at 80% of the error threshold
+      if (replayErrors.length === warnThreshold) {
+        logger.warn('Replay error count approaching threshold — replay may be aborted', {
+          errorCount: replayErrors.length,
+          maxReplayErrors,
+        });
+      }
+
+      // Abort replay when the error threshold is exceeded
+      if (replayErrors.length >= maxReplayErrors) {
+        logger.warn('Replay aborted: error threshold exceeded', {
+          errorCount: replayErrors.length,
+          maxReplayErrors,
+        });
+        aborted = true;
+        break;
+      }
     }
   }
 
@@ -219,6 +269,7 @@ export async function replayEvents(
     skippedEvents,
     replayDurationMs,
     lastSequence,
+    aborted,
   });
 
   return {
@@ -229,6 +280,8 @@ export async function replayEvents(
     replayDurationMs,
     lastSequence,
     skippedEvents,
+    aborted,
+    errors: aborted ? replayErrors : [],
   };
 }
 

@@ -45,7 +45,14 @@ export class Timer {
       return;
     }
     this.handle = setInterval(() => {
-      this.callback();
+      try {
+        this.callback();
+      } catch (err) {
+        logger.warn('timer callback threw', {
+          label: this.label,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }, this.intervalMs);
     this.handle.unref();
     logger.debug('timer started', { label: this.label, intervalMs: this.intervalMs });

@@ -78,4 +78,18 @@ export class HeartbeatManager {
     this.lastTickAt = 0;
     this.tickCount = 0;
   }
+
+  /**
+   * Stop the heartbeat manager and release any pending state.
+   *
+   * The debounce in this class is timestamp-based (no internal `setTimeout`
+   * is held), so there is no timer handle to clear. This method disables the
+   * heartbeat and resets state to ensure a clean shutdown when the parent
+   * plugin stops.
+   */
+  stop(): void {
+    this.config.enabled = false;
+    this.lastTickAt = 0;
+    this.tickCount = 0;
+  }
 }

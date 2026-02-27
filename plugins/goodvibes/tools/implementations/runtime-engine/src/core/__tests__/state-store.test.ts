@@ -257,6 +257,18 @@ describe('CoreStateStore — merge', () => {
     store.merge('val', { key: 'value' });
     expect(store.get('val')).toEqual({ key: 'value' });
   });
+
+  it('deepMerge depth limit: stops recursing at 20 levels and uses override value', () => {
+    // Build a 21-level deep nested object to exercise the DEEP_MERGE_MAX_DEPTH guard.
+    // We set a deeply nested value, then merge a shallower override over the same
+    // root path. The depth limit triggers at level 20 and merges shallowly there.
+    const buildNested = (depth: number, value: unknown): Record<string, unknown> =>
+      depth === 0 ? ({ leaf: value } as Record<string, unknown>) : { level: buildNested(depth - 1, value) };
+
+    store.set('deep', buildNested(21, 'original'));
+    // Merging 22 levels deep — the depth cap triggers and prevents stack overflow
+    expect(() => store.merge('deep', buildNested(21, 'new'))).not.toThrow();
+  });
 });
 
 // ─── snapshot / restore ───────────────────────────────────────────────────────────

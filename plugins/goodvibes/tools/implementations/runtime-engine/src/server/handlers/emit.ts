@@ -51,11 +51,14 @@ export const handleRuntimeEmit = async (
       );
     }
 
-    // Validate event_type prefix — custom types are accepted but unknown prefixes are flagged
+    // Validate event_type prefix — custom types are accepted but unknown prefixes are flagged.
+    // Sanitize before logging to guard against log injection: truncate to 100 chars and
+    // strip ASCII control characters (0x00-0x1F, 0x7F) that could corrupt log output.
+    const safeEventType = eventType.slice(0, 100).replace(/[\x00-\x1F\x7F]/g, '');
     const knownPrefixes = ['session:', 'hook:', 'workflow:', 'wrfc:', 'fix:', 'agent:', 'trigger:', 'file:', 'build:', 'test:', 'devserver:', 'engine:'];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger.warn('runtime_emit: unknown event type prefix', { event_type: eventType });
+      logger.warn('runtime_emit: unknown event type prefix', { event_type: safeEventType });
     }
 
     const emitted = ctx.getEventBus().emit({

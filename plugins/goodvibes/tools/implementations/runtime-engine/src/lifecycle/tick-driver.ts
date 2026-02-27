@@ -15,7 +15,7 @@
  * tmux send-keys command to give Claude Code a conversation turn.
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
 import { Timer } from '../core/timer.js';
 import { ExecutorModeManager } from './executor-mode.js';
 import { TimePlugin } from '../plugins/time/index.js';
@@ -310,22 +310,24 @@ export class TickDriver {
   }
 
   /**
-   * Send the tick command to the tmux session.
-   * Uses execFileSync with a short timeout — failures are logged as warnings.
+   * Send the tick command to the tmux session asynchronously.
+   * Fire-and-forget — failures are logged as warnings without blocking the eval loop.
    */
   private sendTick(): void {
     const sessionName = this.config.daemon.tmux_session_name;
     const tickCommand = this.config.daemon.tick_command;
-    try {
-      execFileSync('tmux', ['send-keys', '-t', sessionName, tickCommand, 'Enter'], {
-        timeout: TMUX_TIMEOUT_MS,
-        stdio: 'pipe',
-      });
-      logger.debug('tick sent via tmux', { session: sessionName });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.warn('failed to send tick via tmux', { error: msg });
-    }
+    execFile(
+      'tmux',
+      ['send-keys', '-t', sessionName, tickCommand, 'Enter'],
+      { timeout: TMUX_TIMEOUT_MS },
+      (err) => {
+        if (err) {
+          logger.warn('failed to send tick via tmux', { error: err.message });
+        } else {
+          logger.debug('tick sent via tmux', { session: sessionName });
+        }
+      }
+    );
   }
 
   /**

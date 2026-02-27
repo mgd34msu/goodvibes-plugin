@@ -6,6 +6,7 @@ import {
   generateWorkflowId,
   parseRelativeTime,
   toErrorMessage,
+  assertNever,
 } from '../utils.js';
 
 describe('utils', () => {
@@ -220,6 +221,38 @@ describe('utils', () => {
 
     it('throws for negative values', () => {
       expect(() => parseRelativeTime('-5m')).toThrow(/Invalid relative time format/);
+    });
+  });
+
+  // ─── assertNever ─────────────────────────────────────────────────────
+
+  describe('assertNever', () => {
+    it('throws an Error with the value in the message', () => {
+      // Cast to never for testing purposes (simulates an unhandled switch branch)
+      expect(() => assertNever('unexpected-op' as never)).toThrow(
+        /Unhandled discriminated union member.*unexpected-op/,
+      );
+    });
+
+    it('throws an Error instance', () => {
+      expect(() => assertNever(42 as never)).toThrow(Error);
+    });
+
+    it('includes string representation of the value in the message', () => {
+      expect(() => assertNever(99 as never)).toThrow('99');
+    });
+
+    it('works correctly in an exhaustive switch default branch', () => {
+      type Op = 'a' | 'b';
+      const dispatch = (op: Op): string => {
+        switch (op) {
+          case 'a': return 'handled-a';
+          case 'b': return 'handled-b';
+          default: assertNever(op);
+        }
+      };
+      expect(dispatch('a')).toBe('handled-a');
+      expect(dispatch('b')).toBe('handled-b');
     });
   });
 });

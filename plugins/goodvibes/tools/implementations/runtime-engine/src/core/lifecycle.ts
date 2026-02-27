@@ -180,8 +180,14 @@ export class LoopLifecycleManager implements LoopLifecycle {
 
   /**
    * Force a state transition regardless of the transition table.
-   * Logs a warning so that unexpected forced transitions are visible.
-   * Only use for shutdown — do not add new callers without justification.
+   *
+   * **INTENTIONALLY UNSAFE** — bypasses all state validation.
+   * This method exists solely for error recovery during shutdown, where the loop
+   * must always reach 'stopped' regardless of its current state. It MUST NOT be
+   * called in normal flow; add new call sites only with explicit justification.
+   *
+   * A `logger.warn` is emitted whenever the transition bypasses the table so
+   * that forced transitions are always visible in production logs.
    */
   private forceTransition(to: LoopStatus): void {
     const from = this._status;

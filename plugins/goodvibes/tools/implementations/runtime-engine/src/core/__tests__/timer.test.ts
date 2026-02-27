@@ -177,6 +177,25 @@ describe('Timer', () => {
 
   // ── getIntervalMs ────────────────────────────────────────────────────────
 
+  describe('callback error resilience', () => {
+    it('continues running when the callback throws', () => {
+      let callCount = 0;
+      const callback = vi.fn().mockImplementation(() => {
+        callCount++;
+        throw new Error('callback error');
+      });
+      const timer = new Timer({ callback, intervalMs: 1000 });
+      timer.start();
+
+      // Advance through 3 ticks — each will throw, but the interval must survive
+      expect(() => vi.advanceTimersByTime(3000)).not.toThrow();
+
+      // Timer is still running despite the callback throwing every tick
+      expect(timer.isRunning()).toBe(true);
+      expect(callCount).toBe(3);
+    });
+  });
+
   describe('getIntervalMs()', () => {
     it('returns the initial interval', () => {
       const timer = new Timer({ callback: vi.fn(), intervalMs: 3000 });

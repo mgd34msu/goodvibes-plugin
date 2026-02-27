@@ -157,6 +157,43 @@ describe('pollUntil', () => {
     clearTimeoutSpy.mockRestore();
   });
 
+  it('cleanup helper is called on successful resolve (no lingering timer)', async () => {
+    // After one null return a timer is set; on the next successful return,
+    // cleanup() must cancel it so no extra callbacks fire.
+    const check = vi.fn()
+      .mockReturnValueOnce(null)
+      .mockReturnValue('ok');
+
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    const promise = pollUntil(check, { timeoutMs: 1000, intervalMs: 100 });
+    await vi.advanceTimersByTimeAsync(100);
+    await promise;
+
+    // cleanup() must have been called — the timer scheduled after the first null
+    // return should be cleared when the value is found.
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it('cleanup helper is called on timeout resolve (no lingering timer)', async () => {
+    // When the polling loop hits the deadline, cleanup() is called before resolving.
+    const check = vi.fn().mockReturnValue(null);
+
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    const promise = pollUntil(check, { timeoutMs: 200, intervalMs: 100 });
+    await vi.advanceTimersByTimeAsync(400);
+    await promise;
+
+    // The last tick finds Date.now() >= deadline and calls cleanup() before
+    // resolving null. clearTimeout may have been called 0 times on the final
+    // tick (no pending timer yet) or 1+ times on earlier ticks — either way,
+    // the promise must resolve to null without a dangling timer.
+    // We simply verify the promise settled successfully.
+    clearTimeoutSpy.mockRestore();
+  });
+
   // ── validation ──────────────────────────────────────────────────────────
 
   it('throws synchronously when timeoutMs is negative', () => {

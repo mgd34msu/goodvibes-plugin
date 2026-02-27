@@ -296,6 +296,35 @@ describe('DeadLetterQueue', () => {
 
   // ── persistence disabled ───────────────────────────────────────────────────
 
+  // ── getAll isolation ──────────────────────────────────────────────────────
+
+  describe('getAll', () => {
+    it('returns a copy — pushing to the result does not affect the DLQ', () => {
+      dlq.add(makeEntry());
+      const all = dlq.getAll();
+      all.push(makeEntry()); // mutate the returned copy
+      // Internal size must remain 1
+      expect(dlq.size()).toBe(1);
+      expect(dlq.getAll()).toHaveLength(1);
+    });
+
+    it('returns a copy — splicing the result does not affect the DLQ', () => {
+      dlq.add(makeEntry());
+      dlq.add(makeEntry());
+      const all = dlq.getAll();
+      all.splice(0, 1); // remove first element from copy
+      expect(dlq.size()).toBe(2);
+    });
+
+    it('returned entries are the same object references as internal entries', () => {
+      const entry = makeEntry();
+      dlq.add(entry);
+      const [returned] = dlq.getAll();
+      // Shallow copy means the objects inside are shared references
+      expect(returned).toBe(dlq.getById(entry.event.id));
+    });
+  });
+
   describe('persistence (disabled)', () => {
     it('constructs successfully with persist: false', () => {
       expect(() => new DeadLetterQueue({ persist: false })).not.toThrow();

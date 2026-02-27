@@ -94,9 +94,16 @@ export function setupSignalHandlers(
   });
 
   // SIGUSR1 — trigger a manual state checkpoint
+  //
+  // @todo Implement checkpoint persistence when ProcessManager exposes a
+  //   checkpoint() method (planned for Phase 3 persistence integration).
+  //   The handler should call: await processManager.checkpoint() to flush
+  //   the current StateStore snapshot to disk without a full shutdown.
+  //   Deferred because the StateStore persistence layer is not yet wired
+  //   into ProcessManager at the signal-handler registration site.
   process.on('SIGUSR1', () => {
     process.stderr.write(
-      '[runtime-engine] Received SIGUSR1 — checkpoint requested (Phase 1 stub)\n'
+      '[runtime-engine] Received SIGUSR1 — checkpoint requested (not yet implemented; see @todo in signals.ts)\n'
     );
   });
 

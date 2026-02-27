@@ -98,11 +98,27 @@ function deletePath(obj: Record<string, unknown>, path: string): void {
   }
 }
 
+/** Maximum recursion depth for deepMerge to prevent stack overflow from circular objects. */
+const DEEP_MERGE_MAX_DEPTH = 20;
+
 /**
  * Deep merge: override values take precedence over base values.
  * Arrays are replaced (not concatenated).
+ *
+ * Recursion is limited to {@link DEEP_MERGE_MAX_DEPTH} levels. If the depth
+ * limit is exceeded, the override value is used as-is (no further recursion)
+ * and a warning is logged. This prevents stack overflows from circular or
+ * deeply nested objects.
  */
-function deepMerge(base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> {
+function deepMerge(
+  base: Record<string, unknown>,
+  override: Record<string, unknown>,
+  depth = 0,
+): Record<string, unknown> {
+  if (depth >= DEEP_MERGE_MAX_DEPTH) {
+    logger.warn('deepMerge depth limit exceeded; using override value as-is', { depth });
+    return { ...base, ...override };
+  }
   const result = { ...base };
   for (const [key, value] of Object.entries(override)) {
     if (
@@ -116,6 +132,7 @@ function deepMerge(base: Record<string, unknown>, override: Record<string, unkno
       result[key] = deepMerge(
         result[key] as Record<string, unknown>,
         value as Record<string, unknown>,
+        depth + 1,
       );
     } else {
       result[key] = value;

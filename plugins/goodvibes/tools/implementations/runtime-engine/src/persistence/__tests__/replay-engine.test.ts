@@ -1022,3 +1022,101 @@ describe('replayEvents — logging', () => {
     );
   });
 });
+
+// ─── Error threshold (maxReplayErrors) ────────────────────────────────────────
+
+describe('replayEvents — maxReplayErrors threshold', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  function makeBadEvent(sequence: number) {
+    const badPayload = Object.defineProperty({}, 'data', {
+      get() { throw new Error(`forced error seq ${sequence}`); },
+    });
+    return {
+      id: `bad-${sequence}`,
+      type: 'workflow:created',
+      timestamp: new Date().toISOString(),
+      source: { kind: 'runtime' },
+      payload: badPayload,
+      metadata: { sequence },
+    };
+  }
+
+  it('result.aborted is false when errors stay under threshold', async () => {
+    // 2 bad events with maxReplayErrors=10 (default) — should NOT abort
+    const events = [makeBadEvent(1), makeBadEvent(2)];
+    const result = await replayEvents(makeEventLog(events as never) as never, makeDeps());
+    expect(result.aborted).toBe(false);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('aborts replay when error count reaches maxReplayErrors', async () => {
+    // 5 bad events with maxReplayErrors=3 — should abort after 3
+    const events = [1, 2, 3, 4, 5].map(makeBadEvent);
+    const result = await replayEvents(
+      makeEventLog(events as never) as never,
+      makeDeps(),
+      { maxReplayErrors: 3 },
+    );
+    expect(result.aborted).toBe(true);
+    expect(result.errors).toHaveLength(3);
+    expect(result.skippedEvents).toBe(3);
+  });
+
+  it('errors array is populated on abort', async () => {
+    const events = [1, 2, 3, 4].map(makeBadEvent);
+    const result = await replayEvents(
+      makeEventLog(events as never) as never,
+      makeDeps(),
+      { maxReplayErrors: 2 },
+    );
+    expect(result.aborted).toBe(true);
+    expect(result.errors.every((e) => typeof e === 'string')).toBe(true);
+  });
+
+  it('logs warning when error count reaches 80% of threshold', async () => {
+    // maxReplayErrors=5, warnThreshold=4; need exactly 4 errors to trigger warn
+    const events = [1, 2, 3, 4].map(makeBadEvent);
+    await replayEvents(
+      makeEventLog(events as never) as never,
+      makeDeps(),
+      { maxReplayErrors: 5 },
+    );
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(
+      'Replay error count approaching threshold — replay may be aborted',
+      expect.objectContaining({ errorCount: 4, maxReplayErrors: 5 }),
+    );
+  });
+
+  it('logs warning when replay is aborted due to threshold exceeded', async () => {
+    const events = [1, 2, 3].map(makeBadEvent);
+    await replayEvents(
+      makeEventLog(events as never) as never,
+      makeDeps(),
+      { maxReplayErrors: 2 },
+    );
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(
+      'Replay aborted: error threshold exceeded',
+      expect.objectContaining({ errorCount: 2, maxReplayErrors: 2 }),
+    );
+  });
+
+  it('errors array is empty when replay is not aborted', async () => {
+    // No errors at all
+    const result = await replayEvents(makeEventLog([]) as never, makeDeps());
+    expect(result.errors).toHaveLength(0);
+    expect(result.aborted).toBe(false);
+  });
+
+  it('early-exit result (event log read failure) has aborted=false and errors=[]', async () => {
+    const failingLog = {
+      query: vi.fn().mockRejectedValue(new Error('read failure')),
+      since: vi.fn().mockRejectedValue(new Error('read failure')),
+      append: vi.fn(),
+      getStats: vi.fn(),
+    };
+    const result = await replayEvents(failingLog as never, makeDeps());
+    expect(result.aborted).toBe(false);
+    expect(result.errors).toHaveLength(0);
+  });
+});

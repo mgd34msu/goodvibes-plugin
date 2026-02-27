@@ -16,9 +16,12 @@ import { generateEventId, timestamp } from '../shared/utils.js';
 
 const logger = createLogger('executor-mode');
 
+/** How the executor mode was determined. */
+export type DetectionMethod = 'explicit' | 'inferred' | 'default';
+
 export class ExecutorModeManager {
   private currentMode: ExecutorMode;
-  private detectionMethod: 'explicit' | 'inferred' | 'default';
+  private detectionMethod: DetectionMethod;
   private config: ExecutorConfig;
   private eventBus: EventBus | null;
 
@@ -77,7 +80,7 @@ export class ExecutorModeManager {
   }
 
   /** Get the detection method used. */
-  getDetectionMethod(): 'explicit' | 'inferred' | 'default' {
+  getDetectionMethod(): DetectionMethod {
     return this.detectionMethod;
   }
 

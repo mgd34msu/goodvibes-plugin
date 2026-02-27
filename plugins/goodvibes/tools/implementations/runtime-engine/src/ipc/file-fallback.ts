@@ -107,6 +107,14 @@ export class FileFallback {
   /**
    * Poll for a response file written by the runtime engine (hook side).
    *
+   * Uses {@link pollUntil} (deadline-based setTimeout recursion) rather than
+   * setInterval because the check is one-shot with a hard timeout: once the
+   * response arrives the timer must stop immediately without waiting for the
+   * next fixed tick. setInterval cannot be cancelled at the moment the
+   * condition is met mid-interval, introducing unnecessary latency. The Timer
+   * class from core/timer.ts wraps setInterval for periodic callbacks and is
+   * not suitable for one-shot deadline polls.
+   *
    * Polls every {@link POLL_INTERVAL_MS} ms until a response file appears
    * or the timeout expires. Returns null if no response arrives in time.
    *

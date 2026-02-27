@@ -55,7 +55,20 @@ export interface EventCondition {
   type: 'event';
   /** Event type or pattern (e.g. 'build:failed', 'agent:*'). */
   event_type: EventTypePattern;
-  /** Optional key-value pairs that must match the event payload data fields. */
+  /**
+   * Optional key-value filter applied to event payload `data` fields.
+   *
+   * Supported operations (top-level string matching only):
+   * - Equality: `{ "field_name": "expected_value" }` — field must equal the value.
+   * - Presence: `{ "field_name": true }` — field must exist and be truthy.
+   *
+   * Nested paths (e.g. `"a.b.c"`) are NOT supported. All keys are matched
+   * directly against `event.payload.data` properties. Values are compared with
+   * strict equality (`===`) after converting both sides to strings for
+   * non-boolean comparisons.
+   *
+   * Example: `{ "agent_type": "reviewer", "workflow_id": "wf-123" }`
+   */
   filter?: Record<string, unknown>;
 }
 

@@ -21,6 +21,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const mocks = vi.hoisted(() => {
   // child_process
   const execFileSync = vi.fn();
+  const execFile = vi.fn();
 
   // ExecutorModeManager
   const modeGetMode = vi.fn().mockReturnValue('daemon');
@@ -55,6 +56,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     execFileSync,
+    execFile,
     modeGetMode,
     ExecutorModeManager,
     schedulerGetItem,
@@ -70,7 +72,7 @@ const mocks = vi.hoisted(() => {
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-vi.mock('node:child_process', () => ({ execFileSync: mocks.execFileSync }));
+vi.mock('node:child_process', () => ({ execFileSync: mocks.execFileSync, execFile: mocks.execFile }));
 vi.mock('../executor-mode.js', () => ({ ExecutorModeManager: mocks.ExecutorModeManager }));
 vi.mock('../../plugins/time/index.js', () => ({ TimePlugin: mocks.TimePlugin }));
 vi.mock('../../shared/logger.js', () => ({ createLogger: mocks.createLogger }));
@@ -114,8 +116,10 @@ describe('TickDriver', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-    // Default: execFileSync succeeds (tmux available)
+    // Default: execFileSync succeeds for isTmuxAvailable (list-sessions)
     mocks.execFileSync.mockReturnValue(Buffer.from(''));
+    // Default: execFile succeeds for sendTick (send-keys) — calls callback with null error
+    mocks.execFile.mockImplementation((_cmd: string, _args: string[], _opts: unknown, cb: (err: Error | null) => void) => { cb(null); });
     // Default: daemon mode
     mocks.modeGetMode.mockReturnValue('daemon');
     // Default: auto_tick on, scheduler has no existing item
@@ -472,16 +476,13 @@ describe('TickDriver', () => {
       const driver = new TickDriver(deps);
       driver.start();
       vi.advanceTimersByTime(1_000);
-      // First call is isTmuxAvailable (list-sessions), second is send-keys
-      const sendKeysCalls = mocks.execFileSync.mock.calls.filter(
-        (c: unknown[]) => (c as string[][])[1]?.includes('send-keys'),
-      );
-      expect(sendKeysCalls.length).toBeGreaterThanOrEqual(1);
-      expect(sendKeysCalls[0]).toEqual([
+      // sendTick() uses async execFile — verify it was called with send-keys args
+      expect(mocks.execFile).toHaveBeenCalledWith(
         'tmux',
         ['send-keys', '-t', 'claude-daemon', 'tick', 'Enter'],
-        expect.objectContaining({ timeout: 5000, stdio: 'pipe' }),
-      ]);
+        expect.objectContaining({ timeout: 5000 }),
+        expect.any(Function),
+      );
     });
 
     it('does not send tmux tick in daemon mode when scheduled_emitted is 0', () => {
@@ -492,10 +493,7 @@ describe('TickDriver', () => {
       driver.start();
       vi.clearAllMocks(); // clear isTmuxAvailable call from start()
       vi.advanceTimersByTime(1_000);
-      const sendKeysCalls = mocks.execFileSync.mock.calls.filter(
-        (c: unknown[]) => (c as string[][])[1]?.includes('send-keys'),
-      );
-      expect(sendKeysCalls.length).toBe(0);
+      expect(mocks.execFile).not.toHaveBeenCalled();
     });
 
     it('does not send tmux tick in non-daemon mode even when scheduled_emitted > 0', () => {
@@ -506,19 +504,16 @@ describe('TickDriver', () => {
       driver.start();
       vi.clearAllMocks(); // clear any calls from start()
       vi.advanceTimersByTime(1_000);
-      const sendKeysCalls = mocks.execFileSync.mock.calls.filter(
-        (c: unknown[]) => (c as string[][])[1]?.includes('send-keys'),
-      );
-      expect(sendKeysCalls.length).toBe(0);
+      expect(mocks.execFile).not.toHaveBeenCalled();
     });
 
     it('handles tmux send-keys failure gracefully (does not throw)', () => {
       mocks.timeOnTick.mockReturnValue({ heartbeat_emitted: false, scheduled_emitted: 1 });
       mocks.modeGetMode.mockReturnValue('daemon');
-      // First call is list-sessions (isTmuxAvailable), subsequent are send-keys
-      mocks.execFileSync
-        .mockReturnValueOnce(Buffer.from('')) // list-sessions succeeds
-        .mockImplementation(() => { throw new Error('tmux send-keys failed'); });
+      // isTmuxAvailable uses execFileSync; sendTick uses execFile with callback
+      mocks.execFile.mockImplementation((_cmd: string, _args: string[], _opts: unknown, cb: (err: Error | null) => void) => {
+        cb(new Error('tmux send-keys failed'));
+      });
       const deps = makeDeps();
       const driver = new TickDriver(deps);
       driver.start();

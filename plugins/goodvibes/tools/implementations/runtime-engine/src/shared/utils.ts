@@ -48,6 +48,25 @@ export function toErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/**
+ * TypeScript exhaustiveness helper for switch statements.
+ *
+ * Use in the `default` case of an exhaustive switch to get a compile-time
+ * error if a new variant is added to the discriminated union without handling it.
+ *
+ * @param value - The value that should never reach this point.
+ * @throws {Error} Always throws at runtime (unreachable code path).
+ *
+ * @example
+ * switch (op) {
+ *   case 'eq': return a === b;
+ *   default: assertNever(op);
+ * }
+ */
+export function assertNever(value: never): never {
+  throw new Error(`Unhandled discriminated union member: ${String(value)}`);
+}
+
 /** Supported duration unit suffixes for {@link parseRelativeTime} */
 const DURATION_UNITS: Record<string, number> = {
   s: 1_000,
