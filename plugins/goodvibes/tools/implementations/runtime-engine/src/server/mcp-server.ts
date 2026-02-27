@@ -54,7 +54,8 @@ export class RuntimeEngineServer {
       { capabilities: { tools: {} } }
     );
 
-    this.processManager = new ProcessManager(loadConfig());
+    const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    this.processManager = new ProcessManager(loadConfig(projectRoot), projectRoot);
 
     this.setupHandlers();
     this.setupErrorHandling();
