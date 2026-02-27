@@ -230,7 +230,7 @@ try {
 
   // Fast path: no runtime engine running
   if (!socketPath || !existsSync(socketPath)) {
-    return respond(allowResponse());
+    respond(allowResponse());
   }
 
   // Query for pending directives
@@ -252,11 +252,11 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    return respond(allowResponse(gvTag));
+    respond(allowResponse(gvTag));
   } else {
-    return respond(allowResponse());
+    respond(allowResponse());
   }
 } catch (err) {
   // Never block a tool call — silently allow
-  return respond(allowResponse());
+  respond(allowResponse());
 }

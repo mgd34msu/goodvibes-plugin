@@ -252,7 +252,7 @@ try {
         }
       }
     }
-    return respond(continueResponse());
+    respond(continueResponse());
   }
 
   const projectDir = hookInput?.cwd || null;
@@ -261,7 +261,7 @@ try {
   const socketPath = discoverSocket(projectDir, sessionId);
 
   if (!socketPath || !existsSync(socketPath)) {
-    return respond(continueResponse());
+    respond(continueResponse());
   }
 
   // Retry with backoff when get_directives returns empty on a task-notification.
@@ -295,11 +295,11 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    return respond(continueResponse(gvTag));
+    respond(continueResponse(gvTag));
   } else {
-    return respond(continueResponse());
+    respond(continueResponse());
   }
 } catch (err) {
   console.error(`[UPS-Directives] error: ${err}`);
-  return respond(continueResponse());
+  respond(continueResponse());
 }
