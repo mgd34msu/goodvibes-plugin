@@ -106,6 +106,10 @@ export interface DaemonConfig {
   tmux_session_name: string;
   /** Command string that triggers a tick (typed into the session). */
   tick_command: string;
+  /** Interval in ms between automatic daemon ticks sent via tmux (0 = disabled). */
+  tick_interval_ms: number;
+  /** Whether the daemon tick scheduler is enabled. When false, no automatic ticks are sent. */
+  auto_tick: boolean;
 }
 
 /** Two-tier budget configuration for executor cost controls. */
@@ -223,6 +227,8 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
       clear_context_after_batch: true,
       tmux_session_name: 'claude-daemon',
       tick_command: 'tick',
+      tick_interval_ms: 30_000,
+      auto_tick: true,
     },
     budget: {
       flat_cap_usd: undefined,

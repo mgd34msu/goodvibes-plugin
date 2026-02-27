@@ -81,6 +81,7 @@ import {
 import { ExecutorModeManager } from './executor-mode.js';
 import { ExecutorBudgetManager } from './executor-budget.js';
 import { DaemonTickHandler } from './daemon-tick-handler.js';
+import { DaemonTickScheduler } from './daemon-tick-scheduler.js';
 
 const logger = createLogger('process-manager');
 
@@ -228,6 +229,7 @@ export class ProcessManager {
 
   /** Daemon tick handler — processes daemon tick cycles. */
   private daemonTickHandler: DaemonTickHandler | null = null;
+  private daemonTickScheduler: DaemonTickScheduler | null = null;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -487,9 +489,10 @@ export class ProcessManager {
         logger.debug('Active workflows cancelled');
       }
 
-      // 2. Stop checkpoint and v3 tick timers, and periodic snapshots
+      // 2. Stop checkpoint and v3 tick timers, daemon tick scheduler, and periodic snapshots
       this.stopCheckpointTimer();
       this.stopV3TickTimer();
+      this.daemonTickScheduler?.stop();
       this.cleanupV3Plugins();
       if (this.snapshotManager) {
         this.snapshotManager.stopPeriodicSnapshots();
@@ -668,6 +671,9 @@ export class ProcessManager {
     this.healthChecker.updateConfig(config);
     if (this.agentCoordinator) {
       this.agentCoordinator.updateConfig(config.agents);
+    }
+    if (this.daemonTickScheduler) {
+      this.daemonTickScheduler.reconfigure(config.executor);
     }
   }
 
@@ -1113,6 +1119,18 @@ export class ProcessManager {
       });
       logger.debug('v3 time plugin initialised');
 
+      // 8a. Daemon tick scheduler — wires the TimePlugin scheduling system to
+      // send automatic tmux ticks in daemon mode. Created here (after v3TimePlugin)
+      // so it can reference the live TimePlugin instance.
+      if (this.executorMode && this.daemonTickHandler) {
+        this.daemonTickScheduler = new DaemonTickScheduler({
+          config: this.config.executor,
+          executorMode: this.executorMode,
+          timePlugin: this.v3TimePlugin,
+        });
+        logger.debug('daemon tick scheduler created');
+      }
+
       // 9. External plugin (file-drop ingestion)
       this.v3ExternalPlugin = new ExternalPlugin(
         this.v3EventQueue,
@@ -1142,6 +1160,7 @@ export class ProcessManager {
       this.v3HookRegistry = null;
       this.v3TimePlugin = null;
       this.v3ExternalPlugin = null;
+      this.daemonTickScheduler = null;
     }
   }
 
@@ -1167,10 +1186,11 @@ export class ProcessManager {
       return;
     }
 
-    // In daemon mode, the external scheduler drives ticks via DaemonTickHandler.
-    // The internal timer is not used — skip it to avoid double-ticking.
+    // In daemon mode, the DaemonTickScheduler drives ticks internally via the
+    // TimePlugin scheduling system. Start it now and skip the internal timer.
     if (this.executorMode?.getMode() === 'daemon') {
-      logger.debug('v3 tick timer skipped — daemon mode uses external scheduler');
+      logger.debug('v3 tick timer skipped — daemon mode uses DaemonTickScheduler');
+      this.daemonTickScheduler?.start();
       return;
     }
 
@@ -1561,6 +1581,7 @@ export class ProcessManager {
     this.v3HookRegistry = null;
     this.v3TimePlugin = null;
     this.v3ExternalPlugin = null;
+    this.daemonTickScheduler = null;
   }
 
   /**
