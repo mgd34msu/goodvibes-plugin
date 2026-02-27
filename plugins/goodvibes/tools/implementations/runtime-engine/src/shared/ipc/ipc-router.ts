@@ -106,6 +106,12 @@ export class IPCRouter {
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
 
+  /**
+   * Optional resolver that maps an agent_id to its bound workflow_id.
+   * Injected after construction via {@link setAgentWorkflowResolver}.
+   */
+  private agentWorkflowResolver?: (agentId: string) => string | null;
+
   constructor(deps: IPCRouterDeps) {
     this.eventBus = deps.eventBus;
     this.triggerRegistry = deps.triggerRegistry;
@@ -119,6 +125,19 @@ export class IPCRouter {
     this.executorMode = deps.executorMode ?? null;
     this.executorBudget = deps.executorBudget ?? null;
     this.daemonTickHandler = deps.daemonTickHandler ?? null;
+  }
+
+  /**
+   * Inject a resolver that maps agent_id → workflow_id.
+   *
+   * When set, `get_directives` queries that carry an `agent_id` will resolve
+   * the corresponding workflow_id and use it to drain only that workflow's
+   * directives, preventing cross-workflow directive delivery in parallel runs.
+   *
+   * @param resolver - Function returning the bound workflow_id or null.
+   */
+  setAgentWorkflowResolver(resolver: (agentId: string) => string | null): void {
+    this.agentWorkflowResolver = resolver;
   }
 
   /**
@@ -149,9 +168,13 @@ export class IPCRouter {
    *
    * Shared by get_directives and get_system_message query handlers.
    * Returns both the joined message string and the raw directive array.
+   *
+   * @param workflowId - Optional workflow ID for per-workflow isolation.
+   *   When provided, only directives with a matching workflow_id are drained.
+   *   When omitted, all directives for the target are drained (backward compat).
    */
-  private drainDirectiveMessages(): DrainResult {
-    const directives = this.directiveQueue?.drain('subagent_stop') ?? [];
+  private drainDirectiveMessages(workflowId?: string): DrainResult {
+    const directives = this.directiveQueue?.drain('subagent_stop', workflowId) ?? [];
     const message = directives
       .filter((d) => d.type === 'inject_system_message')
       .sort((a, b) => b.priority - a.priority)
@@ -164,9 +187,21 @@ export class IPCRouter {
    * Build the IPC response for directive-query kinds (get_directives,
    * get_system_message). Both query kinds are semantically equivalent
    * and return the same payload; this helper centralises that logic.
+   *
+   * @param msgId - The IPC message ID to correlate the response.
+   * @param agentId - Optional agent ID from the query. When provided and a
+   *   resolver is registered, it is used to scope the drain to that agent's
+   *   workflow, preventing cross-workflow directive delivery.
    */
-  private buildDirectivesResponse(msgId: string): IPCResponse {
-    const { message, directives } = this.drainDirectiveMessages();
+  private buildDirectivesResponse(msgId: string, agentId?: string): IPCResponse {
+    let workflowId: string | undefined;
+    if (agentId && this.agentWorkflowResolver) {
+      const resolved = this.agentWorkflowResolver(agentId);
+      if (resolved !== null) {
+        workflowId = resolved;
+      }
+    }
+    const { message, directives } = this.drainDirectiveMessages(workflowId);
     return {
       id: msgId,
       status: 'ok',
@@ -284,7 +319,8 @@ export class IPCRouter {
     if (msg.type === 'query') {
       const q = msg.query;
       if (q.kind === 'get_directives' || q.kind === 'get_system_message') {
-        return this.buildDirectivesResponse(msg.id);
+        const agentId = q.kind === 'get_directives' ? q.agent_id : undefined;
+        return this.buildDirectivesResponse(msg.id, agentId);
       }
       if (q.kind === 'get_workflow_state') {
         const instance = this.workflowEngine?.get(q.workflow_id);

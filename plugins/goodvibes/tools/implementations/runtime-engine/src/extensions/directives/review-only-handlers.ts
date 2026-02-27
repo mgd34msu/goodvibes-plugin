@@ -147,6 +147,7 @@ export function registerReviewOnlyHandlers(
       content: message,
       priority: 20,
       source: 'review_only_agent_completed',
+      workflow_id: workflow.id,
     });
 
     // Clean up agent-workflow binding

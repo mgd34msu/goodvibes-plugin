@@ -55,27 +55,85 @@ export class DirectiveQueue {
   }
 
   /**
-   * Return and remove all directives for `target`.
+   * Return and remove directives for `target`.
    *
    * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID. When provided, only directives
+   *   matching this workflow_id are returned and removed; the rest remain in
+   *   the queue. When omitted, ALL directives for the target are returned and
+   *   the queue is cleared (backward-compatible behaviour).
    * @returns Array of directives in FIFO order (may be empty).
    */
-  drain(target: string): Directive[] {
+  drain(target: string, workflowId?: string): Directive[] {
     const queue = this.queues.get(target);
     if (!queue || queue.length === 0) return [];
-    const items = [...queue];
-    this.queues.delete(target);
-    return items;
+
+    if (workflowId === undefined) {
+      // Backward-compatible: return all and clear
+      const items = [...queue];
+      this.queues.delete(target);
+      return items;
+    }
+
+    // Per-workflow drain: partition into matching and remaining
+    const matching: Directive[] = [];
+    const remaining: Directive[] = [];
+    for (const d of queue) {
+      if (d.workflow_id === workflowId) {
+        matching.push(d);
+      } else {
+        remaining.push(d);
+      }
+    }
+    if (remaining.length === 0) {
+      this.queues.delete(target);
+    } else {
+      this.queues.set(target, remaining);
+    }
+    return matching;
   }
 
   /**
-   * Return all directives for `target` without removing them.
+   * Remove ALL directives across ALL targets that belong to a specific workflow.
+   *
+   * Used when a workflow reaches a terminal state to prevent stale directives
+   * from being delivered to a future run.
+   *
+   * @param workflowId - The workflow ID whose directives should be purged.
+   * @returns Total number of directives removed.
+   */
+  purge(workflowId: string): number {
+    let count = 0;
+    for (const [target, queue] of this.queues.entries()) {
+      const before = queue.length;
+      const remaining = queue.filter((d) => d.workflow_id !== workflowId);
+      count += before - remaining.length;
+      if (remaining.length === 0) {
+        this.queues.delete(target);
+      } else {
+        this.queues.set(target, remaining);
+      }
+    }
+    if (count > 0) {
+      logger.info('DirectiveQueue purged', { workflowId, count });
+    }
+    return count;
+  }
+
+  /**
+   * Return directives for `target` without removing them.
    *
    * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID. When provided, only directives
+   *   matching this workflow_id are included in the snapshot.
    * @returns Snapshot of the queue (may be empty).
    */
-  peek(target: string): Directive[] {
-    return [...(this.queues.get(target) ?? [])];
+  peek(target: string, workflowId?: string): Directive[] {
+    const queue = this.queues.get(target) ?? [];
+    if (workflowId === undefined) {
+      return [...queue];
+    }
+    return queue.filter((d) => d.workflow_id === workflowId);
   }
 
   /** Clear all directive queues. WRFC config is preserved. */

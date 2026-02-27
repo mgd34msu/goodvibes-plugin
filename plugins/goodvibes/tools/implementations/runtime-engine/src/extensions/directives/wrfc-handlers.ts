@@ -162,6 +162,7 @@ function handleReviewResult(params: {
       content: message,
       priority: 20,
       source,
+      workflow_id: workflow.id,
     });
     // Clean up agent-workflow binding
     if (agentId && agentWorkflowMap) {
@@ -198,6 +199,7 @@ function handleReviewResult(params: {
       content: fixMessage,
       priority: 20,
       source,
+      workflow_id: workflow.id,
     });
     if (agentWorkflowMap) {
       agentWorkflowMap.addPendingBind('engineer', workflow.id);
@@ -278,6 +280,7 @@ function handleFixResult(params: {
       content: escalationMessage,
       priority: 30,
       source,
+      workflow_id: workflow.id,
     });
     // Clean up agent-workflow binding on escalation
     if (agentId && agentWorkflowMap) {
@@ -310,6 +313,7 @@ function handleFixResult(params: {
       content: recheckMessage,
       priority: 20,
       source,
+      workflow_id: workflow.id,
     });
     if (agentWorkflowMap) {
       agentWorkflowMap.addPendingBind('reviewer', workflow.id);
@@ -549,6 +553,7 @@ export function registerWRFCHandlers(
         content: message,
         priority: 20,
         source: 'wrfc_chain_next',
+        workflow_id: workflow.id,
       });
       // Clean up the binding
       if (agentId && agentWorkflowMap) {
@@ -585,6 +590,7 @@ export function registerWRFCHandlers(
         content: message,
         priority: 20,
         source: 'wrfc_chain_next',
+        workflow_id: workflow.id,
       });
       if (agentWorkflowMap) {
         agentWorkflowMap.addPendingBind('reviewer', workflow.id);
@@ -788,6 +794,7 @@ export function registerWRFCHandlers(
           content: message,
           priority: 20,
           source: 'wrfc_review_response',
+          workflow_id: workflowId,
         });
         log.info('wrfc_review_response: workflow complete directive enqueued (no workflow object)', {
           workflow_id: workflowId,
@@ -813,6 +820,7 @@ export function registerWRFCHandlers(
           content: message,
           priority: 20,
           source: 'wrfc_review_response',
+          workflow_id: workflowId,
         });
         if (agentWorkflowMap) {
           agentWorkflowMap.addPendingBind('engineer', workflowId);
@@ -876,6 +884,7 @@ export function registerWRFCHandlers(
           content: message,
           priority: 30,
           source: 'wrfc_fix_response',
+          workflow_id: fallbackId,
         });
         log.warn('wrfc_fix_response: escalation directive enqueued (no workflow object)', {
           workflow_id: fallbackId,
@@ -894,6 +903,7 @@ export function registerWRFCHandlers(
           content: recheckMessage,
           priority: 20,
           source: 'wrfc_fix_response',
+          workflow_id: fallbackId,
         });
         if (agentWorkflowMap) {
           agentWorkflowMap.addPendingBind('reviewer', fallbackId);

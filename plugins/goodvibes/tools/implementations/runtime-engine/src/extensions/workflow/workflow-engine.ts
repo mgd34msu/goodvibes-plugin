@@ -52,6 +52,16 @@ export interface WorkflowEventBusDep {
 }
 
 /**
+ * Minimal interface for the DirectiveQueue dependency.
+ *
+ * The engine only calls `purge` when a workflow reaches a terminal state.
+ * Using a named interface improves discoverability and type-checks callers.
+ */
+export interface PurgableQueue {
+  purge(workflowId: string): number;
+}
+
+/**
  * State machine execution engine for workflow definitions.
  *
  * @example
@@ -70,6 +80,7 @@ export class WorkflowEngine {
   private readonly maxActive: number;
   private readonly maxTransitions: number;
   private eventBus?: WorkflowEventBusDep;
+  private directiveQueue?: PurgableQueue;
 
   /**
    * @param config - Workflow-specific configuration from the runtime config.
@@ -91,6 +102,18 @@ export class WorkflowEngine {
    */
   setEventBus(bus: WorkflowEventBusDep): void {
     this.eventBus = bus;
+  }
+
+  /**
+   * Injects a DirectiveQueue for purging stale directives when a workflow
+   * reaches a terminal state (completed, cancelled, failed).
+   *
+   * This dependency is optional. When not set, purge calls are no-ops.
+   *
+   * @param queue - Object with a `purge(workflowId)` method.
+   */
+  setDirectiveQueue(queue: PurgableQueue): void {
+    this.directiveQueue = queue;
   }
 
   /**
@@ -242,6 +265,7 @@ export class WorkflowEngine {
       instance.error = `Exceeded max transitions (${maxTransitions})`;
       instance.updated_at = timestamp();
       this.emitWorkflowEvent('workflow:failed', instance, { error: instance.error });
+      this.directiveQueue?.purge(workflowId);
       return null;
     }
 
@@ -340,6 +364,7 @@ export class WorkflowEngine {
       instance.completed_at = transitionTimestamp;
       log.info('Workflow completed', { id: workflowId, terminal_state: toState });
       this.emitWorkflowEvent('workflow:completed', instance, {});
+      this.directiveQueue?.purge(workflowId);
     }
 
     return transition;
@@ -442,6 +467,7 @@ export class WorkflowEngine {
     instance.updated_at = timestamp();
     log.info('Workflow cancelled', { id: workflowId, reason });
     this.emitWorkflowEvent('workflow:cancelled', instance, { reason });
+    this.directiveQueue?.purge(workflowId);
   }
 
   /**

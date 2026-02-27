@@ -281,6 +281,9 @@ export class ProcessManager {
 
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
     this.directiveQueue = new DirectiveQueue();
+    if (this.workflowEngine) {
+      this.workflowEngine.setDirectiveQueue(this.directiveQueue);
+    }
     this.triggerRegistry.setDependencies(this.eventBus, this.directiveQueue, this.workflowEngine);
     for (const trigger of getBuiltinTriggers()) {
       this.triggerRegistry.register(trigger);
@@ -803,6 +806,15 @@ export class ProcessManager {
         daemonTickHandler: this.daemonTickHandler ?? null,
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
+
+      // Inject agent→workflow resolver so get_directives queries can scope
+      // drains by workflow_id, preventing cross-workflow directive delivery.
+      if (this.agentWorkflowMap) {
+        const awm = this.agentWorkflowMap;
+        this.ipcRouter.setAgentWorkflowResolver((agentId: string) => {
+          return awm.lookup(agentId) ?? null;
+        });
+      }
 
       mkdirSync(socketDir, { recursive: true, mode: 0o700 });
       await this.ipcServer.listen();

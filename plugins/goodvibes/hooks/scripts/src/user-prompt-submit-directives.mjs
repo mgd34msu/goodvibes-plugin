@@ -148,11 +148,13 @@ function sendMessage(socketPath, message, timeoutMs) {
   });
 }
 
-async function queryDirectives(socketPath) {
+async function queryDirectives(socketPath, agentId) {
+  const query = { kind: 'get_directives' };
+  if (agentId) query.agent_id = agentId;
   const message = {
     type: 'query',
     id: generateId(),
-    query: { kind: 'get_directives' },
+    query,
   };
   const response = await sendMessage(socketPath, message, QUERY_TIMEOUT_MS);
   if (!response || response.status === 'error') return null;
@@ -274,16 +276,20 @@ try {
     console.error('[UPS-Auditor] audit error:', e?.message || e);
   }
 
+  // Extract agent ID from task-notification for per-workflow directive drain.
+  const taskIdMatch = prompt?.match(/<task-id>([^<]+)<\/task-id>/);
+  const agentId = taskIdMatch ? taskIdMatch[1] : null;
+
   // Retry with backoff when get_directives returns empty on a task-notification.
   // This handles the race condition where SubagentStop hasn't finished processing
   // the agent:completed event and enqueuing the WRFC directive yet.
   const RETRY_DELAYS = [100, 250, 500];
-  let result = await queryDirectives(socketPath);
+  let result = await queryDirectives(socketPath, agentId);
 
   if (!result || !result.directives || result.directives.length === 0) {
     for (const delay of RETRY_DELAYS) {
       await sleep(delay);
-      result = await queryDirectives(socketPath);
+      result = await queryDirectives(socketPath, agentId);
       if (result?.directives?.length > 0) break;
     }
   }
@@ -305,7 +311,6 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    const taskIdMatch = prompt?.match(/<task-id>([^<]+)<\/task-id>/);
     if (taskIdMatch) {
       try {
         const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');

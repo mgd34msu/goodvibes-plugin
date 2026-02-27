@@ -272,6 +272,7 @@ export class ActionExecutor {
       content: message,
       priority: 10,
       source: 'action-executor:spawn_agent',
+      workflow_id: undefined,
     });
 
     log.info('spawn_agent action: directive enqueued', {

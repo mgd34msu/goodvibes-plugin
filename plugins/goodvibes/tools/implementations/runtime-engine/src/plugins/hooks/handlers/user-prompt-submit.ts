@@ -73,6 +73,11 @@ export function createUserPromptSubmitHandler(
       return null;
     }
 
+    // Global drain (no workflowId) is intentional here: when a task-notification
+    // arrives the orchestrator is resuming, so we deliver ALL pending directives
+    // regardless of workflow. The IPC path (user-prompt-submit-directives.mjs)
+    // uses the same global drain; both paths should not fire simultaneously
+    // since the IPC script runs only when the runtime server is not in-process.
     const directives = deps.directiveQueue.drain('subagent_stop');
     if (directives.length === 0) {
       return null;

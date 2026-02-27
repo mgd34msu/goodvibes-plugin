@@ -195,6 +195,7 @@ export class WatchdogCoordinator {
         content: message,
         priority: 25,
         source: 'watchdog',
+        workflow_id: workflow.id,
       });
 
       if (agentWorkflowMap) {
@@ -223,6 +224,7 @@ export class WatchdogCoordinator {
           content: escalationMessage,
           priority: 30,
           source: 'watchdog',
+          workflow_id: workflow.id,
         });
         logger.warn('Watchdog: escalation directive re-enqueued (fix budget exhausted)', {
           workflow_id: workflow.id,
@@ -258,6 +260,7 @@ export class WatchdogCoordinator {
           content: fixMessage,
           priority: 25,
           source: 'watchdog',
+          workflow_id: workflow.id,
         });
 
         if (agentWorkflowMap) {
@@ -287,26 +290,12 @@ export class WatchdogCoordinator {
     const { directiveQueue, stateDir } = this.deps;
     if (!directiveQueue) return;
 
-    // SAFETY: drain + re-enqueue is not atomic, but both operations are synchronous
-    // (no await/yield between them), so no interleaving can occur within a single
-    // Node.js event loop tick.
-
-    // Drain the live queue to get current state (not the stale peek snapshot)
-    const allDrained = directiveQueue.drain('subagent_stop');
-
-    // Partition into matching (for this workflow) and non-matching
-    const matching = allDrained.filter(
-      (d) => isDirectiveForWorkflow(d, workflowId),
-    );
-    const nonMatching = allDrained.filter(
-      (d) => !isDirectiveForWorkflow(d, workflowId),
-    );
+    // Use per-workflow drain to atomically extract only this workflow's directives.
+    // Other workflows' directives remain in the queue untouched.
+    const matching = directiveQueue.drain('subagent_stop', workflowId);
 
     if (matching.length === 0) {
-      // Directive was consumed between peek and drain — re-enqueue everything and bail
-      for (const d of nonMatching) {
-        directiveQueue.enqueue('subagent_stop', d);
-      }
+      // Directive was consumed between peek and drain — nothing to write
       return;
     }
 
@@ -353,11 +342,7 @@ export class WatchdogCoordinator {
         error: err instanceof Error ? err.message : String(err),
       });
     } finally {
-      // Always re-enqueue non-matching directives, even if file write failed.
-      for (const d of nonMatching) {
-        directiveQueue.enqueue('subagent_stop', d);
-      }
-      // If file write failed, re-enqueue matching directives too — they weren't delivered.
+      // If file write failed, re-enqueue matching directives — they weren't delivered.
       if (!writeSucceeded) {
         for (const d of matching) {
           directiveQueue.enqueue('subagent_stop', d);

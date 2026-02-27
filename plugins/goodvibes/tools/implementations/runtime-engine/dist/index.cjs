@@ -22160,6 +22160,11 @@ var IPCRouter = class {
   daemonTickHandler;
   /** Session IDs that have been registered via session:started events. */
   registeredSessions = /* @__PURE__ */ new Set();
+  /**
+   * Optional resolver that maps an agent_id to its bound workflow_id.
+   * Injected after construction via {@link setAgentWorkflowResolver}.
+   */
+  agentWorkflowResolver;
   constructor(deps) {
     this.eventBus = deps.eventBus;
     this.triggerRegistry = deps.triggerRegistry;
@@ -22173,6 +22178,18 @@ var IPCRouter = class {
     this.executorMode = deps.executorMode ?? null;
     this.executorBudget = deps.executorBudget ?? null;
     this.daemonTickHandler = deps.daemonTickHandler ?? null;
+  }
+  /**
+   * Inject a resolver that maps agent_id → workflow_id.
+   *
+   * When set, `get_directives` queries that carry an `agent_id` will resolve
+   * the corresponding workflow_id and use it to drain only that workflow's
+   * directives, preventing cross-workflow directive delivery in parallel runs.
+   *
+   * @param resolver - Function returning the bound workflow_id or null.
+   */
+  setAgentWorkflowResolver(resolver) {
+    this.agentWorkflowResolver = resolver;
   }
   /**
    * Remove all session-keyed pointer files written by this router.
@@ -22201,9 +22218,13 @@ var IPCRouter = class {
    *
    * Shared by get_directives and get_system_message query handlers.
    * Returns both the joined message string and the raw directive array.
+   *
+   * @param workflowId - Optional workflow ID for per-workflow isolation.
+   *   When provided, only directives with a matching workflow_id are drained.
+   *   When omitted, all directives for the target are drained (backward compat).
    */
-  drainDirectiveMessages() {
-    const directives = this.directiveQueue?.drain("subagent_stop") ?? [];
+  drainDirectiveMessages(workflowId) {
+    const directives = this.directiveQueue?.drain("subagent_stop", workflowId) ?? [];
     const message = directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
     return { message, directives };
   }
@@ -22211,9 +22232,21 @@ var IPCRouter = class {
    * Build the IPC response for directive-query kinds (get_directives,
    * get_system_message). Both query kinds are semantically equivalent
    * and return the same payload; this helper centralises that logic.
+   *
+   * @param msgId - The IPC message ID to correlate the response.
+   * @param agentId - Optional agent ID from the query. When provided and a
+   *   resolver is registered, it is used to scope the drain to that agent's
+   *   workflow, preventing cross-workflow directive delivery.
    */
-  buildDirectivesResponse(msgId) {
-    const { message, directives } = this.drainDirectiveMessages();
+  buildDirectivesResponse(msgId, agentId) {
+    let workflowId;
+    if (agentId && this.agentWorkflowResolver) {
+      const resolved = this.agentWorkflowResolver(agentId);
+      if (resolved !== null) {
+        workflowId = resolved;
+      }
+    }
+    const { message, directives } = this.drainDirectiveMessages(workflowId);
     return {
       id: msgId,
       status: "ok",
@@ -22316,7 +22349,8 @@ var IPCRouter = class {
     if (msg.type === "query") {
       const q = msg.query;
       if (q.kind === "get_directives" || q.kind === "get_system_message") {
-        return this.buildDirectivesResponse(msg.id);
+        const agentId = q.kind === "get_directives" ? q.agent_id : void 0;
+        return this.buildDirectivesResponse(msg.id, agentId);
       }
       if (q.kind === "get_workflow_state") {
         const instance = this.workflowEngine?.get(q.workflow_id);
@@ -24880,6 +24914,7 @@ var WorkflowEngine = class {
   maxActive;
   maxTransitions;
   eventBus;
+  directiveQueue;
   /**
    * @param config - Workflow-specific configuration from the runtime config.
    */
@@ -24898,6 +24933,17 @@ var WorkflowEngine = class {
    */
   setEventBus(bus) {
     this.eventBus = bus;
+  }
+  /**
+   * Injects a DirectiveQueue for purging stale directives when a workflow
+   * reaches a terminal state (completed, cancelled, failed).
+   *
+   * This dependency is optional. When not set, purge calls are no-ops.
+   *
+   * @param queue - Object with a `purge(workflowId)` method.
+   */
+  setDirectiveQueue(queue) {
+    this.directiveQueue = queue;
   }
   /**
    * Registers a workflow definition so instances can be created from it.
@@ -25029,6 +25075,7 @@ var WorkflowEngine = class {
       instance.error = `Exceeded max transitions (${maxTransitions})`;
       instance.updated_at = timestamp();
       this.emitWorkflowEvent("workflow:failed", instance, { error: instance.error });
+      this.directiveQueue?.purge(workflowId);
       return null;
     }
     const currentStateDef = def.states[instance.current_state];
@@ -25098,6 +25145,7 @@ var WorkflowEngine = class {
       instance.completed_at = transitionTimestamp;
       log.info("Workflow completed", { id: workflowId, terminal_state: toState });
       this.emitWorkflowEvent("workflow:completed", instance, {});
+      this.directiveQueue?.purge(workflowId);
     }
     return transition;
   }
@@ -25192,6 +25240,7 @@ var WorkflowEngine = class {
     instance.updated_at = timestamp();
     log.info("Workflow cancelled", { id: workflowId, reason });
     this.emitWorkflowEvent("workflow:cancelled", instance, { reason });
+    this.directiveQueue?.purge(workflowId);
   }
   /**
    * Removes completed workflow instances older than `maxAge` ms.
@@ -26143,7 +26192,8 @@ var WatchdogCoordinator = class {
         type: "inject_system_message",
         content: message,
         priority: 25,
-        source: "watchdog"
+        source: "watchdog",
+        workflow_id: workflow.id
       });
       if (agentWorkflowMap) {
         agentWorkflowMap.addPendingBind("reviewer", workflow.id);
@@ -26162,7 +26212,8 @@ var WatchdogCoordinator = class {
           type: "inject_system_message",
           content: escalationMessage,
           priority: 30,
-          source: "watchdog"
+          source: "watchdog",
+          workflow_id: workflow.id
         });
         logger14.warn("Watchdog: escalation directive re-enqueued (fix budget exhausted)", {
           workflow_id: workflow.id,
@@ -26185,7 +26236,8 @@ var WatchdogCoordinator = class {
           type: "inject_system_message",
           content: fixMessage,
           priority: 25,
-          source: "watchdog"
+          source: "watchdog",
+          workflow_id: workflow.id
         });
         if (agentWorkflowMap) {
           agentWorkflowMap.addPendingBind("engineer", workflow.id);
@@ -26211,17 +26263,8 @@ var WatchdogCoordinator = class {
   writeUrgentDirectives(workflowId) {
     const { directiveQueue, stateDir } = this.deps;
     if (!directiveQueue) return;
-    const allDrained = directiveQueue.drain("subagent_stop");
-    const matching = allDrained.filter(
-      (d) => isDirectiveForWorkflow(d, workflowId)
-    );
-    const nonMatching = allDrained.filter(
-      (d) => !isDirectiveForWorkflow(d, workflowId)
-    );
+    const matching = directiveQueue.drain("subagent_stop", workflowId);
     if (matching.length === 0) {
-      for (const d of nonMatching) {
-        directiveQueue.enqueue("subagent_stop", d);
-      }
       return;
     }
     const urgentPath = (0, import_node_path7.join)(stateDir, "urgent-directives.json");
@@ -26259,9 +26302,6 @@ var WatchdogCoordinator = class {
         error: err instanceof Error ? err.message : String(err)
       });
     } finally {
-      for (const d of nonMatching) {
-        directiveQueue.enqueue("subagent_stop", d);
-      }
       if (!writeSucceeded) {
         for (const d of matching) {
           directiveQueue.enqueue("subagent_stop", d);
@@ -26626,7 +26666,8 @@ var ActionExecutor = class {
       type: "inject_system_message",
       content: message,
       priority: 10,
-      source: "action-executor:spawn_agent"
+      source: "action-executor:spawn_agent",
+      workflow_id: void 0
     });
     log3.info("spawn_agent action: directive enqueued", {
       agent_type: action.agent_type,
@@ -27226,7 +27267,6 @@ function getBuiltinTriggers() {
           }
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 500,
       fires_count: 0
     },
@@ -27251,7 +27291,6 @@ function getBuiltinTriggers() {
           files_modified: "$event.payload.data.files_modified"
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 500,
       fires_count: 0
     },
@@ -28338,26 +28377,79 @@ var DirectiveQueue = class {
     }
   }
   /**
-   * Return and remove all directives for `target`.
+   * Return and remove directives for `target`.
    *
    * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID. When provided, only directives
+   *   matching this workflow_id are returned and removed; the rest remain in
+   *   the queue. When omitted, ALL directives for the target are returned and
+   *   the queue is cleared (backward-compatible behaviour).
    * @returns Array of directives in FIFO order (may be empty).
    */
-  drain(target) {
+  drain(target, workflowId) {
     const queue = this.queues.get(target);
     if (!queue || queue.length === 0) return [];
-    const items = [...queue];
-    this.queues.delete(target);
-    return items;
+    if (workflowId === void 0) {
+      const items = [...queue];
+      this.queues.delete(target);
+      return items;
+    }
+    const matching = [];
+    const remaining = [];
+    for (const d of queue) {
+      if (d.workflow_id === workflowId) {
+        matching.push(d);
+      } else {
+        remaining.push(d);
+      }
+    }
+    if (remaining.length === 0) {
+      this.queues.delete(target);
+    } else {
+      this.queues.set(target, remaining);
+    }
+    return matching;
   }
   /**
-   * Return all directives for `target` without removing them.
+   * Remove ALL directives across ALL targets that belong to a specific workflow.
+   *
+   * Used when a workflow reaches a terminal state to prevent stale directives
+   * from being delivered to a future run.
+   *
+   * @param workflowId - The workflow ID whose directives should be purged.
+   * @returns Total number of directives removed.
+   */
+  purge(workflowId) {
+    let count = 0;
+    for (const [target, queue] of this.queues.entries()) {
+      const before = queue.length;
+      const remaining = queue.filter((d) => d.workflow_id !== workflowId);
+      count += before - remaining.length;
+      if (remaining.length === 0) {
+        this.queues.delete(target);
+      } else {
+        this.queues.set(target, remaining);
+      }
+    }
+    if (count > 0) {
+      logger17.info("DirectiveQueue purged", { workflowId, count });
+    }
+    return count;
+  }
+  /**
+   * Return directives for `target` without removing them.
    *
    * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID. When provided, only directives
+   *   matching this workflow_id are included in the snapshot.
    * @returns Snapshot of the queue (may be empty).
    */
-  peek(target) {
-    return [...this.queues.get(target) ?? []];
+  peek(target, workflowId) {
+    const queue = this.queues.get(target) ?? [];
+    if (workflowId === void 0) {
+      return [...queue];
+    }
+    return queue.filter((d) => d.workflow_id === workflowId);
   }
   /** Clear all directive queues. WRFC config is preserved. */
   clear() {
@@ -28525,7 +28617,8 @@ function handleReviewResult(params) {
       type: "inject_system_message",
       content: message,
       priority: 20,
-      source
+      source,
+      workflow_id: workflow.id
     });
     if (agentId && agentWorkflowMap) {
       agentWorkflowMap.unbind(agentId);
@@ -28550,7 +28643,8 @@ function handleReviewResult(params) {
       type: "inject_system_message",
       content: fixMessage,
       priority: 20,
-      source
+      source,
+      workflow_id: workflow.id
     });
     if (agentWorkflowMap) {
       agentWorkflowMap.addPendingBind("engineer", workflow.id);
@@ -28606,7 +28700,8 @@ function handleFixResult(params) {
       type: "inject_system_message",
       content: escalationMessage,
       priority: 30,
-      source
+      source,
+      workflow_id: workflow.id
     });
     if (agentId && agentWorkflowMap) {
       agentWorkflowMap.unbind(agentId);
@@ -28629,7 +28724,8 @@ function handleFixResult(params) {
       type: "inject_system_message",
       content: recheckMessage,
       priority: 20,
-      source
+      source,
+      workflow_id: workflow.id
     });
     if (agentWorkflowMap) {
       agentWorkflowMap.addPendingBind("reviewer", workflow.id);
@@ -28802,7 +28898,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         type: "inject_system_message",
         content: message,
         priority: 20,
-        source: "wrfc_chain_next"
+        source: "wrfc_chain_next",
+        workflow_id: workflow.id
       });
       if (agentId && agentWorkflowMap) {
         agentWorkflowMap.unbind(agentId);
@@ -28825,7 +28922,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
         type: "inject_system_message",
         content: message,
         priority: 20,
-        source: "wrfc_chain_next"
+        source: "wrfc_chain_next",
+        workflow_id: workflow.id
       });
       if (agentWorkflowMap) {
         agentWorkflowMap.addPendingBind("reviewer", workflow.id);
@@ -28977,7 +29075,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           type: "inject_system_message",
           content: message,
           priority: 20,
-          source: "wrfc_review_response"
+          source: "wrfc_review_response",
+          workflow_id: workflowId
         });
         log5.info("wrfc_review_response: workflow complete directive enqueued (no workflow object)", {
           workflow_id: workflowId,
@@ -28996,7 +29095,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           type: "inject_system_message",
           content: message,
           priority: 20,
-          source: "wrfc_review_response"
+          source: "wrfc_review_response",
+          workflow_id: workflowId
         });
         if (agentWorkflowMap) {
           agentWorkflowMap.addPendingBind("engineer", workflowId);
@@ -29044,7 +29144,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           type: "inject_system_message",
           content: message,
           priority: 30,
-          source: "wrfc_fix_response"
+          source: "wrfc_fix_response",
+          workflow_id: fallbackId
         });
         log5.warn("wrfc_fix_response: escalation directive enqueued (no workflow object)", {
           workflow_id: fallbackId,
@@ -29062,7 +29163,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           type: "inject_system_message",
           content: recheckMessage,
           priority: 20,
-          source: "wrfc_fix_response"
+          source: "wrfc_fix_response",
+          workflow_id: fallbackId
         });
         if (agentWorkflowMap) {
           agentWorkflowMap.addPendingBind("reviewer", fallbackId);
@@ -29180,7 +29282,8 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
         type: "inject_system_message",
         content: message,
         priority: 20,
-        source: "test_fix_agent_completed"
+        source: "test_fix_agent_completed",
+        workflow_id: workflow.id
       });
       if (agentId !== null && agentWorkflowMap !== null && agentWorkflowMap !== void 0) {
         agentWorkflowMap.unbind(agentId);
@@ -29264,7 +29367,8 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
         type: "inject_system_message",
         content: escalationMessage,
         priority: 30,
-        source: "test_fix_handle_failure"
+        source: "test_fix_handle_failure",
+        workflow_id: workflow.id
       });
       log6.warn("test_fix_handle_failure: escalating after fix budget exhausted", {
         workflow_id: workflow.id,
@@ -29284,7 +29388,8 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
       type: "inject_system_message",
       content: fixMessage,
       priority: 20,
-      source: "test_fix_handle_failure"
+      source: "test_fix_handle_failure",
+      workflow_id: workflow.id
     });
     log6.info("test_fix_handle_failure: engineer fix directive enqueued", {
       workflow_id: workflow.id,
@@ -29337,7 +29442,8 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
         type: "inject_system_message",
         content: message,
         priority: 20,
-        source: "test_fix_handle_retest"
+        source: "test_fix_handle_retest",
+        workflow_id: workflow.id
       });
     } else {
       log6.info("test_fix_handle_retest: tests still failing after fix", {
@@ -29459,7 +29565,8 @@ function registerReviewOnlyHandlers(registry2, directiveQueue, workflowEngine, a
       type: "inject_system_message",
       content: message,
       priority: 20,
-      source: "review_only_agent_completed"
+      source: "review_only_agent_completed",
+      workflow_id: workflow.id
     });
     if (agentId && agentWorkflowMap) {
       agentWorkflowMap.unbind(agentId);
@@ -35778,6 +35885,9 @@ var ProcessManager = class {
     }
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
     this.directiveQueue = new DirectiveQueue();
+    if (this.workflowEngine) {
+      this.workflowEngine.setDirectiveQueue(this.directiveQueue);
+    }
     this.triggerRegistry.setDependencies(this.eventBus, this.directiveQueue, this.workflowEngine);
     for (const trigger of getBuiltinTriggers()) {
       this.triggerRegistry.register(trigger);
@@ -36217,6 +36327,12 @@ var ProcessManager = class {
         daemonTickHandler: this.daemonTickHandler ?? null
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
+      if (this.agentWorkflowMap) {
+        const awm = this.agentWorkflowMap;
+        this.ipcRouter.setAgentWorkflowResolver((agentId) => {
+          return awm.lookup(agentId) ?? null;
+        });
+      }
       (0, import_node_fs11.mkdirSync)(socketDir, { recursive: true, mode: 448 });
       await this.ipcServer.listen();
       ensureDirSync(stateDir);

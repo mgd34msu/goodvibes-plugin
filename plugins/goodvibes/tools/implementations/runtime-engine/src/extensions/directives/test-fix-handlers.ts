@@ -188,6 +188,7 @@ export function registerTestFixHandlers(
         content: message,
         priority: 20,
         source: 'test_fix_agent_completed',
+        workflow_id: workflow.id,
       });
       if (agentId !== null && agentWorkflowMap !== null && agentWorkflowMap !== undefined) {
         agentWorkflowMap.unbind(agentId);
@@ -311,6 +312,7 @@ export function registerTestFixHandlers(
         content: escalationMessage,
         priority: 30,
         source: 'test_fix_handle_failure',
+        workflow_id: workflow.id,
       });
       log.warn('test_fix_handle_failure: escalating after fix budget exhausted', {
         workflow_id: workflow.id,
@@ -338,6 +340,7 @@ export function registerTestFixHandlers(
       content: fixMessage,
       priority: 20,
       source: 'test_fix_handle_failure',
+      workflow_id: workflow.id,
     });
     log.info('test_fix_handle_failure: engineer fix directive enqueued', {
       workflow_id: workflow.id,
@@ -412,6 +415,7 @@ export function registerTestFixHandlers(
         content: message,
         priority: 20,
         source: 'test_fix_handle_retest',
+        workflow_id: workflow.id,
       });
     } else {
       // Tests still failing after fix

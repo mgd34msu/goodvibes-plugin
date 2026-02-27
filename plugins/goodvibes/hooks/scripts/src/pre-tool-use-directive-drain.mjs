@@ -153,11 +153,13 @@ function sendMessage(socketPath, message, timeoutMs) {
   });
 }
 
-async function queryDirectives(socketPath) {
+async function queryDirectives(socketPath, agentId) {
+  const query = { kind: 'get_directives' };
+  if (agentId) query.agent_id = agentId;
   const message = {
     type: 'query',
     id: generateId(),
-    query: { kind: 'get_directives' },
+    query,
   };
   const response = await sendMessage(socketPath, message, QUERY_TIMEOUT_MS);
   if (!response || response.status === 'error') return null;
@@ -234,8 +236,33 @@ try {
     respond(allowResponse()); // process.exit(0) — no code executes after this
   }
 
-  // Query for pending directives
-  let result = await queryDirectives(socketPath);
+  // PreToolUse has no agent context — only drain per-workflow via orphan IDs.
+  // No global drain: avoids cross-workflow directive bleed.
+  let result = null;
+
+  // Queue auditor: detect removed task-notifications (Layer 0 recovery).
+  // Run FIRST so orphan IDs are available for per-workflow queries.
+  try {
+    const transcriptPath = getTranscriptPath(projectDir, sessionId);
+    const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');
+    const auditResult = audit(transcriptPath, stateDir);
+    if (auditResult.orphanedTaskIds.length > 0) {
+      console.error('[PTU-Auditor] Orphaned notifications detected:', auditResult.orphanedTaskIds.join(', '));
+      for (const orphanId of auditResult.orphanedTaskIds) {
+        const orphanResult = await queryDirectives(socketPath, orphanId);
+        if (orphanResult?.directives?.length > 0) {
+          if (!result || !result.directives) {
+            result = { directives: orphanResult.directives };
+          } else {
+            result.directives = [...result.directives, ...orphanResult.directives];
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Auditor failure must never block tool calls
+    console.error('[PTU-Auditor] audit error:', e?.message || e);
+  }
 
   // Check for urgent directives written by the watchdog's drain-stuck recovery.
   const urgentDirectives = checkUrgentFile(projectDir);
@@ -244,22 +271,6 @@ try {
       result = { directives: urgentDirectives };
     } else {
       result.directives = [...result.directives, ...urgentDirectives];
-    }
-  }
-
-  // Queue auditor: detect removed task-notifications (Layer 0 recovery)
-  if (!result?.directives?.length) {
-    try {
-      const transcriptPath = getTranscriptPath(projectDir, sessionId);
-      const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');
-      const auditResult = audit(transcriptPath, stateDir);
-      if (auditResult.orphanedTaskIds.length > 0) {
-        console.error('[PTU-Auditor] Orphaned notifications detected:', auditResult.orphanedTaskIds.join(', '));
-        result = await queryDirectives(socketPath);
-      }
-    } catch (e) {
-      // Auditor failure must never block tool calls
-      console.error('[PTU-Auditor] audit error:', e?.message || e);
     }
   }
 

@@ -159,7 +159,7 @@ export type IPCMessage =
  */
 export type IPCQuery =
   | { kind: 'get_system_message' }
-  | { kind: 'get_directives' }
+  | { kind: 'get_directives'; agent_id?: string }
   | { kind: 'get_workflow_state'; workflow_id: string }
   | { kind: 'get_agent_status'; agent_id: string }
   | { kind: 'should_block_tool'; tool_name: string; tool_input: Record<string, unknown> }
@@ -230,4 +230,10 @@ export interface Directive {
   priority: number;
   /** Subsystem or rule that generated this directive (e.g. 'workflow-guard'). */
   source: string;
+  /**
+   * Optional workflow ID that scoped this directive. Used to isolate directives
+   * from parallel WRFC workflows so they are only delivered to the correct
+   * agent chain.
+   */
+  workflow_id?: string;
 }
