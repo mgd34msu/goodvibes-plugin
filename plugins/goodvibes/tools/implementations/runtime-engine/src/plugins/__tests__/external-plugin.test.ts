@@ -631,6 +631,7 @@ describe('HttpListener', () => {
       method,
       headers,
       resume: vi.fn(),
+      removeAllListeners: vi.fn().mockReturnThis(),
       on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
         if (!listeners[event]) listeners[event] = [];
         listeners[event]!.push(cb);
@@ -824,6 +825,7 @@ describe('HttpListener', () => {
       method: 'POST',
       headers: {},
       resume: vi.fn(),
+      removeAllListeners: vi.fn().mockReturnThis(),
       on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
         if (!listeners[event]) listeners[event] = [];
         listeners[event]!.push(cb);
@@ -873,6 +875,7 @@ describe('HttpListener', () => {
       method: 'POST',
       headers: { 'x-multi': ['a', 'b', 'c'] },
       resume: vi.fn(),
+      removeAllListeners: vi.fn().mockReturnThis(),
       on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
         if (!listeners[event]) listeners[event] = [];
         listeners[event]!.push(cb);
@@ -905,6 +908,7 @@ describe('HttpListener', () => {
       method: 'POST',
       headers: {},
       resume: vi.fn(),
+      removeAllListeners: vi.fn().mockReturnThis(),
       on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
         if (!listeners[event]) listeners[event] = [];
         listeners[event]!.push(cb);

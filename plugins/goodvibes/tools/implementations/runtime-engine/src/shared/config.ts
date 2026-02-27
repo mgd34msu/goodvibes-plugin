@@ -6,8 +6,8 @@
  * .goodvibes/state/runtime-config.json in the project root.
  */
 
-import { readFileSync, writeFileSync, renameSync } from 'node:fs';
-import { ensureDirSync } from '../core/fs-utils.js';
+import { readFileSync } from 'node:fs';
+import { writeJsonSync } from '../core/file-io.js';
 import { toErrorMessage } from './utils.js';
 import { join } from 'node:path';
 import { userInfo, tmpdir } from 'node:os';
@@ -420,10 +420,6 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
  *   Defaults to `process.cwd()`.
  */
 export function saveConfig(projectRoot: string, config: RuntimeConfig): void {
-  const stateDir = join(projectRoot, '.goodvibes', 'state');
-  const configPath = join(stateDir, 'runtime-config.json');
-  const tmpPath = configPath + '.tmp';
-  ensureDirSync(stateDir);
-  writeFileSync(tmpPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
-  renameSync(tmpPath, configPath);
+  const configPath = join(projectRoot, '.goodvibes', 'state', 'runtime-config.json');
+  writeJsonSync(configPath, config);
 }
