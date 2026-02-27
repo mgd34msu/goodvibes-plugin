@@ -33217,6 +33217,8 @@ var DaemonTickHandler = class {
 // src/lifecycle/process-manager.ts
 var logger38 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
+var WATCHDOG_STALE_MS = 12e4;
+var WATCHDOG_COOLDOWN_MS = 12e4;
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
   return (0, import_node_path7.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
@@ -33262,6 +33264,8 @@ var ProcessManager = class {
   directiveQueue = null;
   /** Agent-to-workflow binding map for deterministic WRFC chain routing. */
   agentWorkflowMap = null;
+  /** Tracks last watchdog recovery timestamp per workflow to prevent duplicate re-enqueues. */
+  watchdogRecovery = /* @__PURE__ */ new Map();
   /** Snapshot manager for periodic state snapshots and recovery. */
   snapshotManager = null;
   // ─── v3 Core components ──────────────────────────────────────────────────────
@@ -34107,6 +34111,137 @@ var ProcessManager = class {
         await this.v3EventProcessor.processBatch();
       } catch (err) {
         logger38.warn("v3 event processor batch error", { err: toErrorMessage(err) });
+      }
+    }
+    this.checkStaleWorkflows();
+  }
+  // ─── Stale Workflow Watchdog ──────────────────────────────────────────────────
+  /**
+   * Detect active workflows stuck in transitional states (REVIEWING, FIXING)
+   * and re-enqueue lost directives.
+   *
+   * This is Layer 2 of the directive delivery resilience strategy:
+   * - Layer 1: PreToolUse hook drains pending directives on every tool call
+   * - Layer 2: This watchdog catches cases where PreToolUse didn't fire or
+   *   where the directive was drained but never acted on
+   *
+   * Runs as step 4 of the tickV3() cycle (every 10 seconds). Only intervenes
+   * after WATCHDOG_STALE_MS (2 minutes) with a WATCHDOG_COOLDOWN_MS (2 minute)
+   * cooldown between recovery attempts for the same workflow.
+   *
+   * @see https://github.com/anthropics/claude-code/issues/24788
+   */
+  checkStaleWorkflows() {
+    if (!this.workflowEngine || !this.directiveQueue) return;
+    const now = Date.now();
+    const activeWorkflows = this.workflowEngine.listActive();
+    for (const wid of this.watchdogRecovery.keys()) {
+      if (!activeWorkflows.some((w) => w.id === wid)) {
+        this.watchdogRecovery.delete(wid);
+      }
+    }
+    const pendingDirectives = this.directiveQueue.peek("subagent_stop");
+    for (const workflow of activeWorkflows) {
+      const rawState = workflow.current_state.toUpperCase();
+      if (rawState !== "REVIEWING" && rawState !== "FIXING") continue;
+      const state = rawState;
+      const stateAge = now - new Date(workflow.updated_at).getTime();
+      if (stateAge < WATCHDOG_STALE_MS) continue;
+      const lastRecovery = this.watchdogRecovery.get(workflow.id);
+      if (lastRecovery && now - lastRecovery < WATCHDOG_COOLDOWN_MS) continue;
+      const hasPendingForWorkflow = pendingDirectives.some(
+        (d) => typeof d.content === "string" && d.content.includes(workflow.id)
+      );
+      if (hasPendingForWorkflow) {
+        logger38.warn("Watchdog: stale workflow with pending directive \u2014 drain may be stuck", {
+          workflow_id: workflow.id,
+          current_state: state,
+          state_age_ms: stateAge,
+          pending_directives: pendingDirectives.length
+        });
+        continue;
+      }
+      logger38.warn("Watchdog: recovering stale workflow \u2014 re-enqueueing directive", {
+        workflow_id: workflow.id,
+        current_state: state,
+        state_age_ms: stateAge
+      });
+      this.recoverStaleWorkflow(workflow, state);
+      this.watchdogRecovery.set(workflow.id, now);
+    }
+  }
+  /**
+   * Re-enqueue the appropriate directive for a stale workflow.
+   *
+   * - REVIEWING: spawn a reviewer
+   * - FIXING: spawn an engineer (or escalate if fix budget exhausted)
+   */
+  recoverStaleWorkflow(workflow, state) {
+    if (!this.directiveQueue) return;
+    const filesModified = Array.isArray(workflow.context.files_modified) ? workflow.context.files_modified : [];
+    if (state === "REVIEWING") {
+      const task = `Review the work completed in workflow ${workflow.id}. Current state: ${workflow.current_state}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "Check all recently modified files.");
+      const message = buildSpawnDirectiveMessage("reviewer", task, void 0, {
+        files_modified: filesModified,
+        workflow_id: workflow.id
+      });
+      this.directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: message,
+        priority: 25,
+        source: "watchdog"
+      });
+      if (this.agentWorkflowMap) {
+        this.agentWorkflowMap.addPendingBind("reviewer", workflow.id);
+        this.agentWorkflowMap.addPendingBind("goodvibes:reviewer", workflow.id);
+      }
+      logger38.info("Watchdog: reviewer spawn directive re-enqueued", {
+        workflow_id: workflow.id
+      });
+    } else if (state === "FIXING") {
+      const fixAttempts = typeof workflow.context.fix_attempts === "number" ? workflow.context.fix_attempts : 0;
+      const maxFixAttempts = typeof workflow.context.max_fix_attempts === "number" ? workflow.context.max_fix_attempts : 3;
+      const lastScore = typeof workflow.context.review_score === "number" ? workflow.context.review_score : 0;
+      if (fixAttempts >= maxFixAttempts) {
+        const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
+        this.directiveQueue.enqueue("subagent_stop", {
+          type: "inject_system_message",
+          content: escalationMessage,
+          priority: 30,
+          source: "watchdog"
+        });
+        logger38.warn("Watchdog: escalation directive re-enqueued (fix budget exhausted)", {
+          workflow_id: workflow.id,
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts
+        });
+      } else {
+        const reviewIssues = Array.isArray(workflow.context.review_issues) ? workflow.context.review_issues : [];
+        const issuesSummary = reviewIssues.length > 0 ? reviewIssues.map((i) => `[${i.severity}] ${i.dimension}: ${i.description}`).join("; ") : "See previous review output for details.";
+        const fixTask = `Fix the issues identified in the code review for workflow ${workflow.id}. Review score: ${lastScore}/10. Issues: ${issuesSummary}` + (filesModified.length > 0 ? ` Files: ${filesModified.join(", ")}.` : "");
+        const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, void 0, {
+          files_modified: filesModified,
+          review_score: lastScore,
+          review_issues: reviewIssues,
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts,
+          workflow_id: workflow.id
+        });
+        this.directiveQueue.enqueue("subagent_stop", {
+          type: "inject_system_message",
+          content: fixMessage,
+          priority: 25,
+          source: "watchdog"
+        });
+        if (this.agentWorkflowMap) {
+          this.agentWorkflowMap.addPendingBind("engineer", workflow.id);
+          this.agentWorkflowMap.addPendingBind("goodvibes:engineer", workflow.id);
+        }
+        logger38.info("Watchdog: engineer fix directive re-enqueued", {
+          workflow_id: workflow.id,
+          fix_attempts: fixAttempts,
+          max_fix_attempts: maxFixAttempts
+        });
       }
     }
   }
