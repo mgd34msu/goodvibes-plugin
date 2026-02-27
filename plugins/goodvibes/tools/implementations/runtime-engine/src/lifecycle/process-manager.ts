@@ -672,6 +672,9 @@ export class ProcessManager {
     if (this.agentCoordinator) {
       this.agentCoordinator.updateConfig(config.agents);
     }
+    if (this.executorMode) {
+      this.executorMode.updateConfig(config.executor);
+    }
     if (this.daemonTickScheduler) {
       this.daemonTickScheduler.reconfigure(config.executor);
     }

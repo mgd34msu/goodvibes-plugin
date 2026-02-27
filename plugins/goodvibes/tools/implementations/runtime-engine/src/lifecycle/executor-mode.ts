@@ -19,7 +19,7 @@ const logger = createLogger('executor-mode');
 export class ExecutorModeManager {
   private currentMode: ExecutorMode;
   private detectionMethod: 'explicit' | 'inferred' | 'default';
-  private readonly config: ExecutorConfig;
+  private config: ExecutorConfig;
   private eventBus: EventBus | null;
 
   constructor(config: ExecutorConfig, eventBus?: EventBus) {
@@ -123,6 +123,14 @@ export class ExecutorModeManager {
       this.currentMode === 'daemon' &&
       this.config.daemon.clear_context_after_batch
     );
+  }
+
+  /**
+   * Update the config reference for hot-reload support.
+   * Called by ProcessManager.updateConfig() when runtime_config changes.
+   */
+  updateConfig(config: ExecutorConfig): void {
+    this.config = config;
   }
 
   /**
