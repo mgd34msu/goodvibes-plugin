@@ -1,26 +1,31 @@
-export const requireFields = (...fields) => (req, res, next) => {
-  const missing = fields.filter((field) => {
-    const value = req.body[field];
-    return value === undefined || value === null || value === '';
+/**
+ * Validation middleware factory
+ * Returns middleware that checks req.body has all required fields
+ */
+
+/**
+ * @param {string[]} requiredFields - Array of required field names
+ * @returns {Function} Express middleware
+ */
+const validateBody = (requiredFields) => (req, res, next) => {
+  const body = req.body || {};
+  const missing = requiredFields.filter((field) => {
+    const value = body[field];
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'string') return value.trim() === '';
+    if (typeof value === 'boolean' || typeof value === 'number') return false;
+    return false;
   });
 
   if (missing.length > 0) {
     return res.status(400).json({
-      error: `Missing required fields: ${missing.join(', ')}`,
+      success: false,
+      error: 'Validation failed',
+      missing,
     });
   }
 
   next();
 };
 
-export const validateId = (req, res, next) => {
-  const id = parseInt(req.params.id, 10);
-
-  if (isNaN(id) || id <= 0 || !Number.isInteger(id)) {
-    return res.status(400).json({
-      error: 'Invalid id: must be a positive integer',
-    });
-  }
-
-  next();
-};
+export { validateBody };

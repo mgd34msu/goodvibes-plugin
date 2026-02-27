@@ -1,55 +1,110 @@
 import { Router } from 'express';
 import {
-  addTask,
-  getTask,
   getAllTasks,
+  getTaskById,
+  createTask,
   updateTask,
   deleteTask,
 } from './db.js';
+import { success, sendError, notFound } from './utils/response.js';
+import { validateBody } from './middleware/validate.js';
+import { validateTaskInput, sanitizeString, isValidStatus } from './utils/validators.js';
 
 const router = Router();
 
-// GET /tasks — list all tasks
-router.get('/tasks', (_req, res) => {
-  res.json(getAllTasks());
+/**
+ * GET /tasks
+ * Optional query param: ?status=pending|completed|...
+ */
+router.get('/tasks', (req, res) => {
+  const { status } = req.query;
+  let tasks = getAllTasks();
+
+  if (status !== undefined) {
+    if (!isValidStatus(status)) {
+      return sendError(res, 'Invalid status filter', 400);
+    }
+    tasks = tasks.filter((t) => t.status === status);
+  }
+
+  return success(res, tasks);
 });
 
-// GET /tasks/:id — get single task
+/**
+ * GET /tasks/:id
+ */
 router.get('/tasks/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const task = getTask(id);
+  const task = getTaskById(req.params.id);
   if (!task) {
-    return res.status(404).json({ error: 'Task not found' });
+    return notFound(res, 'Task');
   }
-  res.json(task);
+  return success(res, task);
 });
 
-// POST /tasks — create task
-router.post('/tasks', (req, res) => {
+/**
+ * POST /tasks
+ * Body: { title: string, description?: string }
+ */
+router.post('/tasks', validateBody(['title']), (req, res) => {
   const { title, description } = req.body;
-  if (!title || typeof title !== 'string' || title.trim() === '') {
-    return res.status(400).json({ error: 'title is required' });
+
+  const validation = validateTaskInput({ title, description });
+  if (!validation.valid) {
+    return sendError(res, validation.errors.join('; '), 400);
   }
-  const task = addTask(title.trim(), description ?? '');
-  res.status(201).json(task);
+
+  const task = createTask({
+    title: sanitizeString(title),
+    description: description !== undefined ? sanitizeString(description) : undefined,
+  });
+  return success(res, task, 201);
 });
 
-// PUT /tasks/:id — update task
+/**
+ * PUT /tasks/:id
+ * Body: { title?, description?, status? }
+ */
 router.put('/tasks/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const task = updateTask(id, req.body);
-  if (!task) {
-    return res.status(404).json({ error: 'Task not found' });
+  const { title, description, status } = req.body;
+
+  // For updates, all fields are optional — validate only if provided
+  const errors = [];
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim() === '') {
+      errors.push('title must be a non-empty string');
+    }
   }
-  res.json(task);
+  if (description !== undefined && typeof description !== 'string') {
+    errors.push('description must be a string');
+  }
+  if (status !== undefined && !isValidStatus(status)) {
+    errors.push(`status must be one of: pending, in-progress, completed`);
+  }
+
+  if (errors.length > 0) {
+    return sendError(res, errors.join('; '), 400);
+  }
+
+  const updates = {};
+  if (title !== undefined) updates.title = sanitizeString(title);
+  if (description !== undefined) updates.description = sanitizeString(description);
+  if (status !== undefined) updates.status = status;
+
+  const task = updateTask(req.params.id, updates);
+  if (!task) {
+    return notFound(res, 'Task');
+  }
+
+  return success(res, task);
 });
 
-// DELETE /tasks/:id — delete task
+/**
+ * DELETE /tasks/:id
+ */
 router.delete('/tasks/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const deleted = deleteTask(id);
+  const deleted = deleteTask(req.params.id);
   if (!deleted) {
-    return res.status(404).json({ error: 'Task not found' });
+    return notFound(res, 'Task');
   }
   res.status(204).send();
 });

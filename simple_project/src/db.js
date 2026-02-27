@@ -1,81 +1,79 @@
-// In-memory data store for tasks
-let nextId = 1;
-const tasks = [];
+import { v4 as uuidv4 } from 'uuid';
+
+/** @type {Map<string, object>} */
+const tasks = new Map();
+
+/**
+ * Returns all tasks as an array.
+ * @returns {object[]}
+ */
+export function getAllTasks() {
+  return Array.from(tasks.values());
+}
+
+/**
+ * Returns a task by ID or null if not found.
+ * @param {string} id
+ * @returns {object|null}
+ */
+export function getTaskById(id) {
+  return tasks.get(id) ?? null;
+}
 
 /**
  * Creates a new task.
- * @param {string} title
- * @param {string} [description]
- * @returns {object} The created task
+ * @param {{ title: string, description?: string }} data
+ * @returns {object}
  */
-export function addTask(title, description = '') {
+export function createTask({ title, description = '' }) {
   const now = new Date().toISOString();
   const task = {
-    id: nextId++,
+    id: uuidv4(),
     title,
     description,
     status: 'pending',
     createdAt: now,
     updatedAt: now,
   };
-  tasks.push(task);
+  tasks.set(task.id, task);
   return task;
 }
 
 /**
- * Returns a task by id, or null if not found.
- * @param {number} id
+ * Partially updates a task. Returns updated task or null if not found.
+ * @param {string} id
+ * @param {Partial<{title: string, description: string, status: string}>} updates
  * @returns {object|null}
  */
-export function getTask(id) {
-  return tasks.find((t) => t.id === id) ?? null;
-}
-
-/**
- * Returns all tasks.
- * @returns {object[]}
- */
-export function getAllTasks() {
-  return [...tasks];
-}
-
-/**
- * Updates a task by id.
- * @param {number} id
- * @param {object} updates
- * @returns {object|null} Updated task or null if not found
- */
 export function updateTask(id, updates) {
-  const task = tasks.find((t) => t.id === id);
+  const task = tasks.get(id);
   if (!task) return null;
 
-  const allowed = ['title', 'description', 'status'];
-  for (const key of allowed) {
-    if (updates[key] !== undefined) {
-      task[key] = updates[key];
-    }
-  }
-  task.updatedAt = new Date().toISOString();
-  return task;
+  const updated = {
+    ...task,
+    ...(updates.title !== undefined && { title: updates.title }),
+    ...(updates.description !== undefined && { description: updates.description }),
+    ...(updates.status !== undefined && { status: updates.status }),
+    id: task.id,
+    createdAt: task.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+  tasks.set(id, updated);
+  return updated;
 }
 
 /**
- * Deletes a task by id.
- * @param {number} id
- * @returns {boolean} True if deleted, false if not found
+ * Deletes a task by ID. Returns true if deleted, false if not found.
+ * @param {string} id
+ * @returns {boolean}
  */
 export function deleteTask(id) {
-  const index = tasks.findIndex((t) => t.id === id);
-  if (index === -1) return false;
-  tasks.splice(index, 1);
-  return true;
+  return tasks.delete(id);
 }
 
 /**
- * Resets the database to its initial empty state.
- * Intended for use in tests only.
+ * Clears all tasks. Intended for use in tests.
  */
-export function reset() {
-  tasks.length = 0;
-  nextId = 1;
+export function clearAll() {
+  tasks.clear();
 }
