@@ -384,6 +384,17 @@ export interface MetricsCollector {
   setActiveWorkflows(count: number): void;
 }
 
+// ─── Disposable ───────────────────────────────────────────────────────────────
+
+/**
+ * Disposable resource interface.
+ * Aspirational — no consumer migrations now, apply to new code going forward.
+ */
+export interface Disposable {
+  /** Release all resources held by this object. */
+  dispose(): Promise<void>;
+}
+
 // ─── Type Guards ──────────────────────────────────────────────────────────────
 
 /**

@@ -15,3 +15,8 @@ export * from './dead-letter.js';
 export * from './error-handler.js';
 export * from './event-processor.js';
 export * from './timer.js';
+export * from './fs-utils.js';
+export * from './retry.js';
+export * from './poll.js';
+export * from './file-io.js';
+export * from './stream-reader.js';
