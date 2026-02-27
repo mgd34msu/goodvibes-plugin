@@ -22,6 +22,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { createLogger } from '../../shared/logger.js';
+import { readStreamBody } from '../../core/stream-reader.js';
 
 const logger = createLogger('http-listener');
 
@@ -238,33 +239,6 @@ export class HttpListener {
    * Returns null if the limit is exceeded.
    */
   private readBody(req: http.IncomingMessage): Promise<string | null> {
-    return new Promise((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      let totalBytes = 0;
-      let limitExceeded = false;
-      let resolved = false;
-
-      req.on('data', (chunk: Buffer) => {
-        if (limitExceeded) return;
-        totalBytes += chunk.length;
-        if (totalBytes > this.config.max_payload_bytes) {
-          limitExceeded = true;
-          // Drain the stream to avoid hanging connection
-          req.resume();
-          if (!resolved) { resolved = true; resolve(null); }
-          return;
-        }
-        chunks.push(chunk);
-      });
-
-      req.on('end', () => {
-        if (limitExceeded) return;
-        if (!resolved) { resolved = true; resolve(Buffer.concat(chunks).toString('utf-8')); }
-      });
-
-      req.on('error', (err) => {
-        if (!resolved) { resolved = true; reject(err); }
-      });
-    });
+    return readStreamBody(req, this.config.max_payload_bytes);
   }
 }

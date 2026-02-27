@@ -21,13 +21,14 @@ import {
   readFileSync,
   unlinkSync,
   existsSync,
-  mkdirSync,
 } from 'fs';
 import { join } from 'path';
 
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
+import { ensureDirSync } from '../core/fs-utils.js';
+import { pollUntil } from '../core/poll.js';
 
 const logger = createLogger('file-fallback');
 
@@ -113,38 +114,19 @@ export class FileFallback {
    * @returns The parsed {@link IPCResponse}, or null on timeout.
    */
   async readResponse(timeoutMs: number): Promise<IPCResponse | null> {
-    const deadline = Date.now() + timeoutMs;
-
-    return new Promise<IPCResponse | null>((resolve) => {
-      const poll = (): void => {
-        if (existsSync(this.responsePath)) {
-          try {
-            const raw = readFileSync(this.responsePath, 'utf-8');
-            const response = JSON.parse(raw) as IPCResponse;
-            logger.debug('IPC response received (file fallback)', { id: response.id });
-            unlinkSync(this.responsePath);
-            resolve(response);
-            return;
-          } catch (err) {
-            logger.warn('Failed to parse IPC response file', {
-              err: toErrorMessage(err),
-            });
-            resolve(null);
-            return;
-          }
-        }
-
-        if (Date.now() >= deadline) {
-          logger.debug('IPC file-fallback read timed out', { timeout_ms: timeoutMs });
-          resolve(null);
-          return;
-        }
-
-        setTimeout(poll, POLL_INTERVAL_MS);
-      };
-
-      poll();
-    });
+    try {
+      return await pollUntil<IPCResponse>(() => {
+        if (!existsSync(this.responsePath)) return null;
+        const raw = readFileSync(this.responsePath, 'utf-8');
+        const response = JSON.parse(raw) as IPCResponse;
+        logger.debug('IPC response received (file fallback)', { id: response.id });
+        unlinkSync(this.responsePath);
+        return response;
+      }, { timeoutMs, intervalMs: POLL_INTERVAL_MS });
+    } catch (err) {
+      logger.warn('Failed to parse IPC response file', { err: toErrorMessage(err) });
+      return null;
+    }
   }
 
   // ─── Runtime side ────────────────────────────────────────────────────────
@@ -217,8 +199,7 @@ export class FileFallback {
 
   /** Ensure the state directory exists. */
   private ensureStateDir(): void {
-    const dir = join(this.requestPath, '..');
-    mkdirSync(dir, { recursive: true });
+    ensureDirSync(join(this.requestPath, '..'));
   }
 
   /**

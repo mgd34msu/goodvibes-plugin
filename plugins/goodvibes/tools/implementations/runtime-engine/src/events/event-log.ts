@@ -15,8 +15,6 @@
 
 import {
   writeFileSync,
-  renameSync,
-  mkdirSync,
   statSync,
   createWriteStream,
   createReadStream,
@@ -27,6 +25,8 @@ import type { WriteStream } from 'node:fs';
 import type { RuntimeEvent, EventFilter } from './types.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
+import { ensureDirSync } from '../core/fs-utils.js';
+import { writeAtomicSync } from '../core/file-io.js';
 
 const logger = createLogger('event-log');
 
@@ -411,7 +411,7 @@ export class EventLog {
     await this.closeWriteStream();
 
     // Write archive file
-    mkdirSync(this.archiveDir, { recursive: true });
+    ensureDirSync(this.archiveDir);
     const archiveDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const archivePath = join(
       this.archiveDir,
@@ -428,9 +428,7 @@ export class EventLog {
     }
 
     // Atomically replace the main log
-    const tmpPath = this.logPath + '.tmp';
-    writeFileSync(tmpPath, toKeep.join('\n') + (toKeep.length > 0 ? '\n' : ''), 'utf-8');
-    renameSync(tmpPath, this.logPath);
+    writeAtomicSync(this.logPath, toKeep.join('\n') + (toKeep.length > 0 ? '\n' : ''));
 
     // Reopen write stream after file replacement
     if (!this.closed) {
@@ -486,8 +484,7 @@ export class EventLog {
   private openWriteStream(): void {
     try {
       // Ensure the parent directory exists
-      const dir = dirname(this.logPath);
-      mkdirSync(dir, { recursive: true });
+      ensureDirSync(dirname(this.logPath));
 
       this.writeStream = createWriteStream(this.logPath, { flags: 'a', encoding: 'utf-8' });
       this.writeStream.on('error', (err) => {

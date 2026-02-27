@@ -11,17 +11,16 @@
 
 import {
   readFileSync,
-  writeFileSync,
   unlinkSync,
   readdirSync,
-  renameSync,
-  mkdirSync,
 } from 'fs';
 import { join, isAbsolute, basename } from 'path';
 import type { RuntimeConfig } from '../shared/config.js';
 import type { StateStore } from './types.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
+import { ensureDirSync } from '../core/fs-utils.js';
+import { writeJsonSync } from '../core/file-io.js';
 
 const logger = createLogger('state-store');
 
@@ -65,7 +64,7 @@ export class JsonStateStore implements StateStore {
    */
   async initialize(): Promise<void> {
     if (this.initialised) return;
-    mkdirSync(this.stateDir, { recursive: true });
+    ensureDirSync(this.stateDir);
     this.initialised = true;
     logger.debug('State store initialised', { stateDir: this.stateDir });
   }
@@ -75,7 +74,7 @@ export class JsonStateStore implements StateStore {
    * a defensive guard in case {@link initialize} was not called first.
    */
   private ensureDir(): void {
-    mkdirSync(this.stateDir, { recursive: true });
+    ensureDirSync(this.stateDir);
   }
 
   /**
@@ -89,35 +88,19 @@ export class JsonStateStore implements StateStore {
   }
 
   /**
-   * Resolves the temporary staging path used during atomic writes.
-   *
-   * @param key - Storage key.
-   * @returns Path to the `.tmp` file for this key.
-   */
-  private tmpPath(key: string): string {
-    return join(this.stateDir, `${key}.json.tmp`);
-  }
-
-  /**
    * {@inheritdoc StateStore.set}
    *
-   * Writes atomically: serialises to JSON, writes to a `.tmp` file, then
-   * renames the `.tmp` file to the final path.
+   * Writes atomically via {@link writeJsonSync} (tmp + rename).
    *
-   * @throws {Error} If the write or rename operation fails.
+   * @throws {Error} If the write operation fails.
    */
   async set(key: string, state: unknown): Promise<void> {
     this.ensureDir();
-    const content = JSON.stringify(state, null, 2) + '\n';
-    const tmp = this.tmpPath(key);
     const dest = this.keyPath(key);
     try {
-      writeFileSync(tmp, content, 'utf-8');
-      renameSync(tmp, dest);
+      writeJsonSync(dest, state);
       logger.debug('Saved state', { key });
     } catch (err) {
-      // Clean up the tmp file if it was written but rename failed
-      try { unlinkSync(tmp); } catch { /* ignore cleanup errors */ }
       const message = toErrorMessage(err);
       logger.error('Failed to save state', { key, error: message });
       throw new Error(`StateStore.set failed for key "${key}": ${message}`);

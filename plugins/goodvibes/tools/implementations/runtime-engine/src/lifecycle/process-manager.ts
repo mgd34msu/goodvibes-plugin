@@ -10,6 +10,7 @@
  */
 
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
+import { ensureDirSync } from '../core/fs-utils.js';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -275,7 +276,7 @@ export class ProcessManager {
     // 3. Initialise event system
     this.eventBus = new EventBus();
     const stateDir = join(this.projectRoot, this.config.persistence.state_dir);
-    mkdirSync(stateDir, { recursive: true });
+    ensureDirSync(stateDir);
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
     this.eventBus.setEventLog(this.eventLog);
@@ -959,7 +960,7 @@ export class ProcessManager {
       // Write socket path to per-PID pointer file for hook discovery.
       // Using a per-PID file (rather than a single shared file) allows multiple
       // concurrent sessions for the same project to coexist.
-      mkdirSync(stateDir, { recursive: true });
+      ensureDirSync(stateDir);
       const pointerFile = join(stateDir, `runtime-${process.pid}.socket`);
       writeFileSync(pointerFile, socketPath, 'utf-8');
 
@@ -1444,7 +1445,7 @@ export class ProcessManager {
     let writeSucceeded = false;
     try {
       // Ensure state directory exists
-      mkdirSync(stateDir, { recursive: true });
+      ensureDirSync(stateDir);
 
       // Merge with any existing urgent directives (another workflow may have written)
       let existingDirectives: Directive[] = [];
