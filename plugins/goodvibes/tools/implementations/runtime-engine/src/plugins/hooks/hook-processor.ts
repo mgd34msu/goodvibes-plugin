@@ -164,6 +164,9 @@ export class HookProcessor {
    * - 'block' decision wins over 'allow' (any block → block).
    * - reasons are concatenated ('; ' separated) when blocking.
    * - additionalContext values are concatenated with '\n\n'.
+   *   The merged additionalContext is capped at 100 KB (102 400 bytes UTF-8).
+   *   Content beyond the cap is silently truncated to prevent oversized hook
+   *   payloads from destabilising Claude Code's conversation context.
    * - hookSpecificOutput: last non-null value wins.
    * - suppressOutput: true wins (any true → true).
    */
@@ -208,7 +211,25 @@ export class HookProcessor {
     }
 
     if (contexts.length > 0) {
-      merged.additionalContext = contexts.join('\n\n');
+      const joined = contexts.join('\n\n');
+      // Cap merged additionalContext at 100 KB (102 400 bytes, UTF-8).
+      // Oversized context strings can destabilise Claude Code's conversation
+      // context and cause downstream parsing failures.
+      const MAX_ADDITIONAL_CONTEXT_BYTES = 100 * 1024;
+      if (Buffer.byteLength(joined, 'utf8') > MAX_ADDITIONAL_CONTEXT_BYTES) {
+        logger.warn('additionalContext exceeds 100 KB cap; truncating', {
+          original_bytes: Buffer.byteLength(joined, 'utf8'),
+          cap_bytes: MAX_ADDITIONAL_CONTEXT_BYTES,
+        });
+        // Truncate to nearest character boundary within the byte budget
+        merged.additionalContext = Buffer.from(joined, 'utf8')
+          .subarray(0, MAX_ADDITIONAL_CONTEXT_BYTES)
+          .toString('utf8')
+          // Remove any trailing partial multi-byte character
+          .replace(/[\uFFFD\uD800-\uDFFF]?$/, '');
+      } else {
+        merged.additionalContext = joined;
+      }
     }
 
     return merged;

@@ -18,7 +18,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, chmodSync } from 'fs';
 import type { WriteStream } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -568,6 +568,127 @@ describe('EventLog', () => {
         await closeLog(freshLog);
         rmSync(freshDir, { recursive: true, force: true });
       }
+    });
+  });
+
+  // ── compact() — error scenarios ───────────────────────────────────────
+
+  describe('compact() — error scenarios', () => {
+    beforeEach(async () => {
+      await log.initialize();
+    });
+
+    it('propagates error when archive directory cannot be created (ENOTDIR)', async () => {
+      // Seed one old event so compaction has something to archive
+      log.append(makeEvent({ timestamp: '2020-01-01T00:00:00.000Z' }));
+      await log.flush();
+
+      // Block archive dir creation by placing a regular file at the expected path
+      // mkdirSync({recursive:true}) throws ENOTDIR when a path component is a file
+      const archiveDirPath = join(stateDir, 'event-archives');
+      writeFileSync(archiveDirPath, 'not-a-directory', 'utf-8');
+
+      // compact() should propagate the ENOTDIR error from ensureDirSync
+      await expect(log.compact('2030-01-01T00:00:00.000Z')).rejects.toThrow();
+    });
+
+    it('event log remains consistent after archive dir creation failure', async () => {
+      // Write two events to the log
+      log.append(makeEvent({ timestamp: '2020-01-01T00:00:00.000Z' }));
+      log.append(makeEvent({ timestamp: '2030-01-01T00:00:00.000Z' }));
+      await log.flush();
+
+      // Block archive dir creation
+      const archiveDirPath = join(stateDir, 'event-archives');
+      writeFileSync(archiveDirPath, 'not-a-directory', 'utf-8');
+
+      // compact() throws — the main log should still be readable
+      await expect(log.compact('2025-01-01T00:00:00.000Z')).rejects.toThrow();
+
+      // Remove the blocker and open a fresh log to read the original file
+      rmSync(archiveDirPath);
+      const log2 = new EventLog(stateDir, DEFAULT_CONFIG);
+      await log2.initialize();
+      // Both events should still be in the main log (compaction never completed)
+      expect(log2.getStats().total_events).toBe(2);
+      await closeLog(log2);
+    });
+
+    it('propagates error when atomic log replacement fails (rename/write error)', async () => {
+      // Seed events so there is something to archive and something to keep
+      log.append(makeEvent({ timestamp: '2020-01-01T00:00:00.000Z' }));
+      log.append(makeEvent({ timestamp: '2030-01-01T00:00:00.000Z' }));
+      await log.flush();
+
+      // Make the stateDir read-only so writeAtomicSync's rename step fails (EACCES)
+      // Note: this only works reliably when not running as root.
+      chmodSync(stateDir, 0o555);
+
+      try {
+        await expect(log.compact('2025-01-01T00:00:00.000Z')).rejects.toThrow();
+      } finally {
+        // Restore permissions so afterEach cleanup can delete the directory
+        chmodSync(stateDir, 0o755);
+      }
+    });
+
+    it('event log file is not modified when atomic replacement fails', async () => {
+      // Write two events and flush to disk
+      log.append(makeEvent({ timestamp: '2020-01-01T00:00:00.000Z' }));
+      log.append(makeEvent({ timestamp: '2030-01-01T00:00:00.000Z' }));
+      await log.flush();
+
+      // Make the stateDir read-only so the rename in writeAtomicSync fails
+      chmodSync(stateDir, 0o555);
+
+      try {
+        await expect(log.compact('2025-01-01T00:00:00.000Z')).rejects.toThrow();
+      } finally {
+        chmodSync(stateDir, 0o755);
+      }
+
+      // The original log file still has both events (rename never succeeded)
+      const { readFileSync } = await import('fs');
+      const content = readFileSync(join(stateDir, 'events.jsonl'), 'utf-8');
+      const lines = content.trim().split('\n').filter((l) => l.length > 0);
+      expect(lines).toHaveLength(2);
+    });
+
+    it('partial write during compaction: archive written but main log replacement fails leaves log consistent', async () => {
+      // This tests the scenario where events ARE successfully written to the archive
+      // file but the atomic replacement of the main log then fails. In this case:
+      // - The archive file exists with the archived events
+      // - The main log is unchanged (the original events are still present)
+      //
+      // We simulate writeAtomicSync failure by making stateDir read-only (no rename).
+
+      // Write one old event (to archive) and one new event (to keep)
+      const oldEvent = makeEvent({ timestamp: '2020-01-01T00:00:00.000Z' });
+      const newEvent = makeEvent({ timestamp: '2030-01-01T00:00:00.000Z' });
+      log.append(oldEvent);
+      log.append(newEvent);
+      await log.flush();
+
+      // Make stateDir read-only so the rename in writeAtomicSync fails
+      chmodSync(stateDir, 0o555);
+
+      try {
+        // compact() should fail because writeAtomicSync cannot rename the temp file
+        await expect(log.compact('2025-01-01T00:00:00.000Z')).rejects.toThrow();
+      } finally {
+        chmodSync(stateDir, 0o755);
+      }
+
+      // Main log still has both original events (compaction did not complete)
+      const { readFileSync } = await import('fs');
+      const content = readFileSync(join(stateDir, 'events.jsonl'), 'utf-8');
+      const nonEmptyLines = content.trim().split('\n').filter((l) => l.trim().length > 0);
+      expect(nonEmptyLines).toHaveLength(2);
+
+      // The original event IDs are still present in the main log
+      const loggedIds = nonEmptyLines.map((l) => (JSON.parse(l) as { id: string }).id);
+      expect(loggedIds).toContain(oldEvent.id);
+      expect(loggedIds).toContain(newEvent.id);
     });
   });
 

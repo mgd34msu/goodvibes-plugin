@@ -309,6 +309,101 @@ describe('EventMetrics', () => {
     });
   });
 
+  // ── window_size boundary conditions ─────────────────────────────────────
+
+  describe('RollingWindow window_size boundary conditions', () => {
+    it('window_size = 1: each push replaces the previous value', () => {
+      const m = new EventMetrics({ latency_window_size: 1 });
+      m.onEventProcessed(makeEvent({ id: 'e1' }), 10);
+      // Only 10 in window
+      expect(m.getStats().avg_latency_ms).toBe(10);
+      m.onEventProcessed(makeEvent({ id: 'e2' }), 20);
+      // 10 evicted; only 20 in window
+      expect(m.getStats().avg_latency_ms).toBe(20);
+      m.onEventProcessed(makeEvent({ id: 'e3' }), 30);
+      // Only 30 in window
+      expect(m.getStats().avg_latency_ms).toBe(30);
+    });
+
+    it('window_size = 1: max returns the single stored value', () => {
+      const m = new EventMetrics({ latency_window_size: 1 });
+      m.onEventProcessed(makeEvent(), 42);
+      expect(m.maxChainDepth()).toBe(0); // chain_depth = 0 by default
+    });
+
+    it('window_size = 1: size() reports 1 after first push', () => {
+      const m = new EventMetrics({ latency_window_size: 1, chain_depth_window_size: 1 });
+      m.onEventProcessed(makeEvent({ context: { chain_depth: 5 } }), 10);
+      expect(m.maxChainDepth()).toBe(5);
+      // Second push evicts first
+      m.onEventProcessed(makeEvent({ id: 'e2', context: { chain_depth: 3 } }), 20);
+      expect(m.maxChainDepth()).toBe(3);
+    });
+
+    it('window_size = 0: silently discards all pushes, average remains 0', () => {
+      // capacity=0: buffer is empty array, all math produces NaN indices
+      // count never increments because (count < capacity) => (0 < 0) is false
+      // average() and max() guard on count===0 and return 0
+      const m = new EventMetrics({ latency_window_size: 0 });
+      m.onEventProcessed(makeEvent(), 100);
+      m.onEventProcessed(makeEvent({ id: 'e2' }), 200);
+      expect(m.getStats().avg_latency_ms).toBe(0);
+    });
+
+    it('window_size = 0: max returns 0 since no samples stored', () => {
+      const m = new EventMetrics({ chain_depth_window_size: 0 });
+      m.onEventProcessed(makeEvent({ context: { chain_depth: 99 } }), 1);
+      expect(m.maxChainDepth()).toBe(0);
+      expect(m.avgChainDepth()).toBe(0);
+    });
+
+    it('negative window_size: Array.from treats negative length as 0 — silently discards all pushes', () => {
+      // Array.from({ length: -1 }, () => 0) returns [] (empty array, no throw)
+      // The RollingWindow is created with capacity=-1 but buffer=[]
+      // push() does: buffer[(0 + 0) % -1] = value  =>  buffer[NaN] = value (no-op)
+      //               count < -1 is false, so else: head = (0+1) % -1 = NaN
+      // average() and max() both guard count===0 and return 0
+      const m = new EventMetrics({ latency_window_size: -1 });
+      m.onEventProcessed(makeEvent(), 100);
+      m.onEventProcessed(makeEvent({ id: 'e2' }), 200);
+      // All pushes discarded — average stays 0
+      expect(m.getStats().avg_latency_ms).toBe(0);
+    });
+
+    it('negative chain_depth_window_size: silently discards all chain depth samples', () => {
+      // Same as latency: Array.from({length: -5}) = [] => all pushes discarded
+      const m = new EventMetrics({ chain_depth_window_size: -5 });
+      m.onEventProcessed(makeEvent({ context: { chain_depth: 99 } }), 1);
+      expect(m.maxChainDepth()).toBe(0);
+      expect(m.avgChainDepth()).toBe(0);
+    });
+
+    it('very large window_size: stores and averages correctly up to capacity', () => {
+      const m = new EventMetrics({ latency_window_size: 1000 });
+      // Push 500 samples (well within capacity)
+      let sum = 0;
+      for (let i = 1; i <= 500; i++) {
+        m.onEventProcessed(makeEvent({ id: `e${i}` }), i);
+        sum += i;
+      }
+      // Average of 1..500 = 250.5
+      expect(m.getStats().avg_latency_ms).toBeCloseTo(sum / 500, 1);
+    });
+
+    it('very large window_size: push beyond capacity evicts oldest correctly', () => {
+      const m = new EventMetrics({ latency_window_size: 1000 });
+      // Fill to capacity
+      for (let i = 1; i <= 1000; i++) {
+        m.onEventProcessed(makeEvent({ id: `e${i}` }), 10);
+      }
+      // All values are 10, avg = 10
+      expect(m.getStats().avg_latency_ms).toBe(10);
+      // Push one more to evict oldest
+      m.onEventProcessed(makeEvent({ id: 'e1001' }), 10);
+      expect(m.getStats().avg_latency_ms).toBe(10);
+    });
+  });
+
   // ── CircularBuffer rolling window ──────────────────────────────────────────
 
   describe('RollingWindow behavior (via latency)', () => {

@@ -29567,6 +29567,18 @@ var TriggerRegistry2 = class {
 var import_node_fs7 = require("node:fs");
 var import_node_path6 = require("node:path");
 var logger16 = createLogger("core:state-store");
+var FORBIDDEN_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
+function validateDotPath(path3) {
+  const segments = path3.split(".");
+  for (const seg of segments) {
+    if (FORBIDDEN_PATH_SEGMENTS.has(seg)) {
+      throw new TypeError(
+        `Prototype pollution guard: key path segment '${seg}' is forbidden in state paths`
+      );
+    }
+  }
+}
+__name(validateDotPath, "validateDotPath");
 function setPath(obj, path3, value) {
   const segments = path3.split(".");
   let current = obj;
@@ -29638,23 +29650,32 @@ var CoreStateStore = class {
   /**
    * Get a value at a dot-separated key path.
    * Returns null if not found or if path traversal fails.
+   * Throws TypeError if the path contains a forbidden segment (`__proto__`,
+   * `constructor`, or `prototype`) to prevent prototype pollution.
    */
   get(key) {
+    validateDotPath(key);
     const value = getPath2(this.data, key);
     return value === void 0 ? null : value;
   }
   /**
    * Set a value at a dot-separated key path.
    * Schedules a debounced auto-save.
+   * Throws TypeError if the path contains a forbidden segment (`__proto__`,
+   * `constructor`, or `prototype`) to prevent prototype pollution.
    */
   set(key, value) {
+    validateDotPath(key);
     setPath(this.data, key, value);
     this.scheduleSave();
   }
   /**
    * Delete a key (dot-separated path). No-op if not found.
+   * Throws TypeError if the path contains a forbidden segment (`__proto__`,
+   * `constructor`, or `prototype`) to prevent prototype pollution.
    */
   delete(key) {
+    validateDotPath(key);
     deletePath(this.data, key);
     this.scheduleSave();
   }
@@ -31351,6 +31372,9 @@ var HookProcessor = class {
    * - 'block' decision wins over 'allow' (any block → block).
    * - reasons are concatenated ('; ' separated) when blocking.
    * - additionalContext values are concatenated with '\n\n'.
+   *   The merged additionalContext is capped at 100 KB (102 400 bytes UTF-8).
+   *   Content beyond the cap is silently truncated to prevent oversized hook
+   *   payloads from destabilising Claude Code's conversation context.
    * - hookSpecificOutput: last non-null value wins.
    * - suppressOutput: true wins (any true → true).
    */
@@ -31389,7 +31413,17 @@ var HookProcessor = class {
       }
     }
     if (contexts.length > 0) {
-      merged.additionalContext = contexts.join("\n\n");
+      const joined = contexts.join("\n\n");
+      const MAX_ADDITIONAL_CONTEXT_BYTES = 100 * 1024;
+      if (Buffer.byteLength(joined, "utf8") > MAX_ADDITIONAL_CONTEXT_BYTES) {
+        logger24.warn("additionalContext exceeds 100 KB cap; truncating", {
+          original_bytes: Buffer.byteLength(joined, "utf8"),
+          cap_bytes: MAX_ADDITIONAL_CONTEXT_BYTES
+        });
+        merged.additionalContext = Buffer.from(joined, "utf8").subarray(0, MAX_ADDITIONAL_CONTEXT_BYTES).toString("utf8").replace(/[\uFFFD\uD800-\uDFFF]?$/, "");
+      } else {
+        merged.additionalContext = joined;
+      }
     }
     return merged;
   }

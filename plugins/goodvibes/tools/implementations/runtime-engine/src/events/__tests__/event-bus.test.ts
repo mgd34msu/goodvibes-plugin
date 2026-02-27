@@ -1,5 +1,20 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventBus } from '../event-bus.js';
 import type { RuntimeEvent, EventHandler } from '../types.js';
+
+// ─── Logger mock (for concurrency / error-logging tests) ─────────────────────
+
+const mockWarn = vi.hoisted(() => vi.fn());
+const mockError = vi.hoisted(() => vi.fn());
+
+vi.mock('../../shared/logger.js', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: mockWarn,
+    error: mockError,
+  }),
+}));
 
 /** Build a minimal RuntimeEvent for testing. */
 function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
@@ -23,6 +38,7 @@ describe('EventBus', () => {
 
   beforeEach(() => {
     bus = new EventBus();
+    vi.clearAllMocks();
   });
 
   // ─── emit ────────────────────────────────────────────────────────────────────
@@ -428,6 +444,72 @@ describe('EventBus', () => {
       bus.on('hook:pre_tool_use', (e) => received.push(e));
       bus.emit(makeEvent({ type: 'hook:pre_tool_use' }));
       expect(received).toHaveLength(1);
+    });
+  });
+
+  // ─── Handler Concurrency (one failure does not block others) ───────────────
+
+  describe('handler concurrency — one failure does not block others', () => {
+    it('when handler #2 of 3 throws, handlers #1 and #3 still complete and the error is logged', () => {
+      const completed: number[] = [];
+
+      // Handler #1 — should complete normally
+      bus.on('hook:pre_tool_use', () => { completed.push(1); });
+
+      // Handler #2 — throws a sync error
+      bus.on('hook:pre_tool_use', () => {
+        throw new Error('handler #2 failure');
+      });
+
+      // Handler #3 — should complete normally despite handler #2 throwing
+      bus.on('hook:pre_tool_use', () => { completed.push(3); });
+
+      // emit must not throw
+      expect(() => bus.emit(makeEvent({ type: 'hook:pre_tool_use' }))).not.toThrow();
+
+      // Handlers #1 and #3 both completed successfully
+      expect(completed).toContain(1);
+      expect(completed).toContain(3);
+      expect(completed).toHaveLength(2);
+
+      // The error from handler #2 was logged via logger.warn, not silently swallowed
+      expect(mockWarn).toHaveBeenCalledOnce();
+      expect(mockWarn).toHaveBeenCalledWith(
+        'Sync handler error',
+        expect.objectContaining({ error: 'handler #2 failure' }),
+      );
+    });
+
+    it('async handler #2 rejecting does not prevent sync handlers #1 and #3 from completing', async () => {
+      const completed: number[] = [];
+
+      // Handler #1 — sync, completes normally
+      bus.on('hook:pre_tool_use', () => { completed.push(1); });
+
+      // Handler #2 — async, rejects
+      bus.on('hook:pre_tool_use', async () => {
+        throw new Error('async handler #2 failure');
+      });
+
+      // Handler #3 — sync, should complete normally
+      bus.on('hook:pre_tool_use', () => { completed.push(3); });
+
+      // emit() is synchronous — async error is fire-and-forget
+      expect(() => bus.emit(makeEvent({ type: 'hook:pre_tool_use' }))).not.toThrow();
+
+      // Sync handlers ran immediately
+      expect(completed).toContain(1);
+      expect(completed).toContain(3);
+      expect(completed).toHaveLength(2);
+
+      // Give the event loop a tick for the async rejection to be caught and logged
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      // The async rejection was caught and logged via logger.warn
+      expect(mockWarn).toHaveBeenCalledWith(
+        'Async handler error',
+        expect.objectContaining({ error: 'async handler #2 failure' }),
+      );
     });
   });
 

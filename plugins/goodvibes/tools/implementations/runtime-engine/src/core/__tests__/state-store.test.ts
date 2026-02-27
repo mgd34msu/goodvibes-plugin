@@ -475,3 +475,98 @@ describe('CoreStateStore — file path options', () => {
     expect(readPath).toMatch(/^\//);
   });
 });
+
+// ── Prototype pollution guard ─────────────────────────────────────────
+
+describe('CoreStateStore prototype pollution guard', () => {
+  let store: CoreStateStore;
+
+  beforeEach(() => {
+    mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
+    store = new CoreStateStore();
+    vi.clearAllMocks();
+  });
+
+  const DANGEROUS_SEGMENTS = ['__proto__', 'constructor', 'prototype'];
+
+  describe('set() rejects dangerous path segments', () => {
+    for (const seg of DANGEROUS_SEGMENTS) {
+      it(`set('${seg}', ...) throws TypeError`, () => {
+        expect(() => store.set(seg, 'evil')).toThrow(TypeError);
+        expect(() => store.set(seg, 'evil')).toThrow(/forbidden/);
+      });
+
+      it(`set('a.${seg}.b', ...) throws TypeError`, () => {
+        expect(() => store.set(`a.${seg}.b`, 'evil')).toThrow(TypeError);
+        expect(() => store.set(`a.${seg}.b`, 'evil')).toThrow(/forbidden/);
+      });
+
+      it(`set('${seg}.sub', ...) throws TypeError`, () => {
+        expect(() => store.set(`${seg}.sub`, 'evil')).toThrow(TypeError);
+      });
+    }
+  });
+
+  describe('get() rejects dangerous path segments', () => {
+    for (const seg of DANGEROUS_SEGMENTS) {
+      it(`get('${seg}') throws TypeError`, () => {
+        expect(() => store.get(seg)).toThrow(TypeError);
+        expect(() => store.get(seg)).toThrow(/forbidden/);
+      });
+
+      it(`get('a.${seg}.b') throws TypeError`, () => {
+        expect(() => store.get(`a.${seg}.b`)).toThrow(TypeError);
+      });
+    }
+  });
+
+  describe('delete() rejects dangerous path segments', () => {
+    for (const seg of DANGEROUS_SEGMENTS) {
+      it(`delete('${seg}') throws TypeError`, () => {
+        expect(() => store.delete(seg)).toThrow(TypeError);
+        expect(() => store.delete(seg)).toThrow(/forbidden/);
+      });
+
+      it(`delete('a.${seg}.c') throws TypeError`, () => {
+        expect(() => store.delete(`a.${seg}.c`)).toThrow(TypeError);
+      });
+    }
+  });
+
+  describe('merge() rejects dangerous path segments (via set/get)', () => {
+    for (const seg of DANGEROUS_SEGMENTS) {
+      it(`merge('${seg}', ...) throws TypeError`, () => {
+        expect(() => store.merge(seg, { x: 1 })).toThrow(TypeError);
+      });
+
+      it(`merge('a.${seg}', ...) throws TypeError`, () => {
+        expect(() => store.merge(`a.${seg}`, { x: 1 })).toThrow(TypeError);
+      });
+    }
+  });
+
+  it('safe paths with similar-looking segments are allowed', () => {
+    // Segments that merely contain the forbidden words as substrings are fine
+    expect(() => store.set('proto', 'ok')).not.toThrow();
+    expect(() => store.set('__proto__extra', 'ok')).not.toThrow();
+    expect(() => store.set('my_constructor', 'ok')).not.toThrow();
+    expect(() => store.set('aprototypeb', 'ok')).not.toThrow();
+  });
+
+  it('safe dot-paths with non-dangerous segments are allowed', () => {
+    expect(() => store.set('session.phase', 'active')).not.toThrow();
+    expect(store.get('session.phase')).toBe('active');
+  });
+
+  it('set() with dangerous key does not mutate the store', () => {
+    const before = store.snapshot();
+    expect(() => store.set('__proto__', 'evil')).toThrow(TypeError);
+    const after = store.snapshot();
+    expect(after).toEqual(before);
+  });
+
+  it('Object.prototype is not polluted after a rejected set attempt', () => {
+    expect(() => store.set('__proto__', { isPolluted: true })).toThrow(TypeError);
+    expect((Object.prototype as Record<string, unknown>)['isPolluted']).toBeUndefined();
+  });
+});

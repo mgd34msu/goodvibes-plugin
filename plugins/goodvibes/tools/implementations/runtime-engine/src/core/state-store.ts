@@ -32,6 +32,25 @@ export interface CoreStateStoreOptions {
   save_debounce_ms?: number;
 }
 
+/** Segments forbidden in dot-path traversal to prevent prototype pollution. */
+const FORBIDDEN_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Validate that a dot-separated key path contains no dangerous segments.
+ * Throws a TypeError if `__proto__`, `constructor`, or `prototype` appear as any segment.
+ * This prevents prototype pollution via crafted key names.
+ */
+function validateDotPath(path: string): void {
+  const segments = path.split('.');
+  for (const seg of segments) {
+    if (FORBIDDEN_PATH_SEGMENTS.has(seg)) {
+      throw new TypeError(
+        `Prototype pollution guard: key path segment '${seg}' is forbidden in state paths`,
+      );
+    }
+  }
+}
+
 /**
  * Set a nested value at a dot-separated path, creating intermediate objects as needed.
  */
@@ -130,8 +149,11 @@ export class CoreStateStore implements StateStoreInterface {
   /**
    * Get a value at a dot-separated key path.
    * Returns null if not found or if path traversal fails.
+   * Throws TypeError if the path contains a forbidden segment (`__proto__`,
+   * `constructor`, or `prototype`) to prevent prototype pollution.
    */
   get<T>(key: string): T | null {
+    validateDotPath(key);
     const value = getPath(this.data, key);
     return value === undefined ? null : (value as T);
   }
@@ -139,16 +161,22 @@ export class CoreStateStore implements StateStoreInterface {
   /**
    * Set a value at a dot-separated key path.
    * Schedules a debounced auto-save.
+   * Throws TypeError if the path contains a forbidden segment (`__proto__`,
+   * `constructor`, or `prototype`) to prevent prototype pollution.
    */
   set<T>(key: string, value: T): void {
+    validateDotPath(key);
     setPath(this.data, key, value);
     this.scheduleSave();
   }
 
   /**
    * Delete a key (dot-separated path). No-op if not found.
+   * Throws TypeError if the path contains a forbidden segment (`__proto__`,
+   * `constructor`, or `prototype`) to prevent prototype pollution.
    */
   delete(key: string): void {
+    validateDotPath(key);
     deletePath(this.data, key);
     this.scheduleSave();
   }

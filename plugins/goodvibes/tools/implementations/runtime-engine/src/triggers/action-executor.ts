@@ -45,6 +45,20 @@ interface ActionResult {
  * - `$event.timestamp`       → event.timestamp
  * - `$event.payload.data.*`  → event.payload.data property path
  *
+ * **Empty-string-on-missing behaviour:** Every matched `$event.*` placeholder
+ * that cannot be resolved to a non-null, non-object primitive is replaced with
+ * an empty string `''` (not `undefined`, not `'null'`).  This happens in
+ * three cases:
+ *  1. A path segment is missing / `undefined` — silently becomes `''`.
+ *  2. The resolved value is `null` — silently becomes `''`.
+ *  3. The resolved value is an object (not serialisable inline) — becomes `''`.
+ *  4. A path contains a forbidden segment (`__proto__`, `constructor`,
+ *     `prototype`) — the traversal is blocked and the placeholder becomes `''`.
+ *
+ * Consumers that need to distinguish "not present" from "empty value" should
+ * use `||` fallback chains rather than `??`, because `??` only catches
+ * `null`/`undefined` and will not fall through on an empty string.
+ *
  * @param value - The string potentially containing `$event.*` references.
  * @param event - The triggering event.
  * @returns The resolved string, or the original if no references found.
