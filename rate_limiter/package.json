@@ -1,18 +1,48 @@
 {
   "name": "@goodvibes/rate-limiter",
   "version": "1.0.0",
-  "description": "Rate limiter with token bucket, sliding window, and fixed window algorithms",
+  "description": "Standalone TypeScript rate limiting library with token bucket, sliding window, and fixed window algorithms",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./algorithms": {
+      "import": "./dist/algorithms/index.js",
+      "types": "./dist/algorithms/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --passWithNoTests"
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@vitest/coverage-v8": "^2.0.0",
-    "typescript": "^5.3.0",
-    "vitest": "^2.0.0"
-  }
+    "@vitest/coverage-v8": "^2.1.9",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "rate-limiter",
+    "token-bucket",
+    "sliding-window",
+    "fixed-window",
+    "typescript"
+  ]
 }
