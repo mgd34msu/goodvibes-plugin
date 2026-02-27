@@ -134,6 +134,66 @@ export interface ExecutorConfig {
   budget: ExecutorBudgetConfig;
 }
 
+/** Heartbeat configuration for the time plugin. */
+export interface HeartbeatPluginConfig {
+  /** Interval in ms between heartbeat pulses. Default: 60000 (60s). */
+  interval_ms: number;
+  /** Whether the heartbeat is enabled. Default: true. */
+  enabled: boolean;
+  /** Priority of heartbeat events. Default: 10. */
+  priority?: number;
+}
+
+/** Scheduler configuration for the time plugin. */
+export interface SchedulerPluginConfig {
+  /** Maximum number of scheduled items. Default: 100. */
+  max_scheduled_items: number;
+  /** Whether schedules persist across restarts. Default: true. */
+  persist_schedules: boolean;
+}
+
+/** Time plugin configuration (Layer 3). */
+export interface TimePluginRuntimeConfig {
+  /** Heartbeat pulse settings. */
+  heartbeat: HeartbeatPluginConfig;
+  /** Event scheduler settings. */
+  scheduler: SchedulerPluginConfig;
+}
+
+/** File watcher configuration for the external plugin. */
+export interface FileWatcherPluginConfig {
+  /** Directory to watch for incoming event files. */
+  incoming_dir: string;
+  /** Directory for successfully processed files. */
+  processed_dir: string;
+  /** Directory for files that failed processing. */
+  error_dir: string;
+  /** Maximum files to process per scan cycle. Default: 50. */
+  max_files_per_scan: number;
+}
+
+/** HTTP webhook listener configuration for the external plugin. */
+export interface HttpListenerPluginConfig {
+  /** Whether the HTTP listener is enabled. Default: false. */
+  enabled: boolean;
+  /** Port to listen on. Default: 3847. */
+  port: number;
+  /** Host/IP to bind to. Default: '127.0.0.1' (localhost only). */
+  host: string;
+  /** Optional bearer token for webhook authentication. */
+  auth_token?: string;
+  /** Maximum request body size in bytes. Default: 1MB. */
+  max_payload_bytes: number;
+}
+
+/** External plugin configuration (Layer 3). */
+export interface ExternalPluginRuntimeConfig {
+  /** File-drop event ingestion settings. */
+  file_watcher: FileWatcherPluginConfig;
+  /** HTTP webhook listener settings. Disabled by default for security. */
+  http_listener: HttpListenerPluginConfig;
+}
+
 /** Feature flags -- controls which subsystems are active */
 export interface FeaturesConfig {
   /** Whether IPC communication is enabled */
@@ -159,6 +219,10 @@ export interface RuntimeConfig {
   features: FeaturesConfig;
   agents: AgentsConfig;
   executor: ExecutorConfig;
+  /** Time plugin settings (heartbeat, scheduler). */
+  time: TimePluginRuntimeConfig;
+  /** External event ingestion settings (file watcher, HTTP listener). */
+  external: ExternalPluginRuntimeConfig;
 }
 
 /** Default configuration values -- safe for all environments */
@@ -235,6 +299,30 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
       daily_cap_usd: undefined,
       warning_threshold: 0.8,
       daily_reset_hour: 0,
+    },
+  },
+  time: {
+    heartbeat: {
+      interval_ms: 60_000,
+      enabled: true,
+    },
+    scheduler: {
+      max_scheduled_items: 100,
+      persist_schedules: true,
+    },
+  },
+  external: {
+    file_watcher: {
+      incoming_dir: '.goodvibes/events/incoming',
+      processed_dir: '.goodvibes/events/processed',
+      error_dir: '.goodvibes/events/errors',
+      max_files_per_scan: 50,
+    },
+    http_listener: {
+      enabled: false,
+      port: 3847,
+      host: '127.0.0.1',
+      max_payload_bytes: 1 * 1024 * 1024, // 1MB
     },
   },
 };

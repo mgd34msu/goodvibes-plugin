@@ -72,10 +72,9 @@ import {
   HookRegistry,
   registerDefaultHandlers,
   TimePlugin,
-  getDefaultTimeConfig,
   ExternalPlugin,
-  createDefaultExternalPluginConfig,
 } from '../plugins/index.js';
+import type { ExternalPluginConfig } from '../plugins/index.js';
 
 // ─── Executor module imports ──────────────────────────────────────────────────
 import { ExecutorModeManager } from './executor-mode.js';
@@ -678,6 +677,11 @@ export class ProcessManager {
     if (this.daemonTickScheduler) {
       this.daemonTickScheduler.reconfigure(config.executor);
     }
+    // Note: time and external plugin configs are applied at construction time only.
+    // Changes to config.time or config.external require a session restart to take effect.
+    // The v3TimePlugin and v3ExternalPlugin do not support hot-reconfiguration because
+    // their internal state (heartbeat timers, file watcher directories, HTTP server
+    // binding) cannot be safely swapped at runtime without potential event loss.
   }
 
   /**
@@ -1118,7 +1122,7 @@ export class ProcessManager {
       this.v3TimePlugin = new TimePlugin({
         queue: this.v3EventQueue,
         store: this.v3StateStore,
-        config: getDefaultTimeConfig(),
+        config: this.config.time,
       });
       logger.debug('v3 time plugin initialised');
 
@@ -1134,10 +1138,15 @@ export class ProcessManager {
         logger.debug('daemon tick scheduler created');
       }
 
-      // 9. External plugin (file-drop ingestion)
+      // 9. External plugin (file-drop + optional HTTP ingestion)
+      const { enabled: httpEnabled, ...httpListenerConfig } = this.config.external.http_listener;
+      const externalPluginConfig: ExternalPluginConfig = {
+        file_watcher: this.config.external.file_watcher,
+        ...(httpEnabled ? { http_listener: httpListenerConfig } : {}),
+      };
       this.v3ExternalPlugin = new ExternalPlugin(
         this.v3EventQueue,
-        createDefaultExternalPluginConfig(),
+        externalPluginConfig,
       );
       // Ensure drop directories exist
       try {
@@ -1146,6 +1155,20 @@ export class ProcessManager {
         logger.warn('v3 external plugin directory initialisation failed', {
           err: toErrorMessage(err),
         });
+      }
+      // Auto-start HTTP listener if enabled in config
+      if (httpEnabled) {
+        try {
+          await this.v3ExternalPlugin.startHttpListener();
+          logger.info('HTTP webhook listener started', {
+            port: this.config.external.http_listener.port,
+            host: this.config.external.http_listener.host,
+          });
+        } catch (err) {
+          logger.warn('Failed to start HTTP webhook listener', {
+            err: toErrorMessage(err),
+          });
+        }
       }
       logger.debug('v3 external plugin initialised');
 

@@ -21665,6 +21665,31 @@ var DEFAULT_CONFIG = {
       warning_threshold: 0.8,
       daily_reset_hour: 0
     }
+  },
+  time: {
+    heartbeat: {
+      interval_ms: 6e4,
+      enabled: true
+    },
+    scheduler: {
+      max_scheduled_items: 100,
+      persist_schedules: true
+    }
+  },
+  external: {
+    file_watcher: {
+      incoming_dir: ".goodvibes/events/incoming",
+      processed_dir: ".goodvibes/events/processed",
+      error_dir: ".goodvibes/events/errors",
+      max_files_per_scan: 50
+    },
+    http_listener: {
+      enabled: false,
+      port: 3847,
+      host: "127.0.0.1",
+      max_payload_bytes: 1 * 1024 * 1024
+      // 1MB
+    }
   }
 };
 function deepMerge(base, override) {
@@ -32015,31 +32040,12 @@ var TimePlugin = class {
     return this.scheduler;
   }
 };
-function getDefaultTimeConfig() {
-  return {
-    heartbeat: {
-      interval_ms: 6e4,
-      enabled: true
-    },
-    scheduler: {
-      max_scheduled_items: 100,
-      persist_schedules: true
-    }
-  };
-}
-__name(getDefaultTimeConfig, "getDefaultTimeConfig");
 
 // src/plugins/external/file-watcher.ts
 var crypto = __toESM(require("node:crypto"), 1);
 var fs = __toESM(require("node:fs/promises"), 1);
 var path = __toESM(require("node:path"), 1);
 var logger31 = createLogger("file-watcher");
-var DEFAULT_FILE_WATCHER_CONFIG = {
-  incoming_dir: ".goodvibes/events/incoming",
-  processed_dir: ".goodvibes/events/processed",
-  error_dir: ".goodvibes/events/errors",
-  max_files_per_scan: 50
-};
 function isDropFilePayload(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
@@ -32515,13 +32521,6 @@ __name(createDefaultRegistry, "createDefaultRegistry");
 
 // src/plugins/external/external-plugin.ts
 var logger33 = createLogger("external-plugin");
-function createDefaultExternalPluginConfig() {
-  return {
-    file_watcher: { ...DEFAULT_FILE_WATCHER_CONFIG }
-    // http_listener intentionally omitted — disabled by default
-  };
-}
-__name(createDefaultExternalPluginConfig, "createDefaultExternalPluginConfig");
 var ExternalPlugin = class {
   constructor(queue, config2) {
     this.queue = queue;
@@ -34255,7 +34254,7 @@ var ProcessManager = class {
       this.v3TimePlugin = new TimePlugin({
         queue: this.v3EventQueue,
         store: this.v3StateStore,
-        config: getDefaultTimeConfig()
+        config: this.config.time
       });
       logger39.debug("v3 time plugin initialised");
       if (this.executorMode && this.daemonTickHandler) {
@@ -34266,9 +34265,14 @@ var ProcessManager = class {
         });
         logger39.debug("daemon tick scheduler created");
       }
+      const { enabled: httpEnabled, ...httpListenerConfig } = this.config.external.http_listener;
+      const externalPluginConfig = {
+        file_watcher: this.config.external.file_watcher,
+        ...httpEnabled ? { http_listener: httpListenerConfig } : {}
+      };
       this.v3ExternalPlugin = new ExternalPlugin(
         this.v3EventQueue,
-        createDefaultExternalPluginConfig()
+        externalPluginConfig
       );
       try {
         await this.v3ExternalPlugin.initialize();
@@ -34276,6 +34280,19 @@ var ProcessManager = class {
         logger39.warn("v3 external plugin directory initialisation failed", {
           err: toErrorMessage(err)
         });
+      }
+      if (httpEnabled) {
+        try {
+          await this.v3ExternalPlugin.startHttpListener();
+          logger39.info("HTTP webhook listener started", {
+            port: this.config.external.http_listener.port,
+            host: this.config.external.http_listener.host
+          });
+        } catch (err) {
+          logger39.warn("Failed to start HTTP webhook listener", {
+            err: toErrorMessage(err)
+          });
+        }
       }
       logger39.debug("v3 external plugin initialised");
       logger39.info("v3 plugins fully initialised");
