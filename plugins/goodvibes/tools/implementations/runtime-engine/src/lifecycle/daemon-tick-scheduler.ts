@@ -92,9 +92,17 @@ export class DaemonTickScheduler {
     }
 
     // Schedule the daemon heartbeat via the existing EventScheduler.
-    // Guard against duplicate registration if start() is called after a partial
-    // stop() that failed to cancel the item.
+    // If a stale item exists (e.g. restored from persistence with an outdated
+    // interval_ms), cancel it first so we always honour the current config.
     const scheduler = this.timePlugin.getScheduler();
+    const existing = scheduler.getItem(DAEMON_HEARTBEAT_ID);
+    if (existing && existing.interval_ms !== intervalMs) {
+      scheduler.cancel(DAEMON_HEARTBEAT_ID);
+      logger.info('cancelled stale daemon heartbeat', {
+        old_interval_ms: existing.interval_ms,
+        new_interval_ms: intervalMs,
+      });
+    }
     if (!scheduler.getItem(DAEMON_HEARTBEAT_ID)) {
       scheduler.scheduleHeartbeat({
         id: DAEMON_HEARTBEAT_ID,

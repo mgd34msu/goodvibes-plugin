@@ -33284,6 +33284,14 @@ var DaemonTickScheduler = class _DaemonTickScheduler {
       return;
     }
     const scheduler = this.timePlugin.getScheduler();
+    const existing = scheduler.getItem(DAEMON_HEARTBEAT_ID);
+    if (existing && existing.interval_ms !== intervalMs) {
+      scheduler.cancel(DAEMON_HEARTBEAT_ID);
+      logger38.info("cancelled stale daemon heartbeat", {
+        old_interval_ms: existing.interval_ms,
+        new_interval_ms: intervalMs
+      });
+    }
     if (!scheduler.getItem(DAEMON_HEARTBEAT_ID)) {
       scheduler.scheduleHeartbeat({
         id: DAEMON_HEARTBEAT_ID,
