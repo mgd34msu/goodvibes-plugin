@@ -33050,13 +33050,13 @@ var ContextClearer = class {
    */
   async clearViaTmux() {
     const sessionName = this.config.tmux_session_name;
-    const cmd = `tmux send-keys -t ${sessionName} "/clear" Enter`;
     try {
-      (0, import_node_child_process.execSync)(cmd, { timeout: TMUX_TIMEOUT_MS, stdio: "pipe" });
+      (0, import_node_child_process.execFileSync)("tmux", ["send-keys", "-t", sessionName, "/clear"], { timeout: TMUX_TIMEOUT_MS, stdio: "pipe" });
+      (0, import_node_child_process.execFileSync)("tmux", ["send-keys", "-t", sessionName, "Enter"], { timeout: TMUX_TIMEOUT_MS, stdio: "pipe" });
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logger36.error("tmux send-keys failed", { cmd, error: msg });
+      logger36.error("tmux send-keys failed", { session: sessionName, error: msg });
       return false;
     }
   }
@@ -33392,7 +33392,11 @@ var DaemonTickScheduler = class _DaemonTickScheduler {
     const sessionName = this.config.daemon.tmux_session_name;
     const tickCommand = this.config.daemon.tick_command;
     try {
-      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, tickCommand, "Enter"], {
+      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, tickCommand], {
+        timeout: TMUX_TIMEOUT_MS2,
+        stdio: "pipe"
+      });
+      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, "Enter"], {
         timeout: TMUX_TIMEOUT_MS2,
         stdio: "pipe"
       });
