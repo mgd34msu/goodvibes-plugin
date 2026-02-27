@@ -1,15 +1,10 @@
 /**
- * Triggers barrel — Layer 2 trigger type extensions.
- * Re-exports all trigger interfaces, type guards, and factories.
+ * Extensions/Triggers barrel — trigger types, registry, evaluator, executor, and builtins.
  */
 
-export type { TriggerFactoryParams } from './shared.js';
-
-export type { WRFCTrigger } from './wrfc-trigger.js';
-export { isWRFCTrigger, createWRFCTrigger } from './wrfc-trigger.js';
-
-export type { CronTrigger } from './cron-trigger.js';
-export { isCronTrigger, createCronTrigger } from './cron-trigger.js';
-
-export type { WebhookTrigger } from './webhook-trigger.js';
-export { isWebhookTrigger, createWebhookTrigger } from './webhook-trigger.js';
+export * from './types.js';
+export * from './factories.js';
+export * from './trigger-registry.js';
+export * from './condition-evaluator.js';
+export * from './action-executor.js';
+export * from './builtins.js';

@@ -18,7 +18,7 @@ import { createLogger } from '../../shared/logger.js';
 import type { RuntimeEvent, HandlerResult, StateUpdate, Action, StateStoreInterface } from '../../core/types.js';
 import { createEvent } from '../../core/types.js';
 import type { Trigger } from '../../core/types.js';
-import { extractFiles } from '../../directives/gv-tag-parser.js';
+import { extractFiles } from '../../extensions/directives/gv-tag-parser.js';
 import { extractScore } from './score-evaluator.js';
 import {
   buildSpawnAction,

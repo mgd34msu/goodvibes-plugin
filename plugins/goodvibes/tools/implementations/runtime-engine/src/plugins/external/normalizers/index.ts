@@ -5,7 +5,7 @@
  * Falls back to 'generic' when no specific normalizer is registered.
  */
 
-import { ExternalEvent } from '../../../extensions/events/external-event.js';
+import { ExternalEvent } from '../../../extensions/events/factories.js';
 import { normalizeGithub } from './github.js';
 import { normalizeGeneric } from './generic.js';
 

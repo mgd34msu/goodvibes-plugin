@@ -4,9 +4,9 @@
  * Emits session:ended event for cleanup.
  */
 
-import type { HookEvent } from '../../../extensions/events/hook-event.js';
+import type { HookEvent } from '../../../extensions/events/factories.js';
 import type { ClaudeHookResponse } from '../hook-processor.js';
-import type { EventBus } from '../../../events/event-bus.js';
+import type { EventBus } from '../../../extensions/events/event-bus.js';
 import { createLogger } from '../../../shared/logger.js';
 
 const logger = createLogger('handler:session-end');

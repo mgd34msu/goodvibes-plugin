@@ -5,7 +5,7 @@
  * Wraps raw payload in an ExternalEvent with minimal transformation.
  */
 
-import { ExternalEvent, createExternalEvent } from '../../../extensions/events/external-event.js';
+import { ExternalEvent, createExternalEvent } from '../../../extensions/events/factories.js';
 
 // ─── Generic Normalizer ───────────────────────────────────────────────────────
 

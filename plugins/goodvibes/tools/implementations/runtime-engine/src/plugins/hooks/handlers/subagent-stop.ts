@@ -5,10 +5,10 @@
  * to advance WRFC workflow state.
  */
 
-import type { HookEvent } from '../../../extensions/events/hook-event.js';
+import type { HookEvent } from '../../../extensions/events/factories.js';
 import type { ClaudeHookResponse } from '../hook-processor.js';
-import type { EventBus } from '../../../events/event-bus.js';
-import type { AgentWorkflowMap } from '../../../directives/agent-workflow-map.js';
+import type { EventBus } from '../../../extensions/events/event-bus.js';
+import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
 import { createLogger } from '../../../shared/logger.js';
 
 const logger = createLogger('handler:subagent-stop');

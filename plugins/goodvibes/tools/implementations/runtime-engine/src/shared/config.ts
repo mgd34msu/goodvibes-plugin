@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { writeJsonSync } from '../core/file-io.js';
+import { writeJsonSync } from '../core/state/file-io.js';
 import { toErrorMessage } from './utils.js';
 import { join } from 'node:path';
 import { userInfo, tmpdir } from 'node:os';

@@ -22,11 +22,11 @@ import { createUserPromptSubmitHandler } from './user-prompt-submit.js';
 import type { UserPromptSubmitDeps } from './user-prompt-submit.js';
 
 import type { HookRegistry } from '../hook-registry.js';
-import type { EventBus } from '../../../events/event-bus.js';
-import type { DirectiveQueue } from '../../../directives/directive-queue.js';
-import type { AgentWorkflowMap } from '../../../directives/agent-workflow-map.js';
-import type { DaemonTickHandler } from '../../../lifecycle/daemon-tick-handler.js';
-import type { ExecutorModeManager } from '../../../lifecycle/executor-mode.js';
+import type { EventBus } from '../../../extensions/events/event-bus.js';
+import type { DirectiveQueue } from '../../../extensions/directives/directive-queue.js';
+import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
+import type { DaemonTickHandler } from '../../../extensions/executor/daemon-tick-handler.js';
+import type { ExecutorModeManager } from '../../../core/processing/executor-mode.js';
 
 export {
   handlePreToolUse,

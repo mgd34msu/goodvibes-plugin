@@ -6,11 +6,11 @@
  * user-prompt-submit-directives.mjs.
  */
 
-import type { HookEvent } from '../../../extensions/events/hook-event.js';
+import type { HookEvent } from '../../../extensions/events/factories.js';
 import type { ClaudeHookResponse } from '../hook-processor.js';
-import type { DirectiveQueue } from '../../../directives/directive-queue.js';
-import type { DaemonTickHandler } from '../../../lifecycle/daemon-tick-handler.js';
-import type { ExecutorModeManager } from '../../../lifecycle/executor-mode.js';
+import type { DirectiveQueue } from '../../../extensions/directives/directive-queue.js';
+import type { DaemonTickHandler } from '../../../extensions/executor/daemon-tick-handler.js';
+import type { ExecutorModeManager } from '../../../core/processing/executor-mode.js';
 import { createLogger } from '../../../shared/logger.js';
 
 const logger = createLogger('handler:user-prompt-submit');

@@ -5,9 +5,9 @@
  * by injecting additionalContext into the agent's system prompt.
  */
 
-import type { HookEvent } from '../../../extensions/events/hook-event.js';
+import type { HookEvent } from '../../../extensions/events/factories.js';
 import type { ClaudeHookResponse } from '../hook-processor.js';
-import type { AgentWorkflowMap } from '../../../directives/agent-workflow-map.js';
+import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
 import { createLogger } from '../../../shared/logger.js';
 
 const logger = createLogger('handler:subagent-start');

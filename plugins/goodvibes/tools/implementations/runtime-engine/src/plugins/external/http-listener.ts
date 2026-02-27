@@ -22,7 +22,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { createLogger } from '../../shared/logger.js';
-import { readStreamBody } from '../../core/stream-reader.js';
+import { readStreamBody } from '../../core/state/stream-reader.js';
 
 const logger = createLogger('http-listener');
 

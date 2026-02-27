@@ -5,7 +5,7 @@
  * no internal timers. Debounces rapid ticks to enforce the configured interval.
  */
 
-import { TimeEvent, createTimeEvent } from '../../extensions/events/time-event.js';
+import { TimeEvent, createTimeEvent } from '../../extensions/events/factories.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 

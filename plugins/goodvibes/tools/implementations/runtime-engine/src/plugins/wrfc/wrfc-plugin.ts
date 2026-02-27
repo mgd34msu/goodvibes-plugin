@@ -14,10 +14,10 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
-import type { EventProcessor } from '../../core/event-processor.js';
-import type { TriggerRegistry } from '../../core/trigger-registry.js';
+import type { EventProcessor } from '../../core/processing/event-processor.js';
+import type { TriggerRegistry } from '../../core/matching/trigger-registry.js';
 import type { StateStoreInterface, TriggerHandlerFn, HandlerResult } from '../../core/types.js';
-import { createWRFCTrigger } from '../../extensions/triggers/wrfc-trigger.js';
+import { createWRFCTrigger } from '../../extensions/triggers/factories.js';
 import {
   handleWorkflowCreated,
   handleAgentCompleted,

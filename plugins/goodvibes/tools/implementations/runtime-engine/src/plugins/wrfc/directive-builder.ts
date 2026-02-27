@@ -15,7 +15,7 @@ import {
   buildWorkflowCompleteMessage,
   buildEscalationMessage,
   type SpawnDirectiveContext,
-} from '../../directives/directive-builder.js';
+} from '../../extensions/directives/directive-builder.js';
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────
 

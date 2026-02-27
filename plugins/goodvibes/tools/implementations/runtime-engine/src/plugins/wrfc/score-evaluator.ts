@@ -6,7 +6,7 @@
  * reuse across handlers without coupling to the directive queue.
  */
 
-import { parseGvTag } from '../../directives/gv-tag-parser.js';
+import { parseGvTag } from '../../extensions/directives/gv-tag-parser.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

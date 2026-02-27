@@ -6,7 +6,7 @@
  * into a single ClaudeHookResponse.
  */
 
-import { createHookEvent, HookType } from '../../extensions/events/hook-event.js';
+import { createHookEvent, HookType } from '../../extensions/events/factories.js';
 import { HookRegistry } from './hook-registry.js';
 import { createLogger } from '../../shared/logger.js';
 

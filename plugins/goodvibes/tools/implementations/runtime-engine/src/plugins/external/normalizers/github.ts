@@ -5,7 +5,7 @@
  * Determines event type from the X-GitHub-Event header or payload structure.
  */
 
-import { ExternalEvent, createExternalEvent } from '../../../extensions/events/external-event.js';
+import { ExternalEvent, createExternalEvent } from '../../../extensions/events/factories.js';
 
 // ─── GitHub Event Type Mapping ────────────────────────────────────────────────
 

@@ -9,19 +9,19 @@ export * from './shared/config.js';
 export * from './shared/constants.js';
 export * from './shared/logger.js';
 export * from './shared/utils.js';
-export * from './types.js';
-export * from './persistence/types.js';
-export * from './persistence/state-store.js';
-export { EventQueue, QueuePriority } from './events/event-queue.js';
-export type { QueueEntry, DeadLetterEntry, QueueStats, QueueHandler, EventQueueConfig } from './events/event-queue.js';
-export { EventLog } from './events/event-log.js';
-export type { EventLogStats } from './events/event-log.js';
-export * from './events/types.js';
-export { EventBus } from './events/event-bus.js';
-export { ConditionEvaluator } from './triggers/condition-evaluator.js';
-export { ActionExecutor } from './triggers/action-executor.js';
-export { TriggerRegistry } from './triggers/trigger-registry.js';
-export { getBuiltinTriggers } from './triggers/builtins.js';
+export * from './shared/types.js';
+export * from './extensions/persistence/types.js';
+export * from './extensions/persistence/state-store.js';
+export { EventQueue, QueuePriority } from './extensions/events/event-queue.js';
+export type { QueueEntry, DeadLetterEntry, QueueStats, QueueHandler, EventQueueConfig } from './extensions/events/event-queue.js';
+export { EventLog } from './extensions/events/event-log.js';
+export type { EventLogStats } from './extensions/events/event-log.js';
+export * from './extensions/events/types.js';
+export { EventBus } from './extensions/events/event-bus.js';
+export { ConditionEvaluator } from './extensions/triggers/condition-evaluator.js';
+export { ActionExecutor } from './extensions/triggers/action-executor.js';
+export { TriggerRegistry } from './extensions/triggers/trigger-registry.js';
+export { getBuiltinTriggers } from './extensions/triggers/builtins.js';
 export type {
   TriggerDefinition,
   TriggerCondition,
@@ -37,17 +37,17 @@ export type {
   CompositeAction,
   TriggerResult,
   TriggerActionHandler,
-} from './triggers/types.js';
-export * from './workflow/index.js';
-export * from './ipc/protocol.js';
-export { IPCServer } from './ipc/ipc-server.js';
-export type { MessageHandler } from './ipc/ipc-server.js';
-export { RuntimeClient } from './ipc/client.js';
-export { FileFallback } from './ipc/file-fallback.js';
-export { IPCRouter } from './ipc/ipc-router.js';
-export type { IPCRouterDeps } from './ipc/ipc-router.js';
-export { AgentCoordinator } from './agents/agent-coordinator.js';
-export { BudgetTracker } from './agents/budget-tracker.js';
+} from './extensions/triggers/types.js';
+export * from './extensions/workflow/index.js';
+export * from './shared/ipc/protocol.js';
+export { IPCServer } from './shared/ipc/ipc-server.js';
+export type { MessageHandler } from './shared/ipc/ipc-server.js';
+export { RuntimeClient } from './shared/ipc/client.js';
+export { FileFallback } from './core/state/file-fallback.js';
+export { IPCRouter } from './shared/ipc/ipc-router.js';
+export type { IPCRouterDeps } from './shared/ipc/ipc-router.js';
+export { AgentCoordinator } from './extensions/agents/agent-coordinator.js';
+export { BudgetTracker } from './extensions/agents/budget-tracker.js';
 export type {
   CoordinatedAgent,
   AgentBudgetSnapshot,
@@ -61,4 +61,4 @@ export type {
   BudgetThreshold,
   CoordinatorStats,
   CoordinatedSpawnOptions,
-} from './agents/types.js';
+} from './extensions/agents/types.js';

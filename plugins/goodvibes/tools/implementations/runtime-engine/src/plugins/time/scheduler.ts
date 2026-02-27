@@ -8,7 +8,7 @@
  */
 
 import { StateStoreInterface } from '../../core/types.js';
-import { TimeEvent, createTimeEvent } from '../../extensions/events/time-event.js';
+import { TimeEvent, createTimeEvent } from '../../extensions/events/factories.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

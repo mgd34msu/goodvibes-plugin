@@ -8,7 +8,7 @@
  * separately from src/index.ts for use by other engine subsystems.
  */
 
-import { RuntimeEngineServer } from './server/mcp-server.js';
+import { RuntimeEngineServer } from './plugins/mcp/mcp-server.js';
 import { toErrorMessage } from './shared/utils.js';
 
 async function main(): Promise<void> {
