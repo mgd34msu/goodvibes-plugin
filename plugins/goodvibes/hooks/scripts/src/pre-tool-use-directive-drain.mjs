@@ -29,6 +29,7 @@ import * as net from 'node:net';
 import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { audit, getTranscriptPath } from './queue-auditor.mjs';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -230,7 +231,7 @@ try {
 
   // Fast path: no runtime engine running
   if (!socketPath || !existsSync(socketPath)) {
-    respond(allowResponse());
+    respond(allowResponse()); // process.exit(0) — no code executes after this
   }
 
   // Query for pending directives
@@ -246,15 +247,31 @@ try {
     }
   }
 
+  // Queue auditor: detect removed task-notifications (Layer 0 recovery)
+  if (!result?.directives?.length) {
+    try {
+      const transcriptPath = getTranscriptPath(projectDir, sessionId);
+      const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');
+      const auditResult = audit(transcriptPath, stateDir);
+      if (auditResult.orphanedTaskIds.length > 0) {
+        console.error('[PTU-Auditor] Orphaned notifications detected:', auditResult.orphanedTaskIds.join(', '));
+        result = await queryDirectives(socketPath);
+      }
+    } catch (e) {
+      // Auditor failure must never block tool calls
+      console.error('[PTU-Auditor] audit error:', e?.message || e);
+    }
+  }
+
   if (result && result.directives && result.directives.length > 0) {
     const directivePayload = JSON.stringify({
       action: 'directives',
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    respond(allowResponse(gvTag));
+    respond(allowResponse(gvTag)); // process.exit(0) — no code executes after this
   } else {
-    respond(allowResponse());
+    respond(allowResponse()); // process.exit(0) — no code executes after this
   }
 } catch (err) {
   // Never block a tool call — silently allow

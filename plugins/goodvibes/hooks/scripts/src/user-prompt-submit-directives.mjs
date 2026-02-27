@@ -20,6 +20,7 @@ import * as net from 'node:net';
 import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { markDelivered, audit, getTranscriptPath } from './queue-auditor.mjs';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -252,7 +253,7 @@ try {
         }
       }
     }
-    respond(continueResponse());
+    respond(continueResponse()); // process.exit(0) — no code executes after this
   }
 
   const projectDir = hookInput?.cwd || null;
@@ -261,7 +262,16 @@ try {
   const socketPath = discoverSocket(projectDir, sessionId);
 
   if (!socketPath || !existsSync(socketPath)) {
-    respond(continueResponse());
+    respond(continueResponse()); // process.exit(0) — no code executes after this
+  }
+
+  // Keep queue auditor ledger current
+  try {
+    const transcriptPath = getTranscriptPath(projectDir, sessionId);
+    const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');
+    audit(transcriptPath, stateDir);
+  } catch (e) {
+    console.error('[UPS-Auditor] audit error:', e?.message || e);
   }
 
   // Retry with backoff when get_directives returns empty on a task-notification.
@@ -295,9 +305,18 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    respond(continueResponse(gvTag));
+    const taskIdMatch = prompt?.match(/<task-id>([^<]+)<\/task-id>/);
+    if (taskIdMatch) {
+      try {
+        const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');
+        markDelivered(stateDir, taskIdMatch[1]);
+      } catch (e) {
+        console.error('[UPS] markDelivered failed:', e?.message || e);
+      }
+    }
+    respond(continueResponse(gvTag)); // process.exit(0) — no code executes after this
   } else {
-    respond(continueResponse());
+    respond(continueResponse()); // process.exit(0) — no code executes after this
   }
 } catch (err) {
   console.error(`[UPS-Directives] error: ${err}`);
