@@ -6,7 +6,7 @@
  * Fallback: queue injection for non-tmux environments.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import type { DaemonConfig } from '../shared/config.js';
 import { createLogger } from '../shared/logger.js';
 
@@ -72,13 +72,13 @@ export class ContextClearer {
    */
   private async clearViaTmux(): Promise<boolean> {
     const sessionName = this.config.tmux_session_name;
-    const cmd = `tmux send-keys -t ${sessionName} "/clear" Enter`;
     try {
-      execSync(cmd, { timeout: TMUX_TIMEOUT_MS, stdio: 'pipe' });
+      execFileSync('tmux', ['send-keys', '-t', sessionName, '/clear'], { timeout: TMUX_TIMEOUT_MS, stdio: 'pipe' });
+      execFileSync('tmux', ['send-keys', '-t', sessionName, 'Enter'], { timeout: TMUX_TIMEOUT_MS, stdio: 'pipe' });
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logger.error('tmux send-keys failed', { cmd, error: msg });
+      logger.error('tmux send-keys failed', { session: sessionName, error: msg });
       return false;
     }
   }

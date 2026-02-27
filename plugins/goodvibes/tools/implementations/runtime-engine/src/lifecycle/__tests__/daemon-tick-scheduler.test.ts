@@ -112,6 +112,13 @@ function getSendKeysCalls() {
   );
 }
 
+/** Get only the text-sending calls (exclude the separate Enter calls). */
+function getTickTextCalls() {
+  return getSendKeysCalls().filter(
+    (c: unknown[]) => !(c[1] as string[]).includes('Enter') || (c[1] as string[]).length > 4,
+  );
+}
+
 function makeDeps(configOverrides: Partial<ExecutorConfig> = {}) {
   const config = makeConfig(configOverrides);
   const executorMode = new mocks.ExecutorModeManager();
@@ -454,7 +461,8 @@ describe('DaemonTickScheduler', () => {
       const scheduler = new DaemonTickScheduler(deps);
       scheduler.start();
       vi.advanceTimersByTime(EVAL_INTERVAL_MS);
-      expect(getSendKeysCalls()).toHaveLength(1);
+      // Two send-keys calls per tick: one for text, one for Enter
+      expect(getSendKeysCalls()).toHaveLength(2);
     });
 
     it('sends tmux tick when scheduled_emitted is > 1', () => {
@@ -462,7 +470,8 @@ describe('DaemonTickScheduler', () => {
       const scheduler = new DaemonTickScheduler(makeDeps());
       scheduler.start();
       vi.advanceTimersByTime(EVAL_INTERVAL_MS);
-      expect(getSendKeysCalls()).toHaveLength(1);
+      // Two send-keys calls per tick: one for text, one for Enter
+      expect(getSendKeysCalls()).toHaveLength(2);
     });
 
     it('handles timePlugin.onTick() throwing without propagating', () => {
@@ -530,9 +539,16 @@ describe('DaemonTickScheduler', () => {
       scheduler.start();
       vi.advanceTimersByTime(EVAL_INTERVAL_MS);
 
+      // Text call: sends tick command without Enter
       expect(mocks.execFileSync).toHaveBeenCalledWith(
         'tmux',
-        ['send-keys', '-t', 'my-session', 'tick', 'Enter'],
+        ['send-keys', '-t', 'my-session', 'tick'],
+        expect.objectContaining({ timeout: 5_000, stdio: 'pipe' }),
+      );
+      // Submit call: sends Enter separately
+      expect(mocks.execFileSync).toHaveBeenCalledWith(
+        'tmux',
+        ['send-keys', '-t', 'my-session', 'Enter'],
         expect.objectContaining({ timeout: 5_000, stdio: 'pipe' }),
       );
     });
@@ -549,7 +565,11 @@ describe('DaemonTickScheduler', () => {
       scheduler.start();
       vi.advanceTimersByTime(EVAL_INTERVAL_MS);
 
-      expect(getSendKeysCalls()[0][1]).toContain('custom-tick-cmd');
+      // First send-keys call should contain the custom tick command
+      const textCalls = getSendKeysCalls().filter(
+        (c: unknown[]) => (c[1] as string[]).includes('custom-tick-cmd'),
+      );
+      expect(textCalls).toHaveLength(1);
     });
 
     it('does not start when tmux_session_name contains invalid characters', () => {

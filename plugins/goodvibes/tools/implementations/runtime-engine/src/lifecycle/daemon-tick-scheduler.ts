@@ -233,7 +233,11 @@ export class DaemonTickScheduler {
     const sessionName = this.config.daemon.tmux_session_name;
     const tickCommand = this.config.daemon.tick_command;
     try {
-      execFileSync('tmux', ['send-keys', '-t', sessionName, tickCommand, 'Enter'], {
+      execFileSync('tmux', ['send-keys', '-t', sessionName, tickCommand], {
+        timeout: TMUX_TIMEOUT_MS,
+        stdio: 'pipe',
+      });
+      execFileSync('tmux', ['send-keys', '-t', sessionName, 'Enter'], {
         timeout: TMUX_TIMEOUT_MS,
         stdio: 'pipe',
       });
