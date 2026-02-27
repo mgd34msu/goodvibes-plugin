@@ -16,7 +16,7 @@ const logger = createLogger('context-clearer');
 const TMUX_TIMEOUT_MS = 5000;
 
 export class ContextClearer {
-  private readonly config: DaemonConfig;
+  private config: DaemonConfig;
 
   constructor(config: DaemonConfig) {
     this.config = config;

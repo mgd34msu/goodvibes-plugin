@@ -32695,6 +32695,13 @@ var ExecutorModeManager = class {
     return this.currentMode === "daemon" && this.config.daemon.clear_context_after_batch;
   }
   /**
+   * Update the config reference for hot-reload support.
+   * Called by ProcessManager.updateConfig() when runtime_config changes.
+   */
+  updateConfig(config2) {
+    this.config = config2;
+  }
+  /**
    * Infer the executor mode from the process environment.
    * If TMUX is set and GOODVIBES_INTERACTIVE is not set, infer daemon.
    * Hybrid is never inferred — always explicit.
@@ -33868,6 +33875,9 @@ var ProcessManager = class {
     this.healthChecker.updateConfig(config2);
     if (this.agentCoordinator) {
       this.agentCoordinator.updateConfig(config2.agents);
+    }
+    if (this.executorMode) {
+      this.executorMode.updateConfig(config2.executor);
     }
     if (this.daemonTickScheduler) {
       this.daemonTickScheduler.reconfigure(config2.executor);

@@ -30,7 +30,7 @@ export class DaemonTickHandler {
   private readonly executorMode: ExecutorModeManager;
   private readonly budgetManager: ExecutorBudgetManager;
   private readonly eventBus: EventBus;
-  private readonly config: ExecutorConfig;
+  private config: ExecutorConfig;
   private readonly contextClearer: ContextClearer;
 
   constructor(deps: {
