@@ -33219,6 +33219,10 @@ var logger38 = createLogger("process-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 var WATCHDOG_STALE_MS = 12e4;
 var WATCHDOG_COOLDOWN_MS = 12e4;
+function isDirectiveForWorkflow(d, workflowId) {
+  return typeof d.content === "string" && d.content.includes(workflowId);
+}
+__name(isDirectiveForWorkflow, "isDirectiveForWorkflow");
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
   return (0, import_node_path7.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
@@ -33262,6 +33266,8 @@ var ProcessManager = class {
   budgetTracker = null;
   /** Directive queue for WRFC orchestration messages. */
   directiveQueue = null;
+  /** Consecutive drain-stuck detection counts per workflow. */
+  drainStuckCounts = /* @__PURE__ */ new Map();
   /** Agent-to-workflow binding map for deterministic WRFC chain routing. */
   agentWorkflowMap = null;
   /** Tracks last watchdog recovery timestamp per workflow to prevent duplicate re-enqueues. */
@@ -34140,6 +34146,11 @@ var ProcessManager = class {
         this.watchdogRecovery.delete(wid);
       }
     }
+    for (const wid of this.drainStuckCounts.keys()) {
+      if (!activeWorkflows.some((w) => w.id === wid)) {
+        this.drainStuckCounts.delete(wid);
+      }
+    }
     const pendingDirectives = this.directiveQueue.peek("subagent_stop");
     for (const workflow of activeWorkflows) {
       const rawState = workflow.current_state.toUpperCase();
@@ -34150,15 +34161,29 @@ var ProcessManager = class {
       const lastRecovery = this.watchdogRecovery.get(workflow.id);
       if (lastRecovery && now - lastRecovery < WATCHDOG_COOLDOWN_MS) continue;
       const hasPendingForWorkflow = pendingDirectives.some(
-        (d) => typeof d.content === "string" && d.content.includes(workflow.id)
+        (d) => isDirectiveForWorkflow(d, workflow.id)
       );
       if (hasPendingForWorkflow) {
-        logger38.warn("Watchdog: stale workflow with pending directive \u2014 drain may be stuck", {
-          workflow_id: workflow.id,
-          current_state: state,
-          state_age_ms: stateAge,
-          pending_directives: pendingDirectives.length
-        });
+        const stuckCount = (this.drainStuckCounts.get(workflow.id) ?? 0) + 1;
+        this.drainStuckCounts.set(workflow.id, stuckCount);
+        if (stuckCount >= 3) {
+          logger38.warn("Watchdog: drain-stuck escalation \u2014 writing urgent directive file", {
+            workflow_id: workflow.id,
+            current_state: state,
+            state_age_ms: stateAge,
+            stuck_ticks: stuckCount
+          });
+          this.writeUrgentDirectives(workflow.id);
+          this.drainStuckCounts.delete(workflow.id);
+        } else {
+          logger38.warn("Watchdog: stale workflow with pending directive \u2014 drain may be stuck", {
+            workflow_id: workflow.id,
+            current_state: state,
+            state_age_ms: stateAge,
+            pending_directives: pendingDirectives.length,
+            stuck_ticks: stuckCount
+          });
+        }
         continue;
       }
       logger38.warn("Watchdog: recovering stale workflow \u2014 re-enqueueing directive", {
@@ -34242,6 +34267,87 @@ var ProcessManager = class {
           fix_attempts: fixAttempts,
           max_fix_attempts: maxFixAttempts
         });
+      }
+    }
+  }
+  /**
+   * Write pending directives to a file-based fallback channel.
+   *
+   * When the IPC-based directive queue has directives that aren't being drained
+   * (orchestrator idle — no hooks firing), this method writes them to a JSON file
+   * that hook scripts check as an alternative delivery channel.
+   *
+   * The matching directives are filtered from the queue after writing to prevent
+   * re-triggering on subsequent ticks.
+   *
+   * @param workflowId - The workflow whose directives are stuck.
+   */
+  writeUrgentDirectives(workflowId) {
+    if (!this.directiveQueue) return;
+    const allDrained = this.directiveQueue.drain("subagent_stop");
+    const matching = allDrained.filter(
+      (d) => isDirectiveForWorkflow(d, workflowId)
+    );
+    const nonMatching = allDrained.filter(
+      (d) => !isDirectiveForWorkflow(d, workflowId)
+    );
+    if (matching.length === 0) {
+      for (const d of nonMatching) {
+        this.directiveQueue.enqueue("subagent_stop", d);
+      }
+      return;
+    }
+    const stateDir = (0, import_node_path7.join)(this.projectRoot, this.config.persistence.state_dir);
+    const urgentPath = (0, import_node_path7.join)(stateDir, "urgent-directives.json");
+    let writeSucceeded = false;
+    try {
+      (0, import_node_fs7.mkdirSync)(stateDir, { recursive: true });
+      let existingDirectives = [];
+      try {
+        const existing = (0, import_node_fs7.readFileSync)(urgentPath, "utf-8");
+        const parsed = JSON.parse(existing);
+        if (Array.isArray(parsed.directives)) {
+          existingDirectives = parsed.directives;
+        }
+      } catch (readErr) {
+        logger38.debug("Watchdog: no existing urgent-directives file (expected on first write)", {
+          workflow_id: workflowId,
+          error: readErr instanceof Error ? readErr.message : String(readErr)
+        });
+      }
+      const merged = [...existingDirectives, ...matching];
+      (0, import_node_fs7.writeFileSync)(
+        urgentPath,
+        JSON.stringify(
+          {
+            written_at: (/* @__PURE__ */ new Date()).toISOString(),
+            directives: merged
+          },
+          null,
+          2
+        ),
+        "utf-8"
+      );
+      logger38.info("Watchdog: urgent directives written to file", {
+        workflow_id: workflowId,
+        directive_count: matching.length,
+        total_in_file: merged.length,
+        path: urgentPath
+      });
+      writeSucceeded = true;
+    } catch (err) {
+      logger38.error("Watchdog: failed to write urgent directives file", {
+        workflow_id: workflowId,
+        error: err instanceof Error ? err.message : String(err)
+      });
+    } finally {
+      for (const d of nonMatching) {
+        this.directiveQueue.enqueue("subagent_stop", d);
+      }
+      if (!writeSucceeded) {
+        for (const d of matching) {
+          this.directiveQueue.enqueue("subagent_stop", d);
+        }
       }
     }
   }
