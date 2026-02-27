@@ -47,6 +47,7 @@ import {
   buildSpawnDirectiveMessage,
   buildEscalationMessage,
 } from '../directives/index.js';
+import type { Directive } from '../ipc/protocol.js';
 import type { WorkflowInstance } from '../workflow/types.js';
 import { SnapshotManager, recoverState } from '../persistence/index.js';
 
@@ -98,6 +99,11 @@ const WATCHDOG_STALE_MS = 120_000;
  * Prevents flooding the directive queue with duplicate re-enqueues.
  */
 const WATCHDOG_COOLDOWN_MS = 120_000;
+
+/** Check if a directive's content references a specific workflow ID. */
+function isDirectiveForWorkflow(d: Directive, workflowId: string): boolean {
+  return typeof d.content === 'string' && d.content.includes(workflowId);
+}
 
 /**
  * Returns a PID file path that is unique per project root.
@@ -168,6 +174,9 @@ export class ProcessManager {
 
   /** Directive queue for WRFC orchestration messages. */
   private directiveQueue: DirectiveQueue | null = null;
+
+  /** Consecutive drain-stuck detection counts per workflow. */
+  private readonly drainStuckCounts: Map<string, number> = new Map();
 
   /** Agent-to-workflow binding map for deterministic WRFC chain routing. */
   private agentWorkflowMap: AgentWorkflowMap | null = null;
@@ -1243,6 +1252,11 @@ export class ProcessManager {
         this.watchdogRecovery.delete(wid);
       }
     }
+    for (const wid of this.drainStuckCounts.keys()) {
+      if (!activeWorkflows.some((w) => w.id === wid)) {
+        this.drainStuckCounts.delete(wid);
+      }
+    }
 
     // Snapshot pending directives once before the loop for efficiency and
     // snapshot consistency across all workflow evaluations in this tick.
@@ -1263,15 +1277,34 @@ export class ProcessManager {
       // Check if a directive for THIS workflow is already pending.
       // Uses the snapshot hoisted above the loop for consistency and efficiency.
       const hasPendingForWorkflow = pendingDirectives.some(
-        (d) => typeof d.content === 'string' && d.content.includes(workflow.id),
+        (d) => isDirectiveForWorkflow(d, workflow.id),
       );
       if (hasPendingForWorkflow) {
-        logger.warn('Watchdog: stale workflow with pending directive — drain may be stuck', {
-          workflow_id: workflow.id,
-          current_state: state,
-          state_age_ms: stateAge,
-          pending_directives: pendingDirectives.length,
-        });
+        const stuckCount = (this.drainStuckCounts.get(workflow.id) ?? 0) + 1;
+        this.drainStuckCounts.set(workflow.id, stuckCount);
+
+        if (stuckCount >= 3) {
+          // Drain stuck for 3+ ticks (~30s) — escalate to file-based delivery.
+          // Drain the stuck directive from the queue so it doesn't re-trigger,
+          // then write to an urgent file that hooks check as a fallback channel.
+          logger.warn('Watchdog: drain-stuck escalation — writing urgent directive file', {
+            workflow_id: workflow.id,
+            current_state: state,
+            state_age_ms: stateAge,
+            stuck_ticks: stuckCount,
+          });
+
+          this.writeUrgentDirectives(workflow.id);
+          this.drainStuckCounts.delete(workflow.id);
+        } else {
+          logger.warn('Watchdog: stale workflow with pending directive — drain may be stuck', {
+            workflow_id: workflow.id,
+            current_state: state,
+            state_age_ms: stateAge,
+            pending_directives: pendingDirectives.length,
+            stuck_ticks: stuckCount,
+          });
+        }
         continue;
       }
 
@@ -1394,6 +1427,112 @@ export class ProcessManager {
           fix_attempts: fixAttempts,
           max_fix_attempts: maxFixAttempts,
         });
+      }
+    }
+  }
+
+  /**
+   * Write pending directives to a file-based fallback channel.
+   *
+   * When the IPC-based directive queue has directives that aren't being drained
+   * (orchestrator idle — no hooks firing), this method writes them to a JSON file
+   * that hook scripts check as an alternative delivery channel.
+   *
+   * The matching directives are filtered from the queue after writing to prevent
+   * re-triggering on subsequent ticks.
+   *
+   * @param workflowId - The workflow whose directives are stuck.
+   */
+  private writeUrgentDirectives(workflowId: string): void {
+    if (!this.directiveQueue) return;
+
+    // SAFETY: drain + re-enqueue is not atomic, but both operations are synchronous
+    // (no await/yield between them), so no interleaving can occur within a single
+    // Node.js event loop tick. If this method ever becomes async, this must be
+    // replaced with an atomic filter-drain operation on DirectiveQueue.
+
+    // Drain the live queue to get current state (not the stale peek snapshot)
+    const allDrained = this.directiveQueue.drain('subagent_stop');
+
+    // Partition into matching (for this workflow) and non-matching
+    const matching = allDrained.filter(
+      (d) => isDirectiveForWorkflow(d, workflowId),
+    );
+    const nonMatching = allDrained.filter(
+      (d) => !isDirectiveForWorkflow(d, workflowId),
+    );
+
+    if (matching.length === 0) {
+      // Directive was consumed between peek and drain — re-enqueue everything and bail
+      for (const d of nonMatching) {
+        this.directiveQueue.enqueue('subagent_stop', d);
+      }
+      return;
+    }
+
+    // Determine the state directory from the project root and config
+    const stateDir = join(this.projectRoot, this.config.persistence.state_dir);
+
+    const urgentPath = join(stateDir, 'urgent-directives.json');
+
+    let writeSucceeded = false;
+    try {
+      // Ensure state directory exists
+      mkdirSync(stateDir, { recursive: true });
+
+      // Merge with any existing urgent directives (another workflow may have written)
+      let existingDirectives: Directive[] = [];
+      try {
+        const existing = readFileSync(urgentPath, 'utf-8');
+        const parsed = JSON.parse(existing) as { directives?: unknown[] };
+        if (Array.isArray(parsed.directives)) {
+          existingDirectives = parsed.directives as Directive[];
+        }
+      } catch (readErr) {
+        logger.debug('Watchdog: no existing urgent-directives file (expected on first write)', {
+          workflow_id: workflowId,
+          error: readErr instanceof Error ? readErr.message : String(readErr),
+        });
+      }
+
+      const merged = [...existingDirectives, ...matching];
+
+      writeFileSync(
+        urgentPath,
+        JSON.stringify(
+          {
+            written_at: new Date().toISOString(),
+            directives: merged,
+          },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+
+      logger.info('Watchdog: urgent directives written to file', {
+        workflow_id: workflowId,
+        directive_count: matching.length,
+        total_in_file: merged.length,
+        path: urgentPath,
+      });
+
+      writeSucceeded = true;
+    } catch (err) {
+      logger.error('Watchdog: failed to write urgent directives file', {
+        workflow_id: workflowId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      // Always re-enqueue non-matching directives, even if file write failed.
+      for (const d of nonMatching) {
+        this.directiveQueue.enqueue('subagent_stop', d);
+      }
+      // If file write failed, re-enqueue matching directives too — they weren't delivered.
+      if (!writeSucceeded) {
+        for (const d of matching) {
+          this.directiveQueue.enqueue('subagent_stop', d);
+        }
       }
     }
   }

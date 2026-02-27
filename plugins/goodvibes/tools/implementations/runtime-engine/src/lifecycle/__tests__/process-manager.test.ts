@@ -119,9 +119,10 @@ const mocks = vi.hoisted(() => {
   // directives
   const directiveQueueDrain = vi.fn().mockReturnValue([]);
   const directiveQueueEnqueue = vi.fn();
+  const directiveQueuePeek = vi.fn().mockReturnValue([]);
   const directiveQueueSetWRFCConfig = vi.fn();
   const DirectiveQueue = vi.fn().mockImplementation(function() {
-    return { drain: directiveQueueDrain, enqueue: directiveQueueEnqueue, setWRFCConfig: directiveQueueSetWRFCConfig };
+    return { drain: directiveQueueDrain, enqueue: directiveQueueEnqueue, peek: directiveQueuePeek, setWRFCConfig: directiveQueueSetWRFCConfig };
   });
   const AgentWorkflowMap = vi.fn().mockImplementation(function() { return {}; });
   const registerWRFCHandlers = vi.fn();
@@ -172,7 +173,7 @@ const mocks = vi.hoisted(() => {
     agentCoordinatorUpdateConfig, agentCoordinatorPrune, AgentCoordinator,
     BudgetTracker,
     // directives
-    directiveQueueDrain, directiveQueueEnqueue, directiveQueueSetWRFCConfig,
+    directiveQueueDrain, directiveQueueEnqueue, directiveQueuePeek, directiveQueueSetWRFCConfig,
     DirectiveQueue, AgentWorkflowMap, registerWRFCHandlers,
     registerTestFixHandlers, registerReviewOnlyHandlers,
     // config
@@ -291,6 +292,8 @@ function resetMocks(): void {
   mocks.eventLogClose.mockResolvedValue(undefined);
   mocks.eventLogCompact.mockResolvedValue(undefined);
   mocks.workflowEngineListActive.mockReturnValue([]);
+  mocks.directiveQueuePeek.mockReturnValue([]);
+  mocks.directiveQueueDrain.mockReturnValue([]);
   mocks.getBuiltinTriggers.mockReturnValue([
     { id: 'builtin-1', name: 'Builtin 1' },
     { id: 'builtin-2', name: 'Builtin 2' },
@@ -324,7 +327,7 @@ function resetMocks(): void {
   });
   mocks.BudgetTracker.mockImplementation(function() { return {}; });
   mocks.DirectiveQueue.mockImplementation(function() {
-    return { drain: mocks.directiveQueueDrain, enqueue: mocks.directiveQueueEnqueue, setWRFCConfig: mocks.directiveQueueSetWRFCConfig };
+    return { drain: mocks.directiveQueueDrain, enqueue: mocks.directiveQueueEnqueue, peek: mocks.directiveQueuePeek, setWRFCConfig: mocks.directiveQueueSetWRFCConfig };
   });
   mocks.AgentWorkflowMap.mockImplementation(function() { return {}; });
   mocks.HealthChecker.mockImplementation(function() {
@@ -1382,5 +1385,268 @@ describe('ProcessManager — accessors', () => {
         process.env['TMUX'] = prevTmux;
       }
     }
+  });
+});
+
+// ─── checkStaleWorkflows (watchdog) ──────────────────────────────────────────
+
+describe('ProcessManager — checkStaleWorkflows (watchdog)', () => {
+  // A workflow updated 3 minutes ago is well past the 120s stale threshold.
+  const STALE_UPDATED_AT = new Date(Date.now() - 180_000).toISOString();
+
+  /** Build a minimal WorkflowInstance for watchdog tests. */
+  function makeStaleWorkflow(id: string, state: 'REVIEWING' | 'FIXING') {
+    return {
+      id,
+      definition_id: 'wrfc-loop',
+      current_state: state,
+      context: { files_modified: [] },
+      history: [],
+      created_at: STALE_UPDATED_AT,
+      updated_at: STALE_UPDATED_AT,
+      status: 'active' as const,
+    };
+  }
+
+  let pm: ProcessManager;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    resetMocks();
+    pm = new ProcessManager(makeConfig(), TEST_PROJECT_ROOT);
+    await pm.startup();
+    vi.clearAllMocks();
+    resetMocks();
+  });
+
+  afterEach(async () => {
+    await pm.shutdown();
+  });
+
+  it('writes urgent directive file after 3 drain-stuck ticks', () => {
+    const workflowId = 'wf-drain-test-001';
+    const directive = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${workflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+
+    mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(workflowId, 'REVIEWING')]);
+    mocks.directiveQueuePeek.mockReturnValue([directive]);
+    mocks.directiveQueueDrain.mockReturnValue([directive]);
+
+    const expectedStatePath = join(TEST_PROJECT_ROOT, '.goodvibes/state', 'urgent-directives.json');
+
+    // Tick 1 and 2 — below threshold, no file written
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    expect(mocks.writeFileSync).not.toHaveBeenCalledWith(expectedStatePath, expect.anything(), 'utf-8');
+
+    // Tick 3 — threshold reached, file written
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    expect(mocks.mkdirSync).toHaveBeenCalledWith(
+      join(TEST_PROJECT_ROOT, '.goodvibes/state'),
+      { recursive: true },
+    );
+    expect(mocks.writeFileSync).toHaveBeenCalledWith(
+      expectedStatePath,
+      expect.stringContaining(workflowId),
+      'utf-8',
+    );
+    const writeCall = mocks.writeFileSync.mock.calls.find(
+      (c) => typeof c[0] === 'string' && (c[0] as string).endsWith('urgent-directives.json'),
+    );
+    expect(writeCall).toBeDefined();
+    const payload = JSON.parse(writeCall![1] as string) as { directives: unknown[]; written_at: string };
+    expect(payload.directives).toHaveLength(1);
+    expect(payload.written_at).toBeDefined();
+  });
+
+  it('does not write urgent file before 3 ticks', () => {
+    const workflowId = 'wf-drain-test-002';
+    const directive = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${workflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+
+    mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(workflowId, 'REVIEWING')]);
+    mocks.directiveQueuePeek.mockReturnValue([directive]);
+
+    // Tick 1
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    // Tick 2
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    const urgentPath = join(TEST_PROJECT_ROOT, '.goodvibes/state', 'urgent-directives.json');
+    const urgentWrite = mocks.writeFileSync.mock.calls.find(
+      (c) => typeof c[0] === 'string' && (c[0] as string).endsWith('urgent-directives.json'),
+    );
+    expect(urgentWrite).toBeUndefined();
+    expect(mocks.writeFileSync).not.toHaveBeenCalledWith(urgentPath, expect.anything(), 'utf-8');
+  });
+
+  it('merges with existing urgent directives', () => {
+    const workflowId = 'wf-drain-test-003';
+    const directive = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${workflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+    const existingDirective = {
+      type: 'inject_system_message' as const,
+      content: 'Existing directive from another workflow',
+      priority: 20,
+      source: 'wrfc',
+    };
+
+    mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(workflowId, 'REVIEWING')]);
+    mocks.directiveQueuePeek.mockReturnValue([directive]);
+    mocks.directiveQueueDrain.mockReturnValue([directive]);
+    // Simulate existing content in urgent-directives.json
+    mocks.readFileSync.mockImplementation((p: unknown) => {
+      if (typeof p === 'string' && p.endsWith('urgent-directives.json')) {
+        return JSON.stringify({ written_at: new Date().toISOString(), directives: [existingDirective] });
+      }
+      return '';
+    });
+
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    const writeCall = mocks.writeFileSync.mock.calls.find(
+      (c) => typeof c[0] === 'string' && (c[0] as string).endsWith('urgent-directives.json'),
+    );
+    expect(writeCall).toBeDefined();
+    const payload = JSON.parse(writeCall![1] as string) as { directives: unknown[] };
+    expect(payload.directives).toHaveLength(2);
+  });
+
+  it('re-enqueues non-matching directives after drain', () => {
+    const targetWorkflowId = 'wf-target-001';
+    const otherWorkflowId = 'wf-other-002';
+    const targetDirective = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${targetWorkflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+    const otherDirective = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${otherWorkflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+
+    mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(targetWorkflowId, 'REVIEWING')]);
+    // peek returns both directives, but drain returns both too
+    mocks.directiveQueuePeek.mockReturnValue([targetDirective, otherDirective]);
+    mocks.directiveQueueDrain.mockReturnValue([targetDirective, otherDirective]);
+
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    // The non-matching directive (otherDirective) must be re-enqueued
+    expect(mocks.directiveQueueEnqueue).toHaveBeenCalledWith('subagent_stop', otherDirective);
+    // The matching directive (targetDirective) must NOT be re-enqueued
+    const reenqueueCalls = mocks.directiveQueueEnqueue.mock.calls;
+    const targetReenqueued = reenqueueCalls.some(
+      (c) => c[1] === targetDirective,
+    );
+    expect(targetReenqueued).toBe(false);
+  });
+
+  it('re-enqueues both matching and non-matching directives when writeFileSync throws', () => {
+    const targetWorkflowId = 'wf-write-fail-001';
+    const otherWorkflowId = 'wf-write-fail-other';
+    const targetDirective = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${targetWorkflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+    const otherDirective = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${otherWorkflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+
+    mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(targetWorkflowId, 'REVIEWING')]);
+    mocks.directiveQueuePeek.mockReturnValue([targetDirective, otherDirective]);
+    mocks.directiveQueueDrain.mockReturnValue([targetDirective, otherDirective]);
+    // Make writeFileSync throw on the urgent-directives file
+    mocks.writeFileSync.mockImplementation((p: unknown) => {
+      if (typeof p === 'string' && (p as string).endsWith('urgent-directives.json')) {
+        throw new Error('Simulated disk write failure');
+      }
+    });
+
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    // Both non-matching AND matching directives must be re-enqueued on write failure
+    expect(mocks.directiveQueueEnqueue).toHaveBeenCalledWith('subagent_stop', otherDirective);
+    expect(mocks.directiveQueueEnqueue).toHaveBeenCalledWith('subagent_stop', targetDirective);
+  });
+
+  it('does not write file when directive is consumed between peek and drain', () => {
+    const workflowId = 'wf-drain-race-001';
+    const directive = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${workflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+
+    mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(workflowId, 'REVIEWING')]);
+    // peek returns the directive (triggers drain-stuck path on tick 3)
+    mocks.directiveQueuePeek.mockReturnValue([directive]);
+    // drain returns empty (directive was consumed between peek and drain)
+    mocks.directiveQueueDrain.mockReturnValue([]);
+
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    // No file should be written
+    const urgentPath = join(TEST_PROJECT_ROOT, '.goodvibes/state', 'urgent-directives.json');
+    expect(mocks.writeFileSync).not.toHaveBeenCalledWith(urgentPath, expect.anything(), 'utf-8');
+    // No re-enqueue (nonMatching was empty too)
+    expect(mocks.directiveQueueEnqueue).not.toHaveBeenCalled();
+  });
+
+  it('cleans up drainStuckCounts for inactive workflows', () => {
+    const workflowId = 'wf-cleanup-001';
+    const directive = {
+      type: 'inject_system_message' as const,
+      content: `Review workflow ${workflowId}`,
+      priority: 30,
+      source: 'wrfc',
+    };
+
+    // First tick with the workflow active and a pending directive
+    mocks.workflowEngineListActive.mockReturnValue([makeStaleWorkflow(workflowId, 'REVIEWING')]);
+    mocks.directiveQueuePeek.mockReturnValue([directive]);
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    // drainStuckCounts should now have an entry
+    const drainCounts = (pm as unknown as Record<string, Map<string, number>>)['drainStuckCounts'];
+    expect(drainCounts.get(workflowId)).toBe(1);
+
+    // Second tick with the workflow no longer active
+    mocks.workflowEngineListActive.mockReturnValue([]);
+    mocks.directiveQueuePeek.mockReturnValue([]);
+    ;(pm as unknown as Record<string, () => void>)['checkStaleWorkflows']();
+
+    // Entry should be cleaned up
+    expect(drainCounts.has(workflowId)).toBe(false);
   });
 });

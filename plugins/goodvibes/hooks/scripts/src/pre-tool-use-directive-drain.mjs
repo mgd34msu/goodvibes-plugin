@@ -26,7 +26,7 @@
  */
 
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -174,10 +174,10 @@ function readStdin() {
       timedOut = true;
       process.stdin.destroy();
       resolve(null);
-    }, 1000);
+    }, 200);
 
     process.stdin.setEncoding('utf-8');
-    process.stdin.on('data', (chunk) => chunks.push(chunk));
+    process.stdin.on('data', (chunk) => { if (!timedOut) chunks.push(chunk); });
     process.stdin.on('end', () => {
       if (timedOut) return;
       clearTimeout(timer);
@@ -200,6 +200,25 @@ function readStdin() {
   });
 }
 
+function checkUrgentFile(projectDir) {
+  const urgentPath = join(projectDir || process.cwd(), '.goodvibes', 'state', 'urgent-directives.json');
+  const claimedPath = urgentPath + `.claimed.${process.pid}`;
+  try {
+    renameSync(urgentPath, claimedPath);  // Atomic on POSIX — exactly one hook wins
+  } catch {
+    return null;  // File doesn't exist or another hook already claimed it
+  }
+  try {
+    const data = JSON.parse(readFileSync(claimedPath, 'utf-8'));
+    unlinkSync(claimedPath);
+    return data.directives || [];
+  } catch {
+    // Clean up claimed file on parse failure
+    try { unlinkSync(claimedPath); } catch { /* ignore */ }
+    return null;
+  }
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 try {
@@ -211,11 +230,21 @@ try {
 
   // Fast path: no runtime engine running
   if (!socketPath || !existsSync(socketPath)) {
-    respond(allowResponse());
+    return respond(allowResponse());
   }
 
   // Query for pending directives
-  const result = await queryDirectives(socketPath);
+  let result = await queryDirectives(socketPath);
+
+  // Check for urgent directives written by the watchdog's drain-stuck recovery.
+  const urgentDirectives = checkUrgentFile(projectDir);
+  if (urgentDirectives?.length > 0) {
+    if (!result || !result.directives) {
+      result = { directives: urgentDirectives };
+    } else {
+      result.directives = [...result.directives, ...urgentDirectives];
+    }
+  }
 
   if (result && result.directives && result.directives.length > 0) {
     const directivePayload = JSON.stringify({
@@ -223,11 +252,11 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    respond(allowResponse(gvTag));
+    return respond(allowResponse(gvTag));
   } else {
-    respond(allowResponse());
+    return respond(allowResponse());
   }
 } catch (err) {
   // Never block a tool call — silently allow
-  respond(allowResponse());
+  return respond(allowResponse());
 }

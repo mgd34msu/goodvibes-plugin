@@ -17,7 +17,7 @@
  */
 
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -26,6 +26,10 @@ import { tmpdir } from 'node:os';
 const QUERY_TIMEOUT_MS = 500;
 const TASK_NOTIFICATION_PATTERN = '<task-notification>';
 const DEFAULT_TICK_COMMAND = 'tick';
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // ─── Response helpers ────────────────────────────────────────────────────────
 
@@ -176,17 +180,39 @@ async function sendProcessTick(socketPath) {
   return response.data?.result ?? null;
 }
 
+function checkUrgentFile(projectDir) {
+  const urgentPath = join(projectDir || process.cwd(), '.goodvibes', 'state', 'urgent-directives.json');
+  const claimedPath = urgentPath + `.claimed.${process.pid}`;
+  try {
+    renameSync(urgentPath, claimedPath);  // Atomic on POSIX — exactly one hook wins
+  } catch {
+    return null;  // File doesn't exist or another hook already claimed it
+  }
+  try {
+    const data = JSON.parse(readFileSync(claimedPath, 'utf-8'));
+    unlinkSync(claimedPath);
+    return data.directives || [];
+  } catch {
+    // Clean up claimed file on parse failure
+    try { unlinkSync(claimedPath); } catch { /* ignore */ }
+    return null;
+  }
+}
+
 // ─── Stdin reader ────────────────────────────────────────────────────────────
 
 function readStdin() {
   return new Promise((resolve) => {
     const chunks = [];
+    let timedOut = false;
     const timer = setTimeout(() => {
+      timedOut = true;
       process.stdin.destroy();
       resolve(null);
     }, 200);
-    process.stdin.on('data', (chunk) => chunks.push(chunk));
+    process.stdin.on('data', (chunk) => { if (!timedOut) chunks.push(chunk); });
     process.stdin.on('end', () => {
+      if (timedOut) return;
       clearTimeout(timer);
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString()));
@@ -226,7 +252,7 @@ try {
         }
       }
     }
-    respond(continueResponse());
+    return respond(continueResponse());
   }
 
   const projectDir = hookInput?.cwd || null;
@@ -235,10 +261,33 @@ try {
   const socketPath = discoverSocket(projectDir, sessionId);
 
   if (!socketPath || !existsSync(socketPath)) {
-    respond(continueResponse());
+    return respond(continueResponse());
   }
 
-  const result = await queryDirectives(socketPath);
+  // Retry with backoff when get_directives returns empty on a task-notification.
+  // This handles the race condition where SubagentStop hasn't finished processing
+  // the agent:completed event and enqueuing the WRFC directive yet.
+  const RETRY_DELAYS = [100, 250, 500];
+  let result = await queryDirectives(socketPath);
+
+  if (!result || !result.directives || result.directives.length === 0) {
+    for (const delay of RETRY_DELAYS) {
+      await sleep(delay);
+      result = await queryDirectives(socketPath);
+      if (result?.directives?.length > 0) break;
+    }
+  }
+
+  // Check for urgent directives written by the watchdog's drain-stuck recovery.
+  // This is the file-based fallback delivery channel (Layer 2 → hook bridge).
+  const urgentDirectives = checkUrgentFile(projectDir);
+  if (urgentDirectives?.length > 0) {
+    if (!result || !result.directives) {
+      result = { directives: urgentDirectives };
+    } else {
+      result.directives = [...result.directives, ...urgentDirectives];
+    }
+  }
 
   if (result && result.directives && result.directives.length > 0) {
     const directivePayload = JSON.stringify({
@@ -246,11 +295,11 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    respond(continueResponse(gvTag));
+    return respond(continueResponse(gvTag));
   } else {
-    respond(continueResponse());
+    return respond(continueResponse());
   }
 } catch (err) {
   console.error(`[UPS-Directives] error: ${err}`);
-  respond(continueResponse());
+  return respond(continueResponse());
 }
