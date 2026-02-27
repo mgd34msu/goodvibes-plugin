@@ -145,13 +145,27 @@ export class DeadLetterQueue implements DeadLetterQueueInterface {
   }
 
   /**
-   * Replay a dead-letter entry: removes it from the DLQ and returns its event
-   * so the caller can re-enqueue it.
-   * @returns The event to re-enqueue, or null if not found.
+   * Replay a dead-letter entry: calls the re-enqueue callback with the event,
+   * and only removes it from the DLQ after the callback succeeds.
+   * If the callback throws, the entry remains in the DLQ.
+   * @returns The re-enqueued event, or null if not found or callback failed.
    */
-  replay(event_id: string): RuntimeEvent | null {
+  async replay(
+    event_id: string,
+    reenqueue: (event: RuntimeEvent) => Promise<void> | void,
+  ): Promise<RuntimeEvent | null> {
     const entry = this.getById(event_id);
     if (!entry) return null;
+    try {
+      await reenqueue(entry.event);
+    } catch (err) {
+      logger.warn('Replay re-enqueue callback failed; keeping entry in DLQ', {
+        event_id,
+        event_type: entry.event.type,
+        error: toErrorMessage(err),
+      });
+      return null;
+    }
     this.remove(event_id);
     logger.info('Replaying dead-letter event', {
       event_id,

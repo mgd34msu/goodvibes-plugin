@@ -635,6 +635,37 @@ describe('handleAgentCompleted', () => {
       expect(phaseUpdate!.value).toBe('FIXING');
     });
 
+    it('fixer task includes actual review output from last_assistant_message', () => {
+      const agentId = 'agent-rev-output';
+      const wid = `wrfc_${agentId}`;
+      const reviewMessage = '<gv>{"score": 7.0}</gv>';
+      const store = createMockStore({
+        [`wrfc.agent_map.${agentId}`]: wid,
+        [`wrfc.workflows.${wid}.phase`]: 'REVIEWING',
+        [`wrfc.workflows.${wid}.min_review_score`]: 9.5,
+        [`wrfc.workflows.${wid}.max_fix_attempts`]: 3,
+        [`wrfc.workflows.${wid}.fix_attempts`]: 0,
+        [`wrfc.workflows.${wid}.files_modified`]: [],
+      });
+      const event = makeEvent({
+        type: 'agent:completed',
+        payload: {
+          agent_id: agentId,
+          agent_type: 'reviewer',
+          last_assistant_message: reviewMessage,
+        },
+      });
+      const result = handleAgentCompleted(event, trigger, store);
+
+      expect(result.actions).toHaveLength(1);
+      const directiveContent = result.actions![0].params['content'] as string;
+      // The fixer task must include the actual review output, not a hardcoded stub.
+      // The directive is wrapped in <gv>...</gv> tags with JSON-encoded body — strip tags and parse.
+      const innerJson = directiveContent.replace(/^<gv>/, '').replace(/<\/gv>$/, '');
+      const directive = JSON.parse(innerJson) as { task?: string };
+      expect(directive.task).toContain(reviewMessage);
+    });
+
     it('resolves agent_id from hook_input shape', () => {
       const agentId = 'agent-hook';
       const wid = `wrfc_${agentId}`;

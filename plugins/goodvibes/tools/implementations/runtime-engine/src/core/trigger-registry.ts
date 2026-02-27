@@ -162,6 +162,7 @@ export class TriggerRegistry implements TriggerRegistryInterface {
     }
     this.triggers.set(trigger.id, trigger);
     this.states.set(trigger.id, { fire_count: 0, last_fired_at: 0 });
+    globCache.clear();
     logger.debug('Registered trigger', { id: trigger.id });
   }
 
@@ -172,6 +173,7 @@ export class TriggerRegistry implements TriggerRegistryInterface {
   unregister(id: string): boolean {
     const existed = this.triggers.delete(id);
     this.states.delete(id);
+    globCache.clear();
     if (existed) logger.debug('Unregistered trigger', { id });
     return existed;
   }

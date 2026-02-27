@@ -49,7 +49,7 @@ export class TriggerRegistry {
   constructor(config: TriggersConfig) {
     this.config = config;
     this.evaluator = new ConditionEvaluator();
-    this.executor = new ActionExecutor();
+    this.executor = new ActionExecutor(null, null, null, config);
   }
 
   /**
@@ -68,7 +68,7 @@ export class TriggerRegistry {
     directiveQueue: DirectiveQueue | null = null,
     workflowEngine: WorkflowEngine | null = null,
   ): void {
-    this.executor = new ActionExecutor(bus, directiveQueue, workflowEngine);
+    this.executor = new ActionExecutor(bus, directiveQueue, workflowEngine, this.config);
     // Re-register any handlers registered before setDependencies was called
     for (const [name, handler] of this.actionHandlers) {
       this.executor.registerHandler(name, handler);

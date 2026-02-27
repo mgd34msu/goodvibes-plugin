@@ -583,6 +583,47 @@ describe('EventScheduler', () => {
         tiny.scheduleOneShot({ id: 'c', event_type: 'x', delay_ms: 100 })
       ).toThrow('capacity exceeded');
     });
+
+    it('scheduler rejects when capacity reached — scheduleHeartbeat', () => {
+      const tiny = new EventScheduler(
+        makeSchedulerConfig({ max_scheduled_items: 2 }),
+        store,
+      );
+      tiny.scheduleHeartbeat({ id: 'hb-cap-a', event_type: 'x', interval_ms: 1000 });
+      tiny.scheduleHeartbeat({ id: 'hb-cap-b', event_type: 'x', interval_ms: 1000 });
+      expect(() =>
+        tiny.scheduleHeartbeat({ id: 'hb-cap-c', event_type: 'x', interval_ms: 1000 })
+      ).toThrow('capacity exceeded');
+      expect(tiny.size()).toBe(2);
+    });
+
+    it('scheduler rejects when capacity reached — scheduleCron', () => {
+      const tiny = new EventScheduler(
+        makeSchedulerConfig({ max_scheduled_items: 2 }),
+        store,
+      );
+      tiny.scheduleCron({ id: 'cron-cap-a', event_type: 'x', interval_ms: 1000 });
+      tiny.scheduleCron({ id: 'cron-cap-b', event_type: 'x', interval_ms: 1000 });
+      expect(() =>
+        tiny.scheduleCron({ id: 'cron-cap-c', event_type: 'x', interval_ms: 1000 })
+      ).toThrow('capacity exceeded');
+      expect(tiny.size()).toBe(2);
+    });
+
+    it('scheduler rejects when capacity reached — mixed schedule types', () => {
+      const tiny = new EventScheduler(
+        makeSchedulerConfig({ max_scheduled_items: 3 }),
+        store,
+      );
+      tiny.scheduleHeartbeat({ id: 'mixed-hb', event_type: 'x', interval_ms: 1000 });
+      tiny.scheduleOneShot({ id: 'mixed-os', event_type: 'x', delay_ms: 100 });
+      tiny.scheduleCron({ id: 'mixed-cron', event_type: 'x', interval_ms: 1000 });
+      // All three method types must check capacity — any additional item should throw
+      expect(() =>
+        tiny.scheduleOneShot({ id: 'mixed-overflow', event_type: 'x', delay_ms: 100 })
+      ).toThrow('capacity exceeded');
+      expect(tiny.size()).toBe(3);
+    });
   });
 
   // ─── persist / restore ──────────────────────────────────────────────────────

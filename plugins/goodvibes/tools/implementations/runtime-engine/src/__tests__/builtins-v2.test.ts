@@ -105,4 +105,17 @@ describe('getBuiltinTriggers', () => {
     expect(names.has('review_only_start')).toBe(true);
     expect(names.has('review_only_agent_completed')).toBe(true);
   });
+
+  it('builtin_wrfc_spawn_reviewer (7) has higher priority than builtin_test_fix_agent_completed (12)', () => {
+    const wrfcSpawnReviewer = triggers.find((t) => t.id === 'builtin_wrfc_spawn_reviewer');
+    const testFixAgentCompleted = triggers.find((t) => t.id === 'builtin_test_fix_agent_completed');
+    expect(wrfcSpawnReviewer).toBeDefined();
+    expect(testFixAgentCompleted).toBeDefined();
+    // WRFC reviewer must take precedence (lower numeric priority = lower precedence in some systems,
+    // but here higher numeric value = higher priority). Verify no conflict: they must differ.
+    expect(wrfcSpawnReviewer!.priority).not.toBe(testFixAgentCompleted!.priority);
+    // Specifically: wrfc_spawn_reviewer stays at 20, test_fix_agent_completed drops to 19.
+    expect(wrfcSpawnReviewer!.priority).toBe(20);
+    expect(testFixAgentCompleted!.priority).toBe(19);
+  });
 });

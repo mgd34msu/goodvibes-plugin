@@ -68,6 +68,8 @@ export interface TriggersConfig {
   default_cooldown_ms: number;
   /** Maximum number of times a trigger may fire in a single session */
   max_fires_per_session: number;
+  /** Timeout in ms for individual invoke_handler calls (0 = disabled). Default: 30000. */
+  handler_timeout_ms: number;
 }
 
 /** Health monitoring configuration */
@@ -268,6 +270,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     max_triggers: 100,
     default_cooldown_ms: 5000,
     max_fires_per_session: 50,
+    handler_timeout_ms: 30_000,
   },
   health: {
     check_interval_ms: 60000,

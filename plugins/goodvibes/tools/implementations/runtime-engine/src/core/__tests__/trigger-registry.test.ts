@@ -750,4 +750,42 @@ describe('TriggerRegistry — LRU glob cache', () => {
     const matched2 = registry.match(makeEvent({ type: 'ns0:action' }), store);
     expect(matched2.map((t) => t.id)).toContain('t0');
   });
+
+  it('new trigger matches events after registration even if previously cached as no-match', () => {
+    // Use a fresh registry to ensure a clean module-level glob cache state
+    const registry = new TriggerRegistry();
+    const store = makeStore();
+
+    // Match an event with no triggers registered — populates cache with no-match result
+    // (the cache stores compiled RegExp per glob pattern; the "no-match" here is that
+    // no triggers exist, not a cached negative result per se, but register() now clears
+    // the cache so any compiled pattern for this event type is invalidated)
+    const beforeRegistration = registry.match(makeEvent({ type: 'user:login' }), store);
+    expect(beforeRegistration).toHaveLength(0);
+
+    // Now register a trigger with a glob that should match 'user:login'
+    registry.register(makeTrigger({ id: 'late-comer', event_match: { type: 'user:*' } }));
+
+    // After registration the glob cache is cleared, so the newly registered
+    // trigger must be found when matching the same event type
+    const afterRegistration = registry.match(makeEvent({ type: 'user:login' }), store);
+    expect(afterRegistration.map((t) => t.id)).toContain('late-comer');
+  });
+
+  it('unregistered trigger no longer matches after unregister clears cache', () => {
+    const registry = new TriggerRegistry();
+    const store = makeStore();
+
+    registry.register(makeTrigger({ id: 'removable', event_match: { type: 'user:*' } }));
+
+    // Warm up the cache by matching
+    const before = registry.match(makeEvent({ type: 'user:login' }), store);
+    expect(before.map((t) => t.id)).toContain('removable');
+
+    // Unregister — cache must be cleared so stale compiled patterns don't linger
+    registry.unregister('removable');
+
+    const after = registry.match(makeEvent({ type: 'user:login' }), store);
+    expect(after.map((t) => t.id)).not.toContain('removable');
+  });
 });

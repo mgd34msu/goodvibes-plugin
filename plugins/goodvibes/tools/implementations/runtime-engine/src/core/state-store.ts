@@ -195,6 +195,14 @@ export class CoreStateStore implements StateStoreInterface {
     this.persist();
   }
 
+  /**
+   * Dispose the store: flush pending writes and release resources.
+   * Call this on graceful shutdown to prevent timer leaks.
+   */
+  dispose(): void {
+    this.flush();
+  }
+
   // ─── Private Helpers ──────────────────────────────────────────────────────
 
   /** Load from disk on construction. Missing file is not an error. */

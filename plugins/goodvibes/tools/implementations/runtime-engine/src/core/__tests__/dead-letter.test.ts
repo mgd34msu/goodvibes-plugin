@@ -201,28 +201,39 @@ describe('DeadLetterQueue', () => {
   // ── replay ─────────────────────────────────────────────────────────────────
 
   describe('replay', () => {
-    it('returns the event and removes it from the queue', () => {
+    it('returns the event and removes it from the queue', async () => {
       const event = makeEvent({ id: 'replay-me', type: 'agent:action' });
       dlq.add(makeEntry({ event }));
-      const returned = dlq.replay('replay-me');
+      const returned = await dlq.replay('replay-me', async () => {});
       expect(returned).toBeDefined();
       expect(returned!.id).toBe('replay-me');
       expect(returned!.type).toBe('agent:action');
       expect(dlq.size()).toBe(0);
     });
 
-    it('returns null when event ID not found', () => {
-      expect(dlq.replay('nonexistent')).toBeNull();
+    it('returns null when event ID not found', async () => {
+      expect(await dlq.replay('nonexistent', async () => {})).toBeNull();
     });
 
-    it('leaves other entries intact after replay', () => {
+    it('leaves other entries intact after replay', async () => {
       const evt1 = makeEvent({ id: 'stay' });
       const evt2 = makeEvent({ id: 'go' });
       dlq.add(makeEntry({ event: evt1 }));
       dlq.add(makeEntry({ event: evt2 }));
-      dlq.replay('go');
+      await dlq.replay('go', async () => {});
       expect(dlq.size()).toBe(1);
       expect(dlq.getById('stay')).toBeDefined();
+    });
+
+    it('keeps entry in DLQ when re-enqueue callback throws', async () => {
+      const event = makeEvent({ id: 'keep-me', type: 'agent:action' });
+      dlq.add(makeEntry({ event }));
+      const returned = await dlq.replay('keep-me', async () => {
+        throw new Error('re-enqueue failed');
+      });
+      expect(returned).toBeNull();
+      expect(dlq.size()).toBe(1);
+      expect(dlq.getById('keep-me')).toBeDefined();
     });
   });
 

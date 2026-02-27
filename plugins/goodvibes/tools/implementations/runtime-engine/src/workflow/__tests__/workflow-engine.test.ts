@@ -524,6 +524,41 @@ describe('WorkflowEngine', () => {
       expect(instance.current_state).toBe('fail');
     });
 
+    it('logs a warning and returns false when expression has no recognized operator (no-match regex path)', () => {
+      // ARCHITECTURE NOTE: The switch default branch in evaluateExpression is TypeScript-unreachable
+      // through the public API. The operator regex (>=|<=|===|!==|>|<) acts as a gate:
+      // only its 6 named operators can populate the switch. If the regex fails to match,
+      // execution hits the "no opMatch" early-return path (logs warn, returns false) BEFORE
+      // the switch is ever reached. The default branch exists as a runtime safety net for
+      // callers that bypass TypeScript types (e.g. dynamic YAML/JSON config at runtime).
+      //
+      // This test verifies the no-match regex path: an expression whose operator ('==')
+      // is not in the recognized set causes evaluateExpression to return false.
+      // The logger is structured (not console.warn), so we verify behavior via return
+      // value and state machine integration.
+
+      // Access the private evaluateExpression method via type cast.
+      type EngineWithPrivate = WorkflowEngine & {
+        evaluateExpression(expr: string, context: Record<string, unknown>): boolean;
+      };
+      const engineCast = engine as unknown as EngineWithPrivate;
+
+      // '==' is not in the recognized operator set (>=, <=, ===, !==, >, <).
+      // evaluateExpression hits the no-match branch: returns false.
+      const result = engineCast.evaluateExpression('context.score == 10', { score: 10 });
+      expect(result).toBe(false);
+
+      // Integration check: the guard falls through to 'fail' state via the engine public API.
+      const def = makeGuardDef({
+        type: 'expression',
+        expression: 'context.score == 10', // '==' not recognized
+      });
+      engine.registerDefinition(def);
+      const instance = engine.create('guard-test', { score: 10 });
+      expect(() => engine.sendEvent(instance.id, makeEvent('session:started'))).not.toThrow();
+      expect(instance.current_state).toBe('fail');
+    });
+
     it('evaluates <= operator correctly', () => {
       const def = makeGuardDef({ type: 'expression', expression: 'context.score <= 5' });
       engine.registerDefinition(def);

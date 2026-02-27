@@ -28,6 +28,10 @@ import {
 
 const log = createLogger('wrfc-plugin:handlers');
 
+// Fallback messages used when review output is unavailable
+const FALLBACK_NO_REVIEW_OUTPUT = 'No review output captured.';
+const FALLBACK_SEE_PAYLOAD = 'See the wrfc:review_completed event payload for review details.';
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Default minimum review score to pass (configurable per workflow). */
@@ -267,7 +271,6 @@ export function handleAgentCompleted(
         wid, output_preview: agentOutput?.slice(0, 200),
       });
       // Emit error event and escalate — returning {} would stall the workflow permanently
-      const fixAttempts = storeGet(store, WS(wid, 'fix_attempts'), 0);
       const errorEvent = createEvent({
         source: 'internal',
         type: 'wrfc:review_parse_failed',
@@ -301,10 +304,10 @@ export function handleAgentCompleted(
       return { actions, state_updates, events };
     } else {
       // Fail: spawn fixer
-      const issuesSummary = 'See previous review output for details.';
+      const issuesSummary = agentOutput?.trim() || FALLBACK_NO_REVIEW_OUTPUT;
       const task = `Fix the issues identified in the code review for workflow ${wid}. ` +
-        `Review score: ${score}/10 (threshold: ${minScore}). Issues: ${issuesSummary}` +
-        (filesModified.length > 0 ? ` Files: ${filesModified.join(', ')}.` : '');
+        `Review score: ${score}/10 (threshold: ${minScore}). Issues:\n${issuesSummary}` +
+        (filesModified.length > 0 ? `\nFiles: ${filesModified.join(', ')}.` : '');
 
       const actions: Action[] = [buildSpawnAction({ wid, type: 'engineer', task, files: filesModified })];
       const state_updates: StateUpdate[] = [
@@ -438,10 +441,13 @@ export function handleQualityGate(
   }
 
   // Spawn fixer
-  const issuesSummary = 'See previous review output for details.';
+  const rawIssues = payload['issues'];
+  const issuesSummary = typeof rawIssues === 'string' && rawIssues.trim().length > 0
+    ? rawIssues.trim()
+    : FALLBACK_SEE_PAYLOAD;
   const task = `Fix the issues identified in the code review for workflow ${wid}. ` +
-    `Review score: ${score}/10 (threshold: ${minScore}). Issues: ${issuesSummary}` +
-    (filesModified.length > 0 ? ` Files: ${filesModified.join(', ')}.` : '');
+    `Review score: ${score}/10 (threshold: ${minScore}). Issues:\n${issuesSummary}` +
+    (filesModified.length > 0 ? `\nFiles: ${filesModified.join(', ')}.` : '');
 
   const actions: Action[] = [buildSpawnAction({ wid, type: 'engineer', task, files: filesModified })];
   state_updates.push(...phaseUpdate(wid, 'FIXING'));

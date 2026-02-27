@@ -372,6 +372,39 @@ describe('CoreStateStore — flush', () => {
 
 // ─── Persistence error handling ────────────────────────────────────────────────
 
+// ─── dispose ──────────────────────────────────────────────────────────────────
+
+describe('CoreStateStore — dispose', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('dispose() calls flush — writes pending state immediately', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    store.set('key', 'val');
+    store.dispose(); // should flush without waiting for debounce
+    expect(mockWriteFileSync).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('dispose() cancels the pending debounce timer', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    store.set('key', 'val');
+    store.dispose(); // flushes and cancels timer
+    const callsAfterDispose = mockWriteFileSync.mock.calls.length;
+    vi.advanceTimersByTime(15000); // timer was cancelled — should not fire again
+    expect(mockWriteFileSync.mock.calls.length).toBe(callsAfterDispose);
+    vi.useRealTimers();
+  });
+
+  it('dispose() does not throw when there is no pending save', () => {
+    const store = makeStore();
+    expect(() => store.dispose()).not.toThrow();
+  });
+});
+
 describe('CoreStateStore — persistence error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();

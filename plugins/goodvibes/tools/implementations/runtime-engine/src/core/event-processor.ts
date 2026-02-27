@@ -41,6 +41,17 @@ import type {
 
 const logger = createLogger('core:event-processor');
 
+// ─── Module-level constants ───────────────────────────────────────────────────
+
+/** Default maximum events to process per processBatch() call. */
+const MAX_EVENTS_PER_BATCH = 100;
+/** Default maximum causal chain depth before dropping an event. */
+const MAX_CHAIN_DEPTH = 10;
+/** Default rate-limit window duration in ms. */
+const RATE_LIMIT_WINDOW_MS = 1_000;
+/** Default workflow lock timeout in ms. Locks held longer are considered stale. */
+const STALE_LOCK_TIMEOUT_MS = 30_000;
+
 export interface BudgetConfig {
   /** Total token budget (0 = unlimited). */
   total: number;
@@ -221,15 +232,15 @@ export class EventProcessor {
     this.errorHandler = errorHandler;
     this.deadLetter = deadLetter;
     this.options = {
-      max_events_per_batch: options.max_events_per_batch ?? 100,
-      max_chain_depth: options.max_chain_depth ?? 10,
-      lock_timeout_ms: options.lock_timeout_ms ?? 30_000,
+      max_events_per_batch: options.max_events_per_batch ?? MAX_EVENTS_PER_BATCH,
+      max_chain_depth: options.max_chain_depth ?? MAX_CHAIN_DEPTH,
+      lock_timeout_ms: options.lock_timeout_ms ?? STALE_LOCK_TIMEOUT_MS,
     };
     this.budget = options.budget;
     this.handlers = options.handlers ?? new Map();
     this.priorityFloor = options.priority_floor;
     this.rateLimit = options.rate_limit
-      ? { max_per_window: options.rate_limit.max_per_window, window_ms: options.rate_limit.window_ms ?? 1000 }
+      ? { max_per_window: options.rate_limit.max_per_window, window_ms: options.rate_limit.window_ms ?? RATE_LIMIT_WINDOW_MS }
       : undefined;
     this.queueDepthWarning = options.queue_depth_warning;
     this.rateLimitWindowStart = Date.now();
@@ -277,6 +288,20 @@ export class EventProcessor {
       try { this.queue.enqueue(warning); } catch (err) { logger.debug('Failed to enqueue queue depth warning event', { error: err instanceof Error ? err.message : String(err) }); }
     }
 
+    // Sweep stale workflow locks before processing any events.
+    // This ensures hangs (no further events for a workflow) don't leave locks permanently held.
+    const now = Date.now();
+    for (const [workflowId, acquiredAt] of this.workflowLocks) {
+      if (now - acquiredAt >= this.options.lock_timeout_ms) {
+        this.workflowLocks.delete(workflowId);
+        logger.warn('Stale workflow lock swept during batch start', {
+          workflow_id: workflowId,
+          lock_age_ms: now - acquiredAt,
+          timeout_ms: this.options.lock_timeout_ms,
+        });
+      }
+    }
+
     // Drain the queue
     const events = this.queue.drain();
     if (events.length === 0) return 0;
@@ -307,10 +332,10 @@ export class EventProcessor {
 
       // Rate limiting
       if (this.rateLimit) {
-        const now = Date.now();
-        if (now - this.rateLimitWindowStart >= this.rateLimit.window_ms) {
+        const rateLimitNow = Date.now();
+        if (rateLimitNow - this.rateLimitWindowStart >= this.rateLimit.window_ms) {
           // New window
-          this.rateLimitWindowStart = now;
+          this.rateLimitWindowStart = rateLimitNow;
           this.rateLimitCount = 0;
         }
         if (this.rateLimitCount >= this.rateLimit.max_per_window) {

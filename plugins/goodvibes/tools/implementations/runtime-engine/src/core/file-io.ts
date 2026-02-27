@@ -7,10 +7,7 @@
 
 import { readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { createLogger } from '../shared/logger.js';
 import { ensureDirSync } from './fs-utils.js';
-
-const logger = createLogger('core:file-io');
 
 /**
  * Atomically write content to a file.
@@ -42,20 +39,20 @@ export function writeJsonSync(filePath: string, data: unknown): void {
 /**
  * Read and parse a JSON file.
  * Returns null if the file does not exist (ENOENT).
- * Returns null and logs a warning if the file exists but cannot be parsed.
- * Callers that need to distinguish these cases should check file existence separately.
+ * Throws if the file exists but contains invalid JSON (SyntaxError).
+ * Re-throws all other filesystem errors (e.g. EACCES).
  */
 export function readJsonSync<T>(filePath: string): T | null {
   try {
     const raw = readFileSync(filePath, 'utf-8');
     return JSON.parse(raw) as T;
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code === 'ENOENT') return null;
-    logger.warn('readJsonSync parse/read error', {
-      path: filePath,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return null;
+  } catch (err: unknown) {
+    if (err instanceof SyntaxError) {
+      throw new Error(`Corrupt JSON in ${filePath}: ${err.message}`);
+    }
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    throw err;
   }
 }

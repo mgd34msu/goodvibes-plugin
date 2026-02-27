@@ -19,6 +19,7 @@ import type { RuntimeEvent } from '../../events/types.js';
 import type { EventBus } from '../../events/event-bus.js';
 import { DirectiveQueue } from '../../directives/directive-queue.js';
 import type { WorkflowEngine } from '../../workflow/workflow-engine.js';
+import type { TriggersConfig } from '../../shared/config.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -90,8 +91,19 @@ function makeExecutor(
   eventBus: EventBus | null = null,
   directiveQueue: DirectiveQueue | null = null,
   workflowEngine: WorkflowEngine | null = null,
+  config: TriggersConfig | null = null,
 ) {
-  return new ActionExecutor(eventBus, directiveQueue, workflowEngine);
+  return new ActionExecutor(eventBus, directiveQueue, workflowEngine, config);
+}
+
+function makeTriggersConfig(overrides: Partial<TriggersConfig> = {}): TriggersConfig {
+  return {
+    max_triggers: 100,
+    default_cooldown_ms: 5000,
+    max_fires_per_session: 50,
+    handler_timeout_ms: 30_000,
+    ...overrides,
+  };
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -237,6 +249,26 @@ describe('ActionExecutor', () => {
       );
       expect(result.success).toBe(false);
       expect(result.error).toMatch(/handler boom/);
+    });
+
+    it('times out handlers that exceed handler_timeout_ms', async () => {
+      const config = makeTriggersConfig({ handler_timeout_ms: 50 });
+      const ex = makeExecutor(null, null, null, config);
+      // Handler that never resolves
+      ex.registerHandler('hung', () => new Promise<void>(() => { /* never resolves */ }));
+      const result = await ex.execute(makeInvokeAction({ handler: 'hung' }), event);
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/timed out after 50ms/);
+    });
+
+    it('successful handler clears timeout without leaking timers', async () => {
+      const config = makeTriggersConfig({ handler_timeout_ms: 500 });
+      const ex = makeExecutor(null, null, null, config);
+      const handlerFn = vi.fn().mockResolvedValue(undefined);
+      ex.registerHandler('fast', handlerFn);
+      const result = await ex.execute(makeInvokeAction({ handler: 'fast' }), event);
+      expect(result.success).toBe(true);
+      expect(handlerFn).toHaveBeenCalledOnce();
     });
 
     it('resolves array values in args_template', async () => {

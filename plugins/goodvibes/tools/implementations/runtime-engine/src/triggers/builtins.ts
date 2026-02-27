@@ -331,7 +331,7 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
       name: 'test_fix_agent_completed',
       description: 'Route hook:agent:completed to the test_fix_agent_completed handler for test_then_fix workflows',
       enabled: true,
-      priority: 20,
+      priority: 19,
       condition: {
         type: 'event',
         event_type: 'hook:agent:completed',

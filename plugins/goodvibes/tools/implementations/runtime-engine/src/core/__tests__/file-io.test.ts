@@ -213,44 +213,36 @@ describe('readJsonSync', () => {
 
   // ── parse errors ─────────────────────────────────────────────────────────
 
-  it('returns null and logs a warning when the file contains invalid JSON', () => {
+  it('throws an error containing "Corrupt JSON" when the file contains invalid JSON', () => {
     mocks.readFileSync.mockReturnValueOnce('{ not valid json }');
 
-    const result = readJsonSync('/corrupt.json');
-    expect(result).toBeNull();
-    expect(mocks.loggerWarn).toHaveBeenCalledOnce();
-    expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      'readJsonSync parse/read error',
-      expect.objectContaining({ path: '/corrupt.json' }),
-    );
+    expect(() => readJsonSync('/corrupt.json')).toThrow(/Corrupt JSON in \/corrupt\.json/);
+  });
+
+  it('corrupt JSON error message includes the parse error details', () => {
+    mocks.readFileSync.mockReturnValueOnce('not json {{');
+
+    let caught: unknown;
+    try { readJsonSync('/bad.json'); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toContain('Corrupt JSON in /bad.json');
   });
 
   // ── other read errors ────────────────────────────────────────────────────
 
-  it('returns null and logs a warning for non-ENOENT errors (e.g. EACCES)', () => {
+  it('re-throws non-ENOENT filesystem errors (e.g. EACCES)', () => {
     const accessError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
     mocks.readFileSync.mockImplementationOnce(() => { throw accessError; });
 
-    const result = readJsonSync('/protected.json');
-    expect(result).toBeNull();
-    expect(mocks.loggerWarn).toHaveBeenCalledOnce();
-    expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      'readJsonSync parse/read error',
-      expect.objectContaining({
-        path: '/protected.json',
-        error: 'permission denied',
-      }),
-    );
+    expect(() => readJsonSync('/protected.json')).toThrow(accessError);
   });
 
-  it('includes a string representation when the thrown value is not an Error', () => {
-    mocks.readFileSync.mockImplementationOnce(() => { throw 'string error'; });
+  it('re-throws non-ENOENT errors with original error identity preserved', () => {
+    const accessError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+    mocks.readFileSync.mockImplementationOnce(() => { throw accessError; });
 
-    const result = readJsonSync('/weird.json');
-    expect(result).toBeNull();
-    expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      'readJsonSync parse/read error',
-      expect.objectContaining({ error: 'string error' }),
-    );
+    let caught: unknown;
+    try { readJsonSync('/protected.json'); } catch (e) { caught = e; }
+    expect(caught).toBe(accessError);
   });
 });

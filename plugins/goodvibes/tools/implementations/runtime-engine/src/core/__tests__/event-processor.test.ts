@@ -666,6 +666,47 @@ describe('EventProcessor', () => {
       // registry.match called once per event
       expect(registry.match).toHaveBeenCalledTimes(2);
     });
+
+    it('releases locks older than threshold during stale lock sweep', async () => {
+      // The stale lock sweep runs at the START of processBatch(), before draining the queue.
+      // It scans workflowLocks for entries older than lock_timeout_ms and deletes them.
+      // This ensures hanging handlers that never reached their finally block don't
+      // permanently lock a workflow.
+      //
+      // Test strategy:
+      // 1. Create a processor with lock_timeout_ms = 5000.
+      // 2. Directly inject a stale lock via (proc as any).workflowLocks to simulate
+      //    a hung handler that acquired a lock but never released it.
+      // 3. Advance fake time past the lock_timeout_ms threshold.
+      // 4. Call processBatch() with an event for the same workflow_id.
+      // 5. Verify the event is processed (not blocked by the stale lock).
+      //    If the sweep did NOT run, the lock would block the event and count = 0.
+
+      const workflowId = 'wf-stale-sweep';
+      const staleEvent = makeEvent({ id: 'stale-evt', context: { workflow_id: workflowId } });
+      const { processor } = makeProcessor({
+        events: [staleEvent],
+        processorOptions: { lock_timeout_ms: 5000 },
+      });
+
+      // Inject a stale lock directly into the private lock map.
+      // The lock was "acquired" 6000ms ago (past the 5000ms timeout).
+      const staleLockAcquiredAt = Date.now() - 6000;
+      (processor as unknown as { workflowLocks: Map<string, number> }).workflowLocks.set(
+        workflowId,
+        staleLockAcquiredAt,
+      );
+      expect(processor.activeWorkflowCount()).toBe(1); // lock is present
+
+      // Advance fake timers so Date.now() has moved forward.
+      vi.advanceTimersByTime(1);
+
+      // processBatch() sweeps stale locks first, then processes events.
+      // The stale lock for workflowId is swept → event is processed normally.
+      const count = await processor.processBatch();
+      expect(count).toBe(1); // event was NOT blocked by the stale lock
+      expect(processor.activeWorkflowCount()).toBe(0); // lock released in finally after processing
+    });
   });
 
   // ── Priority floor ─────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import type { RuntimeEvent, EventType } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
+import type { TriggersConfig } from '../shared/config.js';
 import { buildSpawnDirectiveMessage } from '../directives/directive-builder.js';
 import type {
   TriggerAction,
@@ -129,20 +130,25 @@ export class ActionExecutor {
   private readonly directiveQueue: DirectiveQueue | null;
   /** Workflow engine for start_workflow and send_workflow_event actions. */
   private readonly workflowEngine: WorkflowEngine | null;
+  /** Triggers configuration for timeout and other settings. */
+  private readonly config: TriggersConfig | null;
 
   /**
    * @param eventBus - The shared EventBus instance, or null if not available.
    * @param directiveQueue - The shared DirectiveQueue instance, or null if not available.
    * @param workflowEngine - The shared WorkflowEngine instance, or null if not available.
+   * @param config - The triggers configuration, or null to use built-in defaults.
    */
   constructor(
     eventBus: EventBus | null = null,
     directiveQueue: DirectiveQueue | null = null,
     workflowEngine: WorkflowEngine | null = null,
+    config: TriggersConfig | null = null,
   ) {
     this.eventBus = eventBus;
     this.directiveQueue = directiveQueue;
     this.workflowEngine = workflowEngine;
+    this.config = config;
   }
 
   /**
@@ -264,6 +270,11 @@ export class ActionExecutor {
 
   /**
    * Invokes a named handler registered via `registerHandler`.
+   *
+   * Wraps the handler call in a timeout race so a hung handler does not block
+   * the trigger evaluation pipeline indefinitely. The timeout duration is read
+   * from `config.handler_timeout_ms` (default: 30 000 ms). A value of 0 disables
+   * the timeout entirely.
    */
   private async executeInvokeHandler(action: InvokeHandlerAction, event: RuntimeEvent): Promise<ActionResult> {
     const handler = this.handlers.get(action.handler);
@@ -272,7 +283,29 @@ export class ActionExecutor {
     }
 
     const resolvedArgs = resolveTemplate(action.args_template, event);
-    await handler(resolvedArgs, event);
+    const handlerName = action.handler;
+    const timeoutMs = this.config?.handler_timeout_ms ?? 30_000;
+
+    if (timeoutMs === 0) {
+      // Timeout disabled — invoke directly.
+      await handler(resolvedArgs, event);
+    } else {
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          handler(resolvedArgs, event),
+          new Promise<never>((_resolve, reject) => {
+            timeoutHandle = setTimeout(
+              () => reject(new Error(`Handler '${handlerName}' timed out after ${timeoutMs}ms`)),
+              timeoutMs,
+            );
+          }),
+        ]);
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
+    }
+
     log.debug('invoke_handler action executed', { handler: action.handler });
     return { success: true };
   }

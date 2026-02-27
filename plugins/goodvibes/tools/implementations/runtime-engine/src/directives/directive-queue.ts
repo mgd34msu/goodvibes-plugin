@@ -100,6 +100,7 @@ export class DirectiveQueue {
    *
    * @param config - The `wrfc` section of the merged goodvibes.json.
    */
+  // TODO(v2): Extract WRFC config into dedicated WRFCConfigStore — this violates SRP.
   setWRFCConfig(config: Record<string, unknown>): void {
     this.wrfcConfig = config;
     logger.debug('WRFC config stored', { keys: Object.keys(config) });

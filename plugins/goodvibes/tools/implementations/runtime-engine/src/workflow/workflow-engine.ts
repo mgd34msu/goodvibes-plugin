@@ -651,7 +651,6 @@ export class WorkflowEngine {
     const operator = opMatch[1] as '>=' | '<=' | '===' | '!==' | '>' | '<';
     const lhsRaw = trimmed.slice(0, opMatch.index).trim();
     const rhsRaw = trimmed.slice(opMatch.index + opMatch[0].length).trim();
-    const op = operator;
 
     if (!lhsRaw || !rhsRaw) {
       throw new Error(`Unrecognised guard expression format: "${expr}"`);
@@ -660,7 +659,7 @@ export class WorkflowEngine {
     const lhsValue = this.resolveValue(lhsRaw, context);
     const rhsValue = this.resolveValue(rhsRaw, context);
 
-    switch (op) {
+    switch (operator) {
       case '>=':
         return (lhsValue as number) >= (rhsValue as number);
       case '<=':
@@ -673,6 +672,12 @@ export class WorkflowEngine {
         return lhsValue === rhsValue;
       case '!==':
         return lhsValue !== rhsValue;
+      default: {
+        // This branch is unreachable with valid TypeScript types, but guards
+        // against misconfigured operator strings at runtime (e.g., from YAML/JSON).
+        log.warn('Unrecognized guard expression operator', { operator, expression: expr });
+        return false;
+      }
     }
   }
 
