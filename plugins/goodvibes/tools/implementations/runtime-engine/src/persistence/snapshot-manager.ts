@@ -10,6 +10,7 @@
  */
 
 import type { StateStore } from './types.js';
+import { Timer } from '../core/timer.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
@@ -80,7 +81,7 @@ export interface SnapshotDeps {
  */
 export class SnapshotManager {
   private readonly stateStore: StateStore;
-  private periodicTimer: NodeJS.Timeout | null = null;
+  private periodicTimer: Timer | null = null;
 
   constructor(stateStore: StateStore) {
     this.stateStore = stateStore;
@@ -178,7 +179,7 @@ export class SnapshotManager {
   /**
    * Starts a periodic snapshot timer that takes a snapshot every `intervalMs`.
    *
-   * The timer is unref'd so it does not prevent natural process exit.
+   * Uses the core Timer class which auto-unrefs, so it does not prevent natural process exit.
    * Call stopPeriodicSnapshots() to cancel.
    *
    * @param deps        - Subsystem dependencies for snapshotting.
@@ -196,15 +197,17 @@ export class SnapshotManager {
     }
 
     const safeInterval = Math.max(intervalMs, 5_000);
-    this.periodicTimer = setInterval(() => {
-      const seq = getSequence();
-      this.takeSnapshot(deps, seq).catch((err) => {
-        logger.warn('Periodic snapshot failed', { error: toErrorMessage(err) });
-      });
-    }, safeInterval);
-
-    // Unref so the timer does not prevent graceful exit
-    this.periodicTimer.unref();
+    this.periodicTimer = new Timer({
+      callback: () => {
+        const seq = getSequence();
+        this.takeSnapshot(deps, seq).catch((err) => {
+          logger.warn('Periodic snapshot failed', { error: toErrorMessage(err) });
+        });
+      },
+      intervalMs: safeInterval,
+      label: 'snapshot',
+    });
+    this.periodicTimer.start();
     logger.debug('Periodic snapshots started', { intervalMs: safeInterval });
   }
 
@@ -213,7 +216,7 @@ export class SnapshotManager {
    */
   stopPeriodicSnapshots(): void {
     if (this.periodicTimer) {
-      clearInterval(this.periodicTimer);
+      this.periodicTimer.stop();
       this.periodicTimer = null;
       logger.debug('Periodic snapshots stopped');
     }

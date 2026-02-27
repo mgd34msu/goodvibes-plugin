@@ -14,3 +14,4 @@ export * from './metrics.js';
 export * from './dead-letter.js';
 export * from './error-handler.js';
 export * from './event-processor.js';
+export * from './timer.js';

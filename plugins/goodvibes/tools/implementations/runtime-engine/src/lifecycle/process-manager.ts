@@ -80,7 +80,8 @@ import type { ExternalPluginConfig } from '../plugins/index.js';
 import { ExecutorModeManager } from './executor-mode.js';
 import { ExecutorBudgetManager } from './executor-budget.js';
 import { DaemonTickHandler } from './daemon-tick-handler.js';
-import { DaemonTickScheduler } from './daemon-tick-scheduler.js';
+import { TickDriver } from './tick-driver.js';
+import { Timer } from '../core/timer.js';
 
 const logger = createLogger('process-manager');
 
@@ -136,8 +137,8 @@ export class ProcessManager {
   /** Health checker bound to this manager's config and start time. */
   private readonly healthChecker: HealthChecker;
 
-  /** NodeJS timer handle for the periodic checkpoint. */
-  private checkpointTimer?: NodeJS.Timeout;
+  /** Managed interval timer for the periodic checkpoint. */
+  private checkpointTimer: Timer | null = null;
 
   /** Whether startup() has successfully completed. */
   private running = false;
@@ -215,9 +216,6 @@ export class ProcessManager {
   /** v3 ExternalPlugin: ingests file-drop and HTTP webhook events. */
   private v3ExternalPlugin: ExternalPlugin | null = null;
 
-  /** NodeJS timer handle for the v3 tick loop. */
-  private v3TickTimer?: NodeJS.Timeout;
-
   // ─── Executor subsystem fields ───────────────────────────────────────────────────────
 
   /** Executor mode manager — determines engaged/daemon/hybrid mode. */
@@ -228,7 +226,7 @@ export class ProcessManager {
 
   /** Daemon tick handler — processes daemon tick cycles. */
   private daemonTickHandler: DaemonTickHandler | null = null;
-  private daemonTickScheduler: DaemonTickScheduler | null = null;
+  private tickDriver: TickDriver | null = null;
 
   /**
    * @param config - Initial runtime configuration (merged with disk values
@@ -426,8 +424,8 @@ export class ProcessManager {
       logger.debug('IPC server disabled by feature flag');
     }
 
-    // 12. Start v3 tick timer
-    this.startV3TickTimer();
+    // 12. Start v3 tick driver
+    this.tickDriver?.start();
 
     // 13. Emit startup event
     this.eventBus.emit({
@@ -488,10 +486,9 @@ export class ProcessManager {
         logger.debug('Active workflows cancelled');
       }
 
-      // 2. Stop checkpoint and v3 tick timers, daemon tick scheduler, and periodic snapshots
+      // 2. Stop checkpoint timer, tick driver, and periodic snapshots
       this.stopCheckpointTimer();
-      this.stopV3TickTimer();
-      this.daemonTickScheduler?.stop();
+      this.tickDriver?.stop();
       this.cleanupV3Plugins();
       if (this.snapshotManager) {
         this.snapshotManager.stopPeriodicSnapshots();
@@ -674,8 +671,8 @@ export class ProcessManager {
     if (this.executorMode) {
       this.executorMode.updateConfig(config.executor);
     }
-    if (this.daemonTickScheduler) {
-      this.daemonTickScheduler.reconfigure(config.executor);
+    if (this.tickDriver) {
+      this.tickDriver.reconfigure(config.executor);
     }
     // Note: time and external plugin configs are applied at construction time only.
     // Changes to config.time or config.external require a session restart to take effect.
@@ -868,22 +865,24 @@ export class ProcessManager {
    */
   private startCheckpointTimer(): void {
     const interval = Math.max(this.config.persistence.checkpoint_interval_ms ?? CHECKPOINT_INTERVAL_MS, 1000);
-    this.checkpointTimer = setInterval(() => {
-      this.saveCheckpoint().catch((err) => {
-        logger.warn('Periodic checkpoint failed', {
-          err: toErrorMessage(err),
+    this.checkpointTimer = new Timer({
+      callback: () => {
+        this.saveCheckpoint().catch((err) => {
+          logger.warn('Periodic checkpoint failed', {
+            err: toErrorMessage(err),
+          });
         });
-      });
-      try {
-        this.workflowEngine?.prune();
-        this.agentCoordinator?.prune();
-      } catch (err) {
-        logger.warn('Periodic prune failed', { err: toErrorMessage(err) });
-      }
-    }, interval);
-
-    // Unref so the timer does not prevent graceful exit
-    this.checkpointTimer.unref();
+        try {
+          this.workflowEngine?.prune();
+          this.agentCoordinator?.prune();
+        } catch (err) {
+          logger.warn('Periodic prune failed', { err: toErrorMessage(err) });
+        }
+      },
+      intervalMs: interval,
+      label: 'checkpoint',
+    });
+    this.checkpointTimer.start();
     logger.debug('Checkpoint timer started', { interval_ms: interval });
   }
 
@@ -892,8 +891,8 @@ export class ProcessManager {
    */
   private stopCheckpointTimer(): void {
     if (this.checkpointTimer) {
-      clearInterval(this.checkpointTimer);
-      this.checkpointTimer = undefined;
+      this.checkpointTimer.stop();
+      this.checkpointTimer = null;
       logger.debug('Checkpoint timer stopped');
     }
   }
@@ -1031,11 +1030,6 @@ export class ProcessManager {
 
   // ─── v3 Initialization ─────────────────────────────────────────────────────────
 
-  // TODO: Unit tests for v3 lifecycle methods (initializeV3Plugins, cleanupV3Plugins,
-  // startV3TickTimer, tickV3) are not yet written. These methods depend on heavy
-  // constructor dependencies (EventProcessor, TimePlugin, ExternalPlugin) that require
-  // additional test scaffolding. Tracked for follow-up in the test coverage backlog.
-
   /**
    * Initialize all v3 core components and Layer 3 plugins.
    *
@@ -1126,18 +1120,6 @@ export class ProcessManager {
       });
       logger.debug('v3 time plugin initialised');
 
-      // 8a. Daemon tick scheduler — wires the TimePlugin scheduling system to
-      // send automatic tmux ticks in daemon mode. Created here (after v3TimePlugin)
-      // so it can reference the live TimePlugin instance.
-      if (this.executorMode && this.daemonTickHandler) {
-        this.daemonTickScheduler = new DaemonTickScheduler({
-          config: this.config.executor,
-          executorMode: this.executorMode,
-          timePlugin: this.v3TimePlugin,
-        });
-        logger.debug('daemon tick scheduler created');
-      }
-
       // 9. External plugin (file-drop + optional HTTP ingestion)
       const { enabled: httpEnabled, ...httpListenerConfig } = this.config.external.http_listener;
       const externalPluginConfig: ExternalPluginConfig = {
@@ -1172,6 +1154,23 @@ export class ProcessManager {
       }
       logger.debug('v3 external plugin initialised');
 
+      // 9a. TickDriver — unified tick driver that handles both daemon and engaged
+      // modes. Created after v3ExternalPlugin and v3EventProcessor so all deps
+      // are available at construction time.
+      if (!this.executorMode) {
+        logger.warn('skipping tick driver — executorMode not available');
+      } else {
+        this.tickDriver = new TickDriver({
+          config: this.config.executor,
+          executorMode: this.executorMode,
+          timePlugin: this.v3TimePlugin,
+          externalPlugin: this.v3ExternalPlugin ?? undefined,
+          eventProcessor: this.v3EventProcessor ?? undefined,
+          staleWorkflowChecker: () => this.checkStaleWorkflows(),
+        });
+        logger.debug('tick driver created');
+      }
+
       logger.info('v3 plugins fully initialised');
     } catch (err) {
       logger.warn('v3 plugin initialisation failed — continuing without v3 layer', {
@@ -1186,87 +1185,8 @@ export class ProcessManager {
       this.v3HookRegistry = null;
       this.v3TimePlugin = null;
       this.v3ExternalPlugin = null;
-      this.daemonTickScheduler = null;
+      this.tickDriver = null;
     }
-  }
-
-  /**
-   * Start the v3 tick timer.
-   *
-   * On each tick:
-   *   1. TimePlugin emits heartbeat and scheduled events into the v3 queue.
-   *   2. ExternalPlugin scans the file-drop directory.
-   *   3. EventProcessor drains a batch from the v3 queue through registered triggers.
-   *
-   * Default tick interval: 10 seconds.
-   * The timer is unref'd so it does not prevent graceful process exit.
-   */
-  private startV3TickTimer(): void {
-    // All three fields are set together in initializeV3Plugins (all-or-nothing).
-    // Skip ticking if all three v3 components are null (v3 init failed or was not
-    // attempted). Using || provides defensive safety so that a partial init — where
-    // only some fields were set before failure — also skips ticking with incomplete
-    // state, rather than proceeding with nulls.
-    if (!this.v3EventProcessor || !this.v3TimePlugin || !this.v3ExternalPlugin) {
-      // Nothing to tick — v3 failed to initialise
-      return;
-    }
-
-    // In daemon mode, the DaemonTickScheduler drives ticks internally via the
-    // TimePlugin scheduling system. Start it now and skip the internal timer.
-    if (this.executorMode?.getMode() === 'daemon') {
-      logger.debug('v3 tick timer skipped — daemon mode uses DaemonTickScheduler');
-      this.daemonTickScheduler?.start();
-      return;
-    }
-
-    const TICK_INTERVAL_MS = 10_000;
-
-    this.v3TickTimer = setInterval(() => {
-      this.tickV3().catch((err) => {
-        logger.warn('v3 tick error', { err: toErrorMessage(err) });
-      });
-    }, TICK_INTERVAL_MS);
-
-    this.v3TickTimer.unref();
-    logger.debug('v3 tick timer started', { interval_ms: TICK_INTERVAL_MS });
-  }
-
-  /**
-   * Execute one v3 tick cycle.
-   *
-   * Order matters: produce events first (time + external), then process them.
-   */
-  private async tickV3(): Promise<void> {
-    // 1. Emit time events (heartbeat, scheduled) into v3 queue
-    if (this.v3TimePlugin) {
-      try {
-        this.v3TimePlugin.onTick();
-      } catch (err) {
-        logger.warn('v3 time plugin tick error', { err: toErrorMessage(err) });
-      }
-    }
-
-    // 2. Scan file-drop directory for external events
-    if (this.v3ExternalPlugin) {
-      try {
-        await this.v3ExternalPlugin.onTick();
-      } catch (err) {
-        logger.warn('v3 external plugin tick error', { err: toErrorMessage(err) });
-      }
-    }
-
-    // 3. Process the next batch of queued events through registered triggers
-    if (this.v3EventProcessor) {
-      try {
-        await this.v3EventProcessor.processBatch();
-      } catch (err) {
-        logger.warn('v3 event processor batch error', { err: toErrorMessage(err) });
-      }
-    }
-
-    // 4. Check for stale workflows and re-enqueue lost directives
-    this.checkStaleWorkflows();
   }
 
   // ─── Stale Workflow Watchdog ──────────────────────────────────────────────────
@@ -1280,7 +1200,7 @@ export class ProcessManager {
    * - Layer 2: This watchdog catches cases where PreToolUse didn't fire or
    *   where the directive was drained but never acted on
    *
-   * Runs as step 4 of the tickV3() cycle (every 10 seconds). Only intervenes
+   * Runs as step 4 of the TickDriver evaluate() cycle. Only intervenes
    * after WATCHDOG_STALE_MS (2 minutes) with a WATCHDOG_COOLDOWN_MS (2 minute)
    * cooldown between recovery attempts for the same workflow.
    *
@@ -1584,17 +1504,6 @@ export class ProcessManager {
   }
 
   /**
-   * Stop the v3 tick timer.
-   */
-  private stopV3TickTimer(): void {
-    if (this.v3TickTimer) {
-      clearInterval(this.v3TickTimer);
-      this.v3TickTimer = undefined;
-      logger.debug('v3 tick timer stopped');
-    }
-  }
-
-  /**
    * Nullify all v3 plugin fields after shutdown to release references
    * and prevent any post-shutdown access to disposed instances.
    */
@@ -1607,7 +1516,7 @@ export class ProcessManager {
     this.v3HookRegistry = null;
     this.v3TimePlugin = null;
     this.v3ExternalPlugin = null;
-    this.daemonTickScheduler = null;
+    this.tickDriver = null;
   }
 
   /**

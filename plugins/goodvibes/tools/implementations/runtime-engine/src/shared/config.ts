@@ -110,6 +110,8 @@ export interface DaemonConfig {
   tick_interval_ms: number;
   /** Whether the daemon tick scheduler is enabled. When false, no automatic ticks are sent. */
   auto_tick: boolean;
+  /** Interval in ms at which the TickDriver evaluates the v3 pipeline. Default: 10000 (10s). */
+  eval_interval_ms: number;
 }
 
 /** Two-tier budget configuration for executor cost controls. */
@@ -292,7 +294,8 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
       tmux_session_name: 'claude-daemon',
       tick_command: 'tick',
       tick_interval_ms: 30_000,
-      auto_tick: true,
+      auto_tick: false,
+      eval_interval_ms: 10_000,
     },
     budget: {
       flat_cap_usd: undefined,
