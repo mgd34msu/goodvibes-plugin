@@ -27314,7 +27314,6 @@ function getBuiltinTriggers() {
           max_fix_attempts: "$event.payload.data.max_fix_attempts"
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 500,
       fires_count: 0
     },
@@ -27343,7 +27342,6 @@ function getBuiltinTriggers() {
           task: "$event.payload.data.task_description"
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 500,
       fires_count: 0
     },
@@ -27396,7 +27394,6 @@ function getBuiltinTriggers() {
           }
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 50,
       fires_count: 0
     },
@@ -27444,7 +27441,6 @@ function getBuiltinTriggers() {
           fix_attempts: "$event.payload.data.fix_attempts"
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 50,
       fires_count: 0
     },
@@ -27468,7 +27464,6 @@ function getBuiltinTriggers() {
           fix_attempts: "$event.payload.data.fix_attempts"
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 50,
       fires_count: 0
     },
@@ -27497,7 +27492,6 @@ function getBuiltinTriggers() {
           }
         }
       },
-      cooldown_ms: 5e3,
       max_fires: 50,
       fires_count: 0
     }
@@ -28849,12 +28843,11 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     }
     let workflow = workflowId ? workflowEngine.get(workflowId) : null;
     if (!workflow) {
-      const activeWorkflows = workflowEngine.listActive();
-      if (activeWorkflows.length === 0) {
-        log5.debug("wrfc_chain_next: no active workflows, skipping");
-        return;
-      }
-      workflow = activeWorkflows[activeWorkflows.length - 1];
+      log5.error("wrfc_chain_next: no workflow found for agent, skipping directive", {
+        agent_id: agentId,
+        workflow_id: workflowId
+      });
+      return;
     }
     const currentState = (workflow.current_state ?? "").toUpperCase();
     const earlyStates = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
@@ -29132,8 +29125,9 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
     const fixWorkflowId = typeof args["workflow_id"] === "string" ? args["workflow_id"] : null;
     let fixWorkflow = fixWorkflowId ? workflowEngine?.get(fixWorkflowId) ?? null : null;
     if (!fixWorkflow) {
-      const activeWorkflows = workflowEngine?.listActive() ?? [];
-      fixWorkflow = activeWorkflows[activeWorkflows.length - 1] ?? null;
+      log5.error("wrfc_check_fix_threshold: no workflow found, skipping", {
+        workflow_id: fixWorkflowId
+      });
     }
     if (!fixWorkflow || !workflowEngine) {
       const fallbackId = fixWorkflowId ?? "unknown";

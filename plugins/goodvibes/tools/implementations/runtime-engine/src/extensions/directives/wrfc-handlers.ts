@@ -481,8 +481,8 @@ export function registerWRFCHandlers(
     const agentId = typeof hookInput?.['agent_id'] === 'string' ? hookInput['agent_id'] : null;
     const agentType = (hookInput?.['agent_type'] ?? hookInput?.['subagent_type'] ?? '') as string;
 
-    // Decision 2: look up workflow via agent_id map, fall back to explicit workflow_id,
-    // then fall back to most-recent active (backward compatibility).
+    // Decision 2: look up workflow via agent_id map, fall back to explicit workflow_id.
+    // NEVER fall back to "most recent active" — in parallel, that grabs the wrong workflow.
     let workflowId: string | null = null;
     if (agentId && agentWorkflowMap) {
       workflowId = agentWorkflowMap.lookup(agentId) ?? null;
@@ -493,12 +493,11 @@ export function registerWRFCHandlers(
 
     let workflow = workflowId ? workflowEngine.get(workflowId) : null;
     if (!workflow) {
-      const activeWorkflows = workflowEngine.listActive();
-      if (activeWorkflows.length === 0) {
-        log.debug('wrfc_chain_next: no active workflows, skipping');
-        return;
-      }
-      workflow = activeWorkflows[activeWorkflows.length - 1];
+      log.error('wrfc_chain_next: no workflow found for agent, skipping directive', {
+        agent_id: agentId,
+        workflow_id: workflowId,
+      });
+      return;
     }
     const currentState = (workflow.current_state ?? '').toUpperCase();
 
@@ -864,12 +863,13 @@ export function registerWRFCHandlers(
         ? rawMax
         : DEFAULT_MAX_FIX_ATTEMPTS;
 
-    // Find the target workflow - prefer explicit ID from event, fall back to most recent active
+    // Find the target workflow - require explicit ID, never fall back to most recent active
     const fixWorkflowId = typeof args['workflow_id'] === 'string' ? args['workflow_id'] : null;
     let fixWorkflow = fixWorkflowId ? workflowEngine?.get(fixWorkflowId) ?? null : null;
     if (!fixWorkflow) {
-      const activeWorkflows = workflowEngine?.listActive() ?? [];
-      fixWorkflow = activeWorkflows[activeWorkflows.length - 1] ?? null;
+      log.error('wrfc_check_fix_threshold: no workflow found, skipping', {
+        workflow_id: fixWorkflowId,
+      });
     }
 
     if (!fixWorkflow || !workflowEngine) {
