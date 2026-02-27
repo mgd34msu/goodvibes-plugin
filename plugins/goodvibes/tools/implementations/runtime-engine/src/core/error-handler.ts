@@ -11,6 +11,7 @@
  */
 
 import { createLogger } from '../shared/logger.js';
+import { computeDelay } from './retry.js';
 import { generateEventId } from '../shared/utils.js';
 import type {
   RuntimeEvent,
@@ -43,16 +44,6 @@ export interface ErrorHandlerOptions {
  * @removal v2.0.0
  */
 export type ExecutionResult = ErrorHandlerResult;
-
-/**
- * Compute the delay for the nth attempt (0-indexed) using the retry policy.
- */
-function computeDelay(policy: RetryPolicy, attempt: number): number {
-  if (policy.backoff === 'exponential') {
-    return policy.delay_ms * Math.pow(2, attempt);
-  }
-  return policy.delay_ms;
-}
 
 /**
  * Sleep for `ms` milliseconds.
@@ -120,7 +111,7 @@ export class ErrorHandler implements ErrorHandlerInterface {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // Apply backoff before retry (not before the first attempt)
       if (attempt > 0 && retry) {
-        const delay = computeDelay(retry, attempt - 1);
+        const delay = computeDelay(retry.backoff, retry.delay_ms, attempt - 1);
         logger.debug('Retrying handler', { trigger_id, attempt, delay_ms: delay });
         await sleep(delay);
       }

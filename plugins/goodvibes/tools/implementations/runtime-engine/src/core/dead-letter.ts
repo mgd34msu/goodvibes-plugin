@@ -11,8 +11,9 @@
  *  - Persistence to a JSON file
  */
 
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
-import { dirname, join, isAbsolute } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join, isAbsolute } from 'node:path';
+import { writeJsonSync } from './file-io.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
 import type { RuntimeEvent, DeadLetterQueueInterface, DeadLetterEntry } from './types.js';
@@ -207,11 +208,7 @@ export class DeadLetterQueue implements DeadLetterQueueInterface {
 
   private persist(): void {
     try {
-      mkdirSync(dirname(this.filePath), { recursive: true });
-      const content = JSON.stringify(this.entries, null, 2) + '\n';
-      const tmpPath = this.filePath + '.tmp';
-      writeFileSync(tmpPath, content, 'utf-8');
-      renameSync(tmpPath, this.filePath);
+      writeJsonSync(this.filePath, this.entries);
     } catch (err) {
       logger.error('Failed to persist dead-letter queue', {
         path: this.filePath,

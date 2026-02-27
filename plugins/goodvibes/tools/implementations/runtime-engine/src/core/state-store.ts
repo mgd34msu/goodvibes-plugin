@@ -13,8 +13,9 @@
  * The persisted file is `.goodvibes/memory/runtime-state.json` by default.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
-import { dirname, join, isAbsolute } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join, isAbsolute } from 'node:path';
+import { writeJsonSync } from './file-io.js';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
 import type { StateStoreInterface } from './types.js';
@@ -235,11 +236,7 @@ export class CoreStateStore implements StateStoreInterface {
   /** Atomically write state to disk (write tmp then rename). */
   private persist(): void {
     try {
-      mkdirSync(dirname(this.filePath), { recursive: true });
-      const content = JSON.stringify(this.data, null, 2) + '\n';
-      const tmpPath = this.filePath + '.tmp';
-      writeFileSync(tmpPath, content, 'utf-8');
-      renameSync(tmpPath, this.filePath);
+      writeJsonSync(this.filePath, this.data);
       logger.debug('Persisted state to disk', { path: this.filePath });
     } catch (err) {
       logger.error('Failed to persist state', {
