@@ -112,11 +112,11 @@ Report results in a structured, token-efficient format that enables orchestrator
 The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"files":["path/to/file.ts"],"score":null,"pass":null,"count":null}</gv>
+<gv>{"files":["path/to/file.ts"],"score":null,"count":null}</gv>
 ```
 
 Required for this agent: `files` (array of files created/modified)
-Optional (null when N/A): `score`, `pass`, `count`
+Optional (null when N/A): `score`, `count`
 All fields must be present. The runtime engine parses this mechanically.
 
 ## Precision Tools (MANDATORY)

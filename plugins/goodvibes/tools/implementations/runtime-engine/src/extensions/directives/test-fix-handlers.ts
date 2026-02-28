@@ -41,16 +41,16 @@ const DEFAULT_MAX_FIX_ATTEMPTS = 3;
 /** Workflow definition ID for the test-then-fix chain. */
 const TEST_THEN_FIX_DEFINITION_ID = 'test_then_fix';
 
-/** Synthetic score assigned when tests pass (used in review_score context field). */
-const SCORE_PASS = 10;
+/** Synthetic score assigned when tests pass (used in review_score context field). Binary outcome — NOT a review quality threshold. */
+const SYNTHETIC_PASS_SCORE = 10;
 
-/** Synthetic score assigned when tests fail (used in review_score context field). */
-const SCORE_FAIL = 0;
+/** Synthetic score assigned when tests fail (used in review_score context field). Binary outcome — NOT a review quality threshold. */
+const SYNTHETIC_FAIL_SCORE = 0;
 
 /**
  * Parses test pass/fail status from agent output text.
- * Tries `<gv>` tag parsing first (via the `pass` field), then falls back to
- * regex heuristics for backward compatibility with agents that do not emit tags.
+ * Tries `<gv>` tag parsing first — uses `score >= SYNTHETIC_PASS_SCORE (10)` to determine pass/fail.
+ * Falls back to regex heuristics for backward compatibility with agents that do not emit tags.
  *
  * @param text - Raw output text from an agent.
  * @returns Object with `passed` boolean and optional numeric `score`, or null if
@@ -59,11 +59,11 @@ const SCORE_FAIL = 0;
 export function parseGvTestResult(text: string): { passed: boolean; score?: number } | null {
   if (!text) return null;
 
-  // Try <gv> tag first
+  // Try <gv> tag first — use score to determine pass/fail
   const gvResult = parseGvTag(text);
-  if (gvResult.found && gvResult.data !== null && gvResult.data.pass !== undefined) {
-    const passed = gvResult.data.pass === true;
-    const score = typeof gvResult.data.score === 'number' ? gvResult.data.score : (passed ? SCORE_PASS : SCORE_FAIL);
+  if (gvResult.found && gvResult.data !== null && typeof gvResult.data.score === 'number') {
+    const score = gvResult.data.score;
+    const passed = score >= SYNTHETIC_PASS_SCORE;
     return { passed, score };
   }
 
@@ -179,7 +179,7 @@ export function registerTestFixHandlers(
       }
 
       // Set synthetic review_score so downstream logic and escalation messages work consistently
-      workflow.context['review_score'] = SCORE_PASS;
+      workflow.context['review_score'] = SYNTHETIC_PASS_SCORE;
 
       // Enqueue workflow complete directive
       const message = buildWorkflowCompleteMessage(workflow.id, 'completed');
@@ -210,7 +210,7 @@ export function registerTestFixHandlers(
       });
 
       // Set synthetic review_score so downstream escalation messages have a score to reference
-      workflow.context['review_score'] = SCORE_FAIL;
+      workflow.context['review_score'] = SYNTHETIC_FAIL_SCORE;
       // Store failure info in context
       workflow.context['test_failures'] = [{ test: testCommand, error: agentOutput.slice(0, 500) }];
 

@@ -2,7 +2,7 @@
  * GV Tag Parser
  *
  * Parses structured <gv> JSON tags from agent output text.
- * Used by WRFC handlers to extract score, files, pass, count
+ * Used by WRFC handlers to extract score, files, count
  * instead of regex-based parsing.
  */
 
@@ -10,8 +10,6 @@
 export interface GvTagData {
   /** Review score (0-10), emitted by reviewer agents */
   score?: number;
-  /** Whether the agent's work passed (reviewer: review passed, tester: tests passed) */
-  pass?: boolean;
   /** Files modified/reviewed, emitted by engineer/deployer/integrator agents */
   files?: string[];
   /** Count of items (e.g., test count), emitted by tester agents */
@@ -43,7 +41,7 @@ export interface GvParseResult {
 const GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
 
 /** Known <gv> tag fields — anything else goes to the index signature. */
-const KNOWN_FIELDS = new Set(['score', 'pass', 'files', 'count']);
+const KNOWN_FIELDS = new Set(['score', 'files', 'count']);
 
 /**
  * Parses a raw JSON string into GvTagData.
@@ -59,7 +57,6 @@ function parseRawJson(raw: string): GvParseResult {
     if (typeof parsed.score === 'number') {
       data.score = Math.max(0, Math.min(10, parsed.score));
     }
-    if (typeof parsed.pass === 'boolean') data.pass = parsed.pass;
     if (Array.isArray(parsed.files)) {
       data.files = parsed.files.filter((f): f is string => typeof f === 'string');
     }
@@ -147,19 +144,3 @@ export function extractFiles(text: string | undefined | null): string[] {
   return [];
 }
 
-/**
- * Convenience: extracts test results from agent output.
- *
- * @param text - Raw output text from a tester agent
- * @returns Object with pass and count, or null if not found
- */
-export function extractTestResults(text: string | undefined | null): { pass: boolean; count: number } | null {
-  const result = parseGvTag(text);
-  if (result.found && result.data?.pass !== undefined) {
-    return {
-      pass: result.data.pass,
-      count: result.data.count ?? 0,
-    };
-  }
-  return null;
-}

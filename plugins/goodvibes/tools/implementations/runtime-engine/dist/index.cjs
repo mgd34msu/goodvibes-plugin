@@ -28676,7 +28676,7 @@ var BudgetTracker = class {
 
 // src/extensions/directives/gv-tag-parser.ts
 var GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
-var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "pass", "files", "count"]);
+var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "files", "count"]);
 function parseRawJson(raw) {
   try {
     const parsed = JSON.parse(raw);
@@ -28687,7 +28687,6 @@ function parseRawJson(raw) {
     if (typeof parsed.score === "number") {
       data.score = Math.max(0, Math.min(10, parsed.score));
     }
-    if (typeof parsed.pass === "boolean") data.pass = parsed.pass;
     if (Array.isArray(parsed.files)) {
       data.files = parsed.files.filter((f) => typeof f === "string");
     }
@@ -29395,14 +29394,14 @@ var log6 = createLogger("test-fix-handlers");
 var DEFAULT_BUDGET2 = { max_tokens: 5e4, max_turns: 20 };
 var DEFAULT_MAX_FIX_ATTEMPTS2 = 3;
 var TEST_THEN_FIX_DEFINITION_ID = "test_then_fix";
-var SCORE_PASS = 10;
-var SCORE_FAIL = 0;
+var SYNTHETIC_PASS_SCORE = 10;
+var SYNTHETIC_FAIL_SCORE = 0;
 function parseGvTestResult(text) {
   if (!text) return null;
   const gvResult = parseGvTag(text);
-  if (gvResult.found && gvResult.data !== null && gvResult.data.pass !== void 0) {
-    const passed = gvResult.data.pass === true;
-    const score = typeof gvResult.data.score === "number" ? gvResult.data.score : passed ? SCORE_PASS : SCORE_FAIL;
+  if (gvResult.found && gvResult.data !== null && typeof gvResult.data.score === "number") {
+    const score = gvResult.data.score;
+    const passed = score >= SYNTHETIC_PASS_SCORE;
     return { passed, score };
   }
   const hasFailures = /\b(FAIL|FAILED|failing|test.*fail|\d+ fail)/i.test(text) || /error:/i.test(text);
@@ -29468,7 +29467,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
           error: String(err)
         });
       }
-      workflow.context["review_score"] = SCORE_PASS;
+      workflow.context["review_score"] = SYNTHETIC_PASS_SCORE;
       const message = buildWorkflowCompleteMessage(workflow.id, "completed");
       directiveQueue.enqueue("subagent_stop", {
         type: "inject_system_message",
@@ -29489,7 +29488,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
         max_fix_attempts: maxFixAttempts,
         test_command: testCommand
       });
-      workflow.context["review_score"] = SCORE_FAIL;
+      workflow.context["review_score"] = SYNTHETIC_FAIL_SCORE;
       workflow.context["test_failures"] = [{ test: testCommand, error: agentOutput.slice(0, 500) }];
       try {
         workflowEngine.sendEvent(workflow.id, {

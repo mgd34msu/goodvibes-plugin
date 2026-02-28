@@ -83,10 +83,10 @@ Report results in a structured, token-efficient format that enables orchestrator
 The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"files":[],"score":9.5,"pass":true,"count":null}</gv>
+<gv>{"files":[],"score":9.5,"count":null}</gv>
 ```
 
-Required for this agent: `score` (0-10), `pass` (boolean)
+Required for this agent: `score` (0-10)
 Optional (null when N/A): `files`, `count`
 All fields must be present. The runtime engine parses this mechanically.
 
