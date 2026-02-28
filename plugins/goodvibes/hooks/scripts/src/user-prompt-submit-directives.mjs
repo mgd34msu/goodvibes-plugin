@@ -276,48 +276,22 @@ try {
     console.error('[UPS-Auditor] audit error:', e?.message || e);
   }
 
-  // Extract ALL agent IDs from task-notifications for per-workflow directive drain.
-  // Multiple task-notifications may arrive in one user message (parallel WRFC chains).
+  // Extract agent IDs from task-notifications for diagnostics (markDelivered).
   const taskIdMatches = [...(prompt?.matchAll(/<task-id>([^<]+)<\/task-id>/g) || [])];
   const agentIds = taskIdMatches.map(m => m[1]);
 
-  // Retry with backoff when get_directives returns empty on a task-notification.
-  // This handles the race condition where SubagentStop hasn't finished processing
-  // the agent:completed event and enqueuing the WRFC directive yet.
+  // Drain ALL pending directives (no agent_id). Per-agent drain had a race
+  // condition where PreToolUse drain-all grabs the directive before UPS fires,
+  // causing per-agent queries to return empty. Drain-all is consistent with
+  // PreToolUse and ensures whichever hook fires first gets all pending directives.
   const RETRY_DELAYS = [100, 250, 500];
-  let result = null;
+  let result = await queryDirectives(socketPath, null);
 
-  if (agentIds.length > 0) {
-    // Query directives for each agent ID and merge results
-    for (const agentId of agentIds) {
-      let agentResult = await queryDirectives(socketPath, agentId);
-
-      if (!agentResult || !agentResult.directives || agentResult.directives.length === 0) {
-        for (const delay of RETRY_DELAYS) {
-          await sleep(delay);
-          agentResult = await queryDirectives(socketPath, agentId);
-          if (agentResult?.directives?.length > 0) break;
-        }
-      }
-
-      if (agentResult?.directives?.length > 0) {
-        if (!result) {
-          result = agentResult;
-        } else {
-          result.directives = [...result.directives, ...agentResult.directives];
-        }
-      }
-    }
-  } else {
-    // No agent IDs found — try without agent_id (backward compat)
-    result = await queryDirectives(socketPath, null);
-
-    if (!result || !result.directives || result.directives.length === 0) {
-      for (const delay of RETRY_DELAYS) {
-        await sleep(delay);
-        result = await queryDirectives(socketPath, null);
-        if (result?.directives?.length > 0) break;
-      }
+  if (!result || !result.directives || result.directives.length === 0) {
+    for (const delay of RETRY_DELAYS) {
+      await sleep(delay);
+      result = await queryDirectives(socketPath, null);
+      if (result?.directives?.length > 0) break;
     }
   }
 
