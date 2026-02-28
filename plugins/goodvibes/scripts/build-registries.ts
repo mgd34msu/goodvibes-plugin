@@ -248,10 +248,10 @@ function parseTypeScriptSchemas(): Map<string, { name: string; description: stri
       // Some servers define schemas in handlers/index.ts
       schemaFiles = ['index.ts'];
       baseDir = path.dirname(handlersIndexPath);
-    } else if (fs.existsSync(path.join(PLUGIN_ROOT, 'tools', 'implementations', server, 'src', 'server', 'handlers', 'schemas.ts'))) {
-      // runtime-engine defines schemas in server/handlers/schemas.ts
+    } else if (fs.existsSync(path.join(PLUGIN_ROOT, 'tools', 'implementations', server, 'src', 'plugins', 'mcp', 'handlers', 'schemas.ts'))) {
+      // runtime-engine defines schemas in plugins/mcp/handlers/schemas.ts
       schemaFiles = ['schemas.ts'];
-      baseDir = path.join(PLUGIN_ROOT, 'tools', 'implementations', server, 'src', 'server', 'handlers');
+      baseDir = path.join(PLUGIN_ROOT, 'tools', 'implementations', server, 'src', 'plugins', 'mcp', 'handlers');
     } else if (fs.existsSync(toolHandlersPath)) {
       // Fallback: schemas inline in server/tool-handlers.ts
       schemaFiles = ['tool-handlers.ts'];
