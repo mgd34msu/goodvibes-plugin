@@ -6,6 +6,8 @@
  * in the IPC protocol: hook_event, query, state_update, heartbeat.
  */
 
+import type { ResponseEnvelope } from './ipc-server.js';
+import { HOLD_TTL_MS } from '../../extensions/directives/directive-queue.js';
 import type { EventBus } from '../../extensions/events/event-bus.js';
 import type { EventType, EventSource, EventPayload, RuntimeEvent } from '../../extensions/events/types.js';
 import type { TriggerRegistry } from '../../extensions/triggers/trigger-registry.js';
@@ -76,7 +78,7 @@ export interface IPCRouterDeps {
 }
 
 /** Return type for {@link IPCRouter.drainDirectiveMessages}. */
-type DrainResult = { message: string; directives: Directive[] };
+type DrainResult = { message: string; directives: Directive[]; holdId: string };
 
 /**
  * Extracts a non-empty string field from an object by key.
@@ -184,13 +186,14 @@ export class IPCRouter {
    *   When omitted, all directives for the target are drained (backward compat).
    */
   private drainDirectiveMessages(workflowId?: string): DrainResult {
-    const directives = this.directiveQueue?.drain('subagent_stop', workflowId) ?? [];
-    const message = directives
+    const result = this.directiveQueue?.holdDrain('subagent_stop', workflowId)
+      ?? { holdId: '', directives: [] };
+    const message = result.directives
       .filter((d) => d.type === 'inject_system_message')
       .sort((a, b) => b.priority - a.priority)
       .map((d) => d.content)
       .join('\n\n');
-    return { message, directives };
+    return { message, directives: result.directives, holdId: result.holdId };
   }
 
   /**
@@ -203,7 +206,7 @@ export class IPCRouter {
    *   resolver is registered, it is used to scope the drain to that agent's
    *   workflow, preventing cross-workflow directive delivery.
    */
-  private buildDirectivesResponse(msgId: string, agentId?: string): IPCResponse {
+  private buildDirectivesResponse(msgId: string, agentId?: string): ResponseEnvelope {
     let workflowId: string | undefined;
     if (agentId && this.agentWorkflowResolver) {
       const resolved = this.agentWorkflowResolver(agentId);
@@ -212,17 +215,23 @@ export class IPCRouter {
       } else {
         // Agent not in any workflow — return empty, don't drain other workflows' directives
         return {
-          id: msgId,
-          status: 'ok',
-          data: { kind: 'system_message', message: '', directives: [] },
+          response: {
+            id: msgId,
+            status: 'ok',
+            data: { kind: 'system_message', message: '', directives: [] },
+          },
         };
       }
     }
-    const { message, directives } = this.drainDirectiveMessages(workflowId);
+    const { message, directives, holdId } = this.drainDirectiveMessages(workflowId);
     return {
-      id: msgId,
-      status: 'ok',
-      data: { kind: 'system_message', message, directives },
+      response: {
+        id: msgId,
+        status: 'ok',
+        data: { kind: 'system_message', message, directives },
+      },
+      // Convert empty holdId (from empty drain) to undefined so writeResponse skips callback
+      holdId: holdId || undefined,
     };
   }
 
@@ -233,8 +242,11 @@ export class IPCRouter {
    * @param msg - The validated IPC message received from a hook script.
    * @returns A promise resolving to the IPCResponse to send back.
    */
-  async route(msg: IPCMessage): Promise<IPCResponse> {
+  async route(msg: IPCMessage): Promise<IPCResponse | ResponseEnvelope> {
     logger.debug('IPC message received', { id: msg.id, type: msg.type });
+    // Sweep stale holds on every IPC request — O(n) on held map which is typically
+    // 0-2 entries. Belt-and-suspenders with watchdog sweep for periods of no IPC traffic.
+    this.directiveQueue?.sweepStaleHolds(HOLD_TTL_MS);
     // Extract id before type-narrowing guards reduce msg to 'never'
     const msgId = msg.id;
 

@@ -86,6 +86,11 @@ export class WatchdogCoordinator {
     const { workflowEngine, directiveQueue } = this.deps;
     if (!workflowEngine || !directiveQueue) return;
 
+    // Sweep any held directive batches whose TTL has expired — ensures
+    // directives are not permanently lost if the IPC write callback was
+    // never invoked (e.g. process restart between drain and write-confirm).
+    directiveQueue.sweepStaleHolds();
+
     const now = Date.now();
     const activeWorkflows = workflowEngine.listActive();
 

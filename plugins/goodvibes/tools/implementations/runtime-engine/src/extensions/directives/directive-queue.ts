@@ -6,10 +6,22 @@
  * queries for directives.
  */
 
+import { randomUUID } from 'crypto';
 import type { Directive } from '../../shared/ipc/protocol.js';
 import { createLogger } from '../../shared/logger.js';
 
 const logger = createLogger('directive-queue');
+
+interface HeldBatch {
+  id: string;
+  directives: Directive[];
+  target: string;
+  heldAt: number;
+  workflowId?: string;
+}
+
+/** Time in ms before held directives are automatically re-enqueued. */
+export const HOLD_TTL_MS = 3_000;
 
 /**
  * Maximum number of directives retained per target before the oldest is evicted.
@@ -34,6 +46,9 @@ const MAX_QUEUE_DEPTH = 100;
 export class DirectiveQueue {
   /** Per-target FIFO queues. */
   private readonly queues: Map<string, Directive[]> = new Map();
+
+  /** Held batches awaiting write confirmation. */
+  private readonly held: Map<string, HeldBatch> = new Map();
 
   /**
    * Add a directive to the end of the queue for `target`.
@@ -94,6 +109,97 @@ export class DirectiveQueue {
   }
 
   /**
+   * Drain directives into a held state instead of permanently removing them.
+   * Held directives can be released (confirmed delivered) or re-enqueued (delivery failed).
+   */
+  holdDrain(target: string, workflowId?: string): { holdId: string; directives: Directive[] } {
+    const directives = this.drain(target, workflowId);
+    if (directives.length === 0) {
+      // Returns empty holdId when nothing was drained — callers check with `if (holdId)`.
+      return { holdId: '', directives: [] };
+    }
+    const holdId = `hold-${randomUUID()}`;
+    this.held.set(holdId, {
+      id: holdId,
+      directives,
+      target,
+      heldAt: Date.now(),
+      workflowId,
+    });
+    logger.debug('DirectiveQueue holdDrain', { holdId, target, count: directives.length });
+    return { holdId, directives };
+  }
+
+  /**
+   * Release a held batch — directives confirmed delivered. No-op for unknown holdId.
+   */
+  releaseHold(holdId: string): void {
+    if (!holdId) return;
+    const deleted = this.held.delete(holdId);
+    if (deleted) {
+      logger.debug('DirectiveQueue hold released', { holdId });
+    }
+  }
+
+  /**
+   * Re-enqueue a held batch back to the front of the target queue.
+   * Used when IPC write fails and directives need to be retried.
+   */
+  reEnqueueHold(holdId: string): number {
+    const batch = this.held.get(holdId);
+    if (!batch) return 0;
+    this.held.delete(holdId);
+
+    const queue = this.queues.get(batch.target) ?? [];
+    // Prepend: held directives were older, should be delivered first
+    const merged = [...batch.directives, ...queue];
+    while (merged.length > MAX_QUEUE_DEPTH) {
+      merged.pop(); // Evict newest overflow items to preserve held (older) directives
+      logger.warn('DirectiveQueue re-enqueue overflow: directive evicted', { target: batch.target });
+    }
+    this.queues.set(batch.target, merged);
+
+    logger.info('DirectiveQueue hold re-enqueued', {
+      holdId,
+      target: batch.target,
+      count: batch.directives.length,
+    });
+    return batch.directives.length;
+  }
+
+  /**
+   * Re-enqueue any held batches older than ttlMs. Returns total directives re-enqueued.
+   */
+  sweepStaleHolds(ttlMs: number = HOLD_TTL_MS): number {
+    const now = Date.now();
+    let reEnqueued = 0;
+    const staleIds: string[] = [];
+    for (const [holdId, batch] of this.held) {
+      if (now - batch.heldAt >= ttlMs) {
+        staleIds.push(holdId);
+      }
+    }
+    for (const holdId of staleIds) {
+      reEnqueued += this.reEnqueueHold(holdId);
+    }
+    if (reEnqueued > 0) {
+      logger.warn('DirectiveQueue swept stale holds', { count: reEnqueued, ttlMs });
+    }
+    return reEnqueued;
+  }
+
+  /**
+   * Return the number of directives currently in held state (diagnostic).
+   */
+  heldSize(): number {
+    let total = 0;
+    for (const batch of this.held.values()) {
+      total += batch.directives.length;
+    }
+    return total;
+  }
+
+  /**
    * Remove ALL directives across ALL targets that belong to a specific workflow.
    *
    * Used when a workflow reaches a terminal state to prevent stale directives
@@ -104,15 +210,35 @@ export class DirectiveQueue {
    */
   purge(workflowId: string): number {
     let count = 0;
+    const queuesToDelete: string[] = [];
+    const queuesToUpdate: [string, Directive[]][] = [];
+
     for (const [target, queue] of this.queues.entries()) {
       const before = queue.length;
       const remaining = queue.filter((d) => d.workflow_id !== workflowId);
       count += before - remaining.length;
       if (remaining.length === 0) {
-        this.queues.delete(target);
-      } else {
-        this.queues.set(target, remaining);
+        queuesToDelete.push(target);
+      } else if (remaining.length !== before) {
+        queuesToUpdate.push([target, remaining]);
       }
+    }
+
+    for (const target of queuesToDelete) {
+      this.queues.delete(target);
+    }
+    for (const [target, remaining] of queuesToUpdate) {
+      this.queues.set(target, remaining);
+    }
+    const heldToRemove: string[] = [];
+    for (const [holdId, batch] of this.held) {
+      if (batch.workflowId === workflowId) {
+        heldToRemove.push(holdId);
+        count += batch.directives.length;
+      }
+    }
+    for (const holdId of heldToRemove) {
+      this.held.delete(holdId);
     }
     if (count > 0) {
       logger.info('DirectiveQueue purged', { workflowId, count });
@@ -136,9 +262,10 @@ export class DirectiveQueue {
     return queue.filter((d) => d.workflow_id === workflowId);
   }
 
-  /** Clear all directive queues. WRFC config is preserved. */
+  /** Clear all directive queues and held batches. WRFC config is preserved. */
   clear(): void {
     this.queues.clear();
+    this.held.clear();
   }
 
   /**

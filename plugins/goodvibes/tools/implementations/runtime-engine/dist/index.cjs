@@ -21872,6 +21872,10 @@ __name(validateIPCMessage, "validateIPCMessage");
 var logger = createLogger("ipc-server");
 var CONNECTION_TIMEOUT_MS = 5e3;
 var MAX_MESSAGE_SIZE = 1048576;
+function isResponseEnvelope(r) {
+  return r !== null && typeof r === "object" && "response" in r && !("status" in r);
+}
+__name(isResponseEnvelope, "isResponseEnvelope");
 var IPCServer = class {
   static {
     __name(this, "IPCServer");
@@ -21884,6 +21888,10 @@ var IPCServer = class {
   handler = null;
   /** Set of all currently open client sockets (for clean shutdown). */
   connections = /* @__PURE__ */ new Set();
+  /** Optional callback invoked after each socket write with write success/failure. */
+  writeResultCallback;
+  /** Tracks in-flight holdIds per socket for async write confirmation and error recovery. */
+  inFlightHolds = /* @__PURE__ */ new WeakMap();
   /**
    * @param socketPath - Absolute path for the Unix domain socket file.
    *   The parent directory is created automatically if it does not exist.
@@ -21903,6 +21911,17 @@ var IPCServer = class {
    */
   onMessage(handler) {
     this.handler = handler;
+  }
+  /**
+   * Register a callback to be notified after each socket write attempt.
+   *
+   * Used by the hold-and-release pattern: on success, call `releaseHold(holdId)`;
+   * on failure, call `reEnqueueHold(holdId)` to recover the directives.
+   *
+   * @param cb - Callback receiving the holdId and write success flag.
+   */
+  setWriteResultCallback(cb) {
+    this.writeResultCallback = cb;
   }
   /**
    * Start listening for incoming connections on the configured socket path.
@@ -21955,6 +21974,13 @@ var IPCServer = class {
       connections: this.connections.size
     });
     for (const socket of this.connections) {
+      const holdId = this.inFlightHolds.get(socket);
+      if (holdId && this.writeResultCallback) {
+        this.inFlightHolds.delete(socket);
+        this.writeResultCallback(holdId, false);
+      }
+    }
+    for (const socket of this.connections) {
       socket.destroy();
     }
     this.connections.clear();
@@ -22005,6 +22031,11 @@ var IPCServer = class {
     socket.on("error", (err) => {
       clearTimeout(idleTimer);
       logger.warn("IPC socket error", { err: err.message });
+      const holdId = this.inFlightHolds.get(socket);
+      if (holdId && this.writeResultCallback) {
+        this.inFlightHolds.delete(socket);
+        this.writeResultCallback(holdId, false);
+      }
       this.connections.delete(socket);
       socket.destroy();
     });
@@ -22082,8 +22113,12 @@ var IPCServer = class {
       return;
     }
     logger.debug("Dispatching IPC message", { id: message.id, type: message.type });
-    this.handler(message).then((response) => {
-      this.writeResponse(socket, response);
+    this.handler(message).then((result) => {
+      if (isResponseEnvelope(result)) {
+        this.writeResponse(socket, result.response, result.holdId);
+      } else {
+        this.writeResponse(socket, result);
+      }
     }).catch((err) => {
       logger.error("IPC handler threw an error", {
         id: message.id,
@@ -22104,15 +22139,27 @@ var IPCServer = class {
    * @param socket   - The client socket.
    * @param response - The response to send.
    */
-  writeResponse(socket, response) {
+  writeResponse(socket, response, holdId) {
     const payload = JSON.stringify(response) + "\n";
+    if (holdId) {
+      this.inFlightHolds.set(socket, holdId);
+    }
     try {
-      socket.end(payload, "utf-8");
+      socket.end(payload, "utf-8", () => {
+        if (holdId && this.writeResultCallback) {
+          this.inFlightHolds.delete(socket);
+          this.writeResultCallback(holdId, true);
+        }
+      });
     } catch (err) {
       logger.warn("Failed to write IPC response", {
         id: response.id,
         err: toErrorMessage(err)
       });
+      if (holdId && this.writeResultCallback) {
+        this.inFlightHolds.delete(socket);
+        this.writeResultCallback(holdId, false);
+      }
       socket.destroy();
     }
   }
@@ -22134,10 +22181,266 @@ var IPCServer = class {
   }
 };
 
+// src/extensions/directives/directive-queue.ts
+var import_crypto = require("crypto");
+var logger2 = createLogger("directive-queue");
+var HOLD_TTL_MS = 3e3;
+var MAX_QUEUE_DEPTH = 100;
+var DirectiveQueue = class {
+  static {
+    __name(this, "DirectiveQueue");
+  }
+  /** Per-target FIFO queues. */
+  queues = /* @__PURE__ */ new Map();
+  /** Held batches awaiting write confirmation. */
+  held = /* @__PURE__ */ new Map();
+  /**
+   * Add a directive to the end of the queue for `target`.
+   *
+   * @param target - Hook target name (e.g. `'subagent_stop'`).
+   * @param directive - The directive to enqueue.
+   */
+  enqueue(target, directive) {
+    const queue = this.queues.get(target);
+    if (queue) {
+      if (queue.length >= MAX_QUEUE_DEPTH) {
+        queue.shift();
+        logger2.warn("DirectiveQueue at capacity: oldest directive evicted", { target, max: MAX_QUEUE_DEPTH });
+      }
+      queue.push(directive);
+    } else {
+      this.queues.set(target, [directive]);
+    }
+  }
+  /**
+   * Return and remove directives for `target`.
+   *
+   * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID. When provided, only directives
+   *   matching this workflow_id are returned and removed; the rest remain in
+   *   the queue. When omitted, ALL directives for the target are returned and
+   *   the queue is cleared (backward-compatible behaviour).
+   * @returns Array of directives in FIFO order (may be empty).
+   */
+  drain(target, workflowId) {
+    const queue = this.queues.get(target);
+    if (!queue || queue.length === 0) return [];
+    if (workflowId === void 0) {
+      const items = [...queue];
+      this.queues.delete(target);
+      return items;
+    }
+    const matching = [];
+    const remaining = [];
+    for (const d of queue) {
+      if (d.workflow_id === workflowId) {
+        matching.push(d);
+      } else {
+        remaining.push(d);
+      }
+    }
+    if (remaining.length === 0) {
+      this.queues.delete(target);
+    } else {
+      this.queues.set(target, remaining);
+    }
+    return matching;
+  }
+  /**
+   * Drain directives into a held state instead of permanently removing them.
+   * Held directives can be released (confirmed delivered) or re-enqueued (delivery failed).
+   */
+  holdDrain(target, workflowId) {
+    const directives = this.drain(target, workflowId);
+    if (directives.length === 0) {
+      return { holdId: "", directives: [] };
+    }
+    const holdId = `hold-${(0, import_crypto.randomUUID)()}`;
+    this.held.set(holdId, {
+      id: holdId,
+      directives,
+      target,
+      heldAt: Date.now(),
+      workflowId
+    });
+    logger2.debug("DirectiveQueue holdDrain", { holdId, target, count: directives.length });
+    return { holdId, directives };
+  }
+  /**
+   * Release a held batch — directives confirmed delivered. No-op for unknown holdId.
+   */
+  releaseHold(holdId) {
+    if (!holdId) return;
+    const deleted = this.held.delete(holdId);
+    if (deleted) {
+      logger2.debug("DirectiveQueue hold released", { holdId });
+    }
+  }
+  /**
+   * Re-enqueue a held batch back to the front of the target queue.
+   * Used when IPC write fails and directives need to be retried.
+   */
+  reEnqueueHold(holdId) {
+    const batch = this.held.get(holdId);
+    if (!batch) return 0;
+    this.held.delete(holdId);
+    const queue = this.queues.get(batch.target) ?? [];
+    const merged = [...batch.directives, ...queue];
+    while (merged.length > MAX_QUEUE_DEPTH) {
+      merged.pop();
+      logger2.warn("DirectiveQueue re-enqueue overflow: directive evicted", { target: batch.target });
+    }
+    this.queues.set(batch.target, merged);
+    logger2.info("DirectiveQueue hold re-enqueued", {
+      holdId,
+      target: batch.target,
+      count: batch.directives.length
+    });
+    return batch.directives.length;
+  }
+  /**
+   * Re-enqueue any held batches older than ttlMs. Returns total directives re-enqueued.
+   */
+  sweepStaleHolds(ttlMs = HOLD_TTL_MS) {
+    const now = Date.now();
+    let reEnqueued = 0;
+    const staleIds = [];
+    for (const [holdId, batch] of this.held) {
+      if (now - batch.heldAt >= ttlMs) {
+        staleIds.push(holdId);
+      }
+    }
+    for (const holdId of staleIds) {
+      reEnqueued += this.reEnqueueHold(holdId);
+    }
+    if (reEnqueued > 0) {
+      logger2.warn("DirectiveQueue swept stale holds", { count: reEnqueued, ttlMs });
+    }
+    return reEnqueued;
+  }
+  /**
+   * Return the number of directives currently in held state (diagnostic).
+   */
+  heldSize() {
+    let total = 0;
+    for (const batch of this.held.values()) {
+      total += batch.directives.length;
+    }
+    return total;
+  }
+  /**
+   * Remove ALL directives across ALL targets that belong to a specific workflow.
+   *
+   * Used when a workflow reaches a terminal state to prevent stale directives
+   * from being delivered to a future run.
+   *
+   * @param workflowId - The workflow ID whose directives should be purged.
+   * @returns Total number of directives removed.
+   */
+  purge(workflowId) {
+    let count = 0;
+    const queuesToDelete = [];
+    const queuesToUpdate = [];
+    for (const [target, queue] of this.queues.entries()) {
+      const before = queue.length;
+      const remaining = queue.filter((d) => d.workflow_id !== workflowId);
+      count += before - remaining.length;
+      if (remaining.length === 0) {
+        queuesToDelete.push(target);
+      } else if (remaining.length !== before) {
+        queuesToUpdate.push([target, remaining]);
+      }
+    }
+    for (const target of queuesToDelete) {
+      this.queues.delete(target);
+    }
+    for (const [target, remaining] of queuesToUpdate) {
+      this.queues.set(target, remaining);
+    }
+    const heldToRemove = [];
+    for (const [holdId, batch] of this.held) {
+      if (batch.workflowId === workflowId) {
+        heldToRemove.push(holdId);
+        count += batch.directives.length;
+      }
+    }
+    for (const holdId of heldToRemove) {
+      this.held.delete(holdId);
+    }
+    if (count > 0) {
+      logger2.info("DirectiveQueue purged", { workflowId, count });
+    }
+    return count;
+  }
+  /**
+   * Return directives for `target` without removing them.
+   *
+   * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID. When provided, only directives
+   *   matching this workflow_id are included in the snapshot.
+   * @returns Snapshot of the queue (may be empty).
+   */
+  peek(target, workflowId) {
+    const queue = this.queues.get(target) ?? [];
+    if (workflowId === void 0) {
+      return [...queue];
+    }
+    return queue.filter((d) => d.workflow_id === workflowId);
+  }
+  /** Clear all directive queues and held batches. WRFC config is preserved. */
+  clear() {
+    this.queues.clear();
+    this.held.clear();
+  }
+  /**
+   * Stored WRFC config from the `config:loaded` hook event.
+   *
+   * @v1-design-note Storing WRFC-specific configuration (min review score,
+   * max fix attempts, etc.) inside `DirectiveQueue` violates the Single
+   * Responsibility Principle — a queue should only manage queueing. This was
+   * a pragmatic choice in v1 to avoid a separate config-store module. In v2
+   * this should be extracted to a dedicated `WRFCConfig` service or singleton
+   * so that `DirectiveQueue` only owns directive lifecycle.
+   */
+  wrfcConfig = {};
+  /**
+   * Store the WRFC config delivered by the config:loaded hook event.
+   *
+   * @param config - The `wrfc` section of the merged goodvibes.json.
+   */
+  // TODO(v2): Extract WRFC config into dedicated WRFCConfigStore — this violates SRP.
+  setWRFCConfig(config2) {
+    this.wrfcConfig = config2;
+    logger2.debug("WRFC config stored", { keys: Object.keys(config2) });
+  }
+  /**
+   * Return the stored WRFC config (empty object if never set).
+   */
+  getWRFCConfig() {
+    return this.wrfcConfig;
+  }
+  /**
+   * Return the number of pending directives, optionally scoped to a target.
+   *
+   * @param target - Optional hook target name. If omitted, counts across all targets.
+   * @returns Total pending directive count.
+   */
+  size(target) {
+    if (target !== void 0) {
+      return this.queues.get(target)?.length ?? 0;
+    }
+    let total = 0;
+    for (const queue of this.queues.values()) {
+      total += queue.length;
+    }
+    return total;
+  }
+};
+
 // src/shared/ipc/ipc-router.ts
 var import_node_fs4 = require("node:fs");
 var import_node_path3 = require("node:path");
-var logger2 = createLogger("ipc-router");
+var logger3 = createLogger("ipc-router");
 function getStringField(obj, key) {
   const value = obj[key];
   return typeof value === "string" ? value : "";
@@ -22206,10 +22509,10 @@ var IPCRouter = class {
       const pointerFile = (0, import_node_path3.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
         (0, import_node_fs4.unlinkSync)(pointerFile);
-        logger2.debug("Session pointer file removed", { sessionId });
+        logger3.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
-          logger2.warn("Could not remove session pointer file", {
+          logger3.warn("Could not remove session pointer file", {
             sessionId,
             err: toErrorMessage(err)
           });
@@ -22229,9 +22532,9 @@ var IPCRouter = class {
    *   When omitted, all directives for the target are drained (backward compat).
    */
   drainDirectiveMessages(workflowId) {
-    const directives = this.directiveQueue?.drain("subagent_stop", workflowId) ?? [];
-    const message = directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
-    return { message, directives };
+    const result = this.directiveQueue?.holdDrain("subagent_stop", workflowId) ?? { holdId: "", directives: [] };
+    const message = result.directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
+    return { message, directives: result.directives, holdId: result.holdId };
   }
   /**
    * Build the IPC response for directive-query kinds (get_directives,
@@ -22251,17 +22554,23 @@ var IPCRouter = class {
         workflowId = resolved;
       } else {
         return {
-          id: msgId,
-          status: "ok",
-          data: { kind: "system_message", message: "", directives: [] }
+          response: {
+            id: msgId,
+            status: "ok",
+            data: { kind: "system_message", message: "", directives: [] }
+          }
         };
       }
     }
-    const { message, directives } = this.drainDirectiveMessages(workflowId);
+    const { message, directives, holdId } = this.drainDirectiveMessages(workflowId);
     return {
-      id: msgId,
-      status: "ok",
-      data: { kind: "system_message", message, directives }
+      response: {
+        id: msgId,
+        status: "ok",
+        data: { kind: "system_message", message, directives }
+      },
+      // Convert empty holdId (from empty drain) to undefined so writeResponse skips callback
+      holdId: holdId || void 0
     };
   }
   /**
@@ -22272,7 +22581,8 @@ var IPCRouter = class {
    * @returns A promise resolving to the IPCResponse to send back.
    */
   async route(msg) {
-    logger2.debug("IPC message received", { id: msg.id, type: msg.type });
+    logger3.debug("IPC message received", { id: msg.id, type: msg.type });
+    this.directiveQueue?.sweepStaleHolds(HOLD_TTL_MS);
     const msgId = msg.id;
     if (msg.type === "hook_event") {
       const emittedEvent = {
@@ -22295,7 +22605,7 @@ var IPCRouter = class {
         try {
           await this.triggerRegistry.evaluate(emittedEvent);
         } catch (err) {
-          logger2.warn("IPC hook_event: trigger evaluation error", {
+          logger3.warn("IPC hook_event: trigger evaluation error", {
             error: toErrorMessage(err)
           });
         }
@@ -22310,9 +22620,9 @@ var IPCRouter = class {
             const pointerFile = (0, import_node_path3.join)(this.stateDir, `runtime-${sessionId}.socket`);
             (0, import_node_fs4.writeFileSync)(pointerFile, this.socketPath, "utf-8");
             this.registeredSessions.add(sessionId);
-            logger2.info("Session pointer file written", { sessionId, pointer: pointerFile });
+            logger3.info("Session pointer file written", { sessionId, pointer: pointerFile });
           } catch (err) {
-            logger2.warn("Failed to write session pointer file", {
+            logger3.warn("Failed to write session pointer file", {
               sessionId,
               err: toErrorMessage(err)
             });
@@ -22327,21 +22637,21 @@ var IPCRouter = class {
           if (typeof raw.min_review_score === "number" && raw.min_review_score >= 0 && raw.min_review_score <= 10) {
             validated.min_review_score = raw.min_review_score;
           } else if (raw.min_review_score !== void 0) {
-            logger2.warn("Invalid min_review_score rejected", { value: raw.min_review_score, expected: "number 0-10" });
+            logger3.warn("Invalid min_review_score rejected", { value: raw.min_review_score, expected: "number 0-10" });
           }
           if (typeof raw.max_fix_attempts === "number" && Number.isInteger(raw.max_fix_attempts) && raw.max_fix_attempts > 0) {
             validated.max_fix_attempts = raw.max_fix_attempts;
           } else if (raw.max_fix_attempts !== void 0) {
-            logger2.warn("Invalid max_fix_attempts rejected", { value: raw.max_fix_attempts, expected: "positive integer" });
+            logger3.warn("Invalid max_fix_attempts rejected", { value: raw.max_fix_attempts, expected: "positive integer" });
           }
           if (typeof raw.auto_commit === "boolean") {
             validated.auto_commit = raw.auto_commit;
           } else if (raw.auto_commit !== void 0) {
-            logger2.warn("Invalid auto_commit rejected", { value: raw.auto_commit, expected: "boolean" });
+            logger3.warn("Invalid auto_commit rejected", { value: raw.auto_commit, expected: "boolean" });
           }
           if (Object.keys(validated).length > 0) {
             this.directiveQueue.setWRFCConfig(validated);
-            logger2.debug("WRFC config stored from config:loaded event", { validated });
+            logger3.debug("WRFC config stored from config:loaded event", { validated });
           }
         }
       }
@@ -22350,7 +22660,7 @@ var IPCRouter = class {
           const hookInput = typeof msg.hook_input === "object" && msg.hook_input !== null ? msg.hook_input : {};
           await this.hookProcessor.process(msg.hook_name, hookInput);
         } catch (err) {
-          logger2.warn("IPC hook_event: v3 HookProcessor error", {
+          logger3.warn("IPC hook_event: v3 HookProcessor error", {
             hookName: msg.hook_name,
             error: toErrorMessage(err)
           });
@@ -22417,14 +22727,14 @@ var IPCRouter = class {
           data: { kind: "tick_result", result }
         };
       }
-      logger2.warn("Unhandled query kind", { kind: q.kind });
+      logger3.warn("Unhandled query kind", { kind: q.kind });
       return { id: msg.id, status: "ok", data: { kind: "ack" } };
     }
     if (msg.type === "heartbeat") {
       return { id: msg.id, status: "ok", data: { kind: "ack" } };
     }
     if (msg.type === "state_update") {
-      logger2.debug("IPC state_update received", { id: msg.id });
+      logger3.debug("IPC state_update received", { id: msg.id });
       return { id: msg.id, status: "ok", data: { kind: "ack" } };
     }
     return { id: msgId, status: "ok", data: { kind: "ack" } };
@@ -22436,7 +22746,7 @@ var import_node_fs5 = require("node:fs");
 var import_node_crypto2 = require("node:crypto");
 var import_node_path4 = require("node:path");
 var import_node_os2 = require("node:os");
-var logger3 = createLogger("pid-file");
+var logger4 = createLogger("pid-file");
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
   return (0, import_node_path4.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
@@ -22455,9 +22765,9 @@ function writePidFile(projectRoot) {
   const pidFilePath = getPidFilePath(projectRoot);
   try {
     (0, import_node_fs5.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
-    logger3.debug("PID file written", { path: pidFilePath, pid: process.pid });
+    logger4.debug("PID file written", { path: pidFilePath, pid: process.pid });
   } catch (err) {
-    logger3.warn("Could not write PID file", {
+    logger4.warn("Could not write PID file", {
       err: toErrorMessage(err)
     });
   }
@@ -22467,10 +22777,10 @@ function removePidFile(projectRoot) {
   const pidFilePath = getPidFilePath(projectRoot);
   try {
     (0, import_node_fs5.unlinkSync)(pidFilePath);
-    logger3.debug("PID file removed", { path: pidFilePath });
+    logger4.debug("PID file removed", { path: pidFilePath });
   } catch (err) {
     if (err.code !== "ENOENT") {
-      logger3.warn("Could not remove PID file", { err: toErrorMessage(err) });
+      logger4.warn("Could not remove PID file", { err: toErrorMessage(err) });
     }
   }
 }
@@ -22484,7 +22794,7 @@ async function checkCrashRecovery(projectRoot) {
     if (stalePid !== currentPid) {
       const pid = Number(stalePid);
       if (Number.isNaN(pid) || pid <= 0 || !Number.isInteger(pid)) {
-        logger3.warn("Stale PID file contains invalid data \u2014 removing", {
+        logger4.warn("Stale PID file contains invalid data \u2014 removing", {
           content: stalePid.slice(0, 20),
           pid_file: pidFilePath
         });
@@ -22493,19 +22803,19 @@ async function checkCrashRecovery(projectRoot) {
       }
       const staleProcessAlive = isProcessRunning(pid);
       if (staleProcessAlive) {
-        logger3.warn("Stale PID file points to a running process \u2014 another instance may be active", {
+        logger4.warn("Stale PID file points to a running process \u2014 another instance may be active", {
           stale_pid: stalePid,
           pid_file: pidFilePath
         });
       } else {
-        logger3.warn("Stale PID file detected \u2014 possible crash recovery", {
+        logger4.warn("Stale PID file detected \u2014 possible crash recovery", {
           stale_pid: stalePid
         });
       }
       removePidFile(projectRoot);
     }
   } catch (err) {
-    logger3.warn("Could not read stale PID file", {
+    logger4.warn("Could not read stale PID file", {
       err: toErrorMessage(err)
     });
   }
@@ -22666,7 +22976,7 @@ var HealthChecker = class {
 };
 
 // src/core/processing/executor-mode.ts
-var logger4 = createLogger("executor-mode");
+var logger5 = createLogger("executor-mode");
 var ExecutorModeManager = class {
   static {
     __name(this, "ExecutorModeManager");
@@ -22694,25 +23004,25 @@ var ExecutorModeManager = class {
     if (envMode === "daemon" || envMode === "hybrid" || envMode === "engaged") {
       this.detectionMethod = "explicit";
       this.currentMode = envMode;
-      logger4.info("Executor mode set from env var", { mode: this.currentMode });
+      logger5.info("Executor mode set from env var", { mode: this.currentMode });
       return this.currentMode;
     }
     if (this.config.mode !== "engaged") {
       this.detectionMethod = "explicit";
       this.currentMode = this.config.mode;
-      logger4.info("Executor mode set from config", { mode: this.currentMode });
+      logger5.info("Executor mode set from config", { mode: this.currentMode });
       return this.currentMode;
     }
     const inferred = this.inferFromEnvironment();
     if (inferred !== null) {
       this.detectionMethod = "inferred";
       this.currentMode = inferred;
-      logger4.info("Executor mode inferred from environment", { mode: this.currentMode });
+      logger5.info("Executor mode inferred from environment", { mode: this.currentMode });
       return this.currentMode;
     }
     this.detectionMethod = "default";
     this.currentMode = "engaged";
-    logger4.debug("Executor mode defaulting to engaged");
+    logger5.debug("Executor mode defaulting to engaged");
     return this.currentMode;
   }
   /** Get the current resolved mode. */
@@ -22728,7 +23038,7 @@ var ExecutorModeManager = class {
     const previousMode = this.currentMode;
     this.currentMode = mode;
     this.detectionMethod = "explicit";
-    logger4.info("Executor mode changed", { from: previousMode, to: mode });
+    logger5.info("Executor mode changed", { from: previousMode, to: mode });
     if (this.eventBus) {
       this.eventBus.emit({
         id: generateEventId(),
@@ -22785,7 +23095,7 @@ var ExecutorModeManager = class {
 // src/extensions/persistence/state-store.ts
 var import_fs2 = require("fs");
 var import_path2 = require("path");
-var logger5 = createLogger("state-store");
+var logger6 = createLogger("state-store");
 var JsonStateStore = class {
   static {
     __name(this, "JsonStateStore");
@@ -22812,7 +23122,7 @@ var JsonStateStore = class {
     if (this.initialised) return;
     ensureDirSync(this.stateDir);
     this.initialised = true;
-    logger5.debug("State store initialised", { stateDir: this.stateDir });
+    logger6.debug("State store initialised", { stateDir: this.stateDir });
   }
   /**
    * Ensures the state directory exists. Called before every I/O operation as
@@ -22863,7 +23173,7 @@ var JsonStateStore = class {
           throw err;
         }
         if (attempt < maxAttempts) {
-          logger5.debug("Lock contention \u2014 retrying", {
+          logger6.debug("Lock contention \u2014 retrying", {
             lockFilePath,
             attempt,
             backoffMs
@@ -22902,10 +23212,10 @@ var JsonStateStore = class {
     const dest = this.keyPath(key);
     try {
       writeJsonSync(dest, state);
-      logger5.debug("Saved state", { key });
+      logger6.debug("Saved state", { key });
     } catch (err) {
       const message = toErrorMessage(err);
-      logger5.error("Failed to save state", { key, error: message });
+      logger6.error("Failed to save state", { key, error: message });
       throw new Error(`StateStore.set failed for key "${key}": ${message}`);
     }
   }
@@ -22927,7 +23237,7 @@ var JsonStateStore = class {
         return null;
       }
       const message = toErrorMessage(err);
-      logger5.error("Failed to load state", { key, error: message });
+      logger6.error("Failed to load state", { key, error: message });
       throw new Error(`StateStore.get failed for key "${key}": ${message}`);
     }
   }
@@ -22942,13 +23252,13 @@ var JsonStateStore = class {
     const path3 = this.keyPath(key);
     try {
       (0, import_fs2.unlinkSync)(path3);
-      logger5.debug("Deleted state", { key });
+      logger6.debug("Deleted state", { key });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
         return;
       }
       const message = toErrorMessage(err);
-      logger5.error("Failed to delete state", { key, error: message });
+      logger6.error("Failed to delete state", { key, error: message });
       throw new Error(`StateStore.delete failed for key "${key}": ${message}`);
     }
   }
@@ -22967,7 +23277,7 @@ var JsonStateStore = class {
       return entries.filter((f) => f.endsWith(".json") && !f.endsWith(".json.tmp")).map((f) => (0, import_path2.basename)(f, ".json"));
     } catch (err) {
       const message = toErrorMessage(err);
-      logger5.error("Failed to list state keys", { error: message });
+      logger6.error("Failed to list state keys", { error: message });
       throw new Error(`StateStore.keys failed: ${message}`);
     }
   }
@@ -23000,7 +23310,7 @@ var JsonStateStore = class {
 };
 
 // src/extensions/persistence/replay-engine.ts
-var logger6 = createLogger("replay-engine");
+var logger7 = createLogger("replay-engine");
 async function replayEvents(eventLog, deps, options = {}) {
   const startMs = Date.now();
   const { skipActions = true, afterSequence, eventTypes, maxReplayErrors = 10 } = options;
@@ -23014,7 +23324,7 @@ async function replayEvents(eventLog, deps, options = {}) {
   const restoredWorkflows = /* @__PURE__ */ new Map();
   const restoredAgentBindings = /* @__PURE__ */ new Set();
   const triggerStateMap = /* @__PURE__ */ new Map();
-  logger6.info("Starting event replay", {
+  logger7.info("Starting event replay", {
     afterSequence: afterSequence ?? 0,
     skipActions,
     maxReplayErrors
@@ -23027,7 +23337,7 @@ async function replayEvents(eventLog, deps, options = {}) {
       events = await eventLog.query({});
     }
   } catch (err) {
-    logger6.error("Failed to read events from event log", { error: toErrorMessage(err) });
+    logger7.error("Failed to read events from event log", { error: toErrorMessage(err) });
     return {
       eventsReplayed: 0,
       workflowsRestored: 0,
@@ -23063,7 +23373,7 @@ async function replayEvents(eventLog, deps, options = {}) {
       }
     } catch (err) {
       const errMsg = toErrorMessage(err);
-      logger6.warn("Skipping event during replay due to error", {
+      logger7.warn("Skipping event during replay due to error", {
         event_id: event.id,
         event_type: event.type,
         sequence: seq,
@@ -23072,13 +23382,13 @@ async function replayEvents(eventLog, deps, options = {}) {
       skippedEvents++;
       replayErrors.push(errMsg);
       if (replayErrors.length === warnThreshold) {
-        logger6.warn("Replay error count approaching threshold \u2014 replay may be aborted", {
+        logger7.warn("Replay error count approaching threshold \u2014 replay may be aborted", {
           errorCount: replayErrors.length,
           maxReplayErrors
         });
       }
       if (replayErrors.length >= maxReplayErrors) {
-        logger6.warn("Replay aborted: error threshold exceeded", {
+        logger7.warn("Replay aborted: error threshold exceeded", {
           errorCount: replayErrors.length,
           maxReplayErrors
         });
@@ -23093,7 +23403,7 @@ async function replayEvents(eventLog, deps, options = {}) {
         deps.workflowEngine.restoreInstance(instance);
         workflowsRestored++;
       } catch (err) {
-        logger6.warn("Failed to restore workflow instance", {
+        logger7.warn("Failed to restore workflow instance", {
           id: instance.id,
           error: toErrorMessage(err)
         });
@@ -23109,7 +23419,7 @@ async function replayEvents(eventLog, deps, options = {}) {
           deps.agentWorkflowMap.bind(agentId, workflowId);
           agentBindingsRestored++;
         } catch (err) {
-          logger6.warn("Failed to restore agent binding", { agentId, workflowId, error: toErrorMessage(err) });
+          logger7.warn("Failed to restore agent binding", { agentId, workflowId, error: toErrorMessage(err) });
         }
       }
     }
@@ -23124,11 +23434,11 @@ async function replayEvents(eventLog, deps, options = {}) {
       deps.triggerRegistry.restoreTriggerState(triggerStates);
       triggerCountsRestored = triggerStates.length;
     } catch (err) {
-      logger6.warn("Failed to restore trigger states", { error: toErrorMessage(err) });
+      logger7.warn("Failed to restore trigger states", { error: toErrorMessage(err) });
     }
   }
   const replayDurationMs = Date.now() - startMs;
-  logger6.info("Event replay complete", {
+  logger7.info("Event replay complete", {
     eventsReplayed,
     workflowsRestored,
     agentBindingsRestored,
@@ -23285,7 +23595,7 @@ function processEvent(event, _deps, restoredWorkflows, restoredAgentBindings, tr
 __name(processEvent, "processEvent");
 
 // src/core/observability/timer.ts
-var logger7 = createLogger("timer");
+var logger8 = createLogger("timer");
 var Timer = class {
   static {
     __name(this, "Timer");
@@ -23303,7 +23613,7 @@ var Timer = class {
   start() {
     if (this.handle) return;
     if (this.intervalMs <= 0) {
-      logger7.warn("cannot start timer \u2014 intervalMs must be > 0", {
+      logger8.warn("cannot start timer \u2014 intervalMs must be > 0", {
         label: this.label,
         intervalMs: this.intervalMs
       });
@@ -23313,21 +23623,21 @@ var Timer = class {
       try {
         this.callback();
       } catch (err) {
-        logger7.warn("timer callback threw", {
+        logger8.warn("timer callback threw", {
           label: this.label,
           error: err instanceof Error ? err.message : String(err)
         });
       }
     }, this.intervalMs);
     this.handle.unref();
-    logger7.debug("timer started", { label: this.label, intervalMs: this.intervalMs });
+    logger8.debug("timer started", { label: this.label, intervalMs: this.intervalMs });
   }
   /** Stop the timer. Idempotent — no-op if not running. */
   stop() {
     if (!this.handle) return;
     clearInterval(this.handle);
     this.handle = null;
-    logger7.debug("timer stopped", { label: this.label });
+    logger8.debug("timer stopped", { label: this.label });
   }
   /** Returns true if the timer is currently running. */
   isRunning() {
@@ -23342,7 +23652,7 @@ var Timer = class {
     if (wasRunning) this.stop();
     this.intervalMs = intervalMs;
     if (wasRunning) this.start();
-    logger7.debug("timer reconfigured", {
+    logger8.debug("timer reconfigured", {
       label: this.label,
       intervalMs,
       restarted: this.isRunning()
@@ -23355,7 +23665,7 @@ var Timer = class {
 };
 
 // src/extensions/persistence/snapshot-manager.ts
-var logger8 = createLogger("snapshot-manager");
+var logger9 = createLogger("snapshot-manager");
 var SNAPSHOT_KEY = "runtime_snapshot";
 var SNAPSHOT_VERSION = 1;
 var SnapshotManager = class {
@@ -23392,7 +23702,7 @@ var SnapshotManager = class {
         triggerState: captureTriggerState(deps.triggerRegistry)
       };
       await this.stateStore.set(SNAPSHOT_KEY, snapshot);
-      logger8.info("Runtime snapshot saved", {
+      logger9.info("Runtime snapshot saved", {
         version: snapshot.version,
         lastEventSequence: snapshot.lastEventSequence,
         workflows: snapshot.workflows.length,
@@ -23401,7 +23711,7 @@ var SnapshotManager = class {
         durationMs: Date.now() - startMs
       });
     } catch (err) {
-      logger8.error("Failed to take runtime snapshot", { error: toErrorMessage(err) });
+      logger9.error("Failed to take runtime snapshot", { error: toErrorMessage(err) });
       throw err;
     }
   }
@@ -23417,21 +23727,21 @@ var SnapshotManager = class {
     try {
       const raw = await this.stateStore.get(SNAPSHOT_KEY);
       if (!raw) {
-        logger8.debug("No snapshot found in state store");
+        logger9.debug("No snapshot found in state store");
         return null;
       }
       if (raw.version !== SNAPSHOT_VERSION) {
-        logger8.warn("Snapshot version mismatch \u2014 discarding", {
+        logger9.warn("Snapshot version mismatch \u2014 discarding", {
           stored: raw.version,
           expected: SNAPSHOT_VERSION
         });
         return null;
       }
       if (typeof raw.lastEventSequence !== "number" || !Array.isArray(raw.workflows) || typeof raw.agentWorkflowBindings !== "object" || raw.agentWorkflowBindings === null || !Array.isArray(raw.triggerState)) {
-        logger8.warn("Snapshot failed structural validation \u2014 discarding");
+        logger9.warn("Snapshot failed structural validation \u2014 discarding");
         return null;
       }
-      logger8.info("Snapshot loaded", {
+      logger9.info("Snapshot loaded", {
         timestamp: raw.timestamp,
         lastEventSequence: raw.lastEventSequence,
         workflows: raw.workflows.length,
@@ -23439,7 +23749,7 @@ var SnapshotManager = class {
       });
       return raw;
     } catch (err) {
-      logger8.warn("Failed to load snapshot \u2014 will fall back to full replay", {
+      logger9.warn("Failed to load snapshot \u2014 will fall back to full replay", {
         error: toErrorMessage(err)
       });
       return null;
@@ -23457,7 +23767,7 @@ var SnapshotManager = class {
    */
   startPeriodicSnapshots(deps, getSequence, intervalMs = 6e4) {
     if (this.periodicTimer) {
-      logger8.warn("Periodic snapshots already running \u2014 call stopPeriodicSnapshots() first");
+      logger9.warn("Periodic snapshots already running \u2014 call stopPeriodicSnapshots() first");
       return;
     }
     const safeInterval = Math.max(intervalMs, 5e3);
@@ -23465,14 +23775,14 @@ var SnapshotManager = class {
       callback: /* @__PURE__ */ __name(() => {
         const seq = getSequence();
         this.takeSnapshot(deps, seq).catch((err) => {
-          logger8.warn("Periodic snapshot failed", { error: toErrorMessage(err) });
+          logger9.warn("Periodic snapshot failed", { error: toErrorMessage(err) });
         });
       }, "callback"),
       intervalMs: safeInterval,
       label: "snapshot"
     });
     this.periodicTimer.start();
-    logger8.debug("Periodic snapshots started", { intervalMs: safeInterval });
+    logger9.debug("Periodic snapshots started", { intervalMs: safeInterval });
   }
   /**
    * Stops the periodic snapshot timer.
@@ -23481,7 +23791,7 @@ var SnapshotManager = class {
     if (this.periodicTimer) {
       this.periodicTimer.stop();
       this.periodicTimer = null;
-      logger8.debug("Periodic snapshots stopped");
+      logger9.debug("Periodic snapshots stopped");
     }
   }
   /**
@@ -23494,7 +23804,7 @@ var SnapshotManager = class {
    * @param deps     - The subsystems to populate.
    */
   restoreFromSnapshot(snapshot, deps) {
-    logger8.info("Restoring from snapshot", {
+    logger9.info("Restoring from snapshot", {
       timestamp: snapshot.timestamp,
       lastEventSequence: snapshot.lastEventSequence
     });
@@ -23505,30 +23815,30 @@ var SnapshotManager = class {
           deps.workflowEngine.restoreInstance(instance);
           restoredCount++;
         } catch (err) {
-          logger8.warn("Failed to restore workflow instance from snapshot", {
+          logger9.warn("Failed to restore workflow instance from snapshot", {
             id: instance.id,
             error: toErrorMessage(err)
           });
         }
       }
-      logger8.debug("Workflow instances restored from snapshot", { count: restoredCount });
+      logger9.debug("Workflow instances restored from snapshot", { count: restoredCount });
     }
     if (deps.agentWorkflowMap) {
       const bindingEntries = Object.entries(snapshot.agentWorkflowBindings);
       if (bindingEntries.length > 0) {
         deps.agentWorkflowMap.restoreBindings(snapshot.agentWorkflowBindings);
-        logger8.debug("Agent-workflow bindings restored from snapshot", { count: bindingEntries.length });
+        logger9.debug("Agent-workflow bindings restored from snapshot", { count: bindingEntries.length });
       }
     }
     if (deps.triggerRegistry && snapshot.triggerState.length > 0) {
       try {
         deps.triggerRegistry.restoreTriggerState(snapshot.triggerState);
-        logger8.debug("Trigger states restored from snapshot", { count: snapshot.triggerState.length });
+        logger9.debug("Trigger states restored from snapshot", { count: snapshot.triggerState.length });
       } catch (err) {
-        logger8.warn("Failed to restore trigger states from snapshot", { error: toErrorMessage(err) });
+        logger9.warn("Failed to restore trigger states from snapshot", { error: toErrorMessage(err) });
       }
     }
-    logger8.info("Snapshot restoration complete");
+    logger9.info("Snapshot restoration complete");
   }
 };
 function captureWorkflowState(engine) {
@@ -23536,7 +23846,7 @@ function captureWorkflowState(engine) {
   try {
     return engine.getAllInstances();
   } catch (err) {
-    logger8.warn("Failed to capture workflow state", { error: toErrorMessage(err) });
+    logger9.warn("Failed to capture workflow state", { error: toErrorMessage(err) });
     return [];
   }
 }
@@ -23546,7 +23856,7 @@ function captureAgentWorkflowBindings(map2) {
   try {
     return map2.snapshot();
   } catch (err) {
-    logger8.warn("Failed to capture agent-workflow bindings", { error: toErrorMessage(err) });
+    logger9.warn("Failed to capture agent-workflow bindings", { error: toErrorMessage(err) });
     return {};
   }
 }
@@ -23556,23 +23866,23 @@ function captureTriggerState(registry2) {
   try {
     return registry2.getTriggerStates();
   } catch (err) {
-    logger8.warn("Failed to capture trigger state", { error: toErrorMessage(err) });
+    logger9.warn("Failed to capture trigger state", { error: toErrorMessage(err) });
     return [];
   }
 }
 __name(captureTriggerState, "captureTriggerState");
 
 // src/extensions/persistence/startup-recovery.ts
-var logger9 = createLogger("startup-recovery");
+var logger10 = createLogger("startup-recovery");
 async function recoverState(eventLog, snapshotManager, deps) {
   const startMs = Date.now();
-  logger9.info("Starting startup recovery");
+  logger10.info("Starting startup recovery");
   const latestSequence = eventLog.getLatestSequence();
   if (latestSequence === 0) {
     const stats = eventLog.getStats();
     if (stats.file_size_bytes > 0) {
       const warnMsg = "EventLog reports sequence=0 but log file is non-empty \u2014 EventLog may not be initialized. Attempting full replay to avoid skipping recovery.";
-      logger9.warn(warnMsg, { file_size_bytes: stats.file_size_bytes });
+      logger10.warn(warnMsg, { file_size_bytes: stats.file_size_bytes });
       const replayResultWithWarning = await _doFullReplay(eventLog, deps, startMs);
       return { ...replayResultWithWarning, warnings: [warnMsg] };
     } else {
@@ -23580,7 +23890,7 @@ async function recoverState(eventLog, snapshotManager, deps) {
         method: "cold_start",
         recoveryDurationMs: Date.now() - startMs
       };
-      logger9.info("Cold start \u2014 no events to replay", { recoveryDurationMs: result.recoveryDurationMs });
+      logger10.info("Cold start \u2014 no events to replay", { recoveryDurationMs: result.recoveryDurationMs });
       return result;
     }
   }
@@ -23588,10 +23898,10 @@ async function recoverState(eventLog, snapshotManager, deps) {
   try {
     snapshot = await snapshotManager.loadSnapshot();
   } catch (err) {
-    logger9.warn("Snapshot load failed \u2014 will attempt full replay", { error: toErrorMessage(err) });
+    logger10.warn("Snapshot load failed \u2014 will attempt full replay", { error: toErrorMessage(err) });
   }
   if (snapshot) {
-    logger9.info("Recovering from snapshot + delta replay", {
+    logger10.info("Recovering from snapshot + delta replay", {
       snapshotTimestamp: snapshot.timestamp,
       snapshotSequence: snapshot.lastEventSequence,
       currentSequence: latestSequence
@@ -23620,10 +23930,10 @@ async function recoverState(eventLog, snapshotManager, deps) {
           skippedEvents: replayResult.skippedEvents
         };
       } catch (err) {
-        logger9.warn("Delta replay failed after snapshot restore", { error: toErrorMessage(err) });
+        logger10.warn("Delta replay failed after snapshot restore", { error: toErrorMessage(err) });
       }
     } else {
-      logger9.debug("Snapshot is up-to-date \u2014 no delta events to replay");
+      logger10.debug("Snapshot is up-to-date \u2014 no delta events to replay");
     }
     const result = {
       method: "snapshot_plus_replay",
@@ -23631,7 +23941,7 @@ async function recoverState(eventLog, snapshotManager, deps) {
       replay: replayInfo,
       recoveryDurationMs: Date.now() - startMs
     };
-    logger9.info("Recovery complete (snapshot + replay)", {
+    logger10.info("Recovery complete (snapshot + replay)", {
       method: result.method,
       snapshotWorkflows: snapshotInfo.workflowsRestored,
       deltaEventsReplayed: replayInfo?.eventsReplayed ?? 0,
@@ -23639,7 +23949,7 @@ async function recoverState(eventLog, snapshotManager, deps) {
     });
     return result;
   }
-  logger9.info("No snapshot available \u2014 performing full event replay", {
+  logger10.info("No snapshot available \u2014 performing full event replay", {
     totalEvents: latestSequence
   });
   return _doFullReplay(eventLog, deps, startMs);
@@ -23658,14 +23968,14 @@ async function _doFullReplay(eventLog, deps, startMs) {
       skippedEvents: replayResult.skippedEvents
     };
   } catch (err) {
-    logger9.error("Full event replay failed", { error: toErrorMessage(err) });
+    logger10.error("Full event replay failed", { error: toErrorMessage(err) });
   }
   const result = {
     method: "full_replay",
     replay: replayInfo,
     recoveryDurationMs: Date.now() - startMs
   };
-  logger9.info("Recovery complete (full replay)", {
+  logger10.info("Recovery complete (full replay)", {
     method: result.method,
     eventsReplayed: replayInfo?.eventsReplayed ?? 0,
     workflowsRestored: replayInfo?.workflowsRestored ?? 0,
@@ -23676,7 +23986,7 @@ async function _doFullReplay(eventLog, deps, startMs) {
 __name(_doFullReplay, "_doFullReplay");
 
 // src/extensions/persistence/checkpoint-manager.ts
-var logger10 = createLogger("checkpoint-manager");
+var logger11 = createLogger("checkpoint-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
 var CheckpointManager = class {
   static {
@@ -23699,7 +24009,7 @@ var CheckpointManager = class {
     this.checkpointTimer = new Timer({
       callback: /* @__PURE__ */ __name(() => {
         this.saveCheckpoint().catch((err) => {
-          logger10.warn("Periodic checkpoint failed", {
+          logger11.warn("Periodic checkpoint failed", {
             err: toErrorMessage(err)
           });
         });
@@ -23707,14 +24017,14 @@ var CheckpointManager = class {
           this.deps.workflowEngine?.prune();
           this.deps.agentCoordinator?.prune();
         } catch (err) {
-          logger10.warn("Periodic prune failed", { err: toErrorMessage(err) });
+          logger11.warn("Periodic prune failed", { err: toErrorMessage(err) });
         }
       }, "callback"),
       intervalMs: interval,
       label: "checkpoint"
     });
     this.checkpointTimer.start();
-    logger10.debug("Checkpoint timer started", { interval_ms: interval });
+    logger11.debug("Checkpoint timer started", { interval_ms: interval });
   }
   /**
    * Stop the periodic checkpoint timer, preventing any further automatic saves.
@@ -23723,7 +24033,7 @@ var CheckpointManager = class {
     if (this.checkpointTimer) {
       this.checkpointTimer.stop();
       this.checkpointTimer = null;
-      logger10.debug("Checkpoint timer stopped");
+      logger11.debug("Checkpoint timer stopped");
     }
   }
   /**
@@ -23747,7 +24057,7 @@ var CheckpointManager = class {
       try {
         await eventLog.compact();
       } catch (err) {
-        logger10.warn("Event log compaction failed during checkpoint", {
+        logger11.warn("Event log compaction failed during checkpoint", {
           err: toErrorMessage(err)
         });
       }
@@ -23756,7 +24066,7 @@ var CheckpointManager = class {
 };
 
 // src/extensions/events/event-bus.ts
-var logger11 = createLogger("event-bus");
+var logger12 = createLogger("event-bus");
 var EventBus = class {
   static {
     __name(this, "EventBus");
@@ -23839,7 +24149,7 @@ var EventBus = class {
       try {
         this.eventLog.append(full);
       } catch (err) {
-        logger11.error("Event log append failed", { error: toErrorMessage(err) });
+        logger12.error("Event log append failed", { error: toErrorMessage(err) });
       }
     }
     if (this.maxHistorySize > 0) {
@@ -23857,11 +24167,11 @@ var EventBus = class {
             const result = handler(full);
             if (result instanceof Promise) {
               result.catch((err) => {
-                logger11.warn("Async handler error", { pattern, error: toErrorMessage(err) });
+                logger12.warn("Async handler error", { pattern, error: toErrorMessage(err) });
               });
             }
           } catch (err) {
-            logger11.warn("Sync handler error", { pattern, error: toErrorMessage(err) });
+            logger12.warn("Sync handler error", { pattern, error: toErrorMessage(err) });
           }
         }
       }
@@ -23902,7 +24212,7 @@ var EventBus = class {
       const result = handler(event);
       if (result instanceof Promise) {
         result.catch((err) => {
-          logger11.warn("Once handler error", { pattern, error: toErrorMessage(err) });
+          logger12.warn("Once handler error", { pattern, error: toErrorMessage(err) });
         });
       }
     });
@@ -24018,7 +24328,7 @@ var EventBus = class {
 var import_node_fs6 = require("node:fs");
 var readline = __toESM(require("node:readline"), 1);
 var import_node_path5 = require("node:path");
-var logger12 = createLogger("event-log");
+var logger13 = createLogger("event-log");
 var FLUSH_INTERVAL_MS = 100;
 var FLUSH_THRESHOLD_BYTES = 64 * 1024;
 var EventLog = class {
@@ -24110,17 +24420,17 @@ var EventLog = class {
         }
       });
       if (skippedLines > 0) {
-        logger12.warn("Skipped malformed lines during initialize", { count: skippedLines, file: this.logPath });
+        logger13.warn("Skipped malformed lines during initialize", { count: skippedLines, file: this.logPath });
       }
-      logger12.info("Event log initialised", {
+      logger13.info("Event log initialised", {
         events: this.eventCount,
         latest_seq: this.latestSeq
       });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-        logger12.debug("Event log file not found, starting fresh");
+        logger13.debug("Event log file not found, starting fresh");
       } else {
-        logger12.warn("Error reading event log on init", { error: toErrorMessage(err) });
+        logger13.warn("Error reading event log on init", { error: toErrorMessage(err) });
       }
     }
     this.openWriteStream();
@@ -24189,7 +24499,7 @@ var EventLog = class {
         this.writeBuffer = "";
         this.writeBufferBytes = 0;
       } catch (syncErr) {
-        logger12.debug("Sync fallback write failed during close", { error: toErrorMessage(syncErr) });
+        logger13.debug("Sync fallback write failed during close", { error: toErrorMessage(syncErr) });
       }
     }
     if (this.writeStream) {
@@ -24233,7 +24543,7 @@ var EventLog = class {
         return true;
       });
       if (skippedLines > 0) {
-        logger12.warn("Skipped malformed lines during query", { count: skippedLines, file: this.logPath });
+        logger13.warn("Skipped malformed lines during query", { count: skippedLines, file: this.logPath });
       }
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -24299,7 +24609,7 @@ var EventLog = class {
         return true;
       });
       if (skippedLines > 0) {
-        logger12.warn("Skipped malformed lines during compact", { count: skippedLines, file: this.logPath });
+        logger13.warn("Skipped malformed lines during compact", { count: skippedLines, file: this.logPath });
       }
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -24308,7 +24618,7 @@ var EventLog = class {
       throw err;
     }
     if (toArchive.length === 0) {
-      logger12.debug("Compaction: no events to archive");
+      logger13.debug("Compaction: no events to archive");
       return { archived: 0, remaining: toKeep.length };
     }
     await this.closeWriteStream();
@@ -24322,7 +24632,7 @@ var EventLog = class {
       const { appendFileSync } = await import("fs");
       appendFileSync(archivePath, toArchive.join("\n") + "\n", "utf-8");
     } catch (archiveErr) {
-      logger12.debug("Archive append failed, creating new archive file", { error: toErrorMessage(archiveErr) });
+      logger13.debug("Archive append failed, creating new archive file", { error: toErrorMessage(archiveErr) });
       (0, import_node_fs6.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
     }
     writeAtomicSync(this.logPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""));
@@ -24331,7 +24641,7 @@ var EventLog = class {
     }
     this.eventCount = toKeep.length;
     this.rebuildCacheFromLines(toKeep);
-    logger12.info("Compaction complete", {
+    logger13.info("Compaction complete", {
       archived: toArchive.length,
       remaining: toKeep.length,
       archive_file: archivePath
@@ -24370,11 +24680,11 @@ var EventLog = class {
       ensureDirSync((0, import_node_path5.dirname)(this.logPath));
       this.writeStream = (0, import_node_fs6.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
       this.writeStream.on("error", (err) => {
-        logger12.error("Write stream error", { error: err.message });
+        logger13.error("Write stream error", { error: err.message });
         this.writeStream = null;
       });
     } catch (err) {
-      logger12.error("Failed to open event log write stream", { error: toErrorMessage(err) });
+      logger13.error("Failed to open event log write stream", { error: toErrorMessage(err) });
       this.writeStream = null;
     }
   }
@@ -24423,7 +24733,7 @@ var EventLog = class {
       return;
     }
     this.drainBuffer().catch((err) => {
-      logger12.warn("Event log flush error", { error: toErrorMessage(err) });
+      logger13.warn("Event log flush error", { error: toErrorMessage(err) });
     });
   }
   /**
@@ -24451,7 +24761,7 @@ var EventLog = class {
       }
     } catch (err) {
       drainError = err instanceof Error ? err : new Error(toErrorMessage(err));
-      logger12.error("Failed to flush event log buffer", { error: toErrorMessage(err) });
+      logger13.error("Failed to flush event log buffer", { error: toErrorMessage(err) });
       this.writeBuffer = data + this.writeBuffer;
       this.writeBufferBytes = Buffer.byteLength(this.writeBuffer, "utf-8");
     } finally {
@@ -24571,7 +24881,7 @@ var EventLog = class {
       }
     }
     if (skippedLines > 0) {
-      logger12.warn("Skipped malformed lines during cache rebuild", { count: skippedLines, file: this.logPath });
+      logger13.warn("Skipped malformed lines during cache rebuild", { count: skippedLines, file: this.logPath });
     }
     this.typeCountCache = typeCount;
     this.oldestEvent = oldest;
@@ -24580,7 +24890,7 @@ var EventLog = class {
 };
 
 // src/extensions/events/event-queue.ts
-var logger13 = createLogger("event-queue");
+var logger14 = createLogger("event-queue");
 var MAX_DEAD_LETTERS = 1e3;
 var EventQueue = class {
   static {
@@ -24634,7 +24944,7 @@ var EventQueue = class {
    */
   registerHandler(name, handler) {
     this.handlers.set(name, handler);
-    logger13.debug("Handler registered", { name });
+    logger14.debug("Handler registered", { name });
   }
   /**
    * Adds an event to the queue for deferred processing.
@@ -24661,7 +24971,7 @@ var EventQueue = class {
       backoff_ms: this.backoffBase
     };
     this.insertBucket(fullEntry);
-    logger13.debug("Entry enqueued", {
+    logger14.debug("Entry enqueued", {
       id: fullEntry.id,
       priority: fullEntry.priority,
       handler: fullEntry.handler,
@@ -24680,7 +24990,7 @@ var EventQueue = class {
   start() {
     if (this.running) return;
     this.running = true;
-    logger13.info("Event queue started");
+    logger14.info("Event queue started");
     if (this.totalPending() > 0) {
       this.scheduleNext(0);
     }
@@ -24697,7 +25007,7 @@ var EventQueue = class {
       clearTimeout(this.processTimer);
       this.processTimer = null;
     }
-    logger13.info("Event queue stopped");
+    logger14.info("Event queue stopped");
   }
   /**
    * Returns current queue statistics.
@@ -24757,7 +25067,7 @@ var EventQueue = class {
       deadline: dead.deadline
     };
     this.insertBucket(retryEntry);
-    logger13.info("Dead-letter entry re-queued", { id });
+    logger14.info("Dead-letter entry re-queued", { id });
     if (this.running && !this.processing && this.processTimer === null) {
       this.scheduleNext(0);
     }
@@ -24848,7 +25158,7 @@ var EventQueue = class {
     let retryBackoffMs = 0;
     try {
       if (entry.deadline && new Date(entry.deadline).getTime() < Date.now()) {
-        logger13.warn("Entry dropped: deadline exceeded", {
+        logger14.warn("Entry dropped: deadline exceeded", {
           id: entry.id,
           deadline: entry.deadline
         });
@@ -24858,7 +25168,7 @@ var EventQueue = class {
       }
       const handler = this.handlers.get(entry.handler);
       if (!handler) {
-        logger13.warn("No handler registered for entry", {
+        logger14.warn("No handler registered for entry", {
           id: entry.id,
           handler: entry.handler
         });
@@ -24870,7 +25180,7 @@ var EventQueue = class {
       const durationMs = Date.now() - startMs;
       this.completedCount++;
       this.totalProcessingMs += durationMs;
-      logger13.debug("Entry processed", {
+      logger14.debug("Entry processed", {
         id: entry.id,
         handler: entry.handler,
         duration_ms: durationMs
@@ -24895,7 +25205,7 @@ var EventQueue = class {
           this.deadLetters.shift();
         }
         this.deadLetters.push(dlEntry);
-        logger13.error("Entry dead-lettered", {
+        logger14.error("Entry dead-lettered", {
           id: entry.id,
           handler: entry.handler,
           attempts: updatedEntry.attempts,
@@ -24903,7 +25213,7 @@ var EventQueue = class {
         });
       } else {
         retryBackoffMs = updatedEntry.backoff_ms;
-        logger13.warn("Entry failed, will retry", {
+        logger14.warn("Entry failed, will retry", {
           id: entry.id,
           handler: entry.handler,
           attempts: updatedEntry.attempts,
@@ -26106,7 +26416,7 @@ function buildEscalationMessage(workflowId, fixAttempts, lastScore) {
 __name(buildEscalationMessage, "buildEscalationMessage");
 
 // src/extensions/workflow/watchdog.ts
-var logger14 = createLogger("watchdog");
+var logger15 = createLogger("watchdog");
 var WATCHDOG_STALE_MS = 12e4;
 var WATCHDOG_COOLDOWN_MS = 12e4;
 function isDirectiveForWorkflow(d, workflowId) {
@@ -26136,6 +26446,7 @@ var WatchdogCoordinator = class {
   checkStaleWorkflows() {
     const { workflowEngine, directiveQueue } = this.deps;
     if (!workflowEngine || !directiveQueue) return;
+    directiveQueue.sweepStaleHolds();
     const now = Date.now();
     const activeWorkflows = workflowEngine.listActive();
     for (const wid of this.watchdogRecovery.keys()) {
@@ -26164,7 +26475,7 @@ var WatchdogCoordinator = class {
         const stuckCount = (this.drainStuckCounts.get(workflow.id) ?? 0) + 1;
         this.drainStuckCounts.set(workflow.id, stuckCount);
         if (stuckCount >= 3) {
-          logger14.warn("Watchdog: drain-stuck escalation \u2014 writing urgent directive file", {
+          logger15.warn("Watchdog: drain-stuck escalation \u2014 writing urgent directive file", {
             workflow_id: workflow.id,
             current_state: state,
             state_age_ms: stateAge,
@@ -26173,7 +26484,7 @@ var WatchdogCoordinator = class {
           this.writeUrgentDirectives(workflow.id);
           this.drainStuckCounts.delete(workflow.id);
         } else {
-          logger14.warn("Watchdog: stale workflow with pending directive \u2014 drain may be stuck", {
+          logger15.warn("Watchdog: stale workflow with pending directive \u2014 drain may be stuck", {
             workflow_id: workflow.id,
             current_state: state,
             state_age_ms: stateAge,
@@ -26183,7 +26494,7 @@ var WatchdogCoordinator = class {
         }
         continue;
       }
-      logger14.warn("Watchdog: recovering stale workflow \u2014 re-enqueueing directive", {
+      logger15.warn("Watchdog: recovering stale workflow \u2014 re-enqueueing directive", {
         workflow_id: workflow.id,
         current_state: state,
         state_age_ms: stateAge
@@ -26219,7 +26530,7 @@ var WatchdogCoordinator = class {
         agentWorkflowMap.addPendingBind("reviewer", workflow.id);
         agentWorkflowMap.addPendingBind("goodvibes:reviewer", workflow.id);
       }
-      logger14.info("Watchdog: reviewer spawn directive re-enqueued", {
+      logger15.info("Watchdog: reviewer spawn directive re-enqueued", {
         workflow_id: workflow.id
       });
     } else if (state === "FIXING") {
@@ -26235,7 +26546,7 @@ var WatchdogCoordinator = class {
           source: "watchdog",
           workflow_id: workflow.id
         });
-        logger14.warn("Watchdog: escalation directive re-enqueued (fix budget exhausted)", {
+        logger15.warn("Watchdog: escalation directive re-enqueued (fix budget exhausted)", {
           workflow_id: workflow.id,
           fix_attempts: fixAttempts,
           max_fix_attempts: maxFixAttempts
@@ -26263,7 +26574,7 @@ var WatchdogCoordinator = class {
           agentWorkflowMap.addPendingBind("engineer", workflow.id);
           agentWorkflowMap.addPendingBind("goodvibes:engineer", workflow.id);
         }
-        logger14.info("Watchdog: engineer fix directive re-enqueued", {
+        logger15.info("Watchdog: engineer fix directive re-enqueued", {
           workflow_id: workflow.id,
           fix_attempts: fixAttempts,
           max_fix_attempts: maxFixAttempts
@@ -26299,7 +26610,7 @@ var WatchdogCoordinator = class {
           existingDirectives = parsed.directives;
         }
       } catch (readErr) {
-        logger14.debug("Watchdog: no existing urgent-directives file (expected on first write)", {
+        logger15.debug("Watchdog: no existing urgent-directives file (expected on first write)", {
           workflow_id: workflowId,
           error: readErr instanceof Error ? readErr.message : String(readErr)
         });
@@ -26309,7 +26620,7 @@ var WatchdogCoordinator = class {
         written_at: (/* @__PURE__ */ new Date()).toISOString(),
         directives: merged
       });
-      logger14.info("Watchdog: urgent directives written to file", {
+      logger15.info("Watchdog: urgent directives written to file", {
         workflow_id: workflowId,
         directive_count: matching.length,
         total_in_file: merged.length,
@@ -26317,7 +26628,7 @@ var WatchdogCoordinator = class {
       });
       writeSucceeded = true;
     } catch (err) {
-      logger14.error("Watchdog: failed to write urgent directives file", {
+      logger15.error("Watchdog: failed to write urgent directives file", {
         workflow_id: workflowId,
         error: err instanceof Error ? err.message : String(err)
       });
@@ -27520,7 +27831,7 @@ function getBuiltinTriggers() {
 __name(getBuiltinTriggers, "getBuiltinTriggers");
 
 // src/extensions/agents/agent-coordinator.ts
-var logger15 = createLogger("agent-coordinator");
+var logger16 = createLogger("agent-coordinator");
 var DEFAULT_COST_PER_TOKEN = 3e-6;
 var VALID_TRANSITIONS = {
   pending: /* @__PURE__ */ new Set(["running", "cancelled"]),
@@ -27547,7 +27858,7 @@ var AgentCoordinator = class {
     this.eventBus = eventBus;
     this.budgetTracker = budgetTracker;
     this.config = config2;
-    logger15.debug("AgentCoordinator initialised", {
+    logger16.debug("AgentCoordinator initialised", {
       max_concurrent: config2.max_concurrent,
       session_budget: config2.session_budget
     });
@@ -27618,7 +27929,7 @@ var AgentCoordinator = class {
       wrfc_phase: options.wrfc_phase,
       depends_on: agent.depends_on
     });
-    logger15.info("Agent spawned", { id, type: options.type, workflow_id: options.workflow_id });
+    logger16.info("Agent spawned", { id, type: options.type, workflow_id: options.workflow_id });
     return id;
   }
   // ─── Status updates ─────────────────────────────────────────────────────────
@@ -27633,12 +27944,12 @@ var AgentCoordinator = class {
   updateStatus(agentId, status, details) {
     const agent = this.agents.get(agentId);
     if (!agent) {
-      logger15.warn("updateStatus called for unknown agent", { agentId });
+      logger16.warn("updateStatus called for unknown agent", { agentId });
       return;
     }
     const allowed = VALID_TRANSITIONS[agent.status];
     if (!allowed.has(status)) {
-      logger15.warn("Invalid status transition ignored", {
+      logger16.warn("Invalid status transition ignored", {
         agentId,
         from: agent.status,
         to: status
@@ -27672,7 +27983,7 @@ var AgentCoordinator = class {
       this.resolveDependencies(agentId);
       this.updateWRFCPhaseOnCompletion(agentId);
     }
-    logger15.info("Agent status updated", { agentId, from: prev, to: status });
+    logger16.info("Agent status updated", { agentId, from: prev, to: status });
   }
   // ─── Budget ──────────────────────────────────────────────────────────────────
   /**
@@ -27684,7 +27995,7 @@ var AgentCoordinator = class {
   updateBudget(agentId, budget) {
     const agent = this.agents.get(agentId);
     if (!agent) {
-      logger15.warn("updateBudget called for unknown agent", { agentId });
+      logger16.warn("updateBudget called for unknown agent", { agentId });
       return;
     }
     agent.budget = budget;
@@ -27797,7 +28108,7 @@ var AgentCoordinator = class {
   updateConfig(config2) {
     this.config = config2;
     this.budgetTracker.updateConfig(config2);
-    logger15.debug("AgentCoordinator config updated", {
+    logger16.debug("AgentCoordinator config updated", {
       max_concurrent: config2.max_concurrent,
       session_budget: config2.session_budget
     });
@@ -27877,7 +28188,7 @@ var AgentCoordinator = class {
   advanceWRFCPhase(workflowId, phase) {
     const chain = this.wrfcChains.get(workflowId);
     if (!chain) {
-      logger15.warn("advanceWRFCPhase: no chain found", { workflowId });
+      logger16.warn("advanceWRFCPhase: no chain found", { workflowId });
       return;
     }
     if (chain.current_phase < chain.phases.length) {
@@ -27910,7 +28221,7 @@ var AgentCoordinator = class {
       to_phase: phase,
       review_iterations: chain.review_iterations
     });
-    logger15.info("WRFC phase advanced", { workflowId, from: prevPhase, to: phase });
+    logger16.info("WRFC phase advanced", { workflowId, from: prevPhase, to: phase });
   }
   /**
    * Remove agents that completed or failed before a given age threshold.
@@ -27933,7 +28244,7 @@ var AgentCoordinator = class {
       }
     }
     if (count > 0) {
-      logger15.debug("Pruned old agent records", { count, olderThanMs });
+      logger16.debug("Pruned old agent records", { count, olderThanMs });
     }
     return count;
   }
@@ -27959,7 +28270,7 @@ var AgentCoordinator = class {
         metadata: { correlation_id: subject }
       });
     } catch (err) {
-      logger15.error("Failed to emit agent event", {
+      logger16.error("Failed to emit agent event", {
         type,
         subject,
         error: toErrorMessage(err)
@@ -27987,7 +28298,7 @@ var AgentCoordinator = class {
           resolved_by: completedAgentId,
           agent_id: waitingId
         });
-        logger15.debug("Agent dependencies resolved \u2014 ready to run", {
+        logger16.debug("Agent dependencies resolved \u2014 ready to run", {
           agentId: waitingId,
           resolvedBy: completedAgentId
         });
@@ -28047,7 +28358,7 @@ var AgentCoordinator = class {
     if (allDone) {
       phase.status = "completed";
       phase.completed_at = timestamp();
-      logger15.debug("WRFC phase auto-completed", {
+      logger16.debug("WRFC phase auto-completed", {
         workflowId: agent.workflow_id,
         phase: agent.wrfc_phase
       });
@@ -28122,7 +28433,7 @@ function statusToEventType(status) {
 __name(statusToEventType, "statusToEventType");
 
 // src/extensions/agents/budget-tracker.ts
-var logger16 = createLogger("budget-tracker");
+var logger17 = createLogger("budget-tracker");
 var BudgetTracker = class {
   static {
     __name(this, "BudgetTracker");
@@ -28139,7 +28450,7 @@ var BudgetTracker = class {
   constructor(eventBus, config2) {
     this.eventBus = eventBus;
     this.config = config2;
-    logger16.debug("BudgetTracker initialised", {
+    logger17.debug("BudgetTracker initialised", {
       session_budget: config2.session_budget,
       thresholds: config2.budget_thresholds
     });
@@ -28172,7 +28483,7 @@ var BudgetTracker = class {
       },
       firedThresholds: /* @__PURE__ */ new Set()
     });
-    logger16.debug("Agent registered for budget tracking", { agentId, agentType, workflowId });
+    logger17.debug("Agent registered for budget tracking", { agentId, agentType, workflowId });
   }
   /**
    * Update the budget snapshot for an agent and fire threshold alerts as needed.
@@ -28183,7 +28494,7 @@ var BudgetTracker = class {
   updateAgentBudget(agentId, budget) {
     const record2 = this.records.get(agentId);
     if (!record2) {
-      logger16.warn("updateAgentBudget called for unregistered agent", { agentId });
+      logger17.warn("updateAgentBudget called for unregistered agent", { agentId });
       return;
     }
     const previousSpent = record2.budget.spent;
@@ -28309,7 +28620,7 @@ var BudgetTracker = class {
    */
   updateConfig(config2) {
     this.config = config2;
-    logger16.debug("BudgetTracker config updated", {
+    logger17.debug("BudgetTracker config updated", {
       session_budget: config2.session_budget
     });
   }
@@ -28348,169 +28659,18 @@ var BudgetTracker = class {
           }
         }
       });
-      logger16.warn("Budget threshold crossed", {
+      logger17.warn("Budget threshold crossed", {
         agentId: record2.agentId,
         threshold,
         usage_percent: record2.budget.usage_percent
       });
     } catch (err) {
-      logger16.error("Failed to emit budget warning event", {
+      logger17.error("Failed to emit budget warning event", {
         error: toErrorMessage(err),
         agentId: record2.agentId,
         threshold
       });
     }
-  }
-};
-
-// src/extensions/directives/directive-queue.ts
-var logger17 = createLogger("directive-queue");
-var MAX_QUEUE_DEPTH = 100;
-var DirectiveQueue = class {
-  static {
-    __name(this, "DirectiveQueue");
-  }
-  /** Per-target FIFO queues. */
-  queues = /* @__PURE__ */ new Map();
-  /**
-   * Add a directive to the end of the queue for `target`.
-   *
-   * @param target - Hook target name (e.g. `'subagent_stop'`).
-   * @param directive - The directive to enqueue.
-   */
-  enqueue(target, directive) {
-    const queue = this.queues.get(target);
-    if (queue) {
-      if (queue.length >= MAX_QUEUE_DEPTH) {
-        queue.shift();
-        logger17.warn("DirectiveQueue at capacity: oldest directive evicted", { target, max: MAX_QUEUE_DEPTH });
-      }
-      queue.push(directive);
-    } else {
-      this.queues.set(target, [directive]);
-    }
-  }
-  /**
-   * Return and remove directives for `target`.
-   *
-   * @param target - Hook target name.
-   * @param workflowId - Optional workflow ID. When provided, only directives
-   *   matching this workflow_id are returned and removed; the rest remain in
-   *   the queue. When omitted, ALL directives for the target are returned and
-   *   the queue is cleared (backward-compatible behaviour).
-   * @returns Array of directives in FIFO order (may be empty).
-   */
-  drain(target, workflowId) {
-    const queue = this.queues.get(target);
-    if (!queue || queue.length === 0) return [];
-    if (workflowId === void 0) {
-      const items = [...queue];
-      this.queues.delete(target);
-      return items;
-    }
-    const matching = [];
-    const remaining = [];
-    for (const d of queue) {
-      if (d.workflow_id === workflowId) {
-        matching.push(d);
-      } else {
-        remaining.push(d);
-      }
-    }
-    if (remaining.length === 0) {
-      this.queues.delete(target);
-    } else {
-      this.queues.set(target, remaining);
-    }
-    return matching;
-  }
-  /**
-   * Remove ALL directives across ALL targets that belong to a specific workflow.
-   *
-   * Used when a workflow reaches a terminal state to prevent stale directives
-   * from being delivered to a future run.
-   *
-   * @param workflowId - The workflow ID whose directives should be purged.
-   * @returns Total number of directives removed.
-   */
-  purge(workflowId) {
-    let count = 0;
-    for (const [target, queue] of this.queues.entries()) {
-      const before = queue.length;
-      const remaining = queue.filter((d) => d.workflow_id !== workflowId);
-      count += before - remaining.length;
-      if (remaining.length === 0) {
-        this.queues.delete(target);
-      } else {
-        this.queues.set(target, remaining);
-      }
-    }
-    if (count > 0) {
-      logger17.info("DirectiveQueue purged", { workflowId, count });
-    }
-    return count;
-  }
-  /**
-   * Return directives for `target` without removing them.
-   *
-   * @param target - Hook target name.
-   * @param workflowId - Optional workflow ID. When provided, only directives
-   *   matching this workflow_id are included in the snapshot.
-   * @returns Snapshot of the queue (may be empty).
-   */
-  peek(target, workflowId) {
-    const queue = this.queues.get(target) ?? [];
-    if (workflowId === void 0) {
-      return [...queue];
-    }
-    return queue.filter((d) => d.workflow_id === workflowId);
-  }
-  /** Clear all directive queues. WRFC config is preserved. */
-  clear() {
-    this.queues.clear();
-  }
-  /**
-   * Stored WRFC config from the `config:loaded` hook event.
-   *
-   * @v1-design-note Storing WRFC-specific configuration (min review score,
-   * max fix attempts, etc.) inside `DirectiveQueue` violates the Single
-   * Responsibility Principle — a queue should only manage queueing. This was
-   * a pragmatic choice in v1 to avoid a separate config-store module. In v2
-   * this should be extracted to a dedicated `WRFCConfig` service or singleton
-   * so that `DirectiveQueue` only owns directive lifecycle.
-   */
-  wrfcConfig = {};
-  /**
-   * Store the WRFC config delivered by the config:loaded hook event.
-   *
-   * @param config - The `wrfc` section of the merged goodvibes.json.
-   */
-  // TODO(v2): Extract WRFC config into dedicated WRFCConfigStore — this violates SRP.
-  setWRFCConfig(config2) {
-    this.wrfcConfig = config2;
-    logger17.debug("WRFC config stored", { keys: Object.keys(config2) });
-  }
-  /**
-   * Return the stored WRFC config (empty object if never set).
-   */
-  getWRFCConfig() {
-    return this.wrfcConfig;
-  }
-  /**
-   * Return the number of pending directives, optionally scoped to a target.
-   *
-   * @param target - Optional hook target name. If omitted, counts across all targets.
-   * @returns Total pending directive count.
-   */
-  size(target) {
-    if (target !== void 0) {
-      return this.queues.get(target)?.length ?? 0;
-    }
-    let total = 0;
-    for (const queue of this.queues.values()) {
-      total += queue.length;
-    }
-    return total;
   }
 };
 
@@ -36389,6 +36549,16 @@ var ProcessManager = class {
         daemonTickHandler: this.daemonTickHandler ?? null
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
+      if (this.directiveQueue) {
+        const dq = this.directiveQueue;
+        this.ipcServer.setWriteResultCallback((holdId, success2) => {
+          if (success2) {
+            dq.releaseHold(holdId);
+          } else {
+            dq.reEnqueueHold(holdId);
+          }
+        });
+      }
       if (this.agentWorkflowMap) {
         const awm = this.agentWorkflowMap;
         this.ipcRouter.setAgentWorkflowResolver((agentId) => {

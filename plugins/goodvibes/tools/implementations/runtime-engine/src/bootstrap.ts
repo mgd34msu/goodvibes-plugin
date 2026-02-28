@@ -807,6 +807,19 @@ export class ProcessManager {
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
 
+      // Wire hold-and-release: on successful socket write, release the held
+      // directive batch; on failure, re-enqueue for the next query attempt.
+      if (this.directiveQueue) {
+        const dq = this.directiveQueue;
+        this.ipcServer.setWriteResultCallback((holdId, success) => {
+          if (success) {
+            dq.releaseHold(holdId);
+          } else {
+            dq.reEnqueueHold(holdId);
+          }
+        });
+      }
+
       // Inject agent→workflow resolver so get_directives queries can scope
       // drains by workflow_id, preventing cross-workflow directive delivery.
       if (this.agentWorkflowMap) {

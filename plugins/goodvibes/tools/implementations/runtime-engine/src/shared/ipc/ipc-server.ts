@@ -33,10 +33,29 @@ const CONNECTION_TIMEOUT_MS = 5_000;
 const MAX_MESSAGE_SIZE = 1_048_576; // 1 MB
 
 /**
- * Callback invoked for every well-formed IPC message received.
- * Must return a {@link IPCResponse} (or a Promise resolving to one).
+ * Envelope returned by handlers that need write-result confirmation.
+ * The `holdId` is passed back to the write-result callback after the socket write.
  */
-export type MessageHandler = (msg: IPCMessage) => Promise<IPCResponse>;
+export interface ResponseEnvelope {
+  response: IPCResponse;
+  holdId?: string;
+}
+
+/**
+ * Callback invoked for every well-formed IPC message received.
+ * Must return a {@link IPCResponse} or {@link ResponseEnvelope} (or a Promise resolving to one).
+ */
+export type MessageHandler = (msg: IPCMessage) => Promise<IPCResponse | ResponseEnvelope>;
+
+/**
+ * Callback invoked after every socket write attempt.
+ * `success` is true when the write succeeded, false when it threw.
+ */
+export type WriteResultCallback = (holdId: string, success: boolean) => void;
+
+function isResponseEnvelope(r: IPCResponse | ResponseEnvelope): r is ResponseEnvelope {
+  return r !== null && typeof r === 'object' && 'response' in r && !('status' in r);
+}
 
 /**
  * Unix domain socket server for hook ↔ runtime engine communication.
@@ -65,6 +84,12 @@ export class IPCServer {
   /** Set of all currently open client sockets (for clean shutdown). */
   private readonly connections: Set<net.Socket> = new Set();
 
+  /** Optional callback invoked after each socket write with write success/failure. */
+  private writeResultCallback?: WriteResultCallback;
+
+  /** Tracks in-flight holdIds per socket for async write confirmation and error recovery. */
+  private readonly inFlightHolds = new WeakMap<net.Socket, string>();
+
   /**
    * @param socketPath - Absolute path for the Unix domain socket file.
    *   The parent directory is created automatically if it does not exist.
@@ -86,6 +111,18 @@ export class IPCServer {
    */
   onMessage(handler: MessageHandler): void {
     this.handler = handler;
+  }
+
+  /**
+   * Register a callback to be notified after each socket write attempt.
+   *
+   * Used by the hold-and-release pattern: on success, call `releaseHold(holdId)`;
+   * on failure, call `reEnqueueHold(holdId)` to recover the directives.
+   *
+   * @param cb - Callback receiving the holdId and write success flag.
+   */
+  setWriteResultCallback(cb: WriteResultCallback): void {
+    this.writeResultCallback = cb;
   }
 
   /**
@@ -148,6 +185,15 @@ export class IPCServer {
       path: this.socketPath,
       connections: this.connections.size,
     });
+
+    // Re-enqueue any in-flight held directives before destroying sockets
+    for (const socket of this.connections) {
+      const holdId = this.inFlightHolds.get(socket);
+      if (holdId && this.writeResultCallback) {
+        this.inFlightHolds.delete(socket);
+        this.writeResultCallback(holdId, false);
+      }
+    }
 
     // Destroy all open client connections
     for (const socket of this.connections) {
@@ -212,6 +258,12 @@ export class IPCServer {
     socket.on('error', (err) => {
       clearTimeout(idleTimer);
       logger.warn('IPC socket error', { err: err.message });
+      // Re-enqueue any in-flight held directives so they are not lost on socket error
+      const holdId = this.inFlightHolds.get(socket);
+      if (holdId && this.writeResultCallback) {
+        this.inFlightHolds.delete(socket);
+        this.writeResultCallback(holdId, false);
+      }
       this.connections.delete(socket);
       socket.destroy();
     });
@@ -314,8 +366,12 @@ export class IPCServer {
     logger.debug('Dispatching IPC message', { id: message.id, type: message.type });
 
     this.handler(message)
-      .then((response) => {
-        this.writeResponse(socket, response);
+      .then((result) => {
+        if (isResponseEnvelope(result)) {
+          this.writeResponse(socket, result.response, result.holdId);
+        } else {
+          this.writeResponse(socket, result);
+        }
       })
       .catch((err) => {
         logger.error('IPC handler threw an error', {
@@ -338,15 +394,28 @@ export class IPCServer {
    * @param socket   - The client socket.
    * @param response - The response to send.
    */
-  private writeResponse(socket: net.Socket, response: IPCResponse): void {
+  private writeResponse(socket: net.Socket, response: IPCResponse, holdId?: string): void {
     const payload = JSON.stringify(response) + '\n';
+    if (holdId) {
+      this.inFlightHolds.set(socket, holdId);
+    }
     try {
-      socket.end(payload, 'utf-8');
+      socket.end(payload, 'utf-8', () => {
+        // Async write confirmation — data accepted by kernel
+        if (holdId && this.writeResultCallback) {
+          this.inFlightHolds.delete(socket);
+          this.writeResultCallback(holdId, true);
+        }
+      });
     } catch (err) {
       logger.warn('Failed to write IPC response', {
         id: response.id,
         err: toErrorMessage(err),
       });
+      if (holdId && this.writeResultCallback) {
+        this.inFlightHolds.delete(socket);
+        this.writeResultCallback(holdId, false);
+      }
       socket.destroy();
     }
   }
