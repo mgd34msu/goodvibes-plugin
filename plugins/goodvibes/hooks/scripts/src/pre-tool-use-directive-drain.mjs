@@ -1,25 +1,25 @@
 /**
  * PreToolUse Directive Drain Hook (standalone .mjs)
  *
- * Fallback mechanism for lost task-notifications. Claude Code has a bug where
- * task-notifications are silently discarded (queue-operation: "remove" instead
- * of "dequeue") when they arrive during active tool calls. This causes WRFC
- * directives to sit undelivered in the runtime engine's directive queue.
+ * Fires BEFORE every tool call. Drains ALL pending directives from the
+ * runtime engine's directive queue and injects them via additionalContext.
  *
- * This hook fires BEFORE every tool call and checks for pending directives.
- * If found, it injects them via additionalContext — recovering directives that
- * were lost due to the notification bug.
+ * This is the primary directive delivery mechanism. It completely bypasses
+ * Claude Code's task-notification queue, which has a known bug where
+ * notifications are silently discarded (queue:remove) when they arrive
+ * during active tool calls.
  *
- * Timeline:
- * 1. Agent completes → task-notification enqueued in Claude Code queue
- * 2. BUG: notification arrives during active tool call → "remove"d (lost)
- * 3. Directive sits in runtime engine queue, never drained
- * 4. Next tool call → THIS HOOK fires → finds pending directive → injects it
+ * Flow:
+ * 1. Agent completes → SubagentStop sends agent:completed to runtime
+ * 2. Runtime triggers fire → WRFC handler enqueues directive(s)
+ * 3. Next tool call → THIS HOOK fires → drains ALL pending directives
+ * 4. Directives injected via additionalContext → orchestrator receives them
  *
- * Related:
- * - Claude Code queue bug: 12.8% notification loss rate during active tool calls
- * - PostToolUse additionalContext bug: https://github.com/anthropics/claude-code/issues/24788
- * - Primary delivery: user-prompt-submit-directives.mjs (fires on task-notifications)
+ * Key design decisions:
+ * - Drains ALL pending directives (no agent_id = drain everything)
+ * - Multiple directives may be returned at once (parallel WRFC chains)
+ * - No auditor needed — just drain the queue directly
+ * - Fast path when no runtime engine is running (<1ms)
  *
  * This is a standalone ESM script — no build step required.
  * Zero external dependencies, only Node.js stdlib.
@@ -29,11 +29,10 @@ import * as net from 'node:net';
 import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { audit, getTranscriptPath } from './queue-auditor.mjs';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const QUERY_TIMEOUT_MS = 300; // Tighter than UPS (500ms) — PreToolUse fires often
+const QUERY_TIMEOUT_MS = 300;
 
 // ─── Response helpers ────────────────────────────────────────────────────────
 
@@ -44,7 +43,6 @@ function respond(response) {
 
 function allowResponse(additionalContext) {
   if (!additionalContext) {
-    // Empty object = allow tool, no extra context
     return {};
   }
   return {
@@ -55,17 +53,15 @@ function allowResponse(additionalContext) {
   };
 }
 
-// ─── Socket discovery (shared with UPS directives) ───────────────────────────
+// ─── Socket discovery ────────────────────────────────────────────────────────
 
 function discoverSocket(projectDir, sessionId) {
-  // Strategy 1: Explicit env var
   const envPath = process.env['GOODVIBES_RUNTIME_SOCKET'];
   if (envPath) return envPath;
 
   const cwd = projectDir || process.env['CLAUDE_PROJECT_DIR'] || process.cwd();
   const stateDir = join(cwd, '.goodvibes', 'state');
 
-  // Strategy 2: Session-keyed pointer file
   if (sessionId && existsSync(stateDir)) {
     try {
       const sessionPointer = join(stateDir, `runtime-${sessionId}.socket`);
@@ -74,7 +70,6 @@ function discoverSocket(projectDir, sessionId) {
     } catch { /* fall through */ }
   }
 
-  // Strategy 3: Per-PID pointer files
   if (existsSync(stateDir)) {
     try {
       const entries = readdirSync(stateDir);
@@ -89,7 +84,6 @@ function discoverSocket(projectDir, sessionId) {
     } catch { /* fall through */ }
   }
 
-  // Strategy 4: Legacy pointer file
   const legacyPointer = join(stateDir, 'runtime.socket');
   if (existsSync(legacyPointer)) {
     try {
@@ -98,7 +92,6 @@ function discoverSocket(projectDir, sessionId) {
     } catch { /* fall through */ }
   }
 
-  // Strategy 5: Well-known tmpdir
   const defaultPath = join(tmpdir(), 'goodvibes-runtime', 'runtime.sock');
   if (existsSync(defaultPath)) return defaultPath;
 
@@ -153,17 +146,35 @@ function sendMessage(socketPath, message, timeoutMs) {
   });
 }
 
-async function queryDirectives(socketPath, agentId) {
-  const query = { kind: 'get_directives' };
-  if (agentId) query.agent_id = agentId;
+async function drainAllDirectives(socketPath) {
   const message = {
     type: 'query',
     id: generateId(),
-    query,
+    query: { kind: 'get_directives' },  // No agent_id = drain ALL pending
   };
   const response = await sendMessage(socketPath, message, QUERY_TIMEOUT_MS);
   if (!response || response.status === 'error') return null;
   return response.data || null;
+}
+
+// ─── Urgent file fallback ────────────────────────────────────────────────────
+
+function checkUrgentFile(projectDir) {
+  const urgentPath = join(projectDir || process.cwd(), '.goodvibes', 'state', 'urgent-directives.json');
+  const claimedPath = urgentPath + `.claimed.${process.pid}`;
+  try {
+    renameSync(urgentPath, claimedPath);
+  } catch {
+    return null;
+  }
+  try {
+    const data = JSON.parse(readFileSync(claimedPath, 'utf-8'));
+    unlinkSync(claimedPath);
+    return data.directives || [];
+  } catch {
+    try { unlinkSync(claimedPath); } catch { /* ignore */ }
+    return null;
+  }
 }
 
 // ─── Stdin reader ────────────────────────────────────────────────────────────
@@ -203,25 +214,6 @@ function readStdin() {
   });
 }
 
-function checkUrgentFile(projectDir) {
-  const urgentPath = join(projectDir || process.cwd(), '.goodvibes', 'state', 'urgent-directives.json');
-  const claimedPath = urgentPath + `.claimed.${process.pid}`;
-  try {
-    renameSync(urgentPath, claimedPath);  // Atomic on POSIX — exactly one hook wins
-  } catch {
-    return null;  // File doesn't exist or another hook already claimed it
-  }
-  try {
-    const data = JSON.parse(readFileSync(claimedPath, 'utf-8'));
-    unlinkSync(claimedPath);
-    return data.directives || [];
-  } catch {
-    // Clean up claimed file on parse failure
-    try { unlinkSync(claimedPath); } catch { /* ignore */ }
-    return null;
-  }
-}
-
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 try {
@@ -233,58 +225,30 @@ try {
 
   // Fast path: no runtime engine running
   if (!socketPath || !existsSync(socketPath)) {
-    respond(allowResponse()); // process.exit(0) — no code executes after this
+    respond(allowResponse());
   }
 
-  // PreToolUse has no agent context — only drain per-workflow via orphan IDs.
-  // No global drain: avoids cross-workflow directive bleed.
-  let result = null;
+  // Drain ALL pending directives from the queue (no agent_id = drain everything)
+  const result = await drainAllDirectives(socketPath);
 
-  // Queue auditor: detect removed task-notifications (Layer 0 recovery).
-  // Run FIRST so orphan IDs are available for per-workflow queries.
-  try {
-    const transcriptPath = getTranscriptPath(projectDir, sessionId);
-    const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');
-    const auditResult = audit(transcriptPath, stateDir);
-    if (auditResult.orphanedTaskIds.length > 0) {
-      console.error('[PTU-Auditor] Orphaned notifications detected:', auditResult.orphanedTaskIds.join(', '));
-      for (const orphanId of auditResult.orphanedTaskIds) {
-        const orphanResult = await queryDirectives(socketPath, orphanId);
-        if (orphanResult?.directives?.length > 0) {
-          if (!result || !result.directives) {
-            result = { directives: orphanResult.directives };
-          } else {
-            result.directives = [...result.directives, ...orphanResult.directives];
-          }
-        }
-      }
-    }
-  } catch (e) {
-    // Auditor failure must never block tool calls
-    console.error('[PTU-Auditor] audit error:', e?.message || e);
-  }
-
-  // Check for urgent directives written by the watchdog's drain-stuck recovery.
+  // Also check urgent file fallback
   const urgentDirectives = checkUrgentFile(projectDir);
+
+  const allDirectives = [];
+  if (result?.directives?.length > 0) {
+    allDirectives.push(...result.directives);
+  }
   if (urgentDirectives?.length > 0) {
-    if (!result || !result.directives) {
-      result = { directives: urgentDirectives };
-    } else {
-      result.directives = [...result.directives, ...urgentDirectives];
-    }
+    allDirectives.push(...urgentDirectives);
   }
 
-  if (result && result.directives && result.directives.length > 0) {
-    const directivePayload = JSON.stringify({
-      action: 'directives',
-      directives: result.directives,
-    });
-    const gvTag = `<gv>${directivePayload}</gv>`;
-    respond(allowResponse(gvTag)); // process.exit(0) — no code executes after this
+  if (allDirectives.length > 0) {
+    const gvTag = `<gv>${JSON.stringify({ action: 'directives', directives: allDirectives })}</gv>`;
+    respond(allowResponse(gvTag));
   } else {
-    respond(allowResponse()); // process.exit(0) — no code executes after this
+    respond(allowResponse());
   }
 } catch (err) {
-  // Never block a tool call — silently allow
+  // Never block a tool call
   respond(allowResponse());
 }
