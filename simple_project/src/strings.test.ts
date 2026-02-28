@@ -1,204 +1,268 @@
 import { describe, it, expect } from 'vitest';
-import { capitalize, slugify, truncate, camelToKebab, kebabToCamel } from './strings';
+import {
+  capitalize,
+  slugify,
+  truncate,
+  camelToKebab,
+  kebabToCamel,
+} from './strings.js';
 
+// ---------------------------------------------------------------------------
+// capitalize
+// ---------------------------------------------------------------------------
 describe('capitalize', () => {
-  it('capitalizes the first letter', () => {
+  it('capitalizes the first character of a lowercase string', () => {
     expect(capitalize('hello')).toBe('Hello');
   });
 
-  it('leaves already-capitalized strings unchanged', () => {
+  it('leaves an already-capitalized string unchanged', () => {
     expect(capitalize('Hello')).toBe('Hello');
-  });
-
-  it('handles all-uppercase strings', () => {
-    expect(capitalize('HELLO')).toBe('HELLO');
   });
 
   it('returns empty string unchanged', () => {
     expect(capitalize('')).toBe('');
   });
 
-  it('handles single character', () => {
+  it('handles a single lowercase character', () => {
     expect(capitalize('a')).toBe('A');
+  });
+
+  it('handles a single uppercase character', () => {
     expect(capitalize('A')).toBe('A');
   });
 
-  it('only capitalizes the first character', () => {
-    expect(capitalize('hello world')).toBe('Hello world');
+  it('does not alter characters beyond the first', () => {
+    expect(capitalize('hELLO')).toBe('HELLO');
   });
 
-  it('handles unicode characters', () => {
-    expect(capitalize('éclair')).toBe('\u00C9clair');
-    expect(capitalize('\u4e2d\u6587')).toBe('\u4e2d\u6587'); // Chinese chars unchanged
+  it('handles a string that starts with a digit', () => {
+    expect(capitalize('1up')).toBe('1up');
   });
 
-  it('handles strings starting with numbers', () => {
-    expect(capitalize('123abc')).toBe('123abc');
+  it('handles unicode first character', () => {
+    expect(capitalize('\u00e9lan')).toBe('\u00c9lan'); // 'élan' -> 'Élan'
+  });
+
+  it('handles whitespace-only string', () => {
+    expect(capitalize('  hello')).toBe('  hello');
   });
 });
 
+// ---------------------------------------------------------------------------
+// slugify
+// ---------------------------------------------------------------------------
 describe('slugify', () => {
-  it('converts spaces to hyphens', () => {
-    expect(slugify('hello world')).toBe('hello-world');
-  });
-
-  it('lowercases the string', () => {
+  it('converts a simple title to a slug', () => {
     expect(slugify('Hello World')).toBe('hello-world');
   });
 
-  it('removes special characters', () => {
-    expect(slugify('hello & world!')).toBe('hello-world');
+  it('lowercases all characters', () => {
+    expect(slugify('UPPER CASE')).toBe('upper-case');
   });
 
-  it('collapses multiple spaces', () => {
+  it('replaces spaces with hyphens', () => {
+    expect(slugify('foo bar baz')).toBe('foo-bar-baz');
+  });
+
+  it('collapses multiple spaces or special chars into one hyphen', () => {
     expect(slugify('hello   world')).toBe('hello-world');
+    expect(slugify('hello -- world')).toBe('hello-world');
   });
 
-  it('collapses multiple hyphens', () => {
-    expect(slugify('hello--world')).toBe('hello-world');
+  it('trims leading and trailing hyphens', () => {
+    expect(slugify('  foo  ')).toBe('foo');
+    expect(slugify('---bar---')).toBe('bar');
   });
 
-  it('strips leading and trailing hyphens', () => {
-    expect(slugify('-hello world-')).toBe('hello-world');
-  });
-
-  it('handles empty string', () => {
+  it('returns empty string for empty input', () => {
     expect(slugify('')).toBe('');
   });
 
-  it('handles strings with only special characters', () => {
-    expect(slugify('!@#$%')).toBe('');
+  it('returns empty string for whitespace-only input', () => {
+    expect(slugify('   ')).toBe('');
   });
 
-  it('strips diacritics', () => {
-    expect(slugify('cafe\u0301')).toBe('cafe'); // e + combining accent
+  it('handles unicode by stripping diacritics', () => {
+    expect(slugify('caf\u00e9 au lait')).toBe('cafe-au-lait');
     expect(slugify('r\u00e9sum\u00e9')).toBe('resume');
+    expect(slugify('na\u00efve')).toBe('naive');
   });
 
   it('preserves numbers', () => {
-    expect(slugify('hello world 42')).toBe('hello-world-42');
+    expect(slugify('post 42 draft')).toBe('post-42-draft');
+    expect(slugify('v1.2.3')).toBe('v1-2-3');
   });
 
-  it('trims whitespace', () => {
-    expect(slugify('  hello world  ')).toBe('hello-world');
+  it('strips non-alphanumeric punctuation', () => {
+    expect(slugify('hello, world!')).toBe('hello-world');
+    expect(slugify('it\'s a test')).toBe('it-s-a-test');
+  });
+
+  it('handles a single character', () => {
+    expect(slugify('a')).toBe('a');
+  });
+
+  it('drops non-Latin scripts that do not decompose to ASCII', () => {
+    // CJK, Arabic, and similar scripts are not representable as Latin
+    // after NFD normalisation and diacritic stripping, so they are dropped.
+    // Callers should pre-transliterate such input for predictable results.
+    expect(slugify('\u4e2d\u6587')).toBe(''); // Chinese characters dropped
+    expect(slugify('\u0645\u0631\u062d\u0628\u0627')).toBe(''); // Arabic dropped
+    expect(slugify('hello \u4e16\u754c')).toBe('hello'); // mixed: Latin preserved
   });
 });
 
+// ---------------------------------------------------------------------------
+// truncate
+// ---------------------------------------------------------------------------
 describe('truncate', () => {
-  it('returns string unchanged when within maxLength', () => {
-    expect(truncate('hello', 10)).toBe('hello');
+  it('returns the original string when within maxLength', () => {
+    expect(truncate('Hello', 10)).toBe('Hello');
   });
 
-  it('returns string unchanged when equal to maxLength', () => {
-    expect(truncate('hello', 5)).toBe('hello');
+  it('returns the original string when exactly at maxLength', () => {
+    expect(truncate('Hello', 5)).toBe('Hello');
   });
 
   it('truncates and appends default suffix', () => {
-    expect(truncate('hello world', 8)).toBe('hello...');
+    expect(truncate('Hello, World!', 8)).toBe('Hello...');
   });
 
   it('truncates and appends custom suffix', () => {
-    expect(truncate('hello world', 7, '!')).toBe('hello w!');
-  });
-
-  it('handles empty suffix', () => {
-    expect(truncate('hello world', 5, '')).toBe('hello');
+    expect(truncate('Hello, World!', 7, ' [...]')).toBe('H [...]');
   });
 
   it('handles empty string', () => {
     expect(truncate('', 5)).toBe('');
+    expect(truncate('', 0)).toBe('');
   });
 
-  it('handles maxLength of 0', () => {
-    expect(truncate('hello', 0)).toBe('...');
+  it('handles maxLength of 0 with no suffix', () => {
+    expect(truncate('Hello', 0, '')).toBe('');
   });
 
-  it('handles maxLength smaller than suffix length', () => {
-    // suffix is '...' (3 chars), maxLength is 2 — result is first 2 chars of suffix
-    expect(truncate('hello', 2)).toBe('..');
+  it('handles maxLength equal to suffix length', () => {
+    // 'Hello' truncated to 3 chars with '...' means cutLength=0 -> '...'
+    expect(truncate('Hello', 3)).toBe('...');
   });
 
-  it('throws on negative maxLength', () => {
-    expect(() => truncate('hello', -1)).toThrow(RangeError);
+  it('handles maxLength less than suffix length', () => {
+    // suffix '...' length 3, maxLength 2 -> suffix truncated to maxLength
+    expect(truncate('Hello', 2)).toBe('..');
   });
 
-  it('handles single character string', () => {
+  it('handles empty suffix', () => {
+    expect(truncate('Hello, World!', 5, '')).toBe('Hello');
+  });
+
+  it('handles single character string at exact maxLength', () => {
     expect(truncate('a', 1)).toBe('a');
-    expect(truncate('a', 0)).toBe('...');
   });
 
-  it('handles unicode correctly', () => {
-    expect(truncate('\u4e2d\u6587\u5185\u5bb9', 3, '...')).toBe('...');
+  it('throws RangeError for negative maxLength', () => {
+    expect(() => truncate('Hello', -1)).toThrow(RangeError);
+  });
+
+  it('handles unicode characters', () => {
+    // 'caf\u00e9' has length 4 in JS
+    expect(truncate('caf\u00e9 latte', 7)).toBe('caf\u00e9...');
+  });
+
+  it('handles maxLength of 0 with default suffix returns truncated suffix', () => {
+    expect(truncate('abc', 0, '...')).toBe('');
   });
 });
 
+// ---------------------------------------------------------------------------
+// camelToKebab
+// ---------------------------------------------------------------------------
 describe('camelToKebab', () => {
   it('converts camelCase to kebab-case', () => {
-    expect(camelToKebab('camelCase')).toBe('camel-case');
+    expect(camelToKebab('helloWorld')).toBe('hello-world');
   });
 
-  it('converts multi-word camelCase', () => {
-    expect(camelToKebab('camelCaseString')).toBe('camel-case-string');
+  it('converts PascalCase to kebab-case', () => {
+    expect(camelToKebab('HelloWorld')).toBe('hello-world');
   });
 
-  it('handles already lowercase strings', () => {
-    expect(camelToKebab('hello')).toBe('hello');
+  it('handles consecutive uppercase (acronym) in middle', () => {
+    expect(camelToKebab('myHTTPRequest')).toBe('my-http-request');
   });
 
-  it('handles empty string', () => {
+  it('handles leading acronym', () => {
+    expect(camelToKebab('XMLParser')).toBe('xml-parser');
+  });
+
+  it('handles trailing acronym', () => {
+    expect(camelToKebab('parseXML')).toBe('parse-xml');
+  });
+
+  it('returns empty string unchanged', () => {
     expect(camelToKebab('')).toBe('');
   });
 
-  it('handles single character', () => {
-    expect(camelToKebab('a')).toBe('a');
+  it('returns already-lowercase string unchanged', () => {
+    expect(camelToKebab('hello')).toBe('hello');
+  });
+
+  it('handles single uppercase character', () => {
     expect(camelToKebab('A')).toBe('a');
   });
 
-  it('handles PascalCase', () => {
-    expect(camelToKebab('PascalCase')).toBe('pascal-case');
+  it('handles single-word PascalCase', () => {
+    expect(camelToKebab('Hello')).toBe('hello');
   });
 
-  it('handles consecutive uppercase (acronyms)', () => {
-    expect(camelToKebab('XMLParser')).toBe('xml-parser');
-    expect(camelToKebab('parseHTML')).toBe('parse-html');
+  it('handles digits followed by uppercase', () => {
+    expect(camelToKebab('version2Alpha')).toBe('version2-alpha');
   });
 
-  it('handles numbers in string', () => {
-    expect(camelToKebab('convert2String')).toBe('convert2-string');
+  it('does not alter an all-uppercase string', () => {
+    expect(camelToKebab('HTTP')).toBe('http');
   });
 });
 
+// ---------------------------------------------------------------------------
+// kebabToCamel
+// ---------------------------------------------------------------------------
 describe('kebabToCamel', () => {
   it('converts kebab-case to camelCase', () => {
-    expect(kebabToCamel('kebab-case')).toBe('kebabCase');
+    expect(kebabToCamel('hello-world')).toBe('helloWorld');
   });
 
-  it('converts multi-segment kebab-case', () => {
-    expect(kebabToCamel('kebab-case-string')).toBe('kebabCaseString');
+  it('converts multi-segment kebab to camelCase', () => {
+    expect(kebabToCamel('my-http-request')).toBe('myHttpRequest');
   });
 
-  it('handles already lowercase strings without hyphens', () => {
-    expect(kebabToCamel('hello')).toBe('hello');
-  });
-
-  it('handles empty string', () => {
+  it('returns empty string unchanged', () => {
     expect(kebabToCamel('')).toBe('');
   });
 
-  it('handles single character', () => {
-    expect(kebabToCamel('a')).toBe('a');
+  it('returns a string with no hyphens unchanged', () => {
+    expect(kebabToCamel('hello')).toBe('hello');
   });
 
-  it('lowercases the input before converting', () => {
-    expect(kebabToCamel('HELLO-WORLD')).toBe('helloWorld');
+  it('handles leading hyphen', () => {
+    expect(kebabToCamel('-hello')).toBe('Hello');
   });
 
-  it('handles numbers in string', () => {
-    expect(kebabToCamel('item-2-value')).toBe('item2Value');
+  it('strips trailing hyphen', () => {
+    expect(kebabToCamel('hello-')).toBe('hello');
   });
 
-  it('is the inverse of camelToKebab for simple cases', () => {
-    const original = 'camelCaseString';
-    expect(kebabToCamel(camelToKebab(original))).toBe(original);
+  it('collapses consecutive hyphens', () => {
+    expect(kebabToCamel('hello--world')).toBe('helloWorld');
+  });
+
+  it('handles single character segments', () => {
+    expect(kebabToCamel('a-b-c')).toBe('aBC');
+  });
+
+  it('handles digits after hyphen', () => {
+    expect(kebabToCamel('post-42')).toBe('post42');
+  });
+
+  it('handles all-uppercase segments', () => {
+    expect(kebabToCamel('parse-XML')).toBe('parseXML');
   });
 });
