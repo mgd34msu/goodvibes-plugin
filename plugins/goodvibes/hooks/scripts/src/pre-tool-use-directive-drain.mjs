@@ -223,30 +223,12 @@ async function main() {
   // Guard: never drain directives in subagent contexts.
   // Directives are orchestrator-only — subagent drain causes silent loss.
   if (hookInput?.is_subagent) {
+    process.stderr.write('[directive-drain] skipped: is_subagent=true\n');
     return respond(allowResponse());
   }
 
-  // Fallback guard: check orchestrator session file.
-  // Written by the runtime engine when agents are spawned.
-  // If our session_id doesn't match the orchestrator, skip draining.
-  const sessionId = hookInput?.session_id || null;
-  if (sessionId) {
-    const orchestratorFile = join(
-      hookInput?.cwd || process.cwd(),
-      '.goodvibes', 'state', 'orchestrator-session.id'
-    );
-    try {
-      const orchestratorSessionId = readFileSync(orchestratorFile, 'utf-8').trim();
-      if (orchestratorSessionId && orchestratorSessionId !== sessionId) {
-        return respond(allowResponse());
-      }
-    } catch {
-      // File doesn't exist yet (no agents spawned) — fall through to drain.
-      // Before any agents are spawned, there are no WRFC directives anyway.
-    }
-  }
-
   const projectDir = hookInput?.cwd || null;
+  const sessionId = hookInput?.session_id || null;
   const socketPath = discoverSocket(projectDir, sessionId);
 
   // Fast path: no runtime engine running
