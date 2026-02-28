@@ -22138,6 +22138,11 @@ var IPCServer = class {
 var import_node_fs4 = require("node:fs");
 var import_node_path3 = require("node:path");
 var logger2 = createLogger("ipc-router");
+function getStringField(obj, key) {
+  const value = obj[key];
+  return typeof value === "string" ? value : "";
+}
+__name(getStringField, "getStringField");
 var IPCRouter = class {
   static {
     __name(this, "IPCRouter");
@@ -22268,6 +22273,7 @@ var IPCRouter = class {
    */
   async route(msg) {
     logger2.debug("IPC message received", { id: msg.id, type: msg.type });
+    const msgId = msg.id;
     if (msg.type === "hook_event") {
       const emittedEvent = {
         id: msg.id,
@@ -22374,12 +22380,20 @@ var IPCRouter = class {
         };
       }
       if (q.kind === "resolve_pending_bind") {
-        const agentType = typeof q.agent_type === "string" ? q.agent_type : "";
+        const agentType = getStringField(q, "agent_type");
         if (!agentType) {
           return { id: msg.id, status: "ok", data: { kind: "pending_bind", workflow_id: null } };
         }
         const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType) ?? null;
         return { id: msg.id, status: "ok", data: { kind: "pending_bind", workflow_id: workflowId } };
+      }
+      if (q.kind === "consume_pending_bind") {
+        const workflowId = getStringField(q, "workflow_id");
+        if (!workflowId) {
+          return { id: msg.id, status: "ok", data: { kind: "pending_bind_consumed", removed: 0 } };
+        }
+        const removed = this.agentWorkflowMap?.consumePendingBindsForWorkflow(workflowId) ?? 0;
+        return { id: msg.id, status: "ok", data: { kind: "pending_bind_consumed", removed } };
       }
       if (q.kind === "get_executor_mode") {
         const mode = this.executorMode?.getMode() ?? "engaged";
@@ -22413,7 +22427,7 @@ var IPCRouter = class {
       logger2.debug("IPC state_update received", { id: msg.id });
       return { id: msg.id, status: "ok", data: { kind: "ack" } };
     }
-    return { id: msg.id, status: "ok", data: { kind: "ack" } };
+    return { id: msgId, status: "ok", data: { kind: "ack" } };
   }
 };
 
@@ -29760,6 +29774,31 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
     }
     return resolved.workflowId;
   }
+  /**
+   * Removes all pending bind entries for a specific workflow.
+   *
+   * Called when a deterministic binding is established via [WRFC:wid] tag,
+   * making the type-keyed pending bind entries redundant. This prevents
+   * stale entries from being consumed by the wrong agent in concurrent chains.
+   *
+   * @param workflowId - The workflow ID whose pending binds should be consumed.
+   * @returns The number of entries removed.
+   */
+  consumePendingBindsForWorkflow(workflowId) {
+    const before = this.pendingBinds.length;
+    this.pendingBinds = this.pendingBinds.filter(
+      (entry) => entry.workflowId !== workflowId
+    );
+    const removed = before - this.pendingBinds.length;
+    if (removed > 0) {
+      log8.debug("AgentWorkflowMap.consumePendingBindsForWorkflow: removed entries", {
+        workflow_id: workflowId,
+        entries_removed: removed,
+        remaining_queue_length: this.pendingBinds.length
+      });
+    }
+    return removed;
+  }
 };
 
 // src/extensions/executor/executor-budget.ts
@@ -33268,10 +33307,15 @@ function createSubagentStartHandler(deps) {
     const agentId = typeof input["agent_id"] === "string" ? input["agent_id"] : null;
     const agentType = typeof input["agent_type"] === "string" ? input["agent_type"] : null;
     logger36.debug("SubagentStart", { agentId, agentType });
-    if (!agentType || !deps.agentWorkflowMap) {
+    if (!deps.agentWorkflowMap) {
       return null;
     }
-    const workflowId = deps.agentWorkflowMap.resolvePendingBind(agentType);
+    const rawWorkflowId = input["workflow_id"];
+    const incomingWorkflowId = typeof rawWorkflowId === "string" && rawWorkflowId.length > 0 ? rawWorkflowId : null;
+    let workflowId = incomingWorkflowId;
+    if (!workflowId && agentType) {
+      workflowId = deps.agentWorkflowMap.resolvePendingBind(agentType);
+    }
     if (!workflowId) {
       return null;
     }

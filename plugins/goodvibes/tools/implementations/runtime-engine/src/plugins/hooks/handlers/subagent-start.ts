@@ -35,12 +35,26 @@ export function createSubagentStartHandler(
 
     logger.debug('SubagentStart', { agentId, agentType });
 
-    if (!agentType || !deps.agentWorkflowMap) {
+    if (!deps.agentWorkflowMap) {
       return null;
     }
 
-    // Resolve pending workflow binding for this agent type
-    const workflowId = deps.agentWorkflowMap.resolvePendingBind(agentType);
+    // Check if workflow_id was already resolved by the hook script (via WRFC tag or pending bind).
+    // When present, the hook script has already consumed the pending bind via IPC query —
+    // calling resolvePendingBind again would double-consume and corrupt sibling chains.
+    const rawWorkflowId = input['workflow_id'];
+    const incomingWorkflowId = typeof rawWorkflowId === 'string' && rawWorkflowId.length > 0
+      ? rawWorkflowId
+      : null;
+
+    let workflowId = incomingWorkflowId;
+
+    // Only fall back to pending bind resolution if no workflow_id in event data
+    // AND the hook script hasn't already consumed it via IPC query
+    if (!workflowId && agentType) {
+      workflowId = deps.agentWorkflowMap.resolvePendingBind(agentType);
+    }
+
     if (!workflowId) {
       return null;
     }

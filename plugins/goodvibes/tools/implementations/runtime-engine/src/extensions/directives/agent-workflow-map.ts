@@ -196,4 +196,30 @@ export class AgentWorkflowMap {
 
     return resolved.workflowId;
   }
+
+  /**
+   * Removes all pending bind entries for a specific workflow.
+   *
+   * Called when a deterministic binding is established via [WRFC:wid] tag,
+   * making the type-keyed pending bind entries redundant. This prevents
+   * stale entries from being consumed by the wrong agent in concurrent chains.
+   *
+   * @param workflowId - The workflow ID whose pending binds should be consumed.
+   * @returns The number of entries removed.
+   */
+  consumePendingBindsForWorkflow(workflowId: string): number {
+    const before = this.pendingBinds.length;
+    this.pendingBinds = this.pendingBinds.filter(
+      (entry) => entry.workflowId !== workflowId
+    );
+    const removed = before - this.pendingBinds.length;
+    if (removed > 0) {
+      log.debug('AgentWorkflowMap.consumePendingBindsForWorkflow: removed entries', {
+        workflow_id: workflowId,
+        entries_removed: removed,
+        remaining_queue_length: this.pendingBinds.length,
+      });
+    }
+    return removed;
+  }
 }

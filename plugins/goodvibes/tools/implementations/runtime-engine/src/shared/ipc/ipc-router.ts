@@ -13,7 +13,7 @@ import type { WorkflowEngine } from '../../extensions/workflow/workflow-engine.j
 import type { AgentCoordinator } from '../../extensions/agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../../extensions/directives/directive-queue.js';
 import type { AgentWorkflowMap } from '../../extensions/directives/agent-workflow-map.js';
-import type { IPCMessage, IPCResponse } from './protocol.js';
+import type { IPCMessage, IPCResponse, Directive } from './protocol.js';
 import type { HookProcessor } from '../../plugins/hooks/hook-processor.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from '../../extensions/executor/executor-budget.js';
@@ -76,7 +76,17 @@ export interface IPCRouterDeps {
 }
 
 /** Return type for {@link IPCRouter.drainDirectiveMessages}. */
-type DrainResult = { message: string; directives: ReturnType<NonNullable<DirectiveQueue>['drain']> };
+type DrainResult = { message: string; directives: Directive[] };
+
+/**
+ * Extracts a non-empty string field from an object by key.
+ * Returns an empty string if the field is absent, not a string, or empty.
+ * @returns The string value, or `''` (falsy sentinel) when absent or invalid.
+ */
+function getStringField(obj: Record<string, unknown>, key: string): string {
+  const value = obj[key];
+  return typeof value === 'string' ? value : '';
+}
 
 /**
  * Routes IPC messages from hook scripts to the appropriate runtime engine
@@ -225,6 +235,8 @@ export class IPCRouter {
    */
   async route(msg: IPCMessage): Promise<IPCResponse> {
     logger.debug('IPC message received', { id: msg.id, type: msg.type });
+    // Extract id before type-narrowing guards reduce msg to 'never'
+    const msgId = msg.id;
 
     if (msg.type === 'hook_event') {
       // Emit as a hook:* event on the EventBus
@@ -345,12 +357,20 @@ export class IPCRouter {
         };
       }
       if (q.kind === 'resolve_pending_bind') {
-        const agentType = typeof q.agent_type === 'string' ? q.agent_type : '';
+        const agentType = getStringField(q, 'agent_type');
         if (!agentType) {
           return { id: msg.id, status: 'ok', data: { kind: 'pending_bind', workflow_id: null } };
         }
         const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType) ?? null;
         return { id: msg.id, status: 'ok', data: { kind: 'pending_bind', workflow_id: workflowId } };
+      }
+      if (q.kind === 'consume_pending_bind') {
+        const workflowId = getStringField(q, 'workflow_id');
+        if (!workflowId) {
+          return { id: msg.id, status: 'ok', data: { kind: 'pending_bind_consumed', removed: 0 } };
+        }
+        const removed = this.agentWorkflowMap?.consumePendingBindsForWorkflow(workflowId) ?? 0;
+        return { id: msg.id, status: 'ok', data: { kind: 'pending_bind_consumed', removed } };
       }
       if (q.kind === 'get_executor_mode') {
         const mode = this.executorMode?.getMode() ?? 'engaged';
@@ -388,6 +408,6 @@ export class IPCRouter {
       return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
     }
 
-    return { id: (msg as any).id, status: 'ok', data: { kind: 'ack' } };
+    return { id: msgId, status: 'ok', data: { kind: 'ack' } };
   }
 }

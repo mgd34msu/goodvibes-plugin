@@ -156,6 +156,7 @@ export type IPCMessage =
  * - `should_block_tool`     — Ask whether a tool call should be allowed or blocked.
  * - `get_context_injection` — Retrieve context to inject into the next turn.
  * - `resolve_pending_bind`  — Resolve a pending agent-type → workflow-id bind from the queue.
+ * - `consume_pending_bind`  — Remove all pending binds for a specific workflow (cleanup after deterministic bind).
  */
 export type IPCQuery =
   | { kind: 'get_system_message' }
@@ -165,6 +166,7 @@ export type IPCQuery =
   | { kind: 'should_block_tool'; tool_name: string; tool_input: Record<string, unknown> }
   | { kind: 'get_context_injection' }
   | { kind: 'resolve_pending_bind'; agent_type: string }
+  | { kind: 'consume_pending_bind'; workflow_id: string }
   | { kind: 'get_executor_mode' }
   | { kind: 'get_executor_budget' }
   | { kind: 'process_tick' };
@@ -204,6 +206,7 @@ export type IPCResponseData =
   | { kind: 'context_injection'; context: string; priority: number }
   | { kind: 'ack' }
   | { kind: 'pending_bind'; workflow_id: string | null }
+  | { kind: 'pending_bind_consumed'; removed: number }
   | { kind: 'executor_mode'; mode: string }
   | { kind: 'executor_budget'; spending: Record<string, unknown> | null; can_process: boolean }
   | { kind: 'tick_result'; result: Record<string, unknown> | undefined };
