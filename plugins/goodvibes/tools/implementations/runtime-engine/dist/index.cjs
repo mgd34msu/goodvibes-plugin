@@ -22468,6 +22468,8 @@ var IPCRouter = class {
   daemonTickHandler;
   /** Session IDs that have been registered via session:started events. */
   registeredSessions = /* @__PURE__ */ new Set();
+  /** Session ID of the orchestrator (the session that spawns agents). */
+  orchestratorSessionId = null;
   /**
    * Optional resolver that maps an agent_id to its bound workflow_id.
    * Injected after construction via {@link setAgentWorkflowResolver}.
@@ -22652,6 +22654,16 @@ var IPCRouter = class {
           if (Object.keys(validated).length > 0) {
             this.directiveQueue.setWRFCConfig(validated);
             logger3.debug("WRFC config stored from config:loaded event", { validated });
+          }
+        }
+      }
+      if (msg.hook_name === "agent:spawned" && this.stateDir) {
+        const spawnSessionId = msg.hook_input?.session_id;
+        if (typeof spawnSessionId === "string" && spawnSessionId.length > 0) {
+          this.orchestratorSessionId = spawnSessionId;
+          try {
+            (0, import_node_fs4.writeFileSync)((0, import_node_path3.join)(this.stateDir, "orchestrator-session.id"), spawnSessionId, "utf-8");
+          } catch {
           }
         }
       }

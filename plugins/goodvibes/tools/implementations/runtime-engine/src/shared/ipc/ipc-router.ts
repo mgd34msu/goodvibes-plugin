@@ -118,6 +118,9 @@ export class IPCRouter {
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
 
+  /** Session ID of the orchestrator (the session that spawns agents). */
+  private orchestratorSessionId: string | null = null;
+
   /**
    * Optional resolver that maps an agent_id to its bound workflow_id.
    * Injected after construction via {@link setAgentWorkflowResolver}.
@@ -325,6 +328,22 @@ export class IPCRouter {
           if (Object.keys(validated).length > 0) {
             this.directiveQueue.setWRFCConfig(validated);
             logger.debug('WRFC config stored from config:loaded event', { validated });
+          }
+        }
+      }
+
+      // Track orchestrator session when agents are spawned.
+      // SubagentStart fires in the orchestrator's context, so hook_input
+      // contains the orchestrator's session_id. Write it to a state file
+      // so PreToolUse hooks can filter out subagent drains.
+      if (msg.hook_name === 'agent:spawned' && this.stateDir) {
+        const spawnSessionId = (msg.hook_input as Record<string, unknown>)?.session_id;
+        if (typeof spawnSessionId === 'string' && spawnSessionId.length > 0) {
+          this.orchestratorSessionId = spawnSessionId;
+          try {
+            writeFileSync(join(this.stateDir, 'orchestrator-session.id'), spawnSessionId, 'utf-8');
+          } catch {
+            // Non-critical: PreToolUse will fall back to is_subagent check
           }
         }
       }

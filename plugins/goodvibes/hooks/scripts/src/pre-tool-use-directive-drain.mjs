@@ -36,6 +36,7 @@ const QUERY_TIMEOUT_MS = 300;
 
 // ─── Response helpers ────────────────────────────────────────────────────────
 
+/** Writes JSON response to stdout and terminates the process. */
 function respond(response) {
   console.log(JSON.stringify(response));
   process.exit(0);
@@ -216,16 +217,41 @@ function readStdin() {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-try {
+async function main() {
   const hookInput = await readStdin();
 
-  const projectDir = hookInput?.cwd || null;
+  // Guard: never drain directives in subagent contexts.
+  // Directives are orchestrator-only — subagent drain causes silent loss.
+  if (hookInput?.is_subagent) {
+    return respond(allowResponse());
+  }
+
+  // Fallback guard: check orchestrator session file.
+  // Written by the runtime engine when agents are spawned.
+  // If our session_id doesn't match the orchestrator, skip draining.
   const sessionId = hookInput?.session_id || null;
+  if (sessionId) {
+    const orchestratorFile = join(
+      hookInput?.cwd || process.cwd(),
+      '.goodvibes', 'state', 'orchestrator-session.id'
+    );
+    try {
+      const orchestratorSessionId = readFileSync(orchestratorFile, 'utf-8').trim();
+      if (orchestratorSessionId && orchestratorSessionId !== sessionId) {
+        return respond(allowResponse());
+      }
+    } catch {
+      // File doesn't exist yet (no agents spawned) — fall through to drain.
+      // Before any agents are spawned, there are no WRFC directives anyway.
+    }
+  }
+
+  const projectDir = hookInput?.cwd || null;
   const socketPath = discoverSocket(projectDir, sessionId);
 
   // Fast path: no runtime engine running
   if (!socketPath || !existsSync(socketPath)) {
-    respond(allowResponse());
+    return respond(allowResponse());
   }
 
   // Drain ALL pending directives from the queue (no agent_id = drain everything)
@@ -244,11 +270,15 @@ try {
 
   if (allDirectives.length > 0) {
     const gvTag = `<gv>${JSON.stringify({ action: 'directives', directives: allDirectives })}</gv>`;
-    respond(allowResponse(gvTag));
+    return respond(allowResponse(gvTag));
   } else {
-    respond(allowResponse());
+    return respond(allowResponse());
   }
-} catch (err) {
+}
+
+try {
+  await main();
+} catch {
   // Never block a tool call
   respond(allowResponse());
 }
