@@ -197,8 +197,15 @@ export class IPCRouter {
     let workflowId: string | undefined;
     if (agentId && this.agentWorkflowResolver) {
       const resolved = this.agentWorkflowResolver(agentId);
-      if (resolved !== null) {
+      if (typeof resolved === 'string' && resolved.length > 0) {
         workflowId = resolved;
+      } else {
+        // Agent not in any workflow — return empty, don't drain other workflows' directives
+        return {
+          id: msgId,
+          status: 'ok',
+          data: { kind: 'system_message', message: '', directives: [] },
+        };
       }
     }
     const { message, directives } = this.drainDirectiveMessages(workflowId);

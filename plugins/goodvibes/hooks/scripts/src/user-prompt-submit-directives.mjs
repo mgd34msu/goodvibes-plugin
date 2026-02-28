@@ -276,21 +276,48 @@ try {
     console.error('[UPS-Auditor] audit error:', e?.message || e);
   }
 
-  // Extract agent ID from task-notification for per-workflow directive drain.
-  const taskIdMatch = prompt?.match(/<task-id>([^<]+)<\/task-id>/);
-  const agentId = taskIdMatch ? taskIdMatch[1] : null;
+  // Extract ALL agent IDs from task-notifications for per-workflow directive drain.
+  // Multiple task-notifications may arrive in one user message (parallel WRFC chains).
+  const taskIdMatches = [...(prompt?.matchAll(/<task-id>([^<]+)<\/task-id>/g) || [])];
+  const agentIds = taskIdMatches.map(m => m[1]);
 
   // Retry with backoff when get_directives returns empty on a task-notification.
   // This handles the race condition where SubagentStop hasn't finished processing
   // the agent:completed event and enqueuing the WRFC directive yet.
   const RETRY_DELAYS = [100, 250, 500];
-  let result = await queryDirectives(socketPath, agentId);
+  let result = null;
 
-  if (!result || !result.directives || result.directives.length === 0) {
-    for (const delay of RETRY_DELAYS) {
-      await sleep(delay);
-      result = await queryDirectives(socketPath, agentId);
-      if (result?.directives?.length > 0) break;
+  if (agentIds.length > 0) {
+    // Query directives for each agent ID and merge results
+    for (const agentId of agentIds) {
+      let agentResult = await queryDirectives(socketPath, agentId);
+
+      if (!agentResult || !agentResult.directives || agentResult.directives.length === 0) {
+        for (const delay of RETRY_DELAYS) {
+          await sleep(delay);
+          agentResult = await queryDirectives(socketPath, agentId);
+          if (agentResult?.directives?.length > 0) break;
+        }
+      }
+
+      if (agentResult?.directives?.length > 0) {
+        if (!result) {
+          result = agentResult;
+        } else {
+          result.directives = [...result.directives, ...agentResult.directives];
+        }
+      }
+    }
+  } else {
+    // No agent IDs found — try without agent_id (backward compat)
+    result = await queryDirectives(socketPath, null);
+
+    if (!result || !result.directives || result.directives.length === 0) {
+      for (const delay of RETRY_DELAYS) {
+        await sleep(delay);
+        result = await queryDirectives(socketPath, null);
+        if (result?.directives?.length > 0) break;
+      }
     }
   }
 
@@ -311,10 +338,12 @@ try {
       directives: result.directives,
     });
     const gvTag = `<gv>${directivePayload}</gv>`;
-    if (taskIdMatch) {
+    if (agentIds.length > 0) {
       try {
         const stateDir = join(projectDir || process.cwd(), '.goodvibes', 'state');
-        markDelivered(stateDir, taskIdMatch[1]);
+        for (const agentId of agentIds) {
+          markDelivered(stateDir, agentId);
+        }
       } catch (e) {
         console.error('[UPS] markDelivered failed:', e?.message || e);
       }
