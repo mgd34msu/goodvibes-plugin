@@ -42,6 +42,19 @@ type IPCResponseData = {
 } | {
     kind: 'pending_bind';
     workflow_id: string | null;
+} | {
+    kind: 'pending_bind_consumed';
+    removed: number;
+} | {
+    kind: 'executor_mode';
+    mode: string;
+} | {
+    kind: 'executor_budget';
+    spending: Record<string, unknown> | null;
+    can_process: boolean;
+} | {
+    kind: 'tick_result';
+    result: Record<string, unknown> | undefined;
 };
 /** Directive from runtime engine to hook. */
 export interface Directive {
@@ -53,6 +66,8 @@ export interface Directive {
     priority: number;
     /** Source subsystem that generated this directive. */
     source: string;
+    /** Workflow this directive belongs to, if any. */
+    workflow_id?: string;
 }
 /** Query kinds supported by the runtime engine. */
 export type IPCQueryKind = {
@@ -74,6 +89,9 @@ export type IPCQueryKind = {
 } | {
     kind: 'resolve_pending_bind';
     agent_type: string;
+} | {
+    kind: 'consume_pending_bind';
+    workflow_id: string;
 };
 /** Exported response data type for callers. */
 export type RuntimeResponseData = IPCResponseData;

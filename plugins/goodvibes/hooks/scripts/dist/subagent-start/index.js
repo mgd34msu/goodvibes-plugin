@@ -189,31 +189,38 @@ async function runSubagentStartHook() {
         // ─── Phase 6: Runtime engine integration (non-blocking, no early-return) ───
         // Sends agent:spawned event and queries for a system message / dossier.
         // Falls through to existing context-injection logic always.
-        // Resolves workflow_id via pending bind queue before sending agent:spawned.
+        // Resolves workflow_id deterministically via [WRFC:wid] tag first, then
+        // falls back to the pending bind queue for non-WRFC agents.
         let runtimeSystemMessage;
         let resolvedWorkflowId = null;
         try {
             const runtimeClient = new RuntimeClient();
             if (runtimeClient.isAvailable()) {
                 debug('Phase 6: runtime engine available, sending agent:spawned event');
-                // Normalize fields so the runtime always receives agent_id and agent_type
                 const { agent_id, agent_type } = normalizeAgentFields(input);
-                // Query pending bind queue first — resolves workflow_id for spawned reviewer/fixer agents.
-                // Skip the query when agent_type is falsy — an empty string never matches any pending bind.
-                let pendingBindResult = null;
-                if (agent_type) {
-                    pendingBindResult = await runtimeClient.query({ kind: 'resolve_pending_bind', agent_type });
+                // PRIORITY 1: Extract [WRFC:wid] from task description (deterministic, always correct)
+                const taskDesc = input.task_description ?? input.task ?? '';
+                resolvedWorkflowId = extractWorkflowId(taskDesc);
+                if (resolvedWorkflowId) {
+                    debug('Phase 6: extracted workflow_id from WRFC tag', { workflow_id: resolvedWorkflowId });
+                    // Consume matching pending binds for this workflow to keep the queue clean
+                    try {
+                        const consumeResult = await runtimeClient.query({ kind: 'consume_pending_bind', workflow_id: resolvedWorkflowId });
+                        if (consumeResult?.kind === 'pending_bind_consumed') {
+                            debug('Phase 6: consumed pending binds', { removed: consumeResult.removed });
+                        }
+                    }
+                    catch {
+                        // Non-critical: cleanup failure doesn't break binding
+                        debug('Phase 6: consume_pending_bind cleanup failed, non-critical');
+                    }
                 }
-                if (pendingBindResult?.kind === 'pending_bind' && pendingBindResult.workflow_id) {
-                    resolvedWorkflowId = pendingBindResult.workflow_id;
-                    debug('Phase 6: resolved pending bind from runtime', { workflow_id: resolvedWorkflowId, agent_type });
-                }
-                // Fall back to [WRFC:wid] extraction from task description if no pending bind resolved
-                if (!resolvedWorkflowId) {
-                    const taskDesc = input.task_description ?? input.task ?? '';
-                    resolvedWorkflowId = extractWorkflowId(taskDesc);
-                    if (resolvedWorkflowId) {
-                        debug('Phase 6: extracted workflow_id from task description', { workflow_id: resolvedWorkflowId });
+                // PRIORITY 2: Fall back to pending bind queue (for agents without WRFC tag)
+                if (!resolvedWorkflowId && agent_type) {
+                    const pendingBindResult = await runtimeClient.query({ kind: 'resolve_pending_bind', agent_type });
+                    if (pendingBindResult?.kind === 'pending_bind' && pendingBindResult.workflow_id) {
+                        resolvedWorkflowId = pendingBindResult.workflow_id;
+                        debug('Phase 6: resolved pending bind from runtime', { workflow_id: resolvedWorkflowId, agent_type });
                     }
                 }
                 const spawnedData = {

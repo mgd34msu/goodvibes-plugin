@@ -1224,19 +1224,24 @@ async function runSubagentStartHook() {
       if (runtimeClient.isAvailable()) {
         debug("Phase 6: runtime engine available, sending agent:spawned event");
         const { agent_id, agent_type } = normalizeAgentFields(input);
-        let pendingBindResult = null;
-        if (agent_type) {
-          pendingBindResult = await runtimeClient.query({ kind: "resolve_pending_bind", agent_type });
+        const taskDesc = input.task_description ?? input.task ?? "";
+        resolvedWorkflowId = extractWorkflowId(taskDesc);
+        if (resolvedWorkflowId) {
+          debug("Phase 6: extracted workflow_id from WRFC tag", { workflow_id: resolvedWorkflowId });
+          try {
+            const consumeResult = await runtimeClient.query({ kind: "consume_pending_bind", workflow_id: resolvedWorkflowId });
+            if (consumeResult?.kind === "pending_bind_consumed") {
+              debug("Phase 6: consumed pending binds", { removed: consumeResult.removed });
+            }
+          } catch {
+            debug("Phase 6: consume_pending_bind cleanup failed, non-critical");
+          }
         }
-        if (pendingBindResult?.kind === "pending_bind" && pendingBindResult.workflow_id) {
-          resolvedWorkflowId = pendingBindResult.workflow_id;
-          debug("Phase 6: resolved pending bind from runtime", { workflow_id: resolvedWorkflowId, agent_type });
-        }
-        if (!resolvedWorkflowId) {
-          const taskDesc = input.task_description ?? input.task ?? "";
-          resolvedWorkflowId = extractWorkflowId(taskDesc);
-          if (resolvedWorkflowId) {
-            debug("Phase 6: extracted workflow_id from task description", { workflow_id: resolvedWorkflowId });
+        if (!resolvedWorkflowId && agent_type) {
+          const pendingBindResult = await runtimeClient.query({ kind: "resolve_pending_bind", agent_type });
+          if (pendingBindResult?.kind === "pending_bind" && pendingBindResult.workflow_id) {
+            resolvedWorkflowId = pendingBindResult.workflow_id;
+            debug("Phase 6: resolved pending bind from runtime", { workflow_id: resolvedWorkflowId, agent_type });
           }
         }
         const spawnedData = {
