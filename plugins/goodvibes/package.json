@@ -1,6 +1,6 @@
 {
   "name": "goodvibes-plugin",
-  "version": "1.3.49",
+  "version": "1.3.50",
   "description": "GoodVibes master plugin for Claude Code",
   "type": "module",
   "scripts": {
