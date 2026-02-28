@@ -22242,8 +22242,14 @@ var IPCRouter = class {
     let workflowId;
     if (agentId && this.agentWorkflowResolver) {
       const resolved = this.agentWorkflowResolver(agentId);
-      if (resolved !== null) {
+      if (typeof resolved === "string" && resolved.length > 0) {
         workflowId = resolved;
+      } else {
+        return {
+          id: msgId,
+          status: "ok",
+          data: { kind: "system_message", message: "", directives: [] }
+        };
       }
     }
     const { message, directives } = this.drainDirectiveMessages(workflowId);
@@ -28884,6 +28890,24 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           });
         }
       }
+    }
+    if (effectiveState === "WRITING" && !agentType) {
+      const message = buildWorkflowCompleteMessage(workflow.id, "completed");
+      directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: message,
+        priority: 20,
+        source: "wrfc_chain_next",
+        workflow_id: workflow.id
+      });
+      if (agentId && agentWorkflowMap) {
+        agentWorkflowMap.unbind(agentId);
+      }
+      log5.info("wrfc_chain_next: auto-complete for typeless agent (no reviewable output)", {
+        workflow_id: workflow.id,
+        agent_id: agentId
+      });
+      return;
     }
     if (effectiveState === "WRITING" && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
       const message = buildWorkflowCompleteMessage(workflow.id, "completed");

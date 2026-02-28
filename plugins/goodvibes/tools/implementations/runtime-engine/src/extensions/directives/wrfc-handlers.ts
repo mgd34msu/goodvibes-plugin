@@ -545,6 +545,28 @@ export function registerWRFCHandlers(
       }
     }
 
+    // Auto-complete agents with no type (e.g. Claude Code internal agents like
+    // the context compaction summarizer) — they have no reviewable output and
+    // should never enter the WRFC cycle.
+    if (effectiveState === 'WRITING' && !agentType) {
+      const message = buildWorkflowCompleteMessage(workflow.id, 'completed');
+      directiveQueue.enqueue('subagent_stop', {
+        type: 'inject_system_message',
+        content: message,
+        priority: 20,
+        source: 'wrfc_chain_next',
+        workflow_id: workflow.id,
+      });
+      if (agentId && agentWorkflowMap) {
+        agentWorkflowMap.unbind(agentId);
+      }
+      log.info('wrfc_chain_next: auto-complete for typeless agent (no reviewable output)', {
+        workflow_id: workflow.id,
+        agent_id: agentId,
+      });
+      return;
+    }
+
     if (effectiveState === 'WRITING' && agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
       const message = buildWorkflowCompleteMessage(workflow.id, 'completed');
       directiveQueue.enqueue('subagent_stop', {
