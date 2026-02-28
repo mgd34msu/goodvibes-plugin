@@ -1,119 +1,58 @@
 /**
- * Math utilities module.
- * Pure TypeScript, no external dependencies.
+ * Math utilities module
  */
 
 /**
- * Adds two numbers.
- */
-export function add(a: number, b: number): number {
-  return a + b;
-}
-
-/**
- * Subtracts b from a.
- */
-export function subtract(a: number, b: number): number {
-  return a - b;
-}
-
-/**
- * Multiplies two numbers.
- */
-export function multiply(a: number, b: number): number {
-  return a * b;
-}
-
-/**
- * Divides a by b.
- * @throws {Error} if b is zero
- */
-export function divide(a: number, b: number): number {
-  if (b === 0) {
-    throw new Error('Division by zero');
-  }
-  return a / b;
-}
-
-/**
- * Clamps value to the range [min, max].
+ * Clamp a number to [min, max] range.
+ * @throws {RangeError} if min > max
  */
 export function clamp(value: number, min: number, max: number): number {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
+  if (min > max) {
+    throw new RangeError(`clamp: min (${min}) must not be greater than max (${max})`);
+  }
+  return Math.min(Math.max(value, min), max);
 }
 
 /**
  * Linear interpolation between a and b by factor t.
- * t=0 returns a, t=1 returns b.
+ * t=0 returns a, t=1 returns b. t outside [0,1] extrapolates.
+ * If any argument is NaN or Infinity, the result propagates NaN/Infinity
+ * per IEEE 754 arithmetic — this is mathematically correct behavior.
  */
 export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
 /**
- * Returns true if n is a prime number.
- * Returns false for numbers <= 1.
+ * Round a number to N decimal places.
+ * Uses exponential notation to avoid IEEE 754 floating-point precision errors.
+ * If value is NaN or Infinity, returns NaN or Infinity per IEEE 754 arithmetic.
+ * @throws {RangeError} if decimals is negative or non-integer
  */
-export function isPrime(n: number): boolean {
-  if (n <= 1) return false;
-  if (n <= 3) return true;
-  if (n % 2 === 0 || n % 3 === 0) return false;
-  for (let i = 5; i * i <= n; i += 6) {
-    if (n % i === 0 || n % (i + 2) === 0) return false;
+export function roundTo(value: number, decimals: number): number {
+  if (!Number.isInteger(decimals) || decimals < 0) {
+    throw new RangeError(`roundTo: decimals must be a non-negative integer, got ${decimals}`);
   }
-  return true;
+  if (!isFinite(value)) return value;
+  return Number(Math.round(Number(`${value}e${decimals}`)) + `e-${decimals}`);
 }
 
 /**
- * Returns the factorial of n.
- * factorial(0) = 1
- * @throws {Error} if n is negative
+ * Sum an array of numbers. Returns 0 for an empty array.
+ * If any element is NaN or Infinity, the result propagates NaN/Infinity
+ * per IEEE 754 arithmetic — this is mathematically correct behavior.
  */
-export function factorial(n: number): number {
-  if (n < 0) {
-    throw new Error('Factorial is not defined for negative numbers');
-  }
-  if (n === 0 || n === 1) return 1;
-  let result = 1;
-  for (let i = 2; i <= n; i++) {
-    result *= i;
-  }
-  return result;
+export function sum(numbers: number[]): number {
+  return numbers.reduce((acc, n) => acc + n, 0);
 }
 
 /**
- * Returns the greatest common divisor of a and b using the Euclidean algorithm.
- * Works with non-negative integers.
+ * Average of an array of numbers.
+ * @throws {RangeError} if the array is empty
  */
-export function gcd(a: number, b: number): number {
-  a = Math.abs(a);
-  b = Math.abs(b);
-  while (b !== 0) {
-    const temp = b;
-    b = a % b;
-    a = temp;
+export function average(numbers: number[]): number {
+  if (numbers.length === 0) {
+    throw new RangeError('average: cannot compute average of an empty array');
   }
-  return a;
-}
-
-/**
- * Returns the nth Fibonacci number (0-indexed: fibonacci(0)=0, fibonacci(1)=1).
- * @throws {Error} if n is negative
- */
-export function fibonacci(n: number): number {
-  if (n < 0) {
-    throw new Error('Fibonacci is not defined for negative indices');
-  }
-  if (n === 0) return 0;
-  if (n === 1) return 1;
-  let prev = 0;
-  let curr = 1;
-  for (let i = 2; i <= n; i++) {
-    const next = prev + curr;
-    prev = curr;
-    curr = next;
-  }
-  return curr;
+  return sum(numbers) / numbers.length;
 }

@@ -1,234 +1,236 @@
 import { describe, it, expect } from 'vitest';
-import {
-  add,
-  subtract,
-  multiply,
-  divide,
-  clamp,
-  lerp,
-  isPrime,
-  factorial,
-  gcd,
-  fibonacci,
-} from './math.js';
-
-describe('add', () => {
-  it('adds two positive numbers', () => {
-    expect(add(2, 3)).toBe(5);
-  });
-  it('adds negative numbers', () => {
-    expect(add(-2, -3)).toBe(-5);
-  });
-  it('adds positive and negative', () => {
-    expect(add(5, -3)).toBe(2);
-  });
-  it('adds zero', () => {
-    expect(add(0, 0)).toBe(0);
-    expect(add(5, 0)).toBe(5);
-  });
-  it('handles large numbers', () => {
-    expect(add(1e15, 1e15)).toBe(2e15);
-  });
-});
-
-describe('subtract', () => {
-  it('subtracts two positive numbers', () => {
-    expect(subtract(5, 3)).toBe(2);
-  });
-  it('subtracts resulting in negative', () => {
-    expect(subtract(3, 5)).toBe(-2);
-  });
-  it('subtracts negative numbers', () => {
-    expect(subtract(-3, -5)).toBe(2);
-  });
-  it('subtracts zero', () => {
-    expect(subtract(5, 0)).toBe(5);
-    expect(subtract(0, 0)).toBe(0);
-  });
-});
-
-describe('multiply', () => {
-  it('multiplies two positive numbers', () => {
-    expect(multiply(3, 4)).toBe(12);
-  });
-  it('multiplies by zero', () => {
-    expect(multiply(5, 0)).toBe(0);
-    expect(multiply(0, 0)).toBe(0);
-  });
-  it('multiplies negative numbers', () => {
-    expect(multiply(-3, 4)).toBe(-12);
-    expect(multiply(-3, -4)).toBe(12);
-  });
-  it('handles large numbers', () => {
-    expect(multiply(1e7, 1e7)).toBe(1e14);
-  });
-});
-
-describe('divide', () => {
-  it('divides two positive numbers', () => {
-    expect(divide(10, 2)).toBe(5);
-  });
-  it('divides resulting in fraction', () => {
-    expect(divide(1, 4)).toBe(0.25);
-  });
-  it('divides negative numbers', () => {
-    expect(divide(-10, 2)).toBe(-5);
-    expect(divide(-10, -2)).toBe(5);
-  });
-  it('divides zero by non-zero', () => {
-    expect(divide(0, 5)).toBe(0);
-  });
-  it('throws on division by zero', () => {
-    expect(() => divide(10, 0)).toThrow('Division by zero');
-    expect(() => divide(0, 0)).toThrow('Division by zero');
-  });
-});
+import { clamp, lerp, roundTo, sum, average } from './math.js';
 
 describe('clamp', () => {
   it('returns value when within range', () => {
     expect(clamp(5, 0, 10)).toBe(5);
   });
-  it('clamps to minimum when below range', () => {
+
+  it('returns min when value is below range', () => {
     expect(clamp(-5, 0, 10)).toBe(0);
   });
-  it('clamps to maximum when above range', () => {
+
+  it('returns max when value is above range', () => {
     expect(clamp(15, 0, 10)).toBe(10);
   });
+
   it('returns min when value equals min', () => {
     expect(clamp(0, 0, 10)).toBe(0);
   });
+
   it('returns max when value equals max', () => {
     expect(clamp(10, 0, 10)).toBe(10);
   });
-  it('handles negative range', () => {
-    expect(clamp(-5, -10, -1)).toBe(-5);
-    expect(clamp(-15, -10, -1)).toBe(-10);
+
+  it('works with negative ranges', () => {
+    expect(clamp(-3, -10, -1)).toBe(-3);
     expect(clamp(0, -10, -1)).toBe(-1);
+    expect(clamp(-20, -10, -1)).toBe(-10);
+  });
+
+  it('works when min equals max', () => {
+    expect(clamp(5, 3, 3)).toBe(3);
+    expect(clamp(3, 3, 3)).toBe(3);
+  });
+
+  it('works with floating point values', () => {
+    expect(clamp(0.5, 0.1, 0.9)).toBe(0.5);
+    expect(clamp(1.5, 0.1, 0.9)).toBe(0.9);
+  });
+
+  it('throws RangeError when min > max', () => {
+    expect(() => clamp(5, 10, 0)).toThrow(RangeError);
+    expect(() => clamp(5, 10, 0)).toThrow('min (10) must not be greater than max (0)');
+  });
+
+  it('returns NaN when value is NaN', () => {
+    expect(clamp(NaN, 0, 10)).toBeNaN();
+  });
+
+  it('returns min when min is NaN (NaN comparisons are false)', () => {
+    expect(clamp(5, NaN, 10)).toBeNaN();
   });
 });
 
 describe('lerp', () => {
   it('returns a when t=0', () => {
     expect(lerp(0, 10, 0)).toBe(0);
+    expect(lerp(5, 20, 0)).toBe(5);
   });
+
   it('returns b when t=1', () => {
     expect(lerp(0, 10, 1)).toBe(10);
+    expect(lerp(5, 20, 1)).toBe(20);
   });
+
   it('returns midpoint when t=0.5', () => {
     expect(lerp(0, 10, 0.5)).toBe(5);
+    expect(lerp(10, 20, 0.5)).toBe(15);
   });
-  it('works with negative values', () => {
-    expect(lerp(-10, 10, 0.5)).toBe(0);
+
+  it('interpolates correctly for arbitrary t', () => {
+    expect(lerp(0, 100, 0.25)).toBe(25);
+    expect(lerp(0, 100, 0.75)).toBe(75);
   });
-  it('extrapolates beyond t=1', () => {
-    expect(lerp(0, 10, 2)).toBe(20);
-  });
-  it('extrapolates below t=0', () => {
+
+  it('extrapolates when t < 0', () => {
     expect(lerp(0, 10, -1)).toBe(-10);
   });
-});
 
-describe('isPrime', () => {
-  it('returns false for numbers <= 1', () => {
-    expect(isPrime(0)).toBe(false);
-    expect(isPrime(1)).toBe(false);
-    expect(isPrime(-5)).toBe(false);
+  it('extrapolates when t > 1', () => {
+    expect(lerp(0, 10, 2)).toBe(20);
   });
-  it('returns true for 2 (smallest prime)', () => {
-    expect(isPrime(2)).toBe(true);
+
+  it('works with negative values', () => {
+    expect(lerp(-10, 10, 0.5)).toBe(0);
+    expect(lerp(-20, -10, 0.5)).toBe(-15);
   });
-  it('returns true for 3', () => {
-    expect(isPrime(3)).toBe(true);
+
+  it('returns a when a equals b', () => {
+    expect(lerp(5, 5, 0.5)).toBe(5);
   });
-  it('returns false for 4', () => {
-    expect(isPrime(4)).toBe(false);
+
+  it('propagates NaN when t is NaN', () => {
+    expect(lerp(0, 10, NaN)).toBeNaN();
   });
-  it('returns true for known primes', () => {
-    expect(isPrime(5)).toBe(true);
-    expect(isPrime(7)).toBe(true);
-    expect(isPrime(11)).toBe(true);
-    expect(isPrime(13)).toBe(true);
-    expect(isPrime(17)).toBe(true);
-    expect(isPrime(97)).toBe(true);
-  });
-  it('returns false for known composites', () => {
-    expect(isPrime(6)).toBe(false);
-    expect(isPrime(9)).toBe(false);
-    expect(isPrime(25)).toBe(false);
-    expect(isPrime(49)).toBe(false);
-  });
-  it('handles divisible by 3 branch', () => {
-    expect(isPrime(9)).toBe(false);
-    expect(isPrime(3)).toBe(true);
+
+  it('propagates NaN when a or b is NaN', () => {
+    expect(lerp(NaN, 10, 0.5)).toBeNaN();
+    expect(lerp(0, NaN, 0.5)).toBeNaN();
   });
 });
 
-describe('factorial', () => {
-  it('returns 1 for 0', () => {
-    expect(factorial(0)).toBe(1);
+describe('roundTo', () => {
+  it('rounds to 0 decimal places', () => {
+    expect(roundTo(3.7, 0)).toBe(4);
+    expect(roundTo(3.2, 0)).toBe(3);
   });
-  it('returns 1 for 1', () => {
-    expect(factorial(1)).toBe(1);
+
+  it('rounds to 1 decimal place', () => {
+    expect(roundTo(3.14159, 1)).toBe(3.1);
+    expect(roundTo(3.75, 1)).toBe(3.8);
   });
-  it('computes factorial of positive integers', () => {
-    expect(factorial(2)).toBe(2);
-    expect(factorial(3)).toBe(6);
-    expect(factorial(4)).toBe(24);
-    expect(factorial(5)).toBe(120);
-    expect(factorial(10)).toBe(3628800);
+
+  it('rounds to 2 decimal places', () => {
+    expect(roundTo(3.14159, 2)).toBe(3.14);
+    expect(roundTo(3.145, 2)).toBe(3.15);
   });
-  it('throws for negative numbers', () => {
-    expect(() => factorial(-1)).toThrow('Factorial is not defined for negative numbers');
-    expect(() => factorial(-100)).toThrow();
+
+  it('rounds to many decimal places', () => {
+    expect(roundTo(1.23456789, 5)).toBe(1.23457);
+  });
+
+  it('rounds negative numbers correctly', () => {
+    expect(roundTo(-3.7, 0)).toBe(-4);
+    expect(roundTo(-3.14159, 2)).toBe(-3.14);
+  });
+
+  it('returns integer when already rounded', () => {
+    expect(roundTo(5, 2)).toBe(5);
+    expect(roundTo(1.5, 1)).toBe(1.5);
+  });
+
+  it('throws RangeError for negative decimals', () => {
+    expect(() => roundTo(3.14, -1)).toThrow(RangeError);
+    expect(() => roundTo(3.14, -1)).toThrow('decimals must be a non-negative integer');
+  });
+
+  it('throws RangeError for non-integer decimals', () => {
+    expect(() => roundTo(3.14, 1.5)).toThrow(RangeError);
+    expect(() => roundTo(3.14, 1.5)).toThrow('decimals must be a non-negative integer');
+  });
+
+  it('fixes IEEE 754 floating-point precision (1.255 rounds to 1.26)', () => {
+    expect(roundTo(1.255, 2)).toBe(1.26);
+  });
+
+  it('returns NaN when value is NaN', () => {
+    expect(roundTo(NaN, 2)).toBeNaN();
+  });
+
+  it('returns Infinity when value is Infinity', () => {
+    expect(roundTo(Infinity, 2)).toBe(Infinity);
+    expect(roundTo(-Infinity, 2)).toBe(-Infinity);
   });
 });
 
-describe('gcd', () => {
-  it('returns gcd of two positive numbers', () => {
-    expect(gcd(12, 8)).toBe(4);
-    expect(gcd(100, 75)).toBe(25);
+describe('sum', () => {
+  it('returns 0 for an empty array', () => {
+    expect(sum([])).toBe(0);
   });
-  it('returns the number itself when other is zero', () => {
-    expect(gcd(5, 0)).toBe(5);
-    expect(gcd(0, 5)).toBe(5);
+
+  it('returns the single element for a one-element array', () => {
+    expect(sum([5])).toBe(5);
+    expect(sum([-3])).toBe(-3);
   });
-  it('returns 0 when both are zero', () => {
-    expect(gcd(0, 0)).toBe(0);
+
+  it('sums positive numbers', () => {
+    expect(sum([1, 2, 3, 4, 5])).toBe(15);
   });
-  it('returns 1 for coprime numbers', () => {
-    expect(gcd(7, 13)).toBe(1);
-    expect(gcd(3, 5)).toBe(1);
+
+  it('sums negative numbers', () => {
+    expect(sum([-1, -2, -3])).toBe(-6);
   });
-  it('handles negative numbers', () => {
-    expect(gcd(-12, 8)).toBe(4);
-    expect(gcd(12, -8)).toBe(4);
-    expect(gcd(-12, -8)).toBe(4);
+
+  it('sums mixed positive and negative numbers', () => {
+    expect(sum([-5, 5, -3, 3])).toBe(0);
   });
-  it('handles equal numbers', () => {
-    expect(gcd(5, 5)).toBe(5);
+
+  it('sums floating point numbers', () => {
+    expect(sum([0.1, 0.2, 0.3])).toBeCloseTo(0.6);
+  });
+
+  it('sums large arrays', () => {
+    const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
+    expect(sum(numbers)).toBe(5050);
+  });
+
+  it('propagates NaN when array contains NaN', () => {
+    expect(sum([1, NaN, 3])).toBeNaN();
+  });
+
+  it('propagates Infinity when array contains Infinity', () => {
+    expect(sum([1, Infinity, 3])).toBe(Infinity);
   });
 });
 
-describe('fibonacci', () => {
-  it('returns 0 for n=0', () => {
-    expect(fibonacci(0)).toBe(0);
+describe('average', () => {
+  it('throws RangeError for an empty array', () => {
+    expect(() => average([])).toThrow(RangeError);
+    expect(() => average([])).toThrow('cannot compute average of an empty array');
   });
-  it('returns 1 for n=1', () => {
-    expect(fibonacci(1)).toBe(1);
+
+  it('returns the single element for a one-element array', () => {
+    expect(average([5])).toBe(5);
+    expect(average([-3])).toBe(-3);
   });
-  it('computes fibonacci sequence', () => {
-    expect(fibonacci(2)).toBe(1);
-    expect(fibonacci(3)).toBe(2);
-    expect(fibonacci(4)).toBe(3);
-    expect(fibonacci(5)).toBe(5);
-    expect(fibonacci(6)).toBe(8);
-    expect(fibonacci(10)).toBe(55);
+
+  it('computes average of positive numbers', () => {
+    expect(average([1, 2, 3, 4, 5])).toBe(3);
   });
-  it('handles larger values', () => {
-    expect(fibonacci(20)).toBe(6765);
+
+  it('computes average of negative numbers', () => {
+    expect(average([-1, -2, -3])).toBe(-2);
   });
-  it('throws for negative indices', () => {
-    expect(() => fibonacci(-1)).toThrow('Fibonacci is not defined for negative indices');
-    expect(() => fibonacci(-10)).toThrow();
+
+  it('computes average of mixed numbers', () => {
+    expect(average([-5, 5])).toBe(0);
+    expect(average([1, 3])).toBe(2);
+  });
+
+  it('computes average of floating point numbers', () => {
+    expect(average([1.5, 2.5, 3.0])).toBeCloseTo(2.3333, 4);
+  });
+
+  it('computes average of equal numbers', () => {
+    expect(average([7, 7, 7, 7])).toBe(7);
+  });
+
+  it('propagates Infinity when array contains Infinity', () => {
+    expect(average([Infinity, 1])).toBe(Infinity);
+  });
+
+  it('propagates NaN when array contains NaN', () => {
+    expect(average([1, NaN, 3])).toBeNaN();
   });
 });

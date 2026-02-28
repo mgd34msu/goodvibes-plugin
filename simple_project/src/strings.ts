@@ -1,10 +1,10 @@
 /**
  * String utility functions.
- * Pure TypeScript, no external dependencies.
  */
 
 /**
- * Capitalize the first letter of a string.
+ * Capitalizes the first letter of a string.
+ * Returns the string unchanged if it is empty.
  */
 export function capitalize(str: string): string {
   if (str.length === 0) return str;
@@ -12,103 +12,57 @@ export function capitalize(str: string): string {
 }
 
 /**
- * Convert a string to camelCase.
- * Handles kebab-case, snake_case, and space-separated words.
- */
-export function camelCase(str: string): string {
-  if (str.length === 0) return str;
-  return str
-    .replace(/[-_\s]+(.)/g, (_, char: string) => char.toUpperCase())
-    .replace(/^(.)/, (char: string) => char.toLowerCase());
-}
-
-/**
- * Convert a string to kebab-case.
- */
-export function kebabCase(str: string): string {
-  if (str.length === 0) return str;
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
-    .replace(/[_\s]+/g, '-')
-    .toLowerCase()
-    .replace(/^-+|-+$/g, '');
-}
-
-/**
- * Convert a string to snake_case.
- */
-export function snakeCase(str: string): string {
-  if (str.length === 0) return str;
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1_$2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
-    .replace(/[-\s]+/g, '_')
-    .toLowerCase()
-    .replace(/^_+|_+$/g, '');
-}
-
-/**
- * Truncate a string to a maximum length, appending a suffix if truncated.
- * @param str - The string to truncate
- * @param maxLength - Maximum length of the result (including suffix)
- * @param suffix - Suffix to append when truncated (default: '...')
- */
-export function truncate(str: string, maxLength: number, suffix = '...'): string {
-  if (str.length <= maxLength) return str;
-  if (maxLength <= suffix.length) return suffix.slice(0, maxLength);
-  return str.slice(0, maxLength - suffix.length) + suffix;
-}
-
-/**
- * Convert a string to a URL-safe slug.
- * Lowercases, replaces spaces/special chars with hyphens, strips non-alphanumeric.
+ * Converts a string to a URL-friendly slug.
+ * Lowercases the input, strips special characters, and replaces whitespace
+ * and separator sequences with a single hyphen.
+ *
+ * Note: Non-Latin characters (CJK, Cyrillic, etc.) are stripped. For full
+ * Unicode-to-ASCII conversion, consider a dedicated library like `unidecode`.
  */
 export function slugify(str: string): string {
-  if (str.length === 0) return str;
   return str
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/[\s-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strips diacritics from accented chars
+    .replace(/[^\w\s-]/g, '')      // strip non-word, non-space, non-hyphen chars
+    .replace(/[\s_-]+/g, '-')      // collapse whitespace/underscores/hyphens into one hyphen
+    .replace(/^-+|-+$/g, '');      // strip leading/trailing hyphens
 }
 
 /**
- * Reverse a string.
+ * Truncates a string to at most `maxLength` characters.
+ * If the string exceeds `maxLength`, it is cut and the `suffix` (default `'...'`) is appended.
+ * If `maxLength` is less than or equal to the suffix length the string is truncated to `maxLength`
+ * characters and no suffix is added to avoid the result exceeding `maxLength`.
  */
-export function reverse(str: string): string {
-  return [...str].reverse().join('');
-}
-
-/**
- * Count non-overlapping occurrences of a search string within a string.
- * Returns 0 if search is empty.
- */
-export function countOccurrences(str: string, search: string): number {
-  if (search.length === 0) return 0;
-  let count = 0;
-  let pos = 0;
-  while ((pos = str.indexOf(search, pos)) !== -1) {
-    count++;
-    pos += search.length;
+export function truncate(str: string, maxLength: number, suffix = '...'): string {
+  if (maxLength <= 0) return '';
+  if (str.length <= maxLength) return str;
+  const truncatedLength = maxLength - suffix.length;
+  if (truncatedLength <= 0) {
+    return str.slice(0, maxLength);
   }
-  return count;
+  return str.slice(0, truncatedLength) + suffix;
 }
 
 /**
- * Check if a string is a palindrome.
- * Case-insensitive and ignores non-alphanumeric characters.
+ * Converts a camelCase string to kebab-case.
+ * Handles sequences of uppercase letters (acronyms) correctly:
+ * - A run of uppercase letters followed by a capitalized word is split before the last uppercase letter.
+ *   e.g. 'XMLParser' -> 'xml-parser', 'parseURLString' -> 'parse-url-string'
+ * - A single uppercase letter following a lowercase letter or digit gets a hyphen inserted before it.
+ *   e.g. 'helloWorld' -> 'hello-world'
  */
-export function isPalindrome(str: string): boolean {
-  const cleaned = str.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (cleaned.length === 0) return true;
-  return cleaned === [...cleaned].reverse().join('');
+export function camelToKebab(str: string): string {
+  return str
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase();
 }
 
 /**
- * Count words in a string (whitespace-separated).
+ * Counts the number of words in a string.
+ * Words are separated by one or more whitespace characters (spaces, tabs, newlines).
  * Returns 0 for empty or whitespace-only strings.
  */
 export function wordCount(str: string): number {

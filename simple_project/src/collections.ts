@@ -1,14 +1,21 @@
 /**
- * Collection utilities module
- * Pure TypeScript, no external dependencies
+ * Collection utility functions.
+ * All functions handle empty arrays gracefully and use proper TypeScript generics.
  */
 
 /**
- * Split array into chunks of given size.
- * Last chunk may be smaller if array length is not divisible by size.
+ * Split an array into chunks of the given size.
+ * The last chunk may be smaller if the array length is not divisible by size.
+ *
+ * @param array - The source array
+ * @param size - The desired chunk size (must be >= 1)
+ * @returns Array of chunks
+ * @throws {RangeError} If size is less than 1
  */
 export function chunk<T>(array: T[], size: number): T[][] {
-  if (size <= 0) throw new RangeError('chunk size must be greater than 0');
+  if (size < 1) {
+    throw new RangeError(`Chunk size must be >= 1, got ${size}`);
+  }
   const result: T[][] = [];
   for (let i = 0; i < array.length; i += size) {
     result.push(array.slice(i, i + size));
@@ -17,129 +24,78 @@ export function chunk<T>(array: T[], size: number): T[][] {
 }
 
 /**
- * Remove duplicate elements, preserving first-occurrence order.
+ * Remove duplicate values from an array.
+ * Equality is determined by value for primitives (uses Set semantics / SameValueZero).
+ *
+ * @param array - The source array
+ * @returns New array with duplicates removed, preserving first occurrence order
  */
 export function unique<T>(array: T[]): T[] {
-  const seen = new Set<T>();
-  const result: T[] = [];
-  for (const item of array) {
-    if (!seen.has(item)) {
-      seen.add(item);
-      result.push(item);
-    }
-  }
-  return result;
+  return [...new Set(array)];
 }
 
 /**
- * Flatten one level deep.
+ * Group array elements by a key derived from each element.
+ *
+ * @param array - The source array
+ * @param keyFn - Function that returns the grouping key for an element
+ * @returns Object mapping keys to arrays of elements
  */
-export function flatten<T>(array: (T | T[])[]): T[] {
-  const result: T[] = [];
+export function groupBy<T, K extends PropertyKey>(
+  array: T[],
+  keyFn: (item: T) => K
+): Partial<Record<K, T[]>> {
+  const result = {} as Partial<Record<K, T[]>>;
   for (const item of array) {
-    if (Array.isArray(item)) {
-      result.push(...item);
+    const key = keyFn(item);
+    const group = result[key];
+    if (group !== undefined) {
+      group.push(item);
     } else {
-      result.push(item);
+      result[key] = [item];
     }
   }
   return result;
 }
 
 /**
- * Group array elements by a property key.
+ * Zip multiple arrays together, stopping at the length of the shortest.
+ * Each element in the result is a tuple of the corresponding elements from each input.
+ *
+ * @param arrays - Two or more arrays to zip
+ * @returns Array of tuples
  */
-export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
-  const result: Record<string, T[]> = {};
-  for (const item of array) {
-    const groupKey = String(item[key]);
-    if (!Object.prototype.hasOwnProperty.call(result, groupKey)) {
-      result[groupKey] = [];
-    }
-    result[groupKey].push(item);
+export function zip<T extends unknown[][]>(
+  ...arrays: T
+): { [K in keyof T]: T[K] extends (infer U)[] ? U : never }[] {
+  if (arrays.length === 0) return [];
+  const minLen = Math.min(...arrays.map((a) => a.length));
+  const result: unknown[][] = [];
+  for (let i = 0; i < minLen; i++) {
+    result.push(arrays.map((a) => a[i]));
   }
-  return result;
+  return result as { [K in keyof T]: T[K] extends (infer U)[] ? U : never }[];
 }
 
 /**
- * Zip two arrays into pairs, truncating to the length of the shorter array.
- */
-export function zip<T, U>(a: T[], b: U[]): [T, U][] {
-  const length = Math.min(a.length, b.length);
-  const result: [T, U][] = [];
-  for (let i = 0; i < length; i++) {
-    result.push([a[i], b[i]]);
-  }
-  return result;
-}
-
-/**
- * Return elements in array `a` that are not in array `b`.
- */
-export function difference<T>(a: T[], b: T[]): T[] {
-  const bSet = new Set<T>(b);
-  return a.filter((item) => !bSet.has(item));
-}
-
-/**
- * Return elements present in both arrays.
- */
-export function intersection<T>(a: T[], b: T[]): T[] {
-  const bSet = new Set<T>(b);
-  return a.filter((item) => bSet.has(item));
-}
-
-/**
- * Return a new array with elements shuffled using Fisher-Yates algorithm.
- */
-export function shuffle<T>(array: T[]): T[] {
-  const result = array.slice();
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = result[i];
-    result[i] = result[j];
-    result[j] = temp;
-  }
-  return result;
-}
-
-/**
- * Split array into two groups based on a predicate.
- * First tuple element contains items where predicate is true,
- * second contains items where predicate is false.
+ * Partition an array into two groups based on a predicate.
+ *
+ * @param array - The source array
+ * @param predicateFn - Returns true for elements to include in the first group
+ * @returns Tuple of [matching, nonMatching]
  */
 export function partition<T>(
   array: T[],
-  predicate: (item: T) => boolean
+  predicateFn: (item: T) => boolean
 ): [T[], T[]] {
-  const pass: T[] = [];
-  const fail: T[] = [];
+  const matching: T[] = [];
+  const nonMatching: T[] = [];
   for (const item of array) {
-    if (predicate(item)) {
-      pass.push(item);
+    if (predicateFn(item)) {
+      matching.push(item);
     } else {
-      fail.push(item);
+      nonMatching.push(item);
     }
   }
-  return [pass, fail];
-}
-
-/**
- * Generate an array of numbers from start (inclusive) to end (exclusive)
- * with the given step (default 1).
- * Negative step generates descending ranges.
- */
-export function range(start: number, end: number, step = 1): number[] {
-  if (step === 0) throw new RangeError('range step must not be zero');
-  const result: number[] = [];
-  if (step > 0) {
-    for (let i = start; i < end; i += step) {
-      result.push(i);
-    }
-  } else {
-    for (let i = start; i > end; i += step) {
-      result.push(i);
-    }
-  }
-  return result;
+  return [matching, nonMatching];
 }
