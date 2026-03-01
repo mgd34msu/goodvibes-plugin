@@ -7,8 +7,8 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { createLogger } from '../../../shared/logger.js';
-import { generateEventId, timestamp, toErrorMessage } from '../../../shared/utils.js';
-import type { EventType } from '../../../extensions/events/types.js';
+import { assertOptionalString, generateEventId, timestamp, toErrorMessage } from '../../../shared/utils.js';
+import type { EventType, EventSource, EventPayload } from '../../../extensions/events/types.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
 
@@ -29,7 +29,7 @@ export const handleRuntimeWorkflow = async (
       return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
-    const action = params.action as string | undefined;
+    const action = assertOptionalString(params.action, 'action');
 
     if (!action) {
       return toError(
@@ -44,7 +44,7 @@ export const handleRuntimeWorkflow = async (
       if (!engine) {
         return toError('Workflow engine is disabled (set features.workflows_enabled = true to enable)', ctx.version, uptimeMs, Date.now() - start);
       }
-      const workflowType = params.workflow_type as string | undefined;
+      const workflowType = assertOptionalString(params.workflow_type, 'workflow_type');
       if (!workflowType) {
         return toError('Missing required field: workflow_type', ctx.version, uptimeMs, Date.now() - start);
       }
@@ -61,7 +61,7 @@ export const handleRuntimeWorkflow = async (
       if (!engine) {
         return toSuccess({ instance: null }, ctx.version, uptimeMs, Date.now() - start);
       }
-      const workflowId = params.workflow_id as string | undefined;
+      const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
       if (!workflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
@@ -74,7 +74,7 @@ export const handleRuntimeWorkflow = async (
         return toSuccess({ instances: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const filter = params.filter as Record<string, unknown> | undefined;
-      const statusFilter = filter?.status as string | undefined;
+      const statusFilter = assertOptionalString(filter?.status, 'filter.status');
       const instances = statusFilter
         ? engine.listAll().filter((i) => i.status === statusFilter)
         : engine.listActive();
@@ -85,8 +85,8 @@ export const handleRuntimeWorkflow = async (
       if (!engine) {
         return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
       }
-      const workflowId = params.workflow_id as string | undefined;
-      const event = params.event as string | undefined;
+      const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
+      const event = assertOptionalString(params.event, 'event');
       if (!workflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
@@ -98,8 +98,8 @@ export const handleRuntimeWorkflow = async (
         id: generateEventId(),
         timestamp: timestamp(),
         type: event as EventType,
-        source: { kind: 'mcp_tool', tool_name: 'runtime_workflow' } as import('../../../extensions/events/types.js').EventSource,
-        payload: { type: event as EventType, data: context } as import('../../../extensions/events/types.js').EventPayload,
+        source: { kind: 'mcp_tool', tool_name: 'runtime_workflow' } as EventSource,
+        payload: { type: event as EventType, data: context } as EventPayload,
         metadata: { session_id: '', sequence: 0, version: 1 as const },
       });
       const instance = engine.get(workflowId);
@@ -110,11 +110,11 @@ export const handleRuntimeWorkflow = async (
       if (!engine) {
         return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
       }
-      const workflowId = params.workflow_id as string | undefined;
+      const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
       if (!workflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
-      const reason = (params.reason as string | undefined) ?? 'cancelled via MCP';
+      const reason = assertOptionalString(params.reason, 'reason') ?? 'cancelled via MCP';
       engine.cancel(workflowId, reason);
       const instance = engine.get(workflowId);
       return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
@@ -124,7 +124,7 @@ export const handleRuntimeWorkflow = async (
       if (!engine) {
         return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
-      const workflowId = params.workflow_id as string | undefined;
+      const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
       if (!workflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }

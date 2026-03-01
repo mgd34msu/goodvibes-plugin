@@ -50,6 +50,36 @@ export function toErrorMessage(err: unknown): string {
 }
 
 /**
+ * Asserts that a value is a string, throwing a TypeError if not.
+ *
+ * Use instead of `value as string` for runtime type safety on unknown inputs.
+ *
+ * @param value     - The value to check.
+ * @param fieldName - The field name to include in the error message.
+ * @returns The value cast to string.
+ * @throws {TypeError} If value is not a string.
+ */
+export function assertString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') throw new TypeError(`${fieldName} must be a string, got ${typeof value}`);
+  return value;
+}
+
+/**
+ * Asserts that a value is a string or absent (null/undefined).
+ *
+ * Use instead of `value as string | undefined` for runtime type safety.
+ *
+ * @param value     - The value to check.
+ * @param fieldName - The field name to include in the error message.
+ * @returns The value as string, or undefined if null/undefined.
+ * @throws {TypeError} If value is neither a string nor null/undefined.
+ */
+export function assertOptionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return assertString(value, fieldName);
+}
+
+/**
  * Safely parse a JSON string, returning a fallback value on failure.
  *
  * Use this instead of bare `JSON.parse` for external-facing input where

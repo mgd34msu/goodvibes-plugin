@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { writeJsonSync } from './file-io.js';
 import { toErrorMessage, safeJsonParse } from './utils.js';
+import { ConfigError } from './errors.js';
 import { DEFAULT_HTTP_LISTENER_PORT } from './constants.js';
 import { join } from 'node:path';
 import { userInfo, tmpdir } from 'node:os';
@@ -331,7 +332,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     http_listener: {
       enabled: false,
       port: DEFAULT_HTTP_LISTENER_PORT,
-      bind_mode: 'localhost' as const,
+      bind_mode: 'localhost',
       address: '127.0.0.1',
       max_payload_bytes: 1 * 1024 * 1024, // 1MB
     },
@@ -345,6 +346,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
 function deepMerge<T extends object>(base: T, override: Partial<T>): T {
   const result = { ...base };
   for (const key of Object.keys(override) as (keyof T)[]) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
     const baseVal = base[key];
     const overrideVal = override[key];
     if (
@@ -361,6 +363,26 @@ function deepMerge<T extends object>(base: T, override: Partial<T>): T {
     }
   }
   return result;
+}
+
+/**
+ * Validates that critical numeric config fields are non-negative finite numbers.
+ *
+ * @param config - The resolved config to validate.
+ * @throws {ConfigError} If any critical numeric field is invalid.
+ */
+function validateConfig(config: RuntimeConfig): void {
+  const nums: [string, number][] = [
+    ['persistence.checkpoint_interval_ms', config.persistence.checkpoint_interval_ms],
+    ['health.memory_warn_mb', config.health.memory_warn_mb],
+    ['health.memory_critical_mb', config.health.memory_critical_mb],
+    ['executor.daemon.tick_interval_ms', config.executor.daemon.tick_interval_ms],
+  ];
+  for (const [name, val] of nums) {
+    if (typeof val !== 'number' || val < 0 || !Number.isFinite(val)) {
+      throw new ConfigError(`Invalid config: ${name} must be a non-negative finite number, got ${val}`);
+    }
+  }
 }
 
 /**
@@ -395,7 +417,9 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
       );
       return { ...DEFAULT_CONFIG };
     }
-    return deepMerge(DEFAULT_CONFIG, parsed as Partial<RuntimeConfig>);
+    const merged = deepMerge(DEFAULT_CONFIG, parsed as Partial<RuntimeConfig>);
+    validateConfig(merged);
+    return merged;
   } catch (err) {
     // ENOENT means the config file does not exist yet (normal first-run).
     // Any other error (parse failure, permission denied, etc.) is unexpected

@@ -13,9 +13,9 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { createLogger } from '../../../shared/logger.js';
-import { parseRelativeTime, toErrorMessage } from '../../../shared/utils.js';
+import { assertOptionalString, parseRelativeTime, toErrorMessage } from '../../../shared/utils.js';
 import { DEFAULT_EVENT_QUERY_LIMIT } from '../../../shared/constants.js';
-import type { EventFilter, RuntimeEvent } from '../../../extensions/events/types.js';
+import type { EventFilter, EventType, RuntimeEvent } from '../../../extensions/events/types.js';
 import type { Directive } from '../../../shared/ipc/protocol.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
@@ -112,7 +112,7 @@ export const handleRuntimeEvents = async (
       return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
-    const action = params.action as string | undefined;
+    const action = assertOptionalString(params.action, 'action');
 
     if (!action) {
       return toError(
@@ -121,7 +121,7 @@ export const handleRuntimeEvents = async (
       );
     }
 
-    const verbosity = (params.verbosity as string | undefined) ?? 'standard';
+    const verbosity = assertOptionalString(params.verbosity, 'verbosity') ?? 'standard';
     const filterRaw = (params.filter ?? {}) as Record<string, unknown>;
 
     // ── stats ─────────────────────────────────────────────────────────────────
@@ -144,9 +144,9 @@ export const handleRuntimeEvents = async (
       // Build an EventFilter for getHistory — only exact types supported there
       // We apply pattern filtering after the fact if glob patterns are present
       const historyFilter: EventFilter = {
-        correlation_id: filterRaw.correlation_id as string | undefined,
-        since: filterRaw.since ? resolveTimestamp(filterRaw.since as string) : undefined,
-        until: filterRaw.until as string | undefined,
+        correlation_id: assertOptionalString(filterRaw.correlation_id, 'filter.correlation_id'),
+        since: filterRaw.since ? resolveTimestamp(assertOptionalString(filterRaw.since, 'filter.since') ?? '') : undefined,
+        until: assertOptionalString(filterRaw.until, 'filter.until'),
         limit,
       };
 
@@ -183,7 +183,7 @@ export const handleRuntimeEvents = async (
           if (p === '*' || p.endsWith(':*')) {
             hasWildcards = true;
           } else {
-            exact.push(p as import('../../../extensions/events/types.js').EventType);
+            exact.push(p as EventType);
           }
         }
         // If only exact types (no wildcards), pass them to the log filter for efficiency
@@ -194,9 +194,9 @@ export const handleRuntimeEvents = async (
 
       const logFilter: EventFilter = {
         types: exactTypes,
-        correlation_id: filterRaw.correlation_id as string | undefined,
-        since: filterRaw.since ? resolveTimestamp(filterRaw.since as string) : undefined,
-        until: filterRaw.until as string | undefined,
+        correlation_id: assertOptionalString(filterRaw.correlation_id, 'filter.correlation_id'),
+        since: filterRaw.since ? resolveTimestamp(assertOptionalString(filterRaw.since, 'filter.since') ?? '') : undefined,
+        until: assertOptionalString(filterRaw.until, 'filter.until'),
         limit: typeof filterRaw.limit === 'number' ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT,
       };
 

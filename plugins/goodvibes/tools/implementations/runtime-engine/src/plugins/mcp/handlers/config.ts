@@ -14,7 +14,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { DEFAULT_CONFIG, saveConfig } from '../../../shared/config.js';
 import type { RuntimeConfig } from '../../../shared/config.js';
 import { createLogger } from '../../../shared/logger.js';
-import { toErrorMessage } from '../../../shared/utils.js';
+import { assertOptionalString, toErrorMessage } from '../../../shared/utils.js';
 import { ConfigError } from '../../../shared/errors.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
@@ -238,7 +238,7 @@ export const handleRuntimeConfig = async (
       );
     }
     const params = args as Record<string, unknown>;
-    const action = params.action as string | undefined;
+    const action = assertOptionalString(params.action, 'action');
 
     if (!action) {
       return toError(
@@ -251,7 +251,7 @@ export const handleRuntimeConfig = async (
 
     // ── get ──────────────────────────────────────────────────────────────────
     if (action === 'get') {
-      const key = params.key as string | undefined;
+      const key = assertOptionalString(params.key, 'key');
       const config = ctx.getConfig();
 
       if (key) {
@@ -264,7 +264,7 @@ export const handleRuntimeConfig = async (
 
     // ── set ──────────────────────────────────────────────────────────────────
     if (action === 'set') {
-      const key = params.key as string | undefined;
+      const key = assertOptionalString(params.key, 'key');
       const value = params.value;
 
       if (!key) {

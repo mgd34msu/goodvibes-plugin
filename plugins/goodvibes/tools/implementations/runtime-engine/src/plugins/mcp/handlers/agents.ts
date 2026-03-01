@@ -14,7 +14,7 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { createLogger } from '../../../shared/logger.js';
-import { toErrorMessage } from '../../../shared/utils.js';
+import { assertOptionalString, assertString, toErrorMessage } from '../../../shared/utils.js';
 import type { CoordinatedSpawnOptions } from '../../../extensions/agents/types.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
@@ -36,7 +36,7 @@ export const handleRuntimeAgents = async (
       return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
-    const action = params.action as string | undefined;
+    const action = assertOptionalString(params.action, 'action');
 
     if (!action) {
       return toError(
@@ -64,9 +64,9 @@ export const handleRuntimeAgents = async (
         return toSuccess({ agents: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
       const filter = (params.filter as Record<string, unknown> | undefined) ?? {};
-      const workflowId = (params.workflow_id as string | undefined) ?? (filter.workflow_id as string | undefined);
-      const statusFilter = filter.status as string | undefined;
-      const typeFilter = filter.type as string | undefined;
+      const workflowId = assertOptionalString(params.workflow_id, 'workflow_id') ?? assertOptionalString(filter.workflow_id, 'filter.workflow_id');
+      const statusFilter = assertOptionalString(filter.status, 'filter.status');
+      const typeFilter = assertOptionalString(filter.type, 'filter.type');
 
       // Gather agents: if workflow specified, use listByWorkflow; otherwise listActive
       let agents: ReturnType<typeof coordinator.listActive> = workflowId
@@ -83,7 +83,7 @@ export const handleRuntimeAgents = async (
     }
 
     if (action === 'get') {
-      const agentId = params.agent_id as string | undefined;
+      const agentId = assertOptionalString(params.agent_id, 'agent_id');
       if (!agentId) {
         return toError('Missing required field: agent_id', ctx.version, uptimeMs, Date.now() - start);
       }
@@ -109,12 +109,12 @@ export const handleRuntimeAgents = async (
         return toError('spawn.type and spawn.task are required', ctx.version, uptimeMs, Date.now() - start);
       }
       const options: CoordinatedSpawnOptions = {
-        type: spawnOpts.type as string,
-        task: spawnOpts.task as string,
+        type: assertString(spawnOpts.type, 'spawn.type'),
+        task: assertString(spawnOpts.task, 'spawn.task'),
         budget: spawnOpts.budget as number | undefined,
         priority: spawnOpts.priority as number | undefined,
         depends_on: spawnOpts.depends_on as string[] | undefined,
-        workflow_id: spawnOpts.workflow_id as string | undefined,
+        workflow_id: assertOptionalString(spawnOpts.workflow_id, 'spawn.workflow_id'),
         wrfc_phase: spawnOpts.wrfc_phase as CoordinatedSpawnOptions['wrfc_phase'],
       };
       const agentId = coordinator.spawn(options);
@@ -124,7 +124,7 @@ export const handleRuntimeAgents = async (
     }
 
     if (action === 'cancel') {
-      const agentId = params.agent_id as string | undefined;
+      const agentId = assertOptionalString(params.agent_id, 'agent_id');
       if (!agentId) {
         return toError('Missing required field: agent_id', ctx.version, uptimeMs, Date.now() - start);
       }

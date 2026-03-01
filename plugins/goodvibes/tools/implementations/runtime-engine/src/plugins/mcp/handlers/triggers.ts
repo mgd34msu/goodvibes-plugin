@@ -7,8 +7,8 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { createLogger } from '../../../shared/logger.js';
-import { generateEventId, timestamp, toErrorMessage } from '../../../shared/utils.js';
-import type { EventType } from '../../../extensions/events/types.js';
+import { assertOptionalString, generateEventId, timestamp, toErrorMessage } from '../../../shared/utils.js';
+import type { EventType, EventSource, EventPayload } from '../../../extensions/events/types.js';
 import type { TriggerDefinition } from '../../../extensions/triggers/types.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
@@ -89,7 +89,7 @@ export const handleRuntimeTriggers = async (
       return toError('Invalid arguments: expected an object', ctx.version, uptimeMs, Date.now() - start);
     }
     const params = args as Record<string, unknown>;
-    const action = params.action as string | undefined;
+    const action = assertOptionalString(params.action, 'action');
 
     if (!action) {
       return toError(
@@ -106,7 +106,7 @@ export const handleRuntimeTriggers = async (
     }
 
     if (action === 'get') {
-      const triggerId = params.trigger_id as string | undefined;
+      const triggerId = assertOptionalString(params.trigger_id, 'trigger_id');
       if (!triggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
@@ -159,7 +159,7 @@ export const handleRuntimeTriggers = async (
       if (!registry) {
         return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
-      const triggerId = params.trigger_id as string | undefined;
+      const triggerId = assertOptionalString(params.trigger_id, 'trigger_id');
       if (!triggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
@@ -172,7 +172,7 @@ export const handleRuntimeTriggers = async (
       if (!registry) {
         return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
-      const triggerId = params.trigger_id as string | undefined;
+      const triggerId = assertOptionalString(params.trigger_id, 'trigger_id');
       if (!triggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
@@ -186,7 +186,7 @@ export const handleRuntimeTriggers = async (
       if (!registry) {
         return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
-      const triggerId = params.trigger_id as string | undefined;
+      const triggerId = assertOptionalString(params.trigger_id, 'trigger_id');
       const testEvent = params.test_event as Record<string, unknown> | undefined;
       if (!triggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
@@ -198,8 +198,8 @@ export const handleRuntimeTriggers = async (
         id: generateEventId(),
         timestamp: timestamp(),
         type: (testEvent.type as EventType) ?? 'test:mock' as EventType,
-        source: (testEvent.source as import('../../../extensions/events/types.js').EventSource) ?? { kind: 'mcp_tool', tool_name: 'runtime_triggers' } as import('../../../extensions/events/types.js').EventSource,
-        payload: (testEvent.payload as import('../../../extensions/events/types.js').EventPayload) ?? { type: 'test:mock' as EventType, data: {} } as import('../../../extensions/events/types.js').EventPayload,
+        source: (testEvent.source as EventSource) ?? { kind: 'mcp_tool', tool_name: 'runtime_triggers' } as EventSource,
+        payload: (testEvent.payload as EventPayload) ?? { type: 'test:mock' as EventType, data: {} } as EventPayload,
         metadata: { session_id: '', sequence: 0, version: 1 as const },
       };
       const results = await registry.evaluate(mockEvent);
