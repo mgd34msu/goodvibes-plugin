@@ -26200,9 +26200,10 @@ __name(estimateComplexity, "estimateComplexity");
 // src/extensions/recommendations.ts
 function recommendSkills(skillsIndex, args) {
   const keywords = extractKeywords(args.task);
-  const results = query(skillsIndex, args.task, args.max_results || 5);
   const category = detectCategory(args.task);
   const complexity = estimateComplexity(keywords);
+  const searchQuery = category !== "general" ? category : keywords.length > 0 ? keywords.slice(0, 5).join(" ") : args.task;
+  const results = query(skillsIndex, searchQuery, args.max_results || 5);
   const recommendations = results.map((r) => ({
     skill: r.name,
     path: r.path,
