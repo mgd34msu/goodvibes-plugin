@@ -31,6 +31,10 @@ inputSchema:
     auto_fix:
       type: boolean
       description: "Automatically generate type imports to fix drift. Defaults to false."
+    framework:
+      type: string
+      enum: ["nextjs", "express", "fastify", "hono", "auto"]
+      description: "Framework to use for route detection. Defaults to auto-detect from package.json. Specify 'express', 'fastify', or 'hono' when auto-detection fails for non-Next.js projects."
   required: []
 
 examples:

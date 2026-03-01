@@ -23,13 +23,14 @@ import type {
   FrontendCall,
   TypeDrift,
   SyncApiTypesResult,
+  ApiRoute,
+  Framework,
 } from '../../core/api/types.js';
 import { BACKEND_PATHS } from '../../core/api/constants.js';
+import { detectFramework } from '../../core/api/detection.js';
 import { matchEndpoint, normalizeEndpoint, generateFixSuggestion } from '../../core/api/matching.js';
 import { compareTypes, extractTypesFromHandler } from '../../core/api/type-extraction.js';
 import { getApiRoutes } from './routes.js';
-
-import type { ApiRoute } from '../../core/api/types.js';
 
 /**
  * Auto-detect backend API path by checking known convention directories.
@@ -56,12 +57,13 @@ async function detectBackendPath(projectPath: string): Promise<string | null> {
  */
 async function parseBackendRoutes(
   projectPath: string,
-  backendPath: string
+  backendPath: string,
+  framework?: 'nextjs' | 'express' | 'fastify' | 'hono' | 'auto'
 ): Promise<BackendRoute[]> {
   const routes: BackendRoute[] = [];
 
-  // Use the routes extension to discover API routes
-  const apiRoutesResponse = getApiRoutes({ path: projectPath });
+  // Use the routes extension to discover API routes, passing framework if specified
+  const apiRoutesResponse = getApiRoutes({ path: projectPath, framework: framework || 'auto' });
 
   if (apiRoutesResponse.isError) {
     return routes;
@@ -327,21 +329,39 @@ export async function syncApiTypes(
     frontend_path = 'src',
     api_pattern = 'fetch|axios|api\\.',
     auto_fix = false,
+    framework: frameworkArg = 'auto',
   } = args;
 
   const projectPath = PROJECT_ROOT;
+
+  // Resolve the effective framework — needed to decide path detection strategy
+  const effectiveFramework: Framework | null =
+    frameworkArg === 'auto' ? detectFramework(projectPath) : (frameworkArg as Framework);
+
+  // Next.js uses file-system conventions (route.ts files in known dirs),
+  // so directory-based path detection is required. Express/Fastify/Hono use
+  // router patterns that may live anywhere in the project, so we fall back
+  // to the project root rather than requiring a specific directory match.
+  const isNextJs = effectiveFramework === 'nextjs';
 
   // Auto-detect or use provided backend path
   let resolvedBackendPath: string | undefined = backend_path;
   if (!resolvedBackendPath) {
     const detected = await detectBackendPath(projectPath);
     if (!detected) {
-      return fail(
-        'Could not auto-detect backend API path. Please provide backend_path parameter. ' +
-        'Searched: ' + BACKEND_PATHS.join(', ')
-      );
+      if (isNextJs) {
+        // Next.js routes must be in a known directory — hard failure
+        return fail(
+          'Could not auto-detect backend API path. Please provide backend_path parameter. ' +
+          'Searched: ' + BACKEND_PATHS.join(', ')
+        );
+      }
+      // For Express/Fastify/Hono, routes are not directory-based.
+      // Use project root so the router parser can scan all source files.
+      resolvedBackendPath = '.';
+    } else {
+      resolvedBackendPath = detected;
     }
-    resolvedBackendPath = detected;
   }
 
   // Verify backend path exists
@@ -356,13 +376,19 @@ export async function syncApiTypes(
     return fail(`Frontend path not found: ${fullFrontendPath}`);
   }
 
-  // Parse backend routes
-  const backendRoutes = await parseBackendRoutes(projectPath, resolvedBackendPath);
+  // Parse backend routes, forwarding the resolved framework
+  const backendRoutes = await parseBackendRoutes(projectPath, resolvedBackendPath, frameworkArg);
 
   if (backendRoutes.length === 0) {
+    const frameworkHint = effectiveFramework
+      ? `Detected framework: ${effectiveFramework}. `
+      : '';
     return fail(
       `No API routes found in ${resolvedBackendPath}. ` +
-      'Ensure you have route handlers (route.ts for Next.js App Router, or *.ts for Express/Fastify/Hono).'
+      frameworkHint +
+      'Ensure you have route handlers (route.ts for Next.js App Router, or ' +
+      'router.get/post/put/delete patterns for Express/Fastify/Hono). ' +
+      'You can also specify the framework explicitly with the framework parameter.'
     );
   }
 

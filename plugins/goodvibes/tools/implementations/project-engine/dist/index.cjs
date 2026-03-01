@@ -246344,7 +246344,8 @@ var apiSchemas = [
         description: { type: "string", description: "API description for the OpenAPI info block." },
         server_url: { type: "string", description: "Base URL for the API server." },
         include_examples: { type: "boolean", description: "Generate example values for request/response schemas." },
-        format: { type: "string", enum: ["json", "yaml"], description: 'Output format for the spec. Defaults to "json".' }
+        format: { type: "string", enum: ["json", "yaml"], description: 'Output format for the spec. Defaults to "json".' },
+        framework: { type: "string", enum: ["nextjs", "express", "fastify", "hono", "auto"], description: 'Framework to use for route detection. Defaults to "auto" (auto-detect).' }
       },
       additionalProperties: false
     }
@@ -246375,7 +246376,8 @@ var apiSchemas = [
         backend_path: { type: "string", description: "Path to the backend API directory. Auto-detected if not specified." },
         frontend_path: { type: "string", description: "Path to the frontend source directory. Auto-detected if not specified." },
         api_pattern: { type: "string", description: "Regex pattern to match API call expressions in frontend code." },
-        auto_fix: { type: "boolean", description: "Automatically generate type imports to fix drift. Defaults to false." }
+        auto_fix: { type: "boolean", description: "Automatically generate type imports to fix drift. Defaults to false." },
+        framework: { type: "string", enum: ["nextjs", "express", "fastify", "hono", "auto"], description: "Framework to use for route detection. Defaults to auto-detect from package.json. Specify express, fastify, or hono when auto-detection fails for non-Next.js projects." }
       },
       additionalProperties: false
     }
@@ -247835,7 +247837,7 @@ function listChangedFilesWithDiff(baseRef, headRef, paths, projectRoot, includeT
     const [status, ...fileParts] = line.split("	");
     const normalizedStatus = status.startsWith("R") ? "R" : status.startsWith("C") ? "C" : status;
     const file2 = normalizedStatus === "R" || normalizedStatus === "C" ? fileParts[fileParts.length - 1] : fileParts.join("	");
-    if (!file2.match(/\.(ts|tsx|js|jsx|mts|cts)$/)) continue;
+    if (!file2.match(/\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/)) continue;
     if (file2.endsWith(".d.ts")) continue;
     if (!includeTests && (file2.includes(".test.") || file2.includes(".spec."))) continue;
     let diff = "";
@@ -248328,7 +248330,7 @@ async function getApiSurface(args) {
     let entryPoints;
     if (args.entry_points && args.entry_points.length > 0) {
       entryPoints = args.entry_points.map(
-        (ep) => path10.isAbsolute(ep) ? ep : path10.resolve(absolutePath, ep)
+        (ep) => path10.isAbsolute(ep) ? ep : path10.resolve(PROJECT_ROOT, ep)
       );
       const existChecks = await Promise.all(entryPoints.map((ep) => fs5.access(ep).then(() => true, () => false)));
       entryPoints = entryPoints.filter((_, i) => existChecks[i]);
@@ -251920,7 +251922,7 @@ function generateOpenApi(args) {
   const projectPath = PROJECT_ROOT;
   const warnings = [];
   const missingTypes = [];
-  const apiRoutesResponse = getApiRoutes({ path: "." });
+  const apiRoutesResponse = getApiRoutes({ path: ".", framework: args.framework });
   let apiRoutesResult;
   try {
     const responseText = apiRoutesResponse.content[0]?.text;
@@ -252425,15 +252427,25 @@ async function validateApiContract(args) {
           endpointsPassed++;
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        const isTimeout = errorMessage.includes("timeout");
+        let errorMessage = err instanceof Error ? err.message : String(err);
+        if (!errorMessage && err instanceof Error) {
+          const nodeErr = err;
+          const parts = [];
+          if (nodeErr.syscall) parts.push(nodeErr.syscall);
+          if (nodeErr.code) parts.push(nodeErr.code);
+          if (nodeErr.address) parts.push(nodeErr.address);
+          if (nodeErr.port != null) parts.push(String(nodeErr.port));
+          errorMessage = parts.length > 0 ? parts.join(" ") : "Unknown network error";
+        }
+        if (!errorMessage) errorMessage = "Unknown network error";
+        const isTimeout = errorMessage.toLowerCase().includes("timeout");
         issues.push({
           endpoint: pathPattern,
           method: method.toUpperCase(),
           type: isTimeout ? "timeout" : "network",
           message: errorMessage,
           expected: "Successful response",
-          actual: "Error"
+          actual: isTimeout ? "Timeout" : `Error: ${errorMessage}`
         });
         endpointsFailed++;
       }
@@ -252542,9 +252554,9 @@ async function detectBackendPath(projectPath) {
   return null;
 }
 __name(detectBackendPath, "detectBackendPath");
-async function parseBackendRoutes(projectPath, backendPath) {
+async function parseBackendRoutes(projectPath, backendPath, framework) {
   const routes = [];
-  const apiRoutesResponse = getApiRoutes({ path: projectPath });
+  const apiRoutesResponse = getApiRoutes({ path: projectPath, framework: framework || "auto" });
   if (apiRoutesResponse.isError) {
     return routes;
   }
@@ -252715,18 +252727,25 @@ async function syncApiTypes(args) {
     backend_path,
     frontend_path = "src",
     api_pattern = "fetch|axios|api\\.",
-    auto_fix = false
+    auto_fix = false,
+    framework: frameworkArg = "auto"
   } = args;
   const projectPath = PROJECT_ROOT;
+  const effectiveFramework = frameworkArg === "auto" ? detectFramework(projectPath) : frameworkArg;
+  const isNextJs = effectiveFramework === "nextjs";
   let resolvedBackendPath = backend_path;
   if (!resolvedBackendPath) {
     const detected = await detectBackendPath(projectPath);
     if (!detected) {
-      return fail(
-        "Could not auto-detect backend API path. Please provide backend_path parameter. Searched: " + BACKEND_PATHS.join(", ")
-      );
+      if (isNextJs) {
+        return fail(
+          "Could not auto-detect backend API path. Please provide backend_path parameter. Searched: " + BACKEND_PATHS.join(", ")
+        );
+      }
+      resolvedBackendPath = ".";
+    } else {
+      resolvedBackendPath = detected;
     }
-    resolvedBackendPath = detected;
   }
   const fullBackendPath = path21.join(projectPath, resolvedBackendPath);
   if (!await fileExists(fullBackendPath)) {
@@ -252736,10 +252755,11 @@ async function syncApiTypes(args) {
   if (!await fileExists(fullFrontendPath)) {
     return fail(`Frontend path not found: ${fullFrontendPath}`);
   }
-  const backendRoutes = await parseBackendRoutes(projectPath, resolvedBackendPath);
+  const backendRoutes = await parseBackendRoutes(projectPath, resolvedBackendPath, frameworkArg);
   if (backendRoutes.length === 0) {
+    const frameworkHint = effectiveFramework ? `Detected framework: ${effectiveFramework}. ` : "";
     return fail(
-      `No API routes found in ${resolvedBackendPath}. Ensure you have route handlers (route.ts for Next.js App Router, or *.ts for Express/Fastify/Hono).`
+      `No API routes found in ${resolvedBackendPath}. ` + frameworkHint + "Ensure you have route handlers (route.ts for Next.js App Router, or router.get/post/put/delete patterns for Express/Fastify/Hono). You can also specify the framework explicitly with the framework parameter."
     );
   }
   const pattern = new RegExp(api_pattern, "i");
@@ -255467,7 +255487,8 @@ async function queryDatabase(args) {
   let explainOutput;
   if (explain && !isWriteOperation(queryToExecute)) {
     try {
-      const explainResult = await executeQuery(connectionInfo, `EXPLAIN ${queryToExecute}`, args.params || []);
+      const explainPrefix = connectionInfo.type === "sqlite" ? "EXPLAIN QUERY PLAN" : "EXPLAIN";
+      const explainResult = await executeQuery(connectionInfo, `${explainPrefix} ${queryToExecute}`, args.params || []);
       explainOutput = JSON.stringify(explainResult.rows, null, 2);
     } catch (error2) {
       explainOutput = `EXPLAIN failed: ${error2 instanceof Error ? error2.message : "Unknown error"}`;
@@ -256374,6 +256395,8 @@ var LOG_LINE_PATTERNS = [
   /^\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]?\s*[-:]?\s*(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)[-:]\s*(.+)/i,
   // LEVEL [timestamp] message
   /^(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)\s*\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]?\s*[-:]?\s*(.+)/i,
+  // timestamp [LEVEL] message (bracketed level after timestamp)
+  /^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s+\[(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)\]\s*(.+)/i,
   // timestamp LEVEL message
   /^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s+(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)\s+(.+)/i,
   // Just LEVEL: message
@@ -256722,6 +256745,7 @@ function matchPatterns(entries, patterns) {
   const results = {};
   for (const pattern of patterns) {
     results[pattern.name] = 0;
+    if (!pattern.regex || pattern.regex.trim() === "") continue;
     try {
       const regex = new RegExp(pattern.regex, "i");
       for (const entry of entries) {
@@ -257572,6 +257596,19 @@ function extractModules(content) {
       }
     }
   }
+  const requireRegex = /\brequire\(["']([^./"'][^"']*)["']\)/g;
+  while ((match = requireRegex.exec(content)) !== null) {
+    const moduleName = match[1];
+    const pkgName = extractPackageName(moduleName);
+    if (pkgName && !seen.has(pkgName)) {
+      seen.add(pkgName);
+      modules.push({
+        name: moduleName,
+        size: PACKAGE_ALTERNATIVES[pkgName]?.size || 0,
+        from_package: pkgName
+      });
+    }
+  }
   const largePackagePatterns = [
     { pattern: /\bmoment\b.*\b(locale|format|parse)\b/i, pkg: "moment" },
     { pattern: /\blodash\b|\b_\.(map|filter|reduce|each)\b/i, pkg: "lodash" },
@@ -257813,8 +257850,9 @@ async function analyzeBundle(args) {
     }
   }
   const largestModules = Array.from(moduleMap.values()).sort((a, b) => b.size - a.size).slice(0, 10);
-  const duplicates = await detectDuplicates(PROJECT_ROOT);
-  const treeShakingIssues = await checkTreeShakingIssues(PROJECT_ROOT);
+  const targetProjectPath = args.path ? node_path15.resolve(PROJECT_ROOT, args.path) : PROJECT_ROOT;
+  const duplicates = await detectDuplicates(targetProjectPath);
+  const treeShakingIssues = await checkTreeShakingIssues(targetProjectPath);
   const totalSizeInfo = {
     raw: totalRaw,
     gzip: totalGzip,

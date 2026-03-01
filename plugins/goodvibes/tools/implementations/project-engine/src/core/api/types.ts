@@ -74,6 +74,8 @@ export interface OpenApiArgs {
   include_examples?: boolean;
   /** Output format (default: "json") */
   format?: 'json' | 'yaml';
+  /** Framework to use for route detection; 'auto' detects from package.json */
+  framework?: 'nextjs' | 'express' | 'fastify' | 'hono' | 'auto';
 }
 
 /** JSON Schema definition (alias for SchemaObject for backward compatibility) */
@@ -308,6 +310,8 @@ export interface SyncApiTypesArgs {
   api_pattern?: string;
   /** Generate fix suggestions (default: false) */
   auto_fix?: boolean;
+  /** Framework to use for route detection; 'auto' detects from package.json (default: auto) */
+  framework?: 'nextjs' | 'express' | 'fastify' | 'hono' | 'auto';
 }
 
 /**

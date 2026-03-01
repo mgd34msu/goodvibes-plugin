@@ -72,8 +72,11 @@ export async function getApiSurface(args: ApiSurfaceArgs): Promise<McpResponse> 
     // Get or detect entry points
     let entryPoints: string[];
     if (args.entry_points && args.entry_points.length > 0) {
+      // entry_points are resolved relative to PROJECT_ROOT (same as `path` arg),
+      // not relative to absolutePath — callers pass root-relative paths like
+      // "delete_me/src/index.ts", not sub-paths within the scanned directory.
       entryPoints = args.entry_points.map((ep) =>
-        path.isAbsolute(ep) ? ep : path.resolve(absolutePath, ep)
+        path.isAbsolute(ep) ? ep : path.resolve(PROJECT_ROOT, ep)
       );
       const existChecks = await Promise.all(entryPoints.map((ep) => fs.access(ep).then(() => true, () => false)));
       entryPoints = entryPoints.filter((_, i) => existChecks[i]);

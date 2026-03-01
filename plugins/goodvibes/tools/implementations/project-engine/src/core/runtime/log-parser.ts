@@ -25,6 +25,8 @@ const LOG_LINE_PATTERNS: RegExp[] = [
   /^\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]?\s*[-:]?\s*(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)[-:]\s*(.+)/i,
   // LEVEL [timestamp] message
   /^(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)\s*\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]?\s*[-:]?\s*(.+)/i,
+  // timestamp [LEVEL] message (bracketed level after timestamp)
+  /^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s+\[(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)\]\s*(.+)/i,
   // timestamp LEVEL message
   /^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s+(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG)\s+(.+)/i,
   // Just LEVEL: message

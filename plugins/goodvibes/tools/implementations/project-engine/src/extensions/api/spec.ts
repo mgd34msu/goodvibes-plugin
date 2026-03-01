@@ -59,7 +59,7 @@ export function generateOpenApi(args: OpenApiArgs): McpResponse {
   const missingTypes: MissingType[] = [];
 
   // Get API routes using the routes extension
-  const apiRoutesResponse = getApiRoutes({ path: '.' });
+  const apiRoutesResponse = getApiRoutes({ path: '.', framework: args.framework });
 
   // Parse the response
   let apiRoutesResult: ApiRoutesResult;

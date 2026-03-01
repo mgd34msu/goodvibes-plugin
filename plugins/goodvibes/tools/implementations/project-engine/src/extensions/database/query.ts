@@ -137,7 +137,10 @@ export async function queryDatabase(args: QueryDatabaseArgs): Promise<McpRespons
   let explainOutput: string | undefined;
   if (explain && !isWriteOperation(queryToExecute)) {
     try {
-      const explainResult = await executeQuery(connectionInfo, `EXPLAIN ${queryToExecute}`, args.params || []);
+      // SQLite's raw EXPLAIN returns VM opcodes (bytecode), not useful for query optimization.
+      // Use EXPLAIN QUERY PLAN instead, which returns a human-readable execution plan.
+      const explainPrefix = connectionInfo.type === 'sqlite' ? 'EXPLAIN QUERY PLAN' : 'EXPLAIN';
+      const explainResult = await executeQuery(connectionInfo, `${explainPrefix} ${queryToExecute}`, args.params || []);
       explainOutput = JSON.stringify(explainResult.rows, null, 2);
     } catch (error) {
       explainOutput = `EXPLAIN failed: ${error instanceof Error ? error.message : 'Unknown error'}`;

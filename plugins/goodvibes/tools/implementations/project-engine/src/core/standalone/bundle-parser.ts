@@ -38,6 +38,7 @@ const PACKAGE_ALTERNATIVES: Record<string, { size: number; alternatives: string[
  *
  * Scans bundle text for:
  * - Webpack module comment annotations (/*! package-name *\/)
+ * - CJS require() calls: require("package-name") or require('package-name')
  * - Common large package signatures in minified code
  *
  * @param content - Text content of a bundle/chunk file
@@ -62,6 +63,22 @@ export function extractModules(content: string): ModuleInfo[] {
           from_package: pkgName,
         });
       }
+    }
+  }
+
+  // CJS require() calls: require("package-name") or require('package-name')
+  // Matches top-level package requires (excludes relative paths starting with . or /)
+  const requireRegex = /\brequire\(["']([^./"'][^"']*)["']\)/g;
+  while ((match = requireRegex.exec(content)) !== null) {
+    const moduleName = match[1];
+    const pkgName = extractPackageName(moduleName);
+    if (pkgName && !seen.has(pkgName)) {
+      seen.add(pkgName);
+      modules.push({
+        name: moduleName,
+        size: PACKAGE_ALTERNATIVES[pkgName]?.size || 0,
+        from_package: pkgName,
+      });
     }
   }
 

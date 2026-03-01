@@ -208,8 +208,20 @@ export async function validateApiContract(args: ApiContractArgs): Promise<McpRes
           endpointsPassed++;
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        const isTimeout = errorMessage.includes('timeout');
+        // Extract a meaningful error message — Node.js network errors (e.g. ECONNREFUSED)
+        // may have an empty .message but carry details in .code or .syscall.
+        let errorMessage = err instanceof Error ? err.message : String(err);
+        if (!errorMessage && err instanceof Error) {
+          const nodeErr = err as NodeJS.ErrnoException;
+          const parts: string[] = [];
+          if (nodeErr.syscall) parts.push(nodeErr.syscall);
+          if (nodeErr.code) parts.push(nodeErr.code);
+          if (nodeErr.address) parts.push(nodeErr.address);
+          if (nodeErr.port != null) parts.push(String(nodeErr.port));
+          errorMessage = parts.length > 0 ? parts.join(' ') : 'Unknown network error';
+        }
+        if (!errorMessage) errorMessage = 'Unknown network error';
+        const isTimeout = errorMessage.toLowerCase().includes('timeout');
 
         issues.push({
           endpoint: pathPattern,
@@ -217,7 +229,7 @@ export async function validateApiContract(args: ApiContractArgs): Promise<McpRes
           type: isTimeout ? 'timeout' : 'network',
           message: errorMessage,
           expected: 'Successful response',
-          actual: 'Error',
+          actual: isTimeout ? 'Timeout' : `Error: ${errorMessage}`,
         });
         endpointsFailed++;
       }

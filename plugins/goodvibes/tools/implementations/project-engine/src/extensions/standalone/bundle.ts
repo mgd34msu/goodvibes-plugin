@@ -294,8 +294,14 @@ export async function analyzeBundle(args: AnalyzeBundleArgs): Promise<McpRespons
     .sort((a, b) => b.size - a.size)
     .slice(0, 10);
 
-  const duplicates = await detectDuplicates(PROJECT_ROOT);
-  const treeShakingIssues = await checkTreeShakingIssues(PROJECT_ROOT);
+  // Scope package analysis to the target project directory, not the plugin root.
+  // When a path is given, treat it as the project root for lock/package.json lookups.
+  const targetProjectPath = args.path
+    ? node_path.resolve(PROJECT_ROOT, args.path)
+    : PROJECT_ROOT;
+
+  const duplicates = await detectDuplicates(targetProjectPath);
+  const treeShakingIssues = await checkTreeShakingIssues(targetProjectPath);
 
   const totalSizeInfo: SizeInfo = {
     raw: totalRaw,

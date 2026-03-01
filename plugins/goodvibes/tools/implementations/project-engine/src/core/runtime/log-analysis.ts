@@ -310,6 +310,8 @@ export function matchPatterns(
 
   for (const pattern of patterns) {
     results[pattern.name] = 0;
+    // Skip empty regex patterns — new RegExp('') matches every line
+    if (!pattern.regex || pattern.regex.trim() === '') continue;
     try {
       const regex = new RegExp(pattern.regex, 'i');
       for (const entry of entries) {

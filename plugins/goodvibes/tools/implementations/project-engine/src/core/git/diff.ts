@@ -71,7 +71,7 @@ function listChangedFilesWithDiff(
       ? fileParts[fileParts.length - 1]
       : fileParts.join('\t');
 
-    if (!file.match(/\.(ts|tsx|js|jsx|mts|cts)$/)) continue;
+    if (!file.match(/\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/)) continue;
     if (file.endsWith('.d.ts')) continue;
     if (!includeTests && (file.includes('.test.') || file.includes('.spec.'))) continue;
 
