@@ -40,6 +40,8 @@ export interface WRFCPluginConfig {
   max_fix_attempts: number;
   /** When false, all agents auto-complete without review. Default true. */
   enable_quality_gates: boolean;
+  /** Additional agent types that must always be reviewed (merged with hardcoded defaults). */
+  require_review_types?: string[];
 }
 
 /**
@@ -88,6 +90,9 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
   store.set('wrfc.config.min_review_score', config.score_threshold);
   store.set('wrfc.config.max_fix_attempts', config.max_fix_attempts);
   store.set('wrfc.config.enable_quality_gates', config.enable_quality_gates);
+  if (config.require_review_types && config.require_review_types.length > 0) {
+    store.set('wrfc.config.require_review_types', config.require_review_types);
+  }
 
   // 2. Register triggers
 

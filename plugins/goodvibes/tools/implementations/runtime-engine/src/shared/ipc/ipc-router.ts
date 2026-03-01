@@ -321,6 +321,11 @@ export class IPCRouter {
           } else if (raw.auto_commit !== undefined) {
             logger.warn('Invalid auto_commit rejected', { value: raw.auto_commit, expected: 'boolean' });
           }
+          if (Array.isArray(raw.require_review_types) && (raw.require_review_types as unknown[]).every((t: unknown) => typeof t === 'string' && (t as string).length > 0)) {
+            validated.require_review_types = raw.require_review_types;
+          } else if (raw.require_review_types !== undefined) {
+            logger.warn('Invalid require_review_types rejected', { value: raw.require_review_types, expected: 'string[]' });
+          }
 
           if (Object.keys(validated).length > 0) {
             this.directiveQueue.setWRFCConfig(validated);

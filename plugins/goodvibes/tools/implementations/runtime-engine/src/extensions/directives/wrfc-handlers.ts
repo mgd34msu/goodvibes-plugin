@@ -82,6 +82,42 @@ export const AUTO_COMPLETE_AGENT_TYPES = new Set([
   ...REVIEWER_AGENT_TYPES,
 ]);
 
+/**
+ * Agent types that MUST always be reviewed, taking precedence over all
+ * auto-complete logic. If an agent type appears in both this set and
+ * AUTO_COMPLETE_AGENT_TYPES, always-review wins.
+ *
+ * Hardcoded defaults: all engineer agent types.
+ * Extensible via user config key `wrfc.require_review_types` (string[]).
+ */
+export const REQUIRE_REVIEW_AGENT_TYPES = new Set([
+  ...ENGINEER_AGENT_TYPES,
+]);
+
+/**
+ * Returns the effective require-review set by merging hardcoded defaults
+ * with any user-configured types from wrfc.require_review_types.
+ *
+ * Caches the merged set and invalidates when the underlying config changes.
+ */
+let _cachedRequireReviewTypes: Set<string> | null = null;
+let _cachedConfigSnapshot = '';
+
+function getEffectiveRequireReviewTypes(directiveQueue: DirectiveQueue): Set<string> {
+  const config = directiveQueue.getWRFCConfig();
+  const configTypes = config['require_review_types'];
+  if (!Array.isArray(configTypes) || configTypes.length === 0) {
+    return REQUIRE_REVIEW_AGENT_TYPES;
+  }
+  const snapshot = configTypes.join(',');
+  if (_cachedRequireReviewTypes && snapshot === _cachedConfigSnapshot) {
+    return _cachedRequireReviewTypes;
+  }
+  _cachedRequireReviewTypes = new Set([...REQUIRE_REVIEW_AGENT_TYPES, ...configTypes]);
+  _cachedConfigSnapshot = snapshot;
+  return _cachedRequireReviewTypes;
+}
+
 
 // ─── Shared Result-Handling Helpers ────────────────────────────────────────────────────
 
@@ -543,6 +579,65 @@ export function registerWRFCHandlers(
           });
         }
       }
+    }
+
+    // Layer 0: Force review for agent types in the require-review set.
+    // Takes precedence over all auto-complete logic below.
+    if (effectiveState === 'WRITING' && agentType && getEffectiveRequireReviewTypes(directiveQueue).has(agentType)) {
+      const filesModified = Array.isArray(workflow.context.files_modified)
+        ? (workflow.context.files_modified as string[])
+        : [];
+
+      const task =
+        `Review the work completed in workflow ${workflow.id}. ` +
+        `Current state: ${workflow.current_state}. ` +
+        (filesModified.length > 0
+          ? `Files modified: ${filesModified.join(', ')}.`
+          : 'No files recorded yet.');
+
+      const message = buildSpawnDirectiveMessage('reviewer', task, DEFAULT_BUDGET, {
+        files_modified: filesModified,
+        workflow_id: workflow.id,
+      });
+
+      directiveQueue.enqueue('subagent_stop', {
+        type: 'inject_system_message',
+        content: message,
+        priority: 20,
+        source: 'wrfc_chain_next',
+        workflow_id: workflow.id,
+      });
+      if (agentWorkflowMap) {
+        agentWorkflowMap.addPendingBind('reviewer', workflow.id);
+        agentWorkflowMap.addPendingBind('goodvibes:reviewer', workflow.id);
+      }
+
+      // Advance state machine: WRITING → REVIEWING
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: 'wrfc:review_started',
+          source: { kind: 'system' },
+          payload: {
+            type: 'wrfc:review_started',
+            data: { workflow_id: workflow.id },
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 },
+        });
+      } catch (err) {
+        log.error('wrfc_chain_next: failed to advance state WRITING→REVIEWING (force-review)', {
+          workflow_id: workflow.id,
+          error: String(err),
+        });
+      }
+
+      log.info('wrfc_chain_next: force-review for require-review agent type', {
+        workflow_id: workflow.id,
+        agent_type: agentType,
+        agent_id: agentId,
+      });
+      return;
     }
 
     // Auto-complete agents with no type (e.g. Claude Code internal agents like

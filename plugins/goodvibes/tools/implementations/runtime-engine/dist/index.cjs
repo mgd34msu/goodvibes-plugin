@@ -22649,6 +22649,11 @@ var IPCRouter = class {
           } else if (raw.auto_commit !== void 0) {
             logger3.warn("Invalid auto_commit rejected", { value: raw.auto_commit, expected: "boolean" });
           }
+          if (Array.isArray(raw.require_review_types) && raw.require_review_types.every((t) => typeof t === "string" && t.length > 0)) {
+            validated.require_review_types = raw.require_review_types;
+          } else if (raw.require_review_types !== void 0) {
+            logger3.warn("Invalid require_review_types rejected", { value: raw.require_review_types, expected: "string[]" });
+          }
           if (Object.keys(validated).length > 0) {
             this.directiveQueue.setWRFCConfig(validated);
             logger3.debug("WRFC config stored from config:loaded event", { validated });
@@ -28748,6 +28753,26 @@ var AUTO_COMPLETE_AGENT_TYPES = /* @__PURE__ */ new Set([
   // on the PARENT workflow via the REVIEWING branch.
   ...REVIEWER_AGENT_TYPES
 ]);
+var REQUIRE_REVIEW_AGENT_TYPES = /* @__PURE__ */ new Set([
+  ...ENGINEER_AGENT_TYPES
+]);
+var _cachedRequireReviewTypes = null;
+var _cachedConfigSnapshot = "";
+function getEffectiveRequireReviewTypes(directiveQueue) {
+  const config2 = directiveQueue.getWRFCConfig();
+  const configTypes = config2["require_review_types"];
+  if (!Array.isArray(configTypes) || configTypes.length === 0) {
+    return REQUIRE_REVIEW_AGENT_TYPES;
+  }
+  const snapshot = configTypes.join(",");
+  if (_cachedRequireReviewTypes && snapshot === _cachedConfigSnapshot) {
+    return _cachedRequireReviewTypes;
+  }
+  _cachedRequireReviewTypes = /* @__PURE__ */ new Set([...REQUIRE_REVIEW_AGENT_TYPES, ...configTypes]);
+  _cachedConfigSnapshot = snapshot;
+  return _cachedRequireReviewTypes;
+}
+__name(getEffectiveRequireReviewTypes, "getEffectiveRequireReviewTypes");
 function handleReviewResult(params) {
   const {
     workflowEngine,
@@ -29063,6 +29088,49 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
           });
         }
       }
+    }
+    if (effectiveState === "WRITING" && agentType && getEffectiveRequireReviewTypes(directiveQueue).has(agentType)) {
+      const filesModified = Array.isArray(workflow.context.files_modified) ? workflow.context.files_modified : [];
+      const task = `Review the work completed in workflow ${workflow.id}. Current state: ${workflow.current_state}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
+      const message = buildSpawnDirectiveMessage("reviewer", task, DEFAULT_BUDGET, {
+        files_modified: filesModified,
+        workflow_id: workflow.id
+      });
+      directiveQueue.enqueue("subagent_stop", {
+        type: "inject_system_message",
+        content: message,
+        priority: 20,
+        source: "wrfc_chain_next",
+        workflow_id: workflow.id
+      });
+      if (agentWorkflowMap) {
+        agentWorkflowMap.addPendingBind("reviewer", workflow.id);
+        agentWorkflowMap.addPendingBind("goodvibes:reviewer", workflow.id);
+      }
+      try {
+        workflowEngine.sendEvent(workflow.id, {
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "wrfc:review_started",
+          source: { kind: "system" },
+          payload: {
+            type: "wrfc:review_started",
+            data: { workflow_id: workflow.id }
+          },
+          metadata: { session_id: workflow.id, sequence: 0, version: 1 }
+        });
+      } catch (err) {
+        log5.error("wrfc_chain_next: failed to advance state WRITING\u2192REVIEWING (force-review)", {
+          workflow_id: workflow.id,
+          error: String(err)
+        });
+      }
+      log5.info("wrfc_chain_next: force-review for require-review agent type", {
+        workflow_id: workflow.id,
+        agent_type: agentType,
+        agent_id: agentId
+      });
+      return;
     }
     if (effectiveState === "WRITING" && !agentType) {
       const message = buildWorkflowCompleteMessage(workflow.id, "completed");
@@ -32747,6 +32815,25 @@ var AUTO_COMPLETE_AGENT_TYPES2 = /* @__PURE__ */ new Set([
   "general-purpose",
   ...REVIEWER_AGENT_TYPES2
 ]);
+var REQUIRE_REVIEW_AGENT_TYPES2 = /* @__PURE__ */ new Set([
+  ...ENGINEER_AGENT_TYPES2
+]);
+var _cachedRequireReviewTypes2 = null;
+var _cachedConfigSnapshot2 = "";
+function getEffectiveRequireReviewTypes2(store) {
+  const configTypes = storeGet(store, "wrfc.config.require_review_types", []);
+  if (configTypes.length === 0) {
+    return REQUIRE_REVIEW_AGENT_TYPES2;
+  }
+  const snapshot = configTypes.join(",");
+  if (_cachedRequireReviewTypes2 && snapshot === _cachedConfigSnapshot2) {
+    return _cachedRequireReviewTypes2;
+  }
+  _cachedRequireReviewTypes2 = /* @__PURE__ */ new Set([...REQUIRE_REVIEW_AGENT_TYPES2, ...configTypes]);
+  _cachedConfigSnapshot2 = snapshot;
+  return _cachedRequireReviewTypes2;
+}
+__name(getEffectiveRequireReviewTypes2, "getEffectiveRequireReviewTypes");
 var WS = /* @__PURE__ */ __name((wid, field) => `wrfc.workflows.${wid}.${field}`, "WS");
 function storeGet(store, key, defaultVal) {
   const val = store.get(key);
@@ -32833,6 +32920,18 @@ function handleAgentCompleted(event, _trigger, store) {
     });
   }
   if (effectivePhase === "WRITING") {
+    const effectiveRequireReview = getEffectiveRequireReviewTypes2(store);
+    if (agentType && effectiveRequireReview.has(agentType)) {
+      const task2 = `Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
+      const actions2 = [buildSpawnAction({ wid, type: "reviewer", task: task2, files: filesModified })];
+      const state_updates2 = phaseUpdate(wid, "REVIEWING");
+      const events2 = [makeChainEvent("wrfc:review_started", wid, event)];
+      log9.info("handleAgentCompleted: force-review for require-review agent type", {
+        wid,
+        agent_type: agentType
+      });
+      return { actions: actions2, state_updates: state_updates2, events: events2 };
+    }
     if (agentType && AUTO_COMPLETE_AGENT_TYPES2.has(agentType)) {
       const actions2 = [buildCompleteAction(wid)];
       const state_updates2 = [
@@ -33040,6 +33139,9 @@ function registerWRFCPlugin(ctx) {
   store.set("wrfc.config.min_review_score", config2.score_threshold);
   store.set("wrfc.config.max_fix_attempts", config2.max_fix_attempts);
   store.set("wrfc.config.enable_quality_gates", config2.enable_quality_gates);
+  if (config2.require_review_types && config2.require_review_types.length > 0) {
+    store.set("wrfc.config.require_review_types", config2.require_review_types);
+  }
   registry2.register(
     createWRFCTrigger({
       id: TRIGGER_IDS.AGENT_SPAWNED,

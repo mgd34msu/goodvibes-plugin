@@ -56,6 +56,42 @@ export const AUTO_COMPLETE_AGENT_TYPES = new Set([
   ...REVIEWER_AGENT_TYPES,
 ]);
 
+/**
+ * Agent types that MUST always be reviewed, taking precedence over all
+ * auto-complete logic. If an agent type appears in both this set and
+ * AUTO_COMPLETE_AGENT_TYPES, always-review wins.
+ *
+ * Hardcoded defaults: all engineer agent types.
+ * Extensible via user config key `wrfc.require_review_types` (string[]).
+ * Stored at `wrfc.config.require_review_types` in the state store.
+ */
+export const REQUIRE_REVIEW_AGENT_TYPES = new Set([
+  ...ENGINEER_AGENT_TYPES,
+]);
+
+// ─── Cached require-review set ────────────────────────────────────────────────────
+
+let _cachedRequireReviewTypes: Set<string> | null = null;
+let _cachedConfigSnapshot = '';
+
+/**
+ * Returns the effective require-review set, caching the merged result.
+ * Invalidates when the underlying config changes.
+ */
+function getEffectiveRequireReviewTypes(store: StateStoreInterface): Set<string> {
+  const configTypes = storeGet<string[]>(store, 'wrfc.config.require_review_types', []);
+  if (configTypes.length === 0) {
+    return REQUIRE_REVIEW_AGENT_TYPES;
+  }
+  const snapshot = configTypes.join(',');
+  if (_cachedRequireReviewTypes && snapshot === _cachedConfigSnapshot) {
+    return _cachedRequireReviewTypes;
+  }
+  _cachedRequireReviewTypes = new Set([...REQUIRE_REVIEW_AGENT_TYPES, ...configTypes]);
+  _cachedConfigSnapshot = snapshot;
+  return _cachedRequireReviewTypes;
+}
+
 // ─── State key helpers ──────────────────────────────────────────────────────────
 
 /** State store key prefix for WRFC workflow data. */
@@ -228,6 +264,26 @@ export function handleAgentCompleted(
 
   // ─── WRITING phase ────────────────────────────────────────────────────────────
   if (effectivePhase === 'WRITING') {
+    // Layer 0: Force review for agent types in the require-review set.
+    // Takes precedence over all auto-complete logic below.
+    const effectiveRequireReview = getEffectiveRequireReviewTypes(store);
+
+    if (agentType && effectiveRequireReview.has(agentType)) {
+      const task = `Review the work completed in workflow ${wid}. ` +
+        (filesModified.length > 0
+          ? `Files modified: ${filesModified.join(', ')}.`
+          : 'No files recorded yet.');
+
+      const actions: Action[] = [buildSpawnAction({ wid, type: 'reviewer', task, files: filesModified })];
+      const state_updates: StateUpdate[] = phaseUpdate(wid, 'REVIEWING');
+      const events: RuntimeEvent[] = [makeChainEvent('wrfc:review_started', wid, event)];
+
+      log.info('handleAgentCompleted: force-review for require-review agent type', {
+        wid, agent_type: agentType,
+      });
+      return { actions, state_updates, events };
+    }
+
     // Auto-complete whitelist: no review needed
     if (agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
       const actions: Action[] = [buildCompleteAction(wid)];
