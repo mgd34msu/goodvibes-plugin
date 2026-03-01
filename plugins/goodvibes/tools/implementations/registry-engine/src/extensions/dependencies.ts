@@ -26,7 +26,7 @@ import {
 } from '../core/types.js';
 import { query, findOne } from '../core/search.js';
 import { ok } from '../shared/response.js';
-import { McpResponse } from '../shared/types.js';
+import type { McpResponse } from '../shared/types.js';
 import { loadSkillMetadata } from '../core/parsing.js';
 
 /**

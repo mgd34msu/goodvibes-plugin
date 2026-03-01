@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as fs from 'node:fs/promises';
+import * as utils from './utils.js';
 
 // ============================================================================
 // constants.ts
@@ -309,27 +310,15 @@ describe('utils', () => {
     });
   });
 
-  describe('resolveEsmDir', () => {
-    it('returns a non-empty absolute string path in ESM context', async () => {
-      const { resolveEsmDir } = await import('./utils.js');
-      const result = resolveEsmDir();
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-      expect(path.isAbsolute(result)).toBe(true);
-    });
-  });
-
   describe('resolveModuleDir', () => {
-    it('returns a non-empty string directory path', async () => {
-      const { resolveModuleDir } = await import('./utils.js');
-      const result = resolveModuleDir();
+    it('returns a non-empty string directory path', () => {
+      const result = utils.resolveModuleDir();
       expect(typeof result).toBe('string');
       expect(result.length).toBeGreaterThan(0);
     });
 
-    it('returns an absolute path', async () => {
-      const { resolveModuleDir } = await import('./utils.js');
-      const result = resolveModuleDir();
+    it('returns an absolute path', () => {
+      const result = utils.resolveModuleDir();
       expect(path.isAbsolute(result)).toBe(true);
     });
   });

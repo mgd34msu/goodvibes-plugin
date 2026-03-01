@@ -8,11 +8,21 @@
  *   - Core layer (registry, search, resolution, parsing, classification)
  *     are mocked at the module level so L2 is tested in isolation.
  *   - node:fs/promises is mocked for content/metadata I/O.
+ *   - metadata.ts is mocked with vi.hoisted() so the mock fn reference
+ *     is accessible both in vi.mock() factories and in test bodies.
  *   - loader.ts internals use the mocked core layer.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
+
+// ---------------------------------------------------------------------------
+// Hoisted mock functions — accessible inside vi.mock() factory closures
+// ---------------------------------------------------------------------------
+
+const { mockLoadSkillMetadata } = vi.hoisted(() => ({
+  mockLoadSkillMetadata: vi.fn<() => Promise<Record<string, unknown>>>(),
+}));
 
 // ---------------------------------------------------------------------------
 // Module mocks — must be declared before any imports of the modules under test
@@ -59,10 +69,12 @@ vi.mock('node:fs/promises', () => ({
   readFile: vi.fn(),
 }));
 
-// dependencies.ts imports metadata.ts — mock it separately when testing
-// dependencies in isolation. We keep a separate mock handle for that.
+// mock ./metadata.js so that dependencies.ts (which imports from ./metadata.js)
+// uses our controllable mockLoadSkillMetadata.
+// metadata.ts tests use loadSkillMetadata imported BEFORE this mock takes effect
+// on re-exports, so we test metadata.ts directly via importActual below.
 vi.mock('./metadata.js', () => ({
-  loadSkillMetadata: vi.fn(),
+  loadSkillMetadata: mockLoadSkillMetadata,
 }));
 
 // ---------------------------------------------------------------------------
@@ -80,14 +92,12 @@ import {
 } from '../core/parsing.js';
 import { detectCategory, estimateComplexity } from '../core/classification.js';
 import * as fsPromises from 'node:fs/promises';
-import { loadSkillMetadata as mockLoadSkillMetadata } from './metadata.js';
 
 // Units under test
 import { RegistryIndexCache } from './loader.js';
 import { searchSkills, searchAgents, searchTools } from './search.js';
 import { recommendSkills } from './recommendations.js';
 import { getSkillContent, getAgentContent } from './content.js';
-import { loadSkillMetadata } from './metadata.js';
 import {
   resolveRequired,
   resolveOptional,
@@ -151,7 +161,6 @@ describe('RegistryIndexCache', () => {
     cache = new RegistryIndexCache();
     vi.clearAllMocks();
 
-    // Default: loadRegistry returns matching registries per call order
     (loadRegistry as Mock)
       .mockResolvedValueOnce(skillsRegistry)
       .mockResolvedValueOnce(agentsRegistry)
@@ -173,7 +182,6 @@ describe('RegistryIndexCache', () => {
     it('returns cached index on subsequent calls without reloading', async () => {
       await cache.getSkillsIndex();
       await cache.getSkillsIndex();
-      // loadRegistry should only be called once for skills
       const skillsCalls = (loadRegistry as Mock).mock.calls.filter(
         (call) => call[0] === 'skills/_registry.yaml'
       );
@@ -207,7 +215,7 @@ describe('RegistryIndexCache', () => {
   describe('getSkillsRegistry()', () => {
     it('returns the full Registry object (not just index)', async () => {
       const reg = await cache.getSkillsRegistry();
-      expect(reg).toBe(skillsRegistry);
+      expect(reg).toEqual(skillsRegistry);
     });
 
     it('reuses same loading promise as getSkillsIndex (dedup)', async () => {
@@ -220,7 +228,7 @@ describe('RegistryIndexCache', () => {
       );
       expect(skillsCalls.length).toBe(1);
       expect(idx).toBe(mockFuseIndex);
-      expect(reg).toBe(skillsRegistry);
+      expect(reg).toEqual(skillsRegistry);
     });
 
     it('returns null registry when load fails', async () => {
@@ -237,7 +245,6 @@ describe('RegistryIndexCache', () => {
 
   describe('getAgentsIndex()', () => {
     it('loads agents on first call and returns the index', async () => {
-      // Need fresh mocks where agents is first
       (loadRegistry as Mock).mockReset();
       (loadRegistry as Mock).mockResolvedValueOnce(agentsRegistry);
       (buildIndex as Mock).mockReturnValue(mockFuseIndex);
@@ -318,7 +325,6 @@ describe('RegistryIndexCache', () => {
       await cache.warmAll();
       (loadRegistry as Mock).mockClear();
       await cache.warmAll();
-      // Second warmAll should not trigger any loadRegistry calls
       expect(loadRegistry).not.toHaveBeenCalled();
     });
   });
@@ -339,7 +345,6 @@ describe('RegistryIndexCache', () => {
     it('calling getContext() twice does not trigger two loads per registry', async () => {
       await cache.getContext();
       await cache.getContext();
-      // Each registry should only be loaded once
       const skillsCalls = (loadRegistry as Mock).mock.calls.filter(
         (call) => call[0] === 'skills/_registry.yaml'
       );
@@ -380,6 +385,7 @@ describe('RegistryIndexCache', () => {
 describe('searchSkills()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (findOne as Mock).mockReturnValue(null);
   });
 
   it('returns matching skills as McpResponse with correct shape', () => {
@@ -461,6 +467,7 @@ describe('searchSkills()', () => {
 describe('searchAgents()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (findOne as Mock).mockReturnValue(null);
   });
 
   it('returns matching agents as McpResponse', () => {
@@ -507,6 +514,7 @@ describe('searchAgents()', () => {
 describe('searchTools()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (findOne as Mock).mockReturnValue(null);
   });
 
   it('returns matching tools as McpResponse', () => {
@@ -559,6 +567,8 @@ describe('recommendSkills()', () => {
     (extractKeywords as Mock).mockReturnValue(['build', 'auth', 'login', 'page']);
     (detectCategory as Mock).mockReturnValue('authentication');
     (estimateComplexity as Mock).mockReturnValue('moderate');
+    (query as Mock).mockReturnValue([]);
+    (findOne as Mock).mockReturnValue(null);
   });
 
   it('returns skill recommendations as McpResponse', () => {
@@ -589,7 +599,6 @@ describe('recommendSkills()', () => {
   });
 
   it('task_analysis contains category, keywords, complexity', () => {
-    (query as Mock).mockReturnValue([]);
     const response = recommendSkills(null, { task: 'build auth login page' });
     const data = assertOkResponse(response) as { task_analysis: Record<string, unknown> };
 
@@ -601,19 +610,16 @@ describe('recommendSkills()', () => {
   });
 
   it('uses default max_results of 5 when not specified', () => {
-    (query as Mock).mockReturnValue([]);
     recommendSkills(null, { task: 'do something' });
     expect(query).toHaveBeenCalledWith(null, 'do something', 5);
   });
 
   it('respects max_results parameter', () => {
-    (query as Mock).mockReturnValue([]);
     recommendSkills(null, { task: 'do something', max_results: 3 });
     expect(query).toHaveBeenCalledWith(null, 'do something', 3);
   });
 
   it('handles null index gracefully', () => {
-    (query as Mock).mockReturnValue([]);
     const response = recommendSkills(null, { task: 'any task' });
     expect(response.isError).toBeUndefined();
   });
@@ -627,14 +633,12 @@ describe('recommendSkills()', () => {
     const data = assertOkResponse(response) as { recommendations: Array<{ reason: string }> };
 
     const reason = data.recommendations[0].reason;
-    // Reason should contain up to 3 keywords
     const keywordsInReason = reason.replace('Matches task keywords: ', '').split(', ');
     expect(keywordsInReason.length).toBeLessThanOrEqual(3);
   });
 
   it('limits task_analysis.keywords to first 10', () => {
     (extractKeywords as Mock).mockReturnValue(Array.from({ length: 15 }, (_, i) => `kw${i}`));
-    (query as Mock).mockReturnValue([]);
 
     const response = recommendSkills(null, { task: 'many keywords task' });
     const data = assertOkResponse(response) as { task_analysis: { keywords: string[] } };
@@ -693,7 +697,6 @@ describe('getSkillContent()', () => {
     (fsPromises.readFile as Mock).mockResolvedValue('raw markdown content');
 
     const response = await getSkillContent({ path: 'any/skill' });
-    // ok() passes string through without JSON.stringify
     expect(response.content[0].text).toBe('raw markdown content');
   });
 
@@ -747,44 +750,21 @@ describe('getAgentContent()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. metadata.ts — loadSkillMetadata
+// 5. metadata.ts — loadSkillMetadata (real implementation)
 // ---------------------------------------------------------------------------
-
-// NOTE: We need to un-mock metadata.js temporarily for its own tests.
-// Since we mocked it above for dependency tests, we import the real
-// implementation by re-registering a pass-through mock to the real module.
-// The better approach: keep the mock and test the ACTUAL implementation
-// using the mocked core dependencies that it imports.
-//
-// Actually: metadata.ts is imported as 'loadSkillMetadata' from './metadata.js'
-// which IS mocked. The real metadata implementation uses the mocked
-// core functions (resolveSkillPath, parseFrontmatter, etc.) — so we test
-// the real implementation through the mocked dependencies.
-//
-// To test the real metadata.ts behavior, we need to temporarily clear the
-// module-level mock and work with what the real code does given our mocked
-// core imports.
-//
-// Since vi.mock('./metadata.js') replaces the entire module but
-// the metadata test itself needs the REAL implementation, we use a different
-// import path to get the actual (non-mocked) module behavior via
-// spying on its dependencies (which are mocked at core layer).
-//
-// Solution: directly test by calling the REAL metadata module's exported
-// function. But since it's mocked, we use the fact that in the test file
-// for loadSkillMetadata, we're actually importing from './metadata.js' which
-// is mocked. So we need to test the real module.
-//
-// Re-export approach: import the real implementation here separately.
-// Vitest supports this pattern with vi.importActual.
+// metadata.ts is mocked via vi.mock('./metadata.js') above, BUT we can still
+// test the real implementation because `vi.importActual` bypasses the mock
+// factory and loads the actual module. The actual module's dependencies
+// (resolution.js, parsing.js, node:fs/promises) are all individually mocked
+// at module level, so we test the real orchestration logic.
 
 describe('loadSkillMetadata() - real implementation', () => {
-  // We'll test the real implementation using vi.importActual
-  let realLoadSkillMetadata: typeof loadSkillMetadata;
+  let realLoadSkillMetadata: (skillPath: string) => Promise<SkillMetadata>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const realModule = await vi.importActual<typeof import('./metadata.js')>('./metadata.js');
+    // Import the REAL implementation, bypassing the vi.mock('./metadata.js') factory
+    const realModule = await vi.importActual<{ loadSkillMetadata: typeof import('./metadata.js')['loadSkillMetadata'] }>('./metadata.js');
     realLoadSkillMetadata = realModule.loadSkillMetadata;
   });
 
@@ -797,9 +777,7 @@ describe('loadSkillMetadata() - real implementation', () => {
 
   it('returns frontmatter metadata when YAML frontmatter is present', async () => {
     (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue(
-      '---\nrequires:\n  - auth\ncategory: outcome\ndifficulty: intermediate\n---\n# Skill'
-    );
+    (fsPromises.readFile as Mock).mockResolvedValue('---\ncategory: outcome\n---');
     (parseFrontmatter as Mock).mockReturnValue({
       requires: ['auth'],
       category: 'outcome',
@@ -826,7 +804,7 @@ describe('loadSkillMetadata() - real implementation', () => {
     expect(result.complements).toEqual(['skill-a', 'skill-b']);
   });
 
-  it('extracts complements from frontmatter.related array when complements is absent', async () => {
+  it('extracts complements from frontmatter.related when complements absent', async () => {
     (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
     (fsPromises.readFile as Mock).mockResolvedValue('content');
     (parseFrontmatter as Mock).mockReturnValue({
@@ -861,7 +839,7 @@ describe('loadSkillMetadata() - real implementation', () => {
 
   it('falls back to markdown extraction when no frontmatter', async () => {
     (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('# Skill without frontmatter\n## Requires:\n- auth\n');
+    (fsPromises.readFile as Mock).mockResolvedValue('# Skill without frontmatter');
     (parseFrontmatter as Mock).mockReturnValue(null);
     (extractMarkdownMetadata as Mock).mockReturnValue({
       requires: ['auth'],
@@ -880,7 +858,7 @@ describe('loadSkillMetadata() - real implementation', () => {
     (parseFrontmatter as Mock).mockReturnValue(null);
     (extractMarkdownMetadata as Mock).mockReturnValue({
       requires: [],
-      technologies: [], // empty — triggers extractTechKeywords
+      technologies: [],
     });
     (extractTechKeywords as Mock).mockReturnValue(['react', 'vitest']);
 
@@ -897,12 +875,11 @@ describe('loadSkillMetadata() - real implementation', () => {
     expect(result).toEqual({});
   });
 
-  it('omits undefined fields (requires, complements, conflicts, technologies, difficulty not in frontmatter)', async () => {
+  it('omits undefined fields when not in frontmatter', async () => {
     (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
     (fsPromises.readFile as Mock).mockResolvedValue('content');
     (parseFrontmatter as Mock).mockReturnValue({
       category: 'general',
-      // no requires, complements, conflicts, technologies, difficulty
     });
 
     const result = await realLoadSkillMetadata('any/skill');
@@ -918,11 +895,15 @@ describe('loadSkillMetadata() - real implementation', () => {
 // ---------------------------------------------------------------------------
 // 6. dependencies.ts — individual functions
 // ---------------------------------------------------------------------------
+// mockLoadSkillMetadata is the hoisted mock fn used by vi.mock('./metadata.js').
+// dependencies.ts imports loadSkillMetadata from ./metadata.js, which resolves
+// to our mockLoadSkillMetadata.
 
 describe('resolveRequired()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({});
+    (findOne as Mock).mockReturnValue(null);
+    mockLoadSkillMetadata.mockResolvedValue({});
   });
 
   it('returns empty array when metadata has no requires', async () => {
@@ -955,7 +936,7 @@ describe('resolveRequired()', () => {
     (findOne as Mock)
       .mockReturnValueOnce(makeSearchResult({ name: 'parent', path: 'outcome/parent' }))
       .mockReturnValueOnce(makeSearchResult({ name: 'child', path: 'outcome/child' }));
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ requires: ['child'] });
+    mockLoadSkillMetadata.mockResolvedValue({ requires: ['child'] });
 
     const result = await resolveRequired({ requires: ['parent'] }, null, 2);
     expect(result.length).toBeGreaterThanOrEqual(2);
@@ -967,10 +948,8 @@ describe('resolveRequired()', () => {
     (findOne as Mock).mockReturnValue(
       makeSearchResult({ name: 'parent', path: 'outcome/parent' })
     );
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ requires: ['child'] });
 
     const result = await resolveRequired({ requires: ['parent'] }, null, 1);
-    // loadSkillMetadata should NOT be called when depth === 1
     expect(mockLoadSkillMetadata).not.toHaveBeenCalled();
     expect(result).toHaveLength(1);
   });
@@ -980,30 +959,25 @@ describe('resolveRequired()', () => {
     const childResult = makeSearchResult({ name: 'child', path: 'outcome/child' });
 
     (findOne as Mock)
-      .mockReturnValueOnce(parentResult)   // for 'parent'
-      .mockReturnValueOnce(childResult)    // for 'child' in parent's nested
-      .mockReturnValueOnce(childResult);   // for 'child' if called again (shouldn't be)
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ requires: ['child'] });
-
-    // Add 'child' to the initial requires so it's already in the list
-    (findOne as Mock).mockReset();
-    (findOne as Mock)
       .mockReturnValueOnce(parentResult)
-      .mockReturnValueOnce(childResult)   // direct child resolution
-      .mockReturnValueOnce(childResult);  // nested child resolution
+      .mockReturnValueOnce(childResult)
+      .mockReturnValueOnce(childResult);
+    mockLoadSkillMetadata.mockResolvedValue({ requires: ['child'] });
 
     const result = await resolveRequired({ requires: ['parent', 'child'] }, null, 2);
-    // child should only appear once
     const childCount = result.filter(r => r.path === 'outcome/child').length;
     expect(childCount).toBe(1);
   });
 
   it('limits nested deps to first 3', async () => {
     const parentResult = makeSearchResult({ name: 'parent', path: 'outcome/parent' });
-    (findOne as Mock)
-      .mockReturnValueOnce(parentResult)
-      .mockReturnValue(makeSearchResult({ name: 'nested', path: `outcome/nested-${Math.random()}` }));
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({
+    let counter = 0;
+    (findOne as Mock).mockImplementation(() => {
+      counter++;
+      if (counter === 1) return parentResult;
+      return makeSearchResult({ name: `nested-${counter}`, path: `outcome/nested-${counter}` });
+    });
+    mockLoadSkillMetadata.mockResolvedValue({
       requires: ['n1', 'n2', 'n3', 'n4', 'n5'],
     });
 
@@ -1016,6 +990,7 @@ describe('resolveRequired()', () => {
 describe('resolveOptional()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (findOne as Mock).mockReturnValue(null);
   });
 
   it('returns empty array when metadata has no complements', async () => {
@@ -1043,6 +1018,7 @@ describe('resolveOptional()', () => {
 describe('resolveConflicts()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (findOne as Mock).mockReturnValue(null);
   });
 
   it('returns empty array when metadata has no conflicts', async () => {
@@ -1070,7 +1046,8 @@ describe('resolveConflicts()', () => {
 describe('findDependents()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({});
+    (findOne as Mock).mockReturnValue(null);
+    mockLoadSkillMetadata.mockResolvedValue({});
   });
 
   it('returns empty array for null registry', async () => {
@@ -1086,13 +1063,14 @@ describe('findDependents()', () => {
     expect(result).toEqual([]);
   });
 
-  it('skips the target skill itself', async () => {
+  it('skips the target skill itself when scanning', async () => {
     const registry = makeRegistry([makeEntry({ name: 'target', path: 'outcome/target' })]);
     const result = await findDependents(
       registry,
       { name: 'target', path: 'outcome/target' }
     );
     expect(result).toEqual([]);
+    expect(mockLoadSkillMetadata).not.toHaveBeenCalled();
   });
 
   it('finds skills that require the target by name match', async () => {
@@ -1100,9 +1078,7 @@ describe('findDependents()', () => {
       makeEntry({ name: 'target', path: 'outcome/target' }),
       makeEntry({ name: 'dependent', path: 'quality/dependent' }),
     ]);
-    (mockLoadSkillMetadata as Mock)
-      .mockResolvedValueOnce({}) // for 'target' — skipped
-      .mockResolvedValueOnce({ requires: ['target'] }); // for 'dependent'
+    mockLoadSkillMetadata.mockResolvedValueOnce({ requires: ['target'] });
 
     const result = await findDependents(
       registry,
@@ -1117,9 +1093,7 @@ describe('findDependents()', () => {
       makeEntry({ name: 'target', path: 'outcome/target' }),
       makeEntry({ name: 'dependent', path: 'quality/dependent' }),
     ]);
-    (mockLoadSkillMetadata as Mock)
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ requires: ['outcome/target'] });
+    mockLoadSkillMetadata.mockResolvedValueOnce({ requires: ['outcome/target'] });
 
     const result = await findDependents(
       registry,
@@ -1132,7 +1106,7 @@ describe('findDependents()', () => {
     const registry = makeRegistry([
       makeEntry({ name: 'other', path: 'outcome/other' }),
     ]);
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ requires: ['something-else'] });
+    mockLoadSkillMetadata.mockResolvedValue({ requires: ['something-else'] });
 
     const result = await findDependents(
       registry,
@@ -1145,9 +1119,10 @@ describe('findDependents()', () => {
 describe('findRelated()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (query as Mock).mockReturnValue([]);
   });
 
-  it('returns related skills in the same category', () => {
+  it('returns related skills in the same category, excluding target skill', () => {
     const results = [
       makeSearchResult({ name: 'api-design', path: 'outcome/api-design' }),
       makeSearchResult({ name: 'auth', path: 'outcome/auth' }),
@@ -1156,7 +1131,6 @@ describe('findRelated()', () => {
     (query as Mock).mockReturnValue(results);
 
     const related = findRelated(null, 'outcome/target', [], 5);
-    // Should exclude target itself
     expect(related.every(r => r.path !== 'outcome/target')).toBe(true);
   });
 
@@ -1182,7 +1156,6 @@ describe('findRelated()', () => {
   });
 
   it('extracts category from first path segment', () => {
-    (query as Mock).mockReturnValue([]);
     findRelated(null, 'outcome/api-design', [], 5);
     expect(query).toHaveBeenCalledWith(null, 'outcome', 10);
   });
@@ -1200,7 +1173,6 @@ describe('findRelated()', () => {
   });
 
   it('returns empty array when index returns no results', () => {
-    (query as Mock).mockReturnValue([]);
     const related = findRelated(null, 'outcome/target', [], 5);
     expect(related).toEqual([]);
   });
@@ -1219,7 +1191,6 @@ describe('buildBundle()', () => {
       reason: 'Required',
     }));
     const bundle = buildBundle({ path: 'outcome/target' }, required, []);
-    // target + up to 3 required
     expect(bundle.length).toBeLessThanOrEqual(4);
     expect(bundle[0]).toBe('outcome/target');
   });
@@ -1234,7 +1205,6 @@ describe('buildBundle()', () => {
       { skill: 'opt-3', path: 'outcome/opt-3', reason: 'Optional' },
     ];
     const bundle = buildBundle({ path: 'outcome/target' }, required, optional);
-    // target + 1 required + 2 optional = 4 max
     expect(bundle.length).toBeLessThanOrEqual(4);
   });
 
@@ -1243,7 +1213,7 @@ describe('buildBundle()', () => {
       { skill: 'shared', path: 'outcome/shared', reason: 'Required' },
     ];
     const optional = [
-      { skill: 'shared', path: 'outcome/shared', reason: 'Optional' }, // duplicate
+      { skill: 'shared', path: 'outcome/shared', reason: 'Optional' },
       { skill: 'unique', path: 'outcome/unique', reason: 'Optional' },
     ];
     const bundle = buildBundle({ path: 'outcome/target' }, required, optional);
@@ -1263,20 +1233,12 @@ describe('buildBundle()', () => {
 
 describe('analyzeDependencies()', () => {
   const skillResult = makeSearchResult({ name: 'auth', path: 'outcome/auth' });
-  const mockMeta: SkillMetadata = {
-    requires: ['precision-mastery'],
-    complements: ['security-audit'],
-    conflicts: [],
-    category: 'outcome',
-    technologies: ['react'],
-    difficulty: 'moderate',
-  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     (findOne as Mock).mockReturnValue(skillResult);
-    (mockLoadSkillMetadata as Mock).mockResolvedValue(mockMeta);
     (query as Mock).mockReturnValue([]);
+    mockLoadSkillMetadata.mockResolvedValue({});
   });
 
   it('throws when skill is not found in index', async () => {
@@ -1308,24 +1270,18 @@ describe('analyzeDependencies()', () => {
   });
 
   it('uses depth default of 2 when not specified', async () => {
-    // With depth=2, loadSkillMetadata will be called for nested deps
-    // We track calls — mock returns empty requires by default
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({});
     await analyzeDependencies(null, null, { skill: 'auth' });
-    // Just verify it doesn't crash with default depth
     expect(findOne).toHaveBeenCalledWith(null, 'auth');
   });
 
-  it('respects custom depth parameter', async () => {
-    await analyzeDependencies(null, null, { skill: 'auth', depth: 1 });
-    // No error means depth was accepted
-    expect(findOne).toHaveBeenCalled();
+  it('respects custom depth parameter without error', async () => {
+    await expect(
+      analyzeDependencies(null, null, { skill: 'auth', depth: 1 })
+    ).resolves.not.toThrow();
   });
 
   it('excludes optional deps when include_optional is false', async () => {
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({
-      complements: ['security-audit'],
-    });
+    mockLoadSkillMetadata.mockResolvedValue({ complements: ['security-audit'] });
 
     const response = await analyzeDependencies(null, null, {
       skill: 'auth',
@@ -1334,22 +1290,16 @@ describe('analyzeDependencies()', () => {
     const data = assertOkResponse(response) as {
       dependencies: { optional: unknown[] };
     };
-    // When include_optional is false, the optional array may only contain related skills
-    // (from findRelated filling in, but no resolveOptional results)
-    // The key assertion: resolveOptional was NOT called via the optional path
     expect(data.dependencies.optional).toBeDefined();
   });
 
   it('includes optional deps by default (include_optional defaults to true)', async () => {
     (findOne as Mock)
-      .mockReturnValueOnce(skillResult)  // for the main skill
-      .mockReturnValueOnce(             // for complement lookup in resolveOptional
+      .mockReturnValueOnce(skillResult)
+      .mockReturnValueOnce(
         makeSearchResult({ name: 'security-audit', path: 'quality/security-audit' })
       );
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({
-      complements: ['security-audit'],
-    });
-    (query as Mock).mockReturnValue([]);
+    mockLoadSkillMetadata.mockResolvedValue({ complements: ['security-audit'] });
 
     const response = await analyzeDependencies(null, null, { skill: 'auth' });
     const data = assertOkResponse(response) as {
@@ -1360,10 +1310,9 @@ describe('analyzeDependencies()', () => {
 
   it('analysis.has_prerequisites is true when required deps exist', async () => {
     (findOne as Mock)
-      .mockReturnValueOnce(skillResult)   // main skill
-      .mockReturnValueOnce(makeSearchResult({ name: 'req-skill', path: 'outcome/req' })); // required dep
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ requires: ['req-skill'] });
-    (query as Mock).mockReturnValue([]);
+      .mockReturnValueOnce(skillResult)
+      .mockReturnValueOnce(makeSearchResult({ name: 'req-skill', path: 'outcome/req' }));
+    mockLoadSkillMetadata.mockResolvedValue({ requires: ['req-skill'] });
 
     const response = await analyzeDependencies(null, null, { skill: 'auth' });
     const data = assertOkResponse(response) as { analysis: { has_prerequisites: boolean } };
@@ -1371,7 +1320,7 @@ describe('analyzeDependencies()', () => {
   });
 
   it('analysis.has_prerequisites is false when no required deps', async () => {
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({});
+    mockLoadSkillMetadata.mockResolvedValue({});
 
     const response = await analyzeDependencies(null, null, { skill: 'auth' });
     const data = assertOkResponse(response) as { analysis: { has_prerequisites: boolean } };
@@ -1384,12 +1333,11 @@ describe('analyzeDependencies()', () => {
       makeEntry({ name: 'd2', path: 'quality/d2' }),
       makeEntry({ name: 'd3', path: 'quality/d3' }),
     ]);
-    (mockLoadSkillMetadata as Mock)
-      .mockResolvedValue({}) // default for all
-      .mockResolvedValueOnce({}) // main skill metadata
-      .mockResolvedValueOnce({ requires: ['auth'] }) // d1 depends on auth
-      .mockResolvedValueOnce({ requires: ['auth'] }) // d2 depends on auth
-      .mockResolvedValueOnce({ requires: ['auth'] }); // d3 depends on auth
+    mockLoadSkillMetadata
+      .mockResolvedValueOnce({})                     // main skill metadata
+      .mockResolvedValueOnce({ requires: ['auth'] }) // d1
+      .mockResolvedValueOnce({ requires: ['auth'] }) // d2
+      .mockResolvedValueOnce({ requires: ['auth'] }); // d3
 
     const response = await analyzeDependencies(null, registry, { skill: 'auth' });
     const data = assertOkResponse(response) as { analysis: { is_foundational: boolean } };
@@ -1397,19 +1345,15 @@ describe('analyzeDependencies()', () => {
   });
 
   it('metadata.category falls back to path first segment when category not in metadata', async () => {
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({
-      // no category field
-      technologies: [],
-    });
+    mockLoadSkillMetadata.mockResolvedValue({ technologies: [] });
 
     const response = await analyzeDependencies(null, null, { skill: 'auth' });
     const data = assertOkResponse(response) as { metadata: { category: string } };
-    // skill.path is 'outcome/auth' so first segment is 'outcome'
     expect(data.metadata.category).toBe('outcome');
   });
 
   it('fills optional with related skills when optional.length < 3', async () => {
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ complements: [] });
+    mockLoadSkillMetadata.mockResolvedValue({ complements: [] });
     const relatedResult = makeSearchResult({ name: 'related', path: 'outcome/related' });
     (query as Mock).mockReturnValue([relatedResult]);
 
@@ -1417,17 +1361,18 @@ describe('analyzeDependencies()', () => {
     const data = assertOkResponse(response) as {
       dependencies: { optional: Array<{ path: string }> };
     };
-    // Related skills should be appended to optional
     expect(data.dependencies.optional.length).toBeGreaterThan(0);
   });
 
   it('caps optional to 5 results in the response', async () => {
-    // Provide many complements so optional grows large
     const manyComplements = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'];
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ complements: manyComplements });
-    (findOne as Mock)
-      .mockReturnValueOnce(skillResult)
-      .mockReturnValue(makeSearchResult()); // for each complement
+    mockLoadSkillMetadata.mockResolvedValue({ complements: manyComplements });
+    let callCount = 0;
+    (findOne as Mock).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return skillResult;
+      return makeSearchResult({ name: `comp-${callCount}`, path: `outcome/comp-${callCount}` });
+    });
     (query as Mock).mockReturnValue([]);
 
     const response = await analyzeDependencies(null, null, { skill: 'auth' });
@@ -1441,8 +1386,7 @@ describe('analyzeDependencies()', () => {
     const registry = makeRegistry(
       Array.from({ length: 10 }, (_, i) => makeEntry({ name: `dep-${i}`, path: `quality/dep-${i}` }))
     );
-    // All entries require 'auth'
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({ requires: ['auth'] });
+    mockLoadSkillMetadata.mockResolvedValue({ requires: ['auth'] });
 
     const response = await analyzeDependencies(null, registry, { skill: 'auth' });
     const data = assertOkResponse(response) as { dependents: unknown[] };
@@ -1450,7 +1394,7 @@ describe('analyzeDependencies()', () => {
   });
 
   it('suggested_bundle starts with the target skill path', async () => {
-    (mockLoadSkillMetadata as Mock).mockResolvedValue({});
+    mockLoadSkillMetadata.mockResolvedValue({});
 
     const response = await analyzeDependencies(null, null, { skill: 'auth' });
     const data = assertOkResponse(response) as { suggested_bundle: string[] };

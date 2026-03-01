@@ -8,7 +8,7 @@
  * @module extensions/loader
  */
 
-import Fuse from 'fuse.js';
+import type Fuse from 'fuse.js';
 import { Registry, RegistryEntry, RegistryContext } from '../core/types.js';
 import { loadRegistry } from '../core/registry.js';
 import { buildIndex } from '../core/search.js';

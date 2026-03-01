@@ -10,7 +10,73 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Module mocks — must be declared at top level before imports
+// Hoisted values — available in vi.mock() factories because vi.hoisted()
+// runs before hoisting occurs. ALL variables referenced inside vi.mock()
+// factories must come from here.
+// ---------------------------------------------------------------------------
+
+const {
+  mockSetRequestHandler,
+  mockConnect,
+  mockClose,
+  mockServerInstance,
+  MockServer,
+  mockTransportInstance,
+  MockStdioServerTransport,
+  ErrorCode,
+  McpError,
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} = vi.hoisted(() => {
+  const mockSetRequestHandler = vi.fn();
+  const mockConnect = vi.fn().mockResolvedValue(undefined);
+  const mockClose = vi.fn().mockResolvedValue(undefined);
+  const mockServerInstance = {
+    setRequestHandler: mockSetRequestHandler,
+    connect: mockConnect,
+    close: mockClose,
+    onerror: undefined as ((error: Error) => void) | undefined,
+  };
+  const MockServer = vi.fn().mockImplementation(() => mockServerInstance);
+
+  const mockTransportInstance = {};
+  const MockStdioServerTransport = vi.fn().mockImplementation(() => mockTransportInstance);
+
+  // MCP type stubs — must be in hoisted so the types.js mock factory can reference them
+  const ErrorCode = {
+    MethodNotFound: -32601,
+    InternalError: -32603,
+  };
+
+  class McpError extends Error {
+    code: number;
+    constructor(code: number, message: string) {
+      super(message);
+      this.code = code;
+      this.name = 'McpError';
+    }
+  }
+
+  const CallToolRequestSchema = 'CallToolRequestSchema';
+  const ListToolsRequestSchema = 'ListToolsRequestSchema';
+
+  return {
+    mockSetRequestHandler,
+    mockConnect,
+    mockClose,
+    mockServerInstance,
+    MockServer,
+    mockTransportInstance,
+    MockStdioServerTransport,
+    ErrorCode,
+    McpError,
+    CallToolRequestSchema,
+    ListToolsRequestSchema,
+  };
+});
+
+// ---------------------------------------------------------------------------
+// Module mocks — declared before imports (vi hoists these automatically)
 // ---------------------------------------------------------------------------
 
 // Mock L2 extension functions to isolate L3 dispatch logic
@@ -46,47 +112,16 @@ vi.mock('../extensions/loader.js', () => ({
   })),
 }));
 
-// Mock the MCP SDK server modules
-const mockSetRequestHandler = vi.fn();
-const mockConnect = vi.fn().mockResolvedValue(undefined);
-const mockClose = vi.fn().mockResolvedValue(undefined);
-const mockServerInstance = {
-  setRequestHandler: mockSetRequestHandler,
-  connect: mockConnect,
-  close: mockClose,
-  onerror: undefined as ((error: Error) => void) | undefined,
-};
-const MockServer = vi.fn().mockImplementation(() => mockServerInstance);
-
+// Mock the MCP SDK server — reference hoisted values
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
   Server: MockServer,
 }));
-
-const mockTransportInstance = {};
-const MockStdioServerTransport = vi.fn().mockImplementation(() => mockTransportInstance);
 
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
   StdioServerTransport: MockStdioServerTransport,
 }));
 
-// Mock MCP types - provide real-enough values for error code checks
-const ErrorCode = {
-  MethodNotFound: -32601,
-  InternalError: -32603,
-};
-
-class McpError extends Error {
-  code: number;
-  constructor(code: number, message: string) {
-    super(message);
-    this.code = code;
-    this.name = 'McpError';
-  }
-}
-
-const CallToolRequestSchema = 'CallToolRequestSchema';
-const ListToolsRequestSchema = 'ListToolsRequestSchema';
-
+// Mock MCP types — reference hoisted values
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
   ErrorCode,
   McpError,
@@ -693,7 +728,7 @@ describe('dispatch: skill_dependencies dispatcher', () => {
     );
   });
 
-  it('passes include_optional when provided as boolean', async () => {
+  it('passes include_optional when provided as boolean false', async () => {
     const ctx = makeContext();
     await getDispatcher('skill_dependencies')!(ctx, { skill: 'testing-strategy', include_optional: false });
 
@@ -779,14 +814,14 @@ describe('server: bootstrap()', () => {
     vi.clearAllMocks();
     registeredHandlers = new Map();
 
-    // Capture setRequestHandler calls so we can invoke them
+    // Capture setRequestHandler calls so we can invoke them in tests
     mockSetRequestHandler.mockImplementation(
       (schema: string, handler: (req: Record<string, unknown>) => Promise<unknown>) => {
         registeredHandlers.set(schema, handler);
       }
     );
 
-    // Spy on process.on to capture signal handlers
+    // Spy on process.on to capture signal handlers without side-effects
     processOnSpy = vi.spyOn(process, 'on').mockImplementation(() => process);
   });
 
@@ -1040,11 +1075,10 @@ describe('server: bootstrap()', () => {
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
       await bootstrap();
 
-      const sigintCall = (processOnSpy.mock.calls as Array<[string, ((...args: unknown[]) => unknown)]>).find(
+      const sigintCall = (processOnSpy.mock.calls as Array<[string, (() => Promise<void>)]>).find(
         ([event]) => event === 'SIGINT'
       );
-      const sigintHandler = sigintCall?.[1];
-      await sigintHandler?.();
+      await sigintCall?.[1]?.();
 
       expect(mockClose).toHaveBeenCalled();
       mockExit.mockRestore();
@@ -1054,11 +1088,10 @@ describe('server: bootstrap()', () => {
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
       await bootstrap();
 
-      const sigtermCall = (processOnSpy.mock.calls as Array<[string, ((...args: unknown[]) => unknown)]>).find(
+      const sigtermCall = (processOnSpy.mock.calls as Array<[string, (() => Promise<void>)]>).find(
         ([event]) => event === 'SIGTERM'
       );
-      const sigtermHandler = sigtermCall?.[1];
-      await sigtermHandler?.();
+      await sigtermCall?.[1]?.();
 
       expect(mockClose).toHaveBeenCalled();
       mockExit.mockRestore();
@@ -1068,7 +1101,7 @@ describe('server: bootstrap()', () => {
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
       await bootstrap();
 
-      const sigintCall = (processOnSpy.mock.calls as Array<[string, ((...args: unknown[]) => unknown)]>).find(
+      const sigintCall = (processOnSpy.mock.calls as Array<[string, (() => Promise<void>)]>).find(
         ([event]) => event === 'SIGINT'
       );
       await sigintCall?.[1]?.();
@@ -1081,7 +1114,7 @@ describe('server: bootstrap()', () => {
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
       await bootstrap();
 
-      const sigtermCall = (processOnSpy.mock.calls as Array<[string, ((...args: unknown[]) => unknown)]>).find(
+      const sigtermCall = (processOnSpy.mock.calls as Array<[string, (() => Promise<void>)]>).find(
         ([event]) => event === 'SIGTERM'
       );
       await sigtermCall?.[1]?.();
@@ -1092,26 +1125,27 @@ describe('server: bootstrap()', () => {
   });
 
   describe('lifecycle: eager loading', () => {
-    it('does not call warmAll when GOODVIBES_EAGER_LOAD is unset', async () => {
+    it('does not call warmAll when GOODVIBES_EAGER_LOAD is not "true"', async () => {
       delete process.env.GOODVIBES_EAGER_LOAD;
       const { RegistryIndexCache } = await import('../extensions/loader.js');
-      const cacheInstance = vi.mocked(RegistryIndexCache).mock.results[0]?.value;
+      vi.mocked(RegistryIndexCache).mockClear();
 
       await bootstrap();
 
-      // warmAll should NOT have been called
-      expect(cacheInstance?.warmAll).not.toHaveBeenCalled();
+      const instances = vi.mocked(RegistryIndexCache).mock.results;
+      const latestInstance = instances[instances.length - 1]?.value;
+      expect(latestInstance?.warmAll).not.toHaveBeenCalled();
     });
 
     it('calls warmAll when GOODVIBES_EAGER_LOAD is "true"', async () => {
       process.env.GOODVIBES_EAGER_LOAD = 'true';
+      const { RegistryIndexCache } = await import('../extensions/loader.js');
+      vi.mocked(RegistryIndexCache).mockClear();
 
-      // Re-bootstrap to trigger a fresh server with eager load env set
       await bootstrap();
 
-      const { RegistryIndexCache } = await import('../extensions/loader.js');
-      const allInstances = vi.mocked(RegistryIndexCache).mock.results;
-      const latestInstance = allInstances[allInstances.length - 1]?.value;
+      const instances = vi.mocked(RegistryIndexCache).mock.results;
+      const latestInstance = instances[instances.length - 1]?.value;
       expect(latestInstance?.warmAll).toHaveBeenCalled();
 
       delete process.env.GOODVIBES_EAGER_LOAD;
@@ -1119,10 +1153,8 @@ describe('server: bootstrap()', () => {
   });
 
   describe('server onerror handler', () => {
-    it('sets server.onerror to a function', async () => {
+    it('sets server.onerror to a function after bootstrap', async () => {
       await bootstrap();
-      // The setupLifecycle method assigns mockServerInstance.onerror
-      // We verify it's been set (the mock object is shared)
       expect(mockServerInstance.onerror).toBeTypeOf('function');
     });
   });

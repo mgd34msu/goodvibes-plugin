@@ -3,8 +3,7 @@
  * Provides Fuse.js-based fuzzy search over registry entries.
  */
 
-import Fuse from 'fuse.js';
-import type { IFuseOptions } from 'fuse.js';
+import Fuse, { type IFuseOptions } from 'fuse.js';
 import type { RegistryEntry, SearchResult, Registry } from './types.js';
 
 /**
