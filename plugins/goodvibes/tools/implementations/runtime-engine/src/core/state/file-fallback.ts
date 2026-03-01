@@ -21,8 +21,8 @@ import {
   readFileSync,
   unlinkSync,
   existsSync,
-} from 'fs';
-import { join } from 'path';
+} from 'node:fs';
+import { join } from 'node:path';
 
 import type { IPCMessage, IPCResponse } from '../../shared/ipc/protocol.js';
 import { createLogger } from '../../shared/logger.js';

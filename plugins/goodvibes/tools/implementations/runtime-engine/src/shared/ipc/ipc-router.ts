@@ -4,6 +4,11 @@
  * Encapsulates all IPC message dispatching logic, keeping RuntimeEngine
  * focused on lifecycle orchestration. Handles every message type defined
  * in the IPC protocol: hook_event, query, state_update, heartbeat.
+ *
+ * NOTE: This module has a known layer violation — it resides in shared/ (L0)
+ * but imports types from extensions/ (L2) and plugins/ (L3). This is because
+ * the IPC router needs to dispatch to extension and plugin subsystems.
+ * Moving to extensions/ipc/ is planned but deferred to avoid import churn.
  */
 
 import type { ResponseEnvelope } from './ipc-server.js';
@@ -14,6 +19,7 @@ import type { TriggerRegistry } from '../../extensions/triggers/trigger-registry
 import type { WorkflowEngine } from '../../extensions/workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../../extensions/agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../../extensions/directives/directive-queue.js';
+import type { WRFCConfigStore } from '../../extensions/directives/wrfc-config-store.js';
 import type { AgentWorkflowMap } from '../../extensions/directives/agent-workflow-map.js';
 import type { IPCMessage, IPCResponse, Directive } from './protocol.js';
 import type { HookProcessor } from '../../plugins/hooks/hook-processor.js';
@@ -26,6 +32,40 @@ import { writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 const logger = createLogger('ipc-router');
+
+/**
+ * Build a RuntimeEvent for a hook_event IPC message.
+ *
+ * Centralises the type assertions required to construct a hook event from raw
+ * IPC data into a single helper. The `as EventType`/`as EventSource`/`as
+ * EventPayload` casts are unavoidable because hook names are dynamic strings
+ * that are not statically enumerable in the EventType union; they are isolated
+ * here so call sites carry no casts.
+ *
+ * @param hookName    - The hook name from the IPC message (e.g. 'pre_tool_use').
+ * @param hookInput   - The raw hook input payload from Claude Code.
+ * @param sessionId   - Optional session ID to embed in event metadata.
+ * @returns A fully-formed RuntimeEvent ready for EventBus emission.
+ */
+function buildHookEvent(
+  hookName: string,
+  hookInput: Record<string, unknown>,
+  options: { id?: string; timestamp?: string; sessionId?: string } = {},
+): RuntimeEvent {
+  const type = `hook:${hookName}` as EventType;
+  return {
+    id: options.id ?? `hook-${hookName}-${Date.now()}`,
+    timestamp: options.timestamp ?? new Date().toISOString(),
+    type,
+    source: { kind: 'hook', hook_name: hookName } as EventSource,
+    payload: { type, data: hookInput } as EventPayload,
+    metadata: {
+      session_id: options.sessionId ?? '',
+      sequence: 0,
+      version: 1,
+    },
+  };
+}
 
 /**
  * Dependencies injected into the IPCRouter at construction time.
@@ -43,7 +83,7 @@ const logger = createLogger('ipc-router');
  *
  * **Optional deps** (may be absent in stripped-down environments):
  * - `agentWorkflowMap` — bridges agent-type bindings; absent when WRFC is disabled.
- * - `hookProcessor` — v3 plugin layer bridge; absent when plugins are disabled.
+ * - `hookProcessor` — plugin layer bridge; absent when plugins are disabled.
  * - `executorMode` — executor mode manager; absent when executor mode is disabled.
  * - `executorBudget` — executor budget manager; absent when budget tracking is off.
  * - `daemonTickHandler` — daemon tick handler; absent in non-daemon mode.
@@ -57,6 +97,8 @@ export interface IPCRouterDeps {
   workflowEngine: WorkflowEngine | null;
   agentCoordinator: AgentCoordinator | null;
   directiveQueue: DirectiveQueue | null;
+  /** WRFC configuration store — receives validated config from config:loaded events. */
+  wrfcConfigStore?: WRFCConfigStore | null;
   /** Absolute path to the IPC socket file. Used to write session-keyed pointer files. */
   socketPath: string | null;
   /** Absolute path to the .goodvibes/state/ directory. */
@@ -64,8 +106,8 @@ export interface IPCRouterDeps {
   /** Agent-to-workflow binding map — used by resolve_pending_bind queries. */
   agentWorkflowMap?: AgentWorkflowMap | null;
   /**
-   * Optional v3 HookProcessor. When provided, hook_event messages are also
-   * routed through it, bridging the v2 EventBus path with the v3 plugin layer.
+   * Optional HookProcessor. When provided, hook_event messages are also
+   * routed through it, bridging hook events to the plugin layer.
    * Falls back to EventBus-only handling when null.
    */
   hookProcessor?: HookProcessor | null;
@@ -106,7 +148,7 @@ export class IPCRouter {
   private readonly socketPath: string | null;
   private readonly stateDir: string | null;
   private readonly agentWorkflowMap: AgentWorkflowMap | null;
-  /** Optional v3 HookProcessor for bridging hook events to the plugin layer. */
+  /** Optional HookProcessor for bridging hook events to the plugin layer. */
   private readonly hookProcessor: HookProcessor | null;
   /** Optional ExecutorModeManager for get_executor_mode queries. */
   private readonly executorMode: ExecutorModeManager | null;
@@ -114,6 +156,7 @@ export class IPCRouter {
   private readonly executorBudget: ExecutorBudgetManager | null;
   /** Optional DaemonTickHandler for process_tick queries. */
   private readonly daemonTickHandler: DaemonTickHandler | null;
+  private readonly wrfcConfigStore: WRFCConfigStore | null;
 
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
@@ -137,6 +180,7 @@ export class IPCRouter {
     this.executorMode = deps.executorMode ?? null;
     this.executorBudget = deps.executorBudget ?? null;
     this.daemonTickHandler = deps.daemonTickHandler ?? null;
+    this.wrfcConfigStore = deps.wrfcConfigStore ?? null;
   }
 
   /**
@@ -252,21 +296,7 @@ export class IPCRouter {
 
     if (msg.type === 'hook_event') {
       // Emit as a hook:* event on the EventBus
-      const emittedEvent: RuntimeEvent = {
-        id: msg.id,
-        timestamp: msg.timestamp,
-        type: `hook:${msg.hook_name}` as EventType,
-        source: { kind: 'hook', hook_name: msg.hook_name } as EventSource,
-        payload: {
-          type: `hook:${msg.hook_name}` as EventType,
-          data: msg.hook_input,
-        } as EventPayload,
-        metadata: {
-          session_id: '',
-          sequence: 0,
-          version: 1,
-        },
-      };
+      const emittedEvent = buildHookEvent(msg.hook_name, msg.hook_input, { id: msg.id, timestamp: msg.timestamp });
       this.eventBus.emit(emittedEvent);
       // Await trigger evaluation so directives are enqueued before the hook's follow-up query
       if (this.triggerRegistry) {
@@ -328,13 +358,13 @@ export class IPCRouter {
           }
 
           if (Object.keys(validated).length > 0) {
-            this.directiveQueue.setWRFCConfig(validated);
+            this.wrfcConfigStore?.set(validated);
             logger.debug('WRFC config stored from config:loaded event', { validated });
           }
         }
       }
 
-      // Optionally route through v3 HookProcessor (bridge v2→v3)
+      // Optionally route through HookProcessor
       if (this.hookProcessor) {
         try {
           const hookInput = (typeof msg.hook_input === 'object' && msg.hook_input !== null)
@@ -342,7 +372,7 @@ export class IPCRouter {
             : {};
           await this.hookProcessor.process(msg.hook_name, hookInput);
         } catch (err) {
-          logger.warn('IPC hook_event: v3 HookProcessor error', {
+          logger.warn('IPC hook_event: HookProcessor error', {
             hookName: msg.hook_name,
             error: toErrorMessage(err),
           });

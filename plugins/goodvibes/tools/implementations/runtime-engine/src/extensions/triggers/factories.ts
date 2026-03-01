@@ -17,7 +17,7 @@ import { Trigger, createTrigger } from '../../core/types.js';
  * Utility type for trigger factory params.
  * Inherits required base fields, makes optional base fields optional, and merges extension-specific fields.
  */
-export type TriggerFactoryParams<T> = Pick<Trigger, 'id' | 'event_match' | 'actions'> &
+type TriggerFactoryParams<T> = Pick<Trigger, 'id' | 'event_match' | 'actions'> &
   Partial<Omit<Trigger, 'id' | 'event_match' | 'actions' | 'enabled'>> &
   { enabled?: boolean } &
   T;
@@ -30,7 +30,7 @@ export type TriggerFactoryParams<T> = Pick<Trigger, 'id' | 'event_match' | 'acti
  * A trigger specialised for WRFC quality-loop workflows.
  * Adds score gating, fix attempt budgeting, and workflow state filtering.
  */
-export interface WRFCTrigger extends Trigger {
+interface WRFCTrigger extends Trigger {
   /** Discriminant field for reliable type narrowing. */
   trigger_type: 'wrfc';
   /** Minimum review score (0–10) required to pass the quality gate. */
@@ -44,7 +44,7 @@ export interface WRFCTrigger extends Trigger {
 /**
  * Narrows a Trigger to WRFCTrigger.
  */
-export function isWRFCTrigger(trigger: Trigger): trigger is WRFCTrigger {
+function isWRFCTrigger(trigger: Trigger): trigger is WRFCTrigger {
   return 'trigger_type' in trigger && (trigger as WRFCTrigger).trigger_type === 'wrfc';
 }
 
@@ -88,7 +88,7 @@ export function createWRFCTrigger(params: TriggerFactoryParams<{
 /**
  * A trigger that fires on a cron schedule.
  */
-export interface CronTrigger extends Trigger {
+interface CronTrigger extends Trigger {
   /** Discriminant field for reliable type narrowing. */
   trigger_type: 'cron';
   /** Standard cron expression defining the fire schedule (e.g. '0 9 * * 1-5'). */
@@ -102,7 +102,7 @@ export interface CronTrigger extends Trigger {
 /**
  * Narrows a Trigger to CronTrigger.
  */
-export function isCronTrigger(trigger: Trigger): trigger is CronTrigger {
+function isCronTrigger(trigger: Trigger): trigger is CronTrigger {
   return 'trigger_type' in trigger && (trigger as CronTrigger).trigger_type === 'cron';
 }
 
@@ -110,7 +110,7 @@ export function isCronTrigger(trigger: Trigger): trigger is CronTrigger {
  * Creates a CronTrigger with sensible defaults.
  * `enabled` defaults to true via the base `createTrigger` helper.
  */
-export function createCronTrigger(params: TriggerFactoryParams<{
+function createCronTrigger(params: TriggerFactoryParams<{
   schedule: string;
   active_hours?: string;
   timezone?: string;
@@ -143,7 +143,7 @@ export function createCronTrigger(params: TriggerFactoryParams<{
 /**
  * A trigger that activates when an external webhook payload is received.
  */
-export interface WebhookTrigger extends Trigger {
+interface WebhookTrigger extends Trigger {
   /** Discriminant field for reliable type narrowing. */
   trigger_type: 'webhook';
   /** Optional URL path pattern to match against the incoming webhook path. */
@@ -157,7 +157,7 @@ export interface WebhookTrigger extends Trigger {
 /**
  * Narrows a Trigger to WebhookTrigger.
  */
-export function isWebhookTrigger(trigger: Trigger): trigger is WebhookTrigger {
+function isWebhookTrigger(trigger: Trigger): trigger is WebhookTrigger {
   return 'trigger_type' in trigger && (trigger as WebhookTrigger).trigger_type === 'webhook';
 }
 
@@ -165,7 +165,7 @@ export function isWebhookTrigger(trigger: Trigger): trigger is WebhookTrigger {
  * Creates a WebhookTrigger with sensible defaults.
  * `enabled` defaults to true via the base `createTrigger` helper.
  */
-export function createWebhookTrigger(params: TriggerFactoryParams<{
+function createWebhookTrigger(params: TriggerFactoryParams<{
   url_pattern?: string;
   payload_schema?: Record<string, unknown>;
   normalize_with?: string;

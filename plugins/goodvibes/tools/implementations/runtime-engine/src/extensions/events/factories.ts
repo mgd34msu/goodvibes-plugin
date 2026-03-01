@@ -47,7 +47,7 @@ export interface HookEvent extends RuntimeEvent {
 /**
  * Narrows a RuntimeEvent to HookEvent.
  */
-export function isHookEvent(event: RuntimeEvent): event is HookEvent {
+function isHookEvent(event: RuntimeEvent): event is HookEvent {
   return (
     event.source === 'internal' &&
     'hook_type' in event &&
@@ -121,7 +121,7 @@ export function createHookEvent(params: {
 /**
  * A runtime event sourced from an agent lifecycle transition.
  */
-export interface AgentEvent extends RuntimeEvent {
+interface AgentEvent extends RuntimeEvent {
   /** Agent events always originate from the agent source. */
   source: 'agent';
   /** Unique identifier for the agent instance that produced this event. */
@@ -142,7 +142,7 @@ export interface AgentEvent extends RuntimeEvent {
 /**
  * Narrows a RuntimeEvent to AgentEvent.
  */
-export function isAgentEvent(event: RuntimeEvent): event is AgentEvent {
+function isAgentEvent(event: RuntimeEvent): event is AgentEvent {
   return event.source === 'agent' && 'agent_id' in event && 'agent_type' in event;
 }
 
@@ -150,7 +150,7 @@ export function isAgentEvent(event: RuntimeEvent): event is AgentEvent {
  * Creates an AgentEvent with sensible defaults.
  * Priority defaults to 60 (agent events are above-average priority).
  */
-export function createAgentEvent(params: {
+function createAgentEvent(params: {
   agent_id: string;
   agent_type: string;
   /** e.g. 'agent:completed', 'agent:blocked', 'agent:spawned' */
@@ -202,7 +202,7 @@ export interface ExternalEvent extends RuntimeEvent {
 /**
  * Narrows a RuntimeEvent to ExternalEvent.
  */
-export function isExternalEvent(event: RuntimeEvent): event is ExternalEvent {
+function isExternalEvent(event: RuntimeEvent): event is ExternalEvent {
   return (
     event.source === 'external' &&
     'external_source' in event &&
@@ -250,7 +250,7 @@ export function createExternalEvent(params: {
 /**
  * A runtime event sourced from a human interaction.
  */
-export interface HumanEvent extends RuntimeEvent {
+interface HumanEvent extends RuntimeEvent {
   /** Human events always originate from the human source. */
   source: 'human';
   /** Raw user prompt text, if applicable. */
@@ -266,7 +266,7 @@ export interface HumanEvent extends RuntimeEvent {
  * Only checks source discriminant since all extension fields (prompt, command, approval) are optional.
  * Any event with source 'human' is a valid HumanEvent by definition.
  */
-export function isHumanEvent(event: RuntimeEvent): event is HumanEvent {
+function isHumanEvent(event: RuntimeEvent): event is HumanEvent {
   return event.source === 'human';
 }
 
@@ -274,7 +274,7 @@ export function isHumanEvent(event: RuntimeEvent): event is HumanEvent {
  * Creates a HumanEvent with sensible defaults.
  * Priority defaults to 100 — human events are the highest priority.
  */
-export function createHumanEvent(params: {
+function createHumanEvent(params: {
   /** e.g. 'human:prompt', 'human:stop', 'human:approval' */
   type: string;
   prompt?: string;
@@ -308,7 +308,7 @@ export function createHumanEvent(params: {
 /**
  * Discriminant for the category of time-based event.
  */
-export type TimeType = 'heartbeat' | 'cron' | 'scheduled' | 'one_shot';
+type TimeType = 'heartbeat' | 'cron' | 'scheduled' | 'one_shot';
 
 /**
  * A runtime event sourced from the time subsystem.
@@ -333,7 +333,7 @@ export interface TimeEvent extends RuntimeEvent {
 /**
  * Narrows a RuntimeEvent to TimeEvent.
  */
-export function isTimeEvent(event: RuntimeEvent): event is TimeEvent {
+function isTimeEvent(event: RuntimeEvent): event is TimeEvent {
   return event.source === 'time' && 'time_type' in event;
 }
 

@@ -6,6 +6,7 @@
  */
 
 export { DirectiveQueue } from './directive-queue.js';
+export { WRFCConfigStore } from './wrfc-config-store.js';
 export type { SpawnDirectiveContext } from './legacy-directive-builder.js';
 export {
   buildSpawnDirectiveMessage,

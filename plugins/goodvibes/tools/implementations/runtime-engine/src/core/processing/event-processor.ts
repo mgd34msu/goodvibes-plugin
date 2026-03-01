@@ -58,7 +58,7 @@ const STALE_LOCK_TIMEOUT_MS = 30_000;
  */
 const INTERNAL_EVENT_PRIORITY = 5;
 
-export interface BudgetConfig {
+interface BudgetConfig {
   /** Total token budget (0 = unlimited). */
   total: number;
   /** Warn when consumed tokens exceed this fraction of total (0–1). */
@@ -67,7 +67,7 @@ export interface BudgetConfig {
   pause_threshold: number;
 }
 
-export interface RateLimitConfig {
+interface RateLimitConfig {
   /** Maximum events to process per window. */
   max_per_window: number;
   /** Window duration in ms. Default: 1000. */

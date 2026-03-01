@@ -3,7 +3,7 @@
  *
  * Entry point for the WRFC (Write-Review-Fix-Confirm) quality loop plugin.
  * Registers WRFC triggers and handlers with the core EventProcessor and
- * TriggerRegistry using the v3 event loop contract.
+ * TriggerRegistry using the event loop contract.
  *
  * Plugin is a consumer of Layer 1 (core) and Layer 2 (extensions) —
  * it never modifies them.
@@ -145,7 +145,7 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
   // 3. Register handler functions with the processor
   //
   // TriggerHandlerFn signature: (event: RuntimeEvent) => Promise<HandlerResult>
-  // We wrap each handler to pass the store from closure, since the v3
+  // We wrap each handler to pass the store from closure, since the
   // TriggerHandlerFn does not receive the store parameter directly.
   // The trigger is retrieved from the registry for callers that need it.
 

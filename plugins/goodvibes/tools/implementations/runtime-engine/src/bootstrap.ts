@@ -49,6 +49,7 @@ import { AgentCoordinator } from './extensions/agents/agent-coordinator.js';
 import { BudgetTracker } from './extensions/agents/budget-tracker.js';
 import {
   DirectiveQueue,
+  WRFCConfigStore,
   registerTestFixHandlers,
   registerReviewOnlyHandlers,
   AgentWorkflowMap,
@@ -141,6 +142,7 @@ export class RuntimeEngine {
 
   /** Directive queue for WRFC orchestration messages. */
   private directiveQueue: DirectiveQueue | null = null;
+  private wrfcConfigStore: WRFCConfigStore | null = null;
 
   /** Agent-to-workflow binding map for deterministic WRFC chain routing. */
   private agentWorkflowMap: AgentWorkflowMap | null = null;
@@ -250,7 +252,7 @@ export class RuntimeEngine {
     // 5. Write PID lock file
     writePidFile(this.projectRoot);
 
-    // 7. Initialise workflow engine and trigger registry
+    // 6. Initialise workflow engine and trigger registry
     if (this.config.features.workflows_enabled) {
       this.workflowEngine = new WorkflowEngine(this.config.workflows);
       this.workflowEngine.setEventBus(this.eventBus);
@@ -282,10 +284,11 @@ export class RuntimeEngine {
 
     this.triggerRegistry = new TriggerRegistry(this.config.triggers);
     this.directiveQueue = new DirectiveQueue();
+    this.wrfcConfigStore = new WRFCConfigStore();
     if (this.workflowEngine) {
       this.workflowEngine.setDirectiveQueue(this.directiveQueue);
     }
-    this.triggerRegistry.setDependencies(this.eventBus, this.directiveQueue, this.workflowEngine);
+    this.triggerRegistry.setDependencies(this.eventBus, this.directiveQueue, this.workflowEngine, this.wrfcConfigStore);
     for (const trigger of getBuiltinTriggers()) {
       this.triggerRegistry.register(trigger);
     }
@@ -304,7 +307,7 @@ export class RuntimeEngine {
     });
     logger.debug('Trigger registry initialised');
 
-    // 8. Initialise agent coordinator if enabled
+    // 7. Initialise agent coordinator if enabled
     if (this.config.features.agents_enabled) {
       this.budgetTracker = new BudgetTracker(this.eventBus, this.config.agents);
       this.agentCoordinator = new AgentCoordinator(
@@ -340,7 +343,7 @@ export class RuntimeEngine {
       });
     }
 
-    // 6. Start periodic checkpoint timer (after all subsystems wired)
+    // 8. Start periodic checkpoint timer (after all subsystems wired)
     this.checkpointManager = new CheckpointManager({
       stateStore: this.stateStore,
       eventLog: this.eventLog,
@@ -387,6 +390,12 @@ export class RuntimeEngine {
     // 10c. Restore executor budget from coreStateStore now that it has been created.
     if (this.executorBudget && this.coreStateStore) {
       this.executorBudget.restore(this.coreStateStore);
+    }
+
+    // 10d. Wire live queue depth into DaemonTickHandler now that coreEventQueue exists.
+    if (this.daemonTickHandler && this.coreEventQueue) {
+      const queue = this.coreEventQueue;
+      this.daemonTickHandler.setQueueDepthGetter(() => queue.depth());
     }
 
     // 11. Start IPC server if enabled
@@ -791,13 +800,14 @@ export class RuntimeEngine {
         workflowEngine: this.workflowEngine,
         agentCoordinator: this.agentCoordinator,
         directiveQueue: this.directiveQueue,
+        wrfcConfigStore: this.wrfcConfigStore,
         socketPath,
         stateDir,
         agentWorkflowMap: this.agentWorkflowMap,
-        hookProcessor: this.hookProcessor ?? null,
-        executorMode: this.executorMode ?? null,
-        executorBudget: this.executorBudget ?? null,
-        daemonTickHandler: this.daemonTickHandler ?? null,
+        hookProcessor: this.hookProcessor,
+        executorMode: this.executorMode,
+        executorBudget: this.executorBudget,
+        daemonTickHandler: this.daemonTickHandler,
       });
       this.ipcServer.onMessage(this.ipcRouter.route.bind(this.ipcRouter));
 
@@ -923,17 +933,19 @@ export class RuntimeEngine {
       }
 
       // 7. Hooks plugin
+      /** Empty session ID sentinel — no active session at plugin construction time. */
+      const NO_SESSION_ID = '';
       this.hookRegistry = new HookRegistry();
       this.hookProcessor = new HookProcessor({
         registry: this.hookRegistry,
-        sessionId: '',  // sentinel: no session at construction time
+        sessionId: NO_SESSION_ID,  // sentinel: no session at construction time
       });
       registerDefaultHandlers(this.hookRegistry, {
-        eventBus: this.eventBus ?? null,
-        directiveQueue: this.directiveQueue ?? null,
-        agentWorkflowMap: this.agentWorkflowMap ?? null,
-        daemonTickHandler: this.daemonTickHandler ?? null,
-        executorMode: this.executorMode ?? null,
+        eventBus: this.eventBus,
+        directiveQueue: this.directiveQueue,
+        agentWorkflowMap: this.agentWorkflowMap,
+        daemonTickHandler: this.daemonTickHandler,
+        executorMode: this.executorMode,
       });
       logger.debug('Hooks plugin registered', {
         handlerCount: this.hookRegistry.count(),

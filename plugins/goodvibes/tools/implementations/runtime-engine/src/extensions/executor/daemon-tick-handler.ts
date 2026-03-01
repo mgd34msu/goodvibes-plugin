@@ -32,6 +32,8 @@ export class DaemonTickHandler {
   private readonly eventBus: EventBus;
   private config: ExecutorConfig;
   private readonly contextClearer: ContextClearer;
+  /** Returns the current core event queue depth. Wired after plugin init via setQueueDepthGetter(). */
+  private getQueueDepth: () => number = () => 0;
 
   constructor(deps: {
     executorMode: ExecutorModeManager;
@@ -44,6 +46,14 @@ export class DaemonTickHandler {
     this.eventBus = deps.eventBus;
     this.config = deps.config;
     this.contextClearer = new ContextClearer(deps.config.daemon);
+  }
+
+  /**
+   * Wire the live queue depth getter after the core event queue has been
+   * initialised. Called from bootstrap after initializePlugins().
+   */
+  setQueueDepthGetter(getter: () => number): void {
+    this.getQueueDepth = getter;
   }
 
   /**
@@ -89,7 +99,7 @@ export class DaemonTickHandler {
         type: 'executor:tick_received',
         data: {
           tick_number: tickNumber,
-          pending_events: 0, // TODO: Wire to coreEventQueue.size() when RuntimeEngine exposes it
+          pending_events: this.getQueueDepth(),
         },
       },
     });
@@ -176,18 +186,13 @@ export class DaemonTickHandler {
    * Build the additionalContext payload for daemon tick injection.
    * Includes: active workflows, pending events summary, memory state.
    *
-   * @deferred Pending event count and active workflow count are hardcoded to 0
-   * until RuntimeEngine exposes coreEventQueue.size() and WorkflowRegistry.activeCount().
-   * Wire these in Phase 4 (RuntimeEngine wiring) by injecting the queue and registry
-   * into DaemonTickHandler and replacing the hardcoded 0 values in handleTick() and
-   * buildTickContext().
+   * Pending event count is wired via setQueueDepthGetter(). Active workflow
+   * count remains 0 until WorkflowRegistry exposes activeCount().
    */
   buildTickContext(): string {
     const spending = this.budgetManager.getSpending();
     const canProcess = this.budgetManager.canProcess();
-    // TODO: Wire pendingEvents to coreEventQueue.size() and activeWorkflows to
-    // WorkflowRegistry.activeCount() when RuntimeEngine exposes them.
-    const pendingEvents = 0;
+    const pendingEvents = this.getQueueDepth();
     const activeWorkflows = 0;
     return `--- Daemon Tick Context ---
 Tick #${this.tickCount}

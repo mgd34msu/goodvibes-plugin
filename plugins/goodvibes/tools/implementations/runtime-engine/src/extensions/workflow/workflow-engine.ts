@@ -226,7 +226,7 @@ export class WorkflowEngine {
    *   since context is captured before the async actions resolve.
    *
    * For use cases requiring action completion before proceeding, consider awaiting
-   * `executeActions` directly (v2 consideration).
+   * `executeActions` directly.
    *
    * @param workflowId - ID of the workflow instance to send the event to.
    * @param event      - The RuntimeEvent that may trigger a transition.

@@ -12,9 +12,10 @@ import { createLogger } from '../../shared/logger.js';
 import type { RuntimeEvent, EventType } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
+import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggersConfig } from '../../shared/config.js';
-import { buildSpawnDirectiveMessage } from '../directives/directive-builder.js';
+import { buildSpawnDirectiveMessage } from '../directives/legacy-directive-builder.js';
 import type {
   TriggerAction,
   TriggerActionHandler,
@@ -146,23 +147,28 @@ export class TriggerActionExecutor {
   private readonly workflowEngine: WorkflowEngine | null;
   /** Triggers configuration for timeout and other settings. */
   private readonly config: TriggersConfig | null;
+  /** WRFC config store for reading runtime WRFC configuration. */
+  private readonly wrfcConfigStore: WRFCConfigStore | null;
 
   /**
    * @param eventBus - The shared EventBus instance, or null if not available.
    * @param directiveQueue - The shared DirectiveQueue instance, or null if not available.
    * @param workflowEngine - The shared WorkflowEngine instance, or null if not available.
    * @param config - The triggers configuration, or null to use built-in defaults.
+   * @param wrfcConfigStore - The WRFC config store, or null if not available.
    */
   constructor(
     eventBus: EventBus | null = null,
     directiveQueue: DirectiveQueue | null = null,
     workflowEngine: WorkflowEngine | null = null,
     config: TriggersConfig | null = null,
+    wrfcConfigStore: WRFCConfigStore | null = null,
   ) {
     this.eventBus = eventBus;
     this.directiveQueue = directiveQueue;
     this.workflowEngine = workflowEngine;
     this.config = config;
+    this.wrfcConfigStore = wrfcConfigStore;
   }
 
   /**
@@ -401,8 +407,8 @@ export class TriggerActionExecutor {
    * Returns only numeric, finite values — omits keys that aren't set in the user's config.
    */
   private getWRFCContextDefaults(): Record<string, unknown> {
-    if (!this.directiveQueue) return {};
-    const config = this.directiveQueue.getWRFCConfig();
+    if (!this.wrfcConfigStore) return {};
+    const config = this.wrfcConfigStore.get();
     const defaults: Record<string, unknown> = {};
     if (typeof config.min_review_score === 'number' && Number.isFinite(config.min_review_score)) {
       defaults.min_review_score = config.min_review_score;

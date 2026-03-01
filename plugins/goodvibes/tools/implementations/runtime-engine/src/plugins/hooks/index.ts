@@ -1,7 +1,7 @@
 /**
  * Hook Processing Plugin — Barrel Exports
  *
- * Layer 3 plugin that bridges Claude Code's hook system to the v3 event loop.
+ * Layer 3 plugin that bridges Claude Code's hook system to the event loop.
  * Main entry point: HookProcessor. Use HookRegistry to register handlers.
  */
 

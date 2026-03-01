@@ -1,15 +1,30 @@
 /**
  * Layer 3 Plugins — Barrel Exports
  *
- * Re-exports the complete public API surface of all Layer 3 plugins
- * from a single entry point.
- *
- * Consumers should import from this module rather than individual plugin
- * directories to benefit from a stable, unified public surface.
+ * Explicit named exports for the plugin API consumed by bootstrap and other
+ * internal subsystems. MCP server symbols are intentionally excluded — the
+ * MCP server is a process entry point, not a plugin consumed by bootstrap.
+ * Import MCP symbols directly from './mcp/mcp-server.js' if needed.
  */
 
-export * from './wrfc/index.js';
-export * from './hooks/index.js';
-export * from './time/index.js';
-export * from './external/index.js';
-export * from './mcp/index.js';
+// WRFC plugin
+export { registerWRFCPlugin, getDefaultWRFCConfig } from './wrfc/index.js';
+export type { WRFCPluginConfig, PluginContext } from './wrfc/index.js';
+
+// Hook processing plugin
+export { HookProcessor, HookRegistry, registerDefaultHandlers } from './hooks/index.js';
+export type {
+  ClaudeHookResponse,
+  HookProcessorDeps,
+  HookHandler,
+  RegisteredHandler,
+  DefaultHandlerDeps,
+} from './hooks/index.js';
+
+// Time plugin
+export { TimePlugin, getDefaultTimeConfig } from './time/index.js';
+export type { TimePluginConfig, TimePluginContext } from './time/index.js';
+
+// External events plugin
+export { ExternalPlugin, createDefaultExternalPluginConfig } from './external/index.js';
+export type { ExternalPluginConfig } from './external/index.js';

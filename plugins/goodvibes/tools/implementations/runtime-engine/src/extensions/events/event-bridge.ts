@@ -25,6 +25,15 @@ const FORWARDED_PATTERNS = new Set<string>([
   'workflow:state_changed',
 ]);
 
+/**
+ * Unidirectional bridge: EventBus → CoreEventQueue only.
+ *
+ * Events flow from the extensions EventBus into the core EventQueue.
+ * Reverse bridging (CoreEventQueue → EventBus) is intentionally omitted:
+ * adding it would require a separate loop-prevention mechanism (distinct from
+ * the origin-tag guard used here), since core events re-entering the EventBus
+ * would trigger new subscriptions and risk infinite forwarding.
+ */
 export class EventBridge {
   private unsubscribe?: () => void;
   private forwarded = 0;
@@ -47,8 +56,8 @@ export class EventBridge {
 
     this.unsubscribe = this.eventBus.on('*', (event: RuntimeEvent) => {
       // Skip events that originated from the bridge (prevent loops)
-      const meta = event.metadata as Record<string, unknown>;
-      if (meta?.origin === BRIDGE_ORIGIN) {
+      const meta = event.metadata;
+      if (meta && typeof meta === 'object' && 'origin' in meta && meta.origin === BRIDGE_ORIGIN) {
         return;
       }
 

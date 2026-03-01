@@ -9,6 +9,10 @@
  * line, terminated with '\n'.
  */
 
+import { createLogger } from '../logger.js';
+
+const logger = createLogger('ipc-protocol');
+
 // ─── Message Validation ──────────────────────────────────────────────────────
 
 /** Valid IPC message type discriminants. */
@@ -67,11 +71,9 @@ export function validateIPCMessage(obj: unknown): obj is IPCMessage {
     default:
       // Unrecognised type discriminant — log a warning so operators can catch
       // mismatches between hook-script and engine versions at runtime.
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[ipc-protocol] validateIPCMessage: unrecognised message type:',
-        typeof msg['type'] === 'string' ? msg['type'] : typeof msg['type'],
-      );
+      logger.warn('Unrecognised IPC message type', {
+        type: typeof msg['type'] === 'string' ? msg['type'] : typeof msg['type'],
+      });
       return false;
   }
 }

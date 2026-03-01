@@ -5,7 +5,7 @@
  * execute. Each factory returns an Action with type 'send_message' and
  * the structured <gv> payload as params.content.
  *
- * This module wraps the existing directive-builder.ts message constructors
+ * This module wraps the existing legacy-directive-builder.ts message constructors
  * and packages them as Action types that HandlerResult.actions accepts.
  */
 

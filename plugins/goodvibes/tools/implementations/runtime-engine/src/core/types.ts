@@ -8,7 +8,7 @@
  * conditions and actions, metrics, and factory helpers.
  *
  * Layer 2 (extensions) and Layer 3 (plugins) extend these interfaces.
- * This file NEVER changes after v3 stabilises.
+ * This file NEVER changes after stabilisation.
  */
 
 import { generateEventId } from '../shared/utils.js';
@@ -69,7 +69,7 @@ export interface RuntimeEvent {
  * Describes which events a trigger should match.
  * All fields are ANDed together.
  */
-export interface EventMatcher {
+interface EventMatcher {
   /** Filter by source. Single value or array (OR semantics). */
   source?: EventSource | EventSource[];
   /** Match event type exactly (string) or by pattern (RegExp). */
@@ -107,7 +107,7 @@ export interface Condition {
 /**
  * Supported action types that a trigger handler can produce.
  */
-export type ActionType =
+type ActionType =
   | 'spawn_agent'
   | 'emit_event'
   | 'send_message'
@@ -404,7 +404,7 @@ export interface MetricsCollector {
  * Disposable resource interface.
  * Aspirational — no consumer migrations now, apply to new code going forward.
  */
-export interface Disposable {
+interface Disposable {
   /** Release all resources held by this object. */
   dispose(): Promise<void>;
 }
@@ -414,7 +414,7 @@ export interface Disposable {
 /**
  * Narrows an unknown value to RuntimeEvent.
  */
-export function isRuntimeEvent(value: unknown): value is RuntimeEvent {
+function isRuntimeEvent(value: unknown): value is RuntimeEvent {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -430,7 +430,7 @@ export function isRuntimeEvent(value: unknown): value is RuntimeEvent {
 /**
  * Narrows an unknown value to Trigger.
  */
-export function isTrigger(value: unknown): value is Trigger {
+function isTrigger(value: unknown): value is Trigger {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -445,7 +445,7 @@ export function isTrigger(value: unknown): value is Trigger {
 /**
  * Narrows an unknown value to EventContext.
  */
-export function isEventContext(value: unknown): value is EventContext {
+function isEventContext(value: unknown): value is EventContext {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   return (

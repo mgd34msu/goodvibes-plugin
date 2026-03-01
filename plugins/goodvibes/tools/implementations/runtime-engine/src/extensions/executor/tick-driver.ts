@@ -1,10 +1,10 @@
 /**
- * TickDriver — Unified v3 pipeline evaluation driver.
+ * TickDriver — Unified pipeline evaluation driver.
  *
  * Replaces both DaemonTickScheduler (daemon mode) and the v3TickTimer
  * (non-daemon mode) with a single, mode-aware evaluation loop.
  *
- * In ALL modes, the TickDriver evaluates the full v3 pipeline on each
+ * In ALL modes, the TickDriver evaluates the full pipeline on each
  * eval cycle:
  *   1. timePlugin.onTick()       — heartbeat + scheduled events
  *   2. externalPlugin.onTick()   — file-drop directory scan
@@ -241,7 +241,7 @@ export class TickDriver {
   /**
    * Called by the Timer on each eval cycle.
    *
-   * Runs the full v3 pipeline:
+   * Runs the full pipeline:
    * 1. timePlugin.onTick() — heartbeat + scheduled events
    * 2. externalPlugin.onTick() — file-drop scan
    * 3. eventProcessor.processBatch() — drain queue through triggers

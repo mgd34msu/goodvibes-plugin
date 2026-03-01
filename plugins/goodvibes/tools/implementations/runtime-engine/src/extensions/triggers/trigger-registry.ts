@@ -11,6 +11,7 @@ import type { RuntimeEvent } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { TriggersConfig } from '../../shared/config.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
+import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import { ConditionEvaluator } from './condition-evaluator.js';
 import { TriggerActionExecutor } from './trigger-action-executor.js';
@@ -67,8 +68,9 @@ export class TriggerRegistry {
     bus: EventBus,
     directiveQueue: DirectiveQueue | null = null,
     workflowEngine: WorkflowEngine | null = null,
+    wrfcConfigStore: WRFCConfigStore | null = null,
   ): void {
-    this.executor = new TriggerActionExecutor(bus, directiveQueue, workflowEngine, this.config);
+    this.executor = new TriggerActionExecutor(bus, directiveQueue, workflowEngine, this.config, wrfcConfigStore);
     // Re-register any handlers registered before setDependencies was called
     for (const [name, handler] of this.actionHandlers) {
       this.executor.registerHandler(name, handler);

@@ -2,7 +2,7 @@
  * WRFC Event Handlers — WRFC Plugin (Layer 3)
  *
  * Repackages the WRFC orchestration logic from wrfc-handlers.ts as event
- * handlers that conform to the v3 event loop contract:
+ * handlers that conform to the event loop contract:
  *   - Accept (RuntimeEvent, store) and return HandlerResult
  *   - State changes via state_updates (no direct mutations)
  *   - Side-effects via actions (send_message, emit_event)

@@ -14,8 +14,8 @@ import {
   writeFileSync,
   unlinkSync,
   readdirSync,
-} from 'fs';
-import { join, isAbsolute, basename } from 'path';
+} from 'node:fs';
+import { join, isAbsolute, basename } from 'node:path';
 import type { RuntimeConfig } from '../../shared/config.js';
 import type { StateStore } from './types.js';
 import { createLogger } from '../../shared/logger.js';

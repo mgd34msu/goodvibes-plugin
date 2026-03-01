@@ -113,7 +113,7 @@ export interface DaemonConfig {
   tick_interval_ms: number;
   /** Whether the daemon tick scheduler is enabled. When false, no automatic ticks are sent. */
   auto_tick: boolean;
-  /** Interval in ms at which the TickDriver evaluates the v3 pipeline. Default: 10000 (10s). */
+  /** Interval in ms at which the TickDriver evaluates the pipeline. Default: 10000 (10s). */
   eval_interval_ms: number;
 }
 

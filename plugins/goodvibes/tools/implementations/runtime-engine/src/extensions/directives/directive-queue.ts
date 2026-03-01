@@ -6,7 +6,7 @@
  * queries for directives.
  */
 
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import type { Directive } from '../../shared/ipc/protocol.js';
 import { createLogger } from '../../shared/logger.js';
 
@@ -262,40 +262,10 @@ export class DirectiveQueue {
     return queue.filter((d) => d.workflow_id === workflowId);
   }
 
-  /** Clear all directive queues and held batches. WRFC config is preserved. */
+  /** Clear all directive queues and held batches. */
   clear(): void {
     this.queues.clear();
     this.held.clear();
-  }
-
-  /**
-   * Stored WRFC config from the `config:loaded` hook event.
-   *
-   * @v1-design-note Storing WRFC-specific configuration (min review score,
-   * max fix attempts, etc.) inside `DirectiveQueue` violates the Single
-   * Responsibility Principle — a queue should only manage queueing. This was
-   * a pragmatic choice to avoid a separate config-store module. It should
-   * be extracted to a dedicated `WRFCConfig` service or singleton
-   * so that `DirectiveQueue` only owns directive lifecycle.
-   */
-  private wrfcConfig: Record<string, unknown> = {};
-
-  /**
-   * Store the WRFC config delivered by the config:loaded hook event.
-   *
-   * @param config - The `wrfc` section of the merged goodvibes.json.
-   */
-  // TODO: Extract WRFC config into dedicated WRFCConfigStore — this violates SRP.
-  setWRFCConfig(config: Record<string, unknown>): void {
-    this.wrfcConfig = config;
-    logger.debug('WRFC config stored', { keys: Object.keys(config) });
-  }
-
-  /**
-   * Return the stored WRFC config (empty object if never set).
-   */
-  getWRFCConfig(): Record<string, unknown> {
-    return this.wrfcConfig;
   }
 
   /**

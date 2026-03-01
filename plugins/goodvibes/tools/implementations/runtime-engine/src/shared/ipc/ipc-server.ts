@@ -15,9 +15,9 @@
  *   connection handlers.
  */
 
-import * as net from 'net';
-import { mkdirSync, existsSync, unlinkSync, chmodSync } from 'fs';
-import { dirname } from 'path';
+import * as net from 'node:net';
+import { mkdirSync, existsSync, unlinkSync, chmodSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { validateIPCMessage } from './protocol.js';
