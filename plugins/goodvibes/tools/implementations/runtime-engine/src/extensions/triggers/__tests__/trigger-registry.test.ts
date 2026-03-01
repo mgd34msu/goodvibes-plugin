@@ -40,7 +40,7 @@ function makeTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinit
     description: 'A test trigger',
     enabled: true,
     priority: 10,
-    condition: { type: 'event', event_type: 'test:event' },
+    condition: { type: 'event', event_type: 'test:event' as never },
     action: { type: 'emit_event', event_type: 'test:emitted' as never, payload_template: {} },
     fires_count: 0,
     ...overrides,
@@ -51,13 +51,13 @@ function makeEvent(type: string, data: Record<string, unknown> = {}, id = 'evt-1
   return {
     id,
     type: type as RuntimeEvent['type'],
-    timestamp: Date.now(),
-    source: { kind: 'test' } as RuntimeEvent['source'],
+    timestamp: new Date().toISOString(),
+    source: { kind: 'system' } as RuntimeEvent['source'],
     payload: {
       type: type as RuntimeEvent['payload']['type'],
       data,
     } as RuntimeEvent['payload'],
-    metadata: { sequence: 1, version: 1 },
+    metadata: { sequence: 1, version: 1, session_id: '' },
   };
 }
 
@@ -263,7 +263,7 @@ describe('TriggerRegistry', () => {
     });
 
     it('returns result with fired=false when condition is not met', async () => {
-      registry.register(makeTrigger({ condition: { type: 'event', event_type: 'different:event' } }));
+      registry.register(makeTrigger({ condition: { type: 'event', event_type: 'different:event' as never } }));
       const event = makeEvent('test:event');
       const results = await registry.evaluate(event);
       expect(results).toHaveLength(1);

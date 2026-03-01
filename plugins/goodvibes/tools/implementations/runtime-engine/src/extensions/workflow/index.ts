@@ -9,3 +9,5 @@ export * from './workflow-engine.js';
 export * from './definitions/index.js';
 export type { WatchdogCoordinatorDeps } from './watchdog.js';
 export { WatchdogCoordinator } from './watchdog.js';
+export * from './guards.js';
+export * from './subsystem.js';

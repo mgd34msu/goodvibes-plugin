@@ -60,7 +60,7 @@ function makeNormalizers(): NormalizerRegistry {
     type: 'external:test',
     source: { kind: 'external', source_name: 'test' },
     payload: { type: 'external:test', data: rawPayload },
-  }) as ReturnType<NormalizerRegistry['normalize']>);
+  }) as unknown as ReturnType<NormalizerRegistry['normalize']>);
   return reg;
 }
 
@@ -146,9 +146,9 @@ describe('FileWatcher', () => {
   describe('scan() — file filtering', () => {
     it('ignores non-JSON files', async () => {
       readdirMock.mockResolvedValueOnce(
-        ['event.json', 'readme.txt', 'data.xml', 'valid.json'] as unknown as string[],
+        ['event.json', 'readme.txt', 'data.xml', 'valid.json'] as unknown as never[],
       );
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
 
       const queue = makeQueue();
       const watcher = makeWatcher({}, queue);
@@ -160,7 +160,7 @@ describe('FileWatcher', () => {
     });
 
     it('returns 0 events_ingested when directory is empty', async () => {
-      readdirMock.mockResolvedValueOnce([] as unknown as string[]);
+      readdirMock.mockResolvedValueOnce([] as unknown as never[]);
       const watcher = makeWatcher();
       const result = await watcher.scan();
       expect(result).toEqual({ events_ingested: 0 });
@@ -172,8 +172,8 @@ describe('FileWatcher', () => {
   describe('scan() — max_files_per_scan cap', () => {
     it('processes at most max_files_per_scan files', async () => {
       const files = Array.from({ length: 10 }, (_, i) => `event${i}.json`);
-      readdirMock.mockResolvedValueOnce(files as unknown as string[]);
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(files as unknown as never[]);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
 
       const queue = makeQueue();
       const watcher = makeWatcher({ max_files_per_scan: 3 }, queue);
@@ -188,8 +188,8 @@ describe('FileWatcher', () => {
 
   describe('scan() — successful ingestion', () => {
     it('reads, normalizes, enqueues, and moves file to processed dir', async () => {
-      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue(validPayload('test', { x: 1 }) as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue(validPayload('test', { x: 1 }) as unknown as string);
 
       const queue = makeQueue();
       const watcher = makeWatcher({}, queue);
@@ -208,9 +208,9 @@ describe('FileWatcher', () => {
 
     it('enqueues events from multiple files in a single scan', async () => {
       readdirMock.mockResolvedValueOnce(
-        ['a.json', 'b.json', 'c.json'] as unknown as string[],
+        ['a.json', 'b.json', 'c.json'] as unknown as never[],
       );
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
 
       const queue = makeQueue();
       const watcher = makeWatcher({}, queue);
@@ -226,8 +226,8 @@ describe('FileWatcher', () => {
   describe('scan() — deduplication', () => {
     it('skips file already in enqueuedFiles set (rename failure leaves file in incoming)', async () => {
       // First scan: file processed but move fails — file stays in incoming
-      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
       // Simulate rename failure so file stays in incoming but enqueuedFiles is NOT cleared
       renameMock.mockRejectedValueOnce(new Error('rename failed'));
 
@@ -237,8 +237,8 @@ describe('FileWatcher', () => {
       expect(vi.mocked(queue.enqueue)).toHaveBeenCalledTimes(1);
 
       // Second scan: same file still in incoming — should be skipped
-      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
       renameMock.mockResolvedValue(undefined);
 
       const result2 = await watcher.scan();
@@ -249,8 +249,8 @@ describe('FileWatcher', () => {
 
     it('allows re-ingestion of file after successful move (cleared from enqueuedFiles)', async () => {
       // First scan: success, file moved
-      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
 
       const queue = makeQueue();
       const watcher = makeWatcher({}, queue);
@@ -258,8 +258,8 @@ describe('FileWatcher', () => {
       expect(vi.mocked(queue.enqueue)).toHaveBeenCalledTimes(1);
 
       // Second scan: same filename again (simulating a new file with same name)
-      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
 
       const result2 = await watcher.scan();
       expect(result2.events_ingested).toBe(1);
@@ -271,8 +271,8 @@ describe('FileWatcher', () => {
 
   describe('scan() — error handling', () => {
     it('moves file to errors dir when JSON parse fails', async () => {
-      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue('not-valid-json' as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue('not-valid-json' as unknown as string);
 
       const queue = makeQueue();
       const watcher = makeWatcher({}, queue);
@@ -288,10 +288,10 @@ describe('FileWatcher', () => {
     });
 
     it('moves file to errors dir when payload structure is invalid (missing source)', async () => {
-      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as string[]);
+      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as never[]);
       // Missing 'source' field
       readFileMock.mockResolvedValue(
-        JSON.stringify({ payload: { data: 'x' } }) as unknown as Buffer,
+        JSON.stringify({ payload: { data: 'x' } }) as unknown as string,
       );
 
       const watcher = makeWatcher();
@@ -303,9 +303,9 @@ describe('FileWatcher', () => {
     });
 
     it('moves file to errors dir when payload structure is invalid (empty source)', async () => {
-      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as string[]);
+      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as never[]);
       readFileMock.mockResolvedValue(
-        JSON.stringify({ source: '', payload: {} }) as unknown as Buffer,
+        JSON.stringify({ source: '', payload: {} }) as unknown as string,
       );
 
       const watcher = makeWatcher();
@@ -315,9 +315,9 @@ describe('FileWatcher', () => {
     });
 
     it('moves file to errors dir when payload structure is invalid (missing payload field)', async () => {
-      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as string[]);
+      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as never[]);
       readFileMock.mockResolvedValue(
-        JSON.stringify({ source: 'test' }) as unknown as Buffer,
+        JSON.stringify({ source: 'test' }) as unknown as string,
       );
 
       const watcher = makeWatcher();
@@ -327,8 +327,8 @@ describe('FileWatcher', () => {
     });
 
     it('unlinks error file when move to errors dir fails', async () => {
-      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue('invalid-json' as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['bad.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue('invalid-json' as unknown as string);
       // Rename to errors fails
       renameMock.mockRejectedValueOnce(new Error('cross-device link'));
 
@@ -340,8 +340,8 @@ describe('FileWatcher', () => {
     });
 
     it('survives when both move to errors and unlink fail (logs debug)', async () => {
-      readdirMock.mockResolvedValueOnce(['stubborn.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue('invalid-json' as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['stubborn.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue('invalid-json' as unknown as string);
       renameMock.mockRejectedValueOnce(new Error('cross-device link'));
       unlinkMock.mockRejectedValueOnce(new Error('permission denied'));
 
@@ -353,11 +353,11 @@ describe('FileWatcher', () => {
 
     it('isolates errors per file — subsequent files still processed', async () => {
       readdirMock.mockResolvedValueOnce(
-        ['bad.json', 'good.json'] as unknown as string[],
+        ['bad.json', 'good.json'] as unknown as never[],
       );
       readFileMock
-        .mockResolvedValueOnce('invalid-json' as unknown as Buffer)
-        .mockResolvedValueOnce(validPayload() as unknown as Buffer);
+        .mockResolvedValueOnce('invalid-json' as unknown as string)
+        .mockResolvedValueOnce(validPayload() as unknown as string);
 
       const queue = makeQueue();
       const watcher = makeWatcher({}, queue);
@@ -373,8 +373,8 @@ describe('FileWatcher', () => {
 
   describe('scan() — move failure on success path', () => {
     it('logs error but does not throw when rename to processed fails', async () => {
-      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as string[]);
-      readFileMock.mockResolvedValue(validPayload() as unknown as Buffer);
+      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as never[]);
+      readFileMock.mockResolvedValue(validPayload() as unknown as string);
       // Rename fails (to processed dir)
       renameMock.mockRejectedValueOnce(new Error('rename failed'));
 
@@ -392,9 +392,9 @@ describe('FileWatcher', () => {
 
   describe('scan() — normalizer fallback', () => {
     it('uses generic normalizer for unknown source via NormalizerRegistry.normalize fallback', async () => {
-      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as string[]);
+      readdirMock.mockResolvedValueOnce(['event.json'] as unknown as never[]);
       readFileMock.mockResolvedValue(
-        JSON.stringify({ source: 'unknown-source', payload: { x: 1 } }) as unknown as Buffer,
+        JSON.stringify({ source: 'unknown-source', payload: { x: 1 } }) as unknown as string,
       );
 
       // Use a default registry that has no 'unknown-source' normalizer

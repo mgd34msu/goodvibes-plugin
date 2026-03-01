@@ -179,8 +179,8 @@ describe('EventQueue', () => {
         order.push(entry.id);
       });
 
-      const lowId = queue.enqueue(makeEntryInput('trackHandler', QueuePriority.LOW, { id: 'low-1' }));
-      const critId = queue.enqueue(makeEntryInput('trackHandler', QueuePriority.CRITICAL, { id: 'crit-1' }));
+      const lowId = queue.enqueue(makeEntryInput('trackHandler', QueuePriority.LOW, { id: 'low-1' } as never));
+      const critId = queue.enqueue(makeEntryInput('trackHandler', QueuePriority.CRITICAL, { id: 'crit-1' } as never));
 
       await queue.drain(2000);
 
@@ -217,9 +217,9 @@ describe('EventQueue', () => {
         order.push(entry.id);
       });
 
-      queue.enqueue(makeEntryInput('fifoHandler', QueuePriority.NORMAL, { id: 'first' }));
-      queue.enqueue(makeEntryInput('fifoHandler', QueuePriority.NORMAL, { id: 'second' }));
-      queue.enqueue(makeEntryInput('fifoHandler', QueuePriority.NORMAL, { id: 'third' }));
+      queue.enqueue(makeEntryInput('fifoHandler', QueuePriority.NORMAL, { id: 'first' } as never));
+      queue.enqueue(makeEntryInput('fifoHandler', QueuePriority.NORMAL, { id: 'second' } as never));
+      queue.enqueue(makeEntryInput('fifoHandler', QueuePriority.NORMAL, { id: 'third' } as never));
 
       await queue.drain(2000);
 

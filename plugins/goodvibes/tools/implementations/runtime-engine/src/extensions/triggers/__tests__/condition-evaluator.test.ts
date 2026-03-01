@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ConditionEvaluator } from '../condition-evaluator.js';
 import type { RuntimeEvent } from '../../events/types.js';
 import type { TriggerCondition } from '../types.js';
+import type { EventTypePattern } from '../../events/types.js';
 
 function makeEvent(type: string, data: Record<string, unknown> = {}, id = 'evt-1'): RuntimeEvent {
   return {
     id,
     type: type as RuntimeEvent['type'],
-    timestamp: Date.now(),
-    source: { kind: 'test' } as RuntimeEvent['source'],
+    timestamp: new Date().toISOString(),
+    source: { kind: 'system' } as RuntimeEvent['source'],
     payload: {
       type: type as RuntimeEvent['payload']['type'],
       data,
@@ -16,6 +17,7 @@ function makeEvent(type: string, data: Record<string, unknown> = {}, id = 'evt-1
     metadata: {
       sequence: 1,
       version: 1,
+      session_id: '',
     },
   };
 }
@@ -40,7 +42,7 @@ describe('ConditionEvaluator', () => {
         evaluator.recordEvent(makeEvent('test:event', {}, `evt-${i}`));
       }
       // Should still evaluate correctly after multiple records
-      const cond: TriggerCondition = { type: 'event', event_type: 'test:event' };
+      const cond: TriggerCondition = { type: 'event', event_type: 'test:event' as EventTypePattern };
       const lastEvent = makeEvent('test:event');
       evaluator.recordEvent(lastEvent);
       expect(evaluator.evaluate(cond, lastEvent)).toBe(true);
@@ -54,7 +56,7 @@ describe('ConditionEvaluator', () => {
       }
       const event = makeEvent('test:event');
       smallEvaluator.recordEvent(event);
-      const cond: TriggerCondition = { type: 'event', event_type: 'test:event' };
+      const cond: TriggerCondition = { type: 'event', event_type: 'test:event' as EventTypePattern };
       expect(smallEvaluator.evaluate(cond, event)).toBe(true);
     });
   });
@@ -72,7 +74,7 @@ describe('ConditionEvaluator', () => {
     it('does not match different event type', () => {
       const event = makeEvent('build:failed');
       evaluator.recordEvent(event);
-      const cond: TriggerCondition = { type: 'event', event_type: 'build:success' };
+      const cond: TriggerCondition = { type: 'event', event_type: 'build:success' as EventTypePattern };
       expect(evaluator.evaluate(cond, event)).toBe(false);
     });
 
@@ -141,13 +143,13 @@ describe('ConditionEvaluator', () => {
       const event: RuntimeEvent = {
         id: 'evt-nodatafield',
         type: 'system:started' as RuntimeEvent['type'],
-        timestamp: Date.now(),
-        source: { kind: 'test' } as RuntimeEvent['source'],
+        timestamp: new Date().toISOString(),
+        source: { kind: 'system' } as RuntimeEvent['source'],
         payload: { type: 'system:started' as RuntimeEvent['payload']['type'] } as RuntimeEvent['payload'],
-        metadata: { sequence: 1, version: 1 },
+        metadata: { sequence: 1, version: 1, session_id: '' },
       };
       evaluator.recordEvent(event);
-      const cond: TriggerCondition = { type: 'event', event_type: 'system:started' };
+      const cond: TriggerCondition = { type: 'event', event_type: 'system:started' as EventTypePattern };
       expect(evaluator.evaluate(cond, event)).toBe(true);
     });
   });
@@ -299,25 +301,32 @@ describe('ConditionEvaluator', () => {
     });
 
     it('returns false when events are outside the time window', () => {
-      // Fake that recorded events are old by using a very small window
-      const event1 = makeEvent('build:failed', {}, 'evt-old');
-      evaluator.recordEvent(event1);
-      const event2 = makeEvent('build:failed', {}, 'evt-old2');
-      evaluator.recordEvent(event2);
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(0);
 
-      // Very small window (0ms) — events should be outside
-      const event3 = makeEvent('build:failed');
-      evaluator.recordEvent(event3);
-      const cond: TriggerCondition = {
-        type: 'threshold',
-        event_type: 'build:failed',
-        count: 3,
-        window_ms: 0,
-      };
-      // 0ms window means even the current event was "just now" but
-      // its recorded timestamp should be at Date.now() — this tests
-      // behavior at boundary: 3 needed, window=0 so all fail the cutoff
-      expect(evaluator.evaluate(cond, event3)).toBe(false);
+        // Record events at T=0
+        evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-old'));
+        evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-old2'));
+
+        // Advance time by 200ms so those events are now 200ms old
+        vi.setSystemTime(200);
+
+        // Add a third event at T=200 and evaluate with a 100ms window
+        // Only events within last 100ms qualify (T >= 100); old events at T=0 are out
+        const event3 = makeEvent('build:failed');
+        evaluator.recordEvent(event3);
+        const cond: TriggerCondition = {
+          type: 'threshold',
+          event_type: 'build:failed',
+          count: 3,
+          window_ms: 100,
+        };
+        // Only 1 event (event3 at T=200) is within the 100ms window; need 3
+        expect(evaluator.evaluate(cond, event3)).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('matches namespace wildcard event type in threshold', () => {
@@ -424,12 +433,9 @@ describe('ConditionEvaluator', () => {
 
   describe('pruneOldEvents', () => {
     it('removes events older than maxAgeMs', () => {
-      // Record events and then prune immediately with 0ms max age
+      // Record events and then prune with very large maxAge (should keep events)
       evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-1'));
       evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-2'));
-
-      // Small sleep to ensure timestamps are slightly in the past
-      // We prune with very large maxAge first (should keep events)
       evaluator.pruneOldEvents(60_000);
 
       const event = makeEvent('build:failed');
@@ -449,36 +455,52 @@ describe('ConditionEvaluator', () => {
     });
 
     it('handles pruning when all events are expired (resets head to 0)', () => {
-      evaluator.recordEvent(makeEvent('test:event', {}, 'evt-1'));
-      // Prune with 0ms — all events should be pruned
-      evaluator.pruneOldEvents(0);
-      // After pruning all, recording a new event and evaluating should work
-      const event = makeEvent('test:event');
-      evaluator.recordEvent(event);
-      const cond: TriggerCondition = { type: 'event', event_type: 'test:event' };
-      expect(evaluator.evaluate(cond, event)).toBe(true);
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(0);
+        evaluator.recordEvent(makeEvent('test:event', {}, 'evt-1'));
+        // Advance time so the event is in the past
+        vi.setSystemTime(1000);
+        // Prune with 500ms max age: event at T=0 is 1000ms old, exceeds 500ms
+        evaluator.pruneOldEvents(500);
+        // After pruning all, recording a new event and evaluating should work
+        const event = makeEvent('test:event');
+        evaluator.recordEvent(event);
+        const cond: TriggerCondition = { type: 'event', event_type: 'test:event' as EventTypePattern };
+        expect(evaluator.evaluate(cond, event)).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('prunes only expired events and keeps fresh ones', () => {
-      evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-1'));
-      evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-2'));
-      evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-3'));
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(0);
+        // Record 3 events at T=0
+        evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-1'));
+        evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-2'));
+        evaluator.recordEvent(makeEvent('build:failed', {}, 'evt-3'));
 
-      // Prune with 0ms — the recorded events all have timestamps at or just before now,
-      // so they will be pruned
-      evaluator.pruneOldEvents(0);
+        // Advance time by 200ms and prune events older than 100ms
+        // Events at T=0 are 200ms old, exceeds 100ms threshold
+        vi.setSystemTime(200);
+        evaluator.pruneOldEvents(100);
 
-      // Now add fresh events
-      const event = makeEvent('build:failed');
-      evaluator.recordEvent(event);
-      const cond: TriggerCondition = {
-        type: 'threshold',
-        event_type: 'build:failed',
-        count: 3,
-        window_ms: 60_000,
-      };
-      // Only 1 fresh event, count=3 required
-      expect(evaluator.evaluate(cond, event)).toBe(false);
+        // Now add a fresh event at T=200
+        const event = makeEvent('build:failed');
+        evaluator.recordEvent(event);
+        const cond: TriggerCondition = {
+          type: 'threshold',
+          event_type: 'build:failed',
+          count: 3,
+          window_ms: 60_000,
+        };
+        // Only 1 fresh event (at T=200), count=3 required
+        expect(evaluator.evaluate(cond, event)).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

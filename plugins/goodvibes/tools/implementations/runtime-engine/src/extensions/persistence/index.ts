@@ -32,3 +32,4 @@ export { recoverState } from './startup-recovery.js';
 
 export type { CheckpointManagerDeps } from './checkpoint-manager.js';
 export { CheckpointManager } from './checkpoint-manager.js';
+export * from './subsystem.js';

@@ -293,9 +293,9 @@ describe('EventBus', () => {
 
     it('multiple patterns can match the same event', () => {
       const calls: string[] = [];
-      bus.on('hook:pre_tool_use', () => calls.push('exact'));
-      bus.on('hook:*', () => calls.push('namespace'));
-      bus.on('*', () => calls.push('global'));
+      bus.on('hook:pre_tool_use', () => { calls.push('exact'); });
+      bus.on('hook:*', () => { calls.push('namespace'); });
+      bus.on('*', () => { calls.push('global'); });
       bus.emit(makeEvent('hook:pre_tool_use'));
       expect(calls).toContain('exact');
       expect(calls).toContain('namespace');

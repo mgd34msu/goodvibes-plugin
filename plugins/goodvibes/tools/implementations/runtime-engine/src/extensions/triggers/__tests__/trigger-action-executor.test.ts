@@ -37,8 +37,8 @@ function makeEvent(type: string, data: Record<string, unknown> = {}, id = 'evt-1
   return {
     id,
     type: type as RuntimeEvent['type'],
-    timestamp: 1000,
-    source: { kind: 'test' } as RuntimeEvent['source'],
+    timestamp: new Date().toISOString(),
+    source: { kind: 'system' } as RuntimeEvent['source'],
     payload: {
       type: type as RuntimeEvent['payload']['type'],
       data,
@@ -395,9 +395,9 @@ describe('TriggerActionExecutor', () => {
       const result = await executor.execute(action, event);
       expect(result.success).toBe(true);
       expect(workflowEngine.create).toHaveBeenCalledOnce();
-      const [definition, context] = workflowEngine.create.mock.calls[0];
+      const [definition, context] = workflowEngine.create.mock.calls[0] as unknown[];
       expect(definition).toBe('fix_loop');
-      expect(context.event_id).toBe('evt-999');
+      expect((context as Record<string, unknown>)['event_id']).toBe('evt-999');
     });
 
     it('returns success: false when workflowEngine.create throws', async () => {
@@ -432,9 +432,9 @@ describe('TriggerActionExecutor', () => {
       };
       const result = await executor.execute(action, makeEvent('build:failed'));
       expect(result.success).toBe(true);
-      const [, context] = workflowEngine.create.mock.calls[0];
-      expect(context.min_review_score).toBe(7);
-      expect(context.max_fix_attempts).toBe(4);
+      const [, context] = workflowEngine.create.mock.calls[0] as unknown[];
+      expect((context as Record<string, unknown>)['min_review_score']).toBe(7);
+      expect((context as Record<string, unknown>)['max_fix_attempts']).toBe(4);
     });
 
     it('does not include non-finite WRFC config values', async () => {
@@ -455,10 +455,10 @@ describe('TriggerActionExecutor', () => {
       };
       const result = await executor.execute(action, makeEvent('build:failed'));
       expect(result.success).toBe(true);
-      const [, context] = workflowEngine.create.mock.calls[0];
-      expect(context.min_review_score).toBeUndefined();
+      const [, context] = workflowEngine.create.mock.calls[0] as unknown[];
+      expect((context as Record<string, unknown>)['min_review_score']).toBeUndefined();
       // Infinity is not finite
-      expect(context.max_fix_attempts).toBeUndefined();
+      expect((context as Record<string, unknown>)['max_fix_attempts']).toBeUndefined();
     });
 
     it('handles missing context_template (uses empty context)', async () => {
@@ -470,7 +470,7 @@ describe('TriggerActionExecutor', () => {
       };
       const result = await executor.execute(action, makeEvent('build:failed'));
       expect(result.success).toBe(true);
-      const [, context] = workflowEngine.create.mock.calls[0];
+      const [, context] = workflowEngine.create.mock.calls[0] as unknown[];
       expect(context).toEqual({});
     });
   });

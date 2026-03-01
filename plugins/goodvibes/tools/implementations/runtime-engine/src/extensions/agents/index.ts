@@ -7,3 +7,4 @@
 export * from './types.js';
 export * from './agent-coordinator.js';
 export * from './budget-tracker.js';
+export * from './subsystem.js';

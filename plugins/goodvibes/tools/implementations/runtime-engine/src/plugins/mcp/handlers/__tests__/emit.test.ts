@@ -54,8 +54,9 @@ function makeContext(overrides: Partial<HandlerContext> = {}): HandlerContext {
 }
 
 /** Parse the JSON body from a CallToolResult */
-function parseResult(result: { content: Array<{ type: string; text: string }> }): Record<string, unknown> {
-  return JSON.parse(result.content[0].text) as Record<string, unknown>;
+function parseResult(result: unknown): Record<string, unknown> {
+  const r = result as { content: Array<{ text: string }> };
+  return JSON.parse(r.content[0].text) as Record<string, unknown>;
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
