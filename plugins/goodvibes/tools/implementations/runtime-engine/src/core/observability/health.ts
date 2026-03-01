@@ -39,7 +39,7 @@ export class HealthChecker {
   /**
    * Update the runtime configuration held by this checker.
    *
-   * Must be called whenever ProcessManager.updateConfig() is invoked so
+   * Must be called whenever RuntimeEngine.updateConfig() is invoked so
    * that memory thresholds and feature flags stay in sync.
    *
    * @param config - The new {@link RuntimeConfig} to apply.

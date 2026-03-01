@@ -4,7 +4,7 @@
  * Wraps the @modelcontextprotocol/sdk Server with:
  * - ListToolsRequestSchema → returns all Phase 1 tool schemas
  * - CallToolRequestSchema  → dispatches to the handler registry
- * - ProcessManager lifecycle integration (startup / shutdown)
+ * - RuntimeEngine lifecycle integration (startup / shutdown)
  * - Signal handler registration via setupSignalHandlers
  */
 
@@ -21,7 +21,7 @@ import { loadConfig } from '../../shared/config.js';
 import { ENGINE_VERSION } from '../../shared/constants.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
-import { ProcessManager } from '../../bootstrap.js';
+import { RuntimeEngine } from '../../bootstrap.js';
 import { setupSignalHandlers } from '../../core/processing/signals.js';
 import {
   allSchemas,
@@ -46,7 +46,7 @@ const logger = createLogger('mcp-server');
  */
 export class RuntimeEngineServer {
   private readonly server: Server;
-  private readonly processManager: ProcessManager;
+  private readonly processManager: RuntimeEngine;
 
   constructor() {
     this.server = new Server(
@@ -55,7 +55,7 @@ export class RuntimeEngineServer {
     );
 
     const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    this.processManager = new ProcessManager(loadConfig(projectRoot), projectRoot);
+    this.processManager = new RuntimeEngine(loadConfig(projectRoot), projectRoot);
 
     this.setupHandlers();
     this.setupErrorHandling();
@@ -129,12 +129,12 @@ export class RuntimeEngineServer {
 
   /**
    * Start the runtime engine:
-   * 1. Run the ProcessManager startup sequence (config, state, PID file).
+   * 1. Run the RuntimeEngine startup sequence (config, state, PID file).
    * 2. Register OS signal handlers for graceful shutdown.
    * 3. Connect the MCP StdioServerTransport.
    * 4. Log the ready message.
    *
-   * @throws If the ProcessManager startup or transport connection fails.
+   * @throws If the RuntimeEngine startup or transport connection fails.
    */
   async start(): Promise<void> {
     // 1. Startup sequence
@@ -158,7 +158,7 @@ export class RuntimeEngineServer {
 
   /**
    * Stop the runtime engine:
-   * 1. Shut down the ProcessManager (checkpoint, PID removal).
+   * 1. Shut down the RuntimeEngine (checkpoint, PID removal).
    * 2. Close the MCP server transport.
    *
    * Safe to call multiple times — subsequent calls are no-ops once the
@@ -171,7 +171,7 @@ export class RuntimeEngineServer {
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger.warn('ProcessManager shutdown error', {
+      logger.warn('RuntimeEngine shutdown error', {
         err: toErrorMessage(err),
       });
     }

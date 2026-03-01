@@ -3,7 +3,7 @@
  *
  * Central store for trigger definitions. Evaluates all enabled triggers
  * against each incoming event, respects cooldown and max_fires limits,
- * and delegates action execution to the ActionExecutor.
+ * and delegates action execution to the TriggerActionExecutor.
  */
 
 import { createLogger } from '../../shared/logger.js';
@@ -13,7 +13,7 @@ import type { TriggersConfig } from '../../shared/config.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import { ConditionEvaluator } from './condition-evaluator.js';
-import { ActionExecutor } from './action-executor.js';
+import { TriggerActionExecutor } from './trigger-action-executor.js';
 import type {
   TriggerDefinition,
   TriggerResult,
@@ -37,7 +37,7 @@ export class TriggerRegistry {
   /** Stateful condition evaluator with recent-event ring buffer. */
   private readonly evaluator: ConditionEvaluator;
   /** Action executor with handler registry. */
-  private executor: ActionExecutor;
+  private executor: TriggerActionExecutor;
   /** Named action handlers — mirrored here so they survive executor replacement. */
   private readonly actionHandlers: Map<string, TriggerActionHandler> = new Map();
   /** Resolved triggers configuration. */
@@ -49,13 +49,13 @@ export class TriggerRegistry {
   constructor(config: TriggersConfig) {
     this.config = config;
     this.evaluator = new ConditionEvaluator();
-    this.executor = new ActionExecutor(null, null, null, config);
+    this.executor = new TriggerActionExecutor(null, null, null, config);
   }
 
   /**
    * Injects all shared dependencies into the ActionExecutor.
    *
-   * Replaces the internal ActionExecutor with a new instance wired to the
+   * Replaces the internal TriggerActionExecutor with a new instance wired to the
    * provided dependencies. Any handlers registered before this call are
    * preserved on the new executor.
    *
@@ -68,7 +68,7 @@ export class TriggerRegistry {
     directiveQueue: DirectiveQueue | null = null,
     workflowEngine: WorkflowEngine | null = null,
   ): void {
-    this.executor = new ActionExecutor(bus, directiveQueue, workflowEngine, this.config);
+    this.executor = new TriggerActionExecutor(bus, directiveQueue, workflowEngine, this.config);
     // Re-register any handlers registered before setDependencies was called
     for (const [name, handler] of this.actionHandlers) {
       this.executor.registerHandler(name, handler);
@@ -179,14 +179,14 @@ export class TriggerRegistry {
   }
 
   /**
-   * Returns the ActionExecutor instance.
+   * Returns the TriggerActionExecutor instance.
    *
    * Exposed for external handler registration. Dependency injection is handled
    * via {@link setDependencies}.
    *
-   * @returns The internal ActionExecutor.
+   * @returns The internal TriggerActionExecutor.
    */
-  getActionExecutor(): ActionExecutor {
+  getActionExecutor(): TriggerActionExecutor {
     return this.executor;
   }
 

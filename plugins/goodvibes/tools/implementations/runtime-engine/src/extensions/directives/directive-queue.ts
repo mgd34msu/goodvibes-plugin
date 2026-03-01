@@ -274,8 +274,8 @@ export class DirectiveQueue {
    * @v1-design-note Storing WRFC-specific configuration (min review score,
    * max fix attempts, etc.) inside `DirectiveQueue` violates the Single
    * Responsibility Principle — a queue should only manage queueing. This was
-   * a pragmatic choice in v1 to avoid a separate config-store module. In v2
-   * this should be extracted to a dedicated `WRFCConfig` service or singleton
+   * a pragmatic choice to avoid a separate config-store module. It should
+   * be extracted to a dedicated `WRFCConfig` service or singleton
    * so that `DirectiveQueue` only owns directive lifecycle.
    */
   private wrfcConfig: Record<string, unknown> = {};
@@ -285,7 +285,7 @@ export class DirectiveQueue {
    *
    * @param config - The `wrfc` section of the merged goodvibes.json.
    */
-  // TODO(v2): Extract WRFC config into dedicated WRFCConfigStore — this violates SRP.
+  // TODO: Extract WRFC config into dedicated WRFCConfigStore — this violates SRP.
   setWRFCConfig(config: Record<string, unknown>): void {
     this.wrfcConfig = config;
     logger.debug('WRFC config stored', { keys: Object.keys(config) });

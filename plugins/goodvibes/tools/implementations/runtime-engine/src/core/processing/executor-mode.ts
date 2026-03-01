@@ -130,7 +130,7 @@ export class ExecutorModeManager {
 
   /**
    * Update the config reference for hot-reload support.
-   * Called by ProcessManager.updateConfig() when runtime_config changes.
+   * Called by RuntimeEngine.updateConfig() when runtime_config changes.
    */
   updateConfig(config: ExecutorConfig): void {
     this.config = config;

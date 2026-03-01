@@ -2,7 +2,7 @@
  * CheckpointManager — Layer 2 persistence extension.
  *
  * Manages periodic state checkpointing and event log compaction.
- * Extracted from ProcessManager to isolate checkpoint concerns.
+ * Extracted from RuntimeEngine to isolate checkpoint concerns.
  */
 
 import type { RuntimeConfig } from '../../shared/config.js';

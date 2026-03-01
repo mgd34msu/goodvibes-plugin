@@ -1,7 +1,7 @@
 /**
  * IPCRouter — message routing for the runtime engine IPC channel.
  *
- * Encapsulates all IPC message dispatching logic, keeping ProcessManager
+ * Encapsulates all IPC message dispatching logic, keeping RuntimeEngine
  * focused on lifecycle orchestration. Handles every message type defined
  * in the IPC protocol: hook_event, query, state_update, heartbeat.
  */
@@ -95,7 +95,7 @@ function getStringField(obj: Record<string, unknown>, key: string): string {
  * subsystem and returns the corresponding response.
  *
  * This class is a pure extraction of the routing logic that previously lived
- * inside ProcessManager.startIPCServer(). No behaviour has changed.
+ * inside RuntimeEngine.startIPCServer(). No behaviour has changed.
  */
 export class IPCRouter {
   private readonly eventBus: EventBus;

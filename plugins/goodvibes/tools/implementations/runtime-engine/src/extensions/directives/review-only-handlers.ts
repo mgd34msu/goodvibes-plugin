@@ -19,7 +19,7 @@ import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { DirectiveQueue } from './directive-queue.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentWorkflowMap } from './agent-workflow-map.js';
-import { buildWorkflowCompleteMessage } from './directive-builder.js';
+import { buildWorkflowCompleteMessage } from './legacy-directive-builder.js';
 import { extractReviewScore } from './gv-tag-parser.js';
 
 const log = createLogger('review-only-handlers');

@@ -134,6 +134,15 @@ export interface Action {
   params: Record<string, unknown>;
 }
 
+/**
+ * Interface for executing actions produced by handler results.
+ * Implementations translate Action objects into concrete side effects
+ * (e.g., enqueuing directives, spawning agents).
+ */
+export interface ActionExecutorInterface {
+  execute(action: Action, context: Record<string, unknown>): Promise<void>;
+}
+
 // ─── Retry Policy ─────────────────────────────────────────────────────────────
 
 /**

@@ -89,7 +89,7 @@ export class DaemonTickHandler {
         type: 'executor:tick_received',
         data: {
           tick_number: tickNumber,
-          pending_events: 0, // TODO: Wire to v3EventQueue.size() when ProcessManager exposes it
+          pending_events: 0, // TODO: Wire to coreEventQueue.size() when RuntimeEngine exposes it
         },
       },
     });
@@ -177,16 +177,16 @@ export class DaemonTickHandler {
    * Includes: active workflows, pending events summary, memory state.
    *
    * @deferred Pending event count and active workflow count are hardcoded to 0
-   * until ProcessManager exposes v3EventQueue.size() and WorkflowRegistry.activeCount().
-   * Wire these in Phase 4 (ProcessManager wiring) by injecting the queue and registry
+   * until RuntimeEngine exposes coreEventQueue.size() and WorkflowRegistry.activeCount().
+   * Wire these in Phase 4 (RuntimeEngine wiring) by injecting the queue and registry
    * into DaemonTickHandler and replacing the hardcoded 0 values in handleTick() and
    * buildTickContext().
    */
   buildTickContext(): string {
     const spending = this.budgetManager.getSpending();
     const canProcess = this.budgetManager.canProcess();
-    // TODO: Wire pendingEvents to v3EventQueue.size() and activeWorkflows to
-    // WorkflowRegistry.activeCount() when ProcessManager exposes them.
+    // TODO: Wire pendingEvents to coreEventQueue.size() and activeWorkflows to
+    // WorkflowRegistry.activeCount() when RuntimeEngine exposes them.
     const pendingEvents = 0;
     const activeWorkflows = 0;
     return `--- Daemon Tick Context ---

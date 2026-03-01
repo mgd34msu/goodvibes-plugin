@@ -210,7 +210,7 @@ export interface TriggerResult {
 }
 
 /**
- * A named action handler function registered with the ActionExecutor.
+ * A named action handler function registered with the TriggerActionExecutor.
  * Receives resolved arguments and the triggering event.
  */
 export type TriggerActionHandler = (

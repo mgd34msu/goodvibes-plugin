@@ -31,7 +31,7 @@ const logger = createLogger('core:error-handler');
  * @deprecated Use `TriggerHandlerFn` from `'./types.js'` instead.
  *   Migration: replace `import { TriggerHandler } from './error-handler.js'`
  *   with `import type { TriggerHandlerFn } from './types.js'`
- * @removal v2.0.0
+ * @removal next-major
  */
 export type TriggerHandler = TriggerHandlerFn;
 
@@ -45,7 +45,7 @@ export interface ErrorHandlerOptions {
  * @deprecated Use `ErrorHandlerResult` from `'./types.js'` instead.
  *   Migration: replace `import { ExecutionResult } from './error-handler.js'`
  *   with `import type { ErrorHandlerResult } from './types.js'`
- * @removal v2.0.0
+ * @removal next-major
  */
 export type ExecutionResult = ErrorHandlerResult;
 

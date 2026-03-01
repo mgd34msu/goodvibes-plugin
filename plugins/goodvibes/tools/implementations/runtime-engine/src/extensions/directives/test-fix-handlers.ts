@@ -27,7 +27,7 @@ import {
   buildSpawnDirectiveMessage,
   buildWorkflowCompleteMessage,
   buildEscalationMessage,
-} from './directive-builder.js';
+} from './legacy-directive-builder.js';
 import { parseGvTag } from './gv-tag-parser.js';
 
 const log = createLogger('test-fix-handlers');

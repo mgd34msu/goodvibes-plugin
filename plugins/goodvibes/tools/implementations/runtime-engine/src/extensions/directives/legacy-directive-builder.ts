@@ -51,7 +51,7 @@ interface SpawnDirective {
  * @param agentType  - Short agent type label (e.g. "reviewer", "engineer").
  * @param task       - Task description/instructions for the spawned agent.
  * @param budget     - Token and turn budget. Not emitted in the directive.
- * @deprecated The `budget` parameter is unused and will be removed in v2.
+ * @deprecated The `budget` parameter is unused and will be removed.
  *   Pass `undefined` for new call sites.
  * @param context    - Optional WRFC context (files, score, issues, attempts).
  * @returns Structured <gv> directive string.
@@ -81,7 +81,7 @@ export function buildSpawnDirectiveMessage(
  *
  * @param workflowId - ID of the completed workflow instance.
  * @param state      - Terminal state name. Not emitted in the directive.
- * @deprecated The `state` parameter is unused and will be removed in v2.
+ * @deprecated The `state` parameter is unused and will be removed.
  *   Pass `undefined` for new call sites.
  * @returns Structured <gv> directive string.
  */

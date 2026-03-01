@@ -37,6 +37,7 @@ import type {
   EventQueueInterface,
   LoopLifecycle,
   MetricsCollector,
+  ActionExecutorInterface,
 } from '../types.js';
 
 const logger = createLogger('core:event-processor');
@@ -106,6 +107,8 @@ export interface EventProcessorOptions {
    * considered stale and released automatically. Default: 30_000.
    */
   lock_timeout_ms?: number;
+  /** Optional executor for actions produced by handlers */
+  action_executor?: ActionExecutorInterface;
 }
 
 /**
@@ -203,6 +206,7 @@ export class EventProcessor {
   private readonly priorityFloor: number | undefined;
   private readonly rateLimit: Required<RateLimitConfig> | undefined;
   private readonly queueDepthWarning: number | undefined;
+  private readonly actionExecutor?: ActionExecutorInterface;
 
   /**
    * Workflow-level processing lock: workflow_id → lock_acquired_at (epoch ms).
@@ -248,6 +252,7 @@ export class EventProcessor {
       ? { max_per_window: options.rate_limit.max_per_window, window_ms: options.rate_limit.window_ms ?? RATE_LIMIT_WINDOW_MS }
       : undefined;
     this.queueDepthWarning = options.queue_depth_warning;
+    this.actionExecutor = options?.action_executor;
     this.rateLimitWindowStart = Date.now();
   }
 
@@ -494,6 +499,25 @@ export class EventProcessor {
       if (result.events && result.events.length > 0) {
         for (const newEvt of result.events) {
           chainedEvents.push(chainEvent(newEvt, event));
+        }
+      }
+
+      // Execute actions if executor is available
+      if (result.actions && result.actions.length > 0 && this.actionExecutor) {
+        for (const action of result.actions) {
+          try {
+            await this.actionExecutor.execute(action, {
+              handler_id: trigger.id ?? 'unknown',
+              event_type: event.type,
+              workflow_id: event.context?.workflow_id,
+            });
+          } catch (err) {
+            logger.error('Action execution failed', {
+              action_type: action.type,
+              handler_id: trigger.id ?? 'unknown',
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
         }
       }
     }

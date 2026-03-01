@@ -491,7 +491,7 @@ export interface SystemErrorPayload {
   error: string;
   /** Stack trace, if available. */
   stack?: string;
-  /** Component that raised the error (e.g. 'EventBus', 'ProcessManager'). */
+  /** Component that raised the error (e.g. 'EventBus', 'RuntimeEngine'). */
   component: string;
   /** Error severity level. */
   severity: 'warning' | 'error' | 'fatal';

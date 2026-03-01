@@ -6,7 +6,7 @@
  * the structured <gv> payload as params.content.
  *
  * This module wraps the existing directive-builder.ts message constructors
- * and packages them as v3 Action types that HandlerResult.actions accepts.
+ * and packages them as Action types that HandlerResult.actions accepts.
  */
 
 import type { Action } from '../../core/types.js';
@@ -15,7 +15,7 @@ import {
   buildWorkflowCompleteMessage,
   buildEscalationMessage,
   type SpawnDirectiveContext,
-} from '../../extensions/directives/directive-builder.js';
+} from '../../extensions/directives/legacy-directive-builder.js';
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────
 
@@ -111,9 +111,9 @@ export function buildEscalateAction(wid: string, reason: string, params?: Escala
 
 /**
  * Builds a complete directive as a structured object (for direct use).
- * @deprecated Prefer buildCompleteAction for v3 HandlerResult integration.
+ * @deprecated Prefer buildCompleteAction for HandlerResult integration.
  * @since v1.3.0
- * @removal Planned removal in v2.0.0 — migrate to buildCompleteAction.
+ * @removal Planned removal — migrate to buildCompleteAction.
  */
 export function buildCompleteDirective(wid: string): Action {
   return buildCompleteAction(wid);
@@ -121,9 +121,9 @@ export function buildCompleteDirective(wid: string): Action {
 
 /**
  * Builds an escalate directive as a structured object (for direct use).
- * @deprecated Prefer buildEscalateAction for v3 HandlerResult integration.
+ * @deprecated Prefer buildEscalateAction for HandlerResult integration.
  * @since v1.3.0
- * @removal Planned removal in v2.0.0 — migrate to buildEscalateAction.
+ * @removal Planned removal — migrate to buildEscalateAction.
  */
 export function buildEscalateDirective(wid: string, reason: string): Action {
   return buildEscalateAction(wid, reason);
@@ -131,9 +131,9 @@ export function buildEscalateDirective(wid: string, reason: string): Action {
 
 /**
  * Builds a spawn directive as a structured object (for direct use).
- * @deprecated Prefer buildSpawnAction for v3 HandlerResult integration.
+ * @deprecated Prefer buildSpawnAction for HandlerResult integration.
  * @since v1.3.0
- * @removal Planned removal in v2.0.0 — migrate to buildSpawnAction.
+ * @removal Planned removal — migrate to buildSpawnAction.
  */
 export function buildSpawnDirective(params: {
   wid: string;

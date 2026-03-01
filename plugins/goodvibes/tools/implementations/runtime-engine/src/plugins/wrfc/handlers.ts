@@ -15,6 +15,13 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import {
+  ENGINEER_AGENT_TYPES,
+  AUTO_COMPLETE_AGENT_TYPES,
+  REQUIRE_REVIEW_AGENT_TYPES,
+  REVIEWER_AGENT_TYPES,
+  DEFAULT_MIN_REVIEW_SCORE,
+} from '../../shared/wrfc-constants.js';
 import type { RuntimeEvent, HandlerResult, StateUpdate, Action, StateStoreInterface } from '../../core/types.js';
 import { createEvent } from '../../core/types.js';
 import type { Trigger } from '../../core/types.js';
@@ -34,40 +41,8 @@ const FALLBACK_SEE_PAYLOAD = 'See the wrfc:review_completed event payload for re
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Default minimum review score to pass (configurable per workflow). */
-export const DEFAULT_MIN_REVIEW_SCORE = 9.5;
-
 /** Default maximum fix attempts before escalation. */
 export const DEFAULT_MAX_FIX_ATTEMPTS = 3;
-
-/** Agent type identifiers that are treated as reviewers. */
-export const REVIEWER_AGENT_TYPES = new Set(['reviewer', 'goodvibes:reviewer']);
-
-/** Agent type identifiers that are treated as engineers (fixers). */
-export const ENGINEER_AGENT_TYPES = new Set(['engineer', 'goodvibes:engineer']);
-
-/**
- * Agent types that auto-complete without entering the WRFC review cycle.
- * Non-work types produce no reviewable output; reviewer types drive the
- * PARENT workflow’s review but auto-complete their own WRFC.
- */
-export const AUTO_COMPLETE_AGENT_TYPES = new Set([
-  'Explore', 'Plan', 'Bash', 'general-purpose',
-  ...REVIEWER_AGENT_TYPES,
-]);
-
-/**
- * Agent types that MUST always be reviewed, taking precedence over all
- * auto-complete logic. If an agent type appears in both this set and
- * AUTO_COMPLETE_AGENT_TYPES, always-review wins.
- *
- * Hardcoded defaults: all engineer agent types.
- * Extensible via user config key `wrfc.require_review_types` (string[]).
- * Stored at `wrfc.config.require_review_types` in the state store.
- */
-export const REQUIRE_REVIEW_AGENT_TYPES = new Set([
-  ...ENGINEER_AGENT_TYPES,
-]);
 
 // ─── Cached require-review set ────────────────────────────────────────────────────
 

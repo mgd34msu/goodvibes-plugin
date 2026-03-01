@@ -21,13 +21,16 @@ export {
   resolveWorkflowId,
   HANDLER_IDS,
   TRIGGER_IDS,
+  DEFAULT_MAX_FIX_ATTEMPTS,
+} from './handlers.js';
+// WRFC agent type constants — re-exported from shared layer
+export {
   REVIEWER_AGENT_TYPES,
   ENGINEER_AGENT_TYPES,
   AUTO_COMPLETE_AGENT_TYPES,
   REQUIRE_REVIEW_AGENT_TYPES,
   DEFAULT_MIN_REVIEW_SCORE,
-  DEFAULT_MAX_FIX_ATTEMPTS,
-} from './handlers.js';
+} from '../../shared/wrfc-constants.js';
 export type { HandlerIdKey } from './handlers.js';
 
 // Score evaluation

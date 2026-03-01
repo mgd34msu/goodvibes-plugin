@@ -6,5 +6,6 @@
 
 export * from './types.js';
 export * from './event-bus.js';
+export * from './event-bridge.js';
 export * from './event-log.js';
 export * from './event-queue.js';

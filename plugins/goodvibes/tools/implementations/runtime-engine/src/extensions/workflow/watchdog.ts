@@ -2,7 +2,7 @@
  * WatchdogCoordinator — Layer 2 workflow extension.
  *
  * Detects stale workflows stuck in transitional states (REVIEWING, FIXING)
- * and re-enqueues lost directives. Extracted from ProcessManager to isolate
+ * and re-enqueues lost directives. Extracted from RuntimeEngine to isolate
  * watchdog concerns.
  *
  * This is Layer 2 of the directive delivery resilience strategy:
@@ -24,7 +24,7 @@ import type { WorkflowInstance } from './types.js';
 import {
   buildSpawnDirectiveMessage,
   buildEscalationMessage,
-} from '../directives/directive-builder.js';
+} from '../directives/legacy-directive-builder.js';
 import type { Directive } from '../../shared/ipc/protocol.js';
 
 const logger = createLogger('watchdog');

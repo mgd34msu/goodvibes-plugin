@@ -1,5 +1,5 @@
 /**
- * Action Executor
+ * Trigger Action Executor
  *
  * Executes trigger actions when their conditions are met. Supports emitting
  * events, invoking named handlers, workflow stubs, and composite (parallel /
@@ -135,7 +135,7 @@ function resolveValue(value: unknown, event: RuntimeEvent): unknown {
  * All dependencies are injected via the constructor. Register named
  * handlers via `registerHandler` before any triggers that use `invoke_handler`.
  */
-export class ActionExecutor {
+export class TriggerActionExecutor {
   /** Named handler registry. */
   private readonly handlers: Map<string, TriggerActionHandler> = new Map();
   /** Event bus for emit_event actions. */

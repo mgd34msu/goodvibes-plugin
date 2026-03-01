@@ -10,18 +10,10 @@ import type { ClaudeHookResponse } from '../hook-processor.js';
 import type { EventBus } from '../../../extensions/events/event-bus.js';
 import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
 import { createLogger } from '../../../shared/logger.js';
+import { REVIEWER_AGENT_TYPES, DEFAULT_MIN_REVIEW_SCORE } from '../../../shared/wrfc-constants.js';
 
 const logger = createLogger('handler:subagent-stop');
 
-/**
- * Minimum review score required to pass the quality gate.
- * This default applies when no explicit minReviewScore is provided via deps.
- * Override via SubagentStopDeps.minReviewScore to match WRFC workflow config.
- */
-const DEFAULT_MIN_REVIEW_SCORE = 9.5;
-
-/** Agent types that produce reviewable scores. */
-const REVIEWER_AGENT_TYPES = new Set(['reviewer', 'goodvibes:reviewer']);
 
 export interface SubagentStopDeps {
   eventBus: EventBus | null;

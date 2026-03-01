@@ -19,7 +19,7 @@ export type { EventLogStats } from './extensions/events/event-log.js';
 export * from './extensions/events/types.js';
 export { EventBus } from './extensions/events/event-bus.js';
 export { ConditionEvaluator } from './extensions/triggers/condition-evaluator.js';
-export { ActionExecutor } from './extensions/triggers/action-executor.js';
+export { TriggerActionExecutor } from './extensions/triggers/trigger-action-executor.js';
 export { TriggerRegistry } from './extensions/triggers/trigger-registry.js';
 export { getBuiltinTriggers } from './extensions/triggers/builtins.js';
 export type {
