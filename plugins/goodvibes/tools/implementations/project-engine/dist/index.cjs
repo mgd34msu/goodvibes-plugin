@@ -245694,8 +245694,8 @@ function logWarn(message, data) {
 }
 __name(logWarn, "logWarn");
 
-// src/plugins/schemas.ts
-var CODE_INTEL_SCHEMAS = [
+// src/schemas/index.ts
+var codeIntelSchemas = [
   {
     name: "project_code_dead",
     description: "Find dead/unused code (exports, functions, variables) in the project using TypeScript language service.",
@@ -245711,7 +245711,8 @@ var CODE_INTEL_SCHEMAS = [
           description: "Whether to include test files in the analysis. Defaults to false."
         }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245733,7 +245734,8 @@ var CODE_INTEL_SCHEMAS = [
           description: "Column number of the symbol (1-indexed)."
         }
       },
-      required: ["file", "line", "column"]
+      required: ["file", "line", "column"],
+      additionalProperties: false
     }
   },
   {
@@ -245753,11 +245755,13 @@ var CODE_INTEL_SCHEMAS = [
               new_text: { type: "string", description: "Replacement text." },
               content: { type: "string", description: "Full new content for the file (for full-file replacement)." }
             },
-            required: ["file"]
+            required: ["file"],
+            additionalProperties: false
           }
         }
       },
-      required: ["edits"]
+      required: ["edits"],
+      additionalProperties: false
     }
   },
   {
@@ -245766,13 +245770,14 @@ var CODE_INTEL_SCHEMAS = [
     inputSchema: {
       type: "object",
       properties: {
-        before_ref: { type: "string", description: "Git ref representing the before state." },
-        after_ref: { type: "string", description: "Git ref representing the after state. Defaults to current working tree." },
+        before_ref: { type: "string", description: 'Git ref (commit hash, branch, tag) representing the "before" state.' },
+        after_ref: { type: "string", description: 'Git ref representing the "after" state. Defaults to current working tree.' },
         path: { type: "string", description: "File or directory path filter for the comparison." },
         timeout: { type: "number", description: "Timeout in seconds for LLM analysis. Defaults to 120." },
         model: { type: "string", enum: ["haiku", "sonnet", "opus"], description: "LLM model to use for analysis." }
       },
-      required: ["before_ref"]
+      required: ["before_ref"],
+      additionalProperties: false
     }
   },
   {
@@ -245781,13 +245786,14 @@ var CODE_INTEL_SCHEMAS = [
     inputSchema: {
       type: "object",
       properties: {
-        before_ref: { type: "string", description: "Git ref for the before state." },
-        after_ref: { type: "string", description: "Git ref for the after state. Defaults to current working tree." },
+        before_ref: { type: "string", description: 'Git ref (commit hash, branch, tag) for the "before" state.' },
+        after_ref: { type: "string", description: 'Git ref for the "after" state. Defaults to current working tree.' },
         file: { type: "string", description: "Specific file path to diff. If omitted, diffs all changed files." },
         timeout: { type: "number", description: "Timeout in seconds for LLM analysis. Defaults to 120." },
         model: { type: "string", enum: ["haiku", "sonnet", "opus"], description: "LLM model to use for semantic analysis." }
       },
-      required: ["before_ref"]
+      required: ["before_ref"],
+      additionalProperties: false
     }
   },
   {
@@ -245799,11 +245805,12 @@ var CODE_INTEL_SCHEMAS = [
         path: { type: "string", description: "Directory or file path to analyze. Defaults to project root." },
         entry_points: { type: "array", items: { type: "string" }, description: "Explicit entry point files to treat as public API boundaries." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   }
 ];
-var API_SCHEMAS = [
+var apiSchemas = [
   {
     name: "project_api_routes",
     description: "Discover API routes from framework files (Express, Next.js, Fastify, Hono).",
@@ -245811,9 +245818,10 @@ var API_SCHEMAS = [
       type: "object",
       properties: {
         path: { type: "string", description: "Project root path to scan for routes. Defaults to current working directory." },
-        framework: { type: "string", enum: ["nextjs", "express", "fastify", "hono", "auto"], description: "Framework to detect routes for. Defaults to auto." }
+        framework: { type: "string", enum: ["nextjs", "express", "fastify", "hono", "auto"], description: 'Framework to detect routes for. Defaults to "auto" (auto-detect).' }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245828,9 +245836,10 @@ var API_SCHEMAS = [
         description: { type: "string", description: "API description for the OpenAPI info block." },
         server_url: { type: "string", description: "Base URL for the API server." },
         include_examples: { type: "boolean", description: "Generate example values for request/response schemas." },
-        format: { type: "string", enum: ["json", "yaml"], description: "Output format for the spec. Defaults to json." }
+        format: { type: "string", enum: ["json", "yaml"], description: 'Output format for the spec. Defaults to "json".' }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245846,7 +245855,8 @@ var API_SCHEMAS = [
         timeout: { type: "number", description: "Request timeout in milliseconds. Defaults to 10000." },
         auth_header: { type: "string", description: "Authorization header value for authenticated endpoints." }
       },
-      required: ["spec_path", "base_url"]
+      required: ["spec_path", "base_url"],
+      additionalProperties: false
     }
   },
   {
@@ -245860,11 +245870,12 @@ var API_SCHEMAS = [
         api_pattern: { type: "string", description: "Regex pattern to match API call expressions in frontend code." },
         auto_fix: { type: "boolean", description: "Automatically generate type imports to fix drift. Defaults to false." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   }
 ];
-var SECURITY_SCHEMAS = [
+var securitySchemas = [
   {
     name: "project_security_secrets",
     description: "Scan files for hardcoded secrets, API keys, tokens, and other sensitive credentials.",
@@ -245873,11 +245884,12 @@ var SECURITY_SCHEMAS = [
       properties: {
         path: { type: "string", description: "Directory or file path to scan. Defaults to project root." },
         include_staged: { type: "boolean", description: "Also scan git-staged files. Defaults to false." },
-        severity_threshold: { type: "string", enum: ["low", "medium", "high"], description: "Minimum severity level to report. Defaults to low." },
+        severity_threshold: { type: "string", enum: ["low", "medium", "high"], description: 'Minimum severity level to report. Defaults to "low".' },
         max_depth: { type: "number", description: "Maximum directory depth to recurse. Auto-detected if not specified." },
         check_presence_only: { type: "boolean", description: "Only report whether secrets exist, without showing content. Defaults to false." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245887,9 +245899,10 @@ var SECURITY_SCHEMAS = [
       type: "object",
       properties: {
         file: { type: "string", description: "Specific file to analyze for permission patterns." },
-        path: { type: "string", description: "Directory to scan recursively. Used if file is not specified." }
+        path: { type: "string", description: 'Directory to scan recursively. Used if "file" is not specified.' }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245905,11 +245918,12 @@ var SECURITY_SCHEMAS = [
         check_values: { type: "boolean", description: "Validate variable value formats (URLs, booleans, numbers). Defaults to false." },
         scan_code: { type: "boolean", description: "Scan source code for used env variables. Defaults to true." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   }
 ];
-var DATABASE_SCHEMAS = [
+var databaseSchemas = [
   {
     name: "project_db_schema",
     description: "Get the database schema from ORM definitions (Prisma, Drizzle, TypeORM) or raw SQL files.",
@@ -245918,7 +245932,8 @@ var DATABASE_SCHEMAS = [
       properties: {
         path: { type: "string", description: "Path to schema file or project root. Auto-detected if not specified." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245931,11 +245946,12 @@ var DATABASE_SCHEMAS = [
         database_url: { type: "string", description: "Database connection URL. Reads from DATABASE_URL env var if not provided." },
         readonly: { type: "boolean", description: "Enforce read-only mode (reject INSERT/UPDATE/DELETE). Defaults to true." },
         limit: { type: "number", description: "Maximum number of rows to return. Defaults to 100." },
-        format: { type: "string", enum: ["json", "table"], description: "Output format. Defaults to json." },
+        format: { type: "string", enum: ["json", "table"], description: 'Output format. Defaults to "json".' },
         explain: { type: "boolean", description: "Also run EXPLAIN on the query. Defaults to false." },
         params: { type: "array", description: "Parameterized query values.", items: {} }
       },
-      required: ["query"]
+      required: ["query"],
+      additionalProperties: false
     }
   },
   {
@@ -245947,11 +245963,12 @@ var DATABASE_SCHEMAS = [
         path: { type: "string", description: "Project root or path to Prisma schema. Auto-detected if not specified." },
         include_n1_detection: { type: "boolean", description: "Detect N+1 query patterns in the codebase. Defaults to true." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   }
 ];
-var DEPS_SCHEMAS = [
+var depsSchemas = [
   {
     name: "project_deps_analyze",
     description: "Analyze project dependencies for outdated packages, unused imports, and duplicate versions.",
@@ -245962,7 +245979,8 @@ var DEPS_SCHEMAS = [
         check_updates: { type: "boolean", description: "Fetch latest versions from npm to detect outdated packages. Defaults to false." },
         include_dev: { type: "boolean", description: "Include devDependencies in the analysis. Defaults to true." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245974,7 +245992,8 @@ var DEPS_SCHEMAS = [
         path: { type: "string", description: "Project root or directory to scan. Defaults to current working directory." },
         include_node_modules: { type: "boolean", description: "Include node_modules in the dependency graph. Defaults to false." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -245984,17 +246003,18 @@ var DEPS_SCHEMAS = [
       type: "object",
       properties: {
         package: { type: "string", description: "Package name to upgrade." },
-        target_version: { type: "string", description: "Target version to upgrade to. Defaults to latest." },
+        target_version: { type: "string", description: 'Target version to upgrade to. Defaults to "latest".' },
         include_changelog: { type: "boolean", description: "Fetch and summarize the package changelog. Defaults to true." },
         dry_run: { type: "boolean", description: "Analyze without actually installing. Defaults to false." },
         run_tests_after: { type: "boolean", description: "Run test suite after upgrade to verify compatibility. Defaults to false." },
         path: { type: "string", description: "Project root path. Defaults to current working directory." }
       },
-      required: ["package"]
+      required: ["package"],
+      additionalProperties: false
     }
   }
 ];
-var TESTING_SCHEMAS = [
+var testingSchemas = [
   {
     name: "project_test_coverage",
     description: "Get test coverage report for the project by parsing LCOV, Istanbul, or c8 coverage files.",
@@ -246005,7 +246025,8 @@ var TESTING_SCHEMAS = [
         coverage_path: { type: "string", description: "Path to the coverage report file. Auto-detected if not specified." },
         path: { type: "string", description: "Project root path. Defaults to current working directory." }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   },
   {
@@ -246017,11 +246038,12 @@ var TESTING_SCHEMAS = [
         file: { type: "string", description: "Path to the source file to find tests for." },
         include_indirect: { type: "boolean", description: "Include tests that indirectly import the source file. Defaults to false." }
       },
-      required: ["file"]
+      required: ["file"],
+      additionalProperties: false
     }
   }
 ];
-var RUNTIME_SCHEMAS = [
+var runtimeSchemas = [
   {
     name: "project_runtime_memory",
     description: "Detect potential memory leaks in a running Node.js process by monitoring heap growth over time.",
@@ -246029,14 +246051,15 @@ var RUNTIME_SCHEMAS = [
       type: "object",
       properties: {
         target: { type: "string", enum: ["pid", "command"], description: "Whether to monitor an existing PID or spawn a new command." },
-        pid: { type: "number", description: "Process ID to monitor (required when target is pid)." },
-        command: { type: "string", description: "Command to spawn and monitor (required when target is command)." },
+        pid: { type: "number", description: 'Process ID to monitor (required when target is "pid").' },
+        command: { type: "string", description: 'Command to spawn and monitor (required when target is "command").' },
         duration_seconds: { type: "number", description: "How long to monitor in seconds. Defaults to 60." },
         snapshot_interval_ms: { type: "number", description: "Interval between memory snapshots in milliseconds. Defaults to 5000." },
         threshold_mb: { type: "number", description: "Heap growth threshold in MB to classify as a leak. Defaults to 50." },
         cwd: { type: "string", description: "Working directory for spawned commands." }
       },
-      required: ["target"]
+      required: ["target"],
+      additionalProperties: false
     }
   },
   {
@@ -246053,7 +246076,8 @@ var RUNTIME_SCHEMAS = [
         capture_memory: { type: "boolean", description: "Also capture heap memory delta. Defaults to false." },
         timeout: { type: "number", description: "Timeout per invocation in milliseconds. Defaults to 5000." }
       },
-      required: ["file", "function_name", "inputs"]
+      required: ["file", "function_name", "inputs"],
+      additionalProperties: false
     }
   },
   {
@@ -246063,8 +246087,8 @@ var RUNTIME_SCHEMAS = [
       type: "object",
       properties: {
         source: { type: "string", enum: ["file", "command"], description: "Whether to read from a log file or capture output from a command." },
-        path: { type: "string", description: "Path to the log file (required when source is file)." },
-        command: { type: "string", description: "Command to run and capture output from (required when source is command)." },
+        path: { type: "string", description: 'Path to the log file (required when source is "file").' },
+        command: { type: "string", description: 'Command to run and capture output from (required when source is "command").' },
         duration_seconds: { type: "number", description: "How long to capture command output in seconds. Defaults to 30." },
         tail_lines: { type: "number", description: "Number of lines from the end of the log file to analyze. Defaults to 1000." },
         structured: { type: "boolean", description: "Parse as structured JSON logs. Auto-detected if not specified." },
@@ -246077,30 +246101,33 @@ var RUNTIME_SCHEMAS = [
               name: { type: "string" },
               pattern: { type: "string" }
             },
-            required: ["name", "pattern"]
+            required: ["name", "pattern"],
+            additionalProperties: false
           }
         },
-        time_window: { type: "string", description: "Time window for rate analysis (e.g., 1h, 30m, 1d)." },
+        time_window: { type: "string", description: 'Time window for rate analysis (e.g., "1h", "30m", "1d").' },
         cwd: { type: "string", description: "Working directory for spawned commands." }
       },
-      required: ["source"]
+      required: ["source"],
+      additionalProperties: false
     }
   }
 ];
-var STANDALONE_SCHEMAS = [
+var standaloneSchemas = [
   {
     name: "scaffold",
     description: "Scaffold a new project from templates with variable substitution and optional git/npm initialization.",
     inputSchema: {
       type: "object",
       properties: {
-        template: { type: "string", description: "Template name to scaffold from (e.g., next-app, vite-react, next-saas)." },
+        template: { type: "string", description: 'Template name to scaffold from (e.g., "next-app", "vite-react", "next-saas").' },
         output_dir: { type: "string", description: "Absolute path to the output directory where the project will be created." },
         variables: { type: "object", description: "Template variable substitutions (key-value pairs).", additionalProperties: { type: "string" } },
         run_install: { type: "boolean", description: "Run npm/pnpm install after scaffolding. Defaults to false." },
         run_git_init: { type: "boolean", description: "Run git init after scaffolding. Defaults to false." }
       },
-      required: ["template", "output_dir"]
+      required: ["template", "output_dir"],
+      additionalProperties: false
     }
   },
   {
@@ -246110,21 +246137,22 @@ var STANDALONE_SCHEMAS = [
       type: "object",
       properties: {
         path: { type: "string", description: "Project root or build output directory. Auto-detected if not specified." },
-        format: { type: "string", enum: ["summary", "detailed"], description: "Detail level of the analysis report. Defaults to summary." }
+        format: { type: "string", enum: ["summary", "detailed"], description: 'Detail level of the analysis report. Defaults to "summary".' }
       },
-      required: []
+      required: [],
+      additionalProperties: false
     }
   }
 ];
-var TOOL_SCHEMAS = [
-  ...CODE_INTEL_SCHEMAS,
-  ...API_SCHEMAS,
-  ...SECURITY_SCHEMAS,
-  ...DATABASE_SCHEMAS,
-  ...DEPS_SCHEMAS,
-  ...TESTING_SCHEMAS,
-  ...RUNTIME_SCHEMAS,
-  ...STANDALONE_SCHEMAS
+var allSchemas = [
+  ...codeIntelSchemas,
+  ...apiSchemas,
+  ...securitySchemas,
+  ...databaseSchemas,
+  ...depsSchemas,
+  ...testingSchemas,
+  ...runtimeSchemas,
+  ...standaloneSchemas
 ];
 
 // src/extensions/code-intel/dead-code.ts
@@ -258385,7 +258413,7 @@ var ProjectEngineServer = class {
   setupRoutes() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       logger.debug("ListTools request");
-      return { tools: TOOL_SCHEMAS };
+      return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;

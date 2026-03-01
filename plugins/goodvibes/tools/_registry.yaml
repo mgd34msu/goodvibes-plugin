@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-03-01T05:32:05.000Z'
-total: 40
+generated: '2026-03-01T05:53:14.622Z'
+total: 73
 servers:
   - name: precision-engine
     count: 12
@@ -72,8 +72,41 @@ servers:
           (non-blocking) — returns immediately with agent_id and process_id. ' + 'Optionally injects context files and a
           project dossier into the agent prompt.
   - name: registry-engine
-    count: 0
-    tools: []
+    count: 7
+    tools:
+      - name: search_skills
+        path: registry-engine/search-skills.yaml
+        description: >-
+          Search the skill registry for relevant skills based on keywords, technology, or task description. Use when
+          needing domain-specific guidance that matches available skills.
+      - name: search_agents
+        path: registry-engine/search-agents.yaml
+        description: >-
+          Search for specialized agents by expertise area or task type. Use when needing to find an agent with specific
+          domain knowledge.
+      - name: search_tools
+        path: registry-engine/search-tools.yaml
+        description: >-
+          Search for available tools by functionality or use case. Use when discovering what tools are available for a
+          task.
+      - name: recommend_skills
+        path: registry-engine/recommend-skills.yaml
+        description: >-
+          Analyze task description and project context to recommend relevant skills. Combines natural language
+          understanding with stack detection. Primary entry point for skill discovery.
+      - name: get_skill_content
+        path: registry-engine/get-skill-content.yaml
+        description: Load the full content of a skill by its path. Use after searching to get detailed skill instructions.
+      - name: get_agent_content
+        path: registry-engine/get-agent-content.yaml
+        description: >-
+          Load full content of an agent by path. Retrieves the complete agent definition including capabilities,
+          expertise areas, and configuration from the agent registry.
+      - name: skill_dependencies
+        path: registry-engine/skill-dependencies.yaml
+        description: >-
+          Show which skills work together and their dependencies. Identifies prerequisite skills, complementary skills,
+          and conflicts. Helps build complete skill sets for complex tasks.
   - name: analytics-engine
     count: 7
     tools:
@@ -116,8 +149,88 @@ servers:
           the current project, or scope="all" to sync all projects ' + 'discovered under ~/.claude/projects/. Supports
           incremental sync via byte-offset tracking.
   - name: project-engine
-    count: 0
-    tools: []
+    count: 26
+    tools:
+      - name: project_code_dead
+        path: project-engine/project-code-dead.yaml
+        description: Find dead/unused code (exports, functions, variables) in the project using TypeScript language service.
+      - name: project_code_safe_delete
+        path: project-engine/project-code-safe-delete.yaml
+        description: Check if code at a specific location can be safely deleted without breaking any external references.
+      - name: project_code_preview_edits
+        path: project-engine/project-code-preview-edits.yaml
+        description: Preview and validate code edits before applying them, checking for TypeScript errors introduced by each edit.
+      - name: project_code_breaking
+        path: project-engine/project-code-breaking.yaml
+        description: Detect breaking changes between two git refs by comparing exported TypeScript API signatures.
+      - name: project_code_semantic_diff
+        path: project-engine/project-code-semantic-diff.yaml
+        description: LLM-powered semantic diff with impact analysis — understand what changed, not just the raw diff.
+      - name: project_code_surface
+        path: project-engine/project-code-surface.yaml
+        description: Get the public API surface (exports) of files or modules, distinguishing public from internal APIs.
+      - name: project_api_routes
+        path: project-engine/project-api-routes.yaml
+        description: Discover API routes from framework files (Express, Next.js, Fastify, Hono).
+      - name: project_api_spec
+        path: project-engine/project-api-spec.yaml
+        description: Generate OpenAPI specification from code and route definitions.
+      - name: project_api_validate
+        path: project-engine/project-api-validate.yaml
+        description: Validate API implementation against its OpenAPI contract/spec by making live requests.
+      - name: project_api_sync
+        path: project-engine/project-api-sync.yaml
+        description: Sync TypeScript types between API backend and client, detecting type drift.
+      - name: project_security_secrets
+        path: project-engine/project-security-secrets.yaml
+        description: Scan files for hardcoded secrets, API keys, tokens, and other sensitive credentials.
+      - name: project_security_permissions
+        path: project-engine/project-security-permissions.yaml
+        description: >-
+          Check files for dangerous permission patterns — filesystem access, network calls, process execution, and
+          crypto usage.
+      - name: project_security_env
+        path: project-engine/project-security-env.yaml
+        description: Audit .env files for missing, inconsistent, or undocumented environment variables.
+      - name: project_db_schema
+        path: project-engine/project-db-schema.yaml
+        description: Get the database schema from ORM definitions (Prisma, Drizzle, TypeORM) or raw SQL files.
+      - name: project_db_query
+        path: project-engine/project-db-query.yaml
+        description: Execute read-only database queries against PostgreSQL, MySQL, or SQLite databases.
+      - name: project_db_prisma
+        path: project-engine/project-db-prisma.yaml
+        description: Analyze Prisma schema and list available operations, detecting N+1 query patterns.
+      - name: project_deps_analyze
+        path: project-engine/project-deps-analyze.yaml
+        description: Analyze project dependencies for outdated packages, unused imports, and duplicate versions.
+      - name: project_deps_circular
+        path: project-engine/project-deps-circular.yaml
+        description: Find circular dependency chains in the codebase using depth-first search.
+      - name: project_deps_upgrade
+        path: project-engine/project-deps-upgrade.yaml
+        description: Upgrade a specific package with compatibility checks, changelog analysis, and optional test execution.
+      - name: project_test_coverage
+        path: project-engine/project-test-coverage.yaml
+        description: Get test coverage report for the project by parsing LCOV, Istanbul, or c8 coverage files.
+      - name: project_test_find
+        path: project-engine/project-test-find.yaml
+        description: Find test files associated with a given source file, including indirect test relationships.
+      - name: project_runtime_memory
+        path: project-engine/project-runtime-memory.yaml
+        description: Detect potential memory leaks in a running Node.js process by monitoring heap growth over time.
+      - name: project_runtime_profile
+        path: project-engine/project-runtime-profile.yaml
+        description: Profile a function execution for performance bottlenecks, measuring timing and memory statistics.
+      - name: project_runtime_logs
+        path: project-engine/project-runtime-logs.yaml
+        description: Analyze application logs for patterns, anomalies, error frequency, and rate changes.
+      - name: scaffold
+        path: project-engine/scaffold.yaml
+        description: Scaffold a new project from templates with variable substitution and optional git/npm initialization.
+      - name: bundle_analyze
+        path: project-engine/bundle-analyze.yaml
+        description: Analyze JavaScript bundle size and composition, detecting large modules, duplicates, and tree-shaking issues.
   - name: frontend-engine
     count: 14
     tools:
@@ -630,6 +743,154 @@ search_index:
       (non-blocking) — returns immediately with agent_id and process_id. ' + 'Optionally injects context files and a
       project dossier into the agent prompt.
     server: precision-engine
+  - name: search_skills
+    keywords:
+      - search
+      - skills
+      - skill
+      - registry
+      - relevant
+      - based
+      - keywords
+      - technology
+      - task
+      - description
+      - needing
+      - domain
+      - specific
+      - guidance
+      - that
+      - matches
+      - available
+    path: registry-engine/search-skills.yaml
+    description: >-
+      Search the skill registry for relevant skills based on keywords, technology, or task description. Use when needing
+      domain-specific guidance that matches available skills.
+    server: registry-engine
+  - name: search_agents
+    keywords:
+      - search
+      - agents
+      - specialized
+      - expertise
+      - area
+      - task
+      - type
+      - needing
+      - find
+      - agent
+      - specific
+      - domain
+      - knowledge
+    path: registry-engine/search-agents.yaml
+    description: >-
+      Search for specialized agents by expertise area or task type. Use when needing to find an agent with specific
+      domain knowledge.
+    server: registry-engine
+  - name: search_tools
+    keywords:
+      - search
+      - tools
+      - available
+      - functionality
+      - case
+      - discovering
+      - what
+      - are
+      - task
+    path: registry-engine/search-tools.yaml
+    description: Search for available tools by functionality or use case. Use when discovering what tools are available for a task.
+    server: registry-engine
+  - name: recommend_skills
+    keywords:
+      - recommend
+      - skills
+      - analyze
+      - task
+      - description
+      - project
+      - context
+      - relevant
+      - combines
+      - natural
+      - language
+      - understanding
+      - stack
+      - detection
+      - primary
+      - entry
+      - point
+      - skill
+      - discovery
+    path: registry-engine/recommend-skills.yaml
+    description: >-
+      Analyze task description and project context to recommend relevant skills. Combines natural language understanding
+      with stack detection. Primary entry point for skill discovery.
+    server: registry-engine
+  - name: get_skill_content
+    keywords:
+      - get
+      - skill
+      - content
+      - load
+      - full
+      - its
+      - path
+      - after
+      - searching
+      - detailed
+      - instructions
+    path: registry-engine/get-skill-content.yaml
+    description: Load the full content of a skill by its path. Use after searching to get detailed skill instructions.
+    server: registry-engine
+  - name: get_agent_content
+    keywords:
+      - get
+      - agent
+      - content
+      - load
+      - full
+      - path
+      - retrieves
+      - complete
+      - definition
+      - including
+      - capabilities
+      - expertise
+      - areas
+      - configuration
+      - from
+      - registry
+    path: registry-engine/get-agent-content.yaml
+    description: >-
+      Load full content of an agent by path. Retrieves the complete agent definition including capabilities, expertise
+      areas, and configuration from the agent registry.
+    server: registry-engine
+  - name: skill_dependencies
+    keywords:
+      - skill
+      - dependencies
+      - show
+      - which
+      - skills
+      - work
+      - together
+      - their
+      - identifies
+      - prerequisite
+      - complementary
+      - conflicts
+      - helps
+      - build
+      - complete
+      - sets
+      - complex
+      - tasks
+    path: registry-engine/skill-dependencies.yaml
+    description: >-
+      Show which skills work together and their dependencies. Identifies prerequisite skills, complementary skills, and
+      conflicts. Helps build complete skill sets for complex tasks.
+    server: registry-engine
   - name: analytics_dashboard
     keywords:
       - analytics
@@ -829,6 +1090,452 @@ search_index:
       current project, or scope="all" to sync all projects ' + 'discovered under ~/.claude/projects/. Supports
       incremental sync via byte-offset tracking.
     server: analytics-engine
+  - name: project_code_dead
+    keywords:
+      - project
+      - code
+      - dead
+      - find
+      - unused
+      - exports
+      - functions
+      - variables
+      - using
+      - typescript
+      - language
+      - service
+    path: project-engine/project-code-dead.yaml
+    description: Find dead/unused code (exports, functions, variables) in the project using TypeScript language service.
+    server: project-engine
+  - name: project_code_safe_delete
+    keywords:
+      - project
+      - code
+      - safe
+      - delete
+      - check
+      - specific
+      - location
+      - can
+      - safely
+      - deleted
+      - without
+      - breaking
+      - any
+      - external
+      - references
+    path: project-engine/project-code-safe-delete.yaml
+    description: Check if code at a specific location can be safely deleted without breaking any external references.
+    server: project-engine
+  - name: project_code_preview_edits
+    keywords:
+      - project
+      - code
+      - preview
+      - edits
+      - validate
+      - before
+      - applying
+      - them
+      - checking
+      - typescript
+      - errors
+      - introduced
+      - each
+      - edit
+    path: project-engine/project-code-preview-edits.yaml
+    description: Preview and validate code edits before applying them, checking for TypeScript errors introduced by each edit.
+    server: project-engine
+  - name: project_code_breaking
+    keywords:
+      - project
+      - code
+      - breaking
+      - detect
+      - changes
+      - between
+      - two
+      - git
+      - refs
+      - comparing
+      - exported
+      - typescript
+      - api
+      - signatures
+    path: project-engine/project-code-breaking.yaml
+    description: Detect breaking changes between two git refs by comparing exported TypeScript API signatures.
+    server: project-engine
+  - name: project_code_semantic_diff
+    keywords:
+      - project
+      - code
+      - semantic
+      - diff
+      - llm
+      - powered
+      - impact
+      - analysis
+      - understand
+      - what
+      - changed
+      - not
+      - just
+      - raw
+    path: project-engine/project-code-semantic-diff.yaml
+    description: LLM-powered semantic diff with impact analysis — understand what changed, not just the raw diff.
+    server: project-engine
+  - name: project_code_surface
+    keywords:
+      - project
+      - code
+      - surface
+      - get
+      - public
+      - api
+      - exports
+      - files
+      - modules
+      - distinguishing
+      - from
+      - internal
+      - apis
+    path: project-engine/project-code-surface.yaml
+    description: Get the public API surface (exports) of files or modules, distinguishing public from internal APIs.
+    server: project-engine
+  - name: project_api_routes
+    keywords:
+      - project
+      - api
+      - routes
+      - discover
+      - from
+      - framework
+      - files
+      - express
+      - next
+      - fastify
+      - hono
+    path: project-engine/project-api-routes.yaml
+    description: Discover API routes from framework files (Express, Next.js, Fastify, Hono).
+    server: project-engine
+  - name: project_api_spec
+    keywords:
+      - project
+      - api
+      - spec
+      - generate
+      - openapi
+      - specification
+      - from
+      - code
+      - route
+      - definitions
+    path: project-engine/project-api-spec.yaml
+    description: Generate OpenAPI specification from code and route definitions.
+    server: project-engine
+  - name: project_api_validate
+    keywords:
+      - project
+      - api
+      - validate
+      - implementation
+      - against
+      - its
+      - openapi
+      - contract
+      - spec
+      - making
+      - live
+      - requests
+    path: project-engine/project-api-validate.yaml
+    description: Validate API implementation against its OpenAPI contract/spec by making live requests.
+    server: project-engine
+  - name: project_api_sync
+    keywords:
+      - project
+      - api
+      - sync
+      - typescript
+      - types
+      - between
+      - backend
+      - client
+      - detecting
+      - type
+      - drift
+    path: project-engine/project-api-sync.yaml
+    description: Sync TypeScript types between API backend and client, detecting type drift.
+    server: project-engine
+  - name: project_security_secrets
+    keywords:
+      - project
+      - security
+      - secrets
+      - scan
+      - files
+      - hardcoded
+      - api
+      - keys
+      - tokens
+      - other
+      - sensitive
+      - credentials
+    path: project-engine/project-security-secrets.yaml
+    description: Scan files for hardcoded secrets, API keys, tokens, and other sensitive credentials.
+    server: project-engine
+  - name: project_security_permissions
+    keywords:
+      - project
+      - security
+      - permissions
+      - check
+      - files
+      - dangerous
+      - permission
+      - patterns
+      - filesystem
+      - access
+      - network
+      - calls
+      - process
+      - execution
+      - crypto
+      - usage
+    path: project-engine/project-security-permissions.yaml
+    description: >-
+      Check files for dangerous permission patterns — filesystem access, network calls, process execution, and crypto
+      usage.
+    server: project-engine
+  - name: project_security_env
+    keywords:
+      - project
+      - security
+      - env
+      - audit
+      - files
+      - missing
+      - inconsistent
+      - undocumented
+      - environment
+      - variables
+    path: project-engine/project-security-env.yaml
+    description: Audit .env files for missing, inconsistent, or undocumented environment variables.
+    server: project-engine
+  - name: project_db_schema
+    keywords:
+      - project
+      - db
+      - schema
+      - get
+      - database
+      - from
+      - orm
+      - definitions
+      - prisma
+      - drizzle
+      - typeorm
+      - raw
+      - sql
+      - files
+    path: project-engine/project-db-schema.yaml
+    description: Get the database schema from ORM definitions (Prisma, Drizzle, TypeORM) or raw SQL files.
+    server: project-engine
+  - name: project_db_query
+    keywords:
+      - project
+      - db
+      - query
+      - execute
+      - read
+      - only
+      - database
+      - queries
+      - against
+      - postgresql
+      - mysql
+      - sqlite
+      - databases
+    path: project-engine/project-db-query.yaml
+    description: Execute read-only database queries against PostgreSQL, MySQL, or SQLite databases.
+    server: project-engine
+  - name: project_db_prisma
+    keywords:
+      - project
+      - db
+      - prisma
+      - analyze
+      - schema
+      - list
+      - available
+      - operations
+      - detecting
+      - query
+      - patterns
+    path: project-engine/project-db-prisma.yaml
+    description: Analyze Prisma schema and list available operations, detecting N+1 query patterns.
+    server: project-engine
+  - name: project_deps_analyze
+    keywords:
+      - project
+      - deps
+      - analyze
+      - dependencies
+      - outdated
+      - packages
+      - unused
+      - imports
+      - duplicate
+      - versions
+    path: project-engine/project-deps-analyze.yaml
+    description: Analyze project dependencies for outdated packages, unused imports, and duplicate versions.
+    server: project-engine
+  - name: project_deps_circular
+    keywords:
+      - project
+      - deps
+      - circular
+      - find
+      - dependency
+      - chains
+      - codebase
+      - using
+      - depth
+      - first
+      - search
+    path: project-engine/project-deps-circular.yaml
+    description: Find circular dependency chains in the codebase using depth-first search.
+    server: project-engine
+  - name: project_deps_upgrade
+    keywords:
+      - project
+      - deps
+      - upgrade
+      - specific
+      - package
+      - compatibility
+      - checks
+      - changelog
+      - analysis
+      - optional
+      - test
+      - execution
+    path: project-engine/project-deps-upgrade.yaml
+    description: Upgrade a specific package with compatibility checks, changelog analysis, and optional test execution.
+    server: project-engine
+  - name: project_test_coverage
+    keywords:
+      - project
+      - test
+      - coverage
+      - get
+      - report
+      - parsing
+      - lcov
+      - istanbul
+      - files
+    path: project-engine/project-test-coverage.yaml
+    description: Get test coverage report for the project by parsing LCOV, Istanbul, or c8 coverage files.
+    server: project-engine
+  - name: project_test_find
+    keywords:
+      - project
+      - test
+      - find
+      - files
+      - associated
+      - given
+      - source
+      - file
+      - including
+      - indirect
+      - relationships
+    path: project-engine/project-test-find.yaml
+    description: Find test files associated with a given source file, including indirect test relationships.
+    server: project-engine
+  - name: project_runtime_memory
+    keywords:
+      - project
+      - runtime
+      - memory
+      - detect
+      - potential
+      - leaks
+      - running
+      - node
+      - process
+      - monitoring
+      - heap
+      - growth
+      - over
+      - time
+    path: project-engine/project-runtime-memory.yaml
+    description: Detect potential memory leaks in a running Node.js process by monitoring heap growth over time.
+    server: project-engine
+  - name: project_runtime_profile
+    keywords:
+      - project
+      - runtime
+      - profile
+      - function
+      - execution
+      - performance
+      - bottlenecks
+      - measuring
+      - timing
+      - memory
+      - statistics
+    path: project-engine/project-runtime-profile.yaml
+    description: Profile a function execution for performance bottlenecks, measuring timing and memory statistics.
+    server: project-engine
+  - name: project_runtime_logs
+    keywords:
+      - project
+      - runtime
+      - logs
+      - analyze
+      - application
+      - patterns
+      - anomalies
+      - error
+      - frequency
+      - rate
+      - changes
+    path: project-engine/project-runtime-logs.yaml
+    description: Analyze application logs for patterns, anomalies, error frequency, and rate changes.
+    server: project-engine
+  - name: scaffold
+    keywords:
+      - scaffold
+      - new
+      - project
+      - from
+      - templates
+      - variable
+      - substitution
+      - optional
+      - git
+      - npm
+      - initialization
+    path: project-engine/scaffold.yaml
+    description: Scaffold a new project from templates with variable substitution and optional git/npm initialization.
+    server: project-engine
+  - name: bundle_analyze
+    keywords:
+      - bundle
+      - analyze
+      - javascript
+      - size
+      - composition
+      - detecting
+      - large
+      - modules
+      - duplicates
+      - tree
+      - shaking
+      - issues
+    path: project-engine/bundle-analyze.yaml
+    description: Analyze JavaScript bundle size and composition, detecting large modules, duplicates, and tree-shaking issues.
+    server: project-engine
   - name: frontend_component_tree
     keywords:
       - frontend
