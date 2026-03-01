@@ -24,6 +24,7 @@
 
 import { createLogger } from '../../shared/logger.js';
 import { generateEventId, generateWorkflowId, timestamp, toErrorMessage } from '../../shared/utils.js';
+import { WorkflowError } from '../../shared/errors.js';
 import type { WorkflowsConfig } from '../../shared/config.js';
 import type { RuntimeEvent, EventType } from '../events/types.js';
 import type {
@@ -124,7 +125,7 @@ export class WorkflowEngine {
    */
   registerDefinition(def: WorkflowDefinition): void {
     if (this.definitions.has(def.id)) {
-      throw new Error(`WorkflowDefinition '${def.id}' is already registered`);
+      throw new WorkflowError(`WorkflowDefinition '${def.id}' is already registered`);
     }
     this.definitions.set(def.id, def);
     log.info('Registered workflow definition', { id: def.id, name: def.name, version: def.version });
@@ -162,12 +163,12 @@ export class WorkflowEngine {
   ): WorkflowInstance {
     const def = this.definitions.get(definitionId);
     if (!def) {
-      throw new Error(`WorkflowDefinition '${definitionId}' is not registered`);
+      throw new WorkflowError(`WorkflowDefinition '${definitionId}' is not registered`);
     }
 
     const activeCount = this.listActive().length;
     if (activeCount >= this.maxActive) {
-      throw new Error(
+      throw new WorkflowError(
         `Cannot create workflow: max_active limit (${this.maxActive}) reached`
       );
     }
@@ -679,7 +680,7 @@ export class WorkflowEngine {
     const rhsRaw = trimmed.slice(opMatch.index + opMatch[0].length).trim();
 
     if (!lhsRaw || !rhsRaw) {
-      throw new Error(`Unrecognised guard expression format: "${expr}"`);
+      throw new WorkflowError(`Unrecognised guard expression format: "${expr}"`);
     }
 
     const lhsValue = this.resolveValue(lhsRaw, context);

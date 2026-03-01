@@ -22,6 +22,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { createLogger } from '../../shared/logger.js';
+import { safeJsonParse } from '../../shared/utils.js';
 import { readStreamBody } from '../../core/state/stream-reader.js';
 
 const logger = createLogger('http-listener');
@@ -202,11 +203,9 @@ export class HttpListener {
       }
 
       // Attempt JSON parse
-      let parsedPayload: unknown;
-      try {
-        parsedPayload = JSON.parse(body);
-      } catch (e) {
-        logger.debug('Failed to parse JSON body', { error: e instanceof Error ? e.message : String(e) });
+      const parsedPayload = safeJsonParse<unknown>(body, undefined);
+      if (parsedPayload === undefined) {
+        logger.debug('Failed to parse JSON body');
         sendJson(res, 400, { error: 'Invalid JSON body' });
         return;
       }

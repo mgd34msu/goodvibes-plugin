@@ -14,7 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createLogger } from '../../shared/logger.js';
-import { toErrorMessage } from '../../shared/utils.js';
+import { toErrorMessage, safeJsonParse } from '../../shared/utils.js';
 import { ensureDirSync } from '../../core/utils/fs-utils.js';
 import { writeJsonSync } from '../../core/state/file-io.js';
 import type { WorkflowEngine } from './workflow-engine.js';
@@ -315,7 +315,7 @@ export class WatchdogCoordinator {
       let existingDirectives: Directive[] = [];
       try {
         const existing = readFileSync(urgentPath, 'utf-8');
-        const parsed = JSON.parse(existing) as { directives?: unknown[] };
+        const parsed = safeJsonParse<{ directives?: unknown[] }>(existing, {});
         if (Array.isArray(parsed.directives)) {
           existingDirectives = parsed.directives as Directive[];
         }

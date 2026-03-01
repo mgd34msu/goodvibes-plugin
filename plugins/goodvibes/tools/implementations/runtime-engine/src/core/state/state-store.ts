@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { writeJsonSync } from './file-io.js';
 import { createLogger } from '../../shared/logger.js';
-import { toErrorMessage } from '../../shared/utils.js';
+import { toErrorMessage, safeJsonParse } from '../../shared/utils.js';
 import type { StateStoreInterface } from '../types.js';
 
 const logger = createLogger('core:state-store');
@@ -255,7 +255,7 @@ export class CoreStateStore implements StateStoreInterface {
   private load(): void {
     try {
       const content = readFileSync(this.filePath, 'utf-8');
-      const parsed = JSON.parse(content) as unknown;
+      const parsed = safeJsonParse<unknown>(content, null);
       if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
         this.data = parsed as Record<string, unknown>;
         logger.debug('Loaded state from disk', { path: this.filePath });

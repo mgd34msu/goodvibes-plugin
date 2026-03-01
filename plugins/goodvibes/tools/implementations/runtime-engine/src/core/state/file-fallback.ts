@@ -26,7 +26,7 @@ import { join } from 'node:path';
 
 import type { IPCMessage, IPCResponse } from '../../shared/ipc/protocol.js';
 import { createLogger } from '../../shared/logger.js';
-import { toErrorMessage } from '../../shared/utils.js';
+import { toErrorMessage, safeJsonParse } from '../../shared/utils.js';
 import { ensureDirSync } from '../utils/fs-utils.js';
 import { pollUntil } from '../utils/poll.js';
 
@@ -126,7 +126,8 @@ export class FileFallback {
       return await pollUntil<IPCResponse>(() => {
         if (!existsSync(this.responsePath)) return null;
         const raw = readFileSync(this.responsePath, 'utf-8');
-        const response = JSON.parse(raw) as IPCResponse;
+        const response = safeJsonParse<IPCResponse | null>(raw, null);
+        if (response === null) return null;
         logger.debug('IPC response received (file fallback)', { id: response.id });
         unlinkSync(this.responsePath);
         return response;
@@ -153,7 +154,8 @@ export class FileFallback {
     await this.acquireLock();
     try {
       const raw = readFileSync(this.requestPath, 'utf-8');
-      const message = JSON.parse(raw) as IPCMessage;
+      const message = safeJsonParse<IPCMessage | null>(raw, null);
+      if (message === null) return null;
 
       // Remove after reading so the request is not processed twice
       unlinkSync(this.requestPath);

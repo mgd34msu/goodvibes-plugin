@@ -5,6 +5,7 @@
  */
 
 export * from './config.js';
+export * from './errors.js';
 export * from './constants.js';
 export * from './file-io.js';
 export * from './logger.js';

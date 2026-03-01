@@ -5,11 +5,13 @@
  * Main entry point: HookProcessor. Use HookRegistry to register handlers.
  */
 
-export { HookProcessor } from './hook-processor.js';
-export type { ClaudeHookResponse, HookProcessorDeps } from './hook-processor.js';
-export { HookRegistry } from './hook-registry.js';
-export type { HookHandler, RegisteredHandler } from './hook-registry.js';
-export {
+// ─── Local imports (create local bindings) ───────────────────────────────────
+
+import { HookProcessor } from './hook-processor.js';
+import type { ClaudeHookResponse, HookProcessorDeps } from './hook-processor.js';
+import { HookRegistry } from './hook-registry.js';
+import type { HookHandler, RegisteredHandler } from './hook-registry.js';
+import {
   registerDefaultHandlers,
   handlePreToolUse,
   createSubagentStartHandler,
@@ -20,7 +22,7 @@ export {
   createPostToolUseHandler,
   createUserPromptSubmitHandler,
 } from './handlers/index.js';
-export type {
+import type {
   DefaultHandlerDeps,
   SubagentStartDeps,
   SubagentStopDeps,
@@ -31,9 +33,35 @@ export type {
   UserPromptSubmitDeps,
 } from './handlers/index.js';
 
-// ─── Hook subsystem factory ──────────────────────────────────────────────────
+// ─── Re-exports from local bindings ──────────────────────────────────────────
 
-import type { DefaultHandlerDeps } from './handlers/index.js';
+export { HookProcessor };
+export type { ClaudeHookResponse, HookProcessorDeps };
+export { HookRegistry };
+export type { HookHandler, RegisteredHandler };
+export {
+  registerDefaultHandlers,
+  handlePreToolUse,
+  createSubagentStartHandler,
+  createSubagentStopHandler,
+  createSessionStartHandler,
+  createSessionEndHandler,
+  createPreCompactHandler,
+  createPostToolUseHandler,
+  createUserPromptSubmitHandler,
+};
+export type {
+  DefaultHandlerDeps,
+  SubagentStartDeps,
+  SubagentStopDeps,
+  SessionStartDeps,
+  SessionEndDeps,
+  PreCompactDeps,
+  PostToolUseDeps,
+  UserPromptSubmitDeps,
+};
+
+// ─── Hook subsystem factory ──────────────────────────────────────────────────
 
 /** Bundle of L3 hook components. */
 export interface HookSubsystem {

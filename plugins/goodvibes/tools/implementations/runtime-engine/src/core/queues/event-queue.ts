@@ -20,6 +20,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { QueueError } from '../../shared/errors.js';
 import type { RuntimeEvent, EventQueueInterface } from '../types.js';
 
 const logger = createLogger('core:event-queue');
@@ -103,7 +104,7 @@ export class EventQueue implements EventQueueInterface {
     if (this._size >= this.maxDepth) {
       const msg = `EventQueue backpressure: depth ${this._size} >= max ${this.maxDepth}`;
       logger.warn(msg, { type: event.type, id: event.id });
-      throw new Error(msg);
+      throw new QueueError(msg);
     }
 
     const entry: QueueEntry = { event, seq: this.seq++, cancelled: false };
@@ -128,7 +129,7 @@ export class EventQueue implements EventQueueInterface {
       if (this._size >= this.maxDepth) {
         const msg = `EventQueue backpressure on requeue: depth ${this._size} >= max ${this.maxDepth}`;
         logger.warn(msg, { type: event.type, id: event.id });
-        throw new Error(msg);
+        throw new QueueError(msg);
       }
       const entry: QueueEntry = { event, seq: this.seq++, cancelled: false };
       this.heap.push(entry);

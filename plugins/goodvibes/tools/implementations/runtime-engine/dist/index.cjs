@@ -21540,6 +21540,62 @@ var import_node_fs2 = require("node:fs");
 
 // src/shared/file-io.ts
 var import_node_fs = require("node:fs");
+
+// src/shared/errors.ts
+var RuntimeEngineError = class extends Error {
+  constructor(message, code, cause) {
+    super(message);
+    this.code = code;
+    this.cause = cause;
+    this.name = this.constructor.name;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+  static {
+    __name(this, "RuntimeEngineError");
+  }
+};
+var StateError = class extends RuntimeEngineError {
+  static {
+    __name(this, "StateError");
+  }
+  constructor(message, cause) {
+    super(message, "STATE_ERROR", cause);
+  }
+};
+var QueueError = class extends RuntimeEngineError {
+  static {
+    __name(this, "QueueError");
+  }
+  constructor(message, cause) {
+    super(message, "QUEUE_ERROR", cause);
+  }
+};
+var ProcessingError = class extends RuntimeEngineError {
+  static {
+    __name(this, "ProcessingError");
+  }
+  constructor(message, cause) {
+    super(message, "PROCESSING_ERROR", cause);
+  }
+};
+var IPCError = class extends RuntimeEngineError {
+  static {
+    __name(this, "IPCError");
+  }
+  constructor(message, cause) {
+    super(message, "IPC_ERROR", cause);
+  }
+};
+var WorkflowError = class extends RuntimeEngineError {
+  static {
+    __name(this, "WorkflowError");
+  }
+  constructor(message, cause) {
+    super(message, "WORKFLOW_ERROR", cause);
+  }
+};
+
+// src/shared/file-io.ts
 var import_node_path = require("node:path");
 function writeAtomicSync(filePath, content) {
   const dir = (0, import_node_path.dirname)(filePath);
@@ -21584,6 +21640,17 @@ function toErrorMessage(err) {
   return err instanceof Error ? err.message : String(err);
 }
 __name(toErrorMessage, "toErrorMessage");
+function safeJsonParse(input, fallback, logError) {
+  try {
+    return JSON.parse(input);
+  } catch (err) {
+    if (logError) {
+      logError(err instanceof Error ? err.message : String(err));
+    }
+    return fallback;
+  }
+}
+__name(safeJsonParse, "safeJsonParse");
 function assertNever2(value) {
   throw new Error(`Unhandled discriminated union member: ${String(value)}`);
 }
@@ -21746,7 +21813,7 @@ function loadConfig(projectRoot) {
   const configPath = (0, import_node_path2.join)(root, ".goodvibes", "state", "runtime-config.json");
   try {
     const raw = (0, import_node_fs2.readFileSync)(configPath, "utf-8");
-    const parsed = JSON.parse(raw);
+    const parsed = safeJsonParse(raw, null);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
       process.stderr.write(
         `[runtime-engine] Warning: config at "${configPath}" is not an object \u2014 using defaults
@@ -21819,7 +21886,7 @@ function createLogger(component) {
 __name(createLogger, "createLogger");
 
 // src/bootstrap.ts
-var import_node_path13 = require("node:path");
+var import_node_path14 = require("node:path");
 
 // src/core/utils/fs-utils.ts
 var import_node_fs3 = require("node:fs");
@@ -22152,7 +22219,7 @@ var JsonStateStore = class {
         }
       }
     }
-    throw new Error(
+    throw new StateError(
       `StateStore: could not acquire lock at "${lockFilePath}" after ${maxAttempts} attempts`
     );
   }
@@ -22186,7 +22253,7 @@ var JsonStateStore = class {
     } catch (err) {
       const message = toErrorMessage(err);
       logger2.error("Failed to save state", { key, error: message });
-      throw new Error(`StateStore.set failed for key "${key}": ${message}`);
+      throw new StateError(`StateStore.set failed for key "${key}": ${message}`);
     }
   }
   /**
@@ -22201,14 +22268,16 @@ var JsonStateStore = class {
     const path3 = this.keyPath(key);
     try {
       const content = (0, import_node_fs5.readFileSync)(path3, "utf-8");
-      return JSON.parse(content);
+      const result = safeJsonParse(content, null);
+      if (result === null) throw new SyntaxError("Failed to parse JSON");
+      return result;
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
         return null;
       }
       const message = toErrorMessage(err);
       logger2.error("Failed to load state", { key, error: message });
-      throw new Error(`StateStore.get failed for key "${key}": ${message}`);
+      throw new StateError(`StateStore.get failed for key "${key}": ${message}`);
     }
   }
   /**
@@ -22229,7 +22298,7 @@ var JsonStateStore = class {
       }
       const message = toErrorMessage(err);
       logger2.error("Failed to delete state", { key, error: message });
-      throw new Error(`StateStore.delete failed for key "${key}": ${message}`);
+      throw new StateError(`StateStore.delete failed for key "${key}": ${message}`);
     }
   }
   /**
@@ -22248,7 +22317,7 @@ var JsonStateStore = class {
     } catch (err) {
       const message = toErrorMessage(err);
       logger2.error("Failed to list state keys", { error: message });
-      throw new Error(`StateStore.keys failed: ${message}`);
+      throw new StateError(`StateStore.keys failed: ${message}`);
     }
   }
   /**
@@ -22958,6 +23027,7 @@ __name(_doFullReplay, "_doFullReplay");
 // src/extensions/persistence/checkpoint-manager.ts
 var logger7 = createLogger("checkpoint-manager");
 var CHECKPOINT_INTERVAL_MS = 3e4;
+var MIN_CHECKPOINT_INTERVAL_MS = 1e3;
 var CheckpointManager = class {
   static {
     __name(this, "CheckpointManager");
@@ -22974,7 +23044,7 @@ var CheckpointManager = class {
   start() {
     const interval = Math.max(
       this.deps.config.persistence.checkpoint_interval_ms ?? CHECKPOINT_INTERVAL_MS,
-      1e3
+      MIN_CHECKPOINT_INTERVAL_MS
     );
     this.checkpointTimer = new Timer({
       callback: /* @__PURE__ */ __name(() => {
@@ -23372,7 +23442,11 @@ var EventLog = class {
       let skippedLines = 0;
       await this.streamLines(this.logPath, (line) => {
         try {
-          const event = JSON.parse(line);
+          const event = safeJsonParse(line, null);
+          if (event === null) {
+            skippedLines++;
+            return;
+          }
           if (typeof event.metadata?.sequence === "number" && event.metadata.sequence > this.latestSeq) {
             this.latestSeq = event.metadata.sequence;
           }
@@ -23504,7 +23578,11 @@ var EventLog = class {
           return false;
         }
         try {
-          const event = JSON.parse(line);
+          const event = safeJsonParse(line, null);
+          if (event === null) {
+            skippedLines++;
+            return true;
+          }
           if (this.matchesFilter(event, filter)) {
             results.push(event);
           }
@@ -23566,7 +23644,12 @@ var EventLog = class {
     try {
       await this.streamLines(this.logPath, (line) => {
         try {
-          const event = JSON.parse(line);
+          const event = safeJsonParse(line, null);
+          if (event === null) {
+            toKeep.push(line);
+            skippedLines++;
+            return true;
+          }
           const ts = event.timestamp ?? "";
           if (ts < cutoff) {
             toArchive.push(line);
@@ -23839,7 +23922,11 @@ var EventLog = class {
     let skippedLines = 0;
     for (const line of lines) {
       try {
-        const event = JSON.parse(line);
+        const event = safeJsonParse(line, null);
+        if (event === null) {
+          skippedLines++;
+          continue;
+        }
         if (event.type) {
           typeCount[event.type] = (typeCount[event.type] ?? 0) + 1;
         }
@@ -23896,7 +23983,7 @@ var EventQueue = class {
   processIntervalMs;
   constructor(config2) {
     if (config2.max_size < 1) {
-      throw new Error(
+      throw new QueueError(
         `EventQueue: max_size must be at least 1, got ${config2.max_size}. A queue with max_size=0 rejects every enqueue call immediately.`
       );
     }
@@ -23931,7 +24018,7 @@ var EventQueue = class {
    */
   enqueue(entry) {
     if (this.totalPending() >= this.maxSize) {
-      throw new Error(
+      throw new QueueError(
         `EventQueue is full (max_size=${this.maxSize}). Entry rejected for handler "${entry.handler}".`
       );
     }
@@ -24255,7 +24342,7 @@ var WorkflowEngine = class {
    */
   registerDefinition(def) {
     if (this.definitions.has(def.id)) {
-      throw new Error(`WorkflowDefinition '${def.id}' is already registered`);
+      throw new WorkflowError(`WorkflowDefinition '${def.id}' is already registered`);
     }
     this.definitions.set(def.id, def);
     log.info("Registered workflow definition", { id: def.id, name: def.name, version: def.version });
@@ -24287,11 +24374,11 @@ var WorkflowEngine = class {
   create(definitionId, initialContext = {}, instanceId) {
     const def = this.definitions.get(definitionId);
     if (!def) {
-      throw new Error(`WorkflowDefinition '${definitionId}' is not registered`);
+      throw new WorkflowError(`WorkflowDefinition '${definitionId}' is not registered`);
     }
     const activeCount = this.listActive().length;
     if (activeCount >= this.maxActive) {
-      throw new Error(
+      throw new WorkflowError(
         `Cannot create workflow: max_active limit (${this.maxActive}) reached`
       );
     }
@@ -24727,7 +24814,7 @@ var WorkflowEngine = class {
     const lhsRaw = trimmed.slice(0, opMatch.index).trim();
     const rhsRaw = trimmed.slice(opMatch.index + opMatch[0].length).trim();
     if (!lhsRaw || !rhsRaw) {
-      throw new Error(`Unrecognised guard expression format: "${expr}"`);
+      throw new WorkflowError(`Unrecognised guard expression format: "${expr}"`);
     }
     const lhsValue = this.resolveValue(lhsRaw, context);
     const rhsValue = this.resolveValue(rhsRaw, context);
@@ -25303,16 +25390,14 @@ async function loadCustomWorkflows(configPath) {
     }
     return [];
   }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    log2.warn("loadCustomWorkflows: failed to parse goodvibes.json as JSON", {
+  const parsed = safeJsonParse(
+    raw,
+    null,
+    (msg) => log2.warn("loadCustomWorkflows: failed to parse goodvibes.json as JSON", {
       config_file: configFile,
-      error: String(err)
-    });
-    return [];
-  }
+      error: msg
+    })
+  );
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     log2.warn("loadCustomWorkflows: goodvibes.json root must be an object");
     return [];
@@ -25577,7 +25662,7 @@ var WatchdogCoordinator = class {
       let existingDirectives = [];
       try {
         const existing = (0, import_node_fs8.readFileSync)(urgentPath, "utf-8");
-        const parsed = JSON.parse(existing);
+        const parsed = safeJsonParse(existing, {});
         if (Array.isArray(parsed.directives)) {
           existingDirectives = parsed.directives;
         }
@@ -26176,7 +26261,7 @@ var TriggerRegistry = class {
    */
   register(trigger) {
     if (this.triggers.size >= this.config.max_triggers) {
-      throw new Error(
+      throw new QueueError(
         `TriggerRegistry: max_triggers limit reached (${this.config.max_triggers}). Cannot register '${trigger.id}'.`
       );
     }
@@ -26853,13 +26938,13 @@ var AgentCoordinator = class {
   spawn(options) {
     const budgetNeeded = options.budget ?? this.config.default_budget;
     if (!this.budgetTracker.hasBudget(budgetNeeded)) {
-      throw new Error(
+      throw new ProcessingError(
         `Session budget exhausted \u2014 cannot spawn agent (type=${options.type}, needed=${budgetNeeded})`
       );
     }
     const activeCount = this.listActive().length;
     if (activeCount >= this.config.max_concurrent) {
-      throw new Error(
+      throw new ProcessingError(
         `Concurrency limit reached (max=${this.config.max_concurrent}, active=${activeCount})`
       );
     }
@@ -27940,8 +28025,8 @@ var DEFAULT_MIN_REVIEW_SCORE = 9.5;
 var GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
 var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "files", "count"]);
 function parseRawJson(raw) {
+  const parsed = safeJsonParse(raw, null);
   try {
-    const parsed = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
       return { found: true, data: null, raw };
     }
@@ -27999,6 +28084,8 @@ var DEFAULT_MAX_FIX_ATTEMPTS = 3;
 var TEST_THEN_FIX_DEFINITION_ID = "test_then_fix";
 var SYNTHETIC_PASS_SCORE = 10;
 var SYNTHETIC_FAIL_SCORE = 0;
+var MAX_CONTEXT_OUTPUT_CHARS = 2e3;
+var MAX_FAILURE_PREVIEW_CHARS = 500;
 function parseGvTestResult(text) {
   if (!text) return null;
   const gvResult = parseGvTag(text);
@@ -28046,7 +28133,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
     const testResult = parseGvTestResult(agentOutput);
     const hasFailures = testResult !== null ? !testResult.passed : false;
     const testCommand = typeof workflow.context["test_command"] === "string" ? workflow.context["test_command"] : "test suite";
-    workflow.context["test_output"] = agentOutput.slice(0, 2e3);
+    workflow.context["test_output"] = agentOutput.slice(0, MAX_CONTEXT_OUTPUT_CHARS);
     if (!hasFailures) {
       log5.info("test_fix_agent_completed: tests passed", {
         workflow_id: workflow.id,
@@ -28092,7 +28179,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
         test_command: testCommand
       });
       workflow.context["review_score"] = SYNTHETIC_FAIL_SCORE;
-      workflow.context["test_failures"] = [{ test: testCommand, error: agentOutput.slice(0, 500) }];
+      workflow.context["test_failures"] = [{ test: testCommand, error: agentOutput.slice(0, MAX_FAILURE_PREVIEW_CHARS) }];
       try {
         workflowEngine.sendEvent(workflow.id, {
           id: generateEventId(),
@@ -28171,7 +28258,7 @@ function registerTestFixHandlers(registry2, directiveQueue, workflowEngine, agen
       });
       return;
     }
-    const fixTask = `Fix failing tests for workflow ${workflow.id}. Test command: ${testCommand}. Fix attempt ${nextFixAttempts} of ${maxFixAttempts}. ` + (testOutput ? `Failure output: ${testOutput.slice(0, 500)}` : "Review test output for failures.");
+    const fixTask = `Fix failing tests for workflow ${workflow.id}. Test command: ${testCommand}. Fix attempt ${nextFixAttempts} of ${maxFixAttempts}. ` + (testOutput ? `Failure output: ${testOutput.slice(0, MAX_FAILURE_PREVIEW_CHARS)}` : "Review test output for failures.");
     const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, DEFAULT_BUDGET, {
       fix_attempts: nextFixAttempts,
       max_fix_attempts: maxFixAttempts,
@@ -28282,6 +28369,8 @@ __name(registerTestFixHandlers, "registerTestFixHandlers");
 
 // src/extensions/directives/review-only-handlers.ts
 var log6 = createLogger("review-only-handlers");
+var MAX_OUTPUT_PREVIEW_CHARS = 200;
+var MAX_REVIEW_OUTPUT_CHARS = 2e3;
 var REVIEW_ONLY_DEFINITION_ID = "review_only";
 function registerReviewOnlyHandlers(registry2, directiveQueue, workflowEngine, agentWorkflowMap) {
   registry2.registerHandler("review_only_agent_completed", async (args) => {
@@ -28326,11 +28415,11 @@ function registerReviewOnlyHandlers(registry2, directiveQueue, workflowEngine, a
     } else {
       log6.warn("review_only_agent_completed: could not parse review score from output", {
         workflow_id: workflow.id,
-        output_preview: agentOutput?.slice(0, 200)
+        output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_CHARS)
       });
     }
     if (agentOutput) {
-      workflow.context["review_output"] = agentOutput.slice(0, 2e3);
+      workflow.context["review_output"] = agentOutput.slice(0, MAX_REVIEW_OUTPUT_CHARS);
     }
     try {
       workflowEngine.sendEvent(workflow.id, {
@@ -28563,709 +28652,6 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
   }
 };
 
-// src/core/processing/executor-mode.ts
-var logger16 = createLogger("executor-mode");
-var ExecutorModeManager = class {
-  static {
-    __name(this, "ExecutorModeManager");
-  }
-  currentMode;
-  detectionMethod;
-  config;
-  eventBus;
-  constructor(config2, eventBus) {
-    this.config = config2;
-    this.eventBus = eventBus ?? null;
-    this.detectionMethod = "default";
-    this.currentMode = "engaged";
-    this.currentMode = this.detectMode();
-  }
-  /**
-   * Determine mode using priority order:
-   * 1. GOODVIBES_EXECUTOR_MODE env var (explicit override)
-   * 2. config.executor.mode != 'engaged' (explicit config)
-   * 3. TMUX env var present + no GOODVIBES_INTERACTIVE (inferred daemon)
-   * 4. Default: 'engaged'
-   */
-  detectMode() {
-    const envMode = process.env["GOODVIBES_EXECUTOR_MODE"];
-    if (envMode === "daemon" || envMode === "hybrid" || envMode === "engaged") {
-      this.detectionMethod = "explicit";
-      this.currentMode = envMode;
-      logger16.info("Executor mode set from env var", { mode: this.currentMode });
-      return this.currentMode;
-    }
-    if (this.config.mode !== "engaged") {
-      this.detectionMethod = "explicit";
-      this.currentMode = this.config.mode;
-      logger16.info("Executor mode set from config", { mode: this.currentMode });
-      return this.currentMode;
-    }
-    const inferred = this.inferFromEnvironment();
-    if (inferred !== null) {
-      this.detectionMethod = "inferred";
-      this.currentMode = inferred;
-      logger16.info("Executor mode inferred from environment", { mode: this.currentMode });
-      return this.currentMode;
-    }
-    this.detectionMethod = "default";
-    this.currentMode = "engaged";
-    logger16.debug("Executor mode defaulting to engaged");
-    return this.currentMode;
-  }
-  /** Get the current resolved mode. */
-  getMode() {
-    return this.currentMode;
-  }
-  /** Get the detection method used. */
-  getDetectionMethod() {
-    return this.detectionMethod;
-  }
-  /** Explicitly switch mode at runtime. Emits executor:mode_set. */
-  setMode(mode) {
-    const previousMode = this.currentMode;
-    this.currentMode = mode;
-    this.detectionMethod = "explicit";
-    logger16.info("Executor mode changed", { from: previousMode, to: mode });
-    if (this.eventBus) {
-      this.eventBus.emit({
-        id: generateEventId(),
-        timestamp: timestamp(),
-        type: "executor:mode_set",
-        source: { kind: "system" },
-        payload: {
-          type: "executor:mode_set",
-          data: {
-            mode,
-            previous_mode: previousMode,
-            detection_method: "explicit"
-          }
-        }
-      });
-    }
-  }
-  /**
-   * Check if the current mode processes queued events.
-   * daemon and hybrid modes process the queue; engaged does not.
-   */
-  shouldProcessQueue() {
-    return this.currentMode === "daemon" || this.currentMode === "hybrid";
-  }
-  /**
-   * Check if context should be cleared after a batch.
-   * Only daemon mode with clear_context_after_batch clears context.
-   */
-  shouldClearContext() {
-    return this.currentMode === "daemon" && this.config.daemon.clear_context_after_batch;
-  }
-  /**
-   * Update the config reference for hot-reload support.
-   * Called by RuntimeEngine.updateConfig() when runtime_config changes.
-   */
-  updateConfig(config2) {
-    this.config = config2;
-  }
-  /**
-   * Infer the executor mode from the process environment.
-   * If TMUX is set and GOODVIBES_INTERACTIVE is not set, infer daemon.
-   * Hybrid is never inferred — always explicit.
-   */
-  inferFromEnvironment() {
-    const tmux = process.env["TMUX"];
-    const interactive = process.env["GOODVIBES_INTERACTIVE"];
-    if (tmux && !interactive) {
-      return "daemon";
-    }
-    return null;
-  }
-};
-
-// src/extensions/executor/executor-budget.ts
-var logger17 = createLogger("executor-budget");
-var BUDGET_STATE_KEY = "executor.budget.spending";
-function checkCapThreshold(params) {
-  let { warningFired } = params;
-  let exceeded = false;
-  const ratio = params.spent / params.cap;
-  if (ratio >= params.warningThreshold && !warningFired) {
-    warningFired = true;
-    params.onWarning();
-  }
-  if (params.spent >= params.cap && !params.paused) {
-    exceeded = true;
-    params.onExceeded();
-  }
-  return { warningFired, exceeded };
-}
-__name(checkCapThreshold, "checkCapThreshold");
-var ExecutorBudgetManager = class {
-  static {
-    __name(this, "ExecutorBudgetManager");
-  }
-  config;
-  eventBus;
-  spending;
-  paused;
-  warningFired;
-  constructor(config2, eventBus) {
-    this.config = config2;
-    this.eventBus = eventBus;
-    this.paused = false;
-    this.warningFired = { flat: false, daily: false };
-    this.spending = {
-      total_usd: 0,
-      daily_usd: 0,
-      daily_reset_at: timestamp(),
-      last_updated: timestamp()
-    };
-  }
-  /**
-   * Record spending from an agent completion or progress report.
-   * Adds to both total and daily accumulators, then checks thresholds and caps.
-   */
-  recordSpending(amount_usd) {
-    if (amount_usd <= 0) return;
-    this.spending.total_usd += amount_usd;
-    this.spending.daily_usd += amount_usd;
-    this.spending.last_updated = timestamp();
-    logger17.debug("Spending recorded", {
-      amount_usd,
-      total_usd: this.spending.total_usd,
-      daily_usd: this.spending.daily_usd
-    });
-    if (this.config.flat_cap_usd !== void 0 && this.config.flat_cap_usd > 0) {
-      const flatResult = checkCapThreshold({
-        spent: this.spending.total_usd,
-        cap: this.config.flat_cap_usd,
-        warningThreshold: this.config.warning_threshold,
-        warningFired: this.warningFired.flat,
-        capType: "flat",
-        paused: this.paused,
-        onWarning: /* @__PURE__ */ __name(() => {
-          logger17.warn("Executor flat cap warning threshold reached", {
-            spent_usd: this.spending.total_usd,
-            cap_usd: this.config.flat_cap_usd,
-            threshold: this.config.warning_threshold
-          });
-          this.eventBus.emit({
-            id: generateEventId(),
-            timestamp: timestamp(),
-            type: "executor:budget_warning",
-            source: { kind: "system" },
-            payload: {
-              type: "executor:budget_warning",
-              data: {
-                cap_type: "flat",
-                spent_usd: this.spending.total_usd,
-                cap_usd: this.config.flat_cap_usd ?? 0,
-                threshold: this.config.warning_threshold
-              }
-            }
-          });
-        }, "onWarning"),
-        onExceeded: /* @__PURE__ */ __name(() => {
-          this.paused = true;
-          logger17.warn("Executor flat cap exceeded \u2014 processing paused", {
-            spent_usd: this.spending.total_usd,
-            cap_usd: this.config.flat_cap_usd
-          });
-          this.eventBus.emit({
-            id: generateEventId(),
-            timestamp: timestamp(),
-            type: "executor:budget_exceeded",
-            source: { kind: "system" },
-            payload: {
-              type: "executor:budget_exceeded",
-              data: {
-                cap_type: "flat",
-                spent_usd: this.spending.total_usd,
-                cap_usd: this.config.flat_cap_usd ?? 0
-              }
-            }
-          });
-          this.eventBus.emit({
-            id: generateEventId(),
-            timestamp: timestamp(),
-            type: "executor:paused",
-            source: { kind: "system" },
-            payload: {
-              type: "executor:paused",
-              data: { reason: "flat_cap_exceeded" }
-            }
-          });
-        }, "onExceeded")
-      });
-      this.warningFired.flat = flatResult.warningFired;
-      if (flatResult.exceeded) return;
-    }
-    if (this.config.daily_cap_usd !== void 0 && this.config.daily_cap_usd > 0) {
-      const dailyResult = checkCapThreshold({
-        spent: this.spending.daily_usd,
-        cap: this.config.daily_cap_usd,
-        warningThreshold: this.config.warning_threshold,
-        warningFired: this.warningFired.daily,
-        capType: "daily",
-        paused: this.paused,
-        onWarning: /* @__PURE__ */ __name(() => {
-          logger17.warn("Executor daily cap warning threshold reached", {
-            spent_usd: this.spending.daily_usd,
-            cap_usd: this.config.daily_cap_usd,
-            threshold: this.config.warning_threshold
-          });
-          this.eventBus.emit({
-            id: generateEventId(),
-            timestamp: timestamp(),
-            type: "executor:budget_warning",
-            source: { kind: "system" },
-            payload: {
-              type: "executor:budget_warning",
-              data: {
-                cap_type: "daily",
-                spent_usd: this.spending.daily_usd,
-                cap_usd: this.config.daily_cap_usd ?? 0,
-                threshold: this.config.warning_threshold
-              }
-            }
-          });
-        }, "onWarning"),
-        onExceeded: /* @__PURE__ */ __name(() => {
-          this.paused = true;
-          logger17.warn("Executor daily cap exceeded \u2014 processing paused", {
-            spent_usd: this.spending.daily_usd,
-            cap_usd: this.config.daily_cap_usd
-          });
-          this.eventBus.emit({
-            id: generateEventId(),
-            timestamp: timestamp(),
-            type: "executor:budget_exceeded",
-            source: { kind: "system" },
-            payload: {
-              type: "executor:budget_exceeded",
-              data: {
-                cap_type: "daily",
-                spent_usd: this.spending.daily_usd,
-                cap_usd: this.config.daily_cap_usd ?? 0
-              }
-            }
-          });
-          this.eventBus.emit({
-            id: generateEventId(),
-            timestamp: timestamp(),
-            type: "executor:paused",
-            source: { kind: "system" },
-            payload: {
-              type: "executor:paused",
-              data: { reason: "daily_cap_exceeded" }
-            }
-          });
-        }, "onExceeded")
-      });
-      this.warningFired.daily = dailyResult.warningFired;
-    }
-  }
-  /**
-   * Check if processing should continue.
-   * Returns false if any cap is exceeded.
-   */
-  canProcess() {
-    return !this.paused;
-  }
-  /** Get current spending state. */
-  getSpending() {
-    return { ...this.spending };
-  }
-  /**
-   * Check and reset daily cap if reset_hour has passed.
-   * Returns true if a reset occurred.
-   */
-  checkDailyReset() {
-    const now = /* @__PURE__ */ new Date();
-    const currentHour = now.getHours();
-    const resetAt = new Date(this.spending.daily_reset_at);
-    const lastResetDay = resetAt.toDateString();
-    const today = now.toDateString();
-    if (today !== lastResetDay && currentHour >= this.config.daily_reset_hour) {
-      const previousDailySpent = this.spending.daily_usd;
-      this.spending.daily_usd = 0;
-      this.spending.daily_reset_at = timestamp();
-      this.spending.last_updated = timestamp();
-      this.warningFired.daily = false;
-      if (this.paused) {
-        const flatExceeded = this.config.flat_cap_usd !== void 0 && this.config.flat_cap_usd > 0 && this.spending.total_usd >= this.config.flat_cap_usd;
-        if (!flatExceeded) {
-          this.paused = false;
-          this.eventBus.emit({
-            id: generateEventId(),
-            timestamp: timestamp(),
-            type: "executor:resumed",
-            source: { kind: "system" },
-            payload: {
-              type: "executor:resumed",
-              data: { reason: "daily_budget_reset" }
-            }
-          });
-        }
-      }
-      logger17.info("Daily budget reset", {
-        previous_daily_spent: previousDailySpent,
-        reset_hour: this.config.daily_reset_hour
-      });
-      this.eventBus.emit({
-        id: generateEventId(),
-        timestamp: timestamp(),
-        type: "executor:budget_reset",
-        source: { kind: "system" },
-        payload: {
-          type: "executor:budget_reset",
-          data: {
-            previous_daily_spent: previousDailySpent,
-            reset_hour: this.config.daily_reset_hour
-          }
-        }
-      });
-      return true;
-    }
-    return false;
-  }
-  /**
-   * Manually adjust budget configuration (operator override).
-   * Can increase caps or change thresholds at runtime.
-   */
-  adjustBudget(adjustments) {
-    const previousPaused = this.paused;
-    Object.assign(this.config, adjustments);
-    if (this.paused) {
-      const flatOk = this.config.flat_cap_usd === void 0 || this.config.flat_cap_usd <= 0 || this.spending.total_usd < this.config.flat_cap_usd;
-      const dailyOk = this.config.daily_cap_usd === void 0 || this.config.daily_cap_usd <= 0 || this.spending.daily_usd < this.config.daily_cap_usd;
-      if (flatOk && dailyOk) {
-        this.paused = false;
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:resumed",
-          source: { kind: "system" },
-          payload: {
-            type: "executor:resumed",
-            data: { reason: "budget_adjusted" }
-          }
-        });
-        logger17.info("Executor resumed after budget adjustment");
-      }
-    }
-    logger17.info("Budget configuration adjusted", { adjustments, was_paused: previousPaused, now_paused: this.paused });
-  }
-  /** Persist spending state to the state store. */
-  persist(stateStore) {
-    stateStore.set(BUDGET_STATE_KEY, this.spending);
-    logger17.debug("Budget state persisted");
-  }
-  /** Restore spending state from the state store. */
-  restore(stateStore) {
-    const stored = stateStore.get(BUDGET_STATE_KEY);
-    if (stored && typeof stored === "object") {
-      this.spending = {
-        total_usd: typeof stored.total_usd === "number" ? stored.total_usd : 0,
-        daily_usd: typeof stored.daily_usd === "number" ? stored.daily_usd : 0,
-        daily_reset_at: typeof stored.daily_reset_at === "string" ? stored.daily_reset_at : timestamp(),
-        last_updated: typeof stored.last_updated === "string" ? stored.last_updated : timestamp()
-      };
-      logger17.info("Budget state restored", {
-        total_usd: this.spending.total_usd,
-        daily_usd: this.spending.daily_usd
-      });
-      if (this.config.flat_cap_usd !== void 0 && this.config.flat_cap_usd > 0) {
-        if (this.spending.total_usd >= this.config.flat_cap_usd) {
-          this.paused = true;
-          this.warningFired.flat = true;
-          logger17.warn("Executor paused after state restore: flat cap exceeded");
-        } else if (this.spending.total_usd >= this.config.flat_cap_usd * this.config.warning_threshold) {
-          this.warningFired.flat = true;
-        }
-      }
-      if (this.config.daily_cap_usd !== void 0 && this.config.daily_cap_usd > 0) {
-        if (this.spending.daily_usd >= this.config.daily_cap_usd) {
-          this.paused = true;
-          this.warningFired.daily = true;
-          logger17.warn("Executor paused after state restore: daily cap exceeded");
-        } else if (this.spending.daily_usd >= this.config.daily_cap_usd * this.config.warning_threshold) {
-          this.warningFired.daily = true;
-        }
-      }
-    }
-  }
-};
-
-// src/extensions/executor/context-clearer.ts
-var import_node_child_process = require("node:child_process");
-var logger18 = createLogger("context-clearer");
-var TMUX_TIMEOUT_MS = 5e3;
-var ContextClearer = class {
-  static {
-    __name(this, "ContextClearer");
-  }
-  config;
-  constructor(config2) {
-    this.config = config2;
-  }
-  /**
-   * Clear context using the best available method.
-   *
-   * 1. Primary: tmux send-keys to inject /clear into the session
-   * 2. Fallback: queue injection (handled on next tick)
-   *
-   * @returns Method used and success status.
-   */
-  async clearContext() {
-    if (this.isTmuxAvailable()) {
-      try {
-        const success2 = await this.clearViaTmux();
-        if (success2) {
-          logger18.info("Context cleared via tmux", { session: this.config.tmux_session_name });
-          return { method: "tmux", success: true };
-        }
-        logger18.warn("tmux clear failed, falling back to queue injection");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger18.warn("tmux clear threw an error, falling back to queue injection", { error: msg });
-      }
-    } else {
-      logger18.debug("tmux not available, using queue injection fallback");
-    }
-    logger18.info("Context clear queued via injection fallback");
-    return { method: "queue_injection", success: true };
-  }
-  /**
-   * Check if tmux is available.
-   * Returns true if the TMUX environment variable is set (indicating we are
-   * running inside a tmux session).
-   */
-  isTmuxAvailable() {
-    return typeof process.env["TMUX"] === "string" && process.env["TMUX"].length > 0;
-  }
-  /**
-   * Execute tmux send-keys to type /clear into the configured session.
-   * Uses execSync with a 5-second timeout.
-   *
-   * @returns true if the command succeeded, false if it failed.
-   */
-  async clearViaTmux() {
-    const sessionName = this.config.tmux_session_name;
-    try {
-      (0, import_node_child_process.execFileSync)("tmux", ["send-keys", "-t", sessionName, "/clear"], { timeout: TMUX_TIMEOUT_MS, stdio: "pipe" });
-      (0, import_node_child_process.execFileSync)("tmux", ["send-keys", "-t", sessionName, "Enter"], { timeout: TMUX_TIMEOUT_MS, stdio: "pipe" });
-      return true;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger18.error("tmux send-keys failed", { session: sessionName, error: msg });
-      return false;
-    }
-  }
-};
-
-// src/extensions/executor/daemon-tick-handler.ts
-var logger19 = createLogger("daemon-tick-handler");
-var DaemonTickHandler = class {
-  static {
-    __name(this, "DaemonTickHandler");
-  }
-  tickCount = 0;
-  executorMode;
-  budgetManager;
-  eventBus;
-  config;
-  contextClearer;
-  /** Returns the current core event queue depth. Wired after plugin init via setQueueDepthGetter(). */
-  getQueueDepth = /* @__PURE__ */ __name(() => 0, "getQueueDepth");
-  constructor(deps) {
-    this.executorMode = deps.executorMode;
-    this.budgetManager = deps.budgetManager;
-    this.eventBus = deps.eventBus;
-    this.config = deps.config;
-    this.contextClearer = new ContextClearer(deps.config.daemon);
-  }
-  /**
-   * Wire the live queue depth getter after the core event queue has been
-   * initialised. Called from bootstrap after initializePlugins().
-   */
-  setQueueDepthGetter(getter) {
-    this.getQueueDepth = getter;
-  }
-  /**
-   * Process one daemon tick cycle.
-   *
-   * Flow:
-   * 1. Check budget — abort if exceeded
-   * 2. Check daily reset
-   * 3. Emit executor:tick_received
-   * 4. Build additionalContext with active workflows, pending events, memory state
-   * 5. Emit executor:tick_completed
-   * 6. If daemon mode: initiate context clearing
-   */
-  async handleTick() {
-    const startMs = Date.now();
-    this.tickCount++;
-    const tickNumber = this.tickCount;
-    logger19.info("Daemon tick received", { tick_number: tickNumber });
-    if (!this.budgetManager.canProcess()) {
-      logger19.warn("Tick aborted: budget exceeded", { tick_number: tickNumber });
-      return {
-        tick_number: tickNumber,
-        events_processed: 0,
-        duration_ms: Date.now() - startMs,
-        context_cleared: false,
-        budget_status: "exceeded"
-      };
-    }
-    this.budgetManager.checkDailyReset();
-    this.eventBus.emit({
-      id: generateEventId(),
-      timestamp: timestamp(),
-      type: "executor:tick_received",
-      source: { kind: "system" },
-      payload: {
-        type: "executor:tick_received",
-        data: {
-          tick_number: tickNumber,
-          pending_events: this.getQueueDepth()
-        }
-      }
-    });
-    const spending = this.budgetManager.getSpending();
-    let budgetStatus = "ok";
-    if (this.config.budget.flat_cap_usd !== void 0 && this.config.budget.flat_cap_usd > 0 && spending.total_usd >= this.config.budget.flat_cap_usd * this.config.budget.warning_threshold || this.config.budget.daily_cap_usd !== void 0 && this.config.budget.daily_cap_usd > 0 && spending.daily_usd >= this.config.budget.daily_cap_usd * this.config.budget.warning_threshold) {
-      budgetStatus = "warning";
-    }
-    const eventsProcessed = 0;
-    const durationMs = Date.now() - startMs;
-    this.eventBus.emit({
-      id: generateEventId(),
-      timestamp: timestamp(),
-      type: "executor:tick_completed",
-      source: { kind: "system" },
-      payload: {
-        type: "executor:tick_completed",
-        data: {
-          tick_number: tickNumber,
-          events_processed: eventsProcessed,
-          duration_ms: durationMs
-        }
-      }
-    });
-    let contextCleared = false;
-    if (this.executorMode.shouldClearContext()) {
-      try {
-        const result = await this.contextClearer.clearContext();
-        contextCleared = result.success;
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:context_clearing",
-          source: { kind: "system" },
-          payload: {
-            type: "executor:context_clearing",
-            data: {
-              method: result.method,
-              success: result.success
-            }
-          }
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger19.error("Context clearing failed", { tick_number: tickNumber, error: msg });
-      }
-    }
-    logger19.info("Daemon tick completed", {
-      tick_number: tickNumber,
-      events_processed: eventsProcessed,
-      duration_ms: Date.now() - startMs,
-      context_cleared: contextCleared,
-      budget_status: budgetStatus
-    });
-    return {
-      tick_number: tickNumber,
-      events_processed: eventsProcessed,
-      duration_ms: Date.now() - startMs,
-      context_cleared: contextCleared,
-      budget_status: budgetStatus
-    };
-  }
-  /**
-   * Build the additionalContext payload for daemon tick injection.
-   * Includes: active workflows, pending events summary, memory state.
-   *
-   * Pending event count is wired via setQueueDepthGetter(). Active workflow
-   * count remains 0 until WorkflowRegistry exposes activeCount().
-   */
-  buildTickContext() {
-    const spending = this.budgetManager.getSpending();
-    const canProcess = this.budgetManager.canProcess();
-    const pendingEvents = this.getQueueDepth();
-    const activeWorkflows = 0;
-    return `--- Daemon Tick Context ---
-Tick #${this.tickCount}
-Mode: ${this.executorMode.getMode()}
-Budget: total=$${spending.total_usd.toFixed(4)} daily=$${spending.daily_usd.toFixed(4)} (can_process=${canProcess})
-Pending events: ${pendingEvents}
-Active workflows: ${activeWorkflows}`;
-  }
-  /** Get cumulative tick count for metrics. */
-  getTickCount() {
-    return this.tickCount;
-  }
-  /**
-   * Return the configured tick command string.
-   * Used by the UserPromptSubmit handler to detect daemon ticks.
-   */
-  getTickCommand() {
-    return this.config.daemon.tick_command;
-  }
-};
-
-// src/executor-bootstrap.ts
-var logger20 = createLogger("executor-bootstrap");
-function initializeExecutor(deps) {
-  const { config: config2, eventBus } = deps;
-  try {
-    const executorMode = new ExecutorModeManager(config2.executor, eventBus);
-    const mode = executorMode.getMode();
-    const executorBudget = new ExecutorBudgetManager(
-      config2.executor.budget,
-      eventBus
-    );
-    const daemonTickHandler = new DaemonTickHandler({
-      executorMode,
-      budgetManager: executorBudget,
-      eventBus,
-      config: config2.executor
-    });
-    eventBus.emit({
-      id: generateEventId(),
-      timestamp: timestamp(),
-      type: "executor:mode_set",
-      source: { kind: "system" },
-      payload: {
-        type: "executor:mode_set",
-        data: {
-          mode,
-          previous_mode: mode,
-          detection_method: executorMode.getDetectionMethod()
-        }
-      }
-    });
-    logger20.info("Executor subsystem initialised", {
-      mode,
-      detection_method: executorMode.getDetectionMethod()
-    });
-    return { executorMode, executorBudget, daemonTickHandler };
-  } catch (err) {
-    logger20.warn("Executor subsystem initialisation failed \u2014 continuing without executor", {
-      err: toErrorMessage(err)
-    });
-    return null;
-  }
-}
-__name(initializeExecutor, "initializeExecutor");
-
 // src/core/types.ts
 function createEvent(overrides) {
   return {
@@ -29286,7 +28672,7 @@ function createTrigger(overrides) {
 __name(createTrigger, "createTrigger");
 
 // src/core/queues/event-queue.ts
-var logger21 = createLogger("core:event-queue");
+var logger16 = createLogger("core:event-queue");
 var DEFAULT_MAX_DEPTH = 1e3;
 var DEFAULT_DEDUP_TTL_MS = 6e4;
 var EventQueue2 = class _EventQueue {
@@ -29318,13 +28704,13 @@ var EventQueue2 = class _EventQueue {
    */
   enqueue(event) {
     if (this.deduplicate(event)) {
-      logger21.debug("Dropped duplicate event", { id: event.id, type: event.type });
+      logger16.debug("Dropped duplicate event", { id: event.id, type: event.type });
       return;
     }
     if (this._size >= this.maxDepth) {
       const msg = `EventQueue backpressure: depth ${this._size} >= max ${this.maxDepth}`;
-      logger21.warn(msg, { type: event.type, id: event.id });
-      throw new Error(msg);
+      logger16.warn(msg, { type: event.type, id: event.id });
+      throw new QueueError(msg);
     }
     const entry = { event, seq: this.seq++, cancelled: false };
     this.heap.push(entry);
@@ -29344,8 +28730,8 @@ var EventQueue2 = class _EventQueue {
     for (const event of events) {
       if (this._size >= this.maxDepth) {
         const msg = `EventQueue backpressure on requeue: depth ${this._size} >= max ${this.maxDepth}`;
-        logger21.warn(msg, { type: event.type, id: event.id });
-        throw new Error(msg);
+        logger16.warn(msg, { type: event.type, id: event.id });
+        throw new QueueError(msg);
       }
       const entry = { event, seq: this.seq++, cancelled: false };
       this.heap.push(entry);
@@ -29414,7 +28800,7 @@ var EventQueue2 = class _EventQueue {
       if (entry.event.id === event_id && !entry.cancelled) {
         entry.cancelled = true;
         this._size--;
-        logger21.debug("Cancelled event", { event_id });
+        logger16.debug("Cancelled event", { event_id });
         return true;
       }
     }
@@ -29434,7 +28820,7 @@ var EventQueue2 = class _EventQueue {
       }
     }
     if (count > 0) {
-      logger21.debug("Cancelled events by ref", { ref, count });
+      logger16.debug("Cancelled events by ref", { ref, count });
     }
     return count;
   }
@@ -29524,7 +28910,7 @@ var EventQueue2 = class _EventQueue {
 // src/core/queues/dead-letter.ts
 var import_node_fs9 = require("node:fs");
 var import_node_path8 = require("node:path");
-var logger22 = createLogger("core:dead-letter");
+var logger17 = createLogger("core:dead-letter");
 var DeadLetterQueue = class {
   static {
     __name(this, "DeadLetterQueue");
@@ -29558,7 +28944,7 @@ var DeadLetterQueue = class {
       this.entries.shift();
     }
     this.entries.push(entry);
-    logger22.warn("Event dead-lettered", {
+    logger17.warn("Event dead-lettered", {
       event_id: entry.event.id,
       event_type: entry.event.type,
       trigger_id: entry.trigger_id,
@@ -29627,7 +29013,7 @@ var DeadLetterQueue = class {
     try {
       await reenqueue(entry.event);
     } catch (err) {
-      logger22.warn("Replay re-enqueue callback failed; keeping entry in DLQ", {
+      logger17.warn("Replay re-enqueue callback failed; keeping entry in DLQ", {
         event_id,
         event_type: entry.event.type,
         error: toErrorMessage(err)
@@ -29635,7 +29021,7 @@ var DeadLetterQueue = class {
       return null;
     }
     this.remove(event_id);
-    logger22.info("Replaying dead-letter event", {
+    logger17.info("Replaying dead-letter event", {
       event_id,
       event_type: entry.event.type
     });
@@ -29645,7 +29031,7 @@ var DeadLetterQueue = class {
   load() {
     try {
       const content = (0, import_node_fs9.readFileSync)(this.filePath, "utf-8");
-      const parsed = JSON.parse(content);
+      const parsed = safeJsonParse(content, null);
       if (Array.isArray(parsed)) {
         const valid = parsed.filter((item) => {
           if (typeof item !== "object" || item === null) return false;
@@ -29654,14 +29040,14 @@ var DeadLetterQueue = class {
         });
         const skipped = parsed.length - valid.length;
         if (skipped > 0) {
-          logger22.warn("Skipped invalid dead-letter entries during load", {
+          logger17.warn("Skipped invalid dead-letter entries during load", {
             path: this.filePath,
             skipped,
             loaded: valid.length
           });
         }
         this.entries = valid;
-        logger22.debug("Loaded dead-letter queue from disk", {
+        logger17.debug("Loaded dead-letter queue from disk", {
           path: this.filePath,
           count: this.entries.length
         });
@@ -29669,7 +29055,7 @@ var DeadLetterQueue = class {
     } catch (err) {
       const code = err.code;
       if (code !== "ENOENT") {
-        logger22.warn("Failed to load dead-letter file; starting empty", {
+        logger17.warn("Failed to load dead-letter file; starting empty", {
           path: this.filePath,
           error: toErrorMessage(err)
         });
@@ -29680,7 +29066,7 @@ var DeadLetterQueue = class {
     try {
       writeJsonSync(this.filePath, this.entries);
     } catch (err) {
-      logger22.error("Failed to persist dead-letter queue", {
+      logger17.error("Failed to persist dead-letter queue", {
         path: this.filePath,
         error: toErrorMessage(err)
       });
@@ -29689,7 +29075,7 @@ var DeadLetterQueue = class {
 };
 
 // src/core/matching/trigger-registry.ts
-var logger23 = createLogger("core:trigger-registry");
+var logger18 = createLogger("core:trigger-registry");
 var globCache = /* @__PURE__ */ new Map();
 var GLOB_CACHE_MAX = 500;
 function getGlobRegex(pattern) {
@@ -29704,7 +29090,7 @@ function getGlobRegex(pattern) {
     try {
       regex = new RegExp(regexStr);
     } catch {
-      logger23.warn("Failed to compile glob pattern; using never-matching fallback", { pattern, regexStr });
+      logger18.warn("Failed to compile glob pattern; using never-matching fallback", { pattern, regexStr });
       regex = /(?!)/;
     }
     globCache.set(pattern, regex);
@@ -29752,43 +29138,43 @@ function evaluateCondition(condition, state) {
       return actual !== void 0 && actual !== null;
     case "eq":
       if (actual === void 0) {
-        logger23.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        logger18.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
         return false;
       }
       return actual === expected;
     case "neq":
       if (actual === void 0) {
-        logger23.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        logger18.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
         return false;
       }
       return actual !== expected;
     case "gt":
       if (actual === void 0) {
-        logger23.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        logger18.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
         return false;
       }
       return typeof actual === "number" && typeof expected === "number" && actual > expected;
     case "lt":
       if (actual === void 0) {
-        logger23.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        logger18.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
         return false;
       }
       return typeof actual === "number" && typeof expected === "number" && actual < expected;
     case "gte":
       if (actual === void 0) {
-        logger23.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        logger18.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
         return false;
       }
       return typeof actual === "number" && typeof expected === "number" && actual >= expected;
     case "lte":
       if (actual === void 0) {
-        logger23.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        logger18.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
         return false;
       }
       return typeof actual === "number" && typeof expected === "number" && actual <= expected;
     case "in":
       if (actual === void 0) {
-        logger23.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
+        logger18.debug("Condition LHS is undefined; treating as not met", { field: condition.field, op });
         return false;
       }
       if (!Array.isArray(expected)) return false;
@@ -29810,12 +29196,12 @@ var TriggerRegistry2 = class {
    */
   register(trigger) {
     if (this.triggers.has(trigger.id)) {
-      throw new Error(`Trigger '${trigger.id}' is already registered`);
+      throw new ProcessingError(`Trigger '${trigger.id}' is already registered`);
     }
     this.triggers.set(trigger.id, trigger);
     this.states.set(trigger.id, { fire_count: 0, last_fired_at: 0 });
     globCache.clear();
-    logger23.debug("Registered trigger", { id: trigger.id });
+    logger18.debug("Registered trigger", { id: trigger.id });
   }
   /**
    * Unregister a trigger by ID.
@@ -29825,7 +29211,7 @@ var TriggerRegistry2 = class {
     const existed = this.triggers.delete(id);
     this.states.delete(id);
     globCache.clear();
-    if (existed) logger23.debug("Unregistered trigger", { id });
+    if (existed) logger18.debug("Unregistered trigger", { id });
     return existed;
   }
   /**
@@ -29833,7 +29219,7 @@ var TriggerRegistry2 = class {
    */
   enable(id) {
     const trigger = this.triggers.get(id);
-    if (!trigger) throw new Error(`Trigger '${id}' not found`);
+    if (!trigger) throw new ProcessingError(`Trigger '${id}' not found`);
     this.triggers.set(id, { ...trigger, enabled: true });
   }
   /**
@@ -29841,7 +29227,7 @@ var TriggerRegistry2 = class {
    */
   disable(id) {
     const trigger = this.triggers.get(id);
-    if (!trigger) throw new Error(`Trigger '${id}' not found`);
+    if (!trigger) throw new ProcessingError(`Trigger '${id}' not found`);
     this.triggers.set(id, { ...trigger, enabled: false });
   }
   /**
@@ -29879,7 +29265,7 @@ var TriggerRegistry2 = class {
       if (result.matched) {
         matched.push(trigger);
       } else {
-        logger23.debug("Trigger not matched", {
+        logger18.debug("Trigger not matched", {
           trigger_id: trigger.id,
           reason: result.skip_reason,
           event_type: event.type
@@ -29898,7 +29284,7 @@ var TriggerRegistry2 = class {
     }
     const state = this.states.get(trigger.id);
     if (!state) {
-      logger23.warn("matchOne called for trigger with no state record", { trigger_id: trigger.id });
+      logger18.warn("matchOne called for trigger with no state record", { trigger_id: trigger.id });
       return { trigger, matched: false, skip_reason: "disabled" };
     }
     if (trigger.max_fires !== void 0 && trigger.max_fires > 0 && state.fire_count >= trigger.max_fires) {
@@ -29945,7 +29331,7 @@ var TriggerRegistry2 = class {
   recordFire(trigger_id) {
     const state = this.states.get(trigger_id);
     if (!state) {
-      logger23.warn("recordFire called for unknown trigger", { trigger_id });
+      logger18.warn("recordFire called for unknown trigger", { trigger_id });
       return;
     }
     state.fire_count++;
@@ -29965,7 +29351,7 @@ var TriggerRegistry2 = class {
       state.fire_count = 0;
       state.last_fired_at = 0;
     }
-    logger23.debug("Reset all trigger fire counts");
+    logger18.debug("Reset all trigger fire counts");
   }
   /**
    * Reset fire count for a single trigger.
@@ -29987,7 +29373,7 @@ var TriggerRegistry2 = class {
 };
 
 // src/core/utils/retry.ts
-var logger24 = createLogger("core:retry");
+var logger19 = createLogger("core:retry");
 function computeDelay(backoff, baseMs, attempt) {
   if (backoff === "exponential") {
     return baseMs * Math.pow(2, attempt);
@@ -29997,7 +29383,7 @@ function computeDelay(backoff, baseMs, attempt) {
 __name(computeDelay, "computeDelay");
 
 // src/core/matching/error-handler.ts
-var logger25 = createLogger("core:error-handler");
+var logger20 = createLogger("core:error-handler");
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -30047,14 +29433,14 @@ var ErrorHandler = class {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0 && retry) {
         const delay = computeDelay(retry.backoff, retry.delay_ms, attempt - 1);
-        logger25.debug("Retrying handler", { trigger_id, attempt, delay_ms: delay });
+        logger20.debug("Retrying handler", { trigger_id, attempt, delay_ms: delay });
         await sleep(delay);
       }
       try {
         const result = await handler(event);
         if (result.error) {
           lastError = result.error;
-          logger25.warn("Handler returned error result", {
+          logger20.warn("Handler returned error result", {
             trigger_id,
             attempt: attempt + 1,
             error: result.error.message
@@ -30063,7 +29449,7 @@ var ErrorHandler = class {
             continue;
           }
         } else {
-          logger25.debug("Handler executed successfully", {
+          logger20.debug("Handler executed successfully", {
             trigger_id,
             attempts: attempt + 1
           });
@@ -30071,7 +29457,7 @@ var ErrorHandler = class {
         }
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
-        logger25.warn("Handler threw exception", {
+        logger20.warn("Handler threw exception", {
           trigger_id,
           attempt: attempt + 1,
           maxAttempts,
@@ -30080,7 +29466,7 @@ var ErrorHandler = class {
       }
     }
     const finalError = lastError ?? new Error("Handler failed with unknown error");
-    logger25.error("Handler exhausted retries; dead-lettering event", {
+    logger20.error("Handler exhausted retries; dead-lettering event", {
       trigger_id,
       event_id: event.id,
       event_type: event.type,
@@ -30117,7 +29503,7 @@ var ErrorHandler = class {
 };
 
 // src/core/processing/event-processor.ts
-var logger26 = createLogger("core:event-processor");
+var logger21 = createLogger("core:event-processor");
 var MAX_EVENTS_PER_BATCH = 100;
 var MAX_CHAIN_DEPTH = 10;
 var RATE_LIMIT_WINDOW_MS = 1e3;
@@ -30253,7 +29639,7 @@ var EventProcessor = class {
     if (this.budget && this.budget.total > 0) {
       const fraction = this.tokensConsumed / this.budget.total;
       if (fraction >= this.budget.pause_threshold) {
-        logger26.warn("Budget pause threshold exceeded; pausing loop", {
+        logger21.warn("Budget pause threshold exceeded; pausing loop", {
           consumed: this.tokensConsumed,
           total: this.budget.total,
           fraction
@@ -30264,7 +29650,7 @@ var EventProcessor = class {
     }
     const currentDepth = this.queue.depth();
     if (this.queueDepthWarning !== void 0 && currentDepth >= this.queueDepthWarning) {
-      logger26.warn("Queue depth warning threshold reached", {
+      logger21.warn("Queue depth warning threshold reached", {
         depth: currentDepth,
         threshold: this.queueDepthWarning
       });
@@ -30272,14 +29658,14 @@ var EventProcessor = class {
       try {
         this.queue.enqueue(warning);
       } catch (err) {
-        logger26.debug("Failed to enqueue queue depth warning event", { error: err instanceof Error ? err.message : String(err) });
+        logger21.debug("Failed to enqueue queue depth warning event", { error: err instanceof Error ? err.message : String(err) });
       }
     }
     const now = Date.now();
     for (const [workflowId, acquiredAt] of this.workflowLocks) {
       if (now - acquiredAt >= this.options.lock_timeout_ms) {
         this.workflowLocks.delete(workflowId);
-        logger26.warn("Stale workflow lock swept during batch start", {
+        logger21.warn("Stale workflow lock swept during batch start", {
           workflow_id: workflowId,
           lock_age_ms: now - acquiredAt,
           timeout_ms: this.options.lock_timeout_ms
@@ -30294,13 +29680,13 @@ var EventProcessor = class {
       try {
         this.queue.requeue(events.slice(this.options.max_events_per_batch));
       } catch (err) {
-        logger26.debug("Failed to requeue overflow batch events", { error: err instanceof Error ? err.message : String(err) });
+        logger21.debug("Failed to requeue overflow batch events", { error: err instanceof Error ? err.message : String(err) });
       }
     }
     let processed = 0;
     for (const event of toProcess) {
       if (this.priorityFloor !== void 0 && event.priority < this.priorityFloor) {
-        logger26.debug("Skipping event below priority floor", {
+        logger21.debug("Skipping event below priority floor", {
           event_id: event.id,
           event_type: event.type,
           priority: event.priority,
@@ -30315,7 +29701,7 @@ var EventProcessor = class {
           this.rateLimitCount = 0;
         }
         if (this.rateLimitCount >= this.rateLimit.max_per_window) {
-          logger26.debug("Rate limit reached; re-queuing remaining events", {
+          logger21.debug("Rate limit reached; re-queuing remaining events", {
             max_per_window: this.rateLimit.max_per_window,
             window_ms: this.rateLimit.window_ms
           });
@@ -30323,7 +29709,7 @@ var EventProcessor = class {
           try {
             this.queue.requeue(remaining);
           } catch (err) {
-            logger26.debug("Failed to requeue rate-limited events", { error: err instanceof Error ? err.message : String(err) });
+            logger21.debug("Failed to requeue rate-limited events", { error: err instanceof Error ? err.message : String(err) });
           }
           break;
         }
@@ -30331,7 +29717,7 @@ var EventProcessor = class {
       }
       const depth = event.context?.chain_depth ?? 0;
       if (depth > this.options.max_chain_depth) {
-        logger26.warn("Chain depth exceeded; dropping event", {
+        logger21.warn("Chain depth exceeded; dropping event", {
           event_id: event.id,
           event_type: event.type,
           depth,
@@ -30341,7 +29727,7 @@ var EventProcessor = class {
         try {
           this.queue.enqueue(exceeded);
         } catch (err) {
-          logger26.debug("Failed to enqueue chain_depth_exceeded event", { error: err instanceof Error ? err.message : String(err) });
+          logger21.debug("Failed to enqueue chain_depth_exceeded event", { error: err instanceof Error ? err.message : String(err) });
         }
         continue;
       }
@@ -30354,11 +29740,11 @@ var EventProcessor = class {
             try {
               this.queue.requeue([event]);
             } catch (err) {
-              logger26.debug("Failed to requeue workflow-locked event", { event_id: event.id, error: err instanceof Error ? err.message : String(err) });
+              logger21.debug("Failed to requeue workflow-locked event", { event_id: event.id, error: err instanceof Error ? err.message : String(err) });
             }
             continue;
           }
-          logger26.warn("Releasing stale workflow lock", {
+          logger21.warn("Releasing stale workflow lock", {
             workflow_id: workflowId,
             lock_age_ms: lockAge,
             timeout_ms: this.options.lock_timeout_ms
@@ -30388,7 +29774,7 @@ var EventProcessor = class {
     const fraction = this.tokensConsumed / this.budget.total;
     if (!this.budgetWarningSent && fraction >= this.budget.warn_threshold) {
       this.budgetWarningSent = true;
-      logger26.warn("Budget warning threshold reached", {
+      logger21.warn("Budget warning threshold reached", {
         consumed: this.tokensConsumed,
         total: this.budget.total,
         fraction
@@ -30416,7 +29802,7 @@ var EventProcessor = class {
   // ─── Private ────────────────────────────────────────────────────────────────────────
   async processEvent(event) {
     const startMs = Date.now();
-    logger26.debug("Processing event", { id: event.id, type: event.type });
+    logger21.debug("Processing event", { id: event.id, type: event.type });
     const matchedTriggers = this.registry.match(event, this.store);
     const chainedEvents = [];
     for (const trigger of matchedTriggers) {
@@ -30437,7 +29823,7 @@ var EventProcessor = class {
             try {
               this.queue.enqueue(errEvt);
             } catch (err) {
-              logger26.debug("Failed to enqueue error event", { error: err instanceof Error ? err.message : String(err) });
+              logger21.debug("Failed to enqueue error event", { error: err instanceof Error ? err.message : String(err) });
             }
           }
           continue;
@@ -30463,7 +29849,7 @@ var EventProcessor = class {
               workflow_id: event.context?.workflow_id
             });
           } catch (err) {
-            logger26.error("Action execution failed", {
+            logger21.error("Action execution failed", {
               action_type: action.type,
               handler_id: trigger.id ?? "unknown",
               error: err instanceof Error ? err.message : String(err)
@@ -30476,7 +29862,7 @@ var EventProcessor = class {
       try {
         this.queue.enqueue(chained);
       } catch (err) {
-        logger26.warn("Failed to enqueue chained event (backpressure)", {
+        logger21.warn("Failed to enqueue chained event (backpressure)", {
           event_id: chained.id,
           event_type: chained.type,
           queue_depth: this.queue.depth(),
@@ -30490,7 +29876,7 @@ var EventProcessor = class {
 };
 
 // src/core/processing/lifecycle.ts
-var logger27 = createLogger("core:lifecycle");
+var logger22 = createLogger("core:lifecycle");
 var VALID_TRANSITIONS2 = {
   stopped: ["running"],
   /**
@@ -30539,7 +29925,7 @@ var LoopLifecycleManager = class {
    */
   resume() {
     if (this._status !== "paused") {
-      throw new Error(`Cannot resume from status '${this._status}': must be 'paused'`);
+      throw new ProcessingError(`Cannot resume from status '${this._status}': must be 'paused'`);
     }
     this.transition("running");
   }
@@ -30570,16 +29956,16 @@ var LoopLifecycleManager = class {
    */
   async shutdown() {
     if (this._status === "stopped") {
-      logger27.debug("Shutdown called but already stopped");
+      logger22.debug("Shutdown called but already stopped");
       return;
     }
-    logger27.info("Shutting down event loop", { current: this._status });
+    logger22.info("Shutting down event loop", { current: this._status });
     try {
       if (this.options.onShutdown) {
         await this.options.onShutdown();
       }
     } catch (err) {
-      logger27.error("Error during shutdown callback", {
+      logger22.error("Error during shutdown callback", {
         error: err instanceof Error ? err.message : String(err)
       });
     } finally {
@@ -30603,12 +29989,12 @@ var LoopLifecycleManager = class {
     const from = this._status;
     const allowed = VALID_TRANSITIONS2[from];
     if (!allowed.includes(to)) {
-      throw new Error(
+      throw new ProcessingError(
         `Invalid lifecycle transition: '${from}' \u2192 '${to}'. Allowed from '${from}': [${allowed.join(", ")}]`
       );
     }
     this._status = to;
-    logger27.info("Lifecycle transition", { from, to });
+    logger22.info("Lifecycle transition", { from, to });
     this.options.onTransition?.(from, to);
   }
   /**
@@ -30626,11 +30012,128 @@ var LoopLifecycleManager = class {
     const from = this._status;
     const allowed = VALID_TRANSITIONS2[from];
     if (!allowed.includes(to)) {
-      logger27.warn("Forcing lifecycle transition outside transition table", { from, to });
+      logger22.warn("Forcing lifecycle transition outside transition table", { from, to });
     }
     this._status = to;
-    logger27.info("Lifecycle transition (forced)", { from, to });
+    logger22.info("Lifecycle transition (forced)", { from, to });
     this.options.onTransition?.(from, to);
+  }
+};
+
+// src/core/processing/executor-mode.ts
+var logger23 = createLogger("executor-mode");
+var ExecutorModeManager = class {
+  static {
+    __name(this, "ExecutorModeManager");
+  }
+  currentMode;
+  detectionMethod;
+  config;
+  eventBus;
+  constructor(config2, eventBus) {
+    this.config = config2;
+    this.eventBus = eventBus ?? null;
+    this.detectionMethod = "default";
+    this.currentMode = "engaged";
+    this.currentMode = this.detectMode();
+  }
+  /**
+   * Determine mode using priority order:
+   * 1. GOODVIBES_EXECUTOR_MODE env var (explicit override)
+   * 2. config.executor.mode != 'engaged' (explicit config)
+   * 3. TMUX env var present + no GOODVIBES_INTERACTIVE (inferred daemon)
+   * 4. Default: 'engaged'
+   */
+  detectMode() {
+    const envMode = process.env["GOODVIBES_EXECUTOR_MODE"];
+    if (envMode === "daemon" || envMode === "hybrid" || envMode === "engaged") {
+      this.detectionMethod = "explicit";
+      this.currentMode = envMode;
+      logger23.info("Executor mode set from env var", { mode: this.currentMode });
+      return this.currentMode;
+    }
+    if (this.config.mode !== "engaged") {
+      this.detectionMethod = "explicit";
+      this.currentMode = this.config.mode;
+      logger23.info("Executor mode set from config", { mode: this.currentMode });
+      return this.currentMode;
+    }
+    const inferred = this.inferFromEnvironment();
+    if (inferred !== null) {
+      this.detectionMethod = "inferred";
+      this.currentMode = inferred;
+      logger23.info("Executor mode inferred from environment", { mode: this.currentMode });
+      return this.currentMode;
+    }
+    this.detectionMethod = "default";
+    this.currentMode = "engaged";
+    logger23.debug("Executor mode defaulting to engaged");
+    return this.currentMode;
+  }
+  /** Get the current resolved mode. */
+  getMode() {
+    return this.currentMode;
+  }
+  /** Get the detection method used. */
+  getDetectionMethod() {
+    return this.detectionMethod;
+  }
+  /** Explicitly switch mode at runtime. Emits executor:mode_set. */
+  setMode(mode) {
+    const previousMode = this.currentMode;
+    this.currentMode = mode;
+    this.detectionMethod = "explicit";
+    logger23.info("Executor mode changed", { from: previousMode, to: mode });
+    if (this.eventBus) {
+      this.eventBus.emit({
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: "executor:mode_set",
+        source: { kind: "system" },
+        payload: {
+          type: "executor:mode_set",
+          data: {
+            mode,
+            previous_mode: previousMode,
+            detection_method: "explicit"
+          }
+        }
+      });
+    }
+  }
+  /**
+   * Check if the current mode processes queued events.
+   * daemon and hybrid modes process the queue; engaged does not.
+   */
+  shouldProcessQueue() {
+    return this.currentMode === "daemon" || this.currentMode === "hybrid";
+  }
+  /**
+   * Check if context should be cleared after a batch.
+   * Only daemon mode with clear_context_after_batch clears context.
+   */
+  shouldClearContext() {
+    return this.currentMode === "daemon" && this.config.daemon.clear_context_after_batch;
+  }
+  /**
+   * Update the config reference for hot-reload support.
+   * Called by RuntimeEngine.updateConfig() when runtime_config changes.
+   */
+  updateConfig(config2) {
+    this.config = config2;
+  }
+  /**
+   * Infer the executor mode from the process environment.
+   * If TMUX is set and GOODVIBES_INTERACTIVE is not set, infer daemon.
+   * Hybrid is never inferred — always explicit.
+   */
+  inferFromEnvironment() {
+    const tmux = process.env["TMUX"];
+    const interactive = process.env["GOODVIBES_INTERACTIVE"];
+    if (tmux && !interactive) {
+      return "daemon";
+    }
+    return null;
   }
 };
 
@@ -30716,7 +30219,7 @@ __name(setupSignalHandlers, "setupSignalHandlers");
 // src/core/state/state-store.ts
 var import_node_fs10 = require("node:fs");
 var import_node_path9 = require("node:path");
-var logger28 = createLogger("core:state-store");
+var logger24 = createLogger("core:state-store");
 var FORBIDDEN_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 function validateDotPath(path3) {
   const segments = path3.split(".");
@@ -30770,7 +30273,7 @@ __name(deletePath, "deletePath");
 var DEEP_MERGE_MAX_DEPTH = 20;
 function deepMerge2(base, override, depth = 0) {
   if (depth >= DEEP_MERGE_MAX_DEPTH) {
-    logger28.warn("deepMerge depth limit exceeded; using override value as-is", { depth });
+    logger24.warn("deepMerge depth limit exceeded; using override value as-is", { depth });
     return { ...base, ...override };
   }
   const result = { ...base };
@@ -30885,19 +30388,19 @@ var CoreStateStore = class {
   load() {
     try {
       const content = (0, import_node_fs10.readFileSync)(this.filePath, "utf-8");
-      const parsed = JSON.parse(content);
+      const parsed = safeJsonParse(content, null);
       if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
         this.data = parsed;
-        logger28.debug("Loaded state from disk", { path: this.filePath });
+        logger24.debug("Loaded state from disk", { path: this.filePath });
       } else {
-        logger28.warn("State file contained non-object; starting fresh", { path: this.filePath });
+        logger24.warn("State file contained non-object; starting fresh", { path: this.filePath });
       }
     } catch (err) {
       const code = err.code;
       if (code === "ENOENT") {
-        logger28.debug("No state file found; starting fresh", { path: this.filePath });
+        logger24.debug("No state file found; starting fresh", { path: this.filePath });
       } else {
-        logger28.warn("Failed to load state file; starting fresh", {
+        logger24.warn("Failed to load state file; starting fresh", {
           path: this.filePath,
           error: toErrorMessage(err)
         });
@@ -30918,9 +30421,9 @@ var CoreStateStore = class {
   persist() {
     try {
       writeJsonSync(this.filePath, this.data);
-      logger28.debug("Persisted state to disk", { path: this.filePath });
+      logger24.debug("Persisted state to disk", { path: this.filePath });
     } catch (err) {
-      logger28.error("Failed to persist state", {
+      logger24.error("Failed to persist state", {
         path: this.filePath,
         error: toErrorMessage(err)
       });
@@ -30968,13 +30471,13 @@ function readStreamBody(stream, maxBytes) {
 __name(readStreamBody, "readStreamBody");
 
 // src/core/utils/poll.ts
-var logger29 = createLogger("core:poll");
+var logger25 = createLogger("core:poll");
 
 // src/core/state/file-fallback.ts
-var logger30 = createLogger("file-fallback");
+var logger26 = createLogger("file-fallback");
 
 // src/core/observability/metrics.ts
-var logger31 = createLogger("core:metrics");
+var logger27 = createLogger("core:metrics");
 var RollingWindow = class {
   constructor(capacity) {
     this.capacity = capacity;
@@ -31059,7 +30562,7 @@ var EventMetrics = class {
     this.chainDepth.push(depth);
     const current = this.eventTypeCounts.get(event.type) ?? 0;
     this.eventTypeCounts.set(event.type, current + 1);
-    logger31.debug("Event processed", { type: event.type, duration_ms, chain_depth: depth });
+    logger27.debug("Event processed", { type: event.type, duration_ms, chain_depth: depth });
   }
   /**
    * Record a handler execution error.
@@ -31068,7 +30571,7 @@ var EventMetrics = class {
     this.eventsFailed++;
     const current = this.triggerErrorCounts.get(trigger_id) ?? 0;
     this.triggerErrorCounts.set(trigger_id, current + 1);
-    logger31.warn("Handler error recorded", {
+    logger27.warn("Handler error recorded", {
       trigger_id,
       event_type: event.type,
       error: error2.message
@@ -31087,14 +30590,14 @@ var EventMetrics = class {
     this.triggersFired++;
     const current = this.triggerFireCounts.get(trigger_id) ?? 0;
     this.triggerFireCounts.set(trigger_id, current + 1);
-    logger31.debug("Trigger fired", { trigger_id, event_type: event.type });
+    logger27.debug("Trigger fired", { trigger_id, event_type: event.type });
   }
   /**
    * Record an event moved to the dead-letter queue.
    */
   onEventDeadLettered(event, reason) {
     this.eventsDeadLettered++;
-    logger31.warn("Event dead-lettered", { event_id: event.id, type: event.type, reason });
+    logger27.warn("Event dead-lettered", { event_id: event.id, type: event.type, reason });
   }
   /**
    * Generate a current stats snapshot.
@@ -31169,9 +30672,32 @@ var EventMetrics = class {
     this.triggerFireCounts.clear();
     this.triggerErrorCounts.clear();
     this.eventTypeCounts.clear();
-    logger31.debug("Metrics reset");
+    logger27.debug("Metrics reset");
   }
 };
+
+// src/core/runtime.ts
+function createCoreRuntime(actionExecutor) {
+  const eventQueue = new EventQueue2();
+  const triggerRegistry = new TriggerRegistry2();
+  const stateStore = new CoreStateStore();
+  const lifecycle = new LoopLifecycleManager();
+  const metrics = new EventMetrics();
+  const deadLetter = new DeadLetterQueue();
+  const errorHandler = new ErrorHandler({ deadLetter });
+  const eventProcessor = new EventProcessor(
+    eventQueue,
+    triggerRegistry,
+    stateStore,
+    lifecycle,
+    metrics,
+    errorHandler,
+    deadLetter,
+    { action_executor: actionExecutor }
+  );
+  return { eventQueue, triggerRegistry, stateStore, eventProcessor };
+}
+__name(createCoreRuntime, "createCoreRuntime");
 
 // src/extensions/triggers/factories.ts
 function createWRFCTrigger(params) {
@@ -31736,7 +31262,7 @@ function createTimeEvent(params) {
 __name(createTimeEvent, "createTimeEvent");
 
 // src/plugins/hooks/hook-processor.ts
-var logger32 = createLogger("hook-processor");
+var logger28 = createLogger("hook-processor");
 var VALID_HOOK_TYPES = /* @__PURE__ */ new Set([
   "PreToolUse",
   "PostToolUse",
@@ -31779,7 +31305,7 @@ var HookProcessor = class {
   async process(hookName, hookInput) {
     const hookType = normalizeHookName(hookName);
     if (!hookType) {
-      logger32.debug("Unknown hook name \u2014 no-op", { hookName });
+      logger28.debug("Unknown hook name \u2014 no-op", { hookName });
       return {};
     }
     const event = createHookEvent({
@@ -31791,7 +31317,7 @@ var HookProcessor = class {
     if (handlers.length === 0) {
       return {};
     }
-    logger32.debug("Processing hook event", {
+    logger28.debug("Processing hook event", {
       hookType,
       handlerCount: handlers.length,
       eventId: event.id
@@ -31804,7 +31330,7 @@ var HookProcessor = class {
           responses.push(result);
         }
       } catch (err) {
-        logger32.error("Handler threw an error", {
+        logger28.error("Handler threw an error", {
           handlerId: registered.id,
           hookType,
           error: err instanceof Error ? err.message : String(err)
@@ -31864,7 +31390,7 @@ var HookProcessor = class {
       const joined = contexts.join("\n\n");
       const MAX_ADDITIONAL_CONTEXT_BYTES = 100 * 1024;
       if (Buffer.byteLength(joined, "utf8") > MAX_ADDITIONAL_CONTEXT_BYTES) {
-        logger32.warn("additionalContext exceeds 100 KB cap; truncating", {
+        logger28.warn("additionalContext exceeds 100 KB cap; truncating", {
           original_bytes: Buffer.byteLength(joined, "utf8"),
           cap_bytes: MAX_ADDITIONAL_CONTEXT_BYTES
         });
@@ -31878,7 +31404,7 @@ var HookProcessor = class {
 };
 
 // src/plugins/hooks/hook-registry.ts
-var logger33 = createLogger("hook-registry");
+var logger29 = createLogger("hook-registry");
 var HookRegistry = class {
   static {
     __name(this, "HookRegistry");
@@ -31900,7 +31426,7 @@ var HookRegistry = class {
     list.splice(insertIdx === -1 ? list.length : insertIdx, 0, handler);
     this.handlers.set(handler.hook_type, list);
     this.byId.set(handler.id, handler);
-    logger33.debug("Handler registered", {
+    logger29.debug("Handler registered", {
       id: handler.id,
       hook_type: handler.hook_type,
       priority: handler.priority
@@ -31919,7 +31445,7 @@ var HookRegistry = class {
       if (idx !== -1) list.splice(idx, 1);
     }
     this.byId.delete(id);
-    logger33.debug("Handler unregistered", { id });
+    logger29.debug("Handler unregistered", { id });
     return true;
   }
   /**
@@ -31930,7 +31456,7 @@ var HookRegistry = class {
     const handler = this.byId.get(id);
     if (handler) {
       handler.enabled = true;
-      logger33.debug("Handler enabled", { id });
+      logger29.debug("Handler enabled", { id });
     }
   }
   /**
@@ -31941,7 +31467,7 @@ var HookRegistry = class {
     const handler = this.byId.get(id);
     if (handler) {
       handler.enabled = false;
-      logger33.debug("Handler disabled", { id });
+      logger29.debug("Handler disabled", { id });
     }
   }
   /**
@@ -31965,7 +31491,7 @@ var HookRegistry = class {
 };
 
 // src/plugins/hooks/handlers/pre-tool-use.ts
-var logger34 = createLogger("handler:pre-tool-use");
+var logger30 = createLogger("handler:pre-tool-use");
 var BLOCKED_TOOLS = /* @__PURE__ */ new Set([
   "Read",
   "Write",
@@ -31991,7 +31517,7 @@ async function handlePreToolUse(_event, input) {
   if (!toolName) return null;
   if (BLOCKED_TOOLS.has(toolName)) {
     const replacement = REPLACEMENT_MAP[toolName] ?? "the precision_engine equivalent";
-    logger34.info("Blocking deprecated native tool", { toolName, replacement });
+    logger30.info("Blocking deprecated native tool", { toolName, replacement });
     return {
       decision: "block",
       reason: `Tool '${toolName}' is deprecated. Use ${replacement} instead.`
@@ -32002,12 +31528,12 @@ async function handlePreToolUse(_event, input) {
 __name(handlePreToolUse, "handlePreToolUse");
 
 // src/plugins/hooks/handlers/subagent-start.ts
-var logger35 = createLogger("handler:subagent-start");
+var logger31 = createLogger("handler:subagent-start");
 function createSubagentStartHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSubagentStart(_event, input) {
     const agentId = typeof input["agent_id"] === "string" ? input["agent_id"] : null;
     const agentType = typeof input["agent_type"] === "string" ? input["agent_type"] : null;
-    logger35.debug("SubagentStart", { agentId, agentType });
+    logger31.debug("SubagentStart", { agentId, agentType });
     if (!deps.agentWorkflowMap) {
       return null;
     }
@@ -32023,7 +31549,7 @@ function createSubagentStartHandler(deps) {
     if (agentId) {
       deps.agentWorkflowMap.bind(agentId, workflowId);
     }
-    logger35.info("Resolved pending bind", { agentType, workflowId, agentId });
+    logger31.info("Resolved pending bind", { agentType, workflowId, agentId });
     const context = JSON.stringify({ action: "workflow_bind", workflow_id: workflowId });
     return {
       additionalContext: `<gv>${context}</gv>`
@@ -32033,18 +31559,18 @@ function createSubagentStartHandler(deps) {
 __name(createSubagentStartHandler, "createSubagentStartHandler");
 
 // src/plugins/hooks/handlers/subagent-stop.ts
-var logger36 = createLogger("handler:subagent-stop");
+var logger32 = createLogger("handler:subagent-stop");
 function createSubagentStopHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSubagentStop(_event, input) {
     const agentId = typeof input["agent_id"] === "string" ? input["agent_id"] : "unknown";
     const agentType = typeof input["agent_type"] === "string" ? input["agent_type"] : "unknown";
     const output = typeof input["output"] === "string" ? input["output"] : "";
-    logger36.debug("SubagentStop", { agentId, agentType });
+    logger32.debug("SubagentStop", { agentId, agentType });
     if (REVIEWER_AGENT_TYPES.has(agentType)) {
       const score = extractReviewScore2(output);
       const minScore = deps.minReviewScore ?? DEFAULT_MIN_REVIEW_SCORE;
       if (score !== null && score < minScore) {
-        logger36.info("Quality gate: review score below threshold", {
+        logger32.info("Quality gate: review score below threshold", {
           agentId,
           agentType,
           score,
@@ -32075,7 +31601,7 @@ function createSubagentStopHandler(deps) {
           metadata: { session_id: _event.session_id }
         });
       } catch (err) {
-        logger36.warn("Failed to emit agent:completed", {
+        logger32.warn("Failed to emit agent:completed", {
           agentId,
           error: err instanceof Error ? err.message : String(err)
         });
@@ -32086,26 +31612,22 @@ function createSubagentStopHandler(deps) {
 }
 __name(createSubagentStopHandler, "createSubagentStopHandler");
 function extractReviewScore2(output) {
-  try {
-    const match = output.match(/<gv>([\s\S]*?)<\/gv>/);
-    if (!match || !match[1]) return null;
-    const data = JSON.parse(match[1]);
-    const score = data["score"];
-    if (typeof score === "number") return score;
-    return null;
-  } catch {
-    return null;
-  }
+  const match = output.match(/<gv>([\s\S]*?)<\/gv>/);
+  if (!match || !match[1]) return null;
+  const data = safeJsonParse(match[1], {});
+  const score = data["score"];
+  if (typeof score === "number") return score;
+  return null;
 }
 __name(extractReviewScore2, "extractReviewScore");
 
 // src/plugins/hooks/handlers/session-start.ts
-var logger37 = createLogger("handler:session-start");
+var logger33 = createLogger("handler:session-start");
 function createSessionStartHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSessionStart(event, input) {
     const sessionId = event.session_id;
     const cwd = typeof input["cwd"] === "string" ? input["cwd"] : process.cwd();
-    logger37.info("Session started", { sessionId, cwd });
+    logger33.info("Session started", { sessionId, cwd });
     if (deps.eventBus) {
       try {
         deps.eventBus.emit({
@@ -32127,7 +31649,7 @@ function createSessionStartHandler(deps) {
           metadata: { session_id: sessionId }
         });
       } catch (err) {
-        logger37.warn("Failed to emit session:started", {
+        logger33.warn("Failed to emit session:started", {
           sessionId,
           error: err instanceof Error ? err.message : String(err)
         });
@@ -32139,11 +31661,11 @@ function createSessionStartHandler(deps) {
 __name(createSessionStartHandler, "createSessionStartHandler");
 
 // src/plugins/hooks/handlers/session-end.ts
-var logger38 = createLogger("handler:session-end");
+var logger34 = createLogger("handler:session-end");
 function createSessionEndHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSessionEnd(event, _input) {
     const sessionId = event.session_id;
-    logger38.info("Session ended", { sessionId });
+    logger34.info("Session ended", { sessionId });
     if (deps.eventBus) {
       try {
         deps.eventBus.emit({
@@ -32158,7 +31680,7 @@ function createSessionEndHandler(deps) {
           metadata: { session_id: sessionId }
         });
       } catch (err) {
-        logger38.warn("Failed to emit session:ended", {
+        logger34.warn("Failed to emit session:ended", {
           sessionId,
           error: err instanceof Error ? err.message : String(err)
         });
@@ -32170,11 +31692,11 @@ function createSessionEndHandler(deps) {
 __name(createSessionEndHandler, "createSessionEndHandler");
 
 // src/plugins/hooks/handlers/pre-compact.ts
-var logger39 = createLogger("handler:pre-compact");
+var logger35 = createLogger("handler:pre-compact");
 function createPreCompactHandler(deps) {
   return /* @__PURE__ */ __name(async function handlePreCompact(event, _input) {
     const sessionId = event.session_id;
-    logger39.info("Pre-compact", { sessionId });
+    logger35.info("Pre-compact", { sessionId });
     if (deps.eventBus) {
       try {
         deps.eventBus.emit({
@@ -32189,7 +31711,7 @@ function createPreCompactHandler(deps) {
           metadata: { session_id: sessionId }
         });
       } catch (err) {
-        logger39.warn("Failed to emit session:compact", {
+        logger35.warn("Failed to emit session:compact", {
           sessionId,
           error: err instanceof Error ? err.message : String(err)
         });
@@ -32208,7 +31730,7 @@ function createPreCompactHandler(deps) {
 __name(createPreCompactHandler, "createPreCompactHandler");
 
 // src/plugins/hooks/handlers/post-tool-use.ts
-var logger40 = createLogger("handler:post-tool-use");
+var logger36 = createLogger("handler:post-tool-use");
 var FILE_WRITE_TOOLS = /* @__PURE__ */ new Set([
   "precision_write",
   "precision_edit"
@@ -32237,7 +31759,7 @@ function createPostToolUseHandler(deps) {
             metadata: { session_id: sessionId }
           });
         } catch (err) {
-          logger40.warn("Failed to emit file:modified", {
+          logger36.warn("Failed to emit file:modified", {
             path: path3,
             error: err instanceof Error ? err.message : String(err)
           });
@@ -32266,7 +31788,7 @@ function extractModifiedPaths(input) {
 __name(extractModifiedPaths, "extractModifiedPaths");
 
 // src/plugins/hooks/handlers/user-prompt-submit.ts
-var logger41 = createLogger("handler:user-prompt-submit");
+var logger37 = createLogger("handler:user-prompt-submit");
 var TASK_NOTIFICATION_PATTERN = "<task-notification>";
 function createUserPromptSubmitHandler(deps) {
   return /* @__PURE__ */ __name(async function handleUserPromptSubmit(_event, input) {
@@ -32275,7 +31797,7 @@ function createUserPromptSubmitHandler(deps) {
     if ((mode === "daemon" || mode === "hybrid") && deps.daemonTickHandler) {
       const tickCommand = deps.daemonTickHandler.getTickCommand();
       if (prompt.trim() === tickCommand) {
-        logger41.info("Daemon tick received via UserPromptSubmit");
+        logger37.info("Daemon tick received via UserPromptSubmit");
         const result = await deps.daemonTickHandler.handleTick();
         const tickContext = JSON.stringify({
           action: "daemon_tick",
@@ -32301,7 +31823,7 @@ function createUserPromptSubmitHandler(deps) {
     if (directives.length === 0) {
       return null;
     }
-    logger41.info("Injecting directives via UserPromptSubmit", {
+    logger37.info("Injecting directives via UserPromptSubmit", {
       count: directives.length
     });
     const directivePayload = JSON.stringify({
@@ -32390,6 +31912,18 @@ function registerDefaultHandlers(registry2, deps) {
   });
 }
 __name(registerDefaultHandlers, "registerDefaultHandlers");
+
+// src/plugins/hooks/index.ts
+function createHookSubsystem(deps) {
+  const hookRegistry = new HookRegistry();
+  const hookProcessor = new HookProcessor({
+    registry: hookRegistry,
+    sessionId: ""
+  });
+  registerDefaultHandlers(hookRegistry, deps);
+  return { hookProcessor, hookRegistry };
+}
+__name(createHookSubsystem, "createHookSubsystem");
 
 // src/plugins/time/heartbeat.ts
 var HeartbeatManager = class {
@@ -32771,7 +32305,7 @@ var TimePlugin = class {
 var crypto = __toESM(require("node:crypto"), 1);
 var fs = __toESM(require("node:fs/promises"), 1);
 var path = __toESM(require("node:path"), 1);
-var logger42 = createLogger("file-watcher");
+var logger38 = createLogger("file-watcher");
 function isDropFilePayload(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
@@ -32826,7 +32360,7 @@ var FileWatcher = class {
       let succeeded = false;
       try {
         const raw = await fs.readFile(filepath, "utf-8");
-        const parsed = JSON.parse(raw);
+        const parsed = safeJsonParse(raw, null);
         if (!isDropFilePayload(parsed)) {
           throw new Error(
             `Invalid drop file format: must have 'source' (string) and 'payload' fields`
@@ -32844,7 +32378,7 @@ var FileWatcher = class {
         }
         succeeded = true;
       } catch (scanErr) {
-        logger42.error(`Failed to process file '${filename}'`, { error: scanErr });
+        logger38.error(`Failed to process file '${filename}'`, { error: scanErr });
         const errorPath = path.join(this.config.error_dir, filename);
         try {
           await fs.rename(filepath, errorPath);
@@ -32854,7 +32388,7 @@ var FileWatcher = class {
             await fs.unlink(filepath);
             confirmedRemoved.add(filename);
           } catch {
-            logger42.debug(`Failed to remove error file '${filename}' after move failure`, { error: moveErr });
+            logger38.debug(`Failed to remove error file '${filename}' after move failure`, { error: moveErr });
           }
         }
       }
@@ -32865,7 +32399,7 @@ var FileWatcher = class {
           await fs.rename(filepath, processedPath);
           confirmedRemoved.add(filename);
         } catch (moveErr) {
-          logger42.error(`Failed to move processed file '${filename}'`, { error: moveErr });
+          logger38.error(`Failed to move processed file '${filename}'`, { error: moveErr });
         }
       }
     }
@@ -32892,7 +32426,7 @@ var http = __toESM(require("node:http"), 1);
 var fs2 = __toESM(require("node:fs/promises"), 1);
 var path2 = __toESM(require("node:path"), 1);
 var crypto2 = __toESM(require("node:crypto"), 1);
-var logger43 = createLogger("http-listener");
+var logger39 = createLogger("http-listener");
 var DEFAULT_HTTP_LISTENER_CONFIG = {
   port: 3847,
   bind_mode: "localhost",
@@ -32935,7 +32469,7 @@ var HttpListener = class {
           try {
             sendJson(res, 500, { error: "Internal server error" });
           } catch (innerErr) {
-            logger43.debug("Failed to send 500 response after request handler error", { error: innerErr });
+            logger39.debug("Failed to send 500 response after request handler error", { error: innerErr });
           }
         });
       });
@@ -32945,7 +32479,7 @@ var HttpListener = class {
       server.listen(this.config.port, bindAddress, () => {
         server.removeListener("error", reject);
         server.on("error", (err) => {
-          logger43.error("Server error", { error: err });
+          logger39.error("Server error", { error: err });
         });
         this.running = true;
         resolve();
@@ -33010,11 +32544,9 @@ var HttpListener = class {
         sendJson(res, 413, { error: "Payload Too Large" });
         return;
       }
-      let parsedPayload;
-      try {
-        parsedPayload = JSON.parse(body);
-      } catch (e) {
-        logger43.debug("Failed to parse JSON body", { error: e instanceof Error ? e.message : String(e) });
+      const parsedPayload = safeJsonParse(body, void 0);
+      if (parsedPayload === void 0) {
+        logger39.debug("Failed to parse JSON body");
         sendJson(res, 400, { error: "Invalid JSON body" });
         return;
       }
@@ -33197,7 +32729,7 @@ function createDefaultRegistry() {
 __name(createDefaultRegistry, "createDefaultRegistry");
 
 // src/plugins/external/external-plugin.ts
-var logger44 = createLogger("external-plugin");
+var logger40 = createLogger("external-plugin");
 var ExternalPlugin = class {
   constructor(queue, config2) {
     this.queue = queue;
@@ -33239,7 +32771,7 @@ var ExternalPlugin = class {
    */
   async startHttpListener() {
     if (this.config.http_listener === void 0) {
-      logger44.warn("startHttpListener called but http_listener is not configured \u2014 no-op");
+      logger40.warn("startHttpListener called but http_listener is not configured \u2014 no-op");
       return;
     }
     if (this.listener === null) {
@@ -33272,6 +32804,815 @@ var ExternalPlugin = class {
    */
   getNormalizerRegistry() {
     return this.normalizers;
+  }
+};
+
+// src/extensions/executor/tick-driver.ts
+var import_node_child_process = require("node:child_process");
+var logger41 = createLogger("tick-driver");
+var TMUX_TIMEOUT_MS = 5e3;
+var DAEMON_HEARTBEAT_ID = "daemon:auto_tick";
+var DAEMON_HEARTBEAT_EVENT = "daemon:tick";
+var TickDriver = class _TickDriver {
+  static {
+    __name(this, "TickDriver");
+  }
+  static SAFE_SESSION_NAME = /^[a-zA-Z0-9_.-]+$/;
+  static SAFE_TICK_COMMAND = /^[a-zA-Z0-9\/_.-]+$/;
+  timer;
+  config;
+  executorMode;
+  timePlugin;
+  externalPlugin;
+  eventProcessor;
+  staleWorkflowChecker;
+  evalFailureCount = 0;
+  constructor(deps) {
+    this.config = deps.config;
+    this.executorMode = deps.executorMode;
+    this.timePlugin = deps.timePlugin;
+    this.externalPlugin = deps.externalPlugin;
+    this.eventProcessor = deps.eventProcessor;
+    this.staleWorkflowChecker = deps.staleWorkflowChecker;
+    this.timer = new Timer({
+      callback: /* @__PURE__ */ __name(() => this.evaluate(), "callback"),
+      intervalMs: deps.config.daemon.eval_interval_ms,
+      label: "tick-driver"
+    });
+  }
+  /**
+   * Start the tick evaluation loop.
+   *
+   * In daemon mode:
+   * - Requires auto_tick === true, tick_interval_ms > 0, tmux available
+   * - Schedules daemon:auto_tick heartbeat in EventScheduler
+   * - Returns early (no timer started) if guards fail
+   *
+   * In non-daemon mode:
+   * - Starts unconditionally
+   */
+  start() {
+    if (this.timer.isRunning()) return;
+    const mode = this.executorMode.getMode();
+    if (mode === "daemon") {
+      if (!this.config.daemon.auto_tick) {
+        logger41.info("tick driver disabled \u2014 auto_tick is false");
+        return;
+      }
+      const intervalMs = this.config.daemon.tick_interval_ms;
+      if (!intervalMs || intervalMs <= 0) {
+        logger41.info("tick driver disabled \u2014 tick_interval_ms is 0 or unset");
+        return;
+      }
+      if (!this.isTmuxAvailable()) {
+        logger41.warn("tick driver not starting \u2014 tmux not available");
+        return;
+      }
+      const sessionName = this.config.daemon.tmux_session_name;
+      const tickCommand = this.config.daemon.tick_command;
+      if (!_TickDriver.SAFE_SESSION_NAME.test(sessionName)) {
+        logger41.warn("tick driver not starting \u2014 invalid tmux_session_name", { sessionName });
+        return;
+      }
+      if (!_TickDriver.SAFE_TICK_COMMAND.test(tickCommand)) {
+        logger41.warn("tick driver not starting \u2014 invalid tick_command", { tickCommand });
+        return;
+      }
+      const scheduler = this.timePlugin.getScheduler();
+      const existing = scheduler.getItem(DAEMON_HEARTBEAT_ID);
+      if (existing && existing.interval_ms !== intervalMs) {
+        scheduler.cancel(DAEMON_HEARTBEAT_ID);
+        logger41.info("cancelled stale daemon heartbeat", {
+          old_interval_ms: existing.interval_ms,
+          new_interval_ms: intervalMs
+        });
+      }
+      if (!scheduler.getItem(DAEMON_HEARTBEAT_ID)) {
+        scheduler.scheduleHeartbeat({
+          id: DAEMON_HEARTBEAT_ID,
+          event_type: DAEMON_HEARTBEAT_EVENT,
+          interval_ms: intervalMs
+        });
+      }
+      logger41.info("tick driver starting in daemon mode", {
+        eval_interval_ms: this.config.daemon.eval_interval_ms,
+        tick_interval_ms: intervalMs,
+        session: sessionName
+      });
+    } else {
+      logger41.info("tick driver starting in engaged mode", {
+        eval_interval_ms: this.config.daemon.eval_interval_ms
+      });
+    }
+    this.timer.start();
+  }
+  /**
+   * Stop the tick evaluation loop.
+   * Cancels the timer and removes the daemon heartbeat from EventScheduler.
+   */
+  stop() {
+    this.timer.stop();
+    const removed = this.timePlugin.getScheduler().cancel(DAEMON_HEARTBEAT_ID);
+    if (!removed) {
+      logger41.debug("daemon heartbeat was already removed or never scheduled");
+    }
+    logger41.info("tick driver stopped");
+  }
+  /** Returns true if the eval timer is running. */
+  isRunning() {
+    return this.timer.isRunning();
+  }
+  /** Returns the cumulative number of evaluation failures for health monitoring. */
+  getEvalFailureCount() {
+    return this.evalFailureCount;
+  }
+  /**
+   * Apply a new ExecutorConfig at runtime without restarting the process.
+   *
+   * Handles:
+   * - auto_tick toggled off → stop (if running)
+   * - auto_tick toggled on → start (if not running)
+   * - tick_interval_ms changed while running → reschedule heartbeat
+   * - eval_interval_ms changed → reconfigure timer
+   */
+  reconfigure(newConfig) {
+    const wasRunning = this.isRunning();
+    const oldAutoTick = this.config.daemon.auto_tick;
+    const oldTickInterval = this.config.daemon.tick_interval_ms;
+    const oldEvalInterval = this.config.daemon.eval_interval_ms;
+    this.config = newConfig;
+    const newAutoTick = newConfig.daemon.auto_tick;
+    const newTickInterval = newConfig.daemon.tick_interval_ms;
+    const newEvalInterval = newConfig.daemon.eval_interval_ms;
+    if (newAutoTick && !wasRunning) {
+      logger41.info("auto_tick enabled via reconfigure \u2014 starting");
+      this.start();
+    } else if (!newAutoTick && wasRunning) {
+      logger41.info("auto_tick disabled via reconfigure \u2014 stopping");
+      this.stop();
+    } else if (wasRunning) {
+      if (newTickInterval !== oldTickInterval) {
+        this.rescheduleHeartbeat(newTickInterval);
+      }
+      if (newEvalInterval !== oldEvalInterval) {
+        this.timer.reconfigure(newEvalInterval);
+      }
+    }
+    logger41.debug("tick driver reconfigured", {
+      old_auto_tick: oldAutoTick,
+      new_auto_tick: newAutoTick,
+      old_tick_interval_ms: oldTickInterval,
+      new_tick_interval_ms: newTickInterval,
+      old_eval_interval_ms: oldEvalInterval,
+      new_eval_interval_ms: newEvalInterval
+    });
+  }
+  /**
+   * Cancel the existing daemon heartbeat and reschedule with a new interval.
+   * Only called when the driver is already running in daemon mode.
+   */
+  rescheduleHeartbeat(intervalMs) {
+    const scheduler = this.timePlugin.getScheduler();
+    scheduler.cancel(DAEMON_HEARTBEAT_ID);
+    scheduler.scheduleHeartbeat({
+      id: DAEMON_HEARTBEAT_ID,
+      event_type: DAEMON_HEARTBEAT_EVENT,
+      interval_ms: intervalMs
+    });
+    logger41.info("daemon heartbeat rescheduled", { interval_ms: intervalMs });
+  }
+  /**
+   * Called by the Timer on each eval cycle.
+   *
+   * Runs the full pipeline:
+   * 1. timePlugin.onTick() — heartbeat + scheduled events
+   * 2. externalPlugin.onTick() — file-drop scan
+   * 3. eventProcessor.processBatch() — drain queue through triggers
+   * 4. staleWorkflowChecker() — re-enqueue lost directives
+   * 5. (daemon only) sendTick() if scheduled events fired
+   */
+  evaluate() {
+    let timeResult = { heartbeat_emitted: false, scheduled_emitted: 0 };
+    try {
+      timeResult = this.timePlugin.onTick();
+    } catch (err) {
+      this.evalFailureCount++;
+      const msg = err instanceof Error ? err.message : String(err);
+      logger41.warn("timePlugin.onTick() error", { error: msg, eval_failures: this.evalFailureCount });
+      if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
+        logger41.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
+      }
+    }
+    if (this.externalPlugin) {
+      this.externalPlugin.onTick().catch((err) => {
+        this.evalFailureCount++;
+        const msg = err instanceof Error ? err.message : String(err);
+        logger41.warn("externalPlugin.onTick() error", { error: msg, eval_failures: this.evalFailureCount });
+        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
+          logger41.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
+        }
+      });
+    }
+    if (this.eventProcessor) {
+      this.eventProcessor.processBatch().catch((err) => {
+        this.evalFailureCount++;
+        const msg = err instanceof Error ? err.message : String(err);
+        logger41.warn("eventProcessor.processBatch() error", { error: msg, eval_failures: this.evalFailureCount });
+        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
+          logger41.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
+        }
+      });
+    }
+    if (this.staleWorkflowChecker) {
+      try {
+        this.staleWorkflowChecker();
+      } catch (err) {
+        this.evalFailureCount++;
+        const msg = err instanceof Error ? err.message : String(err);
+        logger41.warn("staleWorkflowChecker error", { error: msg, eval_failures: this.evalFailureCount });
+        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
+          logger41.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
+        }
+      }
+    }
+    if (timeResult.scheduled_emitted > 0 && this.executorMode.getMode() === "daemon") {
+      logger41.debug("scheduled events fired \u2014 sending tmux tick", {
+        scheduled_emitted: timeResult.scheduled_emitted
+      });
+      this.sendTick();
+    }
+  }
+  /**
+   * Send the tick command to the tmux session asynchronously.
+   * Fire-and-forget — failures are logged as warnings without blocking the eval loop.
+   */
+  sendTick() {
+    const sessionName = this.config.daemon.tmux_session_name;
+    const tickCommand = this.config.daemon.tick_command;
+    (0, import_node_child_process.execFile)(
+      "tmux",
+      ["send-keys", "-t", sessionName, tickCommand, "Enter"],
+      { timeout: TMUX_TIMEOUT_MS },
+      (err) => {
+        if (err) {
+          logger41.warn("failed to send tick via tmux", { error: err.message });
+        } else {
+          logger41.debug("tick sent via tmux", { session: sessionName });
+        }
+      }
+    );
+  }
+  /**
+   * Check whether tmux is available and has at least one active session.
+   */
+  isTmuxAvailable() {
+    try {
+      (0, import_node_child_process.execFileSync)("tmux", ["list-sessions"], { timeout: 2e3, stdio: "pipe" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
+
+// src/extensions/executor/executor-budget.ts
+var logger42 = createLogger("executor-budget");
+var BUDGET_STATE_KEY = "executor.budget.spending";
+function checkCapThreshold(params) {
+  let { warningFired } = params;
+  let exceeded = false;
+  const ratio = params.spent / params.cap;
+  if (ratio >= params.warningThreshold && !warningFired) {
+    warningFired = true;
+    params.onWarning();
+  }
+  if (params.spent >= params.cap && !params.paused) {
+    exceeded = true;
+    params.onExceeded();
+  }
+  return { warningFired, exceeded };
+}
+__name(checkCapThreshold, "checkCapThreshold");
+var ExecutorBudgetManager = class {
+  static {
+    __name(this, "ExecutorBudgetManager");
+  }
+  config;
+  eventBus;
+  spending;
+  paused;
+  warningFired;
+  constructor(config2, eventBus) {
+    this.config = config2;
+    this.eventBus = eventBus;
+    this.paused = false;
+    this.warningFired = { flat: false, daily: false };
+    this.spending = {
+      total_usd: 0,
+      daily_usd: 0,
+      daily_reset_at: timestamp(),
+      last_updated: timestamp()
+    };
+  }
+  /**
+   * Record spending from an agent completion or progress report.
+   * Adds to both total and daily accumulators, then checks thresholds and caps.
+   */
+  recordSpending(amount_usd) {
+    if (amount_usd <= 0) return;
+    this.spending.total_usd += amount_usd;
+    this.spending.daily_usd += amount_usd;
+    this.spending.last_updated = timestamp();
+    logger42.debug("Spending recorded", {
+      amount_usd,
+      total_usd: this.spending.total_usd,
+      daily_usd: this.spending.daily_usd
+    });
+    if (this.config.flat_cap_usd !== void 0 && this.config.flat_cap_usd > 0) {
+      const flatResult = checkCapThreshold({
+        spent: this.spending.total_usd,
+        cap: this.config.flat_cap_usd,
+        warningThreshold: this.config.warning_threshold,
+        warningFired: this.warningFired.flat,
+        capType: "flat",
+        paused: this.paused,
+        onWarning: /* @__PURE__ */ __name(() => {
+          logger42.warn("Executor flat cap warning threshold reached", {
+            spent_usd: this.spending.total_usd,
+            cap_usd: this.config.flat_cap_usd,
+            threshold: this.config.warning_threshold
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "executor:budget_warning",
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_warning",
+              data: {
+                cap_type: "flat",
+                spent_usd: this.spending.total_usd,
+                cap_usd: this.config.flat_cap_usd ?? 0,
+                threshold: this.config.warning_threshold
+              }
+            }
+          });
+        }, "onWarning"),
+        onExceeded: /* @__PURE__ */ __name(() => {
+          this.paused = true;
+          logger42.warn("Executor flat cap exceeded \u2014 processing paused", {
+            spent_usd: this.spending.total_usd,
+            cap_usd: this.config.flat_cap_usd
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "executor:budget_exceeded",
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_exceeded",
+              data: {
+                cap_type: "flat",
+                spent_usd: this.spending.total_usd,
+                cap_usd: this.config.flat_cap_usd ?? 0
+              }
+            }
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "executor:paused",
+            source: { kind: "system" },
+            payload: {
+              type: "executor:paused",
+              data: { reason: "flat_cap_exceeded" }
+            }
+          });
+        }, "onExceeded")
+      });
+      this.warningFired.flat = flatResult.warningFired;
+      if (flatResult.exceeded) return;
+    }
+    if (this.config.daily_cap_usd !== void 0 && this.config.daily_cap_usd > 0) {
+      const dailyResult = checkCapThreshold({
+        spent: this.spending.daily_usd,
+        cap: this.config.daily_cap_usd,
+        warningThreshold: this.config.warning_threshold,
+        warningFired: this.warningFired.daily,
+        capType: "daily",
+        paused: this.paused,
+        onWarning: /* @__PURE__ */ __name(() => {
+          logger42.warn("Executor daily cap warning threshold reached", {
+            spent_usd: this.spending.daily_usd,
+            cap_usd: this.config.daily_cap_usd,
+            threshold: this.config.warning_threshold
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "executor:budget_warning",
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_warning",
+              data: {
+                cap_type: "daily",
+                spent_usd: this.spending.daily_usd,
+                cap_usd: this.config.daily_cap_usd ?? 0,
+                threshold: this.config.warning_threshold
+              }
+            }
+          });
+        }, "onWarning"),
+        onExceeded: /* @__PURE__ */ __name(() => {
+          this.paused = true;
+          logger42.warn("Executor daily cap exceeded \u2014 processing paused", {
+            spent_usd: this.spending.daily_usd,
+            cap_usd: this.config.daily_cap_usd
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "executor:budget_exceeded",
+            source: { kind: "system" },
+            payload: {
+              type: "executor:budget_exceeded",
+              data: {
+                cap_type: "daily",
+                spent_usd: this.spending.daily_usd,
+                cap_usd: this.config.daily_cap_usd ?? 0
+              }
+            }
+          });
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "executor:paused",
+            source: { kind: "system" },
+            payload: {
+              type: "executor:paused",
+              data: { reason: "daily_cap_exceeded" }
+            }
+          });
+        }, "onExceeded")
+      });
+      this.warningFired.daily = dailyResult.warningFired;
+    }
+  }
+  /**
+   * Check if processing should continue.
+   * Returns false if any cap is exceeded.
+   */
+  canProcess() {
+    return !this.paused;
+  }
+  /** Get current spending state. */
+  getSpending() {
+    return { ...this.spending };
+  }
+  /**
+   * Check and reset daily cap if reset_hour has passed.
+   * Returns true if a reset occurred.
+   */
+  checkDailyReset() {
+    const now = /* @__PURE__ */ new Date();
+    const currentHour = now.getHours();
+    const resetAt = new Date(this.spending.daily_reset_at);
+    const lastResetDay = resetAt.toDateString();
+    const today = now.toDateString();
+    if (today !== lastResetDay && currentHour >= this.config.daily_reset_hour) {
+      const previousDailySpent = this.spending.daily_usd;
+      this.spending.daily_usd = 0;
+      this.spending.daily_reset_at = timestamp();
+      this.spending.last_updated = timestamp();
+      this.warningFired.daily = false;
+      if (this.paused) {
+        const flatExceeded = this.config.flat_cap_usd !== void 0 && this.config.flat_cap_usd > 0 && this.spending.total_usd >= this.config.flat_cap_usd;
+        if (!flatExceeded) {
+          this.paused = false;
+          this.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "executor:resumed",
+            source: { kind: "system" },
+            payload: {
+              type: "executor:resumed",
+              data: { reason: "daily_budget_reset" }
+            }
+          });
+        }
+      }
+      logger42.info("Daily budget reset", {
+        previous_daily_spent: previousDailySpent,
+        reset_hour: this.config.daily_reset_hour
+      });
+      this.eventBus.emit({
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: "executor:budget_reset",
+        source: { kind: "system" },
+        payload: {
+          type: "executor:budget_reset",
+          data: {
+            previous_daily_spent: previousDailySpent,
+            reset_hour: this.config.daily_reset_hour
+          }
+        }
+      });
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Manually adjust budget configuration (operator override).
+   * Can increase caps or change thresholds at runtime.
+   */
+  adjustBudget(adjustments) {
+    const previousPaused = this.paused;
+    Object.assign(this.config, adjustments);
+    if (this.paused) {
+      const flatOk = this.config.flat_cap_usd === void 0 || this.config.flat_cap_usd <= 0 || this.spending.total_usd < this.config.flat_cap_usd;
+      const dailyOk = this.config.daily_cap_usd === void 0 || this.config.daily_cap_usd <= 0 || this.spending.daily_usd < this.config.daily_cap_usd;
+      if (flatOk && dailyOk) {
+        this.paused = false;
+        this.eventBus.emit({
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "executor:resumed",
+          source: { kind: "system" },
+          payload: {
+            type: "executor:resumed",
+            data: { reason: "budget_adjusted" }
+          }
+        });
+        logger42.info("Executor resumed after budget adjustment");
+      }
+    }
+    logger42.info("Budget configuration adjusted", { adjustments, was_paused: previousPaused, now_paused: this.paused });
+  }
+  /** Persist spending state to the state store. */
+  persist(stateStore) {
+    stateStore.set(BUDGET_STATE_KEY, this.spending);
+    logger42.debug("Budget state persisted");
+  }
+  /** Restore spending state from the state store. */
+  restore(stateStore) {
+    const stored = stateStore.get(BUDGET_STATE_KEY);
+    if (stored && typeof stored === "object") {
+      this.spending = {
+        total_usd: typeof stored.total_usd === "number" ? stored.total_usd : 0,
+        daily_usd: typeof stored.daily_usd === "number" ? stored.daily_usd : 0,
+        daily_reset_at: typeof stored.daily_reset_at === "string" ? stored.daily_reset_at : timestamp(),
+        last_updated: typeof stored.last_updated === "string" ? stored.last_updated : timestamp()
+      };
+      logger42.info("Budget state restored", {
+        total_usd: this.spending.total_usd,
+        daily_usd: this.spending.daily_usd
+      });
+      if (this.config.flat_cap_usd !== void 0 && this.config.flat_cap_usd > 0) {
+        if (this.spending.total_usd >= this.config.flat_cap_usd) {
+          this.paused = true;
+          this.warningFired.flat = true;
+          logger42.warn("Executor paused after state restore: flat cap exceeded");
+        } else if (this.spending.total_usd >= this.config.flat_cap_usd * this.config.warning_threshold) {
+          this.warningFired.flat = true;
+        }
+      }
+      if (this.config.daily_cap_usd !== void 0 && this.config.daily_cap_usd > 0) {
+        if (this.spending.daily_usd >= this.config.daily_cap_usd) {
+          this.paused = true;
+          this.warningFired.daily = true;
+          logger42.warn("Executor paused after state restore: daily cap exceeded");
+        } else if (this.spending.daily_usd >= this.config.daily_cap_usd * this.config.warning_threshold) {
+          this.warningFired.daily = true;
+        }
+      }
+    }
+  }
+};
+
+// src/extensions/executor/context-clearer.ts
+var import_node_child_process2 = require("node:child_process");
+var logger43 = createLogger("context-clearer");
+var TMUX_TIMEOUT_MS2 = 5e3;
+var ContextClearer = class {
+  static {
+    __name(this, "ContextClearer");
+  }
+  config;
+  constructor(config2) {
+    this.config = config2;
+  }
+  /**
+   * Clear context using the best available method.
+   *
+   * 1. Primary: tmux send-keys to inject /clear into the session
+   * 2. Fallback: queue injection (handled on next tick)
+   *
+   * @returns Method used and success status.
+   */
+  async clearContext() {
+    if (this.isTmuxAvailable()) {
+      try {
+        const success2 = await this.clearViaTmux();
+        if (success2) {
+          logger43.info("Context cleared via tmux", { session: this.config.tmux_session_name });
+          return { method: "tmux", success: true };
+        }
+        logger43.warn("tmux clear failed, falling back to queue injection");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger43.warn("tmux clear threw an error, falling back to queue injection", { error: msg });
+      }
+    } else {
+      logger43.debug("tmux not available, using queue injection fallback");
+    }
+    logger43.info("Context clear queued via injection fallback");
+    return { method: "queue_injection", success: true };
+  }
+  /**
+   * Check if tmux is available.
+   * Returns true if the TMUX environment variable is set (indicating we are
+   * running inside a tmux session).
+   */
+  isTmuxAvailable() {
+    return typeof process.env["TMUX"] === "string" && process.env["TMUX"].length > 0;
+  }
+  /**
+   * Execute tmux send-keys to type /clear into the configured session.
+   * Uses execSync with a 5-second timeout.
+   *
+   * @returns true if the command succeeded, false if it failed.
+   */
+  async clearViaTmux() {
+    const sessionName = this.config.tmux_session_name;
+    try {
+      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, "/clear"], { timeout: TMUX_TIMEOUT_MS2, stdio: "pipe" });
+      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, "Enter"], { timeout: TMUX_TIMEOUT_MS2, stdio: "pipe" });
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger43.error("tmux send-keys failed", { session: sessionName, error: msg });
+      return false;
+    }
+  }
+};
+
+// src/extensions/executor/daemon-tick-handler.ts
+var logger44 = createLogger("daemon-tick-handler");
+var DaemonTickHandler = class {
+  static {
+    __name(this, "DaemonTickHandler");
+  }
+  tickCount = 0;
+  executorMode;
+  budgetManager;
+  eventBus;
+  config;
+  contextClearer;
+  /** Returns the current core event queue depth. Wired after plugin init via setQueueDepthGetter(). */
+  getQueueDepth = /* @__PURE__ */ __name(() => 0, "getQueueDepth");
+  constructor(deps) {
+    this.executorMode = deps.executorMode;
+    this.budgetManager = deps.budgetManager;
+    this.eventBus = deps.eventBus;
+    this.config = deps.config;
+    this.contextClearer = new ContextClearer(deps.config.daemon);
+  }
+  /**
+   * Wire the live queue depth getter after the core event queue has been
+   * initialised. Called from bootstrap after initializePlugins().
+   */
+  setQueueDepthGetter(getter) {
+    this.getQueueDepth = getter;
+  }
+  /**
+   * Process one daemon tick cycle.
+   *
+   * Flow:
+   * 1. Check budget — abort if exceeded
+   * 2. Check daily reset
+   * 3. Emit executor:tick_received
+   * 4. Build additionalContext with active workflows, pending events, memory state
+   * 5. Emit executor:tick_completed
+   * 6. If daemon mode: initiate context clearing
+   */
+  async handleTick() {
+    const startMs = Date.now();
+    this.tickCount++;
+    const tickNumber = this.tickCount;
+    logger44.info("Daemon tick received", { tick_number: tickNumber });
+    if (!this.budgetManager.canProcess()) {
+      logger44.warn("Tick aborted: budget exceeded", { tick_number: tickNumber });
+      return {
+        tick_number: tickNumber,
+        events_processed: 0,
+        duration_ms: Date.now() - startMs,
+        context_cleared: false,
+        budget_status: "exceeded"
+      };
+    }
+    this.budgetManager.checkDailyReset();
+    this.eventBus.emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: "executor:tick_received",
+      source: { kind: "system" },
+      payload: {
+        type: "executor:tick_received",
+        data: {
+          tick_number: tickNumber,
+          pending_events: this.getQueueDepth()
+        }
+      }
+    });
+    const spending = this.budgetManager.getSpending();
+    let budgetStatus = "ok";
+    if (this.config.budget.flat_cap_usd !== void 0 && this.config.budget.flat_cap_usd > 0 && spending.total_usd >= this.config.budget.flat_cap_usd * this.config.budget.warning_threshold || this.config.budget.daily_cap_usd !== void 0 && this.config.budget.daily_cap_usd > 0 && spending.daily_usd >= this.config.budget.daily_cap_usd * this.config.budget.warning_threshold) {
+      budgetStatus = "warning";
+    }
+    const eventsProcessed = 0;
+    const durationMs = Date.now() - startMs;
+    this.eventBus.emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: "executor:tick_completed",
+      source: { kind: "system" },
+      payload: {
+        type: "executor:tick_completed",
+        data: {
+          tick_number: tickNumber,
+          events_processed: eventsProcessed,
+          duration_ms: durationMs
+        }
+      }
+    });
+    let contextCleared = false;
+    if (this.executorMode.shouldClearContext()) {
+      try {
+        const result = await this.contextClearer.clearContext();
+        contextCleared = result.success;
+        this.eventBus.emit({
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "executor:context_clearing",
+          source: { kind: "system" },
+          payload: {
+            type: "executor:context_clearing",
+            data: {
+              method: result.method,
+              success: result.success
+            }
+          }
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger44.error("Context clearing failed", { tick_number: tickNumber, error: msg });
+      }
+    }
+    logger44.info("Daemon tick completed", {
+      tick_number: tickNumber,
+      events_processed: eventsProcessed,
+      duration_ms: Date.now() - startMs,
+      context_cleared: contextCleared,
+      budget_status: budgetStatus
+    });
+    return {
+      tick_number: tickNumber,
+      events_processed: eventsProcessed,
+      duration_ms: Date.now() - startMs,
+      context_cleared: contextCleared,
+      budget_status: budgetStatus
+    };
+  }
+  /**
+   * Build the additionalContext payload for daemon tick injection.
+   * Includes: active workflows, pending events summary, memory state.
+   *
+   * Pending event count is wired via setQueueDepthGetter(). Active workflow
+   * count remains 0 until WorkflowRegistry exposes activeCount().
+   */
+  buildTickContext() {
+    const spending = this.budgetManager.getSpending();
+    const canProcess = this.budgetManager.canProcess();
+    const pendingEvents = this.getQueueDepth();
+    const activeWorkflows = 0;
+    return `--- Daemon Tick Context ---
+Tick #${this.tickCount}
+Mode: ${this.executorMode.getMode()}
+Budget: total=$${spending.total_usd.toFixed(4)} daily=$${spending.daily_usd.toFixed(4)} (can_process=${canProcess})
+Pending events: ${pendingEvents}
+Active workflows: ${activeWorkflows}`;
+  }
+  /** Get cumulative tick count for metrics. */
+  getTickCount() {
+    return this.tickCount;
+  }
+  /**
+   * Return the configured tick command string.
+   * Used by the UserPromptSubmit handler to detect daemon ticks.
+   */
+  getTickCommand() {
+    return this.config.daemon.tick_command;
   }
 };
 
@@ -33326,8 +33667,49 @@ var ActionExecutor = class {
   }
 };
 
+// src/extensions/executor/subsystem.ts
+var logger46 = createLogger("executor-subsystem");
+function createExecutorSubsystem(config2, eventBus) {
+  try {
+    const executorMode = new ExecutorModeManager(config2.executor, eventBus);
+    const mode = executorMode.getMode();
+    const executorBudget = new ExecutorBudgetManager(config2.executor.budget, eventBus);
+    const daemonTickHandler = new DaemonTickHandler({
+      executorMode,
+      budgetManager: executorBudget,
+      eventBus,
+      config: config2.executor
+    });
+    eventBus.emit({
+      id: generateEventId(),
+      timestamp: timestamp(),
+      type: "executor:mode_set",
+      source: { kind: "system" },
+      payload: {
+        type: "executor:mode_set",
+        data: {
+          mode,
+          previous_mode: mode,
+          detection_method: executorMode.getDetectionMethod()
+        }
+      }
+    });
+    logger46.info("Executor subsystem created", {
+      mode,
+      detection_method: executorMode.getDetectionMethod()
+    });
+    return { executorMode, executorBudget, daemonTickHandler };
+  } catch (err) {
+    logger46.warn("Executor subsystem creation failed \u2014 continuing without executor", {
+      err: toErrorMessage(err)
+    });
+    return null;
+  }
+}
+__name(createExecutorSubsystem, "createExecutorSubsystem");
+
 // src/extensions/events/event-bridge.ts
-var logger46 = createLogger("event-bridge");
+var logger47 = createLogger("event-bridge");
 var BRIDGE_ORIGIN = "__event_bridge__";
 var FORWARDED_PATTERNS = /* @__PURE__ */ new Set([
   "agent:spawned",
@@ -33354,7 +33736,7 @@ var EventBridge = class {
    */
   start() {
     if (this.unsubscribe) {
-      logger46.warn("Event bridge already started");
+      logger47.warn("Event bridge already started");
       return;
     }
     this.unsubscribe = this.eventBus.on("*", (event) => {
@@ -33383,12 +33765,12 @@ var EventBridge = class {
       };
       this.eventQueue.enqueue(v3Event);
       this.forwarded++;
-      logger46.debug("Bridged event", {
+      logger47.debug("Bridged event", {
         type: event.type,
         forwarded: this.forwarded
       });
     });
-    logger46.info("Event bridge started", {
+    logger47.info("Event bridge started", {
       patterns: [...FORWARDED_PATTERNS]
     });
   }
@@ -33397,7 +33779,7 @@ var EventBridge = class {
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = void 0;
-      logger46.info("Event bridge stopped", {
+      logger47.info("Event bridge stopped", {
         forwarded: this.forwarded,
         filtered: this.filtered
       });
@@ -33413,403 +33795,7 @@ var EventBridge = class {
   }
 };
 
-// src/extensions/executor/tick-driver.ts
-var import_node_child_process2 = require("node:child_process");
-var logger47 = createLogger("tick-driver");
-var TMUX_TIMEOUT_MS2 = 5e3;
-var DAEMON_HEARTBEAT_ID = "daemon:auto_tick";
-var DAEMON_HEARTBEAT_EVENT = "daemon:tick";
-var TickDriver = class _TickDriver {
-  static {
-    __name(this, "TickDriver");
-  }
-  static SAFE_SESSION_NAME = /^[a-zA-Z0-9_.-]+$/;
-  static SAFE_TICK_COMMAND = /^[a-zA-Z0-9\/_.-]+$/;
-  timer;
-  config;
-  executorMode;
-  timePlugin;
-  externalPlugin;
-  eventProcessor;
-  staleWorkflowChecker;
-  evalFailureCount = 0;
-  constructor(deps) {
-    this.config = deps.config;
-    this.executorMode = deps.executorMode;
-    this.timePlugin = deps.timePlugin;
-    this.externalPlugin = deps.externalPlugin;
-    this.eventProcessor = deps.eventProcessor;
-    this.staleWorkflowChecker = deps.staleWorkflowChecker;
-    this.timer = new Timer({
-      callback: /* @__PURE__ */ __name(() => this.evaluate(), "callback"),
-      intervalMs: deps.config.daemon.eval_interval_ms,
-      label: "tick-driver"
-    });
-  }
-  /**
-   * Start the tick evaluation loop.
-   *
-   * In daemon mode:
-   * - Requires auto_tick === true, tick_interval_ms > 0, tmux available
-   * - Schedules daemon:auto_tick heartbeat in EventScheduler
-   * - Returns early (no timer started) if guards fail
-   *
-   * In non-daemon mode:
-   * - Starts unconditionally
-   */
-  start() {
-    if (this.timer.isRunning()) return;
-    const mode = this.executorMode.getMode();
-    if (mode === "daemon") {
-      if (!this.config.daemon.auto_tick) {
-        logger47.info("tick driver disabled \u2014 auto_tick is false");
-        return;
-      }
-      const intervalMs = this.config.daemon.tick_interval_ms;
-      if (!intervalMs || intervalMs <= 0) {
-        logger47.info("tick driver disabled \u2014 tick_interval_ms is 0 or unset");
-        return;
-      }
-      if (!this.isTmuxAvailable()) {
-        logger47.warn("tick driver not starting \u2014 tmux not available");
-        return;
-      }
-      const sessionName = this.config.daemon.tmux_session_name;
-      const tickCommand = this.config.daemon.tick_command;
-      if (!_TickDriver.SAFE_SESSION_NAME.test(sessionName)) {
-        logger47.warn("tick driver not starting \u2014 invalid tmux_session_name", { sessionName });
-        return;
-      }
-      if (!_TickDriver.SAFE_TICK_COMMAND.test(tickCommand)) {
-        logger47.warn("tick driver not starting \u2014 invalid tick_command", { tickCommand });
-        return;
-      }
-      const scheduler = this.timePlugin.getScheduler();
-      const existing = scheduler.getItem(DAEMON_HEARTBEAT_ID);
-      if (existing && existing.interval_ms !== intervalMs) {
-        scheduler.cancel(DAEMON_HEARTBEAT_ID);
-        logger47.info("cancelled stale daemon heartbeat", {
-          old_interval_ms: existing.interval_ms,
-          new_interval_ms: intervalMs
-        });
-      }
-      if (!scheduler.getItem(DAEMON_HEARTBEAT_ID)) {
-        scheduler.scheduleHeartbeat({
-          id: DAEMON_HEARTBEAT_ID,
-          event_type: DAEMON_HEARTBEAT_EVENT,
-          interval_ms: intervalMs
-        });
-      }
-      logger47.info("tick driver starting in daemon mode", {
-        eval_interval_ms: this.config.daemon.eval_interval_ms,
-        tick_interval_ms: intervalMs,
-        session: sessionName
-      });
-    } else {
-      logger47.info("tick driver starting in engaged mode", {
-        eval_interval_ms: this.config.daemon.eval_interval_ms
-      });
-    }
-    this.timer.start();
-  }
-  /**
-   * Stop the tick evaluation loop.
-   * Cancels the timer and removes the daemon heartbeat from EventScheduler.
-   */
-  stop() {
-    this.timer.stop();
-    const removed = this.timePlugin.getScheduler().cancel(DAEMON_HEARTBEAT_ID);
-    if (!removed) {
-      logger47.debug("daemon heartbeat was already removed or never scheduled");
-    }
-    logger47.info("tick driver stopped");
-  }
-  /** Returns true if the eval timer is running. */
-  isRunning() {
-    return this.timer.isRunning();
-  }
-  /** Returns the cumulative number of evaluation failures for health monitoring. */
-  getEvalFailureCount() {
-    return this.evalFailureCount;
-  }
-  /**
-   * Apply a new ExecutorConfig at runtime without restarting the process.
-   *
-   * Handles:
-   * - auto_tick toggled off → stop (if running)
-   * - auto_tick toggled on → start (if not running)
-   * - tick_interval_ms changed while running → reschedule heartbeat
-   * - eval_interval_ms changed → reconfigure timer
-   */
-  reconfigure(newConfig) {
-    const wasRunning = this.isRunning();
-    const oldAutoTick = this.config.daemon.auto_tick;
-    const oldTickInterval = this.config.daemon.tick_interval_ms;
-    const oldEvalInterval = this.config.daemon.eval_interval_ms;
-    this.config = newConfig;
-    const newAutoTick = newConfig.daemon.auto_tick;
-    const newTickInterval = newConfig.daemon.tick_interval_ms;
-    const newEvalInterval = newConfig.daemon.eval_interval_ms;
-    if (newAutoTick && !wasRunning) {
-      logger47.info("auto_tick enabled via reconfigure \u2014 starting");
-      this.start();
-    } else if (!newAutoTick && wasRunning) {
-      logger47.info("auto_tick disabled via reconfigure \u2014 stopping");
-      this.stop();
-    } else if (wasRunning) {
-      if (newTickInterval !== oldTickInterval) {
-        this.rescheduleHeartbeat(newTickInterval);
-      }
-      if (newEvalInterval !== oldEvalInterval) {
-        this.timer.reconfigure(newEvalInterval);
-      }
-    }
-    logger47.debug("tick driver reconfigured", {
-      old_auto_tick: oldAutoTick,
-      new_auto_tick: newAutoTick,
-      old_tick_interval_ms: oldTickInterval,
-      new_tick_interval_ms: newTickInterval,
-      old_eval_interval_ms: oldEvalInterval,
-      new_eval_interval_ms: newEvalInterval
-    });
-  }
-  /**
-   * Cancel the existing daemon heartbeat and reschedule with a new interval.
-   * Only called when the driver is already running in daemon mode.
-   */
-  rescheduleHeartbeat(intervalMs) {
-    const scheduler = this.timePlugin.getScheduler();
-    scheduler.cancel(DAEMON_HEARTBEAT_ID);
-    scheduler.scheduleHeartbeat({
-      id: DAEMON_HEARTBEAT_ID,
-      event_type: DAEMON_HEARTBEAT_EVENT,
-      interval_ms: intervalMs
-    });
-    logger47.info("daemon heartbeat rescheduled", { interval_ms: intervalMs });
-  }
-  /**
-   * Called by the Timer on each eval cycle.
-   *
-   * Runs the full pipeline:
-   * 1. timePlugin.onTick() — heartbeat + scheduled events
-   * 2. externalPlugin.onTick() — file-drop scan
-   * 3. eventProcessor.processBatch() — drain queue through triggers
-   * 4. staleWorkflowChecker() — re-enqueue lost directives
-   * 5. (daemon only) sendTick() if scheduled events fired
-   */
-  evaluate() {
-    let timeResult = { heartbeat_emitted: false, scheduled_emitted: 0 };
-    try {
-      timeResult = this.timePlugin.onTick();
-    } catch (err) {
-      this.evalFailureCount++;
-      const msg = err instanceof Error ? err.message : String(err);
-      logger47.warn("timePlugin.onTick() error", { error: msg, eval_failures: this.evalFailureCount });
-      if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
-        logger47.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
-      }
-    }
-    if (this.externalPlugin) {
-      this.externalPlugin.onTick().catch((err) => {
-        this.evalFailureCount++;
-        const msg = err instanceof Error ? err.message : String(err);
-        logger47.warn("externalPlugin.onTick() error", { error: msg, eval_failures: this.evalFailureCount });
-        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
-          logger47.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
-        }
-      });
-    }
-    if (this.eventProcessor) {
-      this.eventProcessor.processBatch().catch((err) => {
-        this.evalFailureCount++;
-        const msg = err instanceof Error ? err.message : String(err);
-        logger47.warn("eventProcessor.processBatch() error", { error: msg, eval_failures: this.evalFailureCount });
-        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
-          logger47.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
-        }
-      });
-    }
-    if (this.staleWorkflowChecker) {
-      try {
-        this.staleWorkflowChecker();
-      } catch (err) {
-        this.evalFailureCount++;
-        const msg = err instanceof Error ? err.message : String(err);
-        logger47.warn("staleWorkflowChecker error", { error: msg, eval_failures: this.evalFailureCount });
-        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
-          logger47.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
-        }
-      }
-    }
-    if (timeResult.scheduled_emitted > 0 && this.executorMode.getMode() === "daemon") {
-      logger47.debug("scheduled events fired \u2014 sending tmux tick", {
-        scheduled_emitted: timeResult.scheduled_emitted
-      });
-      this.sendTick();
-    }
-  }
-  /**
-   * Send the tick command to the tmux session asynchronously.
-   * Fire-and-forget — failures are logged as warnings without blocking the eval loop.
-   */
-  sendTick() {
-    const sessionName = this.config.daemon.tmux_session_name;
-    const tickCommand = this.config.daemon.tick_command;
-    (0, import_node_child_process2.execFile)(
-      "tmux",
-      ["send-keys", "-t", sessionName, tickCommand, "Enter"],
-      { timeout: TMUX_TIMEOUT_MS2 },
-      (err) => {
-        if (err) {
-          logger47.warn("failed to send tick via tmux", { error: err.message });
-        } else {
-          logger47.debug("tick sent via tmux", { session: sessionName });
-        }
-      }
-    );
-  }
-  /**
-   * Check whether tmux is available and has at least one active session.
-   */
-  isTmuxAvailable() {
-    try {
-      (0, import_node_child_process2.execFileSync)("tmux", ["list-sessions"], { timeout: 2e3, stdio: "pipe" });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-};
-
-// src/plugin-bootstrap.ts
-var logger48 = createLogger("plugin-bootstrap");
-async function initializePlugins(deps) {
-  const { config: config2, eventBus, directiveQueue, agentWorkflowMap, daemonTickHandler, executorMode, watchdog } = deps;
-  try {
-    const coreEventQueue = new EventQueue2();
-    const coreTriggerRegistry = new TriggerRegistry2();
-    const coreStateStore = new CoreStateStore();
-    const lifecycle = new LoopLifecycleManager();
-    const metrics = new EventMetrics();
-    const deadLetter = new DeadLetterQueue();
-    const errorHandler = new ErrorHandler({ deadLetter });
-    const actionExecutor = directiveQueue ? new ActionExecutor(directiveQueue) : void 0;
-    const eventProcessor = new EventProcessor(
-      coreEventQueue,
-      coreTriggerRegistry,
-      coreStateStore,
-      lifecycle,
-      metrics,
-      errorHandler,
-      deadLetter,
-      { action_executor: actionExecutor }
-    );
-    logger48.debug("Core components initialised");
-    registerWRFCPlugin({
-      processor: eventProcessor,
-      registry: coreTriggerRegistry,
-      store: coreStateStore,
-      config: getDefaultWRFCConfig()
-    });
-    logger48.debug("WRFC plugin registered");
-    const eventBridge = new EventBridge(eventBus, coreEventQueue);
-    eventBridge.start();
-    logger48.debug("Event bridge started");
-    const NO_SESSION_ID = "";
-    const hookRegistry = new HookRegistry();
-    const hookProcessor = new HookProcessor({
-      registry: hookRegistry,
-      sessionId: NO_SESSION_ID
-      // sentinel: no session at construction time
-    });
-    registerDefaultHandlers(hookRegistry, {
-      eventBus,
-      directiveQueue,
-      agentWorkflowMap,
-      daemonTickHandler,
-      executorMode
-    });
-    logger48.debug("Hooks plugin registered", {
-      handlerCount: hookRegistry.count()
-    });
-    const timePlugin = new TimePlugin({
-      queue: coreEventQueue,
-      store: coreStateStore,
-      config: config2.time
-    });
-    logger48.debug("Time plugin initialised");
-    const { enabled: httpEnabled, ...httpListenerConfig } = config2.external.http_listener;
-    const externalPluginConfig = {
-      file_watcher: config2.external.file_watcher,
-      ...httpEnabled ? { http_listener: httpListenerConfig } : {}
-    };
-    const externalPlugin = new ExternalPlugin(
-      coreEventQueue,
-      externalPluginConfig
-    );
-    try {
-      await externalPlugin.initialize();
-    } catch (err) {
-      logger48.warn("External plugin directory initialisation failed", {
-        err: toErrorMessage(err)
-      });
-    }
-    if (httpEnabled) {
-      try {
-        await externalPlugin.startHttpListener();
-        logger48.info("HTTP webhook listener started", {
-          port: config2.external.http_listener.port,
-          host: config2.external.http_listener.address
-        });
-      } catch (err) {
-        logger48.warn("Failed to start HTTP webhook listener", {
-          err: toErrorMessage(err)
-        });
-      }
-    }
-    logger48.debug("External plugin initialised");
-    let tickDriver = null;
-    if (!executorMode) {
-      logger48.warn("skipping tick driver \u2014 executorMode not available");
-    } else {
-      tickDriver = new TickDriver({
-        config: config2.executor,
-        executorMode,
-        timePlugin,
-        externalPlugin: externalPlugin ?? void 0,
-        eventProcessor: eventProcessor ?? void 0,
-        staleWorkflowChecker: /* @__PURE__ */ __name(() => watchdog?.checkStaleWorkflows(), "staleWorkflowChecker")
-      });
-      logger48.debug("tick driver created");
-    }
-    logger48.info("Plugins fully initialised");
-    return {
-      coreEventQueue,
-      coreTriggerRegistry,
-      coreStateStore,
-      eventProcessor,
-      hookProcessor,
-      hookRegistry,
-      timePlugin,
-      externalPlugin,
-      eventBridge,
-      tickDriver
-    };
-  } catch (err) {
-    logger48.warn("Plugin initialisation failed \u2014 continuing without plugin layer", {
-      err: toErrorMessage(err)
-    });
-    return null;
-  }
-}
-__name(initializePlugins, "initializePlugins");
-function cleanupPlugins(subsystem) {
-  if (!subsystem) return;
-  subsystem.eventBridge?.stop();
-}
-__name(cleanupPlugins, "cleanupPlugins");
-
-// src/ipc-bootstrap.ts
+// src/extensions/ipc/setup.ts
 var import_node_fs13 = require("node:fs");
 var import_node_crypto4 = require("node:crypto");
 var import_node_path12 = require("node:path");
@@ -33820,7 +33806,7 @@ var import_node_fs11 = require("node:fs");
 var import_node_path10 = require("node:path");
 
 // src/shared/ipc/protocol.ts
-var logger49 = createLogger("ipc-protocol");
+var logger48 = createLogger("ipc-protocol");
 var VALID_IPC_MESSAGE_TYPES = /* @__PURE__ */ new Set([
   "hook_event",
   "query",
@@ -33842,7 +33828,7 @@ function validateIPCMessage(obj) {
     case "heartbeat":
       return true;
     default:
-      logger49.warn("Unrecognised IPC message type", {
+      logger48.warn("Unrecognised IPC message type", {
         type: typeof msg["type"] === "string" ? msg["type"] : typeof msg["type"]
       });
       return false;
@@ -33851,7 +33837,7 @@ function validateIPCMessage(obj) {
 __name(validateIPCMessage, "validateIPCMessage");
 
 // src/shared/ipc/ipc-server.ts
-var logger50 = createLogger("ipc-server");
+var logger49 = createLogger("ipc-server");
 var CONNECTION_TIMEOUT_MS = 5e3;
 var MAX_MESSAGE_SIZE = 1048576;
 function isResponseEnvelope(r) {
@@ -33922,9 +33908,9 @@ var IPCServer = class {
     if ((0, import_node_fs11.existsSync)(this.socketPath)) {
       try {
         (0, import_node_fs11.unlinkSync)(this.socketPath);
-        logger50.debug("Removed stale socket file", { path: this.socketPath });
+        logger49.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
-        logger50.warn("Could not remove stale socket file", {
+        logger49.warn("Could not remove stale socket file", {
           path: this.socketPath,
           err: toErrorMessage(err)
         });
@@ -33932,18 +33918,18 @@ var IPCServer = class {
     }
     this.server = net.createServer((socket) => this.handleConnection(socket));
     this.server.on("error", (err) => {
-      logger50.error("IPC server error", { err: err.message });
+      logger49.error("IPC server error", { err: err.message });
     });
     return new Promise((resolve, reject) => {
       const srv = this.server;
       if (!srv) {
-        reject(new Error("IPC server was not created"));
+        reject(new IPCError("IPC server was not created"));
         return;
       }
       srv.once("error", reject);
       srv.listen(this.socketPath, () => {
         (0, import_node_fs11.chmodSync)(this.socketPath, 384);
-        logger50.info("IPC server listening", { path: this.socketPath });
+        logger49.info("IPC server listening", { path: this.socketPath });
         srv.removeListener("error", reject);
         resolve();
       });
@@ -33956,7 +33942,7 @@ var IPCServer = class {
    * to finish closing before resolving.
    */
   async close() {
-    logger50.info("Closing IPC server", {
+    logger49.info("Closing IPC server", {
       path: this.socketPath,
       connections: this.connections.size
     });
@@ -33980,7 +33966,7 @@ var IPCServer = class {
       this.server = null;
       srv.close(() => {
         this.removeSocketFile();
-        logger50.info("IPC server closed");
+        logger49.info("IPC server closed");
         resolve();
       });
     });
@@ -34008,16 +33994,16 @@ var IPCServer = class {
    */
   handleConnection(socket) {
     this.connections.add(socket);
-    logger50.debug("IPC client connected", { connections: this.connections.size });
+    logger49.debug("IPC client connected", { connections: this.connections.size });
     let idleTimer;
     socket.once("close", () => {
       clearTimeout(idleTimer);
       this.connections.delete(socket);
-      logger50.debug("IPC client disconnected", { connections: this.connections.size });
+      logger49.debug("IPC client disconnected", { connections: this.connections.size });
     });
     socket.on("error", (err) => {
       clearTimeout(idleTimer);
-      logger50.warn("IPC socket error", { err: err.message });
+      logger49.warn("IPC socket error", { err: err.message });
       const holdId = this.inFlightHolds.get(socket);
       if (holdId && this.writeResultCallback) {
         this.inFlightHolds.delete(socket);
@@ -34027,7 +34013,7 @@ var IPCServer = class {
       socket.destroy();
     });
     idleTimer = setTimeout(() => {
-      logger50.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
+      logger49.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
       socket.destroy();
     }, CONNECTION_TIMEOUT_MS);
     const chunks = [];
@@ -34035,7 +34021,7 @@ var IPCServer = class {
     socket.on("data", (chunk) => {
       rawBytes += chunk.length;
       if (rawBytes > MAX_MESSAGE_SIZE) {
-        logger50.warn("IPC message size limit exceeded \u2014 closing connection", {
+        logger49.warn("IPC message size limit exceeded \u2014 closing connection", {
           size_bytes: rawBytes,
           max_bytes: MAX_MESSAGE_SIZE
         });
@@ -34063,9 +34049,9 @@ var IPCServer = class {
   processMessage(socket, line) {
     let message;
     try {
-      const parsed = JSON.parse(line);
+      const parsed = safeJsonParse(line, null);
       if (!validateIPCMessage(parsed)) {
-        logger50.warn("IPC message failed schema validation \u2014 dropping", {
+        logger49.warn("IPC message failed schema validation \u2014 dropping", {
           type: typeof parsed === "object" && parsed !== null ? parsed["type"] : typeof parsed
         });
         const validationErrorResponse = {
@@ -34077,20 +34063,11 @@ var IPCServer = class {
         return;
       }
       message = parsed;
-    } catch (err) {
-      logger50.warn("Failed to parse IPC message", {
-        err: toErrorMessage(err)
-      });
-      const errorResponse = {
-        id: "unknown",
-        status: "error",
-        error: "Invalid JSON"
-      };
-      this.writeResponse(socket, errorResponse);
+    } catch {
       return;
     }
     if (!this.handler) {
-      logger50.warn("No IPC message handler registered", { msg_type: message.type });
+      logger49.warn("No IPC message handler registered", { msg_type: message.type });
       const noHandlerResponse = {
         id: message.id,
         status: "error",
@@ -34099,7 +34076,7 @@ var IPCServer = class {
       this.writeResponse(socket, noHandlerResponse);
       return;
     }
-    logger50.debug("Dispatching IPC message", { id: message.id, type: message.type });
+    logger49.debug("Dispatching IPC message", { id: message.id, type: message.type });
     this.handler(message).then((result) => {
       if (isResponseEnvelope(result)) {
         this.writeResponse(socket, result.response, result.holdId);
@@ -34107,7 +34084,7 @@ var IPCServer = class {
         this.writeResponse(socket, result);
       }
     }).catch((err) => {
-      logger50.error("IPC handler threw an error", {
+      logger49.error("IPC handler threw an error", {
         id: message.id,
         err: toErrorMessage(err)
       });
@@ -34139,7 +34116,7 @@ var IPCServer = class {
         }
       });
     } catch (err) {
-      logger50.warn("Failed to write IPC response", {
+      logger49.warn("Failed to write IPC response", {
         id: response.id,
         err: toErrorMessage(err)
       });
@@ -34157,10 +34134,10 @@ var IPCServer = class {
     try {
       if ((0, import_node_fs11.existsSync)(this.socketPath)) {
         (0, import_node_fs11.unlinkSync)(this.socketPath);
-        logger50.debug("Socket file removed", { path: this.socketPath });
+        logger49.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
-      logger50.warn("Could not remove socket file", {
+      logger49.warn("Could not remove socket file", {
         path: this.socketPath,
         err: toErrorMessage(err)
       });
@@ -34168,18 +34145,10 @@ var IPCServer = class {
   }
 };
 
-// src/shared/ipc/ipc-router.ts
+// src/extensions/ipc/ipc-router.ts
 var import_node_fs12 = require("node:fs");
 var import_node_path11 = require("node:path");
-var logger51 = createLogger("ipc-router");
-function getStringField(obj, key, maxLength = 256) {
-  const value = obj[key];
-  if (typeof value === "string") {
-    return value.length <= maxLength ? value : value.slice(0, maxLength);
-  }
-  return "";
-}
-__name(getStringField, "getStringField");
+var logger50 = createLogger("ipc-router");
 var IPCRouter = class {
   static {
     __name(this, "IPCRouter");
@@ -34245,10 +34214,10 @@ var IPCRouter = class {
       const pointerFile = (0, import_node_path11.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
         (0, import_node_fs12.unlinkSync)(pointerFile);
-        logger51.debug("Session pointer file removed", { sessionId });
+        logger50.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
-          logger51.warn("Could not remove session pointer file", {
+          logger50.warn("Could not remove session pointer file", {
             sessionId,
             err: toErrorMessage(err)
           });
@@ -34334,7 +34303,7 @@ var IPCRouter = class {
       try {
         await this.triggerRegistry.evaluate(emittedEvent);
       } catch (err) {
-        logger51.warn("IPC hook_event: trigger evaluation error", {
+        logger50.warn("IPC hook_event: trigger evaluation error", {
           error: toErrorMessage(err)
         });
       }
@@ -34349,9 +34318,9 @@ var IPCRouter = class {
           const pointerFile = (0, import_node_path11.join)(this.stateDir, `runtime-${sessionId}.socket`);
           (0, import_node_fs12.writeFileSync)(pointerFile, this.socketPath, "utf-8");
           this.registeredSessions.add(sessionId);
-          logger51.info("Session pointer file written", { sessionId, pointer: pointerFile });
+          logger50.info("Session pointer file written", { sessionId, pointer: pointerFile });
         } catch (err) {
-          logger51.warn("Failed to write session pointer file", {
+          logger50.warn("Failed to write session pointer file", {
             sessionId,
             err: toErrorMessage(err)
           });
@@ -34364,7 +34333,7 @@ var IPCRouter = class {
         const validated = validateWRFCConfig(wrfcConfig);
         if (Object.keys(validated).length > 0) {
           this.wrfcConfigStore?.set(validated);
-          logger51.debug("WRFC config stored from config:loaded event", { validated });
+          logger50.debug("WRFC config stored from config:loaded event", { validated });
         }
       }
     }
@@ -34373,7 +34342,7 @@ var IPCRouter = class {
         const hookInput = typeof msg.hook_input === "object" && msg.hook_input !== null ? msg.hook_input : {};
         await this.hookProcessor.process(msg.hook_name, hookInput);
       } catch (err) {
-        logger51.warn("IPC hook_event: HookProcessor error", {
+        logger50.warn("IPC hook_event: HookProcessor error", {
           hookName: msg.hook_name,
           error: toErrorMessage(err)
         });
@@ -34400,7 +34369,7 @@ var IPCRouter = class {
       };
     }
     if (q.kind === "get_agent_status") {
-      const agentId = getStringField(q, "agent_id");
+      const agentId = q.agent_id;
       const agent = agentId ? this.agentCoordinator?.getAgent(agentId) ?? null : null;
       return {
         id: msg.id,
@@ -34423,7 +34392,7 @@ var IPCRouter = class {
       };
     }
     if (q.kind === "resolve_pending_bind") {
-      const agentType = getStringField(q, "agent_type");
+      const agentType = q.agent_type;
       if (!agentType) {
         return { id: msg.id, status: "ok", data: { kind: "pending_bind", workflow_id: null } };
       }
@@ -34435,7 +34404,7 @@ var IPCRouter = class {
       };
     }
     if (q.kind === "consume_pending_bind") {
-      const workflowId = getStringField(q, "workflow_id");
+      const workflowId = q.workflow_id;
       if (!workflowId) {
         return { id: msg.id, status: "ok", data: { kind: "pending_bind_consumed", removed: 0 } };
       }
@@ -34464,7 +34433,7 @@ var IPCRouter = class {
         data: { kind: "tick_result", result }
       };
     }
-    logger51.warn("Unhandled query kind", { kind: q.kind });
+    logger50.warn("Unhandled query kind", { kind: q.kind });
     return { id: msg.id, status: "ok", data: { kind: "ack" } };
   }
   /**
@@ -34474,7 +34443,7 @@ var IPCRouter = class {
    * rather than silently acknowledging the message and discarding the updates.
    */
   handleStateUpdate(msg) {
-    logger51.debug("IPC state_update received (not implemented)", { id: msg.id });
+    logger50.debug("IPC state_update received (not implemented)", { id: msg.id });
     return { id: msg.id, status: "error", error: "state_update not yet implemented" };
   }
   /**
@@ -34491,7 +34460,7 @@ var IPCRouter = class {
    * @returns A promise resolving to the IPCResponse to send back.
    */
   async route(msg) {
-    logger51.debug("IPC message received", { id: msg.id, type: msg.type });
+    logger50.debug("IPC message received", { id: msg.id, type: msg.type });
     this.directiveQueue?.sweepStaleHolds(HOLD_TTL_MS);
     switch (msg.type) {
       case "hook_event":
@@ -34510,10 +34479,10 @@ var IPCRouter = class {
   }
 };
 
-// src/ipc-bootstrap.ts
-var logger52 = createLogger("ipc-bootstrap");
-async function startIPCServer(deps) {
-  const { config: config2, projectRoot, directiveQueue, agentWorkflowMap } = deps;
+// src/extensions/ipc/setup.ts
+var logger51 = createLogger("ipc-setup");
+async function createIPCSubsystem(opts) {
+  const { config: config2, projectRoot, directiveQueue, agentWorkflowMap } = opts;
   const stateDir = (0, import_node_path12.join)(projectRoot, config2.persistence.state_dir);
   const socketDir = config2.ipc.socket_dir;
   const hash2 = (0, import_node_crypto4.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
@@ -34521,19 +34490,19 @@ async function startIPCServer(deps) {
   try {
     const ipcServer = new IPCServer(socketPath);
     const ipcRouter = new IPCRouter({
-      eventBus: deps.eventBus,
-      triggerRegistry: deps.triggerRegistry,
-      workflowEngine: deps.workflowEngine,
-      agentCoordinator: deps.agentCoordinator,
+      eventBus: opts.eventBus,
+      triggerRegistry: opts.triggerRegistry,
+      workflowEngine: opts.workflowEngine,
+      agentCoordinator: opts.agentCoordinator,
       directiveQueue,
-      wrfcConfigStore: deps.wrfcConfigStore,
+      wrfcConfigStore: opts.wrfcConfigStore,
       socketPath,
       stateDir,
       agentWorkflowMap,
-      hookProcessor: deps.hookProcessor,
-      executorMode: deps.executorMode,
-      executorBudget: deps.executorBudget,
-      daemonTickHandler: deps.daemonTickHandler
+      hookProcessor: opts.hookProcessor,
+      executorMode: opts.executorMode,
+      executorBudget: opts.executorBudget,
+      daemonTickHandler: opts.daemonTickHandler
     });
     ipcServer.onMessage(ipcRouter.route.bind(ipcRouter));
     if (directiveQueue) {
@@ -34557,25 +34526,30 @@ async function startIPCServer(deps) {
     ensureDirSync(stateDir);
     const pointerFile = (0, import_node_path12.join)(stateDir, `runtime-${process.pid}.socket`);
     (0, import_node_fs13.writeFileSync)(pointerFile, socketPath, "utf-8");
-    logger52.info("IPC server started", { socket: socketPath });
+    logger51.info("IPC subsystem created", { socket: socketPath });
     return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
   } catch (err) {
-    logger52.error("Failed to start IPC server", {
+    logger51.error("Failed to create IPC subsystem", {
       socket: socketPath,
       err: toErrorMessage(err)
     });
     return null;
   }
 }
-__name(startIPCServer, "startIPCServer");
+__name(createIPCSubsystem, "createIPCSubsystem");
+
+// src/extensions/ipc/teardown.ts
+var import_node_fs14 = require("node:fs");
+var import_node_path13 = require("node:path");
+var logger52 = createLogger("ipc-teardown");
 function removeSocketPointerFile(projectRoot, config2) {
-  const pointerFile = (0, import_node_path12.join)(
+  const pointerFile = (0, import_node_path13.join)(
     projectRoot,
     config2.persistence.state_dir,
     `runtime-${process.pid}.socket`
   );
   try {
-    (0, import_node_fs13.unlinkSync)(pointerFile);
+    (0, import_node_fs14.unlinkSync)(pointerFile);
     logger52.debug("Socket pointer file removed", { path: pointerFile });
   } catch (err) {
     if (err.code !== "ENOENT") {
@@ -34587,19 +34561,19 @@ function removeSocketPointerFile(projectRoot, config2) {
   }
 }
 __name(removeSocketPointerFile, "removeSocketPointerFile");
-async function teardownIPCServer(subsystem, projectRoot, config2) {
+async function teardownIPC(subsystem, projectRoot, config2) {
   try {
     await subsystem.ipcServer.close();
     removeSocketPointerFile(projectRoot, config2);
     subsystem.ipcRouter.removeSessionPointers();
-    logger52.debug("IPC server closed");
+    logger52.debug("IPC teardown complete");
   } catch (err) {
-    logger52.warn("IPC server close failed", {
+    logger52.warn("IPC teardown failed", {
       err: toErrorMessage(err)
     });
   }
 }
-__name(teardownIPCServer, "teardownIPCServer");
+__name(teardownIPC, "teardownIPC");
 
 // src/bootstrap.ts
 var logger53 = createLogger("bootstrap");
@@ -34644,11 +34618,17 @@ var RuntimeEngine = class {
   watchdog = null;
   /** Snapshot manager for periodic state snapshots and recovery. */
   snapshotManager = null;
-  // ─── Sub-bootstrap subsystems ─────────────────────────────────────────────
-  /** Executor subsystem (mode, budget, daemon tick handler). */
+  // ─── Sub-layer subsystems ──────────────────────────────────────────────────
+  /** L1 core runtime (event queue, trigger registry, state store, event processor). */
+  coreRuntime = null;
+  /** L2 executor subsystem (mode, budget, daemon tick handler). */
   executorSubsystem = null;
-  /** Plugin subsystem (core queue, hooks, plugins, event bridge, tick driver). */
-  pluginSubsystem = null;
+  /** L2 event bridge (EventBus → core EventQueue). */
+  eventBridge = null;
+  /** L2 tick driver for periodic processing. */
+  tickDriver = null;
+  /** L3 hook processor. */
+  hookProcessor = null;
   /** IPC subsystem (server, router). */
   ipcSubsystem = null;
   /**
@@ -34684,7 +34664,7 @@ var RuntimeEngine = class {
     await this.stateStore.initialize();
     logger53.debug("State store initialised");
     this.eventBus = new EventBus();
-    const stateDir = (0, import_node_path13.join)(this.projectRoot, this.config.persistence.state_dir);
+    const stateDir = (0, import_node_path14.join)(this.projectRoot, this.config.persistence.state_dir);
     ensureDirSync(stateDir);
     this.eventLog = new EventLog(stateDir, this.config.persistence);
     await this.eventLog.initialize();
@@ -34801,29 +34781,81 @@ var RuntimeEngine = class {
       () => this.eventLog?.getLatestSequence() ?? 0,
       6e4
     );
-    this.executorSubsystem = initializeExecutor({
-      config: this.config,
-      eventBus: this.eventBus
+    this.executorSubsystem = createExecutorSubsystem(this.config, this.eventBus);
+    const actionExecutor = this.directiveQueue ? new ActionExecutor(this.directiveQueue) : void 0;
+    this.coreRuntime = createCoreRuntime(actionExecutor);
+    logger53.debug("Core runtime created");
+    registerWRFCPlugin({
+      processor: this.coreRuntime.eventProcessor,
+      registry: this.coreRuntime.triggerRegistry,
+      store: this.coreRuntime.stateStore,
+      config: getDefaultWRFCConfig()
     });
-    this.pluginSubsystem = await initializePlugins({
-      config: this.config,
+    logger53.debug("WRFC plugin registered");
+    this.eventBridge = new EventBridge(this.eventBus, this.coreRuntime.eventQueue);
+    this.eventBridge.start();
+    logger53.debug("Event bridge started");
+    const hookSubsystem = createHookSubsystem({
       eventBus: this.eventBus,
       directiveQueue: this.directiveQueue,
       agentWorkflowMap: this.agentWorkflowMap,
       daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
-      executorMode: this.executorSubsystem?.executorMode ?? null,
-      watchdog: this.watchdog
+      executorMode: this.executorSubsystem?.executorMode ?? null
     });
-    if (this.executorSubsystem?.executorBudget && this.pluginSubsystem?.coreStateStore) {
-      this.executorSubsystem.executorBudget.restore(this.pluginSubsystem.coreStateStore);
+    this.hookProcessor = hookSubsystem.hookProcessor;
+    logger53.debug("Hook subsystem created", { handlerCount: hookSubsystem.hookRegistry.count() });
+    const timePlugin = new TimePlugin({
+      queue: this.coreRuntime.eventQueue,
+      store: this.coreRuntime.stateStore,
+      config: this.config.time
+    });
+    logger53.debug("Time plugin created");
+    const { enabled: httpEnabled, ...httpListenerConfig } = this.config.external.http_listener;
+    const externalPluginConfig = {
+      file_watcher: this.config.external.file_watcher,
+      ...httpEnabled ? { http_listener: httpListenerConfig } : {}
+    };
+    const externalPlugin = new ExternalPlugin(this.coreRuntime.eventQueue, externalPluginConfig);
+    try {
+      await externalPlugin.initialize();
+    } catch (err) {
+      logger53.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
     }
-    if (this.executorSubsystem?.daemonTickHandler && this.pluginSubsystem?.coreEventQueue) {
-      const queue = this.pluginSubsystem.coreEventQueue;
+    if (httpEnabled) {
+      try {
+        await externalPlugin.startHttpListener();
+        logger53.info("HTTP webhook listener started", {
+          port: this.config.external.http_listener.port,
+          host: this.config.external.http_listener.address
+        });
+      } catch (err) {
+        logger53.warn("Failed to start HTTP webhook listener", { err: toErrorMessage(err) });
+      }
+    }
+    logger53.debug("External plugin created");
+    if (!this.executorSubsystem?.executorMode) {
+      logger53.warn("Skipping tick driver \u2014 executorMode not available");
+    } else {
+      this.tickDriver = new TickDriver({
+        config: this.config.executor,
+        executorMode: this.executorSubsystem.executorMode,
+        timePlugin,
+        externalPlugin: externalPlugin ?? void 0,
+        eventProcessor: this.coreRuntime.eventProcessor ?? void 0,
+        staleWorkflowChecker: /* @__PURE__ */ __name(() => this.watchdog?.checkStaleWorkflows(), "staleWorkflowChecker")
+      });
+      logger53.debug("Tick driver created");
+    }
+    if (this.executorSubsystem?.executorBudget && this.coreRuntime.stateStore) {
+      this.executorSubsystem.executorBudget.restore(this.coreRuntime.stateStore);
+    }
+    if (this.executorSubsystem?.daemonTickHandler && this.coreRuntime.eventQueue) {
+      const queue = this.coreRuntime.eventQueue;
       this.executorSubsystem.daemonTickHandler.setQueueDepthGetter(() => queue.depth());
     }
     let ipcSocketPath = null;
     if (this.config.features.ipc_enabled) {
-      const ipcResult = await startIPCServer({
+      const ipcResult = await createIPCSubsystem({
         config: this.config,
         projectRoot: this.projectRoot,
         eventBus: this.eventBus,
@@ -34833,7 +34865,7 @@ var RuntimeEngine = class {
         directiveQueue: this.directiveQueue,
         wrfcConfigStore: this.wrfcConfigStore,
         agentWorkflowMap: this.agentWorkflowMap,
-        hookProcessor: this.pluginSubsystem?.hookProcessor ?? null,
+        hookProcessor: this.hookProcessor,
         executorMode: this.executorSubsystem?.executorMode ?? null,
         executorBudget: this.executorSubsystem?.executorBudget ?? null,
         daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null
@@ -34845,7 +34877,7 @@ var RuntimeEngine = class {
     } else {
       logger53.debug("IPC server disabled by feature flag");
     }
-    this.pluginSubsystem?.tickDriver?.start();
+    this.tickDriver?.start();
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
@@ -34895,10 +34927,10 @@ var RuntimeEngine = class {
         logger53.debug("Active workflows cancelled");
       }
       this.checkpointManager?.stop();
-      this.pluginSubsystem?.tickDriver?.stop();
-      const coreStateStoreForShutdown = this.pluginSubsystem?.coreStateStore ?? null;
-      cleanupPlugins(this.pluginSubsystem);
-      this.pluginSubsystem = null;
+      this.tickDriver?.stop();
+      const coreStateStoreForShutdown = this.coreRuntime?.stateStore ?? null;
+      this.eventBridge?.stop();
+      this.eventBridge = null;
       if (this.snapshotManager) {
         this.snapshotManager.stopPeriodicSnapshots();
       }
@@ -34918,7 +34950,7 @@ var RuntimeEngine = class {
         }
       }
       if (this.ipcSubsystem) {
-        await teardownIPCServer(this.ipcSubsystem, this.projectRoot, this.config);
+        await teardownIPC(this.ipcSubsystem, this.projectRoot, this.config);
         this.ipcSubsystem = null;
       }
       if (this.eventQueue) {
@@ -35011,7 +35043,7 @@ var RuntimeEngine = class {
    */
   getStateStore() {
     if (!this.stateStore) {
-      throw new Error("RuntimeEngine.getStateStore() called before startup()");
+      throw new ProcessingError("RuntimeEngine.getStateStore() called before startup()");
     }
     return this.stateStore;
   }
@@ -35033,8 +35065,8 @@ var RuntimeEngine = class {
     if (this.executorSubsystem?.executorMode) {
       this.executorSubsystem.executorMode.updateConfig(config2.executor);
     }
-    if (this.pluginSubsystem?.tickDriver) {
-      this.pluginSubsystem.tickDriver.reconfigure(config2.executor);
+    if (this.tickDriver) {
+      this.tickDriver.reconfigure(config2.executor);
     }
   }
   /**
@@ -35056,7 +35088,7 @@ var RuntimeEngine = class {
    */
   getEventBus() {
     if (!this.eventBus) {
-      throw new Error("RuntimeEngine.getEventBus() called before startup()");
+      throw new ProcessingError("RuntimeEngine.getEventBus() called before startup()");
     }
     return this.eventBus;
   }
@@ -35067,7 +35099,7 @@ var RuntimeEngine = class {
    */
   getEventLog() {
     if (!this.eventLog) {
-      throw new Error("RuntimeEngine.getEventLog() called before startup()");
+      throw new ProcessingError("RuntimeEngine.getEventLog() called before startup()");
     }
     return this.eventLog;
   }
@@ -35078,7 +35110,7 @@ var RuntimeEngine = class {
    */
   getEventQueue() {
     if (!this.eventQueue) {
-      throw new Error("RuntimeEngine.getEventQueue() called before startup()");
+      throw new ProcessingError("RuntimeEngine.getEventQueue() called before startup()");
     }
     return this.eventQueue;
   }
@@ -35116,13 +35148,13 @@ var RuntimeEngine = class {
    * Return the HookProcessor, or null if it has not been initialised.
    */
   getHookProcessor() {
-    return this.pluginSubsystem?.hookProcessor ?? null;
+    return this.hookProcessor;
   }
   /**
    * Return the EventProcessor, or null if it has not been initialised.
    */
   getEventProcessor() {
-    return this.pluginSubsystem?.eventProcessor ?? null;
+    return this.coreRuntime?.eventProcessor ?? null;
   }
   /**
    * Return the ExecutorModeManager, or null if not initialised.

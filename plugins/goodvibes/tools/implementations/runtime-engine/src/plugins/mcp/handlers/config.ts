@@ -12,6 +12,7 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { DEFAULT_CONFIG, saveConfig } from '../../../shared/config.js';
+import type { RuntimeConfig } from '../../../shared/config.js';
 import { createLogger } from '../../../shared/logger.js';
 import { toErrorMessage } from '../../../shared/utils.js';
 import type { HandlerContext } from './types.js';
@@ -310,10 +311,10 @@ export const handleRuntimeConfig = async (
       // prevent shallow-clone aliasing bugs when setNestedValue mutates in-place)
       const current = ctx.getConfig();
       const updated = setNestedValue(
-        JSON.parse(JSON.stringify(current)) as Record<string, unknown>,
+        JSON.parse(JSON.stringify(current)) as unknown as Record<string, unknown>,
         key,
         value
-      ) as unknown as import('../../../shared/config.js').RuntimeConfig;
+      ) as unknown as RuntimeConfig;
 
       saveConfig(ctx.projectRoot, updated);
       ctx.updateConfig(updated);

@@ -17,6 +17,7 @@ import { promises as fsPromises } from 'node:fs';
 import { join } from 'node:path';
 
 import { createLogger } from '../../../shared/logger.js';
+import { safeJsonParse } from '../../../shared/utils.js';
 import type { WorkflowDefinition } from '../types.js';
 
 const log = createLogger('custom-loader');
@@ -163,16 +164,12 @@ export async function loadCustomWorkflows(configPath: string): Promise<WorkflowD
     return [];
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
+  const parsed: unknown = safeJsonParse<unknown>(raw, null, (msg) =>
     log.warn('loadCustomWorkflows: failed to parse goodvibes.json as JSON', {
       config_file: configFile,
-      error: String(err),
-    });
-    return [];
-  }
+      error: msg,
+    }),
+  );
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     log.warn('loadCustomWorkflows: goodvibes.json root must be an object');

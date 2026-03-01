@@ -35,7 +35,7 @@ const {
   class MockServer extends EventEmitter {
     listen: ReturnType<typeof vi.fn> & ListenFn;
     close: ReturnType<typeof vi.fn> & CloseFn;
-    removeListener: ReturnType<typeof vi.fn>;
+    removeListener: ReturnType<typeof vi.fn> & ((eventName: string | symbol, listener: (...args: any[]) => void) => this);
     _listenCallback: (() => void) | null = null;
     _closeCallback: (() => void) | null = null;
 
@@ -49,7 +49,7 @@ const {
         this._closeCallback = cb ?? null;
         return this;
       }) as ReturnType<typeof vi.fn> & CloseFn;
-      this.removeListener = vi.fn();
+      this.removeListener = vi.fn() as unknown as ReturnType<typeof vi.fn> & ((eventName: string | symbol, listener: (...args: any[]) => void) => MockServer);
     }
   }
 
@@ -514,7 +514,7 @@ describe('IPCServer', () => {
       expect(parsed).toMatchObject({
         id: 'unknown',
         status: 'error',
-        error: 'Invalid JSON',
+        error: 'Invalid message schema',
       });
     });
 

@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ─── Hoisted mock variables (must come before vi.mock calls) ──────────────────────
+// ─── Hoisted mock variables (must come before vi.mock calls) ──────────────────
 const {
   mockWriteFileSync,
   mockUnlinkSync,
@@ -15,7 +15,7 @@ const {
   mockValidateWRFCConfig: vi.fn((cfg: Record<string, unknown>) => cfg),
 }));
 
-// ─── Module mocks ─────────────────────────────────────────────────────────────────────
+// ─── Module mocks ───────────────────────────────────────────────────────────────────────────────────────
 vi.mock('node:fs', () => ({
   writeFileSync: mockWriteFileSync,
   unlinkSync: mockUnlinkSync,
@@ -25,7 +25,7 @@ vi.mock('node:path', () => ({
   join: (...parts: string[]) => parts.join('/'),
 }));
 
-vi.mock('../../logger.js', () => ({
+vi.mock('../../../shared/logger.js', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -34,19 +34,19 @@ vi.mock('../../logger.js', () => ({
   }),
 }));
 
-vi.mock('../../../extensions/directives/wrfc-config-store.js', () => ({
+vi.mock('../../directives/wrfc-config-store.js', () => ({
   validateWRFCConfig: mockValidateWRFCConfig,
 }));
 
-vi.mock('../../../extensions/directives/directive-queue.js', () => ({
+vi.mock('../../directives/directive-queue.js', () => ({
   HOLD_TTL_MS: 5000,
 }));
 
 import { IPCRouter } from '../ipc-router.js';
 import type { IPCRouterDeps } from '../ipc-router.js';
-import type { IPCMessage } from '../protocol.js';
+import type { IPCMessage } from '../../../shared/ipc/protocol.js';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
 function makeHookEventMsg(overrides: Record<string, unknown> = {}): IPCMessage {
   return {
@@ -122,7 +122,7 @@ function makeDeps(overrides: Partial<IPCRouterDeps> = {}): IPCRouterDeps {
   };
 }
 
-// ─── Tests ───────────────────────────────────────────────────────────────────
+// ─── Tests ─────────────────────────────────────────────────────────────────────────────
 
 describe('IPCRouter', () => {
   describe('constructor', () => {
@@ -165,7 +165,7 @@ describe('IPCRouter', () => {
 
     it('sweeps stale holds on every route call', async () => {
       await router.route(makeHeartbeatMsg());
-      expect((deps.directiveQueue as { sweepStaleHolds: ReturnType<typeof vi.fn> }).sweepStaleHolds).toHaveBeenCalledWith(5000);
+      expect((deps.directiveQueue as unknown as { sweepStaleHolds: ReturnType<typeof vi.fn> }).sweepStaleHolds).toHaveBeenCalledWith(5000);
     });
 
     it('does not throw when directiveQueue is null (no sweep)', async () => {
@@ -173,7 +173,7 @@ describe('IPCRouter', () => {
       await expect(r.route(makeHeartbeatMsg())).resolves.not.toThrow();
     });
 
-    // ─── heartbeat ──────────────────────────────────────────────────────────
+    // ─── heartbeat ───────────────────────────────────────────────────────────────────
 
     it('routes heartbeat to ack response', async () => {
       const result = await router.route(makeHeartbeatMsg());
@@ -185,7 +185,7 @@ describe('IPCRouter', () => {
       });
     });
 
-    // ─── state_update ────────────────────────────────────────────────────────
+    // ─── state_update ──────────────────────────────────────────────────────────────────
 
     it('routes state_update to error response (not yet implemented)', async () => {
       const result = await router.route(makeStateUpdateMsg());
@@ -197,7 +197,7 @@ describe('IPCRouter', () => {
       });
     });
 
-    // ─── unknown message type ────────────────────────────────────────────────
+    // ─── unknown message type ──────────────────────────────────────────────────────────────────
 
     it('returns error for unknown message type', async () => {
       const msg = { type: 'unknown_type', id: 'msg-x' } as unknown as IPCMessage;
@@ -217,7 +217,7 @@ describe('IPCRouter', () => {
     });
   });
 
-  // ─── hook_event ───────────────────────────────────────────────────────────
+  // ─── hook_event ─────────────────────────────────────────────────────────────────────
 
   describe('handleHookEvent', () => {
     let deps: IPCRouterDeps;
@@ -235,8 +235,8 @@ describe('IPCRouter', () => {
       const result = await router.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
       const response = 'response' in result ? result.response : result;
       expect(response.status).toBe('ok');
-      expect((deps.eventBus as { emit: ReturnType<typeof vi.fn> }).emit).toHaveBeenCalledOnce();
-      const emitted = (deps.eventBus as { emit: ReturnType<typeof vi.fn> }).emit.mock.calls[0][0];
+      expect((deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit).toHaveBeenCalledOnce();
+      const emitted = (deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit.mock.calls[0][0];
       expect(emitted.type).toBe('hook:pre_tool_use');
       expect(emitted.source.kind).toBe('hook');
       expect(emitted.source.hook_name).toBe('pre_tool_use');
@@ -245,7 +245,7 @@ describe('IPCRouter', () => {
     it('calls triggerRegistry.evaluate with the emitted event', async () => {
       await router.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
       expect(
-        (deps.triggerRegistry as { evaluate: ReturnType<typeof vi.fn> }).evaluate
+        (deps.triggerRegistry as unknown as { evaluate: ReturnType<typeof vi.fn> }).evaluate
       ).toHaveBeenCalledOnce();
     });
 
@@ -257,7 +257,7 @@ describe('IPCRouter', () => {
     });
 
     it('logs warning but does not throw when triggerRegistry.evaluate rejects', async () => {
-      (deps.triggerRegistry as { evaluate: ReturnType<typeof vi.fn> }).evaluate
+      (deps.triggerRegistry as unknown as { evaluate: ReturnType<typeof vi.fn> }).evaluate
         .mockRejectedValueOnce(new Error('trigger failure'));
       const result = await router.route(makeHookEventMsg());
       const response = 'response' in result ? result.response : result;
@@ -276,7 +276,7 @@ describe('IPCRouter', () => {
           makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-abc' } })
         );
         expect(
-          (deps.triggerRegistry as { resetAllFireCounts: ReturnType<typeof vi.fn> }).resetAllFireCounts
+          (deps.triggerRegistry as unknown as { resetAllFireCounts: ReturnType<typeof vi.fn> }).resetAllFireCounts
         ).toHaveBeenCalledOnce();
       });
 
@@ -355,7 +355,7 @@ describe('IPCRouter', () => {
         );
         expect(mockValidateWRFCConfig).toHaveBeenCalledWith(wrfcConfig);
         expect(
-          (deps.wrfcConfigStore as { set: ReturnType<typeof vi.fn> }).set
+          (deps.wrfcConfigStore as unknown as { set: ReturnType<typeof vi.fn> }).set
         ).toHaveBeenCalledWith(wrfcConfig);
       });
 
@@ -368,7 +368,7 @@ describe('IPCRouter', () => {
           })
         );
         expect(
-          (deps.wrfcConfigStore as { set: ReturnType<typeof vi.fn> }).set
+          (deps.wrfcConfigStore as unknown as { set: ReturnType<typeof vi.fn> }).set
         ).not.toHaveBeenCalled();
       });
 
@@ -377,7 +377,7 @@ describe('IPCRouter', () => {
           makeHookEventMsg({ hook_name: 'config:loaded', hook_input: {} })
         );
         expect(
-          (deps.wrfcConfigStore as { set: ReturnType<typeof vi.fn> }).set
+          (deps.wrfcConfigStore as unknown as { set: ReturnType<typeof vi.fn> }).set
         ).not.toHaveBeenCalled();
       });
 
@@ -386,7 +386,7 @@ describe('IPCRouter', () => {
           makeHookEventMsg({ hook_name: 'config:loaded', hook_input: { wrfc: [] } })
         );
         expect(
-          (deps.wrfcConfigStore as { set: ReturnType<typeof vi.fn> }).set
+          (deps.wrfcConfigStore as unknown as { set: ReturnType<typeof vi.fn> }).set
         ).not.toHaveBeenCalled();
       });
 
@@ -409,7 +409,7 @@ describe('IPCRouter', () => {
           makeHookEventMsg({ hook_name: 'pre_tool_use', hook_input: { tool: 'bash' } })
         );
         expect(
-          (deps.hookProcessor as { process: ReturnType<typeof vi.fn> }).process
+          (deps.hookProcessor as unknown as { process: ReturnType<typeof vi.fn> }).process
         ).toHaveBeenCalledWith('pre_tool_use', { tool: 'bash' });
       });
 
@@ -418,12 +418,12 @@ describe('IPCRouter', () => {
           makeHookEventMsg({ hook_input: null as unknown as Record<string, unknown> })
         );
         expect(
-          (deps.hookProcessor as { process: ReturnType<typeof vi.fn> }).process
+          (deps.hookProcessor as unknown as { process: ReturnType<typeof vi.fn> }).process
         ).toHaveBeenCalledWith('pre_tool_use', {});
       });
 
       it('does not throw when hookProcessor.process rejects', async () => {
-        (deps.hookProcessor as { process: ReturnType<typeof vi.fn> }).process
+        (deps.hookProcessor as unknown as { process: ReturnType<typeof vi.fn> }).process
           .mockRejectedValueOnce(new Error('processor error'));
         const result = await router.route(makeHookEventMsg());
         const response = 'response' in result ? result.response : result;
@@ -439,7 +439,7 @@ describe('IPCRouter', () => {
     });
   });
 
-  // ─── query ────────────────────────────────────────────────────────────────
+  // ─── query ─────────────────────────────────────────────────────────────────────────────
 
   describe('handleQuery', () => {
     let deps: IPCRouterDeps;
@@ -463,7 +463,7 @@ describe('IPCRouter', () => {
       });
 
       it('returns directives sorted by priority as joined message', async () => {
-        (deps.directiveQueue as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
+        (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
           .mockReturnValueOnce({
             holdId: 'hold-2',
             directives: [
@@ -480,7 +480,7 @@ describe('IPCRouter', () => {
       });
 
       it('filters out non-inject_system_message directives from message', async () => {
-        (deps.directiveQueue as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
+        (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
           .mockReturnValueOnce({
             holdId: 'hold-3',
             directives: [
@@ -494,7 +494,7 @@ describe('IPCRouter', () => {
       });
 
       it('includes holdId in response envelope when directives are present', async () => {
-        (deps.directiveQueue as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
+        (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
           .mockReturnValueOnce({
             holdId: 'hold-99',
             directives: [
@@ -526,7 +526,7 @@ describe('IPCRouter', () => {
         router.setAgentWorkflowResolver(() => 'wf-123');
         await router.route(makeQueryMsg('get_directives', { agent_id: 'agent-a' }));
         expect(
-          (deps.directiveQueue as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
+          (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
         ).toHaveBeenCalledWith('subagent_stop', 'wf-123');
       });
 
@@ -534,7 +534,7 @@ describe('IPCRouter', () => {
         router.setAgentWorkflowResolver(() => 'wf-123');
         await router.route(makeQueryMsg('get_directives'));
         expect(
-          (deps.directiveQueue as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
+          (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
         ).toHaveBeenCalledWith('subagent_stop', undefined);
       });
 
@@ -562,7 +562,7 @@ describe('IPCRouter', () => {
         router.setAgentWorkflowResolver(() => 'wf-abc');
         await router.route(makeQueryMsg('get_system_message'));
         expect(
-          (deps.directiveQueue as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
+          (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
         ).toHaveBeenCalledWith('subagent_stop', undefined);
       });
     });
@@ -570,7 +570,7 @@ describe('IPCRouter', () => {
     describe('get_workflow_state', () => {
       it('returns workflow instance when workflowEngine has it', async () => {
         const instance = { step: 'review', round: 2 };
-        (deps.workflowEngine as { get: ReturnType<typeof vi.fn> }).get.mockReturnValueOnce(instance);
+        (deps.workflowEngine as unknown as { get: ReturnType<typeof vi.fn> }).get.mockReturnValueOnce(instance);
         const result = await router.route(makeQueryMsg('get_workflow_state', { workflow_id: 'wf-1' }));
         const response = 'response' in result ? result.response : result;
         expect(response.data).toMatchObject({
@@ -580,7 +580,7 @@ describe('IPCRouter', () => {
       });
 
       it('returns empty object when workflow not found', async () => {
-        (deps.workflowEngine as { get: ReturnType<typeof vi.fn> }).get.mockReturnValueOnce(null);
+        (deps.workflowEngine as unknown as { get: ReturnType<typeof vi.fn> }).get.mockReturnValueOnce(null);
         const result = await router.route(makeQueryMsg('get_workflow_state', { workflow_id: 'wf-missing' }));
         const response = 'response' in result ? result.response : result;
         expect(response.data).toMatchObject({ kind: 'workflow_state', instance: {} });
@@ -597,7 +597,7 @@ describe('IPCRouter', () => {
     describe('get_agent_status', () => {
       it('returns agent data when agentCoordinator has agent', async () => {
         const agent = { id: 'agent-1', status: 'running' };
-        (deps.agentCoordinator as { getAgent: ReturnType<typeof vi.fn> }).getAgent.mockReturnValueOnce(agent);
+        (deps.agentCoordinator as unknown as { getAgent: ReturnType<typeof vi.fn> }).getAgent.mockReturnValueOnce(agent);
         const result = await router.route(makeQueryMsg('get_agent_status', { agent_id: 'agent-1' }));
         const response = 'response' in result ? result.response : result;
         expect(response.data).toMatchObject({
@@ -607,7 +607,7 @@ describe('IPCRouter', () => {
       });
 
       it('returns empty object when agent not found', async () => {
-        (deps.agentCoordinator as { getAgent: ReturnType<typeof vi.fn> }).getAgent.mockReturnValueOnce(null);
+        (deps.agentCoordinator as unknown as { getAgent: ReturnType<typeof vi.fn> }).getAgent.mockReturnValueOnce(null);
         const result = await router.route(makeQueryMsg('get_agent_status', { agent_id: 'missing' }));
         const response = 'response' in result ? result.response : result;
         expect(response.data).toMatchObject({ kind: 'agent_status', agent: {} });
@@ -651,7 +651,7 @@ describe('IPCRouter', () => {
 
     describe('resolve_pending_bind', () => {
       it('returns workflow_id from agentWorkflowMap', async () => {
-        (deps.agentWorkflowMap as { resolvePendingBind: ReturnType<typeof vi.fn> })
+        (deps.agentWorkflowMap as unknown as { resolvePendingBind: ReturnType<typeof vi.fn> })
           .resolvePendingBind.mockReturnValueOnce('wf-resolved');
         const result = await router.route(
           makeQueryMsg('resolve_pending_bind', { agent_type: 'engineer' })
@@ -661,7 +661,7 @@ describe('IPCRouter', () => {
       });
 
       it('returns workflow_id: null when no bind found', async () => {
-        (deps.agentWorkflowMap as { resolvePendingBind: ReturnType<typeof vi.fn> })
+        (deps.agentWorkflowMap as unknown as { resolvePendingBind: ReturnType<typeof vi.fn> })
           .resolvePendingBind.mockReturnValueOnce(null);
         const result = await router.route(
           makeQueryMsg('resolve_pending_bind', { agent_type: 'engineer' })
@@ -690,7 +690,7 @@ describe('IPCRouter', () => {
 
     describe('consume_pending_bind', () => {
       it('returns removed count from agentWorkflowMap', async () => {
-        (deps.agentWorkflowMap as { consumePendingBindsForWorkflow: ReturnType<typeof vi.fn> })
+        (deps.agentWorkflowMap as unknown as { consumePendingBindsForWorkflow: ReturnType<typeof vi.fn> })
           .consumePendingBindsForWorkflow.mockReturnValueOnce(3);
         const result = await router.route(
           makeQueryMsg('consume_pending_bind', { workflow_id: 'wf-xyz' })
@@ -719,7 +719,7 @@ describe('IPCRouter', () => {
 
     describe('get_executor_mode', () => {
       it('returns mode from executorMode', async () => {
-        (deps.executorMode as { getMode: ReturnType<typeof vi.fn> }).getMode.mockReturnValueOnce('paused');
+        (deps.executorMode as unknown as { getMode: ReturnType<typeof vi.fn> }).getMode.mockReturnValueOnce('paused');
         const result = await router.route(makeQueryMsg('get_executor_mode'));
         const response = 'response' in result ? result.response : result;
         expect(response.data).toMatchObject({ kind: 'executor_mode', mode: 'paused' });
@@ -736,9 +736,9 @@ describe('IPCRouter', () => {
     describe('get_executor_budget', () => {
       it('returns spending and can_process from executorBudget', async () => {
         const spending = { tokens: 1000, cost: 0.5 };
-        (deps.executorBudget as { getSpending: ReturnType<typeof vi.fn> }).getSpending
+        (deps.executorBudget as unknown as { getSpending: ReturnType<typeof vi.fn> }).getSpending
           .mockReturnValueOnce(spending);
-        (deps.executorBudget as { canProcess: ReturnType<typeof vi.fn> }).canProcess
+        (deps.executorBudget as unknown as { canProcess: ReturnType<typeof vi.fn> }).canProcess
           .mockReturnValueOnce(false);
         const result = await router.route(makeQueryMsg('get_executor_budget'));
         const response = 'response' in result ? result.response : result;
@@ -764,7 +764,7 @@ describe('IPCRouter', () => {
     describe('process_tick', () => {
       it('calls daemonTickHandler.handleTick and returns result', async () => {
         const tickResult = { processed: 5, skipped: 0 };
-        (deps.daemonTickHandler as { handleTick: ReturnType<typeof vi.fn> }).handleTick
+        (deps.daemonTickHandler as unknown as { handleTick: ReturnType<typeof vi.fn> }).handleTick
           .mockResolvedValueOnce(tickResult);
         const result = await router.route(makeQueryMsg('process_tick'));
         const response = 'response' in result ? result.response : result;
@@ -791,7 +791,7 @@ describe('IPCRouter', () => {
     });
   });
 
-  // ─── removeSessionPointers ────────────────────────────────────────────────
+  // ─── removeSessionPointers ────────────────────────────────────────────────────────────
 
   describe('removeSessionPointers', () => {
     beforeEach(() => {
@@ -866,7 +866,7 @@ describe('IPCRouter', () => {
     });
   });
 
-  // ─── setAgentWorkflowResolver ─────────────────────────────────────────────
+  // ─── setAgentWorkflowResolver ───────────────────────────────────────────────────────────
 
   describe('setAgentWorkflowResolver', () => {
     it('can be called and subsequent get_directives uses it', async () => {
@@ -880,7 +880,7 @@ describe('IPCRouter', () => {
 
       expect(resolver).toHaveBeenCalledWith('test-agent');
       expect(
-        (deps.directiveQueue as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
+        (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
       ).toHaveBeenCalledWith('subagent_stop', 'wf-from-resolver');
     });
   });

@@ -20,6 +20,9 @@ const logger = createLogger('checkpoint-manager');
 /** How often to write a state checkpoint in milliseconds. */
 const CHECKPOINT_INTERVAL_MS = 30_000;
 
+/** Minimum acceptable checkpoint interval in milliseconds (floor guard). */
+const MIN_CHECKPOINT_INTERVAL_MS = 1_000;
+
 /**
  * Dependencies required by CheckpointManager.
  * All fields are optional to support partial startup states.
@@ -55,7 +58,7 @@ export class CheckpointManager {
   start(): void {
     const interval = Math.max(
       this.deps.config.persistence.checkpoint_interval_ms ?? CHECKPOINT_INTERVAL_MS,
-      1000,
+      MIN_CHECKPOINT_INTERVAL_MS,
     );
     this.checkpointTimer = new Timer({
       callback: () => {

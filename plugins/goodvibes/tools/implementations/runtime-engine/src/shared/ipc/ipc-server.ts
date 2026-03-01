@@ -22,9 +22,8 @@ import { dirname, join } from 'node:path';
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { validateIPCMessage } from './protocol.js';
 import { createLogger } from '../logger.js';
-import { toErrorMessage } from '../utils.js';
-import type { IPCRouter } from './ipc-router.js';
-import type { RuntimeConfig } from '../config.js';
+import { toErrorMessage, safeJsonParse } from '../utils.js';
+import { IPCError } from '../errors.js';
 
 const logger = createLogger('ipc-server');
 
@@ -166,7 +165,7 @@ export class IPCServer {
     return new Promise<void>((resolve, reject) => {
       const srv = this.server;
       if (!srv) {
-        reject(new Error('IPC server was not created'));
+        reject(new IPCError('IPC server was not created'));
         return;
       }
       srv.once('error', reject);
@@ -327,7 +326,7 @@ export class IPCServer {
   private processMessage(socket: net.Socket, line: string): void {
     let message: IPCMessage;
     try {
-      const parsed: unknown = JSON.parse(line);
+      const parsed: unknown = safeJsonParse<unknown>(line, null);
       if (!validateIPCMessage(parsed)) {
         logger.warn('IPC message failed schema validation — dropping', {
           type: typeof parsed === 'object' && parsed !== null
@@ -346,16 +345,8 @@ export class IPCServer {
         return;
       }
       message = parsed;
-    } catch (err) {
-      logger.warn('Failed to parse IPC message', {
-        err: toErrorMessage(err),
-      });
-      const errorResponse: IPCResponse = {
-        id: 'unknown',
-        status: 'error',
-        error: 'Invalid JSON',
-      };
-      this.writeResponse(socket, errorResponse);
+    } catch {
+      // safeJsonParse does not throw; this catch is a safety net only.
       return;
     }
 
@@ -442,56 +433,5 @@ export class IPCServer {
         err: toErrorMessage(err),
       });
     }
-  }
-}
-
-// ─── IPC lifecycle utilities ──────────────────────────────────────────────────
-
-/** Bundle of IPC components (server + router + socket path). */
-export interface IPCSubsystem {
-  ipcServer: IPCServer;
-  ipcRouter: IPCRouter;
-  socketPath: string;
-}
-
-/**
- * Remove the socket pointer file written during IPC setup.
- */
-export function removeSocketPointerFile(projectRoot: string, config: RuntimeConfig): void {
-  const pointerFile = join(
-    projectRoot,
-    config.persistence.state_dir,
-    `runtime-${process.pid}.socket`,
-  );
-  try {
-    unlinkSync(pointerFile);
-    logger.debug('Socket pointer file removed', { path: pointerFile });
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      logger.warn('Could not remove socket pointer file', {
-        path: pointerFile,
-        err: toErrorMessage(err),
-      });
-    }
-  }
-}
-
-/**
- * Gracefully close the IPC server and clean up.
- */
-export async function teardownIPC(
-  subsystem: IPCSubsystem,
-  projectRoot: string,
-  config: RuntimeConfig,
-): Promise<void> {
-  try {
-    await subsystem.ipcServer.close();
-    removeSocketPointerFile(projectRoot, config);
-    subsystem.ipcRouter.removeSessionPointers();
-    logger.debug('IPC teardown complete');
-  } catch (err) {
-    logger.warn('IPC teardown failed', {
-      err: toErrorMessage(err),
-    });
   }
 }

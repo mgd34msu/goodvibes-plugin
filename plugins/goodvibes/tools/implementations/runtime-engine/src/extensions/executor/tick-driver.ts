@@ -18,7 +18,7 @@
 import { execFileSync, execFile } from 'node:child_process';
 import { Timer } from '../../core/observability/timer.js';
 import { ExecutorModeManager } from '../../core/processing/executor-mode.js';
-import { TimePlugin } from '../../plugins/time/index.js';
+import type { TimePlugin } from '../../plugins/time/index.js';
 import type { ExecutorConfig } from '../../shared/config.js';
 import type { ExternalPlugin } from '../../plugins/external/index.js';
 import type { EventProcessor } from '../../core/processing/event-processor.js';

@@ -21,7 +21,7 @@ function makeEventQueue() {
   return {
     enqueue: vi.fn((event: CoreRuntimeEvent) => enqueued.push(event)),
     drain: vi.fn(() => []),
-    peek: vi.fn(() => []),
+    peek: vi.fn().mockReturnValue(null),
     depth: vi.fn(() => 0),
     deduplicate: vi.fn(),
     cancel: vi.fn(),

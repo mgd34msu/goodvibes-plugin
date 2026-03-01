@@ -10,8 +10,9 @@ import { join } from 'node:path';
 
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
-import { IPCServer, type IPCSubsystem } from '../../shared/ipc/ipc-server.js';
-import { IPCRouter } from '../../shared/ipc/ipc-router.js';
+import { IPCServer } from '../../shared/ipc/ipc-server.js';
+import { IPCRouter } from './ipc-router.js';
+import type { IPCSubsystem } from './teardown.js';
 import { ensureDirSync } from '../../core/utils/fs-utils.js';
 
 import type { RuntimeConfig } from '../../shared/config.js';
@@ -22,7 +23,10 @@ import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
-import type { HookProcessor } from '../../plugins/hooks/hook-processor.js';
+/** Minimal interface for the hook processor — decouples setup.ts from the L3 plugin layer. */
+export interface IHookProcessor {
+  process(hookName: string, hookInput: Record<string, unknown>): Promise<unknown>;
+}
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';
@@ -39,7 +43,7 @@ export interface CreateIPCOptions {
   directiveQueue: DirectiveQueue | null;
   wrfcConfigStore: WRFCConfigStore | null;
   agentWorkflowMap: AgentWorkflowMap | null;
-  hookProcessor: HookProcessor | null;
+  hookProcessor: IHookProcessor | null;
   executorMode: ExecutorModeManager | null;
   executorBudget: ExecutorBudgetManager | null;
   daemonTickHandler: DaemonTickHandler | null;

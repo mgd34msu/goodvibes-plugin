@@ -47,6 +47,12 @@ const SYNTHETIC_PASS_SCORE = 10;
 /** Synthetic score assigned when tests fail (used in review_score context field). Binary outcome — NOT a review quality threshold. */
 const SYNTHETIC_FAIL_SCORE = 0;
 
+/** Maximum characters to retain as the test output in the workflow context. */
+const MAX_CONTEXT_OUTPUT_CHARS = 2_000;
+
+/** Maximum characters to retain as the failure preview in the workflow context. */
+const MAX_FAILURE_PREVIEW_CHARS = 500;
+
 /**
  * Parses test pass/fail status from agent output text.
  * Tries `<gv>` tag parsing first — uses `score >= SYNTHETIC_PASS_SCORE (10)` to determine pass/fail.
@@ -151,7 +157,7 @@ export function registerTestFixHandlers(
         : 'test suite';
 
     // Store test output in context
-    workflow.context['test_output'] = agentOutput.slice(0, 2000);
+    workflow.context['test_output'] = agentOutput.slice(0, MAX_CONTEXT_OUTPUT_CHARS);
 
     if (!hasFailures) {
       // Tests passed
@@ -212,7 +218,7 @@ export function registerTestFixHandlers(
       // Set synthetic review_score so downstream escalation messages have a score to reference
       workflow.context['review_score'] = SYNTHETIC_FAIL_SCORE;
       // Store failure info in context
-      workflow.context['test_failures'] = [{ test: testCommand, error: agentOutput.slice(0, 500) }];
+      workflow.context['test_failures'] = [{ test: testCommand, error: agentOutput.slice(0, MAX_FAILURE_PREVIEW_CHARS) }];
 
       try {
         workflowEngine.sendEvent(workflow.id, {
@@ -327,7 +333,7 @@ export function registerTestFixHandlers(
       `Fix failing tests for workflow ${workflow.id}. ` +
       `Test command: ${testCommand}. ` +
       `Fix attempt ${nextFixAttempts} of ${maxFixAttempts}. ` +
-      (testOutput ? `Failure output: ${testOutput.slice(0, 500)}` : 'Review test output for failures.');
+      (testOutput ? `Failure output: ${testOutput.slice(0, MAX_FAILURE_PREVIEW_CHARS)}` : 'Review test output for failures.');
 
     const fixMessage = buildSpawnDirectiveMessage('engineer', fixTask, DEFAULT_BUDGET, {
       fix_attempts: nextFixAttempts,

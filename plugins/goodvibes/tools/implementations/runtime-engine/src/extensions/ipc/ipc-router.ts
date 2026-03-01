@@ -6,24 +6,27 @@
  * in the IPC protocol: hook_event, query, state_update, heartbeat.
  */
 
-import type { ResponseEnvelope } from './ipc-server.js';
-import { HOLD_TTL_MS } from '../../extensions/directives/directive-queue.js';
-import type { EventBus } from '../../extensions/events/event-bus.js';
-import type { EventType, EventSource, EventPayload, RuntimeEvent } from '../../extensions/events/types.js';
-import type { TriggerRegistry } from '../../extensions/triggers/trigger-registry.js';
-import type { WorkflowEngine } from '../../extensions/workflow/workflow-engine.js';
-import type { AgentCoordinator } from '../../extensions/agents/agent-coordinator.js';
-import type { DirectiveQueue } from '../../extensions/directives/directive-queue.js';
-import type { WRFCConfigStore } from '../../extensions/directives/wrfc-config-store.js';
-import { validateWRFCConfig } from '../../extensions/directives/wrfc-config-store.js';
-import type { AgentWorkflowMap } from '../../extensions/directives/agent-workflow-map.js';
-import type { IPCMessage, IPCResponse, Directive, HookEventMessage, QueryMessage, StateUpdateMessage, HeartbeatMessage } from './protocol.js';
-import type { HookProcessor } from '../../plugins/hooks/hook-processor.js';
+import type { ResponseEnvelope } from '../../shared/ipc/ipc-server.js';
+import { HOLD_TTL_MS } from '../directives/directive-queue.js';
+import type { EventBus } from '../events/event-bus.js';
+import type { EventType, EventSource, EventPayload, RuntimeEvent } from '../events/types.js';
+import type { TriggerRegistry } from '../triggers/trigger-registry.js';
+import type { WorkflowEngine } from '../workflow/workflow-engine.js';
+import type { AgentCoordinator } from '../agents/agent-coordinator.js';
+import type { DirectiveQueue } from '../directives/directive-queue.js';
+import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
+import { validateWRFCConfig } from '../directives/wrfc-config-store.js';
+import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
+import type { IPCMessage, IPCResponse, Directive, HookEventMessage, QueryMessage, StateUpdateMessage, HeartbeatMessage } from '../../shared/ipc/protocol.js';
+/** Minimal interface for HookProcessor — decouples IPC router from the L3 plugin layer. */
+export interface IHookProcessorInterface {
+  process(hookName: string, hookInput: Record<string, unknown>): Promise<unknown>;
+}
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
-import type { ExecutorBudgetManager } from '../../extensions/executor/executor-budget.js';
-import type { DaemonTickHandler } from '../../extensions/executor/daemon-tick-handler.js';
-import { createLogger } from '../logger.js';
-import { toErrorMessage } from '../utils.js';
+import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
+import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';
+import { createLogger } from '../../shared/logger.js';
+import { toErrorMessage } from '../../shared/utils.js';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -72,7 +75,7 @@ export interface IPCRouterDeps {
    * routed through it, bridging hook events to the plugin layer.
    * Falls back to EventBus-only handling when null.
    */
-  hookProcessor?: HookProcessor | null;
+  hookProcessor?: IHookProcessorInterface | null;
   /** Executor mode manager for get_executor_mode queries. */
   executorMode?: ExecutorModeManager | null;
   /** Executor budget manager for get_executor_budget queries. */
@@ -83,20 +86,6 @@ export interface IPCRouterDeps {
 
 /** Return type for {@link IPCRouter.drainDirectiveMessages}. */
 type DrainResult = { message: string; directives: Directive[]; holdId: string };
-
-/**
- * Extracts a non-empty string field from an object by key.
- * Truncates values exceeding maxLength to prevent oversized inputs.
- * Returns an empty string if the field is absent, not a string, or empty.
- * @returns The string value (possibly truncated), or `''` (falsy sentinel) when absent or invalid.
- */
-function getStringField(obj: Record<string, unknown>, key: string, maxLength = 256): string {
-  const value = obj[key];
-  if (typeof value === 'string') {
-    return value.length <= maxLength ? value : value.slice(0, maxLength);
-  }
-  return '';
-}
 
 /**
  * Routes IPC messages from hook scripts to the appropriate runtime engine
@@ -115,7 +104,7 @@ export class IPCRouter {
   private readonly stateDir: string | null;
   private readonly agentWorkflowMap: AgentWorkflowMap | null;
   /** Optional HookProcessor for bridging hook events to the plugin layer. */
-  private readonly hookProcessor: HookProcessor | null;
+  private readonly hookProcessor: IHookProcessorInterface | null;
   /** Optional ExecutorModeManager for get_executor_mode queries. */
   private readonly executorMode: ExecutorModeManager | null;
   /** Optional ExecutorBudgetManager for get_executor_budget queries. */
@@ -347,7 +336,7 @@ export class IPCRouter {
       };
     }
     if (q.kind === 'get_agent_status') {
-      const agentId = getStringField(q as unknown as Record<string, unknown>, 'agent_id');
+      const agentId = q.agent_id;
       const agent = agentId ? (this.agentCoordinator?.getAgent(agentId) ?? null) : null;
       return {
         id: msg.id,
@@ -371,7 +360,7 @@ export class IPCRouter {
       };
     }
     if (q.kind === 'resolve_pending_bind') {
-      const agentType = getStringField(q as unknown as Record<string, unknown>, 'agent_type');
+      const agentType = q.agent_type;
       if (!agentType) {
         return { id: msg.id, status: 'ok', data: { kind: 'pending_bind', workflow_id: null } };
       }
@@ -380,7 +369,7 @@ export class IPCRouter {
         data: { kind: 'pending_bind', workflow_id: workflowId } };
     }
     if (q.kind === 'consume_pending_bind') {
-      const workflowId = getStringField(q as unknown as Record<string, unknown>, 'workflow_id');
+      const workflowId = q.workflow_id;
       if (!workflowId) {
         return { id: msg.id, status: 'ok', data: { kind: 'pending_bind_consumed', removed: 0 } };
       }
@@ -410,7 +399,7 @@ export class IPCRouter {
       };
     }
     // Default: log and ack unknown queries
-    logger.warn('Unhandled query kind', { kind: q.kind });
+    logger.warn('Unhandled query kind', { kind: (q as { kind: string }).kind });
     return { id: msg.id, status: 'ok', data: { kind: 'ack' } };
   }
 

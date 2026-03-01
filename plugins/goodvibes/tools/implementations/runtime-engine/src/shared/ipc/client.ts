@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import type { IPCMessage, IPCResponse, IPCQuery, IPCResponseData } from './protocol.js';
-import { generateId, timestamp, toErrorMessage } from '../utils.js';
+import { generateId, timestamp, toErrorMessage, safeJsonParse } from '../utils.js';
 import { createLogger } from '../logger.js';
 
 const logger = createLogger('ipc-client');
@@ -261,16 +261,10 @@ export class RuntimeClient {
         const line = rawData.slice(0, newlineIdx);
         socket.destroy();
 
-        try {
-          const response = JSON.parse(line) as IPCResponse;
-          done(response);
-        } catch (err) {
-          logger.warn('Failed to parse IPC response', {
-            id: message.id,
-            err: toErrorMessage(err),
-          });
-          done(null);
-        }
+        const response = safeJsonParse<IPCResponse | null>(line, null, (msg) =>
+          logger.warn('Failed to parse IPC response', { id: message.id, err: msg }),
+        );
+        done(response);
       });
 
       socket.once('close', () => {

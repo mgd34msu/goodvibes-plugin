@@ -13,6 +13,7 @@
 
 import type { RuntimeEvent } from './types.js';
 import { generateId, timestamp, toErrorMessage } from '../../shared/utils.js';
+import { QueueError } from '../../shared/errors.js';
 import { createLogger } from '../../shared/logger.js';
 
 const logger = createLogger('event-queue');
@@ -148,7 +149,7 @@ export class EventQueue {
 
   constructor(config: EventQueueConfig) {
     if (config.max_size < 1) {
-      throw new Error(
+      throw new QueueError(
         `EventQueue: max_size must be at least 1, got ${config.max_size}. ` +
           'A queue with max_size=0 rejects every enqueue call immediately.',
       );
@@ -188,7 +189,7 @@ export class EventQueue {
     entry: Omit<QueueEntry, 'id' | 'enqueued_at' | 'attempts' | 'backoff_ms'> & { id?: string },
   ): string {
     if (this.totalPending() >= this.maxSize) {
-      throw new Error(
+      throw new QueueError(
         `EventQueue is full (max_size=${this.maxSize}). Entry rejected for handler "${entry.handler}".`,
       );
     }

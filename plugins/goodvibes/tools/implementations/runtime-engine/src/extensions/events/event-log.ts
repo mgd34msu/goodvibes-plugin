@@ -24,7 +24,7 @@ import { join, dirname } from 'node:path';
 import type { WriteStream } from 'node:fs';
 import type { RuntimeEvent, EventFilter } from './types.js';
 import { createLogger } from '../../shared/logger.js';
-import { toErrorMessage } from '../../shared/utils.js';
+import { toErrorMessage, safeJsonParse } from '../../shared/utils.js';
 import { ensureDirSync } from '../../core/utils/fs-utils.js';
 import { writeAtomicSync } from '../../core/state/file-io.js';
 
@@ -134,7 +134,8 @@ export class EventLog {
       let skippedLines = 0;
       await this.streamLines(this.logPath, (line) => {
         try {
-          const event = JSON.parse(line) as RuntimeEvent;
+          const event = safeJsonParse<RuntimeEvent | null>(line, null);
+          if (event === null) { skippedLines++; return; }
           if (typeof event.metadata?.sequence === 'number' && event.metadata.sequence > this.latestSeq) {
             this.latestSeq = event.metadata.sequence;
           }
@@ -295,7 +296,8 @@ export class EventLog {
           return false; // signal early termination
         }
         try {
-          const event = JSON.parse(line) as RuntimeEvent;
+          const event = safeJsonParse<RuntimeEvent | null>(line, null);
+          if (event === null) { skippedLines++; return true; }
           if (this.matchesFilter(event, filter)) {
             results.push(event);
           }
@@ -373,7 +375,13 @@ export class EventLog {
     try {
       await this.streamLines(this.logPath, (line) => {
         try {
-          const event = JSON.parse(line) as RuntimeEvent;
+          const event = safeJsonParse<RuntimeEvent | null>(line, null);
+          if (event === null) {
+            // Keep malformed lines in the main log (don't lose data)
+            toKeep.push(line);
+            skippedLines++;
+            return true;
+          }
           // Timestamps are compared as ISO 8601 strings (UTC); lexicographic order
           // matches chronological order only when all values share the same UTC offset.
           const ts = event.timestamp ?? '';
@@ -714,7 +722,8 @@ export class EventLog {
     let skippedLines = 0;
     for (const line of lines) {
       try {
-        const event = JSON.parse(line) as RuntimeEvent;
+        const event = safeJsonParse<RuntimeEvent | null>(line, null);
+        if (event === null) { skippedLines++; continue; }
         if (event.type) {
           typeCount[event.type] = (typeCount[event.type] ?? 0) + 1;
         }

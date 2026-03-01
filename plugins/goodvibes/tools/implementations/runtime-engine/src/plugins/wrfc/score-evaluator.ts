@@ -7,6 +7,7 @@
  */
 
 import { parseGvTag } from '../../extensions/directives/gv-tag-parser.js';
+import { safeJsonParse } from '../../shared/utils.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,8 +64,8 @@ export function extractScore(text: string | undefined | null): number | null {
  * @returns ScoreResult, or null if parsing fails.
  */
 export function parseScoreFromGvTag(gvContent: string, threshold: number): ScoreResult | null {
+  const data = safeJsonParse<Record<string, unknown>>(gvContent, {});
   try {
-    const data = JSON.parse(gvContent) as Record<string, unknown>;
     if (typeof data.score !== 'number') return null;
 
     const score = Math.max(0, Math.min(10, data.score));

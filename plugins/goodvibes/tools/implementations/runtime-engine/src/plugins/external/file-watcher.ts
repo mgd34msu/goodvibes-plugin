@@ -15,6 +15,7 @@ import * as path from 'node:path';
 import { EventQueueInterface } from '../../core/types.js';
 import { NormalizerRegistry } from './normalizers/index.js';
 import { createLogger } from '../../shared/logger.js';
+import { safeJsonParse } from '../../shared/utils.js';
 
 const logger = createLogger('file-watcher');
 
@@ -129,7 +130,7 @@ export class FileWatcher {
         const raw = await fs.readFile(filepath, 'utf-8');
 
         // 2. Parse JSON
-        const parsed: unknown = JSON.parse(raw);
+        const parsed: unknown = safeJsonParse<unknown>(raw, null);
 
         // 3. Validate structure
         if (!isDropFilePayload(parsed)) {

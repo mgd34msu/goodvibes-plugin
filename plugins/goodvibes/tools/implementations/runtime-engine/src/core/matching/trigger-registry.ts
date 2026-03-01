@@ -15,6 +15,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { ProcessingError } from '../../shared/errors.js';
 import { assertNever } from '../../shared/utils.js';
 import type { RuntimeEvent, Trigger, Condition, ConditionOp, StateStoreInterface, TriggerRegistryInterface } from '../types.js';
 
@@ -184,7 +185,7 @@ export class TriggerRegistry implements TriggerRegistryInterface {
    */
   register(trigger: Trigger): void {
     if (this.triggers.has(trigger.id)) {
-      throw new Error(`Trigger '${trigger.id}' is already registered`);
+      throw new ProcessingError(`Trigger '${trigger.id}' is already registered`);
     }
     this.triggers.set(trigger.id, trigger);
     this.states.set(trigger.id, { fire_count: 0, last_fired_at: 0 });
@@ -209,7 +210,7 @@ export class TriggerRegistry implements TriggerRegistryInterface {
    */
   enable(id: string): void {
     const trigger = this.triggers.get(id);
-    if (!trigger) throw new Error(`Trigger '${id}' not found`);
+    if (!trigger) throw new ProcessingError(`Trigger '${id}' not found`);
     this.triggers.set(id, { ...trigger, enabled: true });
   }
 
@@ -218,7 +219,7 @@ export class TriggerRegistry implements TriggerRegistryInterface {
    */
   disable(id: string): void {
     const trigger = this.triggers.get(id);
-    if (!trigger) throw new Error(`Trigger '${id}' not found`);
+    if (!trigger) throw new ProcessingError(`Trigger '${id}' not found`);
     this.triggers.set(id, { ...trigger, enabled: false });
   }
 

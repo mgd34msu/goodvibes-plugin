@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { writeJsonSync } from '../state/file-io.js';
 import { createLogger } from '../../shared/logger.js';
-import { toErrorMessage } from '../../shared/utils.js';
+import { toErrorMessage, safeJsonParse } from '../../shared/utils.js';
 import type { RuntimeEvent, DeadLetterQueueInterface, DeadLetterEntry } from '../types.js';
 
 const logger = createLogger('core:dead-letter');
@@ -182,7 +182,7 @@ export class DeadLetterQueue implements DeadLetterQueueInterface {
   private load(): void {
     try {
       const content = readFileSync(this.filePath, 'utf-8');
-      const parsed = JSON.parse(content) as unknown;
+      const parsed = safeJsonParse<unknown>(content, null);
       if (Array.isArray(parsed)) {
         // Validate each entry has required fields before accepting
         const valid = (parsed as unknown[]).filter((item): item is DeadLetterEntry => {

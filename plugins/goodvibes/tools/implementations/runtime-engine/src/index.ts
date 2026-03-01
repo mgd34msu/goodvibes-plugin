@@ -159,8 +159,8 @@ export { IPCServer } from './shared/ipc/ipc-server.js';
 export type { MessageHandler } from './shared/ipc/ipc-server.js';
 export { RuntimeClient } from './shared/ipc/client.js';
 export { FileFallback } from './core/state/file-fallback.js';
-export { IPCRouter } from './shared/ipc/ipc-router.js';
-export type { IPCRouterDeps } from './shared/ipc/ipc-router.js';
+export { IPCRouter } from './extensions/ipc/ipc-router.js';
+export type { IPCRouterDeps } from './extensions/ipc/ipc-router.js';
 export { AgentCoordinator } from './extensions/agents/agent-coordinator.js';
 export { BudgetTracker } from './extensions/agents/budget-tracker.js';
 export type {

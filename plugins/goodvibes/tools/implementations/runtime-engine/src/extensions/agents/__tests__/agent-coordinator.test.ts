@@ -379,7 +379,7 @@ describe('AgentCoordinator', () => {
       coordinator.updateStatus(id1, 'completed');
       // Should emit agent:dependency_resolved for id2
       const emittedTypes = (eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.map(
-        (call: [{ type: string }]) => call[0].type
+        (call: any[]) => (call[0] as { type: string }).type
       );
       expect(emittedTypes).toContain('agent:dependency_resolved');
     });
@@ -391,7 +391,7 @@ describe('AgentCoordinator', () => {
       coordinator.updateStatus(id1, 'running');
       coordinator.updateStatus(id1, 'failed');
       const emittedTypes = (eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.map(
-        (call: [{ type: string }]) => call[0].type
+        (call: any[]) => (call[0] as { type: string }).type
       );
       // id1 failed, so id2 dependencies are NOT resolved
       expect(emittedTypes).not.toContain('agent:dependency_resolved');

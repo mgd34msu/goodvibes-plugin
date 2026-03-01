@@ -19,6 +19,7 @@ import { loadConfig } from './shared/config.js';
 import { ENGINE_VERSION } from './shared/constants.js';
 import { createLogger } from './shared/logger.js';
 import { generateEventId, timestamp, toErrorMessage } from './shared/utils.js';
+import { ProcessingError } from './shared/errors.js';
 
 import { ensureDirSync } from './core/utils/fs-utils.js';
 import { writePidFile, removePidFile, checkCrashRecovery } from './core/utils/pid-file.js';
@@ -68,8 +69,8 @@ import { createExecutorSubsystem, type ExecutorSubsystem } from './extensions/ex
 import { ActionExecutor } from './extensions/executor/action-executor.js';
 import { TickDriver } from './extensions/executor/tick-driver.js';
 import { EventBridge } from './extensions/events/event-bridge.js';
-import { createIPCSubsystem } from './extensions/ipc/index.js';
-import { teardownIPC, type IPCSubsystem } from './shared/ipc/ipc-server.js';
+import { createIPCSubsystem, teardownIPC } from './extensions/ipc/index.js';
+import type { IPCSubsystem } from './extensions/ipc/index.js';
 
 const logger = createLogger('bootstrap');
 
@@ -666,7 +667,7 @@ export class RuntimeEngine {
    */
   getStateStore(): JsonStateStore {
     if (!this.stateStore) {
-      throw new Error('RuntimeEngine.getStateStore() called before startup()');
+      throw new ProcessingError('RuntimeEngine.getStateStore() called before startup()');
     }
     return this.stateStore;
   }
@@ -717,7 +718,7 @@ export class RuntimeEngine {
    */
   getEventBus(): EventBus {
     if (!this.eventBus) {
-      throw new Error('RuntimeEngine.getEventBus() called before startup()');
+      throw new ProcessingError('RuntimeEngine.getEventBus() called before startup()');
     }
     return this.eventBus;
   }
@@ -729,7 +730,7 @@ export class RuntimeEngine {
    */
   getEventLog(): EventLog {
     if (!this.eventLog) {
-      throw new Error('RuntimeEngine.getEventLog() called before startup()');
+      throw new ProcessingError('RuntimeEngine.getEventLog() called before startup()');
     }
     return this.eventLog;
   }
@@ -741,7 +742,7 @@ export class RuntimeEngine {
    */
   getEventQueue(): EventQueue {
     if (!this.eventQueue) {
-      throw new Error('RuntimeEngine.getEventQueue() called before startup()');
+      throw new ProcessingError('RuntimeEngine.getEventQueue() called before startup()');
     }
     return this.eventQueue;
   }

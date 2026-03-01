@@ -22,6 +22,7 @@ import type { EventBus } from '../events/event-bus.js';
 import type { AgentsConfig } from '../../shared/config.js';
 import { createLogger } from '../../shared/logger.js';
 import { generateEventId, generateId, timestamp, toErrorMessage } from '../../shared/utils.js';
+import { ProcessingError } from '../../shared/errors.js';
 import type { EventType } from '../events/types.js';
 import { BudgetTracker } from './budget-tracker.js';
 import type {
@@ -96,7 +97,7 @@ export class AgentCoordinator {
     // Budget check
     const budgetNeeded = options.budget ?? this.config.default_budget;
     if (!this.budgetTracker.hasBudget(budgetNeeded)) {
-      throw new Error(
+      throw new ProcessingError(
         `Session budget exhausted — cannot spawn agent (type=${options.type}, needed=${budgetNeeded})`
       );
     }
@@ -104,7 +105,7 @@ export class AgentCoordinator {
     // Concurrency check
     const activeCount = this.listActive().length;
     if (activeCount >= this.config.max_concurrent) {
-      throw new Error(
+      throw new ProcessingError(
         `Concurrency limit reached (max=${this.config.max_concurrent}, active=${activeCount})`
       );
     }

@@ -8,7 +8,7 @@
 
 import { readFileSync } from 'node:fs';
 import { writeJsonSync } from './file-io.js';
-import { toErrorMessage } from './utils.js';
+import { toErrorMessage, safeJsonParse } from './utils.js';
 import { join } from 'node:path';
 import { userInfo, tmpdir } from 'node:os';
 
@@ -387,7 +387,7 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
   const configPath = join(root, '.goodvibes', 'state', 'runtime-config.json');
   try {
     const raw = readFileSync(configPath, 'utf-8');
-    const parsed: unknown = JSON.parse(raw);
+    const parsed: unknown = safeJsonParse<unknown>(raw, null);
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       process.stderr.write(
         `[runtime-engine] Warning: config at "${configPath}" is not an object — using defaults\n`,

@@ -16,10 +16,12 @@ import {
   readdirSync,
 } from 'node:fs';
 import { join, isAbsolute, basename } from 'node:path';
+import { safeJsonParse } from '../../shared/utils.js';
 import type { RuntimeConfig } from '../../shared/config.js';
 import type { StateStore } from './types.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
+import { StateError } from '../../shared/errors.js';
 import { ensureDirSync } from '../../core/utils/fs-utils.js';
 import { writeJsonSync } from '../../core/state/file-io.js';
 
@@ -138,7 +140,7 @@ export class JsonStateStore implements StateStore {
         }
       }
     }
-    throw new Error(
+    throw new StateError(
       `StateStore: could not acquire lock at "${lockFilePath}" after ${maxAttempts} attempts`,
     );
   }
@@ -175,7 +177,7 @@ export class JsonStateStore implements StateStore {
     } catch (err) {
       const message = toErrorMessage(err);
       logger.error('Failed to save state', { key, error: message });
-      throw new Error(`StateStore.set failed for key "${key}": ${message}`);
+      throw new StateError(`StateStore.set failed for key "${key}": ${message}`);
     }
   }
 
@@ -191,7 +193,9 @@ export class JsonStateStore implements StateStore {
     const path = this.keyPath(key);
     try {
       const content = readFileSync(path, 'utf-8');
-      return JSON.parse(content) as T;
+      const result = safeJsonParse<T | null>(content, null);
+      if (result === null) throw new SyntaxError('Failed to parse JSON');
+      return result;
     } catch (err) {
       if (
         err instanceof Error &&
@@ -202,7 +206,7 @@ export class JsonStateStore implements StateStore {
       }
       const message = toErrorMessage(err);
       logger.error('Failed to load state', { key, error: message });
-      throw new Error(`StateStore.get failed for key "${key}": ${message}`);
+      throw new StateError(`StateStore.get failed for key "${key}": ${message}`);
     }
   }
 
@@ -228,7 +232,7 @@ export class JsonStateStore implements StateStore {
       }
       const message = toErrorMessage(err);
       logger.error('Failed to delete state', { key, error: message });
-      throw new Error(`StateStore.delete failed for key "${key}": ${message}`);
+      throw new StateError(`StateStore.delete failed for key "${key}": ${message}`);
     }
   }
 
@@ -250,7 +254,7 @@ export class JsonStateStore implements StateStore {
     } catch (err) {
       const message = toErrorMessage(err);
       logger.error('Failed to list state keys', { error: message });
-      throw new Error(`StateStore.keys failed: ${message}`);
+      throw new StateError(`StateStore.keys failed: ${message}`);
     }
   }
 

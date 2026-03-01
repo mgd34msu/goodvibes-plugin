@@ -6,6 +6,8 @@
  * instead of regex-based parsing.
  */
 
+import { safeJsonParse } from '../../shared/utils.js';
+
 /** Parsed fields from a <gv> tag. All optional — agents emit only what applies. */
 export interface GvTagData {
   /** Review score (0-10), emitted by reviewer agents */
@@ -48,8 +50,8 @@ const KNOWN_FIELDS = new Set(['score', 'files', 'count']);
  * Shared by parseGvTag and parseAllGvTags.
  */
 function parseRawJson(raw: string): GvParseResult {
+  const parsed = safeJsonParse<Record<string, unknown> | null>(raw, null);
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return { found: true, data: null, raw };
     }
@@ -70,6 +72,7 @@ function parseRawJson(raw: string): GvParseResult {
   } catch {
     return { found: true, data: null, raw };
   }
+
 }
 
 /**

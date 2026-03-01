@@ -18,6 +18,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { ProcessingError } from '../../shared/errors.js';
 import type { LoopLifecycle, LoopStatus } from '../types.js';
 
 const logger = createLogger('core:lifecycle');
@@ -98,7 +99,7 @@ export class LoopLifecycleManager implements LoopLifecycle {
    */
   resume(): void {
     if (this._status !== 'paused') {
-      throw new Error(`Cannot resume from status '${this._status}': must be 'paused'`);
+      throw new ProcessingError(`Cannot resume from status '${this._status}': must be 'paused'`);
     }
     this.transition('running');
   }
@@ -168,7 +169,7 @@ export class LoopLifecycleManager implements LoopLifecycle {
     const from = this._status;
     const allowed = VALID_TRANSITIONS[from];
     if (!allowed.includes(to)) {
-      throw new Error(
+      throw new ProcessingError(
         `Invalid lifecycle transition: '${from}' → '${to}'. ` +
         `Allowed from '${from}': [${allowed.join(', ')}]`,
       );

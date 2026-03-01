@@ -24,6 +24,12 @@ import { extractReviewScore } from './gv-tag-parser.js';
 
 const log = createLogger('review-only-handlers');
 
+/** Maximum characters to retain as the review output preview in the workflow context. */
+const MAX_OUTPUT_PREVIEW_CHARS = 200;
+
+/** Maximum characters to retain as the full review output in the workflow context. */
+const MAX_REVIEW_OUTPUT_CHARS = 2_000;
+
 /** Workflow definition ID for the review-only chain. */
 const REVIEW_ONLY_DEFINITION_ID = 'review_only';
 
@@ -107,13 +113,13 @@ export function registerReviewOnlyHandlers(
     } else {
       log.warn('review_only_agent_completed: could not parse review score from output', {
         workflow_id: workflow.id,
-        output_preview: agentOutput?.slice(0, 200),
+        output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_CHARS),
       });
     }
 
     // Store the reviewer output in context
     if (agentOutput) {
-      workflow.context['review_output'] = agentOutput.slice(0, 2000);
+      workflow.context['review_output'] = agentOutput.slice(0, MAX_REVIEW_OUTPUT_CHARS);
     }
 
     // Emit review_only:review_completed to advance the state machine

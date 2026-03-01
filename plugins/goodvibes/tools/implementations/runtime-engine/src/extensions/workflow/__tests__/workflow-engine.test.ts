@@ -37,6 +37,8 @@ vi.mock('../../../shared/utils.js', () => ({
 const DEFAULT_CONFIG = {
   max_active: 10,
   max_transitions_per_workflow: 100,
+  wrfc_max_fix_iterations: 3,
+  fix_loop_max_attempts: 5,
 };
 
 function makeEngine(config = DEFAULT_CONFIG): WorkflowEngine {

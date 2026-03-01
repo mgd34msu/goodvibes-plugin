@@ -9,6 +9,7 @@
  */
 
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import { ParseError } from './errors.js';
 import { dirname, join } from 'node:path';
 
 /**
@@ -50,7 +51,7 @@ export function readJsonSync<T>(filePath: string): T | null {
     return JSON.parse(raw) as T;
   } catch (err: unknown) {
     if (err instanceof SyntaxError) {
-      throw new Error(`Corrupt JSON in ${filePath}: ${err.message}`);
+      throw new ParseError(`Corrupt JSON in ${filePath}: ${err.message}`, err);
     }
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       return null;

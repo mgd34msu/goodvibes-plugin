@@ -7,6 +7,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { QueueError } from '../../shared/errors.js';
 import type { RuntimeEvent } from '../events/types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { TriggersConfig } from '../../shared/config.js';
@@ -87,7 +88,7 @@ export class TriggerRegistry {
    */
   register(trigger: TriggerDefinition): void {
     if (this.triggers.size >= this.config.max_triggers) {
-      throw new Error(
+      throw new QueueError(
         `TriggerRegistry: max_triggers limit reached (${this.config.max_triggers}). Cannot register '${trigger.id}'.`,
       );
     }

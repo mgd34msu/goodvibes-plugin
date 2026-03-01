@@ -10,6 +10,7 @@ import type { ClaudeHookResponse } from '../hook-processor.js';
 import type { EventBus } from '../../../extensions/events/event-bus.js';
 import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
 import { createLogger } from '../../../shared/logger.js';
+import { safeJsonParse } from '../../../shared/utils.js';
 import { REVIEWER_AGENT_TYPES, DEFAULT_MIN_REVIEW_SCORE } from '../../../shared/wrfc-constants.js';
 
 const logger = createLogger('handler:subagent-stop');
@@ -98,15 +99,11 @@ export function createSubagentStopHandler(
  * Returns null if no score is found.
  */
 function extractReviewScore(output: string): number | null {
-  try {
-    // Look for <gv>{..."score":N...}</gv> pattern
-    const match = output.match(/<gv>([\s\S]*?)<\/gv>/);
-    if (!match || !match[1]) return null;
-    const data = JSON.parse(match[1]) as Record<string, unknown>;
-    const score = data['score'];
-    if (typeof score === 'number') return score;
-    return null;
-  } catch {
-    return null;
-  }
+  // Look for <gv>{..."score":N...}</gv> pattern
+  const match = output.match(/<gv>([\s\S]*?)<\/gv>/);
+  if (!match || !match[1]) return null;
+  const data = safeJsonParse<Record<string, unknown>>(match[1], {});
+  const score = data['score'];
+  if (typeof score === 'number') return score;
+  return null;
 }
