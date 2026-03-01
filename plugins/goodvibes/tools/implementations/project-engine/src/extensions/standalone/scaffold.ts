@@ -9,11 +9,13 @@
 
 import * as node_fs from 'node:fs';
 import * as node_path from 'node:path';
+// js-yaml: YAML parsing for template.yaml config files.
+// Dependency: 'js-yaml' must be listed in project package.json dependencies.
 import * as yaml from 'js-yaml';
 
 import { PLUGIN_ROOT, PROJECT_ROOT } from '../../shared/config.js';
 import { safeExec, detectPackageManager } from '../../shared/utils.js';
-import { ok } from '../../shared/response.js';
+import { ok, fail } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';
 import type { ScaffoldProjectArgs } from '../../core/standalone/types.js';
 
@@ -103,8 +105,7 @@ async function copyFilesRecursive(
  * 6. Return created files, applied variables, and next steps
  *
  * @param args - ScaffoldProjectArgs describing the template and output location
- * @returns McpResponse with JSON-encoded scaffolding result
- * @throws Error if the template or template.yaml is not found
+ * @returns McpResponse with JSON-encoded scaffolding result, or a fail response if template not found
  */
 export async function scaffoldProject(args: ScaffoldProjectArgs): Promise<McpResponse> {
   const templatePath = node_path.join(PLUGIN_ROOT, 'templates');
@@ -122,12 +123,12 @@ export async function scaffoldProject(args: ScaffoldProjectArgs): Promise<McpRes
   }
 
   if (!templateDir) {
-    throw new Error(`Template not found: ${args.template}`);
+    return fail(`Template not found: ${args.template}`);
   }
 
   const templateYamlPath = node_path.join(templateDir, 'template.yaml');
   if (!node_fs.existsSync(templateYamlPath)) {
-    throw new Error(`Template config not found: ${args.template}/template.yaml`);
+    return fail(`Template config not found: ${args.template}/template.yaml`);
   }
 
   const templateConfig = yaml.load(

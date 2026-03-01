@@ -17,8 +17,7 @@
  * - Standalone (2): scaffold, bundle_analyze
  */
 
-export { bootstrap } from './plugins/server.js';
-
 import { bootstrap } from './plugins/server.js';
+export { bootstrap };
 
 bootstrap().catch(console.error);

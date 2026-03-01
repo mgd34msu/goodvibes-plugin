@@ -6,7 +6,6 @@
 
 import * as nodePath from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
 
 import { logger } from './logger.js';
 
@@ -19,7 +18,7 @@ import { logger } from './logger.js';
  * Handles ESM context via import.meta.url.
  */
 const resolveEsmDir = (): string => {
-  return dirname(fileURLToPath(import.meta.url));
+  return nodePath.dirname(fileURLToPath(import.meta.url));
 };
 
 /**
@@ -31,7 +30,12 @@ export function resolveModuleDir(): string {
   if (typeof __dirname !== 'undefined') {
     return __dirname;
   }
-  try { return resolveEsmDir(); } catch { return process.cwd(); }
+  try {
+    return resolveEsmDir();
+  } catch {
+    logger.warn('[config] resolveModuleDir: ESM resolution failed, falling back to process.cwd()');
+    return process.cwd();
+  }
 }
 
 // =============================================================================

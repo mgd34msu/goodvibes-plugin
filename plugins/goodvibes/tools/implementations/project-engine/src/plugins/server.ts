@@ -21,7 +21,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { SERVER_NAME, SERVER_VERSION } from '../shared/constants.js';
 import { logger } from '../shared/logger.js';
 import { TOOL_SCHEMAS } from './schemas.js';
-import { hasDispatcher, getDispatcher, listTools } from './dispatch.js';
+import { getDispatcher, listTools } from './dispatch.js';
 
 // =============================================================================
 // Server Class
@@ -62,16 +62,12 @@ class ProjectEngineServer {
 
       logger.request(name, args);
 
-      if (!hasDispatcher(name)) {
+      const dispatch = getDispatcher(name);
+      if (!dispatch) {
         throw new McpError(
           ErrorCode.MethodNotFound,
           `Unknown tool: ${name}. Available: ${listTools().join(', ')}`
         );
-      }
-
-      const dispatch = getDispatcher(name);
-      if (!dispatch) {
-        throw new McpError(ErrorCode.InternalError, `Dispatcher not found: ${name}`);
       }
 
       try {
@@ -92,14 +88,24 @@ class ProjectEngineServer {
 
     process.on('SIGINT', async () => {
       logger.info('Shutting down (SIGINT)');
-      await this.stop();
-      process.exit(0);
+      try {
+        await this.stop();
+        process.exit(0);
+      } catch (err: unknown) {
+        logger.error('Error during shutdown (SIGINT)', err);
+        process.exit(1);
+      }
     });
 
     process.on('SIGTERM', async () => {
       logger.info('Shutting down (SIGTERM)');
-      await this.stop();
-      process.exit(0);
+      try {
+        await this.stop();
+        process.exit(0);
+      } catch (err: unknown) {
+        logger.error('Error during shutdown (SIGTERM)', err);
+        process.exit(1);
+      }
     });
   }
 

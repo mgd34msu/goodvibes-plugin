@@ -12,7 +12,6 @@ export { TOOL_SCHEMAS } from './schemas.js';
 export {
   DISPATCH_TABLE,
   getDispatcher,
-  hasDispatcher,
   listTools,
 } from './dispatch.js';
 export type { ToolDispatcher } from './dispatch.js';

@@ -282,15 +282,6 @@ export function getDispatcher(name: string): ToolDispatcher | undefined {
   return DISPATCH_TABLE.get(name);
 }
 
-/**
- * Check whether a dispatcher is registered for a tool name.
- *
- * @param name - MCP tool name
- * @returns true if a dispatcher exists
- */
-export function hasDispatcher(name: string): boolean {
-  return DISPATCH_TABLE.has(name);
-}
 
 /**
  * List all registered tool names.
