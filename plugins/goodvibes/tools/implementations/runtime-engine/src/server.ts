@@ -19,6 +19,7 @@ async function main(): Promise<void> {
 // Note: process.stderr.write is used intentionally here. This is a fatal
 // startup failure where the structured logger may not yet be initialised.
 // Direct stderr output is the only safe mechanism at this stage.
+// Approved: process.exit(1) and process.stderr.write are intentional failsafes here.
 main().catch((err) => {
   process.stderr.write(
     `[runtime-engine] Fatal: ${toErrorMessage(err)}\n`

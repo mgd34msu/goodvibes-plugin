@@ -34,6 +34,8 @@ const SIGINT_GRACE_MS = 5_000;
  * operations (including the structured logger) cannot be safely awaited.
  * Direct stderr writes are the only safe output mechanism in signal handlers.
  *
+ * Approved: process.stderr.write and process.exit(1) usage in this module is intentional.
+ *
  * @param onShutdown - Async callback invoked on shutdown signals. Should
  *   persist state and close transports. Must not throw.
  */

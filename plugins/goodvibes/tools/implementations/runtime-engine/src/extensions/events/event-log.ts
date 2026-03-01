@@ -260,8 +260,9 @@ export class EventLog {
 
     // Close the write stream
     if (this.writeStream) {
+      const stream = this.writeStream;
       await new Promise<void>((resolve) => {
-        this.writeStream!.end(() => {
+        stream.end(() => {
           this.writeStream = null;
           resolve();
         });
@@ -567,8 +568,9 @@ export class EventLog {
     let drainError: Error | undefined;
     try {
       if (this.writeStream) {
+        const stream = this.writeStream;
         await new Promise<void>((resolve, reject) => {
-          this.writeStream!.write(data, (err) => {
+          stream.write(data, (err) => {
             if (err) reject(err);
             else resolve();
           });

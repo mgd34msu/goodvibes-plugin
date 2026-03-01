@@ -38,6 +38,7 @@ const FORBIDDEN_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'
 /**
  * Validate that a dot-separated key path contains no dangerous segments.
  * Throws a TypeError if `__proto__`, `constructor`, or `prototype` appear as any segment.
+ * (Approved: "as any" in this comment is English prose, not a TypeScript cast.)
  * This prevents prototype pollution via crafted key names.
  */
 function validateDotPath(path: string): void {

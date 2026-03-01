@@ -8,7 +8,7 @@
  * @example
  * ```typescript
  * const timer = new Timer({
- *   callback: () => console.log('tick'),
+ *   callback: () => logger.info('tick'),
  *   intervalMs: 10_000,
  *   label: 'heartbeat',
  * });

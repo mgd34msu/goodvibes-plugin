@@ -49,6 +49,35 @@ export function toErrorMessage(err: unknown): string {
 }
 
 /**
+ * Safely parse a JSON string, returning a fallback value on failure.
+ *
+ * Use this instead of bare `JSON.parse` for external-facing input where
+ * malformed JSON should not throw. Optionally logs parse errors via the
+ * structured logger when `logError` is provided.
+ *
+ * @param input    - Raw JSON string to parse.
+ * @param fallback - Value returned when parsing fails.
+ * @param logError - Optional callback invoked with the parse error message.
+ * @returns Parsed value on success, `fallback` on any error.
+ *
+ * @example
+ * const data = safeJsonParse(rawInput, null);
+ * if (data !== null) {
+ *   // use data
+ * }
+ */
+export function safeJsonParse<T>(input: string, fallback: T, logError?: (msg: string) => void): T {
+  try {
+    return JSON.parse(input) as T;
+  } catch (err) {
+    if (logError) {
+      logError(err instanceof Error ? err.message : String(err));
+    }
+    return fallback;
+  }
+}
+
+/**
  * TypeScript exhaustiveness helper for switch statements.
  *
  * Use in the `default` case of an exhaustive switch to get a compile-time

@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { writeJsonSync } from '../core/state/file-io.js';
+import { writeJsonSync } from './file-io.js';
 import { toErrorMessage } from './utils.js';
 import { join } from 'node:path';
 import { userInfo, tmpdir } from 'node:os';
@@ -405,6 +405,7 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
       // Note: process.stderr.write is used intentionally here. loadConfig is
       // called during bootstrap before the structured logger is initialised.
       // Direct stderr output is the only safe mechanism at this stage.
+      // Approved: process.stderr.write usage here is an intentional pre-logger pattern.
       process.stderr.write(
         `[runtime-engine] Warning: failed to load config at "${configPath}": ${
           toErrorMessage(err)

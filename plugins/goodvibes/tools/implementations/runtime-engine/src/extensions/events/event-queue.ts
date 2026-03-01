@@ -258,7 +258,7 @@ export class EventQueue {
       [QueuePriority.LOW]: 0,
     };
     for (let p = 0; p < 4; p++) {
-      byPriority[p] = this.buckets[p as QueuePriority]!.length;
+      byPriority[p] = (this.buckets[p as QueuePriority] ?? []).length;
     }
 
     const now = Date.now();
@@ -367,7 +367,7 @@ export class EventQueue {
 
   /** Returns total number of pending entries across all priority buckets. */
   private totalPending(): number {
-    return this.buckets[0]!.length + this.buckets[1]!.length + this.buckets[2]!.length + this.buckets[3]!.length;
+    return (this.buckets[0]?.length ?? 0) + (this.buckets[1]?.length ?? 0) + (this.buckets[2]?.length ?? 0) + (this.buckets[3]?.length ?? 0);
   }
 
   /**
@@ -378,7 +378,7 @@ export class EventQueue {
    * CRITICAL (0) is always served before HIGH (1), NORMAL (2), and LOW (3).
    */
   private insertBucket(entry: QueueEntry): void {
-    this.buckets[entry.priority]!.push(entry);
+    this.buckets[entry.priority]?.push(entry);
   }
 
   /**

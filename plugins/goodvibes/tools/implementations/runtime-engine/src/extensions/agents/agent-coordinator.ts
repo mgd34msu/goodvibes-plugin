@@ -318,7 +318,8 @@ export class AgentCoordinator {
     for (const agent of workflowAgents) {
       const phase = agent.wrfc_phase ?? 'unknown';
       if (!phaseMap.has(phase)) phaseMap.set(phase, []);
-      phaseMap.get(phase)!.push(agent);
+      const phaseList = phaseMap.get(phase);
+      if (phaseList) phaseList.push(agent);
     }
 
     const phases: ExecutionPhaseInfo[] = [];

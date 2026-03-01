@@ -164,7 +164,7 @@ export class EventQueue implements EventQueueInterface {
    */
   peek(): RuntimeEvent | null {
     // Skip lazily-cancelled entries at the top
-    while (this.heap.length > 0 && this.heap[0]!.cancelled) {
+    while (this.heap.length > 0 && this.heap[0]?.cancelled) {
       this.heapPop();
     }
     return this.heap[0]?.event ?? null;

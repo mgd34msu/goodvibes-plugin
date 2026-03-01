@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgentWorkflowMap } from './agent-workflow-map.js';
+import { AgentWorkflowMap } from '../agent-workflow-map.js';
 
 // Mock the logger so tests run without I/O side-effects
-vi.mock('../../shared/logger.js', () => ({
+vi.mock('../../../shared/logger.js', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

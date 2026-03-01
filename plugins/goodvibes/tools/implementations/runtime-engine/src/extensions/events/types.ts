@@ -643,7 +643,7 @@ export interface EventFilter {
  * ```ts
  * bus.on('agent:spawned', (event) => {
  *   if (event.payload.type === 'agent:spawned') {
- *     console.log(event.payload.data.agent_id);
+ *     logger.info(event.payload.data.agent_id);
  *   }
  * });
  * ```

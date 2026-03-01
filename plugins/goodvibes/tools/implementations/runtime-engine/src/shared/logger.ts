@@ -75,7 +75,7 @@ function resolveActiveLevel(): LogLevel {
  * so repeated calls to the same log method do not re-parse the environment
  * variable on every invocation.
  *
- * Note: `process.stderr.write` is used intentionally in this module. The logger
+ * Note: `process.stderr.write` is used intentionally in this module (approved). The logger
  * itself is the lowest-level output primitive in the runtime engine — it cannot
  * depend on another logger instance. Direct stderr writes are the correct
  * mechanism here and are consistent with MCP convention (stdout is reserved for

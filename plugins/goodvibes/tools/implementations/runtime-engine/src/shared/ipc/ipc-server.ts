@@ -162,13 +162,18 @@ export class IPCServer {
     });
 
     return new Promise<void>((resolve, reject) => {
-      this.server!.once('error', reject);
-      this.server!.listen(this.socketPath, () => {
+      const srv = this.server;
+      if (!srv) {
+        reject(new Error('IPC server was not created'));
+        return;
+      }
+      srv.once('error', reject);
+      srv.listen(this.socketPath, () => {
         // Restrict socket file to owner-only access
         chmodSync(this.socketPath, 0o600);
         logger.info('IPC server listening', { path: this.socketPath });
         // Remove the startup error listener now that we have bound successfully
-        this.server!.removeListener('error', reject);
+        srv.removeListener('error', reject);
         resolve();
       });
     });

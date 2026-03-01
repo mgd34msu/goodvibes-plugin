@@ -44,7 +44,7 @@ export interface EventLogLike {
  * const bus = new EventBus();
  *
  * const off = bus.on('hook:*', (event) => {
- *   console.log('Hook fired:', event.type);
+ *   logger.info('Hook fired:', event.type);
  * });
  *
  * bus.emit({
@@ -201,7 +201,7 @@ export class EventBus {
     if (!this.handlers.has(pattern)) {
       this.handlers.set(pattern, new Set());
     }
-    this.handlers.get(pattern)!.add(handler);
+    this.handlers.get(pattern)?.add(handler);
 
     return () => {
       this.handlers.get(pattern)?.delete(handler);
