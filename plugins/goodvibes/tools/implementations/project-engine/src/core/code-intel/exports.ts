@@ -9,7 +9,7 @@
 
 import ts from 'typescript';
 
-import { getExportKind } from './ast-utils.js';
+import { getExportKind, getJsDoc, getTypeString } from './ast-utils.js';
 import type { ExportInfo } from './types.js';
 
 /**
@@ -283,12 +283,10 @@ export function extractExportedSymbols(
  * @param service - TypeScript language service
  * @returns Map from symbol key to export info
  */
-export async function collectPublicExports(
+export function collectPublicExports(
   entryPoints: string[],
   service: ts.LanguageService
-): Promise<Map<string, ExportWithOrigin>> {
-  const { getExportKind: kindHelper } = await import('./ast-utils.js');
-  const { getJsDoc, getTypeString } = await import('./ast-utils.js');
+): Map<string, ExportWithOrigin> {
 
   const publicExports = new Map<string, ExportWithOrigin>();
   const program = service.getProgram();
@@ -348,7 +346,7 @@ export async function collectPublicExports(
 
       publicExports.set(key, {
         name,
-        kind: kindHelper(kind),
+        kind: getExportKind(kind),
         type: typeStr,
         file: declSourceFile.fileName,
         line: line + 1,
@@ -368,12 +366,10 @@ export async function collectPublicExports(
  * @param service - TypeScript language service
  * @returns Map from symbol key to export info
  */
-export async function collectAllExports(
+export function collectAllExports(
   sourceFiles: string[],
   service: ts.LanguageService
-): Promise<Map<string, ExportWithOrigin>> {
-  const { getExportKind: kindHelper } = await import('./ast-utils.js');
-  const { getJsDoc, getTypeString } = await import('./ast-utils.js');
+): Map<string, ExportWithOrigin> {
 
   const allExports = new Map<string, ExportWithOrigin>();
   const program = service.getProgram();
@@ -434,7 +430,7 @@ export async function collectAllExports(
       if (!allExports.has(key)) {
         allExports.set(key, {
           name,
-          kind: kindHelper(kind),
+          kind: getExportKind(kind),
           type: typeStr,
           file: declSourceFile.fileName,
           line: line + 1,
