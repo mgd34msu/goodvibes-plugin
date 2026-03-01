@@ -65,7 +65,10 @@ export function extractModules(content: string): ModuleInfo[] {
     }
   }
 
-  // Large package heuristics in minified code
+  // Large package heuristics in minified code.
+  // NOTE: These patterns match characteristic API call combinations to reduce
+  // false positives, but may still match user code that uses similar variable
+  // names (e.g. a local variable named '_' or 'Chart' in non-library code).
   const largePackagePatterns: Array<{ pattern: RegExp; pkg: string }> = [
     { pattern: /\bmoment\b.*\b(locale|format|parse)\b/i, pkg: 'moment' },
     { pattern: /\blodash\b|\b_\.(map|filter|reduce|each)\b/i, pkg: 'lodash' },

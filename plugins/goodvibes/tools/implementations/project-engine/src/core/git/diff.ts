@@ -32,6 +32,62 @@ export interface ChangedFileDetailed extends ChangedFile {
 }
 
 /**
+ * Shared helper: list changed TS/JS files between two git refs and fetch their diffs.
+ *
+ * @param baseRef - The base git ref (e.g., HEAD~1)
+ * @param headRef - The head git ref (e.g., HEAD)
+ * @param paths - Optional path filter to limit analysis
+ * @param projectRoot - The project root directory
+ * @param includeTests - Whether to include test files (default: false)
+ * @returns Array of objects with file path, status, and diff text
+ */
+function listChangedFilesWithDiff(
+  baseRef: string,
+  headRef: string,
+  paths: string | undefined,
+  projectRoot: string,
+  includeTests: boolean
+): Array<{ file: string; status: string; diff: string }> {
+  const diffArgs = ['diff', '--name-status', `${baseRef}..${headRef}`];
+  if (paths) {
+    diffArgs.push('--', paths);
+  }
+
+  const filesOutput = execFileSync('git', diffArgs, {
+    cwd: projectRoot,
+    encoding: 'utf-8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
+
+  const result: Array<{ file: string; status: string; diff: string }> = [];
+  const lines = filesOutput.trim().split('\n').filter(Boolean);
+
+  for (const line of lines) {
+    const [status, ...fileParts] = line.split('\t');
+    const file = fileParts.join('\t');
+
+    if (!file.match(/\.(ts|tsx|js|jsx|mts|cts)$/)) continue;
+    if (file.endsWith('.d.ts')) continue;
+    if (!includeTests && (file.includes('.test.') || file.includes('.spec.'))) continue;
+
+    let diff = '';
+    try {
+      diff = execFileSync('git', ['diff', `${baseRef}..${headRef}`, '--', file], {
+        cwd: projectRoot,
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024,
+      });
+    } catch {
+      // File might not exist in one of the refs
+    }
+
+    result.push({ file, status, diff });
+  }
+
+  return result;
+}
+
+/**
  * Get list of changed TypeScript/JavaScript files between two git refs.
  * Filters to source files only, excluding type declaration and test files.
  *
@@ -48,46 +104,13 @@ export function getChangedFiles(
   projectRoot: string
 ): ChangedFile[] {
   try {
-    const diffArgs = ['diff', '--name-status', `${baseRef}..${headRef}`];
-    if (paths) {
-      diffArgs.push('--', paths);
-    }
-
-    const filesOutput = execFileSync('git', diffArgs, {
-      cwd: projectRoot,
-      encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024,
-    });
-
-    const changedFiles: ChangedFile[] = [];
-    const lines = filesOutput.trim().split('\n').filter(Boolean);
-
-    for (const line of lines) {
-      const [status, ...fileParts] = line.split('\t');
-      const file = fileParts.join('\t');
-
-      if (!file.match(/\.(ts|tsx|js|jsx|mts|cts)$/)) continue;
-      if (file.includes('.test.') || file.includes('.spec.') || file.endsWith('.d.ts')) continue;
-
-      let diff = '';
-      try {
-        diff = execFileSync('git', ['diff', `${baseRef}..${headRef}`, '--', file], {
-          cwd: projectRoot,
-          encoding: 'utf-8',
-          maxBuffer: 10 * 1024 * 1024,
-        });
-      } catch {
-        // File might not exist in one of the refs
-      }
-
-      changedFiles.push({
+    return listChangedFilesWithDiff(baseRef, headRef, paths, projectRoot, false).map(
+      ({ file, status, diff }) => ({
         file,
         status: status as 'M' | 'A' | 'D' | 'R',
         diff,
-      });
-    }
-
-    return changedFiles;
+      })
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get changed files: ${message}`);
@@ -135,53 +158,15 @@ export function getChangedFilesDetailed(
   projectRoot: string
 ): ChangedFileDetailed[] {
   try {
-    const diffArgs = ['diff', '--name-status', `${baseRef}..${headRef}`];
-    if (paths) {
-      diffArgs.push('--', paths);
-    }
-
-    const filesOutput = execFileSync('git', diffArgs, {
-      cwd: projectRoot,
-      encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024,
-    });
-
-    const changedFiles: ChangedFileDetailed[] = [];
-    const lines = filesOutput.trim().split('\n').filter(Boolean);
-
-    for (const line of lines) {
-      const [status, ...fileParts] = line.split('\t');
-      const file = fileParts.join('\t');
-
-      if (!file.match(/\.(ts|tsx|js|jsx|mts|cts)$/)) continue;
-      if (file.endsWith('.d.ts')) continue;
-
-      let diff = '';
-      try {
-        diff = execFileSync('git', ['diff', `${baseRef}..${headRef}`, '--', file], {
-          cwd: projectRoot,
-          encoding: 'utf-8',
-          maxBuffer: 10 * 1024 * 1024,
-        });
-      } catch {
-        // File might not exist in one of the refs
-      }
-
-      const beforeContent =
-        status !== 'A' ? getFileAtRef(file, baseRef, projectRoot) : null;
-      const afterContent =
-        status !== 'D' ? getFileAtRef(file, headRef, projectRoot) : null;
-
-      changedFiles.push({
+    return listChangedFilesWithDiff(baseRef, headRef, paths, projectRoot, true).map(
+      ({ file, status, diff }) => ({
         file,
         status: status as 'M' | 'A' | 'D' | 'R',
         diff,
-        beforeContent,
-        afterContent,
-      });
-    }
-
-    return changedFiles;
+        beforeContent: status !== 'A' ? getFileAtRef(file, baseRef, projectRoot) : null,
+        afterContent: status !== 'D' ? getFileAtRef(file, headRef, projectRoot) : null,
+      })
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get changed files: ${message}`);

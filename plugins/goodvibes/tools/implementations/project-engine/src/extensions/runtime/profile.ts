@@ -223,11 +223,9 @@ export async function profileFunction(args: ProfileFunctionArgs): Promise<McpRes
     let memAfter: NodeJS.MemoryUsage | null = null;
     let externalBefore = 0;
 
-    if (capture_memory && global.gc) {
-      global.gc();
-      memBefore = process.memoryUsage();
-      externalBefore = memBefore.external;
-    } else if (capture_memory) {
+    if (capture_memory) {
+      // Run GC before snapshot if available (requires --expose-gc flag)
+      if (global.gc) global.gc();
       memBefore = process.memoryUsage();
       externalBefore = memBefore.external;
     }

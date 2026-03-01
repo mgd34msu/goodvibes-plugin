@@ -7,7 +7,7 @@
  * @module core/runtime/statistics
  */
 
-import type { MemorySnapshot, MemoryAnalysis } from './types.js';
+import type { MemorySnapshot, MemoryAnalysis, TimingStats } from './types.js';
 
 /** Linear regression result (slope in MB/s, intercept, R-squared) */
 export interface LinearRegressionResult {
@@ -30,20 +30,6 @@ export interface LeakSuspect {
 }
 
 /**
- * Timing statistics from profiling.
- */
-export interface TimingStats {
-  mean_ms: number;
-  median_ms: number;
-  p95_ms: number;
-  p99_ms: number;
-  min_ms: number;
-  max_ms: number;
-  std_dev_ms: number;
-  total_ms: number;
-}
-
-/**
  * Performs linear regression on (x, y) data points.
  *
  * Returns the slope (MB/second), intercept, and R-squared value.
@@ -63,10 +49,6 @@ export function linearRegression(x: number[], y: number[]): LinearRegressionResu
   const sumY = y.reduce((a, b) => a + b, 0);
   const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
   const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
-  const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
-
-  // sumY2 referenced to avoid unused var warning
-  void sumY2;
 
   const denominator = n * sumX2 - sumX * sumX;
   if (Math.abs(denominator) < 1e-10) {

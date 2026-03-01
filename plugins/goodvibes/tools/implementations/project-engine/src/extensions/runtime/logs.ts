@@ -60,7 +60,6 @@ async function captureCommand(
 
     const proc = spawn(cmd, args, {
       cwd,
-      shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 

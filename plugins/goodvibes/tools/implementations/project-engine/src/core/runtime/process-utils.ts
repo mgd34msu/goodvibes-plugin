@@ -7,7 +7,7 @@
  * @module core/runtime/process-utils
  */
 
-import { execSync, spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 
 /**
  * Checks if a process is still alive by sending signal 0.
@@ -37,10 +37,7 @@ export function isProcessAlive(pid: number): boolean {
  */
 export function getWindowsMemory(pid: number): { rss_mb: number } | null {
   try {
-    const output = execSync(
-      `tasklist /FI "PID eq ${pid}" /FO CSV /NH`,
-      { encoding: 'utf-8', timeout: 5000 }
-    );
+    const output = execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { encoding: 'utf-8', timeout: 5000 });
 
     // Format: "process.exe","1234","Console","1","123,456 K"
     const csvMatch = output.match(/"[^"]+","(\d+)","[^"]+","[^"]+","([0-9,]+)\s*K"/);
@@ -64,7 +61,7 @@ export function getWindowsMemory(pid: number): { rss_mb: number } | null {
  */
 export function getUnixMemory(pid: number): { rss_mb: number } | null {
   try {
-    const output = execSync(`ps -o rss= -p ${pid}`, { encoding: 'utf-8', timeout: 5000 });
+    const output = execFileSync('ps', ['-o', 'rss=', '-p', String(pid)], { encoding: 'utf-8', timeout: 5000 });
     const rssKB = parseInt(output.trim(), 10);
     if (!isNaN(rssKB)) {
       return { rss_mb: Math.round(rssKB / 1024 * 100) / 100 };

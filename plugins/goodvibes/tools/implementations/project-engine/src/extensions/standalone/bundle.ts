@@ -13,6 +13,7 @@ import * as node_zlib from 'node:zlib';
 import { promisify } from 'node:util';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
+import { logWarn } from '../../shared/logger.js';
 import { fileExists, readJsonFile, formatBytes } from '../../shared/utils.js';
 import { ok, fail } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';
@@ -274,8 +275,8 @@ export async function analyzeBundle(args: AnalyzeBundleArgs): Promise<McpRespons
       });
 
       allModules.push(...modules);
-    } catch {
-      // Skip unreadable files
+    } catch (err) {
+      logWarn(`Failed to read bundle file: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

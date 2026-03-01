@@ -8,7 +8,7 @@
  */
 
 import * as node_path from 'node:path';
-import { execSync, type ChildProcess } from 'node:child_process';
+import { execFileSync, type ChildProcess } from 'node:child_process';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail } from '../../shared/response.js';
@@ -138,7 +138,7 @@ export async function detectMemoryLeaks(args: DetectMemoryLeaksArgs): Promise<Mc
       try {
         // Kill the process tree
         if (process.platform === 'win32') {
-          execSync(`taskkill /PID ${childProcess.pid} /T /F`, { encoding: 'utf-8', timeout: 5000 });
+          execFileSync('taskkill', ['/PID', String(childProcess.pid), '/T', '/F'], { encoding: 'utf-8', timeout: 5000 });
         } else {
           process.kill(-childProcess.pid, 'SIGTERM');
         }

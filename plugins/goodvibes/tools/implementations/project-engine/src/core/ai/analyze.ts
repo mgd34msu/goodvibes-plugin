@@ -131,7 +131,17 @@ function spawnClaude(
       stderr += data.toString();
     });
 
+    let timedOut = false;
+    const timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      claudeProcess.kill();
+      logWarn(`LLM analysis timed out after ${timeoutSeconds} seconds`);
+      resolve(null);
+    }, timeoutSeconds * 1000);
+
     claudeProcess.on('close', (code) => {
+      clearTimeout(timeoutHandle);
+      if (timedOut) return;
       if (code !== 0) {
         logWarn(`Claude CLI exited with code ${code}`, stderr);
         resolve(null);
@@ -141,23 +151,19 @@ function spawnClaude(
     });
 
     claudeProcess.on('error', (error) => {
+      clearTimeout(timeoutHandle);
       logWarn('Failed to spawn Claude CLI', error);
       resolve(null);
     });
-
-    const timeoutHandle = setTimeout(() => {
-      claudeProcess.kill();
-      logWarn(`LLM analysis timed out after ${timeoutSeconds} seconds`);
-      resolve(null);
-    }, timeoutSeconds * 1000);
-
-    // Clear timeout when process closes normally
-    claudeProcess.on('close', () => clearTimeout(timeoutHandle));
   });
 }
 
 /**
  * Parse JSON from LLM response, handling extra text around the JSON.
+ *
+ * NOTE: The regex /\{[\s\S]*\}/ is greedy and matches the FIRST '{' to the LAST '}'.
+ * This may fail if the LLM produces multiple separate JSON blocks or embeds JSON
+ * inside markdown code fences with trailing content after the closing '}'.
  */
 function parseJsonResponse<T>(stdout: string): T | null {
   try {

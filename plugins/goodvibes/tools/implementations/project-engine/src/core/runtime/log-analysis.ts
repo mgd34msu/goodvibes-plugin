@@ -35,6 +35,24 @@ export interface RateAnalysis {
 }
 
 /**
+ * Normalizes a log message by replacing volatile tokens (timestamps, UUIDs, addresses, numbers)
+ * with placeholders for stable grouping and deduplication.
+ *
+ * @param message - Raw message string
+ * @returns Normalized message with volatile tokens replaced
+ */
+function normalizeMessageLocal(message: string): string {
+  return message
+    .replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<TIME>')
+    .replace(/[^\s:]+\.(ts|js|tsx|jsx):\d+:\d+/g, '<FILE>')
+    .replace(/0x[0-9a-fA-F]+/g, '<ADDR>')
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>')
+    .replace(/\b\d{6,}\b/g, '<NUM>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Groups log entries by normalized message content, deduplicating repeated
  * errors or warnings and tracking occurrence counts and timestamps.
  *
@@ -44,19 +62,8 @@ export interface RateAnalysis {
 export function groupMessages(entries: ParsedLogEntry[]): GroupedMessage[] {
   const groups = new Map<string, GroupedMessage & { entries: ParsedLogEntry[] }>();
 
-  // Import normalizeMessage inline to avoid circular dependency
-  const normalizeMessage = (message: string): string =>
-    message
-      .replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<TIME>')
-      .replace(/[^\s:]+\.(ts|js|tsx|jsx):\d+:\d+/g, '<FILE>')
-      .replace(/0x[0-9a-fA-F]+/g, '<ADDR>')
-      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>')
-      .replace(/\b\d{6,}\b/g, '<NUM>')
-      .replace(/\s+/g, ' ')
-      .trim();
-
   for (const entry of entries) {
-    const key = normalizeMessage(entry.message);
+    const key = normalizeMessageLocal(entry.message);
     const existing = groups.get(key);
 
     if (existing) {
@@ -151,14 +158,16 @@ export function detectAnomalies(entries: ParsedLogEntry[]): Anomaly[] {
 
   // Detect error spikes
   const errorEntries = entries.filter((e) => e.level === 'error');
+  // Pre-built index map for O(1) lookups instead of O(n) indexOf
+  const entryIndexMap = new Map(entries.map((e, i) => [e, i]));
   if (errorEntries.length > 5) {
-    // Split into first half and second half
+    // Split into first half and second half using pre-built index map
     const midpoint = Math.floor(entries.length / 2);
     const firstHalfErrors = errorEntries.filter(
-      (e) => entries.indexOf(e) < midpoint
+      (e) => (entryIndexMap.get(e) ?? 0) < midpoint
     ).length;
     const secondHalfErrors = errorEntries.filter(
-      (e) => entries.indexOf(e) >= midpoint
+      (e) => (entryIndexMap.get(e) ?? 0) >= midpoint
     ).length;
 
     if (secondHalfErrors > firstHalfErrors * 3 && secondHalfErrors > 10) {
@@ -171,28 +180,19 @@ export function detectAnomalies(entries: ParsedLogEntry[]): Anomaly[] {
   }
 
   // Detect new errors (errors that appear only in second half)
-  const normalizeMessage = (message: string): string =>
-    message
-      .replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<TIME>')
-      .replace(/[^\s:]+\.(ts|js|tsx|jsx):\d+:\d+/g, '<FILE>')
-      .replace(/0x[0-9a-fA-F]+/g, '<ADDR>')
-      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>')
-      .replace(/\b\d{6,}\b/g, '<NUM>')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+  const halfLength = entries.length / 2;
   const firstHalfErrorMessages = new Set(
     errorEntries
-      .filter((e) => entries.indexOf(e) < entries.length / 2)
-      .map((e) => normalizeMessage(e.message))
+      .filter((e) => (entryIndexMap.get(e) ?? 0) < halfLength)
+      .map((e) => normalizeMessageLocal(e.message))
   );
 
   const newErrors = errorEntries
-    .filter((e) => entries.indexOf(e) >= entries.length / 2)
-    .filter((e) => !firstHalfErrorMessages.has(normalizeMessage(e.message)));
+    .filter((e) => (entryIndexMap.get(e) ?? 0) >= halfLength)
+    .filter((e) => !firstHalfErrorMessages.has(normalizeMessageLocal(e.message)));
 
   if (newErrors.length > 0) {
-    const uniqueNew = [...new Set(newErrors.map((e) => normalizeMessage(e.message)))];
+    const uniqueNew = [...new Set(newErrors.map((e) => normalizeMessageLocal(e.message)))];
     if (uniqueNew.length <= 3) {
       for (const msg of uniqueNew) {
         anomalies.push({
