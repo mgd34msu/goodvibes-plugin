@@ -11,6 +11,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import type { SqliteDatabase, SqliteConnectionOptions } from './types.js';
+import { logWarn } from '../../shared/logger.js';
 
 // =============================================================================
 // sql.js Loader
@@ -31,9 +32,11 @@ async function getSqlJs(): Promise<SqlJsStatic> {
   if (sqlJsInstance) return sqlJsInstance;
 
   try {
+    // sql.js doesn't ship ESM types that match its runtime shape, so the double
+    // cast is necessary to access the .default initializer function.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const initSqlJs = ((await import('sql.js' as any)) as any).default as
-      (opts: { locateFile: (file: string) => string }) => Promise<SqlJsStatic>;
+    // @ts-ignore -- sql.js is an optional peer dependency without bundled type declarations
+    const initSqlJs = ((await import('sql.js')) as unknown as { default: (opts: { locateFile: (file: string) => string }) => Promise<SqlJsStatic> }).default;
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const nodePath = require('node:path') as typeof import('node:path');
@@ -70,6 +73,8 @@ interface PooledConnection {
  */
 class SqliteConnectionPool {
   private connections: Map<string, PooledConnection[]> = new Map();
+  /** @internal Queue of waiters blocked on connection availability */
+  private waiters: Array<(conn: PooledConnection) => void> = [];
   private readonly maxConnectionsPerDb = 5;
   private readonly idleTimeoutMs = 60_000;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
@@ -119,32 +124,55 @@ class SqliteConnectionPool {
       return pooled;
     }
 
-    // Wait for a connection to become available
-    return new Promise((resolve, reject) => {
-      const timeout = options.timeout ?? 5000;
-      const startTime = Date.now();
+    // Wait for a connection to become available using a deferred promise queue.
+    // This avoids polling by resolving waiters directly when a connection is released.
+    const timeout = options.timeout ?? 5000;
+    const conns = poolConnections;
 
-      const checkInterval = setInterval(() => {
-        const conn = poolConnections!.find(c => !c.inUse && c.isOpen);
-        if (conn) {
-          clearInterval(checkInterval);
-          conn.inUse = true;
-          conn.lastUsed = Date.now();
-          resolve(conn);
-        } else if (Date.now() - startTime > timeout) {
-          clearInterval(checkInterval);
-          reject(new Error(`SQLite connection timeout after ${timeout}ms`));
-        }
-      }, 50);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        // Remove this waiter from the queue on timeout
+        const idx = this.waiters.indexOf(waiter);
+        if (idx !== -1) this.waiters.splice(idx, 1);
+        reject(new Error(`SQLite connection timeout after ${timeout}ms`));
+      }, timeout);
+
+      const waiter = (conn: PooledConnection) => {
+        clearTimeout(timer);
+        resolve(conn);
+      };
+
+      // Check one more time in case a connection freed between the pool-full check
+      // and registering the waiter (avoids a race condition).
+      const immediate = conns.find(c => !c.inUse && c.isOpen);
+      if (immediate) {
+        clearTimeout(timer);
+        immediate.inUse = true;
+        immediate.lastUsed = Date.now();
+        resolve(immediate);
+        return;
+      }
+
+      this.waiters.push(waiter);
     });
   }
 
   /**
    * Release a connection back to the pool.
    *
+   * If there are waiters queued, the first waiter is immediately notified
+   * with the released connection rather than leaving it idle.
+   *
    * @param connection - The pooled connection to release
    */
   release(connection: PooledConnection): void {
+    // Wake up the first waiting acquirer before marking the connection idle
+    const waiter = this.waiters.shift();
+    if (waiter) {
+      connection.lastUsed = Date.now();
+      waiter(connection);
+      return;
+    }
     connection.inUse = false;
     connection.lastUsed = Date.now();
   }
@@ -183,8 +211,9 @@ class SqliteConnectionPool {
         db.run('PRAGMA foreign_keys = ON');
       }
       db.run('PRAGMA busy_timeout = 5000');
-    } catch {
+    } catch (err) {
       // Pragmas may fail on some SQLite configurations, continue anyway
+      logWarn('SQLite PRAGMA setup failed', err);
     }
 
     return db;
@@ -201,8 +230,8 @@ class SqliteConnectionPool {
           try {
             c.database.close();
             c.isOpen = false;
-          } catch {
-            // Ignore close errors
+          } catch (err) {
+            logWarn('Failed to close idle SQLite connection', err);
           }
         }
         return !isIdle;
@@ -231,8 +260,8 @@ class SqliteConnectionPool {
           try {
             conn.database.close();
             conn.isOpen = false;
-          } catch {
-            // Ignore close errors
+          } catch (err) {
+            logWarn('Failed to close SQLite connection during shutdown', err);
           }
         }
       }

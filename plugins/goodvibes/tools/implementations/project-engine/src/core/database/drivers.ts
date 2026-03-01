@@ -32,22 +32,47 @@ export function clearMockDrivers(): void {
 }
 
 /**
- * Dynamically import a module by name, returning null if unavailable.
+ * Explicit driver import map.
  *
- * Uses indirect evaluation to avoid TypeScript module resolution.
- * Checks mock drivers first for test isolation.
+ * Maps known driver names to their import functions. Using explicit static
+ * imports avoids the security risks of `new Function()` / indirect eval
+ * and allows bundlers to perform proper tree-shaking.
  *
- * @param moduleName - npm package name to import
- * @returns The module default export, or null if not installed
+ * @internal
+ */
+const DRIVER_MAP: Record<string, () => Promise<AnyModule>> = {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore -- pg is an optional peer dependency; may not be installed
+  'pg': () => import('pg') as Promise<AnyModule>,
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore -- mysql2 is an optional peer dependency; may not be installed
+  'mysql2/promise': () => import('mysql2/promise') as Promise<AnyModule>,
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore -- sql.js is an optional peer dependency; may not be installed
+  'sql.js': () => import('sql.js') as Promise<AnyModule>,
+};
+
+/**
+ * Dynamically import a known database driver by name, returning null if unavailable.
+ *
+ * Checks mock drivers first for test isolation, then uses the explicit
+ * driver map to avoid dynamic code evaluation.
+ *
+ * @param moduleName - npm package name to import (must be in DRIVER_MAP)
+ * @returns The module, or null if not installed or not a known driver
  */
 export async function dynamicImport(moduleName: string): Promise<AnyModule | null> {
   if (moduleName in mockDrivers) {
     return mockDrivers[moduleName];
   }
 
+  const loader = DRIVER_MAP[moduleName];
+  if (!loader) {
+    return null;
+  }
+
   try {
-    const importFn = new Function('name', 'return import(name)');
-    return await importFn(moduleName);
+    return await loader();
   } catch {
     return null;
   }

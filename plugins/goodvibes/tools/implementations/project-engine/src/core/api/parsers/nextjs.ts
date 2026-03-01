@@ -10,6 +10,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { ApiRoute } from '../types.js';
+import { findFilesSync, getLineNumber } from './utils.js';
 
 /**
  * Parses Next.js API routes from both App Router and Pages Router conventions.
@@ -215,57 +216,4 @@ export function extractNextJsPagesRoutePath(filePath: string): string {
   return routePath;
 }
 
-// =============================================================================
-// Internal helpers
-// =============================================================================
-
-/**
- * Recursively finds files matching a pattern in a directory (synchronous).
- *
- * @param dir - Directory to search
- * @param includePattern - RegExp pattern that file names must match
- * @param excludePattern - Optional RegExp pattern to exclude files
- * @returns Array of absolute file paths matching the criteria
- */
-function findFilesSync(dir: string, includePattern: RegExp, excludePattern?: RegExp): string[] {
-  const files: string[] = [];
-
-  if (!fs.existsSync(dir)) {
-    return files;
-  }
-
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-
-    // Skip excluded paths
-    if (excludePattern && excludePattern.test(fullPath)) {
-      continue;
-    }
-
-    // Skip common non-source directories
-    if (entry.isDirectory()) {
-      if (['node_modules', '.git', '.next', 'dist', 'build', '.turbo'].includes(entry.name)) {
-        continue;
-      }
-      files.push(...findFilesSync(fullPath, includePattern, excludePattern));
-    } else if (entry.isFile() && includePattern.test(entry.name)) {
-      files.push(fullPath);
-    }
-  }
-
-  return files;
-}
-
-/**
- * Converts a character index to a 1-based line number in source content.
- *
- * @param content - Full source file content
- * @param index - Character index position
- * @returns 1-based line number
- */
-function getLineNumber(content: string, index: number): number {
-  const lines = content.substring(0, index).split('\n');
-  return lines.length;
-}
+// findFilesSync and getLineNumber are imported from ./utils.js

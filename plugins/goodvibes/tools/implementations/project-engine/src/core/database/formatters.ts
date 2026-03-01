@@ -9,6 +9,12 @@
 
 import type { ColumnInfo, DatabaseSchemaResult } from './types.js';
 
+/**
+ * Maximum column display width in ASCII table output.
+ * Truncates cell values wider than this threshold for readability.
+ */
+export const MAX_COLUMN_DISPLAY_WIDTH = 50;
+
 // =============================================================================
 // Query Result Formatters
 // =============================================================================
@@ -57,7 +63,7 @@ export function formatQueryResult(rows: unknown[], columns: ColumnInfo[]): strin
   }
 
   for (const col of columns) {
-    colWidths[col.name] = Math.min(colWidths[col.name], 50);
+    colWidths[col.name] = Math.min(colWidths[col.name], MAX_COLUMN_DISPLAY_WIDTH);
   }
 
   const headerCells = columns.map(col => col.name.padEnd(colWidths[col.name]));

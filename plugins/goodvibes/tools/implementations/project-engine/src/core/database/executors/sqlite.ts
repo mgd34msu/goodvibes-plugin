@@ -47,9 +47,14 @@ export async function executeSqlite(
   params: unknown[] = [],
   readonly = true,
 ): Promise<ExecutionResult> {
-  const filepath = connectionInfo.filepath === ':memory:'
-    ? ':memory:'
-    : connectionInfo.filepath!;
+  if (!connectionInfo.filepath) {
+    throw new Error(
+      'SQLite connection requires a filepath. ' +
+      'Provide a file path (e.g., sqlite:///path/to/db.sqlite) or use :memory: for an in-memory database.'
+    );
+  }
+
+  const filepath = connectionInfo.filepath;
 
   const connectionOptions: SqliteConnectionOptions = {
     filepath,

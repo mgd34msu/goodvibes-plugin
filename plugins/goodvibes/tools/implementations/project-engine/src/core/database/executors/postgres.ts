@@ -31,8 +31,11 @@ export function getPostgresTypeName(oid: number): string {
     1083: 'time',
     1114: 'timestamp',
     1184: 'timestamptz',
+    1700: 'numeric',
+    1186: 'interval',
     2950: 'uuid',
     3802: 'jsonb',
+    2277: 'anyarray',
   };
   return typeMap[oid] || 'unknown';
 }
@@ -45,12 +48,14 @@ export function getPostgresTypeName(oid: number): string {
  *
  * @param connectionInfo - Parsed connection details
  * @param query - SQL query string to execute
+ * @param params - Optional query parameters for parameterized queries (prevents SQL injection)
  * @returns Execution result with rows and column metadata
  * @throws Error if the pg driver is not installed or query fails
  */
 export async function executePostgres(
   connectionInfo: DatabaseConnectionInfo,
   query: string,
+  params: unknown[] = [],
 ): Promise<ExecutionResult> {
   const pg = await loadPostgresDriver();
   if (!pg) {
@@ -72,7 +77,7 @@ export async function executePostgres(
   });
 
   try {
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
 
     const columns: ColumnInfo[] = result.fields?.map(
       (field: { name: string; dataTypeID: number }) => ({

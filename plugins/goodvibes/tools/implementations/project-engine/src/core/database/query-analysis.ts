@@ -9,6 +9,43 @@
 
 import { WRITE_KEYWORDS } from './constants.js';
 
+// =============================================================================
+// Pre-compiled static RegExp patterns
+// =============================================================================
+
+/**
+ * Pre-compiled pattern for stripping single-line SQL comments.
+ * @internal
+ */
+const STRIP_LINE_COMMENTS = /^--.*$/gm;
+
+/**
+ * Pre-compiled pattern for stripping block SQL comments.
+ * @internal
+ */
+const STRIP_BLOCK_COMMENTS = /\/\*[\s\S]*?\*\//g;
+
+/**
+ * Pre-compiled CTE end patterns keyed by keyword.
+ * Built once at module load to avoid repeated construction inside loops.
+ * @internal
+ */
+const CTE_END_PATTERNS: Record<string, RegExp> = Object.fromEntries(
+  // WRITE_KEYWORDS is imported, we generate lazily on first use
+  [] as Array<[string, RegExp]>
+);
+
+/**
+ * Get (or lazily create) the CTE-end pattern for a given keyword.
+ * @internal
+ */
+function getCteEndPattern(keyword: string): RegExp {
+  if (!CTE_END_PATTERNS[keyword]) {
+    CTE_END_PATTERNS[keyword] = new RegExp(`\\)\\s*${keyword}\\b`, 'i');
+  }
+  return CTE_END_PATTERNS[keyword];
+}
+
 /**
  * Remove SQL comments from the beginning of a query.
  *
@@ -17,8 +54,8 @@ import { WRITE_KEYWORDS } from './constants.js';
  */
 function stripLeadingComments(query: string): string {
   return query
-    .replace(/^--.*$/gm, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(STRIP_LINE_COMMENTS, '')
+    .replace(STRIP_BLOCK_COMMENTS, '')
     .trim();
 }
 
@@ -49,8 +86,7 @@ export function isWriteOperation(query: string): boolean {
   // WITH...INSERT/UPDATE/DELETE (CTE with write)
   if (withoutComments.startsWith('WITH')) {
     for (const keyword of WRITE_KEYWORDS) {
-      const cteEndPattern = new RegExp(`\\)\\s*${keyword}\\b`, 'i');
-      if (cteEndPattern.test(withoutComments)) {
+      if (getCteEndPattern(keyword).test(withoutComments)) {
         return true;
       }
     }
@@ -78,10 +114,7 @@ export function isReadOnlyQuery(query: string): boolean {
   }
 
   if (withoutComments.startsWith('WITH')) {
-    return !WRITE_KEYWORDS.some(keyword => {
-      const pattern = new RegExp(`\\)\\s*${keyword}\\b`, 'i');
-      return pattern.test(withoutComments);
-    });
+    return !WRITE_KEYWORDS.some(keyword => getCteEndPattern(keyword).test(withoutComments));
   }
 
   // PRAGMA read statements

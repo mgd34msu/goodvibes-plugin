@@ -9,6 +9,34 @@
 
 import type { DatabaseConnectionInfo } from './types.js';
 
+/** Valid TCP port range. */
+const MIN_PORT = 0;
+const MAX_PORT = 65535;
+
+/**
+ * Validate a parsed TCP port number.
+ * @throws {Error} if the port is outside the valid range
+ * @internal
+ */
+function validatePort(port: number, context: string): void {
+  if (!Number.isInteger(port) || port < MIN_PORT || port > MAX_PORT) {
+    throw new Error(
+      `Invalid port ${port} in ${context} URL. Port must be an integer between ${MIN_PORT} and ${MAX_PORT}.`
+    );
+  }
+}
+
+/**
+ * Validate a parsed hostname is non-empty.
+ * @throws {Error} if the hostname is empty
+ * @internal
+ */
+function validateHostname(hostname: string, context: string): void {
+  if (!hostname || hostname.trim() === '') {
+    throw new Error(`Invalid or empty hostname in ${context} URL.`);
+  }
+}
+
 /**
  * Parse a database connection URL into structured connection info.
  *
@@ -62,15 +90,20 @@ export function parseConnectionUrl(url: string): DatabaseConnectionInfo {
   if (url.startsWith('postgres://') || url.startsWith('postgresql://')) {
     try {
       const parsed = new URL(url);
+      const host = parsed.hostname || 'localhost';
+      const port = parsed.port ? parseInt(parsed.port, 10) : 5432;
+      validateHostname(host, 'PostgreSQL');
+      validatePort(port, 'PostgreSQL');
       return {
         type: 'postgresql',
-        host: parsed.hostname || 'localhost',
-        port: parsed.port ? parseInt(parsed.port, 10) : 5432,
+        host,
+        port,
         database: parsed.pathname.replace(/^\//, '') || 'postgres',
         user: parsed.username || undefined,
         password: parsed.password || undefined,
       };
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Invalid')) throw err;
       return { type: 'unknown', database: '' };
     }
   }
@@ -79,15 +112,20 @@ export function parseConnectionUrl(url: string): DatabaseConnectionInfo {
   if (url.startsWith('mysql://')) {
     try {
       const parsed = new URL(url);
+      const host = parsed.hostname || 'localhost';
+      const port = parsed.port ? parseInt(parsed.port, 10) : 3306;
+      validateHostname(host, 'MySQL');
+      validatePort(port, 'MySQL');
       return {
         type: 'mysql',
-        host: parsed.hostname || 'localhost',
-        port: parsed.port ? parseInt(parsed.port, 10) : 3306,
+        host,
+        port,
         database: parsed.pathname.replace(/^\//, '') || 'mysql',
         user: parsed.username || undefined,
         password: parsed.password || undefined,
       };
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Invalid')) throw err;
       return { type: 'unknown', database: '' };
     }
   }

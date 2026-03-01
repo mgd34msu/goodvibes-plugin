@@ -49,12 +49,14 @@ export function getMysqlTypeName(typeCode: number): string {
  *
  * @param connectionInfo - Parsed connection details
  * @param query - SQL query string to execute
+ * @param params - Optional query parameters for parameterized queries (prevents SQL injection)
  * @returns Execution result with rows and column metadata
  * @throws Error if the mysql2 driver is not installed or query fails
  */
 export async function executeMysql(
   connectionInfo: DatabaseConnectionInfo,
   query: string,
+  params: unknown[] = [],
 ): Promise<ExecutionResult> {
   const mysql = await loadMysqlDriver();
   if (!mysql) {
@@ -73,7 +75,7 @@ export async function executeMysql(
   });
 
   try {
-    const [rows, fields] = await connection.execute(query);
+    const [rows, fields] = await connection.execute(query, params);
 
     const columns: ColumnInfo[] = (fields as Array<{ name: string; type: number }>)?.map(
       (field) => ({ name: field.name, type: getMysqlTypeName(field.type) })

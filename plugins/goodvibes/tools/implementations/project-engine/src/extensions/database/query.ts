@@ -53,9 +53,9 @@ export async function executeQuery(
 ): Promise<ExecutionResult> {
   switch (connectionInfo.type) {
     case 'postgresql':
-      return executePostgres(connectionInfo, sql);
+      return executePostgres(connectionInfo, sql, params);
     case 'mysql':
-      return executeMysql(connectionInfo, sql);
+      return executeMysql(connectionInfo, sql, params);
     case 'sqlite':
       return executeSqlite(connectionInfo, sql, params, readonly);
     default:
@@ -137,7 +137,7 @@ export async function queryDatabase(args: QueryDatabaseArgs): Promise<McpRespons
   let explainOutput: string | undefined;
   if (explain) {
     try {
-      const explainResult = await executeQuery(connectionInfo, `EXPLAIN ${queryToExecute}`);
+      const explainResult = await executeQuery(connectionInfo, `EXPLAIN ${queryToExecute}`, args.params || []);
       explainOutput = JSON.stringify(explainResult.rows, null, 2);
     } catch (error) {
       explainOutput = `EXPLAIN failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
