@@ -4,30 +4,104 @@
  * @module core/runtime/types
  */
 
-import type { LogAnalyzerArgs as _LogAnalyzerArgs, LogAnalyzerResult as _LogAnalyzerResult } from '../../handlers/runtime/logs.js';
-import type { DetectMemoryLeaksArgs as _DetectMemoryLeaksArgs } from '../../handlers/runtime/memory.js';
-import type { ProfileFunctionArgs as _ProfileFunctionArgs, TimingStats as _TimingStats } from '../../handlers/runtime/profile.js';
-
 /**
  * Arguments for the log_analyzer tool.
- *
- * Re-exported from the handler for use across layers.
  */
-export type LogAnalyzerArgs = _LogAnalyzerArgs;
+export interface LogAnalyzerArgs {
+  /** Source type: file or command */
+  source: 'file' | 'command';
+  /** Log file path (required when source is "file") */
+  path?: string;
+  /** Command to run and capture output (required when source is "command") */
+  command?: string;
+  /** Duration in seconds for command source (default: 10) */
+  duration_seconds?: number;
+  /** Number of lines to read from file source (default: 1000) */
+  tail_lines?: number;
+  /** Expect JSON logs (default: auto-detect) */
+  structured?: boolean;
+  /** Custom patterns to detect */
+  patterns?: Array<{
+    name: string;
+    regex: string;
+    level: 'debug' | 'info' | 'warn' | 'error';
+  }>;
+  /** Time window filter (e.g., "5m", "1h", "24h") */
+  time_window?: string;
+  /** Working directory */
+  cwd?: string;
+}
 
 /**
  * Result of log analysis.
- *
- * Re-exported from the handler for use across layers.
  */
-export type LogAnalyzerResult = _LogAnalyzerResult;
+export interface LogAnalyzerResult {
+  entries_analyzed: number;
+  time_range: {
+    start: string | null;
+    end: string | null;
+    duration_ms: number | null;
+  };
+  format_detected: 'json' | 'text' | 'mixed';
+  levels: {
+    debug: number;
+    info: number;
+    warn: number;
+    error: number;
+    unknown: number;
+  };
+  errors: Array<{
+    message: string;
+    count: number;
+    first_seen: string;
+    last_seen: string;
+    sample_stack?: string;
+  }>;
+  warnings: Array<{
+    message: string;
+    count: number;
+    first_seen: string;
+    last_seen: string;
+    sample_stack?: string;
+  }>;
+  patterns_matched: Record<string, number>;
+  anomalies: Array<{
+    type: 'spike' | 'gap' | 'new_error' | 'rate_change';
+    description: string;
+    timestamp?: string;
+    severity: 'high' | 'medium' | 'low';
+  }>;
+  rate_analysis?: {
+    entries_per_minute: number;
+    errors_per_minute: number;
+    peak_period: string;
+  };
+  source_info: {
+    type: 'file' | 'command';
+    path_or_command: string;
+    lines_read: number;
+  };
+}
 
 /**
  * Arguments for the detect_memory_leaks tool.
- *
- * Re-exported from the handler for use across layers.
  */
-export type DetectMemoryLeaksArgs = _DetectMemoryLeaksArgs;
+export interface DetectMemoryLeaksArgs {
+  /** Target type: 'pid' for existing process, 'command' to spawn new process */
+  target: 'pid' | 'command';
+  /** Process ID to monitor (required if target is 'pid') */
+  pid?: number;
+  /** Command to spawn and monitor (required if target is 'command') */
+  command?: string;
+  /** How long to monitor in seconds (default: 30) */
+  duration_seconds?: number;
+  /** Time between measurements in ms (default: 5000) */
+  snapshot_interval_ms?: number;
+  /** Minimum growth in MB to flag as leak (default: 10) */
+  threshold_mb?: number;
+  /** Working directory for command execution */
+  cwd?: string;
+}
 
 /**
  * Memory snapshot taken at a point in time.
@@ -71,14 +145,42 @@ export interface MemoryAnalysis {
 
 /**
  * Arguments for the profile_function tool.
- *
- * Re-exported from the handler for use across layers.
  */
-export type ProfileFunctionArgs = _ProfileFunctionArgs;
+export interface ProfileFunctionArgs {
+  /** Path to file containing function (relative to project root or absolute) */
+  file: string;
+  /** Name of the exported function to profile */
+  function_name: string;
+  /** Arguments to pass to the function */
+  inputs: unknown[];
+  /** Number of profiling iterations (default: 100) */
+  iterations?: number;
+  /** Number of warmup iterations (default: 10) */
+  warmup?: number;
+  /** Whether to track memory usage (default: false) */
+  capture_memory?: boolean;
+  /** Maximum time per iteration in milliseconds (default: 5000) */
+  timeout?: number;
+}
 
 /**
  * Timing statistics from profiling.
- *
- * Re-exported from the handler for use across layers.
  */
-export type TimingStats = _TimingStats;
+export interface TimingStats {
+  /** Mean execution time in milliseconds */
+  mean_ms: number;
+  /** Median execution time in milliseconds */
+  median_ms: number;
+  /** 95th percentile execution time in milliseconds */
+  p95_ms: number;
+  /** 99th percentile execution time in milliseconds */
+  p99_ms: number;
+  /** Minimum execution time in milliseconds */
+  min_ms: number;
+  /** Maximum execution time in milliseconds */
+  max_ms: number;
+  /** Standard deviation of execution times in milliseconds */
+  std_dev_ms: number;
+  /** Total execution time for all iterations in milliseconds */
+  total_ms: number;
+}
