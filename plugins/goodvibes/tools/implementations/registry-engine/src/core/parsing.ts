@@ -11,6 +11,18 @@ import { resolveSkillPath } from './resolution.js';
 /**
  * Known technology keywords for extracting tech mentions from skill content.
  */
+/** Safely extract an array field from frontmatter, with optional alias fallback. */
+function asStringArray(value: unknown, alias?: unknown): string[] | undefined {
+  if (Array.isArray(value)) return value;
+  if (alias !== undefined && Array.isArray(alias)) return alias;
+  return undefined;
+}
+
+/** Safely extract a string field from frontmatter. */
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 const TECH_KEYWORDS = [
   'react', 'next', 'nextjs', 'prisma', 'drizzle', 'tailwind',
   'typescript', 'node', 'express', 'vite', 'vitest', 'jest',
@@ -130,27 +142,22 @@ export async function loadSkillMetadata(skillPath: string): Promise<SkillMetadat
     const frontmatter = parseFrontmatter(content);
     if (frontmatter) {
       return {
-        requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : undefined,
-        complements: Array.isArray(frontmatter.complements) ? frontmatter.complements :
-                    Array.isArray(frontmatter.related) ? frontmatter.related : undefined,
-        conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : undefined,
-        category: typeof frontmatter.category === 'string' ? frontmatter.category : undefined,
-        technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies :
-                     Array.isArray(frontmatter.tech) ? frontmatter.tech : undefined,
-        difficulty: typeof frontmatter.difficulty === 'string' ? frontmatter.difficulty : undefined,
+        requires: asStringArray(frontmatter.requires),
+        complements: asStringArray(frontmatter.complements, frontmatter.related),
+        conflicts: asStringArray(frontmatter.conflicts),
+        category: asString(frontmatter.category),
+        technologies: asStringArray(frontmatter.technologies, frontmatter.tech),
+        difficulty: asString(frontmatter.difficulty),
       };
     }
 
     // Fallback to markdown section parsing
     const markdownMeta = extractMarkdownMetadata(content);
-    const technologies = markdownMeta.technologies?.length
-      ? markdownMeta.technologies
-      : extractTechKeywords(content);
 
     return {
       requires: markdownMeta.requires,
       complements: markdownMeta.complements,
-      technologies,
+      technologies: markdownMeta.technologies,
     };
   } catch {
     return {};

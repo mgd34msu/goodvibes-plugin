@@ -21522,6 +21522,33 @@ var SERVER_VERSION = "1.0.0";
 // src/shared/config.ts
 var path = __toESM(require("node:path"), 1);
 
+// src/shared/logger.ts
+function formatLog(entry) {
+  const prefix = `[${entry.timestamp}] [${entry.level.toUpperCase()}]`;
+  if (entry.data !== void 0) {
+    return `${prefix} ${entry.message} ${JSON.stringify(entry.data)}`;
+  }
+  return `${prefix} ${entry.message}`;
+}
+__name(formatLog, "formatLog");
+function log(level, message, data) {
+  const entry = {
+    level,
+    message,
+    data,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  console.error(formatLog(entry));
+}
+__name(log, "log");
+var logger = {
+  debug: /* @__PURE__ */ __name((message, data) => log("debug", message, data), "debug"),
+  info: /* @__PURE__ */ __name((message, data) => log("info", message, data), "info"),
+  warn: /* @__PURE__ */ __name((message, data) => log("warn", message, data), "warn"),
+  error: /* @__PURE__ */ __name((message, data) => log("error", message, data), "error"),
+  request: /* @__PURE__ */ __name((name, args) => log("request", `Calling ${name}`, args), "request")
+};
+
 // src/shared/utils.ts
 var fsPromises = __toESM(require("node:fs/promises"), 1);
 var import_node_path = require("node:path");
@@ -21558,40 +21585,13 @@ function computePluginRoot() {
     return path.resolve(resolveModuleDir(), "../../..");
   } catch (err) {
     const fallback = process.cwd();
-    console.warn(`[registry-engine] Failed to resolve PLUGIN_ROOT via module path, falling back to cwd: ${fallback}`, err);
+    logger.warn(`Failed to resolve PLUGIN_ROOT via module path, falling back to cwd: ${fallback}`);
     return fallback;
   }
 }
 __name(computePluginRoot, "computePluginRoot");
 var PLUGIN_ROOT = computePluginRoot();
 var PROJECT_ROOT = process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-
-// src/shared/logger.ts
-function formatLog(entry) {
-  const prefix = `[${entry.timestamp}] [${entry.level.toUpperCase()}]`;
-  if (entry.data !== void 0) {
-    return `${prefix} ${entry.message} ${JSON.stringify(entry.data)}`;
-  }
-  return `${prefix} ${entry.message}`;
-}
-__name(formatLog, "formatLog");
-function log(level, message, data) {
-  const entry = {
-    level,
-    message,
-    data,
-    timestamp: (/* @__PURE__ */ new Date()).toISOString()
-  };
-  console.error(formatLog(entry));
-}
-__name(log, "log");
-var logger = {
-  debug: /* @__PURE__ */ __name((message, data) => log("debug", message, data), "debug"),
-  info: /* @__PURE__ */ __name((message, data) => log("info", message, data), "info"),
-  warn: /* @__PURE__ */ __name((message, data) => log("warn", message, data), "warn"),
-  error: /* @__PURE__ */ __name((message, data) => log("error", message, data), "error"),
-  request: /* @__PURE__ */ __name((name, args) => log("request", `Calling ${name}`, args), "request")
-};
 
 // node_modules/js-yaml/dist/js-yaml.mjs
 function isNothing(subject) {
@@ -25971,12 +25971,9 @@ async function resolveSkillPath(skillPath) {
     path3.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
     path3.join(PLUGIN_ROOT, "skills", skillPath)
   ];
-  for (const filePath of attempts) {
-    if (await fileExists(filePath)) {
-      return filePath;
-    }
-  }
-  return null;
+  const results = await Promise.all(attempts.map((p) => fileExists(p)));
+  const idx = results.indexOf(true);
+  return idx >= 0 ? attempts[idx] : null;
 }
 __name(resolveSkillPath, "resolveSkillPath");
 async function resolveAgentPath(agentPath) {
@@ -25985,16 +25982,23 @@ async function resolveAgentPath(agentPath) {
     path3.join(PLUGIN_ROOT, "agents", agentPath),
     path3.join(PLUGIN_ROOT, "agents", agentPath, "index.md")
   ];
-  for (const filePath of attempts) {
-    if (await fileExists(filePath)) {
-      return filePath;
-    }
-  }
-  return null;
+  const results = await Promise.all(attempts.map((p) => fileExists(p)));
+  const idx = results.indexOf(true);
+  return idx >= 0 ? attempts[idx] : null;
 }
 __name(resolveAgentPath, "resolveAgentPath");
 
 // src/core/parsing.ts
+function asStringArray(value, alias) {
+  if (Array.isArray(value)) return value;
+  if (alias !== void 0 && Array.isArray(alias)) return alias;
+  return void 0;
+}
+__name(asStringArray, "asStringArray");
+function asString(value) {
+  return typeof value === "string" ? value : void 0;
+}
+__name(asString, "asString");
 var TECH_KEYWORDS = [
   "react",
   "next",
@@ -26069,20 +26073,19 @@ async function loadSkillMetadata(skillPath) {
     const frontmatter = parseFrontmatter(content);
     if (frontmatter) {
       return {
-        requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : void 0,
-        complements: Array.isArray(frontmatter.complements) ? frontmatter.complements : Array.isArray(frontmatter.related) ? frontmatter.related : void 0,
-        conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : void 0,
-        category: typeof frontmatter.category === "string" ? frontmatter.category : void 0,
-        technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies : Array.isArray(frontmatter.tech) ? frontmatter.tech : void 0,
-        difficulty: typeof frontmatter.difficulty === "string" ? frontmatter.difficulty : void 0
+        requires: asStringArray(frontmatter.requires),
+        complements: asStringArray(frontmatter.complements, frontmatter.related),
+        conflicts: asStringArray(frontmatter.conflicts),
+        category: asString(frontmatter.category),
+        technologies: asStringArray(frontmatter.technologies, frontmatter.tech),
+        difficulty: asString(frontmatter.difficulty)
       };
     }
     const markdownMeta = extractMarkdownMetadata(content);
-    const technologies = markdownMeta.technologies?.length ? markdownMeta.technologies : extractTechKeywords(content);
     return {
       requires: markdownMeta.requires,
       complements: markdownMeta.complements,
-      technologies
+      technologies: markdownMeta.technologies
     };
   } catch {
     return {};

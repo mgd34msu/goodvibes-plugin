@@ -24,13 +24,9 @@ export async function resolveSkillPath(skillPath: string): Promise<string | null
     path.join(PLUGIN_ROOT, 'skills', skillPath),
   ];
 
-  for (const filePath of attempts) {
-    if (await fileExists(filePath)) {
-      return filePath;
-    }
-  }
-
-  return null;
+  const results = await Promise.all(attempts.map(p => fileExists(p)));
+  const idx = results.indexOf(true);
+  return idx >= 0 ? attempts[idx] : null;
 }
 
 /**
@@ -50,11 +46,7 @@ export async function resolveAgentPath(agentPath: string): Promise<string | null
     path.join(PLUGIN_ROOT, 'agents', agentPath, 'index.md'),
   ];
 
-  for (const filePath of attempts) {
-    if (await fileExists(filePath)) {
-      return filePath;
-    }
-  }
-
-  return null;
+  const results = await Promise.all(attempts.map(p => fileExists(p)));
+  const idx = results.indexOf(true);
+  return idx >= 0 ? attempts[idx] : null;
 }

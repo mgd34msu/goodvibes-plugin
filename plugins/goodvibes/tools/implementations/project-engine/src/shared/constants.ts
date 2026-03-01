@@ -3,6 +3,16 @@
  */
 
 /**
+ * MCP server name identifier.
+ */
+export const SERVER_NAME = 'project-engine';
+
+/**
+ * MCP server version.
+ */
+export const SERVER_VERSION = '2.0.0';
+
+/**
  * Source file extensions for code analysis.
  */
 export const SOURCE_EXTENSIONS = [

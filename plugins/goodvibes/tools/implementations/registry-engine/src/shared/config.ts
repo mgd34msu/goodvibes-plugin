@@ -4,6 +4,7 @@
  */
 
 import * as path from 'node:path';
+import { logger } from './logger.js';
 import { resolveModuleDir } from './utils.js';
 
 /**
@@ -18,8 +19,7 @@ function computePluginRoot(): string {
     return path.resolve(resolveModuleDir(), '../../..');
   } catch (err) {
     const fallback = process.cwd();
-    // eslint-disable-next-line no-console
-    console.warn(`[registry-engine] Failed to resolve PLUGIN_ROOT via module path, falling back to cwd: ${fallback}`, err);
+    logger.warn(`Failed to resolve PLUGIN_ROOT via module path, falling back to cwd: ${fallback}`);
     return fallback;
   }
 }
