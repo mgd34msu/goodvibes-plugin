@@ -26168,7 +26168,7 @@ async function resolveRequired(metadata, index, depth) {
   if (!metadata.requires) return required2;
   for (const req of metadata.requires) {
     const result = findOne(index, req);
-    if (result) {
+    if (result && !required2.find((r) => r.path === result.path)) {
       required2.push({
         skill: result.name,
         path: result.path,

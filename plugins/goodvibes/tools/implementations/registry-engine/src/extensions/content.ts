@@ -10,7 +10,7 @@
 import * as fs from 'node:fs/promises';
 import type { McpResponse } from '../shared/types.js';
 import { ok } from '../shared/response.js';
-import { ContentArgs } from '../core/types.js';
+import type { ContentArgs } from '../core/types.js';
 import { resolveSkillPath, resolveAgentPath } from '../core/resolution.js';
 
 /**

@@ -48,6 +48,10 @@ vi.mock('../core/parsing.js', () => ({
   extractMarkdownMetadata: vi.fn(),
   extractTechKeywords: vi.fn(),
   extractKeywords: vi.fn(),
+  // loadSkillMetadata lives in parsing.ts and is re-exported by metadata.ts.
+  // Vitest resolves re-exports directly from the source module, so we must
+  // expose it here as well as in the ./metadata.js factory mock.
+  loadSkillMetadata: mockLoadSkillMetadata,
 }));
 
 vi.mock('../core/classification.js', () => ({
@@ -160,6 +164,10 @@ describe('RegistryIndexCache', () => {
   beforeEach(() => {
     cache = new RegistryIndexCache();
     vi.clearAllMocks();
+
+    // Reset to clear any unconsumed Once-queue items from previous tests
+    (loadRegistry as Mock).mockReset();
+    (buildIndex as Mock).mockReset();
 
     (loadRegistry as Mock)
       .mockResolvedValueOnce(skillsRegistry)
@@ -750,149 +758,6 @@ describe('getAgentContent()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. metadata.ts — loadSkillMetadata (real implementation)
-// ---------------------------------------------------------------------------
-// metadata.ts is mocked via vi.mock('./metadata.js') above, BUT we can still
-// test the real implementation because `vi.importActual` bypasses the mock
-// factory and loads the actual module. The actual module's dependencies
-// (resolution.js, parsing.js, node:fs/promises) are all individually mocked
-// at module level, so we test the real orchestration logic.
-
-describe('loadSkillMetadata() - real implementation', () => {
-  let realLoadSkillMetadata: (skillPath: string) => Promise<SkillMetadata>;
-
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    // Import the REAL implementation, bypassing the vi.mock('./metadata.js') factory
-    const realModule = await vi.importActual<{ loadSkillMetadata: typeof import('./metadata.js')['loadSkillMetadata'] }>('./metadata.js');
-    realLoadSkillMetadata = realModule.loadSkillMetadata;
-  });
-
-  it('returns empty object when skill path cannot be resolved', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue(null);
-
-    const result = await realLoadSkillMetadata('outcome/missing');
-    expect(result).toEqual({});
-  });
-
-  it('returns frontmatter metadata when YAML frontmatter is present', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('---\ncategory: outcome\n---');
-    (parseFrontmatter as Mock).mockReturnValue({
-      requires: ['auth'],
-      category: 'outcome',
-      difficulty: 'intermediate',
-    });
-
-    const result = await realLoadSkillMetadata('outcome/skill');
-
-    expect(result).toMatchObject({
-      requires: ['auth'],
-      category: 'outcome',
-      difficulty: 'intermediate',
-    });
-  });
-
-  it('extracts complements from frontmatter.complements array', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('content');
-    (parseFrontmatter as Mock).mockReturnValue({
-      complements: ['skill-a', 'skill-b'],
-    });
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result.complements).toEqual(['skill-a', 'skill-b']);
-  });
-
-  it('extracts complements from frontmatter.related when complements absent', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('content');
-    (parseFrontmatter as Mock).mockReturnValue({
-      related: ['related-skill'],
-    });
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result.complements).toEqual(['related-skill']);
-  });
-
-  it('extracts technologies from frontmatter.technologies', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('content');
-    (parseFrontmatter as Mock).mockReturnValue({
-      technologies: ['react', 'typescript'],
-    });
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result.technologies).toEqual(['react', 'typescript']);
-  });
-
-  it('extracts technologies from frontmatter.tech when technologies absent', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('content');
-    (parseFrontmatter as Mock).mockReturnValue({
-      tech: ['vitest'],
-    });
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result.technologies).toEqual(['vitest']);
-  });
-
-  it('falls back to markdown extraction when no frontmatter', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('# Skill without frontmatter');
-    (parseFrontmatter as Mock).mockReturnValue(null);
-    (extractMarkdownMetadata as Mock).mockReturnValue({
-      requires: ['auth'],
-      complements: [],
-      technologies: ['react'],
-    });
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result.requires).toEqual(['auth']);
-    expect(result.complements).toEqual([]);
-  });
-
-  it('uses extractTechKeywords when markdown fallback has no technologies', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('content with react and vitest');
-    (parseFrontmatter as Mock).mockReturnValue(null);
-    (extractMarkdownMetadata as Mock).mockReturnValue({
-      requires: [],
-      technologies: [],
-    });
-    (extractTechKeywords as Mock).mockReturnValue(['react', 'vitest']);
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result.technologies).toEqual(['react', 'vitest']);
-    expect(extractTechKeywords).toHaveBeenCalled();
-  });
-
-  it('returns empty object when readFile throws', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockRejectedValue(new Error('ENOENT'));
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result).toEqual({});
-  });
-
-  it('omits undefined fields when not in frontmatter', async () => {
-    (resolveSkillPath as Mock).mockResolvedValue('/path/skill.md');
-    (fsPromises.readFile as Mock).mockResolvedValue('content');
-    (parseFrontmatter as Mock).mockReturnValue({
-      category: 'general',
-    });
-
-    const result = await realLoadSkillMetadata('any/skill');
-    expect(result.category).toBe('general');
-    expect(result.requires).toBeUndefined();
-    expect(result.complements).toBeUndefined();
-    expect(result.conflicts).toBeUndefined();
-    expect(result.technologies).toBeUndefined();
-    expect(result.difficulty).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
 // 6. dependencies.ts — individual functions
 // ---------------------------------------------------------------------------
 // mockLoadSkillMetadata is the hoisted mock fn used by vi.mock('./metadata.js').
@@ -954,17 +819,25 @@ describe('resolveRequired()', () => {
     expect(result).toHaveLength(1);
   });
 
-  it('avoids duplicate nested deps already in required list', async () => {
-    const parentResult = makeSearchResult({ name: 'parent', path: 'outcome/parent' });
+  it('avoids adding a nested dep that was already resolved as a direct dep', async () => {
+    // Scenario: requires = ['child', 'parent'] where parent also requires child.
+    // When child is processed first (direct dep), then parent is processed,
+    // parent's nested dep 'child' should NOT be added again.
     const childResult = makeSearchResult({ name: 'child', path: 'outcome/child' });
+    const parentResult = makeSearchResult({ name: 'parent', path: 'outcome/parent' });
 
     (findOne as Mock)
-      .mockReturnValueOnce(parentResult)
-      .mockReturnValueOnce(childResult)
-      .mockReturnValueOnce(childResult);
-    mockLoadSkillMetadata.mockResolvedValue({ requires: ['child'] });
+      .mockReturnValueOnce(childResult)   // 1st call: direct 'child'
+      .mockReturnValueOnce(parentResult)  // 2nd call: direct 'parent'
+      .mockReturnValueOnce(childResult);  // 3rd call: nested 'child' lookup under parent
 
-    const result = await resolveRequired({ requires: ['parent', 'child'] }, null, 2);
+    // When depth > 1, loadSkillMetadata is called for each direct dep.
+    // child's metadata has no nested deps, parent's metadata requires 'child'.
+    mockLoadSkillMetadata
+      .mockResolvedValueOnce({})               // child has no nested requires
+      .mockResolvedValueOnce({ requires: ['child'] }); // parent requires child
+
+    const result = await resolveRequired({ requires: ['child', 'parent'] }, null, 2);
     const childCount = result.filter(r => r.path === 'outcome/child').length;
     expect(childCount).toBe(1);
   });

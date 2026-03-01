@@ -7,7 +7,7 @@
  */
 
 import type Fuse from 'fuse.js';
-import { RegistryEntry, SearchSkillsArgs, SearchArgs } from '../core/types.js';
+import type { RegistryEntry, SearchSkillsArgs, SearchArgs } from '../core/types.js';
 import { query } from '../core/search.js';
 import { ok } from '../shared/response.js';
 import type { McpResponse } from '../shared/types.js';

@@ -15,7 +15,7 @@ import {
 import { SERVER_NAME, SERVER_VERSION } from '../shared/constants.js';
 import { PLUGIN_ROOT } from '../shared/config.js';
 import { logger } from '../shared/logger.js';
-import { RegistryContext } from '../core/types.js';
+import type { RegistryContext } from '../core/types.js';
 import { RegistryIndexCache } from '../extensions/loader.js';
 import { TOOL_SCHEMAS } from './schemas.js';
 import { getDispatcher, hasDispatcher, listTools } from './dispatch.js';

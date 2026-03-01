@@ -2,8 +2,8 @@
  * Tool dispatch table — maps MCP tool names to business logic functions.
  */
 
-import { RegistryContext } from '../core/types.js';
-import { McpResponse } from '../shared/types.js';
+import type { RegistryContext } from '../core/types.js';
+import type { McpResponse } from '../shared/types.js';
 import { searchSkills, searchAgents, searchTools } from '../extensions/search.js';
 import { recommendSkills } from '../extensions/recommendations.js';
 import { getSkillContent, getAgentContent } from '../extensions/content.js';

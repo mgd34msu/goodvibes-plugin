@@ -16,7 +16,7 @@
  */
 
 import type Fuse from 'fuse.js';
-import {
+import type {
   RegistryEntry,
   Registry,
   DependencyAnalysisArgs,
@@ -43,7 +43,7 @@ export async function resolveRequired(
 
   for (const req of metadata.requires) {
     const result = findOne(index, req);
-    if (result) {
+    if (result && !required.find(r => r.path === result.path)) {
       required.push({
         skill: result.name,
         path: result.path,

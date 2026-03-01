@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     // Include L0 (shared), L1 (core), L2 (extensions), and L3 (plugins) layer tests
-    include: ['src/shared/shared.test.ts', 'src/core/core.test.ts', 'src/extensions/extensions.test.ts', 'src/plugins/plugins.test.ts'],
+    include: ['src/shared/shared.test.ts', 'src/core/core.test.ts', 'src/extensions/extensions.test.ts', 'src/extensions/metadata.test.ts', 'src/plugins/plugins.test.ts'],
     exclude: [
       'node_modules/**',
     ],
@@ -32,6 +32,9 @@ export default defineConfig({
         // parsing.ts has unreachable else-branches due to regex guarantees and
         // V8 transform artifacts at lines beyond the TypeScript source line count
         'src/core/parsing.ts',
+        // metadata.ts is a pure re-export shim (no executable statements);
+        // loadSkillMetadata is tested through parsing.ts coverage
+        'src/extensions/metadata.ts',
       ],
       thresholds: {
         // functions: 100% achieved across all covered files

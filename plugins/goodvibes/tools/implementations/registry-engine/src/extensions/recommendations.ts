@@ -9,7 +9,7 @@
  */
 
 import type Fuse from 'fuse.js';
-import { RegistryEntry, RecommendSkillsArgs } from '../core/types.js';
+import type { RegistryEntry, RecommendSkillsArgs } from '../core/types.js';
 import { query } from '../core/search.js';
 import { extractKeywords } from '../core/parsing.js';
 import { detectCategory, estimateComplexity } from '../core/classification.js';

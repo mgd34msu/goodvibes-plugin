@@ -9,7 +9,7 @@
  */
 
 import type Fuse from 'fuse.js';
-import { Registry, RegistryEntry, RegistryContext } from '../core/types.js';
+import type { Registry, RegistryEntry, RegistryContext } from '../core/types.js';
 import { loadRegistry } from '../core/registry.js';
 import { buildIndex } from '../core/search.js';
 import { logger } from '../shared/logger.js';
