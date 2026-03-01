@@ -3,7 +3,7 @@
  * Logs to stderr to keep stdout clean for MCP protocol.
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'tool';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'request';
 
 interface LogEntry {
   level: LogLevel;
@@ -35,21 +35,5 @@ export const logger = {
   info: (message: string, data?: unknown) => log('info', message, data),
   warn: (message: string, data?: unknown) => log('warn', message, data),
   error: (message: string, data?: unknown) => log('error', message, data),
-  tool: (name: string, args?: unknown) => log('tool', `Calling ${name}`, args),
+  request: (name: string, args?: unknown) => log('request', `Calling ${name}`, args),
 };
-
-/**
- * Start a timer and return a function to get elapsed milliseconds.
- */
-export function startTimer(): () => number {
-  const start = performance.now();
-  return () => Math.round(performance.now() - start);
-}
-
-/**
- * Estimate token count from a string.
- * Rough approximation: ~4 characters per token.
- */
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
-}

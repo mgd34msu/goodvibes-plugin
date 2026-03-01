@@ -1,8 +1,8 @@
 /**
- * Discovery tool schemas - search, content retrieval, and recommendations
+ * MCP tool schema definitions for registry-engine.
  */
 
-export const DISCOVERY_SCHEMAS = [
+export const TOOL_SCHEMAS = [
   // Core search tools
   {
     name: 'search_skills',

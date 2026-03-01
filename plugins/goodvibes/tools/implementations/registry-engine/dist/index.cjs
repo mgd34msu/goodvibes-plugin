@@ -3713,9 +3713,9 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path4, query] = wsComponent.resourceName.split("?");
+        const [path4, query2] = wsComponent.resourceName.split("?");
         wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
-        wsComponent.query = query;
+        wsComponent.query = query2;
         wsComponent.resourceName = void 0;
       }
       wsComponent.fragment = void 0;
@@ -7183,12 +7183,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs2, exportName) {
+    function addFormats(ajv, list, fs3, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs2[f]);
+        ajv.addFormat(f, fs3[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
@@ -11500,8 +11500,8 @@ function getElementAtPath(obj, path4) {
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
-  const promises2 = keys.map((key) => promisesObj[key]);
-  return Promise.all(promises2).then((results) => {
+  const promises = keys.map((key) => promisesObj[key]);
+  return Promise.all(promises).then((results) => {
     const resolvedObj = {};
     for (let i = 0; i < keys.length; i++) {
       resolvedObj[keys[i]] = results[i];
@@ -21534,40 +21534,46 @@ var StdioServerTransport = class {
   }
 };
 
-// src/config.ts
-var path = __toESM(require("path"), 1);
-var import_url = require("url");
-var import_path = require("path");
-var import_meta = {};
+// src/shared/constants.ts
 var SERVER_NAME = "registry-engine";
 var SERVER_VERSION = "1.0.0";
-var getEsmDir = /* @__PURE__ */ __name(() => {
-  return (0, import_path.dirname)((0, import_url.fileURLToPath)(import_meta.url));
-}, "getEsmDir");
-var getConfigDir = /* @__PURE__ */ __name(() => {
+
+// src/shared/config.ts
+var path = __toESM(require("node:path"), 1);
+
+// src/shared/utils.ts
+var fsPromises = __toESM(require("node:fs/promises"), 1);
+var import_node_path = require("node:path");
+var import_node_url = require("node:url");
+var import_meta = {};
+async function fileExists(filePath) {
+  try {
+    await fsPromises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+__name(fileExists, "fileExists");
+var resolveEsmDir = /* @__PURE__ */ __name(() => {
+  return (0, import_node_path.dirname)((0, import_node_url.fileURLToPath)(import_meta.url));
+}, "resolveEsmDir");
+var resolveModuleDir = /* @__PURE__ */ __name(() => {
   if (typeof __dirname !== "undefined") {
     return __dirname;
   }
   try {
-    return getEsmDir();
+    return resolveEsmDir();
   } catch {
     return process.cwd();
   }
-}, "getConfigDir");
-var PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(getConfigDir(), "../../..");
-var PROJECT_ROOT = process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-var FUSE_OPTIONS = {
-  keys: [
-    { name: "name", weight: 0.3 },
-    { name: "description", weight: 0.4 },
-    { name: "keywords", weight: 0.3 }
-  ],
-  threshold: 0.4,
-  includeScore: true,
-  ignoreLocation: true
-};
+}, "resolveModuleDir");
 
-// src/logging.ts
+// src/shared/config.ts
+var PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(resolveModuleDir(), "../../..");
+var PROJECT_ROOT = process.env.PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+
+// src/shared/logger.ts
 function formatLog(entry) {
   const prefix = `[${entry.timestamp}] [${entry.level.toUpperCase()}]`;
   if (entry.data !== void 0) {
@@ -21591,1503 +21597,18 @@ var logger = {
   info: (message, data) => log("info", message, data),
   warn: (message, data) => log("warn", message, data),
   error: (message, data) => log("error", message, data),
-  tool: (name, args) => log("tool", `Calling ${name}`, args)
+  request: (name, args) => log("request", `Calling ${name}`, args)
 };
-
-// src/schemas/index.ts
-var DISCOVERY_SCHEMAS = [
-  // Core search tools
-  {
-    name: "search_skills",
-    description: "Search the skill registry for relevant skills based on keywords or task description",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Natural language query or keywords" },
-        category: { type: "string", description: "Optional category filter" },
-        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
-      },
-      required: ["query"]
-    }
-  },
-  {
-    name: "search_agents",
-    description: "Search for specialized agents by expertise area",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Keywords describing expertise needed" },
-        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
-      },
-      required: ["query"]
-    }
-  },
-  {
-    name: "search_tools",
-    description: "Search for available tools by functionality",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Keywords describing tool functionality" },
-        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
-      },
-      required: ["query"]
-    }
-  },
-  {
-    name: "recommend_skills",
-    description: "Analyze task and recommend relevant skills",
-    inputSchema: {
-      type: "object",
-      properties: {
-        task: { type: "string", description: "Natural language task description" },
-        max_results: { type: "integer", description: "Max recommendations (default: 5)", default: 5 }
-      },
-      required: ["task"]
-    }
-  },
-  // Content retrieval
-  {
-    name: "get_skill_content",
-    description: "Load full content of a skill by path",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Skill path from registry" }
-      },
-      required: ["path"]
-    }
-  },
-  {
-    name: "get_agent_content",
-    description: "Load full content of an agent by path",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Agent path from registry" }
-      },
-      required: ["path"]
-    }
-  },
-  {
-    name: "skill_dependencies",
-    description: "Show skill relationships and dependencies",
-    inputSchema: {
-      type: "object",
-      properties: {
-        skill: { type: "string", description: "Skill to analyze" },
-        depth: { type: "integer", description: "Dependency tree depth (default: 2)", default: 2 },
-        include_optional: { type: "boolean", description: "Include optional deps", default: true }
-      },
-      required: ["skill"]
-    }
-  }
-];
-
-// node_modules/fuse.js/dist/fuse.mjs
-function isArray(value) {
-  return !Array.isArray ? getTag(value) === "[object Array]" : Array.isArray(value);
-}
-__name(isArray, "isArray");
-var INFINITY = 1 / 0;
-function baseToString(value) {
-  if (typeof value == "string") {
-    return value;
-  }
-  let result = value + "";
-  return result == "0" && 1 / value == -INFINITY ? "-0" : result;
-}
-__name(baseToString, "baseToString");
-function toString(value) {
-  return value == null ? "" : baseToString(value);
-}
-__name(toString, "toString");
-function isString(value) {
-  return typeof value === "string";
-}
-__name(isString, "isString");
-function isNumber(value) {
-  return typeof value === "number";
-}
-__name(isNumber, "isNumber");
-function isBoolean(value) {
-  return value === true || value === false || isObjectLike(value) && getTag(value) == "[object Boolean]";
-}
-__name(isBoolean, "isBoolean");
-function isObject2(value) {
-  return typeof value === "object";
-}
-__name(isObject2, "isObject");
-function isObjectLike(value) {
-  return isObject2(value) && value !== null;
-}
-__name(isObjectLike, "isObjectLike");
-function isDefined(value) {
-  return value !== void 0 && value !== null;
-}
-__name(isDefined, "isDefined");
-function isBlank(value) {
-  return !value.trim().length;
-}
-__name(isBlank, "isBlank");
-function getTag(value) {
-  return value == null ? value === void 0 ? "[object Undefined]" : "[object Null]" : Object.prototype.toString.call(value);
-}
-__name(getTag, "getTag");
-var INCORRECT_INDEX_TYPE = "Incorrect 'index' type";
-var LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY = /* @__PURE__ */ __name((key) => `Invalid value for key ${key}`, "LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY");
-var PATTERN_LENGTH_TOO_LARGE = /* @__PURE__ */ __name((max) => `Pattern length exceeds max of ${max}.`, "PATTERN_LENGTH_TOO_LARGE");
-var MISSING_KEY_PROPERTY = /* @__PURE__ */ __name((name) => `Missing ${name} property in key`, "MISSING_KEY_PROPERTY");
-var INVALID_KEY_WEIGHT_VALUE = /* @__PURE__ */ __name((key) => `Property 'weight' in key '${key}' must be a positive integer`, "INVALID_KEY_WEIGHT_VALUE");
-var hasOwn = Object.prototype.hasOwnProperty;
-var KeyStore = class {
-  static {
-    __name(this, "KeyStore");
-  }
-  constructor(keys) {
-    this._keys = [];
-    this._keyMap = {};
-    let totalWeight = 0;
-    keys.forEach((key) => {
-      let obj = createKey(key);
-      this._keys.push(obj);
-      this._keyMap[obj.id] = obj;
-      totalWeight += obj.weight;
-    });
-    this._keys.forEach((key) => {
-      key.weight /= totalWeight;
-    });
-  }
-  get(keyId) {
-    return this._keyMap[keyId];
-  }
-  keys() {
-    return this._keys;
-  }
-  toJSON() {
-    return JSON.stringify(this._keys);
-  }
-};
-function createKey(key) {
-  let path4 = null;
-  let id = null;
-  let src = null;
-  let weight = 1;
-  let getFn = null;
-  if (isString(key) || isArray(key)) {
-    src = key;
-    path4 = createKeyPath(key);
-    id = createKeyId(key);
-  } else {
-    if (!hasOwn.call(key, "name")) {
-      throw new Error(MISSING_KEY_PROPERTY("name"));
-    }
-    const name = key.name;
-    src = name;
-    if (hasOwn.call(key, "weight")) {
-      weight = key.weight;
-      if (weight <= 0) {
-        throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
-      }
-    }
-    path4 = createKeyPath(name);
-    id = createKeyId(name);
-    getFn = key.getFn;
-  }
-  return { path: path4, id, weight, src, getFn };
-}
-__name(createKey, "createKey");
-function createKeyPath(key) {
-  return isArray(key) ? key : key.split(".");
-}
-__name(createKeyPath, "createKeyPath");
-function createKeyId(key) {
-  return isArray(key) ? key.join(".") : key;
-}
-__name(createKeyId, "createKeyId");
-function get(obj, path4) {
-  let list = [];
-  let arr = false;
-  const deepGet = /* @__PURE__ */ __name((obj2, path5, index) => {
-    if (!isDefined(obj2)) {
-      return;
-    }
-    if (!path5[index]) {
-      list.push(obj2);
-    } else {
-      let key = path5[index];
-      const value = obj2[key];
-      if (!isDefined(value)) {
-        return;
-      }
-      if (index === path5.length - 1 && (isString(value) || isNumber(value) || isBoolean(value))) {
-        list.push(toString(value));
-      } else if (isArray(value)) {
-        arr = true;
-        for (let i = 0, len = value.length; i < len; i += 1) {
-          deepGet(value[i], path5, index + 1);
-        }
-      } else if (path5.length) {
-        deepGet(value, path5, index + 1);
-      }
-    }
-  }, "deepGet");
-  deepGet(obj, isString(path4) ? path4.split(".") : path4, 0);
-  return arr ? list : list[0];
-}
-__name(get, "get");
-var MatchOptions = {
-  // Whether the matches should be included in the result set. When `true`, each record in the result
-  // set will include the indices of the matched characters.
-  // These can consequently be used for highlighting purposes.
-  includeMatches: false,
-  // When `true`, the matching function will continue to the end of a search pattern even if
-  // a perfect match has already been located in the string.
-  findAllMatches: false,
-  // Minimum number of characters that must be matched before a result is considered a match
-  minMatchCharLength: 1
-};
-var BasicOptions = {
-  // When `true`, the algorithm continues searching to the end of the input even if a perfect
-  // match is found before the end of the same input.
-  isCaseSensitive: false,
-  // When `true`, the algorithm will ignore diacritics (accents) in comparisons
-  ignoreDiacritics: false,
-  // When true, the matching function will continue to the end of a search pattern even if
-  includeScore: false,
-  // List of properties that will be searched. This also supports nested properties.
-  keys: [],
-  // Whether to sort the result list, by score
-  shouldSort: true,
-  // Default sort function: sort by ascending score, ascending index
-  sortFn: (a, b) => a.score === b.score ? a.idx < b.idx ? -1 : 1 : a.score < b.score ? -1 : 1
-};
-var FuzzyOptions = {
-  // Approximately where in the text is the pattern expected to be found?
-  location: 0,
-  // At what point does the match algorithm give up. A threshold of '0.0' requires a perfect match
-  // (of both letters and location), a threshold of '1.0' would match anything.
-  threshold: 0.6,
-  // Determines how close the match must be to the fuzzy location (specified above).
-  // An exact letter match which is 'distance' characters away from the fuzzy location
-  // would score as a complete mismatch. A distance of '0' requires the match be at
-  // the exact location specified, a threshold of '1000' would require a perfect match
-  // to be within 800 characters of the fuzzy location to be found using a 0.8 threshold.
-  distance: 100
-};
-var AdvancedOptions = {
-  // When `true`, it enables the use of unix-like search commands
-  useExtendedSearch: false,
-  // The get function to use when fetching an object's properties.
-  // The default will search nested paths *ie foo.bar.baz*
-  getFn: get,
-  // When `true`, search will ignore `location` and `distance`, so it won't matter
-  // where in the string the pattern appears.
-  // More info: https://fusejs.io/concepts/scoring-theory.html#fuzziness-score
-  ignoreLocation: false,
-  // When `true`, the calculation for the relevance score (used for sorting) will
-  // ignore the field-length norm.
-  // More info: https://fusejs.io/concepts/scoring-theory.html#field-length-norm
-  ignoreFieldNorm: false,
-  // The weight to determine how much field length norm effects scoring.
-  fieldNormWeight: 1
-};
-var Config = {
-  ...BasicOptions,
-  ...MatchOptions,
-  ...FuzzyOptions,
-  ...AdvancedOptions
-};
-var SPACE = /[^ ]+/g;
-function norm(weight = 1, mantissa = 3) {
-  const cache = /* @__PURE__ */ new Map();
-  const m = Math.pow(10, mantissa);
-  return {
-    get(value) {
-      const numTokens = value.match(SPACE).length;
-      if (cache.has(numTokens)) {
-        return cache.get(numTokens);
-      }
-      const norm2 = 1 / Math.pow(numTokens, 0.5 * weight);
-      const n = parseFloat(Math.round(norm2 * m) / m);
-      cache.set(numTokens, n);
-      return n;
-    },
-    clear() {
-      cache.clear();
-    }
-  };
-}
-__name(norm, "norm");
-var FuseIndex = class {
-  static {
-    __name(this, "FuseIndex");
-  }
-  constructor({
-    getFn = Config.getFn,
-    fieldNormWeight = Config.fieldNormWeight
-  } = {}) {
-    this.norm = norm(fieldNormWeight, 3);
-    this.getFn = getFn;
-    this.isCreated = false;
-    this.setIndexRecords();
-  }
-  setSources(docs = []) {
-    this.docs = docs;
-  }
-  setIndexRecords(records = []) {
-    this.records = records;
-  }
-  setKeys(keys = []) {
-    this.keys = keys;
-    this._keysMap = {};
-    keys.forEach((key, idx) => {
-      this._keysMap[key.id] = idx;
-    });
-  }
-  create() {
-    if (this.isCreated || !this.docs.length) {
-      return;
-    }
-    this.isCreated = true;
-    if (isString(this.docs[0])) {
-      this.docs.forEach((doc, docIndex) => {
-        this._addString(doc, docIndex);
-      });
-    } else {
-      this.docs.forEach((doc, docIndex) => {
-        this._addObject(doc, docIndex);
-      });
-    }
-    this.norm.clear();
-  }
-  // Adds a doc to the end of the index
-  add(doc) {
-    const idx = this.size();
-    if (isString(doc)) {
-      this._addString(doc, idx);
-    } else {
-      this._addObject(doc, idx);
-    }
-  }
-  // Removes the doc at the specified index of the index
-  removeAt(idx) {
-    this.records.splice(idx, 1);
-    for (let i = idx, len = this.size(); i < len; i += 1) {
-      this.records[i].i -= 1;
-    }
-  }
-  getValueForItemAtKeyId(item, keyId) {
-    return item[this._keysMap[keyId]];
-  }
-  size() {
-    return this.records.length;
-  }
-  _addString(doc, docIndex) {
-    if (!isDefined(doc) || isBlank(doc)) {
-      return;
-    }
-    let record2 = {
-      v: doc,
-      i: docIndex,
-      n: this.norm.get(doc)
-    };
-    this.records.push(record2);
-  }
-  _addObject(doc, docIndex) {
-    let record2 = { i: docIndex, $: {} };
-    this.keys.forEach((key, keyIndex) => {
-      let value = key.getFn ? key.getFn(doc) : this.getFn(doc, key.path);
-      if (!isDefined(value)) {
-        return;
-      }
-      if (isArray(value)) {
-        let subRecords = [];
-        const stack = [{ nestedArrIndex: -1, value }];
-        while (stack.length) {
-          const { nestedArrIndex, value: value2 } = stack.pop();
-          if (!isDefined(value2)) {
-            continue;
-          }
-          if (isString(value2) && !isBlank(value2)) {
-            let subRecord = {
-              v: value2,
-              i: nestedArrIndex,
-              n: this.norm.get(value2)
-            };
-            subRecords.push(subRecord);
-          } else if (isArray(value2)) {
-            value2.forEach((item, k) => {
-              stack.push({
-                nestedArrIndex: k,
-                value: item
-              });
-            });
-          } else
-            ;
-        }
-        record2.$[keyIndex] = subRecords;
-      } else if (isString(value) && !isBlank(value)) {
-        let subRecord = {
-          v: value,
-          n: this.norm.get(value)
-        };
-        record2.$[keyIndex] = subRecord;
-      }
-    });
-    this.records.push(record2);
-  }
-  toJSON() {
-    return {
-      keys: this.keys,
-      records: this.records
-    };
-  }
-};
-function createIndex(keys, docs, { getFn = Config.getFn, fieldNormWeight = Config.fieldNormWeight } = {}) {
-  const myIndex = new FuseIndex({ getFn, fieldNormWeight });
-  myIndex.setKeys(keys.map(createKey));
-  myIndex.setSources(docs);
-  myIndex.create();
-  return myIndex;
-}
-__name(createIndex, "createIndex");
-function parseIndex(data, { getFn = Config.getFn, fieldNormWeight = Config.fieldNormWeight } = {}) {
-  const { keys, records } = data;
-  const myIndex = new FuseIndex({ getFn, fieldNormWeight });
-  myIndex.setKeys(keys);
-  myIndex.setIndexRecords(records);
-  return myIndex;
-}
-__name(parseIndex, "parseIndex");
-function computeScore$1(pattern, {
-  errors = 0,
-  currentLocation = 0,
-  expectedLocation = 0,
-  distance = Config.distance,
-  ignoreLocation = Config.ignoreLocation
-} = {}) {
-  const accuracy = errors / pattern.length;
-  if (ignoreLocation) {
-    return accuracy;
-  }
-  const proximity = Math.abs(expectedLocation - currentLocation);
-  if (!distance) {
-    return proximity ? 1 : accuracy;
-  }
-  return accuracy + proximity / distance;
-}
-__name(computeScore$1, "computeScore$1");
-function convertMaskToIndices(matchmask = [], minMatchCharLength = Config.minMatchCharLength) {
-  let indices = [];
-  let start = -1;
-  let end = -1;
-  let i = 0;
-  for (let len = matchmask.length; i < len; i += 1) {
-    let match = matchmask[i];
-    if (match && start === -1) {
-      start = i;
-    } else if (!match && start !== -1) {
-      end = i - 1;
-      if (end - start + 1 >= minMatchCharLength) {
-        indices.push([start, end]);
-      }
-      start = -1;
-    }
-  }
-  if (matchmask[i - 1] && i - start >= minMatchCharLength) {
-    indices.push([start, i - 1]);
-  }
-  return indices;
-}
-__name(convertMaskToIndices, "convertMaskToIndices");
-var MAX_BITS = 32;
-function search(text, pattern, patternAlphabet, {
-  location = Config.location,
-  distance = Config.distance,
-  threshold = Config.threshold,
-  findAllMatches = Config.findAllMatches,
-  minMatchCharLength = Config.minMatchCharLength,
-  includeMatches = Config.includeMatches,
-  ignoreLocation = Config.ignoreLocation
-} = {}) {
-  if (pattern.length > MAX_BITS) {
-    throw new Error(PATTERN_LENGTH_TOO_LARGE(MAX_BITS));
-  }
-  const patternLen = pattern.length;
-  const textLen = text.length;
-  const expectedLocation = Math.max(0, Math.min(location, textLen));
-  let currentThreshold = threshold;
-  let bestLocation = expectedLocation;
-  const computeMatches = minMatchCharLength > 1 || includeMatches;
-  const matchMask = computeMatches ? Array(textLen) : [];
-  let index;
-  while ((index = text.indexOf(pattern, bestLocation)) > -1) {
-    let score = computeScore$1(pattern, {
-      currentLocation: index,
-      expectedLocation,
-      distance,
-      ignoreLocation
-    });
-    currentThreshold = Math.min(score, currentThreshold);
-    bestLocation = index + patternLen;
-    if (computeMatches) {
-      let i = 0;
-      while (i < patternLen) {
-        matchMask[index + i] = 1;
-        i += 1;
-      }
-    }
-  }
-  bestLocation = -1;
-  let lastBitArr = [];
-  let finalScore = 1;
-  let binMax = patternLen + textLen;
-  const mask = 1 << patternLen - 1;
-  for (let i = 0; i < patternLen; i += 1) {
-    let binMin = 0;
-    let binMid = binMax;
-    while (binMin < binMid) {
-      const score2 = computeScore$1(pattern, {
-        errors: i,
-        currentLocation: expectedLocation + binMid,
-        expectedLocation,
-        distance,
-        ignoreLocation
-      });
-      if (score2 <= currentThreshold) {
-        binMin = binMid;
-      } else {
-        binMax = binMid;
-      }
-      binMid = Math.floor((binMax - binMin) / 2 + binMin);
-    }
-    binMax = binMid;
-    let start = Math.max(1, expectedLocation - binMid + 1);
-    let finish = findAllMatches ? textLen : Math.min(expectedLocation + binMid, textLen) + patternLen;
-    let bitArr = Array(finish + 2);
-    bitArr[finish + 1] = (1 << i) - 1;
-    for (let j = finish; j >= start; j -= 1) {
-      let currentLocation = j - 1;
-      let charMatch = patternAlphabet[text.charAt(currentLocation)];
-      if (computeMatches) {
-        matchMask[currentLocation] = +!!charMatch;
-      }
-      bitArr[j] = (bitArr[j + 1] << 1 | 1) & charMatch;
-      if (i) {
-        bitArr[j] |= (lastBitArr[j + 1] | lastBitArr[j]) << 1 | 1 | lastBitArr[j + 1];
-      }
-      if (bitArr[j] & mask) {
-        finalScore = computeScore$1(pattern, {
-          errors: i,
-          currentLocation,
-          expectedLocation,
-          distance,
-          ignoreLocation
-        });
-        if (finalScore <= currentThreshold) {
-          currentThreshold = finalScore;
-          bestLocation = currentLocation;
-          if (bestLocation <= expectedLocation) {
-            break;
-          }
-          start = Math.max(1, 2 * expectedLocation - bestLocation);
-        }
-      }
-    }
-    const score = computeScore$1(pattern, {
-      errors: i + 1,
-      currentLocation: expectedLocation,
-      expectedLocation,
-      distance,
-      ignoreLocation
-    });
-    if (score > currentThreshold) {
-      break;
-    }
-    lastBitArr = bitArr;
-  }
-  const result = {
-    isMatch: bestLocation >= 0,
-    // Count exact matches (those with a score of 0) to be "almost" exact
-    score: Math.max(1e-3, finalScore)
-  };
-  if (computeMatches) {
-    const indices = convertMaskToIndices(matchMask, minMatchCharLength);
-    if (!indices.length) {
-      result.isMatch = false;
-    } else if (includeMatches) {
-      result.indices = indices;
-    }
-  }
-  return result;
-}
-__name(search, "search");
-function createPatternAlphabet(pattern) {
-  let mask = {};
-  for (let i = 0, len = pattern.length; i < len; i += 1) {
-    const char = pattern.charAt(i);
-    mask[char] = (mask[char] || 0) | 1 << len - i - 1;
-  }
-  return mask;
-}
-__name(createPatternAlphabet, "createPatternAlphabet");
-var stripDiacritics = String.prototype.normalize ? (str2) => str2.normalize("NFD").replace(/[\u0300-\u036F\u0483-\u0489\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u07FD\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08D3-\u08E1\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u09FE\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0AFA-\u0AFF\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B62\u0B63\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0C00-\u0C04\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0D00-\u0D03\u0D3B\u0D3C\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D82\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u180B-\u180D\u1885\u1886\u18A9\u1920-\u192B\u1930-\u193B\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F\u1AB0-\u1ABE\u1B00-\u1B04\u1B34-\u1B44\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BE6-\u1BF3\u1C24-\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF2-\u1CF4\u1CF7-\u1CF9\u1DC0-\u1DF9\u1DFB-\u1DFF\u20D0-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\uA66F-\uA672\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA880\uA881\uA8B4-\uA8C5\uA8E0-\uA8F1\uA8FF\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9E5\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F]/g, "") : (str2) => str2;
-var BitapSearch = class {
-  static {
-    __name(this, "BitapSearch");
-  }
-  constructor(pattern, {
-    location = Config.location,
-    threshold = Config.threshold,
-    distance = Config.distance,
-    includeMatches = Config.includeMatches,
-    findAllMatches = Config.findAllMatches,
-    minMatchCharLength = Config.minMatchCharLength,
-    isCaseSensitive = Config.isCaseSensitive,
-    ignoreDiacritics = Config.ignoreDiacritics,
-    ignoreLocation = Config.ignoreLocation
-  } = {}) {
-    this.options = {
-      location,
-      threshold,
-      distance,
-      includeMatches,
-      findAllMatches,
-      minMatchCharLength,
-      isCaseSensitive,
-      ignoreDiacritics,
-      ignoreLocation
-    };
-    pattern = isCaseSensitive ? pattern : pattern.toLowerCase();
-    pattern = ignoreDiacritics ? stripDiacritics(pattern) : pattern;
-    this.pattern = pattern;
-    this.chunks = [];
-    if (!this.pattern.length) {
-      return;
-    }
-    const addChunk = /* @__PURE__ */ __name((pattern2, startIndex) => {
-      this.chunks.push({
-        pattern: pattern2,
-        alphabet: createPatternAlphabet(pattern2),
-        startIndex
-      });
-    }, "addChunk");
-    const len = this.pattern.length;
-    if (len > MAX_BITS) {
-      let i = 0;
-      const remainder = len % MAX_BITS;
-      const end = len - remainder;
-      while (i < end) {
-        addChunk(this.pattern.substr(i, MAX_BITS), i);
-        i += MAX_BITS;
-      }
-      if (remainder) {
-        const startIndex = len - MAX_BITS;
-        addChunk(this.pattern.substr(startIndex), startIndex);
-      }
-    } else {
-      addChunk(this.pattern, 0);
-    }
-  }
-  searchIn(text) {
-    const { isCaseSensitive, ignoreDiacritics, includeMatches } = this.options;
-    text = isCaseSensitive ? text : text.toLowerCase();
-    text = ignoreDiacritics ? stripDiacritics(text) : text;
-    if (this.pattern === text) {
-      let result2 = {
-        isMatch: true,
-        score: 0
-      };
-      if (includeMatches) {
-        result2.indices = [[0, text.length - 1]];
-      }
-      return result2;
-    }
-    const {
-      location,
-      distance,
-      threshold,
-      findAllMatches,
-      minMatchCharLength,
-      ignoreLocation
-    } = this.options;
-    let allIndices = [];
-    let totalScore = 0;
-    let hasMatches = false;
-    this.chunks.forEach(({ pattern, alphabet, startIndex }) => {
-      const { isMatch, score, indices } = search(text, pattern, alphabet, {
-        location: location + startIndex,
-        distance,
-        threshold,
-        findAllMatches,
-        minMatchCharLength,
-        includeMatches,
-        ignoreLocation
-      });
-      if (isMatch) {
-        hasMatches = true;
-      }
-      totalScore += score;
-      if (isMatch && indices) {
-        allIndices = [...allIndices, ...indices];
-      }
-    });
-    let result = {
-      isMatch: hasMatches,
-      score: hasMatches ? totalScore / this.chunks.length : 1
-    };
-    if (hasMatches && includeMatches) {
-      result.indices = allIndices;
-    }
-    return result;
-  }
-};
-var BaseMatch = class {
-  static {
-    __name(this, "BaseMatch");
-  }
-  constructor(pattern) {
-    this.pattern = pattern;
-  }
-  static isMultiMatch(pattern) {
-    return getMatch(pattern, this.multiRegex);
-  }
-  static isSingleMatch(pattern) {
-    return getMatch(pattern, this.singleRegex);
-  }
-  search() {
-  }
-};
-function getMatch(pattern, exp) {
-  const matches = pattern.match(exp);
-  return matches ? matches[1] : null;
-}
-__name(getMatch, "getMatch");
-var ExactMatch = class extends BaseMatch {
-  static {
-    __name(this, "ExactMatch");
-  }
-  constructor(pattern) {
-    super(pattern);
-  }
-  static get type() {
-    return "exact";
-  }
-  static get multiRegex() {
-    return /^="(.*)"$/;
-  }
-  static get singleRegex() {
-    return /^=(.*)$/;
-  }
-  search(text) {
-    const isMatch = text === this.pattern;
-    return {
-      isMatch,
-      score: isMatch ? 0 : 1,
-      indices: [0, this.pattern.length - 1]
-    };
-  }
-};
-var InverseExactMatch = class extends BaseMatch {
-  static {
-    __name(this, "InverseExactMatch");
-  }
-  constructor(pattern) {
-    super(pattern);
-  }
-  static get type() {
-    return "inverse-exact";
-  }
-  static get multiRegex() {
-    return /^!"(.*)"$/;
-  }
-  static get singleRegex() {
-    return /^!(.*)$/;
-  }
-  search(text) {
-    const index = text.indexOf(this.pattern);
-    const isMatch = index === -1;
-    return {
-      isMatch,
-      score: isMatch ? 0 : 1,
-      indices: [0, text.length - 1]
-    };
-  }
-};
-var PrefixExactMatch = class extends BaseMatch {
-  static {
-    __name(this, "PrefixExactMatch");
-  }
-  constructor(pattern) {
-    super(pattern);
-  }
-  static get type() {
-    return "prefix-exact";
-  }
-  static get multiRegex() {
-    return /^\^"(.*)"$/;
-  }
-  static get singleRegex() {
-    return /^\^(.*)$/;
-  }
-  search(text) {
-    const isMatch = text.startsWith(this.pattern);
-    return {
-      isMatch,
-      score: isMatch ? 0 : 1,
-      indices: [0, this.pattern.length - 1]
-    };
-  }
-};
-var InversePrefixExactMatch = class extends BaseMatch {
-  static {
-    __name(this, "InversePrefixExactMatch");
-  }
-  constructor(pattern) {
-    super(pattern);
-  }
-  static get type() {
-    return "inverse-prefix-exact";
-  }
-  static get multiRegex() {
-    return /^!\^"(.*)"$/;
-  }
-  static get singleRegex() {
-    return /^!\^(.*)$/;
-  }
-  search(text) {
-    const isMatch = !text.startsWith(this.pattern);
-    return {
-      isMatch,
-      score: isMatch ? 0 : 1,
-      indices: [0, text.length - 1]
-    };
-  }
-};
-var SuffixExactMatch = class extends BaseMatch {
-  static {
-    __name(this, "SuffixExactMatch");
-  }
-  constructor(pattern) {
-    super(pattern);
-  }
-  static get type() {
-    return "suffix-exact";
-  }
-  static get multiRegex() {
-    return /^"(.*)"\$$/;
-  }
-  static get singleRegex() {
-    return /^(.*)\$$/;
-  }
-  search(text) {
-    const isMatch = text.endsWith(this.pattern);
-    return {
-      isMatch,
-      score: isMatch ? 0 : 1,
-      indices: [text.length - this.pattern.length, text.length - 1]
-    };
-  }
-};
-var InverseSuffixExactMatch = class extends BaseMatch {
-  static {
-    __name(this, "InverseSuffixExactMatch");
-  }
-  constructor(pattern) {
-    super(pattern);
-  }
-  static get type() {
-    return "inverse-suffix-exact";
-  }
-  static get multiRegex() {
-    return /^!"(.*)"\$$/;
-  }
-  static get singleRegex() {
-    return /^!(.*)\$$/;
-  }
-  search(text) {
-    const isMatch = !text.endsWith(this.pattern);
-    return {
-      isMatch,
-      score: isMatch ? 0 : 1,
-      indices: [0, text.length - 1]
-    };
-  }
-};
-var FuzzyMatch = class extends BaseMatch {
-  static {
-    __name(this, "FuzzyMatch");
-  }
-  constructor(pattern, {
-    location = Config.location,
-    threshold = Config.threshold,
-    distance = Config.distance,
-    includeMatches = Config.includeMatches,
-    findAllMatches = Config.findAllMatches,
-    minMatchCharLength = Config.minMatchCharLength,
-    isCaseSensitive = Config.isCaseSensitive,
-    ignoreDiacritics = Config.ignoreDiacritics,
-    ignoreLocation = Config.ignoreLocation
-  } = {}) {
-    super(pattern);
-    this._bitapSearch = new BitapSearch(pattern, {
-      location,
-      threshold,
-      distance,
-      includeMatches,
-      findAllMatches,
-      minMatchCharLength,
-      isCaseSensitive,
-      ignoreDiacritics,
-      ignoreLocation
-    });
-  }
-  static get type() {
-    return "fuzzy";
-  }
-  static get multiRegex() {
-    return /^"(.*)"$/;
-  }
-  static get singleRegex() {
-    return /^(.*)$/;
-  }
-  search(text) {
-    return this._bitapSearch.searchIn(text);
-  }
-};
-var IncludeMatch = class extends BaseMatch {
-  static {
-    __name(this, "IncludeMatch");
-  }
-  constructor(pattern) {
-    super(pattern);
-  }
-  static get type() {
-    return "include";
-  }
-  static get multiRegex() {
-    return /^'"(.*)"$/;
-  }
-  static get singleRegex() {
-    return /^'(.*)$/;
-  }
-  search(text) {
-    let location = 0;
-    let index;
-    const indices = [];
-    const patternLen = this.pattern.length;
-    while ((index = text.indexOf(this.pattern, location)) > -1) {
-      location = index + patternLen;
-      indices.push([index, location - 1]);
-    }
-    const isMatch = !!indices.length;
-    return {
-      isMatch,
-      score: isMatch ? 0 : 1,
-      indices
-    };
-  }
-};
-var searchers = [
-  ExactMatch,
-  IncludeMatch,
-  PrefixExactMatch,
-  InversePrefixExactMatch,
-  InverseSuffixExactMatch,
-  SuffixExactMatch,
-  InverseExactMatch,
-  FuzzyMatch
-];
-var searchersLen = searchers.length;
-var SPACE_RE = / +(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/;
-var OR_TOKEN = "|";
-function parseQuery(pattern, options = {}) {
-  return pattern.split(OR_TOKEN).map((item) => {
-    let query = item.trim().split(SPACE_RE).filter((item2) => item2 && !!item2.trim());
-    let results = [];
-    for (let i = 0, len = query.length; i < len; i += 1) {
-      const queryItem = query[i];
-      let found = false;
-      let idx = -1;
-      while (!found && ++idx < searchersLen) {
-        const searcher = searchers[idx];
-        let token = searcher.isMultiMatch(queryItem);
-        if (token) {
-          results.push(new searcher(token, options));
-          found = true;
-        }
-      }
-      if (found) {
-        continue;
-      }
-      idx = -1;
-      while (++idx < searchersLen) {
-        const searcher = searchers[idx];
-        let token = searcher.isSingleMatch(queryItem);
-        if (token) {
-          results.push(new searcher(token, options));
-          break;
-        }
-      }
-    }
-    return results;
-  });
-}
-__name(parseQuery, "parseQuery");
-var MultiMatchSet = /* @__PURE__ */ new Set([FuzzyMatch.type, IncludeMatch.type]);
-var ExtendedSearch = class {
-  static {
-    __name(this, "ExtendedSearch");
-  }
-  constructor(pattern, {
-    isCaseSensitive = Config.isCaseSensitive,
-    ignoreDiacritics = Config.ignoreDiacritics,
-    includeMatches = Config.includeMatches,
-    minMatchCharLength = Config.minMatchCharLength,
-    ignoreLocation = Config.ignoreLocation,
-    findAllMatches = Config.findAllMatches,
-    location = Config.location,
-    threshold = Config.threshold,
-    distance = Config.distance
-  } = {}) {
-    this.query = null;
-    this.options = {
-      isCaseSensitive,
-      ignoreDiacritics,
-      includeMatches,
-      minMatchCharLength,
-      findAllMatches,
-      ignoreLocation,
-      location,
-      threshold,
-      distance
-    };
-    pattern = isCaseSensitive ? pattern : pattern.toLowerCase();
-    pattern = ignoreDiacritics ? stripDiacritics(pattern) : pattern;
-    this.pattern = pattern;
-    this.query = parseQuery(this.pattern, this.options);
-  }
-  static condition(_, options) {
-    return options.useExtendedSearch;
-  }
-  searchIn(text) {
-    const query = this.query;
-    if (!query) {
-      return {
-        isMatch: false,
-        score: 1
-      };
-    }
-    const { includeMatches, isCaseSensitive, ignoreDiacritics } = this.options;
-    text = isCaseSensitive ? text : text.toLowerCase();
-    text = ignoreDiacritics ? stripDiacritics(text) : text;
-    let numMatches = 0;
-    let allIndices = [];
-    let totalScore = 0;
-    for (let i = 0, qLen = query.length; i < qLen; i += 1) {
-      const searchers2 = query[i];
-      allIndices.length = 0;
-      numMatches = 0;
-      for (let j = 0, pLen = searchers2.length; j < pLen; j += 1) {
-        const searcher = searchers2[j];
-        const { isMatch, indices, score } = searcher.search(text);
-        if (isMatch) {
-          numMatches += 1;
-          totalScore += score;
-          if (includeMatches) {
-            const type2 = searcher.constructor.type;
-            if (MultiMatchSet.has(type2)) {
-              allIndices = [...allIndices, ...indices];
-            } else {
-              allIndices.push(indices);
-            }
-          }
-        } else {
-          totalScore = 0;
-          numMatches = 0;
-          allIndices.length = 0;
-          break;
-        }
-      }
-      if (numMatches) {
-        let result = {
-          isMatch: true,
-          score: totalScore / numMatches
-        };
-        if (includeMatches) {
-          result.indices = allIndices;
-        }
-        return result;
-      }
-    }
-    return {
-      isMatch: false,
-      score: 1
-    };
-  }
-};
-var registeredSearchers = [];
-function register(...args) {
-  registeredSearchers.push(...args);
-}
-__name(register, "register");
-function createSearcher(pattern, options) {
-  for (let i = 0, len = registeredSearchers.length; i < len; i += 1) {
-    let searcherClass = registeredSearchers[i];
-    if (searcherClass.condition(pattern, options)) {
-      return new searcherClass(pattern, options);
-    }
-  }
-  return new BitapSearch(pattern, options);
-}
-__name(createSearcher, "createSearcher");
-var LogicalOperator = {
-  AND: "$and",
-  OR: "$or"
-};
-var KeyType = {
-  PATH: "$path",
-  PATTERN: "$val"
-};
-var isExpression = /* @__PURE__ */ __name((query) => !!(query[LogicalOperator.AND] || query[LogicalOperator.OR]), "isExpression");
-var isPath = /* @__PURE__ */ __name((query) => !!query[KeyType.PATH], "isPath");
-var isLeaf = /* @__PURE__ */ __name((query) => !isArray(query) && isObject2(query) && !isExpression(query), "isLeaf");
-var convertToExplicit = /* @__PURE__ */ __name((query) => ({
-  [LogicalOperator.AND]: Object.keys(query).map((key) => ({
-    [key]: query[key]
-  }))
-}), "convertToExplicit");
-function parse3(query, options, { auto = true } = {}) {
-  const next = /* @__PURE__ */ __name((query2) => {
-    let keys = Object.keys(query2);
-    const isQueryPath = isPath(query2);
-    if (!isQueryPath && keys.length > 1 && !isExpression(query2)) {
-      return next(convertToExplicit(query2));
-    }
-    if (isLeaf(query2)) {
-      const key = isQueryPath ? query2[KeyType.PATH] : keys[0];
-      const pattern = isQueryPath ? query2[KeyType.PATTERN] : query2[key];
-      if (!isString(pattern)) {
-        throw new Error(LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY(key));
-      }
-      const obj = {
-        keyId: createKeyId(key),
-        pattern
-      };
-      if (auto) {
-        obj.searcher = createSearcher(pattern, options);
-      }
-      return obj;
-    }
-    let node = {
-      children: [],
-      operator: keys[0]
-    };
-    keys.forEach((key) => {
-      const value = query2[key];
-      if (isArray(value)) {
-        value.forEach((item) => {
-          node.children.push(next(item));
-        });
-      }
-    });
-    return node;
-  }, "next");
-  if (!isExpression(query)) {
-    query = convertToExplicit(query);
-  }
-  return next(query);
-}
-__name(parse3, "parse");
-function computeScore(results, { ignoreFieldNorm = Config.ignoreFieldNorm }) {
-  results.forEach((result) => {
-    let totalScore = 1;
-    result.matches.forEach(({ key, norm: norm2, score }) => {
-      const weight = key ? key.weight : null;
-      totalScore *= Math.pow(
-        score === 0 && weight ? Number.EPSILON : score,
-        (weight || 1) * (ignoreFieldNorm ? 1 : norm2)
-      );
-    });
-    result.score = totalScore;
-  });
-}
-__name(computeScore, "computeScore");
-function transformMatches(result, data) {
-  const matches = result.matches;
-  data.matches = [];
-  if (!isDefined(matches)) {
-    return;
-  }
-  matches.forEach((match) => {
-    if (!isDefined(match.indices) || !match.indices.length) {
-      return;
-    }
-    const { indices, value } = match;
-    let obj = {
-      indices,
-      value
-    };
-    if (match.key) {
-      obj.key = match.key.src;
-    }
-    if (match.idx > -1) {
-      obj.refIndex = match.idx;
-    }
-    data.matches.push(obj);
-  });
-}
-__name(transformMatches, "transformMatches");
-function transformScore(result, data) {
-  data.score = result.score;
-}
-__name(transformScore, "transformScore");
-function format(results, docs, {
-  includeMatches = Config.includeMatches,
-  includeScore = Config.includeScore
-} = {}) {
-  const transformers = [];
-  if (includeMatches)
-    transformers.push(transformMatches);
-  if (includeScore)
-    transformers.push(transformScore);
-  return results.map((result) => {
-    const { idx } = result;
-    const data = {
-      item: docs[idx],
-      refIndex: idx
-    };
-    if (transformers.length) {
-      transformers.forEach((transformer) => {
-        transformer(result, data);
-      });
-    }
-    return data;
-  });
-}
-__name(format, "format");
-var Fuse = class {
-  static {
-    __name(this, "Fuse");
-  }
-  constructor(docs, options = {}, index) {
-    this.options = { ...Config, ...options };
-    if (this.options.useExtendedSearch && false) {
-      throw new Error(EXTENDED_SEARCH_UNAVAILABLE);
-    }
-    this._keyStore = new KeyStore(this.options.keys);
-    this.setCollection(docs, index);
-  }
-  setCollection(docs, index) {
-    this._docs = docs;
-    if (index && !(index instanceof FuseIndex)) {
-      throw new Error(INCORRECT_INDEX_TYPE);
-    }
-    this._myIndex = index || createIndex(this.options.keys, this._docs, {
-      getFn: this.options.getFn,
-      fieldNormWeight: this.options.fieldNormWeight
-    });
-  }
-  add(doc) {
-    if (!isDefined(doc)) {
-      return;
-    }
-    this._docs.push(doc);
-    this._myIndex.add(doc);
-  }
-  remove(predicate = () => false) {
-    const results = [];
-    for (let i = 0, len = this._docs.length; i < len; i += 1) {
-      const doc = this._docs[i];
-      if (predicate(doc, i)) {
-        this.removeAt(i);
-        i -= 1;
-        len -= 1;
-        results.push(doc);
-      }
-    }
-    return results;
-  }
-  removeAt(idx) {
-    this._docs.splice(idx, 1);
-    this._myIndex.removeAt(idx);
-  }
-  getIndex() {
-    return this._myIndex;
-  }
-  search(query, { limit = -1 } = {}) {
-    const {
-      includeMatches,
-      includeScore,
-      shouldSort,
-      sortFn,
-      ignoreFieldNorm
-    } = this.options;
-    let results = isString(query) ? isString(this._docs[0]) ? this._searchStringList(query) : this._searchObjectList(query) : this._searchLogical(query);
-    computeScore(results, { ignoreFieldNorm });
-    if (shouldSort) {
-      results.sort(sortFn);
-    }
-    if (isNumber(limit) && limit > -1) {
-      results = results.slice(0, limit);
-    }
-    return format(results, this._docs, {
-      includeMatches,
-      includeScore
-    });
-  }
-  _searchStringList(query) {
-    const searcher = createSearcher(query, this.options);
-    const { records } = this._myIndex;
-    const results = [];
-    records.forEach(({ v: text, i: idx, n: norm2 }) => {
-      if (!isDefined(text)) {
-        return;
-      }
-      const { isMatch, score, indices } = searcher.searchIn(text);
-      if (isMatch) {
-        results.push({
-          item: text,
-          idx,
-          matches: [{ score, value: text, norm: norm2, indices }]
-        });
-      }
-    });
-    return results;
-  }
-  _searchLogical(query) {
-    const expression = parse3(query, this.options);
-    const evaluate = /* @__PURE__ */ __name((node, item, idx) => {
-      if (!node.children) {
-        const { keyId, searcher } = node;
-        const matches = this._findMatches({
-          key: this._keyStore.get(keyId),
-          value: this._myIndex.getValueForItemAtKeyId(item, keyId),
-          searcher
-        });
-        if (matches && matches.length) {
-          return [
-            {
-              idx,
-              item,
-              matches
-            }
-          ];
-        }
-        return [];
-      }
-      const res = [];
-      for (let i = 0, len = node.children.length; i < len; i += 1) {
-        const child = node.children[i];
-        const result = evaluate(child, item, idx);
-        if (result.length) {
-          res.push(...result);
-        } else if (node.operator === LogicalOperator.AND) {
-          return [];
-        }
-      }
-      return res;
-    }, "evaluate");
-    const records = this._myIndex.records;
-    const resultMap = {};
-    const results = [];
-    records.forEach(({ $: item, i: idx }) => {
-      if (isDefined(item)) {
-        let expResults = evaluate(expression, item, idx);
-        if (expResults.length) {
-          if (!resultMap[idx]) {
-            resultMap[idx] = { idx, item, matches: [] };
-            results.push(resultMap[idx]);
-          }
-          expResults.forEach(({ matches }) => {
-            resultMap[idx].matches.push(...matches);
-          });
-        }
-      }
-    });
-    return results;
-  }
-  _searchObjectList(query) {
-    const searcher = createSearcher(query, this.options);
-    const { keys, records } = this._myIndex;
-    const results = [];
-    records.forEach(({ $: item, i: idx }) => {
-      if (!isDefined(item)) {
-        return;
-      }
-      let matches = [];
-      keys.forEach((key, keyIndex) => {
-        matches.push(
-          ...this._findMatches({
-            key,
-            value: item[keyIndex],
-            searcher
-          })
-        );
-      });
-      if (matches.length) {
-        results.push({
-          idx,
-          item,
-          matches
-        });
-      }
-    });
-    return results;
-  }
-  _findMatches({ key, value, searcher }) {
-    if (!isDefined(value)) {
-      return [];
-    }
-    let matches = [];
-    if (isArray(value)) {
-      value.forEach(({ v: text, i: idx, n: norm2 }) => {
-        if (!isDefined(text)) {
-          return;
-        }
-        const { isMatch, score, indices } = searcher.searchIn(text);
-        if (isMatch) {
-          matches.push({
-            score,
-            key,
-            value: text,
-            idx,
-            norm: norm2,
-            indices
-          });
-        }
-      });
-    } else {
-      const { v: text, n: norm2 } = value;
-      const { isMatch, score, indices } = searcher.searchIn(text);
-      if (isMatch) {
-        matches.push({ score, key, value: text, norm: norm2, indices });
-      }
-    }
-    return matches;
-  }
-};
-Fuse.version = "7.1.0";
-Fuse.createIndex = createIndex;
-Fuse.parseIndex = parseIndex;
-Fuse.config = Config;
-{
-  Fuse.parseQuery = parse3;
-}
-{
-  register(ExtendedSearch);
-}
 
 // node_modules/js-yaml/dist/js-yaml.mjs
 function isNothing(subject) {
   return typeof subject === "undefined" || subject === null;
 }
 __name(isNothing, "isNothing");
-function isObject3(subject) {
+function isObject2(subject) {
   return typeof subject === "object" && subject !== null;
 }
-__name(isObject3, "isObject");
+__name(isObject2, "isObject");
 function toArray(sequence) {
   if (Array.isArray(sequence))
     return sequence;
@@ -23121,7 +21642,7 @@ function isNegativeZero(number3) {
 }
 __name(isNegativeZero, "isNegativeZero");
 var isNothing_1 = isNothing;
-var isObject_1 = isObject3;
+var isObject_1 = isObject2;
 var toArray_1 = toArray;
 var repeat_1 = repeat;
 var isNegativeZero_1 = isNegativeZero;
@@ -23163,7 +21684,7 @@ function YAMLException$1(reason, mark) {
 __name(YAMLException$1, "YAMLException$1");
 YAMLException$1.prototype = Object.create(Error.prototype);
 YAMLException$1.prototype.constructor = YAMLException$1;
-YAMLException$1.prototype.toString = /* @__PURE__ */ __name(function toString2(compact) {
+YAMLException$1.prototype.toString = /* @__PURE__ */ __name(function toString(compact) {
   return this.name + ": " + formatError2(this, compact);
 }, "toString");
 var exception = YAMLException$1;
@@ -23469,15 +21990,15 @@ function constructYamlBoolean(data) {
   return data === "true" || data === "True" || data === "TRUE";
 }
 __name(constructYamlBoolean, "constructYamlBoolean");
-function isBoolean2(object3) {
+function isBoolean(object3) {
   return Object.prototype.toString.call(object3) === "[object Boolean]";
 }
-__name(isBoolean2, "isBoolean");
+__name(isBoolean, "isBoolean");
 var bool = new type("tag:yaml.org,2002:bool", {
   kind: "scalar",
   resolve: resolveYamlBoolean,
   construct: constructYamlBoolean,
-  predicate: isBoolean2,
+  predicate: isBoolean,
   represent: {
     lowercase: function(object3) {
       return object3 ? "true" : "false";
@@ -25855,18 +24376,9 @@ var safeLoad = renamed("safeLoad", "load");
 var safeLoadAll = renamed("safeLoadAll", "loadAll");
 var safeDump = renamed("safeDump", "dump");
 
-// src/utils.ts
-var fsPromises = __toESM(require("fs/promises"), 1);
-var path2 = __toESM(require("path"), 1);
-async function fileExists(filePath) {
-  try {
-    await fsPromises.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-__name(fileExists, "fileExists");
+// src/core/registry.ts
+var fsPromises2 = __toESM(require("node:fs/promises"), 1);
+var path2 = __toESM(require("node:path"), 1);
 async function loadRegistry(registryPath) {
   try {
     const fullPath = path2.join(PLUGIN_ROOT, registryPath);
@@ -25874,7 +24386,7 @@ async function loadRegistry(registryPath) {
       logger.error(`Registry not found: ${fullPath}`);
       return null;
     }
-    const content = await fsPromises.readFile(fullPath, "utf-8");
+    const content = await fsPromises2.readFile(fullPath, "utf-8");
     return load(content);
   } catch (error2) {
     logger.error(`Error loading registry ${registryPath}`, error2);
@@ -25882,343 +24394,1440 @@ async function loadRegistry(registryPath) {
   }
 }
 __name(loadRegistry, "loadRegistry");
-function createIndex2(registry2) {
-  if (!registry2 || !registry2.search_index)
-    return null;
-  return new Fuse(registry2.search_index, FUSE_OPTIONS);
+
+// node_modules/fuse.js/dist/fuse.mjs
+function isArray(value) {
+  return !Array.isArray ? getTag(value) === "[object Array]" : Array.isArray(value);
 }
-__name(createIndex2, "createIndex");
-function search2(index, query, limit = 5) {
-  if (!index)
-    return [];
-  const results = index.search(query, { limit });
-  return results.map((r) => ({
-    name: r.item.name,
-    path: r.item.path,
-    description: r.item.description,
-    relevance: Math.round((1 - (r.score || 0)) * 100) / 100
-  }));
-}
-__name(search2, "search");
-async function parseSkillMetadata(skillPath) {
-  const attempts = [
-    path2.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
-    path2.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
-    path2.join(PLUGIN_ROOT, "skills", skillPath)
-  ];
-  for (const filePath of attempts) {
-    if (!await fileExists(filePath)) {
-      continue;
-    }
-    try {
-      const content = await fsPromises.readFile(filePath, "utf-8");
-      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-      if (frontmatterMatch) {
-        const frontmatter = load(frontmatterMatch[1]);
-        return {
-          requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : void 0,
-          complements: Array.isArray(frontmatter.complements) ? frontmatter.complements : Array.isArray(frontmatter.related) ? frontmatter.related : void 0,
-          conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : void 0,
-          category: typeof frontmatter.category === "string" ? frontmatter.category : void 0,
-          technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies : Array.isArray(frontmatter.tech) ? frontmatter.tech : void 0,
-          difficulty: typeof frontmatter.difficulty === "string" ? frontmatter.difficulty : void 0
-        };
-      }
-      const metadata = {};
-      const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
-      if (requiresMatch) {
-        const items = requiresMatch[1].match(/-\s*(.+)/g);
-        if (items) {
-          metadata.requires = items.map((m) => m.replace(/^-\s*/, "").trim());
-        } else {
-          metadata.requires = [];
-        }
-      }
-      const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
-      if (relatedMatch) {
-        const items = relatedMatch[1].match(/-\s*(.+)/g);
-        if (items) {
-          metadata.complements = items.map((m) => m.replace(/^-\s*/, "").trim());
-        } else {
-          metadata.complements = [];
-        }
-      }
-      const techKeywords = ["react", "next", "nextjs", "prisma", "drizzle", "tailwind", "typescript", "node", "express", "vite", "vitest", "jest", "zustand", "zod", "trpc"];
-      const contentLower = content.toLowerCase();
-      metadata.technologies = techKeywords.filter((t) => contentLower.includes(t));
-      return metadata;
-    } catch {
-      continue;
-    }
+__name(isArray, "isArray");
+var INFINITY = 1 / 0;
+function baseToString(value) {
+  if (typeof value == "string") {
+    return value;
   }
-  return {};
+  let result = value + "";
+  return result == "0" && 1 / value == -INFINITY ? "-0" : result;
 }
-__name(parseSkillMetadata, "parseSkillMetadata");
-function success2(data) {
+__name(baseToString, "baseToString");
+function toString2(value) {
+  return value == null ? "" : baseToString(value);
+}
+__name(toString2, "toString");
+function isString(value) {
+  return typeof value === "string";
+}
+__name(isString, "isString");
+function isNumber(value) {
+  return typeof value === "number";
+}
+__name(isNumber, "isNumber");
+function isBoolean2(value) {
+  return value === true || value === false || isObjectLike(value) && getTag(value) == "[object Boolean]";
+}
+__name(isBoolean2, "isBoolean");
+function isObject3(value) {
+  return typeof value === "object";
+}
+__name(isObject3, "isObject");
+function isObjectLike(value) {
+  return isObject3(value) && value !== null;
+}
+__name(isObjectLike, "isObjectLike");
+function isDefined(value) {
+  return value !== void 0 && value !== null;
+}
+__name(isDefined, "isDefined");
+function isBlank(value) {
+  return !value.trim().length;
+}
+__name(isBlank, "isBlank");
+function getTag(value) {
+  return value == null ? value === void 0 ? "[object Undefined]" : "[object Null]" : Object.prototype.toString.call(value);
+}
+__name(getTag, "getTag");
+var INCORRECT_INDEX_TYPE = "Incorrect 'index' type";
+var LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY = /* @__PURE__ */ __name((key) => `Invalid value for key ${key}`, "LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY");
+var PATTERN_LENGTH_TOO_LARGE = /* @__PURE__ */ __name((max) => `Pattern length exceeds max of ${max}.`, "PATTERN_LENGTH_TOO_LARGE");
+var MISSING_KEY_PROPERTY = /* @__PURE__ */ __name((name) => `Missing ${name} property in key`, "MISSING_KEY_PROPERTY");
+var INVALID_KEY_WEIGHT_VALUE = /* @__PURE__ */ __name((key) => `Property 'weight' in key '${key}' must be a positive integer`, "INVALID_KEY_WEIGHT_VALUE");
+var hasOwn = Object.prototype.hasOwnProperty;
+var KeyStore = class {
+  static {
+    __name(this, "KeyStore");
+  }
+  constructor(keys) {
+    this._keys = [];
+    this._keyMap = {};
+    let totalWeight = 0;
+    keys.forEach((key) => {
+      let obj = createKey(key);
+      this._keys.push(obj);
+      this._keyMap[obj.id] = obj;
+      totalWeight += obj.weight;
+    });
+    this._keys.forEach((key) => {
+      key.weight /= totalWeight;
+    });
+  }
+  get(keyId) {
+    return this._keyMap[keyId];
+  }
+  keys() {
+    return this._keys;
+  }
+  toJSON() {
+    return JSON.stringify(this._keys);
+  }
+};
+function createKey(key) {
+  let path4 = null;
+  let id = null;
+  let src = null;
+  let weight = 1;
+  let getFn = null;
+  if (isString(key) || isArray(key)) {
+    src = key;
+    path4 = createKeyPath(key);
+    id = createKeyId(key);
+  } else {
+    if (!hasOwn.call(key, "name")) {
+      throw new Error(MISSING_KEY_PROPERTY("name"));
+    }
+    const name = key.name;
+    src = name;
+    if (hasOwn.call(key, "weight")) {
+      weight = key.weight;
+      if (weight <= 0) {
+        throw new Error(INVALID_KEY_WEIGHT_VALUE(name));
+      }
+    }
+    path4 = createKeyPath(name);
+    id = createKeyId(name);
+    getFn = key.getFn;
+  }
+  return { path: path4, id, weight, src, getFn };
+}
+__name(createKey, "createKey");
+function createKeyPath(key) {
+  return isArray(key) ? key : key.split(".");
+}
+__name(createKeyPath, "createKeyPath");
+function createKeyId(key) {
+  return isArray(key) ? key.join(".") : key;
+}
+__name(createKeyId, "createKeyId");
+function get(obj, path4) {
+  let list = [];
+  let arr = false;
+  const deepGet = /* @__PURE__ */ __name((obj2, path5, index) => {
+    if (!isDefined(obj2)) {
+      return;
+    }
+    if (!path5[index]) {
+      list.push(obj2);
+    } else {
+      let key = path5[index];
+      const value = obj2[key];
+      if (!isDefined(value)) {
+        return;
+      }
+      if (index === path5.length - 1 && (isString(value) || isNumber(value) || isBoolean2(value))) {
+        list.push(toString2(value));
+      } else if (isArray(value)) {
+        arr = true;
+        for (let i = 0, len = value.length; i < len; i += 1) {
+          deepGet(value[i], path5, index + 1);
+        }
+      } else if (path5.length) {
+        deepGet(value, path5, index + 1);
+      }
+    }
+  }, "deepGet");
+  deepGet(obj, isString(path4) ? path4.split(".") : path4, 0);
+  return arr ? list : list[0];
+}
+__name(get, "get");
+var MatchOptions = {
+  // Whether the matches should be included in the result set. When `true`, each record in the result
+  // set will include the indices of the matched characters.
+  // These can consequently be used for highlighting purposes.
+  includeMatches: false,
+  // When `true`, the matching function will continue to the end of a search pattern even if
+  // a perfect match has already been located in the string.
+  findAllMatches: false,
+  // Minimum number of characters that must be matched before a result is considered a match
+  minMatchCharLength: 1
+};
+var BasicOptions = {
+  // When `true`, the algorithm continues searching to the end of the input even if a perfect
+  // match is found before the end of the same input.
+  isCaseSensitive: false,
+  // When `true`, the algorithm will ignore diacritics (accents) in comparisons
+  ignoreDiacritics: false,
+  // When true, the matching function will continue to the end of a search pattern even if
+  includeScore: false,
+  // List of properties that will be searched. This also supports nested properties.
+  keys: [],
+  // Whether to sort the result list, by score
+  shouldSort: true,
+  // Default sort function: sort by ascending score, ascending index
+  sortFn: (a, b) => a.score === b.score ? a.idx < b.idx ? -1 : 1 : a.score < b.score ? -1 : 1
+};
+var FuzzyOptions = {
+  // Approximately where in the text is the pattern expected to be found?
+  location: 0,
+  // At what point does the match algorithm give up. A threshold of '0.0' requires a perfect match
+  // (of both letters and location), a threshold of '1.0' would match anything.
+  threshold: 0.6,
+  // Determines how close the match must be to the fuzzy location (specified above).
+  // An exact letter match which is 'distance' characters away from the fuzzy location
+  // would score as a complete mismatch. A distance of '0' requires the match be at
+  // the exact location specified, a threshold of '1000' would require a perfect match
+  // to be within 800 characters of the fuzzy location to be found using a 0.8 threshold.
+  distance: 100
+};
+var AdvancedOptions = {
+  // When `true`, it enables the use of unix-like search commands
+  useExtendedSearch: false,
+  // The get function to use when fetching an object's properties.
+  // The default will search nested paths *ie foo.bar.baz*
+  getFn: get,
+  // When `true`, search will ignore `location` and `distance`, so it won't matter
+  // where in the string the pattern appears.
+  // More info: https://fusejs.io/concepts/scoring-theory.html#fuzziness-score
+  ignoreLocation: false,
+  // When `true`, the calculation for the relevance score (used for sorting) will
+  // ignore the field-length norm.
+  // More info: https://fusejs.io/concepts/scoring-theory.html#field-length-norm
+  ignoreFieldNorm: false,
+  // The weight to determine how much field length norm effects scoring.
+  fieldNormWeight: 1
+};
+var Config = {
+  ...BasicOptions,
+  ...MatchOptions,
+  ...FuzzyOptions,
+  ...AdvancedOptions
+};
+var SPACE = /[^ ]+/g;
+function norm(weight = 1, mantissa = 3) {
+  const cache = /* @__PURE__ */ new Map();
+  const m = Math.pow(10, mantissa);
   return {
-    content: [{
-      type: "text",
-      text: typeof data === "string" ? data : JSON.stringify(data, null, 2)
-    }]
+    get(value) {
+      const numTokens = value.match(SPACE).length;
+      if (cache.has(numTokens)) {
+        return cache.get(numTokens);
+      }
+      const norm2 = 1 / Math.pow(numTokens, 0.5 * weight);
+      const n = parseFloat(Math.round(norm2 * m) / m);
+      cache.set(numTokens, n);
+      return n;
+    },
+    clear() {
+      cache.clear();
+    }
   };
 }
-__name(success2, "success");
-
-// src/handlers/search.ts
-function search3(index, query, limit = 5) {
-  if (!index)
-    return [];
-  const results = index.search(query, { limit });
-  return results.map((r) => ({
-    name: r.item.name,
-    path: r.item.path,
-    description: r.item.description,
-    relevance: Math.round((1 - (r.score || 0)) * 100) / 100
-  }));
-}
-__name(search3, "search");
-function handleSearchSkills(skillsIndex, args) {
-  const results = search3(skillsIndex, args.query, args.limit || 5);
-  const filtered = args.category ? results.filter((r) => r.path.startsWith(args.category)) : results;
-  return success2({ skills: filtered, total_count: filtered.length, query: args.query });
-}
-__name(handleSearchSkills, "handleSearchSkills");
-function handleSearchAgents(agentsIndex, args) {
-  const results = search3(agentsIndex, args.query, args.limit || 5);
-  return success2({ agents: results, total_count: results.length, query: args.query });
-}
-__name(handleSearchAgents, "handleSearchAgents");
-function handleSearchTools(toolsIndex, args) {
-  const results = search3(toolsIndex, args.query, args.limit || 5);
-  return success2({ tools: results, total_count: results.length, query: args.query });
-}
-__name(handleSearchTools, "handleSearchTools");
-function handleRecommendSkills(skillsIndex, args) {
-  const keywords = args.task.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-  const results = search3(skillsIndex, args.task, args.max_results || 5);
-  const taskLower = args.task.toLowerCase();
-  let category = "general";
-  if (taskLower.includes("auth") || taskLower.includes("login"))
-    category = "authentication";
-  else if (taskLower.includes("database") || taskLower.includes("prisma") || taskLower.includes("sql"))
-    category = "database";
-  else if (taskLower.includes("api") || taskLower.includes("endpoint"))
-    category = "api";
-  else if (taskLower.includes("style") || taskLower.includes("css") || taskLower.includes("tailwind"))
-    category = "styling";
-  else if (taskLower.includes("test"))
-    category = "testing";
-  else if (taskLower.includes("deploy") || taskLower.includes("build"))
-    category = "deployment";
-  const recommendations = results.map((r) => ({
-    skill: r.name,
-    path: r.path,
-    relevance: r.relevance,
-    reason: `Matches task keywords: ${keywords.slice(0, 3).join(", ")}`,
-    prerequisites: [],
-    complements: []
-  }));
-  return success2({
-    recommendations,
-    task_analysis: {
-      category,
-      keywords: keywords.slice(0, 10),
-      complexity: keywords.length > 10 ? "complex" : keywords.length > 5 ? "moderate" : "simple"
-    }
-  });
-}
-__name(handleRecommendSkills, "handleRecommendSkills");
-
-// src/handlers/content.ts
-var fs = __toESM(require("fs"), 1);
-var path3 = __toESM(require("path"), 1);
-function createTextResponse(text) {
-  return {
-    content: [{ type: "text", text }]
-  };
-}
-__name(createTextResponse, "createTextResponse");
-async function handleGetSkillContent(args) {
-  const attempts = [
-    path3.join(PLUGIN_ROOT, "skills", args.path, "SKILL.md"),
-    path3.join(PLUGIN_ROOT, "skills", args.path + ".md"),
-    path3.join(PLUGIN_ROOT, "skills", args.path)
-  ];
-  for (const skillPath of attempts) {
-    if (fs.existsSync(skillPath)) {
-      const content = await fs.promises.readFile(skillPath, "utf-8");
-      return createTextResponse(content);
-    }
+__name(norm, "norm");
+var FuseIndex = class {
+  static {
+    __name(this, "FuseIndex");
   }
-  throw new Error(`Skill not found: ${args.path}`);
-}
-__name(handleGetSkillContent, "handleGetSkillContent");
-async function handleGetAgentContent(args) {
-  const attempts = [
-    path3.join(PLUGIN_ROOT, "agents", `${args.path}.md`),
-    path3.join(PLUGIN_ROOT, "agents", args.path),
-    path3.join(PLUGIN_ROOT, "agents", args.path, "index.md")
-  ];
-  for (const agentPath of attempts) {
-    if (fs.existsSync(agentPath)) {
-      const content = await fs.promises.readFile(agentPath, "utf-8");
-      return createTextResponse(content);
+  constructor({
+    getFn = Config.getFn,
+    fieldNormWeight = Config.fieldNormWeight
+  } = {}) {
+    this.norm = norm(fieldNormWeight, 3);
+    this.getFn = getFn;
+    this.isCreated = false;
+    this.setIndexRecords();
+  }
+  setSources(docs = []) {
+    this.docs = docs;
+  }
+  setIndexRecords(records = []) {
+    this.records = records;
+  }
+  setKeys(keys = []) {
+    this.keys = keys;
+    this._keysMap = {};
+    keys.forEach((key, idx) => {
+      this._keysMap[key.id] = idx;
+    });
+  }
+  create() {
+    if (this.isCreated || !this.docs.length) {
+      return;
     }
-  }
-  throw new Error(`Agent not found: ${args.path}`);
-}
-__name(handleGetAgentContent, "handleGetAgentContent");
-
-// src/handlers/dependencies.ts
-async function handleSkillDependencies(skillsIndex, skillsRegistry, args) {
-  const results = search2(skillsIndex, args.skill, 1);
-  if (results.length === 0) {
-    throw new Error(`Skill not found: ${args.skill}`);
-  }
-  const skill = results[0];
-  const depth = args.depth || 2;
-  const includeOptional = args.include_optional !== false;
-  const skillMetadata = await parseSkillMetadata(skill.path);
-  const required2 = [];
-  const optional2 = [];
-  const conflicts = [];
-  const dependents = [];
-  if (skillMetadata.requires) {
-    for (const req of skillMetadata.requires) {
-      const reqResult = search2(skillsIndex, req, 1);
-      if (reqResult.length > 0) {
-        required2.push({
-          skill: reqResult[0].name,
-          path: reqResult[0].path,
-          reason: "Listed as required dependency"
-        });
-        if (depth > 1) {
-          const nestedMeta = await parseSkillMetadata(reqResult[0].path);
-          if (nestedMeta.requires) {
-            for (const nested of nestedMeta.requires.slice(0, 3)) {
-              const nestedResult = search2(skillsIndex, nested, 1);
-              if (nestedResult.length > 0 && !required2.find((r) => r.path === nestedResult[0].path)) {
-                required2.push({
-                  skill: nestedResult[0].name,
-                  path: nestedResult[0].path,
-                  reason: `Required by ${reqResult[0].name}`
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  if (includeOptional && skillMetadata.complements) {
-    for (const comp of skillMetadata.complements) {
-      const compResult = search2(skillsIndex, comp, 1);
-      if (compResult.length > 0) {
-        optional2.push({
-          skill: compResult[0].name,
-          path: compResult[0].path,
-          reason: "Listed as complementary skill"
-        });
-      }
-    }
-  }
-  if (skillMetadata.conflicts) {
-    for (const conf of skillMetadata.conflicts) {
-      const confResult = search2(skillsIndex, conf, 1);
-      if (confResult.length > 0) {
-        conflicts.push({
-          skill: confResult[0].name,
-          path: confResult[0].path,
-          reason: "Listed as conflicting skill"
-        });
-      }
-    }
-  }
-  if (skillsRegistry?.search_index) {
-    for (const entry of skillsRegistry.search_index) {
-      if (entry.path === skill.path)
-        continue;
-      const entryMeta = await parseSkillMetadata(entry.path);
-      if (entryMeta.requires?.some(
-        (r) => r.toLowerCase().includes(skill.name.toLowerCase()) || skill.path.includes(r)
-      )) {
-        dependents.push({ skill: entry.name, path: entry.path });
-      }
-    }
-  }
-  const skillPath = skill.path;
-  const category = skillPath.split("/")[0];
-  if (optional2.length < 3) {
-    const related = search2(skillsIndex, category, 10).filter((r) => r.path !== skillPath && !optional2.find((o) => o.path === r.path)).slice(0, 5 - optional2.length);
-    for (const r of related) {
-      optional2.push({
-        skill: r.name,
-        path: r.path,
-        reason: "Related skill in same category"
+    this.isCreated = true;
+    if (isString(this.docs[0])) {
+      this.docs.forEach((doc, docIndex) => {
+        this._addString(doc, docIndex);
+      });
+    } else {
+      this.docs.forEach((doc, docIndex) => {
+        this._addObject(doc, docIndex);
       });
     }
+    this.norm.clear();
   }
-  const suggestedBundle = [skill.path];
-  for (const req of required2.slice(0, 3)) {
-    suggestedBundle.push(req.path);
-  }
-  for (const opt of optional2.slice(0, 2)) {
-    if (!suggestedBundle.includes(opt.path)) {
-      suggestedBundle.push(opt.path);
+  // Adds a doc to the end of the index
+  add(doc) {
+    const idx = this.size();
+    if (isString(doc)) {
+      this._addString(doc, idx);
+    } else {
+      this._addObject(doc, idx);
     }
   }
-  return success2({
-    skill: skill.name,
-    path: skill.path,
-    metadata: {
-      category: skillMetadata.category || category,
-      technologies: skillMetadata.technologies || [],
-      difficulty: skillMetadata.difficulty
-    },
-    dependencies: {
-      required: required2,
-      optional: optional2.slice(0, 5),
-      conflicts
-    },
-    dependents: dependents.slice(0, 5),
-    suggested_bundle: suggestedBundle,
-    analysis: {
-      has_prerequisites: required2.length > 0,
-      has_conflicts: conflicts.length > 0,
-      dependency_count: required2.length + optional2.length,
-      is_foundational: dependents.length > 2
+  // Removes the doc at the specified index of the index
+  removeAt(idx) {
+    this.records.splice(idx, 1);
+    for (let i = idx, len = this.size(); i < len; i += 1) {
+      this.records[i].i -= 1;
     }
+  }
+  getValueForItemAtKeyId(item, keyId) {
+    return item[this._keysMap[keyId]];
+  }
+  size() {
+    return this.records.length;
+  }
+  _addString(doc, docIndex) {
+    if (!isDefined(doc) || isBlank(doc)) {
+      return;
+    }
+    let record2 = {
+      v: doc,
+      i: docIndex,
+      n: this.norm.get(doc)
+    };
+    this.records.push(record2);
+  }
+  _addObject(doc, docIndex) {
+    let record2 = { i: docIndex, $: {} };
+    this.keys.forEach((key, keyIndex) => {
+      let value = key.getFn ? key.getFn(doc) : this.getFn(doc, key.path);
+      if (!isDefined(value)) {
+        return;
+      }
+      if (isArray(value)) {
+        let subRecords = [];
+        const stack = [{ nestedArrIndex: -1, value }];
+        while (stack.length) {
+          const { nestedArrIndex, value: value2 } = stack.pop();
+          if (!isDefined(value2)) {
+            continue;
+          }
+          if (isString(value2) && !isBlank(value2)) {
+            let subRecord = {
+              v: value2,
+              i: nestedArrIndex,
+              n: this.norm.get(value2)
+            };
+            subRecords.push(subRecord);
+          } else if (isArray(value2)) {
+            value2.forEach((item, k) => {
+              stack.push({
+                nestedArrIndex: k,
+                value: item
+              });
+            });
+          } else
+            ;
+        }
+        record2.$[keyIndex] = subRecords;
+      } else if (isString(value) && !isBlank(value)) {
+        let subRecord = {
+          v: value,
+          n: this.norm.get(value)
+        };
+        record2.$[keyIndex] = subRecord;
+      }
+    });
+    this.records.push(record2);
+  }
+  toJSON() {
+    return {
+      keys: this.keys,
+      records: this.records
+    };
+  }
+};
+function createIndex(keys, docs, { getFn = Config.getFn, fieldNormWeight = Config.fieldNormWeight } = {}) {
+  const myIndex = new FuseIndex({ getFn, fieldNormWeight });
+  myIndex.setKeys(keys.map(createKey));
+  myIndex.setSources(docs);
+  myIndex.create();
+  return myIndex;
+}
+__name(createIndex, "createIndex");
+function parseIndex(data, { getFn = Config.getFn, fieldNormWeight = Config.fieldNormWeight } = {}) {
+  const { keys, records } = data;
+  const myIndex = new FuseIndex({ getFn, fieldNormWeight });
+  myIndex.setKeys(keys);
+  myIndex.setIndexRecords(records);
+  return myIndex;
+}
+__name(parseIndex, "parseIndex");
+function computeScore$1(pattern, {
+  errors = 0,
+  currentLocation = 0,
+  expectedLocation = 0,
+  distance = Config.distance,
+  ignoreLocation = Config.ignoreLocation
+} = {}) {
+  const accuracy = errors / pattern.length;
+  if (ignoreLocation) {
+    return accuracy;
+  }
+  const proximity = Math.abs(expectedLocation - currentLocation);
+  if (!distance) {
+    return proximity ? 1 : accuracy;
+  }
+  return accuracy + proximity / distance;
+}
+__name(computeScore$1, "computeScore$1");
+function convertMaskToIndices(matchmask = [], minMatchCharLength = Config.minMatchCharLength) {
+  let indices = [];
+  let start = -1;
+  let end = -1;
+  let i = 0;
+  for (let len = matchmask.length; i < len; i += 1) {
+    let match = matchmask[i];
+    if (match && start === -1) {
+      start = i;
+    } else if (!match && start !== -1) {
+      end = i - 1;
+      if (end - start + 1 >= minMatchCharLength) {
+        indices.push([start, end]);
+      }
+      start = -1;
+    }
+  }
+  if (matchmask[i - 1] && i - start >= minMatchCharLength) {
+    indices.push([start, i - 1]);
+  }
+  return indices;
+}
+__name(convertMaskToIndices, "convertMaskToIndices");
+var MAX_BITS = 32;
+function search(text, pattern, patternAlphabet, {
+  location = Config.location,
+  distance = Config.distance,
+  threshold = Config.threshold,
+  findAllMatches = Config.findAllMatches,
+  minMatchCharLength = Config.minMatchCharLength,
+  includeMatches = Config.includeMatches,
+  ignoreLocation = Config.ignoreLocation
+} = {}) {
+  if (pattern.length > MAX_BITS) {
+    throw new Error(PATTERN_LENGTH_TOO_LARGE(MAX_BITS));
+  }
+  const patternLen = pattern.length;
+  const textLen = text.length;
+  const expectedLocation = Math.max(0, Math.min(location, textLen));
+  let currentThreshold = threshold;
+  let bestLocation = expectedLocation;
+  const computeMatches = minMatchCharLength > 1 || includeMatches;
+  const matchMask = computeMatches ? Array(textLen) : [];
+  let index;
+  while ((index = text.indexOf(pattern, bestLocation)) > -1) {
+    let score = computeScore$1(pattern, {
+      currentLocation: index,
+      expectedLocation,
+      distance,
+      ignoreLocation
+    });
+    currentThreshold = Math.min(score, currentThreshold);
+    bestLocation = index + patternLen;
+    if (computeMatches) {
+      let i = 0;
+      while (i < patternLen) {
+        matchMask[index + i] = 1;
+        i += 1;
+      }
+    }
+  }
+  bestLocation = -1;
+  let lastBitArr = [];
+  let finalScore = 1;
+  let binMax = patternLen + textLen;
+  const mask = 1 << patternLen - 1;
+  for (let i = 0; i < patternLen; i += 1) {
+    let binMin = 0;
+    let binMid = binMax;
+    while (binMin < binMid) {
+      const score2 = computeScore$1(pattern, {
+        errors: i,
+        currentLocation: expectedLocation + binMid,
+        expectedLocation,
+        distance,
+        ignoreLocation
+      });
+      if (score2 <= currentThreshold) {
+        binMin = binMid;
+      } else {
+        binMax = binMid;
+      }
+      binMid = Math.floor((binMax - binMin) / 2 + binMin);
+    }
+    binMax = binMid;
+    let start = Math.max(1, expectedLocation - binMid + 1);
+    let finish = findAllMatches ? textLen : Math.min(expectedLocation + binMid, textLen) + patternLen;
+    let bitArr = Array(finish + 2);
+    bitArr[finish + 1] = (1 << i) - 1;
+    for (let j = finish; j >= start; j -= 1) {
+      let currentLocation = j - 1;
+      let charMatch = patternAlphabet[text.charAt(currentLocation)];
+      if (computeMatches) {
+        matchMask[currentLocation] = +!!charMatch;
+      }
+      bitArr[j] = (bitArr[j + 1] << 1 | 1) & charMatch;
+      if (i) {
+        bitArr[j] |= (lastBitArr[j + 1] | lastBitArr[j]) << 1 | 1 | lastBitArr[j + 1];
+      }
+      if (bitArr[j] & mask) {
+        finalScore = computeScore$1(pattern, {
+          errors: i,
+          currentLocation,
+          expectedLocation,
+          distance,
+          ignoreLocation
+        });
+        if (finalScore <= currentThreshold) {
+          currentThreshold = finalScore;
+          bestLocation = currentLocation;
+          if (bestLocation <= expectedLocation) {
+            break;
+          }
+          start = Math.max(1, 2 * expectedLocation - bestLocation);
+        }
+      }
+    }
+    const score = computeScore$1(pattern, {
+      errors: i + 1,
+      currentLocation: expectedLocation,
+      expectedLocation,
+      distance,
+      ignoreLocation
+    });
+    if (score > currentThreshold) {
+      break;
+    }
+    lastBitArr = bitArr;
+  }
+  const result = {
+    isMatch: bestLocation >= 0,
+    // Count exact matches (those with a score of 0) to be "almost" exact
+    score: Math.max(1e-3, finalScore)
+  };
+  if (computeMatches) {
+    const indices = convertMaskToIndices(matchMask, minMatchCharLength);
+    if (!indices.length) {
+      result.isMatch = false;
+    } else if (includeMatches) {
+      result.indices = indices;
+    }
+  }
+  return result;
+}
+__name(search, "search");
+function createPatternAlphabet(pattern) {
+  let mask = {};
+  for (let i = 0, len = pattern.length; i < len; i += 1) {
+    const char = pattern.charAt(i);
+    mask[char] = (mask[char] || 0) | 1 << len - i - 1;
+  }
+  return mask;
+}
+__name(createPatternAlphabet, "createPatternAlphabet");
+var stripDiacritics = String.prototype.normalize ? (str2) => str2.normalize("NFD").replace(/[\u0300-\u036F\u0483-\u0489\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u07FD\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08D3-\u08E1\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u09FE\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0AFA-\u0AFF\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B62\u0B63\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0C00-\u0C04\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0D00-\u0D03\u0D3B\u0D3C\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D82\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u180B-\u180D\u1885\u1886\u18A9\u1920-\u192B\u1930-\u193B\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F\u1AB0-\u1ABE\u1B00-\u1B04\u1B34-\u1B44\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BE6-\u1BF3\u1C24-\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF2-\u1CF4\u1CF7-\u1CF9\u1DC0-\u1DF9\u1DFB-\u1DFF\u20D0-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\uA66F-\uA672\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA880\uA881\uA8B4-\uA8C5\uA8E0-\uA8F1\uA8FF\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9E5\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F]/g, "") : (str2) => str2;
+var BitapSearch = class {
+  static {
+    __name(this, "BitapSearch");
+  }
+  constructor(pattern, {
+    location = Config.location,
+    threshold = Config.threshold,
+    distance = Config.distance,
+    includeMatches = Config.includeMatches,
+    findAllMatches = Config.findAllMatches,
+    minMatchCharLength = Config.minMatchCharLength,
+    isCaseSensitive = Config.isCaseSensitive,
+    ignoreDiacritics = Config.ignoreDiacritics,
+    ignoreLocation = Config.ignoreLocation
+  } = {}) {
+    this.options = {
+      location,
+      threshold,
+      distance,
+      includeMatches,
+      findAllMatches,
+      minMatchCharLength,
+      isCaseSensitive,
+      ignoreDiacritics,
+      ignoreLocation
+    };
+    pattern = isCaseSensitive ? pattern : pattern.toLowerCase();
+    pattern = ignoreDiacritics ? stripDiacritics(pattern) : pattern;
+    this.pattern = pattern;
+    this.chunks = [];
+    if (!this.pattern.length) {
+      return;
+    }
+    const addChunk = /* @__PURE__ */ __name((pattern2, startIndex) => {
+      this.chunks.push({
+        pattern: pattern2,
+        alphabet: createPatternAlphabet(pattern2),
+        startIndex
+      });
+    }, "addChunk");
+    const len = this.pattern.length;
+    if (len > MAX_BITS) {
+      let i = 0;
+      const remainder = len % MAX_BITS;
+      const end = len - remainder;
+      while (i < end) {
+        addChunk(this.pattern.substr(i, MAX_BITS), i);
+        i += MAX_BITS;
+      }
+      if (remainder) {
+        const startIndex = len - MAX_BITS;
+        addChunk(this.pattern.substr(startIndex), startIndex);
+      }
+    } else {
+      addChunk(this.pattern, 0);
+    }
+  }
+  searchIn(text) {
+    const { isCaseSensitive, ignoreDiacritics, includeMatches } = this.options;
+    text = isCaseSensitive ? text : text.toLowerCase();
+    text = ignoreDiacritics ? stripDiacritics(text) : text;
+    if (this.pattern === text) {
+      let result2 = {
+        isMatch: true,
+        score: 0
+      };
+      if (includeMatches) {
+        result2.indices = [[0, text.length - 1]];
+      }
+      return result2;
+    }
+    const {
+      location,
+      distance,
+      threshold,
+      findAllMatches,
+      minMatchCharLength,
+      ignoreLocation
+    } = this.options;
+    let allIndices = [];
+    let totalScore = 0;
+    let hasMatches = false;
+    this.chunks.forEach(({ pattern, alphabet, startIndex }) => {
+      const { isMatch, score, indices } = search(text, pattern, alphabet, {
+        location: location + startIndex,
+        distance,
+        threshold,
+        findAllMatches,
+        minMatchCharLength,
+        includeMatches,
+        ignoreLocation
+      });
+      if (isMatch) {
+        hasMatches = true;
+      }
+      totalScore += score;
+      if (isMatch && indices) {
+        allIndices = [...allIndices, ...indices];
+      }
+    });
+    let result = {
+      isMatch: hasMatches,
+      score: hasMatches ? totalScore / this.chunks.length : 1
+    };
+    if (hasMatches && includeMatches) {
+      result.indices = allIndices;
+    }
+    return result;
+  }
+};
+var BaseMatch = class {
+  static {
+    __name(this, "BaseMatch");
+  }
+  constructor(pattern) {
+    this.pattern = pattern;
+  }
+  static isMultiMatch(pattern) {
+    return getMatch(pattern, this.multiRegex);
+  }
+  static isSingleMatch(pattern) {
+    return getMatch(pattern, this.singleRegex);
+  }
+  search() {
+  }
+};
+function getMatch(pattern, exp) {
+  const matches = pattern.match(exp);
+  return matches ? matches[1] : null;
+}
+__name(getMatch, "getMatch");
+var ExactMatch = class extends BaseMatch {
+  static {
+    __name(this, "ExactMatch");
+  }
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "exact";
+  }
+  static get multiRegex() {
+    return /^="(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^=(.*)$/;
+  }
+  search(text) {
+    const isMatch = text === this.pattern;
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, this.pattern.length - 1]
+    };
+  }
+};
+var InverseExactMatch = class extends BaseMatch {
+  static {
+    __name(this, "InverseExactMatch");
+  }
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "inverse-exact";
+  }
+  static get multiRegex() {
+    return /^!"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^!(.*)$/;
+  }
+  search(text) {
+    const index = text.indexOf(this.pattern);
+    const isMatch = index === -1;
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, text.length - 1]
+    };
+  }
+};
+var PrefixExactMatch = class extends BaseMatch {
+  static {
+    __name(this, "PrefixExactMatch");
+  }
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "prefix-exact";
+  }
+  static get multiRegex() {
+    return /^\^"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^\^(.*)$/;
+  }
+  search(text) {
+    const isMatch = text.startsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, this.pattern.length - 1]
+    };
+  }
+};
+var InversePrefixExactMatch = class extends BaseMatch {
+  static {
+    __name(this, "InversePrefixExactMatch");
+  }
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "inverse-prefix-exact";
+  }
+  static get multiRegex() {
+    return /^!\^"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^!\^(.*)$/;
+  }
+  search(text) {
+    const isMatch = !text.startsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, text.length - 1]
+    };
+  }
+};
+var SuffixExactMatch = class extends BaseMatch {
+  static {
+    __name(this, "SuffixExactMatch");
+  }
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "suffix-exact";
+  }
+  static get multiRegex() {
+    return /^"(.*)"\$$/;
+  }
+  static get singleRegex() {
+    return /^(.*)\$$/;
+  }
+  search(text) {
+    const isMatch = text.endsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [text.length - this.pattern.length, text.length - 1]
+    };
+  }
+};
+var InverseSuffixExactMatch = class extends BaseMatch {
+  static {
+    __name(this, "InverseSuffixExactMatch");
+  }
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "inverse-suffix-exact";
+  }
+  static get multiRegex() {
+    return /^!"(.*)"\$$/;
+  }
+  static get singleRegex() {
+    return /^!(.*)\$$/;
+  }
+  search(text) {
+    const isMatch = !text.endsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, text.length - 1]
+    };
+  }
+};
+var FuzzyMatch = class extends BaseMatch {
+  static {
+    __name(this, "FuzzyMatch");
+  }
+  constructor(pattern, {
+    location = Config.location,
+    threshold = Config.threshold,
+    distance = Config.distance,
+    includeMatches = Config.includeMatches,
+    findAllMatches = Config.findAllMatches,
+    minMatchCharLength = Config.minMatchCharLength,
+    isCaseSensitive = Config.isCaseSensitive,
+    ignoreDiacritics = Config.ignoreDiacritics,
+    ignoreLocation = Config.ignoreLocation
+  } = {}) {
+    super(pattern);
+    this._bitapSearch = new BitapSearch(pattern, {
+      location,
+      threshold,
+      distance,
+      includeMatches,
+      findAllMatches,
+      minMatchCharLength,
+      isCaseSensitive,
+      ignoreDiacritics,
+      ignoreLocation
+    });
+  }
+  static get type() {
+    return "fuzzy";
+  }
+  static get multiRegex() {
+    return /^"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^(.*)$/;
+  }
+  search(text) {
+    return this._bitapSearch.searchIn(text);
+  }
+};
+var IncludeMatch = class extends BaseMatch {
+  static {
+    __name(this, "IncludeMatch");
+  }
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "include";
+  }
+  static get multiRegex() {
+    return /^'"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^'(.*)$/;
+  }
+  search(text) {
+    let location = 0;
+    let index;
+    const indices = [];
+    const patternLen = this.pattern.length;
+    while ((index = text.indexOf(this.pattern, location)) > -1) {
+      location = index + patternLen;
+      indices.push([index, location - 1]);
+    }
+    const isMatch = !!indices.length;
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices
+    };
+  }
+};
+var searchers = [
+  ExactMatch,
+  IncludeMatch,
+  PrefixExactMatch,
+  InversePrefixExactMatch,
+  InverseSuffixExactMatch,
+  SuffixExactMatch,
+  InverseExactMatch,
+  FuzzyMatch
+];
+var searchersLen = searchers.length;
+var SPACE_RE = / +(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/;
+var OR_TOKEN = "|";
+function parseQuery(pattern, options = {}) {
+  return pattern.split(OR_TOKEN).map((item) => {
+    let query2 = item.trim().split(SPACE_RE).filter((item2) => item2 && !!item2.trim());
+    let results = [];
+    for (let i = 0, len = query2.length; i < len; i += 1) {
+      const queryItem = query2[i];
+      let found = false;
+      let idx = -1;
+      while (!found && ++idx < searchersLen) {
+        const searcher = searchers[idx];
+        let token = searcher.isMultiMatch(queryItem);
+        if (token) {
+          results.push(new searcher(token, options));
+          found = true;
+        }
+      }
+      if (found) {
+        continue;
+      }
+      idx = -1;
+      while (++idx < searchersLen) {
+        const searcher = searchers[idx];
+        let token = searcher.isSingleMatch(queryItem);
+        if (token) {
+          results.push(new searcher(token, options));
+          break;
+        }
+      }
+    }
+    return results;
   });
 }
-__name(handleSkillDependencies, "handleSkillDependencies");
-
-// src/handlers/index.ts
-var TOOL_HANDLERS = {
-  search_skills: async (ctx, args) => handleSearchSkills(ctx.skillsIndex, args),
-  search_agents: async (ctx, args) => handleSearchAgents(ctx.agentsIndex, args),
-  search_tools: async (ctx, args) => handleSearchTools(ctx.toolsIndex, args),
-  recommend_skills: async (ctx, args) => handleRecommendSkills(ctx.skillsIndex, args),
-  get_skill_content: async (ctx, args) => handleGetSkillContent(args),
-  get_agent_content: async (ctx, args) => handleGetAgentContent(args),
-  skill_dependencies: async (ctx, args) => handleSkillDependencies(ctx.skillsIndex, ctx.skillsRegistry, args)
-};
-function getHandler(name) {
-  return TOOL_HANDLERS[name];
-}
-__name(getHandler, "getHandler");
-function hasHandler(name) {
-  return name in TOOL_HANDLERS;
-}
-__name(hasHandler, "hasHandler");
-function listHandlers() {
-  return Object.keys(TOOL_HANDLERS);
-}
-__name(listHandlers, "listHandlers");
-
-// src/index.ts
-var LazyRegistryLoader = class {
+__name(parseQuery, "parseQuery");
+var MultiMatchSet = /* @__PURE__ */ new Set([FuzzyMatch.type, IncludeMatch.type]);
+var ExtendedSearch = class {
   static {
-    __name(this, "LazyRegistryLoader");
+    __name(this, "ExtendedSearch");
+  }
+  constructor(pattern, {
+    isCaseSensitive = Config.isCaseSensitive,
+    ignoreDiacritics = Config.ignoreDiacritics,
+    includeMatches = Config.includeMatches,
+    minMatchCharLength = Config.minMatchCharLength,
+    ignoreLocation = Config.ignoreLocation,
+    findAllMatches = Config.findAllMatches,
+    location = Config.location,
+    threshold = Config.threshold,
+    distance = Config.distance
+  } = {}) {
+    this.query = null;
+    this.options = {
+      isCaseSensitive,
+      ignoreDiacritics,
+      includeMatches,
+      minMatchCharLength,
+      findAllMatches,
+      ignoreLocation,
+      location,
+      threshold,
+      distance
+    };
+    pattern = isCaseSensitive ? pattern : pattern.toLowerCase();
+    pattern = ignoreDiacritics ? stripDiacritics(pattern) : pattern;
+    this.pattern = pattern;
+    this.query = parseQuery(this.pattern, this.options);
+  }
+  static condition(_, options) {
+    return options.useExtendedSearch;
+  }
+  searchIn(text) {
+    const query2 = this.query;
+    if (!query2) {
+      return {
+        isMatch: false,
+        score: 1
+      };
+    }
+    const { includeMatches, isCaseSensitive, ignoreDiacritics } = this.options;
+    text = isCaseSensitive ? text : text.toLowerCase();
+    text = ignoreDiacritics ? stripDiacritics(text) : text;
+    let numMatches = 0;
+    let allIndices = [];
+    let totalScore = 0;
+    for (let i = 0, qLen = query2.length; i < qLen; i += 1) {
+      const searchers2 = query2[i];
+      allIndices.length = 0;
+      numMatches = 0;
+      for (let j = 0, pLen = searchers2.length; j < pLen; j += 1) {
+        const searcher = searchers2[j];
+        const { isMatch, indices, score } = searcher.search(text);
+        if (isMatch) {
+          numMatches += 1;
+          totalScore += score;
+          if (includeMatches) {
+            const type2 = searcher.constructor.type;
+            if (MultiMatchSet.has(type2)) {
+              allIndices = [...allIndices, ...indices];
+            } else {
+              allIndices.push(indices);
+            }
+          }
+        } else {
+          totalScore = 0;
+          numMatches = 0;
+          allIndices.length = 0;
+          break;
+        }
+      }
+      if (numMatches) {
+        let result = {
+          isMatch: true,
+          score: totalScore / numMatches
+        };
+        if (includeMatches) {
+          result.indices = allIndices;
+        }
+        return result;
+      }
+    }
+    return {
+      isMatch: false,
+      score: 1
+    };
+  }
+};
+var registeredSearchers = [];
+function register(...args) {
+  registeredSearchers.push(...args);
+}
+__name(register, "register");
+function createSearcher(pattern, options) {
+  for (let i = 0, len = registeredSearchers.length; i < len; i += 1) {
+    let searcherClass = registeredSearchers[i];
+    if (searcherClass.condition(pattern, options)) {
+      return new searcherClass(pattern, options);
+    }
+  }
+  return new BitapSearch(pattern, options);
+}
+__name(createSearcher, "createSearcher");
+var LogicalOperator = {
+  AND: "$and",
+  OR: "$or"
+};
+var KeyType = {
+  PATH: "$path",
+  PATTERN: "$val"
+};
+var isExpression = /* @__PURE__ */ __name((query2) => !!(query2[LogicalOperator.AND] || query2[LogicalOperator.OR]), "isExpression");
+var isPath = /* @__PURE__ */ __name((query2) => !!query2[KeyType.PATH], "isPath");
+var isLeaf = /* @__PURE__ */ __name((query2) => !isArray(query2) && isObject3(query2) && !isExpression(query2), "isLeaf");
+var convertToExplicit = /* @__PURE__ */ __name((query2) => ({
+  [LogicalOperator.AND]: Object.keys(query2).map((key) => ({
+    [key]: query2[key]
+  }))
+}), "convertToExplicit");
+function parse3(query2, options, { auto = true } = {}) {
+  const next = /* @__PURE__ */ __name((query3) => {
+    let keys = Object.keys(query3);
+    const isQueryPath = isPath(query3);
+    if (!isQueryPath && keys.length > 1 && !isExpression(query3)) {
+      return next(convertToExplicit(query3));
+    }
+    if (isLeaf(query3)) {
+      const key = isQueryPath ? query3[KeyType.PATH] : keys[0];
+      const pattern = isQueryPath ? query3[KeyType.PATTERN] : query3[key];
+      if (!isString(pattern)) {
+        throw new Error(LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY(key));
+      }
+      const obj = {
+        keyId: createKeyId(key),
+        pattern
+      };
+      if (auto) {
+        obj.searcher = createSearcher(pattern, options);
+      }
+      return obj;
+    }
+    let node = {
+      children: [],
+      operator: keys[0]
+    };
+    keys.forEach((key) => {
+      const value = query3[key];
+      if (isArray(value)) {
+        value.forEach((item) => {
+          node.children.push(next(item));
+        });
+      }
+    });
+    return node;
+  }, "next");
+  if (!isExpression(query2)) {
+    query2 = convertToExplicit(query2);
+  }
+  return next(query2);
+}
+__name(parse3, "parse");
+function computeScore(results, { ignoreFieldNorm = Config.ignoreFieldNorm }) {
+  results.forEach((result) => {
+    let totalScore = 1;
+    result.matches.forEach(({ key, norm: norm2, score }) => {
+      const weight = key ? key.weight : null;
+      totalScore *= Math.pow(
+        score === 0 && weight ? Number.EPSILON : score,
+        (weight || 1) * (ignoreFieldNorm ? 1 : norm2)
+      );
+    });
+    result.score = totalScore;
+  });
+}
+__name(computeScore, "computeScore");
+function transformMatches(result, data) {
+  const matches = result.matches;
+  data.matches = [];
+  if (!isDefined(matches)) {
+    return;
+  }
+  matches.forEach((match) => {
+    if (!isDefined(match.indices) || !match.indices.length) {
+      return;
+    }
+    const { indices, value } = match;
+    let obj = {
+      indices,
+      value
+    };
+    if (match.key) {
+      obj.key = match.key.src;
+    }
+    if (match.idx > -1) {
+      obj.refIndex = match.idx;
+    }
+    data.matches.push(obj);
+  });
+}
+__name(transformMatches, "transformMatches");
+function transformScore(result, data) {
+  data.score = result.score;
+}
+__name(transformScore, "transformScore");
+function format(results, docs, {
+  includeMatches = Config.includeMatches,
+  includeScore = Config.includeScore
+} = {}) {
+  const transformers = [];
+  if (includeMatches)
+    transformers.push(transformMatches);
+  if (includeScore)
+    transformers.push(transformScore);
+  return results.map((result) => {
+    const { idx } = result;
+    const data = {
+      item: docs[idx],
+      refIndex: idx
+    };
+    if (transformers.length) {
+      transformers.forEach((transformer) => {
+        transformer(result, data);
+      });
+    }
+    return data;
+  });
+}
+__name(format, "format");
+var Fuse = class {
+  static {
+    __name(this, "Fuse");
+  }
+  constructor(docs, options = {}, index) {
+    this.options = { ...Config, ...options };
+    if (this.options.useExtendedSearch && false) {
+      throw new Error(EXTENDED_SEARCH_UNAVAILABLE);
+    }
+    this._keyStore = new KeyStore(this.options.keys);
+    this.setCollection(docs, index);
+  }
+  setCollection(docs, index) {
+    this._docs = docs;
+    if (index && !(index instanceof FuseIndex)) {
+      throw new Error(INCORRECT_INDEX_TYPE);
+    }
+    this._myIndex = index || createIndex(this.options.keys, this._docs, {
+      getFn: this.options.getFn,
+      fieldNormWeight: this.options.fieldNormWeight
+    });
+  }
+  add(doc) {
+    if (!isDefined(doc)) {
+      return;
+    }
+    this._docs.push(doc);
+    this._myIndex.add(doc);
+  }
+  remove(predicate = () => false) {
+    const results = [];
+    for (let i = 0, len = this._docs.length; i < len; i += 1) {
+      const doc = this._docs[i];
+      if (predicate(doc, i)) {
+        this.removeAt(i);
+        i -= 1;
+        len -= 1;
+        results.push(doc);
+      }
+    }
+    return results;
+  }
+  removeAt(idx) {
+    this._docs.splice(idx, 1);
+    this._myIndex.removeAt(idx);
+  }
+  getIndex() {
+    return this._myIndex;
+  }
+  search(query2, { limit = -1 } = {}) {
+    const {
+      includeMatches,
+      includeScore,
+      shouldSort,
+      sortFn,
+      ignoreFieldNorm
+    } = this.options;
+    let results = isString(query2) ? isString(this._docs[0]) ? this._searchStringList(query2) : this._searchObjectList(query2) : this._searchLogical(query2);
+    computeScore(results, { ignoreFieldNorm });
+    if (shouldSort) {
+      results.sort(sortFn);
+    }
+    if (isNumber(limit) && limit > -1) {
+      results = results.slice(0, limit);
+    }
+    return format(results, this._docs, {
+      includeMatches,
+      includeScore
+    });
+  }
+  _searchStringList(query2) {
+    const searcher = createSearcher(query2, this.options);
+    const { records } = this._myIndex;
+    const results = [];
+    records.forEach(({ v: text, i: idx, n: norm2 }) => {
+      if (!isDefined(text)) {
+        return;
+      }
+      const { isMatch, score, indices } = searcher.searchIn(text);
+      if (isMatch) {
+        results.push({
+          item: text,
+          idx,
+          matches: [{ score, value: text, norm: norm2, indices }]
+        });
+      }
+    });
+    return results;
+  }
+  _searchLogical(query2) {
+    const expression = parse3(query2, this.options);
+    const evaluate = /* @__PURE__ */ __name((node, item, idx) => {
+      if (!node.children) {
+        const { keyId, searcher } = node;
+        const matches = this._findMatches({
+          key: this._keyStore.get(keyId),
+          value: this._myIndex.getValueForItemAtKeyId(item, keyId),
+          searcher
+        });
+        if (matches && matches.length) {
+          return [
+            {
+              idx,
+              item,
+              matches
+            }
+          ];
+        }
+        return [];
+      }
+      const res = [];
+      for (let i = 0, len = node.children.length; i < len; i += 1) {
+        const child = node.children[i];
+        const result = evaluate(child, item, idx);
+        if (result.length) {
+          res.push(...result);
+        } else if (node.operator === LogicalOperator.AND) {
+          return [];
+        }
+      }
+      return res;
+    }, "evaluate");
+    const records = this._myIndex.records;
+    const resultMap = {};
+    const results = [];
+    records.forEach(({ $: item, i: idx }) => {
+      if (isDefined(item)) {
+        let expResults = evaluate(expression, item, idx);
+        if (expResults.length) {
+          if (!resultMap[idx]) {
+            resultMap[idx] = { idx, item, matches: [] };
+            results.push(resultMap[idx]);
+          }
+          expResults.forEach(({ matches }) => {
+            resultMap[idx].matches.push(...matches);
+          });
+        }
+      }
+    });
+    return results;
+  }
+  _searchObjectList(query2) {
+    const searcher = createSearcher(query2, this.options);
+    const { keys, records } = this._myIndex;
+    const results = [];
+    records.forEach(({ $: item, i: idx }) => {
+      if (!isDefined(item)) {
+        return;
+      }
+      let matches = [];
+      keys.forEach((key, keyIndex) => {
+        matches.push(
+          ...this._findMatches({
+            key,
+            value: item[keyIndex],
+            searcher
+          })
+        );
+      });
+      if (matches.length) {
+        results.push({
+          idx,
+          item,
+          matches
+        });
+      }
+    });
+    return results;
+  }
+  _findMatches({ key, value, searcher }) {
+    if (!isDefined(value)) {
+      return [];
+    }
+    let matches = [];
+    if (isArray(value)) {
+      value.forEach(({ v: text, i: idx, n: norm2 }) => {
+        if (!isDefined(text)) {
+          return;
+        }
+        const { isMatch, score, indices } = searcher.searchIn(text);
+        if (isMatch) {
+          matches.push({
+            score,
+            key,
+            value: text,
+            idx,
+            norm: norm2,
+            indices
+          });
+        }
+      });
+    } else {
+      const { v: text, n: norm2 } = value;
+      const { isMatch, score, indices } = searcher.searchIn(text);
+      if (isMatch) {
+        matches.push({ score, key, value: text, norm: norm2, indices });
+      }
+    }
+    return matches;
+  }
+};
+Fuse.version = "7.1.0";
+Fuse.createIndex = createIndex;
+Fuse.parseIndex = parseIndex;
+Fuse.config = Config;
+{
+  Fuse.parseQuery = parse3;
+}
+{
+  register(ExtendedSearch);
+}
+
+// src/core/search.ts
+var SEARCH_OPTIONS = {
+  keys: [
+    { name: "name", weight: 0.3 },
+    { name: "description", weight: 0.4 },
+    { name: "keywords", weight: 0.3 }
+  ],
+  threshold: 0.4,
+  includeScore: true,
+  ignoreLocation: true
+};
+function buildIndex(registry2) {
+  if (!registry2 || !registry2.search_index)
+    return null;
+  return new Fuse(registry2.search_index, SEARCH_OPTIONS);
+}
+__name(buildIndex, "buildIndex");
+function query(index, queryStr, limit = 5) {
+  if (!index)
+    return [];
+  const results = index.search(queryStr, { limit });
+  return results.map((r) => ({
+    name: r.item.name,
+    path: r.item.path,
+    description: r.item.description,
+    relevance: Math.round((1 - (r.score || 0)) * 100) / 100
+  }));
+}
+__name(query, "query");
+function findOne(index, name) {
+  return query(index, name, 1)[0] || null;
+}
+__name(findOne, "findOne");
+
+// src/extensions/loader.ts
+var RegistryIndexCache = class {
+  static {
+    __name(this, "RegistryIndexCache");
   }
   _skillsIndex = null;
   _agentsIndex = null;
@@ -26279,10 +25888,11 @@ var LazyRegistryLoader = class {
     return this._toolsIndex;
   }
   /**
-   * Preload all registries in parallel.
-   * Call this to warm up the cache if you want eager loading behavior.
+   * Warm all registry indexes in parallel.
+   * Call this to eagerly load the cache instead of waiting for lazy initialization.
+   * Renamed from preloadAll() — 'warm' is the standard cache warming term.
    */
-  async preloadAll() {
+  async warmAll() {
     await Promise.all([
       this.getSkillsIndex(),
       this.getAgentsIndex(),
@@ -26290,9 +25900,10 @@ var LazyRegistryLoader = class {
     ]);
   }
   /**
-   * Get handler context with all registries loaded.
+   * Get the registry context with all indexes loaded.
+   * Renamed from getHandlerContext() — returns RegistryContext, not handler-specific.
    */
-  async getHandlerContext() {
+  async getContext() {
     await Promise.all([
       this.getSkillsIndex(),
       this.getAgentsIndex(),
@@ -26308,7 +25919,7 @@ var LazyRegistryLoader = class {
   async loadSkills() {
     logger.info("Loading skills registry lazily");
     this._skillsRegistry = await loadRegistry("skills/_registry.yaml");
-    this._skillsIndex = createIndex2(this._skillsRegistry);
+    this._skillsIndex = buildIndex(this._skillsRegistry);
     this._skillsLoaded = true;
     logger.info("Skills index loaded", {
       entries: this._skillsRegistry?.search_index?.length || 0
@@ -26317,7 +25928,7 @@ var LazyRegistryLoader = class {
   async loadAgents() {
     logger.info("Loading agents registry lazily");
     const agentsRegistry = await loadRegistry("agents/_registry.yaml");
-    this._agentsIndex = createIndex2(agentsRegistry);
+    this._agentsIndex = buildIndex(agentsRegistry);
     this._agentsLoaded = true;
     logger.info("Agents index loaded", {
       entries: agentsRegistry?.search_index?.length || 0
@@ -26326,37 +25937,538 @@ var LazyRegistryLoader = class {
   async loadTools() {
     logger.info("Loading tools registry lazily");
     const toolsRegistry = await loadRegistry("tools/_registry.yaml");
-    this._toolsIndex = createIndex2(toolsRegistry);
+    this._toolsIndex = buildIndex(toolsRegistry);
     this._toolsLoaded = true;
     logger.info("Tools index loaded", {
       entries: toolsRegistry?.search_index?.length || 0
     });
   }
 };
+
+// src/plugins/schemas.ts
+var TOOL_SCHEMAS = [
+  // Core search tools
+  {
+    name: "search_skills",
+    description: "Search the skill registry for relevant skills based on keywords or task description",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Natural language query or keywords" },
+        category: { type: "string", description: "Optional category filter" },
+        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "search_agents",
+    description: "Search for specialized agents by expertise area",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Keywords describing expertise needed" },
+        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "search_tools",
+    description: "Search for available tools by functionality",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Keywords describing tool functionality" },
+        limit: { type: "integer", description: "Max results (default: 5)", default: 5 }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "recommend_skills",
+    description: "Analyze task and recommend relevant skills",
+    inputSchema: {
+      type: "object",
+      properties: {
+        task: { type: "string", description: "Natural language task description" },
+        max_results: { type: "integer", description: "Max recommendations (default: 5)", default: 5 }
+      },
+      required: ["task"]
+    }
+  },
+  // Content retrieval
+  {
+    name: "get_skill_content",
+    description: "Load full content of a skill by path",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Skill path from registry" }
+      },
+      required: ["path"]
+    }
+  },
+  {
+    name: "get_agent_content",
+    description: "Load full content of an agent by path",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Agent path from registry" }
+      },
+      required: ["path"]
+    }
+  },
+  {
+    name: "skill_dependencies",
+    description: "Show skill relationships and dependencies",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill: { type: "string", description: "Skill to analyze" },
+        depth: { type: "integer", description: "Dependency tree depth (default: 2)", default: 2 },
+        include_optional: { type: "boolean", description: "Include optional deps", default: true }
+      },
+      required: ["skill"]
+    }
+  }
+];
+
+// src/shared/response.ts
+function ok(data) {
+  return {
+    content: [{
+      type: "text",
+      text: typeof data === "string" ? data : JSON.stringify(data, null, 2)
+    }]
+  };
+}
+__name(ok, "ok");
+
+// src/extensions/search.ts
+function searchSkills(skillsIndex, args) {
+  const results = query(skillsIndex, args.query, args.limit || 5);
+  const filtered = args.category ? results.filter((r) => r.path.startsWith(args.category)) : results;
+  return ok({ skills: filtered, total_count: filtered.length, query: args.query });
+}
+__name(searchSkills, "searchSkills");
+function searchAgents(agentsIndex, args) {
+  const results = query(agentsIndex, args.query, args.limit || 5);
+  return ok({ agents: results, total_count: results.length, query: args.query });
+}
+__name(searchAgents, "searchAgents");
+function searchTools(toolsIndex, args) {
+  const results = query(toolsIndex, args.query, args.limit || 5);
+  return ok({ tools: results, total_count: results.length, query: args.query });
+}
+__name(searchTools, "searchTools");
+
+// src/core/parsing.ts
+var TECH_KEYWORDS = [
+  "react",
+  "next",
+  "nextjs",
+  "prisma",
+  "drizzle",
+  "tailwind",
+  "typescript",
+  "node",
+  "express",
+  "vite",
+  "vitest",
+  "jest",
+  "zustand",
+  "zod",
+  "trpc"
+];
+function parseFrontmatter(content) {
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!frontmatterMatch)
+    return null;
+  try {
+    return load(frontmatterMatch[1]);
+  } catch {
+    return null;
+  }
+}
+__name(parseFrontmatter, "parseFrontmatter");
+function extractMarkdownMetadata(content) {
+  const metadata = {};
+  const requiresMatch = content.match(/(?:Requires|Prerequisites|Dependencies):\s*\n((?:\s*-\s*.+\n)+)/i);
+  if (requiresMatch) {
+    const items = requiresMatch[1].match(/-\s*(.+)/g);
+    if (items) {
+      metadata.requires = items.map((m) => m.replace(/^-\s*/, "").trim());
+    } else {
+      metadata.requires = [];
+    }
+  }
+  const relatedMatch = content.match(/(?:Related|See also|Complements):\s*\n((?:\s*-\s*.+\n)+)/i);
+  if (relatedMatch) {
+    const items = relatedMatch[1].match(/-\s*(.+)/g);
+    if (items) {
+      metadata.complements = items.map((m) => m.replace(/^-\s*/, "").trim());
+    } else {
+      metadata.complements = [];
+    }
+  }
+  metadata.technologies = extractTechKeywords(content);
+  return metadata;
+}
+__name(extractMarkdownMetadata, "extractMarkdownMetadata");
+function extractTechKeywords(content) {
+  const contentLower = content.toLowerCase();
+  return TECH_KEYWORDS.filter((t) => contentLower.includes(t));
+}
+__name(extractTechKeywords, "extractTechKeywords");
+function extractKeywords(text) {
+  return text.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+}
+__name(extractKeywords, "extractKeywords");
+
+// src/core/classification.ts
+var CATEGORY_MAP = {
+  authentication: ["auth", "login"],
+  database: ["database", "prisma", "sql"],
+  api: ["api", "endpoint"],
+  styling: ["style", "css", "tailwind"],
+  testing: ["test"],
+  deployment: ["deploy", "build"]
+};
+function detectCategory(text) {
+  const textLower = text.toLowerCase();
+  for (const [category, keywords] of Object.entries(CATEGORY_MAP)) {
+    if (keywords.some((kw) => textLower.includes(kw))) {
+      return category;
+    }
+  }
+  return "general";
+}
+__name(detectCategory, "detectCategory");
+function estimateComplexity(keywords) {
+  if (keywords.length > 10)
+    return "complex";
+  if (keywords.length > 5)
+    return "moderate";
+  return "simple";
+}
+__name(estimateComplexity, "estimateComplexity");
+
+// src/extensions/recommendations.ts
+function recommendSkills(skillsIndex, args) {
+  const keywords = extractKeywords(args.task);
+  const results = query(skillsIndex, args.task, args.max_results || 5);
+  const category = detectCategory(args.task);
+  const complexity = estimateComplexity(keywords);
+  const recommendations = results.map((r) => ({
+    skill: r.name,
+    path: r.path,
+    relevance: r.relevance,
+    reason: `Matches task keywords: ${keywords.slice(0, 3).join(", ")}`,
+    prerequisites: [],
+    complements: []
+  }));
+  return ok({
+    recommendations,
+    task_analysis: {
+      category,
+      keywords: keywords.slice(0, 10),
+      complexity
+    }
+  });
+}
+__name(recommendSkills, "recommendSkills");
+
+// src/extensions/content.ts
+var fs = __toESM(require("fs/promises"), 1);
+
+// src/core/resolution.ts
+var path3 = __toESM(require("node:path"), 1);
+async function resolveSkillPath(skillPath) {
+  const attempts = [
+    path3.join(PLUGIN_ROOT, "skills", skillPath, "SKILL.md"),
+    path3.join(PLUGIN_ROOT, "skills", skillPath + ".md"),
+    path3.join(PLUGIN_ROOT, "skills", skillPath)
+  ];
+  for (const filePath of attempts) {
+    if (await fileExists(filePath)) {
+      return filePath;
+    }
+  }
+  return null;
+}
+__name(resolveSkillPath, "resolveSkillPath");
+async function resolveAgentPath(agentPath) {
+  const attempts = [
+    path3.join(PLUGIN_ROOT, "agents", agentPath + ".md"),
+    path3.join(PLUGIN_ROOT, "agents", agentPath),
+    path3.join(PLUGIN_ROOT, "agents", agentPath, "index.md")
+  ];
+  for (const filePath of attempts) {
+    if (await fileExists(filePath)) {
+      return filePath;
+    }
+  }
+  return null;
+}
+__name(resolveAgentPath, "resolveAgentPath");
+
+// src/extensions/content.ts
+async function getSkillContent(args) {
+  const resolved = await resolveSkillPath(args.path);
+  if (!resolved) {
+    throw new Error(`Skill not found: ${args.path}`);
+  }
+  const content = await fs.readFile(resolved, "utf-8");
+  return ok(content);
+}
+__name(getSkillContent, "getSkillContent");
+async function getAgentContent(args) {
+  const resolved = await resolveAgentPath(args.path);
+  if (!resolved) {
+    throw new Error(`Agent not found: ${args.path}`);
+  }
+  const content = await fs.readFile(resolved, "utf-8");
+  return ok(content);
+}
+__name(getAgentContent, "getAgentContent");
+
+// src/extensions/metadata.ts
+var fs2 = __toESM(require("fs/promises"), 1);
+async function loadSkillMetadata(skillPath) {
+  const resolved = await resolveSkillPath(skillPath);
+  if (!resolved) {
+    return {};
+  }
+  try {
+    const content = await fs2.readFile(resolved, "utf-8");
+    const frontmatter = parseFrontmatter(content);
+    if (frontmatter) {
+      return {
+        requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : void 0,
+        complements: Array.isArray(frontmatter.complements) ? frontmatter.complements : Array.isArray(frontmatter.related) ? frontmatter.related : void 0,
+        conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : void 0,
+        category: typeof frontmatter.category === "string" ? frontmatter.category : void 0,
+        technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies : Array.isArray(frontmatter.tech) ? frontmatter.tech : void 0,
+        difficulty: typeof frontmatter.difficulty === "string" ? frontmatter.difficulty : void 0
+      };
+    }
+    const markdownMeta = extractMarkdownMetadata(content);
+    const technologies = markdownMeta.technologies?.length ? markdownMeta.technologies : extractTechKeywords(content);
+    return {
+      requires: markdownMeta.requires,
+      complements: markdownMeta.complements,
+      technologies
+    };
+  } catch {
+    return {};
+  }
+}
+__name(loadSkillMetadata, "loadSkillMetadata");
+
+// src/extensions/dependencies.ts
+async function resolveRequired(metadata, index, depth) {
+  const required2 = [];
+  if (!metadata.requires)
+    return required2;
+  for (const req of metadata.requires) {
+    const result = findOne(index, req);
+    if (result) {
+      required2.push({
+        skill: result.name,
+        path: result.path,
+        reason: "Listed as required dependency"
+      });
+      if (depth > 1) {
+        const nestedMeta = await loadSkillMetadata(result.path);
+        if (nestedMeta.requires) {
+          for (const nested of nestedMeta.requires.slice(0, 3)) {
+            const nestedResult = findOne(index, nested);
+            if (nestedResult && !required2.find((r) => r.path === nestedResult.path)) {
+              required2.push({
+                skill: nestedResult.name,
+                path: nestedResult.path,
+                reason: `Required by ${result.name}`
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+  return required2;
+}
+__name(resolveRequired, "resolveRequired");
+async function resolveOptional(metadata, index) {
+  const optional2 = [];
+  if (!metadata.complements)
+    return optional2;
+  for (const comp of metadata.complements) {
+    const result = findOne(index, comp);
+    if (result) {
+      optional2.push({
+        skill: result.name,
+        path: result.path,
+        reason: "Listed as complementary skill"
+      });
+    }
+  }
+  return optional2;
+}
+__name(resolveOptional, "resolveOptional");
+async function resolveConflicts(metadata, index) {
+  const conflicts = [];
+  if (!metadata.conflicts)
+    return conflicts;
+  for (const conf of metadata.conflicts) {
+    const result = findOne(index, conf);
+    if (result) {
+      conflicts.push({
+        skill: result.name,
+        path: result.path,
+        reason: "Listed as conflicting skill"
+      });
+    }
+  }
+  return conflicts;
+}
+__name(resolveConflicts, "resolveConflicts");
+async function findDependents(registry2, target, index) {
+  const dependents = [];
+  if (!registry2?.search_index)
+    return dependents;
+  for (const entry of registry2.search_index) {
+    if (entry.path === target.path)
+      continue;
+    const entryMeta = await loadSkillMetadata(entry.path);
+    if (entryMeta.requires?.some(
+      (r) => r.toLowerCase().includes(target.name.toLowerCase()) || target.path.includes(r)
+    )) {
+      dependents.push({ skill: entry.name, path: entry.path });
+    }
+  }
+  return dependents;
+}
+__name(findDependents, "findDependents");
+function findRelated(index, skillPath, exclude, max) {
+  const category = skillPath.split("/")[0];
+  return query(index, category, 10).filter((r) => r.path !== skillPath && !exclude.includes(r.path)).slice(0, max).map((r) => ({
+    skill: r.name,
+    path: r.path,
+    reason: "Related skill in same category"
+  }));
+}
+__name(findRelated, "findRelated");
+function buildBundle(skill, required2, optional2) {
+  const bundle = [skill.path];
+  for (const req of required2.slice(0, 3)) {
+    bundle.push(req.path);
+  }
+  for (const opt of optional2.slice(0, 2)) {
+    if (!bundle.includes(opt.path)) {
+      bundle.push(opt.path);
+    }
+  }
+  return bundle;
+}
+__name(buildBundle, "buildBundle");
+async function analyzeDependencies(skillsIndex, skillsRegistry, args) {
+  const skill = findOne(skillsIndex, args.skill);
+  if (!skill) {
+    throw new Error(`Skill not found: ${args.skill}`);
+  }
+  const depth = args.depth || 2;
+  const includeOptional = args.include_optional !== false;
+  const metadata = await loadSkillMetadata(skill.path);
+  const required2 = await resolveRequired(metadata, skillsIndex, depth);
+  const optional2 = [];
+  if (includeOptional) {
+    const opts = await resolveOptional(metadata, skillsIndex);
+    optional2.push(...opts);
+  }
+  const conflicts = await resolveConflicts(metadata, skillsIndex);
+  const dependents = await findDependents(skillsRegistry, skill, skillsIndex);
+  if (optional2.length < 3) {
+    const existingPaths = optional2.map((o) => o.path);
+    const related = findRelated(skillsIndex, skill.path, existingPaths, 5 - optional2.length);
+    optional2.push(...related);
+  }
+  const suggestedBundle = buildBundle(skill, required2, optional2);
+  const category = skill.path.split("/")[0];
+  return ok({
+    skill: skill.name,
+    path: skill.path,
+    metadata: {
+      category: metadata.category || category,
+      technologies: metadata.technologies || [],
+      difficulty: metadata.difficulty
+    },
+    dependencies: {
+      required: required2,
+      optional: optional2.slice(0, 5),
+      conflicts
+    },
+    dependents: dependents.slice(0, 5),
+    suggested_bundle: suggestedBundle,
+    analysis: {
+      has_prerequisites: required2.length > 0,
+      has_conflicts: conflicts.length > 0,
+      dependency_count: required2.length + optional2.length,
+      is_foundational: dependents.length > 2
+    }
+  });
+}
+__name(analyzeDependencies, "analyzeDependencies");
+
+// src/plugins/dispatch.ts
+var DISPATCH_TABLE = {
+  search_skills: async (ctx, args) => searchSkills(ctx.skillsIndex, args),
+  search_agents: async (ctx, args) => searchAgents(ctx.agentsIndex, args),
+  search_tools: async (ctx, args) => searchTools(ctx.toolsIndex, args),
+  recommend_skills: async (ctx, args) => recommendSkills(ctx.skillsIndex, args),
+  get_skill_content: async (_ctx, args) => getSkillContent(args),
+  get_agent_content: async (_ctx, args) => getAgentContent(args),
+  skill_dependencies: async (ctx, args) => analyzeDependencies(ctx.skillsIndex, ctx.skillsRegistry, args)
+};
+function getDispatcher(name) {
+  return DISPATCH_TABLE[name];
+}
+__name(getDispatcher, "getDispatcher");
+function hasDispatcher(name) {
+  return name in DISPATCH_TABLE;
+}
+__name(hasDispatcher, "hasDispatcher");
+function listTools() {
+  return Object.keys(DISPATCH_TABLE);
+}
+__name(listTools, "listTools");
+
+// src/plugins/server.ts
 var RegistryEngineServer = class {
   static {
     __name(this, "RegistryEngineServer");
   }
   server;
-  registryLoader;
+  indexCache;
   constructor() {
     this.server = new Server(
       { name: SERVER_NAME, version: SERVER_VERSION },
       { capabilities: { tools: {} } }
     );
-    this.registryLoader = new LazyRegistryLoader();
-    this.setupHandlers();
-    this.setupErrorHandling();
+    this.indexCache = new RegistryIndexCache();
+    this.setupRoutes();
+    this.setupLifecycle();
   }
   /**
-   * Initialize search indexes (optional - can be used for eager loading).
-   * Set GOODVIBES_EAGER_LOAD=true to preload all registries at startup.
+   * Initialize the index cache.
+   * Set GOODVIBES_EAGER_LOAD=true to warm all caches at startup.
    */
-  async initializeIndexes() {
+  async initCache() {
     const eagerLoad = process.env.GOODVIBES_EAGER_LOAD === "true";
     if (eagerLoad) {
       logger.info("Eager loading indexes from", PLUGIN_ROOT);
-      await this.registryLoader.preloadAll();
+      await this.indexCache.warmAll();
     } else {
       logger.info("Lazy loading enabled - indexes will be loaded on first access", {
         plugin_root: PLUGIN_ROOT
@@ -26364,32 +26476,32 @@ var RegistryEngineServer = class {
     }
   }
   /**
-   * Build handler context with lazy-loaded registries.
+   * Get registry context with lazy-loaded indexes.
    */
-  async getHandlerContext() {
-    return this.registryLoader.getHandlerContext();
+  async getContext() {
+    return this.indexCache.getContext();
   }
-  setupHandlers() {
+  setupRoutes() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       logger.debug("ListTools request");
-      return { tools: DISCOVERY_SCHEMAS };
+      return { tools: TOOL_SCHEMAS };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger.tool(name, args);
-      if (!hasHandler(name)) {
+      logger.request(name, args);
+      if (!hasDispatcher(name)) {
         throw new McpError(
           ErrorCode.MethodNotFound,
-          `Unknown tool: ${name}. Available: ${listHandlers().join(", ")}`
+          `Unknown tool: ${name}. Available: ${listTools().join(", ")}`
         );
       }
-      const handler = getHandler(name);
-      if (!handler) {
-        throw new McpError(ErrorCode.InternalError, `Handler not found: ${name}`);
+      const dispatcher = getDispatcher(name);
+      if (!dispatcher) {
+        throw new McpError(ErrorCode.InternalError, `Dispatcher not found: ${name}`);
       }
       try {
-        const ctx = await this.getHandlerContext();
-        return await handler(ctx, args);
+        const ctx = await this.getContext();
+        return await dispatcher(ctx, args);
       } catch (error2) {
         const message = error2 instanceof Error ? error2.message : String(error2);
         logger.error(`Tool ${name} failed`, { error: message, args });
@@ -26397,7 +26509,7 @@ var RegistryEngineServer = class {
       }
     });
   }
-  setupErrorHandling() {
+  setupLifecycle() {
     this.server.onerror = (error2) => logger.error("MCP Server error", error2);
     process.on("SIGINT", async () => {
       logger.info("Shutting down");
@@ -26411,22 +26523,24 @@ var RegistryEngineServer = class {
     });
   }
   async start() {
-    await this.initializeIndexes();
+    await this.initCache();
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     logger.info(`${SERVER_NAME} v${SERVER_VERSION} started`);
-    logger.info(`Tools: ${listHandlers().join(", ")}`);
+    logger.info(`Tools: ${listTools().join(", ")}`);
   }
   async stop() {
     await this.server.close();
   }
 };
-async function main() {
+async function bootstrap() {
   const server = new RegistryEngineServer();
   await server.start();
 }
-__name(main, "main");
-main().catch((error2) => {
+__name(bootstrap, "bootstrap");
+
+// src/index.ts
+bootstrap().catch((error2) => {
   logger.error("Failed to start", error2);
   process.exit(1);
 });
