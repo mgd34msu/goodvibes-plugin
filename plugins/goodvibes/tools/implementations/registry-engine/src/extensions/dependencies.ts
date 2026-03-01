@@ -1,8 +1,8 @@
 /**
  * Skill dependency analysis.
  *
- * L2 orchestration layer — decomposes handleSkillDependencies (monolithic, 150 lines)
- * into 6 focused functions + 1 top-level orchestrator:
+ * L2 orchestration layer — decomposes dependency analysis into
+ * 6 focused functions + 1 top-level orchestrator:
  *
  *   resolveRequired  — iterate required deps, search, recurse
  *   resolveOptional  — iterate complementary deps, search
@@ -15,7 +15,7 @@
  * @module extensions/dependencies
  */
 
-import Fuse from 'fuse.js';
+import type Fuse from 'fuse.js';
 import {
   RegistryEntry,
   Registry,
@@ -27,7 +27,7 @@ import {
 import { query, findOne } from '../core/search.js';
 import { ok } from '../shared/response.js';
 import { McpResponse } from '../shared/types.js';
-import { loadSkillMetadata } from './metadata.js';
+import { loadSkillMetadata } from '../core/parsing.js';
 
 /**
  * Resolve required dependencies for a skill.
@@ -124,20 +124,19 @@ export async function findDependents(
   registry: Registry | null,
   target: { name: string; path: string }
 ): Promise<DependentRef[]> {
-  const dependents: DependentRef[] = [];
-  if (!registry?.search_index) return dependents;
+  if (!registry?.search_index) return [];
 
-  for (const entry of registry.search_index) {
-    if (entry.path === target.path) continue;
-    const entryMeta = await loadSkillMetadata(entry.path);
-    if (entryMeta.requires?.some(r =>
+  const candidates = registry.search_index.filter(e => e.path !== target.path);
+  const metaResults = await Promise.all(
+    candidates.map(entry => loadSkillMetadata(entry.path).then(meta => ({ entry, meta })))
+  );
+
+  return metaResults
+    .filter(({ meta }) => meta.requires?.some(r =>
       r.toLowerCase().includes(target.name.toLowerCase()) ||
       target.path.includes(r)
-    )) {
-      dependents.push({ skill: entry.name, path: entry.path });
-    }
-  }
-  return dependents;
+    ))
+    .map(({ entry }) => ({ skill: entry.name, path: entry.path }));
 }
 
 /**
@@ -186,8 +185,6 @@ export function buildBundle(
  *
  * Orchestrates: findOne → loadSkillMetadata → resolveRequired → resolveOptional
  * → resolveConflicts → findDependents → findRelated → buildBundle → ok()
- *
- * Renamed from handleSkillDependencies — drops handle prefix, clarifies verb.
  */
 export async function analyzeDependencies(
   skillsIndex: Fuse<RegistryEntry> | null,

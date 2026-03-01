@@ -1,14 +1,14 @@
 /**
  * Skill recommendation orchestration.
  *
- * L2 orchestration layer — decomposes handleRecommendSkills into
+ * L2 orchestration layer — decomposes recommendation into
  * separate L1 concerns (keyword extraction, category detection,
  * complexity estimation) composed into a recommendation workflow.
  *
  * @module extensions/recommendations
  */
 
-import Fuse from 'fuse.js';
+import type Fuse from 'fuse.js';
 import { RegistryEntry, RecommendSkillsArgs } from '../core/types.js';
 import { query } from '../core/search.js';
 import { extractKeywords } from '../core/parsing.js';
@@ -18,8 +18,8 @@ import type { McpResponse } from '../shared/types.js';
 
 /**
  * Recommend skills for a given task description.
- * Renamed from handleRecommendSkills — orchestrates keyword extraction,
- * category detection, complexity estimation, and result formatting.
+ * Orchestrates keyword extraction, category detection, complexity
+ * estimation, and result formatting.
  */
 export function recommendSkills(
   skillsIndex: Fuse<RegistryEntry> | null,

@@ -10,7 +10,6 @@ import type { RegistryEntry, SearchResult, Registry } from './types.js';
 /**
  * Fuse.js configuration for fuzzy searching registry entries.
  * Weighted search across name, description, and keywords fields.
- * (was FUSE_OPTIONS in config.ts)
  */
 export const SEARCH_OPTIONS: IFuseOptions<RegistryEntry> = {
   keys: [
@@ -25,8 +24,6 @@ export const SEARCH_OPTIONS: IFuseOptions<RegistryEntry> = {
 
 /**
  * Create a Fuse.js search index from a registry.
- * (was createIndex in utils.ts)
- *
  * @param registry - The registry to index
  * @returns A Fuse index, or null if registry is empty/null
  */
@@ -37,8 +34,6 @@ export function buildIndex(registry: Registry | null): Fuse<RegistryEntry> | nul
 
 /**
  * Perform a fuzzy search and return formatted results.
- * (was search in utils.ts)
- *
  * @param index - The Fuse.js index to search
  * @param queryStr - The query string
  * @param limit - Maximum number of results to return (default: 5)

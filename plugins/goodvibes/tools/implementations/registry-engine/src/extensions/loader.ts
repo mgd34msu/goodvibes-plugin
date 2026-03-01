@@ -16,7 +16,6 @@ import { logger } from '../shared/logger.js';
 
 /**
  * Lazy-loading cache for the three Fuse.js registry indexes.
- * Renamed from LazyRegistryLoader — the class caches indexes, not loads registries.
  */
 export class RegistryIndexCache {
   private _skillsIndex: Fuse<RegistryEntry> | null = null;
@@ -24,70 +23,51 @@ export class RegistryIndexCache {
   private _toolsIndex: Fuse<RegistryEntry> | null = null;
   private _skillsRegistry: Registry | null = null;
 
-  private _skillsLoading: Promise<void> | null = null;
-  private _agentsLoading: Promise<void> | null = null;
-  private _toolsLoading: Promise<void> | null = null;
-
-  private _skillsLoaded = false;
-  private _agentsLoaded = false;
-  private _toolsLoaded = false;
+  private _loading: Map<string, Promise<void>> = new Map();
+  private _loaded: Set<string> = new Set();
 
   /**
-   * Get skills index, loading it lazily if not already loaded.
+   * Generic lazy-loader: ensures the named loader runs exactly once,
+   * deduplicates concurrent calls, and tracks completion.
    */
-  async getSkillsIndex(): Promise<Fuse<RegistryEntry> | null> {
-    if (!this._skillsLoaded) {
-      if (!this._skillsLoading) {
-        this._skillsLoading = this.loadSkills();
-      }
-      await this._skillsLoading;
+  private lazyLoad(key: string, loader: () => Promise<void>): Promise<void> {
+    if (this._loaded.has(key)) return Promise.resolve();
+    if (!this._loading.has(key)) {
+      this._loading.set(key, loader().then(() => {
+        this._loaded.add(key);
+        this._loading.delete(key);
+      }));
     }
+    return this._loading.get(key)!;
+  }
+
+  /** Get skills index, loading it lazily if not already loaded. */
+  async getSkillsIndex(): Promise<Fuse<RegistryEntry> | null> {
+    await this.lazyLoad('skills', () => this.loadSkills());
     return this._skillsIndex;
   }
 
-  /**
-   * Get skills registry, loading it lazily if not already loaded.
-   */
+  /** Get skills registry, loading it lazily if not already loaded. */
   async getSkillsRegistry(): Promise<Registry | null> {
-    if (!this._skillsLoaded) {
-      if (!this._skillsLoading) {
-        this._skillsLoading = this.loadSkills();
-      }
-      await this._skillsLoading;
-    }
+    await this.lazyLoad('skills', () => this.loadSkills());
     return this._skillsRegistry;
   }
 
-  /**
-   * Get agents index, loading it lazily if not already loaded.
-   */
+  /** Get agents index, loading it lazily if not already loaded. */
   async getAgentsIndex(): Promise<Fuse<RegistryEntry> | null> {
-    if (!this._agentsLoaded) {
-      if (!this._agentsLoading) {
-        this._agentsLoading = this.loadAgents();
-      }
-      await this._agentsLoading;
-    }
+    await this.lazyLoad('agents', () => this.loadAgents());
     return this._agentsIndex;
   }
 
-  /**
-   * Get tools index, loading it lazily if not already loaded.
-   */
+  /** Get tools index, loading it lazily if not already loaded. */
   async getToolsIndex(): Promise<Fuse<RegistryEntry> | null> {
-    if (!this._toolsLoaded) {
-      if (!this._toolsLoading) {
-        this._toolsLoading = this.loadTools();
-      }
-      await this._toolsLoading;
-    }
+    await this.lazyLoad('tools', () => this.loadTools());
     return this._toolsIndex;
   }
 
   /**
    * Warm all registry indexes in parallel.
    * Call this to eagerly load the cache instead of waiting for lazy initialization.
-   * Renamed from preloadAll() — 'warm' is the standard cache warming term.
    */
   async warmAll(): Promise<void> {
     await Promise.all([
@@ -99,7 +79,6 @@ export class RegistryIndexCache {
 
   /**
    * Get the registry context with all indexes loaded.
-   * Renamed from getHandlerContext() — returns RegistryContext, not handler-specific.
    */
   async getContext(): Promise<RegistryContext> {
     await Promise.all([
@@ -120,7 +99,6 @@ export class RegistryIndexCache {
     logger.info('Loading skills registry lazily');
     this._skillsRegistry = await loadRegistry('skills/_registry.yaml');
     this._skillsIndex = buildIndex(this._skillsRegistry);
-    this._skillsLoaded = true;
     logger.info('Skills index loaded', {
       entries: this._skillsRegistry?.search_index?.length || 0,
     });
@@ -130,7 +108,6 @@ export class RegistryIndexCache {
     logger.info('Loading agents registry lazily');
     const agentsRegistry = await loadRegistry('agents/_registry.yaml');
     this._agentsIndex = buildIndex(agentsRegistry);
-    this._agentsLoaded = true;
     logger.info('Agents index loaded', {
       entries: agentsRegistry?.search_index?.length || 0,
     });
@@ -140,7 +117,6 @@ export class RegistryIndexCache {
     logger.info('Loading tools registry lazily');
     const toolsRegistry = await loadRegistry('tools/_registry.yaml');
     this._toolsIndex = buildIndex(toolsRegistry);
-    this._toolsLoaded = true;
     logger.info('Tools index loaded', {
       entries: toolsRegistry?.search_index?.length || 0,
     });

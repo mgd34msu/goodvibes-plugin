@@ -4,6 +4,9 @@
  */
 
 import * as yaml from 'js-yaml';
+import * as fs from 'node:fs/promises';
+import type { SkillMetadata } from './types.js';
+import { resolveSkillPath } from './resolution.js';
 
 /**
  * Known technology keywords for extracting tech mentions from skill content.
@@ -25,7 +28,11 @@ export function parseFrontmatter(content: string): Record<string, unknown> | nul
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (!frontmatterMatch) return null;
   try {
-    return yaml.load(frontmatterMatch[1]) as Record<string, unknown>;
+    const parsed = yaml.load(frontmatterMatch[1]);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -100,4 +107,52 @@ export function extractTechKeywords(content: string): string[] {
  */
 export function extractKeywords(text: string): string[] {
   return text.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+}
+
+/**
+ * Load and parse metadata for a skill at the given path.
+ *
+ * Orchestrates: resolveSkillPath -> readFile -> parseFrontmatter
+ * with fallback to extractMarkdownMetadata + extractTechKeywords.
+ *
+ * Returns empty object if skill is not found or cannot be read.
+ */
+export async function loadSkillMetadata(skillPath: string): Promise<SkillMetadata> {
+  const resolved = await resolveSkillPath(skillPath);
+  if (!resolved) {
+    return {};
+  }
+
+  try {
+    const content = await fs.readFile(resolved, 'utf-8');
+
+    // Try YAML frontmatter first
+    const frontmatter = parseFrontmatter(content);
+    if (frontmatter) {
+      return {
+        requires: Array.isArray(frontmatter.requires) ? frontmatter.requires : undefined,
+        complements: Array.isArray(frontmatter.complements) ? frontmatter.complements :
+                    Array.isArray(frontmatter.related) ? frontmatter.related : undefined,
+        conflicts: Array.isArray(frontmatter.conflicts) ? frontmatter.conflicts : undefined,
+        category: typeof frontmatter.category === 'string' ? frontmatter.category : undefined,
+        technologies: Array.isArray(frontmatter.technologies) ? frontmatter.technologies :
+                     Array.isArray(frontmatter.tech) ? frontmatter.tech : undefined,
+        difficulty: typeof frontmatter.difficulty === 'string' ? frontmatter.difficulty : undefined,
+      };
+    }
+
+    // Fallback to markdown section parsing
+    const markdownMeta = extractMarkdownMetadata(content);
+    const technologies = markdownMeta.technologies?.length
+      ? markdownMeta.technologies
+      : extractTechKeywords(content);
+
+    return {
+      requires: markdownMeta.requires,
+      complements: markdownMeta.complements,
+      technologies,
+    };
+  } catch {
+    return {};
+  }
 }

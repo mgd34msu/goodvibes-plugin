@@ -52,12 +52,12 @@ export interface RecommendSkillsArgs {
   max_results?: number;
 }
 
-/** Arguments for get_skill_content and get_agent_content (was GetContentArgs) */
+/** Arguments for get_skill_content and get_agent_content */
 export interface ContentArgs {
   path: string;
 }
 
-/** Arguments for skill_dependencies tool (was SkillDependenciesArgs) */
+/** Arguments for skill_dependencies tool */
 export interface DependencyAnalysisArgs {
   skill: string;
   depth?: number;
@@ -71,7 +71,6 @@ export interface DependencyAnalysisArgs {
 /**
  * Context passed to all tool handlers.
  * Contains lazy-loaded registry indexes.
- * (was HandlerContext)
  */
 export interface RegistryContext {
   skillsIndex: Fuse<RegistryEntry> | null;
@@ -81,17 +80,17 @@ export interface RegistryContext {
 }
 
 // =============================================================================
-// Dependency Types (were local to handlers/dependencies.ts)
+// Dependency Types
 // =============================================================================
 
-/** Information about a dependency relationship (was DependencyInfo) */
+/** Information about a dependency relationship */
 export interface DependencyLink {
   skill: string;
   path: string;
   reason: string;
 }
 
-/** Information about a skill that depends on the target (was DependentInfo) */
+/** Information about a skill that depends on the target */
 export interface DependentRef {
   skill: string;
   path: string;

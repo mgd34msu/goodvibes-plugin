@@ -11,7 +11,20 @@ import { resolveModuleDir } from './utils.js';
  * Resolved from environment variables or relative to config location.
  * @example "/home/user/project/plugins/goodvibes"
  */
-export const PLUGIN_ROOT = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || path.resolve(resolveModuleDir(), '../../..');
+function computePluginRoot(): string {
+  if (process.env.PLUGIN_ROOT) return process.env.PLUGIN_ROOT;
+  if (process.env.CLAUDE_PLUGIN_ROOT) return process.env.CLAUDE_PLUGIN_ROOT;
+  try {
+    return path.resolve(resolveModuleDir(), '../../..');
+  } catch (err) {
+    const fallback = process.cwd();
+    // eslint-disable-next-line no-console
+    console.warn(`[registry-engine] Failed to resolve PLUGIN_ROOT via module path, falling back to cwd: ${fallback}`, err);
+    return fallback;
+  }
+}
+
+export const PLUGIN_ROOT = computePluginRoot();
 
 /**
  * Root directory of the current project being analyzed.

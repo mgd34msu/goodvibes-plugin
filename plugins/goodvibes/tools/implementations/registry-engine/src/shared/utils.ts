@@ -20,17 +20,11 @@ export async function fileExists(filePath: string): Promise<boolean> {
 }
 
 /**
- * Gets the directory containing this ESM module.
- * Handles both ESM and CJS contexts with appropriate fallbacks.
+ * Gets the directory containing this ESM module using import.meta.url.
  *
- * Resolution order:
- * 1. __dirname (if defined, indicates CJS context)
- * 2. dirname(fileURLToPath(import.meta.url)) (ESM context)
- * 3. process.cwd() (fallback when import.meta fails)
- *
- * @returns The directory path of the calling module
+ * @returns The directory path of this module file
  */
-export const resolveEsmDir = (): string => {
+const resolveEsmDir = (): string => {
   return dirname(fileURLToPath(import.meta.url));
 };
 

@@ -77,10 +77,7 @@ class RegistryEngineServer {
         );
       }
 
-      const dispatcher = getDispatcher(name);
-      if (!dispatcher) {
-        throw new McpError(ErrorCode.InternalError, `Dispatcher not found: ${name}`);
-      }
+      const dispatcher = getDispatcher(name)!;
 
       try {
         const ctx = await this.getContext();

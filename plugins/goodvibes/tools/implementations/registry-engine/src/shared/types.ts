@@ -12,5 +12,8 @@ export interface McpContent {
 export interface McpResponse {
   content: McpContent[];
   isError?: boolean;
+  // Required by the MCP SDK: CallToolResult extends this shape and the SDK
+  // spreads additional fields onto responses at runtime. Without this index
+  // signature, TypeScript rejects valid MCP response objects.
   [key: string]: unknown;
 }

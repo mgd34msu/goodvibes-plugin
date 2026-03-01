@@ -26,7 +26,12 @@ export async function loadRegistry(registryPath: string): Promise<Registry | nul
       return null;
     }
     const content = await fsPromises.readFile(fullPath, 'utf-8');
-    return yaml.load(content) as Registry;
+    const parsed = yaml.load(content);
+    if (typeof parsed !== 'object' || parsed === null || !Array.isArray((parsed as Record<string, unknown>).search_index)) {
+      logger.error(`Registry file has invalid shape (expected object with search_index array): ${fullPath}`);
+      return null;
+    }
+    return parsed as Registry;
   } catch (error: unknown) {
     logger.error(`Error loading registry ${registryPath}`, error);
     return null;

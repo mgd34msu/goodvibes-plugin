@@ -2,12 +2,11 @@
  * Search operations for skills, agents, and tools.
  *
  * L2 orchestration layer — wraps core search with business formatting.
- * Renamed from handleSearch* — L2 is business logic, not dispatch.
  *
  * @module extensions/search
  */
 
-import Fuse from 'fuse.js';
+import type Fuse from 'fuse.js';
 import { RegistryEntry, SearchSkillsArgs, SearchArgs } from '../core/types.js';
 import { query } from '../core/search.js';
 import { ok } from '../shared/response.js';
@@ -15,7 +14,6 @@ import type { McpResponse } from '../shared/types.js';
 
 /**
  * Search skills by query with optional category filter.
- * Renamed from handleSearchSkills.
  */
 export function searchSkills(
   skillsIndex: Fuse<RegistryEntry> | null,
@@ -30,7 +28,6 @@ export function searchSkills(
 
 /**
  * Search agents by query.
- * Renamed from handleSearchAgents.
  */
 export function searchAgents(
   agentsIndex: Fuse<RegistryEntry> | null,
@@ -42,7 +39,6 @@ export function searchAgents(
 
 /**
  * Search tools by query.
- * Renamed from handleSearchTools.
  */
 export function searchTools(
   toolsIndex: Fuse<RegistryEntry> | null,
