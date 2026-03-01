@@ -17,7 +17,7 @@ async function build() {
       format: 'cjs',
       outfile: join(__dirname, 'dist/index.cjs'),
       sourcemap: true,
-      external: [], // Bundle everything
+      external: ['pg', 'mysql2/promise'], // Optional peer deps - not installed at build time
       minify: false,
       keepNames: true,
     });

@@ -11,11 +11,12 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import * as nodePath from 'node:path';
-import { fileURLToPath } from 'node:url';
+
 import type { SqliteDatabase, SqliteConnectionOptions } from './types.js';
 import { logWarn } from '../../shared/logger.js';
 
-const __dirname = nodePath.dirname(fileURLToPath(import.meta.url));
+// __dirname is provided natively in CJS (esbuild output format).
+// No import.meta.url derivation needed.
 
 // =============================================================================
 // sql.js Loader
