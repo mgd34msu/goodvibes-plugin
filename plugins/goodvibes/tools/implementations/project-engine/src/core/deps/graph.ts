@@ -32,6 +32,9 @@ export async function buildImportGraph(
   const graph = new Map<string, string[]>();
   const fileSet = new Set(files.map((f) => f.replace(/\\/g, '/')));
 
+  // Graph building is intentionally sequential (not parallel) to bound memory usage
+  // on large codebases — concurrent parsing of thousands of files would load all ASTs
+  // into memory simultaneously, potentially causing OOM on large monorepos.
   for (const file of files) {
     const normalizedFile = file.replace(/\\/g, '/');
     const imports = await parseImports(file, fileSet);

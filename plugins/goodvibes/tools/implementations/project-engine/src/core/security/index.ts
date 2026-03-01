@@ -15,6 +15,14 @@ export type {
   CheckPermissionsArgs,
   PermissionFinding,
   EnvAuditArgs,
+  EnvUsage,
+  EnvVariable,
+  MissingVariable,
+  UnusedVariable,
+  UndocumentedVariable,
+  TypeIssue,
+  EnvAuditSummary,
+  EnvAuditResult,
 } from './types.js';
 
 export {
@@ -34,7 +42,7 @@ export { redactSecret } from './redaction.js';
 export type { SecretFinding, SecretPattern } from './detection.js';
 export { SECRET_PATTERNS, isLikelyPlaceholder, filterBySeverity } from './detection.js';
 export { calculateRiskAssessment, generateRecommendations } from './risk.js';
-export type { EnvUsage, EnvVarData } from './env-parser.js';
+export type { EnvVarData } from './env-parser.js';
 export {
   parseEnvFile,
   scanFileForEnvVars,
@@ -42,5 +50,4 @@ export {
   inferExpectedType,
   validateEnvValue,
 } from './env-parser.js';
-export type { EnvAuditResult } from './formatters.js';
 export { formatEnvAudit } from './formatters.js';

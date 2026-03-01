@@ -127,6 +127,7 @@ function resolveModulePath(modulePath: string, fromDir: string): string | null {
   }
 
   const basePath = node_path.resolve(fromDir, modulePath);
+  // '' (empty string) handles extensionless imports that resolve as directories (index files)
   const extensions = ['.ts', '.tsx', '.js', '.jsx', ''];
 
   for (const ext of extensions) {

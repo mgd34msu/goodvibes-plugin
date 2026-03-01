@@ -20,6 +20,8 @@ import type { AnalyzeDependenciesArgs } from '../../core/deps/types.js';
 import { extractImports } from '../../core/deps/import-parser.js';
 import { isOutdated } from '../../core/deps/version-utils.js';
 
+import { validatePackageName } from '../../core/deps/validation.js';
+
 /** Information about a single npm dependency */
 interface DependencyInfo {
   /** Package name from package.json */
@@ -98,6 +100,7 @@ async function fetchLatestVersion(
   projectRoot: string
 ): Promise<string | null> {
   try {
+    validatePackageName(packageName);
     const result = await safeExec(`npm view ${packageName} version`, projectRoot, 10000);
     if (result.error || !result.stdout) {
       return null;

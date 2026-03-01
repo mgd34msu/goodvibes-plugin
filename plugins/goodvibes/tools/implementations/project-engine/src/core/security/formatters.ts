@@ -6,73 +6,21 @@
  * @module core/security/formatters
  */
 
-// =============================================================================
-// Types (inline to avoid circular imports)
-// =============================================================================
+// Types are centralized in types.ts to avoid duplication across security modules
+export type {
+  EnvUsage,
+  EnvVariable,
+  MissingVariable,
+  UnusedVariable,
+  UndocumentedVariable,
+  TypeIssue,
+  EnvAuditSummary,
+  EnvAuditResult,
+} from './types.js';
 
-/** Location where an environment variable is referenced */
-interface EnvUsage {
-  file: string;
-  line: number;
-}
-
-/** Information about an environment variable */
-interface EnvVariable {
-  name: string;
-  used_in: EnvUsage[];
-  defined_in: string[];
-  has_default: boolean;
-  required: boolean;
-}
-
-/** Information about a missing environment variable */
-interface MissingVariable {
-  name: string;
-  defined_in: 'example' | 'code';
-  used_in: string[];
-}
-
-/** Information about an unused environment variable */
-interface UnusedVariable {
-  name: string;
-  defined_in: '.env' | '.env.example';
-}
-
-/** Information about an undocumented environment variable */
-interface UndocumentedVariable {
-  name: string;
-}
-
-/** Information about a type validation issue */
-interface TypeIssue {
-  name: string;
-  expected_type: string;
-  actual_value: string;
-  issue: string;
-}
-
-/** Summary statistics */
-interface EnvAuditSummary {
-  total_in_env: number;
-  total_in_example: number;
-  total_used_in_code: number;
-  missing_count: number;
-  unused_count: number;
-  undocumented_count: number;
-}
-
-/** Complete environment audit result */
-export interface EnvAuditResult {
-  valid: boolean;
-  env_file_exists: boolean;
-  example_file_exists: boolean;
-  variables: EnvVariable[];
-  missing: MissingVariable[];
-  unused: UnusedVariable[];
-  undocumented: UndocumentedVariable[];
-  type_issues?: TypeIssue[];
-  summary: EnvAuditSummary;
-}
+import type {
+  EnvAuditResult,
+} from './types.js';
 
 // =============================================================================
 // Formatter

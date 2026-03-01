@@ -76,6 +76,8 @@ export function enhanceDatabaseError(message: string, dbType: DatabaseDriver): s
     return message;
   }
 
+  // Note: error hint messages are currently English-only.
+  // For i18n support, these strings should be moved to a locale resource file.
   const enhancements: Array<[RegExp, string]> = [
     [
       /SQLITE_READONLY/i,

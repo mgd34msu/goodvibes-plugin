@@ -67,7 +67,8 @@ export const SECRET_PATTERNS: SecretPattern[] = [
   },
   {
     name: 'aws_secret_key',
-    pattern: /\b([A-Za-z0-9/+=]{40})\b(?=.*(?:aws|secret|key))/gi,
+    // Require assignment context (=/:/ space) to reduce false positives on arbitrary 40-char strings
+    pattern: /(?:=|:|\s)["']?([A-Za-z0-9/+=]{40})["']?(?=.*(?:aws|secret|key))/gi,
     severity: 'high',
     recommendation: 'Use environment variables or AWS IAM roles. Never commit AWS secret keys to version control.',
   },
@@ -280,7 +281,11 @@ export function isLikelyPlaceholder(value: string, line: string): boolean {
 
   const commentIndicators = [
     '// example', '// todo', '// replace', '/* example',
-    '# example', '# todo', '// e.g.', '// eg:', 'process.env.',
+    '# example', '# todo', '// e.g.', '// eg:',
+    // 'process.env.' is intentional: a match on this line means the 40-char value
+    // is likely part of an env var pattern (e.g., aws_secret = process.env.AWS_SECRET),
+    // not a hardcoded secret.
+    'process.env.',
   ];
 
   if (commentIndicators.some(c => lowerLine.includes(c))) {

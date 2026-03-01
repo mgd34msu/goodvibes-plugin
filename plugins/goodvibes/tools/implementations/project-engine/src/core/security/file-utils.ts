@@ -29,7 +29,7 @@ export function shouldSkip(filePath: string): boolean {
     if (pattern.startsWith('*.')) {
       return normalizedPath.endsWith(pattern.substring(1));
     }
-    return normalizedPath.includes(`/${pattern}/`) || normalizedPath.includes(`/${pattern}`);
+    return normalizedPath.includes(`/${pattern}/`) || normalizedPath.endsWith(`/${pattern}`);
   });
 }
 

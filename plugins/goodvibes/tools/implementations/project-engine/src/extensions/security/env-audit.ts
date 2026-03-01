@@ -8,7 +8,7 @@
  * @module extensions/security/env-audit
  */
 
-import * as node_fs from 'node:fs';
+import * as node_fs from 'node:fs/promises';
 import * as node_path from 'node:path';
 import type { McpResponse } from '../../shared/types.js';
 import { text } from '../../shared/response.js';
@@ -42,7 +42,7 @@ import {
  * await auditEnvVars({ check_values: true, ignore: ['DEBUG'], scan_code: false });
  * // Compares env files only, skipping code scan
  */
-export function auditEnvVars(args: EnvAuditArgs): McpResponse {
+export async function auditEnvVars(args: EnvAuditArgs): Promise<McpResponse> {
   const projectRoot = getProjectRoot();
   const projectPath = node_path.resolve(projectRoot, args.path || '.');
   const envFile = args.env_file || '.env';
@@ -54,15 +54,17 @@ export function auditEnvVars(args: EnvAuditArgs): McpResponse {
   const envFilePath = node_path.join(projectPath, envFile);
   const exampleFilePath = node_path.join(projectPath, exampleFile);
 
-  const envFileExists = node_fs.existsSync(envFilePath);
-  const exampleFileExists = node_fs.existsSync(exampleFilePath);
+  let envFileExists = false;
+  let exampleFileExists = false;
+  try { await node_fs.access(envFilePath); envFileExists = true; } catch { /* not found */ }
+  try { await node_fs.access(exampleFilePath); exampleFileExists = true; } catch { /* not found */ }
 
   let envVars = new Map<string, string>();
   let exampleVars = new Map<string, string>();
 
   if (envFileExists) {
     try {
-      const content = node_fs.readFileSync(envFilePath, 'utf-8');
+      const content = await node_fs.readFile(envFilePath, 'utf-8');
       envVars = parseEnvFile(content);
     } catch {
       // Continue with empty map on parse failure
@@ -71,7 +73,7 @@ export function auditEnvVars(args: EnvAuditArgs): McpResponse {
 
   if (exampleFileExists) {
     try {
-      const content = node_fs.readFileSync(exampleFilePath, 'utf-8');
+      const content = await node_fs.readFile(exampleFilePath, 'utf-8');
       exampleVars = parseEnvFile(content);
     } catch {
       // Continue with empty map on parse failure
@@ -81,7 +83,7 @@ export function auditEnvVars(args: EnvAuditArgs): McpResponse {
   // Scan source code for env var usage
   const codeVarMap = new Map<string, { usages: Array<{ file: string; line: number }>; hasDefault: boolean }>();
   if (scanCode) {
-    scanDirectoryForEnv(projectPath, projectPath, codeVarMap);
+    await scanDirectoryForEnv(projectPath, projectPath, codeVarMap);
   }
 
   // Build variables list

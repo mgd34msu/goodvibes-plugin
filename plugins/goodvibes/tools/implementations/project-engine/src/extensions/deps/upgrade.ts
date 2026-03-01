@@ -22,6 +22,8 @@ import { extractGitHubRepo } from '../../core/deps/registry.js';
 import type { BreakingChange } from '../../core/deps/changelog.js';
 import { parseBreakingChanges, summarizeChangelog, generateUpgradeWarnings } from '../../core/deps/changelog.js';
 
+import { validatePackageName, validateVersion } from '../../core/deps/validation.js';
+
 /** Test execution results */
 interface TestResults {
   passed: boolean;
@@ -52,7 +54,9 @@ async function fetchTargetVersion(
   targetVersion: string,
   projectRoot: string
 ): Promise<string | null> {
+  validatePackageName(packageName);
   if (targetVersion !== 'latest') {
+    validateVersion(targetVersion);
     const result = await safeExec(
       `npm view ${packageName}@${targetVersion} version`,
       projectRoot,
@@ -65,6 +69,7 @@ async function fetchTargetVersion(
   }
 
   const result = await safeExec(`npm view ${packageName} version`, projectRoot, 15000);
+  // Note: validatePackageName was already called at function entry
   if (result.error || !result.stdout) {
     return null;
   }
@@ -82,6 +87,7 @@ async function fetchNpmMetadata(
   homepage?: string;
   bugs?: { url?: string };
 } | null> {
+  validatePackageName(packageName);
   const result = await safeExec(
     `npm view ${packageName} repository homepage bugs --json`,
     projectRoot,
@@ -202,6 +208,8 @@ async function executeUpgrade(
   isDev: boolean,
   projectRoot: string
 ): Promise<{ success: boolean; output: string }> {
+  validatePackageName(packageName);
+  validateVersion(targetVersion);
   const devFlag = isDev ? ' -D' : '';
   const command = `npm install ${packageName}@${targetVersion}${devFlag}`;
 
@@ -224,7 +232,8 @@ async function executeUpgrade(
  * Runs tests after upgrade using common test commands.
  */
 async function runTests(projectRoot: string): Promise<TestResults> {
-  const testCommands = ['npm test', 'npm run test'];
+  // 'npm test' and 'npm run test' are aliases; only one is needed
+  const testCommands = ['npm test'];
 
   for (const command of testCommands) {
     const result = await safeExec(command, projectRoot, 300000);

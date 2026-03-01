@@ -46,15 +46,16 @@ interface PermissionPattern {
 const PERMISSION_PATTERNS: PermissionPattern[] = [
   // Filesystem - Medium/High Risk
   { type: 'filesystem', api: 'fs.writeFileSync', pattern: /\bfs\.writeFileSync\s*\(/g, risk: 'medium', description: 'Synchronous file write operation', recommendation: 'Consider async fs.promises.writeFile for non-blocking I/O' },
-  { type: 'filesystem', api: 'fs.promises.writeFile', pattern: /\bfs(?:Promises)?\.promises\.writeFile\s*\(/g, risk: 'low', description: 'Async file write operation' },
+  // Note: matches both 'fs.promises.writeFile' and 'fsPromises.writeFile' (import alias) forms
+  { type: 'filesystem', api: 'fs.promises.writeFile', pattern: /\b(?:fs\.promises|fsPromises)\.writeFile\s*\(/g, risk: 'low', description: 'Async file write operation' },
   { type: 'filesystem', api: 'fs.writeFile', pattern: /\bfs\.writeFile\s*\(/g, risk: 'low', description: 'Async file write with callback' },
   { type: 'filesystem', api: 'fs.readFileSync', pattern: /\bfs\.readFileSync\s*\(/g, risk: 'low', description: 'Synchronous file read operation' },
-  { type: 'filesystem', api: 'fs.promises.readFile', pattern: /\bfs(?:Promises)?\.promises\.readFile\s*\(/g, risk: 'low', description: 'Async file read operation' },
+  { type: 'filesystem', api: 'fs.promises.readFile', pattern: /\b(?:fs\.promises|fsPromises)\.readFile\s*\(/g, risk: 'low', description: 'Async file read operation' },
   { type: 'filesystem', api: 'fs.readFile', pattern: /\bfs\.readFile\s*\(/g, risk: 'low', description: 'Async file read with callback' },
   { type: 'filesystem', api: 'fs.unlinkSync', pattern: /\bfs\.unlinkSync\s*\(/g, risk: 'medium', description: 'Synchronous file deletion', recommendation: 'Validate paths carefully before deletion' },
-  { type: 'filesystem', api: 'fs.promises.unlink', pattern: /\bfs(?:Promises)?\.promises\.unlink\s*\(/g, risk: 'medium', description: 'Async file deletion', recommendation: 'Validate paths carefully before deletion' },
+  { type: 'filesystem', api: 'fs.promises.unlink', pattern: /\b(?:fs\.promises|fsPromises)\.unlink\s*\(/g, risk: 'medium', description: 'Async file deletion', recommendation: 'Validate paths carefully before deletion' },
   { type: 'filesystem', api: 'fs.rmSync', pattern: /\bfs\.rmSync\s*\(/g, risk: 'high', description: 'Synchronous recursive directory removal', recommendation: 'Use with extreme caution - can delete entire directories' },
-  { type: 'filesystem', api: 'fs.promises.rm', pattern: /\bfs(?:Promises)?\.promises\.rm\s*\(/g, risk: 'high', description: 'Async recursive directory removal', recommendation: 'Use with extreme caution - can delete entire directories' },
+  { type: 'filesystem', api: 'fs.promises.rm', pattern: /\b(?:fs\.promises|fsPromises)\.rm\s*\(/g, risk: 'high', description: 'Async recursive directory removal', recommendation: 'Use with extreme caution - can delete entire directories' },
   { type: 'filesystem', api: 'fs.chmodSync', pattern: /\bfs\.chmodSync\s*\(/g, risk: 'medium', description: 'File permission modification' },
   { type: 'filesystem', api: 'fs.readdirSync', pattern: /\bfs\.readdirSync\s*\(/g, risk: 'low', description: 'Synchronous directory listing' },
 
@@ -72,12 +73,13 @@ const PERMISSION_PATTERNS: PermissionPattern[] = [
   { type: 'network', api: 'dns.lookup', pattern: /\bdns\.lookup\s*\(/g, risk: 'low', description: 'DNS lookup operation' },
 
   // Process - High Risk
-  { type: 'process', api: 'child_process.exec', pattern: /\b(?:child_process\.)?exec\s*\(/g, risk: 'high', description: 'Command execution - potential injection risk', recommendation: 'Use execFile instead of exec to prevent shell injection' },
-  { type: 'process', api: 'child_process.execSync', pattern: /\b(?:child_process\.)?execSync\s*\(/g, risk: 'high', description: 'Synchronous command execution - potential injection risk', recommendation: 'Use execFileSync instead and validate all inputs' },
-  { type: 'process', api: 'child_process.spawn', pattern: /\b(?:child_process\.)?spawn\s*\(/g, risk: 'medium', description: 'Process spawning', recommendation: 'Validate command arguments carefully' },
-  { type: 'process', api: 'child_process.spawnSync', pattern: /\b(?:child_process\.)?spawnSync\s*\(/g, risk: 'medium', description: 'Synchronous process spawning' },
-  { type: 'process', api: 'child_process.execFile', pattern: /\b(?:child_process\.)?execFile\s*\(/g, risk: 'medium', description: 'File execution (safer than exec)' },
-  { type: 'process', api: 'child_process.fork', pattern: /\b(?:child_process\.)?fork\s*\(/g, risk: 'medium', description: 'Node.js process forking' },
+  // Require 'child_process.' prefix to avoid matching regex.exec() or similar false positives
+  { type: 'process', api: 'child_process.exec', pattern: /\bchild_process\.exec\s*\(/g, risk: 'high', description: 'Command execution - potential injection risk', recommendation: 'Use execFile instead of exec to prevent shell injection' },
+  { type: 'process', api: 'child_process.execSync', pattern: /\bchild_process\.execSync\s*\(/g, risk: 'high', description: 'Synchronous command execution - potential injection risk', recommendation: 'Use execFileSync instead and validate all inputs' },
+  { type: 'process', api: 'child_process.spawn', pattern: /\bchild_process\.spawn\s*\(/g, risk: 'medium', description: 'Process spawning', recommendation: 'Validate command arguments carefully' },
+  { type: 'process', api: 'child_process.spawnSync', pattern: /\bchild_process\.spawnSync\s*\(/g, risk: 'medium', description: 'Synchronous process spawning' },
+  { type: 'process', api: 'child_process.execFile', pattern: /\bchild_process\.execFile\s*\(/g, risk: 'medium', description: 'File execution (safer than exec)' },
+  { type: 'process', api: 'child_process.fork', pattern: /\bchild_process\.fork\s*\(/g, risk: 'medium', description: 'Node.js process forking' },
   { type: 'process', api: 'process.exit', pattern: /\bprocess\.exit\s*\(/g, risk: 'low', description: 'Process termination' },
   { type: 'process', api: 'process.kill', pattern: /\bprocess\.kill\s*\(/g, risk: 'high', description: 'Process signal/kill', recommendation: 'Validate PID before sending signals' },
   { type: 'process', api: 'eval', pattern: /\beval\s*\(/g, risk: 'high', description: 'Dynamic code evaluation - security risk', recommendation: "Avoid eval() - use safer alternatives like JSON.parse()" },
@@ -119,8 +121,10 @@ async function findSourceFiles(dir: string, files: string[] = []): Promise<strin
         files.push(fullPath);
       }
     }
-  } catch {
-    // Directory may not be accessible
+  } catch (err) {
+    // Log inaccessible directories so callers can audit gaps in scanning coverage
+    const msg = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`[permissions] Could not read directory: ${dir}: ${msg}\n`);
   }
 
   return files;

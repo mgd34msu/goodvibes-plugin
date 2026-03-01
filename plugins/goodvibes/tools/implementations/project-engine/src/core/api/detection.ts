@@ -12,6 +12,19 @@ import * as path from 'node:path';
 import type { Framework } from './types.js';
 
 /**
+ * Ordered list of frameworks to check during detection.
+ *
+ * Priority is determined by position: first match wins.
+ * This list is configurable — reorder or extend to change detection priority.
+ */
+export const FRAMEWORK_DETECTION_PRIORITY: Array<{ framework: Framework; packageName: string }> = [
+  { framework: 'nextjs', packageName: 'next' },
+  { framework: 'hono', packageName: 'hono' },
+  { framework: 'fastify', packageName: 'fastify' },
+  { framework: 'express', packageName: 'express' },
+];
+
+/**
  * Detects the web framework used in a project by examining package.json dependencies.
  *
  * Checks dependencies and devDependencies for known framework packages.
@@ -43,24 +56,11 @@ export function detectFramework(projectPath: string): Framework | null {
       ...packageJson.devDependencies,
     };
 
-    // Check for Next.js first (most common)
-    if (allDeps['next']) {
-      return 'nextjs';
-    }
-
-    // Check for Hono
-    if (allDeps['hono']) {
-      return 'hono';
-    }
-
-    // Check for Fastify
-    if (allDeps['fastify']) {
-      return 'fastify';
-    }
-
-    // Check for Express
-    if (allDeps['express']) {
-      return 'express';
+    // Check frameworks in priority order (configurable via FRAMEWORK_DETECTION_PRIORITY)
+    for (const { framework, packageName } of FRAMEWORK_DETECTION_PRIORITY) {
+      if (allDeps[packageName]) {
+        return framework;
+      }
     }
 
     return null;

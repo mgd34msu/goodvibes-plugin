@@ -13,3 +13,4 @@ export { extractGitHubRepo } from './registry.js';
 export type { BreakingChange } from './changelog.js';
 export { parseBreakingChanges, summarizeChangelog, generateUpgradeWarnings } from './changelog.js';
 export { shouldSkipDirectory } from './file-utils.js';
+export { PACKAGE_NAME_PATTERN, VERSION_PATTERN, validatePackageName, validateVersion } from './validation.js';

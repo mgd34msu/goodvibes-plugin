@@ -335,6 +335,8 @@ export function calculateCoverageMetrics(
     lines: totalLines > 0 ? Math.round((coveredLines / totalLines) * 1000) / 10 : 0,
     branches: totalBranches > 0 ? Math.round((coveredBranches / totalBranches) * 1000) / 10 : 0,
     functions: totalFunctions > 0 ? Math.round((coveredFunctions / totalFunctions) * 1000) / 10 : 0,
+    // Note: statement coverage approximated as line coverage — a known limitation of
+    // the lcov format used here, which does not always distinguish the two metrics.
     statements: totalLines > 0 ? Math.round((coveredLines / totalLines) * 1000) / 10 : 0,
   };
 }

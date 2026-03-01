@@ -7,7 +7,7 @@
  * @module extensions/deps/circular
  */
 
-import * as node_fs from 'node:fs';
+import * as node_fs from 'node:fs/promises';
 import * as node_path from 'node:path';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
@@ -36,21 +36,19 @@ function isSourceFile(filePath: string): boolean {
  * @param includeNodeModules - Whether to include files in node_modules
  * @returns Array of absolute file paths to source files
  */
-function getSourceFiles(dir: string, includeNodeModules: boolean): string[] {
+async function getSourceFiles(dir: string, includeNodeModules: boolean): Promise<string[]> {
   const files: string[] = [];
 
-  if (!node_fs.existsSync(dir)) {
-    return files;
-  }
+  try { await node_fs.access(dir); } catch { return files; }
 
-  const entries = node_fs.readdirSync(dir, { withFileTypes: true });
+  const entries = await node_fs.readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = node_path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
       if (!shouldSkipDirectory(entry.name, includeNodeModules)) {
-        files.push(...getSourceFiles(fullPath, includeNodeModules));
+        files.push(...await getSourceFiles(fullPath, includeNodeModules));
       }
     } else if (entry.isFile() && isSourceFile(entry.name)) {
       files.push(fullPath);
@@ -95,12 +93,10 @@ export async function findCircularDeps(args: CircularDepsArgs): Promise<McpRespo
       : node_path.resolve(PROJECT_ROOT, scanPath);
 
     // Verify the path exists
-    if (!node_fs.existsSync(absolutePath)) {
-      return fail(`Path does not exist: ${scanPath}`);
-    }
+    try { await node_fs.access(absolutePath); } catch { return fail(`Path does not exist: ${scanPath}`); }
 
     // Get all source files
-    const files = getSourceFiles(absolutePath, includeNodeModules);
+    const files = await getSourceFiles(absolutePath, includeNodeModules);
 
     if (files.length === 0) {
       const result: FindCircularDepsResult = {

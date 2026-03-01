@@ -7,24 +7,11 @@
  * @module core/security/env-parser
  */
 
-import * as node_fs from 'node:fs';
+import * as node_fs from 'node:fs/promises';
 import * as node_path from 'node:path';
 import { logger } from '../../shared/logger.js';
 import { ENV_PATTERNS, DEFAULT_PATTERNS, SCAN_EXTENSIONS, SKIP_DIRS, BUILTIN_VARS } from './constants.js';
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/**
- * Location where an environment variable is referenced.
- */
-export interface EnvUsage {
-  /** Relative file path */
-  file: string;
-  /** 1-indexed line number */
-  line: number;
-}
+import type { EnvUsage } from './types.js';
 
 /**
  * Aggregated data about a single environment variable.
@@ -84,14 +71,14 @@ export function parseEnvFile(content: string): Map<string, string> {
  * @param relativePath - Path to use in usage records (for display)
  * @returns Map from variable name to usage data
  */
-export function scanFileForEnvVars(
+export async function scanFileForEnvVars(
   filePath: string,
   relativePath: string
-): Map<string, EnvVarData> {
+): Promise<Map<string, EnvVarData>> {
   const varMap = new Map<string, EnvVarData>();
 
   try {
-    const content = node_fs.readFileSync(filePath, 'utf-8');
+    const content = await node_fs.readFile(filePath, 'utf-8');
     const lines = content.split('\n');
 
     // Find all vars that have default/fallback values
@@ -155,16 +142,16 @@ export function scanFileForEnvVars(
  * @param maxFiles - Maximum number of files to scan (default: 1000)
  * @returns Number of files actually scanned
  */
-export function scanDirectoryForEnv(
+export async function scanDirectoryForEnv(
   dir: string,
   baseDir: string,
   varMap: Map<string, EnvVarData>,
   maxFiles: number = 1000
-): number {
+): Promise<number> {
   let filesScanned = 0;
 
   try {
-    const entries = node_fs.readdirSync(dir, { withFileTypes: true });
+    const entries = await node_fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
       if (filesScanned >= maxFiles) break;
@@ -174,13 +161,13 @@ export function scanDirectoryForEnv(
 
       if (entry.isDirectory()) {
         if (!SKIP_DIRS.has(entry.name)) {
-          filesScanned += scanDirectoryForEnv(fullPath, baseDir, varMap, maxFiles - filesScanned);
+          filesScanned += await scanDirectoryForEnv(fullPath, baseDir, varMap, maxFiles - filesScanned);
         }
       } else if (entry.isFile()) {
         const ext = node_path.extname(entry.name).toLowerCase();
         if (SCAN_EXTENSIONS.has(ext)) {
           filesScanned++;
-          const fileVars = scanFileForEnvVars(fullPath, relativePath);
+          const fileVars = await scanFileForEnvVars(fullPath, relativePath);
 
           for (const [varName, data] of fileVars) {
             if (!varMap.has(varName)) {

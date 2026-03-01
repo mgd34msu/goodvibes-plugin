@@ -4,6 +4,8 @@
  * @module core/deps/file-utils
  */
 
+// Note: The security domain maintains a similar SKIP_DIRS (as a Set) in core/security/constants.ts.
+// Changes here may need to be reflected there as well.
 /** Directories to always skip when scanning for source files */
 const SKIP_DIRS = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out'];
 

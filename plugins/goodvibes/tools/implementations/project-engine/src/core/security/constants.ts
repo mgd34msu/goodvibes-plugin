@@ -53,7 +53,11 @@ export const SECURITY_SKIP_PATTERNS: string[] = [
 export const SCANNABLE_EXTENSIONS: string[] = [
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
   '.json', '.yaml', '.yml',
-  '.env', '.env.local', '.env.development', '.env.production',
+  // Note: '.env.local', '.env.development', '.env.production' are intentionally excluded —
+  // path.extname() returns '.local'/'.development'/'.production' for those names, so they
+  // would never match the extension list. The isScannable() function in file-utils.ts handles
+  // .env* files via basename check instead.
+  '.env',
   '.sh', '.bash',
   '.py',
   '.rb',
@@ -90,6 +94,8 @@ export const SCAN_EXTENSIONS = new Set([
 /**
  * Directories to skip during environment variable scanning.
  */
+// Note: The deps domain maintains a similar SKIP_DIRS in core/deps/file-utils.ts.
+// Changes here may need to be reflected there as well.
 export const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', 'out',
   '.next', '.nuxt', '.svelte-kit', 'coverage',

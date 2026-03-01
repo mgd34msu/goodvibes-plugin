@@ -21,9 +21,9 @@ export function extractGitHubRepo(
   const repoUrl = packageJson.repository?.url || packageJson.homepage || '';
 
   // Match GitHub URL patterns
+  // Single pattern covers both SSH (github.com:owner/repo) and HTTPS (github.com/owner/repo) forms
   const patterns = [
     /github\.com[/:]([^/]+)\/([^/.]+)/,
-    /github\.com\/([^/]+)\/([^/]+)/,
   ];
 
   for (const pattern of patterns) {
