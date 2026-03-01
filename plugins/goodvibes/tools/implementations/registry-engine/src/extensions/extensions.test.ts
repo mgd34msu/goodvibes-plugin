@@ -618,13 +618,36 @@ describe('recommendSkills()', () => {
   });
 
   it('uses default max_results of 5 when not specified', () => {
+    // detectCategory mock returns 'authentication', so searchQuery = 'authentication'
     recommendSkills(null, { task: 'do something' });
-    expect(query).toHaveBeenCalledWith(null, 'do something', 5);
+    expect(query).toHaveBeenCalledWith(null, 'authentication', 5);
   });
 
   it('respects max_results parameter', () => {
+    // detectCategory mock returns 'authentication', so searchQuery = 'authentication'
     recommendSkills(null, { task: 'do something', max_results: 3 });
-    expect(query).toHaveBeenCalledWith(null, 'do something', 3);
+    expect(query).toHaveBeenCalledWith(null, 'authentication', 3);
+  });
+
+  it('uses keywords as search query when category is general', () => {
+    (detectCategory as Mock).mockReturnValue('general');
+    (extractKeywords as Mock).mockReturnValue(['implement', 'user', 'auth', 'oauth', 'flow']);
+    recommendSkills(null, { task: 'implement user auth oauth flow' });
+    expect(query).toHaveBeenCalledWith(null, 'implement user auth oauth flow', 5);
+  });
+
+  it('truncates keywords to first 5 when category is general and >5 keywords returned', () => {
+    (detectCategory as Mock).mockReturnValue('general');
+    (extractKeywords as Mock).mockReturnValue(['implement', 'user', 'auth', 'oauth', 'flow', 'token', 'refresh']);
+    recommendSkills(null, { task: 'implement user auth oauth flow token refresh' });
+    expect(query).toHaveBeenCalledWith(null, 'implement user auth oauth flow', 5);
+  });
+
+  it('falls back to raw task string when category is general and keywords are empty', () => {
+    (detectCategory as Mock).mockReturnValue('general');
+    (extractKeywords as Mock).mockReturnValue([]);
+    recommendSkills(null, { task: 'some opaque task description' });
+    expect(query).toHaveBeenCalledWith(null, 'some opaque task description', 5);
   });
 
   it('handles null index gracefully', () => {

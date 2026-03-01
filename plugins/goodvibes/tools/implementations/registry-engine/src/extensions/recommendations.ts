@@ -26,9 +26,21 @@ export function recommendSkills(
   args: RecommendSkillsArgs
 ): McpResponse {
   const keywords = extractKeywords(args.task);
-  const results = query(skillsIndex, args.task, args.max_results || 5);
   const category = detectCategory(args.task);
   const complexity = estimateComplexity(keywords);
+
+  // Build an effective Fuse.js query from short, targeted terms rather than
+  // the full task sentence. Fuse.js scores a long sentence poorly against short
+  // skill names/keywords (scores exceed the 0.4 threshold), yielding zero
+  // results. Using the detected category (when specific) or top keywords
+  // produces clean word-level matches that score well.
+  const searchQuery =
+    category !== 'general'
+      ? category
+      : keywords.length > 0
+        ? keywords.slice(0, 5).join(' ')
+        : args.task;
+  const results = query(skillsIndex, searchQuery, args.max_results || 5);
 
   const recommendations = results.map(r => ({
     skill: r.name,
