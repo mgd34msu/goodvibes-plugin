@@ -51,6 +51,7 @@ inputSchema:
             type: string
           pattern:
             type: string
+        additionalProperties: false
         required:
           - name
           - pattern

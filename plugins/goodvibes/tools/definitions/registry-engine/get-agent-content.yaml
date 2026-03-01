@@ -17,7 +17,7 @@ mcp:
   method: get_agent_content
   defer_loading: false
 
-inputSchema:
+input_schema:
   type: object
   properties:
     path:

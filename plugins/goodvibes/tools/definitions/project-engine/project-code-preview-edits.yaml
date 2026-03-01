@@ -36,6 +36,7 @@ inputSchema:
           content:
             type: string
             description: "Full new content for the file (for full-file replacement)."
+        additionalProperties: false
         required:
           - file
   required:

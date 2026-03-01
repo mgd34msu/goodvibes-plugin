@@ -244,7 +244,7 @@ describe('TOOL_SCHEMAS', () => {
 
     it('has at least one required field', () => {
       expect(Array.isArray(schema.inputSchema.required)).toBe(true);
-      expect((schema.inputSchema.required as string[]).length).toBeGreaterThan(0);
+      expect((schema.inputSchema.required as readonly string[]).length).toBeGreaterThan(0);
     });
   });
 

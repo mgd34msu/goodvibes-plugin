@@ -18,6 +18,7 @@ input_schema:
       description: "Natural language task description"
     context:
       type: object
+      additionalProperties: false
       properties:
         stack:
           type: object
