@@ -72,4 +72,4 @@ export const WRITE_KEYWORDS: readonly string[] = [
   'GRANT',
   'REVOKE',
   'VACUUM',
-] as const;
+];

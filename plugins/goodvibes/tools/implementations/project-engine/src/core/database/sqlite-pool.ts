@@ -38,7 +38,6 @@ async function getSqlJs(): Promise<SqlJsStatic> {
   try {
     // sql.js doesn't ship ESM types that match its runtime shape, so the double
     // cast is necessary to access the .default initializer function.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // @ts-ignore -- sql.js is an optional peer dependency without bundled type declarations
     const initSqlJs = ((await import('sql.js')) as unknown as { default: (opts: { locateFile: (file: string) => string }) => Promise<SqlJsStatic> }).default;
 

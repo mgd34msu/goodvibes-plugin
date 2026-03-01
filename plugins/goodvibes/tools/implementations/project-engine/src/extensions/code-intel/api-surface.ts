@@ -13,7 +13,7 @@ import * as fs from 'node:fs/promises';
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail, failFromException } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';
-import { toRelativePath } from '../../shared/utils.js';
+import { toRelativePath, normalizePath } from '../../shared/utils.js';
 import {
   detectEntryPoints,
   findSourceFiles,
@@ -97,7 +97,7 @@ export async function getApiSurface(args: ApiSurfaceArgs): Promise<McpResponse> 
 
     // Get language service
     const { service } = await languageServiceManager.getServiceForFile(
-      entryPoints[0].replace(/\\/g, '/')
+      normalizePath(entryPoints[0])
     );
 
     const publicExports = collectPublicExports(entryPoints, service);

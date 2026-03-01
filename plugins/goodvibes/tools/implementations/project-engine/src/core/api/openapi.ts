@@ -353,6 +353,7 @@ export function resolvePathParams(
  *
  * @param obj - The value to serialize to YAML
  * @returns YAML string representation of the value
+ * @throws {Error} If yaml serialization fails on deeply recursive structures
  */
 export function toYaml(obj: unknown): string {
   return yaml.dump(obj, { lineWidth: -1, noRefs: true });

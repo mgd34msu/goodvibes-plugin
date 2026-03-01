@@ -11,6 +11,7 @@ import * as node_fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { logWarn } from '../../shared/logger.js';
+import { normalizePath } from '../../shared/utils.js';
 import { languageServiceManager } from './language-service.js';
 
 /**
@@ -64,7 +65,7 @@ export async function extractTypeInfo(
     }
 
     const { service, program } = await languageServiceManager.getServiceForFile(absolutePath);
-    const normalizedAbsPath = absolutePath.replace(/\\/g, '/');
+    const normalizedAbsPath = normalizePath(absolutePath);
     const sourceFile = program.getSourceFile(normalizedAbsPath);
 
     if (!sourceFile) {

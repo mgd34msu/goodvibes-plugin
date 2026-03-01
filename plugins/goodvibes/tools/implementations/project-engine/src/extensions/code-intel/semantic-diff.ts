@@ -54,8 +54,9 @@ export async function semanticDiff(args: SemanticDiffArgs): Promise<McpResponse>
 
   try {
     try {
-      execFileSync('git', ['rev-parse', beforeRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
-      execFileSync('git', ['rev-parse', afterRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
+      const refOutput = execFileSync('git', ['rev-parse', beforeRef, afterRef], { cwd: PROJECT_ROOT, encoding: 'utf-8' }).trim();
+      const [resolvedBase, resolvedHead] = refOutput.split('\n');
+      if (!resolvedBase || !resolvedHead) throw new Error('Could not resolve refs');
     } catch {
       return fail(`Invalid git refs: ${beforeRef} or ${afterRef}`);
     }

@@ -96,21 +96,19 @@ export function validateSchema(
       return issues;
     }
   }
-  schema = resolvedSchema;
-
   // Type validation
   const actualType = Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
 
-  if (schema.type && actualType !== schema.type) {
+  if (resolvedSchema.type && actualType !== resolvedSchema.type) {
     // Special case: number can be integer or number; integer requires whole number
     if (!(
-      (schema.type === 'number' && actualType === 'number') ||
-      (schema.type === 'integer' && actualType === 'number' && Number.isInteger(value))
+      (resolvedSchema.type === 'number' && actualType === 'number') ||
+      (resolvedSchema.type === 'integer' && actualType === 'number' && Number.isInteger(value))
     )) {
       issues.push({
         path: jsonPath,
         message: 'Type mismatch',
-        expected: schema.type,
+        expected: resolvedSchema.type,
         actual: actualType,
       });
       return issues; // Don't check further if type is wrong
@@ -118,23 +116,23 @@ export function validateSchema(
   }
 
   // Enum validation
-  if (schema.enum && !schema.enum.includes(value)) {
+  if (resolvedSchema.enum && !resolvedSchema.enum.includes(value)) {
     issues.push({
       path: jsonPath,
       message: 'Value not in enum',
-      expected: JSON.stringify(schema.enum),
+      expected: JSON.stringify(resolvedSchema.enum),
       actual: JSON.stringify(value),
     });
   }
 
   // Pattern validation (for strings)
-  if (schema.pattern && typeof value === 'string') {
-    const regex = new RegExp(schema.pattern as string);
+  if (resolvedSchema.pattern && typeof value === 'string') {
+    const regex = new RegExp(resolvedSchema.pattern as string);
     if (!regex.test(value)) {
       issues.push({
         path: jsonPath,
         message: 'Pattern mismatch',
-        expected: schema.pattern as string,
+        expected: resolvedSchema.pattern as string,
         actual: value,
       });
     }
@@ -142,31 +140,31 @@ export function validateSchema(
 
   // Number range validation
   if (typeof value === 'number') {
-    if (schema.minimum !== undefined && value < schema.minimum) {
+    if (resolvedSchema.minimum !== undefined && value < resolvedSchema.minimum) {
       issues.push({
         path: jsonPath,
         message: 'Value below minimum',
-        expected: `>= ${schema.minimum}`,
+        expected: `>= ${resolvedSchema.minimum}`,
         actual: String(value),
       });
     }
-    if (schema.maximum !== undefined && value > schema.maximum) {
+    if (resolvedSchema.maximum !== undefined && value > resolvedSchema.maximum) {
       issues.push({
         path: jsonPath,
         message: 'Value above maximum',
-        expected: `<= ${schema.maximum}`,
+        expected: `<= ${resolvedSchema.maximum}`,
         actual: String(value),
       });
     }
   }
 
   // Object validation
-  if (schema.type === 'object' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+  if (resolvedSchema.type === 'object' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const obj = value as Record<string, unknown>;
 
     // Check required properties
-    if (schema.required) {
-      for (const requiredProp of schema.required) {
+    if (resolvedSchema.required) {
+      for (const requiredProp of resolvedSchema.required) {
         if (!(requiredProp in obj)) {
           issues.push({
             path: `${jsonPath}.${requiredProp}`,
@@ -179,8 +177,8 @@ export function validateSchema(
     }
 
     // Validate properties
-    if (schema.properties) {
-      for (const [propName, propSchema] of Object.entries(schema.properties)) {
+    if (resolvedSchema.properties) {
+      for (const [propName, propSchema] of Object.entries(resolvedSchema.properties)) {
         if (propName in obj) {
           issues.push(...validateSchema(obj[propName], propSchema, spec, `${jsonPath}.${propName}`));
         }
@@ -189,10 +187,10 @@ export function validateSchema(
   }
 
   // Array validation
-  if (schema.type === 'array' && Array.isArray(value)) {
-    if (schema.items) {
+  if (resolvedSchema.type === 'array' && Array.isArray(value)) {
+    if (resolvedSchema.items) {
       value.forEach((item, index) => {
-        issues.push(...validateSchema(item, schema.items!, spec, `${jsonPath}[${index}]`));
+        issues.push(...validateSchema(item, resolvedSchema.items!, spec, `${jsonPath}[${index}]`));
       });
     }
   }
