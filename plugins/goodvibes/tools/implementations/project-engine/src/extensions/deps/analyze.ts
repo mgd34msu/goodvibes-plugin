@@ -13,7 +13,7 @@ import * as node_path from 'node:path';
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/response.js';
-import { readJsonFile, fileExists, safeExec } from '../../shared/utils.js';
+import { readJsonFile, fileExists, shellExec } from '../../shared/utils.js';
 import { SOURCE_EXTENSIONS, SKIP_DIRECTORIES } from '../../shared/constants.js';
 
 import type { AnalyzeDependenciesArgs } from '../../core/deps/types.js';
@@ -101,7 +101,7 @@ async function fetchLatestVersion(
 ): Promise<string | null> {
   try {
     validatePackageName(packageName);
-    const result = await safeExec(`npm view ${packageName} version`, projectRoot, 10000);
+    const result = await shellExec(`npm view ${packageName} version`, projectRoot, 10000);
     if (result.error || !result.stdout) {
       return null;
     }
@@ -144,7 +144,12 @@ export async function analyzeDependencies(args: AnalyzeDependenciesArgs): Promis
     };
 
     // Find all source files
-    const srcDirs = ['src', 'app', 'pages', 'lib', 'components', 'utils', 'hooks'];
+    // Common source directory names — extended to cover monorepos (packages, modules) and
+    // feature-sliced design (features) in addition to standard Next.js / Vite layouts.
+    const srcDirs = [
+      'src', 'app', 'pages', 'lib', 'components', 'utils', 'hooks',
+      'packages', 'modules', 'features',
+    ];
     let sourceFiles: string[] = [];
 
     for (const dir of srcDirs) {

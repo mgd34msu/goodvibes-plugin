@@ -13,7 +13,7 @@ import * as fs from 'node:fs/promises';
 import { getProjectRoot } from '../../shared/config.js';
 import { ok, fail, failFromException } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';
-import { toRelativePath } from '../../shared/utils.js';
+import { normalizePath, toRelativePath } from '../../shared/utils.js';
 import {
   findSourceFiles,
   isTestFile,
@@ -21,7 +21,7 @@ import {
   findExportsInFile,
   countReferences,
 } from '../../core/code-intel/index.js';
-import type { FindDeadCodeArgs, DeadExport } from '../../core/code-intel/types.js';
+import type { FindDeadCodeArgs, DeadExport, LanguageServiceResult } from '../../core/code-intel/types.js';
 
 /**
  * Find unused exports in a file or directory.
@@ -75,33 +75,46 @@ export async function findDeadCode(args: FindDeadCodeArgs): Promise<McpResponse>
 
     const deadExports: DeadExport[] = [];
 
+    // Group files by their tsconfig to batch-process files sharing the same language service
+    const serviceGroups = new Map<string, { service: LanguageServiceResult; files: string[] }>();
+
     for (const filePath of sourceFilesToAnalyze) {
-      const normalizedPath = filePath.replace(/\\/g, '/');
+      const normalizedPath = normalizePath(filePath);
+      const { service, program, configPath } = await languageServiceManager.getServiceForFile(normalizedPath);
+      const groupKey = configPath ?? 'no-tsconfig';
 
-      const { service, program } = await languageServiceManager.getServiceForFile(normalizedPath);
-      const sourceFile = program.getSourceFile(normalizedPath);
-      if (!sourceFile) continue;
+      if (!serviceGroups.has(groupKey)) {
+        serviceGroups.set(groupKey, { service: { service, program, configPath }, files: [] });
+      }
+      serviceGroups.get(groupKey)!.files.push(normalizedPath);
+    }
 
-      const exports = findExportsInFile(sourceFile, service);
+    for (const { service: { service, program }, files } of serviceGroups.values()) {
+      for (const normalizedPath of files) {
+        const sourceFile = program.getSourceFile(normalizedPath);
+        if (!sourceFile) continue;
 
-      for (const exp of exports) {
-        if (exp.name === 'default') continue;
+        const exports = findExportsInFile(sourceFile, service);
 
-        const position = sourceFile.getPositionOfLineAndCharacter(
-          exp.line - 1,
-          exp.column - 1
-        );
+        for (const exp of exports) {
+          if (exp.name === 'default') continue;
 
-        const { external } = countReferences(service, normalizedPath, position, includeTests);
+          const position = sourceFile.getPositionOfLineAndCharacter(
+            exp.line - 1,
+            exp.column - 1
+          );
 
-        if (external === 0) {
-          deadExports.push({
-            file: toRelativePath(exp.file, projectRoot),
-            name: exp.name,
-            kind: exp.kind,
-            line: exp.line,
-            exported_from: exp.exportedFrom,
-          });
+          const { external } = countReferences(service, normalizedPath, position, includeTests);
+
+          if (external === 0) {
+            deadExports.push({
+              file: toRelativePath(exp.file, projectRoot),
+              name: exp.name,
+              kind: exp.kind,
+              line: exp.line,
+              exported_from: exp.exportedFrom,
+            });
+          }
         }
       }
     }

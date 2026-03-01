@@ -12,23 +12,32 @@ import ts from 'typescript';
 /**
  * Map TypeScript ScriptElementKind to a simple kind string.
  *
- * @param kind - The TypeScript script element kind
- * @returns A human-readable kind string
+ * Module-level constant to avoid recreation per call.
  */
-export function getExportKind(kind: ts.ScriptElementKind): string {
-  const kindMap: Record<string, string> = {
-    [ts.ScriptElementKind.functionElement]: 'function',
-    [ts.ScriptElementKind.classElement]: 'class',
-    [ts.ScriptElementKind.interfaceElement]: 'interface',
-    [ts.ScriptElementKind.typeElement]: 'type',
-    [ts.ScriptElementKind.enumElement]: 'enum',
-    [ts.ScriptElementKind.constElement]: 'constant',
-    [ts.ScriptElementKind.letElement]: 'variable',
-    [ts.ScriptElementKind.variableElement]: 'variable',
-    [ts.ScriptElementKind.moduleElement]: 'namespace',
-    [ts.ScriptElementKind.alias]: 'alias',
-  };
+const kindMap: Record<string, string> = {
+  [ts.ScriptElementKind.functionElement]: 'function',
+  [ts.ScriptElementKind.classElement]: 'class',
+  [ts.ScriptElementKind.interfaceElement]: 'interface',
+  [ts.ScriptElementKind.typeElement]: 'type',
+  [ts.ScriptElementKind.enumElement]: 'enum',
+  [ts.ScriptElementKind.constElement]: 'constant',
+  [ts.ScriptElementKind.letElement]: 'variable',
+  [ts.ScriptElementKind.variableElement]: 'variable',
+  [ts.ScriptElementKind.moduleElement]: 'namespace',
+  [ts.ScriptElementKind.alias]: 'alias',
+};
 
+/**
+ * Check if a ReferenceEntry is a definition (backward compat with TS 5.x which removed isDefinition).
+ *
+ * @param ref - The TypeScript reference entry
+ * @returns True if the reference is a definition site
+ */
+export function isDefinitionRef(ref: ts.ReferenceEntry): boolean {
+  return (ref as ts.ReferenceEntry & { isDefinition?: boolean }).isDefinition === true;
+}
+
+export function getExportKind(kind: ts.ScriptElementKind): string {
   return kindMap[kind] ?? 'export';
 }
 

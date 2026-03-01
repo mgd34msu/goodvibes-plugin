@@ -81,10 +81,14 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
       if (typeof packageJson.exports === 'string') {
         await addExportPath(packageJson.exports);
       } else if (typeof packageJson.exports === 'object' && packageJson.exports !== null) {
-        for (const key of Object.keys(packageJson.exports as Record<string, unknown>)) {
-          await addExportPath(
-            (packageJson.exports as Record<string, unknown>)[key] as string
-          );
+        const exportsObj = packageJson.exports as Record<string, unknown>;
+        for (const key of Object.keys(exportsObj)) {
+          const value = exportsObj[key];
+          if (typeof value === 'string') {
+            await addIfExists(path.resolve(dirPath, value));
+          } else if (typeof value === 'object' && value !== null) {
+            await addExportPath(value as { default?: string; import?: string; require?: string });
+          }
         }
       }
     }

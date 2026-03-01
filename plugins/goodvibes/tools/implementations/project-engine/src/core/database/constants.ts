@@ -11,7 +11,7 @@
  *
  * Used for detecting prisma.model.operation() call chains in AST analysis.
  */
-export const PRISMA_OPERATIONS: string[] = [
+export const PRISMA_OPERATIONS: readonly string[] = [
   // Read operations
   'findUnique',
   'findUniqueOrThrow',
@@ -42,7 +42,7 @@ export const PRISMA_OPERATIONS: string[] = [
  *
  * Used to detect when Prisma queries are placed inside iteration callbacks.
  */
-export const LOOP_KEYWORDS: string[] = [
+export const LOOP_KEYWORDS: readonly string[] = [
   'for',
   'forEach',
   'map',

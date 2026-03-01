@@ -9,7 +9,7 @@
  */
 
 import * as node_path from 'node:path';
-import * as node_fs from 'node:fs';
+import * as node_fs from 'node:fs/promises';
 
 import {
   normalizeFilePath,
@@ -41,10 +41,10 @@ import type {
  * @param projectRoot - Absolute path to the project root (fallback search base)
  * @returns Object with `path` and `type`, or `null` if no report is found
  */
-export function findCoverageReport(
+export async function findCoverageReport(
   customPath: string | undefined,
   projectRoot: string
-): { path: string; type: CoverageReportType } | null {
+): Promise<{ path: string; type: CoverageReportType } | null> {
   const searchBase = customPath
     ? (node_path.isAbsolute(customPath)
         ? customPath
@@ -52,26 +52,42 @@ export function findCoverageReport(
     : projectRoot;
 
   // Direct file check
-  if (customPath && node_fs.existsSync(searchBase) && node_fs.statSync(searchBase).isFile()) {
-    const type = detectCoverageType(searchBase);
-    if (type) {
-      return { path: searchBase, type };
+  if (customPath) {
+    try {
+      const stat = await node_fs.stat(searchBase);
+      if (stat.isFile()) {
+        const type = await detectCoverageType(searchBase);
+        if (type) {
+          return { path: searchBase, type };
+        }
+      }
+    } catch {
+      // Path doesn't exist or isn't accessible
     }
   }
 
-  // Directory search
-  const baseDir =
-    node_fs.existsSync(searchBase) && node_fs.statSync(searchBase).isDirectory()
-      ? searchBase
-      : projectRoot;
+  // Determine base directory for search
+  let baseDir = projectRoot;
+  try {
+    const stat = await node_fs.stat(searchBase);
+    if (stat.isDirectory()) {
+      baseDir = searchBase;
+    }
+  } catch {
+    // searchBase doesn't exist; fall back to projectRoot
+  }
 
+  // Directory search
   for (const relativePath of COVERAGE_PATHS) {
     const fullPath = node_path.resolve(baseDir, relativePath);
-    if (node_fs.existsSync(fullPath)) {
-      const type = detectCoverageType(fullPath);
+    try {
+      await node_fs.access(fullPath);
+      const type = await detectCoverageType(fullPath);
       if (type) {
         return { path: fullPath, type };
       }
+    } catch {
+      // File doesn't exist, continue
     }
   }
 
@@ -79,11 +95,14 @@ export function findCoverageReport(
   if (customPath && baseDir !== projectRoot) {
     for (const relativePath of COVERAGE_PATHS) {
       const fullPath = node_path.resolve(projectRoot, relativePath);
-      if (node_fs.existsSync(fullPath)) {
-        const type = detectCoverageType(fullPath);
+      try {
+        await node_fs.access(fullPath);
+        const type = await detectCoverageType(fullPath);
         if (type) {
           return { path: fullPath, type };
         }
+      } catch {
+        // File doesn't exist, continue
       }
     }
   }
@@ -97,7 +116,7 @@ export function findCoverageReport(
  * @param filePath - Absolute path to the coverage file
  * @returns Coverage format type, or `null` if unrecognized
  */
-export function detectCoverageType(filePath: string): CoverageReportType | null {
+export async function detectCoverageType(filePath: string): Promise<CoverageReportType | null> {
   const fileName = node_path.basename(filePath).toLowerCase();
   const ext = node_path.extname(filePath).toLowerCase();
 
@@ -107,7 +126,7 @@ export function detectCoverageType(filePath: string): CoverageReportType | null 
 
   if (ext === '.json') {
     try {
-      const content = node_fs.readFileSync(filePath, 'utf-8');
+      const content = await node_fs.readFile(filePath, 'utf-8');
       const data = JSON.parse(content) as Record<string, unknown>;
 
       const firstKey = Object.keys(data)[0];
@@ -128,7 +147,7 @@ export function detectCoverageType(filePath: string): CoverageReportType | null 
         return 'istanbul';
       }
     } catch {
-      // Invalid JSON
+      // Invalid JSON or file not readable
     }
   }
 

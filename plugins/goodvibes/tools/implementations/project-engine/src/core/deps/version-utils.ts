@@ -24,10 +24,10 @@ export function isOutdated(installed: string, latest: string): boolean {
 
   // Compare major.minor.patch
   for (let i = 0; i < 3; i++) {
-    const inst = installedParts[i] || 0;
-    const lat = latestParts[i] || 0;
-    if (lat > inst) return true;
-    if (inst > lat) return false;
+    const installedVersion = installedParts[i] || 0;
+    const latestVersion = latestParts[i] || 0;
+    if (latestVersion > installedVersion) return true;
+    if (installedVersion > latestVersion) return false;
   }
 
   return false;

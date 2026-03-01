@@ -12,7 +12,7 @@ import * as node_path from 'node:path';
 import { IMPORT_PATTERNS } from './constants.js';
 
 /** Supported file extensions for TypeScript/JavaScript resolution */
-const SUPPORTED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs', '.cts', '.cjs'];
+export const SUPPORTED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs', '.cts', '.cjs'];
 
 /**
  * Extracts external package imports from a source file.
@@ -34,6 +34,9 @@ export async function extractImports(filePath: string): Promise<Map<string, numb
     return imports;
   }
 
+  // These patterns differ intentionally from core/deps/constants.ts IMPORT_PATTERNS:
+  // - extractImports targets external packages (npm) with broader ES6 import syntax
+  // - IMPORT_PATTERNS targets local relative imports for the circular dependency graph
   // Match ES6 imports: import ... from 'package'
   const es6ImportRegex = /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s*,?\s*)*\s*from\s*['"]([^'"]+)['"]/g;
 

@@ -8,15 +8,15 @@
  * @module extensions/api/validate
  */
 
-import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as fsPromises from 'node:fs/promises';
 import * as yaml from 'js-yaml';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
-import { createSuccessResponse, createErrorResponse } from '../../shared/response.js';
-import type { ToolResponse } from '../../shared/response.js';
+import { ok, fail } from '../../shared/response.js';
+import type { McpResponse } from '../../shared/response.js';
 import { fileExists } from '../../shared/utils.js';
-import { logError } from '../../shared/logger.js';
+import { logError, logWarn } from '../../shared/logger.js';
 
 import type {
   ApiContractArgs,
@@ -64,7 +64,7 @@ function buildQueryString(params: ValidationParameter[]): string {
  * });
  * ```
  */
-export async function validateApiContract(args: ApiContractArgs): Promise<ToolResponse> {
+export async function validateApiContract(args: ApiContractArgs): Promise<McpResponse> {
   const specPath = path.resolve(PROJECT_ROOT, args.spec_path);
   const baseUrl = args.base_url.replace(/\/$/, ''); // Remove trailing slash
   const timeout = args.timeout || 10000;
@@ -72,16 +72,13 @@ export async function validateApiContract(args: ApiContractArgs): Promise<ToolRe
 
   // Check if spec file exists
   if (!(await fileExists(specPath))) {
-    return createSuccessResponse({
-      valid: false,
-      error: `Spec file not found: ${specPath}`,
-    });
+    return fail(`Spec file not found: ${specPath}`);
   }
 
   // Load and parse spec
   let spec: OpenApiSpecForValidation;
   try {
-    const content = fs.readFileSync(specPath, 'utf-8');
+    const content = await fsPromises.readFile(specPath, 'utf-8');
     const ext = path.extname(specPath).toLowerCase();
 
     if (ext === '.yaml' || ext === '.yml') {
@@ -89,17 +86,11 @@ export async function validateApiContract(args: ApiContractArgs): Promise<ToolRe
     } else if (ext === '.json') {
       spec = JSON.parse(content) as OpenApiSpecForValidation;
     } else {
-      return createSuccessResponse({
-        valid: false,
-        error: `Unsupported spec file format: ${ext}. Use .json, .yaml, or .yml`,
-      });
+      return fail(`Unsupported spec file format: ${ext}. Use .json, .yaml, or .yml`);
     }
   } catch (err) {
     logError('[validateApiContract] Failed to parse spec file', err);
-    return createSuccessResponse({
-      valid: false,
-      error: `Failed to parse spec file: ${err instanceof Error ? err.message : String(err)}`,
-    });
+    return fail(`Failed to parse spec file: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Filter endpoints if specified
@@ -200,7 +191,8 @@ export async function validateApiContract(args: ApiContractArgs): Promise<ToolRe
             } else {
               endpointsPassed++;
             }
-          } catch {
+          } catch (parseErr) {
+            logWarn('[validateApiContract] Failed to parse response JSON', parseErr);
             issues.push({
               endpoint: pathPattern,
               method: method.toUpperCase(),
@@ -254,5 +246,5 @@ export async function validateApiContract(args: ApiContractArgs): Promise<ToolRe
     },
   };
 
-  return createSuccessResponse(result);
+  return ok(result);
 }

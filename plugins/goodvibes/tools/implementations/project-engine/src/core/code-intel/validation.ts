@@ -51,7 +51,9 @@ export async function validatePositionArgs(args: unknown): Promise<ValidationRes
   const projectRoot = getProjectRoot();
   const filePath = path.resolve(projectRoot, file);
 
-  if (!filePath.startsWith(projectRoot)) {
+  const normalizedRoot = path.resolve(projectRoot) + path.sep;
+  const normalizedPath = path.resolve(filePath);
+  if (!normalizedPath.startsWith(normalizedRoot) && normalizedPath !== path.resolve(projectRoot)) {
     return { valid: false, error: fail('File path escapes project root') };
   }
 
@@ -78,7 +80,9 @@ export async function validateFilePath(file: unknown): Promise<ValidationResult>
     ? file
     : path.resolve(projectRoot, file);
 
-  if (!filePath.startsWith(projectRoot)) {
+  const normalizedRoot2 = path.resolve(projectRoot) + path.sep;
+  const normalizedPath2 = path.resolve(filePath);
+  if (!normalizedPath2.startsWith(normalizedRoot2) && normalizedPath2 !== path.resolve(projectRoot)) {
     return { valid: false, error: fail('File path escapes project root') };
   }
 

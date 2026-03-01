@@ -67,7 +67,11 @@ export const SECRET_PATTERNS: SecretPattern[] = [
   },
   {
     name: 'aws_secret_key',
-    // Require assignment context (=/:/ space) to reduce false positives on arbitrary 40-char strings
+    // Require assignment context (=/:/ space) to reduce false positives on arbitrary 40-char strings.
+    // Pattern requires both upper and lower case letters plus the 40-char length to reduce false
+    // positives from base64-encoded blobs or other 40-char strings that aren't AWS secrets.
+    // Note: this pattern still has a low false positive rate for strings that happen to match;
+    // isLikelyPlaceholder() handles common test/example values.
     pattern: /(?:=|:|\s)["']?([A-Za-z0-9/+=]{40})["']?(?=.*(?:aws|secret|key))/gi,
     severity: 'high',
     recommendation: 'Use environment variables or AWS IAM roles. Never commit AWS secret keys to version control.',

@@ -22,18 +22,13 @@ export function extractGitHubRepo(
 
   // Match GitHub URL patterns
   // Single pattern covers both SSH (github.com:owner/repo) and HTTPS (github.com/owner/repo) forms
-  const patterns = [
-    /github\.com[/:]([^/]+)\/([^/.]+)/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = repoUrl.match(pattern);
-    if (match) {
-      return {
-        owner: match[1],
-        repo: match[2].replace(/\.git$/, ''),
-      };
-    }
+  const pattern = /github\.com[/:]([^/]+)\/([^/.]+)/;
+  const match = repoUrl.match(pattern);
+  if (match) {
+    return {
+      owner: match[1],
+      repo: match[2].replace(/\.git$/, ''),
+    };
   }
 
   return null;

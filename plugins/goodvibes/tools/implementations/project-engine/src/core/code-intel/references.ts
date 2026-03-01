@@ -12,7 +12,8 @@ import * as fs from 'node:fs/promises';
 import ts from 'typescript';
 
 import { logWarn } from '../../shared/logger.js';
-import { toRelativePath } from '../../shared/utils.js';
+import { normalizePath, toRelativePath } from '../../shared/utils.js';
+import { isDefinitionRef } from './ast-utils.js';
 import { languageServiceManager } from './language-service.js';
 import { isTestFile } from './file-utils.js';
 
@@ -41,9 +42,7 @@ export function countReferences(
   let external = 0;
 
   for (const ref of references) {
-    // TS 5.x removed isDefinition from ReferenceEntry — cast for backward compat
-    const refEntry = ref as ts.ReferenceEntry & { isDefinition?: boolean };
-    if (refEntry.isDefinition) {
+    if (isDefinitionRef(ref)) {
       continue;
     }
 
@@ -125,13 +124,14 @@ export async function findReferencingFiles(
     }
 
     const { service, program } = await languageServiceManager.getServiceForFile(absolutePath);
-    const sourceFile = program.getSourceFile(absolutePath.replace(/\\/g, '/'));
+    const normalizedAbsPath = normalizePath(absolutePath);
+    const sourceFile = program.getSourceFile(normalizedAbsPath);
 
     if (!sourceFile) {
       return [];
     }
 
-    const navTree = service.getNavigationTree(absolutePath.replace(/\\/g, '/'));
+    const navTree = service.getNavigationTree(normalizedAbsPath);
 
     if (navTree && navTree.childItems) {
       for (const item of navTree.childItems) {
@@ -143,14 +143,14 @@ export async function findReferencingFiles(
         const pos = spans[0].start;
 
         try {
-          const references = service.findReferences(absolutePath.replace(/\\/g, '/'), pos);
+          const references = service.findReferences(normalizedAbsPath, pos);
 
           if (references) {
             for (const refGroup of references) {
               for (const ref of refGroup.references) {
                 const refFile = ref.fileName;
                 if (
-                  refFile !== absolutePath.replace(/\\/g, '/') &&
+                  refFile !== normalizedAbsPath &&
                   !refFile.includes('node_modules')
                 ) {
                   referencingFiles.add(toRelativePath(refFile, projectRoot));

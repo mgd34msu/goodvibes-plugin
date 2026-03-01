@@ -72,8 +72,12 @@ export async function validateEditsPreview(args: ValidateEditsPreviewArgs): Prom
       affectedFilesArray,
       PROJECT_ROOT
     );
-    const baselineDiagnostics = getDiagnosticsForFiles(baselineService, affectedFilesArray);
-    baselineService.dispose();
+    let baselineDiagnostics: Map<string, import('typescript').Diagnostic[]>;
+    try {
+      baselineDiagnostics = getDiagnosticsForFiles(baselineService, affectedFilesArray);
+    } finally {
+      baselineService.dispose();
+    }
 
     const baselineKeys = new Set<string>();
     for (const [, diagnostics] of baselineDiagnostics) {
@@ -113,8 +117,12 @@ export async function validateEditsPreview(args: ValidateEditsPreviewArgs): Prom
       affectedFilesArray,
       PROJECT_ROOT
     );
-    const editedDiagnostics = getDiagnosticsForFiles(editedService, affectedFilesArray);
-    editedService.dispose();
+    let editedDiagnostics: Map<string, import('typescript').Diagnostic[]>;
+    try {
+      editedDiagnostics = getDiagnosticsForFiles(editedService, affectedFilesArray);
+    } finally {
+      editedService.dispose();
+    }
 
     // Step 4: Find new errors
     const newErrors: ReturnType<typeof diagnosticToError>[] = [];

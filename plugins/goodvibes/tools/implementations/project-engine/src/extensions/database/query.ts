@@ -22,7 +22,6 @@ import {
   addLimitClause,
   formatQueryResult,
   enhanceDatabaseError,
-  buildErrorResult,
   executePostgres,
   executeMysql,
   executeSqlite,
@@ -126,16 +125,17 @@ export async function queryDatabase(args: QueryDatabaseArgs): Promise<McpRespons
 
   let queryToExecute = args.query.trim();
 
-  // Auto-add LIMIT to SELECT queries
+  // Auto-add LIMIT to SELECT/CTE queries without an existing LIMIT clause.
+  // Skip if the query already has a LIMIT (checked case-insensitively, handles CTEs).
   let truncated = false;
-  if (limit > 0 && !hasLimitClause(queryToExecute) && /^(SELECT|WITH)/i.test(queryToExecute)) {
+  if (limit > 0 && !hasLimitClause(queryToExecute) && /^(SELECT|WITH)\b/i.test(queryToExecute)) {
     queryToExecute = addLimitClause(queryToExecute, limit);
     truncated = true;
   }
 
-  // Optional EXPLAIN
+  // Optional EXPLAIN — only for read queries (EXPLAIN on writes is unsupported/dangerous)
   let explainOutput: string | undefined;
-  if (explain) {
+  if (explain && !isWriteOperation(queryToExecute)) {
     try {
       const explainResult = await executeQuery(connectionInfo, `EXPLAIN ${queryToExecute}`, args.params || []);
       explainOutput = JSON.stringify(explainResult.rows, null, 2);
@@ -188,19 +188,8 @@ export async function queryDatabase(args: QueryDatabaseArgs): Promise<McpRespons
 
     return ok(result);
   } catch (error) {
-    const executionTime = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const enhancedError = enhanceDatabaseError(errorMessage, connectionInfo.type);
-
-    const result: QueryResult = {
-      ...buildErrorResult(enhancedError),
-      database_type: connectionInfo.type,
-      execution_time_ms: executionTime,
-      query_executed: queryToExecute,
-    };
-
-    if (explainOutput) result.explain_output = explainOutput;
-
     return fail(enhancedError);
   }
 }

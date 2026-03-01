@@ -14,7 +14,7 @@ import * as node_path from 'node:path';
 import * as yaml from 'js-yaml';
 
 import { PLUGIN_ROOT, PROJECT_ROOT } from '../../shared/config.js';
-import { safeExec, detectPackageManager } from '../../shared/utils.js';
+import { shellExec, detectPackageManager } from '../../shared/utils.js';
 import { ok, fail } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';
 import type { ScaffoldProjectArgs } from '../../core/standalone/types.js';
@@ -132,7 +132,8 @@ export async function scaffoldProject(args: ScaffoldProjectArgs): Promise<McpRes
   }
 
   const templateConfig = yaml.load(
-    await node_fs.promises.readFile(templateYamlPath, 'utf-8')
+    await node_fs.promises.readFile(templateYamlPath, 'utf-8'),
+    { schema: yaml.JSON_SCHEMA }
   ) as TemplateConfig;
 
   // Build variables with defaults
@@ -164,7 +165,7 @@ export async function scaffoldProject(args: ScaffoldProjectArgs): Promise<McpRes
   if (args.run_install !== false) {
     const pm = await detectPackageManager(outputPath);
     const installCmd = pm === 'npm' ? 'npm install' : `${pm} install`;
-    const result = await safeExec(installCmd, outputPath, 120000);
+    const result = await shellExec(installCmd, outputPath, 120000);
     postCreateResults.push({
       command: installCmd,
       success: !result.error,
@@ -173,7 +174,7 @@ export async function scaffoldProject(args: ScaffoldProjectArgs): Promise<McpRes
   }
 
   if (args.run_git_init !== false) {
-    const result = await safeExec('git init', outputPath, 10000);
+    const result = await shellExec('git init', outputPath, 10000);
     postCreateResults.push({
       command: 'git init',
       success: !result.error,

@@ -216,4 +216,4 @@ export function extractNextJsPagesRoutePath(filePath: string): string {
   return routePath;
 }
 
-// findFilesSync and getLineNumber are imported from ./utils.js
+// SAFETY: method comes from HTTP_METHODS constant array, not user input

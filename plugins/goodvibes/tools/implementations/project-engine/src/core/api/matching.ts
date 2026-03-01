@@ -28,7 +28,7 @@ import type { TypeDrift, BackendRoute } from './types.js';
  * ```
  */
 export function normalizeEndpoint(endpoint: string): string {
-  // Remove leading slash if present
+  // Ensure leading slash is present
   let normalized = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
 
   // Remove query string
@@ -74,9 +74,11 @@ export function matchEndpoint(callEndpoint: string, routePath: string): boolean 
   }
 
   // Convert route path pattern to regex
-  const routePattern = routePath
-    .replace(/\[\.\.\.([\w]+)\]/g, '.+') // catch-all
-    .replace(/\[(\w+)\]/g, '[^/]+'); // dynamic segment
+  // Escape regex special characters first (before replacing bracket patterns)
+  const escapedPath = routePath.replace(/[.*+?^${}()|\\]/g, '\\$&');
+  const routePattern = escapedPath
+    .replace(/\\\[\\\.\\\.\\\.(\w+)\\\]/g, '.+') // catch-all: [...slug]
+    .replace(/\\\[(\w+)\\\]/g, '[^/]+'); // dynamic segment: [param]
 
   const regex = new RegExp(`^${routePattern}$`);
   return regex.test(callEndpoint);

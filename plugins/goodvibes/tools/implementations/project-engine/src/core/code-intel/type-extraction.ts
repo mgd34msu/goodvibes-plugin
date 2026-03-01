@@ -64,13 +64,14 @@ export async function extractTypeInfo(
     }
 
     const { service, program } = await languageServiceManager.getServiceForFile(absolutePath);
-    const sourceFile = program.getSourceFile(absolutePath.replace(/\\/g, '/'));
+    const normalizedAbsPath = absolutePath.replace(/\\/g, '/');
+    const sourceFile = program.getSourceFile(normalizedAbsPath);
 
     if (!sourceFile) {
       return { file: filePath, symbols };
     }
 
-    const navTree = service.getNavigationTree(absolutePath.replace(/\\/g, '/'));
+    const navTree = service.getNavigationTree(normalizedAbsPath);
 
     if (navTree && navTree.childItems) {
       for (const item of navTree.childItems) {
@@ -82,7 +83,7 @@ export async function extractTypeInfo(
         const pos = spans[0].start;
         const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
 
-        const quickInfo = service.getQuickInfoAtPosition(absolutePath.replace(/\\/g, '/'), pos);
+        const quickInfo = service.getQuickInfoAtPosition(normalizedAbsPath, pos);
         let signature = '';
 
         if (quickInfo && quickInfo.displayParts) {
@@ -131,7 +132,7 @@ export async function withTempFile<T>(
     return await fn(tempPath);
   } finally {
     await node_fs.unlink(tempPath).catch(() => undefined);
-    await node_fs.rmdir(dir).catch(() => undefined);
+    await node_fs.rm(dir, { recursive: true }).catch(() => undefined);
   }
 }
 

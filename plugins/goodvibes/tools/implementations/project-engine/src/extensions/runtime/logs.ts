@@ -9,7 +9,6 @@
 
 import * as node_fs from 'node:fs';
 import * as node_path from 'node:path';
-import { spawn } from 'node:child_process';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail } from '../../shared/response.js';
@@ -17,20 +16,21 @@ import type { McpResponse } from '../../shared/response.js';
 
 import type { LogAnalyzerArgs, LogAnalyzerResult } from '../../core/runtime/types.js';
 import { detectStructured, parseLogLine } from '../../core/runtime/log-parser.js';
+import { spawnCommand } from '../../core/runtime/process-utils.js';
 import { groupMessages, detectAnomalies, calculateRateAnalysis, matchPatterns } from '../../core/runtime/log-analysis.js';
 import { parseTimeWindow } from '../../core/runtime/time-utils.js';
 import { formatLogAnalysis } from '../../core/runtime/formatters.js';
 
 /**
- * Reads the last N lines from a file synchronously.
+ * Reads the last N lines from a file asynchronously.
  *
  * @param filePath - Absolute path to the log file
  * @param lines - Maximum number of lines to return
  * @returns Array of line strings
  */
-function tailFile(filePath: string, lines: number): string[] {
+async function tailFile(filePath: string, lines: number): Promise<string[]> {
   try {
-    const content = node_fs.readFileSync(filePath, 'utf-8');
+    const content = await node_fs.promises.readFile(filePath, 'utf-8');
     const allLines = content.split('\n');
     return allLines.slice(-lines);
   } catch (err: unknown) {
@@ -54,24 +54,19 @@ async function captureCommand(
 ): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const lines: string[] = [];
-    const parts = command.split(/\s+/);
-    const cmd = parts[0];
-    const args = parts.slice(1);
 
-    const proc = spawn(cmd, args, {
-      cwd,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const proc = spawnCommand(command, cwd);
 
     const timeout = setTimeout(() => {
       proc.kill('SIGTERM');
     }, durationSeconds * 1000);
 
-    proc.stdout.on('data', (data: Buffer) => {
+    // stdout/stderr are non-null because spawnCommand uses stdio: 'pipe'
+    proc.stdout?.on('data', (data: Buffer) => {
       lines.push(...data.toString().split('\n').filter((l) => l.trim()));
     });
 
-    proc.stderr.on('data', (data: Buffer) => {
+    proc.stderr?.on('data', (data: Buffer) => {
       lines.push(...data.toString().split('\n').filter((l) => l.trim()));
     });
 
@@ -124,7 +119,7 @@ export async function analyzeLogs(args: LogAnalyzerArgs): Promise<McpResponse> {
         return fail(`File not found: ${filePath}`);
       }
 
-      rawLines = tailFile(filePath, args.tail_lines || 1000);
+      rawLines = await tailFile(filePath, args.tail_lines || 1000);
       sourceDescription = filePath;
     } else {
       const duration = args.duration_seconds || 10;

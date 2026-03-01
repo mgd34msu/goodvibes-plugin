@@ -12,9 +12,10 @@ import * as fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
-import { createSuccessResponse, createErrorResponse } from '../../shared/response.js';
-import type { ToolResponse } from '../../shared/response.js';
+import { ok, fail } from '../../shared/response.js';
+import type { McpResponse } from '../../shared/response.js';
 import { fileExists } from '../../shared/utils.js';
+import { logWarn } from '../../shared/logger.js';
 
 import type {
   SyncApiTypesArgs,
@@ -87,8 +88,8 @@ async function parseBackendRoutes(
 
       routes.push(routeInfo);
     }
-  } catch {
-    // Parse error
+  } catch (err) {
+    logWarn('[parseBackendRoutes] Failed to parse API routes response', err);
   }
 
   return routes;
@@ -125,8 +126,8 @@ async function findApiFiles(
         files.push(fullPath);
       }
     }
-  } catch {
-    // Directory doesn't exist or permission denied
+  } catch (err) {
+    logWarn('[findApiFiles] Directory not accessible', err);
   }
 
   return files;
@@ -295,8 +296,8 @@ async function findApiCalls(
           }
         }
       }
-    } catch {
-      // Read error
+    } catch (err) {
+      logWarn('[findApiCalls] Failed to read file', err);
     }
   }
 
@@ -320,7 +321,7 @@ async function findApiCalls(
  */
 export async function syncApiTypes(
   args: SyncApiTypesArgs
-): Promise<ToolResponse> {
+): Promise<McpResponse> {
   const {
     backend_path,
     frontend_path = 'src',
@@ -335,7 +336,7 @@ export async function syncApiTypes(
   if (!resolvedBackendPath) {
     const detected = await detectBackendPath(projectPath);
     if (!detected) {
-      return createErrorResponse(
+      return fail(
         'Could not auto-detect backend API path. Please provide backend_path parameter. ' +
         'Searched: ' + BACKEND_PATHS.join(', ')
       );
@@ -346,20 +347,20 @@ export async function syncApiTypes(
   // Verify backend path exists
   const fullBackendPath = path.join(projectPath, resolvedBackendPath);
   if (!(await fileExists(fullBackendPath))) {
-    return createErrorResponse(`Backend path not found: ${fullBackendPath}`);
+    return fail(`Backend path not found: ${fullBackendPath}`);
   }
 
   // Verify frontend path exists
   const fullFrontendPath = path.join(projectPath, frontend_path);
   if (!(await fileExists(fullFrontendPath))) {
-    return createErrorResponse(`Frontend path not found: ${fullFrontendPath}`);
+    return fail(`Frontend path not found: ${fullFrontendPath}`);
   }
 
   // Parse backend routes
   const backendRoutes = await parseBackendRoutes(projectPath, resolvedBackendPath);
 
   if (backendRoutes.length === 0) {
-    return createErrorResponse(
+    return fail(
       `No API routes found in ${resolvedBackendPath}. ` +
       'Ensure you have route handlers (route.ts for Next.js App Router, or *.ts for Express/Fastify/Hono).'
     );
@@ -372,7 +373,6 @@ export async function syncApiTypes(
   // Detect drifts
   const drifts: TypeDrift[] = [];
   let inSyncCount = 0;
-  let untypedCount = 0;
 
   for (const call of frontendCalls) {
     // Find matching backend route
@@ -401,7 +401,6 @@ export async function syncApiTypes(
 
     // Both untyped
     if (!matchingRoute.response_type && !call.expected_type) {
-      untypedCount++;
       const drift: TypeDrift = {
         endpoint: call.endpoint,
         backend_file: matchingRoute.file,
@@ -477,9 +476,9 @@ export async function syncApiTypes(
       total_calls: frontendCalls.length,
       in_sync: inSyncCount,
       drifted: drifts.filter((d) => d.issue === 'type_mismatch').length,
-      untyped: untypedCount + drifts.filter((d) => d.issue === 'missing_type').length,
+      untyped: drifts.filter((d) => d.issue === 'missing_type').length,
     },
   };
 
-  return createSuccessResponse(result);
+  return ok(result);
 }

@@ -70,7 +70,7 @@ export function parseConnectionUrl(url: string): DatabaseConnectionInfo {
       return { type: 'sqlite', database: ':memory:', filepath: ':memory:' };
     }
 
-    if (!filepath.startsWith('/') && !filepath.startsWith('./') && !filepath.match(/^[A-Za-z]:\\/)) {
+    if (!filepath.startsWith('/') && !filepath.startsWith('./') && !filepath.match(/^[A-Za-z]:[/\\]/)) {
       filepath = './' + filepath;
     }
 
@@ -80,7 +80,7 @@ export function parseConnectionUrl(url: string): DatabaseConnectionInfo {
   // Bare SQLite file path
   if (url.match(/\.(db|sqlite|sqlite3)$/i)) {
     let filepath = url;
-    if (!filepath.startsWith('/') && !filepath.startsWith('./') && !filepath.match(/^[A-Za-z]:\\/)) {
+    if (!filepath.startsWith('/') && !filepath.startsWith('./') && !filepath.match(/^[A-Za-z]:[/\\]/)) {
       filepath = './' + filepath;
     }
     return { type: 'sqlite', database: filepath, filepath };

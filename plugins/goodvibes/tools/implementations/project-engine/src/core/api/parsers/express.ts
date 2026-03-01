@@ -58,6 +58,8 @@ export function parseExpressFileRoutes(content: string, filePath: string): ApiRo
     // app.get('/path', handler)
     // router.get('/path', middleware, handler)
     // app.get('/path', [middleware], handler)
+    // The character class ['"\`] matches single quote, double quote, or backtick
+    // to support all JS/TS string literal delimiters used for route paths
     const pattern = new RegExp(
       `(?:app|router|server)\\.${method}\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
       'g'
@@ -120,4 +122,4 @@ export function extractExpressMiddleware(content: string, startIndex: number): s
   return middleware;
 }
 
-// findFilesSync and getLineNumber are imported from ./utils.js
+

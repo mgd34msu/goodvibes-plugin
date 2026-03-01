@@ -109,7 +109,7 @@ export function diagnosticToError(
     end_line: end.line + 1,
     end_column: end.character + 1,
     message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
-    code: typeof diagnostic.code === 'number' ? diagnostic.code : 0,
+    code: diagnostic.code,
     category: diagnostic.category === ts.DiagnosticCategory.Error ? 'error' : 'warning',
     caused_by_edit: causedBy,
   };

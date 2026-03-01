@@ -16,6 +16,7 @@ import type ts from 'typescript';
  * @param line - 1-based line number
  * @param column - 1-based column number
  * @returns Byte offset position
+ * @note Line and column values are clamped to valid ranges (minimum 0)
  */
 export function toOffset(sourceFile: ts.SourceFile, line: number, column: number): number {
   // Convert from 1-based to 0-based

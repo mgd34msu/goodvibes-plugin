@@ -84,6 +84,7 @@ export async function scanFileForEnvVars(
     // Find all vars that have default/fallback values
     const varsWithDefaults = new Set<string>();
     for (const pattern of DEFAULT_PATTERNS) {
+      // Create a local global regex instance — constants must not have /g flag
       const globalPattern = new RegExp(pattern.source, 'g');
       let match;
       while ((match = globalPattern.exec(content)) !== null) {
@@ -95,10 +96,11 @@ export async function scanFileForEnvVars(
       const line = lines[lineNum];
 
       for (const pattern of ENV_PATTERNS) {
-        pattern.lastIndex = 0;
+        // Create a local global regex instance — constants must not have /g flag
+        const globalPattern = new RegExp(pattern.source, 'g');
         let match;
 
-        while ((match = pattern.exec(line)) !== null) {
+        while ((match = globalPattern.exec(line)) !== null) {
           const varName = match[1].toUpperCase();
 
           if (BUILTIN_VARS.has(varName)) continue;

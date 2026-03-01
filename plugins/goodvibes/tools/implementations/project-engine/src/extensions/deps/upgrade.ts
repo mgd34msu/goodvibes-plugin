@@ -14,7 +14,7 @@ import * as node_path from 'node:path';
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/response.js';
-import { readJsonFile, fileExists, safeExec } from '../../shared/utils.js';
+import { readJsonFile, fileExists, shellExec } from '../../shared/utils.js';
 
 import type { UpgradePackageArgs } from '../../core/deps/types.js';
 import { getCurrentVersion, isDevDependency, cleanVersion, isMajorBump } from '../../core/deps/version-utils.js';
@@ -57,7 +57,7 @@ async function fetchTargetVersion(
   validatePackageName(packageName);
   if (targetVersion !== 'latest') {
     validateVersion(targetVersion);
-    const result = await safeExec(
+    const result = await shellExec(
       `npm view ${packageName}@${targetVersion} version`,
       projectRoot,
       15000
@@ -68,7 +68,7 @@ async function fetchTargetVersion(
     return result.stdout.trim();
   }
 
-  const result = await safeExec(`npm view ${packageName} version`, projectRoot, 15000);
+  const result = await shellExec(`npm view ${packageName} version`, projectRoot, 15000);
   // Note: validatePackageName was already called at function entry
   if (result.error || !result.stdout) {
     return null;
@@ -88,7 +88,7 @@ async function fetchNpmMetadata(
   bugs?: { url?: string };
 } | null> {
   validatePackageName(packageName);
-  const result = await safeExec(
+  const result = await shellExec(
     `npm view ${packageName} repository homepage bugs --json`,
     projectRoot,
     15000
@@ -213,7 +213,7 @@ async function executeUpgrade(
   const devFlag = isDev ? ' -D' : '';
   const command = `npm install ${packageName}@${targetVersion}${devFlag}`;
 
-  const result = await safeExec(command, projectRoot, 120000);
+  const result = await shellExec(command, projectRoot, 120000);
 
   if (result.error) {
     return {
@@ -236,7 +236,7 @@ async function runTests(projectRoot: string): Promise<TestResults> {
   const testCommands = ['npm test'];
 
   for (const command of testCommands) {
-    const result = await safeExec(command, projectRoot, 300000);
+    const result = await shellExec(command, projectRoot, 300000);
 
     if (!result.error) {
       return {
@@ -313,6 +313,8 @@ export async function analyzeUpgrade(args: UpgradePackageArgs): Promise<McpRespo
       breaking_changes: [],
       dependencies_affected: [],
       upgrade_applied: false,
+      // The -D flag reinstates the package as a devDependency on rollback,
+      // matching the original install context detected from package.json.
       rollback_command: `npm install ${packageName}@${cleanVersion(currentVersion)}${isDev ? ' -D' : ''}`,
       warnings: [],
     };

@@ -10,6 +10,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { Framework } from './types.js';
+import { logWarn } from '../../shared/logger.js';
 
 /**
  * Ordered list of frameworks to check during detection.
@@ -64,7 +65,8 @@ export function detectFramework(projectPath: string): Framework | null {
     }
 
     return null;
-  } catch {
+  } catch (err) {
+    logWarn('[detectFramework] Failed to parse package.json', err);
     return null;
   }
 }

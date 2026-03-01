@@ -12,13 +12,12 @@ import * as node_path from 'node:path';
 import type { McpResponse } from '../../shared/types.js';
 import { ok, fail, failFromException } from '../../shared/response.js';
 import { getProjectRoot } from '../../shared/config.js';
-import { fileExists, safeExec } from '../../shared/utils.js';
+import { fileExists, shellExec } from '../../shared/utils.js';
 import { logger } from '../../shared/logger.js';
 import {
   type ScanForSecretsArgs,
   type SecretFinding,
   SECRET_PATTERNS,
-  SECURITY_SKIP_PATTERNS,
   shouldSkip,
   isScannable,
   getDefaultMaxDepth,
@@ -83,7 +82,7 @@ async function getFilesRecursively(
  * @returns Array of absolute staged file paths
  */
 async function getStagedFiles(projectRoot: string): Promise<string[]> {
-  const result = await safeExec('git diff --cached --name-only', projectRoot, 5000);
+  const result = await shellExec('git diff --cached --name-only', projectRoot, 5000);
 
   if (result.error || !result.stdout) return [];
 

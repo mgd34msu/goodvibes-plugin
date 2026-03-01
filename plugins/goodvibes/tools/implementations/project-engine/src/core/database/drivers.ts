@@ -7,8 +7,7 @@
  * @module core/database/drivers
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyModule = any;
+export type AnyModule = Record<string, unknown>;
 
 /** Mock driver storage for testing @internal */
 const mockDrivers: Record<string, AnyModule | null> = {};

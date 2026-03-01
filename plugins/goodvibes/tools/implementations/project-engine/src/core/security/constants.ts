@@ -104,20 +104,30 @@ export const SKIP_DIRS = new Set([
 
 /**
  * Regex patterns to match environment variable access in source files.
+ *
+ * WARNING: Do NOT use these patterns directly with the `/g` flag in a loop across
+ * multiple strings — global regexes maintain `lastIndex` state and will produce
+ * incorrect results. Instead, create a local copy with the global flag:
+ * `new RegExp(pattern.source, 'g')` or `new RegExp(pattern.source, 'gi')`.
  */
 export const ENV_PATTERNS: RegExp[] = [
   // process.env.VAR_NAME
-  /process\.env\.([A-Z_][A-Z0-9_]*)/g,
+  /process\.env\.([A-Z_][A-Z0-9_]*)/,
   // process.env['VAR_NAME'] or process.env["VAR_NAME"]
-  /process\.env\[['"]([A-Z_][A-Z0-9_]*)['"]\]/g,
+  /process\.env\[['"]([A-Z_][A-Z0-9_]*)['"]\]/,
   // import.meta.env.VAR_NAME (Vite)
-  /import\.meta\.env\.([A-Z_][A-Z0-9_]*)/g,
+  /import\.meta\.env\.([A-Z_][A-Z0-9_]*)/,
   // Deno.env.get('VAR_NAME')
-  /Deno\.env\.get\(['"]([A-Z_][A-Z0-9_]*)['"]\)/g,
+  /Deno\.env\.get\(['"]([A-Z_][A-Z0-9_]*)['"]\)/,
 ];
 
 /**
  * Patterns that indicate a default/fallback value is provided.
+ *
+ * WARNING: Do NOT use these patterns directly with the `/g` flag in a loop across
+ * multiple strings — global regexes maintain `lastIndex` state and will produce
+ * incorrect results. Instead, create a local copy with the global flag:
+ * `new RegExp(pattern.source, 'g')` or `new RegExp(pattern.source, 'gi')`.
  */
 export const DEFAULT_PATTERNS: RegExp[] = [
   /process\.env\.([A-Z_][A-Z0-9_]*)\s*\|\|/,

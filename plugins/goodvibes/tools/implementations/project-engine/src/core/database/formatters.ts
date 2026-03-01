@@ -54,8 +54,10 @@ export function formatQueryResult(rows: unknown[], columns: ColumnInfo[]): strin
     colWidths[col.name] = col.name.length;
   }
 
+  type RowData = Record<string, unknown>;
+
   for (const row of rows) {
-    const rowObj = row as Record<string, unknown>;
+    const rowObj = row as RowData;
     for (const col of columns) {
       const value = formatCellValue(rowObj[col.name]);
       colWidths[col.name] = Math.max(colWidths[col.name], value.length);
@@ -73,7 +75,7 @@ export function formatQueryResult(rows: unknown[], columns: ColumnInfo[]): strin
   const separatorLine = '|-' + separatorCells.join('-|-') + '-|';
 
   const rowLines = rows.map(row => {
-    const rowObj = row as Record<string, unknown>;
+    const rowObj = row as RowData;
     const cells = columns.map(col => {
       const value = formatCellValue(rowObj[col.name]);
       return value.slice(0, colWidths[col.name]).padEnd(colWidths[col.name]);

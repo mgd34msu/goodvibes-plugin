@@ -193,6 +193,9 @@ export function parseLogLine(
       let level: 'debug' | 'info' | 'warn' | 'error' | undefined;
       let message: string;
 
+      // Default message to the trimmed line before conditional branches
+      message = trimmed;
+
       if (match.length === 4) {
         // Has timestamp, level, and message
         const first = match[1];
@@ -223,7 +226,7 @@ export function parseLogLine(
         raw: trimmed,
         timestamp: timestamp || extractTimestamp(trimmed),
         level,
-        message: message!,
+        message,
         lineNumber,
       };
     }

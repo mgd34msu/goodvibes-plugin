@@ -249,14 +249,6 @@ export interface ExecutionResult {
 }
 
 /**
- * Execution options for query executors.
- */
-export interface ExecutionOptions {
-  params?: unknown[];
-  readonly?: boolean;
-}
-
-/**
  * Parsed database connection info.
  */
 export interface DatabaseConnectionInfo {

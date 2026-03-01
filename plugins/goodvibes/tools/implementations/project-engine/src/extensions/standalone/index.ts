@@ -4,5 +4,5 @@
  * @module extensions/standalone
  */
 
-export { analyzeBundle, extractPackageName } from './bundle.js';
+export { analyzeBundle } from './bundle.js';
 export { scaffoldProject } from './scaffold.js';

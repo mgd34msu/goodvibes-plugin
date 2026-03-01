@@ -10,7 +10,13 @@
 import type { PermissionFinding, RiskLevel } from './types.js';
 
 /**
- * Permission pattern definition used by the risk calculator.
+ * Minimal permission pattern interface used by the risk calculator.
+ *
+ * This is an intentionally narrowed subset of the full PermissionPattern interface
+ * defined in extensions/security/permissions.ts. It lives here (core layer) to keep
+ * the risk module decoupled from the extension layer — the core must not import
+ * from extensions. Only the fields actually used by generateRecommendations are included.
+ *
  * @internal
  */
 interface PermissionPatternRef {

@@ -19,7 +19,6 @@ import { ok, fail } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';
 import {
   extractModules,
-  extractPackageName,
   generateBundleRecommendations,
   generatePackageAlternativeMessages,
 } from '../../core/standalone/bundle-parser.js';
@@ -111,8 +110,8 @@ async function findBundleFiles(dir: string, files: string[] = []): Promise<strin
         }
       }
     }
-  } catch {
-    // Directory read failed
+  } catch (err) {
+    logWarn('Failed to read directory', err instanceof Error ? err.message : String(err));
   }
 
   return files;
@@ -319,5 +318,4 @@ export async function analyzeBundle(args: AnalyzeBundleArgs): Promise<McpRespons
   return ok(analysis);
 }
 
-// Re-export extractPackageName for consumers that need it
-export { extractPackageName };
+

@@ -6,21 +6,7 @@
  * @module core/security/formatters
  */
 
-// Types are centralized in types.ts to avoid duplication across security modules
-export type {
-  EnvUsage,
-  EnvVariable,
-  MissingVariable,
-  UnusedVariable,
-  UndocumentedVariable,
-  TypeIssue,
-  EnvAuditSummary,
-  EnvAuditResult,
-} from './types.js';
-
-import type {
-  EnvAuditResult,
-} from './types.js';
+import type { EnvAuditResult } from './types.js';
 
 // =============================================================================
 // Formatter

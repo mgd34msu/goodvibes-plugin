@@ -9,6 +9,42 @@
 import type { SchemaObject, OpenApiSpecForValidation } from './types.js';
 
 /**
+ * Resolve a $ref string to a SchemaObject from the spec.
+ *
+ * Handles #/components/schemas/, #/components/parameters/,
+ * #/components/requestBodies/, and #/components/responses/ paths.
+ *
+ * @param ref - The $ref string (e.g., '#/components/schemas/User')
+ * @param spec - The full OpenAPI spec
+ * @returns The resolved SchemaObject, or null if not found
+ */
+function resolveRef(ref: string, spec: OpenApiSpecForValidation): SchemaObject | null {
+  if (ref.startsWith('#/components/schemas/')) {
+    const name = ref.replace('#/components/schemas/', '');
+    return spec.components?.schemas?.[name] ?? null;
+  }
+  if (ref.startsWith('#/components/parameters/')) {
+    const name = ref.replace('#/components/parameters/', '');
+    const param = (spec.components as Record<string, unknown> | undefined)
+      ?.parameters as Record<string, SchemaObject> | undefined;
+    return param?.[name] ?? null;
+  }
+  if (ref.startsWith('#/components/requestBodies/')) {
+    const name = ref.replace('#/components/requestBodies/', '');
+    const bodies = (spec.components as Record<string, unknown> | undefined)
+      ?.requestBodies as Record<string, SchemaObject> | undefined;
+    return bodies?.[name] ?? null;
+  }
+  if (ref.startsWith('#/components/responses/')) {
+    const name = ref.replace('#/components/responses/', '');
+    const responses = (spec.components as Record<string, unknown> | undefined)
+      ?.responses as Record<string, SchemaObject> | undefined;
+    return responses?.[name] ?? null;
+  }
+  return null;
+}
+
+/**
  * Schema validation issue.
  */
 export interface SchemaIssue {
@@ -45,27 +81,32 @@ export function validateSchema(
   const issues: SchemaIssue[] = [];
 
   // Resolve $ref if present
-  if (schema.$ref) {
-    const refPath = (schema.$ref as string).replace('#/components/schemas/', '');
-    if (spec.components?.schemas?.[refPath]) {
-      schema = spec.components.schemas[refPath];
+  let resolvedSchema = schema;
+  if (resolvedSchema.$ref) {
+    const resolved = resolveRef(resolvedSchema.$ref as string, spec);
+    if (resolved) {
+      resolvedSchema = resolved;
     } else {
       issues.push({
         path: jsonPath,
         message: 'Referenced schema not found',
-        expected: schema.$ref as string,
+        expected: resolvedSchema.$ref as string,
         actual: 'undefined',
       });
       return issues;
     }
   }
+  schema = resolvedSchema;
 
   // Type validation
   const actualType = Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
 
   if (schema.type && actualType !== schema.type) {
-    // Special case: number can be integer or number
-    if (!(schema.type === 'number' && actualType === 'number')) {
+    // Special case: number can be integer or number; integer requires whole number
+    if (!(
+      (schema.type === 'number' && actualType === 'number') ||
+      (schema.type === 'integer' && actualType === 'number' && Number.isInteger(value))
+    )) {
       issues.push({
         path: jsonPath,
         message: 'Type mismatch',

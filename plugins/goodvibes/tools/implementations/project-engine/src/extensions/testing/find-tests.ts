@@ -8,7 +8,7 @@
  * @module extensions/testing/find-tests
  */
 
-import * as node_fs from 'node:fs';
+import * as node_fs from 'node:fs/promises';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail, missingArg } from '../../shared/response.js';
@@ -44,15 +44,17 @@ export async function findTestsForFile(args: FindTestsArgs): Promise<McpResponse
     const sourceFilePath = resolveFilePath(args.file, PROJECT_ROOT);
     const normalizedSourcePath = normalizeFilePath(sourceFilePath);
 
-    if (!node_fs.existsSync(sourceFilePath)) {
+    try {
+      await node_fs.access(sourceFilePath);
+    } catch {
       return fail(`Source file not found: ${args.file}`);
     }
 
     const includeIndirect = args.include_indirect ?? false;
 
-    const testFilePaths = findTestFiles(PROJECT_ROOT);
+    const testFilePaths = await findTestFiles(PROJECT_ROOT);
 
-    const tests = scoreTestFiles(
+    const tests = await scoreTestFiles(
       normalizedSourcePath,
       testFilePaths,
       includeIndirect,

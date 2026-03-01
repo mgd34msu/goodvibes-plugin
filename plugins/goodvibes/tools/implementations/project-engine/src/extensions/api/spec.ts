@@ -11,9 +11,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
-import { createSuccessResponse, createErrorResponse } from '../../shared/response.js';
-import type { ToolResponse } from '../../shared/response.js';
-import { logError } from '../../shared/logger.js';
+import { ok, fail } from '../../shared/response.js';
+import type { McpResponse } from '../../shared/response.js';
+import { logError, logWarn } from '../../shared/logger.js';
 
 import type {
   OpenApiArgs,
@@ -53,13 +53,13 @@ import { getApiRoutes } from './routes.js';
  * const result = await generateOpenApi({ format: 'yaml', output_path: 'openapi.yaml' });
  * ```
  */
-export function generateOpenApi(args: OpenApiArgs): ToolResponse {
+export function generateOpenApi(args: OpenApiArgs): McpResponse {
   const projectPath = PROJECT_ROOT;
   const warnings: string[] = [];
   const missingTypes: MissingType[] = [];
 
   // Get API routes using the routes extension
-  const apiRoutesResponse = getApiRoutes({ path: projectPath });
+  const apiRoutesResponse = getApiRoutes({ path: '.' });
 
   // Parse the response
   let apiRoutesResult: ApiRoutesResult;
@@ -74,7 +74,7 @@ export function generateOpenApi(args: OpenApiArgs): ToolResponse {
       throw new Error((apiRoutesResult as unknown as { error: string }).error);
     }
   } catch (error) {
-    return createErrorResponse(
+    return fail(
       `Failed to get API routes: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { hint: 'Ensure the project has API routes in a supported framework (Next.js, Express, Fastify, Hono)' }
     );
@@ -87,8 +87,8 @@ export function generateOpenApi(args: OpenApiArgs): ToolResponse {
     if (fs.existsSync(packageJsonPath)) {
       packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8')) as Record<string, unknown>;
     }
-  } catch {
-    // Ignore errors
+  } catch (err) {
+    logWarn('[generateOpenApi] Failed to read package.json', err);
   }
 
   const pkgName = typeof packageJson['name'] === 'string' ? packageJson['name'] : undefined;
@@ -267,7 +267,7 @@ export function generateOpenApi(args: OpenApiArgs): ToolResponse {
     fs.writeFileSync(fullOutputPath, specContent, 'utf-8');
   } catch (writeError) {
     logError('[generateOpenApi] Failed to write OpenAPI spec', writeError);
-    return createErrorResponse(
+    return fail(
       `Failed to write OpenAPI spec: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`,
       { output_path: fullOutputPath }
     );
@@ -284,5 +284,5 @@ export function generateOpenApi(args: OpenApiArgs): ToolResponse {
     warnings,
   };
 
-  return createSuccessResponse(result);
+  return ok(result);
 }

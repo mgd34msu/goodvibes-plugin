@@ -9,6 +9,7 @@
 
 import type { DatabaseConnectionInfo, ColumnInfo, ExecutionResult } from '../types.js';
 import { loadPostgresDriver } from '../drivers.js';
+import { ConnectionError, QueryError } from '../errors.js';
 
 /**
  * Map a PostgreSQL OID to a human-readable type name.
@@ -64,20 +65,31 @@ export async function executePostgres(
     );
   }
 
-  const { Pool } = pg;
-  const pool = new Pool({
+  // Use a single Client (not Pool) for isolated single-query tool usage.
+  // This avoids pool overhead for infrequent, isolated queries typical in tool context.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { Client } = pg as any;
+  const client = new Client({
     host: connectionInfo.host,
     port: connectionInfo.port,
     database: connectionInfo.database,
     user: connectionInfo.user,
     password: connectionInfo.password,
-    max: 1,
-    idleTimeoutMillis: 1000,
     connectionTimeoutMillis: 5000,
+    statement_timeout: 30000,
   });
 
   try {
-    const result = await pool.query(query, params);
+    await client.connect();
+  } catch (cause) {
+    throw new ConnectionError(
+      `Failed to connect to PostgreSQL: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
+  }
+
+  try {
+    const result = await client.query(query, params);
 
     const columns: ColumnInfo[] = result.fields?.map(
       (field: { name: string; dataTypeID: number }) => ({
@@ -87,7 +99,12 @@ export async function executePostgres(
     ) || [];
 
     return { rows: result.rows, columns };
+  } catch (cause) {
+    throw new QueryError(
+      `PostgreSQL query failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
   } finally {
-    await pool.end();
+    await client.end();
   }
 }

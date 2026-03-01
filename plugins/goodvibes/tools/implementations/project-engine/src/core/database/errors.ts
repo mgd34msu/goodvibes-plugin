@@ -72,6 +72,60 @@ export class TimeoutError extends DatabaseError {
  * // Returns message + '\n\nHint: The database is opened in readonly mode...'
  */
 export function enhanceDatabaseError(message: string, dbType: DatabaseDriver): string {
+  if (dbType === 'postgresql') {
+    const pgEnhancements: Array<[RegExp, string]> = [
+      [
+        /duplicate key value/i,
+        `${message}\n\nHint: A unique constraint was violated. A record with this value already exists.`,
+      ],
+      [
+        /relation "[^"]+" does not exist/i,
+        `${message}\n\nHint: The table or view does not exist. Use 'SELECT tablename FROM pg_tables WHERE schemaname = \'public\'' to list available tables.`,
+      ],
+      [
+        /null value in column/i,
+        `${message}\n\nHint: A NOT NULL constraint was violated. Provide a value for the required column.`,
+      ],
+      [
+        /permission denied/i,
+        `${message}\n\nHint: The database user lacks permission for this operation. Contact your database administrator.`,
+      ],
+    ];
+    for (const [pattern, enhanced] of pgEnhancements) {
+      if (pattern.test(message)) {
+        return enhanced;
+      }
+    }
+    return message;
+  }
+
+  if (dbType === 'mysql') {
+    const mysqlEnhancements: Array<[RegExp, string]> = [
+      [
+        /Duplicate entry/i,
+        `${message}\n\nHint: A unique constraint was violated. A record with this value already exists.`,
+      ],
+      [
+        /Table '[^']+' doesn't exist/i,
+        `${message}\n\nHint: The table does not exist. Use 'SHOW TABLES' to list available tables.`,
+      ],
+      [
+        /Access denied/i,
+        `${message}\n\nHint: The database user lacks permission for this operation. Contact your database administrator.`,
+      ],
+      [
+        /Unknown column/i,
+        `${message}\n\nHint: The column does not exist. Use 'DESCRIBE table_name' to see column definitions.`,
+      ],
+    ];
+    for (const [pattern, enhanced] of mysqlEnhancements) {
+      if (pattern.test(message)) {
+        return enhanced;
+      }
+    }
+    return message;
+  }
+
   if (dbType !== 'sqlite') {
     return message;
   }

@@ -7,19 +7,18 @@
  * @module extensions/code-intel/safe-delete
  */
 
-import * as path from 'node:path';
-import ts from 'typescript';
-
 import { getProjectRoot } from '../../shared/config.js';
 import { ok, fail, failFromException } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';
-import { toRelativePath } from '../../shared/utils.js';
+import { normalizePath, toRelativePath } from '../../shared/utils.js';
 import {
   languageServiceManager,
   getLinePreview,
   isInSameDeclaration,
 } from '../../core/code-intel/index.js';
+import { isDefinitionRef } from '../../core/code-intel/ast-utils.js';
 import { toOffset, toLineColumn } from '../../core/code-intel/position.js';
+import { validatePositionArgs } from '../../core/code-intel/validation.js';
 import type {
   SafeDeleteCheckArgs,
   ReferenceLocation,
@@ -43,26 +42,12 @@ import type {
  */
 export async function checkSafeDelete(args: SafeDeleteCheckArgs): Promise<McpResponse> {
   try {
-    if (!args.file) {
-      return fail('Missing required argument: file');
-    }
-    if (typeof args.line !== 'number' || args.line < 1) {
-      return fail('Invalid line number: must be a positive integer');
-    }
-    if (typeof args.column !== 'number' || args.column < 1) {
-      return fail('Invalid column number: must be a positive integer');
-    }
+    const validation = await validatePositionArgs(args);
+    if (!validation.valid) return validation.error;
+    const filePath = validation.filePath;
 
     const projectRoot = getProjectRoot();
-    const filePath = path.isAbsolute(args.file)
-      ? args.file
-      : path.resolve(projectRoot, args.file);
-
-    if (!filePath.startsWith(projectRoot)) {
-      return fail('File path escapes project root');
-    }
-
-    const normalizedFilePath = filePath.replace(/\\/g, '/');
+    const normalizedFilePath = normalizePath(filePath);
 
     const { service } = await languageServiceManager.getServiceForFile(normalizedFilePath);
 
@@ -101,9 +86,7 @@ export async function checkSafeDelete(args: SafeDeleteCheckArgs): Promise<McpRes
     let definitionLine: number | undefined;
 
     for (const ref of references) {
-      // TS 5.x removed isDefinition from ReferenceEntry — cast for backward compat
-      const refEntry = ref as ts.ReferenceEntry & { isDefinition?: boolean };
-      if (refEntry.isDefinition) {
+      if (isDefinitionRef(ref)) {
         definitionFile = ref.fileName;
         const defSourceFile = program?.getSourceFile(ref.fileName);
         if (defSourceFile) {
@@ -130,9 +113,7 @@ export async function checkSafeDelete(args: SafeDeleteCheckArgs): Promise<McpRes
     const selfReferences: ReferenceLocation[] = [];
 
     for (const ref of references) {
-      // TS 5.x removed isDefinition from ReferenceEntry — cast for backward compat
-      const refEntry = ref as ts.ReferenceEntry & { isDefinition?: boolean };
-      if (refEntry.isDefinition) continue;
+      if (isDefinitionRef(ref)) continue;
 
       const refSourceFile = program?.getSourceFile(ref.fileName);
       if (!refSourceFile) continue;
@@ -150,8 +131,8 @@ export async function checkSafeDelete(args: SafeDeleteCheckArgs): Promise<McpRes
 
       const referenceLocation: ReferenceLocation = { file: relativeFile, line, column, preview };
 
-      const normalizedDefFile = definitionFile?.replace(/\\/g, '/');
-      const normalizedRefFile = ref.fileName.replace(/\\/g, '/');
+      const normalizedDefFile = definitionFile ? normalizePath(definitionFile) : undefined;
+      const normalizedRefFile = normalizePath(ref.fileName);
 
       if (normalizedDefFile === normalizedRefFile) {
         selfReferences.push(referenceLocation);

@@ -71,15 +71,6 @@ export const PROJECT_ROOT =
 // =============================================================================
 
 /**
- * Get the plugin root directory.
- *
- * @returns Absolute path to the GoodVibes plugin root
- */
-export function getPluginRoot(): string {
-  return PLUGIN_ROOT;
-}
-
-/**
  * Get the project root directory being analyzed.
  *
  * @returns Absolute path to the current project root

@@ -10,8 +10,12 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import * as nodePath from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { SqliteDatabase, SqliteConnectionOptions } from './types.js';
 import { logWarn } from '../../shared/logger.js';
+
+const __dirname = nodePath.dirname(fileURLToPath(import.meta.url));
 
 // =============================================================================
 // sql.js Loader
@@ -38,8 +42,6 @@ async function getSqlJs(): Promise<SqlJsStatic> {
     // @ts-ignore -- sql.js is an optional peer dependency without bundled type declarations
     const initSqlJs = ((await import('sql.js')) as unknown as { default: (opts: { locateFile: (file: string) => string }) => Promise<SqlJsStatic> }).default;
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const nodePath = require('node:path') as typeof import('node:path');
     sqlJsInstance = await initSqlJs({
       locateFile: (file: string) => nodePath.join(__dirname, file),
     });
@@ -73,14 +75,16 @@ interface PooledConnection {
  */
 class SqliteConnectionPool {
   private connections: Map<string, PooledConnection[]> = new Map();
-  /** @internal Queue of waiters blocked on connection availability */
-  private waiters: Array<(conn: PooledConnection) => void> = [];
+  /** @internal Per-pool queues of waiters blocked on connection availability, keyed by pool key */
+  private waiters: Map<string, Array<(conn: PooledConnection) => void>> = new Map();
   private readonly maxConnectionsPerDb = 5;
   private readonly idleTimeoutMs = 60_000;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.cleanupInterval = setInterval(() => this.cleanupIdleConnections(), 30_000);
+    // Allow Node.js to exit even if the pool is still alive (non-blocking cleanup timer)
+    this.cleanupInterval.unref?.();
   }
 
   /** @internal Get pool key */
@@ -132,8 +136,11 @@ class SqliteConnectionPool {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         // Remove this waiter from the queue on timeout
-        const idx = this.waiters.indexOf(waiter);
-        if (idx !== -1) this.waiters.splice(idx, 1);
+        const keyWaiters = this.waiters.get(key);
+        if (keyWaiters) {
+          const idx = keyWaiters.indexOf(waiter);
+          if (idx !== -1) keyWaiters.splice(idx, 1);
+        }
         reject(new Error(`SQLite connection timeout after ${timeout}ms`));
       }, timeout);
 
@@ -153,7 +160,10 @@ class SqliteConnectionPool {
         return;
       }
 
-      this.waiters.push(waiter);
+      if (!this.waiters.has(key)) {
+        this.waiters.set(key, []);
+      }
+      this.waiters.get(key)!.push(waiter);
     });
   }
 
@@ -166,9 +176,11 @@ class SqliteConnectionPool {
    * @param connection - The pooled connection to release
    */
   release(connection: PooledConnection): void {
-    // Wake up the first waiting acquirer before marking the connection idle
-    const waiter = this.waiters.shift();
-    if (waiter) {
+    // Wake up the first waiter for this specific pool key before marking the connection idle
+    const key = this.getPoolKey(connection.filepath, connection.readonly);
+    const keyWaiters = this.waiters.get(key);
+    if (keyWaiters && keyWaiters.length > 0) {
+      const waiter = keyWaiters.shift()!;
       connection.lastUsed = Date.now();
       waiter(connection);
       return;

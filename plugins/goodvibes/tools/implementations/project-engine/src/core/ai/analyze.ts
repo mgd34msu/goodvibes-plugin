@@ -111,9 +111,9 @@ function spawnClaude(
   projectRoot: string
 ): Promise<string | null> {
   return new Promise((resolve) => {
+    // Invoke the claude binary directly without a shell to avoid injection risks
     const claudeProcess = spawn('claude', ['--print', '--model', model, '-p', '-'], {
       cwd: projectRoot,
-      shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
@@ -161,17 +161,24 @@ function spawnClaude(
 /**
  * Parse JSON from LLM response, handling extra text around the JSON.
  *
- * NOTE: The regex /\{[\s\S]*\}/ is greedy and matches the FIRST '{' to the LAST '}'.
- * This may fail if the LLM produces multiple separate JSON blocks or embeds JSON
- * inside markdown code fences with trailing content after the closing '}'.
+ * Tries direct JSON.parse first (fast path when the LLM returns clean JSON).
+ * Falls back to regex extraction when there is surrounding markdown or prose.
+ * NOTE: The fallback regex /\{[\s\S]*\}/ is greedy — it matches the FIRST '{'
+ * to the LAST '}'. This may fail for multiple JSON blocks or trailing content.
  */
 function parseJsonResponse<T>(stdout: string): T | null {
   try {
-    const jsonMatch = stdout.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    return JSON.parse(jsonMatch[0]) as T;
+    // Fast path: LLM returned clean JSON
+    return JSON.parse(stdout.trim()) as T;
   } catch {
-    return null;
+    // Fallback: extract JSON from surrounding text
+    try {
+      const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return null;
+      return JSON.parse(jsonMatch[0]) as T;
+    } catch {
+      return null;
+    }
   }
 }
 

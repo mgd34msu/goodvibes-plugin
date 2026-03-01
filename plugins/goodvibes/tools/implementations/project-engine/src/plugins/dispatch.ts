@@ -89,6 +89,12 @@ export type ToolDispatcher = (args: unknown) => Promise<McpResponse>;
  * Assert that args is a non-null object and narrow its type.
  * Throws if args is not a plain object.
  *
+ * WHY this cast exists: The MCP SDK validates incoming args against the tool's
+ * inputSchema (JSON Schema) before dispatch. TypeScript cannot infer types from
+ * JSON Schema at compile time, so we validate the runtime shape here and cast.
+ * The double-cast pattern (as unknown as T) in each dispatcher is safe because
+ * the schema contract is enforced at the MCP layer.
+ *
  * @param args - The raw arguments from MCP CallTool request
  * @returns args narrowed to Record<string, unknown>
  */
@@ -134,92 +140,111 @@ function requireString(args: Record<string, unknown>, key: string): string {
  */
 export const DISPATCH_TABLE: ReadonlyMap<string, ToolDispatcher> = new Map<string, ToolDispatcher>([
   // Code Intelligence (6)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_code_dead', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return findDeadCode(a as unknown as Parameters<typeof findDeadCode>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_code_safe_delete', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'file');
     return checkSafeDelete(a as unknown as Parameters<typeof checkSafeDelete>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_code_preview_edits', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return validateEditsPreview(a as unknown as Parameters<typeof validateEditsPreview>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_code_breaking', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'before_ref');
     return detectBreakingChanges(a as unknown as Parameters<typeof detectBreakingChanges>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_code_semantic_diff', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'before_ref');
     return semanticDiff(a as unknown as Parameters<typeof semanticDiff>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_code_surface', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return getApiSurface(a as unknown as Parameters<typeof getApiSurface>[0]);
   }],
 
   // API (4)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_api_routes', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return getApiRoutes(a as unknown as Parameters<typeof getApiRoutes>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_api_spec', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return generateOpenApi(a as unknown as Parameters<typeof generateOpenApi>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_api_validate', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'spec_path');
     requireString(a, 'base_url');
     return validateApiContract(a as unknown as Parameters<typeof validateApiContract>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_api_sync', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return syncApiTypes(a as unknown as Parameters<typeof syncApiTypes>[0]);
   }],
 
   // Security (3)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_security_secrets', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return scanForSecrets(a as unknown as Parameters<typeof scanForSecrets>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_security_permissions', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return checkPermissions(a as unknown as Parameters<typeof checkPermissions>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_security_env', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return auditEnvVars(a as unknown as Parameters<typeof auditEnvVars>[0]);
   }],
 
   // Database (3)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_db_schema', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return getDatabaseSchema(a as unknown as Parameters<typeof getDatabaseSchema>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_db_query', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'query');
     return queryDatabase(a as unknown as Parameters<typeof queryDatabase>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_db_prisma', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return getPrismaOperations(a as unknown as Parameters<typeof getPrismaOperations>[0]);
   }],
 
   // Dependencies (3)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_deps_analyze', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return analyzeDependencies(a as unknown as Parameters<typeof analyzeDependencies>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_deps_circular', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return findCircularDeps(a as unknown as Parameters<typeof findCircularDeps>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_deps_upgrade', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'package');
@@ -227,17 +252,20 @@ export const DISPATCH_TABLE: ReadonlyMap<string, ToolDispatcher> = new Map<strin
   }],
 
   // Runtime (3)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_runtime_memory', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'target');
     return detectMemoryLeaks(a as unknown as Parameters<typeof detectMemoryLeaks>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_runtime_profile', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'file');
     requireString(a, 'function_name');
     return profileFunction(a as unknown as Parameters<typeof profileFunction>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_runtime_logs', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'source');
@@ -245,10 +273,12 @@ export const DISPATCH_TABLE: ReadonlyMap<string, ToolDispatcher> = new Map<strin
   }],
 
   // Standalone (2)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['bundle_analyze', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return analyzeBundle(a as unknown as Parameters<typeof analyzeBundle>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['scaffold', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'template');
@@ -257,10 +287,12 @@ export const DISPATCH_TABLE: ReadonlyMap<string, ToolDispatcher> = new Map<strin
   }],
 
   // Testing (2)
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_test_coverage', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     return getTestCoverage(a as unknown as Parameters<typeof getTestCoverage>[0]);
   }],
+  // SAFETY: MCP SDK validates args against inputSchema before dispatch
   ['project_test_find', async (args): Promise<McpResponse> => {
     const a = requireObject(args);
     requireString(a, 'file');
@@ -281,7 +313,6 @@ export const DISPATCH_TABLE: ReadonlyMap<string, ToolDispatcher> = new Map<strin
 export function getDispatcher(name: string): ToolDispatcher | undefined {
   return DISPATCH_TABLE.get(name);
 }
-
 
 /**
  * List all registered tool names.

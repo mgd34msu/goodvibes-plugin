@@ -18,6 +18,7 @@
  */
 
 import { bootstrap } from './plugins/server.js';
+import { logError } from './shared/logger.js';
 export { bootstrap };
 
-bootstrap().catch(console.error);
+bootstrap().catch((err) => { logError('Bootstrap failed', err); process.exit(1); });

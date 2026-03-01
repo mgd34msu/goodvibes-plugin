@@ -19,7 +19,7 @@ import {
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { SERVER_NAME, SERVER_VERSION } from '../shared/constants.js';
-import { logger } from '../shared/logger.js';
+import { logger, logError } from '../shared/logger.js';
 import { initLanguageServiceManager } from '../core/code-intel/language-service.js';
 import { TOOL_SCHEMAS } from './schemas.js';
 import { getDispatcher, listTools } from './dispatch.js';
@@ -87,27 +87,19 @@ class ProjectEngineServer {
   private setupLifecycle(): void {
     this.server.onerror = (error) => logger.error('MCP Server error', error);
 
-    process.on('SIGINT', async () => {
-      logger.info('Shutting down (SIGINT)');
+    const handleShutdown = async (signal: string): Promise<void> => {
+      logger.info(`Shutting down (${signal})`);
       try {
         await this.stop();
         process.exit(0);
       } catch (err: unknown) {
-        logger.error('Error during shutdown (SIGINT)', err);
+        logError(`Error during shutdown (${signal})`, err);
         process.exit(1);
       }
-    });
+    };
 
-    process.on('SIGTERM', async () => {
-      logger.info('Shutting down (SIGTERM)');
-      try {
-        await this.stop();
-        process.exit(0);
-      } catch (err: unknown) {
-        logger.error('Error during shutdown (SIGTERM)', err);
-        process.exit(1);
-      }
-    });
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
   }
 
   /**

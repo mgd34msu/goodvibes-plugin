@@ -13,7 +13,7 @@
  */
 
 import * as node_path from 'node:path';
-import * as node_fs from 'node:fs';
+import * as node_fs from 'node:fs/promises';
 import ts from 'typescript';
 
 import { normalizeFilePath, makeRelativePath } from '../code-intel/file-utils.js';
@@ -37,13 +37,13 @@ import type { TestType, TestFile } from './types.js';
  * @param testFiles - Accumulator array (used in recursive calls)
  * @returns Sorted array of normalized absolute test file paths
  */
-export function findTestFiles(
+export async function findTestFiles(
   directory: string,
   patterns: typeof TEST_PATTERNS = TEST_PATTERNS,
   testFiles: string[] = []
-): string[] {
+): Promise<string[]> {
   try {
-    const entries = node_fs.readdirSync(directory, { withFileTypes: true });
+    const entries = await node_fs.readdir(directory, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = node_path.join(directory, entry.name);
@@ -56,7 +56,7 @@ export function findTestFiles(
         ) {
           continue;
         }
-        findTestFiles(fullPath, patterns, testFiles);
+        await findTestFiles(fullPath, patterns, testFiles);
       } else if (entry.isFile()) {
         const isTestFile =
           patterns.suffixes.some((suffix) => entry.name.endsWith(suffix)) ||
@@ -121,25 +121,35 @@ export function determineTestType(filePath: string): TestType {
  * @param fromDir - Absolute directory of the importing file
  * @returns Normalized absolute file path, or null if unresolvable
  */
-function resolveModulePath(modulePath: string, fromDir: string): string | null {
+async function resolveModulePath(modulePath: string, fromDir: string): Promise<string | null> {
   if (!modulePath.startsWith('.')) {
     return null;
   }
 
   const basePath = node_path.resolve(fromDir, modulePath);
-  // '' (empty string) handles extensionless imports that resolve as directories (index files)
-  const extensions = ['.ts', '.tsx', '.js', '.jsx', ''];
+  // Handle extensionless imports that resolve as directories (index files)
+  const extensions = ['.ts', '.tsx', '.js', '.jsx'];
 
   for (const ext of extensions) {
     const fullPath = basePath + ext;
-    if (node_fs.existsSync(fullPath) && node_fs.statSync(fullPath).isFile()) {
-      return normalizeFilePath(fullPath);
+    try {
+      const stat = await node_fs.stat(fullPath);
+      if (stat.isFile()) {
+        return normalizeFilePath(fullPath);
+      }
+    } catch {
+      // File doesn't exist, continue
     }
 
     // Check for index files
-    const indexPath = node_path.join(basePath, 'index' + (ext || '.ts'));
-    if (node_fs.existsSync(indexPath) && node_fs.statSync(indexPath).isFile()) {
-      return normalizeFilePath(indexPath);
+    const indexPath = node_path.join(basePath, 'index' + ext);
+    try {
+      const stat = await node_fs.stat(indexPath);
+      if (stat.isFile()) {
+        return normalizeFilePath(indexPath);
+      }
+    } catch {
+      // File doesn't exist, continue
     }
   }
 
@@ -164,9 +174,9 @@ function resolveModulePath(modulePath: string, fromDir: string): string | null {
  * @param filePath - Absolute path to the file to parse
  * @returns Array of normalized absolute paths of imported project files
  */
-export function parseTestImports(filePath: string): string[] {
+export async function parseTestImports(filePath: string): Promise<string[]> {
   try {
-    const content = node_fs.readFileSync(filePath, 'utf-8');
+    const content = await node_fs.readFile(filePath, 'utf-8');
     const sourceFile = ts.createSourceFile(
       filePath,
       content,
@@ -175,8 +185,11 @@ export function parseTestImports(filePath: string): string[] {
       ts.ScriptKind.TSX
     );
 
-    const imports: string[] = [];
     const fileDir = node_path.dirname(filePath);
+
+    // ts.forEachChild is synchronous — collect all specifiers in a sync walk,
+    // then resolve them asynchronously after the AST traversal completes.
+    const specifiers: string[] = [];
 
     function visit(node: ts.Node): void {
       // import { x } from './module'
@@ -185,8 +198,7 @@ export function parseTestImports(filePath: string): string[] {
         node.moduleSpecifier &&
         ts.isStringLiteral(node.moduleSpecifier)
       ) {
-        const resolved = resolveModulePath(node.moduleSpecifier.text, fileDir);
-        if (resolved) imports.push(resolved);
+        specifiers.push(node.moduleSpecifier.text);
       }
 
       // import('./module')
@@ -196,8 +208,7 @@ export function parseTestImports(filePath: string): string[] {
       ) {
         const arg = node.arguments[0];
         if (arg && ts.isStringLiteral(arg)) {
-          const resolved = resolveModulePath(arg.text, fileDir);
-          if (resolved) imports.push(resolved);
+          specifiers.push(arg.text);
         }
       }
 
@@ -210,15 +221,22 @@ export function parseTestImports(filePath: string): string[] {
       ) {
         const arg = node.arguments[0];
         if (ts.isStringLiteral(arg)) {
-          const resolved = resolveModulePath(arg.text, fileDir);
-          if (resolved) imports.push(resolved);
+          specifiers.push(arg.text);
         }
       }
 
       ts.forEachChild(node, visit);
     }
 
+    // Synchronous AST walk — no async, no await
     visit(sourceFile);
+
+    // Resolve collected specifiers asynchronously
+    const imports: string[] = [];
+    for (const specifier of specifiers) {
+      const resolved = await resolveModulePath(specifier, fileDir);
+      if (resolved) imports.push(resolved);
+    }
     return imports;
   } catch {
     return [];
@@ -237,18 +255,18 @@ export function parseTestImports(filePath: string): string[] {
  * @param visited - Set of already-visited file paths (for cycle detection)
  * @returns Object indicating whether an import was found and if it was direct
  */
-export function checkImportRelationship(
+export async function checkImportRelationship(
   testFilePath: string,
   sourceFilePath: string,
   includeIndirect: boolean,
   visited: Set<string> = new Set()
-): { imports: boolean; direct: boolean } {
+): Promise<{ imports: boolean; direct: boolean }> {
   if (visited.has(testFilePath)) {
     return { imports: false, direct: false };
   }
   visited.add(testFilePath);
 
-  const imports = parseTestImports(testFilePath);
+  const imports = await parseTestImports(testFilePath);
   const normalizedSource = normalizeFilePath(sourceFilePath);
 
   // Check direct import
@@ -262,7 +280,7 @@ export function checkImportRelationship(
   if (includeIndirect) {
     for (const importPath of imports) {
       if (!importPath.includes('node_modules')) {
-        const result = checkImportRelationship(importPath, sourceFilePath, true, visited);
+        const result = await checkImportRelationship(importPath, sourceFilePath, true, visited);
         if (result.imports) {
           return { imports: true, direct: false };
         }
@@ -328,12 +346,12 @@ export function calculatePatternConfidence(sourceFile: string, testFile: string)
  * @param projectRoot - Project root for computing relative paths
  * @returns Array of TestFile results sorted by confidence descending
  */
-export function scoreTestFiles(
+export async function scoreTestFiles(
   sourceFilePath: string,
   testFilePaths: string[],
   includeIndirect: boolean,
   projectRoot: string
-): TestFile[] {
+): Promise<TestFile[]> {
   const normalizedSource = normalizeFilePath(sourceFilePath);
   const results: TestFile[] = [];
 
@@ -341,7 +359,7 @@ export function scoreTestFiles(
     if (testFilePath === normalizedSource) continue;
 
     const patternConfidence = calculatePatternConfidence(normalizedSource, testFilePath);
-    const importRelation = checkImportRelationship(testFilePath, normalizedSource, includeIndirect);
+    const importRelation = await checkImportRelationship(testFilePath, normalizedSource, includeIndirect);
 
     let confidence = 0;
     let importsDirect = false;

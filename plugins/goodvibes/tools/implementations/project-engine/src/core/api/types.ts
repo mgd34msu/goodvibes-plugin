@@ -76,24 +76,8 @@ export interface OpenApiArgs {
   format?: 'json' | 'yaml';
 }
 
-/** JSON Schema definition */
-export interface JSONSchema {
-  type?: string;
-  format?: string;
-  items?: JSONSchema;
-  properties?: Record<string, JSONSchema>;
-  required?: string[];
-  $ref?: string;
-  description?: string;
-  enum?: (string | number)[];
-  default?: unknown;
-  example?: unknown;
-  additionalProperties?: boolean | JSONSchema;
-  oneOf?: JSONSchema[];
-  anyOf?: JSONSchema[];
-  allOf?: JSONSchema[];
-  nullable?: boolean;
-}
+/** JSON Schema definition (alias for SchemaObject for backward compatibility) */
+export type JSONSchema = SchemaObject;
 
 /** OpenAPI 3.0.3 specification structure */
 export interface OpenAPISpec {

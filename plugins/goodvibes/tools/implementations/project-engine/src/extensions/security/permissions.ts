@@ -12,6 +12,7 @@ import * as node_fsPromises from 'node:fs/promises';
 import * as node_path from 'node:path';
 import type { McpResponse } from '../../shared/types.js';
 import { ok, fail } from '../../shared/response.js';
+import { logWarn } from '../../shared/logger.js';
 import { getProjectRoot } from '../../shared/config.js';
 import { fileExists } from '../../shared/utils.js';
 import {
@@ -123,8 +124,7 @@ async function findSourceFiles(dir: string, files: string[] = []): Promise<strin
     }
   } catch (err) {
     // Log inaccessible directories so callers can audit gaps in scanning coverage
-    const msg = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`[permissions] Could not read directory: ${dir}: ${msg}\n`);
+    logWarn('[permissions] Could not read directory', { dir, err });
   }
 
   return files;
@@ -148,8 +148,14 @@ async function scanFile(filePath: string, projectRoot: string): Promise<Permissi
         const line = lines[lineNum];
         const trimmedLine = line.trim();
 
-        // Skip comments
-        if (trimmedLine.startsWith('//') || trimmedLine.startsWith('*') || trimmedLine.startsWith('/*')) {
+        // Skip comment lines: JSDoc continuation lines (` *` or `*/`) and block/line comment starts
+        if (
+          trimmedLine.startsWith('//') ||
+          trimmedLine.startsWith('/*') ||
+          trimmedLine.startsWith('* ') ||
+          trimmedLine === '*' ||
+          trimmedLine.startsWith('*/')
+        ) {
           continue;
         }
 
@@ -167,8 +173,8 @@ async function scanFile(filePath: string, projectRoot: string): Promise<Permissi
         }
       }
     }
-  } catch {
-    // File may be binary or inaccessible
+  } catch (err) {
+    logWarn('Failed to read file for permission analysis', err);
   }
 
   return findings;

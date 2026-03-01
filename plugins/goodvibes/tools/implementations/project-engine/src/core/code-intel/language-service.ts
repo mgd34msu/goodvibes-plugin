@@ -8,6 +8,7 @@
  */
 
 import * as fs from 'node:fs';
+import * as fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 import ts from 'typescript';
 
@@ -37,7 +38,7 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
       absolutePath = filePath;
     } else {
       const currentProjectRoot = getProjectRoot();
-      const projectRoot = this.findProjectRoot(currentProjectRoot) || currentProjectRoot;
+      const projectRoot = await this.findProjectRoot(currentProjectRoot) || currentProjectRoot;
       absolutePath = path.resolve(projectRoot, filePath);
     }
 
@@ -117,9 +118,10 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
    * Start the periodic cleanup interval.
    */
   startCleanupInterval(): void {
-    if (!this.cleanupInterval) {
-      this.cleanupInterval = setInterval(() => this.cleanup(), CACHE_TTL_MS / 2);
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
     }
+    this.cleanupInterval = setInterval(() => this.cleanup(), CACHE_TTL_MS / 2);
   }
 
   /**
@@ -132,16 +134,17 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
   /**
    * Find project root by looking for .goodvibes, .git, or package.json
    */
-  private findProjectRoot(startPath: string): string | null {
+  private async findProjectRoot(startPath: string): Promise<string | null> {
     let dir = startPath;
     const root = path.parse(dir).root;
 
     while (dir !== root) {
-      if (
-        fs.existsSync(path.join(dir, '.goodvibes')) ||
-        fs.existsSync(path.join(dir, '.git')) ||
-        fs.existsSync(path.join(dir, 'package.json'))
-      ) {
+      const checks = await Promise.all([
+        fsPromises.access(path.join(dir, '.goodvibes')).then(() => true).catch(() => false),
+        fsPromises.access(path.join(dir, '.git')).then(() => true).catch(() => false),
+        fsPromises.access(path.join(dir, 'package.json')).then(() => true).catch(() => false),
+      ]);
+      if (checks.some(Boolean)) {
         return dir;
       }
       const parentDir = path.dirname(dir);

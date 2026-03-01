@@ -10,8 +10,8 @@
 import * as path from 'node:path';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
-import { createSuccessResponse, createErrorResponse } from '../../shared/response.js';
-import type { ToolResponse } from '../../shared/response.js';
+import { ok, fail } from '../../shared/response.js';
+import type { McpResponse } from '../../shared/response.js';
 
 import type { ApiRoutesArgs, ApiRoutesResult, ApiRoute, Framework } from '../../core/api/types.js';
 import { detectFramework } from '../../core/api/detection.js';
@@ -35,7 +35,7 @@ import { parseHonoRoutes } from '../../core/api/parsers/hono.js';
  * // Returns all Next.js API routes with methods, paths, and handler locations
  * ```
  */
-export function getApiRoutes(args: ApiRoutesArgs): ToolResponse {
+export function getApiRoutes(args: ApiRoutesArgs): McpResponse {
   const projectPath = path.resolve(PROJECT_ROOT, args.path || '.');
   const frameworkArg = args.framework || 'auto';
 
@@ -45,7 +45,7 @@ export function getApiRoutes(args: ApiRoutesArgs): ToolResponse {
   if (frameworkArg === 'auto') {
     detectedFramework = detectFramework(projectPath);
     if (!detectedFramework) {
-      return createErrorResponse(
+      return fail(
         'Could not auto-detect framework. Please specify framework parameter.',
         { hint: 'Supported frameworks: nextjs, express, fastify, hono' }
       );
@@ -75,5 +75,5 @@ export function getApiRoutes(args: ApiRoutesArgs): ToolResponse {
     count: routes.length,
   };
 
-  return createSuccessResponse(result);
+  return ok(result);
 }

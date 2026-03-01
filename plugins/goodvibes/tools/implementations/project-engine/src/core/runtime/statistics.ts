@@ -285,9 +285,11 @@ export function calculateTimingStats(times: number[]): TimingStats {
   const p95 = sorted[Math.min(p95Index, sorted.length - 1)];
   const p99 = sorted[Math.min(p99Index, sorted.length - 1)];
 
-  // Standard deviation
+  // Standard deviation (Bessel's correction: divide by n-1 for sample std dev)
   const variance =
-    times.reduce((sumSq, t) => sumSq + (t - mean) ** 2, 0) / times.length;
+    times.length > 1
+      ? times.reduce((sumSq, t) => sumSq + (t - mean) ** 2, 0) / (times.length - 1)
+      : 0;
   const stdDev = Math.sqrt(variance);
 
   const roundTo = (num: number, decimals: number): number => {

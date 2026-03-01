@@ -19,7 +19,7 @@ import { fileExists } from '../../shared/utils.js';
 import type { ProfileFunctionArgs } from '../../core/runtime/types.js';
 import { extractFunction } from '../../core/runtime/profiler.js';
 import { calculateTimingStats } from '../../core/runtime/statistics.js';
-import { formatProfileResult } from '../../core/runtime/formatters.js';
+import { formatProfileResult, type ProfileResultShape } from '../../core/runtime/formatters.js';
 
 /** Memory usage statistics */
 interface MemoryStats {
@@ -29,25 +29,9 @@ interface MemoryStats {
   external_delta_mb: number;
 }
 
-/** Result of profiling a function */
-interface ProfileFunctionResult {
-  function_name: string;
-  file: string;
-  iterations: number;
-  warmup_iterations: number;
-  timing: {
-    mean_ms: number;
-    median_ms: number;
-    p95_ms: number;
-    p99_ms: number;
-    min_ms: number;
-    max_ms: number;
-    std_dev_ms: number;
-    total_ms: number;
-  };
+/** Result of profiling a function — extends the shared formatter shape with memory stats */
+interface ProfileFunctionResult extends ProfileResultShape {
   memory?: MemoryStats;
-  result_sample?: unknown;
-  error?: string;
 }
 
 /** Converts bytes to megabytes with 4 decimal places */
@@ -79,14 +63,16 @@ async function executeWithTimeout<T>(
     return result;
   }
 
-  return Promise.race([
-    result,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Function execution timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-    }),
-  ]);
+  // Clear the timer on both success and failure to prevent timer leaks
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`Function execution timed out after ${timeoutMs}ms`)),
+      timeoutMs
+    );
+    (result as Promise<T>)
+      .then((val) => { clearTimeout(timer); resolve(val); })
+      .catch((err) => { clearTimeout(timer); reject(err as Error); });
+  });
 }
 
 /**
@@ -241,6 +227,8 @@ export async function profileFunction(args: ProfileFunctionArgs): Promise<McpRes
 
     // Profiling iterations
     const times: number[] = [];
+    // Use a boolean flag to distinguish "no result yet" from undefined result value
+    let hasSampleResult = false;
     let sampleResult: unknown;
     let lastError: Error | null = null;
     let successfulIterations = 0;
@@ -255,8 +243,9 @@ export async function profileFunction(args: ProfileFunctionArgs): Promise<McpRes
         successfulIterations++;
 
         // Capture sample result from first successful iteration
-        if (sampleResult === undefined) {
+        if (!hasSampleResult) {
           sampleResult = iterResult;
+          hasSampleResult = true;
         }
       } catch (iterError) {
         lastError = iterError instanceof Error ? iterError : new Error(String(iterError));
@@ -291,7 +280,7 @@ export async function profileFunction(args: ProfileFunctionArgs): Promise<McpRes
     }
 
     // Include sample result (truncate if too large)
-    if (sampleResult !== undefined) {
+    if (hasSampleResult) {
       try {
         const serialized = JSON.stringify(sampleResult);
         if (serialized.length < 10000) {

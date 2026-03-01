@@ -7,6 +7,8 @@
  * @module core/api/openapi
  */
 
+import * as yaml from 'js-yaml';
+
 import type { JSONSchema, OpenApiParameter } from './types.js';
 
 /**
@@ -162,11 +164,11 @@ export function typeToJsonSchema(typeStr: string): JSONSchema {
   if (trimmed === 'string') return { type: 'string' };
   if (trimmed === 'number') return { type: 'number' };
   if (trimmed === 'boolean') return { type: 'boolean' };
-  if (trimmed === 'null') return { type: 'string', nullable: true };
-  if (trimmed === 'undefined') return { type: 'string' };
+  if (trimmed === 'null') return { nullable: true };
+  if (trimmed === 'undefined') return { nullable: true };
   if (trimmed === 'any' || trimmed === 'unknown') return { type: 'object', additionalProperties: true };
-  if (trimmed === 'void') return { type: 'object' };
-  if (trimmed === 'never') return { type: 'object' };
+  if (trimmed === 'void') return {}; // No response body
+  if (trimmed === 'never') return { not: {} }; // Unreachable
 
   // Handle array types: string[], Array<string>
   const arrayMatch = trimmed.match(/^(.+)\[\]$/) || trimmed.match(/^Array<(.+)>$/);
@@ -187,8 +189,9 @@ export function typeToJsonSchema(typeStr: string): JSONSchema {
   }
 
   // Handle union types: string | number
-  if (trimmed.includes(' | ')) {
-    const parts = trimmed.split(' | ').map(p => p.trim());
+  // Use bracket-aware splitting to handle nested generics like Map<string, A | B>
+  if (containsTopLevelUnion(trimmed)) {
+    const parts = splitUnionAtTopLevel(trimmed);
     // Check if it's a nullable type
     const nonNullParts = parts.filter(p => p !== 'null' && p !== 'undefined');
     const isNullable = parts.length > nonNullParts.length;
@@ -346,60 +349,58 @@ export function resolvePathParams(
 /**
  * Convert a JavaScript value to YAML string representation.
  *
- * Handles null, primitives, arrays, and objects recursively.
- * Automatically quotes strings that require it (contain special YAML characters).
+ * Uses js-yaml for reliable serialization of OpenAPI spec objects.
  *
  * @param obj - The value to serialize to YAML
- * @param indent - Current indentation level (default: 0)
  * @returns YAML string representation of the value
  */
-export function toYaml(obj: unknown, indent: number = 0): string {
-  const spaces = '  '.repeat(indent);
+export function toYaml(obj: unknown): string {
+  return yaml.dump(obj, { lineWidth: -1, noRefs: true });
+}
 
-  if (obj === null || obj === undefined) {
-    return 'null';
-  }
-
-  if (typeof obj === 'string') {
-    // Check if string needs quoting
-    if (obj.includes('\n') || obj.includes(':') || obj.includes('#') ||
-        obj.startsWith(' ') || obj.endsWith(' ') || /^\d/.test(obj) ||
-        obj === 'true' || obj === 'false' || obj === 'null' || obj === '') {
-      return JSON.stringify(obj);
+/**
+ * Check whether a type string contains a ` | ` union operator at the top level
+ * (i.e., not nested inside angle brackets, curly braces, or parentheses).
+ *
+ * @param typeStr - The type string to check
+ * @returns True if there is a top-level union operator
+ */
+function containsTopLevelUnion(typeStr: string): boolean {
+  let depth = 0;
+  for (let i = 0; i < typeStr.length - 2; i++) {
+    const ch = typeStr[i];
+    if (ch === '<' || ch === '{' || ch === '(') depth++;
+    else if (ch === '>' || ch === '}' || ch === ')') depth--;
+    else if (depth === 0 && typeStr[i] === ' ' && typeStr[i + 1] === '|' && typeStr[i + 2] === ' ') {
+      return true;
     }
-    return obj;
   }
+  return false;
+}
 
-  if (typeof obj === 'number' || typeof obj === 'boolean') {
-    return String(obj);
+/**
+ * Split a union type string on ` | ` operators at the top level only.
+ *
+ * Correctly handles nested generics like `Map<string, A | B>`.
+ *
+ * @param typeStr - The union type string to split
+ * @returns Array of type parts
+ */
+function splitUnionAtTopLevel(typeStr: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let i = 0; i < typeStr.length; i++) {
+    const ch = typeStr[i];
+    if (ch === '<' || ch === '{' || ch === '(') depth++;
+    else if (ch === '>' || ch === '}' || ch === ')') depth--;
+    else if (depth === 0 && typeStr.slice(i, i + 3) === ' | ') {
+      parts.push(typeStr.slice(start, i).trim());
+      i += 2; // skip ` |`
+      start = i + 1; // skip space
+    }
   }
-
-  if (Array.isArray(obj)) {
-    if (obj.length === 0) return '[]';
-    return obj.map(item => {
-      const itemStr = toYaml(item, indent + 1);
-      if (typeof item === 'object' && item !== null) {
-        return `\n${spaces}- ${itemStr.trim().replace(/\n/g, `\n${spaces}  `)}`;
-      }
-      return `\n${spaces}- ${itemStr}`;
-    }).join('');
-  }
-
-  if (typeof obj === 'object') {
-    const entries = Object.entries(obj as Record<string, unknown>);
-    if (entries.length === 0) return '{}';
-
-    return entries.map(([key, value]) => {
-      const valueStr = toYaml(value, indent + 1);
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        return `${spaces}${key}:\n${valueStr}`;
-      }
-      if (Array.isArray(value) && value.length > 0) {
-        return `${spaces}${key}:${valueStr}`;
-      }
-      return `${spaces}${key}: ${valueStr}`;
-    }).join('\n');
-  }
-
-  return String(obj);
+  parts.push(typeStr.slice(start).trim());
+  return parts;
 }

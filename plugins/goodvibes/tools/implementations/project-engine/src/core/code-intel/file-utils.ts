@@ -11,6 +11,7 @@ import * as node_fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { SOURCE_EXTENSIONS, SKIP_DIRECTORIES } from '../../shared/constants.js';
+import { normalizePath } from '../../shared/utils.js';
 import { TEST_PATTERNS } from './constants.js';
 
 /**
@@ -20,7 +21,7 @@ import { TEST_PATTERNS } from './constants.js';
  * @returns True if the file matches any test pattern
  */
 export function isTestFile(filePath: string): boolean {
-  const normalized = filePath.replace(/\\/g, '/');
+  const normalized = normalizePath(filePath);
   return TEST_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
@@ -42,9 +43,7 @@ export function isSourceFile(filePath: string): boolean {
  * @param filePath - The file path to normalize
  * @returns Normalized path with forward slashes
  */
-export function normalizeFilePath(filePath: string): string {
-  return filePath.replace(/\\/g, '/');
-}
+export { normalizePath as normalizeFilePath } from '../../shared/utils.js';
 
 /**
  * Make a path relative to a project root.

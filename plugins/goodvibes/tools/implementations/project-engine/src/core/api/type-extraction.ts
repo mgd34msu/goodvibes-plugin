@@ -14,6 +14,7 @@ import * as ts from 'typescript';
 
 import type { JSONSchema } from './types.js';
 import { typeToJsonSchema } from './openapi.js';
+import { logWarn } from '../../shared/logger.js';
 
 /**
  * Result of parsing handler types.
@@ -46,8 +47,10 @@ export function parseHandlerTypes(filePath: string, projectPath: string): Handle
     let requestSchema: JSONSchema | null = null;
     let responseSchema: JSONSchema | null = null;
 
-    // Try to find Zod schema definitions
-    const zodSchemaMatch = content.match(/(?:const|let)\s+(\w+)Schema\s*=\s*z\.object\s*\(\s*\{/);
+    // Try to find Zod schema definitions (z.object, z.array, z.string, z.number, z.enum, z.union, z.intersection)
+    const zodSchemaMatch = content.match(/(?:const|let)\s+(\w+)Schema\s*=\s*z\.(?:object|array|string|number|enum|union|intersection)\s*[(<(]/g)?.[0]
+      ? content.match(/(?:const|let)\s+(\w+)Schema\s*=\s*z\.(?:object|array|string|number|enum|union|intersection)\s*[(<(]/)
+      : null;
     if (zodSchemaMatch) {
       requestSchema = {
         type: 'object',
@@ -56,16 +59,24 @@ export function parseHandlerTypes(filePath: string, projectPath: string): Handle
       };
     }
 
-    // Try to find TypeScript interface for request
-    const requestInterfaceMatch = content.match(/interface\s+(\w+Request)\s*\{([^}]+)\}/);
-    if (requestInterfaceMatch) {
-      requestSchema = parseInterfaceToSchema(requestInterfaceMatch[2], requestInterfaceMatch[1]);
+    // Try to find TypeScript interface for request (bracket-aware body extraction)
+    const requestInterfaceMatch = content.match(/interface\s+(\w+Request)\s*\{/);
+    if (requestInterfaceMatch && requestInterfaceMatch.index !== undefined) {
+      const bodyStart = content.indexOf('{', requestInterfaceMatch.index);
+      const body = extractBracketBody(content, bodyStart);
+      if (body !== null) {
+        requestSchema = parseInterfaceToSchema(body, requestInterfaceMatch[1]);
+      }
     }
 
-    // Try to find TypeScript interface for response
-    const responseInterfaceMatch = content.match(/interface\s+(\w+Response)\s*\{([^}]+)\}/);
-    if (responseInterfaceMatch) {
-      responseSchema = parseInterfaceToSchema(responseInterfaceMatch[2], responseInterfaceMatch[1]);
+    // Try to find TypeScript interface for response (bracket-aware body extraction)
+    const responseInterfaceMatch = content.match(/interface\s+(\w+Response)\s*\{/);
+    if (responseInterfaceMatch && responseInterfaceMatch.index !== undefined) {
+      const bodyStart = content.indexOf('{', responseInterfaceMatch.index);
+      const body = extractBracketBody(content, bodyStart);
+      if (body !== null) {
+        responseSchema = parseInterfaceToSchema(body, responseInterfaceMatch[1]);
+      }
     }
 
     // Check for NextResponse.json() return types
@@ -79,9 +90,34 @@ export function parseHandlerTypes(filePath: string, projectPath: string): Handle
     }
 
     return { requestSchema, responseSchema };
-  } catch {
+  } catch (err) {
+    logWarn('[parseHandlerTypes] Failed to parse handler file', err);
     return { requestSchema: null, responseSchema: null };
   }
+}
+
+/**
+ * Extract the body of a bracket-delimited block from a string, starting at the
+ * opening `{` at `startIndex`. Handles nested brackets.
+ *
+ * @param content - The source string
+ * @param startIndex - Index of the opening `{`
+ * @returns The body content between the outermost `{` and `}`, or null if not found
+ */
+function extractBracketBody(content: string, startIndex: number): string | null {
+  if (content[startIndex] !== '{') return null;
+  let depth = 0;
+  let i = startIndex;
+  for (; i < content.length; i++) {
+    if (content[i] === '{') depth++;
+    else if (content[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        return content.slice(startIndex + 1, i);
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -326,8 +362,8 @@ export async function extractTypesFromHandler(
     if (jsdocResponseMatch && !result.response) {
       result.response = jsdocResponseMatch[1].trim();
     }
-  } catch {
-    // Parse error — return empty result
+  } catch (err) {
+    logWarn('[extractTypesFromHandler] Failed to parse handler file', err);
   }
 
   return result;

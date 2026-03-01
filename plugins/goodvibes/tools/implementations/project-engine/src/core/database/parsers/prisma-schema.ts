@@ -50,7 +50,9 @@ export function parsePrismaForUnifiedSchema(schemaPath: string): DatabaseSchemaR
         const isArray = rest.startsWith('[]');
         let cleanRest = rest;
         if (isArray) cleanRest = cleanRest.slice(2).trim();
-        const nullable = isArray ? cleanRest.startsWith('?') : rest.startsWith('?');
+        // Note: Prisma does not support nullable arrays (Type[]? is invalid syntax),
+        // so we only check for nullable on non-array fields.
+        const nullable = isArray ? false : rest.startsWith('?');
         if (nullable) cleanRest = cleanRest.slice(1).trim();
 
         const isRelation = /^[A-Z]/.test(fieldType) && !prismaScalars.includes(fieldType);

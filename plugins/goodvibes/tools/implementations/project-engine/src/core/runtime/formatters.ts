@@ -123,6 +123,9 @@ export function formatLogAnalysis(result: LogAnalyzerResult): string {
 
   lines.push('---');
   lines.push('');
+  // The JSON block below is intentional: it provides machine-parseable output
+  // alongside the human-readable markdown sections above, so consumers can
+  // choose to process either format without re-requesting data.
   lines.push('```json');
   lines.push(JSON.stringify(result, null, 2));
   lines.push('```');
@@ -192,6 +195,8 @@ export function formatProfileResult(result: ProfileResultShape): string {
 
   lines.push('---');
   lines.push('');
+  // The JSON block below is intentional: it provides machine-parseable output
+  // alongside the human-readable markdown sections above.
   lines.push('```json');
   lines.push(JSON.stringify(result, null, 2));
   lines.push('```');

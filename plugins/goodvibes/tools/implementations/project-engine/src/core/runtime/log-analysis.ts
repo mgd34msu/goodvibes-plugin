@@ -8,6 +8,7 @@
  */
 
 import type { ParsedLogEntry } from './log-parser.js';
+import { normalizeMessage } from './log-parser.js';
 import type { LogAnalyzerArgs } from './types.js';
 
 /** A grouped/deduplicated error or warning message */
@@ -35,24 +36,6 @@ export interface RateAnalysis {
 }
 
 /**
- * Normalizes a log message by replacing volatile tokens (timestamps, UUIDs, addresses, numbers)
- * with placeholders for stable grouping and deduplication.
- *
- * @param message - Raw message string
- * @returns Normalized message with volatile tokens replaced
- */
-function normalizeMessageLocal(message: string): string {
-  return message
-    .replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<TIME>')
-    .replace(/[^\s:]+\.(ts|js|tsx|jsx):\d+:\d+/g, '<FILE>')
-    .replace(/0x[0-9a-fA-F]+/g, '<ADDR>')
-    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>')
-    .replace(/\b\d{6,}\b/g, '<NUM>')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
  * Groups log entries by normalized message content, deduplicating repeated
  * errors or warnings and tracking occurrence counts and timestamps.
  *
@@ -63,7 +46,7 @@ export function groupMessages(entries: ParsedLogEntry[]): GroupedMessage[] {
   const groups = new Map<string, GroupedMessage & { entries: ParsedLogEntry[] }>();
 
   for (const entry of entries) {
-    const key = normalizeMessageLocal(entry.message);
+    const key = normalizeMessage(entry.message);
     const existing = groups.get(key);
 
     if (existing) {
@@ -184,15 +167,15 @@ export function detectAnomalies(entries: ParsedLogEntry[]): Anomaly[] {
   const firstHalfErrorMessages = new Set(
     errorEntries
       .filter((e) => (entryIndexMap.get(e) ?? 0) < halfLength)
-      .map((e) => normalizeMessageLocal(e.message))
+      .map((e) => normalizeMessage(e.message))
   );
 
   const newErrors = errorEntries
     .filter((e) => (entryIndexMap.get(e) ?? 0) >= halfLength)
-    .filter((e) => !firstHalfErrorMessages.has(normalizeMessageLocal(e.message)));
+    .filter((e) => !firstHalfErrorMessages.has(normalizeMessage(e.message)));
 
   if (newErrors.length > 0) {
-    const uniqueNew = [...new Set(newErrors.map((e) => normalizeMessageLocal(e.message)))];
+    const uniqueNew = [...new Set(newErrors.map((e) => normalizeMessage(e.message)))];
     if (uniqueNew.length <= 3) {
       for (const msg of uniqueNew) {
         anomalies.push({
@@ -272,10 +255,8 @@ export function calculateRateAnalysis(
   const timedEntries = entries.filter((e) => e.timestamp);
   if (timedEntries.length < 2) return undefined;
 
-  timedEntries.sort(
-    /* v8 ignore next */
-    (a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0)
-  );
+  // timedEntries are pre-filtered to have timestamps — no || 0 fallback needed
+  timedEntries.sort((a, b) => a.timestamp!.getTime() - b.timestamp!.getTime());
 
   const start = timedEntries[0].timestamp!.getTime();
   const end = timedEntries[timedEntries.length - 1].timestamp!.getTime();

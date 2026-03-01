@@ -17,9 +17,7 @@ import type { McpResponse } from '../../shared/response.js';
 import type { CircularDepsArgs, Cycle } from '../../core/deps/types.js';
 import { buildImportGraph, findCycles } from '../../core/deps/graph.js';
 import { shouldSkipDirectory } from '../../core/deps/file-utils.js';
-
-/** Supported file extensions for TypeScript/JavaScript */
-const SUPPORTED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs', '.cts', '.cjs'];
+import { SUPPORTED_EXTENSIONS } from '../../core/deps/import-parser.js';
 
 /**
  * Checks if a file is a TypeScript/JavaScript source file based on extension.

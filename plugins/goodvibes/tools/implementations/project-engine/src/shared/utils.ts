@@ -6,15 +6,28 @@
  * logging.ts (startTimer), handler files, and lsp-utils.ts.
  */
 
-import * as nodeFs from 'node:fs';
 import * as fsPromises from 'node:fs/promises';
 import * as nodePath from 'node:path';
-import { exec } from 'node:child_process';
+import { exec, type ExecException } from 'node:child_process';
 import { promisify } from 'node:util';
 import * as https from 'node:https';
 import * as http from 'node:http';
 
+import { SKIP_DIRECTORIES } from './constants.js';
+
 const execAsync = promisify(exec);
+
+// =============================================================================
+// Shell Command Allowlist
+// =============================================================================
+
+/**
+ * Permitted command prefixes for shellExec.
+ * Only commands starting with one of these prefixes are allowed.
+ */
+const ALLOWED_COMMAND_PREFIXES = [
+  'npm', 'npx', 'git', 'pnpm', 'yarn', 'bun', 'node', 'tsc', 'vitest', 'jest', 'prettier', 'eslint',
+];
 
 // =============================================================================
 // File System Utilities
@@ -54,48 +67,22 @@ export async function readJsonFile(filePath: string): Promise<Record<string, unk
 }
 
 /**
- * Read the last N lines of a file synchronously.
+ * Read the last N lines of a file asynchronously.
  *
  * @param filePath - Path to the file
  * @param lines - Number of lines to read from the end
  * @returns Array of line strings
  * @throws Error if the file cannot be read
  */
-export function tailFile(filePath: string, lines: number): string[] {
+export async function tailFile(filePath: string, lines: number): Promise<string[]> {
   try {
-    const content = nodeFs.readFileSync(filePath, 'utf-8');
+    const content = await fsPromises.readFile(filePath, 'utf-8');
     const allLines = content.split('\n');
     return allLines.slice(-lines);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Failed to read file: ${message}`);
   }
-}
-
-/**
- * Get a code snippet from a TypeScript SourceFile around a position range.
- *
- * @param sourceFile - TypeScript SourceFile object
- * @param start - Start character offset
- * @param end - End character offset
- * @param maxLength - Maximum snippet length (default: 100)
- * @returns Trimmed code snippet, truncated with '...' if too long
- */
-export function getCodeSnippet(
-  sourceFile: { text: string },
-  start: number,
-  end: number,
-  maxLength: number = 100
-): string {
-  const fullText = sourceFile.text;
-  const lineStart = fullText.lastIndexOf('\n', start) + 1;
-  const lineEnd = fullText.indexOf('\n', end);
-  const endPos = lineEnd === -1 ? fullText.length : lineEnd;
-  let snippet = fullText.slice(lineStart, endPos).trim();
-  if (snippet.length > maxLength) {
-    snippet = snippet.slice(0, maxLength) + '...';
-  }
-  return snippet;
 }
 
 // =============================================================================
@@ -134,18 +121,6 @@ export function resolveProjectPath(filePath: string, projectRoot: string): strin
   return nodePath.isAbsolute(filePath) ? filePath : nodePath.resolve(projectRoot, filePath);
 }
 
-/**
- * Converts a character index to a 1-based line number in source content.
- *
- * @param content - Full source file content
- * @param index - Character index position
- * @returns 1-based line number
- */
-export function offsetToLine(content: string, index: number): number {
-  const lines = content.substring(0, index).split('\n');
-  return lines.length;
-}
-
 // =============================================================================
 // File Discovery
 // =============================================================================
@@ -153,25 +128,27 @@ export function offsetToLine(content: string, index: number): number {
 /**
  * Recursively find files matching a pattern in a directory.
  *
- * Automatically skips: node_modules, .git, .next, dist, build, .turbo
+ * Automatically skips directories listed in SKIP_DIRECTORIES.
  *
  * @param dir - Directory to search
  * @param includePattern - RegExp pattern that file names must match
  * @param excludePattern - Optional RegExp pattern to exclude files/dirs
  * @returns Array of absolute file paths matching the criteria
  */
-export function globFiles(
+export async function globFiles(
   dir: string,
   includePattern: RegExp,
   excludePattern?: RegExp
-): string[] {
+): Promise<string[]> {
   const files: string[] = [];
 
-  if (!nodeFs.existsSync(dir)) {
+  try {
+    await fsPromises.access(dir);
+  } catch {
     return files;
   }
 
-  const entries = nodeFs.readdirSync(dir, { withFileTypes: true });
+  const entries = await fsPromises.readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = nodePath.join(dir, entry.name);
@@ -181,10 +158,10 @@ export function globFiles(
     }
 
     if (entry.isDirectory()) {
-      if (['node_modules', '.git', '.next', 'dist', 'build', '.turbo'].includes(entry.name)) {
+      if ((SKIP_DIRECTORIES as readonly string[]).includes(entry.name)) {
         continue;
       }
-      files.push(...globFiles(fullPath, includePattern, excludePattern));
+      files.push(...(await globFiles(fullPath, includePattern, excludePattern)));
     } else if (entry.isFile() && includePattern.test(entry.name)) {
       files.push(fullPath);
     }
@@ -198,23 +175,38 @@ export function globFiles(
 // =============================================================================
 
 /**
- * Execute a shell command safely with timeout.
+ * Execute a shell command with an explicit allowlist and timeout.
  *
- * @param command - Shell command to execute
+ * Only commands starting with an approved prefix are permitted:
+ * npm, npx, git, pnpm, yarn, bun, node, tsc, vitest, jest, prettier, eslint.
+ *
+ * @param command - Shell command to execute (must match an allowlisted prefix)
  * @param cwd - Working directory for the command
  * @param timeout - Timeout in milliseconds (default: 30000)
  * @returns stdout, stderr, and optional error message
+ * @throws Error if the command does not match the allowlist
  */
-export async function safeExec(
+export async function shellExec(
   command: string,
   cwd: string,
   timeout: number = 30000
 ): Promise<{ stdout: string; stderr: string; error?: string }> {
+  const trimmed = command.trimStart();
+  const isAllowed = ALLOWED_COMMAND_PREFIXES.some(
+    (prefix) => trimmed === prefix || trimmed.startsWith(`${prefix} `) || trimmed.startsWith(`${prefix}\n`)
+  );
+
+  if (!isAllowed) {
+    throw new Error(
+      `shellExec: command not in allowlist. Permitted prefixes: ${ALLOWED_COMMAND_PREFIXES.join(', ')}. Got: ${trimmed.split(' ')[0]}`
+    );
+  }
+
   try {
     const { stdout, stderr } = await execAsync(command, { cwd, timeout });
     return { stdout: stdout.trim(), stderr: stderr.trim() };
   } catch (caughtError: unknown) {
-    const execError = caughtError as { stdout?: string; stderr?: string; message?: string };
+    const execError = caughtError as ExecException & { stdout?: string; stderr?: string };
     return {
       stdout: execError.stdout || '',
       stderr: execError.stderr || '',
@@ -254,21 +246,44 @@ export function sleep(ms: number): Promise<void> {
  * Fetch URL content with HTTP redirect support.
  *
  * @param url - The URL to fetch (http or https)
+ * @param maxRedirects - Maximum number of redirects to follow (default: 5)
+ * @param connectionTimeoutMs - Connection timeout in milliseconds (default: 10000)
  * @returns Promise resolving to the response body as a string
  */
-export function fetchUrl(url: string): Promise<string> {
+export function fetchUrl(
+  url: string,
+  maxRedirects: number = 5,
+  connectionTimeoutMs: number = 10000
+): Promise<string> {
   return new Promise((resolve, reject) => {
+    if (maxRedirects < 0) {
+      return reject(new Error('Too many redirects'));
+    }
+
     const client = url.startsWith('https') ? https : http;
-    client.get(url, (res) => {
+    const req = client.get(url, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        fetchUrl(res.headers.location).then(resolve).catch(reject);
+        fetchUrl(res.headers.location, maxRedirects - 1, connectionTimeoutMs).then(resolve).catch(reject);
         return;
       }
+
+      if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        res.resume();
+        return;
+      }
+
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => resolve(data));
       res.on('error', reject);
-    }).on('error', reject);
+    });
+
+    req.setTimeout(connectionTimeoutMs, () => {
+      req.destroy(new Error(`Connection timeout after ${connectionTimeoutMs}ms`));
+    });
+
+    req.on('error', reject);
   });
 }
 
@@ -344,27 +359,6 @@ export function isPromise(value: unknown): value is Promise<unknown> {
 }
 
 // =============================================================================
-// Timing Utilities
-// =============================================================================
-
-/**
- * Start a high-resolution timer.
- *
- * @returns Function that returns elapsed milliseconds when called
- *
- * @example
- * ```typescript
- * const elapsed = startTimer();
- * await doWork();
- * console.log(`Took ${elapsed()}ms`);
- * ```
- */
-export function startTimer(): () => number {
-  const start = performance.now();
-  return () => Math.round(performance.now() - start);
-}
-
-// =============================================================================
 // YAML Serialization
 // =============================================================================
 
@@ -427,26 +421,4 @@ export function toYaml(obj: unknown, indent: number = 0): string {
   }
 
   return String(obj);
-}
-
-/**
- * Mutable reference to the active YAML converter.
- * Swap via setYamlConverter() for testing.
- */
-export let convertToYaml: (obj: unknown) => string = toYaml;
-
-/**
- * Replace the active YAML converter (for testing).
- *
- * @param converter - Custom YAML conversion function
- */
-export function setYamlConverter(converter: (obj: unknown) => string): void {
-  convertToYaml = converter;
-}
-
-/**
- * Reset the YAML converter to the built-in toYaml implementation.
- */
-export function resetYamlConverter(): void {
-  convertToYaml = toYaml;
 }

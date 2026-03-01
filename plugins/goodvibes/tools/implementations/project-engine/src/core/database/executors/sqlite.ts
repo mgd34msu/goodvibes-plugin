@@ -10,6 +10,7 @@
 import type { DatabaseConnectionInfo, ColumnInfo, ExecutionResult, SqliteConnectionOptions } from '../types.js';
 import { withConnection } from '../sqlite-pool.js';
 import { isReadOnlyQuery } from '../query-analysis.js';
+import { ConnectionError, QueryError } from '../errors.js';
 
 /**
  * Infer a SQLite column type from a JavaScript value.
@@ -63,49 +64,65 @@ export async function executeSqlite(
     walMode: !readonly,
   };
 
-  return withConnection(connectionOptions, (db) => {
-    const isSelect = isReadOnlyQuery(query);
+  try {
+    return await withConnection(connectionOptions, (db) => {
+      const isSelect = isReadOnlyQuery(query);
 
-    if (isSelect) {
-      const stmt = db.prepare(query);
-      if (params.length > 0) {
-        stmt.bind(params);
-      }
-
-      const rows: Record<string, unknown>[] = [];
-      const columnNames = stmt.getColumnNames();
-
-      while (stmt.step()) {
-        rows.push(stmt.getAsObject());
-      }
-      stmt.free();
-
-      const columns: ColumnInfo[] = [];
-      if (rows.length > 0) {
-        for (const [key, value] of Object.entries(rows[0])) {
-          columns.push({ name: key, type: inferSqliteType(value) });
+      if (isSelect) {
+        const stmt = db.prepare(query);
+        if (params.length > 0) {
+          stmt.bind(params);
         }
-      } else if (columnNames.length > 0) {
-        for (const name of columnNames) {
-          columns.push({ name, type: 'unknown' });
-        }
-      }
 
-      return { rows, columns };
-    } else {
-      if (params.length > 0) {
-        db.run(query, params);
+        const rows: Record<string, unknown>[] = [];
+        const columnNames = stmt.getColumnNames();
+
+        while (stmt.step()) {
+          rows.push(stmt.getAsObject());
+        }
+        stmt.free();
+
+        const columns: ColumnInfo[] = [];
+        if (rows.length > 0) {
+          for (const [key, value] of Object.entries(rows[0])) {
+            columns.push({ name: key, type: inferSqliteType(value) });
+          }
+        } else if (columnNames.length > 0) {
+          for (const name of columnNames) {
+            columns.push({ name, type: 'unknown' });
+          }
+        }
+
+        return { rows, columns };
       } else {
-        db.run(query);
-      }
+        if (params.length > 0) {
+          db.run(query, params);
+        } else {
+          db.run(query);
+        }
 
-      const changes = db.getRowsModified();
-      return {
-        rows: [],
-        columns: [],
-        changes,
-        lastInsertRowid: 0,
-      };
+        const changes = db.getRowsModified();
+        // Query actual last insert rowid instead of hardcoding 0
+        const rowidResult = db.exec('SELECT last_insert_rowid()');
+        const lastInsertRowid: number | bigint =
+          rowidResult.length > 0 && rowidResult[0].values.length > 0
+            ? (rowidResult[0].values[0][0] as number)
+            : 0;
+        return {
+          rows: [],
+          columns: [],
+          changes,
+          lastInsertRowid,
+        };
+      }
+    });
+  } catch (cause) {
+    if (cause instanceof ConnectionError || cause instanceof QueryError) {
+      throw cause;
     }
-  });
+    throw new QueryError(
+      `SQLite query failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
+  }
 }

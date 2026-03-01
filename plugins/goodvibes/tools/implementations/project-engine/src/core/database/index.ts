@@ -22,7 +22,6 @@ export type {
   QueryResult,
   ColumnInfo,
   ExecutionResult,
-  ExecutionOptions,
   DatabaseConnectionInfo,
   DatabaseDriver,
 } from './types.js';

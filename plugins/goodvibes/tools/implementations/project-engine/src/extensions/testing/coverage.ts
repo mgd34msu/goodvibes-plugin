@@ -7,7 +7,7 @@
  * @module extensions/testing/coverage
  */
 
-import * as node_fs from 'node:fs';
+import * as node_fs from 'node:fs/promises';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail } from '../../shared/response.js';
@@ -44,7 +44,7 @@ import type { TestCoverageArgs, CoverageResult } from '../../core/testing/types.
 export async function getTestCoverage(args: TestCoverageArgs): Promise<McpResponse> {
   try {
     const searchPath = args.coverage_path || args.path;
-    const report = findCoverageReport(searchPath, PROJECT_ROOT);
+    const report = await findCoverageReport(searchPath, PROJECT_ROOT);
 
     if (!report) {
       return fail(
@@ -56,7 +56,7 @@ export async function getTestCoverage(args: TestCoverageArgs): Promise<McpRespon
       );
     }
 
-    const content = node_fs.readFileSync(report.path, 'utf-8');
+    const content = await node_fs.readFile(report.path, 'utf-8');
     const files = report.type === 'lcov'
       ? parseLcov(content)
       : parseIstanbul(content);

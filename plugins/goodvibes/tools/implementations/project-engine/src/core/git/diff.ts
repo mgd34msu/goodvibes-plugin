@@ -64,7 +64,12 @@ function listChangedFilesWithDiff(
 
   for (const line of lines) {
     const [status, ...fileParts] = line.split('\t');
-    const file = fileParts.join('\t');
+
+    // Git rename/copy format: "R100\told-path\tnew-path" — use the new (last) path
+    const normalizedStatus = status.startsWith('R') ? 'R' : status.startsWith('C') ? 'C' : status;
+    const file = (normalizedStatus === 'R' || normalizedStatus === 'C')
+      ? fileParts[fileParts.length - 1]
+      : fileParts.join('\t');
 
     if (!file.match(/\.(ts|tsx|js|jsx|mts|cts)$/)) continue;
     if (file.endsWith('.d.ts')) continue;
@@ -81,7 +86,7 @@ function listChangedFilesWithDiff(
       // File might not exist in one of the refs
     }
 
-    result.push({ file, status, diff });
+    result.push({ file, status: normalizedStatus, diff });
   }
 
   return result;

@@ -9,6 +9,8 @@
 
 import ts from 'typescript';
 
+import { logWarn } from '../../shared/logger.js';
+import { normalizePath } from '../../shared/utils.js';
 import { getExportKind, getJsDoc, getTypeString } from './ast-utils.js';
 import type { ExportInfo } from './types.js';
 
@@ -269,7 +271,7 @@ export function extractExportedSymbols(
 
     visit(sourceFile);
   } catch (err) {
-    console.warn('[exports] Failed to parse file for exported symbols:', err);
+    logWarn('[exports] Failed to parse file for exported symbols:', err);
   }
 
   return symbols;
@@ -299,7 +301,7 @@ function collectExportsFromFiles(
   }
 
   for (const filePath of files) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = normalizePath(filePath);
     const sourceFile = program.getSourceFile(normalizedPath);
 
     if (!sourceFile) continue;

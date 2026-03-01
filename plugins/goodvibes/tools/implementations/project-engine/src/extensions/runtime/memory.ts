@@ -140,15 +140,15 @@ export async function detectMemoryLeaks(args: DetectMemoryLeaksArgs): Promise<Mc
         if (process.platform === 'win32') {
           execFileSync('taskkill', ['/PID', String(childProcess.pid), '/T', '/F'], { encoding: 'utf-8', timeout: 5000 });
         } else {
-          process.kill(-childProcess.pid, 'SIGTERM');
+          try {
+            process.kill(-childProcess.pid, 'SIGTERM');
+          } catch {
+            // Negative PID kill may fail (e.g., if process already exited or not a group leader)
+            childProcess.kill('SIGTERM');
+          }
         }
       } catch {
         // Process may have already exited
-        try {
-          childProcess.kill('SIGTERM');
-        } catch {
-          // Ignore
-        }
       }
     }
   }

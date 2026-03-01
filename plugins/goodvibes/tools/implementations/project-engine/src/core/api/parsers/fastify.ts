@@ -97,4 +97,4 @@ export function parseFastifyFileRoutes(content: string, filePath: string): ApiRo
   return routes;
 }
 
-// findFilesSync and getLineNumber are imported from ./utils.js
+

@@ -54,8 +54,9 @@ export async function detectBreakingChanges(args: DetectBreakingChangesArgs): Pr
   try {
     // Verify git is available and refs exist
     try {
-      execFileSync('git', ['rev-parse', beforeRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
-      execFileSync('git', ['rev-parse', afterRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
+      const output = execFileSync('git', ['rev-parse', beforeRef, afterRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
+      const lines = output.toString().trim().split('\n');
+      if (lines.length < 2) throw new Error('Unexpected rev-parse output');
     } catch {
       return fail(`Invalid git refs: ${beforeRef} or ${afterRef}`);
     }
