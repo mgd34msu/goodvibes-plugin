@@ -7,8 +7,6 @@
  * @module extensions/code-intel/semantic-diff
  */
 
-import * as node_fs from 'node:fs/promises';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
@@ -19,6 +17,8 @@ import { toRelativePath } from '../../shared/utils.js';
 import { getChangedFilesDetailed } from '../../core/git/diff.js';
 import { findReferencingFiles } from '../../core/code-intel/references.js';
 import { analyzeSemanticChanges } from '../../core/ai/analyze.js';
+import { GIT_REF_PATTERN } from '../../core/code-intel/constants.js';
+import { withTempFile, makeTempPath } from '../../core/code-intel/type-extraction.js';
 import type { SemanticDiffArgs } from '../../core/code-intel/types.js';
 
 /**
@@ -44,6 +44,14 @@ export async function semanticDiff(args: SemanticDiffArgs): Promise<McpResponse>
   const afterRef = args.after_ref ?? 'HEAD';
   const fileFilter = args.file;
 
+  // Validate git refs to prevent shell injection
+  if (!GIT_REF_PATTERN.test(beforeRef)) {
+    return fail(`Invalid git ref format: ${beforeRef}`);
+  }
+  if (!GIT_REF_PATTERN.test(afterRef)) {
+    return fail(`Invalid git ref format: ${afterRef}`);
+  }
+
   try {
     try {
       execFileSync('git', ['rev-parse', beforeRef], { cwd: PROJECT_ROOT, stdio: 'pipe' });
@@ -61,41 +69,20 @@ export async function semanticDiff(args: SemanticDiffArgs): Promise<McpResponse>
       });
     }
 
-    // Find references for each changed file using a temp file for content-only analysis
+    // Find references for each changed file using withTempFile for guaranteed cleanup
     const fileReferences = new Map<string, string[]>();
-    const tempDir = path.join(PROJECT_ROOT, '.goodvibes-temp');
-
     for (const { file, afterContent } of changedFiles) {
       if (afterContent) {
-        const tempFile = path.join(tempDir, path.basename(file));
+        const { file: tempPath } = makeTempPath(PROJECT_ROOT, path.basename(file));
         try {
-          /* v8 ignore next 3 -- defensive: tempDir creation */
-          if (!fs.existsSync(tempDir)) {
-            await node_fs.mkdir(tempDir, { recursive: true });
-          }
-          await node_fs.writeFile(tempFile, afterContent, 'utf-8');
-
-          const refs = await findReferencingFiles(tempFile, PROJECT_ROOT);
+          const refs = await withTempFile(tempPath, afterContent, (tempFile) =>
+            findReferencingFiles(tempFile, PROJECT_ROOT)
+          );
           fileReferences.set(file, refs);
-
-          await node_fs.unlink(tempFile);
         } catch {
-          // Ignore temp file errors
+          // Ignore reference-finding errors for individual files
         }
       }
-    }
-
-    // Clean up temp directory
-    /* v8 ignore next 7 -- cleanup code for temp directory */
-    try {
-      if (fs.existsSync(tempDir)) {
-        const remaining = await node_fs.readdir(tempDir);
-        if (remaining.length === 0) {
-          await node_fs.rmdir(tempDir);
-        }
-      }
-    } catch {
-      // Ignore cleanup errors
     }
 
     const timeout = args.timeout ?? 120;

@@ -63,6 +63,12 @@ export const ENTRY_POINT_NAMES: string[] = [
 export const MAX_PREVIEW_LENGTH = 120;
 
 /**
+ * Regex pattern for validating git refs to prevent shell injection.
+ * Allows alphanumeric characters, dots, slashes, underscores, @, ~, ^, {, }, and hyphens.
+ */
+export const GIT_REF_PATTERN = /^[a-zA-Z0-9_./@~^{}\-]+$/;
+
+/**
  * Cache TTL in milliseconds for Language Service instances.
  */
 export const CACHE_TTL_MS = (() => {

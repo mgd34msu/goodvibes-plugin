@@ -7,6 +7,8 @@
  * @module extensions/code-intel/preview-edits
  */
 
+// PROJECT_ROOT is used as a constant (not getProjectRoot()) to ensure consistent path
+// resolution across async calls within a single tool invocation.
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail, failFromException } from '../../shared/response.js';
 import type { McpResponse } from '../../shared/types.js';

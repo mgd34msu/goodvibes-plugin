@@ -8,7 +8,6 @@
  */
 
 import * as node_fs from 'node:fs/promises';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { ENTRY_POINT_NAMES } from './constants.js';
@@ -36,49 +35,54 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
     // No package.json or invalid JSON, skip
   }
 
-  if (packageJson) {
-    const addIfExists = (p: string) => {
-      if (fs.existsSync(p) && !entryPoints.includes(p)) {
+  const addIfExists = async (p: string): Promise<void> => {
+    try {
+      await node_fs.access(p);
+      if (!entryPoints.includes(p)) {
         entryPoints.push(p);
+      }
+    } catch {
+      // File does not exist, skip
+    }
+  };
+
+  if (packageJson) {
+    const addExportPath = async (
+      exportPath: string | { default?: string; import?: string; require?: string }
+    ): Promise<void> => {
+      if (typeof exportPath === 'string') {
+        await addIfExists(path.resolve(dirPath, exportPath));
+      } else if (typeof exportPath === 'object') {
+        for (const key of ['default', 'import', 'require'] as const) {
+          const val = exportPath[key];
+          if (typeof val === 'string') {
+            await addIfExists(path.resolve(dirPath, val));
+          }
+        }
       }
     };
 
     // Check main field
     if (packageJson.main && typeof packageJson.main === 'string') {
       const mainPath = path.resolve(dirPath, packageJson.main);
-      addIfExists(mainPath);
+      await addIfExists(mainPath);
       // Also check for .ts version if main is .js
       const tsVersion = mainPath.replace(/\.js$/, '.ts');
-      if (mainPath !== tsVersion) addIfExists(tsVersion);
+      if (mainPath !== tsVersion) await addIfExists(tsVersion);
     }
 
     // Check module field
     if (packageJson.module && typeof packageJson.module === 'string') {
-      addIfExists(path.resolve(dirPath, packageJson.module));
+      await addIfExists(path.resolve(dirPath, packageJson.module));
     }
 
     // Check exports field
     if (packageJson.exports) {
-      const addExportPath = (
-        exportPath: string | { default?: string; import?: string; require?: string }
-      ) => {
-        if (typeof exportPath === 'string') {
-          addIfExists(path.resolve(dirPath, exportPath));
-        } else if (typeof exportPath === 'object') {
-          for (const key of ['default', 'import', 'require'] as const) {
-            const val = exportPath[key];
-            if (typeof val === 'string') {
-              addIfExists(path.resolve(dirPath, val));
-            }
-          }
-        }
-      };
-
       if (typeof packageJson.exports === 'string') {
-        addExportPath(packageJson.exports);
+        await addExportPath(packageJson.exports);
       } else if (typeof packageJson.exports === 'object' && packageJson.exports !== null) {
         for (const key of Object.keys(packageJson.exports as Record<string, unknown>)) {
-          addExportPath(
+          await addExportPath(
             (packageJson.exports as Record<string, unknown>)[key] as string
           );
         }
@@ -88,10 +92,7 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
 
   // Check for common entry point files at root
   for (const name of ENTRY_POINT_NAMES) {
-    const entryPath = path.join(dirPath, name);
-    if (fs.existsSync(entryPath) && !entryPoints.includes(entryPath)) {
-      entryPoints.push(entryPath);
-    }
+    await addIfExists(path.join(dirPath, name));
   }
 
   // Check src directory
@@ -100,10 +101,7 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
     const srcStat = await node_fs.stat(srcDir);
     if (srcStat.isDirectory()) {
       for (const name of ENTRY_POINT_NAMES) {
-        const entryPath = path.join(srcDir, name);
-        if (fs.existsSync(entryPath) && !entryPoints.includes(entryPath)) {
-          entryPoints.push(entryPath);
-        }
+        await addIfExists(path.join(srcDir, name));
       }
     }
   } catch {

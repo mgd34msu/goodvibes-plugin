@@ -56,6 +56,10 @@ export async function getApiSurface(args: ApiSurfaceArgs): Promise<McpResponse> 
       ? targetPath
       : path.resolve(PROJECT_ROOT, targetPath);
 
+    if (!absolutePath.startsWith(PROJECT_ROOT)) {
+      return fail(`Path is outside project root: ${targetPath}`);
+    }
+
     try {
       const stat = await fs.stat(absolutePath);
       if (!stat.isDirectory()) {

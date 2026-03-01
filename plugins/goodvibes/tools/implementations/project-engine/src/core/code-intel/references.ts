@@ -8,7 +8,7 @@
  */
 
 import * as path from 'node:path';
-import * as fs from 'node:fs';
+import * as fs from 'node:fs/promises';
 import ts from 'typescript';
 
 import { logWarn } from '../../shared/logger.js';
@@ -41,6 +41,7 @@ export function countReferences(
   let external = 0;
 
   for (const ref of references) {
+    // TS 5.x removed isDefinition from ReferenceEntry — cast for backward compat
     const refEntry = ref as ts.ReferenceEntry & { isDefinition?: boolean };
     if (refEntry.isDefinition) {
       continue;
@@ -88,6 +89,8 @@ export function isSameLine(
  * @param defLine - Definition line number
  * @returns True if the reference is in the same declaration
  */
+// Kept as a named abstraction for clarity and future expansion
+// (e.g., multi-line declarations may need a more sophisticated check).
 export function isInSameDeclaration(
   refFile: string,
   refLine: number,
@@ -115,7 +118,9 @@ export async function findReferencingFiles(
       ? filePath
       : path.resolve(projectRoot, filePath);
 
-    if (!fs.existsSync(absolutePath)) {
+    try {
+      await fs.access(absolutePath);
+    } catch {
       return [];
     }
 

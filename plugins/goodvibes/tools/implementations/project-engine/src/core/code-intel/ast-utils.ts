@@ -36,10 +36,9 @@ export function getExportKind(kind: ts.ScriptElementKind): string {
  * Get JSDoc comment text for a TypeScript AST node.
  *
  * @param node - The TypeScript AST node
- * @param _sourceFile - The source file (for context, unused directly)
  * @returns JSDoc comment string, or null if none
  */
-export function getJsDoc(node: ts.Node, _sourceFile?: ts.SourceFile): string | null {
+export function getJsDoc(node: ts.Node): string | null {
   const jsDocs = ts.getJSDocCommentsAndTags(node);
   if (jsDocs.length === 0) return null;
 

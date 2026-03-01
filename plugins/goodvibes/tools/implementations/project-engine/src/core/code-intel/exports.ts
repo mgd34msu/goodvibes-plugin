@@ -62,7 +62,6 @@ export function findExportsInFile(
   const exports: ExportInfo[] = [];
   const fileName = sourceFile.fileName;
   const program = service.getProgram();
-  void program; // obtained for type context
 
   function visit(node: ts.Node): void {
     // Handle export declarations: export { foo, bar }
@@ -269,117 +268,37 @@ export function extractExportedSymbols(
     }
 
     visit(sourceFile);
-  } catch {
-    // Silently ignore parse errors
+  } catch (err) {
+    console.warn('[exports] Failed to parse file for exported symbols:', err);
   }
 
   return symbols;
 }
 
 /**
- * Collect all exports from entry point files using the type checker.
+ * Shared implementation for collecting exports from a set of source files.
  *
- * @param entryPoints - Array of absolute entry point file paths
+ * @param files - Array of absolute file paths to process
  * @param service - TypeScript language service
+ * @param options - Collection options
+ * @param options.isFromEntryPoint - Whether to mark exports as from an entry point
+ * @param options.deduplicateByKey - Whether to skip already-seen export keys
  * @returns Map from symbol key to export info
  */
-export function collectPublicExports(
-  entryPoints: string[],
-  service: ts.LanguageService
+function collectExportsFromFiles(
+  files: string[],
+  service: ts.LanguageService,
+  options: { isFromEntryPoint: boolean; deduplicateByKey: boolean }
 ): Map<string, ExportWithOrigin> {
-
-  const publicExports = new Map<string, ExportWithOrigin>();
+  const result = new Map<string, ExportWithOrigin>();
   const program = service.getProgram();
   const checker = program?.getTypeChecker();
 
   if (!program || !checker) {
-    return publicExports;
+    return result;
   }
 
-  for (const entryPoint of entryPoints) {
-    const normalizedPath = entryPoint.replace(/\\/g, '/');
-    const sourceFile = program.getSourceFile(normalizedPath);
-
-    if (!sourceFile) continue;
-
-    const symbol = checker.getSymbolAtLocation(sourceFile);
-    if (!symbol) continue;
-
-    const exports = checker.getExportsOfModule(symbol);
-
-    for (const exportSymbol of exports) {
-      const name = exportSymbol.getName();
-      if (name === '__export') continue;
-
-      const declarations = exportSymbol.getDeclarations();
-      if (!declarations || declarations.length === 0) continue;
-
-      const decl = declarations[0];
-      const declSourceFile = decl.getSourceFile();
-      const { line } = declSourceFile.getLineAndCharacterOfPosition(decl.getStart());
-
-      let kind: ts.ScriptElementKind = ts.ScriptElementKind.unknown;
-      if (ts.isFunctionDeclaration(decl) || ts.isFunctionExpression(decl) || ts.isArrowFunction(decl)) {
-        kind = ts.ScriptElementKind.functionElement;
-      } else if (ts.isClassDeclaration(decl) || ts.isClassExpression(decl)) {
-        kind = ts.ScriptElementKind.classElement;
-      } else if (ts.isInterfaceDeclaration(decl)) {
-        kind = ts.ScriptElementKind.interfaceElement;
-      } else if (ts.isTypeAliasDeclaration(decl)) {
-        kind = ts.ScriptElementKind.typeElement;
-      } else if (ts.isEnumDeclaration(decl)) {
-        kind = ts.ScriptElementKind.enumElement;
-      } else if (ts.isVariableDeclaration(decl)) {
-        const varStmt = decl.parent?.parent;
-        if (varStmt && ts.isVariableStatement(varStmt)) {
-          kind = varStmt.declarationList.flags & ts.NodeFlags.Const
-            ? ts.ScriptElementKind.constElement
-            : ts.ScriptElementKind.variableElement;
-        }
-      } else if (ts.isModuleDeclaration(decl)) {
-        kind = ts.ScriptElementKind.moduleElement;
-      }
-
-      const typeStr = getTypeString(checker, decl, exportSymbol);
-      const jsdoc = getJsDoc(decl, declSourceFile);
-      const key = `${name}@${declSourceFile.fileName}`;
-
-      publicExports.set(key, {
-        name,
-        kind: getExportKind(kind),
-        type: typeStr,
-        file: declSourceFile.fileName,
-        line: line + 1,
-        jsdoc,
-        isFromEntryPoint: true,
-      });
-    }
-  }
-
-  return publicExports;
-}
-
-/**
- * Collect all exports from all source files using the type checker.
- *
- * @param sourceFiles - Array of absolute source file paths
- * @param service - TypeScript language service
- * @returns Map from symbol key to export info
- */
-export function collectAllExports(
-  sourceFiles: string[],
-  service: ts.LanguageService
-): Map<string, ExportWithOrigin> {
-
-  const allExports = new Map<string, ExportWithOrigin>();
-  const program = service.getProgram();
-  const checker = program?.getTypeChecker();
-
-  if (!program || !checker) {
-    return allExports;
-  }
-
-  for (const filePath of sourceFiles) {
+  for (const filePath of files) {
     const normalizedPath = filePath.replace(/\\/g, '/');
     const sourceFile = program.getSourceFile(normalizedPath);
 
@@ -424,22 +343,50 @@ export function collectAllExports(
       }
 
       const typeStr = getTypeString(checker, decl, exportSymbol);
-      const jsdoc = getJsDoc(decl, declSourceFile);
+      const jsdoc = getJsDoc(decl);
       const key = `${name}@${declSourceFile.fileName}`;
 
-      if (!allExports.has(key)) {
-        allExports.set(key, {
+      if (!options.deduplicateByKey || !result.has(key)) {
+        result.set(key, {
           name,
           kind: getExportKind(kind),
           type: typeStr,
           file: declSourceFile.fileName,
           line: line + 1,
           jsdoc,
-          isFromEntryPoint: false,
+          isFromEntryPoint: options.isFromEntryPoint,
         });
       }
     }
   }
 
-  return allExports;
+  return result;
+}
+
+/**
+ * Collect all exports from entry point files using the type checker.
+ *
+ * @param entryPoints - Array of absolute entry point file paths
+ * @param service - TypeScript language service
+ * @returns Map from symbol key to export info
+ */
+export function collectPublicExports(
+  entryPoints: string[],
+  service: ts.LanguageService
+): Map<string, ExportWithOrigin> {
+  return collectExportsFromFiles(entryPoints, service, { isFromEntryPoint: true, deduplicateByKey: false });
+}
+
+/**
+ * Collect all exports from all source files using the type checker.
+ *
+ * @param sourceFiles - Array of absolute source file paths
+ * @param service - TypeScript language service
+ * @returns Map from symbol key to export info
+ */
+export function collectAllExports(
+  sourceFiles: string[],
+  service: ts.LanguageService
+): Map<string, ExportWithOrigin> {
+  return collectExportsFromFiles(sourceFiles, service, { isFromEntryPoint: false, deduplicateByKey: true });
 }

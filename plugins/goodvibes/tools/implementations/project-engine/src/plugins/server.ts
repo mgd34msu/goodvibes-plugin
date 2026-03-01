@@ -20,6 +20,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { SERVER_NAME, SERVER_VERSION } from '../shared/constants.js';
 import { logger } from '../shared/logger.js';
+import { initLanguageServiceManager } from '../core/code-intel/language-service.js';
 import { TOOL_SCHEMAS } from './schemas.js';
 import { getDispatcher, listTools } from './dispatch.js';
 
@@ -146,6 +147,7 @@ class ProjectEngineServer {
  * ```
  */
 export async function bootstrap(): Promise<void> {
+  initLanguageServiceManager();
   const server = new ProjectEngineServer();
   await server.start();
 }

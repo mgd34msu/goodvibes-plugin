@@ -8,7 +8,7 @@
  */
 
 import * as path from 'node:path';
-import * as fs from 'node:fs';
+import * as fs from 'node:fs/promises';
 
 import { getProjectRoot } from '../../shared/config.js';
 import { ok, fail, failFromException } from '../../shared/response.js';
@@ -48,9 +48,13 @@ export async function findDeadCode(args: FindDeadCodeArgs): Promise<McpResponse>
       ? targetPath
       : path.resolve(projectRoot, targetPath);
 
+    if (!absolutePath.startsWith(projectRoot)) {
+      return fail('Path escapes project root');
+    }
+
     let filesToAnalyze: string[];
     try {
-      const stat = fs.statSync(absolutePath);
+      const stat = await fs.stat(absolutePath);
       if (stat.isFile()) {
         filesToAnalyze = [absolutePath];
       } else if (stat.isDirectory()) {

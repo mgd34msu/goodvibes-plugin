@@ -37,13 +37,6 @@ export function isSourceFile(filePath: string): boolean {
 }
 
 /**
- * Recursively find all source files in a directory.
- * Skips node_modules, hidden directories, and build outputs.
- *
- * @param dirPath - The directory to search
- * @returns Array of absolute file paths
- */
-/**
  * Normalize a file path to use forward slashes.
  *
  * @param filePath - The file path to normalize
@@ -75,6 +68,13 @@ export function resolveFilePath(filePath: string, projectRoot: string): string {
   return path.isAbsolute(filePath) ? filePath : path.resolve(projectRoot, filePath);
 }
 
+/**
+ * Recursively find all source files in a directory.
+ * Skips node_modules, hidden directories, and build outputs.
+ *
+ * @param dirPath - The directory to search
+ * @returns Array of absolute file paths
+ */
 export async function findSourceFiles(dirPath: string): Promise<string[]> {
   const files: string[] = [];
 

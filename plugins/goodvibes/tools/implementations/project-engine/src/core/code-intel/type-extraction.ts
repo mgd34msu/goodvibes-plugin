@@ -8,7 +8,6 @@
  */
 
 import * as node_fs from 'node:fs/promises';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { logWarn } from '../../shared/logger.js';
@@ -58,7 +57,9 @@ export async function extractTypeInfo(
       ? filePath
       : path.resolve(projectRoot, filePath);
 
-    if (!fs.existsSync(absolutePath)) {
+    try {
+      await node_fs.access(absolutePath);
+    } catch {
       return { file: filePath, symbols };
     }
 
@@ -108,6 +109,51 @@ export async function extractTypeInfo(
 }
 
 /**
+ * Execute a function with a temporary file, ensuring cleanup regardless of outcome.
+ *
+ * Creates the file at `tempPath` with `content`, calls `fn(tempPath)`,
+ * then deletes the file and parent directory (if empty) in a finally block.
+ *
+ * @param tempPath - Absolute path for the temporary file
+ * @param content - Content to write to the temp file
+ * @param fn - Function to call with the temp file path
+ * @returns The result of calling fn
+ */
+export async function withTempFile<T>(
+  tempPath: string,
+  content: string,
+  fn: (filePath: string) => Promise<T>
+): Promise<T> {
+  const dir = path.dirname(tempPath);
+  await node_fs.mkdir(dir, { recursive: true });
+  await node_fs.writeFile(tempPath, content, 'utf-8');
+  try {
+    return await fn(tempPath);
+  } finally {
+    await node_fs.unlink(tempPath).catch(() => undefined);
+    await node_fs.rmdir(dir).catch(() => undefined);
+  }
+}
+
+/**
+ * Build a unique temp directory path and full temp file path under `root`.
+ *
+ * @param root - Project root to place the temp directory under
+ * @param basename - The filename to use inside the temp directory
+ * @returns Object with `dir` (the unique temp directory) and `file` (the full temp file path)
+ */
+export function makeTempPath(
+  root: string,
+  basename: string
+): { dir: string; file: string } {
+  const dir = path.join(
+    root,
+    `.goodvibes-temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
+  return { dir, file: path.join(dir, basename) };
+}
+
+/**
  * Extract type info from raw content by writing to a temp file.
  * Used to analyze file content at a specific git ref.
  *
@@ -121,34 +167,11 @@ export async function extractTypeInfoFromContent(
   content: string,
   projectRoot: string
 ): Promise<FileTypeInfo> {
-  const tempDir = path.join(projectRoot, '.goodvibes-temp');
-  const tempFile = path.join(tempDir, path.basename(originalPath));
+  const { file: tempFile } = makeTempPath(projectRoot, path.basename(originalPath));
 
-  try {
-    try {
-      await node_fs.mkdir(tempDir, { recursive: true });
-    } catch {
-      // Already exists
-    }
-
-    await node_fs.writeFile(tempFile, content, 'utf-8');
-
-    const result = await extractTypeInfo(tempFile, projectRoot);
+  return withTempFile(tempFile, content, async (filePath) => {
+    const result = await extractTypeInfo(filePath, projectRoot);
     result.file = originalPath;
     return result;
-  } finally {
-    try {
-      await node_fs.unlink(tempFile);
-    } catch {
-      // Ignore cleanup errors
-    }
-    try {
-      const remaining = await node_fs.readdir(tempDir);
-      if (remaining.length === 0) {
-        await node_fs.rmdir(tempDir);
-      }
-    } catch {
-      // Ignore
-    }
-  }
+  });
 }

@@ -48,7 +48,12 @@ export async function validatePositionArgs(args: unknown): Promise<ValidationRes
     return { valid: false, error: fail('Invalid column: must be a positive integer') };
   }
 
-  const filePath = path.resolve(getProjectRoot(), file);
+  const projectRoot = getProjectRoot();
+  const filePath = path.resolve(projectRoot, file);
+
+  if (!filePath.startsWith(projectRoot)) {
+    return { valid: false, error: fail('File path escapes project root') };
+  }
 
   if (!(await fileExists(filePath))) {
     return { valid: false, error: fail(`File not found: ${file}`) };
@@ -68,9 +73,14 @@ export async function validateFilePath(file: unknown): Promise<ValidationResult>
     return { valid: false, error: fail('Invalid or missing file parameter') };
   }
 
+  const projectRoot = getProjectRoot();
   const filePath = path.isAbsolute(file)
     ? file
-    : path.resolve(getProjectRoot(), file);
+    : path.resolve(projectRoot, file);
+
+  if (!filePath.startsWith(projectRoot)) {
+    return { valid: false, error: fail('File path escapes project root') };
+  }
 
   if (!(await fileExists(filePath))) {
     return { valid: false, error: fail(`File not found: ${file}`) };

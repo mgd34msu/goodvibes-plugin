@@ -57,6 +57,11 @@ export async function checkSafeDelete(args: SafeDeleteCheckArgs): Promise<McpRes
     const filePath = path.isAbsolute(args.file)
       ? args.file
       : path.resolve(projectRoot, args.file);
+
+    if (!filePath.startsWith(projectRoot)) {
+      return fail('File path escapes project root');
+    }
+
     const normalizedFilePath = filePath.replace(/\\/g, '/');
 
     const { service } = await languageServiceManager.getServiceForFile(normalizedFilePath);
@@ -96,6 +101,7 @@ export async function checkSafeDelete(args: SafeDeleteCheckArgs): Promise<McpRes
     let definitionLine: number | undefined;
 
     for (const ref of references) {
+      // TS 5.x removed isDefinition from ReferenceEntry — cast for backward compat
       const refEntry = ref as ts.ReferenceEntry & { isDefinition?: boolean };
       if (refEntry.isDefinition) {
         definitionFile = ref.fileName;
@@ -124,6 +130,7 @@ export async function checkSafeDelete(args: SafeDeleteCheckArgs): Promise<McpRes
     const selfReferences: ReferenceLocation[] = [];
 
     for (const ref of references) {
+      // TS 5.x removed isDefinition from ReferenceEntry — cast for backward compat
       const refEntry = ref as ts.ReferenceEntry & { isDefinition?: boolean };
       if (refEntry.isDefinition) continue;
 

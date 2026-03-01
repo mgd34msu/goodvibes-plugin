@@ -227,9 +227,6 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
     const service = ts.createLanguageService(host, this.documentRegistry);
     const wrappedService = this.createServiceProxy(service);
 
-    // suppress unused variable warning for cacheKey (used for documentation)
-    void cacheKey;
-
     return {
       service: wrappedService,
       host,
@@ -307,7 +304,10 @@ class LanguageServiceManagerImpl implements LanguageServiceManager {
 /** Singleton instance of the Language Service Manager */
 export const languageServiceManager = new LanguageServiceManagerImpl();
 
-// Set up periodic cleanup
-if (typeof setInterval !== 'undefined') {
+/**
+ * Initialize the language service manager by starting the cleanup interval.
+ * Call this once at application startup to enable automatic cache eviction.
+ */
+export function initLanguageServiceManager(): void {
   languageServiceManager.startCleanupInterval();
 }

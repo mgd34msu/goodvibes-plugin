@@ -16,6 +16,7 @@ import { toRelativePath } from '../../shared/utils.js';
 import { getChangedFiles, getFileAtRef } from '../../core/git/diff.js';
 import { extractTypeInfoFromContent } from '../../core/code-intel/type-extraction.js';
 import { analyzeChangesWithLLM } from '../../core/ai/analyze.js';
+import { GIT_REF_PATTERN } from '../../core/code-intel/constants.js';
 import type { DetectBreakingChangesArgs } from '../../core/code-intel/types.js';
 
 /**
@@ -41,6 +42,14 @@ export async function detectBreakingChanges(args: DetectBreakingChangesArgs): Pr
   const beforeRef = args.before_ref;
   const afterRef = args.after_ref ?? 'HEAD';
   const pathFilter = args.path;
+
+  // Validate git refs to prevent shell injection
+  if (!GIT_REF_PATTERN.test(beforeRef)) {
+    return fail(`Invalid git ref format: ${beforeRef}`);
+  }
+  if (!GIT_REF_PATTERN.test(afterRef)) {
+    return fail(`Invalid git ref format: ${afterRef}`);
+  }
 
   try {
     // Verify git is available and refs exist

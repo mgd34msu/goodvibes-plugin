@@ -9,8 +9,7 @@
 
 import ts from 'typescript';
 
-import { toRelativePath } from '../../shared/utils.js';
-import { normalizePath } from '../../shared/utils.js';
+import { toRelativePath, normalizePath } from '../../shared/utils.js';
 
 /**
  * Information about which edit caused a diagnostic error.
