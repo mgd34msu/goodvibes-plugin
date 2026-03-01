@@ -6,10 +6,10 @@
  * 2. Provides the public RuntimeEngine class (the sole export consumed externally).
  * 3. Delegates executor, plugin, and IPC initialization to dedicated modules.
  *
- * Sub-bootstrap modules:
- * - bootstrap/executor-bootstrap.ts  — ExecutorModeManager, ExecutorBudgetManager, DaemonTickHandler
- * - bootstrap/plugin-bootstrap.ts    — Core event queue, plugins, hooks, event bridge, tick driver
- * - bootstrap/ipc-bootstrap.ts       — IPC server, router, socket pointer file
+ * Sub-bootstrap modules (peer files alongside this composition root):
+ * - executor-bootstrap.ts  — ExecutorModeManager, ExecutorBudgetManager, DaemonTickHandler
+ * - plugin-bootstrap.ts    — Core event queue, plugins, hooks, event bridge, tick driver
+ * - ipc-bootstrap.ts       — IPC server, router, socket pointer file
  */
 
 import { join } from 'node:path';
@@ -61,17 +61,17 @@ import type { DaemonTickHandler } from './extensions/executor/daemon-tick-handle
 import {
   initializeExecutor,
   type ExecutorSubsystem,
-} from './bootstrap/executor-bootstrap.js';
+} from './extensions/executor/executor-bootstrap.js';
 import {
   initializePlugins,
   cleanupPlugins,
   type PluginSubsystem,
-} from './bootstrap/plugin-bootstrap.js';
+} from './plugins/plugin-bootstrap.js';
 import {
   startIPCServer,
   teardownIPCServer,
   type IPCSubsystem,
-} from './bootstrap/ipc-bootstrap.js';
+} from './extensions/ipc/ipc-bootstrap.js';
 
 const logger = createLogger('bootstrap');
 

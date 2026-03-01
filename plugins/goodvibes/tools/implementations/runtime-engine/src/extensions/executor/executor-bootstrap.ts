@@ -8,13 +8,13 @@
  * - Emitting executor:mode_set event on startup
  */
 
-import { createLogger } from '../shared/logger.js';
-import { generateEventId, timestamp, toErrorMessage } from '../shared/utils.js';
-import { ExecutorModeManager } from '../core/processing/executor-mode.js';
-import { ExecutorBudgetManager } from '../extensions/executor/executor-budget.js';
-import { DaemonTickHandler } from '../extensions/executor/daemon-tick-handler.js';
-import type { EventBus } from '../extensions/events/event-bus.js';
-import type { RuntimeConfig } from '../shared/config.js';
+import { createLogger } from './shared/logger.js';
+import { generateEventId, timestamp, toErrorMessage } from './shared/utils.js';
+import { ExecutorModeManager } from './core/processing/executor-mode.js';
+import { ExecutorBudgetManager } from './extensions/executor/executor-budget.js';
+import { DaemonTickHandler } from './extensions/executor/daemon-tick-handler.js';
+import type { EventBus } from './extensions/events/event-bus.js';
+import type { RuntimeConfig } from './shared/config.js';
 
 const logger = createLogger('executor-bootstrap');
 

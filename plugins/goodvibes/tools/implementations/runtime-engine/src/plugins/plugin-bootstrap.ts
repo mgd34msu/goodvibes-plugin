@@ -13,8 +13,8 @@
  * - Cleanup on shutdown
  */
 
-import { createLogger } from '../shared/logger.js';
-import { toErrorMessage } from '../shared/utils.js';
+import { createLogger } from './shared/logger.js';
+import { toErrorMessage } from './shared/utils.js';
 import {
   EventQueue as CoreEventQueue,
   TriggerRegistry as CoreTriggerRegistry,
@@ -24,7 +24,7 @@ import {
   DeadLetterQueue,
   ErrorHandler,
   EventProcessor,
-} from '../core/index.js';
+} from './core/index.js';
 import {
   registerWRFCPlugin,
   getDefaultWRFCConfig,
@@ -33,19 +33,19 @@ import {
   registerDefaultHandlers,
   TimePlugin,
   ExternalPlugin,
-} from '../plugins/index.js';
-import type { ExternalPluginConfig } from '../plugins/index.js';
-import { ActionExecutor } from '../extensions/executor/action-executor.js';
-import { EventBridge } from '../extensions/events/event-bridge.js';
-import { TickDriver } from '../extensions/executor/tick-driver.js';
+} from './plugins/index.js';
+import type { ExternalPluginConfig } from './plugins/index.js';
+import { ActionExecutor } from './extensions/executor/action-executor.js';
+import { EventBridge } from './extensions/events/event-bridge.js';
+import { TickDriver } from './extensions/executor/tick-driver.js';
 
-import type { EventBus } from '../extensions/events/event-bus.js';
-import type { DirectiveQueue } from '../extensions/directives/directive-queue.js';
-import type { AgentWorkflowMap } from '../extensions/directives/agent-workflow-map.js';
-import type { DaemonTickHandler } from '../extensions/executor/daemon-tick-handler.js';
-import type { ExecutorModeManager } from '../core/processing/executor-mode.js';
-import type { WatchdogCoordinator } from '../extensions/workflow/watchdog.js';
-import type { RuntimeConfig } from '../shared/config.js';
+import type { EventBus } from './extensions/events/event-bus.js';
+import type { DirectiveQueue } from './extensions/directives/directive-queue.js';
+import type { AgentWorkflowMap } from './extensions/directives/agent-workflow-map.js';
+import type { DaemonTickHandler } from './extensions/executor/daemon-tick-handler.js';
+import type { ExecutorModeManager } from './core/processing/executor-mode.js';
+import type { WatchdogCoordinator } from './extensions/workflow/watchdog.js';
+import type { RuntimeConfig } from './shared/config.js';
 
 const logger = createLogger('plugin-bootstrap');
 

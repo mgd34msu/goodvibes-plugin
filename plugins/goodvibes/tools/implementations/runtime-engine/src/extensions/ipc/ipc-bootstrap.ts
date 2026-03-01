@@ -12,24 +12,24 @@ import { mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
-import { createLogger } from '../shared/logger.js';
-import { toErrorMessage } from '../shared/utils.js';
-import { IPCServer } from '../shared/ipc/ipc-server.js';
-import { IPCRouter } from '../shared/ipc/ipc-router.js';
-import { ensureDirSync } from '../core/utils/fs-utils.js';
+import { createLogger } from './shared/logger.js';
+import { toErrorMessage } from './shared/utils.js';
+import { IPCServer } from './shared/ipc/ipc-server.js';
+import { IPCRouter } from './shared/ipc/ipc-router.js';
+import { ensureDirSync } from './core/utils/fs-utils.js';
 
-import type { RuntimeConfig } from '../shared/config.js';
-import type { EventBus } from '../extensions/events/event-bus.js';
-import type { TriggerRegistry } from '../extensions/triggers/trigger-registry.js';
-import type { WorkflowEngine } from '../extensions/workflow/workflow-engine.js';
-import type { AgentCoordinator } from '../extensions/agents/agent-coordinator.js';
-import type { DirectiveQueue } from '../extensions/directives/directive-queue.js';
-import type { WRFCConfigStore } from '../extensions/directives/wrfc-config-store.js';
-import type { AgentWorkflowMap } from '../extensions/directives/agent-workflow-map.js';
+import type { RuntimeConfig } from './shared/config.js';
+import type { EventBus } from './extensions/events/event-bus.js';
+import type { TriggerRegistry } from './extensions/triggers/trigger-registry.js';
+import type { WorkflowEngine } from './extensions/workflow/workflow-engine.js';
+import type { AgentCoordinator } from './extensions/agents/agent-coordinator.js';
+import type { DirectiveQueue } from './extensions/directives/directive-queue.js';
+import type { WRFCConfigStore } from './extensions/directives/wrfc-config-store.js';
+import type { AgentWorkflowMap } from './extensions/directives/agent-workflow-map.js';
 import type { HookProcessor } from '../plugins/index.js';
-import type { ExecutorModeManager } from '../core/processing/executor-mode.js';
-import type { ExecutorBudgetManager } from '../extensions/executor/executor-budget.js';
-import type { DaemonTickHandler } from '../extensions/executor/daemon-tick-handler.js';
+import type { ExecutorModeManager } from './core/processing/executor-mode.js';
+import type { ExecutorBudgetManager } from './extensions/executor/executor-budget.js';
+import type { DaemonTickHandler } from './extensions/executor/daemon-tick-handler.js';
 
 const logger = createLogger('ipc-bootstrap');
 
