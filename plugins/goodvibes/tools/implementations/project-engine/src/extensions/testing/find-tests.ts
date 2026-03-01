@@ -16,7 +16,7 @@ import type { McpResponse } from '../../shared/types.js';
 import {
   normalizeFilePath,
   resolveFilePath,
-} from '../../handlers/code-intelligence/shared/lsp-utils.js';
+} from '../../core/code-intel/file-utils.js';
 import {
   findTestFiles,
   scoreTestFiles,

@@ -68,7 +68,7 @@ async function runPreCompactHook() {
         // Sends session:compact event and queries for a system message to inject
         // after compaction. Falls through to existing logic when not available.
         try {
-            const runtimeClient = new RuntimeClient();
+            const runtimeClient = new RuntimeClient(input.session_id);
             if (runtimeClient.isAvailable()) {
                 debug('Phase 6: runtime engine available, sending session:compact event');
                 await runtimeClient.sendHookEvent('session:compact', input);

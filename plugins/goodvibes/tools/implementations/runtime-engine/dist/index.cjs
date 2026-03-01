@@ -29153,9 +29153,8 @@ function registerWRFCHandlers(registry2, directiveQueue, workflowEngine, agentCo
       const taskOutput = hookInput?.["last_assistant_message"] || hookInput?.["task_output"] || hookInput?.["result"];
       const score = extractReviewScore(taskOutput);
       if (score === null) {
-        log5.warn("wrfc_chain_next: could not parse review score from reviewer output", {
-          workflow_id: workflow.id,
-          task_output_preview: taskOutput?.slice(0, 200)
+        log5.debug("wrfc_chain_next: could not parse review score, skipping", {
+          workflow_id: workflow.id
         });
         return;
       }

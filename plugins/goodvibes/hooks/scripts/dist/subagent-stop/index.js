@@ -163,7 +163,7 @@ async function runSubagentStopHook() {
         // the runtime for pending directives when the Task tool returns to the parent.
         // ALWAYS falls through to existing logic — this hook has no early-return.
         try {
-            const runtimeClient = new RuntimeClient();
+            const runtimeClient = new RuntimeClient(input.session_id);
             if (runtimeClient.isAvailable()) {
                 const success = input.success !== false;
                 const eventName = success ? 'agent:completed' : 'agent:failed';

@@ -138,7 +138,7 @@ export async function runPreToolUseHook(): Promise<void> {
     // block directive. If the engine says to block, block immediately.
     // Falls through to existing logic when the runtime is NOT available.
     try {
-      const runtimeClient = new RuntimeClient();
+      const runtimeClient = new RuntimeClient(input.session_id);
       if (runtimeClient.isAvailable()) {
         await runtimeClient.sendHookEvent(
           'hook:pre_tool_use',

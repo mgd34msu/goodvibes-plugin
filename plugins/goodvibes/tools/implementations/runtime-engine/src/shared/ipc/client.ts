@@ -14,8 +14,9 @@
  *
  * Discovery order for the socket path:
  * 1. GOODVIBES_RUNTIME_SOCKET environment variable
- * 2. .goodvibes/state/runtime.socket file in the current working directory
- * 3. Well-known tmpdir path ({tmpdir}/goodvibes-runtime/runtime.sock)
+ * 2. Pointer file scan: .goodvibes/state/runtime-{id}.socket (PID or UUID)
+ * 3. Legacy pointer file: .goodvibes/state/runtime.socket (backward compatibility)
+ * 4. Well-known tmpdir path ({tmpdir}/goodvibes-runtime/runtime.sock)
  */
 
 import * as net from 'node:net';
@@ -283,8 +284,8 @@ export class RuntimeClient {
    *
    * Resolution order:
    * 1. `GOODVIBES_RUNTIME_SOCKET` environment variable.
-   * 2. Per-PID pointer files `runtime-{pid}.socket` in `.goodvibes/state/` (supports
-   *    multiple concurrent sessions for the same project).
+   * 2. Pointer file scan: `runtime-{id}.socket` in `.goodvibes/state/` (PID or UUID,
+   *    supports multiple concurrent sessions for the same project).
    * 3. Legacy `runtime.socket` pointer file for backward compatibility.
    * 4. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
    *
@@ -299,12 +300,12 @@ export class RuntimeClient {
 
     const stateDir = join(process.cwd(), '.goodvibes', 'state');
 
-    // 2. Scan for per-PID pointer files written by concurrent runtime engine sessions
+    // 2. Scan for pointer files (PID or UUID) written by concurrent runtime engine sessions
     if (existsSync(stateDir)) {
       try {
         const entries = readdirSync(stateDir);
         for (const entry of entries) {
-          if (/^runtime-\d+\.socket$/.test(entry)) {
+          if (/^runtime-[a-zA-Z0-9_-]+\.socket$/.test(entry)) {
             try {
               const socketPath = readFileSync(join(stateDir, entry), 'utf-8').trim();
               if (socketPath && existsSync(socketPath)) return socketPath;
@@ -323,7 +324,7 @@ export class RuntimeClient {
     if (existsSync(legacyPointerFile)) {
       try {
         const socketPath = readFileSync(legacyPointerFile, 'utf-8').trim();
-        if (socketPath) return socketPath;
+        if (socketPath && existsSync(socketPath)) return socketPath;
       } catch {
         // Ignore — fall through to next strategy
       }

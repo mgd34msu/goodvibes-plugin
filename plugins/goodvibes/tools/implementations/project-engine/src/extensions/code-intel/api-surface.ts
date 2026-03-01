@@ -8,7 +8,7 @@
  */
 
 import * as path from 'node:path';
-import * as fs from 'node:fs';
+import * as fs from 'node:fs/promises';
 
 import { PROJECT_ROOT } from '../../shared/config.js';
 import { ok, fail, failFromException } from '../../shared/response.js';
@@ -57,7 +57,7 @@ export async function getApiSurface(args: ApiSurfaceArgs): Promise<McpResponse> 
       : path.resolve(PROJECT_ROOT, targetPath);
 
     try {
-      const stat = fs.statSync(absolutePath);
+      const stat = await fs.stat(absolutePath);
       if (!stat.isDirectory()) {
         return fail(`Path is not a directory: ${targetPath}`);
       }
@@ -71,7 +71,8 @@ export async function getApiSurface(args: ApiSurfaceArgs): Promise<McpResponse> 
       entryPoints = args.entry_points.map((ep) =>
         path.isAbsolute(ep) ? ep : path.resolve(absolutePath, ep)
       );
-      entryPoints = entryPoints.filter((ep) => fs.existsSync(ep));
+      const existChecks = await Promise.all(entryPoints.map((ep) => fs.access(ep).then(() => true, () => false)));
+      entryPoints = entryPoints.filter((_, i) => existChecks[i]);
     } else {
       entryPoints = await detectEntryPoints(absolutePath);
     }
@@ -95,8 +96,8 @@ export async function getApiSurface(args: ApiSurfaceArgs): Promise<McpResponse> 
       entryPoints[0].replace(/\\/g, '/')
     );
 
-    const publicExports = await collectPublicExports(entryPoints, service);
-    const allExports = await collectAllExports(sourceFiles, service);
+    const publicExports = collectPublicExports(entryPoints, service);
+    const allExports = collectAllExports(sourceFiles, service);
 
     const publicApi: PublicApiExport[] = [];
     const internalApi: InternalApiExport[] = [];

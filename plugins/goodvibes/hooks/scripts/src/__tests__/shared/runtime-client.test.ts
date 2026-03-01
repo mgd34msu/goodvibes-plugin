@@ -2,7 +2,7 @@
  * Comprehensive unit tests for shared/runtime-client.ts
  *
  * Tests cover:
- * - RuntimeClient constructor (discoverSocket via 3 strategies)
+ * - RuntimeClient constructor (discoverSocket via 5 strategies)
  * - isAvailable() — socket path + existsSync
  * - sendHookEvent() — fire-and-forget, error swallowing, response passthrough
  * - query() — send/receive, error swallowing, response passthrough
@@ -20,6 +20,7 @@ import { EventEmitter } from 'node:events';
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
+  readdirSync: vi.fn(),
 }));
 
 vi.mock('net', () => ({
@@ -32,13 +33,14 @@ vi.mock('os', () => ({
 
 // ─── Import after mocks ────────────────────────────────────────────────────
 
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import * as net from 'net';
 import { tmpdir } from 'os';
 import { RuntimeClient } from '../../shared/runtime-client.js';
 
 const mockedExistsSync = vi.mocked(existsSync);
 const mockedReadFileSync = vi.mocked(readFileSync);
+const mockedReaddirSync = vi.mocked(readdirSync);
 const mockedCreateConnection = vi.mocked(net.createConnection);
 const mockedTmpdir = vi.mocked(tmpdir);
 
@@ -94,6 +96,8 @@ describe('RuntimeClient', () => {
     delete process.env['CLAUDE_PROJECT_DIR'];
     mockedTmpdir.mockReturnValue('/tmp');
     mockedExistsSync.mockReturnValue(false);
+    // Default: no pointer files in state dir (Strategy 3 finds nothing)
+    mockedReaddirSync.mockReturnValue([] as unknown as ReturnType<typeof readdirSync>);
   });
 
   afterEach(() => {
@@ -130,17 +134,154 @@ describe('RuntimeClient', () => {
     });
   });
 
-  describe('discoverSocket — Strategy 2 (pointer file)', () => {
+  describe('discoverSocket — Strategy 2 (session-keyed pointer file)', () => {
+    it('constructs pointer path from runtime-{sessionId}.socket and returns socket when file exists', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+      const sessionId = 'abc-123-uuid';
+      const pointerFile = `/project/.goodvibes/state/runtime-${sessionId}.socket`;
+      const socketPath = '/sockets/session-runtime.sock';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === `/project/.goodvibes/state`) return true;
+        if (p === pointerFile) return true;
+        if (p === socketPath) return true;
+        return false;
+      });
+      mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
+
+      const client = new RuntimeClient(sessionId);
+      expect(client.isAvailable()).toBe(true);
+    });
+
+    it('session-keyed lookup succeeds when matching pointer file exists', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+      const sessionId = 'my-session-id';
+      const socketPath = '/var/run/runtime-my-session-id.sock';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === `/project/.goodvibes/state`) return true;
+        if (p === socketPath) return true;
+        return false;
+      });
+      mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
+
+      const client = new RuntimeClient(sessionId);
+      mockedExistsSync.mockImplementation((p) => p === socketPath);
+      expect(client.isAvailable()).toBe(true);
+    });
+
+    it('falls through to Strategy 3 when sessionId provided but pointer file does not exist', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+      const sessionId = 'missing-session';
+
+      // stateDir exists but session pointer file does not
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === `/project/.goodvibes/state`) return true;
+        return false;
+      });
+      mockedReadFileSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
+
+      const client = new RuntimeClient(sessionId);
+      expect(client.isAvailable()).toBe(false);
+    });
+
+    it('falls through to Strategy 3 when sessionId is undefined (Strategy 2 skipped entirely)', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+      // No sessionId — Strategy 2 should be skipped
+      mockedExistsSync.mockReturnValue(false);
+
+      const client = new RuntimeClient();
+      expect(client.isAvailable()).toBe(false);
+      // readFileSync should not be called (Strategy 2 was not entered)
+      expect(mockedReadFileSync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('discoverSocket — Strategy 3 (PID scan)', () => {
+    it('finds a valid runtime-{pid}.socket pointer file and resolves the socket', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+      const socketPath = '/var/run/runtime-pid.sock';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === '/project/.goodvibes/state') return true;
+        if (p === socketPath) return true;
+        return false;
+      });
+      mockedReaddirSync.mockReturnValue(['runtime-12345.socket'] as unknown as ReturnType<typeof readdirSync>);
+      mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
+
+      const client = new RuntimeClient();
+      expect(client.isAvailable()).toBe(true);
+      expect(mockedReaddirSync).toHaveBeenCalledWith('/project/.goodvibes/state');
+    });
+
+    it('skips entries with wrong prefix or extension', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === '/project/.goodvibes/state') return true;
+        return false;
+      });
+      // Files that should NOT match the widened regex are not present here;
+      // files that match but point to non-existent sockets
+      mockedReaddirSync.mockReturnValue([
+        'session-abc.txt',       // wrong extension
+        'runtime.socket',        // legacy file (no suffix separator after "runtime")
+        'other-file.socket',     // wrong prefix
+      ] as unknown as ReturnType<typeof readdirSync>);
+      mockedReadFileSync.mockReturnValue('/tmp/some.sock' as unknown as Buffer);
+
+      const client = new RuntimeClient();
+      // None of the entries match the pattern, so Strategy 3 yields nothing
+      expect(mockedReadFileSync).not.toHaveBeenCalled();
+      expect(client.isAvailable()).toBe(false);
+    });
+
+    it('skips entries where the pointed-to socket file does not exist', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+      const missingSocketPath = '/var/run/gone.sock';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === '/project/.goodvibes/state') return true;
+        // missingSocketPath does NOT exist
+        return false;
+      });
+      mockedReaddirSync.mockReturnValue(['runtime-99999.socket'] as unknown as ReturnType<typeof readdirSync>);
+      mockedReadFileSync.mockReturnValue(missingSocketPath as unknown as Buffer);
+
+      const client = new RuntimeClient();
+      expect(client.isAvailable()).toBe(false);
+    });
+
+    it('falls through to Strategy 4 when no PID pointer files match', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === '/project/.goodvibes/state') return true;
+        return false;
+      });
+      // readdirSync returns an empty list — no pointer files at all
+      mockedReaddirSync.mockReturnValue([] as unknown as ReturnType<typeof readdirSync>);
+
+      const client = new RuntimeClient();
+      // Strategies 3 and 4 both fail; client is unavailable
+      expect(client.isAvailable()).toBe(false);
+    });
+  });
+
+  describe('discoverSocket — Strategy 4 (legacy pointer file)', () => {
     it('reads socket path from pointer file when env var is absent', () => {
       process.env['CLAUDE_PROJECT_DIR'] = '/project';
       const pointerFile = '/project/.goodvibes/state/runtime.socket';
       const socketPath = '/sockets/runtime.sock';
 
-      mockedExistsSync.mockImplementation((p) => p === pointerFile);
+      // Both pointerFile and socketPath must exist during construction (Strategy 4 validates socketPath)
+      mockedExistsSync.mockImplementation((p) => p === pointerFile || p === socketPath);
       mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
 
       const client = new RuntimeClient();
-      mockedExistsSync.mockImplementation((p) => p === socketPath);
       expect(client.isAvailable()).toBe(true);
     });
 
@@ -149,11 +290,11 @@ describe('RuntimeClient', () => {
       const pointerFile = `${cwd}/.goodvibes/state/runtime.socket`;
       const socketPath = '/sockets/cwd-runtime.sock';
 
-      mockedExistsSync.mockImplementation((p) => p === pointerFile);
+      // Both pointerFile and socketPath must exist during construction (Strategy 4 validates socketPath)
+      mockedExistsSync.mockImplementation((p) => p === pointerFile || p === socketPath);
       mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
 
       const client = new RuntimeClient();
-      mockedExistsSync.mockImplementation((p) => p === socketPath);
       expect(client.isAvailable()).toBe(true);
     });
 
@@ -163,16 +304,16 @@ describe('RuntimeClient', () => {
       const socketPath = '  /sockets/trimmed.sock  \n';
       const trimmedPath = '/sockets/trimmed.sock';
 
-      mockedExistsSync.mockImplementation((p) => p === pointerFile);
+      // pointerFile and trimmedPath must both exist during construction (Strategy 4 validates socketPath)
+      mockedExistsSync.mockImplementation((p) => p === pointerFile || p === trimmedPath);
       mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
 
       const client = new RuntimeClient();
-      mockedExistsSync.mockImplementation((p) => p === trimmedPath);
       expect(client.isAvailable()).toBe(true);
       expect(mockedExistsSync).toHaveBeenCalledWith(trimmedPath);
     });
 
-    it('falls through to strategy 3 when pointer file content is empty string', () => {
+    it('falls through to Strategy 5 when pointer file content is empty string', () => {
       process.env['CLAUDE_PROJECT_DIR'] = '/project';
       const pointerFile = '/project/.goodvibes/state/runtime.socket';
 
@@ -180,15 +321,12 @@ describe('RuntimeClient', () => {
       mockedExistsSync.mockImplementation((p) => p === pointerFile);
       mockedReadFileSync.mockReturnValue('   ' as unknown as Buffer);
 
-      // Strategy 3 fallback also absent
-      const tmpSock = '/tmp/goodvibes-runtime/runtime.sock';
-      // existsSync returns false for tmpSock
-
+      // Strategy 5 fallback also absent
       const client = new RuntimeClient();
       expect(client.isAvailable()).toBe(false);
     });
 
-    it('falls through to strategy 3 when readFileSync throws', () => {
+    it('falls through to Strategy 5 when readFileSync throws', () => {
       process.env['CLAUDE_PROJECT_DIR'] = '/project';
       const pointerFile = '/project/.goodvibes/state/runtime.socket';
 
@@ -197,12 +335,12 @@ describe('RuntimeClient', () => {
         throw new Error('EACCES: permission denied');
       });
 
-      // Strategy 3 fallback also absent
+      // Strategy 5 fallback also absent
       const client = new RuntimeClient();
       expect(client.isAvailable()).toBe(false);
     });
 
-    it('falls through to strategy 3 when pointer file does not exist', () => {
+    it('falls through to Strategy 5 when pointer file does not exist', () => {
       process.env['CLAUDE_PROJECT_DIR'] = '/project';
       // existsSync returns false for the pointer file
       mockedExistsSync.mockReturnValue(false);
@@ -212,7 +350,7 @@ describe('RuntimeClient', () => {
     });
   });
 
-  describe('discoverSocket — Strategy 3 (tmpdir fallback)', () => {
+  describe('discoverSocket — Strategy 5 (tmpdir fallback)', () => {
     it('returns tmpdir socket path when pointer file absent and tmpdir socket exists', () => {
       process.env['CLAUDE_PROJECT_DIR'] = '/project';
       const tmpSock = '/tmp/goodvibes-runtime/runtime.sock';
@@ -238,7 +376,7 @@ describe('RuntimeClient', () => {
       expect(mockedExistsSync).toHaveBeenCalledWith(tmpSock);
     });
 
-    it('returns null (socket not discovered) when all 3 strategies fail', () => {
+    it('returns null (socket not discovered) when all 5 strategies fail', () => {
       mockedExistsSync.mockReturnValue(false);
       const client = new RuntimeClient();
       expect(client.isAvailable()).toBe(false);

@@ -200,7 +200,7 @@ async function runSessionStartHook(): Promise<void> {
     // is reachable, delegate context injection to the runtime engine.
     // Falls through to existing logic when the runtime is NOT available.
     try {
-      const runtimeClient = new RuntimeClient();
+      const runtimeClient = new RuntimeClient(input.session_id);
       if (runtimeClient.isAvailable()) {
         debug('Phase 6: runtime engine available, sending session:started event');
         await runtimeClient.sendHookEvent('session:started', input as unknown as Record<string, unknown>);

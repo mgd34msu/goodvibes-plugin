@@ -43,6 +43,38 @@ export function isSourceFile(filePath: string): boolean {
  * @param dirPath - The directory to search
  * @returns Array of absolute file paths
  */
+/**
+ * Normalize a file path to use forward slashes.
+ *
+ * @param filePath - The file path to normalize
+ * @returns Normalized path with forward slashes
+ */
+export function normalizeFilePath(filePath: string): string {
+  return filePath.replace(/\\/g, '/');
+}
+
+/**
+ * Make a path relative to a project root.
+ *
+ * @param absolutePath - Absolute path to convert
+ * @param projectRoot - Root directory to make relative to
+ * @returns Relative path string
+ */
+export function makeRelativePath(absolutePath: string, projectRoot: string): string {
+  return path.relative(projectRoot, absolutePath);
+}
+
+/**
+ * Resolve a file path against a project root.
+ *
+ * @param filePath - Path to resolve (may be relative or absolute)
+ * @param projectRoot - Root directory to resolve against
+ * @returns Absolute resolved path
+ */
+export function resolveFilePath(filePath: string, projectRoot: string): string {
+  return path.isAbsolute(filePath) ? filePath : path.resolve(projectRoot, filePath);
+}
+
 export async function findSourceFiles(dirPath: string): Promise<string[]> {
   const files: string[] = [];
 

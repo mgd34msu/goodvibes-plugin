@@ -665,9 +665,8 @@ export function registerWRFCHandlers(
       const score = extractReviewScore(taskOutput);
 
       if (score === null) {
-        log.warn('wrfc_chain_next: could not parse review score from reviewer output', {
+        log.debug('wrfc_chain_next: could not parse review score, skipping', {
           workflow_id: workflow.id,
-          task_output_preview: taskOutput?.slice(0, 200),
         });
         return;
       }

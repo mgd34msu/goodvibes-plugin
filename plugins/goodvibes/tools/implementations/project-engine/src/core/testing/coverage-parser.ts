@@ -14,7 +14,7 @@ import * as node_fs from 'node:fs';
 import {
   normalizeFilePath,
   makeRelativePath,
-} from '../../handlers/code-intelligence/shared/lsp-utils.js';
+} from '../code-intel/file-utils.js';
 import { COVERAGE_PATHS } from './constants.js';
 import type {
   CoverageReportType,

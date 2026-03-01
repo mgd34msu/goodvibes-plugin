@@ -11,8 +11,11 @@
  *
  * Discovery order for the socket path:
  * 1. GOODVIBES_RUNTIME_SOCKET environment variable
- * 2. .goodvibes/state/runtime.socket pointer file in cwd (contains the path)
- * 3. Well-known tmpdir path: {tmpdir}/goodvibes-runtime/runtime.sock
+ * 2. Session-keyed pointer file: .goodvibes/state/runtime-{sessionId}.socket (exact match)
+ * 3. Pointer file scan: .goodvibes/state/runtime-{id}.socket (PID or UUID, multi-session)
+ *    Base directory resolved from CLAUDE_PROJECT_DIR env var, falling back to process.cwd().
+ * 4. Legacy pointer file: .goodvibes/state/runtime.socket (backward compatibility)
+ * 5. Well-known tmpdir path: {tmpdir}/goodvibes-runtime/runtime.sock
  *
  * This module has zero external dependencies — only Node.js stdlib (net, fs,
  * path, os) so it can be safely imported by any hook script.
@@ -104,7 +107,7 @@ export type RuntimeResponseData = IPCResponseData;
  *
  * @example
  * ```ts
- * const client = new RuntimeClient();
+ * const client = new RuntimeClient(sessionId);
  * if (client.isAvailable()) {
  *   await client.sendHookEvent('session:started', hookInput);
  *   const result = await client.query({ kind: 'get_system_message' });
@@ -117,7 +120,12 @@ export type RuntimeResponseData = IPCResponseData;
 export declare class RuntimeClient {
     /** Absolute path to the Unix domain socket, or null if not discoverable. */
     private readonly socketPath;
-    constructor();
+    /**
+     * @param sessionId - Optional Claude Code session ID for session-keyed
+     *   socket pointer lookup. When provided, enables exact-match discovery
+     *   via `runtime-{sessionId}.socket` pointer files.
+     */
+    constructor(sessionId?: string);
     /**
      * Returns true if the runtime engine socket path was discovered and the
      * socket file currently exists on disk.
@@ -158,13 +166,16 @@ export declare class RuntimeClient {
      */
     private sendMessage;
     /**
-     * Discover the runtime engine socket path using three strategies.
+     * Discover the runtime engine socket path using five strategies.
      *
      * Resolution order:
      * 1. `GOODVIBES_RUNTIME_SOCKET` env var — set by runtime engine at startup.
-     * 2. `.goodvibes/state/runtime.socket` pointer file in cwd — contains path.
-     * 3. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
+     * 2. Session-keyed pointer file `runtime-{sessionId}.socket` — exact match, no ambiguity.
+     * 3. Pointer file scan `runtime-{id}.socket` (PID or UUID) — fallback for concurrent sessions.
+     * 4. Legacy pointer file `runtime.socket` — backward compatibility with older engine versions.
+     * 5. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
      *
+     * @param sessionId - Optional Claude Code session ID for session-keyed lookup (Strategy 2).
      * @returns Absolute socket path string, or null if none is discoverable.
      */
     private discoverSocket;

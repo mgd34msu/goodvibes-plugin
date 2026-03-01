@@ -78,6 +78,6 @@ export async function getPrismaOperations(args: PrismaOpsArgs): Promise<McpRespo
       recommendations,
     });
   } catch (error) {
-    return failFromException(error, { path: searchPath });
+    return failFromException(error, `Failed to analyze Prisma operations at ${searchPath}`);
   }
 }

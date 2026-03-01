@@ -64,7 +64,7 @@ async function runPostToolUseHook() {
         // Sends the hook event to the runtime engine for workflow tracking.
         // Falls through to existing automation logic when runtime is NOT available.
         try {
-            const runtimeClient = new RuntimeClient();
+            const runtimeClient = new RuntimeClient(input.session_id);
             if (runtimeClient.isAvailable()) {
                 debug('Phase 6: runtime engine available, sending hook:post_tool_use event');
                 await runtimeClient.sendHookEvent('hook:post_tool_use', input);

@@ -562,8 +562,13 @@ function generateId() {
 var RuntimeClient = class {
   /** Absolute path to the Unix domain socket, or null if not discoverable. */
   socketPath;
-  constructor() {
-    this.socketPath = this.discoverSocket();
+  /**
+   * @param sessionId - Optional Claude Code session ID for session-keyed
+   *   socket pointer lookup. When provided, enables exact-match discovery
+   *   via `runtime-{sessionId}.socket` pointer files.
+   */
+  constructor(sessionId) {
+    this.socketPath = this.discoverSocket(sessionId);
   }
   // ─── Public API ─────────────────────────────────────────────────────────────
   /**
@@ -671,27 +676,39 @@ var RuntimeClient = class {
     });
   }
   /**
-   * Discover the runtime engine socket path using three strategies.
+   * Discover the runtime engine socket path using five strategies.
    *
    * Resolution order:
    * 1. `GOODVIBES_RUNTIME_SOCKET` env var — set by runtime engine at startup.
-   * 2. `.goodvibes/state/runtime.socket` pointer file in cwd — contains path.
-   * 3. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
+   * 2. Session-keyed pointer file `runtime-{sessionId}.socket` — exact match, no ambiguity.
+   * 3. Pointer file scan `runtime-{id}.socket` (PID or UUID) — fallback for concurrent sessions.
+   * 4. Legacy pointer file `runtime.socket` — backward compatibility with older engine versions.
+   * 5. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
    *
+   * @param sessionId - Optional Claude Code session ID for session-keyed lookup (Strategy 2).
    * @returns Absolute socket path string, or null if none is discoverable.
    */
-  discoverSocket() {
+  discoverSocket(sessionId) {
     const envPath = process.env["GOODVIBES_RUNTIME_SOCKET"];
     if (envPath) {
       return envPath;
     }
     const cwd = process.env["CLAUDE_PROJECT_DIR"] ?? process.cwd();
     const stateDir = join4(cwd, ".goodvibes", "state");
-    if (existsSync(stateDir)) {
+    const stateDirExists = existsSync(stateDir);
+    if (sessionId && stateDirExists) {
+      try {
+        const sessionPointer = join4(stateDir, `runtime-${sessionId}.socket`);
+        const socketPath = readFileSync(sessionPointer, "utf-8").trim();
+        if (socketPath && existsSync(socketPath)) return socketPath;
+      } catch {
+      }
+    }
+    if (stateDirExists) {
       try {
         const entries = readdirSync(stateDir);
         for (const entry of entries) {
-          if (/^runtime-\d+\.socket$/.test(entry)) {
+          if (/^runtime-[a-zA-Z0-9_-]+\.socket$/.test(entry)) {
             try {
               const socketPath = readFileSync(join4(stateDir, entry), "utf-8").trim();
               if (socketPath && existsSync(socketPath)) return socketPath;
@@ -706,7 +723,7 @@ var RuntimeClient = class {
     if (existsSync(legacyPointerFile)) {
       try {
         const socketPath = readFileSync(legacyPointerFile, "utf-8").trim();
-        if (socketPath) return socketPath;
+        if (socketPath && existsSync(socketPath)) return socketPath;
       } catch {
       }
     }
@@ -1200,7 +1217,7 @@ async function runSubagentStopHook() {
     debug("Raw input shape:", Object.keys(rawInput || {}));
     const input = rawInput;
     try {
-      const runtimeClient = new RuntimeClient();
+      const runtimeClient = new RuntimeClient(input.session_id);
       if (runtimeClient.isAvailable()) {
         const success = input.success !== false;
         const eventName = success ? "agent:completed" : "agent:failed";

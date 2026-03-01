@@ -68,13 +68,13 @@ async function findSourceFiles(dir: string): Promise<string[]> {
       const fullPath = node_path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        if (!SKIP_DIRECTORIES.includes(entry.name)) {
+        if (!(SKIP_DIRECTORIES as readonly string[]).includes(entry.name)) {
           const subFiles = await findSourceFiles(fullPath);
           files.push(...subFiles);
         }
       } else if (entry.isFile()) {
         const ext = node_path.extname(entry.name).toLowerCase();
-        if (SOURCE_EXTENSIONS.includes(ext)) {
+        if ((SOURCE_EXTENSIONS as readonly string[]).includes(ext)) {
           files.push(fullPath);
         }
       }
@@ -158,7 +158,7 @@ export async function analyzeDependencies(args: AnalyzeDependenciesArgs): Promis
       for (const entry of rootEntries) {
         if (entry.isFile()) {
           const ext = node_path.extname(entry.name).toLowerCase();
-          if (SOURCE_EXTENSIONS.includes(ext)) {
+          if ((SOURCE_EXTENSIONS as readonly string[]).includes(ext)) {
             sourceFiles.push(node_path.join(projectPath, entry.name));
           }
         }

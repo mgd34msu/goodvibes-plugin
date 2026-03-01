@@ -16,7 +16,7 @@ import {
   normalizeFilePath,
   makeRelativePath,
   resolveFilePath,
-} from '../../handlers/code-intelligence/shared/lsp-utils.js';
+} from '../../core/code-intel/file-utils.js';
 import {
   findCoverageReport,
   parseLcov,

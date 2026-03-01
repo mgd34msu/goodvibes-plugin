@@ -16,7 +16,7 @@ import * as node_path from 'node:path';
 import * as node_fs from 'node:fs';
 import ts from 'typescript';
 
-import { normalizeFilePath, makeRelativePath } from '../../handlers/code-intelligence/shared/lsp-utils.js';
+import { normalizeFilePath, makeRelativePath } from '../code-intel/file-utils.js';
 import { TEST_PATTERNS } from './constants.js';
 import type { TestType, TestFile } from './types.js';
 

@@ -87,7 +87,7 @@ async function runSessionEndHook(): Promise<void> {
     // Sends session:ending event to the runtime engine for lifecycle tracking.
     // ALWAYS falls through to existing cleanup logic — no early-return here.
     try {
-      const runtimeClient = new RuntimeClient();
+      const runtimeClient = new RuntimeClient(input.session_id);
       if (runtimeClient.isAvailable()) {
         debug('Phase 6: runtime engine available, sending session:ending event');
         void runtimeClient.sendHookEvent(

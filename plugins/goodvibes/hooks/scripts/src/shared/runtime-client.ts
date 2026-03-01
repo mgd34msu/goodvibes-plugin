@@ -11,8 +11,11 @@
  *
  * Discovery order for the socket path:
  * 1. GOODVIBES_RUNTIME_SOCKET environment variable
- * 2. .goodvibes/state/runtime.socket pointer file in cwd (contains the path)
- * 3. Well-known tmpdir path: {tmpdir}/goodvibes-runtime/runtime.sock
+ * 2. Session-keyed pointer file: .goodvibes/state/runtime-{sessionId}.socket (exact match)
+ * 3. Pointer file scan: .goodvibes/state/runtime-{id}.socket (PID or UUID, multi-session)
+ *    Base directory resolved from CLAUDE_PROJECT_DIR env var, falling back to process.cwd().
+ * 4. Legacy pointer file: .goodvibes/state/runtime.socket (backward compatibility)
+ * 5. Well-known tmpdir path: {tmpdir}/goodvibes-runtime/runtime.sock
  *
  * This module has zero external dependencies — only Node.js stdlib (net, fs,
  * path, os) so it can be safely imported by any hook script.
@@ -103,7 +106,7 @@ function generateId(): string {
  *
  * @example
  * ```ts
- * const client = new RuntimeClient();
+ * const client = new RuntimeClient(sessionId);
  * if (client.isAvailable()) {
  *   await client.sendHookEvent('session:started', hookInput);
  *   const result = await client.query({ kind: 'get_system_message' });
@@ -117,8 +120,13 @@ export class RuntimeClient {
   /** Absolute path to the Unix domain socket, or null if not discoverable. */
   private readonly socketPath: string | null;
 
-  constructor() {
-    this.socketPath = this.discoverSocket();
+  /**
+   * @param sessionId - Optional Claude Code session ID for session-keyed
+   *   socket pointer lookup. When provided, enables exact-match discovery
+   *   via `runtime-{sessionId}.socket` pointer files.
+   */
+  constructor(sessionId?: string) {
+    this.socketPath = this.discoverSocket(sessionId);
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -254,16 +262,19 @@ export class RuntimeClient {
   }
 
   /**
-   * Discover the runtime engine socket path using three strategies.
+   * Discover the runtime engine socket path using five strategies.
    *
    * Resolution order:
    * 1. `GOODVIBES_RUNTIME_SOCKET` env var — set by runtime engine at startup.
-   * 2. `.goodvibes/state/runtime.socket` pointer file in cwd — contains path.
-   * 3. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
+   * 2. Session-keyed pointer file `runtime-{sessionId}.socket` — exact match, no ambiguity.
+   * 3. Pointer file scan `runtime-{id}.socket` (PID or UUID) — fallback for concurrent sessions.
+   * 4. Legacy pointer file `runtime.socket` — backward compatibility with older engine versions.
+   * 5. Well-known tmpdir path: `{os.tmpdir()}/goodvibes-runtime/runtime.sock`.
    *
+   * @param sessionId - Optional Claude Code session ID for session-keyed lookup (Strategy 2).
    * @returns Absolute socket path string, or null if none is discoverable.
    */
-  private discoverSocket(): string | null {
+  private discoverSocket(sessionId?: string): string | null {
     // Strategy 1: Explicit env var (set by runtime engine at startup)
     const envPath = process.env['GOODVIBES_RUNTIME_SOCKET'];
     if (envPath) {
@@ -273,15 +284,33 @@ export class RuntimeClient {
     const cwd = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd();
     const stateDir = join(cwd, '.goodvibes', 'state');
 
-    // Strategy 2: Scan for per-PID pointer files written by concurrent sessions.
+    const stateDirExists = existsSync(stateDir);
+
+    // Strategy 2: Session-keyed pointer file (exact match, no ambiguity).
+    // Written by IPC router on session:started. Preferred over PID scan
+    // because it's unambiguous in multi-session scenarios.
+    if (sessionId && stateDirExists) {
+      try {
+        const sessionPointer = join(stateDir, `runtime-${sessionId}.socket`);
+        const socketPath = readFileSync(sessionPointer, 'utf-8').trim();
+        if (socketPath && existsSync(socketPath)) return socketPath;
+      } catch {
+        // Ignore — fall through to PID scan
+      }
+    }
+
+    // Strategy 3: Scan for per-PID pointer files written by concurrent sessions.
     // Multiple Claude Code sessions for the same project each write their own
     // runtime-{pid}.socket file. We pick the first one that points to an
     // existing socket file.
-    if (existsSync(stateDir)) {
+    if (stateDirExists) {
       try {
         const entries = readdirSync(stateDir);
         for (const entry of entries) {
-          if (/^runtime-\d+\.socket$/.test(entry)) {
+          // Widened pattern matches both PID-based (runtime-12345.socket) and
+          // session-keyed (runtime-{uuid}.socket) pointer files as a fallback
+          // when sessionId was not provided (Strategy 2 was skipped).
+          if (/^runtime-[a-zA-Z0-9_-]+\.socket$/.test(entry)) {
             try {
               const socketPath = readFileSync(join(stateDir, entry), 'utf-8').trim();
               if (socketPath && existsSync(socketPath)) return socketPath;
@@ -295,19 +324,19 @@ export class RuntimeClient {
       }
     }
 
-    // Strategy 3: Legacy pointer file for backward compatibility with older
+    // Strategy 4: Legacy pointer file for backward compatibility with older
     // runtime engine versions that wrote a single shared runtime.socket file.
     const legacyPointerFile = join(stateDir, 'runtime.socket');
     if (existsSync(legacyPointerFile)) {
       try {
         const socketPath = readFileSync(legacyPointerFile, 'utf-8').trim();
-        if (socketPath) return socketPath;
+        if (socketPath && existsSync(socketPath)) return socketPath;
       } catch {
         // Ignore — fall through to next strategy
       }
     }
 
-    // Strategy 4: Well-known tmpdir location — legacy fallback path for manual or
+    // Strategy 5: Well-known tmpdir location — legacy fallback path for manual or
     // external socket placement. Note: the process-manager does NOT create sockets
     // here; it uses per-session paths. This strategy will only match sockets
     // placed here by external tooling.
