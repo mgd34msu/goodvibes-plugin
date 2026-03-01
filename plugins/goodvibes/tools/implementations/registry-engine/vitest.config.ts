@@ -4,20 +4,19 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    // Include L0 (shared), L1 (core), and L2 (extensions) layer tests
-    include: ['src/shared/shared.test.ts', 'src/core/core.test.ts', 'src/extensions/extensions.test.ts'],
-    // Explicitly exclude plugins layer test files
+    // Include L0 (shared), L1 (core), L2 (extensions), and L3 (plugins) layer tests
+    include: ['src/shared/shared.test.ts', 'src/core/core.test.ts', 'src/extensions/extensions.test.ts', 'src/plugins/plugins.test.ts'],
     exclude: [
       'node_modules/**',
-      'src/plugins/**',
     ],
     coverage: {
       provider: 'v8',
-      // Measure coverage for L0, L1, and L2 source files
+      // Measure coverage for L0, L1, L2, and L3 source files
       include: [
         'src/shared/*.ts',
         'src/core/*.ts',
         'src/extensions/*.ts',
+        'src/plugins/*.ts',
       ],
       exclude: [
         'src/**/*.test.ts',

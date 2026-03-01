@@ -37,10 +37,15 @@ const {
     close: mockClose,
     onerror: undefined as ((error: Error) => void) | undefined,
   };
-  const MockServer = vi.fn().mockImplementation(() => mockServerInstance);
+  // Use a spied class so 'new Server()' works correctly in production code
+  const MockServer = vi.fn(function MockServerCtor() {
+    return mockServerInstance;
+  });
 
   const mockTransportInstance = {};
-  const MockStdioServerTransport = vi.fn().mockImplementation(() => mockTransportInstance);
+  const MockStdioServerTransport = vi.fn(function MockTransportCtor() {
+    return mockTransportInstance;
+  });
 
   // MCP type stubs — must be in hoisted so the types.js mock factory can reference them
   const ErrorCode = {
@@ -99,17 +104,20 @@ vi.mock('../extensions/dependencies.js', () => ({
   analyzeDependencies: vi.fn(),
 }));
 
-// Mock the loader so RegistryIndexCache doesn't do real filesystem I/O
+// Mock the loader so RegistryIndexCache doesn't do real filesystem I/O.
+// Use a regular function (not arrow) so 'new RegistryIndexCache()' works.
 vi.mock('../extensions/loader.js', () => ({
-  RegistryIndexCache: vi.fn().mockImplementation(() => ({
-    warmAll: vi.fn().mockResolvedValue(undefined),
-    getContext: vi.fn().mockResolvedValue({
-      skillsIndex: null,
-      agentsIndex: null,
-      toolsIndex: null,
-      skillsRegistry: null,
-    }),
-  })),
+  RegistryIndexCache: vi.fn(function RegistryIndexCacheCtor() {
+    return {
+      warmAll: vi.fn().mockResolvedValue(undefined),
+      getContext: vi.fn().mockResolvedValue({
+        skillsIndex: null,
+        agentsIndex: null,
+        toolsIndex: null,
+        skillsRegistry: null,
+      }),
+    };
+  }),
 }));
 
 // Mock the MCP SDK server — reference hoisted values
@@ -813,6 +821,10 @@ describe('server: bootstrap()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     registeredHandlers = new Map();
+
+    // Restore resolved value for async mocks (clearAllMocks resets these)
+    mockConnect.mockResolvedValue(undefined);
+    mockClose.mockResolvedValue(undefined);
 
     // Capture setRequestHandler calls so we can invoke them in tests
     mockSetRequestHandler.mockImplementation(
