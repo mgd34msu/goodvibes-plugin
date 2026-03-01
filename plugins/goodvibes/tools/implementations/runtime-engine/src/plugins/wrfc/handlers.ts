@@ -15,6 +15,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { MAX_OUTPUT_PREVIEW_LENGTH } from '../../shared/constants.js';
 import {
   ENGINEER_AGENT_TYPES,
   AUTO_COMPLETE_AGENT_TYPES,
@@ -299,7 +300,7 @@ export function handleAgentCompleted(
     const score = extractScore(agentOutput);
     if (score === null) {
       log.warn('handleAgentCompleted: could not parse review score', {
-        wid, output_preview: agentOutput?.slice(0, 200),
+        wid, output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_LENGTH),
       });
       // Emit error event and escalate — returning {} would stall the workflow permanently
       const errorEvent = createEvent({
@@ -308,7 +309,7 @@ export function handleAgentCompleted(
         payload: {
           workflow_id: wid,
           agent_id: agentId,
-          output_preview: agentOutput?.slice(0, 200) ?? null,
+          output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_LENGTH) ?? null,
           attempt_count: fixAttempts,
         },
         priority: 80,

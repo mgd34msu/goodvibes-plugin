@@ -21554,6 +21554,14 @@ var RuntimeEngineError = class extends Error {
     __name(this, "RuntimeEngineError");
   }
 };
+var ConfigError = class extends RuntimeEngineError {
+  static {
+    __name(this, "ConfigError");
+  }
+  constructor(message, cause) {
+    super(message, "CONFIG_ERROR", cause);
+  }
+};
 var StateError = class extends RuntimeEngineError {
   static {
     __name(this, "StateError");
@@ -21842,6 +21850,8 @@ __name(saveConfig, "saveConfig");
 
 // src/shared/constants.ts
 var ENGINE_VERSION = "1.0.0";
+var MAX_EVENT_TYPE_LENGTH = 100;
+var MAX_OUTPUT_PREVIEW_LENGTH = 200;
 
 // src/shared/logger.ts
 var LEVEL_ORDER = {
@@ -29358,7 +29368,7 @@ var TriggerRegistry2 = class {
    */
   resetFireCount(trigger_id) {
     const state = this.states.get(trigger_id);
-    if (!state) throw new Error(`Trigger '${trigger_id}' not found`);
+    if (!state) throw new ProcessingError(`Trigger '${trigger_id}' not found`);
     state.fire_count = 0;
     state.last_fired_at = 0;
   }
@@ -30930,7 +30940,7 @@ function handleAgentCompleted(event, _trigger, store) {
     if (score === null) {
       log8.warn("handleAgentCompleted: could not parse review score", {
         wid,
-        output_preview: agentOutput?.slice(0, 200)
+        output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_LENGTH)
       });
       const errorEvent = createEvent({
         source: "internal",
@@ -30938,7 +30948,7 @@ function handleAgentCompleted(event, _trigger, store) {
         payload: {
           workflow_id: wid,
           agent_id: agentId,
-          output_preview: agentOutput?.slice(0, 200) ?? null,
+          output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_LENGTH) ?? null,
           attempt_count: fixAttempts
         },
         priority: 80,
@@ -32020,7 +32030,7 @@ var EventScheduler = class {
     }
     this._assertCapacity();
     if (this.items.has(params.id)) {
-      throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
+      throw new QueueError(`EventScheduler: item with id '${params.id}' already exists`);
     }
     const now = Date.now();
     const item = {
@@ -32052,7 +32062,7 @@ var EventScheduler = class {
     }
     this._assertCapacity();
     if (this.items.has(params.id)) {
-      throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
+      throw new QueueError(`EventScheduler: item with id '${params.id}' already exists`);
     }
     const now = Date.now();
     const item = {
@@ -32082,7 +32092,7 @@ var EventScheduler = class {
     }
     this._assertCapacity();
     if (this.items.has(params.id)) {
-      throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
+      throw new QueueError(`EventScheduler: item with id '${params.id}' already exists`);
     }
     const now = Date.now();
     const item = {
@@ -32239,10 +32249,10 @@ var EventScheduler = class {
   }
   _assertCapacity() {
     if (this.destroyed) {
-      throw new Error("EventScheduler: cannot schedule items on a destroyed scheduler");
+      throw new ProcessingError("EventScheduler: cannot schedule items on a destroyed scheduler");
     }
     if (this.items.size >= this.config.max_scheduled_items) {
-      throw new Error(
+      throw new QueueError(
         `EventScheduler capacity exceeded: max ${this.config.max_scheduled_items} items`
       );
     }
@@ -32362,7 +32372,7 @@ var FileWatcher = class {
         const raw = await fs.readFile(filepath, "utf-8");
         const parsed = safeJsonParse(raw, null);
         if (!isDropFilePayload(parsed)) {
-          throw new Error(
+          throw new ProcessingError(
             `Invalid drop file format: must have 'source' (string) and 'payload' fields`
           );
         }
@@ -32460,7 +32470,7 @@ var HttpListener = class {
    */
   async start() {
     if (this.running) {
-      throw new Error("HttpListener is already running");
+      throw new ConfigError("HttpListener is already running");
     }
     await fs2.mkdir(this.dropDir, { recursive: true });
     return new Promise((resolve, reject) => {
@@ -35370,11 +35380,11 @@ function getNestedValue(obj, path3) {
 __name(getNestedValue, "getNestedValue");
 function setNestedValue(obj, path3, value) {
   if (!path3) {
-    throw new Error("setNestedValue: path must not be empty");
+    throw new ConfigError("setNestedValue: path must not be empty");
   }
   const segments = path3.split(".");
   if (segments.some((s) => s === "")) {
-    throw new Error(`setNestedValue: path contains empty segment: "${path3}"`);
+    throw new ConfigError(`setNestedValue: path contains empty segment: "${path3}"`);
   }
   let current = obj;
   for (let i = 0; i < segments.length - 1; i++) {
@@ -35460,7 +35470,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       const current = ctx.getConfig();
       const updated = setNestedValue(
-        JSON.parse(JSON.stringify(current)),
+        structuredClone(current),
         key,
         value
       );
@@ -35695,7 +35705,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
         Date.now() - start
       );
     }
-    const safeEventType = eventType.slice(0, 100).replace(/[\x00-\x1F\x7F]/g, "");
+    const safeEventType = eventType.slice(0, MAX_EVENT_TYPE_LENGTH).replace(/[\x00-\x1F\x7F]/g, "");
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {

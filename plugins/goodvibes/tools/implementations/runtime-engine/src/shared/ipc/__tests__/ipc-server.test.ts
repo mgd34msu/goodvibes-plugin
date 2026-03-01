@@ -35,7 +35,8 @@ const {
   class MockServer extends EventEmitter {
     listen: ReturnType<typeof vi.fn> & ListenFn;
     close: ReturnType<typeof vi.fn> & CloseFn;
-    removeListener: ReturnType<typeof vi.fn> & ((eventName: string | symbol, listener: (...args: any[]) => void) => this);
+    // @ts-expect-error: vi.fn() mock does not return `this` but MockServer; acceptable in test context
+    removeListener: ReturnType<typeof vi.fn> & ((eventName: string | symbol, listener: (...args: any[]) => void) => MockServer);
     _listenCallback: (() => void) | null = null;
     _closeCallback: (() => void) | null = null;
 

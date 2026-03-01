@@ -15,3 +15,14 @@
  * Updated at release time; not stored in user-facing config.
  */
 export const ENGINE_VERSION = '1.0.0';
+
+/**
+ * Maximum length for event type strings used in log-injection sanitization.
+ * Event types exceeding this length are truncated before logging.
+ */
+export const MAX_EVENT_TYPE_LENGTH = 100;
+
+/**
+ * Maximum length of agent output previews included in log entries and event payloads.
+ */
+export const MAX_OUTPUT_PREVIEW_LENGTH = 200;

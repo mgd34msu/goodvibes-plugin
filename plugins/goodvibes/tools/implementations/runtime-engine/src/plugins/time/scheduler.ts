@@ -9,6 +9,7 @@
 
 import { StateStoreInterface } from '../../core/types.js';
 import { TimeEvent, createTimeEvent } from '../../extensions/events/factories.js';
+import { QueueError, ProcessingError } from '../../shared/errors.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,7 +93,7 @@ export class EventScheduler {
     }
     this._assertCapacity();
     if (this.items.has(params.id)) {
-      throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
+      throw new QueueError(`EventScheduler: item with id '${params.id}' already exists`);
     }
     const now = Date.now();
     const item: ScheduledItem = {
@@ -132,7 +133,7 @@ export class EventScheduler {
     }
     this._assertCapacity();
     if (this.items.has(params.id)) {
-      throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
+      throw new QueueError(`EventScheduler: item with id '${params.id}' already exists`);
     }
     const now = Date.now();
     const item: ScheduledItem = {
@@ -173,7 +174,7 @@ export class EventScheduler {
     }
     this._assertCapacity();
     if (this.items.has(params.id)) {
-      throw new Error(`EventScheduler: item with id '${params.id}' already exists`);
+      throw new QueueError(`EventScheduler: item with id '${params.id}' already exists`);
     }
     const now = Date.now();
     const item: ScheduledItem = {
@@ -379,10 +380,10 @@ export class EventScheduler {
 
   private _assertCapacity(): void {
     if (this.destroyed) {
-      throw new Error('EventScheduler: cannot schedule items on a destroyed scheduler');
+      throw new ProcessingError('EventScheduler: cannot schedule items on a destroyed scheduler');
     }
     if (this.items.size >= this.config.max_scheduled_items) {
-      throw new Error(
+      throw new QueueError(
         `EventScheduler capacity exceeded: max ${this.config.max_scheduled_items} items`,
       );
     }

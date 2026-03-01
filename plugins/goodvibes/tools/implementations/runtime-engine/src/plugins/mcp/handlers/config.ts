@@ -15,6 +15,7 @@ import { DEFAULT_CONFIG, saveConfig } from '../../../shared/config.js';
 import type { RuntimeConfig } from '../../../shared/config.js';
 import { createLogger } from '../../../shared/logger.js';
 import { toErrorMessage } from '../../../shared/utils.js';
+import { ConfigError } from '../../../shared/errors.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
 
@@ -190,11 +191,11 @@ function setNestedValue(
   value: unknown
 ): Record<string, unknown> {
   if (!path) {
-    throw new Error('setNestedValue: path must not be empty');
+    throw new ConfigError('setNestedValue: path must not be empty');
   }
   const segments = path.split('.');
   if (segments.some((s) => s === '')) {
-    throw new Error(`setNestedValue: path contains empty segment: "${path}"`);
+    throw new ConfigError(`setNestedValue: path contains empty segment: "${path}"`);
   }
   let current: Record<string, unknown> = obj;
 
@@ -311,7 +312,7 @@ export const handleRuntimeConfig = async (
       // prevent shallow-clone aliasing bugs when setNestedValue mutates in-place)
       const current = ctx.getConfig();
       const updated = setNestedValue(
-        JSON.parse(JSON.stringify(current)) as unknown as Record<string, unknown>,
+        structuredClone(current) as Record<string, unknown>,
         key,
         value
       ) as unknown as RuntimeConfig;

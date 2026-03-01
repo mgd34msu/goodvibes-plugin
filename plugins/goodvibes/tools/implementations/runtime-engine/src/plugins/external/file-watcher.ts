@@ -15,6 +15,7 @@ import * as path from 'node:path';
 import { EventQueueInterface } from '../../core/types.js';
 import { NormalizerRegistry } from './normalizers/index.js';
 import { createLogger } from '../../shared/logger.js';
+import { ProcessingError } from '../../shared/errors.js';
 import { safeJsonParse } from '../../shared/utils.js';
 
 const logger = createLogger('file-watcher');
@@ -134,7 +135,7 @@ export class FileWatcher {
 
         // 3. Validate structure
         if (!isDropFilePayload(parsed)) {
-          throw new Error(
+          throw new ProcessingError(
             `Invalid drop file format: must have 'source' (string) and 'payload' fields`,
           );
         }

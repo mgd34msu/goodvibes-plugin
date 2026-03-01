@@ -6,6 +6,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { ProcessingError } from '../../shared/errors.js';
 
 const logger = createLogger('core:poll');
 
@@ -32,8 +33,8 @@ export function pollUntil<T>(
   const intervalMs = opts.intervalMs ?? 100;
   const deadline = Date.now() + opts.timeoutMs;
 
-  if (opts.timeoutMs < 0) throw new Error('timeoutMs must be >= 0');
-  if (intervalMs <= 0) throw new Error('intervalMs must be > 0');
+  if (opts.timeoutMs < 0) throw new ProcessingError('timeoutMs must be >= 0');
+  if (intervalMs <= 0) throw new ProcessingError('intervalMs must be > 0');
 
   return new Promise<T | null>((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout> | null = null;

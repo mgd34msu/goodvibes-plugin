@@ -23,10 +23,7 @@ import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
-/** Minimal interface for the hook processor — decouples setup.ts from the L3 plugin layer. */
-export interface IHookProcessor {
-  process(hookName: string, hookInput: Record<string, unknown>): Promise<unknown>;
-}
+export { IHookProcessor } from './types.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';

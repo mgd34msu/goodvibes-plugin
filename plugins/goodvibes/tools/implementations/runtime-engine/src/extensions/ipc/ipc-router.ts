@@ -18,10 +18,7 @@ import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import { validateWRFCConfig } from '../directives/wrfc-config-store.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 import type { IPCMessage, IPCResponse, Directive, HookEventMessage, QueryMessage, StateUpdateMessage, HeartbeatMessage } from '../../shared/ipc/protocol.js';
-/** Minimal interface for HookProcessor — decouples IPC router from the L3 plugin layer. */
-export interface IHookProcessorInterface {
-  process(hookName: string, hookInput: Record<string, unknown>): Promise<unknown>;
-}
+export type { IHookProcessor as IHookProcessorInterface } from './types.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';

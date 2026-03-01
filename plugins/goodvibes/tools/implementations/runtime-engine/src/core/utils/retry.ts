@@ -6,6 +6,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { ProcessingError } from '../../shared/errors.js';
 
 const logger = createLogger('core:retry');
 
@@ -49,7 +50,7 @@ export async function retry<T>(
   const delayMs = opts?.delayMs ?? 1000;
   const shouldRetry = opts?.shouldRetry ?? (() => true);
 
-  if (maxAttempts < 1) throw new Error('maxAttempts must be >= 1');
+  if (maxAttempts < 1) throw new ProcessingError('maxAttempts must be >= 1');
 
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {

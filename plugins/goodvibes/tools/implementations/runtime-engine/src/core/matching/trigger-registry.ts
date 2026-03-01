@@ -382,7 +382,7 @@ export class TriggerRegistry implements TriggerRegistryInterface {
    */
   resetFireCount(trigger_id: string): void {
     const state = this.states.get(trigger_id);
-    if (!state) throw new Error(`Trigger '${trigger_id}' not found`);
+    if (!state) throw new ProcessingError(`Trigger '${trigger_id}' not found`);
     state.fire_count = 0;
     state.last_fired_at = 0;
   }

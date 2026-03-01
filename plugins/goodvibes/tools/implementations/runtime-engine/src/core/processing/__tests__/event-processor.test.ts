@@ -159,9 +159,7 @@ interface ProcessorDeps {
 }
 
 function buildProcessor(
-  options: Parameters<typeof EventProcessor.prototype.registerHandler>[1] extends TriggerHandlerFn
-    ? never
-    : import('../event-processor.js').EventProcessorOptions = {},
+  options: import('../event-processor.js').EventProcessorOptions = {},
   depOverrides: Partial<ProcessorDeps> = {},
 ): { processor: EventProcessor; deps: ProcessorDeps } {
   const deps: ProcessorDeps = {
@@ -441,10 +439,10 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const warningCall = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'core:queue_depth_warning',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'core:queue_depth_warning',
       );
       expect(warningCall).toBeDefined();
-      expect(warningCall![0].payload).toMatchObject({ depth: 10, threshold: 10 });
+      expect((warningCall as any[])[0].payload).toMatchObject({ depth: 10, threshold: 10 });
     });
 
     it('does not enqueue a warning event when depth is below threshold', async () => {
@@ -461,7 +459,7 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const warningCall = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'core:queue_depth_warning',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'core:queue_depth_warning',
       );
       expect(warningCall).toBeUndefined();
     });
@@ -477,7 +475,7 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const warningCall = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'core:queue_depth_warning',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'core:queue_depth_warning',
       );
       expect(warningCall).toBeUndefined();
     });
@@ -599,7 +597,7 @@ describe('EventProcessor', () => {
       const requeueCalls = (queue.requeue as ReturnType<typeof vi.fn>).mock.calls;
       // Should have re-queued the 2 overflow events
       const requeuedIds = requeueCalls
-        .flatMap(([evts]: [RuntimeEvent[]]) => evts)
+        .flatMap((args: any[]) => args[0] as RuntimeEvent[])
         .map((e: RuntimeEvent) => e.id);
       expect(requeuedIds).toContain('evt-3');
       expect(requeuedIds).toContain('evt-4');
@@ -616,7 +614,7 @@ describe('EventProcessor', () => {
       // requeue should not have been called for overflow (may be called for locking)
       // but there are no workflow_ids so no locking requeue either
       const requeueForOverflow = (queue.requeue as ReturnType<typeof vi.fn>).mock.calls.filter(
-        ([evts]: [RuntimeEvent[]]) => evts.length === events.length,
+        (args: any[]) => (args[0] as RuntimeEvent[]).length === events.length,
       );
       expect(requeueForOverflow).toHaveLength(0);
     });
@@ -692,7 +690,7 @@ describe('EventProcessor', () => {
       // Remaining 3 events should be re-queued
       const requeueCalls = (queue.requeue as ReturnType<typeof vi.fn>).mock.calls;
       const requeuedTotal = requeueCalls.reduce(
-        (sum: number, [evts]: [RuntimeEvent[]]) => sum + evts.length,
+        (sum: number, args: any[]) => sum + (args[0] as RuntimeEvent[]).length,
         0,
       );
       expect(requeuedTotal).toBeGreaterThanOrEqual(3);
@@ -759,10 +757,10 @@ describe('EventProcessor', () => {
       expect(processed).toBe(0);
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const exceededEvt = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'core:chain_depth_exceeded',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'core:chain_depth_exceeded',
       );
       expect(exceededEvt).toBeDefined();
-      expect(exceededEvt![0].payload).toMatchObject({
+      expect((exceededEvt as any[])[0].payload).toMatchObject({
         original_event_id: 'deep-event',
         original_event_type: 'test:event',
         depth: 11,
@@ -954,7 +952,7 @@ describe('EventProcessor', () => {
       // error event should have been enqueued
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const errorEvtCall = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'core:handler_error',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'core:handler_error',
       );
       expect(errorEvtCall).toBeDefined();
     });
@@ -1198,13 +1196,13 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const enqueuedChained = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'chained:event',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'chained:event',
       );
       expect(enqueuedChained).toBeDefined();
       // Chained event should have parent_event_id set
-      expect(enqueuedChained![0].context?.parent_event_id).toBe('parent-event');
+      expect((enqueuedChained as any[])[0].context?.parent_event_id).toBe('parent-event');
       // chain_depth should be incremented from parent (0 -> 1)
-      expect(enqueuedChained![0].context?.chain_depth).toBe(1);
+      expect((enqueuedChained as any[])[0].context?.chain_depth).toBe(1);
     });
 
     it('inherits workflow_id from parent when child event has no workflow context', async () => {
@@ -1229,9 +1227,9 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const enqueuedChild = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'child:event',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'child:event',
       );
-      expect(enqueuedChild![0].context?.workflow_id).toBe('wf-inherit');
+      expect((enqueuedChild as any[])[0].context?.workflow_id).toBe('wf-inherit');
     });
 
     it('preserves child event workflow_id when child has its own workflow context', async () => {
@@ -1260,9 +1258,9 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const enqueuedChild = enqueuedCalls.find(
-        ([evt]: [RuntimeEvent]) => evt.type === 'child:own:event',
+        (args: any[]) => (args[0] as RuntimeEvent).type === 'child:own:event',
       );
-      expect(enqueuedChild![0].context?.workflow_id).toBe('child-wf');
+      expect((enqueuedChild as any[])[0].context?.workflow_id).toBe('child-wf');
     });
 
     it('does not enqueue events when handler result has no events field', async () => {
@@ -1283,7 +1281,7 @@ describe('EventProcessor', () => {
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       // No non-warning/non-error events should have been enqueued
       const nonInternalEnqueued = enqueuedCalls.filter(
-        ([evt]: [RuntimeEvent]) => !evt.type.startsWith('core:'),
+        (args: any[]) => !(args[0] as RuntimeEvent).type.startsWith('core:'),
       );
       expect(nonInternalEnqueued).toHaveLength(0);
     });
@@ -1521,7 +1519,7 @@ describe('EventProcessor', () => {
       await processor.processBatch();
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
-      const enqueuedTypes = enqueuedCalls.map(([evt]: [RuntimeEvent]) => evt.type);
+      const enqueuedTypes = enqueuedCalls.map((args: any[]) => (args[0] as RuntimeEvent).type);
       expect(enqueuedTypes).toContain('child:from:1');
       expect(enqueuedTypes).toContain('child:from:2');
     });

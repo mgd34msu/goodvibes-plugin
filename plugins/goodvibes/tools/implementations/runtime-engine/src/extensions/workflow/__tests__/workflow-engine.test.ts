@@ -231,7 +231,7 @@ describe('WorkflowEngine', () => {
     });
 
     it('throws when max_active limit is reached', () => {
-      const smallEngine = makeEngine({ max_active: 2, max_transitions_per_workflow: 100 });
+      const smallEngine = makeEngine({ ...DEFAULT_CONFIG, max_active: 2, max_transitions_per_workflow: 100 });
       const def = makeDefinition();
       smallEngine.registerDefinition(def);
       smallEngine.create('test_workflow', {}, 'wf_1');
