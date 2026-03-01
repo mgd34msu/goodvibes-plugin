@@ -21562,6 +21562,14 @@ var ConfigError = class extends RuntimeEngineError {
     super(message, "CONFIG_ERROR", cause);
   }
 };
+var ParseError = class extends RuntimeEngineError {
+  static {
+    __name(this, "ParseError");
+  }
+  constructor(message, cause) {
+    super(message, "PARSE_ERROR", cause);
+  }
+};
 var StateError = class extends RuntimeEngineError {
   static {
     __name(this, "StateError");
@@ -21672,7 +21680,7 @@ var DURATION_UNITS = {
 function parseRelativeTime(input) {
   const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
   if (!match) {
-    throw new Error(
+    throw new ParseError(
       `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
     );
   }
@@ -21682,6 +21690,13 @@ function parseRelativeTime(input) {
   return new Date(Date.now() + ms);
 }
 __name(parseRelativeTime, "parseRelativeTime");
+
+// src/shared/constants.ts
+var ENGINE_VERSION = "1.0.0";
+var MAX_EVENT_TYPE_LENGTH = 100;
+var MAX_OUTPUT_PREVIEW_LENGTH = 200;
+var DEFAULT_HTTP_LISTENER_PORT = 3847;
+var DEFAULT_EVENT_QUERY_LIMIT = 50;
 
 // src/shared/config.ts
 var import_node_path2 = require("node:path");
@@ -21790,7 +21805,7 @@ var DEFAULT_CONFIG = {
     },
     http_listener: {
       enabled: false,
-      port: 3847,
+      port: DEFAULT_HTTP_LISTENER_PORT,
       bind_mode: "localhost",
       address: "127.0.0.1",
       max_payload_bytes: 1 * 1024 * 1024
@@ -21847,11 +21862,6 @@ function saveConfig(projectRoot, config2) {
   writeJsonSync(configPath, config2);
 }
 __name(saveConfig, "saveConfig");
-
-// src/shared/constants.ts
-var ENGINE_VERSION = "1.0.0";
-var MAX_EVENT_TYPE_LENGTH = 100;
-var MAX_OUTPUT_PREVIEW_LENGTH = 200;
 
 // src/shared/logger.ts
 var LEVEL_ORDER = {
@@ -32438,7 +32448,7 @@ var path2 = __toESM(require("node:path"), 1);
 var crypto2 = __toESM(require("node:crypto"), 1);
 var logger39 = createLogger("http-listener");
 var DEFAULT_HTTP_LISTENER_CONFIG = {
-  port: 3847,
+  port: DEFAULT_HTTP_LISTENER_PORT,
   bind_mode: "localhost",
   address: "127.0.0.1",
   max_payload_bytes: 1 * 1024 * 1024
@@ -35574,7 +35584,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
       return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "tail") {
-      const limit = typeof filterRaw.limit === "number" ? filterRaw.limit : 50;
+      const limit = typeof filterRaw.limit === "number" ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT;
       const typePatterns = Array.isArray(filterRaw.types) ? filterRaw.types : void 0;
       const historyFilter = {
         correlation_id: filterRaw.correlation_id,
@@ -35616,7 +35626,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
         correlation_id: filterRaw.correlation_id,
         since: filterRaw.since ? resolveTimestamp(filterRaw.since) : void 0,
         until: filterRaw.until,
-        limit: typeof filterRaw.limit === "number" ? filterRaw.limit : 50
+        limit: typeof filterRaw.limit === "number" ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT
       };
       let events = await ctx.getEventLog().query(logFilter);
       if (hasWildcards && typePatterns) {

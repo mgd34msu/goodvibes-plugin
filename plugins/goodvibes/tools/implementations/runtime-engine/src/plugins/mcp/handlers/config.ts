@@ -312,7 +312,7 @@ export const handleRuntimeConfig = async (
       // prevent shallow-clone aliasing bugs when setNestedValue mutates in-place)
       const current = ctx.getConfig();
       const updated = setNestedValue(
-        structuredClone(current) as Record<string, unknown>,
+        structuredClone(current) as unknown as Record<string, unknown>,
         key,
         value
       ) as unknown as RuntimeConfig;

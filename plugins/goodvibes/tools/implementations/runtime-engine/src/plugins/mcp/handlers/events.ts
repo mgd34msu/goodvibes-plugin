@@ -14,6 +14,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { createLogger } from '../../../shared/logger.js';
 import { parseRelativeTime, toErrorMessage } from '../../../shared/utils.js';
+import { DEFAULT_EVENT_QUERY_LIMIT } from '../../../shared/constants.js';
 import type { EventFilter, RuntimeEvent } from '../../../extensions/events/types.js';
 import type { Directive } from '../../../shared/ipc/protocol.js';
 import type { HandlerContext } from './types.js';
@@ -135,7 +136,7 @@ export const handleRuntimeEvents = async (
 
     // ── tail ──────────────────────────────────────────────────────────────────
     if (action === 'tail') {
-      const limit = typeof filterRaw.limit === 'number' ? filterRaw.limit : 50;
+      const limit = typeof filterRaw.limit === 'number' ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT;
       const typePatterns = Array.isArray(filterRaw.types)
         ? (filterRaw.types as string[])
         : undefined;
@@ -196,7 +197,7 @@ export const handleRuntimeEvents = async (
         correlation_id: filterRaw.correlation_id as string | undefined,
         since: filterRaw.since ? resolveTimestamp(filterRaw.since as string) : undefined,
         until: filterRaw.until as string | undefined,
-        limit: typeof filterRaw.limit === 'number' ? filterRaw.limit : 50,
+        limit: typeof filterRaw.limit === 'number' ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT,
       };
 
       let events = await ctx.getEventLog().query(logFilter);

@@ -20,23 +20,7 @@ vi.mock('../../../shared/logger.js', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-type MockDeps = {
-  workflowEngine: {
-    restoreInstance: ReturnType<typeof vi.fn>;
-    getAllInstances: ReturnType<typeof vi.fn>;
-  } | null;
-  triggerRegistry: {
-    getTriggerStates: ReturnType<typeof vi.fn>;
-    restoreTriggerState: ReturnType<typeof vi.fn>;
-  } | null;
-  agentCoordinator: null;
-  agentWorkflowMap: {
-    bind: ReturnType<typeof vi.fn>;
-    snapshot: ReturnType<typeof vi.fn>;
-  } | null;
-};
-
-function makeDeps(overrides: Partial<MockDeps> = {}): ReplayDeps {
+function makeDeps(overrides: Partial<ReplayDeps> = {}): ReplayDeps {
   return {
     workflowEngine: {
       restoreInstance: vi.fn(),

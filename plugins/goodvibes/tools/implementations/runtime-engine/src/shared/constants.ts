@@ -26,3 +26,14 @@ export const MAX_EVENT_TYPE_LENGTH = 100;
  * Maximum length of agent output previews included in log entries and event payloads.
  */
 export const MAX_OUTPUT_PREVIEW_LENGTH = 200;
+
+/**
+ * Default port for the HTTP listener (external events plugin).
+ * Used in both HttpListenerConfig default and DEFAULT_CONFIG.
+ */
+export const DEFAULT_HTTP_LISTENER_PORT = 3847;
+
+/**
+ * Default limit for event query and tail operations.
+ */
+export const DEFAULT_EVENT_QUERY_LIMIT = 50;

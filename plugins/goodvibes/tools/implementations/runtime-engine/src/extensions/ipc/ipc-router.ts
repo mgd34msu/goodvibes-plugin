@@ -18,7 +18,7 @@ import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import { validateWRFCConfig } from '../directives/wrfc-config-store.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 import type { IPCMessage, IPCResponse, Directive, HookEventMessage, QueryMessage, StateUpdateMessage, HeartbeatMessage } from '../../shared/ipc/protocol.js';
-export type { IHookProcessor as IHookProcessorInterface } from './types.js';
+import type { IHookProcessor as IHookProcessorInterface } from './types.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';
@@ -26,6 +26,8 @@ import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
+
+export type { IHookProcessor as IHookProcessorInterface } from './types.js';
 
 const logger = createLogger('ipc-router');
 

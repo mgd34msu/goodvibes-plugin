@@ -44,7 +44,7 @@ function makeMessage(overrides: Partial<IPCMessage> = {}): IPCMessage {
     payload: {},
     timestamp: Date.now(),
     ...overrides,
-  } as IPCMessage;
+  } as unknown as IPCMessage;
 }
 
 function makeResponse(overrides: Partial<IPCResponse> = {}): IPCResponse {
@@ -101,7 +101,7 @@ describe('FileFallback', () => {
 
     it('writes the message as formatted JSON to the request path', async () => {
       const fb = new FileFallback(STATE_DIR);
-      const msg = makeMessage({ id: 'write-test', type: 'hook:fired' });
+      const msg = makeMessage({ id: 'write-test', type: 'hook:fired' as IPCMessage['type'] });
       await fb.writeRequest(msg);
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         `${STATE_DIR}/ipc-request.json`,
@@ -202,7 +202,7 @@ describe('FileFallback', () => {
       const fb = new FileFallback(STATE_DIR);
       mockExistsSync.mockReturnValueOnce(false);
       await fb.readResponse(100);
-      expect(capturedCheck?.()).toBeNull();
+      expect(capturedCheck!()).toBeNull();
     });
 
     it('poll callback reads, parses, unlinks and returns response when file exists', async () => {
@@ -218,7 +218,7 @@ describe('FileFallback', () => {
       // Now trigger the check function as if the file appeared
       mockExistsSync.mockReturnValueOnce(true);
       mockReadFileSync.mockReturnValueOnce(JSON.stringify(response));
-      const result = capturedCheck?.();
+      const result = capturedCheck!();
       expect(result).toEqual(response);
       expect(mockUnlinkSync).toHaveBeenCalledWith(`${STATE_DIR}/ipc-response.json`);
     });
@@ -234,7 +234,7 @@ describe('FileFallback', () => {
 
       mockExistsSync.mockReturnValueOnce(true);
       mockReadFileSync.mockReturnValueOnce('not-valid-json{{{');
-      const result = capturedCheck?.();
+      const result = capturedCheck!();
       expect(result).toBeNull();
     });
   });
@@ -250,7 +250,7 @@ describe('FileFallback', () => {
     });
 
     it('reads and returns the parsed IPCMessage', async () => {
-      const msg = makeMessage({ id: 'req-1', type: 'hook:fired' });
+      const msg = makeMessage({ id: 'req-1', type: 'hook:fired' as IPCMessage['type'] });
       mockExistsSync.mockReturnValueOnce(true); // request file exists
       mockReadFileSync.mockReturnValueOnce(JSON.stringify(msg));
       mockExistsSync.mockReturnValueOnce(true); // lock file for releaseLock

@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { writeJsonSync } from './file-io.js';
 import { toErrorMessage, safeJsonParse } from './utils.js';
+import { DEFAULT_HTTP_LISTENER_PORT } from './constants.js';
 import { join } from 'node:path';
 import { userInfo, tmpdir } from 'node:os';
 
@@ -329,7 +330,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     },
     http_listener: {
       enabled: false,
-      port: 3847,
+      port: DEFAULT_HTTP_LISTENER_PORT,
       bind_mode: 'localhost' as const,
       address: '127.0.0.1',
       max_payload_bytes: 1 * 1024 * 1024, // 1MB

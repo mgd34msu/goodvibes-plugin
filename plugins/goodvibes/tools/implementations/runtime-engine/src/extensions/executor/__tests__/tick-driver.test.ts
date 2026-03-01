@@ -91,7 +91,7 @@ function makeExecutorMode(mode: 'daemon' | 'engaged' = 'engaged') {
 }
 
 function makeDeps(
-  overrides: Partial<TickDriverDeps> & { mode?: 'daemon' | 'engaged' } = {},
+  overrides: Partial<Record<keyof TickDriverDeps, unknown>> & { mode?: 'daemon' | 'engaged' } = {},
 ): TickDriverDeps {
   const { mode = 'engaged', ...rest } = overrides;
   return {

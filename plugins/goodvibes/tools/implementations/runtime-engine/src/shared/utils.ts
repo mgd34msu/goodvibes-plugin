@@ -6,6 +6,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { ParseError } from './errors.js';
 
 /**
  * Generates a universally unique identifier using Node's built-in crypto module.
@@ -121,7 +122,7 @@ const DURATION_UNITS: Record<string, number> = {
 export function parseRelativeTime(input: string): Date {
   const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
   if (!match) {
-    throw new Error(
+    throw new ParseError(
       `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
     );
   }

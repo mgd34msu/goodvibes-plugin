@@ -22,6 +22,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { createLogger } from '../../shared/logger.js';
+import { DEFAULT_HTTP_LISTENER_PORT } from '../../shared/constants.js';
 import { ConfigError } from '../../shared/errors.js';
 import { safeJsonParse } from '../../shared/utils.js';
 import { readStreamBody } from '../../core/state/stream-reader.js';
@@ -44,7 +45,7 @@ export interface HttpListenerConfig {
 }
 
 export const DEFAULT_HTTP_LISTENER_CONFIG: HttpListenerConfig = {
-  port: 3847,
+  port: DEFAULT_HTTP_LISTENER_PORT,
   bind_mode: 'localhost',
   address: '127.0.0.1',
   max_payload_bytes: 1 * 1024 * 1024, // 1MB

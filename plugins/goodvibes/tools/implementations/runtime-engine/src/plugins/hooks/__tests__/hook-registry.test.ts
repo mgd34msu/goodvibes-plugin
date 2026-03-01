@@ -10,12 +10,13 @@ import { HookRegistry } from '../hook-registry.js';
 import type { RegisteredHandler } from '../hook-registry.js';
 import type { HookEvent } from '../../../extensions/events/factories.js';
 import type { ClaudeHookResponse } from '../hook-processor.js';
+import type { HookHandler } from '../hook-registry.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const noop = vi.fn<[HookEvent, Record<string, unknown>], Promise<ClaudeHookResponse | null>>(
+const noop = vi.fn<() => Promise<ClaudeHookResponse | null>>(
   async () => null,
-);
+) as unknown as HookHandler;
 
 function makeHandler(
   id: string,

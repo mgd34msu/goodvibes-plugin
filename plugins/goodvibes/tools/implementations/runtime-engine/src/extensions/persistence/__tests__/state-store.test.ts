@@ -140,7 +140,7 @@ describe('JsonStateStore — get()', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns parsed value on success', async () => {
-    mockReadFileSync.mockReturnValueOnce(JSON.stringify({ x: 42 }) as unknown as Buffer);
+    mockReadFileSync.mockReturnValueOnce(JSON.stringify({ x: 42 }) as unknown as string);
     const store = new JsonStateStore(makeConfig(), '/root');
     const result = await store.get<{ x: number }>('myKey');
     expect(result).toEqual({ x: 42 });
@@ -164,19 +164,19 @@ describe('JsonStateStore — get()', () => {
   });
 
   it('throws StateError when file contains invalid JSON', async () => {
-    mockReadFileSync.mockReturnValueOnce('not-json{{{' as unknown as Buffer);
+    mockReadFileSync.mockReturnValueOnce('not-json{{{' as unknown as string);
     const store = new JsonStateStore(makeConfig(), '/root');
     await expect(store.get('key')).rejects.toThrow(StateError);
   });
 
   it('throws StateError when JSON parses to null', async () => {
-    mockReadFileSync.mockReturnValueOnce('null' as unknown as Buffer);
+    mockReadFileSync.mockReturnValueOnce('null' as unknown as string);
     const store = new JsonStateStore(makeConfig(), '/root');
     await expect(store.get('key')).rejects.toThrow(StateError);
   });
 
   it('reads from path containing the key name', async () => {
-    mockReadFileSync.mockReturnValueOnce(JSON.stringify({ a: 1 }) as unknown as Buffer);
+    mockReadFileSync.mockReturnValueOnce(JSON.stringify({ a: 1 }) as unknown as string);
     const store = new JsonStateStore(makeConfig('state'), '/root');
     await store.get('runtime.checkpoint');
     expect(mockReadFileSync).toHaveBeenCalledWith(
@@ -292,7 +292,7 @@ describe('JsonStateStore — update()', () => {
   });
 
   it('calls updater with the current value', async () => {
-    mockReadFileSync.mockReturnValueOnce(JSON.stringify({ count: 5 }) as unknown as Buffer);
+    mockReadFileSync.mockReturnValueOnce(JSON.stringify({ count: 5 }) as unknown as string);
     mockWriteFileSync.mockImplementationOnce(() => {}); // lock acquired
 
     const updater = vi.fn((current: { count: number } | null) => ({ count: (current?.count ?? 0) + 1 }));

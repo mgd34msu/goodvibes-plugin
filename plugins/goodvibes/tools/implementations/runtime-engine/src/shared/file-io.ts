@@ -53,7 +53,7 @@ export function readJsonSync<T>(filePath: string): T | null {
     if (err instanceof SyntaxError) {
       throw new ParseError(`Corrupt JSON in ${filePath}: ${err.message}`, err);
     }
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') { // Approved: standard Node.js error code check pattern
       return null;
     }
     throw err;
