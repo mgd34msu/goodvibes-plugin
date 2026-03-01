@@ -1,15 +1,15 @@
 /**
  * bootstrap.ts — Composition root for the runtime engine.
  *
- * This file is the thin coordinator / facade. It:
- * 1. Creates and wires all runtime subsystems via focused sub-bootstrap modules.
+ * This file is the sole cross-layer wiring point. It:
+ * 1. Creates each layer's subsystem via per-layer factories.
  * 2. Provides the public RuntimeEngine class (the sole export consumed externally).
- * 3. Delegates executor, plugin, and IPC initialization to dedicated modules.
  *
- * Sub-bootstrap modules (peer files alongside this composition root):
- * - executor-bootstrap.ts  — ExecutorModeManager, ExecutorBudgetManager, DaemonTickHandler
- * - plugin-bootstrap.ts    — Core event queue, plugins, hooks, event bridge, tick driver
- * - ipc-bootstrap.ts       — IPC server, router, socket pointer file
+ * Layer factories called during startup:
+ * - L1: createCoreRuntime()       — core/runtime.ts
+ * - L2: createExecutorSubsystem() — extensions/executor/subsystem.ts
+ * - L2: createIPCSubsystem()      — extensions/ipc/setup.ts
+ * - L3: createHookSubsystem()     — plugins/hooks/index.ts
  */
 
 import { join } from 'node:path';
@@ -51,27 +51,25 @@ import {
   AgentWorkflowMap,
 } from './extensions/directives/index.js';
 
-import type { EventProcessor } from './core/index.js';
-import type { HookProcessor } from './plugins/index.js';
+import { createCoreRuntime, type CoreRuntime, type EventProcessor } from './core/index.js';
+import {
+  registerWRFCPlugin,
+  getDefaultWRFCConfig,
+  TimePlugin,
+  ExternalPlugin,
+  type ExternalPluginConfig,
+  type HookProcessor,
+} from './plugins/index.js';
+import { createHookSubsystem } from './plugins/hooks/index.js';
 import type { ExecutorModeManager } from './core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from './extensions/executor/executor-budget.js';
 import type { DaemonTickHandler } from './extensions/executor/daemon-tick-handler.js';
-
-// Sub-bootstrap modules
-import {
-  initializeExecutor,
-  type ExecutorSubsystem,
-} from './extensions/executor/executor-bootstrap.js';
-import {
-  initializePlugins,
-  cleanupPlugins,
-  type PluginSubsystem,
-} from './plugins/plugin-bootstrap.js';
-import {
-  startIPCServer,
-  teardownIPCServer,
-  type IPCSubsystem,
-} from './extensions/ipc/ipc-bootstrap.js';
+import { createExecutorSubsystem, type ExecutorSubsystem } from './extensions/executor/index.js';
+import { ActionExecutor } from './extensions/executor/action-executor.js';
+import { TickDriver } from './extensions/executor/tick-driver.js';
+import { EventBridge } from './extensions/events/event-bridge.js';
+import { createIPCSubsystem } from './extensions/ipc/index.js';
+import { teardownIPC, type IPCSubsystem } from './shared/ipc/ipc-server.js';
 
 const logger = createLogger('bootstrap');
 
@@ -80,10 +78,11 @@ const logger = createLogger('bootstrap');
  * runtime engine, managing configuration, state persistence, PID locking,
  * and periodic checkpointing.
  *
- * Initialization is delegated to focused sub-bootstrap modules:
- * - executor-bootstrap: ExecutorModeManager, ExecutorBudgetManager, DaemonTickHandler
- * - plugin-bootstrap: core event queue, hooks, plugins, event bridge, tick driver
- * - ipc-bootstrap: IPC server, router, and socket pointer file
+ * Initialization is delegated to per-layer factories:
+ * - L1: createCoreRuntime() — event queue, state store, event processor
+ * - L2: createExecutorSubsystem() — mode manager, budget, daemon tick handler
+ * - L2: createIPCSubsystem() — IPC server + router wiring
+ * - L3: createHookSubsystem() — hook registry + processor
  */
 export class RuntimeEngine {
   /** Unix epoch millisecond timestamp recorded at startup. */
@@ -141,13 +140,22 @@ export class RuntimeEngine {
   /** Snapshot manager for periodic state snapshots and recovery. */
   private snapshotManager: SnapshotManager | null = null;
 
-  // ─── Sub-bootstrap subsystems ─────────────────────────────────────────────
+  // ─── Sub-layer subsystems ──────────────────────────────────────────────────
 
-  /** Executor subsystem (mode, budget, daemon tick handler). */
+  /** L1 core runtime (event queue, trigger registry, state store, event processor). */
+  private coreRuntime: CoreRuntime | null = null;
+
+  /** L2 executor subsystem (mode, budget, daemon tick handler). */
   private executorSubsystem: ExecutorSubsystem | null = null;
 
-  /** Plugin subsystem (core queue, hooks, plugins, event bridge, tick driver). */
-  private pluginSubsystem: PluginSubsystem | null = null;
+  /** L2 event bridge (EventBus → core EventQueue). */
+  private eventBridge: EventBridge | null = null;
+
+  /** L2 tick driver for periodic processing. */
+  private tickDriver: TickDriver | null = null;
+
+  /** L3 hook processor. */
+  private hookProcessor: HookProcessor | null = null;
 
   /** IPC subsystem (server, router). */
   private ipcSubsystem: IPCSubsystem | null = null;
@@ -336,39 +344,105 @@ export class RuntimeEngine {
       60_000,
     );
 
-    // 10. Initialize executor subsystem before plugins so that
-    // registerDefaultHandlers() receives live executor deps.
-    this.executorSubsystem = initializeExecutor({
-      config: this.config,
-      eventBus: this.eventBus,
-    });
+    // 10. Create L2 executor subsystem (before L3 hooks so that
+    // registerDefaultHandlers() receives live executor deps).
+    this.executorSubsystem = createExecutorSubsystem(this.config, this.eventBus);
 
-    // 10b. Initialize plugins
-    this.pluginSubsystem = await initializePlugins({
-      config: this.config,
+    // 10b. Create L1 core runtime
+    const actionExecutor = this.directiveQueue
+      ? new ActionExecutor(this.directiveQueue)
+      : undefined;
+    this.coreRuntime = createCoreRuntime(actionExecutor);
+    logger.debug('Core runtime created');
+
+    // 10c. Register WRFC plugin (L3)
+    registerWRFCPlugin({
+      processor: this.coreRuntime.eventProcessor,
+      registry: this.coreRuntime.triggerRegistry,
+      store: this.coreRuntime.stateStore,
+      config: getDefaultWRFCConfig(),
+    });
+    logger.debug('WRFC plugin registered');
+
+    // 10d. Bridge L2 EventBus events to L1 core EventQueue
+    this.eventBridge = new EventBridge(this.eventBus, this.coreRuntime.eventQueue);
+    this.eventBridge.start();
+    logger.debug('Event bridge started');
+
+    // 10e. Create L3 hook subsystem
+    const hookSubsystem = createHookSubsystem({
       eventBus: this.eventBus,
       directiveQueue: this.directiveQueue,
       agentWorkflowMap: this.agentWorkflowMap,
       daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
       executorMode: this.executorSubsystem?.executorMode ?? null,
-      watchdog: this.watchdog,
     });
+    this.hookProcessor = hookSubsystem.hookProcessor;
+    logger.debug('Hook subsystem created', { handlerCount: hookSubsystem.hookRegistry.count() });
 
-    // 10c. Restore executor budget from coreStateStore now that it has been created.
-    if (this.executorSubsystem?.executorBudget && this.pluginSubsystem?.coreStateStore) {
-      this.executorSubsystem.executorBudget.restore(this.pluginSubsystem.coreStateStore);
+    // 10f. Create L3 time plugin
+    const timePlugin = new TimePlugin({
+      queue: this.coreRuntime.eventQueue,
+      store: this.coreRuntime.stateStore,
+      config: this.config.time,
+    });
+    logger.debug('Time plugin created');
+
+    // 10g. Create L3 external plugin
+    const { enabled: httpEnabled, ...httpListenerConfig } = this.config.external.http_listener;
+    const externalPluginConfig: ExternalPluginConfig = {
+      file_watcher: this.config.external.file_watcher,
+      ...(httpEnabled ? { http_listener: httpListenerConfig } : {}),
+    };
+    const externalPlugin = new ExternalPlugin(this.coreRuntime.eventQueue, externalPluginConfig);
+    try {
+      await externalPlugin.initialize();
+    } catch (err) {
+      logger.warn('External plugin initialisation failed', { err: toErrorMessage(err) });
+    }
+    if (httpEnabled) {
+      try {
+        await externalPlugin.startHttpListener();
+        logger.info('HTTP webhook listener started', {
+          port: this.config.external.http_listener.port,
+          host: this.config.external.http_listener.address,
+        });
+      } catch (err) {
+        logger.warn('Failed to start HTTP webhook listener', { err: toErrorMessage(err) });
+      }
+    }
+    logger.debug('External plugin created');
+
+    // 10h. Create L2 tick driver
+    if (!this.executorSubsystem?.executorMode) {
+      logger.warn('Skipping tick driver — executorMode not available');
+    } else {
+      this.tickDriver = new TickDriver({
+        config: this.config.executor,
+        executorMode: this.executorSubsystem.executorMode,
+        timePlugin,
+        externalPlugin: externalPlugin ?? undefined,
+        eventProcessor: this.coreRuntime.eventProcessor ?? undefined,
+        staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
+      });
+      logger.debug('Tick driver created');
     }
 
-    // 10d. Wire live queue depth into DaemonTickHandler now that coreEventQueue exists.
-    if (this.executorSubsystem?.daemonTickHandler && this.pluginSubsystem?.coreEventQueue) {
-      const queue = this.pluginSubsystem.coreEventQueue;
+    // 10i. Restore executor budget from coreStateStore
+    if (this.executorSubsystem?.executorBudget && this.coreRuntime.stateStore) {
+      this.executorSubsystem.executorBudget.restore(this.coreRuntime.stateStore);
+    }
+
+    // 10j. Wire live queue depth into DaemonTickHandler
+    if (this.executorSubsystem?.daemonTickHandler && this.coreRuntime.eventQueue) {
+      const queue = this.coreRuntime.eventQueue;
       this.executorSubsystem.daemonTickHandler.setQueueDepthGetter(() => queue.depth());
     }
 
     // 11. Start IPC server if enabled
     let ipcSocketPath: string | null = null;
     if (this.config.features.ipc_enabled) {
-      const ipcResult = await startIPCServer({
+      const ipcResult = await createIPCSubsystem({
         config: this.config,
         projectRoot: this.projectRoot,
         eventBus: this.eventBus,
@@ -378,7 +452,7 @@ export class RuntimeEngine {
         directiveQueue: this.directiveQueue,
         wrfcConfigStore: this.wrfcConfigStore,
         agentWorkflowMap: this.agentWorkflowMap,
-        hookProcessor: this.pluginSubsystem?.hookProcessor ?? null,
+        hookProcessor: this.hookProcessor,
         executorMode: this.executorSubsystem?.executorMode ?? null,
         executorBudget: this.executorSubsystem?.executorBudget ?? null,
         daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
@@ -392,7 +466,7 @@ export class RuntimeEngine {
     }
 
     // 12. Start tick driver
-    this.pluginSubsystem?.tickDriver?.start();
+    this.tickDriver?.start();
 
     // 13. Emit startup event
     this.eventBus.emit({
@@ -452,11 +526,11 @@ export class RuntimeEngine {
 
       // 2. Stop checkpoint timer, tick driver, and periodic snapshots
       this.checkpointManager?.stop();
-      this.pluginSubsystem?.tickDriver?.stop();
+      this.tickDriver?.stop();
       // Save coreStateStore reference before cleanup (needed for budget persistence in step 7b)
-      const coreStateStoreForShutdown = this.pluginSubsystem?.coreStateStore ?? null;
-      cleanupPlugins(this.pluginSubsystem);
-      this.pluginSubsystem = null;
+      const coreStateStoreForShutdown = this.coreRuntime?.stateStore ?? null;
+      this.eventBridge?.stop();
+      this.eventBridge = null;
       if (this.snapshotManager) {
         this.snapshotManager.stopPeriodicSnapshots();
       }
@@ -480,7 +554,7 @@ export class RuntimeEngine {
 
       // 4. Close IPC server
       if (this.ipcSubsystem) {
-        await teardownIPCServer(this.ipcSubsystem, this.projectRoot, this.config);
+        await teardownIPC(this.ipcSubsystem, this.projectRoot, this.config);
         this.ipcSubsystem = null;
       }
 
@@ -616,8 +690,8 @@ export class RuntimeEngine {
     if (this.executorSubsystem?.executorMode) {
       this.executorSubsystem.executorMode.updateConfig(config.executor);
     }
-    if (this.pluginSubsystem?.tickDriver) {
-      this.pluginSubsystem.tickDriver.reconfigure(config.executor);
+    if (this.tickDriver) {
+      this.tickDriver.reconfigure(config.executor);
     }
     // Note: time and external plugin configs are applied at construction time only.
   }
@@ -711,14 +785,14 @@ export class RuntimeEngine {
    * Return the HookProcessor, or null if it has not been initialised.
    */
   getHookProcessor(): HookProcessor | null {
-    return this.pluginSubsystem?.hookProcessor ?? null;
+    return this.hookProcessor;
   }
 
   /**
    * Return the EventProcessor, or null if it has not been initialised.
    */
   getEventProcessor(): EventProcessor | null {
-    return this.pluginSubsystem?.eventProcessor ?? null;
+    return this.coreRuntime?.eventProcessor ?? null;
   }
 
   /**

@@ -30,3 +30,26 @@ export type {
   PostToolUseDeps,
   UserPromptSubmitDeps,
 } from './handlers/index.js';
+
+// ─── Hook subsystem factory ──────────────────────────────────────────────────
+
+import type { DefaultHandlerDeps } from './handlers/index.js';
+
+/** Bundle of L3 hook components. */
+export interface HookSubsystem {
+  hookProcessor: HookProcessor;
+  hookRegistry: HookRegistry;
+}
+
+/**
+ * Create the hook subsystem: registry + processor with default handlers.
+ */
+export function createHookSubsystem(deps: DefaultHandlerDeps): HookSubsystem {
+  const hookRegistry = new HookRegistry();
+  const hookProcessor = new HookProcessor({
+    registry: hookRegistry,
+    sessionId: '',
+  });
+  registerDefaultHandlers(hookRegistry, deps);
+  return { hookProcessor, hookRegistry };
+}

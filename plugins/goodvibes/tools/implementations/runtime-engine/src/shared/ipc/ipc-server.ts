@@ -17,12 +17,14 @@
 
 import * as net from 'node:net';
 import { mkdirSync, existsSync, unlinkSync, chmodSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import type { IPCMessage, IPCResponse } from './protocol.js';
 import { validateIPCMessage } from './protocol.js';
 import { createLogger } from '../logger.js';
 import { toErrorMessage } from '../utils.js';
+import type { IPCRouter } from './ipc-router.js';
+import type { RuntimeConfig } from '../config.js';
 
 const logger = createLogger('ipc-server');
 
@@ -440,5 +442,56 @@ export class IPCServer {
         err: toErrorMessage(err),
       });
     }
+  }
+}
+
+// ─── IPC lifecycle utilities ──────────────────────────────────────────────────
+
+/** Bundle of IPC components (server + router + socket path). */
+export interface IPCSubsystem {
+  ipcServer: IPCServer;
+  ipcRouter: IPCRouter;
+  socketPath: string;
+}
+
+/**
+ * Remove the socket pointer file written during IPC setup.
+ */
+export function removeSocketPointerFile(projectRoot: string, config: RuntimeConfig): void {
+  const pointerFile = join(
+    projectRoot,
+    config.persistence.state_dir,
+    `runtime-${process.pid}.socket`,
+  );
+  try {
+    unlinkSync(pointerFile);
+    logger.debug('Socket pointer file removed', { path: pointerFile });
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      logger.warn('Could not remove socket pointer file', {
+        path: pointerFile,
+        err: toErrorMessage(err),
+      });
+    }
+  }
+}
+
+/**
+ * Gracefully close the IPC server and clean up.
+ */
+export async function teardownIPC(
+  subsystem: IPCSubsystem,
+  projectRoot: string,
+  config: RuntimeConfig,
+): Promise<void> {
+  try {
+    await subsystem.ipcServer.close();
+    removeSocketPointerFile(projectRoot, config);
+    subsystem.ipcRouter.removeSessionPointers();
+    logger.debug('IPC teardown complete');
+  } catch (err) {
+    logger.warn('IPC teardown failed', {
+      err: toErrorMessage(err),
+    });
   }
 }
