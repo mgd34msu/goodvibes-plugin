@@ -7,7 +7,7 @@
  * Each factory creates a typed event with sensible defaults.
  */
 
-import type { RuntimeEvent, EventContext } from '../../shared/events.js';
+import type { RuntimeEvent, EventContext, EventType, EventPayload } from '../../shared/events.js';
 import { createEvent } from '../../shared/events.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,20 +43,6 @@ export interface HookEvent extends RuntimeEvent {
   hook_input: Record<string, unknown>;
   /** Session ID of the Claude Code session that fired the hook. */
   session_id: string;
-}
-
-/**
- * Narrows a RuntimeEvent to HookEvent.
- */
-function isHookEvent(event: RuntimeEvent): event is HookEvent {
-  return (
-    typeof event.source === 'object' &&
-    event.source !== null &&
-    'kind' in event.source &&
-    (event.source as { kind: string }).kind === 'internal' &&
-    'hook_type' in event &&
-    'hook_input' in event
-  );
 }
 
 /**
@@ -104,8 +90,8 @@ export function createHookEvent(params: {
 }): HookEvent {
   const base = createEvent({
     source: { kind: 'internal' } as const,
-    type: (params.type ?? `hook:${hookTypeToSlug(params.hook_type)}`) as import('../../shared/events.js').EventType,
-    payload: (params.payload ?? params.hook_input) as import('../../shared/events.js').EventPayload,
+    type: (params.type ?? `hook:${hookTypeToSlug(params.hook_type)}`) as EventType,
+    payload: (params.payload ?? params.hook_input) as EventPayload,
     priority: params.priority ?? 50,
     context: params.context,
     metadata: { session_id: '', sequence: 0 },
@@ -144,56 +130,6 @@ interface AgentEvent extends RuntimeEvent {
   artifacts?: string[];
 }
 
-/**
- * Narrows a RuntimeEvent to AgentEvent.
- */
-function isAgentEvent(event: RuntimeEvent): event is AgentEvent {
-  return (
-    typeof event.source === 'object' &&
-    event.source !== null &&
-    'kind' in event.source &&
-    (event.source as { kind: string }).kind === 'agent' &&
-    'agent_id' in event &&
-    'agent_type' in event
-  );
-}
-
-/**
- * Creates an AgentEvent with sensible defaults.
- * Priority defaults to 60 (agent events are above-average priority).
- */
-function createAgentEvent(params: {
-  agent_id: string;
-  agent_type: string;
-  /** e.g. 'agent:completed', 'agent:blocked', 'agent:spawned' */
-  type: string;
-  result?: unknown;
-  score?: number;
-  artifacts?: string[];
-  payload?: unknown;
-  /** Default 60 — agent events are above-average priority. */
-  priority?: number;
-  context?: EventContext;
-}): AgentEvent {
-  const base = createEvent({
-    source: { kind: 'agent', agent_id: params.agent_id } as const,
-    type: params.type as import('../../shared/events.js').EventType,
-    payload: (params.payload ?? { agent_id: params.agent_id, agent_type: params.agent_type }) as import('../../shared/events.js').EventPayload,
-    priority: params.priority ?? 60,
-    context: params.context,
-    metadata: { session_id: '', sequence: 0 },
-  });
-  return {
-    ...base,
-    source: { kind: 'agent', agent_id: params.agent_id } as const,
-    agent_id: params.agent_id,
-    agent_type: params.agent_type,
-    ...(params.result !== undefined && { result: params.result }),
-    ...(params.score !== undefined && { score: params.score }),
-    ...(params.artifacts !== undefined && { artifacts: params.artifacts }),
-  };
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // ExternalEvent
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,20 +146,6 @@ export interface ExternalEvent extends RuntimeEvent {
   raw_payload: unknown;
   /** Whether the payload was normalized by an adapter into a canonical shape. */
   normalized: boolean;
-}
-
-/**
- * Narrows a RuntimeEvent to ExternalEvent.
- */
-function isExternalEvent(event: RuntimeEvent): event is ExternalEvent {
-  return (
-    typeof event.source === 'object' &&
-    event.source !== null &&
-    'kind' in event.source &&
-    (event.source as { kind: string }).kind === 'external' &&
-    'external_source' in event &&
-    'raw_payload' in event
-  );
 }
 
 /**
@@ -245,8 +167,8 @@ export function createExternalEvent(params: {
 }): ExternalEvent {
   const base = createEvent({
     source: { kind: 'external', origin: params.external_source } as const,
-    type: params.type as import('../../shared/events.js').EventType,
-    payload: (params.payload ?? params.raw_payload) as import('../../shared/events.js').EventPayload,
+    type: params.type as EventType,
+    payload: (params.payload ?? params.raw_payload) as EventPayload,
     priority: params.priority ?? 30,
     context: params.context,
     metadata: { session_id: '', sequence: 0 },
@@ -278,52 +200,6 @@ interface HumanEvent extends RuntimeEvent {
   approval?: boolean;
 }
 
-/**
- * Narrows a RuntimeEvent to HumanEvent.
- * Only checks source discriminant since all extension fields (prompt, command, approval) are optional.
- * Any event with source 'human' is a valid HumanEvent by definition.
- */
-function isHumanEvent(event: RuntimeEvent): event is HumanEvent {
-  return (
-    typeof event.source === 'object' &&
-    event.source !== null &&
-    'kind' in event.source &&
-    (event.source as { kind: string }).kind === 'user'
-  );
-}
-
-/**
- * Creates a HumanEvent with sensible defaults.
- * Priority defaults to 100 — human events are the highest priority.
- */
-function createHumanEvent(params: {
-  /** e.g. 'human:prompt', 'human:stop', 'human:approval' */
-  type: string;
-  prompt?: string;
-  command?: string;
-  approval?: boolean;
-  payload?: unknown;
-  /** Default 100 — human events are highest priority. */
-  priority?: number;
-  context?: EventContext;
-}): HumanEvent {
-  const base = createEvent({
-    source: { kind: 'user' } as const,
-    type: params.type as import('../../shared/events.js').EventType,
-    payload: (params.payload ?? {}) as import('../../shared/events.js').EventPayload,
-    priority: params.priority ?? 100,
-    context: params.context,
-    metadata: { session_id: '', sequence: 0 },
-  });
-  return {
-    ...base,
-    source: { kind: 'user' } as const,
-    ...(params.prompt !== undefined && { prompt: params.prompt }),
-    ...(params.command !== undefined && { command: params.command }),
-    ...(params.approval !== undefined && { approval: params.approval }),
-  };
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // TimeEvent
 // ─────────────────────────────────────────────────────────────────────────────
@@ -351,19 +227,6 @@ export interface TimeEvent extends RuntimeEvent {
   fires_remaining?: number;
   /** Unix epoch ms when the event was originally scheduled. */
   scheduled_at?: number;
-}
-
-/**
- * Narrows a RuntimeEvent to TimeEvent.
- */
-function isTimeEvent(event: RuntimeEvent): event is TimeEvent {
-  return (
-    typeof event.source === 'object' &&
-    event.source !== null &&
-    'kind' in event.source &&
-    (event.source as { kind: string }).kind === 'time' &&
-    'time_type' in event
-  );
 }
 
 /**
@@ -402,8 +265,8 @@ export function createTimeEvent(params: {
 }): TimeEvent {
   const base = createEvent({
     source: { kind: 'time' } as const,
-    type: (params.type ?? defaultTimeEventType(params.time_type)) as import('../../shared/events.js').EventType,
-    payload: (params.payload ?? {}) as import('../../shared/events.js').EventPayload,
+    type: (params.type ?? defaultTimeEventType(params.time_type)) as EventType,
+    payload: (params.payload ?? {}) as EventPayload,
     priority: params.priority ?? 10,
     context: params.context,
     metadata: { session_id: '', sequence: 0 },

@@ -109,7 +109,6 @@ const {
 
 vi.mock('../queues/event-queue.js', () => ({ EventQueue: MockEventQueue }));
 vi.mock('../queues/dead-letter.js', () => ({ DeadLetterQueue: MockDeadLetterQueue }));
-vi.mock('../matching/trigger-registry.js', () => ({ TriggerRegistry: MockTriggerRegistry }));
 vi.mock('../matching/error-handler.js', () => ({ ErrorHandler: MockErrorHandler }));
 vi.mock('../processing/event-processor.js', () => ({ EventProcessor: MockEventProcessor }));
 vi.mock('../processing/lifecycle.js', () => ({ LoopLifecycleManager: MockLoopLifecycleManager }));

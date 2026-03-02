@@ -14,7 +14,7 @@ import type { AgentWorkflowMap } from '../../../../extensions/directives/agent-w
 function makeMockEvent(session_id = 'session-1'): HookEvent {
   return {
     id: 'evt-1',
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     type: 'hook',
     source: { kind: 'hook', hook_name: 'subagent_start' },
     hook_type: 'SubagentStart',

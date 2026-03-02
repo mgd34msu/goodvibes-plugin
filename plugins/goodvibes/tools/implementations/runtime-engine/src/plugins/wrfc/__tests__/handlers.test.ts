@@ -65,7 +65,7 @@ import {
 function makeEvent(payload: Record<string, unknown> = {}, contextOverrides: Record<string, unknown> = {}): RuntimeEvent {
   return {
     id: 'evt-1',
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     type: 'agent:completed' as RuntimeEvent['type'],
     source: { kind: 'agent' },
     payload: payload as RuntimeEvent['payload'],

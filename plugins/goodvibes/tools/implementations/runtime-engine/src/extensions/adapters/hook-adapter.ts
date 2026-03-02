@@ -12,7 +12,7 @@
  * in a silent no-op (unknown hook name returned null).
  */
 
-import { randomUUID } from 'crypto';
+import { generateEventId } from '../../shared/utils.js';
 import type { RuntimeEvent } from '../../shared/events.js';
 import type { EventSourceAdapter, AdapterStatus } from './types.js';
 import type { HookType } from '../events/factories.js';
@@ -186,7 +186,7 @@ export class HookAdapter implements EventSourceAdapter {
       // Construct the RuntimeEvent directly to avoid createEvent's metadata requirement.
       // Metadata (session_id, sequence) is populated by the EventBus on emit.
       const event: RuntimeEvent = {
-        id: randomUUID(),
+        id: generateEventId(),
         source: { kind: 'hook', hook_name: hookType },
         // Cast needed: eventType is a runtime string mapped from known HookType values
         // so it is always a valid EventType member.

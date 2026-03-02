@@ -52,7 +52,7 @@ function makeEvent(type: string, seq: number, payload?: Record<string, unknown>)
     id: `evt_${seq}`,
     type: type as RuntimeEvent['type'],
     source: { kind: 'system' },
-    timestamp: new Date(1_700_000_000_000 + seq * 1000).toISOString(),
+    timestamp: 1_700_000_000_000 + seq * 1000,
     payload: payload ?? {},
     metadata: { sequence: seq },
   } as unknown as RuntimeEvent;

@@ -19,7 +19,7 @@ let _idCounter = 0;
 vi.mock('../../../shared/utils.js', () => ({
   generateId: () => `id-${++_idCounter}`,
   generateEventId: () => `evt-${++_idCounter}`,
-  timestamp: () => new Date().toISOString(),
+  timestamp: () => Date.now(),
   toErrorMessage: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }));
 

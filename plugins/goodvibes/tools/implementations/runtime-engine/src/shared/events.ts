@@ -189,7 +189,7 @@ export type EventType =
   | 'wrfc:escalated'
   /** The WRFC loop completed successfully. */
   | 'wrfc:completed'
-  /** The active phase of a WRFC chain changed. */
+  /** The active phase of a workflow chain changed. */
   | 'workflow:phase_changed'
   /** Review score could not be parsed from reviewer output. */
   | 'wrfc:review_parse_failed'

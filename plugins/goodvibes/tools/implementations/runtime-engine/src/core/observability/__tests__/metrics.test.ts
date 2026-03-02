@@ -23,7 +23,7 @@ function makeEvent(overrides: Partial<Omit<RuntimeEvent, 'type'>> & { type?: str
     id: 'evt-001',
     type: 'test:event',
     source: 'test',
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     context: chain_depth !== undefined ? { chain_depth } as RuntimeEvent['context'] : undefined,
     ...rest,
   } as RuntimeEvent;

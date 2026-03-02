@@ -56,7 +56,7 @@ function makeNormalizers(): NormalizerRegistry {
   // Register a simple passthrough normalizer
   reg.register('test', (rawPayload) => ({
     id: 'evt-1',
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     type: 'external:test',
     source: { kind: 'external', source_name: 'test' },
     payload: { type: 'external:test', data: rawPayload },

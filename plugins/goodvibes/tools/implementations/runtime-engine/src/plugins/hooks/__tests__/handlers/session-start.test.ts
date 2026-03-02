@@ -14,7 +14,7 @@ import type { EventBus } from '../../../../extensions/events/event-bus.js';
 function makeMockEvent(session_id = 'session-abc'): HookEvent {
   return {
     id: 'evt-1',
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     type: 'hook',
     source: { kind: 'hook', hook_name: 'session_start' },
     hook_type: 'SessionStart',
