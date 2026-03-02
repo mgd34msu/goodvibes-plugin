@@ -11,8 +11,8 @@ describe('getBuiltinTriggers', () => {
   // ─── count and structure ───────────────────────────────────────────────────────
 
   describe('count and structure', () => {
-    it('returns exactly 16 built-in triggers', () => {
-      expect(triggers).toHaveLength(16);
+    it('returns exactly 5 built-in triggers', () => {
+      expect(triggers).toHaveLength(5);
     });
 
     it('returns a fresh array on each call (not cached)', () => {
@@ -144,117 +144,6 @@ describe('getBuiltinTriggers', () => {
       }
     });
 
-    it('builtin_wrfc_auto_review: sequence condition for wrfc:writing_started then agent:completed', () => {
-      const t = findTrigger('builtin_wrfc_auto_review');
-      expect(t.condition.type).toBe('sequence');
-      if (t.condition.type === 'sequence') {
-        expect(t.condition.events).toEqual(['wrfc:writing_started', 'agent:completed']);
-      }
-    });
-
-    it('builtin_wrfc_spawn_reviewer: invoke_handler with wrfc_chain_next', () => {
-      const t = findTrigger('builtin_wrfc_spawn_reviewer');
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('wrfc_chain_next');
-      }
-    });
-
-    it('builtin_wrfc_spawn_fixer: invoke_handler with wrfc_review_response', () => {
-      const t = findTrigger('builtin_wrfc_spawn_fixer');
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('wrfc_review_response');
-      }
-    });
-
-    it('builtin_wrfc_fix_review_loop: invoke_handler with wrfc_fix_response', () => {
-      const t = findTrigger('builtin_wrfc_fix_review_loop');
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('wrfc_fix_response');
-      }
-    });
-
-    it('builtin_wrfc_start_workflow: event condition on hook:agent:spawned', () => {
-      const t = findTrigger('builtin_wrfc_start_workflow');
-      expect(t.condition.type).toBe('event');
-      if (t.condition.type === 'event') {
-        expect(t.condition.event_type).toBe('hook:agent:spawned');
-      }
-    });
-
-    it('builtin_wrfc_start_workflow: invoke_handler with wrfc_agent_spawned', () => {
-      const t = findTrigger('builtin_wrfc_start_workflow');
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('wrfc_agent_spawned');
-      }
-    });
-
-    it('builtin_test_fix_start: event condition on test:failed, start_workflow test_then_fix', () => {
-      const t = findTrigger('builtin_test_fix_start');
-      expect(t.condition.type).toBe('event');
-      if (t.condition.type === 'event') {
-        expect(t.condition.event_type).toBe('test:failed');
-      }
-      expect(t.action.type).toBe('start_workflow');
-      if (t.action.type === 'start_workflow') {
-        expect(t.action.workflow_definition).toBe('test_then_fix');
-      }
-    });
-
-    it('builtin_review_only_start: event condition on review:requested, start_workflow review_only', () => {
-      const t = findTrigger('builtin_review_only_start');
-      expect(t.condition.type).toBe('event');
-      if (t.condition.type === 'event') {
-        expect(t.condition.event_type).toBe('review:requested');
-      }
-      expect(t.action.type).toBe('start_workflow');
-      if (t.action.type === 'start_workflow') {
-        expect(t.action.workflow_definition).toBe('review_only');
-      }
-    });
-
-    it('builtin_test_fix_handle_failure: invoke_handler with test_fix_handle_failure on test_fix:tests_failed', () => {
-      const t = findTrigger('builtin_test_fix_handle_failure');
-      expect(t.condition.type).toBe('event');
-      if (t.condition.type === 'event') {
-        expect(t.condition.event_type).toBe('test_fix:tests_failed');
-      }
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('test_fix_handle_failure');
-      }
-    });
-
-    it('builtin_test_fix_handle_retest: invoke_handler with test_fix_handle_retest on test_fix:fix_completed', () => {
-      const t = findTrigger('builtin_test_fix_handle_retest');
-      expect(t.condition.type).toBe('event');
-      if (t.condition.type === 'event') {
-        expect(t.condition.event_type).toBe('test_fix:fix_completed');
-      }
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('test_fix_handle_retest');
-      }
-    });
-
-    it('builtin_review_only_agent_completed: invoke_handler with review_only_agent_completed', () => {
-      const t = findTrigger('builtin_review_only_agent_completed');
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('review_only_agent_completed');
-      }
-    });
-
-    it('builtin_test_fix_agent_completed: invoke_handler with test_fix_agent_completed', () => {
-      const t = findTrigger('builtin_test_fix_agent_completed');
-      expect(t.action.type).toBe('invoke_handler');
-      if (t.action.type === 'invoke_handler') {
-        expect(t.action.handler).toBe('test_fix_agent_completed');
-      }
-    });
   });
 
   // ─── cooldown values ─────────────────────────────────────────────────────────

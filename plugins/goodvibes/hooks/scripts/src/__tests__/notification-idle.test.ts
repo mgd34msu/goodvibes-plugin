@@ -84,7 +84,7 @@ describe('notification-idle hook', () => {
         expect(mockRespond).toHaveBeenCalledWith({
           continue: true,
           systemMessage:
-            'AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!',
+            'CRITICAL: IF YOU ARE WORKING ON A LONG TASK CHECK IF AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!',
         });
       });
     });
@@ -206,7 +206,7 @@ describe('notification-idle hook', () => {
         const respondCall = mockRespond.mock.calls[0][0];
         expect(respondCall.continue).toBe(true);
         expect(respondCall.systemMessage).toBe(
-          'AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!'
+          'CRITICAL: IF YOU ARE WORKING ON A LONG TASK CHECK IF AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!'
         );
       });
     });
@@ -216,7 +216,7 @@ describe('notification-idle hook', () => {
     it('should export the correct message constant', async () => {
       const module = await import('../shared/notification-idle.js');
       expect(module.IDLE_PROMPT_MESSAGE).toBe(
-        'AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!'
+        'CRITICAL: IF YOU ARE WORKING ON A LONG TASK CHECK IF AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!'
       );
     });
   });

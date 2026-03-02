@@ -96,8 +96,8 @@ describe('subagent-blockers', () => {
       expect(BLOCKED_NATIVE_TOOLS).toContain('WebFetch');
     });
 
-    it('should have exactly 6 blocked tools', () => {
-      expect(BLOCKED_NATIVE_TOOLS).toHaveLength(6);
+    it('should have exactly 7 blocked tools', () => {
+      expect(BLOCKED_NATIVE_TOOLS).toHaveLength(7);
     });
   });
 

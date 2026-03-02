@@ -22,7 +22,7 @@ import {
 import { runPreToolUseHook } from '../../pre-tool-use/hook.js';
 import { isCommitCommand } from '../../pre-tool-use/quality-gates.js';
 import {
-  handleSubagentToolBlocking,
+  handleNativeToolBlocking,
   isBlockedNativeTool,
 } from '../../pre-tool-use/subagent-blockers.js';
 import { TOOL_VALIDATORS } from '../../pre-tool-use/tool-validators.js';
@@ -41,7 +41,7 @@ const mockedHandleGitCommit = vi.mocked(handleGitCommit);
 const mockedHandleGitCommand = vi.mocked(handleGitCommand);
 const mockedIsGitCommand = vi.mocked(isGitCommand);
 const mockedIsCommitCommand = vi.mocked(isCommitCommand);
-const mockedHandleSubagentToolBlocking = vi.mocked(handleSubagentToolBlocking);
+const mockedHandleNativeToolBlocking = vi.mocked(handleNativeToolBlocking);
 const mockedIsBlockedNativeTool = vi.mocked(isBlockedNativeTool);
 const mockedRespond = vi.mocked(respond);
 const mockedReadHookInput = vi.mocked(readHookInput);
@@ -76,7 +76,7 @@ describe('pre-tool-use hook', () => {
 
     // Default: subagent blockers don't block
     mockedIsBlockedNativeTool.mockReturnValue(false);
-    mockedHandleSubagentToolBlocking.mockReturnValue(false);
+    mockedHandleNativeToolBlocking.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -93,12 +93,12 @@ describe('pre-tool-use hook', () => {
         };
         mockedReadHookInput.mockResolvedValue(subagentInput);
         mockedIsBlockedNativeTool.mockReturnValue(true);
-        mockedHandleSubagentToolBlocking.mockReturnValue(true);
+        mockedHandleNativeToolBlocking.mockReturnValue(true);
 
         await runPreToolUseHook();
 
         expect(mockedIsBlockedNativeTool).toHaveBeenCalledWith('Read');
-        expect(mockedHandleSubagentToolBlocking).toHaveBeenCalledWith(
+        expect(mockedHandleNativeToolBlocking).toHaveBeenCalledWith(
           expect.objectContaining({
             tool_name: 'Read',
             is_subagent: true,
@@ -116,14 +116,14 @@ describe('pre-tool-use hook', () => {
         };
         mockedReadHookInput.mockResolvedValue(subagentInput);
         mockedIsBlockedNativeTool.mockReturnValue(true);
-        mockedHandleSubagentToolBlocking.mockReturnValue(true);
+        mockedHandleNativeToolBlocking.mockReturnValue(true);
 
         await runPreToolUseHook();
 
-        expect(mockedHandleSubagentToolBlocking).toHaveBeenCalled();
+        expect(mockedHandleNativeToolBlocking).toHaveBeenCalled();
       });
 
-      it('should allow Read tool for main agent (non-subagent)', async () => {
+      it('should block Read tool for main agent (non-subagent)', async () => {
         const mainAgentInput = {
           ...mockInput,
           tool_name: 'Read',
@@ -131,34 +131,30 @@ describe('pre-tool-use hook', () => {
         };
         mockedReadHookInput.mockResolvedValue(mainAgentInput);
         mockedIsBlockedNativeTool.mockReturnValue(true);
+        mockedHandleNativeToolBlocking.mockReturnValue(true);
 
         await runPreToolUseHook();
 
-        // Should not call handleSubagentToolBlocking when is_subagent is false
-        expect(mockedHandleSubagentToolBlocking).not.toHaveBeenCalled();
-        // Should allow the tool for main agent
-        expect(mockedRespond).toHaveBeenCalledWith(
-          expect.objectContaining({ continue: true })
+        // handleNativeToolBlocking blocks ALL agents (no subagent exemption)
+        expect(mockedHandleNativeToolBlocking).toHaveBeenCalledWith(
+          expect.objectContaining({ tool_name: 'Read' })
         );
-        expect(mockedDebug).toHaveBeenCalledWith(
-          expect.stringContaining("Allowing native tool 'Read'")
-        );
+        expect(mockedExtractBashCommand).not.toHaveBeenCalled();
       });
 
-      it('should allow Read tool when is_subagent is undefined', async () => {
+      it('should block Read tool when is_subagent is undefined', async () => {
         const mainAgentInput = {
           ...mockInput,
           tool_name: 'Read',
         };
         mockedReadHookInput.mockResolvedValue(mainAgentInput);
         mockedIsBlockedNativeTool.mockReturnValue(true);
+        mockedHandleNativeToolBlocking.mockReturnValue(true);
 
         await runPreToolUseHook();
 
-        expect(mockedHandleSubagentToolBlocking).not.toHaveBeenCalled();
-        expect(mockedRespond).toHaveBeenCalledWith(
-          expect.objectContaining({ continue: true })
-        );
+        expect(mockedHandleNativeToolBlocking).toHaveBeenCalled();
+        expect(mockedExtractBashCommand).not.toHaveBeenCalled();
       });
 
       it('should allow Bash tool for subagent (not blocked)', async () => {
@@ -176,7 +172,7 @@ describe('pre-tool-use hook', () => {
         await runPreToolUseHook();
 
         // Should not check for blocking (Bash is not a blocked tool)
-        expect(mockedHandleSubagentToolBlocking).not.toHaveBeenCalled();
+        expect(mockedHandleNativeToolBlocking).not.toHaveBeenCalled();
         // Should proceed to Bash handling
         expect(mockedExtractBashCommand).toHaveBeenCalled();
       });

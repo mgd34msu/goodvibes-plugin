@@ -74,7 +74,7 @@ describe('lifecycle/stop', () => {
       logError: mockLogError,
       CACHE_DIR: '/mock/cache',
       fileExists: mockFileExists,
-      createResponse: () => ({ continue: true }),
+      createResponse: (opts?: { systemMessage?: string }) => ({ continue: true, ...(opts ?? {}) }),
       isTestEnvironment: () => false,
     }));
 

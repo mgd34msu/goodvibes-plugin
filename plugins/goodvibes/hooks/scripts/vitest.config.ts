@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/__tests__/**/*.test.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/worktrees/**', '**/delete_me/**'],
     setupFiles: ['./vitest.setup.ts'],
     // Use threads pool for better coverage collection compatibility
     pool: 'threads',

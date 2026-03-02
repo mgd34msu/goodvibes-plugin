@@ -1,7 +1,7 @@
 /**
  * TickDriver — Unified pipeline evaluation driver.
  *
- * Replaces both DaemonTickScheduler (daemon mode) and the v3TickTimer
+ * Replaces both DaemonTickScheduler (daemon mode) and the legacy TickTimer
  * (non-daemon mode) with a single, mode-aware evaluation loop.
  *
  * In ALL modes, the TickDriver evaluates the full pipeline on each

@@ -4,7 +4,7 @@
  * Functions for reading hook input from stdin and responding with hook output.
  */
 
-import { stdin } from 'process';
+import process from 'process';
 
 /**
  * Checks if the current process is running in a test environment.
@@ -67,7 +67,7 @@ export interface HookResponse {
  */
 export async function readHookInput(): Promise<HookInput> {
   const chunks: Buffer[] = [];
-  for await (const chunk of stdin) {
+  for await (const chunk of process.stdin) {
     chunks.push(chunk);
   }
   const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString());

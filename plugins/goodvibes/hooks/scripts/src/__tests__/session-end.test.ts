@@ -58,13 +58,15 @@ describe('session-end hook', () => {
   });
 
   async function setupMocksAndImport() {
-    // Mock fs/promises
-    vi.doMock('fs/promises', () => ({
+    // Mock fs/promises (both node: and bare specifiers)
+    const fsMock = () => ({
       writeFile: mockWriteFile,
       access: vi.fn(),
       mkdir: vi.fn(),
       readFile: vi.fn(),
-    }));
+    });
+    vi.doMock('fs/promises', fsMock);
+    vi.doMock('node:fs/promises', fsMock);
 
     // Mock shared module with isTestEnvironment = false so hook runs
     vi.doMock('../shared/index.js', () => ({
@@ -75,8 +77,18 @@ describe('session-end hook', () => {
       debug: mockDebug,
       logError: mockLogError,
       CACHE_DIR: '/mock/cache/dir',
-      createResponse: () => ({ continue: true }),
+      createResponse: () => ({ continue: true, systemMessage: undefined }),
+      ensureGlobalAnalyticsDir: vi.fn(),
       isTestEnvironment: () => false,
+    }));
+
+    // Mock runtime-client module
+    vi.doMock('../shared/runtime-client.js', () => ({
+      RuntimeClient: vi.fn().mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(false),
+        sendHookEvent: vi.fn().mockResolvedValue(undefined),
+        query: vi.fn().mockResolvedValue(null),
+      })),
     }));
 
     // Import the module (this triggers the hook)

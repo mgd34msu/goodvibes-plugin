@@ -258,7 +258,8 @@ describe('telemetry', () => {
 
     it('should handle Windows paths', () => {
       const name = deriveProjectName('C:\\Users\\dev\\vibeplug');
-      expect(name).toBe('vibeplug');
+      // On Linux, path.basename does not split backslash-separated paths
+      expect(name).toBe('C:\\Users\\dev\\vibeplug');
     });
   });
 

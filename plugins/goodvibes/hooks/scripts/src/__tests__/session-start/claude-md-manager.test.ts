@@ -247,8 +247,6 @@ describe('ensureClaudeMdImports', () => {
       expect(content).toContain('@prompt/CORE-PRINCIPLES.md');
       expect(content).toContain('<!-- SUBAGENT PROTOCOL -->');
       expect(content).toContain('@prompt/SUBAGENT-PROTOCOL.md');
-      expect(content).toContain('<!-- SKILL AWARENESS -->');
-      expect(content).toContain('@prompt/SKILLS.md');
     });
 
     it('creates parent directories', async () => {
@@ -322,9 +320,9 @@ describe('ensureClaudeMdImports', () => {
       const filePath = path.join(projectDir, '.goodvibes', 'prompt', 'UPGRADE-NOTIFICATIONS.md');
       const content = fs.readFileSync(filePath, 'utf-8');
       
-      expect(content).toContain('TOOL UPGRADES AVAILABLE!');
+      expect(content).toContain('TOOL UPGRADES NOW AVAILABLE:');
       expect(content).toContain('precision_engine');
-      expect(content).toContain('Read, Edit, Write, Glob, Grep, WebFetch');
+      expect(content).toContain('Read, Edit, Write, Glob, Grep');
     });
 
     it('PRIMARY-GOALS.md has correct content', async () => {
@@ -339,8 +337,8 @@ describe('ensureClaudeMdImports', () => {
       const content = fs.readFileSync(filePath, 'utf-8');
       
       expect(content).toContain('## MANDATORY');
-      expect(content).toContain('Score 9.5 or higher');
-      expect(content).toContain('token-efficient');
+      expect(content).toContain('PRIMARY GOAL');
+      expect(content).toContain('token usage');
     });
 
     it('CORE-PRINCIPLES.md has correct content', async () => {
@@ -371,7 +369,7 @@ describe('ensureClaudeMdImports', () => {
       const content = fs.readFileSync(filePath, 'utf-8');
       
       expect(content).toContain('## MANDATORY');
-      expect(content).toContain('GPA Loops');
+      expect(content).toContain('GPA Loop');
       expect(content).toContain('precision_engine');
     });
 
@@ -400,8 +398,8 @@ describe('ensureClaudeMdImports', () => {
       expect(content).toContain('api-design');
       expect(content).toContain('security-audit');
       
-      // How to Use section
-      expect(content).toContain('### How to Use Skills');
+      // Fallback section
+      expect(content).toContain('### Fallback: Manual Skill Loading');
       expect(content).toContain('get_skill_content');
     });
 

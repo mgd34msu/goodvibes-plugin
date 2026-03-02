@@ -21,7 +21,7 @@ const hoisted = vi.hoisted(() => ({
   mockQuery: vi.fn<[], Promise<unknown>>(),
   mockStdinResume: vi.fn<[], void>(),
   mockRespond: vi.fn<[], void>(),
-  mockAllowTool: vi.fn<[string, string?], { hookName: string; additionalContext?: string }>(),
+  mockCreateResponse: vi.fn<[object?], { continue: boolean; additionalContext?: string | Record<string, string> }>(),
   mockBuildGvDirectiveTag: vi.fn<[string], string>(),
 }));
 
@@ -37,7 +37,7 @@ vi.mock('../shared/runtime-client.js', () => {
 
 vi.mock('../shared/index.js', () => ({
   respond: hoisted.mockRespond,
-  allowTool: hoisted.mockAllowTool,
+  createResponse: hoisted.mockCreateResponse,
   buildGvDirectiveTag: hoisted.mockBuildGvDirectiveTag,
   isTestEnvironment: () => true,
 }));
@@ -51,9 +51,9 @@ describe('runPostToolUseTaskHook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default allowTool return — returns first arg for easy assertion
-    hoisted.mockAllowTool.mockImplementation(
-      (hookName: string, additionalContext?: string) => ({ hookName, additionalContext })
+    // Default createResponse return — returns options merged with continue: true
+    hoisted.mockCreateResponse.mockImplementation(
+      (options?: object) => ({ continue: true, ...options })
     );
   });
 
@@ -92,7 +92,7 @@ describe('runPostToolUseTaskHook', () => {
 
       expect(hoisted.mockIsAvailable).toHaveBeenCalledTimes(1);
       expect(hoisted.mockQuery).not.toHaveBeenCalled();
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
       expect(hoisted.mockRespond).toHaveBeenCalledTimes(1);
     });
 
@@ -109,10 +109,9 @@ describe('runPostToolUseTaskHook', () => {
 
       await importAndRun();
 
-      // allowTool must be called with exactly one argument (no additionalContext)
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
-      expect(hoisted.mockAllowTool).not.toHaveBeenCalledWith(
-        'PostToolUse',
+      // createResponse must be called with no arguments (no additionalContext)
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
+      expect(hoisted.mockCreateResponse).not.toHaveBeenCalledWith(
         expect.anything()
       );
     });
@@ -157,7 +156,7 @@ describe('runPostToolUseTaskHook', () => {
 
       await importAndRun();
 
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse', expectedTag);
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith({ additionalContext: { gv_directive: expectedTag } });
     });
 
     it('responds exactly once with the directive-carrying response', async () => {
@@ -182,22 +181,22 @@ describe('runPostToolUseTaskHook', () => {
       await importAndRun();
 
       expect(hoisted.mockBuildGvDirectiveTag).not.toHaveBeenCalled();
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
       expect(hoisted.mockRespond).toHaveBeenCalledTimes(1);
     });
 
-    it('responds with plain allowTool when query returns a non-matching kind', async () => {
+    it('responds with plain createResponse when query returns a non-matching kind', async () => {
       hoisted.mockIsAvailable.mockReturnValue(true);
       hoisted.mockQuery.mockResolvedValue({ kind: 'ack' });
 
       await importAndRun();
 
       expect(hoisted.mockBuildGvDirectiveTag).not.toHaveBeenCalled();
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
       expect(hoisted.mockRespond).toHaveBeenCalledTimes(1);
     });
 
-    it('responds with plain allowTool when system_message has an empty message', async () => {
+    it('responds with plain createResponse when system_message has an empty message', async () => {
       hoisted.mockIsAvailable.mockReturnValue(true);
       // kind matches but message is empty string (falsy)
       hoisted.mockQuery.mockResolvedValue({ kind: 'system_message', message: '' });
@@ -205,11 +204,11 @@ describe('runPostToolUseTaskHook', () => {
       await importAndRun();
 
       expect(hoisted.mockBuildGvDirectiveTag).not.toHaveBeenCalled();
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
       expect(hoisted.mockRespond).toHaveBeenCalledTimes(1);
     });
 
-    it('responds with plain allowTool when system_message has no message field', async () => {
+    it('responds with plain createResponse when system_message has no message field', async () => {
       hoisted.mockIsAvailable.mockReturnValue(true);
       // kind matches but message is undefined
       hoisted.mockQuery.mockResolvedValue({ kind: 'system_message' });
@@ -217,7 +216,7 @@ describe('runPostToolUseTaskHook', () => {
       await importAndRun();
 
       expect(hoisted.mockBuildGvDirectiveTag).not.toHaveBeenCalled();
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
       expect(hoisted.mockRespond).toHaveBeenCalledTimes(1);
     });
   });
@@ -230,7 +229,7 @@ describe('runPostToolUseTaskHook', () => {
 
       await importAndRun();
 
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
       expect(hoisted.mockRespond).toHaveBeenCalledTimes(1);
     });
 
@@ -256,9 +255,8 @@ describe('runPostToolUseTaskHook', () => {
 
       await importAndRun();
 
-      expect(hoisted.mockAllowTool).toHaveBeenCalledWith('PostToolUse');
-      expect(hoisted.mockAllowTool).not.toHaveBeenCalledWith(
-        'PostToolUse',
+      expect(hoisted.mockCreateResponse).toHaveBeenCalledWith();
+      expect(hoisted.mockCreateResponse).not.toHaveBeenCalledWith(
         expect.anything()
       );
     });

@@ -191,6 +191,7 @@ describe('error-categories', () => {
         'permission_error',
         'resource_error',
         'syntax_error',
+        'shell_escaping_error',
       ]);
     });
   });

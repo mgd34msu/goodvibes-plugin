@@ -33,6 +33,12 @@ const CONNECTION_TIMEOUT_MS = 5_000;
 /** Maximum IPC message size in bytes. Messages exceeding this limit are rejected. */
 const MAX_MESSAGE_SIZE = 1_048_576; // 1 MB
 
+/** Maximum messages per second before rate limiting kicks in. */
+const RATE_LIMIT_MAX = 100;
+
+/** Sliding window duration for rate limiting in milliseconds. */
+const RATE_LIMIT_WINDOW_MS = 1_000;
+
 /**
  * Envelope returned by handlers that need write-result confirmation.
  * The `holdId` is passed back to the write-result callback after the socket write.
@@ -90,6 +96,9 @@ export class IPCServer {
 
   /** Tracks in-flight holdIds per socket for async write confirmation and error recovery. */
   private readonly inFlightHolds = new WeakMap<net.Socket, string>();
+
+  /** Sliding window of recent message timestamps for rate limiting. */
+  private readonly recentMessages: number[] = [];
 
   /**
    * @param socketPath - Absolute path for the Unix domain socket file.
@@ -249,6 +258,28 @@ export class IPCServer {
    */
   private handleConnection(socket: net.Socket): void {
     this.connections.add(socket);
+
+    // Rate limit check — reject if too many messages in the sliding window
+    if (this.isRateLimited()) {
+      logger.warn('IPC rate limit exceeded — rejecting connection', {
+        limit: RATE_LIMIT_MAX,
+        window_ms: RATE_LIMIT_WINDOW_MS,
+      });
+      const rateLimitResponse: IPCResponse = {
+        id: 'rate_limited',
+        status: 'error',
+        error: `Rate limit exceeded: max ${RATE_LIMIT_MAX} messages per second`,
+      };
+      try {
+        socket.end(JSON.stringify(rateLimitResponse) + '\n', 'utf-8');
+      } catch {
+        socket.destroy();
+      }
+      this.connections.delete(socket);
+      return;
+    }
+    this.recordMessage();
+
     logger.debug('IPC client connected', { connections: this.connections.size });
 
     // Idle connection timeout — declared before event handlers so all closures
@@ -415,6 +446,37 @@ export class IPCServer {
         this.writeResultCallback(holdId, false);
       }
       socket.destroy();
+    }
+  }
+
+  /**
+   * Check if the current message rate exceeds the limit.
+   */
+  private isRateLimited(): boolean {
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+    // Count messages within the window (timestamps are ordered, scan from end)
+    let count = 0;
+    for (let i = this.recentMessages.length - 1; i >= 0; i--) {
+      if (this.recentMessages[i] >= windowStart) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count >= RATE_LIMIT_MAX;
+  }
+
+  /**
+   * Record a message timestamp and prune old entries.
+   */
+  private recordMessage(): void {
+    const now = Date.now();
+    this.recentMessages.push(now);
+    // Prune entries outside the window (keep array from growing unbounded)
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+    while (this.recentMessages.length > 0 && this.recentMessages[0] < windowStart) {
+      this.recentMessages.shift();
     }
   }
 

@@ -11,6 +11,8 @@ export default defineConfig({
       "**/dist/**",
       "**/hooks/**",
       "**/tools/**",
+      "**/.claude/worktrees/**",
+      "**/delete_me/**",
     ],
   },
 });

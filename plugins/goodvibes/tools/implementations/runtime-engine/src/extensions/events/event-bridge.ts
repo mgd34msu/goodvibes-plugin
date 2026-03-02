@@ -76,7 +76,7 @@ export class EventBridge {
           : 'external' as const;
 
       // Construct a proper CoreRuntimeEvent — no `as any` cast
-      const v3Event: CoreRuntimeEvent = {
+      const coreEvent: CoreRuntimeEvent = {
         id: event.id,
         type: event.type,
         source,
@@ -93,7 +93,7 @@ export class EventBridge {
         },
       };
 
-      this.eventQueue.enqueue(v3Event);
+      this.eventQueue.enqueue(coreEvent);
       this.forwarded++;
 
       logger.debug('Bridged event', {

@@ -101,7 +101,7 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
     createWRFCTrigger({
       id: TRIGGER_IDS.AGENT_SPAWNED,
       event_match: {
-        source: 'agent',
+        source: ['agent', 'internal'],
         type: 'agent:spawned',
       },
       actions: [],
@@ -115,7 +115,7 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
     createWRFCTrigger({
       id: TRIGGER_IDS.AGENT_COMPLETED,
       event_match: {
-        source: 'agent',
+        source: ['agent', 'internal'],
         type: 'agent:completed',
       },
       actions: [],

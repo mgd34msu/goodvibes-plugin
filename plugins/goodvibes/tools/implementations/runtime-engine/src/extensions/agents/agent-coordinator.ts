@@ -62,6 +62,9 @@ export class AgentCoordinator {
   private readonly agents: Map<string, CoordinatedAgent> = new Map();
   private readonly wrfcChains: Map<string, WRFCChain> = new Map();
 
+  /** Timer for periodic cleanup of terminated agents. */
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
   /**
    * @param eventBus      - EventBus instance for emitting agent lifecycle events.
    * @param budgetTracker - BudgetTracker for session-level token budget accounting.
@@ -437,6 +440,38 @@ export class AgentCoordinator {
   }
 
   /**
+   * Start periodic cleanup of terminated agent entries to prevent unbounded Map growth.
+   *
+   * @param intervalMs - How often to run cleanup (default: 5 minutes).
+   * @param maxAgeMs   - Remove terminated agents older than this (default: 1 hour).
+   */
+  startPeriodicCleanup(intervalMs = 300_000, maxAgeMs = 3_600_000): void {
+    this.stopPeriodicCleanup();
+    this.cleanupTimer = setInterval(() => {
+      const pruned = this.prune(maxAgeMs);
+      const chainsRemoved = this.pruneStaleWRFCChains();
+      if (pruned > 0 || chainsRemoved > 0) {
+        logger.debug('Periodic cleanup completed', { agents_pruned: pruned, chains_removed: chainsRemoved });
+      }
+    }, intervalMs);
+    // Don't block process exit
+    if (this.cleanupTimer && typeof this.cleanupTimer === 'object' && 'unref' in this.cleanupTimer) {
+      (this.cleanupTimer as NodeJS.Timeout).unref();
+    }
+    logger.debug('Periodic cleanup started', { intervalMs, maxAgeMs });
+  }
+
+  /**
+   * Stop periodic cleanup.
+   */
+  stopPeriodicCleanup(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+  }
+
+  /**
    * Retrieve the WRFC chain for a workflow, or undefined.
    *
    * @param workflowId - Workflow ID.
@@ -537,6 +572,28 @@ export class AgentCoordinator {
   }
 
   // ─── Private helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Remove WRFC chains whose workflows have no active agents.
+   *
+   * @returns Number of chains removed.
+   */
+  private pruneStaleWRFCChains(): number {
+    let removed = 0;
+    for (const [workflowId, chain] of this.wrfcChains) {
+      const hasActiveAgents = chain.phases.some((phase) =>
+        phase.agent_ids.some((aid) => {
+          const agent = this.agents.get(aid);
+          return agent && (agent.status === 'pending' || agent.status === 'running');
+        })
+      );
+      if (!hasActiveAgents) {
+        this.wrfcChains.delete(workflowId);
+        removed++;
+      }
+    }
+    return removed;
+  }
 
   /**
    * Emit a RuntimeEvent on the EventBus with source kind 'system'.

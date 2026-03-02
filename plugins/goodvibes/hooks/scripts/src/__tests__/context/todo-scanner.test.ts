@@ -183,7 +183,7 @@ describe('todo-scanner', () => {
       expect(results).toHaveLength(2);
     });
 
-    it('should use default limit of 10', async () => {
+    it('should use default limit of 100', async () => {
       const mockCwd = '/test/project';
 
       vi.mocked(fs.readdir).mockImplementation(async (dirPath: string) => {
@@ -202,7 +202,7 @@ describe('todo-scanner', () => {
 
       const results = await scanTodos(mockCwd);
 
-      expect(results).toHaveLength(10); // Default limit
+      expect(results).toHaveLength(20); // Default limit is 100, so all 20 are returned
     });
 
     it('should scan nested directories', async () => {

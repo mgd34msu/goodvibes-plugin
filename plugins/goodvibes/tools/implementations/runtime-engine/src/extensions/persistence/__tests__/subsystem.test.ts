@@ -15,38 +15,48 @@ vi.mock('../../../shared/utils.js', () => ({
   toErrorMessage: (err: unknown) => String(err),
 }));
 
-// JsonStateStore mock object — stable reference reused across all tests
-const mockStateStore = {
-  initialize: vi.fn().mockResolvedValue(undefined),
-};
+// Define mock instances entirely inside mock factories.
+// The mock modules export the instance via a getter so tests can access it.
+let _stateStore: ReturnType<typeof makeStateStore>;
+let _checkpointManager: ReturnType<typeof makeCheckpointManager>;
+let _snapshotManager: ReturnType<typeof makeSnapshotManager>;
+
+function makeStateStore() {
+  return { initialize: vi.fn().mockResolvedValue(undefined) };
+}
+function makeCheckpointManager() {
+  return { start: vi.fn(), stop: vi.fn(), saveCheckpoint: vi.fn().mockResolvedValue(undefined) };
+}
+function makeSnapshotManager() {
+  return {
+    startPeriodicSnapshots: vi.fn(),
+    stopPeriodicSnapshots: vi.fn(),
+    takeSnapshot: vi.fn().mockResolvedValue(undefined),
+  };
+}
 
 vi.mock('../state-store.js', () => ({
-  JsonStateStore: vi.fn().mockImplementation(() => mockStateStore),
+  JsonStateStore: function JsonStateStore() {
+    _stateStore = makeStateStore();
+    return _stateStore;
+  },
 }));
-
-// CheckpointManager mock
-const mockCheckpointManager = {
-  start: vi.fn(),
-  stop: vi.fn(),
-  saveCheckpoint: vi.fn().mockResolvedValue(undefined),
-};
 
 vi.mock('../checkpoint-manager.js', () => ({
-  CheckpointManager: vi.fn().mockImplementation(() => mockCheckpointManager),
+  CheckpointManager: function CheckpointManager() {
+    _checkpointManager = makeCheckpointManager();
+    return _checkpointManager;
+  },
 }));
-
-// SnapshotManager mock
-const mockSnapshotManager = {
-  startPeriodicSnapshots: vi.fn(),
-  stopPeriodicSnapshots: vi.fn(),
-  takeSnapshot: vi.fn().mockResolvedValue(undefined),
-};
 
 vi.mock('../snapshot-manager.js', () => ({
-  SnapshotManager: vi.fn().mockImplementation(() => mockSnapshotManager),
+  SnapshotManager: function SnapshotManager() {
+    _snapshotManager = makeSnapshotManager();
+    return _snapshotManager;
+  },
 }));
 
-// recoverState mock
+// recoverState mock via hoisted reference
 const mockRecoverState = vi.fn().mockResolvedValue({
   method: 'snapshot',
   recoveryDurationMs: 5,
@@ -71,7 +81,6 @@ function makeConfig() {
 }
 
 function makeDeps(overrides: Partial<PersistenceSubsystemDeps> = {}): PersistenceSubsystemDeps {
-  const mockSnapshotDeps = {};
   return {
     config: makeConfig(),
     projectRoot: '/project',
@@ -81,38 +90,19 @@ function makeDeps(overrides: Partial<PersistenceSubsystemDeps> = {}): Persistenc
     healthChecker: {} as unknown as import('../../../core/observability/health.js').HealthChecker,
     workflowEngine: null,
     agentCoordinator: null,
-    getSnapshotDeps: vi.fn().mockReturnValue(mockSnapshotDeps),
+    getSnapshotDeps: vi.fn().mockReturnValue({}),
     ...overrides,
   };
-}
-
-/**
- * Reset call history on all mock functions without touching implementations.
- * We avoid vi.clearAllMocks() because it wipes mockImplementation on constructor mocks.
- */
-function resetMocks() {
-  mockStateStore.initialize.mockClear();
-  mockStateStore.initialize.mockResolvedValue(undefined);
-
-  mockCheckpointManager.start.mockClear();
-  mockCheckpointManager.stop.mockClear();
-  mockCheckpointManager.saveCheckpoint.mockClear();
-  mockCheckpointManager.saveCheckpoint.mockResolvedValue(undefined);
-
-  mockSnapshotManager.startPeriodicSnapshots.mockClear();
-  mockSnapshotManager.stopPeriodicSnapshots.mockClear();
-  mockSnapshotManager.takeSnapshot.mockClear();
-  mockSnapshotManager.takeSnapshot.mockResolvedValue(undefined);
-
-  mockRecoverState.mockClear();
-  mockRecoverState.mockResolvedValue({ method: 'snapshot', recoveryDurationMs: 5 });
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────────────
 
 describe('createPersistenceSubsystem', () => {
   beforeEach(() => {
-    resetMocks();
+    mockRecoverState.mockClear();
+    mockRecoverState.mockResolvedValue({ method: 'snapshot', recoveryDurationMs: 5 });
+    // _stateStore / _checkpointManager / _snapshotManager are created fresh per factory call.
+    // No reset needed — each test calls createPersistenceSubsystem which re-invokes constructors.
   });
 
   // ─── Return shape ─────────────────────────────────────────────────────────────────────
@@ -129,17 +119,17 @@ describe('createPersistenceSubsystem', () => {
 
     it('stateStore is the JsonStateStore instance', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
-      expect(subsystem.stateStore).toBe(mockStateStore);
+      expect(subsystem.stateStore).toBe(_stateStore);
     });
 
     it('checkpointManager is the CheckpointManager instance', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
-      expect(subsystem.checkpointManager).toBe(mockCheckpointManager);
+      expect(subsystem.checkpointManager).toBe(_checkpointManager);
     });
 
     it('snapshotManager is the SnapshotManager instance', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
-      expect(subsystem.snapshotManager).toBe(mockSnapshotManager);
+      expect(subsystem.snapshotManager).toBe(_snapshotManager);
     });
   });
 
@@ -148,12 +138,12 @@ describe('createPersistenceSubsystem', () => {
   describe('initialisation sequence', () => {
     it('initialises the state store', async () => {
       await createPersistenceSubsystem(makeDeps());
-      expect(mockStateStore.initialize).toHaveBeenCalledTimes(1);
+      expect(_stateStore.initialize).toHaveBeenCalledTimes(1);
     });
 
     it('starts the checkpoint manager timer', async () => {
       await createPersistenceSubsystem(makeDeps());
-      expect(mockCheckpointManager.start).toHaveBeenCalledTimes(1);
+      expect(_checkpointManager.start).toHaveBeenCalledTimes(1);
     });
 
     it('runs startup recovery via recoverState', async () => {
@@ -163,9 +153,8 @@ describe('createPersistenceSubsystem', () => {
 
     it('starts periodic snapshots after recovery', async () => {
       await createPersistenceSubsystem(makeDeps());
-      expect(mockSnapshotManager.startPeriodicSnapshots).toHaveBeenCalledTimes(1);
-      // Interval should be 60 000 ms
-      const args = (mockSnapshotManager.startPeriodicSnapshots as Mock).mock.calls[0];
+      expect(_snapshotManager.startPeriodicSnapshots).toHaveBeenCalledTimes(1);
+      const args = (_snapshotManager.startPeriodicSnapshots as Mock).mock.calls[0];
       expect(args[2]).toBe(60_000);
     });
 
@@ -173,7 +162,6 @@ describe('createPersistenceSubsystem', () => {
       const snapshotDeps = { foo: 'bar' };
       const deps = makeDeps({ getSnapshotDeps: vi.fn().mockReturnValue(snapshotDeps) });
       await createPersistenceSubsystem(deps);
-      // recoverState receives (eventLog, snapshotManager, snapshotDeps)
       expect(mockRecoverState.mock.calls[0][2]).toBe(snapshotDeps);
     });
   });
@@ -189,7 +177,7 @@ describe('createPersistenceSubsystem', () => {
     it('still starts periodic snapshots even when recovery fails', async () => {
       mockRecoverState.mockRejectedValueOnce(new Error('fail'));
       await createPersistenceSubsystem(makeDeps());
-      expect(mockSnapshotManager.startPeriodicSnapshots).toHaveBeenCalledTimes(1);
+      expect(_snapshotManager.startPeriodicSnapshots).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -199,52 +187,50 @@ describe('createPersistenceSubsystem', () => {
     it('stops the checkpoint timer', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
       await subsystem.shutdown();
-      expect(mockCheckpointManager.stop).toHaveBeenCalledTimes(1);
+      expect(_checkpointManager.stop).toHaveBeenCalledTimes(1);
     });
 
     it('stops periodic snapshots', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
       await subsystem.shutdown();
-      expect(mockSnapshotManager.stopPeriodicSnapshots).toHaveBeenCalledTimes(1);
+      expect(_snapshotManager.stopPeriodicSnapshots).toHaveBeenCalledTimes(1);
     });
 
     it('takes a final snapshot', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
       await subsystem.shutdown();
-      // takeSnapshot called once during shutdown (startPeriodicSnapshots also calls it,
-      // but that’s a timer — only the direct shutdown call matters here)
-      expect(mockSnapshotManager.takeSnapshot).toHaveBeenCalledTimes(1);
+      expect(_snapshotManager.takeSnapshot).toHaveBeenCalledTimes(1);
     });
 
     it('saves a final checkpoint', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
       await subsystem.shutdown();
-      expect(mockCheckpointManager.saveCheckpoint).toHaveBeenCalledTimes(1);
+      expect(_checkpointManager.saveCheckpoint).toHaveBeenCalledTimes(1);
     });
 
     it('resolves even when final snapshot throws', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
-      mockSnapshotManager.takeSnapshot.mockRejectedValueOnce(new Error('snapshot fail'));
+      _snapshotManager.takeSnapshot.mockRejectedValueOnce(new Error('snapshot fail'));
       await expect(subsystem.shutdown()).resolves.toBeUndefined();
     });
 
     it('still saves checkpoint when final snapshot throws', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
-      mockSnapshotManager.takeSnapshot.mockRejectedValueOnce(new Error('snapshot fail'));
+      _snapshotManager.takeSnapshot.mockRejectedValueOnce(new Error('snapshot fail'));
       await subsystem.shutdown();
-      expect(mockCheckpointManager.saveCheckpoint).toHaveBeenCalledTimes(1);
+      expect(_checkpointManager.saveCheckpoint).toHaveBeenCalledTimes(1);
     });
 
     it('resolves even when final checkpoint throws', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
-      mockCheckpointManager.saveCheckpoint.mockRejectedValueOnce(new Error('checkpoint fail'));
+      _checkpointManager.saveCheckpoint.mockRejectedValueOnce(new Error('checkpoint fail'));
       await expect(subsystem.shutdown()).resolves.toBeUndefined();
     });
 
     it('resolves even when both snapshot and checkpoint throw', async () => {
       const subsystem = await createPersistenceSubsystem(makeDeps());
-      mockSnapshotManager.takeSnapshot.mockRejectedValueOnce(new Error('snap fail'));
-      mockCheckpointManager.saveCheckpoint.mockRejectedValueOnce(new Error('ckpt fail'));
+      _snapshotManager.takeSnapshot.mockRejectedValueOnce(new Error('snap fail'));
+      _checkpointManager.saveCheckpoint.mockRejectedValueOnce(new Error('ckpt fail'));
       await expect(subsystem.shutdown()).resolves.toBeUndefined();
     });
 
@@ -255,7 +241,7 @@ describe('createPersistenceSubsystem', () => {
       });
       const subsystem = await createPersistenceSubsystem(deps);
       await subsystem.shutdown();
-      const takeSnapshotArgs = (mockSnapshotManager.takeSnapshot as Mock).mock.calls[0];
+      const takeSnapshotArgs = (_snapshotManager.takeSnapshot as Mock).mock.calls[0];
       expect(takeSnapshotArgs[1]).toBe(99);
     });
   });

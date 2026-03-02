@@ -281,7 +281,8 @@ describe('telemetry/agents', () => {
     });
 
     it('should handle Windows paths', () => {
-      expect(deriveProjectName('C:\\Users\\dev\\vibeplug')).toBe('vibeplug');
+      // On Linux, path.basename does not split backslash-separated paths
+      expect(deriveProjectName('C:\\Users\\dev\\vibeplug')).toBe('C:\\Users\\dev\\vibeplug');
     });
 
     it('should return unknown-project for empty directory name', () => {

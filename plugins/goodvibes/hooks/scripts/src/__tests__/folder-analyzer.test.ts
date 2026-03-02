@@ -188,7 +188,7 @@ describe('folder-analyzer', () => {
           return false;
         } // No src dir
         if (path.includes('api') || path.includes('server')) {
-          return !path.includes('/');
+          return true;
         }
         return false;
       });

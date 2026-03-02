@@ -26,7 +26,7 @@ import type { WorkflowEngine } from './extensions/workflow/workflow-engine.js';
 import type { TriggerRegistry } from './extensions/triggers/trigger-registry.js';
 import type { AgentCoordinator } from './extensions/agents/agent-coordinator.js';
 import type { DirectiveQueue } from './extensions/directives/directive-queue.js';
-import { WRFCConfigStore, registerTestFixHandlers, registerReviewOnlyHandlers } from './extensions/directives/index.js';
+import { WRFCConfigStore } from './extensions/directives/index.js';
 import { WatchdogCoordinator } from './extensions/workflow/watchdog.js';
 
 import { createCoreRuntime, type CoreRuntime, type EventProcessor } from './core/index.js';
@@ -136,19 +136,7 @@ export class RuntimeEngine {
       this.agents = createAgentSubsystem(this.config, this.events.eventBus);
     }
 
-    // 9. WRFC automation handlers (cross-layer)
-    registerTestFixHandlers(
-      this.triggers.triggerRegistry,
-      this.directives.directiveQueue,
-      this.workflow?.workflowEngine ?? null,
-      this.directives.agentWorkflowMap,
-    );
-    registerReviewOnlyHandlers(
-      this.triggers.triggerRegistry,
-      this.directives.directiveQueue,
-      this.workflow?.workflowEngine ?? null,
-      this.directives.agentWorkflowMap,
-    );
+    // 9. (L2 WRFC handlers removed — WRFC routes through L3 plugin pipeline only)
 
     // 10. Watchdog coordinator
     if (this.workflow && this.directives) {

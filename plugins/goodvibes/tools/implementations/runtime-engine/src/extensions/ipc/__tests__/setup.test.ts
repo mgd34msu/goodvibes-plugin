@@ -15,30 +15,43 @@ vi.mock('../../../shared/utils.js', () => ({
   toErrorMessage: (err: unknown) => String(err),
 }));
 
-// IPCServer mock — stable object reference
-const mockIPCServer = {
-  onMessage: vi.fn(),
-  setWriteResultCallback: vi.fn(),
-  listen: vi.fn().mockResolvedValue(undefined),
-  close: vi.fn().mockResolvedValue(undefined),
+// Declare module-level vars for stable mock instances per-test
+let _ipcServer: {
+  onMessage: ReturnType<typeof vi.fn>;
+  setWriteResultCallback: ReturnType<typeof vi.fn>;
+  listen: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+};
+let _ipcRouter: {
+  route: ReturnType<typeof vi.fn>;
+  setAgentWorkflowResolver: ReturnType<typeof vi.fn>;
+  removeSessionPointers: ReturnType<typeof vi.fn>;
 };
 
 vi.mock('../../../shared/ipc/ipc-server.js', () => ({
-  IPCServer: vi.fn().mockImplementation(() => mockIPCServer),
+  IPCServer: function IPCServer() {
+    _ipcServer = {
+      onMessage: vi.fn(),
+      setWriteResultCallback: vi.fn(),
+      listen: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    return _ipcServer;
+  },
 }));
-
-// IPCRouter mock — stable object reference
-const mockIPCRouter = {
-  route: vi.fn(),
-  setAgentWorkflowResolver: vi.fn(),
-  removeSessionPointers: vi.fn(),
-};
 
 vi.mock('../ipc-router.js', () => ({
-  IPCRouter: vi.fn().mockImplementation(() => mockIPCRouter),
+  IPCRouter: function IPCRouter() {
+    _ipcRouter = {
+      route: vi.fn(),
+      setAgentWorkflowResolver: vi.fn(),
+      removeSessionPointers: vi.fn(),
+    };
+    return _ipcRouter;
+  },
 }));
 
-// fs mocks
+// fs mocks via stable module-level functions
 const mockMkdirSync = vi.fn();
 const mockWriteFileSync = vi.fn();
 
@@ -47,7 +60,7 @@ vi.mock('node:fs', () => ({
   writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
 }));
 
-// crypto mock — deterministic 8-char hash prefix
+// crypto: plain functions (not vi.fn, avoids clearAllMocks issues)
 vi.mock('node:crypto', () => ({
   createHash: () => ({
     update: function(this: object) { return this; },
@@ -55,7 +68,6 @@ vi.mock('node:crypto', () => ({
   }),
 }));
 
-// path: real implementation
 vi.mock('node:path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:path')>();
   return { ...actual };
@@ -101,32 +113,15 @@ function makeOpts(overrides: Partial<CreateIPCOptions> = {}): CreateIPCOptions {
   };
 }
 
-/**
- * Reset call history on stable mock objects without wiping implementations.
- * We avoid vi.clearAllMocks() because it wipes mockImplementation on constructor mocks.
- */
-function resetMocks() {
-  mockIPCServer.onMessage.mockClear();
-  mockIPCServer.setWriteResultCallback.mockClear();
-  mockIPCServer.listen.mockClear();
-  mockIPCServer.listen.mockResolvedValue(undefined);
-  mockIPCServer.close.mockClear();
-  mockIPCServer.close.mockResolvedValue(undefined);
-
-  mockIPCRouter.route.mockClear();
-  mockIPCRouter.setAgentWorkflowResolver.mockClear();
-  mockIPCRouter.removeSessionPointers.mockClear();
-
-  mockMkdirSync.mockClear();
-  mockWriteFileSync.mockClear();
-  mockEnsureDirSync.mockClear();
-}
-
 // ─── Tests ─────────────────────────────────────────────────────────────────────────────
 
 describe('createIPCSubsystem', () => {
   beforeEach(() => {
-    resetMocks();
+    mockMkdirSync.mockClear();
+    mockWriteFileSync.mockClear();
+    mockEnsureDirSync.mockClear();
+    // _ipcServer and _ipcRouter are recreated fresh each time createIPCSubsystem is called
+    // because the constructor functions reassign them.
   });
 
   // ─── Success path ─────────────────────────────────────────────────────────────────────
@@ -152,12 +147,12 @@ describe('createIPCSubsystem', () => {
 
     it('subsystem.ipcServer is the IPCServer instance', async () => {
       const result = await createIPCSubsystem(makeOpts());
-      expect(result!.subsystem.ipcServer).toBe(mockIPCServer);
+      expect(result!.subsystem.ipcServer).toBe(_ipcServer);
     });
 
     it('subsystem.ipcRouter is the IPCRouter instance', async () => {
       const result = await createIPCSubsystem(makeOpts());
-      expect(result!.subsystem.ipcRouter).toBe(mockIPCRouter);
+      expect(result!.subsystem.ipcRouter).toBe(_ipcRouter);
     });
 
     it('socketPath in result matches subsystem.socketPath', async () => {
@@ -195,12 +190,12 @@ describe('createIPCSubsystem', () => {
   describe('server/router wiring', () => {
     it('registers router.route as message handler on the server', async () => {
       await createIPCSubsystem(makeOpts());
-      expect(mockIPCServer.onMessage).toHaveBeenCalledWith(expect.any(Function));
+      expect(_ipcServer.onMessage).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('calls ipcServer.listen()', async () => {
       await createIPCSubsystem(makeOpts());
-      expect(mockIPCServer.listen).toHaveBeenCalledTimes(1);
+      expect(_ipcServer.listen).toHaveBeenCalledTimes(1);
     });
 
     it('creates the socket directory', async () => {
@@ -239,12 +234,12 @@ describe('createIPCSubsystem', () => {
       } as unknown as import('../../directives/directive-queue.js').DirectiveQueue;
 
       await createIPCSubsystem(makeOpts({ directiveQueue }));
-      expect(mockIPCServer.setWriteResultCallback).toHaveBeenCalledTimes(1);
+      expect(_ipcServer.setWriteResultCallback).toHaveBeenCalledTimes(1);
     });
 
     it('does not set write result callback when directiveQueue is null', async () => {
       await createIPCSubsystem(makeOpts({ directiveQueue: null }));
-      expect(mockIPCServer.setWriteResultCallback).not.toHaveBeenCalled();
+      expect(_ipcServer.setWriteResultCallback).not.toHaveBeenCalled();
     });
 
     it('calls releaseHold on successful write', async () => {
@@ -255,7 +250,7 @@ describe('createIPCSubsystem', () => {
 
       await createIPCSubsystem(makeOpts({ directiveQueue }));
 
-      const [callback] = (mockIPCServer.setWriteResultCallback as Mock).mock.calls[0];
+      const [callback] = (_ipcServer.setWriteResultCallback as Mock).mock.calls[0];
       callback('hold-123', true);
       expect(directiveQueue.releaseHold).toHaveBeenCalledWith('hold-123');
       expect(directiveQueue.reEnqueueHold).not.toHaveBeenCalled();
@@ -269,7 +264,7 @@ describe('createIPCSubsystem', () => {
 
       await createIPCSubsystem(makeOpts({ directiveQueue }));
 
-      const [callback] = (mockIPCServer.setWriteResultCallback as Mock).mock.calls[0];
+      const [callback] = (_ipcServer.setWriteResultCallback as Mock).mock.calls[0];
       callback('hold-456', false);
       expect(directiveQueue.reEnqueueHold).toHaveBeenCalledWith('hold-456');
       expect(directiveQueue.releaseHold).not.toHaveBeenCalled();
@@ -285,12 +280,12 @@ describe('createIPCSubsystem', () => {
       } as unknown as import('../../directives/agent-workflow-map.js').AgentWorkflowMap;
 
       await createIPCSubsystem(makeOpts({ agentWorkflowMap }));
-      expect(mockIPCRouter.setAgentWorkflowResolver).toHaveBeenCalledWith(expect.any(Function));
+      expect(_ipcRouter.setAgentWorkflowResolver).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('does not set agent workflow resolver when agentWorkflowMap is null', async () => {
       await createIPCSubsystem(makeOpts({ agentWorkflowMap: null }));
-      expect(mockIPCRouter.setAgentWorkflowResolver).not.toHaveBeenCalled();
+      expect(_ipcRouter.setAgentWorkflowResolver).not.toHaveBeenCalled();
     });
 
     it('resolver calls agentWorkflowMap.lookup and returns workflow id', async () => {
@@ -300,7 +295,7 @@ describe('createIPCSubsystem', () => {
 
       await createIPCSubsystem(makeOpts({ agentWorkflowMap }));
 
-      const [resolver] = (mockIPCRouter.setAgentWorkflowResolver as Mock).mock.calls[0];
+      const [resolver] = (_ipcRouter.setAgentWorkflowResolver as Mock).mock.calls[0];
       const result = resolver('agent-abc');
       expect(agentWorkflowMap.lookup).toHaveBeenCalledWith('agent-abc');
       expect(result).toBe('wf-789');
@@ -312,7 +307,7 @@ describe('createIPCSubsystem', () => {
       } as unknown as import('../../directives/agent-workflow-map.js').AgentWorkflowMap;
 
       await createIPCSubsystem(makeOpts({ agentWorkflowMap }));
-      const [resolver] = (mockIPCRouter.setAgentWorkflowResolver as Mock).mock.calls[0];
+      const [resolver] = (_ipcRouter.setAgentWorkflowResolver as Mock).mock.calls[0];
       expect(resolver('unknown-agent')).toBeNull();
     });
   });
@@ -321,7 +316,28 @@ describe('createIPCSubsystem', () => {
 
   describe('error / failure path', () => {
     it('returns null when ipcServer.listen() rejects', async () => {
-      mockIPCServer.listen.mockRejectedValueOnce(new Error('EADDRINUSE'));
+      // Override listen to reject for this one test using a flag
+      // We can't use mockRejectedValueOnce directly since _ipcServer is recreated per call.
+      // Use mockWriteFileSync to trigger failure after listen succeeds but before return,
+      // or mock mkdirSync before listen is called.
+      // Actually listen happens after mkdirSync in source, so override mkdirSync:
+      // Wait - looking at setup.ts, listen() is called AFTER mkdirSync().
+      // To make listen fail we need to intercept it.
+      // Solution: override mkdirSync to set up a one-time failure on listen after server construction.
+      // Simpler: just make mkdirSync throw to get null return.
+      // But we want to test listen specifically. Let’s use writeFileSync to simulate that.
+      // Actually: let’s override the listen mock by having mkdirSync set up a rejection.
+      // Simplest: mock mkdirSync to succeed but then writeFileSync throws = returns null.
+      // For listen rejection test, we need to configure it after IPCServer is constructed.
+      // Use a flag approach:
+      let shouldRejectListen = true;
+      mockMkdirSync.mockImplementationOnce(() => {
+        // At this point _ipcServer exists; override listen to reject
+        if (shouldRejectListen && _ipcServer) {
+          _ipcServer.listen.mockRejectedValueOnce(new Error('EADDRINUSE'));
+          shouldRejectListen = false;
+        }
+      });
       const result = await createIPCSubsystem(makeOpts());
       expect(result).toBeNull();
     });

@@ -99,23 +99,34 @@ describe('memory/directories', () => {
     });
 
     it('should handle mkdir errors and throw with descriptive message', async () => {
-      // Test error handling by using vi.mock - but we can't spy on fs/promises in ESM
-      // Instead, test indirectly by verifying the error message format
-      // Create a file where a directory should be to cause EEXIST error
-      const blockingFile = path.join(testDir, '.goodvibes');
-      await fs.writeFile(blockingFile, 'blocking file');
+      // Create .goodvibes as a dir (so ensureGoodVibesDir succeeds),
+      // then make it readonly so mkdir(.goodvibes/memory) fails with EACCES.
+      const goodvibesDir = path.join(testDir, '.goodvibes');
+      await fs.mkdir(goodvibesDir, { recursive: true });
+      // Create goodvibes.json so ensureGoodVibesDir won't try to write it
+      await fs.writeFile(path.join(goodvibesDir, 'goodvibes.json'), '{}');
+      // Make .goodvibes readonly: ensureGoodVibesDir skips (dir exists),
+      // but ensureMemoryDir's mkdir fails with EACCES
+      await fs.chmod(goodvibesDir, 0o555);
 
-      await expect(ensureMemoryDir(testDir)).rejects.toThrow(
-        'Failed to create memory directory'
-      );
+      try {
+        await expect(ensureMemoryDir(testDir)).rejects.toThrow(
+          'Failed to create memory directory'
+        );
+      } finally {
+        // Restore permissions so afterEach cleanup can remove the dir
+        await fs.chmod(goodvibesDir, 0o755);
+      }
     });
 
     it('should handle non-Error objects in catch block', async () => {
       // The error handling converts any error to string in the message
       // Test by verifying that errors are properly wrapped
-      // Create a file where a directory should be
-      const blockingFile = path.join(testDir, '.goodvibes');
-      await fs.writeFile(blockingFile, 'content');
+      // Create .goodvibes as a dir with goodvibes.json, then make it readonly
+      const goodvibesDir = path.join(testDir, '.goodvibes');
+      await fs.mkdir(goodvibesDir, { recursive: true });
+      await fs.writeFile(path.join(goodvibesDir, 'goodvibes.json'), '{}');
+      await fs.chmod(goodvibesDir, 0o555);
 
       try {
         await ensureMemoryDir(testDir);
@@ -125,6 +136,9 @@ describe('memory/directories', () => {
         expect((error as Error).message).toContain(
           'Failed to create memory directory'
         );
+      } finally {
+        // Restore permissions so afterEach cleanup can remove the dir
+        await fs.chmod(goodvibesDir, 0o755);
       }
     });
 

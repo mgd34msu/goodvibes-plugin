@@ -11,11 +11,20 @@ import type { WatchdogCoordinatorDeps } from '../watchdog.js';
 import type { WorkflowInstance } from '../types.js';
 import type { Directive } from '../../../shared/ipc/protocol.js';
 
+// ─── Hoisted mocks (must be declared before vi.mock factories) ────────────────────
+
+const mocks = vi.hoisted(() => ({
+  readFileSync: vi.fn(),
+  ensureDirSync: vi.fn(),
+  writeJsonSync: vi.fn(),
+  buildSpawnDirectiveMessage: vi.fn((role: string, task: string) => `SPAWN:${role}:${task}`),
+  buildEscalationMessage: vi.fn((wfId: string, attempts: number, score: number) => `ESCALATE:${wfId}:${attempts}:${score}`),
+}));
+
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
-const mockReadFileSync = vi.fn();
 vi.mock('node:fs', () => ({
-  readFileSync: mockReadFileSync,
+  readFileSync: mocks.readFileSync,
 }));
 
 vi.mock('../../../shared/logger.js', () => ({
@@ -34,21 +43,17 @@ vi.mock('../../../shared/utils.js', () => ({
   },
 }));
 
-const mockEnsureDirSync = vi.fn();
 vi.mock('../../../core/utils/fs-utils.js', () => ({
-  ensureDirSync: mockEnsureDirSync,
+  ensureDirSync: mocks.ensureDirSync,
 }));
 
-const mockWriteJsonSync = vi.fn();
 vi.mock('../../../core/state/file-io.js', () => ({
-  writeJsonSync: mockWriteJsonSync,
+  writeJsonSync: mocks.writeJsonSync,
 }));
 
-const mockBuildSpawnDirectiveMessage = vi.fn((role: string, task: string) => `SPAWN:${role}:${task}`);
-const mockBuildEscalationMessage = vi.fn((wfId: string, attempts: number, score: number) => `ESCALATE:${wfId}:${attempts}:${score}`);
-vi.mock('../directives/legacy-directive-builder.js', () => ({
-  buildSpawnDirectiveMessage: mockBuildSpawnDirectiveMessage,
-  buildEscalationMessage: mockBuildEscalationMessage,
+vi.mock('../../directives/legacy-directive-builder.js', () => ({
+  buildSpawnDirectiveMessage: mocks.buildSpawnDirectiveMessage,
+  buildEscalationMessage: mocks.buildEscalationMessage,
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -103,6 +108,13 @@ function makeDeps(overrides: Partial<WatchdogCoordinatorDeps> = {}): WatchdogCoo
 describe('WatchdogCoordinator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-apply mock implementations after clearAllMocks
+    mocks.buildSpawnDirectiveMessage.mockImplementation(
+      (role: string, task: string) => `SPAWN:${role}:${task}`,
+    );
+    mocks.buildEscalationMessage.mockImplementation(
+      (wfId: string, attempts: number, score: number) => `ESCALATE:${wfId}:${attempts}:${score}`,
+    );
   });
 
   afterEach(() => {
@@ -242,9 +254,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      // enqueue should not be called (directive already pending)
       expect(deps.directiveQueue.enqueue).not.toHaveBeenCalled();
-      // drain should not be called yet (only after 3+ stuck ticks)
       expect(deps.directiveQueue.drain).not.toHaveBeenCalled();
     });
 
@@ -268,7 +278,7 @@ describe('WatchdogCoordinator', () => {
       (deps.directiveQueue.peek as any).mockReturnValue([makeDirective('wf_escalate')]);
       (deps.directiveQueue.drain as any).mockReturnValue([makeDirective('wf_escalate')]);
 
-      mockReadFileSync.mockImplementation(() => { throw new Error('no file'); });
+      mocks.readFileSync.mockImplementation(() => { throw new Error('no file'); });
 
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows(); // tick 1
@@ -276,26 +286,25 @@ describe('WatchdogCoordinator', () => {
       watchdog.checkStaleWorkflows(); // tick 3 — escalation fires
 
       expect(deps.directiveQueue.drain).toHaveBeenCalledWith('subagent_stop', 'wf_escalate');
-      expect(mockWriteJsonSync).toHaveBeenCalled();
+      expect(mocks.writeJsonSync).toHaveBeenCalled();
     });
 
-    it('resets stuck count after escalation (tick 4 should not immediately drain again)', () => {
+    it('resets stuck count after escalation (tick 4 should not drain again)', () => {
       const deps = makeDeps();
       const wf = makeWorkflow({ id: 'wf_reset' });
       (deps.workflowEngine.listActive as any).mockReturnValue([wf]);
       (deps.directiveQueue.peek as any).mockReturnValue([makeDirective('wf_reset')]);
       (deps.directiveQueue.drain as any).mockReturnValue([makeDirective('wf_reset')]);
 
-      mockReadFileSync.mockImplementation(() => { throw new Error('no file'); });
+      mocks.readFileSync.mockImplementation(() => { throw new Error('no file'); });
 
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows(); // 1
       watchdog.checkStaleWorkflows(); // 2
       watchdog.checkStaleWorkflows(); // 3 — escalation + reset
 
-      // After reset, tick 4 should not immediately drain again (stuck count restarts at 1)
       (deps.directiveQueue.drain as any).mockClear();
-      watchdog.checkStaleWorkflows(); // 4 — stuck count = 1
+      watchdog.checkStaleWorkflows(); // 4 — stuck count = 1, no drain
       expect(deps.directiveQueue.drain).not.toHaveBeenCalled();
     });
   });
@@ -332,7 +341,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
+      expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.any(String),
         undefined,
@@ -376,7 +385,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
+      expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.stringContaining('src/a.ts'),
         undefined,
@@ -397,7 +406,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
+      expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.stringContaining('Check all recently modified files'),
         undefined,
@@ -418,8 +427,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      // Should use fallback since files_modified is not an array
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
+      expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.stringContaining('Check all recently modified files'),
         undefined,
@@ -511,7 +519,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
+      expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'engineer',
         expect.stringContaining('Bug A'),
         undefined,
@@ -532,7 +540,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
+      expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'engineer',
         expect.stringContaining('See previous review output'),
         undefined,
@@ -553,7 +561,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
+      expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'engineer',
         expect.stringContaining('See previous review output'),
         undefined,
@@ -602,7 +610,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildEscalationMessage).toHaveBeenCalledWith('wf_esc2', 5, 3);
+      expect(mocks.buildEscalationMessage).toHaveBeenCalledWith('wf_esc2', 5, 3);
     });
 
     it('uses default score of 0 when review_score is not a number', () => {
@@ -618,7 +626,7 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(mockBuildEscalationMessage).toHaveBeenCalledWith('wf_noscore', 3, 0);
+      expect(mocks.buildEscalationMessage).toHaveBeenCalledWith('wf_noscore', 3, 0);
     });
   });
 
@@ -641,7 +649,6 @@ describe('WatchdogCoordinator', () => {
       (deps.directiveQueue.enqueue as any).mockClear();
 
       watchdog.checkStaleWorkflows(); // cleanup tick
-      // No enqueue since no active workflows
       expect(deps.directiveQueue.enqueue).not.toHaveBeenCalled();
 
       // Workflow re-appears — cooldown should be cleared, so new recovery can happen
@@ -667,7 +674,7 @@ describe('WatchdogCoordinator', () => {
       // Re-appears — stuck count should be reset to 0
       (deps.workflowEngine.listActive as any).mockReturnValue([wf]);
       (deps.directiveQueue.drain as any).mockReturnValue([makeDirective('wf_stuck_clean')]);
-      mockReadFileSync.mockImplementation(() => { throw new Error('no file'); });
+      mocks.readFileSync.mockImplementation(() => { throw new Error('no file'); });
 
       watchdog.checkStaleWorkflows(); // 1
       watchdog.checkStaleWorkflows(); // 2
@@ -692,7 +699,7 @@ describe('WatchdogCoordinator', () => {
         priority: 10,
         source: 'prior',
       };
-      mockReadFileSync.mockReturnValue(
+      mocks.readFileSync.mockReturnValue(
         JSON.stringify({ directives: [existing] }),
       );
 
@@ -701,7 +708,7 @@ describe('WatchdogCoordinator', () => {
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows(); // escalation
 
-      expect(mockWriteJsonSync).toHaveBeenCalledWith(
+      expect(mocks.writeJsonSync).toHaveBeenCalledWith(
         expect.stringContaining('urgent-directives.json'),
         expect.objectContaining({
           directives: expect.arrayContaining([
@@ -719,15 +726,14 @@ describe('WatchdogCoordinator', () => {
       (deps.directiveQueue.peek as any).mockReturnValue([makeDirective('wf_malformed')]);
       (deps.directiveQueue.drain as any).mockReturnValue([makeDirective('wf_malformed')]);
 
-      mockReadFileSync.mockReturnValue('not-valid-json{{{');
+      mocks.readFileSync.mockReturnValue('not-valid-json{{{');
 
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows(); // escalation
 
-      // Should still write with just the new directive
-      expect(mockWriteJsonSync).toHaveBeenCalled();
+      expect(mocks.writeJsonSync).toHaveBeenCalled();
     });
 
     it('handles existing file with non-array directives field gracefully', () => {
@@ -737,15 +743,14 @@ describe('WatchdogCoordinator', () => {
       (deps.directiveQueue.peek as any).mockReturnValue([makeDirective('wf_nonarray_file')]);
       (deps.directiveQueue.drain as any).mockReturnValue([makeDirective('wf_nonarray_file')]);
 
-      mockReadFileSync.mockReturnValue(JSON.stringify({ directives: 'not-an-array' }));
+      mocks.readFileSync.mockReturnValue(JSON.stringify({ directives: 'not-an-array' }));
 
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows(); // escalation
 
-      // Starts with empty existing, writes the new directive
-      expect(mockWriteJsonSync).toHaveBeenCalled();
+      expect(mocks.writeJsonSync).toHaveBeenCalled();
     });
 
     it('does nothing when drain returns empty array', () => {
@@ -760,7 +765,7 @@ describe('WatchdogCoordinator', () => {
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows(); // escalation — drain returns empty
 
-      expect(mockWriteJsonSync).not.toHaveBeenCalled();
+      expect(mocks.writeJsonSync).not.toHaveBeenCalled();
     });
 
     it('re-enqueues directives when writeJsonSync throws', () => {
@@ -771,15 +776,14 @@ describe('WatchdogCoordinator', () => {
       const drainedDir = makeDirective('wf_writefail');
       (deps.directiveQueue.drain as any).mockReturnValue([drainedDir]);
 
-      mockReadFileSync.mockImplementation(() => { throw new Error('no file'); });
-      mockWriteJsonSync.mockImplementation(() => { throw new Error('disk full'); });
+      mocks.readFileSync.mockImplementation(() => { throw new Error('no file'); });
+      mocks.writeJsonSync.mockImplementation(() => { throw new Error('disk full'); });
 
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows();
       watchdog.checkStaleWorkflows(); // escalation — write fails
 
-      // Directives should be re-enqueued after write failure
       expect(deps.directiveQueue.enqueue).toHaveBeenCalledWith('subagent_stop', drainedDir);
     });
   });
@@ -801,20 +805,18 @@ describe('WatchdogCoordinator', () => {
     });
   });
 
-  // ─── isDirectiveForWorkflow: pending directive matching ──────────────────────
+  // ─── Pending directive matching ───────────────────────────────────────────────
 
   describe('pending directive matching', () => {
     it('does not treat pending directive for different workflow as match', () => {
       const deps = makeDeps();
       const wf = makeWorkflow({ id: 'wf_real', current_state: 'REVIEWING' });
       (deps.workflowEngine.listActive as any).mockReturnValue([wf]);
-      // Pending directive is for a different workflow
       (deps.directiveQueue.peek as any).mockReturnValue([makeDirective('wf_other')]);
 
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      // Should enqueue since no directive for wf_real
       expect(deps.directiveQueue.enqueue).toHaveBeenCalled();
     });
 
@@ -822,7 +824,6 @@ describe('WatchdogCoordinator', () => {
       const deps = makeDeps();
       const wf = makeWorkflow({ id: 'wf_nocontent', current_state: 'REVIEWING' });
       (deps.workflowEngine.listActive as any).mockReturnValue([wf]);
-      // Directive with non-string content
       (deps.directiveQueue.peek as any).mockReturnValue([{
         type: 'inject_system_message',
         content: 42, // not a string

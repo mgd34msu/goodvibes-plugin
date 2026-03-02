@@ -318,7 +318,7 @@ var AgentPool = /** @class */ (function () {
      * Processes waiting agents to see if they can start.
      */
     AgentPool.prototype.processWaitingAgents = function () {
-        for (var _i = 0, _a = this.agents.entries(); _i < _a.length; _i++) {
+        for (var _i = 0, _a = Array.from(this.agents.entries()); _i < _a.length; _i++) {
             var _b = _a[_i], id = _b[0], agent = _b[1];
             if (agent.status === "waiting" && this.canStart(agent)) {
                 agent.status = "queued";
@@ -459,13 +459,15 @@ var AgentPool = /** @class */ (function () {
      */
     AgentPool.prototype.prune = function () {
         var pruned = 0;
-        for (var _i = 0, _a = this.agents.entries(); _i < _a.length; _i++) {
+        for (var _i = 0, _a = Array.from(this.agents.entries()); _i < _a.length; _i++) {
             var _b = _a[_i], id = _b[0], agent = _b[1];
             if (agent.status === "completed" || agent.status === "failed") {
                 this.agents.delete(id);
                 pruned++;
             }
         }
+        // Clear spawn tracking on prune
+        this.recentSpawns = [];
         return pruned;
     };
     return AgentPool;

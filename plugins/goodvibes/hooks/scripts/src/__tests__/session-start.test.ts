@@ -220,6 +220,7 @@ describe('session-start hook', () => {
       validateRegistries: mockValidateRegistries,
       ensureCacheDir: mockEnsureCacheDir,
       ensureGoodVibesDir: vi.fn().mockResolvedValue(undefined),
+      ensureGlobalAnalyticsDir: vi.fn(),
       fileExists: vi.fn().mockResolvedValue(true),
       saveAnalytics: mockSaveAnalytics,
       debug: mockDebug,
@@ -261,6 +262,39 @@ describe('session-start hook', () => {
     // Mock settings-injection module
     vi.doMock('../session-start/settings-injection.js', () => ({
       injectSettings: mockInjectSettings,
+    }));
+
+    // Mock version-checker module
+    vi.doMock('../session-start/version-checker.js', () => ({
+      checkForUpdates: vi.fn().mockResolvedValue({
+        isUpToDate: true,
+        localVersion: '2.1.0',
+        remoteVersion: '2.1.0',
+      }),
+    }));
+
+    // Mock pricing-fetcher module
+    vi.doMock('../session-start/pricing-fetcher.js', () => ({
+      fetchPricingIfStale: vi.fn().mockResolvedValue(undefined),
+    }));
+
+    // Mock project-indexer module
+    vi.doMock('../session-start/project-indexer.js', () => ({
+      buildProjectIndex: vi.fn().mockResolvedValue(undefined),
+    }));
+
+    // Mock claude-md-manager module
+    vi.doMock('../session-start/claude-md-manager.js', () => ({
+      ensureClaudeMdImports: vi.fn().mockResolvedValue(undefined),
+    }));
+
+    // Mock runtime-client module
+    vi.doMock('../shared/runtime-client.js', () => ({
+      RuntimeClient: vi.fn().mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(false),
+        sendHookEvent: vi.fn().mockResolvedValue(undefined),
+        query: vi.fn().mockResolvedValue(null),
+      })),
     }));
 
     // Import the module (this triggers the hook)
@@ -364,6 +398,7 @@ describe('session-start hook', () => {
       // Verify response
       expect(mockBuildSystemMessage).toHaveBeenCalledWith(
         'test-session-123',
+        expect.any(Object),
         expect.any(Object)
       );
       expect(mockCreateResponse).toHaveBeenCalledWith({

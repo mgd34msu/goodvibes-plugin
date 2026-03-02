@@ -26,6 +26,7 @@ import {
   allowTool,
   blockTool,
   logError,
+  debug,
 } from '../shared/index.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
 
@@ -162,6 +163,12 @@ export async function runPreToolUseHook(): Promise<void> {
     }
     // ─── End Phase 6 integration ───
 
+    debug('PreToolUse hook received input', {
+      tool_name: input.tool_name,
+      cwd: input.cwd,
+      is_subagent: (input as PreToolUseInput).is_subagent,
+    });
+
     // FIRST: Handle Bash tool
     if (input.tool_name === 'Bash' || input.tool_name?.endsWith('__Bash')) {
       await handleBashTool(input);
@@ -178,11 +185,13 @@ export async function runPreToolUseHook(): Promise<void> {
 
     // THIRD: MCP tool validators
     const toolName = input.tool_name?.split('__').pop() ?? '';
+    debug(`Extracted tool name: ${toolName}`);
 
     const validator = TOOL_VALIDATORS[toolName];
     if (validator) {
       await validator(input);
     } else {
+      debug(`Unknown tool '${toolName}', allowing by default`);
       respond(allowTool('PreToolUse'));
     }
   } catch (error: unknown) {

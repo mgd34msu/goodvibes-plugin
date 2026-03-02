@@ -7,57 +7,58 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createExecutorSubsystem } from '../subsystem.js';
 
+// ─── Hoisted control state ──────────────────────────────────────────────────────
+
+const ctrl = vi.hoisted(() => ({
+  mode: 'engaged' as string,
+  detectionMethod: 'default' as string,
+  modeManagerShouldThrow: false,
+  budgetManagerShouldThrow: false,
+  tickHandlerShouldThrow: false,
+  generateEventId: vi.fn().mockReturnValue('evt-123'),
+  timestamp: vi.fn().mockReturnValue('2025-01-01T00:00:00.000Z'),
+}));
+
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
-// Track what mode/detectionMethod is returned from mocked instances
-let mockMode = 'engaged';
-let mockDetectionMethod = 'default';
-let mockExecutorModeManagerShouldThrow = false;
-let mockExecutorBudgetManagerShouldThrow = false;
-let mockDaemonTickHandlerShouldThrow = false;
+vi.mock('../../../core/processing/executor-mode.js', () => ({
+  ExecutorModeManager: vi.fn().mockImplementation(function (this: any) {
+    if (ctrl.modeManagerShouldThrow) throw new Error('mode manager init failed');
+    this.getMode = vi.fn(() => ctrl.mode);
+    this.getDetectionMethod = vi.fn(() => ctrl.detectionMethod);
+    this.setMode = vi.fn();
+    this.shouldProcessQueue = vi.fn().mockReturnValue(true);
+    this.shouldClearContext = vi.fn().mockReturnValue(false);
+    this.detectMode = vi.fn(() => ctrl.mode);
+    this.updateConfig = vi.fn();
+  }),
+}));
 
-vi.mock('../../core/processing/executor-mode.js', () => {
-  return {
-    ExecutorModeManager: vi.fn().mockImplementation(function (this: any) {
-      if (mockExecutorModeManagerShouldThrow) throw new Error('mode manager init failed');
-      this.getMode = vi.fn(() => mockMode);
-      this.getDetectionMethod = vi.fn(() => mockDetectionMethod);
-      this.setMode = vi.fn();
-      this.shouldProcessQueue = vi.fn().mockReturnValue(true);
-      this.shouldClearContext = vi.fn().mockReturnValue(false);
-      this.detectMode = vi.fn(() => mockMode);
-      this.updateConfig = vi.fn();
-    }),
-  };
-});
+vi.mock('../executor-budget.js', () => ({
+  ExecutorBudgetManager: vi.fn().mockImplementation(function (this: any) {
+    if (ctrl.budgetManagerShouldThrow) throw new Error('budget manager init failed');
+    this.canProcess = vi.fn().mockReturnValue(true);
+    this.getSpending = vi.fn().mockReturnValue({
+      total_usd: 0, daily_usd: 0, daily_reset_at: '', last_updated: '',
+    });
+    this.recordSpending = vi.fn();
+    this.checkDailyReset = vi.fn().mockReturnValue(false);
+    this.adjustBudget = vi.fn();
+    this.persist = vi.fn();
+    this.restore = vi.fn();
+  }),
+}));
 
-vi.mock('../executor-budget.js', () => {
-  return {
-    ExecutorBudgetManager: vi.fn().mockImplementation(function (this: any) {
-      if (mockExecutorBudgetManagerShouldThrow) throw new Error('budget manager init failed');
-      this.canProcess = vi.fn().mockReturnValue(true);
-      this.getSpending = vi.fn().mockReturnValue({ total_usd: 0, daily_usd: 0, daily_reset_at: '', last_updated: '' });
-      this.recordSpending = vi.fn();
-      this.checkDailyReset = vi.fn().mockReturnValue(false);
-      this.adjustBudget = vi.fn();
-      this.persist = vi.fn();
-      this.restore = vi.fn();
-    }),
-  };
-});
-
-vi.mock('../daemon-tick-handler.js', () => {
-  return {
-    DaemonTickHandler: vi.fn().mockImplementation(function (this: any) {
-      if (mockDaemonTickHandlerShouldThrow) throw new Error('tick handler init failed');
-      this.setQueueDepthGetter = vi.fn();
-      this.handleTick = vi.fn();
-      this.buildTickContext = vi.fn().mockReturnValue('tick context');
-      this.getTickCount = vi.fn().mockReturnValue(0);
-      this.getTickCommand = vi.fn().mockReturnValue('/tick');
-    }),
-  };
-});
+vi.mock('../daemon-tick-handler.js', () => ({
+  DaemonTickHandler: vi.fn().mockImplementation(function (this: any) {
+    if (ctrl.tickHandlerShouldThrow) throw new Error('tick handler init failed');
+    this.setQueueDepthGetter = vi.fn();
+    this.handleTick = vi.fn();
+    this.buildTickContext = vi.fn().mockReturnValue('tick context');
+    this.getTickCount = vi.fn().mockReturnValue(0);
+    this.getTickCommand = vi.fn().mockReturnValue('/tick');
+  }),
+}));
 
 vi.mock('../../../shared/logger.js', () => ({
   createLogger: () => ({
@@ -68,12 +69,9 @@ vi.mock('../../../shared/logger.js', () => ({
   }),
 }));
 
-const mockGenerateEventId = vi.fn().mockReturnValue('evt-123');
-const mockTimestamp = vi.fn().mockReturnValue('2025-01-01T00:00:00.000Z');
-
 vi.mock('../../../shared/utils.js', () => ({
-  generateEventId: mockGenerateEventId,
-  timestamp: mockTimestamp,
+  generateEventId: ctrl.generateEventId,
+  timestamp: ctrl.timestamp,
   toErrorMessage: (err: unknown) => (err instanceof Error ? err.message : String(err)),
 }));
 
@@ -113,16 +111,16 @@ function makeEventBus(): any {
 
 describe('createExecutorSubsystem()', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     // Reset control flags
-    mockMode = 'engaged';
-    mockDetectionMethod = 'default';
-    mockExecutorModeManagerShouldThrow = false;
-    mockExecutorBudgetManagerShouldThrow = false;
-    mockDaemonTickHandlerShouldThrow = false;
-    // Re-apply mock return values after clear
-    mockGenerateEventId.mockReturnValue('evt-123');
-    mockTimestamp.mockReturnValue('2025-01-01T00:00:00.000Z');
+    ctrl.mode = 'engaged';
+    ctrl.detectionMethod = 'default';
+    ctrl.modeManagerShouldThrow = false;
+    ctrl.budgetManagerShouldThrow = false;
+    ctrl.tickHandlerShouldThrow = false;
+    vi.clearAllMocks();
+    // Re-apply return values after clearAllMocks
+    ctrl.generateEventId.mockReturnValue('evt-123');
+    ctrl.timestamp.mockReturnValue('2025-01-01T00:00:00.000Z');
   });
 
   // ─── Successful creation ──────────────────────────────────────────────────
@@ -140,19 +138,27 @@ describe('createExecutorSubsystem()', () => {
       expect(result).toHaveProperty('daemonTickHandler');
     });
 
-    it('executorMode component has expected methods', () => {
+    it('executorMode component has getMode method', () => {
       const result = createExecutorSubsystem(makeConfig(), makeEventBus())!;
       expect(typeof result.executorMode.getMode).toBe('function');
+    });
+
+    it('executorMode component has getDetectionMethod method', () => {
+      const result = createExecutorSubsystem(makeConfig(), makeEventBus())!;
       expect(typeof result.executorMode.getDetectionMethod).toBe('function');
     });
 
-    it('executorBudget component has expected methods', () => {
+    it('executorBudget component has canProcess method', () => {
       const result = createExecutorSubsystem(makeConfig(), makeEventBus())!;
       expect(typeof result.executorBudget.canProcess).toBe('function');
+    });
+
+    it('executorBudget component has getSpending method', () => {
+      const result = createExecutorSubsystem(makeConfig(), makeEventBus())!;
       expect(typeof result.executorBudget.getSpending).toBe('function');
     });
 
-    it('daemonTickHandler component has expected methods', () => {
+    it('daemonTickHandler component has handleTick method', () => {
       const result = createExecutorSubsystem(makeConfig(), makeEventBus())!;
       expect(typeof result.daemonTickHandler.handleTick).toBe('function');
     });
@@ -175,7 +181,7 @@ describe('createExecutorSubsystem()', () => {
     });
 
     it('emits event with mode from executorMode.getMode()', () => {
-      mockMode = 'daemon';
+      ctrl.mode = 'daemon';
       const eventBus = makeEventBus();
       createExecutorSubsystem(makeConfig(), eventBus);
       const emittedEvent = eventBus.emit.mock.calls[0][0];
@@ -183,7 +189,7 @@ describe('createExecutorSubsystem()', () => {
     });
 
     it('emits event with detection_method from executorMode.getDetectionMethod()', () => {
-      mockDetectionMethod = 'inferred';
+      ctrl.detectionMethod = 'inferred';
       const eventBus = makeEventBus();
       createExecutorSubsystem(makeConfig(), eventBus);
       const emittedEvent = eventBus.emit.mock.calls[0][0];
@@ -217,7 +223,7 @@ describe('createExecutorSubsystem()', () => {
 
   describe('constructor calls', () => {
     it('instantiates ExecutorModeManager with executor config and eventBus', async () => {
-      const { ExecutorModeManager } = await import('../../core/processing/executor-mode.js');
+      const { ExecutorModeManager } = await import('../../../core/processing/executor-mode.js');
       const config = makeConfig();
       const eventBus = makeEventBus();
       createExecutorSubsystem(config, eventBus);
@@ -250,19 +256,19 @@ describe('createExecutorSubsystem()', () => {
 
   describe('failure handling', () => {
     it('returns null when ExecutorModeManager constructor throws', () => {
-      mockExecutorModeManagerShouldThrow = true;
+      ctrl.modeManagerShouldThrow = true;
       const result = createExecutorSubsystem(makeConfig(), makeEventBus());
       expect(result).toBeNull();
     });
 
     it('returns null when ExecutorBudgetManager constructor throws', () => {
-      mockExecutorBudgetManagerShouldThrow = true;
+      ctrl.budgetManagerShouldThrow = true;
       const result = createExecutorSubsystem(makeConfig(), makeEventBus());
       expect(result).toBeNull();
     });
 
     it('returns null when DaemonTickHandler constructor throws', () => {
-      mockDaemonTickHandlerShouldThrow = true;
+      ctrl.tickHandlerShouldThrow = true;
       const result = createExecutorSubsystem(makeConfig(), makeEventBus());
       expect(result).toBeNull();
     });
@@ -275,12 +281,12 @@ describe('createExecutorSubsystem()', () => {
     });
 
     it('does not throw even when creation fails — swallows error', () => {
-      mockExecutorModeManagerShouldThrow = true;
+      ctrl.modeManagerShouldThrow = true;
       expect(() => createExecutorSubsystem(makeConfig(), makeEventBus())).not.toThrow();
     });
 
     it('does not emit event when creation fails', () => {
-      mockExecutorModeManagerShouldThrow = true;
+      ctrl.modeManagerShouldThrow = true;
       const eventBus = makeEventBus();
       createExecutorSubsystem(makeConfig(), eventBus);
       expect(eventBus.emit).not.toHaveBeenCalled();
@@ -293,7 +299,7 @@ describe('createExecutorSubsystem()', () => {
     it.each(['engaged', 'daemon', 'hybrid'] as const)(
       'creates subsystem for mode=%s',
       (mode) => {
-        mockMode = mode;
+        ctrl.mode = mode;
         const config = makeConfig();
         config.executor.mode = mode;
         const result = createExecutorSubsystem(config, makeEventBus());
@@ -302,7 +308,7 @@ describe('createExecutorSubsystem()', () => {
     );
 
     it('returns executorMode with the mode from the mock instance', () => {
-      mockMode = 'hybrid';
+      ctrl.mode = 'hybrid';
       const result = createExecutorSubsystem(makeConfig(), makeEventBus())!;
       expect(result.executorMode.getMode()).toBe('hybrid');
     });

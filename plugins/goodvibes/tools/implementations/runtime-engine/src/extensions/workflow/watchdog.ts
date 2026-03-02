@@ -42,6 +42,12 @@ const WATCHDOG_STALE_MS = 120_000;
  */
 const WATCHDOG_COOLDOWN_MS = 120_000;
 
+/** Maximum number of tracked workflow entries before evicting oldest. */
+const MAX_TRACKED_WORKFLOWS = 500;
+
+/** Maximum age for recovery entries before eviction (10 minutes). */
+const RECOVERY_EVICTION_AGE_MS = 600_000;
+
 /** Check if a directive's content references a specific workflow ID. */
 function isDirectiveForWorkflow(d: Directive, workflowId: string): boolean {
   return typeof d.content === 'string' && d.content.includes(workflowId);
@@ -75,6 +81,41 @@ export class WatchdogCoordinator {
   }
 
   /**
+   * Evict old entries from internal tracking Maps to prevent unbounded growth.
+   * Called automatically at the start of checkStaleWorkflows.
+   */
+  evictStaleEntries(): void {
+    const now = Date.now();
+
+    // Evict old watchdogRecovery entries by age
+    for (const [wid, ts] of this.watchdogRecovery) {
+      if (now - ts > RECOVERY_EVICTION_AGE_MS) {
+        this.watchdogRecovery.delete(wid);
+      }
+    }
+
+    // Cap drainStuckCounts to prevent unbounded growth
+    if (this.drainStuckCounts.size > MAX_TRACKED_WORKFLOWS) {
+      const entries = Array.from(this.drainStuckCounts.entries())
+        .sort((a, b) => a[1] - b[1]);
+      const toRemove = entries.length - MAX_TRACKED_WORKFLOWS;
+      for (let i = 0; i < toRemove; i++) {
+        this.drainStuckCounts.delete(entries[i][0]);
+      }
+    }
+
+    // Cap watchdogRecovery similarly
+    if (this.watchdogRecovery.size > MAX_TRACKED_WORKFLOWS) {
+      const entries = Array.from(this.watchdogRecovery.entries())
+        .sort((a, b) => a[1] - b[1]);
+      const toRemove = entries.length - MAX_TRACKED_WORKFLOWS;
+      for (let i = 0; i < toRemove; i++) {
+        this.watchdogRecovery.delete(entries[i][0]);
+      }
+    }
+  }
+
+  /**
    * Detect active workflows stuck in transitional states (REVIEWING, FIXING)
    * and re-enqueue lost directives.
    *
@@ -85,6 +126,9 @@ export class WatchdogCoordinator {
   checkStaleWorkflows(): void {
     const { workflowEngine, directiveQueue } = this.deps;
     if (!workflowEngine || !directiveQueue) return;
+
+    // Evict stale entries before processing to prevent unbounded Map growth
+    this.evictStaleEntries();
 
     // Sweep any held directive batches whose TTL has expired — ensures
     // directives are not permanently lost if the IPC write callback was

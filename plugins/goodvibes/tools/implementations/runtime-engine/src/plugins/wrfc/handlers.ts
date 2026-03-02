@@ -127,18 +127,22 @@ export function handleWorkflowCreated(
 ): HandlerResult {
 
   const payload = event.payload as Record<string, unknown>;
-  const agentId = typeof payload['agent_id'] === 'string' ? payload['agent_id'] : null;
+  // Support both direct payload shape (agent-originated) and nested data shape (hook-originated)
+  const data = (typeof payload['data'] === 'object' && payload['data'] !== null)
+    ? payload['data'] as Record<string, unknown>
+    : payload;
+  const agentId = typeof data['agent_id'] === 'string' ? data['agent_id'] : null;
   if (!agentId) {
     log.debug('handleWorkflowCreated: no agent_id in payload, skipping');
     return {};
   }
 
-  const agentType = typeof payload['agent_type'] === 'string' ? payload['agent_type'] : '';
-  const incomingWid = typeof payload['workflow_id'] === 'string' && payload['workflow_id'].length > 0
-    ? payload['workflow_id']
+  const agentType = typeof data['agent_type'] === 'string' ? data['agent_type'] : '';
+  const incomingWid = typeof data['workflow_id'] === 'string' && data['workflow_id'].length > 0
+    ? data['workflow_id']
     : null;
   const wid = incomingWid ?? `wrfc_${agentId}`;
-  const task = typeof payload['task'] === 'string' ? payload['task'] : '';
+  const task = typeof data['task'] === 'string' ? data['task'] : '';
 
   // Bind agent → workflow in state store
   const state_updates: StateUpdate[] = [
@@ -192,9 +196,13 @@ export function handleAgentCompleted(
 
   const payload = event.payload as Record<string, unknown>;
 
-  // Extract agent metadata (compatible with both hook-event and agent-event shapes)
+  // Extract agent metadata (compatible with hook-event, agent-event, and nested data shapes)
+  const dataPayload = (typeof payload['data'] === 'object' && payload['data'] !== null)
+    ? payload['data'] as Record<string, unknown>
+    : null;
   const agentId: string | null =
     (typeof payload['agent_id'] === 'string' ? payload['agent_id'] : null) ??
+    (typeof dataPayload?.['agent_id'] === 'string' ? dataPayload['agent_id'] : null) ??
     (typeof (payload['hook_input'] as Record<string, unknown> | null)?.['agent_id'] === 'string'
       ? (payload['hook_input'] as Record<string, unknown>)['agent_id'] as string
       : null);

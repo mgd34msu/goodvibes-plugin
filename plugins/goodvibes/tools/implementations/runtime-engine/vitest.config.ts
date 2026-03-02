@@ -6,7 +6,7 @@ export default defineConfig({
     environment: 'node',
     root: import.meta.dirname,
     include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
-    exclude: ['node_modules', 'dist'],
+    exclude: ['node_modules', 'dist', '**/.claude/worktrees/**', '**/delete_me/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
