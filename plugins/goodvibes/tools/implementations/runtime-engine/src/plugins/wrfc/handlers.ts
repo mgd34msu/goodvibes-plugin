@@ -289,7 +289,7 @@ export function handleAgentCompleted(
       log.warn('handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required', { wid, agent_id: agentId });
     }
     if (agentType && effectiveRequireReview.has(agentType)) {
-      const task = `Review the work completed in workflow ${wid}. ` +
+      const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` +
         (filesModified.length > 0
           ? `Files modified: ${filesModified.join(', ')}.`
           : 'No files recorded yet.');
@@ -319,7 +319,7 @@ export function handleAgentCompleted(
     }
 
     // Normal work agent: spawn reviewer
-    const task = `Review the work completed in workflow ${wid}. ` +
+    const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` +
       (filesModified.length > 0
         ? `Files modified: ${filesModified.join(', ')}.`
         : 'No files recorded yet.');
@@ -381,7 +381,7 @@ export function handleAgentCompleted(
     } else {
       // Fail: spawn fixer
       const issuesSummary = agentOutput?.trim() || FALLBACK_NO_REVIEW_OUTPUT;
-      const task = `Fix the issues identified in the code review for workflow ${wid}. ` +
+      const task = `[WRFC:${wid}] Fix the issues identified in the code review for workflow ${wid}. ` +
         `Review score: ${score}/10 (threshold: ${minScore}). Issues:\n${issuesSummary}` +
         (filesModified.length > 0 ? `\nFiles: ${filesModified.join(', ')}.` : '');
 
@@ -433,7 +433,7 @@ export function handleAgentCompleted(
       return { actions, state_updates };
     } else {
       // Still budget: re-review
-      const task = `Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. ` +
+      const task = `[WRFC:${wid}] Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. ` +
         (mergedFiles.length > 0 ? `Files modified: ${mergedFiles.join(', ')}.` : 'Check all recently modified files.');
 
       const actions: Action[] = [buildSpawnAction({ wid, type: 'reviewer', task, files: mergedFiles })];
@@ -521,7 +521,7 @@ export function handleQualityGate(
   const issuesSummary = typeof rawIssues === 'string' && rawIssues.trim().length > 0
     ? rawIssues.trim()
     : FALLBACK_SEE_PAYLOAD;
-  const task = `Fix the issues identified in the code review for workflow ${wid}. ` +
+  const task = `[WRFC:${wid}] Fix the issues identified in the code review for workflow ${wid}. ` +
     `Review score: ${score}/10 (threshold: ${minScore}). Issues:\n${issuesSummary}` +
     (filesModified.length > 0 ? `\nFiles: ${filesModified.join(', ')}.` : '');
 

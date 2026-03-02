@@ -30579,7 +30579,7 @@ function handleAgentCompleted(event, _trigger, store) {
       log6.warn("handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required", { wid, agent_id: agentId });
     }
     if (agentType && effectiveRequireReview.has(agentType)) {
-      const task2 = `Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
+      const task2 = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
       const actions2 = [buildSpawnAction({ wid, type: "reviewer", task: task2, files: filesModified })];
       const state_updates2 = phaseUpdate(wid, "REVIEWING");
       const events2 = [makeChainEvent("wrfc:review_started", wid, event)];
@@ -30601,7 +30601,7 @@ function handleAgentCompleted(event, _trigger, store) {
       });
       return { actions: actions2, state_updates: state_updates2 };
     }
-    const task = `Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
+    const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
     const actions = [buildSpawnAction({ wid, type: "reviewer", task, files: filesModified })];
     const state_updates = phaseUpdate(wid, "REVIEWING");
     const events = [makeChainEvent("wrfc:review_started", wid, event)];
@@ -30654,7 +30654,7 @@ function handleAgentCompleted(event, _trigger, store) {
       return { actions, state_updates, events };
     } else {
       const issuesSummary = agentOutput?.trim() || FALLBACK_NO_REVIEW_OUTPUT;
-      const task = `Fix the issues identified in the code review for workflow ${wid}. Review score: ${score}/10 (threshold: ${minScore}). Issues:
+      const task = `[WRFC:${wid}] Fix the issues identified in the code review for workflow ${wid}. Review score: ${score}/10 (threshold: ${minScore}). Issues:
 ${issuesSummary}` + (filesModified.length > 0 ? `
 Files: ${filesModified.join(", ")}.` : "");
       const actions = [buildSpawnAction({ wid, type: "engineer", task, files: filesModified })];
@@ -30698,7 +30698,7 @@ Files: ${filesModified.join(", ")}.` : "");
       });
       return { actions, state_updates };
     } else {
-      const task = `Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. ` + (mergedFiles.length > 0 ? `Files modified: ${mergedFiles.join(", ")}.` : "Check all recently modified files.");
+      const task = `[WRFC:${wid}] Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. ` + (mergedFiles.length > 0 ? `Files modified: ${mergedFiles.join(", ")}.` : "Check all recently modified files.");
       const actions = [buildSpawnAction({ wid, type: "reviewer", task, files: mergedFiles })];
       const state_updates = [
         ...phaseUpdate(wid, "REVIEWING"),
@@ -30755,7 +30755,7 @@ function handleQualityGate(event, _trigger, store) {
   }
   const rawIssues = payload["issues"];
   const issuesSummary = typeof rawIssues === "string" && rawIssues.trim().length > 0 ? rawIssues.trim() : FALLBACK_SEE_PAYLOAD;
-  const task = `Fix the issues identified in the code review for workflow ${wid}. Review score: ${score}/10 (threshold: ${minScore}). Issues:
+  const task = `[WRFC:${wid}] Fix the issues identified in the code review for workflow ${wid}. Review score: ${score}/10 (threshold: ${minScore}). Issues:
 ${issuesSummary}` + (filesModified.length > 0 ? `
 Files: ${filesModified.join(", ")}.` : "");
   const actions = [buildSpawnAction({ wid, type: "engineer", task, files: filesModified })];
