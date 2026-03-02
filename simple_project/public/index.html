@@ -4,17 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Items</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="container">
+  <main>
     <h1>Items</h1>
 
     <form id="add-form">
+      <label for="item-input" class="sr-only">New item</label>
       <input
-        type="text"
         id="item-input"
-        placeholder="Enter item name"
+        type="text"
+        name="name"
+        placeholder="Add a new item..."
         autocomplete="off"
         required
       >
@@ -23,9 +25,11 @@
 
     <p id="error-msg" class="error" hidden></p>
 
-    <ul id="items-list"></ul>
-  </div>
+    <ul id="item-list"></ul>
 
-  <script src="app.js"></script>
+    <p id="empty-msg" class="empty">No items yet.</p>
+  </main>
+
+  <script src="/app.js"></script>
 </body>
 </html>

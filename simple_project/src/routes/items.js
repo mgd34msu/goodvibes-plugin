@@ -2,19 +2,16 @@ import { Router } from 'express';
 
 const router = Router();
 
-let items = [
-  { id: 1, name: 'Item One' },
-  { id: 2, name: 'Item Two' },
-];
+/** @type {{ id: number, name: string, description: string }[]} */
+let items = [];
+let nextId = 1;
 
-let nextId = 3;
-
-// GET /api/items
-router.get('/', (req, res) => {
+// GET /api/items — return all items
+router.get('/', (_req, res) => {
   res.json(items);
 });
 
-// GET /api/items/:id
+// GET /api/items/:id — return single item
 router.get('/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const item = items.find((i) => i.id === id);
@@ -24,18 +21,18 @@ router.get('/:id', (req, res) => {
   res.json(item);
 });
 
-// POST /api/items
+// POST /api/items — create new item
 router.post('/', (req, res) => {
-  const { name } = req.body;
-  if (!name || typeof name !== 'string' || name.trim() === '') {
-    return res.status(400).json({ error: 'name is required' });
+  const { name, description } = req.body;
+  if (!name || typeof name !== 'string') {
+    return res.status(400).json({ error: 'Field "name" is required and must be a string' });
   }
-  const item = { id: nextId++, name: name.trim() };
+  const item = { id: nextId++, name, description: description ?? '' };
   items.push(item);
   res.status(201).json(item);
 });
 
-// DELETE /api/items/:id
+// DELETE /api/items/:id — remove item
 router.delete('/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const index = items.findIndex((i) => i.id === id);
@@ -43,7 +40,7 @@ router.delete('/:id', (req, res) => {
     return res.status(404).json({ error: 'Item not found' });
   }
   items.splice(index, 1);
-  res.status(204).send();
+  res.status(204).end();
 });
 
 export default router;

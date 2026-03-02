@@ -1,12 +1,16 @@
 import express from 'express';
-import { logger } from './middleware/logger.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { loggerMiddleware } from './middleware/logger.js';
 import itemsRouter from './routes/items.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
-app.use(logger);
+app.use(loggerMiddleware);
+app.use(express.static(join(__dirname, '..', 'public')));
 
 app.use('/api/items', itemsRouter);
 
