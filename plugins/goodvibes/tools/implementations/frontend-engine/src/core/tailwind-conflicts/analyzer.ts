@@ -21,6 +21,48 @@ import {
 } from './scanner.js';
 
 // =============================================================================
+// Summary Generation
+// =============================================================================
+
+/**
+ * Build a human-readable summary string from analysis results.
+ */
+export function generateSummary(
+  elementCount: number,
+  conflicts: Conflict[],
+  redundant: RedundantClass[],
+  specificityIssues: SpecificityIssue[],
+  suggestions: Suggestion[]
+): string {
+  const parts: string[] = [];
+  parts.push(`Analyzed ${elementCount} elements with Tailwind classes`);
+
+  if (conflicts.length === 0 && redundant.length === 0 && specificityIssues.length === 0) {
+    parts.push('No conflicts detected');
+  } else {
+    if (conflicts.length > 0) {
+      const overrides = conflicts.filter((c) => c.conflict_type === 'override').length;
+      const contradictions = conflicts.filter((c) => c.conflict_type === 'contradiction').length;
+      parts.push(
+        `Found ${conflicts.length} conflicts (${overrides} overrides, ${contradictions} contradictions)`
+      );
+    }
+    if (redundant.length > 0) {
+      parts.push(`Found ${redundant.length} redundant classes`);
+    }
+    if (specificityIssues.length > 0) {
+      parts.push(`Found ${specificityIssues.length} specificity issues`);
+    }
+  }
+
+  if (suggestions.length > 0) {
+    parts.push(`${suggestions.length} optimization suggestions available`);
+  }
+
+  return parts.join('. ');
+}
+
+// =============================================================================
 // Conflict Detection
 // =============================================================================
 

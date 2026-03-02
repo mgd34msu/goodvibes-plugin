@@ -9,7 +9,7 @@
 import ts from 'typescript';
 import type { ElementInfo } from './types.js';
 import { createsStackingContext, extractZIndex, extractPosition } from './context-rules.js';
-import { extractClassesFromAttribute } from '../../handlers/jsx-class-utils.js';
+import { extractClassesFromAttribute } from '../jsx/class-extractor.js';
 
 /**
  * Get line number for a position in source file

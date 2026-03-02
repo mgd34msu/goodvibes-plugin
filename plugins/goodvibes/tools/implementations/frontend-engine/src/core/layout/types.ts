@@ -149,3 +149,19 @@ export interface LayoutContext {
   parentPosition?: PositionType;
   depth: number;
 }
+
+// =============================================================================
+// Analysis Result Types
+// =============================================================================
+
+/**
+ * Result of layout hierarchy analysis
+ */
+export interface AnalyzeLayoutHierarchyResult {
+  file: string;
+  root_element: string;
+  layout_tree: LayoutNode;
+  constraint_notes: string[];
+  potential_issues: LayoutIssue[];
+  summary: string;
+}

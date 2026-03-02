@@ -15,7 +15,7 @@
 import ts from 'typescript';
 import { parseTailwindClassesLayout } from '../tailwind/parser.js';
 import { createElementIdentifier } from '../tailwind/identifier.js';
-import { extractClassesFromAttribute } from '../../handlers/jsx-class-utils.js';
+import { extractClassesFromAttribute } from '../jsx/class-extractor.js';
 import type {
   DisplayType,
   PositionType,
@@ -282,75 +282,8 @@ export function parseJsxElement(
 // File Parsing
 // =============================================================================
 
-/**
- * Find the first returned JSX element in a file
- */
-export function findRootJsx(sourceFile: ts.SourceFile): ts.Node | null {
-  let rootJsx: ts.Node | null = null;
-
-  function visit(node: ts.Node): void {
-    if (rootJsx) return;
-
-    // Look for return statements with JSX
-    if (ts.isReturnStatement(node) && node.expression) {
-      if (
-        ts.isJsxElement(node.expression) ||
-        ts.isJsxSelfClosingElement(node.expression) ||
-        ts.isJsxFragment(node.expression)
-      ) {
-        rootJsx = node.expression;
-        return;
-      }
-      // Handle parenthesized expressions: return (<div>...</div>)
-      if (ts.isParenthesizedExpression(node.expression)) {
-        const inner = node.expression.expression;
-        if (ts.isJsxElement(inner) || ts.isJsxSelfClosingElement(inner) || ts.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-
-    // Look for arrow function implicit returns
-    if (ts.isArrowFunction(node) && node.body) {
-      if (
-        ts.isJsxElement(node.body) ||
-        ts.isJsxSelfClosingElement(node.body) ||
-        ts.isJsxFragment(node.body)
-      ) {
-        rootJsx = node.body;
-        return;
-      }
-      if (ts.isParenthesizedExpression(node.body)) {
-        const inner = node.body.expression;
-        if (ts.isJsxElement(inner) || ts.isJsxSelfClosingElement(inner) || ts.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-
-    ts.forEachChild(node, visit);
-  }
-
-  // First pass: look for returns and arrow functions
-  visit(sourceFile);
-
-  // Second pass: if not found, look for top-level JSX expressions
-  if (!rootJsx) {
-    for (const statement of sourceFile.statements) {
-      if (ts.isExpressionStatement(statement)) {
-        const expr = statement.expression;
-        if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
-          rootJsx = expr;
-          break;
-        }
-      }
-    }
-  }
-
-  return rootJsx;
-}
+// Re-export findRootJsx from the canonical jsx/element-finder module
+export { findRootJsx } from '../jsx/element-finder.js';
 
 // =============================================================================
 // Issue Detection

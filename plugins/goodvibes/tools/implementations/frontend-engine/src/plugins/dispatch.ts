@@ -1,33 +1,31 @@
 /**
  * L3 Plugin Layer — Tool Dispatch Table
  *
- * Maps 14 MCP tool names to their handler functions.
+ * Maps 14 MCP tool names to their dispatcher functions.
  * Provides a read-only dispatch table and lookup helpers.
  *
- * NOTE: Phase 2/3 refactoring — these handlers currently live in src/handlers/.
- * They will be rewired to extensions/ in Phase 3 of the architecture migration.
- * The dispatch table must remain functional with existing handler imports
- * throughout the transition.
+ * All handlers are imported from the extensions/ layer, which wraps
+ * the underlying analysis logic with validation, error handling,
+ * and the standard MCP content response format.
  *
  * @module plugins/dispatch
  */
 
-// Import handlers from existing handlers/ layer
-// PHASE-3-TODO: Rewire these to extensions/ once that layer is created
-import { handleAnalyzeRenderTriggers } from '../handlers/analyze-render-triggers.js';
-import { handleAnalyzeStackingContext } from '../handlers/analyze-stacking-context.js';
-import { handleAnalyzeLayoutHierarchy } from '../handlers/analyze-layout-hierarchy.js';
-import { handleAnalyzeResponsiveBreakpoints } from '../handlers/analyze-responsive-breakpoints.js';
-import { handleDiagnoseOverflow } from '../handlers/diagnose-overflow.js';
-import { handleTraceComponentState } from '../handlers/trace-component-state.js';
-import { handleGetAccessibilityTree } from '../handlers/get-accessibility-tree.js';
-import { handleGetSizingStrategy } from '../handlers/get-sizing-strategy.js';
-import { handleAnalyzeTailwindConflicts } from '../handlers/analyze-tailwind-conflicts.js';
-import { handleAnalyzeEventFlow } from '../handlers/analyze-event-flow.js';
-import { handleGetReactComponentTree } from '../handlers/react.js';
-import { handleAnalyzeClientBoundary } from '../handlers/analyze-client-boundary.js';
-import { handleAuditHookDependencies } from '../handlers/audit-hook-dependencies.js';
-import { handleAnalyzeErrorBoundaries } from '../handlers/analyze-error-boundaries.js';
+// Import dispatchers from extensions/ layer
+import { handleGetReactComponentTree } from '../extensions/component-tree.js';
+import { handleAnalyzeStackingContext } from '../extensions/stacking-context.js';
+import { handleAnalyzeResponsiveBreakpoints } from '../extensions/responsive-breakpoints.js';
+import { handleTraceComponentState } from '../extensions/component-state.js';
+import { handleAnalyzeRenderTriggers } from '../extensions/render-triggers.js';
+import { handleAnalyzeLayoutHierarchy } from '../extensions/layout-hierarchy.js';
+import { handleDiagnoseOverflow } from '../extensions/overflow-diagnosis.js';
+import { handleGetAccessibilityTree } from '../extensions/accessibility-tree.js';
+import { handleGetSizingStrategy } from '../extensions/sizing-strategy.js';
+import { handleAnalyzeEventFlow } from '../extensions/event-flow.js';
+import { handleAnalyzeTailwindConflicts } from '../extensions/tailwind-conflicts.js';
+import { handleAnalyzeClientBoundary } from '../extensions/client-boundary.js';
+import { handleAuditHookDependencies } from '../extensions/hook-dependencies.js';
+import { handleAnalyzeErrorBoundaries } from '../extensions/error-boundaries.js';
 
 // =============================================================================
 // Type Definitions

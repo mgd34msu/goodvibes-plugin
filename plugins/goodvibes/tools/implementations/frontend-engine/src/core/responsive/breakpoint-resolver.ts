@@ -10,7 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { BREAKPOINT_SIZES } from './constants.js';
-import { getProjectRoot } from '../../config.js';
+import { getProjectRoot } from '../../shared/config.js';
 
 /**
  * Resolved breakpoint configuration

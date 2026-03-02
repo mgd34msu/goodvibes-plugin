@@ -1665,8 +1665,8 @@ var require_dataType = __commonJS({
     }
     __name(getSchemaTypes, "getSchemaTypes");
     exports2.getSchemaTypes = getSchemaTypes;
-    function getJSONTypes(ts36) {
-      const types = Array.isArray(ts36) ? ts36 : ts36 ? [ts36] : [];
+    function getJSONTypes(ts40) {
+      const types = Array.isArray(ts40) ? ts40 : ts40 ? [ts40] : [];
       if (types.every(rules_1.isJSONType))
         return types;
       throw new Error("type must be JSONType or JSONType[]: " + types.join(","));
@@ -2801,19 +2801,19 @@ var require_validate = __commonJS({
       narrowSchemaTypes(it, types);
     }
     __name(checkContextTypes, "checkContextTypes");
-    function checkMultipleTypes(it, ts36) {
-      if (ts36.length > 1 && !(ts36.length === 2 && ts36.includes("null"))) {
+    function checkMultipleTypes(it, ts40) {
+      if (ts40.length > 1 && !(ts40.length === 2 && ts40.includes("null"))) {
         strictTypesError(it, "use allowUnionTypes to allow union type keyword");
       }
     }
     __name(checkMultipleTypes, "checkMultipleTypes");
-    function checkKeywordTypes(it, ts36) {
+    function checkKeywordTypes(it, ts40) {
       const rules = it.self.RULES.all;
       for (const keyword in rules) {
         const rule = rules[keyword];
         if (typeof rule == "object" && (0, applicability_1.shouldUseRule)(it.schema, rule)) {
           const { type } = rule.definition;
-          if (type.length && !type.some((t) => hasApplicableType(ts36, t))) {
+          if (type.length && !type.some((t) => hasApplicableType(ts40, t))) {
             strictTypesError(it, `missing type "${type.join(",")}" for keyword "${keyword}"`);
           }
         }
@@ -2824,19 +2824,19 @@ var require_validate = __commonJS({
       return schTs.includes(kwdT) || kwdT === "number" && schTs.includes("integer");
     }
     __name(hasApplicableType, "hasApplicableType");
-    function includesType(ts36, t) {
-      return ts36.includes(t) || t === "integer" && ts36.includes("number");
+    function includesType(ts40, t) {
+      return ts40.includes(t) || t === "integer" && ts40.includes("number");
     }
     __name(includesType, "includesType");
     function narrowSchemaTypes(it, withTypes) {
-      const ts36 = [];
+      const ts40 = [];
       for (const t of it.dataTypes) {
         if (includesType(withTypes, t))
-          ts36.push(t);
+          ts40.push(t);
         else if (withTypes.includes("integer") && t === "number")
-          ts36.push("integer");
+          ts40.push("integer");
       }
-      it.dataTypes = ts36;
+      it.dataTypes = ts40;
     }
     __name(narrowSchemaTypes, "narrowSchemaTypes");
     function strictTypesError(it, msg) {
@@ -3249,7 +3249,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve18.call(this, root, ref);
+      let _sch = resolve19.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a2 = root.localRefs) === null || _a2 === void 0 ? void 0 : _a2[ref];
         const { schemaId } = this.opts;
@@ -3280,13 +3280,13 @@ var require_compile = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve18(root, ref) {
+    function resolve19(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve18, "resolve");
+    __name(resolve19, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -3505,8 +3505,8 @@ var require_utils = __commonJS({
       return ind;
     }
     __name(findToken, "findToken");
-    function removeDotSegments(path23) {
-      let input = path23;
+    function removeDotSegments(path22) {
+      let input = path22;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3713,8 +3713,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path23, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path23 && path23 !== "/" ? path23 : void 0;
+        const [path22, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path22 && path22 !== "/" ? path22 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -3880,56 +3880,56 @@ var require_fast_uri = __commonJS({
       return uri;
     }
     __name(normalize, "normalize");
-    function resolve18(baseURI, relativeURI, options) {
+    function resolve19(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    __name(resolve18, "resolve");
-    function resolveComponent(base, relative19, options, skipNormalization) {
+    __name(resolve19, "resolve");
+    function resolveComponent(base, relative16, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative19 = parse3(serialize(relative19, options), options);
+        relative16 = parse3(serialize(relative16, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative19.scheme) {
-        target.scheme = relative19.scheme;
-        target.userinfo = relative19.userinfo;
-        target.host = relative19.host;
-        target.port = relative19.port;
-        target.path = removeDotSegments(relative19.path || "");
-        target.query = relative19.query;
+      if (!options.tolerant && relative16.scheme) {
+        target.scheme = relative16.scheme;
+        target.userinfo = relative16.userinfo;
+        target.host = relative16.host;
+        target.port = relative16.port;
+        target.path = removeDotSegments(relative16.path || "");
+        target.query = relative16.query;
       } else {
-        if (relative19.userinfo !== void 0 || relative19.host !== void 0 || relative19.port !== void 0) {
-          target.userinfo = relative19.userinfo;
-          target.host = relative19.host;
-          target.port = relative19.port;
-          target.path = removeDotSegments(relative19.path || "");
-          target.query = relative19.query;
+        if (relative16.userinfo !== void 0 || relative16.host !== void 0 || relative16.port !== void 0) {
+          target.userinfo = relative16.userinfo;
+          target.host = relative16.host;
+          target.port = relative16.port;
+          target.path = removeDotSegments(relative16.path || "");
+          target.query = relative16.query;
         } else {
-          if (!relative19.path) {
+          if (!relative16.path) {
             target.path = base.path;
-            if (relative19.query !== void 0) {
-              target.query = relative19.query;
+            if (relative16.query !== void 0) {
+              target.query = relative16.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative19.path[0] === "/") {
-              target.path = removeDotSegments(relative19.path);
+            if (relative16.path[0] === "/") {
+              target.path = removeDotSegments(relative16.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative19.path;
+                target.path = "/" + relative16.path;
               } else if (!base.path) {
-                target.path = relative19.path;
+                target.path = relative16.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative19.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative16.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative19.query;
+            target.query = relative16.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3937,7 +3937,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative19.fragment;
+      target.fragment = relative16.fragment;
       return target;
     }
     __name(resolveComponent, "resolveComponent");
@@ -4113,7 +4113,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve18,
+      resolve: resolve19,
       resolveComponent,
       equal,
       serialize,
@@ -7183,12 +7183,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs19, exportName) {
+    function addFormats(ajv, list, fs21, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs19[f]);
+        ajv.addFormat(f, fs21[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
@@ -7200,7 +7200,7 @@ var require_dist = __commonJS({
 // node_modules/typescript/lib/typescript.js
 var require_typescript = __commonJS({
   "node_modules/typescript/lib/typescript.js"(exports2, module2) {
-    var ts36 = {};
+    var ts40 = {};
     ((module3) => {
       "use strict";
       var __defProp2 = Object.defineProperty;
@@ -11045,10 +11045,10 @@ var require_typescript = __commonJS({
         return (arg) => f(arg) && g(arg);
       }
       __name(and, "and");
-      function or(...fs19) {
+      function or(...fs21) {
         return (...args) => {
           let lastResult;
-          for (const f of fs19) {
+          for (const f of fs21) {
             lastResult = f(...args);
             if (lastResult) {
               return lastResult;
@@ -11246,18 +11246,18 @@ var require_typescript = __commonJS({
           return true;
         }
         __name(shouldAssertFunction, "shouldAssertFunction");
-        function fail(message, stackCrawlMark) {
+        function fail2(message, stackCrawlMark) {
           debugger;
           const e = new Error(message ? `Debug Failure. ${message}` : "Debug Failure.");
           if (Error.captureStackTrace) {
-            Error.captureStackTrace(e, stackCrawlMark || fail);
+            Error.captureStackTrace(e, stackCrawlMark || fail2);
           }
           throw e;
         }
-        __name(fail, "fail");
-        Debug2.fail = fail;
+        __name(fail2, "fail");
+        Debug2.fail = fail2;
         function failBadSyntaxKind(node, message, stackCrawlMark) {
-          return fail(
+          return fail2(
             `${message || "Unexpected node."}\r
 Node ${formatSyntaxKind(node.kind)} was unexpected.`,
             stackCrawlMark || failBadSyntaxKind
@@ -11271,7 +11271,7 @@ Node ${formatSyntaxKind(node.kind)} was unexpected.`,
             if (verboseDebugInfo) {
               message += "\r\nVerbose Debug Information: " + (typeof verboseDebugInfo === "string" ? verboseDebugInfo : verboseDebugInfo());
             }
-            fail(message, stackCrawlMark || assert2);
+            fail2(message, stackCrawlMark || assert2);
           }
         }
         __name(assert2, "assert");
@@ -11279,35 +11279,35 @@ Node ${formatSyntaxKind(node.kind)} was unexpected.`,
         function assertEqual2(a, b, msg, msg2, stackCrawlMark) {
           if (a !== b) {
             const message = msg ? msg2 ? `${msg} ${msg2}` : msg : "";
-            fail(`Expected ${a} === ${b}. ${message}`, stackCrawlMark || assertEqual2);
+            fail2(`Expected ${a} === ${b}. ${message}`, stackCrawlMark || assertEqual2);
           }
         }
         __name(assertEqual2, "assertEqual");
         Debug2.assertEqual = assertEqual2;
         function assertLessThan(a, b, msg, stackCrawlMark) {
           if (a >= b) {
-            fail(`Expected ${a} < ${b}. ${msg || ""}`, stackCrawlMark || assertLessThan);
+            fail2(`Expected ${a} < ${b}. ${msg || ""}`, stackCrawlMark || assertLessThan);
           }
         }
         __name(assertLessThan, "assertLessThan");
         Debug2.assertLessThan = assertLessThan;
         function assertLessThanOrEqual(a, b, stackCrawlMark) {
           if (a > b) {
-            fail(`Expected ${a} <= ${b}`, stackCrawlMark || assertLessThanOrEqual);
+            fail2(`Expected ${a} <= ${b}`, stackCrawlMark || assertLessThanOrEqual);
           }
         }
         __name(assertLessThanOrEqual, "assertLessThanOrEqual");
         Debug2.assertLessThanOrEqual = assertLessThanOrEqual;
         function assertGreaterThanOrEqual(a, b, stackCrawlMark) {
           if (a < b) {
-            fail(`Expected ${a} >= ${b}`, stackCrawlMark || assertGreaterThanOrEqual);
+            fail2(`Expected ${a} >= ${b}`, stackCrawlMark || assertGreaterThanOrEqual);
           }
         }
         __name(assertGreaterThanOrEqual, "assertGreaterThanOrEqual");
         Debug2.assertGreaterThanOrEqual = assertGreaterThanOrEqual;
         function assertIsDefined(value, message, stackCrawlMark) {
           if (value === void 0 || value === null) {
-            fail(message, stackCrawlMark || assertIsDefined);
+            fail2(message, stackCrawlMark || assertIsDefined);
           }
         }
         __name(assertIsDefined, "assertIsDefined");
@@ -11333,7 +11333,7 @@ Node ${formatSyntaxKind(node.kind)} was unexpected.`,
         Debug2.checkEachDefined = checkEachDefined;
         function assertNever2(member, message = "Illegal value:", stackCrawlMark) {
           const detail = typeof member === "object" && hasProperty(member, "kind") && hasProperty(member, "pos") ? "SyntaxKind: " + formatSyntaxKind(member.kind) : JSON.stringify(member);
-          return fail(`${message} ${detail}`, stackCrawlMark || assertNever2);
+          return fail2(`${message} ${detail}`, stackCrawlMark || assertNever2);
         }
         __name(assertNever2, "assertNever");
         Debug2.assertNever = assertNever2;
@@ -12805,7 +12805,7 @@ ${lanes.join("\n")}
       var tracing;
       var tracingEnabled;
       ((tracingEnabled2) => {
-        let fs19;
+        let fs21;
         let traceCount = 0;
         let traceFd = 0;
         let mode;
@@ -12814,9 +12814,9 @@ ${lanes.join("\n")}
         const legend = [];
         function startTracing2(tracingMode, traceDir, configFilePath) {
           Debug.assert(!tracing, "Tracing already started");
-          if (fs19 === void 0) {
+          if (fs21 === void 0) {
             try {
-              fs19 = require("fs");
+              fs21 = require("fs");
             } catch (e) {
               throw new Error(`tracing requires having fs
 (original error: ${e.message || e})`);
@@ -12827,8 +12827,8 @@ ${lanes.join("\n")}
           if (legendPath === void 0) {
             legendPath = combinePaths(traceDir, "legend.json");
           }
-          if (!fs19.existsSync(traceDir)) {
-            fs19.mkdirSync(traceDir, { recursive: true });
+          if (!fs21.existsSync(traceDir)) {
+            fs21.mkdirSync(traceDir, { recursive: true });
           }
           const countPart = mode === "build" ? `.${process.pid}-${++traceCount}` : mode === "server" ? `.${process.pid}` : ``;
           const tracePath = combinePaths(traceDir, `trace${countPart}.json`);
@@ -12838,10 +12838,10 @@ ${lanes.join("\n")}
             tracePath,
             typesPath
           });
-          traceFd = fs19.openSync(tracePath, "w");
+          traceFd = fs21.openSync(tracePath, "w");
           tracing = tracingEnabled2;
           const meta3 = { cat: "__metadata", ph: "M", ts: 1e3 * timestamp(), pid: 1, tid: 1 };
-          fs19.writeSync(
+          fs21.writeSync(
             traceFd,
             "[\n" + [{ name: "process_name", args: { name: "tsc" }, ...meta3 }, { name: "thread_name", args: { name: "Main" }, ...meta3 }, { name: "TracingStartedInBrowser", ...meta3, cat: "disabled-by-default-devtools.timeline" }].map((v) => JSON.stringify(v)).join(",\n")
           );
@@ -12851,10 +12851,10 @@ ${lanes.join("\n")}
         function stopTracing() {
           Debug.assert(tracing, "Tracing is not in progress");
           Debug.assert(!!typeCatalog.length === (mode !== "server"));
-          fs19.writeSync(traceFd, `
+          fs21.writeSync(traceFd, `
 ]
 `);
-          fs19.closeSync(traceFd);
+          fs21.closeSync(traceFd);
           tracing = void 0;
           if (typeCatalog.length) {
             dumpTypes(typeCatalog);
@@ -12934,13 +12934,13 @@ ${lanes.join("\n")}
           if (mode === "server" && phase === "checkTypes")
             return;
           mark("beginTracing");
-          fs19.writeSync(traceFd, `,
+          fs21.writeSync(traceFd, `,
 {"pid":1,"tid":1,"ph":"${eventType}","cat":"${phase}","ts":${time3},"name":"${name}"`);
           if (extras)
-            fs19.writeSync(traceFd, `,${extras}`);
+            fs21.writeSync(traceFd, `,${extras}`);
           if (args)
-            fs19.writeSync(traceFd, `,"args":${JSON.stringify(args)}`);
-          fs19.writeSync(traceFd, `}`);
+            fs21.writeSync(traceFd, `,"args":${JSON.stringify(args)}`);
+          fs21.writeSync(traceFd, `}`);
           mark("endTracing");
           measure("Tracing", "beginTracing", "endTracing");
         }
@@ -12965,9 +12965,9 @@ ${lanes.join("\n")}
           var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
           mark("beginDumpTypes");
           const typesPath = legend[legend.length - 1].typesPath;
-          const typesFd = fs19.openSync(typesPath, "w");
+          const typesFd = fs21.openSync(typesPath, "w");
           const recursionIdentityMap = /* @__PURE__ */ new Map();
-          fs19.writeSync(typesFd, "[");
+          fs21.writeSync(typesFd, "[");
           const numTypes = types.length;
           for (let i = 0; i < numTypes; i++) {
             const type = types[i];
@@ -13063,13 +13063,13 @@ ${lanes.join("\n")}
               flags: Debug.formatTypeFlags(type.flags).split("|"),
               display
             };
-            fs19.writeSync(typesFd, JSON.stringify(descriptor));
+            fs21.writeSync(typesFd, JSON.stringify(descriptor));
             if (i < numTypes - 1) {
-              fs19.writeSync(typesFd, ",\n");
+              fs21.writeSync(typesFd, ",\n");
             }
           }
-          fs19.writeSync(typesFd, "]\n");
-          fs19.closeSync(typesFd);
+          fs21.writeSync(typesFd, "]\n");
+          fs21.closeSync(typesFd);
           mark("endDumpTypes");
           measure("Dump types", "beginDumpTypes", "endDumpTypes");
         }
@@ -13078,7 +13078,7 @@ ${lanes.join("\n")}
           if (!legendPath) {
             return;
           }
-          fs19.writeFileSync(legendPath, JSON.stringify(legend));
+          fs21.writeFileSync(legendPath, JSON.stringify(legend));
         }
         __name(dumpLegend, "dumpLegend");
         tracingEnabled2.dumpLegend = dumpLegend;
@@ -15502,17 +15502,17 @@ ${lanes.join("\n")}
       __name(createFixedChunkSizePollingWatchFile, "createFixedChunkSizePollingWatchFile");
       function createSingleWatcherPerName(cache, useCaseSensitiveFileNames2, name, callback, createWatcher) {
         const toCanonicalFileName = createGetCanonicalFileName(useCaseSensitiveFileNames2);
-        const path23 = toCanonicalFileName(name);
-        const existing = cache.get(path23);
+        const path22 = toCanonicalFileName(name);
+        const existing = cache.get(path22);
         if (existing) {
           existing.callbacks.push(callback);
         } else {
-          cache.set(path23, {
+          cache.set(path22, {
             watcher: createWatcher(
               // Cant infer types correctly so lets satisfy checker
               (param1, param2, param3) => {
                 var _a2;
-                return (_a2 = cache.get(path23)) == null ? void 0 : _a2.callbacks.slice().forEach((cb) => cb(param1, param2, param3));
+                return (_a2 = cache.get(path22)) == null ? void 0 : _a2.callbacks.slice().forEach((cb) => cb(param1, param2, param3));
               }
             ),
             callbacks: [callback]
@@ -15520,12 +15520,12 @@ ${lanes.join("\n")}
         }
         return {
           close: () => {
-            const watcher = cache.get(path23);
+            const watcher = cache.get(path22);
             if (!watcher)
               return;
             if (!orderedRemoveItem(watcher.callbacks, callback) || watcher.callbacks.length)
               return;
-            cache.delete(path23);
+            cache.delete(path22);
             closeFileWatcherOf(watcher);
           }
         };
@@ -15802,16 +15802,16 @@ ${lanes.join("\n")}
           __name(addChildDirectoryWatcher, "addChildDirectoryWatcher");
         }
         __name(updateChildWatches, "updateChildWatches");
-        function isIgnoredPath(path23, options) {
-          return some(ignoredPaths, (searchPath) => isInPath(path23, searchPath)) || isIgnoredByWatchOptions(path23, options, useCaseSensitiveFileNames2, getCurrentDirectory);
+        function isIgnoredPath(path22, options) {
+          return some(ignoredPaths, (searchPath) => isInPath(path22, searchPath)) || isIgnoredByWatchOptions(path22, options, useCaseSensitiveFileNames2, getCurrentDirectory);
         }
         __name(isIgnoredPath, "isIgnoredPath");
-        function isInPath(path23, searchPath) {
-          if (path23.includes(searchPath))
+        function isInPath(path22, searchPath) {
+          if (path22.includes(searchPath))
             return true;
           if (useCaseSensitiveFileNames2)
             return false;
-          return toCanonicalFilePath(path23).includes(searchPath);
+          return toCanonicalFilePath(path22).includes(searchPath);
         }
         __name(isInPath, "isInPath");
       }
@@ -16217,13 +16217,13 @@ ${lanes.join("\n")}
       __name(createSystemWatchFunctions, "createSystemWatchFunctions");
       function patchWriteFileEnsuringDirectory(sys2) {
         const originalWriteFile = sys2.writeFile;
-        sys2.writeFile = (path23, data, writeBom) => writeFileEnsuringDirectories(
-          path23,
+        sys2.writeFile = (path22, data, writeBom) => writeFileEnsuringDirectories(
+          path22,
           data,
           !!writeBom,
-          (path24, data2, writeByteOrderMark) => originalWriteFile.call(sys2, path24, data2, writeByteOrderMark),
-          (path24) => sys2.createDirectory(path24),
-          (path24) => sys2.directoryExists(path24)
+          (path23, data2, writeByteOrderMark) => originalWriteFile.call(sys2, path23, data2, writeByteOrderMark),
+          (path23) => sys2.createDirectory(path23),
+          (path23) => sys2.directoryExists(path23)
         );
       }
       __name(patchWriteFileEnsuringDirectory, "patchWriteFileEnsuringDirectory");
@@ -16263,7 +16263,7 @@ ${lanes.join("\n")}
             // Node 4.0 `fs.watch` function supports the "recursive" option on both OSX and Windows
             // (ref: https://github.com/nodejs/node/pull/2649 and https://github.com/Microsoft/TypeScript/issues/4643)
             fsSupportsRecursiveFsWatch,
-            getAccessibleSortedChildDirectories: (path23) => getAccessibleFileSystemEntries(path23).directories,
+            getAccessibleSortedChildDirectories: (path22) => getAccessibleFileSystemEntries(path22).directories,
             realpath,
             tscWatchFile: process.env.TSC_WATCHFILE,
             useNonPollingWatchers: !!process.env.TSC_NONPOLLING_WATCHER,
@@ -16290,7 +16290,7 @@ ${lanes.join("\n")}
             watchFile: watchFile2,
             watchDirectory,
             preferNonRecursiveWatch: !fsSupportsRecursiveFsWatch,
-            resolvePath: (path23) => _path.resolve(path23),
+            resolvePath: (path22) => _path.resolve(path22),
             fileExists,
             directoryExists,
             getAccessibleFileSystemEntries,
@@ -16325,8 +16325,8 @@ ${lanes.join("\n")}
               }
               return process.memoryUsage().heapUsed;
             },
-            getFileSize(path23) {
-              const stat = statSync3(path23);
+            getFileSize(path22) {
+              const stat = statSync3(path22);
               if (stat == null ? void 0 : stat.isFile()) {
                 return stat.size;
               }
@@ -16370,15 +16370,15 @@ ${lanes.join("\n")}
             }
           };
           return nodeSystem;
-          function statSync3(path23) {
+          function statSync3(path22) {
             try {
-              return _fs.statSync(path23, statSyncOptions);
+              return _fs.statSync(path22, statSyncOptions);
             } catch {
               return void 0;
             }
           }
           __name(statSync3, "statSync");
-          function enableCPUProfiler(path23, cb) {
+          function enableCPUProfiler(path22, cb) {
             if (activeSession) {
               cb();
               return false;
@@ -16393,7 +16393,7 @@ ${lanes.join("\n")}
             session.post("Profiler.enable", () => {
               session.post("Profiler.start", () => {
                 activeSession = session;
-                profilePath = path23;
+                profilePath = path22;
                 cb();
               });
             });
@@ -16547,9 +16547,9 @@ ${lanes.join("\n")}
             }
           }
           __name(writeFile2, "writeFile2");
-          function getAccessibleFileSystemEntries(path23) {
+          function getAccessibleFileSystemEntries(path22) {
             try {
-              const entries = _fs.readdirSync(path23 || ".", { withFileTypes: true });
+              const entries = _fs.readdirSync(path22 || ".", { withFileTypes: true });
               const files = [];
               const directories = [];
               for (const dirent of entries) {
@@ -16559,7 +16559,7 @@ ${lanes.join("\n")}
                 }
                 let stat;
                 if (typeof dirent === "string" || dirent.isSymbolicLink()) {
-                  const name = combinePaths(path23, entry);
+                  const name = combinePaths(path22, entry);
                   stat = statSync3(name);
                   if (!stat) {
                     continue;
@@ -16581,12 +16581,12 @@ ${lanes.join("\n")}
             }
           }
           __name(getAccessibleFileSystemEntries, "getAccessibleFileSystemEntries");
-          function readDirectory(path23, extensions, excludes, includes, depth) {
-            return matchFiles(path23, extensions, excludes, includes, useCaseSensitiveFileNames2, process.cwd(), depth, getAccessibleFileSystemEntries, realpath);
+          function readDirectory(path22, extensions, excludes, includes, depth) {
+            return matchFiles(path22, extensions, excludes, includes, useCaseSensitiveFileNames2, process.cwd(), depth, getAccessibleFileSystemEntries, realpath);
           }
           __name(readDirectory, "readDirectory");
-          function fileSystemEntryExists(path23, entryKind) {
-            const stat = statSync3(path23);
+          function fileSystemEntryExists(path22, entryKind) {
+            const stat = statSync3(path22);
             if (!stat) {
               return false;
             }
@@ -16600,54 +16600,54 @@ ${lanes.join("\n")}
             }
           }
           __name(fileSystemEntryExists, "fileSystemEntryExists");
-          function fileExists(path23) {
+          function fileExists(path22) {
             return fileSystemEntryExists(
-              path23,
+              path22,
               0
               /* File */
             );
           }
           __name(fileExists, "fileExists");
-          function directoryExists(path23) {
+          function directoryExists(path22) {
             return fileSystemEntryExists(
-              path23,
+              path22,
               1
               /* Directory */
             );
           }
           __name(directoryExists, "directoryExists");
-          function getDirectories(path23) {
-            return getAccessibleFileSystemEntries(path23).directories.slice();
+          function getDirectories(path22) {
+            return getAccessibleFileSystemEntries(path22).directories.slice();
           }
           __name(getDirectories, "getDirectories");
-          function fsRealPathHandlingLongPath(path23) {
-            return path23.length < 260 ? _fs.realpathSync.native(path23) : _fs.realpathSync(path23);
+          function fsRealPathHandlingLongPath(path22) {
+            return path22.length < 260 ? _fs.realpathSync.native(path22) : _fs.realpathSync(path22);
           }
           __name(fsRealPathHandlingLongPath, "fsRealPathHandlingLongPath");
-          function realpath(path23) {
+          function realpath(path22) {
             try {
-              return fsRealpath(path23);
+              return fsRealpath(path22);
             } catch {
-              return path23;
+              return path22;
             }
           }
           __name(realpath, "realpath");
-          function getModifiedTime3(path23) {
+          function getModifiedTime3(path22) {
             var _a2;
-            return (_a2 = statSync3(path23)) == null ? void 0 : _a2.mtime;
+            return (_a2 = statSync3(path22)) == null ? void 0 : _a2.mtime;
           }
           __name(getModifiedTime3, "getModifiedTime3");
-          function setModifiedTime(path23, time3) {
+          function setModifiedTime(path22, time3) {
             try {
-              _fs.utimesSync(path23, time3, time3);
+              _fs.utimesSync(path22, time3, time3);
             } catch {
               return;
             }
           }
           __name(setModifiedTime, "setModifiedTime");
-          function deleteFile(path23) {
+          function deleteFile(path22) {
             try {
-              return _fs.unlinkSync(path23);
+              return _fs.unlinkSync(path22);
             } catch {
               return;
             }
@@ -16692,50 +16692,50 @@ ${lanes.join("\n")}
         return charCode === 47 || charCode === 92;
       }
       __name(isAnyDirectorySeparator, "isAnyDirectorySeparator");
-      function isUrl(path23) {
-        return getEncodedRootLength(path23) < 0;
+      function isUrl(path22) {
+        return getEncodedRootLength(path22) < 0;
       }
       __name(isUrl, "isUrl");
-      function isRootedDiskPath(path23) {
-        return getEncodedRootLength(path23) > 0;
+      function isRootedDiskPath(path22) {
+        return getEncodedRootLength(path22) > 0;
       }
       __name(isRootedDiskPath, "isRootedDiskPath");
-      function isDiskPathRoot(path23) {
-        const rootLength = getEncodedRootLength(path23);
-        return rootLength > 0 && rootLength === path23.length;
+      function isDiskPathRoot(path22) {
+        const rootLength = getEncodedRootLength(path22);
+        return rootLength > 0 && rootLength === path22.length;
       }
       __name(isDiskPathRoot, "isDiskPathRoot");
-      function pathIsAbsolute(path23) {
-        return getEncodedRootLength(path23) !== 0;
+      function pathIsAbsolute(path22) {
+        return getEncodedRootLength(path22) !== 0;
       }
       __name(pathIsAbsolute, "pathIsAbsolute");
-      function pathIsRelative(path23) {
-        return /^\.\.?(?:$|[\\/])/.test(path23);
+      function pathIsRelative(path22) {
+        return /^\.\.?(?:$|[\\/])/.test(path22);
       }
       __name(pathIsRelative, "pathIsRelative");
-      function pathIsBareSpecifier(path23) {
-        return !pathIsAbsolute(path23) && !pathIsRelative(path23);
+      function pathIsBareSpecifier(path22) {
+        return !pathIsAbsolute(path22) && !pathIsRelative(path22);
       }
       __name(pathIsBareSpecifier, "pathIsBareSpecifier");
       function hasExtension(fileName) {
         return getBaseFileName(fileName).includes(".");
       }
       __name(hasExtension, "hasExtension");
-      function fileExtensionIs(path23, extension) {
-        return path23.length > extension.length && endsWith(path23, extension);
+      function fileExtensionIs(path22, extension) {
+        return path22.length > extension.length && endsWith(path22, extension);
       }
       __name(fileExtensionIs, "fileExtensionIs");
-      function fileExtensionIsOneOf(path23, extensions) {
+      function fileExtensionIsOneOf(path22, extensions) {
         for (const extension of extensions) {
-          if (fileExtensionIs(path23, extension)) {
+          if (fileExtensionIs(path22, extension)) {
             return true;
           }
         }
         return false;
       }
       __name(fileExtensionIsOneOf, "fileExtensionIsOneOf");
-      function hasTrailingDirectorySeparator(path23) {
-        return path23.length > 0 && isAnyDirectorySeparator(path23.charCodeAt(path23.length - 1));
+      function hasTrailingDirectorySeparator(path22) {
+        return path22.length > 0 && isAnyDirectorySeparator(path22.charCodeAt(path22.length - 1));
       }
       __name(hasTrailingDirectorySeparator, "hasTrailingDirectorySeparator");
       function isVolumeCharacter(charCode) {
@@ -16754,103 +16754,103 @@ ${lanes.join("\n")}
         return -1;
       }
       __name(getFileUrlVolumeSeparatorEnd, "getFileUrlVolumeSeparatorEnd");
-      function getEncodedRootLength(path23) {
-        if (!path23)
+      function getEncodedRootLength(path22) {
+        if (!path22)
           return 0;
-        const ch0 = path23.charCodeAt(0);
+        const ch0 = path22.charCodeAt(0);
         if (ch0 === 47 || ch0 === 92) {
-          if (path23.charCodeAt(1) !== ch0)
+          if (path22.charCodeAt(1) !== ch0)
             return 1;
-          const p1 = path23.indexOf(ch0 === 47 ? directorySeparator : altDirectorySeparator, 2);
+          const p1 = path22.indexOf(ch0 === 47 ? directorySeparator : altDirectorySeparator, 2);
           if (p1 < 0)
-            return path23.length;
+            return path22.length;
           return p1 + 1;
         }
-        if (isVolumeCharacter(ch0) && path23.charCodeAt(1) === 58) {
-          const ch2 = path23.charCodeAt(2);
+        if (isVolumeCharacter(ch0) && path22.charCodeAt(1) === 58) {
+          const ch2 = path22.charCodeAt(2);
           if (ch2 === 47 || ch2 === 92)
             return 3;
-          if (path23.length === 2)
+          if (path22.length === 2)
             return 2;
         }
-        const schemeEnd = path23.indexOf(urlSchemeSeparator);
+        const schemeEnd = path22.indexOf(urlSchemeSeparator);
         if (schemeEnd !== -1) {
           const authorityStart = schemeEnd + urlSchemeSeparator.length;
-          const authorityEnd = path23.indexOf(directorySeparator, authorityStart);
+          const authorityEnd = path22.indexOf(directorySeparator, authorityStart);
           if (authorityEnd !== -1) {
-            const scheme = path23.slice(0, schemeEnd);
-            const authority = path23.slice(authorityStart, authorityEnd);
-            if (scheme === "file" && (authority === "" || authority === "localhost") && isVolumeCharacter(path23.charCodeAt(authorityEnd + 1))) {
-              const volumeSeparatorEnd = getFileUrlVolumeSeparatorEnd(path23, authorityEnd + 2);
+            const scheme = path22.slice(0, schemeEnd);
+            const authority = path22.slice(authorityStart, authorityEnd);
+            if (scheme === "file" && (authority === "" || authority === "localhost") && isVolumeCharacter(path22.charCodeAt(authorityEnd + 1))) {
+              const volumeSeparatorEnd = getFileUrlVolumeSeparatorEnd(path22, authorityEnd + 2);
               if (volumeSeparatorEnd !== -1) {
-                if (path23.charCodeAt(volumeSeparatorEnd) === 47) {
+                if (path22.charCodeAt(volumeSeparatorEnd) === 47) {
                   return ~(volumeSeparatorEnd + 1);
                 }
-                if (volumeSeparatorEnd === path23.length) {
+                if (volumeSeparatorEnd === path22.length) {
                   return ~volumeSeparatorEnd;
                 }
               }
             }
             return ~(authorityEnd + 1);
           }
-          return ~path23.length;
+          return ~path22.length;
         }
         return 0;
       }
       __name(getEncodedRootLength, "getEncodedRootLength");
-      function getRootLength(path23) {
-        const rootLength = getEncodedRootLength(path23);
+      function getRootLength(path22) {
+        const rootLength = getEncodedRootLength(path22);
         return rootLength < 0 ? ~rootLength : rootLength;
       }
       __name(getRootLength, "getRootLength");
-      function getDirectoryPath(path23) {
-        path23 = normalizeSlashes(path23);
-        const rootLength = getRootLength(path23);
-        if (rootLength === path23.length)
-          return path23;
-        path23 = removeTrailingDirectorySeparator(path23);
-        return path23.slice(0, Math.max(rootLength, path23.lastIndexOf(directorySeparator)));
+      function getDirectoryPath(path22) {
+        path22 = normalizeSlashes(path22);
+        const rootLength = getRootLength(path22);
+        if (rootLength === path22.length)
+          return path22;
+        path22 = removeTrailingDirectorySeparator(path22);
+        return path22.slice(0, Math.max(rootLength, path22.lastIndexOf(directorySeparator)));
       }
       __name(getDirectoryPath, "getDirectoryPath");
-      function getBaseFileName(path23, extensions, ignoreCase) {
-        path23 = normalizeSlashes(path23);
-        const rootLength = getRootLength(path23);
-        if (rootLength === path23.length)
+      function getBaseFileName(path22, extensions, ignoreCase) {
+        path22 = normalizeSlashes(path22);
+        const rootLength = getRootLength(path22);
+        if (rootLength === path22.length)
           return "";
-        path23 = removeTrailingDirectorySeparator(path23);
-        const name = path23.slice(Math.max(getRootLength(path23), path23.lastIndexOf(directorySeparator) + 1));
+        path22 = removeTrailingDirectorySeparator(path22);
+        const name = path22.slice(Math.max(getRootLength(path22), path22.lastIndexOf(directorySeparator) + 1));
         const extension = extensions !== void 0 && ignoreCase !== void 0 ? getAnyExtensionFromPath(name, extensions, ignoreCase) : void 0;
         return extension ? name.slice(0, name.length - extension.length) : name;
       }
       __name(getBaseFileName, "getBaseFileName");
-      function tryGetExtensionFromPath(path23, extension, stringEqualityComparer) {
+      function tryGetExtensionFromPath(path22, extension, stringEqualityComparer) {
         if (!startsWith(extension, "."))
           extension = "." + extension;
-        if (path23.length >= extension.length && path23.charCodeAt(path23.length - extension.length) === 46) {
-          const pathExtension = path23.slice(path23.length - extension.length);
+        if (path22.length >= extension.length && path22.charCodeAt(path22.length - extension.length) === 46) {
+          const pathExtension = path22.slice(path22.length - extension.length);
           if (stringEqualityComparer(pathExtension, extension)) {
             return pathExtension;
           }
         }
       }
       __name(tryGetExtensionFromPath, "tryGetExtensionFromPath");
-      function getAnyExtensionFromPathWorker(path23, extensions, stringEqualityComparer) {
+      function getAnyExtensionFromPathWorker(path22, extensions, stringEqualityComparer) {
         if (typeof extensions === "string") {
-          return tryGetExtensionFromPath(path23, extensions, stringEqualityComparer) || "";
+          return tryGetExtensionFromPath(path22, extensions, stringEqualityComparer) || "";
         }
         for (const extension of extensions) {
-          const result = tryGetExtensionFromPath(path23, extension, stringEqualityComparer);
+          const result = tryGetExtensionFromPath(path22, extension, stringEqualityComparer);
           if (result)
             return result;
         }
         return "";
       }
       __name(getAnyExtensionFromPathWorker, "getAnyExtensionFromPathWorker");
-      function getAnyExtensionFromPath(path23, extensions, ignoreCase) {
+      function getAnyExtensionFromPath(path22, extensions, ignoreCase) {
         if (extensions) {
-          return getAnyExtensionFromPathWorker(removeTrailingDirectorySeparator(path23), extensions, ignoreCase ? equateStringsCaseInsensitive : equateStringsCaseSensitive);
+          return getAnyExtensionFromPathWorker(removeTrailingDirectorySeparator(path22), extensions, ignoreCase ? equateStringsCaseInsensitive : equateStringsCaseSensitive);
         }
-        const baseFileName = getBaseFileName(path23);
+        const baseFileName = getBaseFileName(path22);
         const extensionIndex = baseFileName.lastIndexOf(".");
         if (extensionIndex >= 0) {
           return baseFileName.substring(extensionIndex);
@@ -16858,17 +16858,17 @@ ${lanes.join("\n")}
         return "";
       }
       __name(getAnyExtensionFromPath, "getAnyExtensionFromPath");
-      function pathComponents(path23, rootLength) {
-        const root = path23.substring(0, rootLength);
-        const rest = path23.substring(rootLength).split(directorySeparator);
+      function pathComponents(path22, rootLength) {
+        const root = path22.substring(0, rootLength);
+        const rest = path22.substring(rootLength).split(directorySeparator);
         if (rest.length && !lastOrUndefined(rest))
           rest.pop();
         return [root, ...rest];
       }
       __name(pathComponents, "pathComponents");
-      function getPathComponents(path23, currentDirectory = "") {
-        path23 = combinePaths(currentDirectory, path23);
-        return pathComponents(path23, getRootLength(path23));
+      function getPathComponents(path22, currentDirectory = "") {
+        path22 = combinePaths(currentDirectory, path22);
+        return pathComponents(path22, getRootLength(path22));
       }
       __name(getPathComponents, "getPathComponents");
       function getPathFromPathComponents(pathComponents2, length2) {
@@ -16878,8 +16878,8 @@ ${lanes.join("\n")}
         return root + pathComponents2.slice(1, length2).join(directorySeparator);
       }
       __name(getPathFromPathComponents, "getPathFromPathComponents");
-      function normalizeSlashes(path23) {
-        return path23.includes("\\") ? path23.replace(backslashRegExp, directorySeparator) : path23;
+      function normalizeSlashes(path22) {
+        return path22.includes("\\") ? path22.replace(backslashRegExp, directorySeparator) : path22;
       }
       __name(normalizeSlashes, "normalizeSlashes");
       function reducePathComponents(components) {
@@ -16906,44 +16906,44 @@ ${lanes.join("\n")}
         return reduced;
       }
       __name(reducePathComponents, "reducePathComponents");
-      function combinePaths(path23, ...paths) {
-        if (path23)
-          path23 = normalizeSlashes(path23);
+      function combinePaths(path22, ...paths) {
+        if (path22)
+          path22 = normalizeSlashes(path22);
         for (let relativePath of paths) {
           if (!relativePath)
             continue;
           relativePath = normalizeSlashes(relativePath);
-          if (!path23 || getRootLength(relativePath) !== 0) {
-            path23 = relativePath;
+          if (!path22 || getRootLength(relativePath) !== 0) {
+            path22 = relativePath;
           } else {
-            path23 = ensureTrailingDirectorySeparator(path23) + relativePath;
+            path22 = ensureTrailingDirectorySeparator(path22) + relativePath;
           }
         }
-        return path23;
+        return path22;
       }
       __name(combinePaths, "combinePaths");
-      function resolvePath(path23, ...paths) {
-        return normalizePath(some(paths) ? combinePaths(path23, ...paths) : normalizeSlashes(path23));
+      function resolvePath(path22, ...paths) {
+        return normalizePath(some(paths) ? combinePaths(path22, ...paths) : normalizeSlashes(path22));
       }
       __name(resolvePath, "resolvePath");
-      function getNormalizedPathComponents(path23, currentDirectory) {
-        return reducePathComponents(getPathComponents(path23, currentDirectory));
+      function getNormalizedPathComponents(path22, currentDirectory) {
+        return reducePathComponents(getPathComponents(path22, currentDirectory));
       }
       __name(getNormalizedPathComponents, "getNormalizedPathComponents");
-      function getNormalizedAbsolutePath(path23, currentDirectory) {
-        let rootLength = getRootLength(path23);
+      function getNormalizedAbsolutePath(path22, currentDirectory) {
+        let rootLength = getRootLength(path22);
         if (rootLength === 0 && currentDirectory) {
-          path23 = combinePaths(currentDirectory, path23);
-          rootLength = getRootLength(path23);
+          path22 = combinePaths(currentDirectory, path22);
+          rootLength = getRootLength(path22);
         } else {
-          path23 = normalizeSlashes(path23);
+          path22 = normalizeSlashes(path22);
         }
-        const simpleNormalized = simpleNormalizePath(path23);
+        const simpleNormalized = simpleNormalizePath(path22);
         if (simpleNormalized !== void 0) {
           return simpleNormalized.length > rootLength ? removeTrailingDirectorySeparator(simpleNormalized) : simpleNormalized;
         }
-        const length2 = path23.length;
-        const root = path23.substring(0, rootLength);
+        const length2 = path22.length;
+        const root = path22.substring(0, rootLength);
         let normalized;
         let index = rootLength;
         let segmentStart = index;
@@ -16951,23 +16951,23 @@ ${lanes.join("\n")}
         let seenNonDotDotSegment = rootLength !== 0;
         while (index < length2) {
           segmentStart = index;
-          let ch = path23.charCodeAt(index);
+          let ch = path22.charCodeAt(index);
           while (ch === 47 && index + 1 < length2) {
             index++;
-            ch = path23.charCodeAt(index);
+            ch = path22.charCodeAt(index);
           }
           if (index > segmentStart) {
-            normalized ?? (normalized = path23.substring(0, segmentStart - 1));
+            normalized ?? (normalized = path22.substring(0, segmentStart - 1));
             segmentStart = index;
           }
-          let segmentEnd = path23.indexOf(directorySeparator, index + 1);
+          let segmentEnd = path22.indexOf(directorySeparator, index + 1);
           if (segmentEnd === -1) {
             segmentEnd = length2;
           }
           const segmentLength = segmentEnd - segmentStart;
-          if (segmentLength === 1 && path23.charCodeAt(index) === 46) {
-            normalized ?? (normalized = path23.substring(0, normalizedUpTo));
-          } else if (segmentLength === 2 && path23.charCodeAt(index) === 46 && path23.charCodeAt(index + 1) === 46) {
+          if (segmentLength === 1 && path22.charCodeAt(index) === 46) {
+            normalized ?? (normalized = path22.substring(0, normalizedUpTo));
+          } else if (segmentLength === 2 && path22.charCodeAt(index) === 46 && path22.charCodeAt(index + 1) === 46) {
             if (!seenNonDotDotSegment) {
               if (normalized !== void 0) {
                 normalized += normalized.length === rootLength ? ".." : "/..";
@@ -16976,9 +16976,9 @@ ${lanes.join("\n")}
               }
             } else if (normalized === void 0) {
               if (normalizedUpTo - 2 >= 0) {
-                normalized = path23.substring(0, Math.max(rootLength, path23.lastIndexOf(directorySeparator, normalizedUpTo - 2)));
+                normalized = path22.substring(0, Math.max(rootLength, path22.lastIndexOf(directorySeparator, normalizedUpTo - 2)));
               } else {
-                normalized = path23.substring(0, normalizedUpTo);
+                normalized = path22.substring(0, normalizedUpTo);
               }
             } else {
               const lastSlash = normalized.lastIndexOf(directorySeparator);
@@ -16996,38 +16996,38 @@ ${lanes.join("\n")}
               normalized += directorySeparator;
             }
             seenNonDotDotSegment = true;
-            normalized += path23.substring(segmentStart, segmentEnd);
+            normalized += path22.substring(segmentStart, segmentEnd);
           } else {
             seenNonDotDotSegment = true;
             normalizedUpTo = segmentEnd;
           }
           index = segmentEnd + 1;
         }
-        return normalized ?? (length2 > rootLength ? removeTrailingDirectorySeparator(path23) : path23);
+        return normalized ?? (length2 > rootLength ? removeTrailingDirectorySeparator(path22) : path22);
       }
       __name(getNormalizedAbsolutePath, "getNormalizedAbsolutePath");
-      function normalizePath(path23) {
-        path23 = normalizeSlashes(path23);
-        let normalized = simpleNormalizePath(path23);
+      function normalizePath(path22) {
+        path22 = normalizeSlashes(path22);
+        let normalized = simpleNormalizePath(path22);
         if (normalized !== void 0) {
           return normalized;
         }
-        normalized = getNormalizedAbsolutePath(path23, "");
-        return normalized && hasTrailingDirectorySeparator(path23) ? ensureTrailingDirectorySeparator(normalized) : normalized;
+        normalized = getNormalizedAbsolutePath(path22, "");
+        return normalized && hasTrailingDirectorySeparator(path22) ? ensureTrailingDirectorySeparator(normalized) : normalized;
       }
       __name(normalizePath, "normalizePath");
-      function simpleNormalizePath(path23) {
-        if (!relativePathSegmentRegExp.test(path23)) {
-          return path23;
+      function simpleNormalizePath(path22) {
+        if (!relativePathSegmentRegExp.test(path22)) {
+          return path22;
         }
-        let simplified = path23.replace(/\/\.\//g, "/");
+        let simplified = path22.replace(/\/\.\//g, "/");
         if (simplified.startsWith("./")) {
           simplified = simplified.slice(2);
         }
-        if (simplified !== path23) {
-          path23 = simplified;
-          if (!relativePathSegmentRegExp.test(path23)) {
-            return path23;
+        if (simplified !== path22) {
+          path22 = simplified;
+          if (!relativePathSegmentRegExp.test(path22)) {
+            return path22;
           }
         }
         return void 0;
@@ -17048,35 +17048,35 @@ ${lanes.join("\n")}
         return getCanonicalFileName(nonCanonicalizedPath);
       }
       __name(toPath, "toPath");
-      function removeTrailingDirectorySeparator(path23) {
-        if (hasTrailingDirectorySeparator(path23)) {
-          return path23.substr(0, path23.length - 1);
+      function removeTrailingDirectorySeparator(path22) {
+        if (hasTrailingDirectorySeparator(path22)) {
+          return path22.substr(0, path22.length - 1);
         }
-        return path23;
+        return path22;
       }
       __name(removeTrailingDirectorySeparator, "removeTrailingDirectorySeparator");
-      function ensureTrailingDirectorySeparator(path23) {
-        if (!hasTrailingDirectorySeparator(path23)) {
-          return path23 + directorySeparator;
+      function ensureTrailingDirectorySeparator(path22) {
+        if (!hasTrailingDirectorySeparator(path22)) {
+          return path22 + directorySeparator;
         }
-        return path23;
+        return path22;
       }
       __name(ensureTrailingDirectorySeparator, "ensureTrailingDirectorySeparator");
-      function ensurePathIsNonModuleName(path23) {
-        return !pathIsAbsolute(path23) && !pathIsRelative(path23) ? "./" + path23 : path23;
+      function ensurePathIsNonModuleName(path22) {
+        return !pathIsAbsolute(path22) && !pathIsRelative(path22) ? "./" + path22 : path22;
       }
       __name(ensurePathIsNonModuleName, "ensurePathIsNonModuleName");
-      function changeAnyExtension(path23, ext, extensions, ignoreCase) {
-        const pathext = extensions !== void 0 && ignoreCase !== void 0 ? getAnyExtensionFromPath(path23, extensions, ignoreCase) : getAnyExtensionFromPath(path23);
-        return pathext ? path23.slice(0, path23.length - pathext.length) + (startsWith(ext, ".") ? ext : "." + ext) : path23;
+      function changeAnyExtension(path22, ext, extensions, ignoreCase) {
+        const pathext = extensions !== void 0 && ignoreCase !== void 0 ? getAnyExtensionFromPath(path22, extensions, ignoreCase) : getAnyExtensionFromPath(path22);
+        return pathext ? path22.slice(0, path22.length - pathext.length) + (startsWith(ext, ".") ? ext : "." + ext) : path22;
       }
       __name(changeAnyExtension, "changeAnyExtension");
-      function changeFullExtension(path23, newExtension) {
-        const declarationExtension = getDeclarationFileExtension(path23);
+      function changeFullExtension(path22, newExtension) {
+        const declarationExtension = getDeclarationFileExtension(path22);
         if (declarationExtension) {
-          return path23.slice(0, path23.length - declarationExtension.length) + (startsWith(newExtension, ".") ? newExtension : "." + newExtension);
+          return path22.slice(0, path22.length - declarationExtension.length) + (startsWith(newExtension, ".") ? newExtension : "." + newExtension);
         }
-        return changeAnyExtension(path23, newExtension);
+        return changeAnyExtension(path22, newExtension);
       }
       __name(changeFullExtension, "changeFullExtension");
       var relativePathSegmentRegExp = /\/\/|(?:^|\/)\.\.?(?:$|\/)/;
@@ -17175,11 +17175,11 @@ ${lanes.join("\n")}
           return toComponents;
         }
         const components = toComponents.slice(start);
-        const relative19 = [];
+        const relative16 = [];
         for (; start < fromComponents.length; start++) {
-          relative19.push("..");
+          relative16.push("..");
         }
-        return ["", ...relative19, ...components];
+        return ["", ...relative16, ...components];
       }
       __name(getPathComponentsRelativeTo, "getPathComponentsRelativeTo");
       function getRelativePathFromDirectory(fromDirectory, to, getCanonicalFileNameOrIgnoreCase) {
@@ -29294,8 +29294,8 @@ ${lanes.join("\n")}
         return file2.moduleName || getExternalModuleNameFromPath(host, file2.fileName, referenceFile && referenceFile.fileName);
       }
       __name(getResolvedExternalModuleName, "getResolvedExternalModuleName");
-      function getCanonicalAbsolutePath(host, path23) {
-        return host.getCanonicalFileName(getNormalizedAbsolutePath(path23, host.getCurrentDirectory()));
+      function getCanonicalAbsolutePath(host, path22) {
+        return host.getCanonicalFileName(getNormalizedAbsolutePath(path22, host.getCurrentDirectory()));
       }
       __name(getCanonicalAbsolutePath, "getCanonicalAbsolutePath");
       function getExternalModuleNameFromDeclaration(host, resolver, declaration) {
@@ -29343,21 +29343,21 @@ ${lanes.join("\n")}
       __name(getDeclarationEmitOutputFilePath, "getDeclarationEmitOutputFilePath");
       function getDeclarationEmitOutputFilePathWorker(fileName, options, host) {
         const outputDir = options.declarationDir || options.outDir;
-        const path23 = outputDir ? getSourceFilePathInNewDirWorker(fileName, outputDir, host.getCurrentDirectory(), host.getCommonSourceDirectory(), (f) => host.getCanonicalFileName(f)) : fileName;
-        const declarationExtension = getDeclarationEmitExtensionForPath(path23);
-        return removeFileExtension(path23) + declarationExtension;
+        const path22 = outputDir ? getSourceFilePathInNewDirWorker(fileName, outputDir, host.getCurrentDirectory(), host.getCommonSourceDirectory(), (f) => host.getCanonicalFileName(f)) : fileName;
+        const declarationExtension = getDeclarationEmitExtensionForPath(path22);
+        return removeFileExtension(path22) + declarationExtension;
       }
       __name(getDeclarationEmitOutputFilePathWorker, "getDeclarationEmitOutputFilePathWorker");
-      function getDeclarationEmitExtensionForPath(path23) {
-        return fileExtensionIsOneOf(path23, [
+      function getDeclarationEmitExtensionForPath(path22) {
+        return fileExtensionIsOneOf(path22, [
           ".mjs",
           ".mts"
           /* Mts */
-        ]) ? ".d.mts" : fileExtensionIsOneOf(path23, [
+        ]) ? ".d.mts" : fileExtensionIsOneOf(path22, [
           ".cjs",
           ".cts"
           /* Cts */
-        ]) ? ".d.cts" : fileExtensionIsOneOf(path23, [
+        ]) ? ".d.cts" : fileExtensionIsOneOf(path22, [
           ".json"
           /* Json */
         ]) ? `.d.json.ts` : (
@@ -29366,8 +29366,8 @@ ${lanes.join("\n")}
         );
       }
       __name(getDeclarationEmitExtensionForPath, "getDeclarationEmitExtensionForPath");
-      function getPossibleOriginalInputExtensionForExtension(path23) {
-        return fileExtensionIsOneOf(path23, [
+      function getPossibleOriginalInputExtensionForExtension(path22) {
+        return fileExtensionIsOneOf(path22, [
           ".d.mts",
           ".mjs",
           ".mts"
@@ -29376,7 +29376,7 @@ ${lanes.join("\n")}
           ".mts",
           ".mjs"
           /* Mjs */
-        ] : fileExtensionIsOneOf(path23, [
+        ] : fileExtensionIsOneOf(path22, [
           ".d.cts",
           ".cjs",
           ".cts"
@@ -29385,7 +29385,7 @@ ${lanes.join("\n")}
           ".cts",
           ".cjs"
           /* Cjs */
-        ] : fileExtensionIsOneOf(path23, [`.d.json.ts`]) ? [
+        ] : fileExtensionIsOneOf(path22, [`.d.json.ts`]) ? [
           ".json"
           /* Json */
         ] : [
@@ -29490,12 +29490,12 @@ ${lanes.join("\n")}
         }
       }
       __name(ensureDirectoriesExist, "ensureDirectoriesExist");
-      function writeFileEnsuringDirectories(path23, data, writeByteOrderMark, writeFile2, createDirectory, directoryExists) {
+      function writeFileEnsuringDirectories(path22, data, writeByteOrderMark, writeFile2, createDirectory, directoryExists) {
         try {
-          writeFile2(path23, data, writeByteOrderMark);
+          writeFile2(path22, data, writeByteOrderMark);
         } catch {
-          ensureDirectoriesExist(getDirectoryPath(normalizePath(path23)), createDirectory, directoryExists);
-          writeFile2(path23, data, writeByteOrderMark);
+          ensureDirectoriesExist(getDirectoryPath(normalizePath(path22)), createDirectory, directoryExists);
+          writeFile2(path22, data, writeByteOrderMark);
         }
       }
       __name(writeFileEnsuringDirectories, "writeFileEnsuringDirectories");
@@ -30293,13 +30293,13 @@ ${lanes.join("\n")}
         return getStringFromExpandedCharCodes(expandedCharCodes);
       }
       __name(base64decode, "base64decode");
-      function readJsonOrUndefined(path23, hostOrText) {
-        const jsonText = isString(hostOrText) ? hostOrText : hostOrText.readFile(path23);
+      function readJsonOrUndefined(path22, hostOrText) {
+        const jsonText = isString(hostOrText) ? hostOrText : hostOrText.readFile(path22);
         if (!jsonText)
           return void 0;
         let result = tryParseJson(jsonText);
         if (result === void 0) {
-          const looseResult = parseConfigFileTextToJson(path23, jsonText);
+          const looseResult = parseConfigFileTextToJson(path22, jsonText);
           if (!looseResult.error) {
             result = looseResult.config;
           }
@@ -30307,8 +30307,8 @@ ${lanes.join("\n")}
         return result;
       }
       __name(readJsonOrUndefined, "readJsonOrUndefined");
-      function readJson(path23, host) {
-        return readJsonOrUndefined(path23, host) || {};
+      function readJson(path22, host) {
+        return readJsonOrUndefined(path22, host) || {};
       }
       __name(readJson, "readJson");
       function tryParseJson(text) {
@@ -31573,7 +31573,7 @@ ${lanes.join("\n")}
           getSymlinkedFiles: () => symlinkedFiles,
           getSymlinkedDirectories: () => symlinkedDirectories,
           getSymlinkedDirectoriesByRealpath: () => symlinkedDirectoriesByRealpath,
-          setSymlinkedFile: (path23, real) => (symlinkedFiles || (symlinkedFiles = /* @__PURE__ */ new Map())).set(path23, real),
+          setSymlinkedFile: (path22, real) => (symlinkedFiles || (symlinkedFiles = /* @__PURE__ */ new Map())).set(path22, real),
           setSymlinkedDirectory: (symlink, real) => {
             let symlinkPath = toPath(symlink, cwd, getCanonicalFileName);
             if (!containsIgnoredPath(symlinkPath)) {
@@ -31640,8 +31640,8 @@ ${lanes.join("\n")}
         return isAnyDirectorySeparator(s.charCodeAt(0)) ? s.slice(1) : void 0;
       }
       __name(stripLeadingDirectorySeparator, "stripLeadingDirectorySeparator");
-      function tryRemoveDirectoryPrefix(path23, dirPath, getCanonicalFileName) {
-        const withoutPrefix = tryRemovePrefix(path23, dirPath, getCanonicalFileName);
+      function tryRemoveDirectoryPrefix(path22, dirPath, getCanonicalFileName) {
+        const withoutPrefix = tryRemovePrefix(path22, dirPath, getCanonicalFileName);
         return withoutPrefix === void 0 ? void 0 : stripLeadingDirectorySeparator(withoutPrefix);
       }
       __name(tryRemoveDirectoryPrefix, "tryRemoveDirectoryPrefix");
@@ -31776,16 +31776,16 @@ ${lanes.join("\n")}
         return match === "*" ? singleAsteriskRegexFragment : match === "?" ? "[^/]" : "\\" + match;
       }
       __name(replaceWildcardCharacter, "replaceWildcardCharacter");
-      function getFileMatcherPatterns(path23, excludes, includes, useCaseSensitiveFileNames2, currentDirectory) {
-        path23 = normalizePath(path23);
+      function getFileMatcherPatterns(path22, excludes, includes, useCaseSensitiveFileNames2, currentDirectory) {
+        path22 = normalizePath(path22);
         currentDirectory = normalizePath(currentDirectory);
-        const absolutePath = combinePaths(currentDirectory, path23);
+        const absolutePath = combinePaths(currentDirectory, path22);
         return {
           includeFilePatterns: map2(getRegularExpressionsForWildcards(includes, absolutePath, "files"), (pattern) => `^${pattern}$`),
           includeFilePattern: getRegularExpressionForWildcard(includes, absolutePath, "files"),
           includeDirectoryPattern: getRegularExpressionForWildcard(includes, absolutePath, "directories"),
           excludePattern: getRegularExpressionForWildcard(excludes, absolutePath, "exclude"),
-          basePaths: getBasePaths(path23, includes, useCaseSensitiveFileNames2)
+          basePaths: getBasePaths(path22, includes, useCaseSensitiveFileNames2)
         };
       }
       __name(getFileMatcherPatterns, "getFileMatcherPatterns");
@@ -31793,10 +31793,10 @@ ${lanes.join("\n")}
         return new RegExp(pattern, useCaseSensitiveFileNames2 ? "" : "i");
       }
       __name(getRegexFromPattern, "getRegexFromPattern");
-      function matchFiles(path23, extensions, excludes, includes, useCaseSensitiveFileNames2, currentDirectory, depth, getFileSystemEntries, realpath) {
-        path23 = normalizePath(path23);
+      function matchFiles(path22, extensions, excludes, includes, useCaseSensitiveFileNames2, currentDirectory, depth, getFileSystemEntries, realpath) {
+        path22 = normalizePath(path22);
         currentDirectory = normalizePath(currentDirectory);
-        const patterns = getFileMatcherPatterns(path23, excludes, includes, useCaseSensitiveFileNames2, currentDirectory);
+        const patterns = getFileMatcherPatterns(path22, excludes, includes, useCaseSensitiveFileNames2, currentDirectory);
         const includeFileRegexes = patterns.includeFilePatterns && patterns.includeFilePatterns.map((pattern) => getRegexFromPattern(pattern, useCaseSensitiveFileNames2));
         const includeDirectoryRegex = patterns.includeDirectoryPattern && getRegexFromPattern(patterns.includeDirectoryPattern, useCaseSensitiveFileNames2);
         const excludeRegex = patterns.excludePattern && getRegexFromPattern(patterns.excludePattern, useCaseSensitiveFileNames2);
@@ -31807,14 +31807,14 @@ ${lanes.join("\n")}
           visitDirectory(basePath, combinePaths(currentDirectory, basePath), depth);
         }
         return flatten(results);
-        function visitDirectory(path24, absolutePath, depth2) {
+        function visitDirectory(path23, absolutePath, depth2) {
           const canonicalPath = toCanonical(realpath(absolutePath));
           if (visited.has(canonicalPath))
             return;
           visited.set(canonicalPath, true);
-          const { files, directories } = getFileSystemEntries(path24);
+          const { files, directories } = getFileSystemEntries(path23);
           for (const current of toSorted(files, compareStringsCaseSensitive)) {
-            const name = combinePaths(path24, current);
+            const name = combinePaths(path23, current);
             const absoluteName = combinePaths(absolutePath, current);
             if (extensions && !fileExtensionIsOneOf(name, extensions))
               continue;
@@ -31836,7 +31836,7 @@ ${lanes.join("\n")}
             }
           }
           for (const current of toSorted(directories, compareStringsCaseSensitive)) {
-            const name = combinePaths(path24, current);
+            const name = combinePaths(path23, current);
             const absoluteName = combinePaths(absolutePath, current);
             if ((!includeDirectoryRegex || includeDirectoryRegex.test(absoluteName)) && (!excludeRegex || !excludeRegex.test(absoluteName))) {
               visitDirectory(name, absoluteName, depth2);
@@ -31846,17 +31846,17 @@ ${lanes.join("\n")}
         __name(visitDirectory, "visitDirectory");
       }
       __name(matchFiles, "matchFiles");
-      function getBasePaths(path23, includes, useCaseSensitiveFileNames2) {
-        const basePaths = [path23];
+      function getBasePaths(path22, includes, useCaseSensitiveFileNames2) {
+        const basePaths = [path22];
         if (includes) {
           const includeBasePaths = [];
           for (const include of includes) {
-            const absolute = isRootedDiskPath(include) ? include : normalizePath(combinePaths(path23, include));
+            const absolute = isRootedDiskPath(include) ? include : normalizePath(combinePaths(path22, include));
             includeBasePaths.push(getIncludeBasePath(absolute));
           }
           includeBasePaths.sort(getStringComparer(!useCaseSensitiveFileNames2));
           for (const includeBasePath of includeBasePaths) {
-            if (every(basePaths, (basePath) => !containsPath(basePath, includeBasePath, path23, !useCaseSensitiveFileNames2))) {
+            if (every(basePaths, (basePath) => !containsPath(basePath, includeBasePath, path22, !useCaseSensitiveFileNames2))) {
               basePaths.push(includeBasePath);
             }
           }
@@ -32119,10 +32119,10 @@ ${lanes.join("\n")}
         return match ? match.length : 0;
       }
       __name(numberOfDirectorySeparators, "numberOfDirectorySeparators");
-      function compareNumberOfDirectorySeparators(path1, path23) {
+      function compareNumberOfDirectorySeparators(path1, path22) {
         return compareValues(
           numberOfDirectorySeparators(path1),
-          numberOfDirectorySeparators(path23)
+          numberOfDirectorySeparators(path22)
         );
       }
       __name(compareNumberOfDirectorySeparators, "compareNumberOfDirectorySeparators");
@@ -32141,27 +32141,27 @@ ${lanes.join("\n")}
         ".json"
         /* Json */
       ];
-      function removeFileExtension(path23) {
+      function removeFileExtension(path22) {
         for (const ext of extensionsToRemove) {
-          const extensionless = tryRemoveExtension(path23, ext);
+          const extensionless = tryRemoveExtension(path22, ext);
           if (extensionless !== void 0) {
             return extensionless;
           }
         }
-        return path23;
+        return path22;
       }
       __name(removeFileExtension, "removeFileExtension");
-      function tryRemoveExtension(path23, extension) {
-        return fileExtensionIs(path23, extension) ? removeExtension(path23, extension) : void 0;
+      function tryRemoveExtension(path22, extension) {
+        return fileExtensionIs(path22, extension) ? removeExtension(path22, extension) : void 0;
       }
       __name(tryRemoveExtension, "tryRemoveExtension");
-      function removeExtension(path23, extension) {
-        return path23.substring(0, path23.length - extension.length);
+      function removeExtension(path22, extension) {
+        return path22.substring(0, path22.length - extension.length);
       }
       __name(removeExtension, "removeExtension");
-      function changeExtension(path23, newExtension) {
+      function changeExtension(path22, newExtension) {
         return changeAnyExtension(
-          path23,
+          path22,
           newExtension,
           extensionsToRemove,
           /*ignoreCase*/
@@ -32189,8 +32189,8 @@ ${lanes.join("\n")}
         let matchableStringSet;
         let patterns;
         const pathList = getOwnKeys(paths);
-        for (const path23 of pathList) {
-          const patternOrStr = tryParsePattern(path23);
+        for (const path22 of pathList) {
+          const patternOrStr = tryParsePattern(path22);
           if (patternOrStr === void 0) {
             continue;
           } else if (typeof patternOrStr === "string") {
@@ -32221,17 +32221,17 @@ ${lanes.join("\n")}
         return extensionIsTS(ext) || ext === ".json";
       }
       __name(resolutionExtensionIsTSOrJson, "resolutionExtensionIsTSOrJson");
-      function extensionFromPath(path23) {
-        const ext = tryGetExtensionFromPath2(path23);
-        return ext !== void 0 ? ext : Debug.fail(`File ${path23} has unknown extension.`);
+      function extensionFromPath(path22) {
+        const ext = tryGetExtensionFromPath2(path22);
+        return ext !== void 0 ? ext : Debug.fail(`File ${path22} has unknown extension.`);
       }
       __name(extensionFromPath, "extensionFromPath");
-      function isAnySupportedFileExtension(path23) {
-        return tryGetExtensionFromPath2(path23) !== void 0;
+      function isAnySupportedFileExtension(path22) {
+        return tryGetExtensionFromPath2(path22) !== void 0;
       }
       __name(isAnySupportedFileExtension, "isAnySupportedFileExtension");
-      function tryGetExtensionFromPath2(path23) {
-        return find(extensionsToRemove, (e) => fileExtensionIs(path23, e));
+      function tryGetExtensionFromPath2(path22) {
+        return find(extensionsToRemove, (e) => fileExtensionIs(path22, e));
       }
       __name(tryGetExtensionFromPath2, "tryGetExtensionFromPath2");
       function isCheckJsEnabledForFile(sourceFile, compilerOptions) {
@@ -32586,8 +32586,8 @@ ${lanes.join("\n")}
         }
       }
       __name(expressionResultIsUnused, "expressionResultIsUnused");
-      function containsIgnoredPath(path23) {
-        return some(ignoredPaths, (p) => path23.includes(p));
+      function containsIgnoredPath(path22) {
+        return some(ignoredPaths, (p) => path22.includes(p));
       }
       __name(containsIgnoredPath, "containsIgnoredPath");
       function getContainingNodeArray(node) {
@@ -54025,7 +54025,7 @@ ${lanes.join("\n")}
               const typeReferenceDirectives = context.typeReferenceDirectives;
               const libReferenceDirectives = context.libReferenceDirectives;
               forEach(toArray(entryOrList), (arg) => {
-                const { types, lib, path: path23, ["resolution-mode"]: res, preserve: _preserve } = arg.arguments;
+                const { types, lib, path: path22, ["resolution-mode"]: res, preserve: _preserve } = arg.arguments;
                 const preserve = _preserve === "true" ? true : void 0;
                 if (arg.arguments["no-default-lib"] === "true") {
                   context.hasNoDefaultLib = true;
@@ -54034,8 +54034,8 @@ ${lanes.join("\n")}
                   typeReferenceDirectives.push({ pos: types.pos, end: types.end, fileName: types.value, ...parsed ? { resolutionMode: parsed } : {}, ...preserve ? { preserve } : {} });
                 } else if (lib) {
                   libReferenceDirectives.push({ pos: lib.pos, end: lib.end, fileName: lib.value, ...preserve ? { preserve } : {} });
-                } else if (path23) {
-                  referencedFiles.push({ pos: path23.pos, end: path23.end, fileName: path23.value, ...preserve ? { preserve } : {} });
+                } else if (path22) {
+                  referencedFiles.push({ pos: path22.pos, end: path22.end, fileName: path22.value, ...preserve ? { preserve } : {} });
                 } else {
                   reportDiagnostic(arg.range.pos, arg.range.end - arg.range.pos, Diagnostics.Invalid_reference_directive_syntax);
                 }
@@ -56525,20 +56525,20 @@ ${lanes.join("\n")}
         return specs;
       }
       __name(filterSameAsDefaultInclude, "filterSameAsDefaultInclude");
-      function matchesSpecs(path23, includeSpecs, excludeSpecs, host) {
+      function matchesSpecs(path22, includeSpecs, excludeSpecs, host) {
         if (!includeSpecs)
           return returnTrue;
-        const patterns = getFileMatcherPatterns(path23, excludeSpecs, includeSpecs, host.useCaseSensitiveFileNames, host.getCurrentDirectory());
+        const patterns = getFileMatcherPatterns(path22, excludeSpecs, includeSpecs, host.useCaseSensitiveFileNames, host.getCurrentDirectory());
         const excludeRe = patterns.excludePattern && getRegexFromPattern(patterns.excludePattern, host.useCaseSensitiveFileNames);
         const includeRe = patterns.includeFilePattern && getRegexFromPattern(patterns.includeFilePattern, host.useCaseSensitiveFileNames);
         if (includeRe) {
           if (excludeRe) {
-            return (path24) => !(includeRe.test(path24) && !excludeRe.test(path24));
+            return (path23) => !(includeRe.test(path23) && !excludeRe.test(path23));
           }
-          return (path24) => !includeRe.test(path24);
+          return (path23) => !includeRe.test(path23);
         }
         if (excludeRe) {
-          return (path24) => excludeRe.test(path24);
+          return (path23) => excludeRe.test(path23);
         }
         return returnTrue;
       }
@@ -57229,9 +57229,9 @@ ${lanes.join("\n")}
               if (ownConfig.raw[propertyName])
                 return;
               if (extendsRaw[propertyName]) {
-                result[propertyName] = map2(extendsRaw[propertyName], (path23) => startsWithConfigDirTemplate(path23) || isRootedDiskPath(path23) ? path23 : combinePaths(
+                result[propertyName] = map2(extendsRaw[propertyName], (path22) => startsWithConfigDirTemplate(path22) || isRootedDiskPath(path22) ? path22 : combinePaths(
                   relativeDifference || (relativeDifference = convertToRelativePath(getDirectoryPath(extendedConfigPath), basePath, createGetCanonicalFileName(host.useCaseSensitiveFileNames))),
-                  path23
+                  path22
                 ));
               }
             }, "setPropertyInResultIfNotUndefined");
@@ -57399,14 +57399,14 @@ ${lanes.join("\n")}
       }
       __name(getExtendsConfigPath, "getExtendsConfigPath");
       function getExtendedConfig(sourceFile, extendedConfigPath, host, resolutionStack, errors, extendedConfigCache, result) {
-        const path23 = host.useCaseSensitiveFileNames ? extendedConfigPath : toFileNameLowerCase(extendedConfigPath);
+        const path22 = host.useCaseSensitiveFileNames ? extendedConfigPath : toFileNameLowerCase(extendedConfigPath);
         let value;
         let extendedResult;
         let extendedConfig;
-        if (extendedConfigCache && (value = extendedConfigCache.get(path23))) {
+        if (extendedConfigCache && (value = extendedConfigCache.get(path22))) {
           ({ extendedResult, extendedConfig } = value);
         } else {
-          extendedResult = readJsonConfigFile(extendedConfigPath, (path24) => host.readFile(path24));
+          extendedResult = readJsonConfigFile(extendedConfigPath, (path23) => host.readFile(path23));
           if (!extendedResult.parseDiagnostics.length) {
             extendedConfig = parseConfig(
               /*json*/
@@ -57421,7 +57421,7 @@ ${lanes.join("\n")}
             );
           }
           if (extendedConfigCache) {
-            extendedConfigCache.set(path23, { extendedResult, extendedConfig });
+            extendedConfigCache.set(path22, { extendedResult, extendedConfig });
           }
         }
         if (sourceFile) {
@@ -57721,25 +57721,25 @@ ${lanes.join("\n")}
             }
             const match = getWildcardDirectoryFromSpec(spec, useCaseSensitiveFileNames2);
             if (match) {
-              const { key, path: path23, flags } = match;
+              const { key, path: path22, flags } = match;
               const existingPath = wildCardKeyToPath.get(key);
               const existingFlags = existingPath !== void 0 ? wildcardDirectories[existingPath] : void 0;
               if (existingFlags === void 0 || existingFlags < flags) {
-                wildcardDirectories[existingPath !== void 0 ? existingPath : path23] = flags;
+                wildcardDirectories[existingPath !== void 0 ? existingPath : path22] = flags;
                 if (existingPath === void 0)
-                  wildCardKeyToPath.set(key, path23);
+                  wildCardKeyToPath.set(key, path22);
                 if (flags === 1) {
                   recursiveKeys.push(key);
                 }
               }
             }
           }
-          for (const path23 in wildcardDirectories) {
-            if (hasProperty(wildcardDirectories, path23)) {
+          for (const path22 in wildcardDirectories) {
+            if (hasProperty(wildcardDirectories, path22)) {
               for (const recursiveKey of recursiveKeys) {
-                const key = toCanonicalKey(path23, useCaseSensitiveFileNames2);
+                const key = toCanonicalKey(path22, useCaseSensitiveFileNames2);
                 if (key !== recursiveKey && containsPath(recursiveKey, key, basePath, !useCaseSensitiveFileNames2)) {
-                  delete wildcardDirectories[path23];
+                  delete wildcardDirectories[path22];
                 }
               }
             }
@@ -57748,8 +57748,8 @@ ${lanes.join("\n")}
         return wildcardDirectories;
       }
       __name(getWildcardDirectories, "getWildcardDirectories");
-      function toCanonicalKey(path23, useCaseSensitiveFileNames2) {
-        return useCaseSensitiveFileNames2 ? path23 : toFileNameLowerCase(path23);
+      function toCanonicalKey(path22, useCaseSensitiveFileNames2) {
+        return useCaseSensitiveFileNames2 ? path22 : toFileNameLowerCase(path22);
       }
       __name(toCanonicalKey, "toCanonicalKey");
       function getWildcardDirectoryFromSpec(spec, useCaseSensitiveFileNames2) {
@@ -57766,10 +57766,10 @@ ${lanes.join("\n")}
           };
         }
         if (isImplicitGlob(spec.substring(spec.lastIndexOf(directorySeparator) + 1))) {
-          const path23 = removeTrailingDirectorySeparator(spec);
+          const path22 = removeTrailingDirectorySeparator(spec);
           return {
-            key: toCanonicalKey(path23, useCaseSensitiveFileNames2),
-            path: path23,
+            key: toCanonicalKey(path22, useCaseSensitiveFileNames2),
+            path: path22,
             flags: 1
             /* Recursive */
           };
@@ -58041,11 +58041,11 @@ ${lanes.join("\n")}
           }
           return;
         }
-        const path23 = normalizePath(combinePaths(baseDirectory, fileName));
+        const path22 = normalizePath(combinePaths(baseDirectory, fileName));
         if (state.traceEnabled) {
-          trace(state.host, Diagnostics.package_json_has_0_field_1_that_references_2, fieldName, fileName, path23);
+          trace(state.host, Diagnostics.package_json_has_0_field_1_that_references_2, fieldName, fileName, path22);
         }
-        return path23;
+        return path22;
       }
       __name(readPackageJsonPathField, "readPackageJsonPathField");
       function readPackageJsonTypesFields(jsonContent, baseDirectory, state) {
@@ -58140,9 +58140,9 @@ ${lanes.join("\n")}
       }
       __name(getDefaultTypeRoots, "getDefaultTypeRoots");
       var nodeModulesAtTypes = combinePaths("node_modules", "@types");
-      function arePathsEqual(path1, path23, host) {
+      function arePathsEqual(path1, path22, host) {
         const useCaseSensitiveFileNames2 = typeof host.useCaseSensitiveFileNames === "function" ? host.useCaseSensitiveFileNames() : host.useCaseSensitiveFileNames;
-        return comparePaths(path1, path23, !useCaseSensitiveFileNames2) === 0;
+        return comparePaths(path1, path22, !useCaseSensitiveFileNames2) === 0;
       }
       __name(arePathsEqual, "arePathsEqual");
       function getOriginalAndResolvedFileName(fileName, host, traceEnabled) {
@@ -58615,14 +58615,14 @@ ${lanes.join("\n")}
         }
         __name(update, "update");
         function getOrCreateCacheForDirectory(directoryName, redirectedReference) {
-          const path23 = toPath(directoryName, currentDirectory, getCanonicalFileName);
-          return getOrCreateCache(directoryToModuleNameMap, redirectedReference, path23, () => createModeAwareCache());
+          const path22 = toPath(directoryName, currentDirectory, getCanonicalFileName);
+          return getOrCreateCache(directoryToModuleNameMap, redirectedReference, path22, () => createModeAwareCache());
         }
         __name(getOrCreateCacheForDirectory, "getOrCreateCacheForDirectory");
         function getFromDirectoryCache(name, mode, directoryName, redirectedReference) {
           var _a2, _b;
-          const path23 = toPath(directoryName, currentDirectory, getCanonicalFileName);
-          return (_b = (_a2 = directoryToModuleNameMap.getMapOfCacheRedirects(redirectedReference)) == null ? void 0 : _a2.get(path23)) == null ? void 0 : _b.get(name, mode);
+          const path22 = toPath(directoryName, currentDirectory, getCanonicalFileName);
+          return (_b = (_a2 = directoryToModuleNameMap.getMapOfCacheRedirects(redirectedReference)) == null ? void 0 : _a2.get(path22)) == null ? void 0 : _b.get(name, mode);
         }
         __name(getFromDirectoryCache, "getFromDirectoryCache");
       }
@@ -58711,14 +58711,14 @@ ${lanes.join("\n")}
           }
           __name(get, "get");
           function set2(directory, result) {
-            const path23 = toPath(directory, currentDirectory, getCanonicalFileName);
-            if (directoryPathMap.has(path23)) {
+            const path22 = toPath(directory, currentDirectory, getCanonicalFileName);
+            if (directoryPathMap.has(path22)) {
               return;
             }
-            directoryPathMap.set(path23, result);
+            directoryPathMap.set(path22, result);
             const resolvedFileName = getResolvedFileName(result);
-            const commonPrefix = resolvedFileName && getCommonPrefix(path23, resolvedFileName);
-            let current = path23;
+            const commonPrefix = resolvedFileName && getCommonPrefix(path22, resolvedFileName);
+            let current = path22;
             while (current !== commonPrefix) {
               const parent2 = getDirectoryPath(current);
               if (parent2 === current || directoryPathMap.has(parent2)) {
@@ -59312,17 +59312,17 @@ ${lanes.join("\n")}
         const combined = combinePaths(containingDirectory, moduleName);
         const parts = getPathComponents(combined);
         const lastPart = lastOrUndefined(parts);
-        const path23 = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath(combined)) : normalizePath(combined);
-        return { path: path23, parts };
+        const path22 = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath(combined)) : normalizePath(combined);
+        return { path: path22, parts };
       }
       __name(normalizePathForCJSResolution, "normalizePathForCJSResolution");
-      function realPath(path23, host, traceEnabled) {
+      function realPath(path22, host, traceEnabled) {
         if (!host.realpath) {
-          return path23;
+          return path22;
         }
-        const real = normalizePath(host.realpath(path23));
+        const real = normalizePath(host.realpath(path22));
         if (traceEnabled) {
-          trace(host, Diagnostics.Resolving_real_path_for_0_result_1, path23, real);
+          trace(host, Diagnostics.Resolving_real_path_for_0_result_1, path22, real);
         }
         return real;
       }
@@ -59369,27 +59369,27 @@ ${lanes.join("\n")}
       }
       __name(nodeLoadModuleByRelativeName, "nodeLoadModuleByRelativeName");
       var nodeModulesPathPart = "/node_modules/";
-      function pathContainsNodeModules(path23) {
-        return path23.includes(nodeModulesPathPart);
+      function pathContainsNodeModules(path22) {
+        return path22.includes(nodeModulesPathPart);
       }
       __name(pathContainsNodeModules, "pathContainsNodeModules");
       function parseNodeModuleFromPath(resolved, isFolder) {
-        const path23 = normalizePath(resolved);
-        const idx = path23.lastIndexOf(nodeModulesPathPart);
+        const path22 = normalizePath(resolved);
+        const idx = path22.lastIndexOf(nodeModulesPathPart);
         if (idx === -1) {
           return void 0;
         }
         const indexAfterNodeModules = idx + nodeModulesPathPart.length;
-        let indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path23, indexAfterNodeModules, isFolder);
-        if (path23.charCodeAt(indexAfterNodeModules) === 64) {
-          indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path23, indexAfterPackageName, isFolder);
+        let indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path22, indexAfterNodeModules, isFolder);
+        if (path22.charCodeAt(indexAfterNodeModules) === 64) {
+          indexAfterPackageName = moveToNextDirectorySeparatorIfAvailable(path22, indexAfterPackageName, isFolder);
         }
-        return path23.slice(0, indexAfterPackageName);
+        return path22.slice(0, indexAfterPackageName);
       }
       __name(parseNodeModuleFromPath, "parseNodeModuleFromPath");
-      function moveToNextDirectorySeparatorIfAvailable(path23, prevSeparatorIndex, isFolder) {
-        const nextSeparatorIndex = path23.indexOf(directorySeparator, prevSeparatorIndex + 1);
-        return nextSeparatorIndex === -1 ? isFolder ? path23.length : prevSeparatorIndex : nextSeparatorIndex;
+      function moveToNextDirectorySeparatorIfAvailable(path22, prevSeparatorIndex, isFolder) {
+        const nextSeparatorIndex = path22.indexOf(directorySeparator, prevSeparatorIndex + 1);
+        return nextSeparatorIndex === -1 ? isFolder ? path22.length : prevSeparatorIndex : nextSeparatorIndex;
       }
       __name(moveToNextDirectorySeparatorIfAvailable, "moveToNextDirectorySeparatorIfAvailable");
       function loadModuleFromFileNoPackageId(extensions, candidate, onlyRecordFailures, state) {
@@ -59536,8 +59536,8 @@ ${lanes.join("\n")}
             return extensions & 4 && !isDeclarationFileName(candidate + originalExtension) && tryExtension(`.d${originalExtension}.ts`) || void 0;
         }
         function tryExtension(ext, resolvedUsingTsExtension) {
-          const path23 = tryFile(candidate + ext, onlyRecordFailures, state);
-          return path23 === void 0 ? void 0 : { path: path23, ext, resolvedUsingTsExtension: !state.candidateIsFromPackageJsonField && resolvedUsingTsExtension };
+          const path22 = tryFile(candidate + ext, onlyRecordFailures, state);
+          return path22 === void 0 ? void 0 : { path: path22, ext, resolvedUsingTsExtension: !state.candidateIsFromPackageJsonField && resolvedUsingTsExtension };
         }
         __name(tryExtension, "tryExtension");
       }
@@ -60277,11 +60277,11 @@ ${lanes.join("\n")}
             /*value*/
             void 0
           );
-          function toAbsolutePath(path23) {
+          function toAbsolutePath(path22) {
             var _a22, _b2;
-            if (path23 === void 0)
-              return path23;
-            return getNormalizedAbsolutePath(path23, (_b2 = (_a22 = state.host).getCurrentDirectory) == null ? void 0 : _b2.call(_a22));
+            if (path22 === void 0)
+              return path22;
+            return getNormalizedAbsolutePath(path22, (_b2 = (_a22 = state.host).getCurrentDirectory) == null ? void 0 : _b2.call(_a22));
           }
           __name(toAbsolutePath, "toAbsolutePath");
           function combineDirectoryPath(root, dir) {
@@ -60553,16 +60553,16 @@ ${lanes.join("\n")}
             trace(state.host, Diagnostics.Module_name_0_matched_pattern_1, moduleName, matchedPatternText);
           }
           const resolved = forEach(paths[matchedPatternText], (subst) => {
-            const path23 = matchedStar ? replaceFirstStar(subst, matchedStar) : subst;
-            const candidate = normalizePath(combinePaths(baseDirectory, path23));
+            const path22 = matchedStar ? replaceFirstStar(subst, matchedStar) : subst;
+            const candidate = normalizePath(combinePaths(baseDirectory, path22));
             if (state.traceEnabled) {
-              trace(state.host, Diagnostics.Trying_substitution_0_candidate_module_location_Colon_1, subst, path23);
+              trace(state.host, Diagnostics.Trying_substitution_0_candidate_module_location_Colon_1, subst, path22);
             }
             const extension = tryGetExtensionFromPath2(subst);
             if (extension !== void 0) {
-              const path24 = tryFile(candidate, onlyRecordFailures, state);
-              if (path24 !== void 0) {
-                return noPackageId({ path: path24, ext: extension, resolvedUsingTsExtension: void 0 });
+              const path23 = tryFile(candidate, onlyRecordFailures, state);
+              if (path23 !== void 0) {
+                return noPackageId({ path: path23, ext: extension, resolvedUsingTsExtension: void 0 });
               }
             }
             return loader(extensions, candidate, onlyRecordFailures || !directoryProbablyExists(getDirectoryPath(candidate), state.host), state);
@@ -64938,10 +64938,10 @@ ${lanes.join("\n")}
         return comparePaths(a, b, ignoreCase) === 0;
       }
       __name(packageJsonPathsAreEqual, "packageJsonPathsAreEqual");
-      function countPathComponents(path23) {
+      function countPathComponents(path22) {
         let count = 0;
-        for (let i = startsWith(path23, "./") ? 2 : 0; i < path23.length; i++) {
-          if (path23.charCodeAt(i) === 47)
+        for (let i = startsWith(path22, "./") ? 2 : 0; i < path22.length; i++) {
+          if (path22.charCodeAt(i) === 47)
             count++;
         }
         return count;
@@ -64993,9 +64993,9 @@ ${lanes.join("\n")}
               if (!startsWithDirectory(target, realPathDirectory, getCanonicalFileName)) {
                 return;
               }
-              const relative19 = getRelativePathFromDirectory(realPathDirectory, target, getCanonicalFileName);
+              const relative16 = getRelativePathFromDirectory(realPathDirectory, target, getCanonicalFileName);
               for (const symlinkDirectory of symlinkDirectories) {
-                const option = resolvePath(symlinkDirectory, relative19);
+                const option = resolvePath(symlinkDirectory, relative16);
                 const result2 = cb(option, target === referenceRedirect);
                 shouldFilterIgnoredPaths = true;
                 if (result2)
@@ -65069,9 +65069,9 @@ ${lanes.join("\n")}
           host,
           /*preferSymlinks*/
           true,
-          (path23, isRedirect) => {
-            const isInNodeModules = pathContainsNodeModules(path23);
-            allFileNames.set(path23, { path: info.getCanonicalFileName(path23), isRedirect, isInNodeModules });
+          (path22, isRedirect) => {
+            const isInNodeModules = pathContainsNodeModules(path22);
+            allFileNames.set(path22, { path: info.getCanonicalFileName(path22), isRedirect, isInNodeModules });
             importedFileFromNodeModules = importedFileFromNodeModules || isInNodeModules;
           }
         );
@@ -65079,8 +65079,8 @@ ${lanes.join("\n")}
         for (let directory = info.canonicalSourceDirectory; allFileNames.size !== 0; ) {
           const directoryStart = ensureTrailingDirectorySeparator(directory);
           let pathsInDirectory;
-          allFileNames.forEach(({ path: path23, isRedirect, isInNodeModules }, fileName) => {
-            if (startsWith(path23, directoryStart)) {
+          allFileNames.forEach(({ path: path22, isRedirect, isInNodeModules }, fileName) => {
+            if (startsWith(path22, directoryStart)) {
               (pathsInDirectory || (pathsInDirectory = [])).push({ path: fileName, isRedirect, isInNodeModules });
               allFileNames.delete(fileName);
             }
@@ -65400,17 +65400,17 @@ ${lanes.join("\n")}
         return processEnding(shortest, allowedEndings, compilerOptions);
       }
       __name(tryGetModuleNameFromRootDirs, "tryGetModuleNameFromRootDirs");
-      function tryGetModuleNameAsNodeModule({ path: path23, isRedirect }, { getCanonicalFileName, canonicalSourceDirectory }, importingSourceFile, host, options, userPreferences, packageNameOnly, overrideMode) {
+      function tryGetModuleNameAsNodeModule({ path: path22, isRedirect }, { getCanonicalFileName, canonicalSourceDirectory }, importingSourceFile, host, options, userPreferences, packageNameOnly, overrideMode) {
         if (!host.fileExists || !host.readFile) {
           return void 0;
         }
-        const parts = getNodeModulePathParts(path23);
+        const parts = getNodeModulePathParts(path22);
         if (!parts) {
           return void 0;
         }
         const preferences = getModuleSpecifierPreferences(userPreferences, host, options, importingSourceFile);
         const allowedEndings = preferences.getAllowedEndingsInPreferredOrder();
-        let moduleSpecifier = path23;
+        let moduleSpecifier = path22;
         let isPackageRootPath = false;
         if (!packageNameOnly) {
           let packageRootIndex = parts.packageRootIndex;
@@ -65432,7 +65432,7 @@ ${lanes.join("\n")}
             }
             if (!moduleFileName)
               moduleFileName = moduleFileToTry;
-            packageRootIndex = path23.indexOf(directorySeparator, packageRootIndex + 1);
+            packageRootIndex = path22.indexOf(directorySeparator, packageRootIndex + 1);
             if (packageRootIndex === -1) {
               moduleSpecifier = processEnding(moduleFileName, allowedEndings, options, host);
               break;
@@ -65452,9 +65452,9 @@ ${lanes.join("\n")}
         return getEmitModuleResolutionKind(options) === 1 && packageName === nodeModulesDirectoryName ? void 0 : packageName;
         function tryDirectoryWithPackageJson(packageRootIndex) {
           var _a2, _b;
-          const packageRootPath = path23.substring(0, packageRootIndex);
+          const packageRootPath = path22.substring(0, packageRootIndex);
           const packageJsonPath = combinePaths(packageRootPath, "package.json");
-          let moduleFileToTry = path23;
+          let moduleFileToTry = path22;
           let maybeBlockedByTypesVersions = false;
           const cachedPackageJson = (_b = (_a2 = host.getPackageJsonInfoCache) == null ? void 0 : _a2.call(host)) == null ? void 0 : _b.getPackageJsonInfo(packageJsonPath);
           if (isPackageJsonInfo(cachedPackageJson) || cachedPackageJson === void 0 && host.fileExists(packageJsonPath)) {
@@ -65467,7 +65467,7 @@ ${lanes.join("\n")}
               const fromExports = (packageJsonContent == null ? void 0 : packageJsonContent.exports) ? tryGetModuleNameFromExports(
                 options,
                 host,
-                path23,
+                path22,
                 packageRootPath,
                 packageName2,
                 packageJsonContent.exports,
@@ -65477,12 +65477,12 @@ ${lanes.join("\n")}
                 return { ...fromExports, verbatimFromExports: true };
               }
               if (packageJsonContent == null ? void 0 : packageJsonContent.exports) {
-                return { moduleFileToTry: path23, blockedByExports: true };
+                return { moduleFileToTry: path22, blockedByExports: true };
               }
             }
             const versionPaths = (packageJsonContent == null ? void 0 : packageJsonContent.typesVersions) ? getPackageJsonTypesVersionsPaths(packageJsonContent.typesVersions) : void 0;
             if (versionPaths) {
-              const subModuleName = path23.slice(packageRootPath.length + 1);
+              const subModuleName = path22.slice(packageRootPath.length + 1);
               const fromPaths = tryGetModuleNameFromPaths(
                 subModuleName,
                 versionPaths.paths,
@@ -65519,7 +65519,7 @@ ${lanes.join("\n")}
         __name(tryDirectoryWithPackageJson, "tryDirectoryWithPackageJson");
       }
       __name(tryGetModuleNameAsNodeModule, "tryGetModuleNameAsNodeModule");
-      function tryGetAnyFileFromPath(host, path23) {
+      function tryGetAnyFileFromPath(host, path22) {
         if (!host.fileExists)
           return;
         const extensions = flatten(getSupportedExtensions({ allowJs: true }, [{ extension: "node", isMixedContent: false }, {
@@ -65529,16 +65529,16 @@ ${lanes.join("\n")}
           /* JSON */
         }]));
         for (const e of extensions) {
-          const fullPath = path23 + e;
+          const fullPath = path22 + e;
           if (host.fileExists(fullPath)) {
             return fullPath;
           }
         }
       }
       __name(tryGetAnyFileFromPath, "tryGetAnyFileFromPath");
-      function getPathsRelativeToRootDirs(path23, rootDirs, getCanonicalFileName) {
+      function getPathsRelativeToRootDirs(path22, rootDirs, getCanonicalFileName) {
         return mapDefined(rootDirs, (rootDir) => {
-          const relativePath = getRelativePathIfInSameVolume(path23, rootDir, getCanonicalFileName);
+          const relativePath = getRelativePathIfInSameVolume(path22, rootDir, getCanonicalFileName);
           return relativePath !== void 0 && isPathRelativeToParent(relativePath) ? void 0 : relativePath;
         });
       }
@@ -65661,10 +65661,10 @@ ${lanes.join("\n")}
         }
       }
       __name(tryGetJSExtensionForFile, "tryGetJSExtensionForFile");
-      function getRelativePathIfInSameVolume(path23, directoryPath, getCanonicalFileName) {
+      function getRelativePathIfInSameVolume(path22, directoryPath, getCanonicalFileName) {
         const relativePath = getRelativePathToDirectoryOrUrl(
           directoryPath,
-          path23,
+          path22,
           directoryPath,
           getCanonicalFileName,
           /*isAbsolutePathAnUrl*/
@@ -65673,8 +65673,8 @@ ${lanes.join("\n")}
         return isRootedDiskPath(relativePath) ? void 0 : relativePath;
       }
       __name(getRelativePathIfInSameVolume, "getRelativePathIfInSameVolume");
-      function isPathRelativeToParent(path23) {
-        return startsWith(path23, "..");
+      function isPathRelativeToParent(path22) {
+        return startsWith(path22, "..");
       }
       __name(isPathRelativeToParent, "isPathRelativeToParent");
       function getDefaultResolutionModeForFile(file2, host, compilerOptions) {
@@ -81539,10 +81539,10 @@ ${lanes.join("\n")}
           const text = identifier.escapedText;
           if (text) {
             const parentSymbol = name.kind === 167 ? getUnresolvedSymbolForEntityName(name.left) : name.kind === 212 ? getUnresolvedSymbolForEntityName(name.expression) : void 0;
-            const path23 = parentSymbol ? `${getSymbolPath(parentSymbol)}.${text}` : text;
-            let result = unresolvedSymbols.get(path23);
+            const path22 = parentSymbol ? `${getSymbolPath(parentSymbol)}.${text}` : text;
+            let result = unresolvedSymbols.get(path22);
             if (!result) {
-              unresolvedSymbols.set(path23, result = createSymbol(
+              unresolvedSymbols.set(path22, result = createSymbol(
                 524288,
                 text,
                 1048576
@@ -86724,24 +86724,24 @@ ${lanes.join("\n")}
               }
               return;
             }
-            let path23 = "";
+            let path22 = "";
             const secondaryRootErrors = [];
             while (stack.length) {
               const [msg, ...args] = stack.pop();
               switch (msg.code) {
                 case Diagnostics.Types_of_property_0_are_incompatible.code: {
-                  if (path23.indexOf("new ") === 0) {
-                    path23 = `(${path23})`;
+                  if (path22.indexOf("new ") === 0) {
+                    path22 = `(${path22})`;
                   }
                   const str = "" + args[0];
-                  if (path23.length === 0) {
-                    path23 = `${str}`;
+                  if (path22.length === 0) {
+                    path22 = `${str}`;
                   } else if (isIdentifierText(str, getEmitScriptTarget(compilerOptions))) {
-                    path23 = `${path23}.${str}`;
+                    path22 = `${path22}.${str}`;
                   } else if (str[0] === "[" && str[str.length - 1] === "]") {
-                    path23 = `${path23}${str}`;
+                    path22 = `${path22}${str}`;
                   } else {
-                    path23 = `${path23}[${str}]`;
+                    path22 = `${path22}[${str}]`;
                   }
                   break;
                 }
@@ -86749,7 +86749,7 @@ ${lanes.join("\n")}
                 case Diagnostics.Construct_signature_return_types_0_and_1_are_incompatible.code:
                 case Diagnostics.Call_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code:
                 case Diagnostics.Construct_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code: {
-                  if (path23.length === 0) {
+                  if (path22.length === 0) {
                     let mappedMsg = msg;
                     if (msg.code === Diagnostics.Call_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code) {
                       mappedMsg = Diagnostics.Call_signature_return_types_0_and_1_are_incompatible;
@@ -86760,7 +86760,7 @@ ${lanes.join("\n")}
                   } else {
                     const prefix = msg.code === Diagnostics.Construct_signature_return_types_0_and_1_are_incompatible.code || msg.code === Diagnostics.Construct_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code ? "new " : "";
                     const params = msg.code === Diagnostics.Call_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code || msg.code === Diagnostics.Construct_signatures_with_no_arguments_have_incompatible_return_types_0_and_1.code ? "" : "...";
-                    path23 = `${prefix}${path23}(${params})`;
+                    path22 = `${prefix}${path22}(${params})`;
                   }
                   break;
                 }
@@ -86776,10 +86776,10 @@ ${lanes.join("\n")}
                   return Debug.fail(`Unhandled Diagnostic: ${msg.code}`);
               }
             }
-            if (path23) {
+            if (path22) {
               reportError(
-                path23[path23.length - 1] === ")" ? Diagnostics.The_types_returned_by_0_are_incompatible_between_these_types : Diagnostics.The_types_of_0_are_incompatible_between_these_types,
-                path23
+                path22[path22.length - 1] === ")" ? Diagnostics.The_types_returned_by_0_are_incompatible_between_these_types : Diagnostics.The_types_of_0_are_incompatible_between_these_types,
+                path22
               );
             } else {
               secondaryRootErrors.shift();
@@ -103129,8 +103129,8 @@ ${lanes.join("\n")}
               return facts === 4194304 ? falseType : facts === 8388608 ? trueType : booleanType2;
             case 46:
             case 47:
-              const ok = checkArithmeticOperandType(node.operand, checkNonNullType(operandType, node.operand), Diagnostics.An_arithmetic_operand_must_be_of_type_any_number_bigint_or_an_enum_type);
-              if (ok) {
+              const ok2 = checkArithmeticOperandType(node.operand, checkNonNullType(operandType, node.operand), Diagnostics.An_arithmetic_operand_must_be_of_type_any_number_bigint_or_an_enum_type);
+              if (ok2) {
                 checkReferenceExpression(
                   node.operand,
                   Diagnostics.The_operand_of_an_increment_or_decrement_operator_must_be_a_variable_or_a_property_access,
@@ -103147,12 +103147,12 @@ ${lanes.join("\n")}
           if (operandType === silentNeverType) {
             return silentNeverType;
           }
-          const ok = checkArithmeticOperandType(
+          const ok2 = checkArithmeticOperandType(
             node.operand,
             checkNonNullType(operandType, node.operand),
             Diagnostics.An_arithmetic_operand_must_be_of_type_any_number_bigint_or_an_enum_type
           );
-          if (ok) {
+          if (ok2) {
             checkReferenceExpression(
               node.operand,
               Diagnostics.The_operand_of_an_increment_or_decrement_operator_must_be_a_variable_or_a_property_access,
@@ -104997,11 +104997,11 @@ ${lanes.join("\n")}
         __name(checkExpression, "checkExpression");
         function checkConstEnumAccess(node, type) {
           var _a2;
-          const ok = node.parent.kind === 212 && node.parent.expression === node || node.parent.kind === 213 && node.parent.expression === node || ((node.kind === 80 || node.kind === 167) && isInRightSideOfImportOrExportAssignment(node) || node.parent.kind === 187 && node.parent.exprName === node) || node.parent.kind === 282;
-          if (!ok) {
+          const ok2 = node.parent.kind === 212 && node.parent.expression === node || node.parent.kind === 213 && node.parent.expression === node || ((node.kind === 80 || node.kind === 167) && isInRightSideOfImportOrExportAssignment(node) || node.parent.kind === 187 && node.parent.exprName === node) || node.parent.kind === 282;
+          if (!ok2) {
             error22(node, Diagnostics.const_enums_can_only_be_used_in_property_or_index_access_expressions_or_the_right_hand_side_of_an_import_declaration_or_export_assignment_or_type_query);
           }
-          if (compilerOptions.isolatedModules || compilerOptions.verbatimModuleSyntax && ok && !resolveName(
+          if (compilerOptions.isolatedModules || compilerOptions.verbatimModuleSyntax && ok2 && !resolveName(
             node,
             getFirstIdentifier(node),
             2097152,
@@ -109924,7 +109924,7 @@ ${lanes.join("\n")}
           forEach(resolveDeclaredMembers(type).declaredProperties, (p) => {
             seen.set(p.escapedName, { prop: p, containingType: type });
           });
-          let ok = true;
+          let ok2 = true;
           for (const base of baseTypes) {
             const properties = getPropertiesOfType(getTypeWithThisArgument(base, type.thisType));
             for (const prop of properties) {
@@ -109934,7 +109934,7 @@ ${lanes.join("\n")}
               } else {
                 const isInheritedProperty = existing.containingType !== type;
                 if (isInheritedProperty && !isPropertyIdenticalTo(existing.prop, prop)) {
-                  ok = false;
+                  ok2 = false;
                   const typeName1 = typeToString(existing.containingType);
                   const typeName2 = typeToString(base);
                   let errorInfo = chainDiagnosticMessages(
@@ -109951,7 +109951,7 @@ ${lanes.join("\n")}
               }
             }
           }
-          return ok;
+          return ok2;
         }
         __name(checkInheritedPropertiesAreIdentical, "checkInheritedPropertiesAreIdentical");
         function checkPropertyInitialization(node) {
@@ -138690,7 +138690,7 @@ ${lanes.join("\n")}
         }
         __name(createImportCallExpressionUMD, "createImportCallExpressionUMD");
         function createImportCallExpressionAMD(arg, containsLexicalThis) {
-          const resolve18 = factory2.createUniqueName("resolve");
+          const resolve19 = factory2.createUniqueName("resolve");
           const reject = factory2.createUniqueName("reject");
           const parameters = [
             factory2.createParameterDeclaration(
@@ -138699,7 +138699,7 @@ ${lanes.join("\n")}
               /*dotDotDotToken*/
               void 0,
               /*name*/
-              resolve18
+              resolve19
             ),
             factory2.createParameterDeclaration(
               /*modifiers*/
@@ -138716,7 +138716,7 @@ ${lanes.join("\n")}
                 factory2.createIdentifier("require"),
                 /*typeArguments*/
                 void 0,
-                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve18, reject]
+                [factory2.createArrayLiteralExpression([arg || factory2.createOmittedExpression()]), resolve19, reject]
               )
             )
           ]);
@@ -144785,9 +144785,9 @@ ${lanes.join("\n")}
       function createAddOutput() {
         let outputs;
         return { addOutput, getOutputs };
-        function addOutput(path23) {
-          if (path23) {
-            (outputs || (outputs = [])).push(path23);
+        function addOutput(path22) {
+          if (path22) {
+            (outputs || (outputs = [])).push(path22);
           }
         }
         __name(addOutput, "addOutput");
@@ -150430,7 +150430,7 @@ ${lanes.join("\n")}
         return {
           useCaseSensitiveFileNames: useCaseSensitiveFileNames2,
           fileExists,
-          readFile: (path23, encoding) => host.readFile(path23, encoding),
+          readFile: (path22, encoding) => host.readFile(path22, encoding),
           directoryExists: host.directoryExists && directoryExists,
           getDirectories,
           readDirectory,
@@ -150449,8 +150449,8 @@ ${lanes.join("\n")}
           return cachedReadDirectoryResult.get(ensureTrailingDirectorySeparator(rootDirPath));
         }
         __name(getCachedFileSystemEntries, "getCachedFileSystemEntries");
-        function getCachedFileSystemEntriesForBaseDir(path23) {
-          const entries = getCachedFileSystemEntries(getDirectoryPath(path23));
+        function getCachedFileSystemEntriesForBaseDir(path22) {
+          const entries = getCachedFileSystemEntries(getDirectoryPath(path22));
           if (!entries) {
             return entries;
           }
@@ -150510,8 +150510,8 @@ ${lanes.join("\n")}
         }
         __name(hasEntry, "hasEntry");
         function writeFile2(fileName, data, writeByteOrderMark) {
-          const path23 = toPath3(fileName);
-          const result = getCachedFileSystemEntriesForBaseDir(path23);
+          const path22 = toPath3(fileName);
+          const result = getCachedFileSystemEntriesForBaseDir(path22);
           if (result) {
             updateFilesOfFileSystemEntry(
               result,
@@ -150524,19 +150524,19 @@ ${lanes.join("\n")}
         }
         __name(writeFile2, "writeFile2");
         function fileExists(fileName) {
-          const path23 = toPath3(fileName);
-          const result = getCachedFileSystemEntriesForBaseDir(path23);
+          const path22 = toPath3(fileName);
+          const result = getCachedFileSystemEntriesForBaseDir(path22);
           return result && hasEntry(result.sortedAndCanonicalizedFiles, getCanonicalFileName(getBaseNameOfFileName(fileName))) || host.fileExists(fileName);
         }
         __name(fileExists, "fileExists");
         function directoryExists(dirPath) {
-          const path23 = toPath3(dirPath);
-          return cachedReadDirectoryResult.has(ensureTrailingDirectorySeparator(path23)) || host.directoryExists(dirPath);
+          const path22 = toPath3(dirPath);
+          return cachedReadDirectoryResult.has(ensureTrailingDirectorySeparator(path22)) || host.directoryExists(dirPath);
         }
         __name(directoryExists, "directoryExists");
         function createDirectory(dirPath) {
-          const path23 = toPath3(dirPath);
-          const result = getCachedFileSystemEntriesForBaseDir(path23);
+          const path22 = toPath3(dirPath);
+          const result = getCachedFileSystemEntriesForBaseDir(path22);
           if (result) {
             const baseName = getBaseNameOfFileName(dirPath);
             const canonicalizedBaseName = getCanonicalFileName(baseName);
@@ -150566,16 +150566,16 @@ ${lanes.join("\n")}
           }
           return host.readDirectory(rootDir, extensions, excludes, includes, depth);
           function getFileSystemEntries(dir) {
-            const path23 = toPath3(dir);
-            if (path23 === rootDirPath) {
-              return rootResult || getFileSystemEntriesFromHost(dir, path23);
+            const path22 = toPath3(dir);
+            if (path22 === rootDirPath) {
+              return rootResult || getFileSystemEntriesFromHost(dir, path22);
             }
-            const result = tryReadDirectory2(dir, path23);
-            return result !== void 0 ? result || getFileSystemEntriesFromHost(dir, path23) : emptyFileSystemEntries;
+            const result = tryReadDirectory2(dir, path22);
+            return result !== void 0 ? result || getFileSystemEntriesFromHost(dir, path22) : emptyFileSystemEntries;
           }
           __name(getFileSystemEntries, "getFileSystemEntries");
-          function getFileSystemEntriesFromHost(dir, path23) {
-            if (rootSymLinkResult && path23 === rootDirPath)
+          function getFileSystemEntriesFromHost(dir, path22) {
+            if (rootSymLinkResult && path22 === rootDirPath)
               return rootSymLinkResult;
             const result = {
               files: map2(host.readDirectory(
@@ -150589,7 +150589,7 @@ ${lanes.join("\n")}
               ), getBaseNameOfFileName) || emptyArray,
               directories: host.getDirectories(dir) || emptyArray
             };
-            if (path23 === rootDirPath)
+            if (path22 === rootDirPath)
               rootSymLinkResult = result;
             return result;
           }
@@ -151095,15 +151095,15 @@ ${lanes.join("\n")}
         }
         __name(getDefaultLibLocation, "getDefaultLibLocation");
         const newLine = getNewLineCharacter(options);
-        const realpath = system.realpath && ((path23) => system.realpath(path23));
+        const realpath = system.realpath && ((path22) => system.realpath(path22));
         const compilerHost = {
           getSourceFile: createGetSourceFile((fileName) => compilerHost.readFile(fileName), setParentNodes),
           getDefaultLibLocation,
           getDefaultLibFileName: (options2) => combinePaths(getDefaultLibLocation(), getDefaultLibFileName(options2)),
           writeFile: createWriteFileMeasuringIO(
-            (path23, data, writeByteOrderMark) => system.writeFile(path23, data, writeByteOrderMark),
-            (path23) => (compilerHost.createDirectory || system.createDirectory)(path23),
-            (path23) => directoryExists(path23)
+            (path22, data, writeByteOrderMark) => system.writeFile(path22, data, writeByteOrderMark),
+            (path22) => (compilerHost.createDirectory || system.createDirectory)(path22),
+            (path22) => directoryExists(path22)
           ),
           getCurrentDirectory: memoize(() => system.getCurrentDirectory()),
           useCaseSensitiveFileNames: () => system.useCaseSensitiveFileNames,
@@ -151114,9 +151114,9 @@ ${lanes.join("\n")}
           trace: (s) => system.write(s + newLine),
           directoryExists: (directoryName) => system.directoryExists(directoryName),
           getEnvironmentVariable: (name) => system.getEnvironmentVariable ? system.getEnvironmentVariable(name) : "",
-          getDirectories: (path23) => system.getDirectories(path23),
+          getDirectories: (path22) => system.getDirectories(path22),
           realpath,
-          readDirectory: (path23, extensions, include, exclude, depth) => system.readDirectory(path23, extensions, include, exclude, depth),
+          readDirectory: (path22, extensions, include, exclude, depth) => system.readDirectory(path22, extensions, include, exclude, depth),
           createDirectory: (d) => system.createDirectory(d),
           createHash: maybeBind(system, system.createHash)
         };
@@ -151588,13 +151588,13 @@ ${lanes.join("\n")}
       __name(getInferredLibraryNameResolveFrom, "getInferredLibraryNameResolveFrom");
       function getLibraryNameFromLibFileName(libFileName) {
         const components = libFileName.split(".");
-        let path23 = components[1];
+        let path22 = components[1];
         let i = 2;
         while (components[i] && components[i] !== "d") {
-          path23 += (i === 2 ? "/" : "-") + components[i];
+          path22 += (i === 2 ? "/" : "-") + components[i];
           i++;
         }
-        return "@typescript/lib-" + path23;
+        return "@typescript/lib-" + path22;
       }
       __name(getLibraryNameFromLibFileName, "getLibraryNameFromLibFileName");
       function isReferencedFile(reason) {
@@ -152744,18 +152744,18 @@ ${lanes.join("\n")}
             filesByName.set(newSourceFile.path, newSourceFile);
           }
           const oldFilesByNameMap = oldProgram.getFilesByNameMap();
-          oldFilesByNameMap.forEach((oldFile, path23) => {
+          oldFilesByNameMap.forEach((oldFile, path22) => {
             if (!oldFile) {
-              filesByName.set(path23, oldFile);
+              filesByName.set(path22, oldFile);
               return;
             }
-            if (oldFile.path === path23) {
+            if (oldFile.path === path22) {
               if (oldProgram.isSourceFileFromExternalLibrary(oldFile)) {
                 sourceFilesFoundSearchingNodeModules.set(oldFile.path, true);
               }
               return;
             }
-            filesByName.set(path23, filesByName.get(oldFile.path));
+            filesByName.set(path22, filesByName.get(oldFile.path));
           });
           const isConfigIdentical = oldOptions.configFile && oldOptions.configFile === options.configFile || !oldOptions.configFile && !options.configFile && !optionsHaveChanges(oldOptions, options, optionDeclarations);
           programDiagnostics.reuseStateFromOldProgram(oldProgram.getProgramDiagnosticsContainer(), isConfigIdentical);
@@ -152794,10 +152794,10 @@ ${lanes.join("\n")}
             getModeForResolutionAtIndex: getModeForResolutionAtIndex2,
             readFile: (f) => host.readFile(f),
             fileExists: (f) => {
-              const path23 = toPath3(f);
-              if (getSourceFileByPath(path23))
+              const path22 = toPath3(f);
+              if (getSourceFileByPath(path22))
                 return true;
-              if (missingFileNames.has(path23))
+              if (missingFileNames.has(path22))
                 return false;
               return host.fileExists(f);
             },
@@ -152951,8 +152951,8 @@ ${lanes.join("\n")}
           return getSourceFileByPath(toPath3(fileName));
         }
         __name(getSourceFile, "getSourceFile");
-        function getSourceFileByPath(path23) {
-          return filesByName.get(path23) || void 0;
+        function getSourceFileByPath(path22) {
+          return filesByName.get(path22) || void 0;
         }
         __name(getSourceFileByPath, "getSourceFileByPath");
         function getDiagnosticsHelper(sourceFile, getDiagnostics2, cancellationToken) {
@@ -153555,30 +153555,30 @@ ${lanes.join("\n")}
           return getSourceFileFromReferenceWorker(resolveTripleslashReference(ref.fileName, referencingFile.fileName), getSourceFile);
         }
         __name(getSourceFileFromReference, "getSourceFileFromReference");
-        function getSourceFileFromReferenceWorker(fileName, getSourceFile2, fail, reason) {
+        function getSourceFileFromReferenceWorker(fileName, getSourceFile2, fail2, reason) {
           if (hasExtension(fileName)) {
             const canonicalFileName = host.getCanonicalFileName(fileName);
             if (!options.allowNonTsExtensions && !forEach(flatten(supportedExtensionsWithJsonIfResolveJsonModule), (extension) => fileExtensionIs(canonicalFileName, extension))) {
-              if (fail) {
+              if (fail2) {
                 if (hasJSFileExtension(canonicalFileName)) {
-                  fail(Diagnostics.File_0_is_a_JavaScript_file_Did_you_mean_to_enable_the_allowJs_option, fileName);
+                  fail2(Diagnostics.File_0_is_a_JavaScript_file_Did_you_mean_to_enable_the_allowJs_option, fileName);
                 } else {
-                  fail(Diagnostics.File_0_has_an_unsupported_extension_The_only_supported_extensions_are_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
+                  fail2(Diagnostics.File_0_has_an_unsupported_extension_The_only_supported_extensions_are_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
                 }
               }
               return void 0;
             }
             const sourceFile = getSourceFile2(fileName);
-            if (fail) {
+            if (fail2) {
               if (!sourceFile) {
                 const redirect = getRedirectFromSourceFile(fileName);
                 if (redirect == null ? void 0 : redirect.outputDts) {
-                  fail(Diagnostics.Output_file_0_has_not_been_built_from_source_file_1, redirect.outputDts, fileName);
+                  fail2(Diagnostics.Output_file_0_has_not_been_built_from_source_file_1, redirect.outputDts, fileName);
                 } else {
-                  fail(Diagnostics.File_0_not_found, fileName);
+                  fail2(Diagnostics.File_0_not_found, fileName);
                 }
               } else if (isReferencedFile(reason) && canonicalFileName === host.getCanonicalFileName(getSourceFileByPath(reason.file).fileName)) {
-                fail(Diagnostics.A_file_cannot_have_a_reference_to_itself);
+                fail2(Diagnostics.A_file_cannot_have_a_reference_to_itself);
               }
             }
             return sourceFile;
@@ -153586,13 +153586,13 @@ ${lanes.join("\n")}
             const sourceFileNoExtension = options.allowNonTsExtensions && getSourceFile2(fileName);
             if (sourceFileNoExtension)
               return sourceFileNoExtension;
-            if (fail && options.allowNonTsExtensions) {
-              fail(Diagnostics.File_0_not_found, fileName);
+            if (fail2 && options.allowNonTsExtensions) {
+              fail2(Diagnostics.File_0_not_found, fileName);
               return void 0;
             }
             const sourceFileWithAddedExtension = forEach(supportedExtensions[0], (extension) => getSourceFile2(fileName + extension));
-            if (fail && !sourceFileWithAddedExtension)
-              fail(Diagnostics.Could_not_resolve_the_path_0_with_the_extensions_Colon_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
+            if (fail2 && !sourceFileWithAddedExtension)
+              fail2(Diagnostics.Could_not_resolve_the_path_0_with_the_extensions_Colon_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
             return sourceFileWithAddedExtension;
           }
         }
@@ -153635,16 +153635,16 @@ ${lanes.join("\n")}
           }
         }
         __name(reportFileNamesDifferOnlyInCasingError, "reportFileNamesDifferOnlyInCasingError");
-        function createRedirectedSourceFile(redirectTarget, unredirected, fileName, path23, resolvedPath, originalFileName, sourceFileOptions) {
+        function createRedirectedSourceFile(redirectTarget, unredirected, fileName, path22, resolvedPath, originalFileName, sourceFileOptions) {
           var _a22;
           const redirect = parseNodeFactory.createRedirectedSourceFile({ redirectTarget, unredirected });
           redirect.fileName = fileName;
-          redirect.path = path23;
+          redirect.path = path22;
           redirect.resolvedPath = resolvedPath;
           redirect.originalFileName = originalFileName;
           redirect.packageJsonLocations = ((_a22 = sourceFileOptions.packageJsonLocations) == null ? void 0 : _a22.length) ? sourceFileOptions.packageJsonLocations : void 0;
           redirect.packageJsonScope = sourceFileOptions.packageJsonScope;
-          sourceFilesFoundSearchingNodeModules.set(path23, currentNodeModulesDepth > 0);
+          sourceFilesFoundSearchingNodeModules.set(path22, currentNodeModulesDepth > 0);
           return redirect;
         }
         __name(createRedirectedSourceFile, "createRedirectedSourceFile");
@@ -153669,12 +153669,12 @@ ${lanes.join("\n")}
         __name(getCreateSourceFileOptions, "getCreateSourceFileOptions");
         function findSourceFileWorker(fileName, isDefaultLib, ignoreNoDefaultLib, reason, packageId) {
           var _a22, _b2;
-          const path23 = toPath3(fileName);
+          const path22 = toPath3(fileName);
           if (useSourceOfProjectReferenceRedirect) {
-            let source = getRedirectFromOutput(path23);
+            let source = getRedirectFromOutput(path22);
             if (!source && host.realpath && options.preserveSymlinks && isDeclarationFileName(fileName) && fileName.includes(nodeModulesPathPart)) {
               const realPath2 = toPath3(host.realpath(fileName));
-              if (realPath2 !== path23)
+              if (realPath2 !== path22)
                 source = getRedirectFromOutput(realPath2);
             }
             if (source == null ? void 0 : source.source) {
@@ -153682,7 +153682,7 @@ ${lanes.join("\n")}
               if (file22)
                 addFileToFilesByName(
                   file22,
-                  path23,
+                  path22,
                   fileName,
                   /*redirectedPath*/
                   void 0
@@ -153691,8 +153691,8 @@ ${lanes.join("\n")}
             }
           }
           const originalFileName = fileName;
-          if (filesByName.has(path23)) {
-            const file22 = filesByName.get(path23);
+          if (filesByName.has(path22)) {
+            const file22 = filesByName.get(path22);
             const addedReason = addFileIncludeReason(
               file22 || void 0,
               reason,
@@ -153758,28 +153758,28 @@ ${lanes.join("\n")}
             const packageIdKey = packageIdToString(packageId);
             const fileFromPackageId = packageIdToSourceFile.get(packageIdKey);
             if (fileFromPackageId) {
-              const dupFile = createRedirectedSourceFile(fileFromPackageId, file2, fileName, path23, toPath3(fileName), originalFileName, sourceFileOptions);
+              const dupFile = createRedirectedSourceFile(fileFromPackageId, file2, fileName, path22, toPath3(fileName), originalFileName, sourceFileOptions);
               redirectTargetsMap.add(fileFromPackageId.path, fileName);
-              addFileToFilesByName(dupFile, path23, fileName, redirectedPath);
+              addFileToFilesByName(dupFile, path22, fileName, redirectedPath);
               addFileIncludeReason(
                 dupFile,
                 reason,
                 /*checkExisting*/
                 false
               );
-              sourceFileToPackageName.set(path23, packageIdToPackageName(packageId));
+              sourceFileToPackageName.set(path22, packageIdToPackageName(packageId));
               processingOtherFiles.push(dupFile);
               return dupFile;
             } else if (file2) {
               packageIdToSourceFile.set(packageIdKey, file2);
-              sourceFileToPackageName.set(path23, packageIdToPackageName(packageId));
+              sourceFileToPackageName.set(path22, packageIdToPackageName(packageId));
             }
           }
-          addFileToFilesByName(file2, path23, fileName, redirectedPath);
+          addFileToFilesByName(file2, path22, fileName, redirectedPath);
           if (file2) {
-            sourceFilesFoundSearchingNodeModules.set(path23, currentNodeModulesDepth > 0);
+            sourceFilesFoundSearchingNodeModules.set(path22, currentNodeModulesDepth > 0);
             file2.fileName = fileName;
-            file2.path = path23;
+            file2.path = path22;
             file2.resolvedPath = toPath3(fileName);
             file2.originalFileName = originalFileName;
             file2.packageJsonLocations = ((_b2 = sourceFileOptions.packageJsonLocations) == null ? void 0 : _b2.length) ? sourceFileOptions.packageJsonLocations : void 0;
@@ -153791,7 +153791,7 @@ ${lanes.join("\n")}
               false
             );
             if (host.useCaseSensitiveFileNames()) {
-              const pathLowerCase = toFileNameLowerCase(path23);
+              const pathLowerCase = toFileNameLowerCase(path22);
               const existingFile = filesByNameIgnoreCase.get(pathLowerCase);
               if (existingFile) {
                 reportFileNamesDifferOnlyInCasingError(fileName, existingFile, reason);
@@ -153826,21 +153826,21 @@ ${lanes.join("\n")}
           return false;
         }
         __name(addFileIncludeReason, "addFileIncludeReason");
-        function addFileToFilesByName(file2, path23, fileName, redirectedPath) {
+        function addFileToFilesByName(file2, path22, fileName, redirectedPath) {
           if (redirectedPath) {
             updateFilesByNameMap(fileName, redirectedPath, file2);
-            updateFilesByNameMap(fileName, path23, file2 || false);
+            updateFilesByNameMap(fileName, path22, file2 || false);
           } else {
-            updateFilesByNameMap(fileName, path23, file2);
+            updateFilesByNameMap(fileName, path22, file2);
           }
         }
         __name(addFileToFilesByName, "addFileToFilesByName");
-        function updateFilesByNameMap(fileName, path23, file2) {
-          filesByName.set(path23, file2);
+        function updateFilesByNameMap(fileName, path22, file2) {
+          filesByName.set(path22, file2);
           if (file2 !== void 0)
-            missingFileNames.delete(path23);
+            missingFileNames.delete(path22);
           else
-            missingFileNames.set(path23, fileName);
+            missingFileNames.set(path22, fileName);
         }
         __name(updateFilesByNameMap, "updateFilesByNameMap");
         function getRedirectFromSourceFile(fileName) {
@@ -153851,8 +153851,8 @@ ${lanes.join("\n")}
           return forEachResolvedProjectReference(resolvedProjectReferences, cb);
         }
         __name(forEachResolvedProjectReference2, "forEachResolvedProjectReference2");
-        function getRedirectFromOutput(path23) {
-          return mapOutputFileToResolvedRef == null ? void 0 : mapOutputFileToResolvedRef.get(path23);
+        function getRedirectFromOutput(path22) {
+          return mapOutputFileToResolvedRef == null ? void 0 : mapOutputFileToResolvedRef.get(path22);
         }
         __name(getRedirectFromOutput, "getRedirectFromOutput");
         function isSourceOfProjectReferenceRedirect(fileName) {
@@ -154170,7 +154170,7 @@ ${lanes.join("\n")}
             }
             const getCommonSourceDirectory3 = memoize(() => getCommonSourceDirectoryOfConfig(resolvedRef.commandLine, !host.useCaseSensitiveFileNames()));
             commandLine.fileNames.forEach((fileName) => {
-              const path23 = toPath3(fileName);
+              const path22 = toPath3(fileName);
               let outputDts;
               if (!isDeclarationFileName(fileName) && !fileExtensionIs(
                 fileName,
@@ -154184,7 +154184,7 @@ ${lanes.join("\n")}
                   outputDts = outDts;
                 }
               }
-              mapSourceFileToResolvedRef.set(path23, { resolvedRef, outputDts });
+              mapSourceFileToResolvedRef.set(path22, { resolvedRef, outputDts });
             });
           }
           if (commandLine.projectReferences) {
@@ -154914,9 +154914,9 @@ ${lanes.join("\n")}
         host.compilerHost.fileExists = fileExists;
         let directoryExists;
         if (originalDirectoryExists) {
-          directoryExists = host.compilerHost.directoryExists = (path23) => {
-            if (originalDirectoryExists.call(host.compilerHost, path23)) {
-              handleDirectoryCouldBeSymlink(path23);
+          directoryExists = host.compilerHost.directoryExists = (path22) => {
+            if (originalDirectoryExists.call(host.compilerHost, path22)) {
+              handleDirectoryCouldBeSymlink(path22);
               return true;
             }
             if (!host.getResolvedProjectReferences())
@@ -154936,14 +154936,14 @@ ${lanes.join("\n")}
               });
             }
             return fileOrDirectoryExistsUsingSource(
-              path23,
+              path22,
               /*isFile*/
               false
             );
           };
         }
         if (originalGetDirectories) {
-          host.compilerHost.getDirectories = (path23) => !host.getResolvedProjectReferences() || originalDirectoryExists && originalDirectoryExists.call(host.compilerHost, path23) ? originalGetDirectories.call(host.compilerHost, path23) : [];
+          host.compilerHost.getDirectories = (path22) => !host.getResolvedProjectReferences() || originalDirectoryExists && originalDirectoryExists.call(host.compilerHost, path22) ? originalGetDirectories.call(host.compilerHost, path22) : [];
         }
         if (originalRealpath) {
           host.compilerHost.realpath = (s) => {
@@ -155681,12 +155681,12 @@ ${lanes.join("\n")}
         }
         __name(releaseCache2, "releaseCache2");
         BuilderState2.releaseCache = releaseCache2;
-        function getFilesAffectedBy(state, programOfThisState, path23, cancellationToken, host) {
+        function getFilesAffectedBy(state, programOfThisState, path22, cancellationToken, host) {
           var _a2;
           const result = getFilesAffectedByWithOldState(
             state,
             programOfThisState,
-            path23,
+            path22,
             cancellationToken,
             host
           );
@@ -155695,8 +155695,8 @@ ${lanes.join("\n")}
         }
         __name(getFilesAffectedBy, "getFilesAffectedBy");
         BuilderState2.getFilesAffectedBy = getFilesAffectedBy;
-        function getFilesAffectedByWithOldState(state, programOfThisState, path23, cancellationToken, host) {
-          const sourceFile = programOfThisState.getSourceFileByPath(path23);
+        function getFilesAffectedByWithOldState(state, programOfThisState, path22, cancellationToken, host) {
+          const sourceFile = programOfThisState.getSourceFileByPath(path22);
           if (!sourceFile) {
             return emptyArray;
           }
@@ -155707,9 +155707,9 @@ ${lanes.join("\n")}
         }
         __name(getFilesAffectedByWithOldState, "getFilesAffectedByWithOldState");
         BuilderState2.getFilesAffectedByWithOldState = getFilesAffectedByWithOldState;
-        function updateSignatureOfFile(state, signature, path23) {
-          state.fileInfos.get(path23).signature = signature;
-          (state.hasCalledUpdateShapeSignature || (state.hasCalledUpdateShapeSignature = /* @__PURE__ */ new Set())).add(path23);
+        function updateSignatureOfFile(state, signature, path22) {
+          state.fileInfos.get(path22).signature = signature;
+          (state.hasCalledUpdateShapeSignature || (state.hasCalledUpdateShapeSignature = /* @__PURE__ */ new Set())).add(path22);
         }
         __name(updateSignatureOfFile, "updateSignatureOfFile");
         BuilderState2.updateSignatureOfFile = updateSignatureOfFile;
@@ -155784,10 +155784,10 @@ ${lanes.join("\n")}
           const seenMap = /* @__PURE__ */ new Set();
           const queue = [sourceFile.resolvedPath];
           while (queue.length) {
-            const path23 = queue.pop();
-            if (!seenMap.has(path23)) {
-              seenMap.add(path23);
-              const references = state.referencedMap.getValues(path23);
+            const path22 = queue.pop();
+            if (!seenMap.has(path22)) {
+              seenMap.add(path22);
+              const references = state.referencedMap.getValues(path22);
               if (references) {
                 for (const key of references.keys()) {
                   queue.push(key);
@@ -155795,9 +155795,9 @@ ${lanes.join("\n")}
               }
             }
           }
-          return arrayFrom(mapDefinedIterator(seenMap.keys(), (path23) => {
+          return arrayFrom(mapDefinedIterator(seenMap.keys(), (path22) => {
             var _a2;
-            return ((_a2 = programOfThisState.getSourceFileByPath(path23)) == null ? void 0 : _a2.fileName) ?? path23;
+            return ((_a2 = programOfThisState.getSourceFileByPath(path22)) == null ? void 0 : _a2.fileName) ?? path22;
           }));
         }
         __name(getAllDependencies, "getAllDependencies");
@@ -156002,7 +156002,7 @@ ${lanes.join("\n")}
           oldInfo.version !== info.version || // Implied formats dont match
           oldInfo.impliedFormat !== info.impliedFormat || // Referenced files changed
           !hasSameKeys(newReferences = referencedMap && referencedMap.getValues(sourceFilePath), oldReferencedMap && oldReferencedMap.getValues(sourceFilePath)) || // Referenced file was deleted in the new program
-          newReferences && forEachKey(newReferences, (path23) => !state.fileInfos.has(path23) && oldState.fileInfos.has(path23))) {
+          newReferences && forEachKey(newReferences, (path22) => !state.fileInfos.has(path22) && oldState.fileInfos.has(path22))) {
             addFileToChangeSet(sourceFilePath);
           } else {
             const sourceFile = newProgram.getSourceFileByPath(sourceFilePath);
@@ -156073,8 +156073,8 @@ ${lanes.join("\n")}
         if (useOldState && state.semanticDiagnosticsPerFile.size !== state.fileInfos.size && oldState.checkPending !== state.checkPending)
           state.buildInfoEmitPending = true;
         return state;
-        function addFileToChangeSet(path23) {
-          state.changedFilesSet.add(path23);
+        function addFileToChangeSet(path22) {
+          state.changedFilesSet.add(path22);
           if (outFilePath) {
             canCopySemanticDiagnostics = false;
             canCopyEmitDiagnostics = false;
@@ -156147,9 +156147,9 @@ ${lanes.join("\n")}
           result.relatedInformation = relatedInformation ? relatedInformation.length ? relatedInformation.map((r) => convertToDiagnosticRelatedInformation(r, diagnosticFilePath, newProgram, toPathInBuildInfoDirectory)) : [] : void 0;
           return result;
         });
-        function toPathInBuildInfoDirectory(path23) {
+        function toPathInBuildInfoDirectory(path22) {
           buildInfoDirectory ?? (buildInfoDirectory = getDirectoryPath(getNormalizedAbsolutePath(getTsBuildInfoEmitOutputFilePath(newProgram.getCompilerOptions()), newProgram.getCurrentDirectory())));
-          return toPath(path23, buildInfoDirectory, newProgram.getCanonicalFileName);
+          return toPath(path22, buildInfoDirectory, newProgram.getCanonicalFileName);
         }
         __name(toPathInBuildInfoDirectory, "toPathInBuildInfoDirectory");
       }
@@ -156233,12 +156233,12 @@ ${lanes.join("\n")}
           state.affectedFilesPendingEmit = void 0;
           state.programEmitPending = void 0;
         }
-        (_b = state.affectedFilesPendingEmit) == null ? void 0 : _b.forEach((emitKind, path23) => {
+        (_b = state.affectedFilesPendingEmit) == null ? void 0 : _b.forEach((emitKind, path22) => {
           const pending = !isForDtsErrors ? emitKind & 7 : emitKind & (7 | 48);
           if (!pending)
-            state.affectedFilesPendingEmit.delete(path23);
+            state.affectedFilesPendingEmit.delete(path22);
           else
-            state.affectedFilesPendingEmit.set(path23, pending);
+            state.affectedFilesPendingEmit.set(path22, pending);
         });
         if (state.programEmitPending) {
           const pending = !isForDtsErrors ? state.programEmitPending & 7 : state.programEmitPending & (7 | 48);
@@ -156266,11 +156266,11 @@ ${lanes.join("\n")}
         var _a2;
         if (!((_a2 = state.affectedFilesPendingEmit) == null ? void 0 : _a2.size))
           return void 0;
-        return forEachEntry(state.affectedFilesPendingEmit, (emitKind, path23) => {
+        return forEachEntry(state.affectedFilesPendingEmit, (emitKind, path22) => {
           var _a22;
-          const affectedFile = state.program.getSourceFileByPath(path23);
+          const affectedFile = state.program.getSourceFileByPath(path22);
           if (!affectedFile || !sourceFileMayBeEmitted(affectedFile, state.program)) {
-            state.affectedFilesPendingEmit.delete(path23);
+            state.affectedFilesPendingEmit.delete(path22);
             return void 0;
           }
           const seenKind = (_a22 = state.seenEmittedFiles) == null ? void 0 : _a22.get(affectedFile.resolvedPath);
@@ -156289,11 +156289,11 @@ ${lanes.join("\n")}
         var _a2;
         if (!((_a2 = state.emitDiagnosticsPerFile) == null ? void 0 : _a2.size))
           return void 0;
-        return forEachEntry(state.emitDiagnosticsPerFile, (diagnostics, path23) => {
+        return forEachEntry(state.emitDiagnosticsPerFile, (diagnostics, path22) => {
           var _a22;
-          const affectedFile = state.program.getSourceFileByPath(path23);
+          const affectedFile = state.program.getSourceFileByPath(path22);
           if (!affectedFile || !sourceFileMayBeEmitted(affectedFile, state.program)) {
-            state.emitDiagnosticsPerFile.delete(path23);
+            state.emitDiagnosticsPerFile.delete(path22);
             return void 0;
           }
           const seenKind = ((_a22 = state.seenEmittedFiles) == null ? void 0 : _a22.get(affectedFile.resolvedPath)) || 0;
@@ -156333,10 +156333,10 @@ ${lanes.join("\n")}
         );
       }
       __name(handleDtsMayChangeOfAffectedFile, "handleDtsMayChangeOfAffectedFile");
-      function handleDtsMayChangeOf(state, path23, invalidateJsFiles, cancellationToken, host) {
-        removeSemanticDiagnosticsOf(state, path23);
-        if (!state.changedFilesSet.has(path23)) {
-          const sourceFile = state.program.getSourceFileByPath(path23);
+      function handleDtsMayChangeOf(state, path22, invalidateJsFiles, cancellationToken, host) {
+        removeSemanticDiagnosticsOf(state, path22);
+        if (!state.changedFilesSet.has(path22)) {
+          const sourceFile = state.program.getSourceFileByPath(path22);
           if (sourceFile) {
             BuilderState.updateShapeSignature(
               state,
@@ -156350,13 +156350,13 @@ ${lanes.join("\n")}
             if (invalidateJsFiles) {
               addToAffectedFilesPendingEmit(
                 state,
-                path23,
+                path22,
                 getBuilderFileEmit(state.compilerOptions)
               );
             } else if (getEmitDeclarations(state.compilerOptions)) {
               addToAffectedFilesPendingEmit(
                 state,
-                path23,
+                path22,
                 state.compilerOptions.declarationMap ? 56 : 24
                 /* Dts */
               );
@@ -156365,18 +156365,18 @@ ${lanes.join("\n")}
         }
       }
       __name(handleDtsMayChangeOf, "handleDtsMayChangeOf");
-      function removeSemanticDiagnosticsOf(state, path23) {
+      function removeSemanticDiagnosticsOf(state, path22) {
         if (!state.semanticDiagnosticsFromOldState) {
           return true;
         }
-        state.semanticDiagnosticsFromOldState.delete(path23);
-        state.semanticDiagnosticsPerFile.delete(path23);
+        state.semanticDiagnosticsFromOldState.delete(path22);
+        state.semanticDiagnosticsPerFile.delete(path22);
         return !state.semanticDiagnosticsFromOldState.size;
       }
       __name(removeSemanticDiagnosticsOf, "removeSemanticDiagnosticsOf");
-      function isChangedSignature(state, path23) {
-        const oldSignature = Debug.checkDefined(state.oldSignatures).get(path23) || void 0;
-        const newSignature = Debug.checkDefined(state.fileInfos.get(path23)).signature;
+      function isChangedSignature(state, path22) {
+        const oldSignature = Debug.checkDefined(state.oldSignatures).get(path22) || void 0;
+        const newSignature = Debug.checkDefined(state.fileInfos.get(path22)).signature;
         return newSignature !== oldSignature;
       }
       __name(isChangedSignature, "isChangedSignature");
@@ -156498,13 +156498,13 @@ ${lanes.join("\n")}
       __name(getSemanticDiagnosticsOfFile, "getSemanticDiagnosticsOfFile");
       function getBinderAndCheckerDiagnosticsOfFile(state, sourceFile, cancellationToken, semanticDiagnosticsPerFile) {
         semanticDiagnosticsPerFile ?? (semanticDiagnosticsPerFile = state.semanticDiagnosticsPerFile);
-        const path23 = sourceFile.resolvedPath;
-        const cachedDiagnostics = semanticDiagnosticsPerFile.get(path23);
+        const path22 = sourceFile.resolvedPath;
+        const cachedDiagnostics = semanticDiagnosticsPerFile.get(path22);
         if (cachedDiagnostics) {
           return filterSemanticDiagnostics(cachedDiagnostics, state.compilerOptions);
         }
         const diagnostics = state.program.getBindAndCheckDiagnostics(sourceFile, cancellationToken);
-        semanticDiagnosticsPerFile.set(path23, diagnostics);
+        semanticDiagnosticsPerFile.set(path22, diagnostics);
         state.buildInfoEmitPending = true;
         return filterSemanticDiagnostics(diagnostics, state.compilerOptions);
       }
@@ -156660,12 +156660,12 @@ ${lanes.join("\n")}
         if ((_b = state.affectedFilesPendingEmit) == null ? void 0 : _b.size) {
           const fullEmitForOptions = getBuilderFileEmit(state.compilerOptions);
           const seenFiles = /* @__PURE__ */ new Set();
-          for (const path23 of arrayFrom(state.affectedFilesPendingEmit.keys()).sort(compareStringsCaseSensitive)) {
-            if (tryAddToSet(seenFiles, path23)) {
-              const file2 = state.program.getSourceFileByPath(path23);
+          for (const path22 of arrayFrom(state.affectedFilesPendingEmit.keys()).sort(compareStringsCaseSensitive)) {
+            if (tryAddToSet(seenFiles, path22)) {
+              const file2 = state.program.getSourceFileByPath(path22);
               if (!file2 || !sourceFileMayBeEmitted(file2, state.program))
                 continue;
-              const fileId = toFileId(path23), pendingEmit = state.affectedFilesPendingEmit.get(path23);
+              const fileId = toFileId(path22), pendingEmit = state.affectedFilesPendingEmit.get(path22);
               affectedFilesPendingEmit = append(
                 affectedFilesPendingEmit,
                 pendingEmit === fullEmitForOptions ? fileId : (
@@ -156699,19 +156699,19 @@ ${lanes.join("\n")}
           version: version2
         };
         return buildInfo;
-        function relativeToBuildInfoEnsuringAbsolutePath(path23) {
-          return relativeToBuildInfo(getNormalizedAbsolutePath(path23, currentDirectory));
+        function relativeToBuildInfoEnsuringAbsolutePath(path22) {
+          return relativeToBuildInfo(getNormalizedAbsolutePath(path22, currentDirectory));
         }
         __name(relativeToBuildInfoEnsuringAbsolutePath, "relativeToBuildInfoEnsuringAbsolutePath");
-        function relativeToBuildInfo(path23) {
-          return ensurePathIsNonModuleName(getRelativePathFromDirectory(buildInfoDirectory, path23, state.program.getCanonicalFileName));
+        function relativeToBuildInfo(path22) {
+          return ensurePathIsNonModuleName(getRelativePathFromDirectory(buildInfoDirectory, path22, state.program.getCanonicalFileName));
         }
         __name(relativeToBuildInfo, "relativeToBuildInfo");
-        function toFileId(path23) {
-          let fileId = fileNameToFileId.get(path23);
+        function toFileId(path22) {
+          let fileId = fileNameToFileId.get(path22);
           if (fileId === void 0) {
-            fileNames.push(relativeToBuildInfo(path23));
-            fileNameToFileId.set(path23, fileId = fileNames.length);
+            fileNames.push(relativeToBuildInfo(path22));
+            fileNameToFileId.set(path22, fileId = fileNames.length);
           }
           return fileId;
         }
@@ -156727,8 +156727,8 @@ ${lanes.join("\n")}
           return fileIdListId;
         }
         __name(toFileIdListId, "toFileIdListId");
-        function tryAddRoot(path23, fileId) {
-          const file2 = state.program.getSourceFile(path23);
+        function tryAddRoot(path22, fileId) {
+          const file2 = state.program.getSourceFile(path22);
           if (!state.program.getFileIncludeReasons().get(file2.path).some(
             (r) => r.kind === 0
             /* RootFile */
@@ -156751,10 +156751,10 @@ ${lanes.join("\n")}
         __name(tryAddRoot, "tryAddRoot");
         function toResolvedRoot() {
           let result;
-          rootFileNames.forEach((path23) => {
-            const file2 = state.program.getSourceFileByPath(path23);
-            if (file2 && path23 !== file2.resolvedPath) {
-              result = append(result, [toFileId(file2.resolvedPath), toFileId(path23)]);
+          rootFileNames.forEach((path22) => {
+            const file2 = state.program.getSourceFileByPath(path22);
+            if (file2 && path22 !== file2.resolvedPath) {
+              result = append(result, [toFileId(file2.resolvedPath), toFileId(path22)]);
             }
           });
           return result;
@@ -156875,8 +156875,8 @@ ${lanes.join("\n")}
         function toChangeFileSet() {
           let changeFileSet;
           if (state.changedFilesSet.size) {
-            for (const path23 of arrayFrom(state.changedFilesSet.keys()).sort(compareStringsCaseSensitive)) {
-              changeFileSet = append(changeFileSet, toFileId(path23));
+            for (const path22 of arrayFrom(state.changedFilesSet.keys()).sort(compareStringsCaseSensitive)) {
+              changeFileSet = append(changeFileSet, toFileId(path22));
             }
           }
           return changeFileSet;
@@ -157430,8 +157430,8 @@ ${lanes.join("\n")}
         const changedFilesSet = new Set(map2(buildInfo.changeFileSet, toFilePath));
         if (isIncrementalBundleEmitBuildInfo(buildInfo)) {
           buildInfo.fileInfos.forEach((fileInfo, index) => {
-            const path23 = toFilePath(index + 1);
-            fileInfos.set(path23, isString(fileInfo) ? { version: fileInfo, signature: void 0, affectsGlobalScope: void 0, impliedFormat: void 0 } : fileInfo);
+            const path22 = toFilePath(index + 1);
+            fileInfos.set(path22, isString(fileInfo) ? { version: fileInfo, signature: void 0, affectsGlobalScope: void 0, impliedFormat: void 0 } : fileInfo);
           });
           state = {
             fileInfos,
@@ -157450,11 +157450,11 @@ ${lanes.join("\n")}
           filePathsSetList = (_b = buildInfo.fileIdsList) == null ? void 0 : _b.map((fileIds) => new Set(fileIds.map(toFilePath)));
           const emitSignatures = ((_c = buildInfo.options) == null ? void 0 : _c.composite) && !buildInfo.options.outFile ? /* @__PURE__ */ new Map() : void 0;
           buildInfo.fileInfos.forEach((fileInfo, index) => {
-            const path23 = toFilePath(index + 1);
+            const path22 = toFilePath(index + 1);
             const stateFileInfo = toBuilderStateFileInfoForMultiEmit(fileInfo);
-            fileInfos.set(path23, stateFileInfo);
+            fileInfos.set(path22, stateFileInfo);
             if (emitSignatures && stateFileInfo.signature)
-              emitSignatures.set(path23, stateFileInfo.signature);
+              emitSignatures.set(path22, stateFileInfo.signature);
           });
           (_d = buildInfo.emitSignatures) == null ? void 0 : _d.forEach((value) => {
             if (isNumber(value))
@@ -157509,12 +157509,12 @@ ${lanes.join("\n")}
           close: noop,
           hasChangedEmitSignature: returnFalse
         };
-        function toPathInBuildInfoDirectory(path23) {
-          return toPath(path23, buildInfoDirectory, getCanonicalFileName);
+        function toPathInBuildInfoDirectory(path22) {
+          return toPath(path22, buildInfoDirectory, getCanonicalFileName);
         }
         __name(toPathInBuildInfoDirectory, "toPathInBuildInfoDirectory");
-        function toAbsolutePath(path23) {
-          return getNormalizedAbsolutePath(path23, buildInfoDirectory);
+        function toAbsolutePath(path22) {
+          return getNormalizedAbsolutePath(path22, buildInfoDirectory);
         }
         __name(toAbsolutePath, "toAbsolutePath");
         function toFilePath(fileId) {
@@ -157563,31 +157563,31 @@ ${lanes.join("\n")}
         const roots = /* @__PURE__ */ new Map();
         const resolvedRoots = new Map(program.resolvedRoot);
         program.fileInfos.forEach((fileInfo, index) => {
-          const path23 = toPath(program.fileNames[index], buildInfoDirectory, getCanonicalFileName);
+          const path22 = toPath(program.fileNames[index], buildInfoDirectory, getCanonicalFileName);
           const version22 = isString(fileInfo) ? fileInfo : fileInfo.version;
-          fileInfos.set(path23, version22);
+          fileInfos.set(path22, version22);
           if (rootIndex < program.root.length) {
             const current = program.root[rootIndex];
             const fileId = index + 1;
             if (isArray(current)) {
               if (current[0] <= fileId && fileId <= current[1]) {
-                addRoot(fileId, path23);
+                addRoot(fileId, path22);
                 if (current[1] === fileId)
                   rootIndex++;
               }
             } else if (current === fileId) {
-              addRoot(fileId, path23);
+              addRoot(fileId, path22);
               rootIndex++;
             }
           }
         });
         return { fileInfos, roots };
-        function addRoot(fileId, path23) {
+        function addRoot(fileId, path22) {
           const root = resolvedRoots.get(fileId);
           if (root) {
-            roots.set(toPath(program.fileNames[root - 1], buildInfoDirectory, getCanonicalFileName), path23);
+            roots.set(toPath(program.fileNames[root - 1], buildInfoDirectory, getCanonicalFileName), path22);
           } else {
-            roots.set(path23, void 0);
+            roots.set(path22, void 0);
           }
         }
         __name(addRoot, "addRoot");
@@ -157671,11 +157671,11 @@ ${lanes.join("\n")}
         );
       }
       __name(createAbstractBuilder, "createAbstractBuilder");
-      function removeIgnoredPath(path23) {
-        if (endsWith(path23, "/node_modules/.staging")) {
-          return removeSuffix(path23, "/.staging");
+      function removeIgnoredPath(path22) {
+        if (endsWith(path22, "/node_modules/.staging")) {
+          return removeSuffix(path22, "/.staging");
         }
-        return some(ignoredPaths, (searchPath) => path23.includes(searchPath)) ? void 0 : path23;
+        return some(ignoredPaths, (searchPath) => path22.includes(searchPath)) ? void 0 : path22;
       }
       __name(removeIgnoredPath, "removeIgnoredPath");
       function perceivedOsRootLengthForWatching(pathComponents2, length2) {
@@ -157708,8 +157708,8 @@ ${lanes.join("\n")}
         return length2 > perceivedOsRootLength + 1;
       }
       __name(canWatchDirectoryOrFile, "canWatchDirectoryOrFile");
-      function canWatchDirectoryOrFilePath(path23) {
-        return canWatchDirectoryOrFile(getPathComponents(path23));
+      function canWatchDirectoryOrFilePath(path22) {
+        return canWatchDirectoryOrFile(getPathComponents(path22));
       }
       __name(canWatchDirectoryOrFilePath, "canWatchDirectoryOrFilePath");
       function canWatchAtTypes(atTypes) {
@@ -158024,11 +158024,11 @@ ${lanes.join("\n")}
           return collected;
         }
         __name(finishRecordingFilesWithChangedResolutions, "finishRecordingFilesWithChangedResolutions");
-        function isFileWithInvalidatedNonRelativeUnresolvedImports(path23) {
+        function isFileWithInvalidatedNonRelativeUnresolvedImports(path22) {
           if (!filesWithInvalidatedNonRelativeUnresolvedImports) {
             return false;
           }
-          const value = filesWithInvalidatedNonRelativeUnresolvedImports.get(path23);
+          const value = filesWithInvalidatedNonRelativeUnresolvedImports.get(path22);
           return !!value && !!value.length;
         }
         __name(isFileWithInvalidatedNonRelativeUnresolvedImports, "isFileWithInvalidatedNonRelativeUnresolvedImports");
@@ -158037,7 +158037,7 @@ ${lanes.join("\n")}
           const collected = filesWithInvalidatedResolutions;
           filesWithInvalidatedResolutions = void 0;
           return {
-            hasInvalidatedResolutions: (path23) => customHasInvalidatedResolutions(path23) || allModuleAndTypeResolutionsAreInvalidated || !!(collected == null ? void 0 : collected.has(path23)) || isFileWithInvalidatedNonRelativeUnresolvedImports(path23),
+            hasInvalidatedResolutions: (path22) => customHasInvalidatedResolutions(path22) || allModuleAndTypeResolutionsAreInvalidated || !!(collected == null ? void 0 : collected.has(path22)) || isFileWithInvalidatedNonRelativeUnresolvedImports(path22),
             hasInvalidatedLibResolutions: (libFileName) => {
               var _a2;
               return customHasInvalidatedLibResolutions(libFileName) || !!((_a2 = resolvedLibraries == null ? void 0 : resolvedLibraries.get(libFileName)) == null ? void 0 : _a2.isInvalidated);
@@ -158098,11 +158098,11 @@ ${lanes.join("\n")}
               else
                 impliedFormatPackageJsons.delete(newFile.resolvedPath);
             });
-            impliedFormatPackageJsons.forEach((existing, path23) => {
-              const newFile = newProgram == null ? void 0 : newProgram.getSourceFileByPath(path23);
-              if (!newFile || newFile.resolvedPath !== path23) {
+            impliedFormatPackageJsons.forEach((existing, path22) => {
+              const newFile = newProgram == null ? void 0 : newProgram.getSourceFileByPath(path22);
+              if (!newFile || newFile.resolvedPath !== path22) {
                 existing.forEach((location) => fileWatchesOfAffectingLocations.get(location).files--);
-                impliedFormatPackageJsons.delete(path23);
+                impliedFormatPackageJsons.delete(path22);
               }
             });
           }
@@ -158123,17 +158123,17 @@ ${lanes.join("\n")}
           }
         }
         __name(closePackageDirWatcher, "closePackageDirWatcher");
-        function closeDirectoryWatchesOfFailedLookup(watcher, path23) {
+        function closeDirectoryWatchesOfFailedLookup(watcher, path22) {
           if (watcher.refCount === 0) {
-            directoryWatchesOfFailedLookups.delete(path23);
+            directoryWatchesOfFailedLookups.delete(path22);
             watcher.watcher.close();
           }
         }
         __name(closeDirectoryWatchesOfFailedLookup, "closeDirectoryWatchesOfFailedLookup");
-        function closeFileWatcherOfAffectingLocation(watcher, path23) {
+        function closeFileWatcherOfAffectingLocation(watcher, path22) {
           var _a2;
           if (watcher.files === 0 && watcher.resolutions === 0 && !((_a2 = watcher.symlinks) == null ? void 0 : _a2.size)) {
-            fileWatchesOfAffectingLocations.delete(path23);
+            fileWatchesOfAffectingLocations.delete(path22);
             watcher.watcher.close();
           }
         }
@@ -158153,10 +158153,10 @@ ${lanes.join("\n")}
           logChanges
         }) {
           var _a2;
-          const path23 = resolutionHost.toPath(containingFile);
-          const resolutionsInFile = perFileCache.get(path23) || perFileCache.set(path23, createModeAwareCache()).get(path23);
+          const path22 = resolutionHost.toPath(containingFile);
+          const resolutionsInFile = perFileCache.get(path22) || perFileCache.set(path22, createModeAwareCache()).get(path22);
           const resolvedModules = [];
-          const hasInvalidatedNonRelativeUnresolvedImport = logChanges && isFileWithInvalidatedNonRelativeUnresolvedImports(path23);
+          const hasInvalidatedNonRelativeUnresolvedImport = logChanges && isFileWithInvalidatedNonRelativeUnresolvedImports(path22);
           const program = resolutionHost.getCurrentProgram();
           const oldRedirect = program && ((_a2 = program.getRedirectFromSourceFile(containingFile)) == null ? void 0 : _a2.resolvedRef);
           const unmatchedRedirects = oldRedirect ? !redirectedReference || redirectedReference.sourceFile.path !== oldRedirect.sourceFile.path : !!redirectedReference;
@@ -158174,13 +158174,13 @@ ${lanes.join("\n")}
               }
               resolutionsInFile.set(name, mode, resolution);
               if (resolution !== existingResolution) {
-                watchFailedLookupLocationsOfExternalModuleResolutions(name, resolution, path23, getResolutionWithResolvedFileName, deferWatchingNonRelativeResolution);
+                watchFailedLookupLocationsOfExternalModuleResolutions(name, resolution, path22, getResolutionWithResolvedFileName, deferWatchingNonRelativeResolution);
                 if (existingResolution) {
-                  stopWatchFailedLookupLocationOfResolution(existingResolution, path23, getResolutionWithResolvedFileName);
+                  stopWatchFailedLookupLocationOfResolution(existingResolution, path22, getResolutionWithResolvedFileName);
                 }
               }
               if (logChanges && filesWithChangedSetOfUnresolvedImports && !resolutionIsEqualTo(existingResolution, resolution)) {
-                filesWithChangedSetOfUnresolvedImports.push(path23);
+                filesWithChangedSetOfUnresolvedImports.push(path22);
                 logChanges = false;
               }
             } else {
@@ -158211,7 +158211,7 @@ ${lanes.join("\n")}
           if (resolutionsInFile.size() !== seenNamesInFile.size()) {
             resolutionsInFile.forEach((resolution, name, mode) => {
               if (!seenNamesInFile.has(name, mode)) {
-                stopWatchFailedLookupLocationOfResolution(resolution, path23, getResolutionWithResolvedFileName);
+                stopWatchFailedLookupLocationOfResolution(resolution, path22, getResolutionWithResolvedFileName);
                 resolutionsInFile.delete(name, mode);
               }
             });
@@ -158289,18 +158289,18 @@ ${lanes.join("\n")}
           if (!resolution || resolution.isInvalidated) {
             const existingResolution = resolution;
             resolution = resolveLibrary(libraryName, resolveFrom, options, host, libraryResolutionCache);
-            const path23 = resolutionHost.toPath(resolveFrom);
+            const path22 = resolutionHost.toPath(resolveFrom);
             watchFailedLookupLocationsOfExternalModuleResolutions(
               libraryName,
               resolution,
-              path23,
+              path22,
               getResolvedModuleFromResolution,
               /*deferWatchingNonRelativeResolution*/
               false
             );
             resolvedLibraries.set(libFileName, resolution);
             if (existingResolution) {
-              stopWatchFailedLookupLocationOfResolution(existingResolution, path23, getResolvedModuleFromResolution);
+              stopWatchFailedLookupLocationOfResolution(existingResolution, path22, getResolvedModuleFromResolution);
             }
           } else {
             if (isTraceEnabled(options, host)) {
@@ -158320,8 +158320,8 @@ ${lanes.join("\n")}
         __name(resolveLibrary2, "resolveLibrary2");
         function resolveSingleModuleNameWithoutWatching(moduleName, containingFile) {
           var _a2, _b;
-          const path23 = resolutionHost.toPath(containingFile);
-          const resolutionsInFile = resolvedModuleNames.get(path23);
+          const path22 = resolutionHost.toPath(containingFile);
+          const resolutionsInFile = resolvedModuleNames.get(path22);
           const resolution = resolutionsInFile == null ? void 0 : resolutionsInFile.get(
             moduleName,
             /*mode*/
@@ -158496,15 +158496,15 @@ ${lanes.join("\n")}
           }
         }
         __name(createFileWatcherOfAffectingLocation, "createFileWatcherOfAffectingLocation");
-        function invalidateAffectingFileWatcher(path23, packageJsonMap) {
+        function invalidateAffectingFileWatcher(path22, packageJsonMap) {
           var _a2;
-          const watcher = fileWatchesOfAffectingLocations.get(path23);
+          const watcher = fileWatchesOfAffectingLocations.get(path22);
           if (watcher == null ? void 0 : watcher.resolutions)
-            (affectingPathChecks ?? (affectingPathChecks = /* @__PURE__ */ new Set())).add(path23);
+            (affectingPathChecks ?? (affectingPathChecks = /* @__PURE__ */ new Set())).add(path22);
           if (watcher == null ? void 0 : watcher.files)
-            (affectingPathChecksForFile ?? (affectingPathChecksForFile = /* @__PURE__ */ new Set())).add(path23);
-          (_a2 = watcher == null ? void 0 : watcher.symlinks) == null ? void 0 : _a2.forEach((path24) => invalidateAffectingFileWatcher(path24, packageJsonMap));
-          packageJsonMap == null ? void 0 : packageJsonMap.delete(resolutionHost.toPath(path23));
+            (affectingPathChecksForFile ?? (affectingPathChecksForFile = /* @__PURE__ */ new Set())).add(path22);
+          (_a2 = watcher == null ? void 0 : watcher.symlinks) == null ? void 0 : _a2.forEach((path23) => invalidateAffectingFileWatcher(path23, packageJsonMap));
+          packageJsonMap == null ? void 0 : packageJsonMap.delete(resolutionHost.toPath(path22));
         }
         __name(invalidateAffectingFileWatcher, "invalidateAffectingFileWatcher");
         function watchFailedLookupLocationOfNonRelativeModuleResolutions() {
@@ -158772,7 +158772,7 @@ ${lanes.join("\n")}
         function invalidatePackageJsonMap() {
           const packageJsonMap = moduleResolutionCache.getPackageJsonInfoCache().getInternalMap();
           if (packageJsonMap && (failedLookupChecks || startsWithPathChecks || isInDirectoryChecks)) {
-            packageJsonMap.forEach((_value, path23) => isInvalidatedFailedLookup(path23) ? packageJsonMap.delete(path23) : void 0);
+            packageJsonMap.forEach((_value, path22) => isInvalidatedFailedLookup(path22) ? packageJsonMap.delete(path22) : void 0);
           }
         }
         __name(invalidatePackageJsonMap, "invalidatePackageJsonMap");
@@ -159438,9 +159438,9 @@ ${lanes.join("\n")}
           getDefaultLibLocation: maybeBind(host, host.getDefaultLibLocation),
           getDefaultLibFileName: (options) => host.getDefaultLibFileName(options),
           writeFile: createWriteFileMeasuringIO(
-            (path23, data, writeByteOrderMark) => host.writeFile(path23, data, writeByteOrderMark),
-            (path23) => host.createDirectory(path23),
-            (path23) => host.directoryExists(path23)
+            (path22, data, writeByteOrderMark) => host.writeFile(path22, data, writeByteOrderMark),
+            (path22) => host.createDirectory(path22),
+            (path22) => host.directoryExists(path22)
           ),
           getCurrentDirectory: memoize(() => host.getCurrentDirectory()),
           useCaseSensitiveFileNames: () => useCaseSensitiveFileNames2,
@@ -159513,16 +159513,16 @@ ${lanes.join("\n")}
           getCurrentDirectory: memoize(() => system.getCurrentDirectory()),
           getDefaultLibLocation,
           getDefaultLibFileName: (options) => combinePaths(getDefaultLibLocation(), getDefaultLibFileName(options)),
-          fileExists: (path23) => system.fileExists(path23),
-          readFile: (path23, encoding) => system.readFile(path23, encoding),
-          directoryExists: (path23) => system.directoryExists(path23),
-          getDirectories: (path23) => system.getDirectories(path23),
-          readDirectory: (path23, extensions, exclude, include, depth) => system.readDirectory(path23, extensions, exclude, include, depth),
+          fileExists: (path22) => system.fileExists(path22),
+          readFile: (path22, encoding) => system.readFile(path22, encoding),
+          directoryExists: (path22) => system.directoryExists(path22),
+          getDirectories: (path22) => system.getDirectories(path22),
+          readDirectory: (path22, extensions, exclude, include, depth) => system.readDirectory(path22, extensions, exclude, include, depth),
           realpath: maybeBind(system, system.realpath),
           getEnvironmentVariable: maybeBind(system, system.getEnvironmentVariable),
           trace: (s) => system.write(s + system.newLine),
-          createDirectory: (path23) => system.createDirectory(path23),
-          writeFile: (path23, data, writeByteOrderMark) => system.writeFile(path23, data, writeByteOrderMark),
+          createDirectory: (path22) => system.createDirectory(path22),
+          writeFile: (path22, data, writeByteOrderMark) => system.writeFile(path22, data, writeByteOrderMark),
           createHash: maybeBind(system, system.createHash),
           createProgram: createProgram2 || createEmitAndSemanticDiagnosticsBuilderProgram,
           storeSignatureInfo: system.storeSignatureInfo,
@@ -159854,7 +159854,7 @@ ${lanes.join("\n")}
             originalWriteFile,
             readFileWithCache
           } = changeCompilerHostLikeToUseCache(compilerHost, toPath3);
-          if (isProgramUptoDate(getCurrentProgram(), rootFileNames, compilerOptions, (path23) => getSourceVersion(path23, readFileWithCache), (fileName) => compilerHost.fileExists(fileName), hasInvalidatedResolutions, hasInvalidatedLibResolutions, hasChangedAutomaticTypeDirectiveNames, getParsedCommandLine, projectReferences)) {
+          if (isProgramUptoDate(getCurrentProgram(), rootFileNames, compilerOptions, (path22) => getSourceVersion(path22, readFileWithCache), (fileName) => compilerHost.fileExists(fileName), hasInvalidatedResolutions, hasInvalidatedLibResolutions, hasChangedAutomaticTypeDirectiveNames, getParsedCommandLine, projectReferences)) {
             if (hasChangedConfigFileParsingErrors) {
               if (reportFileChangeDetectedOnCreateProgram) {
                 reportWatchDiagnostic(Diagnostics.File_change_detected_Starting_incremental_compilation);
@@ -159958,15 +159958,15 @@ ${lanes.join("\n")}
         }
         __name(isFilePresenceUnknownOnHost, "isFilePresenceUnknownOnHost");
         function fileExists(fileName) {
-          const path23 = toPath3(fileName);
-          if (isFileMissingOnHost(sourceFilesCache.get(path23))) {
+          const path22 = toPath3(fileName);
+          if (isFileMissingOnHost(sourceFilesCache.get(path22))) {
             return false;
           }
           return directoryStructureHost.fileExists(fileName);
         }
         __name(fileExists, "fileExists");
-        function getVersionedSourceFileByPath(fileName, path23, languageVersionOrOptions, onError, shouldCreateNewSourceFile) {
-          const hostSourceFile = sourceFilesCache.get(path23);
+        function getVersionedSourceFileByPath(fileName, path22, languageVersionOrOptions, onError, shouldCreateNewSourceFile) {
+          const hostSourceFile = sourceFilesCache.get(path22);
           if (isFileMissingOnHost(hostSourceFile)) {
             return void 0;
           }
@@ -159978,20 +159978,20 @@ ${lanes.join("\n")}
                 hostSourceFile.sourceFile = sourceFile;
                 hostSourceFile.version = sourceFile.version;
                 if (!hostSourceFile.fileWatcher) {
-                  hostSourceFile.fileWatcher = watchFilePath(path23, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
+                  hostSourceFile.fileWatcher = watchFilePath(path22, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
                 }
               } else {
                 if (hostSourceFile.fileWatcher) {
                   hostSourceFile.fileWatcher.close();
                 }
-                sourceFilesCache.set(path23, false);
+                sourceFilesCache.set(path22, false);
               }
             } else {
               if (sourceFile) {
-                const fileWatcher = watchFilePath(path23, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
-                sourceFilesCache.set(path23, { sourceFile, version: sourceFile.version, fileWatcher });
+                const fileWatcher = watchFilePath(path22, fileName, onSourceFileChange, 250, watchOptions, WatchType.SourceFile);
+                sourceFilesCache.set(path22, { sourceFile, version: sourceFile.version, fileWatcher });
               } else {
-                sourceFilesCache.set(path23, false);
+                sourceFilesCache.set(path22, false);
               }
             }
             return sourceFile;
@@ -159999,24 +159999,24 @@ ${lanes.join("\n")}
           return hostSourceFile.sourceFile;
         }
         __name(getVersionedSourceFileByPath, "getVersionedSourceFileByPath");
-        function nextSourceFileVersion(path23) {
-          const hostSourceFile = sourceFilesCache.get(path23);
+        function nextSourceFileVersion(path22) {
+          const hostSourceFile = sourceFilesCache.get(path22);
           if (hostSourceFile !== void 0) {
             if (isFileMissingOnHost(hostSourceFile)) {
-              sourceFilesCache.set(path23, { version: false });
+              sourceFilesCache.set(path22, { version: false });
             } else {
               hostSourceFile.version = false;
             }
           }
         }
         __name(nextSourceFileVersion, "nextSourceFileVersion");
-        function getSourceVersion(path23, readFileWithCache) {
-          const hostSourceFile = sourceFilesCache.get(path23);
+        function getSourceVersion(path22, readFileWithCache) {
+          const hostSourceFile = sourceFilesCache.get(path22);
           if (!hostSourceFile)
             return void 0;
           if (hostSourceFile.version)
             return hostSourceFile.version;
-          const text = readFileWithCache(path23);
+          const text = readFileWithCache(path22);
           return text !== void 0 ? getSourceFileVersionAsHashFromText(compilerHost, text) : void 0;
         }
         __name(getSourceVersion, "getSourceVersion");
@@ -160214,33 +160214,33 @@ ${lanes.join("\n")}
         __name(getParsedCommandLineFromConfigFileHost, "getParsedCommandLineFromConfigFileHost");
         function onReleaseParsedCommandLine(fileName) {
           var _a2;
-          const path23 = toPath3(fileName);
-          const config2 = parsedConfigs == null ? void 0 : parsedConfigs.get(path23);
+          const path22 = toPath3(fileName);
+          const config2 = parsedConfigs == null ? void 0 : parsedConfigs.get(path22);
           if (!config2)
             return;
-          parsedConfigs.delete(path23);
+          parsedConfigs.delete(path22);
           if (config2.watchedDirectories)
             clearMap(config2.watchedDirectories, closeFileWatcherOf);
           (_a2 = config2.watcher) == null ? void 0 : _a2.close();
-          clearSharedExtendedConfigFileWatcher(path23, sharedExtendedConfigFileWatchers);
+          clearSharedExtendedConfigFileWatcher(path22, sharedExtendedConfigFileWatchers);
         }
         __name(onReleaseParsedCommandLine, "onReleaseParsedCommandLine");
-        function watchFilePath(path23, file2, callback, pollingInterval, options, watchType) {
-          return watchFile2(file2, (fileName, eventKind) => callback(fileName, eventKind, path23), pollingInterval, options, watchType);
+        function watchFilePath(path22, file2, callback, pollingInterval, options, watchType) {
+          return watchFile2(file2, (fileName, eventKind) => callback(fileName, eventKind, path22), pollingInterval, options, watchType);
         }
         __name(watchFilePath, "watchFilePath");
-        function onSourceFileChange(fileName, eventKind, path23) {
-          updateCachedSystemWithFile(fileName, path23, eventKind);
-          if (eventKind === 2 && sourceFilesCache.has(path23)) {
-            resolutionCache.invalidateResolutionOfFile(path23);
+        function onSourceFileChange(fileName, eventKind, path22) {
+          updateCachedSystemWithFile(fileName, path22, eventKind);
+          if (eventKind === 2 && sourceFilesCache.has(path22)) {
+            resolutionCache.invalidateResolutionOfFile(path22);
           }
-          nextSourceFileVersion(path23);
+          nextSourceFileVersion(path22);
           scheduleProgramUpdate();
         }
         __name(onSourceFileChange, "onSourceFileChange");
-        function updateCachedSystemWithFile(fileName, path23, eventKind) {
+        function updateCachedSystemWithFile(fileName, path22, eventKind) {
           if (cachedDirectoryStructureHost) {
-            cachedDirectoryStructureHost.addOrDeleteFile(fileName, path23, eventKind);
+            cachedDirectoryStructureHost.addOrDeleteFile(fileName, path22, eventKind);
           }
         }
         __name(updateCachedSystemWithFile, "updateCachedSystemWithFile");
@@ -160483,9 +160483,9 @@ ${lanes.join("\n")}
       __name(createBuilderStatusReporter, "createBuilderStatusReporter");
       function createSolutionBuilderHostBase(system, createProgram2, reportDiagnostic, reportSolutionBuilderStatus) {
         const host = createProgramHost(system, createProgram2);
-        host.getModifiedTime = system.getModifiedTime ? (path23) => system.getModifiedTime(path23) : returnUndefined;
-        host.setModifiedTime = system.setModifiedTime ? (path23, date4) => system.setModifiedTime(path23, date4) : noop;
-        host.deleteFile = system.deleteFile ? (path23) => system.deleteFile(path23) : noop;
+        host.getModifiedTime = system.getModifiedTime ? (path22) => system.getModifiedTime(path22) : returnUndefined;
+        host.setModifiedTime = system.setModifiedTime ? (path22, date4) => system.setModifiedTime(path22, date4) : noop;
+        host.deleteFile = system.deleteFile ? (path22) => system.deleteFile(path22) : noop;
         host.reportDiagnostic = reportDiagnostic || createDiagnosticReporter(system);
         host.reportSolutionBuilderStatus = reportSolutionBuilderStatus || createBuilderStatusReporter(system);
         host.now = maybeBind(system, system.now);
@@ -160665,9 +160665,9 @@ ${lanes.join("\n")}
       __name(toPath2, "toPath2");
       function toResolvedConfigFilePath(state, fileName) {
         const { resolvedConfigFilePaths } = state;
-        const path23 = resolvedConfigFilePaths.get(fileName);
-        if (path23 !== void 0)
-          return path23;
+        const path22 = resolvedConfigFilePaths.get(fileName);
+        if (path22 !== void 0)
+          return path22;
         const resolvedPath = toPath2(state, fileName);
         resolvedConfigFilePaths.set(fileName, resolvedPath);
         return resolvedPath;
@@ -161084,7 +161084,7 @@ ${lanes.join("\n")}
             void 0,
             (name, text, writeByteOrderMark, onError, sourceFiles, data) => {
               var _a22;
-              const path23 = toPath2(state, name);
+              const path22 = toPath2(state, name);
               emittedOutputs.set(toPath2(state, name), name);
               if (data == null ? void 0 : data.buildInfo) {
                 now || (now = getCurrentTime(state.host));
@@ -161116,7 +161116,7 @@ ${lanes.join("\n")}
               if (data == null ? void 0 : data.differsOnlyInMap)
                 state.host.setModifiedTime(name, modifiedTime);
               else if (!isIncremental && state.watch) {
-                (outputTimeStampMap || (outputTimeStampMap = getOutputTimeStampMap(state, projectPath))).set(path23, now || (now = getCurrentTime(state.host)));
+                (outputTimeStampMap || (outputTimeStampMap = getOutputTimeStampMap(state, projectPath))).set(path22, now || (now = getCurrentTime(state.host)));
               }
             },
             cancellationToken,
@@ -161314,8 +161314,8 @@ ${lanes.join("\n")}
       }
       __name(isFileWatcherWithModifiedTime, "isFileWatcherWithModifiedTime");
       function getModifiedTime2(state, fileName) {
-        const path23 = toPath2(state, fileName);
-        const existing = state.filesWatched.get(path23);
+        const path22 = toPath2(state, fileName);
+        const existing = state.filesWatched.get(path22);
         if (state.watch && !!existing) {
           if (!isFileWatcherWithModifiedTime(existing))
             return existing;
@@ -161327,21 +161327,21 @@ ${lanes.join("\n")}
           if (existing)
             existing.modifiedTime = result;
           else
-            state.filesWatched.set(path23, result);
+            state.filesWatched.set(path22, result);
         }
         return result;
       }
       __name(getModifiedTime2, "getModifiedTime2");
       function watchFile(state, file2, callback, pollingInterval, options, watchType, project) {
-        const path23 = toPath2(state, file2);
-        const existing = state.filesWatched.get(path23);
+        const path22 = toPath2(state, file2);
+        const existing = state.filesWatched.get(path22);
         if (existing && isFileWatcherWithModifiedTime(existing)) {
           existing.callbacks.push(callback);
         } else {
           const watcher = state.watchFile(
             file2,
             (fileName, eventKind, modifiedTime) => {
-              const existing2 = Debug.checkDefined(state.filesWatched.get(path23));
+              const existing2 = Debug.checkDefined(state.filesWatched.get(path22));
               Debug.assert(isFileWatcherWithModifiedTime(existing2));
               existing2.modifiedTime = modifiedTime;
               existing2.callbacks.forEach((cb) => cb(fileName, eventKind, modifiedTime));
@@ -161351,14 +161351,14 @@ ${lanes.join("\n")}
             watchType,
             project
           );
-          state.filesWatched.set(path23, { callbacks: [callback], watcher, modifiedTime: existing });
+          state.filesWatched.set(path22, { callbacks: [callback], watcher, modifiedTime: existing });
         }
         return {
           close: () => {
-            const existing2 = Debug.checkDefined(state.filesWatched.get(path23));
+            const existing2 = Debug.checkDefined(state.filesWatched.get(path22));
             Debug.assert(isFileWatcherWithModifiedTime(existing2));
             if (existing2.callbacks.length === 1) {
-              state.filesWatched.delete(path23);
+              state.filesWatched.delete(path22);
               closeFileWatcherOf(existing2);
             } else {
               unorderedRemoveItem(existing2.callbacks, callback);
@@ -161377,20 +161377,20 @@ ${lanes.join("\n")}
       }
       __name(getOutputTimeStampMap, "getOutputTimeStampMap");
       function getBuildInfoCacheEntry(state, buildInfoPath, resolvedConfigPath) {
-        const path23 = toPath2(state, buildInfoPath);
+        const path22 = toPath2(state, buildInfoPath);
         const existing = state.buildInfoCache.get(resolvedConfigPath);
-        return (existing == null ? void 0 : existing.path) === path23 ? existing : void 0;
+        return (existing == null ? void 0 : existing.path) === path22 ? existing : void 0;
       }
       __name(getBuildInfoCacheEntry, "getBuildInfoCacheEntry");
       function getBuildInfo3(state, buildInfoPath, resolvedConfigPath, modifiedTime) {
-        const path23 = toPath2(state, buildInfoPath);
+        const path22 = toPath2(state, buildInfoPath);
         const existing = state.buildInfoCache.get(resolvedConfigPath);
-        if (existing !== void 0 && existing.path === path23) {
+        if (existing !== void 0 && existing.path === path22) {
           return existing.buildInfo || void 0;
         }
         const value = state.readFileWithCache(buildInfoPath);
         const buildInfo = value ? getBuildInfo(buildInfoPath, value) : void 0;
-        state.buildInfoCache.set(resolvedConfigPath, { path: path23, buildInfo: buildInfo || false, modifiedTime: modifiedTime || missingFileModifiedTime });
+        state.buildInfoCache.set(resolvedConfigPath, { path: path22, buildInfo: buildInfo || false, modifiedTime: modifiedTime || missingFileModifiedTime });
         return buildInfo;
       }
       __name(getBuildInfo3, "getBuildInfo3");
@@ -161580,11 +161580,11 @@ ${lanes.join("\n")}
           for (const output of outputs) {
             if (output === buildInfoPath)
               continue;
-            const path23 = toPath2(state, output);
-            let outputTime = outputTimeStampMap == null ? void 0 : outputTimeStampMap.get(path23);
+            const path22 = toPath2(state, output);
+            let outputTime = outputTimeStampMap == null ? void 0 : outputTimeStampMap.get(path22);
             if (!outputTime) {
               outputTime = getModifiedTime(state.host, output);
-              outputTimeStampMap == null ? void 0 : outputTimeStampMap.set(path23, outputTime);
+              outputTimeStampMap == null ? void 0 : outputTimeStampMap.set(path22, outputTime);
             }
             if (outputTime === missingFileModifiedTime) {
               return {
@@ -161640,7 +161640,7 @@ ${lanes.join("\n")}
         const packageJsonLookups = state.lastCachedPackageJsonLookups.get(resolvedPath);
         const dependentPackageFileStatus = packageJsonLookups && forEachKey(
           packageJsonLookups,
-          (path23) => checkConfigFileUpToDateStatus(state, path23, oldestOutputFileTime, oldestOutputFileName)
+          (path22) => checkConfigFileUpToDateStatus(state, path22, oldestOutputFileTime, oldestOutputFileName)
         );
         if (dependentPackageFileStatus)
           return dependentPackageFileStatus;
@@ -161696,8 +161696,8 @@ ${lanes.join("\n")}
         if (!skipOutputs || outputs.length !== skipOutputs.size) {
           let reportVerbose = !!state.options.verbose;
           for (const file2 of outputs) {
-            const path23 = toPath2(state, file2);
-            if (skipOutputs == null ? void 0 : skipOutputs.has(path23))
+            const path22 = toPath2(state, file2);
+            if (skipOutputs == null ? void 0 : skipOutputs.has(path22))
               continue;
             if (reportVerbose) {
               reportVerbose = false;
@@ -161707,8 +161707,8 @@ ${lanes.join("\n")}
             if (file2 === buildInfoPath)
               getBuildInfoCacheEntry(state, buildInfoPath, projectPath).modifiedTime = now;
             else if (outputTimeStampMap) {
-              outputTimeStampMap.set(path23, now);
-              modifiedOutputs.add(path23);
+              outputTimeStampMap.set(path22, now);
+              modifiedOutputs.add(path22);
             }
           }
         }
@@ -162180,8 +162180,8 @@ ${lanes.join("\n")}
         };
       }
       __name(createSolutionBuilderWorker, "createSolutionBuilderWorker");
-      function relName(state, path23) {
-        return convertToRelativePath(path23, state.compilerHost.getCurrentDirectory(), state.compilerHost.getCanonicalFileName);
+      function relName(state, path22) {
+        return convertToRelativePath(path22, state.compilerHost.getCurrentDirectory(), state.compilerHost.getCanonicalFileName);
       }
       __name(relName, "relName");
       function reportStatus(state, message, ...args) {
@@ -162415,13 +162415,13 @@ ${lanes.join("\n")}
         } else if (file2.isDeclarationFile) {
           return "Definitions";
         }
-        const path23 = file2.path;
-        if (fileExtensionIsOneOf(path23, supportedTSExtensionsFlat)) {
+        const path22 = file2.path;
+        if (fileExtensionIsOneOf(path22, supportedTSExtensionsFlat)) {
           return "TypeScript";
-        } else if (fileExtensionIsOneOf(path23, supportedJSExtensionsFlat)) {
+        } else if (fileExtensionIsOneOf(path22, supportedJSExtensionsFlat)) {
           return "JavaScript";
         } else if (fileExtensionIs(
-          path23,
+          path22,
           ".json"
           /* Json */
         )) {
@@ -163066,7 +163066,7 @@ ${lanes.join("\n")}
             );
           }
         }
-        const commandLine = parseCommandLine(commandLineArgs, (path23) => system.readFile(path23));
+        const commandLine = parseCommandLine(commandLineArgs, (path22) => system.readFile(path22));
         if (commandLine.options.generateCpuProfile && system.enableCPUProfiler) {
           system.enableCPUProfiler(commandLine.options.generateCpuProfile, () => executeCommandLineWorker(
             system,
@@ -165052,13 +165052,13 @@ ${lanes.join("\n")}
       }
       __name(nonRelativeModuleNameForTypingCache, "nonRelativeModuleNameForTypingCache");
       function loadSafeList(host, safeListPath) {
-        const result = readConfigFile(safeListPath, (path23) => host.readFile(path23));
+        const result = readConfigFile(safeListPath, (path22) => host.readFile(path22));
         return new Map(Object.entries(result.config));
       }
       __name(loadSafeList, "loadSafeList");
       function loadTypesMap(host, typesMapPath) {
         var _a2;
-        const result = readConfigFile(typesMapPath, (path23) => host.readFile(path23));
+        const result = readConfigFile(typesMapPath, (path22) => host.readFile(path22));
         if ((_a2 = result.config) == null ? void 0 : _a2.simpleMap) {
           return new Map(Object.entries(result.config.simpleMap));
         }
@@ -165071,9 +165071,9 @@ ${lanes.join("\n")}
         }
         const inferredTypings = /* @__PURE__ */ new Map();
         fileNames = mapDefined(fileNames, (fileName) => {
-          const path23 = normalizePath(fileName);
-          if (hasJSFileExtension(path23)) {
-            return path23;
+          const path22 = normalizePath(fileName);
+          if (hasJSFileExtension(path22)) {
+            return path22;
           }
         });
         const filesToWatch = [];
@@ -165141,7 +165141,7 @@ ${lanes.join("\n")}
           let manifestTypingNames;
           if (host.fileExists(manifestPath)) {
             filesToWatch2.push(manifestPath);
-            manifest = readConfigFile(manifestPath, (path23) => host.readFile(path23)).config;
+            manifest = readConfigFile(manifestPath, (path22) => host.readFile(path22)).config;
             manifestTypingNames = flatMap([manifest.dependencies, manifest.devDependencies, manifest.optionalDependencies, manifest.peerDependencies], getOwnKeys);
             addInferredTypings(manifestTypingNames, `Typing names in '${manifestPath}' dependencies`);
           }
@@ -165176,7 +165176,7 @@ ${lanes.join("\n")}
             log2(`Searching for typing names in ${packagesFolderPath}; all files: ${JSON.stringify(dependencyManifestNames)}`);
           for (const manifestPath2 of dependencyManifestNames) {
             const normalizedFileName = normalizePath(manifestPath2);
-            const result2 = readConfigFile(normalizedFileName, (path23) => host.readFile(path23));
+            const result2 = readConfigFile(normalizedFileName, (path22) => host.readFile(path22));
             const manifest2 = result2.config;
             if (!manifest2.name) {
               continue;
@@ -168236,16 +168236,16 @@ ${lanes.join("\n")}
         return tryIOAndConsumeErrors(host, host.getDirectories, directoryName) || [];
       }
       __name(tryGetDirectories, "tryGetDirectories");
-      function tryReadDirectory(host, path23, extensions, exclude, include) {
-        return tryIOAndConsumeErrors(host, host.readDirectory, path23, extensions, exclude, include) || emptyArray;
+      function tryReadDirectory(host, path22, extensions, exclude, include) {
+        return tryIOAndConsumeErrors(host, host.readDirectory, path22, extensions, exclude, include) || emptyArray;
       }
       __name(tryReadDirectory, "tryReadDirectory");
-      function tryFileExists(host, path23) {
-        return tryIOAndConsumeErrors(host, host.fileExists, path23);
+      function tryFileExists(host, path22) {
+        return tryIOAndConsumeErrors(host, host.fileExists, path22);
       }
       __name(tryFileExists, "tryFileExists");
-      function tryDirectoryExists(host, path23) {
-        return tryAndIgnoreErrors(() => directoryProbablyExists(path23, host)) || false;
+      function tryDirectoryExists(host, path22) {
+        return tryAndIgnoreErrors(() => directoryProbablyExists(path22, host)) || false;
       }
       __name(tryDirectoryExists, "tryDirectoryExists");
       function tryAndIgnoreErrors(cb) {
@@ -169155,14 +169155,14 @@ ${lanes.join("\n")}
       function getIsExcluded(excludePatterns, host) {
         var _a2;
         const realpathsWithSymlinks = (_a2 = host.getSymlinkCache) == null ? void 0 : _a2.call(host).getSymlinkedDirectoriesByRealpath();
-        return ({ fileName, path: path23 }) => {
+        return ({ fileName, path: path22 }) => {
           if (excludePatterns.some((p) => p.test(fileName)))
             return true;
           if ((realpathsWithSymlinks == null ? void 0 : realpathsWithSymlinks.size) && pathContainsNodeModules(fileName)) {
             let dir = getDirectoryPath(fileName);
             return forEachAncestorDirectoryStoppingAtGlobalCache(
               host,
-              getDirectoryPath(path23),
+              getDirectoryPath(path22),
               (dirPath) => {
                 const symlinks = realpathsWithSymlinks.get(ensureTrailingDirectorySeparator(dirPath));
                 if (symlinks) {
@@ -170903,15 +170903,15 @@ ${lanes.join("\n")}
         }
         __name(getCompilationSettings, "getCompilationSettings");
         function acquireDocument(fileName, compilationSettings, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
-          const path23 = toPath(fileName, currentDirectory, getCanonicalFileName);
+          const path22 = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(getCompilationSettings(compilationSettings));
-          return acquireDocumentWithKey(fileName, path23, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
+          return acquireDocumentWithKey(fileName, path22, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
         }
         __name(acquireDocument, "acquireDocument");
-        function acquireDocumentWithKey(fileName, path23, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
+        function acquireDocumentWithKey(fileName, path22, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           return acquireOrUpdateDocument(
             fileName,
-            path23,
+            path22,
             compilationSettings,
             key,
             scriptSnapshot,
@@ -170924,15 +170924,15 @@ ${lanes.join("\n")}
         }
         __name(acquireDocumentWithKey, "acquireDocumentWithKey");
         function updateDocument(fileName, compilationSettings, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
-          const path23 = toPath(fileName, currentDirectory, getCanonicalFileName);
+          const path22 = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(getCompilationSettings(compilationSettings));
-          return updateDocumentWithKey(fileName, path23, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
+          return updateDocumentWithKey(fileName, path22, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
         }
         __name(updateDocument, "updateDocument");
-        function updateDocumentWithKey(fileName, path23, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
+        function updateDocumentWithKey(fileName, path22, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           return acquireOrUpdateDocument(
             fileName,
-            path23,
+            path22,
             getCompilationSettings(compilationSettings),
             key,
             scriptSnapshot,
@@ -170950,7 +170950,7 @@ ${lanes.join("\n")}
           return entry;
         }
         __name(getDocumentRegistryEntry, "getDocumentRegistryEntry");
-        function acquireOrUpdateDocument(fileName, path23, compilationSettingsOrHost, key, scriptSnapshot, version22, acquiring, scriptKind, languageVersionOrOptions) {
+        function acquireOrUpdateDocument(fileName, path22, compilationSettingsOrHost, key, scriptSnapshot, version22, acquiring, scriptKind, languageVersionOrOptions) {
           var _a2, _b, _c, _d;
           scriptKind = ensureScriptKind(fileName, scriptKind);
           const compilationSettings = getCompilationSettings(compilationSettingsOrHost);
@@ -170958,7 +170958,7 @@ ${lanes.join("\n")}
           const scriptTarget = scriptKind === 6 ? 100 : getEmitScriptTarget(compilationSettings);
           const sourceFileOptions = typeof languageVersionOrOptions === "object" ? languageVersionOrOptions : {
             languageVersion: scriptTarget,
-            impliedNodeFormat: host && getImpliedNodeFormatForFile(path23, (_d = (_c = (_b = (_a2 = host.getCompilerHost) == null ? void 0 : _a2.call(host)) == null ? void 0 : _b.getModuleResolutionCache) == null ? void 0 : _c.call(_b)) == null ? void 0 : _d.getPackageJsonInfoCache(), host, compilationSettings),
+            impliedNodeFormat: host && getImpliedNodeFormatForFile(path22, (_d = (_c = (_b = (_a2 = host.getCompilerHost) == null ? void 0 : _a2.call(host)) == null ? void 0 : _b.getModuleResolutionCache) == null ? void 0 : _c.call(_b)) == null ? void 0 : _d.getPackageJsonInfoCache(), host, compilationSettings),
             setExternalModuleIndicator: getSetExternalModuleIndicator(compilationSettings),
             jsDocParsingMode
           };
@@ -170971,15 +170971,15 @@ ${lanes.join("\n")}
             if (buckets.size > oldBucketCount) {
               tracing.instant(tracing.Phase.Session, "createdDocumentRegistryBucket", { configFilePath: compilationSettings.configFilePath, key: keyWithMode });
             }
-            const otherBucketKey = !isDeclarationFileName(path23) && forEachEntry(buckets, (bucket2, bucketKey) => bucketKey !== keyWithMode && bucket2.has(path23) && bucketKey);
+            const otherBucketKey = !isDeclarationFileName(path22) && forEachEntry(buckets, (bucket2, bucketKey) => bucketKey !== keyWithMode && bucket2.has(path22) && bucketKey);
             if (otherBucketKey) {
-              tracing.instant(tracing.Phase.Session, "documentRegistryBucketOverlap", { path: path23, key1: otherBucketKey, key2: keyWithMode });
+              tracing.instant(tracing.Phase.Session, "documentRegistryBucketOverlap", { path: path22, key1: otherBucketKey, key2: keyWithMode });
             }
           }
-          const bucketEntry = bucket.get(path23);
+          const bucketEntry = bucket.get(path22);
           let entry = bucketEntry && getDocumentRegistryEntry(bucketEntry, scriptKind);
           if (!entry && externalCache) {
-            const sourceFile = externalCache.getDocument(keyWithMode, path23);
+            const sourceFile = externalCache.getDocument(keyWithMode, path22);
             if (sourceFile && sourceFile.scriptKind === scriptKind && sourceFile.text === getSnapshotText(scriptSnapshot)) {
               Debug.assert(acquiring);
               entry = {
@@ -171000,7 +171000,7 @@ ${lanes.join("\n")}
               scriptKind
             );
             if (externalCache) {
-              externalCache.setDocument(keyWithMode, path23, sourceFile);
+              externalCache.setDocument(keyWithMode, path22, sourceFile);
             }
             entry = {
               sourceFile,
@@ -171011,7 +171011,7 @@ ${lanes.join("\n")}
             if (entry.sourceFile.version !== version22) {
               entry.sourceFile = updateLanguageServiceSourceFile(entry.sourceFile, scriptSnapshot, version22, scriptSnapshot.getChangeRange(entry.sourceFile.scriptSnapshot));
               if (externalCache) {
-                externalCache.setDocument(keyWithMode, path23, entry.sourceFile);
+                externalCache.setDocument(keyWithMode, path22, entry.sourceFile);
               }
             }
             if (acquiring) {
@@ -171022,12 +171022,12 @@ ${lanes.join("\n")}
           return entry.sourceFile;
           function setBucketEntry() {
             if (!bucketEntry) {
-              bucket.set(path23, entry);
+              bucket.set(path22, entry);
             } else if (isDocumentRegistryEntry(bucketEntry)) {
               const scriptKindMap = /* @__PURE__ */ new Map();
               scriptKindMap.set(bucketEntry.sourceFile.scriptKind, bucketEntry);
               scriptKindMap.set(scriptKind, entry);
-              bucket.set(path23, scriptKindMap);
+              bucket.set(path22, scriptKindMap);
             } else {
               bucketEntry.set(scriptKind, entry);
             }
@@ -171036,24 +171036,24 @@ ${lanes.join("\n")}
         }
         __name(acquireOrUpdateDocument, "acquireOrUpdateDocument");
         function releaseDocument(fileName, compilationSettings, scriptKind, impliedNodeFormat) {
-          const path23 = toPath(fileName, currentDirectory, getCanonicalFileName);
+          const path22 = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(compilationSettings);
-          return releaseDocumentWithKey(path23, key, scriptKind, impliedNodeFormat);
+          return releaseDocumentWithKey(path22, key, scriptKind, impliedNodeFormat);
         }
         __name(releaseDocument, "releaseDocument");
-        function releaseDocumentWithKey(path23, key, scriptKind, impliedNodeFormat) {
+        function releaseDocumentWithKey(path22, key, scriptKind, impliedNodeFormat) {
           const bucket = Debug.checkDefined(buckets.get(getDocumentRegistryBucketKeyWithMode(key, impliedNodeFormat)));
-          const bucketEntry = bucket.get(path23);
+          const bucketEntry = bucket.get(path22);
           const entry = getDocumentRegistryEntry(bucketEntry, scriptKind);
           entry.languageServiceRefCount--;
           Debug.assert(entry.languageServiceRefCount >= 0);
           if (entry.languageServiceRefCount === 0) {
             if (isDocumentRegistryEntry(bucketEntry)) {
-              bucket.delete(path23);
+              bucket.delete(path22);
             } else {
               bucketEntry.delete(scriptKind);
               if (bucketEntry.size === 1) {
-                bucket.set(path23, firstDefinedIterator(bucketEntry.values(), identity));
+                bucket.set(path22, firstDefinedIterator(bucketEntry.values(), identity));
               }
             }
           }
@@ -171094,10 +171094,10 @@ ${lanes.join("\n")}
       __name(getEditsForFileRename, "getEditsForFileRename");
       function getPathUpdater(oldFileOrDirPath, newFileOrDirPath, getCanonicalFileName, sourceMapper) {
         const canonicalOldPath = getCanonicalFileName(oldFileOrDirPath);
-        return (path23) => {
-          const originalPath = sourceMapper && sourceMapper.tryGetSourcePosition({ fileName: path23, pos: 0 });
-          const updatedPath = getUpdatedPath(originalPath ? originalPath.fileName : path23);
-          return originalPath ? updatedPath === void 0 ? void 0 : makeCorrespondingRelativeChange(originalPath.fileName, updatedPath, path23, getCanonicalFileName) : updatedPath;
+        return (path22) => {
+          const originalPath = sourceMapper && sourceMapper.tryGetSourcePosition({ fileName: path22, pos: 0 });
+          const updatedPath = getUpdatedPath(originalPath ? originalPath.fileName : path22);
+          return originalPath ? updatedPath === void 0 ? void 0 : makeCorrespondingRelativeChange(originalPath.fileName, updatedPath, path22, getCanonicalFileName) : updatedPath;
         };
         function getUpdatedPath(pathToUpdate) {
           if (getCanonicalFileName(pathToUpdate) === canonicalOldPath)
@@ -171185,10 +171185,10 @@ ${lanes.join("\n")}
           return false;
         }
         __name(tryUpdateString, "tryUpdateString");
-        function relativePath(path23) {
+        function relativePath(path22) {
           return getRelativePathFromDirectory(
             configDir,
-            path23,
+            path22,
             /*ignoreCase*/
             !useCaseSensitiveFileNames2
           );
@@ -172062,8 +172062,8 @@ ${lanes.join("\n")}
         }
         __name(toPath3, "toPath3");
         function getDocumentPositionMapper2(generatedFileName, sourceFileName) {
-          const path23 = toPath3(generatedFileName);
-          const value = documentPositionMappers.get(path23);
+          const path22 = toPath3(generatedFileName);
+          const value = documentPositionMappers.get(path22);
           if (value)
             return value;
           let mapper;
@@ -172078,7 +172078,7 @@ ${lanes.join("\n")}
               (f) => !host.fileExists || host.fileExists(f) ? host.readFile(f) : void 0
             );
           }
-          documentPositionMappers.set(path23, mapper || identitySourceMapConsumer);
+          documentPositionMappers.set(path22, mapper || identitySourceMapConsumer);
           return mapper || identitySourceMapConsumer;
         }
         __name(getDocumentPositionMapper2, "getDocumentPositionMapper2");
@@ -172115,23 +172115,23 @@ ${lanes.join("\n")}
           const program = host.getProgram();
           if (!program)
             return void 0;
-          const path23 = toPath3(fileName);
-          const file2 = program.getSourceFileByPath(path23);
-          return file2 && file2.resolvedPath === path23 ? file2 : void 0;
+          const path22 = toPath3(fileName);
+          const file2 = program.getSourceFileByPath(path22);
+          return file2 && file2.resolvedPath === path22 ? file2 : void 0;
         }
         __name(getSourceFile, "getSourceFile");
         function getOrCreateSourceFileLike(fileName) {
-          const path23 = toPath3(fileName);
-          const fileFromCache = sourceFileLike.get(path23);
+          const path22 = toPath3(fileName);
+          const fileFromCache = sourceFileLike.get(path22);
           if (fileFromCache !== void 0)
             return fileFromCache ? fileFromCache : void 0;
           if (!host.readFile || host.fileExists && !host.fileExists(fileName)) {
-            sourceFileLike.set(path23, false);
+            sourceFileLike.set(path22, false);
             return void 0;
           }
           const text = host.readFile(fileName);
           const file2 = text ? createSourceFileLike(text) : false;
-          sourceFileLike.set(path23, file2);
+          sourceFileLike.set(path22, file2);
           return file2 ? file2 : void 0;
         }
         __name(getOrCreateSourceFileLike, "getOrCreateSourceFileLike");
@@ -180717,12 +180717,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             directoryExists: (directoryName) => {
               return directoryProbablyExists(directoryName, host);
             },
-            getDirectories: (path23) => {
-              return host.getDirectories ? host.getDirectories(path23) : [];
+            getDirectories: (path22) => {
+              return host.getDirectories ? host.getDirectories(path22) : [];
             },
-            readDirectory: (path23, extensions, exclude, include, depth) => {
+            readDirectory: (path22, extensions, exclude, include, depth) => {
               Debug.checkDefined(host.readDirectory, "'LanguageServiceHost.readDirectory' must be implemented to correctly process 'projectReferences'");
-              return host.readDirectory(path23, extensions, exclude, include, depth);
+              return host.readDirectory(path22, extensions, exclude, include, depth);
             },
             onReleaseOldSourceFile,
             onReleaseParsedCommandLine,
@@ -180785,12 +180785,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           program.getTypeChecker();
           return;
           function getParsedCommandLine(fileName) {
-            const path23 = toPath(fileName, currentDirectory, getCanonicalFileName);
-            const existing = parsedCommandLines == null ? void 0 : parsedCommandLines.get(path23);
+            const path22 = toPath(fileName, currentDirectory, getCanonicalFileName);
+            const existing = parsedCommandLines == null ? void 0 : parsedCommandLines.get(path22);
             if (existing !== void 0)
               return existing || void 0;
             const result = host.getParsedCommandLine ? host.getParsedCommandLine(fileName) : getParsedCommandLineOfConfigFileUsingSourceFile(fileName);
-            (parsedCommandLines || (parsedCommandLines = /* @__PURE__ */ new Map())).set(path23, result || false);
+            (parsedCommandLines || (parsedCommandLines = /* @__PURE__ */ new Map())).set(path22, result || false);
             return result;
           }
           __name(getParsedCommandLine, "getParsedCommandLine");
@@ -180839,7 +180839,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             return getOrCreateSourceFileByPath(fileName, toPath(fileName, currentDirectory, getCanonicalFileName), languageVersionOrOptions, onError, shouldCreateNewSourceFile);
           }
           __name(getOrCreateSourceFile, "getOrCreateSourceFile");
-          function getOrCreateSourceFileByPath(fileName, path23, languageVersionOrOptions, _onError, shouldCreateNewSourceFile) {
+          function getOrCreateSourceFileByPath(fileName, path22, languageVersionOrOptions, _onError, shouldCreateNewSourceFile) {
             Debug.assert(compilerHost, "getOrCreateSourceFileByPath called after typical CompilerHost lifetime, check the callstack something with a reference to an old host.");
             const scriptSnapshot = host.getScriptSnapshot(fileName);
             if (!scriptSnapshot) {
@@ -180848,17 +180848,17 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             const scriptKind = getScriptKind(fileName, host);
             const scriptVersion = host.getScriptVersion(fileName);
             if (!shouldCreateNewSourceFile) {
-              const oldSourceFile = program && program.getSourceFileByPath(path23);
+              const oldSourceFile = program && program.getSourceFileByPath(path22);
               if (oldSourceFile) {
                 if (scriptKind === oldSourceFile.scriptKind || releasedScriptKinds.has(oldSourceFile.resolvedPath)) {
-                  return documentRegistry.updateDocumentWithKey(fileName, path23, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
+                  return documentRegistry.updateDocumentWithKey(fileName, path22, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
                 } else {
                   documentRegistry.releaseDocumentWithKey(oldSourceFile.resolvedPath, documentRegistry.getKeyForCompilationSettings(program.getCompilerOptions()), oldSourceFile.scriptKind, oldSourceFile.impliedNodeFormat);
                   releasedScriptKinds.add(oldSourceFile.resolvedPath);
                 }
               }
             }
-            return documentRegistry.acquireDocumentWithKey(fileName, path23, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
+            return documentRegistry.acquireDocumentWithKey(fileName, path22, host, documentRegistryBucketKey, scriptSnapshot, scriptVersion, scriptKind, languageVersionOrOptions);
           }
           __name(getOrCreateSourceFileByPath, "getOrCreateSourceFileByPath");
         }
@@ -181529,7 +181529,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         __name(applyCodeActionCommand, "applyCodeActionCommand");
         function applySingleCodeActionCommand(action) {
-          const getPath = /* @__PURE__ */ __name((path23) => toPath(path23, currentDirectory, getCanonicalFileName), "getPath");
+          const getPath = /* @__PURE__ */ __name((path22) => toPath(path22, currentDirectory, getCanonicalFileName), "getPath");
           Debug.assertEqual(action.type, "install package");
           return host.installPackage ? host.installPackage({ fileName: getPath(action.file), packageName: action.packageName }) : Promise.reject("Host does not implement `installPackage`");
         }
@@ -181898,8 +181898,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             return char >= 97 && char <= 122 || char >= 65 && char <= 90 || char >= 48 && char <= 57;
           }
           __name(isLetterOrDigit, "isLetterOrDigit");
-          function isNodeModulesFile(path23) {
-            return path23.includes("/node_modules/");
+          function isNodeModulesFile(path22) {
+            return path22.includes("/node_modules/");
           }
           __name(isNodeModulesFile, "isNodeModulesFile");
         }
@@ -196414,11 +196414,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         });
       }
       __name(getJSDocParameterCompletions, "getJSDocParameterCompletions");
-      function generateJSDocParamTagsForDestructuring(path23, pattern, initializer3, dotDotDotToken, isJs, isSnippet, checker, options, preferences) {
+      function generateJSDocParamTagsForDestructuring(path22, pattern, initializer3, dotDotDotToken, isJs, isSnippet, checker, options, preferences) {
         if (!isJs) {
           return [
             getJSDocParamAnnotation(
-              path23,
+              path22,
               initializer3,
               dotDotDotToken,
               isJs,
@@ -196432,13 +196432,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             )
           ];
         }
-        return patternWorker(path23, pattern, initializer3, dotDotDotToken, { tabstop: 1 });
-        function patternWorker(path24, pattern2, initializer22, dotDotDotToken2, counter) {
+        return patternWorker(path22, pattern, initializer3, dotDotDotToken, { tabstop: 1 });
+        function patternWorker(path23, pattern2, initializer22, dotDotDotToken2, counter) {
           if (isObjectBindingPattern(pattern2) && !dotDotDotToken2) {
             const oldTabstop = counter.tabstop;
             const childCounter = { tabstop: oldTabstop };
             const rootParam = getJSDocParamAnnotation(
-              path24,
+              path23,
               initializer22,
               dotDotDotToken2,
               isJs,
@@ -196452,7 +196452,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             );
             let childTags = [];
             for (const element of pattern2.elements) {
-              const elementTags = elementWorker(path24, element, childCounter);
+              const elementTags = elementWorker(path23, element, childCounter);
               if (!elementTags) {
                 childTags = void 0;
                 break;
@@ -196467,7 +196467,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
           return [
             getJSDocParamAnnotation(
-              path24,
+              path23,
               initializer22,
               dotDotDotToken2,
               isJs,
@@ -196482,13 +196482,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           ];
         }
         __name(patternWorker, "patternWorker");
-        function elementWorker(path24, element, counter) {
+        function elementWorker(path23, element, counter) {
           if (!element.propertyName && isIdentifier(element.name) || isIdentifier(element.name)) {
             const propertyName = element.propertyName ? tryGetTextOfPropertyName(element.propertyName) : element.name.text;
             if (!propertyName) {
               return void 0;
             }
-            const paramName = `${path24}.${propertyName}`;
+            const paramName = `${path23}.${propertyName}`;
             return [
               getJSDocParamAnnotation(
                 paramName,
@@ -196506,7 +196506,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             ];
           } else if (element.propertyName) {
             const propertyName = tryGetTextOfPropertyName(element.propertyName);
-            return propertyName && patternWorker(`${path24}.${propertyName}`, element.name, element.initializer, element.dotDotDotToken, counter);
+            return propertyName && patternWorker(`${path23}.${propertyName}`, element.name, element.initializer, element.dotDotDotToken, counter);
           }
           return void 0;
         }
@@ -201275,21 +201275,21 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         return containsSlash(fragment) ? hasTrailingDirectorySeparator(fragment) ? fragment : getDirectoryPath(fragment) : void 0;
       }
       __name(getFragmentDirectory, "getFragmentDirectory");
-      function getCompletionsForPathMapping(path23, patterns, fragment, packageDirectory, extensionOptions, isExports, isImports, program, host, moduleSpecifierResolutionHost) {
-        const parsedPath = tryParsePattern(path23);
+      function getCompletionsForPathMapping(path22, patterns, fragment, packageDirectory, extensionOptions, isExports, isImports, program, host, moduleSpecifierResolutionHost) {
+        const parsedPath = tryParsePattern(path22);
         if (!parsedPath) {
           return emptyArray;
         }
         if (typeof parsedPath === "string") {
           return justPathMappingName(
-            path23,
+            path22,
             "script"
             /* scriptElement */
           );
         }
         const remainingFragment = tryRemovePrefix(fragment, parsedPath.prefix);
         if (remainingFragment === void 0) {
-          const starIsFullPathComponent = endsWith(path23, "/*");
+          const starIsFullPathComponent = endsWith(path22, "/*");
           return starIsFullPathComponent ? justPathMappingName(
             parsedPath.prefix,
             "directory"
@@ -201379,9 +201379,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return mapDefined(tryGetDirectories(host, directoryName), (dir) => dir === "node_modules" ? void 0 : directoryResult(dir));
         }
         __name(getDirectoryMatches, "getDirectoryMatches");
-        function trimPrefixAndSuffix(path23, prefix) {
+        function trimPrefixAndSuffix(path22, prefix) {
           return firstDefined(matchingSuffixes, (suffix) => {
-            const inner = withoutStartAndEnd(normalizePath(path23), prefix, suffix);
+            const inner = withoutStartAndEnd(normalizePath(path22), prefix, suffix);
             return inner === void 0 ? void 0 : removeLeadingDirectorySeparator(inner);
           });
         }
@@ -201392,8 +201392,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         return startsWith(s, start) && endsWith(s, end) ? s.slice(start.length, s.length - end.length) : void 0;
       }
       __name(withoutStartAndEnd, "withoutStartAndEnd");
-      function removeLeadingDirectorySeparator(path23) {
-        return path23[0] === directorySeparator ? path23.slice(1) : path23;
+      function removeLeadingDirectorySeparator(path22) {
+        return path22[0] === directorySeparator ? path22.slice(1) : path22;
       }
       __name(removeLeadingDirectorySeparator, "removeLeadingDirectorySeparator");
       function getAmbientModuleCompletions(fragment, fragmentDirectory, checker) {
@@ -201519,10 +201519,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         ) ? void 0 : createTextSpan(textStart + offset, length2);
       }
       __name(getDirectoryFragmentTextSpan, "getDirectoryFragmentTextSpan");
-      function isPathRelativeToScript(path23) {
-        if (path23 && path23.length >= 2 && path23.charCodeAt(0) === 46) {
-          const slashIndex = path23.length >= 3 && path23.charCodeAt(1) === 46 ? 2 : 1;
-          const slashCharCode = path23.charCodeAt(slashIndex);
+      function isPathRelativeToScript(path22) {
+        if (path22 && path22.length >= 2 && path22.charCodeAt(0) === 46) {
+          const slashIndex = path22.length >= 3 && path22.charCodeAt(1) === 46 ? 2 : 1;
+          const slashCharCode = path22.charCodeAt(slashIndex);
           return slashCharCode === 47 || slashCharCode === 92;
         }
         return false;
@@ -218104,9 +218104,9 @@ ${options.prefix}` : "\n" : options.prefix
             projectName: req.projectName
           });
           const scopedTypings = filteredTypings.map(typingsName);
-          this.installTypingsAsync(requestId, scopedTypings, cachePath, (ok) => {
+          this.installTypingsAsync(requestId, scopedTypings, cachePath, (ok2) => {
             try {
-              if (!ok) {
+              if (!ok2) {
                 if (this.log.isEnabled()) {
                   this.log.writeLine(`install request failed, marking packages as missing to prevent repeated requests: ${JSON.stringify(filteredTypings)}`);
                 }
@@ -218141,7 +218141,7 @@ ${options.prefix}` : "\n" : options.prefix
                 eventId: requestId,
                 projectName: req.projectName,
                 packagesToInstall: scopedTypings,
-                installSuccess: ok,
+                installSuccess: ok2,
                 typingsInstallerVersion: version2
               };
               this.sendResponse(response);
@@ -218189,9 +218189,9 @@ ${options.prefix}` : "\n" : options.prefix
           while (this.inFlightRequestCount < this.throttleLimit && this.pendingRunRequests.length) {
             this.inFlightRequestCount++;
             const request = this.pendingRunRequests.pop();
-            this.installWorker(request.requestId, request.packageNames, request.cwd, (ok) => {
+            this.installWorker(request.requestId, request.packageNames, request.cwd, (ok2) => {
               this.inFlightRequestCount--;
-              request.onRequestCompleted(ok);
+              request.onRequestCompleted(ok2);
               this.executeWithThrottling();
             });
           }
@@ -218267,17 +218267,17 @@ ${options.prefix}` : "\n" : options.prefix
       function createNormalizedPathMap() {
         const map22 = /* @__PURE__ */ new Map();
         return {
-          get(path23) {
-            return map22.get(path23);
+          get(path22) {
+            return map22.get(path22);
           },
-          set(path23, value) {
-            map22.set(path23, value);
+          set(path22, value) {
+            map22.set(path22, value);
           },
-          contains(path23) {
-            return map22.has(path23);
+          contains(path22) {
+            return map22.has(path22);
           },
-          remove(path23) {
-            map22.delete(path23);
+          remove(path22) {
+            map22.delete(path22);
           }
         };
       }
@@ -218814,12 +218814,12 @@ ${options.prefix}` : "\n" : options.prefix
         static {
           __name(this, "ScriptInfo");
         }
-        constructor(host, fileName, scriptKind, hasMixedContent, path23, initialVersion) {
+        constructor(host, fileName, scriptKind, hasMixedContent, path22, initialVersion) {
           this.host = host;
           this.fileName = fileName;
           this.scriptKind = scriptKind;
           this.hasMixedContent = hasMixedContent;
-          this.path = path23;
+          this.path = path22;
           this.containingProjects = [];
           this.isDynamic = isDynamicFileName(fileName);
           this.textStorage = new TextStorage(host, this, initialVersion);
@@ -219475,8 +219475,8 @@ ${options.prefix}` : "\n" : options.prefix
         useCaseSensitiveFileNames() {
           return this.projectService.host.useCaseSensitiveFileNames;
         }
-        readDirectory(path23, extensions, exclude, include, depth) {
-          return this.directoryStructureHost.readDirectory(path23, extensions, exclude, include, depth);
+        readDirectory(path22, extensions, exclude, include, depth) {
+          return this.directoryStructureHost.readDirectory(path22, extensions, exclude, include, depth);
         }
         readFile(fileName) {
           return this.projectService.host.readFile(fileName);
@@ -219485,8 +219485,8 @@ ${options.prefix}` : "\n" : options.prefix
           return this.projectService.host.writeFile(fileName, content);
         }
         fileExists(file2) {
-          const path23 = this.toPath(file2);
-          return !!this.projectService.getScriptInfoForPath(path23) || !this.isWatchedMissingFile(path23) && this.directoryStructureHost.fileExists(file2);
+          const path22 = this.toPath(file2);
+          return !!this.projectService.getScriptInfoForPath(path22) || !this.isWatchedMissingFile(path22) && this.directoryStructureHost.fileExists(file2);
         }
         /** @internal */
         resolveModuleNameLiterals(moduleLiterals, containingFile, redirectedReference, options, containingSourceFile, reusedNames) {
@@ -219511,11 +219511,11 @@ ${options.prefix}` : "\n" : options.prefix
         resolveLibrary(libraryName, resolveFrom, options, libFileName) {
           return this.resolutionCache.resolveLibrary(libraryName, resolveFrom, options, libFileName);
         }
-        directoryExists(path23) {
-          return this.directoryStructureHost.directoryExists(path23);
+        directoryExists(path22) {
+          return this.directoryStructureHost.directoryExists(path22);
         }
-        getDirectories(path23) {
-          return this.directoryStructureHost.getDirectories(path23);
+        getDirectories(path22) {
+          return this.directoryStructureHost.getDirectories(path22);
         }
         /** @internal */
         getCachedDirectoryStructureHost() {
@@ -219779,16 +219779,16 @@ ${options.prefix}` : "\n" : options.prefix
             }
           }));
         }
-        getSourceFile(path23) {
+        getSourceFile(path22) {
           if (!this.program) {
             return void 0;
           }
-          return this.program.getSourceFileByPath(path23);
+          return this.program.getSourceFileByPath(path22);
         }
         /** @internal */
-        getSourceFileOrConfigFile(path23) {
+        getSourceFileOrConfigFile(path22) {
           const options = this.program.getCompilerOptions();
-          return path23 === options.configFilePath ? options.configFile : this.getSourceFile(path23);
+          return path22 === options.configFilePath ? options.configFile : this.getSourceFile(path22);
         }
         close() {
           var _a2;
@@ -219968,8 +219968,8 @@ ${options.prefix}` : "\n" : options.prefix
         }
         // add a root file that doesnt exist on host
         addMissingFileRoot(fileName) {
-          const path23 = this.projectService.toPath(fileName);
-          this.rootFilesMap.set(path23, { fileName });
+          const path22 = this.projectService.toPath(fileName);
+          this.rootFilesMap.set(path22, { fileName });
           this.markAsDirty();
         }
         removeFile(info, fileExists, detachFromProject) {
@@ -220138,22 +220138,22 @@ ${options.prefix}` : "\n" : options.prefix
           if (!this.typingWatchers)
             this.typingWatchers = /* @__PURE__ */ new Map();
           this.typingWatchers.isInvoked = false;
-          const createProjectWatcher = /* @__PURE__ */ __name((path23, typingsWatcherType) => {
-            const canonicalPath = this.toPath(path23);
+          const createProjectWatcher = /* @__PURE__ */ __name((path22, typingsWatcherType) => {
+            const canonicalPath = this.toPath(path22);
             toRemove.delete(canonicalPath);
             if (!this.typingWatchers.has(canonicalPath)) {
               const watchType = typingsWatcherType === "FileWatcher" ? WatchType.TypingInstallerLocationFile : WatchType.TypingInstallerLocationDirectory;
               this.typingWatchers.set(
                 canonicalPath,
                 canWatchDirectoryOrFilePath(canonicalPath) ? typingsWatcherType === "FileWatcher" ? this.projectService.watchFactory.watchFile(
-                  path23,
+                  path22,
                   () => !this.typingWatchers.isInvoked ? this.onTypingInstallerWatchInvoke() : this.writeLog(`TypingWatchers already invoked`),
                   2e3,
                   this.projectService.getWatchOptions(this),
                   watchType,
                   this
                 ) : this.projectService.watchFactory.watchDirectory(
-                  path23,
+                  path22,
                   (f) => {
                     if (this.typingWatchers.isInvoked)
                       return this.writeLog(`TypingWatchers already invoked`);
@@ -220171,7 +220171,7 @@ ${options.prefix}` : "\n" : options.prefix
                   this.projectService.getWatchOptions(this),
                   watchType,
                   this
-                ) : (this.writeLog(`Skipping watcher creation at ${path23}:: ${getDetailWatchInfo(watchType, this)}`), noopFileWatcher)
+                ) : (this.writeLog(`Skipping watcher creation at ${path22}:: ${getDetailWatchInfo(watchType, this)}`), noopFileWatcher)
               );
             }
           }, "createProjectWatcher");
@@ -220216,9 +220216,9 @@ ${options.prefix}` : "\n" : options.prefix
               /* DirectoryWatcher */
             );
           }
-          toRemove.forEach((watch, path23) => {
+          toRemove.forEach((watch, path22) => {
             watch.close();
-            this.typingWatchers.delete(path23);
+            this.typingWatchers.delete(path22);
           });
         }
         /** @internal */
@@ -220253,9 +220253,9 @@ ${options.prefix}` : "\n" : options.prefix
           let hasNewProgram = false;
           if (this.program && (!oldProgram || this.program !== oldProgram && this.program.structureIsReused !== 2)) {
             hasNewProgram = true;
-            this.rootFilesMap.forEach((value, path23) => {
+            this.rootFilesMap.forEach((value, path22) => {
               var _a22;
-              const file2 = this.program.getSourceFileByPath(path23);
+              const file2 = this.program.getSourceFileByPath(path22);
               const info = value.info;
               if (!file2 || ((_a22 = value.info) == null ? void 0 : _a22.path) === file2.resolvedPath)
                 return;
@@ -220413,8 +220413,8 @@ ${options.prefix}` : "\n" : options.prefix
           );
           return fileWatcher;
         }
-        isWatchedMissingFile(path23) {
-          return !!this.missingFilesMap && this.missingFilesMap.has(path23);
+        isWatchedMissingFile(path22) {
+          return !!this.missingFilesMap && this.missingFilesMap.has(path22);
         }
         /** @internal */
         addGeneratedFileWatch(generatedFile, sourceFile) {
@@ -220423,18 +220423,18 @@ ${options.prefix}` : "\n" : options.prefix
               this.generatedFilesMap = this.createGeneratedFileWatcher(generatedFile);
             }
           } else {
-            const path23 = this.toPath(sourceFile);
+            const path22 = this.toPath(sourceFile);
             if (this.generatedFilesMap) {
               if (isGeneratedFileWatcher(this.generatedFilesMap)) {
                 Debug.fail(`${this.projectName} Expected to not have --out watcher for generated file with options: ${JSON.stringify(this.compilerOptions)}`);
                 return;
               }
-              if (this.generatedFilesMap.has(path23))
+              if (this.generatedFilesMap.has(path22))
                 return;
             } else {
               this.generatedFilesMap = /* @__PURE__ */ new Map();
             }
-            this.generatedFilesMap.set(path23, this.createGeneratedFileWatcher(generatedFile));
+            this.generatedFilesMap.set(path22, this.createGeneratedFileWatcher(generatedFile));
           }
         }
         createGeneratedFileWatcher(generatedFile) {
@@ -220840,7 +220840,7 @@ ${options.prefix}` : "\n" : options.prefix
         isDefaultProjectForOpenFiles() {
           return !!forEachEntry(
             this.projectService.openFiles,
-            (_projectRootPath, path23) => this.projectService.tryGetDefaultProjectForFile(this.projectService.getScriptInfoForPath(path23)) === this
+            (_projectRootPath, path22) => this.projectService.tryGetDefaultProjectForFile(this.projectService.getScriptInfoForPath(path22)) === this
           );
         }
         /** @internal */
@@ -222095,35 +222095,35 @@ ${options.prefix}` : "\n" : options.prefix
           getCurrentDirectory: () => service.host.getCurrentDirectory(),
           useCaseSensitiveFileNames: service.host.useCaseSensitiveFileNames
         };
-        function watchFile2(path23, callback) {
+        function watchFile2(path22, callback) {
           return getOrCreateFileWatcher(
             watchedFiles,
-            path23,
+            path22,
             callback,
-            (id) => ({ eventName: CreateFileWatcherEvent, data: { id, path: path23 } })
+            (id) => ({ eventName: CreateFileWatcherEvent, data: { id, path: path22 } })
           );
         }
         __name(watchFile2, "watchFile2");
-        function watchDirectory(path23, callback, recursive) {
+        function watchDirectory(path22, callback, recursive) {
           return getOrCreateFileWatcher(
             recursive ? watchedDirectoriesRecursive : watchedDirectories,
-            path23,
+            path22,
             callback,
             (id) => ({
               eventName: CreateDirectoryWatcherEvent,
               data: {
                 id,
-                path: path23,
+                path: path22,
                 recursive: !!recursive,
                 // Special case node_modules as we watch it for changes to closed script infos as well
-                ignoreUpdate: !path23.endsWith("/node_modules") ? true : void 0
+                ignoreUpdate: !path22.endsWith("/node_modules") ? true : void 0
               }
             })
           );
         }
         __name(watchDirectory, "watchDirectory");
-        function getOrCreateFileWatcher({ pathToId, idToCallbacks }, path23, callback, event) {
-          const key = service.toPath(path23);
+        function getOrCreateFileWatcher({ pathToId, idToCallbacks }, path22, callback, event) {
+          const key = service.toPath(path22);
           let id = pathToId.get(key);
           if (!id)
             pathToId.set(key, id = ids++);
@@ -222307,13 +222307,13 @@ ${options.prefix}` : "\n" : options.prefix
           return getNormalizedAbsolutePath(fileName, this.host.getCurrentDirectory());
         }
         /** @internal */
-        setDocument(key, path23, sourceFile) {
-          const info = Debug.checkDefined(this.getScriptInfoForPath(path23));
+        setDocument(key, path22, sourceFile) {
+          const info = Debug.checkDefined(this.getScriptInfoForPath(path22));
           info.cacheSourceFile = { key, sourceFile };
         }
         /** @internal */
-        getDocument(key, path23) {
-          const info = this.getScriptInfoForPath(path23);
+        getDocument(key, path22) {
+          const info = this.getScriptInfoForPath(path22);
           return info && info.cacheSourceFile && info.cacheSourceFile.key === key ? info.cacheSourceFile.sourceFile : void 0;
         }
         /** @internal */
@@ -222438,7 +222438,7 @@ ${options.prefix}` : "\n" : options.prefix
           const event = {
             eventName: ProjectsUpdatedInBackgroundEvent,
             data: {
-              openFiles: arrayFrom(this.openFiles.keys(), (path23) => this.getScriptInfoForPath(path23).fileName)
+              openFiles: arrayFrom(this.openFiles.keys(), (path22) => this.getScriptInfoForPath(path22).fileName)
             }
           };
           this.eventHandler(event);
@@ -222663,11 +222663,11 @@ ${options.prefix}` : "\n" : options.prefix
         }
         delayUpdateSourceInfoProjects(sourceInfos) {
           if (sourceInfos) {
-            sourceInfos.forEach((_value, path23) => this.delayUpdateProjectsOfScriptInfoPath(path23));
+            sourceInfos.forEach((_value, path22) => this.delayUpdateProjectsOfScriptInfoPath(path22));
           }
         }
-        delayUpdateProjectsOfScriptInfoPath(path23) {
-          const info = this.getScriptInfoForPath(path23);
+        delayUpdateProjectsOfScriptInfoPath(path22) {
+          const info = this.getScriptInfoForPath(path22);
           if (info) {
             this.delayUpdateProjectGraphs(
               info.containingProjects,
@@ -222765,8 +222765,8 @@ ${options.prefix}` : "\n" : options.prefix
             if (!project)
               return;
             if (configuredProjectForConfig !== project && this.getHostPreferences().includeCompletionsForModuleExports) {
-              const path23 = this.toPath(configFileName);
-              if (find((_a2 = project.getCurrentProgram()) == null ? void 0 : _a2.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path23)) {
+              const path22 = this.toPath(configFileName);
+              if (find((_a2 = project.getCurrentProgram()) == null ? void 0 : _a2.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path22)) {
                 project.markAutoImportProviderAsDirty();
               }
             }
@@ -222814,21 +222814,21 @@ ${options.prefix}` : "\n" : options.prefix
               project.markAutoImportProviderAsDirty();
             } else {
               if (project.initialLoadPending) {
-                (_b = (_a2 = this.configFileExistenceInfoCache.get(projectCanonicalPath)) == null ? void 0 : _a2.openFilesImpactedByConfigFile) == null ? void 0 : _b.forEach((path24) => {
+                (_b = (_a2 = this.configFileExistenceInfoCache.get(projectCanonicalPath)) == null ? void 0 : _a2.openFilesImpactedByConfigFile) == null ? void 0 : _b.forEach((path23) => {
                   var _a22;
-                  if (!((_a22 = this.pendingOpenFileProjectUpdates) == null ? void 0 : _a22.has(path24))) {
+                  if (!((_a22 = this.pendingOpenFileProjectUpdates) == null ? void 0 : _a22.has(path23))) {
                     (this.pendingOpenFileProjectUpdates ?? (this.pendingOpenFileProjectUpdates = /* @__PURE__ */ new Map())).set(
-                      path24,
-                      this.configFileForOpenFiles.get(path24)
+                      path23,
+                      this.configFileForOpenFiles.get(path23)
                     );
                   }
                 });
                 return;
               }
-              const path23 = this.toPath(canonicalConfigFilePath);
-              project.resolutionCache.removeResolutionsFromProjectReferenceRedirects(path23);
+              const path22 = this.toPath(canonicalConfigFilePath);
+              project.resolutionCache.removeResolutionsFromProjectReferenceRedirects(path22);
               this.delayUpdateProjectGraph(project);
-              if (this.getHostPreferences().includeCompletionsForModuleExports && find((_c = project.getCurrentProgram()) == null ? void 0 : _c.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path23)) {
+              if (this.getHostPreferences().includeCompletionsForModuleExports && find((_c = project.getCurrentProgram()) == null ? void 0 : _c.getResolvedProjectReferences(), (ref) => (ref == null ? void 0 : ref.sourceFile.path) === path22)) {
                 project.markAutoImportProviderAsDirty();
               }
             }
@@ -222854,13 +222854,13 @@ ${options.prefix}` : "\n" : options.prefix
             canonicalConfigFilePath,
             "Change in config file detected"
           );
-          this.openFiles.forEach((_projectRootPath, path23) => {
+          this.openFiles.forEach((_projectRootPath, path22) => {
             var _a2, _b;
-            const configFileForOpenFile = this.configFileForOpenFiles.get(path23);
-            if (!((_a2 = configFileExistenceInfo.openFilesImpactedByConfigFile) == null ? void 0 : _a2.has(path23)))
+            const configFileForOpenFile = this.configFileForOpenFiles.get(path22);
+            if (!((_a2 = configFileExistenceInfo.openFilesImpactedByConfigFile) == null ? void 0 : _a2.has(path22)))
               return;
-            this.configFileForOpenFiles.delete(path23);
-            const info = this.getScriptInfoForPath(path23);
+            this.configFileForOpenFiles.delete(path22);
+            const info = this.getScriptInfoForPath(path22);
             const newConfigFileNameForInfo = this.getConfigFileNameForFile(
               info,
               /*findFromCacheOnly*/
@@ -222868,8 +222868,8 @@ ${options.prefix}` : "\n" : options.prefix
             );
             if (!newConfigFileNameForInfo)
               return;
-            if (!((_b = this.pendingOpenFileProjectUpdates) == null ? void 0 : _b.has(path23))) {
-              (this.pendingOpenFileProjectUpdates ?? (this.pendingOpenFileProjectUpdates = /* @__PURE__ */ new Map())).set(path23, configFileForOpenFile);
+            if (!((_b = this.pendingOpenFileProjectUpdates) == null ? void 0 : _b.has(path22))) {
+              (this.pendingOpenFileProjectUpdates ?? (this.pendingOpenFileProjectUpdates = /* @__PURE__ */ new Map())).set(path22, configFileForOpenFile);
             }
           });
           this.delayEnsureProjectForOpenFiles();
@@ -222964,8 +222964,8 @@ ${options.prefix}` : "\n" : options.prefix
           return project;
         }
         assignOrphanScriptInfosToInferredProject() {
-          this.openFiles.forEach((projectRootPath, path23) => {
-            const info = this.getScriptInfoForPath(path23);
+          this.openFiles.forEach((projectRootPath, path22) => {
+            const info = this.getScriptInfoForPath(path22);
             if (info.isOrphan()) {
               this.assignOrphanScriptInfoToInferredProject(info, projectRootPath);
             }
@@ -223298,8 +223298,8 @@ ${options.prefix}` : "\n" : options.prefix
           this.configuredProjects.forEach(printProjectWithoutFileNames);
           this.inferredProjects.forEach(printProjectWithoutFileNames);
           this.logger.info("Open files: ");
-          this.openFiles.forEach((projectRootPath, path23) => {
-            const info = this.getScriptInfoForPath(path23);
+          this.openFiles.forEach((projectRootPath, path22) => {
+            const info = this.getScriptInfoForPath(path22);
             this.logger.info(`	FileName: ${info.fileName} ProjectRootPath: ${projectRootPath}`);
             this.logger.info(`		Projects: ${info.containingProjects.map((p) => p.getProjectName())}`);
           });
@@ -223632,12 +223632,12 @@ ${options.prefix}` : "\n" : options.prefix
             const newRootFile = propertyReader.getFileName(f);
             const fileName = toNormalizedPath(newRootFile);
             const isDynamic = isDynamicFileName(fileName);
-            let path23;
+            let path22;
             if (!isDynamic && !project.fileExists(newRootFile)) {
-              path23 = normalizedPathToPath(fileName, this.currentDirectory, this.toCanonicalFileName);
-              const existingValue = projectRootFilesMap.get(path23);
+              path22 = normalizedPathToPath(fileName, this.currentDirectory, this.toCanonicalFileName);
+              const existingValue = projectRootFilesMap.get(path22);
               if (existingValue) {
-                if (((_a2 = existingValue.info) == null ? void 0 : _a2.path) === path23) {
+                if (((_a2 = existingValue.info) == null ? void 0 : _a2.path) === path22) {
                   project.removeFile(
                     existingValue.info,
                     /*fileExists*/
@@ -223649,7 +223649,7 @@ ${options.prefix}` : "\n" : options.prefix
                 }
                 existingValue.fileName = fileName;
               } else {
-                projectRootFilesMap.set(path23, { fileName });
+                projectRootFilesMap.set(path22, { fileName });
               }
             } else {
               const scriptKind = propertyReader.getScriptKind(f, this.hostConfiguration.extraFileExtensions);
@@ -223663,8 +223663,8 @@ ${options.prefix}` : "\n" : options.prefix
                 /*deferredDeleteOk*/
                 false
               ));
-              path23 = scriptInfo.path;
-              const existingValue = projectRootFilesMap.get(path23);
+              path22 = scriptInfo.path;
+              const existingValue = projectRootFilesMap.get(path22);
               if (!existingValue || existingValue.info !== scriptInfo) {
                 project.addRoot(scriptInfo, fileName);
                 if (scriptInfo.isScriptOpen()) {
@@ -223674,11 +223674,11 @@ ${options.prefix}` : "\n" : options.prefix
                 existingValue.fileName = fileName;
               }
             }
-            newRootScriptInfoMap.set(path23, true);
+            newRootScriptInfoMap.set(path22, true);
           }
           if (projectRootFilesMap.size > newRootScriptInfoMap.size) {
-            projectRootFilesMap.forEach((value, path23) => {
-              if (!newRootScriptInfoMap.has(path23)) {
+            projectRootFilesMap.forEach((value, path22) => {
+              if (!newRootScriptInfoMap.has(path22)) {
                 if (value.info) {
                   project.removeFile(
                     value.info,
@@ -223687,7 +223687,7 @@ ${options.prefix}` : "\n" : options.prefix
                     true
                   );
                 } else {
-                  projectRootFilesMap.delete(path23);
+                  projectRootFilesMap.delete(path22);
                 }
               }
             });
@@ -223933,8 +223933,8 @@ ${options.prefix}` : "\n" : options.prefix
         }
         /** @internal */
         getScriptInfoOrConfig(uncheckedFileName) {
-          const path23 = toNormalizedPath(uncheckedFileName);
-          const info = this.getScriptInfoForNormalizedPath(path23);
+          const path22 = toNormalizedPath(uncheckedFileName);
+          const info = this.getScriptInfoForNormalizedPath(path22);
           if (info)
             return info;
           const configProject = this.configuredProjects.get(this.toPath(uncheckedFileName));
@@ -223947,7 +223947,7 @@ ${options.prefix}` : "\n" : options.prefix
               this.filenameToScriptInfo.entries(),
               (entry) => entry[1].deferredDelete ? void 0 : entry
             ),
-            ([path23, scriptInfo]) => ({ path: path23, fileName: scriptInfo.fileName })
+            ([path22, scriptInfo]) => ({ path: path22, fileName: scriptInfo.fileName })
           );
           this.logger.msg(
             `Could not find file ${JSON.stringify(fileName)}.
@@ -223979,7 +223979,7 @@ All files are: ${JSON.stringify(names)}`,
                   if (!projects) {
                     projects = createMultiMap();
                     projects.add(toAddInfo.path, project);
-                  } else if (!forEachEntry(projects, (projs, path23) => path23 === toAddInfo.path ? false : contains(projs, project))) {
+                  } else if (!forEachEntry(projects, (projs, path22) => path22 === toAddInfo.path ? false : contains(projs, project))) {
                     projects.add(toAddInfo.path, project);
                   }
                 }
@@ -224143,8 +224143,8 @@ All files are: ${JSON.stringify(names)}`,
         }
         getOrCreateScriptInfoWorker(fileName, currentDirectory, openedByClient, fileContent, scriptKind, hasMixedContent, hostToQueryFileExistsOn, deferredDeleteOk) {
           Debug.assert(fileContent === void 0 || openedByClient, "ScriptInfo needs to be opened by client to be able to set its user defined content");
-          const path23 = normalizedPathToPath(fileName, currentDirectory, this.toCanonicalFileName);
-          let info = this.filenameToScriptInfo.get(path23);
+          const path22 = normalizedPathToPath(fileName, currentDirectory, this.toCanonicalFileName);
+          let info = this.filenameToScriptInfo.get(path22);
           if (!info) {
             const isDynamic = isDynamicFileName(fileName);
             Debug.assert(isRootedDiskPath(fileName) || isDynamic || openedByClient, "", () => `${JSON.stringify({ fileName, currentDirectory, hostCurrentDirectory: this.currentDirectory, openKeys: arrayFrom(this.openFilesWithNonRootedDiskPath.keys()) })}
@@ -224156,7 +224156,7 @@ Dynamic files must always be opened with service's current directory or service 
             if (!openedByClient && !isDynamic && !(hostToQueryFileExistsOn || this.host).fileExists(fileName)) {
               return;
             }
-            info = new ScriptInfo(this.host, fileName, scriptKind, hasMixedContent, path23, this.filenameToScriptInfoVersion.get(path23));
+            info = new ScriptInfo(this.host, fileName, scriptKind, hasMixedContent, path22, this.filenameToScriptInfoVersion.get(path22));
             this.filenameToScriptInfo.set(info.path, info);
             this.filenameToScriptInfoVersion.delete(info.path);
             if (!openedByClient) {
@@ -224306,9 +224306,9 @@ Dynamic files must always be opened with service's current directory or service 
         getSourceFileLike(fileName, projectNameOrProject, declarationInfo) {
           const project = projectNameOrProject.projectName ? projectNameOrProject : this.findProject(projectNameOrProject);
           if (project) {
-            const path23 = project.toPath(fileName);
-            const sourceFile = project.getSourceFile(path23);
-            if (sourceFile && sourceFile.resolvedPath === path23)
+            const path22 = project.toPath(fileName);
+            const sourceFile = project.getSourceFile(path22);
+            if (sourceFile && sourceFile.resolvedPath === path22)
               return sourceFile;
           }
           const info = this.getOrCreateScriptInfoNotOpenedByClient(
@@ -224481,8 +224481,8 @@ Dynamic files must always be opened with service's current directory or service 
               }
             });
           });
-          this.openFiles.forEach((_projectRootPath, path23) => {
-            const info = this.getScriptInfoForPath(path23);
+          this.openFiles.forEach((_projectRootPath, path22) => {
+            const info = this.getScriptInfoForPath(path22);
             if (find(info.containingProjects, isExternalProject))
               return;
             this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
@@ -224536,14 +224536,14 @@ Dynamic files must always be opened with service's current directory or service 
           const pendingOpenFileProjectUpdates = this.pendingOpenFileProjectUpdates;
           this.pendingOpenFileProjectUpdates = void 0;
           pendingOpenFileProjectUpdates == null ? void 0 : pendingOpenFileProjectUpdates.forEach(
-            (_config, path23) => this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
-              this.getScriptInfoForPath(path23),
+            (_config, path22) => this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
+              this.getScriptInfoForPath(path22),
               5
               /* Create */
             )
           );
-          this.openFiles.forEach((projectRootPath, path23) => {
-            const info = this.getScriptInfoForPath(path23);
+          this.openFiles.forEach((projectRootPath, path22) => {
+            const info = this.getScriptInfoForPath(path22);
             if (info.isOrphan()) {
               this.assignOrphanScriptInfoToInferredProject(info, projectRootPath);
             } else {
@@ -225090,10 +225090,10 @@ Dynamic files must always be opened with service's current directory or service 
           });
           if (!toRemoveConfiguredProjects.size)
             return toRemoveConfiguredProjects;
-          forEachEntry(this.openFiles, (_projectRootPath, path23) => {
-            if (openFilesWithRetainedConfiguredProject == null ? void 0 : openFilesWithRetainedConfiguredProject.has(path23))
+          forEachEntry(this.openFiles, (_projectRootPath, path22) => {
+            if (openFilesWithRetainedConfiguredProject == null ? void 0 : openFilesWithRetainedConfiguredProject.has(path22))
               return;
-            const info = this.getScriptInfoForPath(path23);
+            const info = this.getScriptInfoForPath(path22);
             if (find(info.containingProjects, isExternalProject))
               return;
             const result = this.tryFindDefaultConfiguredProjectAndLoadAncestorsForOpenScriptInfo(
@@ -225153,8 +225153,8 @@ Dynamic files must always be opened with service's current directory or service 
               }
               if (!sourceInfos)
                 return;
-              if (!forEachKey(sourceInfos, (path23) => {
-                const info2 = this.getScriptInfoForPath(path23);
+              if (!forEachKey(sourceInfos, (path22) => {
+                const info2 = this.getScriptInfoForPath(path22);
                 return !!info2 && (info2.isScriptOpen() || !info2.isOrphan());
               })) {
                 return;
@@ -225178,7 +225178,7 @@ Dynamic files must always be opened with service's current directory or service 
                 sourceInfos = info.sourceMapFilePath.sourceInfos;
               }
               if (sourceInfos) {
-                sourceInfos.forEach((_value, path23) => toRemoveScriptInfos.delete(path23));
+                sourceInfos.forEach((_value, path22) => toRemoveScriptInfos.delete(path22));
               }
             }
           });
@@ -225665,9 +225665,9 @@ Dynamic files must always be opened with service's current directory or service 
             }
           );
         }
-        watchPackageJsonFile(file2, path23, project) {
+        watchPackageJsonFile(file2, path22, project) {
           Debug.assert(project !== void 0);
-          let result = (this.packageJsonFilesMap ?? (this.packageJsonFilesMap = /* @__PURE__ */ new Map())).get(path23);
+          let result = (this.packageJsonFilesMap ?? (this.packageJsonFilesMap = /* @__PURE__ */ new Map())).get(path22);
           if (!result) {
             let watcher = this.watchFactory.watchFile(
               file2,
@@ -225675,11 +225675,11 @@ Dynamic files must always be opened with service's current directory or service 
                 switch (eventKind) {
                   case 0:
                   case 1:
-                    this.packageJsonCache.addOrUpdate(fileName, path23);
+                    this.packageJsonCache.addOrUpdate(fileName, path22);
                     this.onPackageJsonChange(result);
                     break;
                   case 2:
-                    this.packageJsonCache.delete(path23);
+                    this.packageJsonCache.delete(path22);
                     this.onPackageJsonChange(result);
                     result.projects.clear();
                     result.close();
@@ -225697,11 +225697,11 @@ Dynamic files must always be opened with service's current directory or service 
                   return;
                 watcher.close();
                 watcher = void 0;
-                (_a2 = this.packageJsonFilesMap) == null ? void 0 : _a2.delete(path23);
-                this.packageJsonCache.invalidate(path23);
+                (_a2 = this.packageJsonFilesMap) == null ? void 0 : _a2.delete(path22);
+                this.packageJsonCache.invalidate(path22);
               }
             };
-            this.packageJsonFilesMap.set(path23, result);
+            this.packageJsonFilesMap.set(path22, result);
           }
           result.projects.add(project);
           (project.packageJsonWatches ?? (project.packageJsonWatches = /* @__PURE__ */ new Set())).add(result);
@@ -225899,15 +225899,15 @@ Dynamic files must always be opened with service's current directory or service 
             );
           }
         };
-        function addOrUpdate(fileName, path23) {
+        function addOrUpdate(fileName, path22) {
           const packageJsonInfo = Debug.checkDefined(createPackageJsonInfo(fileName, host.host));
-          packageJsons.set(path23, packageJsonInfo);
-          directoriesWithoutPackageJson.delete(getDirectoryPath(path23));
+          packageJsons.set(path22, packageJsonInfo);
+          directoriesWithoutPackageJson.delete(getDirectoryPath(path22));
         }
         __name(addOrUpdate, "addOrUpdate");
-        function invalidate(path23) {
-          packageJsons.delete(path23);
-          directoriesWithoutPackageJson.delete(getDirectoryPath(path23));
+        function invalidate(path22) {
+          packageJsons.delete(path22);
+          directoriesWithoutPackageJson.delete(getDirectoryPath(path22));
         }
         __name(invalidate, "invalidate");
         function directoryHasPackageJson(directory) {
@@ -226120,8 +226120,8 @@ ${json2}${newLine}`;
       function combineProjectOutput(defaultValue, getValue, projects, action) {
         const outputs = flatMapToMutable(isArray(projects) ? projects : projects.projects, (project) => action(project, defaultValue));
         if (!isArray(projects) && projects.symLinkedProjects) {
-          projects.symLinkedProjects.forEach((projects2, path23) => {
-            const value = getValue(path23);
+          projects.symLinkedProjects.forEach((projects2, path22) => {
+            const value = getValue(path22);
             outputs.push(...flatMap(projects2, (project) => action(project, value)));
           });
         }
@@ -226275,9 +226275,9 @@ ${json2}${newLine}`;
         return results.filter((o) => o.references.length !== 0);
       }
       __name(getReferencesWorker, "getReferencesWorker");
-      function forEachProjectInProjects(projects, path23, cb) {
+      function forEachProjectInProjects(projects, path22, cb) {
         for (const project of isArray(projects) ? projects : projects.projects) {
-          cb(project, path23);
+          cb(project, path22);
         }
         if (!isArray(projects) && projects.symLinkedProjects) {
           projects.symLinkedProjects.forEach((symlinkedProjects, symlinkedPath) => {
@@ -226292,8 +226292,8 @@ ${json2}${newLine}`;
         const resultsMap = /* @__PURE__ */ new Map();
         const queue = createQueue();
         queue.enqueue({ project: defaultProject, location: initialLocation });
-        forEachProjectInProjects(projects, initialLocation.fileName, (project, path23) => {
-          const location = { fileName: path23, pos: initialLocation.pos };
+        forEachProjectInProjects(projects, initialLocation.fileName, (project, path22) => {
+          const location = { fileName: path22, pos: initialLocation.pos };
           queue.enqueue({ project, location });
         });
         const projectService = defaultProject.projectService;
@@ -228164,8 +228164,8 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
                 nodeModulesPathParts.packageRootIndex
               );
               const packageName = getPackageNameFromTypesPackageName(unmangleScopedPackageName(packageNamePathPart));
-              const path23 = project.toPath(fileName);
-              if (entrypoints && some(entrypoints, (e) => project.toPath(e) === path23)) {
+              const path22 = project.toPath(fileName);
+              if (entrypoints && some(entrypoints, (e) => project.toPath(e) === path22)) {
                 return (_b = auxiliaryProject.resolutionCache.resolveSingleModuleNameWithoutWatching(packageName, resolveFromFile).resolvedModule) == null ? void 0 : _b.resolvedFileName;
               } else {
                 const pathToFileInPackage = fileName.substring(nodeModulesPathParts.packageRootIndex + 1);
@@ -228965,7 +228965,7 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
           }
           return combineProjectOutput(
             info,
-            (path23) => this.projectService.getScriptInfoForPath(path23),
+            (path22) => this.projectService.getScriptInfoForPath(path22),
             projects,
             (project, info2) => {
               if (!project.compileOnSaveEnabled || !project.languageServiceEnabled || project.isOrphan()) {
@@ -228992,7 +228992,7 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
             return args.richResponse ? { emitSkipped: true, diagnostics: [] } : false;
           }
           const scriptInfo = project.getScriptInfo(file2);
-          const { emitSkipped, diagnostics } = project.emitFile(scriptInfo, (path23, data, writeByteOrderMark) => this.host.writeFile(path23, data, writeByteOrderMark));
+          const { emitSkipped, diagnostics } = project.emitFile(scriptInfo, (path22, data, writeByteOrderMark) => this.host.writeFile(path22, data, writeByteOrderMark));
           return args.richResponse ? {
             emitSkipped,
             diagnostics: args.includeLinePosition ? this.convertToDiagnosticsWithLinePositionFromDiagnosticFile(diagnostics) : diagnostics.map((d) => formatDiagnosticToProtocol(
@@ -230700,8 +230700,8 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         installPackage(options) {
           this.packageInstallId++;
           const request = { kind: "installPackage", ...options, id: this.packageInstallId };
-          const promise2 = new Promise((resolve18, reject) => {
-            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve18, reject });
+          const promise2 = new Promise((resolve19, reject) => {
+            (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve: resolve19, reject });
           });
           this.installer.send(request);
           return promise2;
@@ -230973,9 +230973,9 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         };
       }
     })({ get exports() {
-      return ts36;
+      return ts40;
     }, set exports(v) {
-      ts36 = v;
+      ts40 = v;
       if (typeof module2 !== "undefined" && module2.exports) {
         module2.exports = v;
       }
@@ -231349,8 +231349,8 @@ __name(getErrorMap, "getErrorMap");
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = /* @__PURE__ */ __name((params) => {
-  const { data, path: path23, errorMaps, issueData } = params;
-  const fullPath = [...path23, ...issueData.path || []];
+  const { data, path: path22, errorMaps, issueData } = params;
+  const fullPath = [...path22, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -231472,11 +231472,11 @@ var ParseInputLazyPath = class {
   static {
     __name(this, "ParseInputLazyPath");
   }
-  constructor(parent, value, path23, key) {
+  constructor(parent, value, path22, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path23;
+    this._path = path22;
     this._key = key;
   }
   get path() {
@@ -235278,10 +235278,10 @@ function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
 __name(cloneDef, "cloneDef");
-function getElementAtPath(obj, path23) {
-  if (!path23)
+function getElementAtPath(obj, path22) {
+  if (!path22)
     return obj;
-  return path23.reduce((acc, key) => acc?.[key], obj);
+  return path22.reduce((acc, key) => acc?.[key], obj);
 }
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
@@ -235687,11 +235687,11 @@ function aborted(x, startIndex = 0) {
   return false;
 }
 __name(aborted, "aborted");
-function prefixIssues(path23, issues) {
+function prefixIssues(path22, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path23);
+    iss.path.unshift(path22);
     return iss;
   });
 }
@@ -244197,7 +244197,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve18) => setTimeout(resolve18, pollInterval));
+        await new Promise((resolve19) => setTimeout(resolve19, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -244214,7 +244214,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve18, reject) => {
+    return new Promise((resolve19, reject) => {
       const earlyReject = /* @__PURE__ */ __name((error2) => {
         reject(error2);
       }, "earlyReject");
@@ -244292,7 +244292,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve18(parseResult.data);
+            resolve19(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -244553,12 +244553,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve18, reject) => {
+    return new Promise((resolve19, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve18, interval);
+      const timeoutId = setTimeout(resolve19, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -245309,12 +245309,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve18) => {
+    return new Promise((resolve19) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve18();
+        resolve19();
       } else {
-        this._stdout.once("drain", resolve18);
+        this._stdout.once("drain", resolve19);
       }
     });
   }
@@ -245634,788 +245634,575 @@ var FRONTEND_SCHEMAS = [
   }
 ];
 
-// src/handlers/render-triggers/index.ts
-var fs = __toESM(require("fs"), 1);
-var path2 = __toESM(require("path"), 1);
-var import_typescript4 = __toESM(require_typescript(), 1);
+// src/extensions/component-tree.ts
+var fs2 = __toESM(require("node:fs"), 1);
+var path3 = __toESM(require("node:path"), 1);
 
-// src/handlers/render-triggers/utils.ts
-var path = __toESM(require("path"), 1);
-var import_typescript = __toESM(require_typescript(), 1);
-function createSuccessResponse(data) {
+// src/shared/response.ts
+function ok(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
   };
 }
-__name(createSuccessResponse, "createSuccessResponse");
-function createErrorResponse(message, context) {
+__name(ok, "ok");
+function fail(message, context) {
   return {
     content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
     isError: true
   };
 }
-__name(createErrorResponse, "createErrorResponse");
+__name(fail, "fail");
+function failFromException(error2, prefix) {
+  const message = error2 instanceof Error ? error2.message : String(error2);
+  const fullMessage = prefix ? `${prefix}: ${message}` : message;
+  return fail(fullMessage);
+}
+__name(failFromException, "failFromException");
+function missingArg(argumentName) {
+  return fail(`Missing required argument: ${argumentName}`);
+}
+__name(missingArg, "missingArg");
+function invalidArg(argumentName, reason) {
+  return fail(`Invalid ${argumentName}: ${reason}`);
+}
+__name(invalidArg, "invalidArg");
+
+// src/core/react/component-analyzer.ts
+var fs = __toESM(require("fs"), 1);
+var path2 = __toESM(require("path"), 1);
+var import_typescript4 = __toESM(require_typescript(), 1);
+
+// src/shared/utils.ts
+var path = __toESM(require("node:path"), 1);
 function normalizeFilePath(filePath) {
   return filePath.replace(/\\/g, "/");
 }
 __name(normalizeFilePath, "normalizeFilePath");
-function makeRelativePath(absolutePath, projectRoot) {
-  return normalizeFilePath(path.relative(projectRoot, absolutePath));
+function makeRelativePath(absPath, root) {
+  return normalizeFilePath(path.relative(root, absPath));
 }
 __name(makeRelativePath, "makeRelativePath");
-function getLineNumber(node, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return line + 1;
-}
-__name(getLineNumber, "getLineNumber");
-function getCodeSnippet(node, sourceFile, maxLength = 80) {
-  const text = node.getText(sourceFile).replace(/\s+/g, " ").trim();
-  return text.length > maxLength ? text.substring(0, maxLength - 3) + "..." : text;
-}
-__name(getCodeSnippet, "getCodeSnippet");
-function isInsideJsxAttribute(node) {
-  let current = node.parent;
-  while (current) {
-    if (import_typescript.default.isJsxAttribute(current)) {
-      return true;
-    }
-    current = current.parent;
-  }
-  return false;
-}
-__name(isInsideJsxAttribute, "isInsideJsxAttribute");
-function isInsideMemoizationHook(node, sourceFile) {
-  let current = node.parent;
-  while (current) {
-    if (import_typescript.default.isCallExpression(current)) {
-      const callText = current.expression.getText(sourceFile);
-      if (callText === "useCallback" || callText === "useMemo" || callText === "React.useCallback" || callText === "React.useMemo") {
-        return true;
-      }
-    }
-    current = current.parent;
-  }
-  return false;
-}
-__name(isInsideMemoizationHook, "isInsideMemoizationHook");
 
-// src/handlers/render-triggers/memoization-detector.ts
-var import_typescript2 = __toESM(require_typescript(), 1);
-function detectMemoization(sourceFile) {
-  const memoInfo = /* @__PURE__ */ new Map();
-  function visit(node) {
-    if (import_typescript2.default.isVariableStatement(node)) {
-      for (const decl of node.declarationList.declarations) {
-        if (import_typescript2.default.isIdentifier(decl.name) && decl.initializer) {
-          const componentName = decl.name.getText(sourceFile);
-          if (import_typescript2.default.isCallExpression(decl.initializer)) {
-            const callExpr = decl.initializer.expression.getText(sourceFile);
-            if (callExpr === "memo" || callExpr === "React.memo") {
-              memoInfo.set(componentName, {
-                is_memoized: true,
-                memo_type: "React.memo"
-              });
-            }
-          }
-        }
-      }
-    }
-    if (import_typescript2.default.isClassDeclaration(node) && node.name) {
-      const className = node.name.getText(sourceFile);
-      if (node.heritageClauses) {
-        for (const clause of node.heritageClauses) {
-          const clauseText = clause.getText(sourceFile);
-          if (clauseText.includes("PureComponent")) {
-            memoInfo.set(className, {
-              is_memoized: true,
-              memo_type: "PureComponent"
-            });
-          }
-        }
-      }
-      if (node.members) {
-        for (const member of node.members) {
-          if (import_typescript2.default.isMethodDeclaration(member) && member.name) {
-            const methodName = member.name.getText(sourceFile);
-            if (methodName === "shouldComponentUpdate") {
-              if (!memoInfo.has(className)) {
-                memoInfo.set(className, {
-                  is_memoized: true,
-                  memo_type: "shouldComponentUpdate"
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-    import_typescript2.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-  return memoInfo;
-}
-__name(detectMemoization, "detectMemoization");
-function containsJsxReturn(node) {
+// src/shared/ast.ts
+var import_typescript = __toESM(require_typescript(), 1);
+var MEMO_CALLEE = /* @__PURE__ */ new Set(["memo", "React.memo"]);
+var FORWARD_REF_CALLEE = /* @__PURE__ */ new Set(["forwardRef", "React.forwardRef"]);
+var LAZY_CALLEE = /* @__PURE__ */ new Set(["lazy", "React.lazy"]);
+var HOC_WRAPPING_CALLEE = /* @__PURE__ */ new Set([
+  ...MEMO_CALLEE,
+  ...FORWARD_REF_CALLEE,
+  ...LAZY_CALLEE
+]);
+function containsJsxReturn(node, sourceFile) {
   let hasJsx = false;
   function visit(n) {
-    if (hasJsx)
-      return;
-    if (import_typescript2.default.isJsxElement(n) || import_typescript2.default.isJsxSelfClosingElement(n) || import_typescript2.default.isJsxFragment(n)) {
+    if (import_typescript.default.isJsxElement(n) || import_typescript.default.isJsxSelfClosingElement(n) || import_typescript.default.isJsxFragment(n)) {
       hasJsx = true;
       return;
     }
-    import_typescript2.default.forEachChild(n, visit);
+    import_typescript.default.forEachChild(n, visit);
   }
   __name(visit, "visit");
   visit(node);
   return hasJsx;
 }
 __name(containsJsxReturn, "containsJsxReturn");
-function findComponents(sourceFile, memoInfo) {
-  const components = [];
-  function visit(node) {
-    if (import_typescript2.default.isFunctionDeclaration(node) && node.name) {
-      const name = node.name.getText(sourceFile);
-      if (/^[A-Z]/.test(name) && containsJsxReturn(node)) {
-        components.push({
-          name,
-          node,
-          line: getLineNumber(node, sourceFile),
-          memoInfo: memoInfo.get(name) || { is_memoized: false }
-        });
+function isReactComponent(node, sourceFile) {
+  if (import_typescript.default.isFunctionDeclaration(node) && node.name) {
+    const name = node.name.getText(sourceFile);
+    if (/^[A-Z]/.test(name)) {
+      return containsJsxReturn(node, sourceFile);
+    }
+  }
+  if (import_typescript.default.isVariableStatement(node)) {
+    for (const decl of node.declarationList.declarations) {
+      if (import_typescript.default.isIdentifier(decl.name)) {
+        const name = decl.name.getText(sourceFile);
+        if (/^[A-Z]/.test(name) && decl.initializer) {
+          if (import_typescript.default.isArrowFunction(decl.initializer) || import_typescript.default.isFunctionExpression(decl.initializer)) {
+            return containsJsxReturn(decl.initializer, sourceFile);
+          }
+          if (import_typescript.default.isCallExpression(decl.initializer)) {
+            const callee = getCalleeName(decl.initializer, sourceFile);
+            return HOC_WRAPPING_CALLEE.has(callee);
+          }
+        }
       }
     }
-    if (import_typescript2.default.isVariableStatement(node)) {
-      for (const decl of node.declarationList.declarations) {
-        if (import_typescript2.default.isIdentifier(decl.name)) {
-          const name = decl.name.getText(sourceFile);
-          if (/^[A-Z]/.test(name) && decl.initializer) {
-            if (import_typescript2.default.isCallExpression(decl.initializer)) {
-              const callText = decl.initializer.expression.getText(sourceFile);
-              if ((callText === "memo" || callText === "React.memo") && decl.initializer.arguments.length > 0) {
-                const arg = decl.initializer.arguments[0];
-                if (containsJsxReturn(arg)) {
-                  components.push({
-                    name,
-                    node: arg,
-                    line: getLineNumber(node, sourceFile),
-                    memoInfo: memoInfo.get(name) || { is_memoized: true, memo_type: "React.memo" }
-                  });
-                }
-              }
-            } else if (import_typescript2.default.isArrowFunction(decl.initializer) || import_typescript2.default.isFunctionExpression(decl.initializer)) {
-              if (containsJsxReturn(decl.initializer)) {
-                components.push({
-                  name,
-                  node: decl.initializer,
-                  line: getLineNumber(node, sourceFile),
-                  memoInfo: memoInfo.get(name) || { is_memoized: false }
-                });
+  }
+  if (import_typescript.default.isClassDeclaration(node) && node.name) {
+    const name = node.name.getText(sourceFile);
+    if (/^[A-Z]/.test(name) && node.heritageClauses) {
+      for (const clause of node.heritageClauses) {
+        const clauseText = clause.getText(sourceFile);
+        if (clauseText.includes("Component") || clauseText.includes("PureComponent")) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+__name(isReactComponent, "isReactComponent");
+function getCalleeName(callExpr, sourceFile) {
+  let expr = callExpr.expression;
+  while (import_typescript.default.isCallExpression(expr)) {
+    expr = expr.expression;
+  }
+  return expr.getText(sourceFile);
+}
+__name(getCalleeName, "getCalleeName");
+
+// src/core/react/component-detector.ts
+var import_typescript2 = __toESM(require_typescript(), 1);
+function getComponentName(node, sourceFile) {
+  if (import_typescript2.default.isFunctionDeclaration(node) && node.name) {
+    return node.name.getText(sourceFile);
+  }
+  if (import_typescript2.default.isVariableStatement(node)) {
+    for (const decl of node.declarationList.declarations) {
+      if (import_typescript2.default.isIdentifier(decl.name)) {
+        return decl.name.getText(sourceFile);
+      }
+    }
+  }
+  if (import_typescript2.default.isClassDeclaration(node) && node.name) {
+    return node.name.getText(sourceFile);
+  }
+  return null;
+}
+__name(getComponentName, "getComponentName");
+function unwrapHocCall(callExpr, sourceFile) {
+  const result = {
+    innerFn: null,
+    wrappers: [],
+    isLazy: false,
+    hoistedComponent: null
+  };
+  let current = callExpr;
+  while (true) {
+    const calleeName = getCalleeName(current, sourceFile);
+    const args = current.arguments;
+    if (HOC_WRAPPING_CALLEE.has(calleeName)) {
+      result.wrappers.push(calleeName);
+      if (LAZY_CALLEE.has(calleeName)) {
+        result.isLazy = true;
+        break;
+      }
+      if (args.length > 0) {
+        const firstArg = args[0];
+        if (import_typescript2.default.isArrowFunction(firstArg) || import_typescript2.default.isFunctionExpression(firstArg)) {
+          result.innerFn = firstArg;
+          break;
+        } else if (import_typescript2.default.isCallExpression(firstArg)) {
+          current = firstArg;
+          continue;
+        }
+      }
+      break;
+    } else {
+      for (const arg of args) {
+        if (import_typescript2.default.isIdentifier(arg)) {
+          const name = arg.getText(sourceFile);
+          if (/^[A-Z]/.test(name)) {
+            result.hoistedComponent = name;
+            result.wrappers.push(calleeName);
+            break;
+          }
+        }
+      }
+      break;
+    }
+  }
+  return result;
+}
+__name(unwrapHocCall, "unwrapHocCall");
+function detectHocWrappedComponent(decl, sourceFile) {
+  if (!decl.initializer || !import_typescript2.default.isCallExpression(decl.initializer))
+    return null;
+  if (!import_typescript2.default.isIdentifier(decl.name))
+    return null;
+  const varName = decl.name.getText(sourceFile);
+  if (!/^[A-Z]/.test(varName))
+    return null;
+  const unwrapped = unwrapHocCall(decl.initializer, sourceFile);
+  if (unwrapped.wrappers.length === 0)
+    return null;
+  if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
+    if (!unwrapped.innerFn)
+      return null;
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile))
+      return null;
+  }
+  return unwrapped;
+}
+__name(detectHocWrappedComponent, "detectHocWrappedComponent");
+function detectDefaultExportHoc(node, sourceFile) {
+  const expr = node.expression;
+  if (!import_typescript2.default.isCallExpression(expr))
+    return null;
+  const unwrapped = unwrapHocCall(expr, sourceFile);
+  if (unwrapped.wrappers.length === 0)
+    return null;
+  if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
+    if (!unwrapped.innerFn)
+      return null;
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile))
+      return null;
+  }
+  let name;
+  if (unwrapped.hoistedComponent) {
+    name = unwrapped.hoistedComponent;
+  } else {
+    name = "DefaultExport";
+  }
+  return { name, unwrapped };
+}
+__name(detectDefaultExportHoc, "detectDefaultExportHoc");
+
+// src/core/react/relationship-builder.ts
+var import_typescript3 = __toESM(require_typescript(), 1);
+function findUsedComponents(node, sourceFile) {
+  const used = /* @__PURE__ */ new Set();
+  function visit(n) {
+    if (import_typescript3.default.isJsxOpeningElement(n) || import_typescript3.default.isJsxSelfClosingElement(n)) {
+      const tagName = n.tagName.getText(sourceFile);
+      if (/^[A-Z]/.test(tagName)) {
+        const componentName = tagName.split(".").pop() || tagName;
+        used.add(componentName);
+      }
+    }
+    import_typescript3.default.forEachChild(n, visit);
+  }
+  __name(visit, "visit");
+  visit(node);
+  return Array.from(used);
+}
+__name(findUsedComponents, "findUsedComponents");
+function buildUsedByRelationships(components) {
+  const componentMap = /* @__PURE__ */ new Map();
+  for (const comp of components) {
+    componentMap.set(comp.name, comp);
+  }
+  for (const comp of components) {
+    for (const usedName of comp.uses) {
+      const usedComp = componentMap.get(usedName);
+      if (usedComp && !usedComp.used_by.includes(comp.name)) {
+        usedComp.used_by.push(comp.name);
+      }
+    }
+  }
+}
+__name(buildUsedByRelationships, "buildUsedByRelationships");
+function buildTree(rootName, components, depth, visited = /* @__PURE__ */ new Set()) {
+  if (depth <= 0 || visited.has(rootName)) {
+    return null;
+  }
+  const component = components.find((c) => c.name === rootName);
+  if (!component) {
+    return null;
+  }
+  visited.add(rootName);
+  const children = [];
+  for (const childName of component.uses) {
+    const childNode = buildTree(childName, components, depth - 1, new Set(visited));
+    if (childNode) {
+      children.push(childNode);
+    }
+  }
+  return {
+    name: component.name,
+    file: component.file,
+    props: component.props,
+    children,
+    ...component.lazy !== void 0 && { lazy: component.lazy },
+    ...component.wrappers !== void 0 && { wrappers: component.wrappers }
+  };
+}
+__name(buildTree, "buildTree");
+function findRootComponent(components, entryFile) {
+  const priorityNames = ["App", "Main", "Root", "Application", "Layout"];
+  for (const name of priorityNames) {
+    const comp = components.find((c) => c.name === name);
+    if (comp)
+      return comp.name;
+  }
+  const rootCandidates = components.filter((c) => c.used_by.length === 0);
+  if (rootCandidates.length > 0) {
+    return rootCandidates[0].name;
+  }
+  return components.length > 0 ? components[0].name : null;
+}
+__name(findRootComponent, "findRootComponent");
+
+// src/core/react/component-analyzer.ts
+function getLineNumber(node, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  return line + 1;
+}
+__name(getLineNumber, "getLineNumber");
+function extractPropsFromInterface(sourceFile, interfaceName, props) {
+  function visit(node) {
+    if (import_typescript4.default.isInterfaceDeclaration(node) && node.name.getText(sourceFile) === interfaceName) {
+      for (const member of node.members) {
+        if (import_typescript4.default.isPropertySignature(member) && member.name) {
+          props.add(member.name.getText(sourceFile));
+        }
+      }
+    }
+    if (import_typescript4.default.isTypeAliasDeclaration(node) && node.name.getText(sourceFile) === interfaceName) {
+      if (import_typescript4.default.isTypeLiteralNode(node.type)) {
+        for (const member of node.type.members) {
+          if (import_typescript4.default.isPropertySignature(member) && member.name) {
+            props.add(member.name.getText(sourceFile));
+          }
+        }
+      }
+    }
+    import_typescript4.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+}
+__name(extractPropsFromInterface, "extractPropsFromInterface");
+function extractPropsFromFn(fn, sourceFile) {
+  const props = /* @__PURE__ */ new Set();
+  const params = fn.parameters;
+  if (params.length > 0) {
+    const firstParam = params[0];
+    if (import_typescript4.default.isObjectBindingPattern(firstParam.name)) {
+      for (const element of firstParam.name.elements) {
+        if (import_typescript4.default.isBindingElement(element) && import_typescript4.default.isIdentifier(element.name)) {
+          props.add(element.name.getText(sourceFile));
+        }
+      }
+    }
+    if (firstParam.type) {
+      if (import_typescript4.default.isTypeLiteralNode(firstParam.type)) {
+        for (const member of firstParam.type.members) {
+          if (import_typescript4.default.isPropertySignature(member) && member.name) {
+            props.add(member.name.getText(sourceFile));
+          }
+        }
+      }
+      if (import_typescript4.default.isTypeReferenceNode(firstParam.type)) {
+        const typeName = firstParam.type.typeName.getText(sourceFile);
+        if (typeName.endsWith("Props")) {
+          extractPropsFromInterface(sourceFile, typeName, props);
+        }
+      }
+    }
+  }
+  return Array.from(props);
+}
+__name(extractPropsFromFn, "extractPropsFromFn");
+function extractProps(node, sourceFile, precomputedUnwrap) {
+  if (import_typescript4.default.isFunctionDeclaration(node)) {
+    return extractPropsFromFn(node, sourceFile);
+  }
+  if (import_typescript4.default.isVariableStatement(node)) {
+    for (const decl of node.declarationList.declarations) {
+      if (decl.initializer && (import_typescript4.default.isArrowFunction(decl.initializer) || import_typescript4.default.isFunctionExpression(decl.initializer))) {
+        return extractPropsFromFn(decl.initializer, sourceFile);
+      }
+      if (decl.initializer && import_typescript4.default.isCallExpression(decl.initializer)) {
+        const unwrapped = precomputedUnwrap ?? detectHocWrappedComponent(decl, sourceFile);
+        if (unwrapped?.innerFn) {
+          return extractPropsFromFn(unwrapped.innerFn, sourceFile);
+        }
+      }
+    }
+    return [];
+  }
+  if (import_typescript4.default.isClassDeclaration(node)) {
+    let findPropsUsage2 = function(n) {
+      if (import_typescript4.default.isPropertyAccessExpression(n)) {
+        const text = n.getText(sourceFile);
+        if (text.startsWith("this.props.")) {
+          const propName = text.replace("this.props.", "").split(".")[0];
+          props.add(propName);
+        }
+      }
+      import_typescript4.default.forEachChild(n, findPropsUsage2);
+    };
+    var findPropsUsage = findPropsUsage2;
+    __name(findPropsUsage2, "findPropsUsage");
+    const props = /* @__PURE__ */ new Set();
+    findPropsUsage2(node);
+    return Array.from(props);
+  }
+  return [];
+}
+__name(extractProps, "extractProps");
+function findComponentFiles(dirPath, projectRoot) {
+  const files = [];
+  const extensions = [".tsx", ".jsx"];
+  function walk(dir) {
+    if (!fs.existsSync(dir))
+      return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path2.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (["node_modules", ".git", "dist", "build", ".next", "coverage"].includes(entry.name)) {
+          continue;
+        }
+        walk(fullPath);
+      } else if (entry.isFile()) {
+        const ext = path2.extname(entry.name);
+        if (extensions.includes(ext)) {
+          files.push(fullPath);
+        }
+      }
+    }
+  }
+  __name(walk, "walk");
+  const absoluteDir = path2.isAbsolute(dirPath) ? dirPath : path2.resolve(projectRoot, dirPath);
+  walk(absoluteDir);
+  return files;
+}
+__name(findComponentFiles, "findComponentFiles");
+function analyzeFile(filePath, projectRoot) {
+  const components = [];
+  if (!fs.existsSync(filePath)) {
+    return components;
+  }
+  const content = fs.readFileSync(filePath, "utf-8");
+  const sourceFile = import_typescript4.default.createSourceFile(
+    filePath,
+    content,
+    import_typescript4.default.ScriptTarget.Latest,
+    true,
+    filePath.endsWith(".tsx") ? import_typescript4.default.ScriptKind.TSX : import_typescript4.default.ScriptKind.JSX
+  );
+  const relativePath = makeRelativePath(filePath, projectRoot);
+  const detectedNames = /* @__PURE__ */ new Set();
+  function visit(node) {
+    if (isReactComponent(node, sourceFile)) {
+      const name = getComponentName(node, sourceFile);
+      if (name) {
+        let lazy2;
+        let wrappers;
+        let precomputedUnwrap = null;
+        if (import_typescript4.default.isVariableStatement(node)) {
+          for (const decl of node.declarationList.declarations) {
+            if (decl.initializer && import_typescript4.default.isCallExpression(decl.initializer)) {
+              const unwrapped = detectHocWrappedComponent(decl, sourceFile);
+              if (unwrapped) {
+                precomputedUnwrap = unwrapped;
+                wrappers = unwrapped.wrappers.length > 0 ? unwrapped.wrappers : void 0;
+                lazy2 = unwrapped.isLazy || void 0;
               }
             }
           }
         }
+        detectedNames.add(name);
+        components.push({
+          name,
+          file: relativePath,
+          line: getLineNumber(node, sourceFile),
+          props: extractProps(node, sourceFile, precomputedUnwrap),
+          used_by: [],
+          // Will be filled later
+          uses: findUsedComponents(node, sourceFile),
+          ...lazy2 !== void 0 && { lazy: lazy2 },
+          ...wrappers !== void 0 && { wrappers }
+        });
       }
     }
-    if (import_typescript2.default.isClassDeclaration(node) && node.name) {
-      const name = node.name.getText(sourceFile);
-      if (/^[A-Z]/.test(name) && node.heritageClauses) {
-        for (const clause of node.heritageClauses) {
-          const text = clause.getText(sourceFile);
-          if (text.includes("Component") || text.includes("PureComponent")) {
-            components.push({
-              name,
-              node,
-              line: getLineNumber(node, sourceFile),
-              memoInfo: memoInfo.get(name) || { is_memoized: false }
-            });
-          }
+    if (import_typescript4.default.isExportAssignment(node) && !node.isExportEquals) {
+      const detected = detectDefaultExportHoc(node, sourceFile);
+      if (detected) {
+        const { name, unwrapped } = detected;
+        if (!detectedNames.has(name)) {
+          detectedNames.add(name);
+          components.push({
+            name,
+            file: relativePath,
+            line: getLineNumber(node, sourceFile),
+            props: unwrapped.innerFn ? extractPropsFromFn(unwrapped.innerFn, sourceFile) : [],
+            used_by: [],
+            uses: unwrapped.innerFn ? findUsedComponents(unwrapped.innerFn, sourceFile) : [],
+            ...unwrapped.isLazy && { lazy: true },
+            ...unwrapped.wrappers.length > 0 && { wrappers: unwrapped.wrappers }
+          });
         }
       }
     }
-    import_typescript2.default.forEachChild(node, visit);
+    import_typescript4.default.forEachChild(node, visit);
   }
   __name(visit, "visit");
   visit(sourceFile);
   return components;
 }
-__name(findComponents, "findComponents");
+__name(analyzeFile, "analyzeFile");
 
-// src/handlers/render-triggers/trigger-analyzers.ts
-var import_typescript3 = __toESM(require_typescript(), 1);
-function findStateHooks(componentNode, sourceFile) {
-  const triggers = [];
-  function visit(node) {
-    if (import_typescript3.default.isCallExpression(node)) {
-      const callText = node.expression.getText(sourceFile);
-      if (callText === "useState" || callText === "React.useState") {
-        const parent = node.parent;
-        if (import_typescript3.default.isVariableDeclaration(parent) && import_typescript3.default.isArrayBindingPattern(parent.name)) {
-          const elements = parent.name.elements;
-          if (elements.length >= 1 && import_typescript3.default.isBindingElement(elements[0])) {
-            const stateName = elements[0].name.getText(sourceFile);
-            triggers.push({
-              type: "state",
-              name: stateName,
-              source: `useState hook at line ${getLineNumber(node, sourceFile)}`,
-              frequency: "on_change",
-              preventable: false
-            });
-          }
-        }
-      } else if (callText === "useReducer" || callText === "React.useReducer") {
-        const parent = node.parent;
-        if (import_typescript3.default.isVariableDeclaration(parent) && import_typescript3.default.isArrayBindingPattern(parent.name)) {
-          const elements = parent.name.elements;
-          if (elements.length >= 1 && import_typescript3.default.isBindingElement(elements[0])) {
-            const stateName = elements[0].name.getText(sourceFile);
-            triggers.push({
-              type: "state",
-              name: stateName,
-              source: `useReducer hook at line ${getLineNumber(node, sourceFile)}`,
-              frequency: "on_change",
-              preventable: false
-            });
-          }
-        }
-      }
-    }
-    import_typescript3.default.forEachChild(node, visit);
+// src/extensions/component-tree.ts
+async function analyzeComponentTree(args) {
+  if (!args || typeof args !== "object") {
+    return fail("Invalid arguments: expected an object");
   }
-  __name(visit, "visit");
-  visit(componentNode);
-  return triggers;
-}
-__name(findStateHooks, "findStateHooks");
-function findPropTriggers(componentNode, sourceFile, isMemoized) {
-  const triggers = [];
-  const props = [];
-  let params;
-  if (import_typescript3.default.isFunctionDeclaration(componentNode)) {
-    params = componentNode.parameters;
-  } else if (import_typescript3.default.isArrowFunction(componentNode) || import_typescript3.default.isFunctionExpression(componentNode)) {
-    params = componentNode.parameters;
-  }
-  if (params && params.length > 0) {
-    const firstParam = params[0];
-    if (import_typescript3.default.isObjectBindingPattern(firstParam.name)) {
-      for (const element of firstParam.name.elements) {
-        if (import_typescript3.default.isBindingElement(element) && import_typescript3.default.isIdentifier(element.name)) {
-          props.push(element.name.getText(sourceFile));
-        }
-      }
-    }
-  }
-  if (props.length > 0) {
-    triggers.push({
-      type: "prop",
-      name: props.join(", "),
-      source: "Component props",
-      frequency: isMemoized ? "on_change" : "every_render",
-      preventable: !isMemoized,
-      prevention_method: isMemoized ? void 0 : "Wrap component with React.memo()"
-    });
-  }
-  return triggers;
-}
-__name(findPropTriggers, "findPropTriggers");
-function findForceUpdateTriggers(componentNode, sourceFile) {
-  const triggers = [];
-  function visit(node) {
-    if (import_typescript3.default.isCallExpression(node)) {
-      const callText = node.expression.getText(sourceFile);
-      if (callText === "this.forceUpdate" || callText.endsWith(".forceUpdate")) {
-        triggers.push({
-          type: "force_update",
-          source: `forceUpdate() call at line ${getLineNumber(node, sourceFile)}`,
-          frequency: "rare",
-          preventable: true,
-          prevention_method: "Avoid forceUpdate; use state or props to trigger re-renders"
-        });
-      }
-    }
-    import_typescript3.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(componentNode);
-  return triggers;
-}
-__name(findForceUpdateTriggers, "findForceUpdateTriggers");
-function findInlineDefinitions(componentNode, sourceFile) {
-  const issues = [];
-  function visitJsxAttribute(node) {
-    const initializer3 = node.initializer;
-    if (!initializer3 || !import_typescript3.default.isJsxExpression(initializer3))
-      return;
-    const expr = initializer3.expression;
-    if (!expr)
-      return;
-    if (isInsideMemoizationHook(expr, sourceFile))
-      return;
-    const attrName = node.name.getText(sourceFile);
-    if (import_typescript3.default.isObjectLiteralExpression(expr)) {
-      issues.push({
-        type: "object",
-        code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
-        issue: `Inline object for "${attrName}" creates new reference on every render`,
-        fix: "Extract to useMemo or constant outside component"
-      });
-    }
-    if (import_typescript3.default.isArrowFunction(expr) || import_typescript3.default.isFunctionExpression(expr)) {
-      issues.push({
-        type: "function",
-        code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
-        issue: `Inline function for "${attrName}" creates new reference on every render`,
-        fix: "Use useCallback with proper dependencies"
-      });
-    }
-    if (import_typescript3.default.isArrayLiteralExpression(expr)) {
-      issues.push({
-        type: "array",
-        code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
-        issue: `Inline array for "${attrName}" creates new reference on every render`,
-        fix: "Extract to useMemo or constant outside component"
-      });
-    }
-    if (import_typescript3.default.isJsxElement(expr) || import_typescript3.default.isJsxSelfClosingElement(expr)) {
-      issues.push({
-        type: "jsx",
-        code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
-        issue: `Inline JSX for "${attrName}" creates new element on every render`,
-        fix: "Extract to a memoized component or useMemo"
-      });
-    }
-  }
-  __name(visitJsxAttribute, "visitJsxAttribute");
-  function visit(node) {
-    if (import_typescript3.default.isJsxAttribute(node)) {
-      visitJsxAttribute(node);
-    }
-    import_typescript3.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(componentNode);
-  return issues;
-}
-__name(findInlineDefinitions, "findInlineDefinitions");
-function findExpensiveComputations(componentNode, sourceFile) {
-  const computations = [];
-  const memoizedVars = /* @__PURE__ */ new Set();
-  function findMemoized(node) {
-    if (import_typescript3.default.isVariableDeclaration(node) && node.initializer && import_typescript3.default.isCallExpression(node.initializer)) {
-      const callText = node.initializer.expression.getText(sourceFile);
-      if (callText === "useMemo" || callText === "React.useMemo") {
-        if (import_typescript3.default.isIdentifier(node.name)) {
-          memoizedVars.add(node.name.getText(sourceFile));
-        }
-      }
-    }
-    import_typescript3.default.forEachChild(node, findMemoized);
-  }
-  __name(findMemoized, "findMemoized");
-  findMemoized(componentNode);
-  function findExpensive(node) {
-    if (import_typescript3.default.isCallExpression(node)) {
-      if (isInsideMemoizationHook(node, sourceFile)) {
-        import_typescript3.default.forEachChild(node, findExpensive);
-        return;
-      }
-      const callText = node.expression.getText(sourceFile);
-      if (["useMemo", "useCallback", "React.useMemo", "React.useCallback"].includes(callText)) {
-        import_typescript3.default.forEachChild(node, findExpensive);
-        return;
-      }
-      if (import_typescript3.default.isPropertyAccessExpression(node.expression)) {
-        const methodName = node.expression.name.getText(sourceFile);
-        const expensiveMethods = ["map", "filter", "reduce", "sort", "flatMap", "find", "findIndex"];
-        if (expensiveMethods.includes(methodName)) {
-          const line = getLineNumber(node, sourceFile);
-          computations.push({
-            description: `Array ${methodName}() operation`,
-            line,
-            is_memoized: false,
-            suggestion: `Wrap in useMemo if the array or callback rarely changes`
-          });
-        }
-      }
-      if (import_typescript3.default.isPropertyAccessExpression(node.expression)) {
-        const text = node.expression.getText(sourceFile);
-        if (text.match(/^Object\.(keys|values|entries)$/)) {
-          computations.push({
-            description: `${text}() creates new array on every call`,
-            line: getLineNumber(node, sourceFile),
-            is_memoized: false,
-            suggestion: "Wrap in useMemo if the object rarely changes"
-          });
-        }
-      }
-    }
-    if (import_typescript3.default.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node, sourceFile)) {
-      const hasSpread = node.properties.some((p) => import_typescript3.default.isSpreadAssignment(p));
-      if (hasSpread) {
-        const parent = node.parent;
-        if (import_typescript3.default.isVariableDeclaration(parent) || import_typescript3.default.isReturnStatement(parent)) {
-          computations.push({
-            description: "Object spread creates new object reference",
-            line: getLineNumber(node, sourceFile),
-            is_memoized: false,
-            suggestion: "Wrap in useMemo if spread rarely changes"
-          });
-        }
-      }
-    }
-    import_typescript3.default.forEachChild(node, findExpensive);
-  }
-  __name(findExpensive, "findExpensive");
-  findExpensive(componentNode);
-  return computations;
-}
-__name(findExpensiveComputations, "findExpensiveComputations");
-function analyzeContextUsage(componentNode, sourceFile) {
-  const subscriptions = [];
-  function visit(node) {
-    if (import_typescript3.default.isCallExpression(node)) {
-      const callText = node.expression.getText(sourceFile);
-      if (callText === "useContext" || callText === "React.useContext") {
-        const args = node.arguments;
-        if (args.length > 0) {
-          const contextName = args[0].getText(sourceFile);
-          const parent = node.parent;
-          let selector;
-          let granularity = "entire_context";
-          let issue2;
-          if (import_typescript3.default.isVariableDeclaration(parent) && import_typescript3.default.isObjectBindingPattern(parent.name)) {
-            const props = parent.name.elements.filter((e) => import_typescript3.default.isBindingElement(e) && import_typescript3.default.isIdentifier(e.name)).map((e) => e.name.getText(sourceFile));
-            if (props.length > 0) {
-              selector = `{ ${props.join(", ")} }`;
-              issue2 = `Destructuring ${props.length} properties, but component re-renders when ANY context value changes`;
-            }
-          }
-          if (!selector) {
-            issue2 = "Subscribes to entire context; any change will trigger re-render";
-          }
-          subscriptions.push({
-            context: contextName,
-            selector,
-            granularity,
-            issue: issue2
-          });
-        }
-      }
-      if (callText === "useSelector") {
-        const args = node.arguments;
-        if (args.length > 0) {
-          const selectorCode = getCodeSnippet(args[0], sourceFile);
-          subscriptions.push({
-            context: "Redux Store",
-            selector: selectorCode,
-            granularity: "selected_value"
-          });
-        }
-      }
-    }
-    import_typescript3.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(componentNode);
-  return subscriptions;
-}
-__name(analyzeContextUsage, "analyzeContextUsage");
-function analyzeChildProps(componentNode, sourceFile, inlineDefinitions, memoInfo) {
-  const children = [];
-  const inlineLines = new Set(inlineDefinitions.map((d) => d.line));
-  function visit(node) {
-    if (import_typescript3.default.isJsxOpeningElement(node) || import_typescript3.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      if (/^[A-Z]/.test(tagName)) {
-        const unstableProps = [];
-        const attributes = node.attributes;
-        if (attributes && import_typescript3.default.isJsxAttributes(attributes)) {
-          for (const attr of attributes.properties) {
-            if (import_typescript3.default.isJsxAttribute(attr) && attr.initializer && import_typescript3.default.isJsxExpression(attr.initializer)) {
-              const expr = attr.initializer.expression;
-              if (expr) {
-                const attrLine = getLineNumber(expr, sourceFile);
-                const attrName = attr.name.getText(sourceFile);
-                if (inlineLines.has(attrLine)) {
-                  unstableProps.push(attrName);
-                }
-                if (import_typescript3.default.isArrowFunction(expr) || import_typescript3.default.isFunctionExpression(expr) || import_typescript3.default.isObjectLiteralExpression(expr) || import_typescript3.default.isArrayLiteralExpression(expr)) {
-                  if (!isInsideMemoizationHook(expr, sourceFile) && !unstableProps.includes(attrName)) {
-                    unstableProps.push(attrName);
-                  }
-                }
-              }
-            }
-          }
-        }
-        children.push({
-          component: tagName,
-          // Note: memoInfo only contains components defined in the current file.
-          // Imported components (e.g., from other modules) default to unmemoized.
-          memoized: memoInfo.get(tagName)?.is_memoized ?? false,
-          receives_unstable_props: unstableProps.length > 0,
-          unstable_props: unstableProps.length > 0 ? unstableProps : void 0
-        });
-      }
-    }
-    import_typescript3.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(componentNode);
-  const uniqueChildren = /* @__PURE__ */ new Map();
-  for (const child of children) {
-    const existing = uniqueChildren.get(child.component);
-    if (existing) {
-      if (child.unstable_props) {
-        existing.unstable_props = [
-          .../* @__PURE__ */ new Set([...existing.unstable_props || [], ...child.unstable_props])
-        ];
-        existing.receives_unstable_props = true;
-      }
-    } else {
-      uniqueChildren.set(child.component, child);
-    }
-  }
-  return Array.from(uniqueChildren.values());
-}
-__name(analyzeChildProps, "analyzeChildProps");
-
-// src/handlers/render-triggers/suggestion-generator.ts
-function generateSuggestions(isMemoized, inlineDefinitions, expensiveComputations, contextSubscriptions, childrenAnalysis, hasPropTriggers = false) {
-  const suggestions = [];
-  if (!isMemoized && (childrenAnalysis.length > 0 || hasPropTriggers)) {
-    suggestions.push({
-      priority: "medium",
-      type: "memo",
-      description: "Consider wrapping component with React.memo() to prevent unnecessary re-renders from parent",
-      estimated_impact: "Prevents re-renders when props are shallowly equal",
-      code_example: "export const MyComponent = React.memo(function MyComponent(props) { ... })"
-    });
-  }
-  const inlineFunctions = inlineDefinitions.filter((d) => d.type === "function");
-  if (inlineFunctions.length > 0) {
-    suggestions.push({
-      priority: "high",
-      type: "useCallback",
-      description: `${inlineFunctions.length} inline function(s) create new references on every render`,
-      estimated_impact: "Prevents child components from re-rendering when using React.memo",
-      code_example: `const handleClick = useCallback(() => {
-  // handler logic
-}, [dependency]);`
-    });
-  }
-  const inlineObjects = inlineDefinitions.filter((d) => d.type === "object" || d.type === "array");
-  if (inlineObjects.length > 0) {
-    suggestions.push({
-      priority: "high",
-      type: "useMemo",
-      description: `${inlineObjects.length} inline object(s)/array(s) create new references on every render`,
-      estimated_impact: "Prevents unnecessary re-renders in memoized child components",
-      code_example: `const style = useMemo(() => ({ margin: 10 }), []);`
-    });
-  }
-  const unmemoizedComputations = expensiveComputations.filter((c) => !c.is_memoized);
-  if (unmemoizedComputations.length > 0) {
-    suggestions.push({
-      priority: "medium",
-      type: "useMemo",
-      description: `${unmemoizedComputations.length} potentially expensive computation(s) run on every render`,
-      estimated_impact: "Reduces CPU usage by caching computation results",
-      code_example: `const sortedItems = useMemo(() => items.sort(compareFn), [items]);`
-    });
-  }
-  const broadContextSubs = contextSubscriptions.filter(
-    (c) => c.granularity === "entire_context" && c.issue
-  );
-  if (broadContextSubs.length > 0) {
-    suggestions.push({
-      priority: "medium",
-      type: "context_split",
-      description: "Component subscribes to entire context(s) and re-renders on any change",
-      estimated_impact: "Split context or use selectors to reduce unnecessary re-renders",
-      code_example: `// Split context into smaller pieces
-const UserContext = createContext(null);
-const ThemeContext = createContext(null);
-
-// Or use a selector library like use-context-selector`
-    });
-  }
-  const unstableChildren = childrenAnalysis.filter((c) => c.receives_unstable_props);
-  if (unstableChildren.length > 0 && isMemoized) {
-    suggestions.push({
-      priority: "high",
-      type: "useCallback",
-      description: `${unstableChildren.length} child component(s) receive unstable props, negating any memoization`,
-      estimated_impact: "Critical - memoized children will still re-render due to unstable props"
-    });
-  }
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-  suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-  return suggestions;
-}
-__name(generateSuggestions, "generateSuggestions");
-
-// src/handlers/render-triggers/index.ts
-async function handleAnalyzeRenderTriggers(args) {
+  const typedArgs = args;
   const projectRoot = process.cwd();
-  const includeChildren = args.include_children ?? false;
-  if (!args.file) {
-    return createErrorResponse("file argument is required");
-  }
-  const filePath = path2.isAbsolute(args.file) ? args.file : path2.resolve(projectRoot, args.file);
-  if (!fs.existsSync(filePath)) {
-    return createErrorResponse(`File not found: ${args.file}`, { provided_path: args.file });
-  }
-  const ext = path2.extname(filePath).toLowerCase();
-  if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-    return createErrorResponse(
-      "File must be a React component file (.tsx, .jsx, .ts, or .js)",
-      { provided_extension: ext }
-    );
-  }
+  const searchPath = typedArgs.path ?? "src";
+  const maxDepth = typedArgs.depth ?? 5;
   try {
-    let analyzeComponent2 = function(comp) {
-      const memo = comp.memoInfo;
-      const triggers = [
-        ...findStateHooks(comp.node, sourceFile),
-        ...findPropTriggers(comp.node, sourceFile, memo.is_memoized),
-        ...findForceUpdateTriggers(comp.node, sourceFile)
-      ];
-      const hasPropTriggers = triggers.some((t) => t.type === "prop");
-      triggers.push({
-        type: "parent",
-        source: "Parent component re-render",
-        frequency: memo.is_memoized ? "on_change" : "every_render",
-        preventable: !memo.is_memoized,
-        prevention_method: memo.is_memoized ? void 0 : "Wrap component with React.memo()"
-      });
-      const inlineDefs = findInlineDefinitions(comp.node, sourceFile);
-      const expensiveComps = findExpensiveComputations(comp.node, sourceFile);
-      const ctxSubs = analyzeContextUsage(comp.node, sourceFile);
-      let childrenAnalysis;
-      if (includeChildren) {
-        childrenAnalysis = analyzeChildProps(comp.node, sourceFile, inlineDefs, memoMap);
+    let allComponents = [];
+    if (typedArgs.file) {
+      const filePath = path3.isAbsolute(typedArgs.file) ? typedArgs.file : path3.resolve(projectRoot, typedArgs.file);
+      if (!fs2.existsSync(filePath)) {
+        return fail(`File not found: ${typedArgs.file}`, { provided_path: typedArgs.file });
       }
-      const suggestions = generateSuggestions(
-        memo.is_memoized,
-        inlineDefs,
-        expensiveComps,
-        ctxSubs,
-        childrenAnalysis || [],
-        hasPropTriggers
-      );
-      return {
-        component: comp.name,
-        is_memoized: memo.is_memoized,
-        memo_type: memo.memo_type,
-        render_triggers: triggers,
-        inline_definitions: inlineDefs,
-        expensive_computations: expensiveComps,
-        context_subscriptions: ctxSubs,
-        children_analysis: childrenAnalysis,
-        optimization_suggestions: suggestions
-      };
-    };
-    var analyzeComponent = analyzeComponent2;
-    __name(analyzeComponent2, "analyzeComponent");
-    const content = fs.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript4.default.createSourceFile(
-      filePath,
-      content,
-      import_typescript4.default.ScriptTarget.Latest,
-      true,
-      ext === ".tsx" || ext === ".jsx" ? import_typescript4.default.ScriptKind.TSX : import_typescript4.default.ScriptKind.TS
-    );
-    const relativePath = makeRelativePath(filePath, projectRoot);
-    const memoMap = detectMemoization(sourceFile);
-    const components = findComponents(sourceFile, memoMap);
-    if (components.length === 0) {
-      return createSuccessResponse({
-        message: "No React components found in file",
-        file: relativePath
-      });
+      allComponents = analyzeFile(filePath, projectRoot);
+    } else {
+      const files = findComponentFiles(searchPath, projectRoot);
+      if (files.length === 0) {
+        return ok({
+          tree: null,
+          components: [],
+          count: 0,
+          message: `No React component files found in ${searchPath}`
+        });
+      }
+      for (const file2 of files) {
+        const fileComponents = analyzeFile(file2, projectRoot);
+        allComponents.push(...fileComponents);
+      }
     }
-    let defaultExportName;
-    import_typescript4.default.forEachChild(sourceFile, (node) => {
-      if (import_typescript4.default.isExportAssignment(node) && !node.isExportEquals) {
-        if (import_typescript4.default.isIdentifier(node.expression)) {
-          defaultExportName = node.expression.getText(sourceFile);
-        } else if (import_typescript4.default.isCallExpression(node.expression)) {
-          const arg = node.expression.arguments[0];
-          if (arg && import_typescript4.default.isIdentifier(arg)) {
-            defaultExportName = arg.getText(sourceFile);
-          }
-        }
-      }
-      if (import_typescript4.default.isFunctionDeclaration(node) || import_typescript4.default.isClassDeclaration(node)) {
-        const modifiers = import_typescript4.default.getModifiers(node);
-        if (modifiers && modifiers.some((m) => m.kind === import_typescript4.default.SyntaxKind.DefaultKeyword) && node.name) {
-          defaultExportName = node.name.getText(sourceFile);
-        }
-      }
-    });
-    const mainComponent = defaultExportName && components.find((c) => c.name === defaultExportName) || components[components.length - 1];
-    const allComponentResults = components.map(analyzeComponent2);
-    const mainResult = allComponentResults.find((r) => r.component === mainComponent.name);
+    buildUsedByRelationships(allComponents);
+    const rootName = typedArgs.root_component ?? findRootComponent(allComponents);
+    let tree = null;
+    if (rootName) {
+      tree = buildTree(rootName, allComponents, maxDepth);
+    }
     const result = {
-      component: mainResult.component,
-      file: relativePath,
-      is_memoized: mainResult.is_memoized,
-      memo_type: mainResult.memo_type,
-      render_triggers: mainResult.render_triggers,
-      inline_definitions: mainResult.inline_definitions,
-      expensive_computations: mainResult.expensive_computations,
-      context_subscriptions: mainResult.context_subscriptions,
-      children_analysis: mainResult.children_analysis,
-      optimization_suggestions: mainResult.optimization_suggestions,
-      components: allComponentResults
+      tree,
+      components: allComponents,
+      count: allComponents.length
     };
-    return createSuccessResponse(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse(message, { file: args.file });
+    return failFromException(error2, "Analysis failed");
   }
 }
-__name(handleAnalyzeRenderTriggers, "handleAnalyzeRenderTriggers");
+__name(analyzeComponentTree, "analyzeComponentTree");
+var handleGetReactComponentTree = analyzeComponentTree;
 
-// src/handlers/stacking-context/index.ts
-var fs2 = __toESM(require("fs"), 1);
-var path3 = __toESM(require("path"), 1);
+// src/extensions/stacking-context.ts
+var fs3 = __toESM(require("fs"), 1);
+var path4 = __toESM(require("path"), 1);
 var import_typescript8 = __toESM(require_typescript(), 1);
 
-// src/handlers/stacking-context/types.ts
-var DEFAULT_STACKING_THRESHOLDS = {
-  highZIndex: 50,
-  veryHighZIndex: 9999,
-  zInflationCount: 3,
-  isolationChildZIndex: 10
-};
-
-// src/handlers/stacking-context/utils.ts
-function createSuccessResponse2(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
+// src/shared/config.ts
+function getProjectRoot() {
+  return process.env.PROJECT_ROOT || process.cwd();
 }
-__name(createSuccessResponse2, "createSuccessResponse");
-function createErrorResponse2(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse2, "createErrorResponse");
+__name(getProjectRoot, "getProjectRoot");
 
-// src/handlers/stacking-context/jsx-analyzer.ts
+// src/core/stacking/jsx-analyzer.ts
 var import_typescript6 = __toESM(require_typescript(), 1);
 
-// src/handlers/stacking-context/context-rules.ts
+// src/core/stacking/context-rules.ts
 var CONTEXT_CREATORS = {
   /**
    * Position with z-index: relative/absolute/fixed/sticky + z-*
@@ -246540,7 +246327,7 @@ function extractZIndex(classes) {
 }
 __name(extractZIndex, "extractZIndex");
 
-// src/handlers/jsx-class-utils.ts
+// src/core/jsx/class-extractor.ts
 var import_typescript5 = __toESM(require_typescript(), 1);
 function extractClassesFromNode(node, out) {
   if (import_typescript5.default.isStringLiteral(node) || import_typescript5.default.isNoSubstitutionTemplateLiteral(node)) {
@@ -246632,7 +246419,7 @@ function extractClassesFromAttribute(attr) {
 }
 __name(extractClassesFromAttribute, "extractClassesFromAttribute");
 
-// src/handlers/stacking-context/jsx-analyzer.ts
+// src/core/stacking/jsx-analyzer.ts
 function getLineNumber2(pos, sourceFile) {
   const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
   return line + 1;
@@ -246708,7 +246495,7 @@ function analyzeJsxFile(filePath, content, sourceFile) {
 }
 __name(analyzeJsxFile, "analyzeJsxFile");
 
-// src/handlers/stacking-context/tree-builder.ts
+// src/core/stacking/tree-builder.ts
 function buildStackingTree(elements) {
   const root = {
     element: "root",
@@ -246797,7 +246584,15 @@ function collectZIndexValues(elements) {
 }
 __name(collectZIndexValues, "collectZIndexValues");
 
-// src/handlers/stacking-context/issue-detector.ts
+// src/core/stacking/types.ts
+var DEFAULT_STACKING_THRESHOLDS = {
+  highZIndex: 50,
+  veryHighZIndex: 9999,
+  zInflationCount: 3,
+  isolationChildZIndex: 10
+};
+
+// src/core/stacking/issue-detector.ts
 var FLEX_GRID_CLASSES = ["flex", "grid", "inline-flex", "inline-grid"];
 var ISOLATION_CAUSING_REASONS = ["isolate", "transform", "filter", "opacity"];
 function detectStackingIssues(elements, zIndexValues, thresholds) {
@@ -246896,7 +246691,7 @@ function detectStackingIssues(elements, zIndexValues, thresholds) {
 }
 __name(detectStackingIssues, "detectStackingIssues");
 
-// src/handlers/stacking-context/portal-detector.ts
+// src/core/stacking/portal-detector.ts
 var import_typescript7 = __toESM(require_typescript(), 1);
 var CREATE_PORTAL_CONTEXT_WINDOW = 300;
 function findContainingComponent(position, sourceFile) {
@@ -246984,29 +246779,27 @@ function detectPortals(content, sourceFile) {
 }
 __name(detectPortals, "detectPortals");
 
-// src/handlers/stacking-context/index.ts
-async function handleAnalyzeStackingContext(args) {
-  const projectRoot = process.cwd();
-  const includePortals = args.include_portals ?? true;
+// src/extensions/stacking-context.ts
+async function analyzeStackingContext(args) {
+  const typedArgs = args;
+  if (!typedArgs.file) {
+    return missingArg("file");
+  }
+  const projectRoot = getProjectRoot();
+  const includePortals = typedArgs.include_portals ?? true;
   try {
-    if (!args.file) {
-      return createErrorResponse2("file argument is required");
-    }
-    const filePath = path3.isAbsolute(args.file) ? args.file : path3.resolve(projectRoot, args.file);
-    if (!fs2.existsSync(filePath)) {
-      return createErrorResponse2(`File not found: ${args.file}`, {
-        provided_path: args.file,
+    const filePath = path4.isAbsolute(typedArgs.file) ? typedArgs.file : path4.resolve(projectRoot, typedArgs.file);
+    if (!fs3.existsSync(filePath)) {
+      return fail(`File not found: ${typedArgs.file}`, {
+        provided_path: typedArgs.file,
         resolved_path: filePath
       });
     }
-    const ext = path3.extname(filePath).toLowerCase();
+    const ext = path4.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-      return createErrorResponse2(
-        `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
-        { file: args.file }
-      );
+      return invalidArg("file", `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`);
     }
-    const content = fs2.readFileSync(filePath, "utf-8");
+    const content = fs3.readFileSync(filePath, "utf-8");
     const scriptKind = ext === ".tsx" ? import_typescript8.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript8.default.ScriptKind.JSX : ext === ".ts" ? import_typescript8.default.ScriptKind.TS : import_typescript8.default.ScriptKind.JS;
     const sourceFile = import_typescript8.default.createSourceFile(
       filePath,
@@ -247016,16 +246809,16 @@ async function handleAnalyzeStackingContext(args) {
       scriptKind
     );
     let elements = analyzeJsxFile(filePath, content, sourceFile);
-    if (args.element) {
-      const filterName = args.element.toLowerCase();
+    if (typedArgs.element) {
+      const filterName = typedArgs.element.toLowerCase();
       elements = elements.filter((elem) => {
         const elemName = elem.element.split(":")[0].toLowerCase();
         return elemName.includes(filterName);
       });
     }
     if (elements.length === 0) {
-      return createSuccessResponse2({
-        file: path3.relative(projectRoot, filePath).replace(/\\/g, "/"),
+      return ok({
+        file: path4.relative(projectRoot, filePath).replace(/\\/g, "/"),
         stacking_tree: {
           element: "root",
           z_index: "auto",
@@ -247064,215 +246857,44 @@ async function handleAnalyzeStackingContext(args) {
     const minZ = zIndexNumbers.length > 0 ? Math.min(...zIndexNumbers) : 0;
     const maxZ = zIndexNumbers.length > 0 ? Math.max(...zIndexNumbers) : 0;
     const summaryParts = [];
-    summaryParts.push(`Found ${stackingContexts.length} stacking context${stackingContexts.length !== 1 ? "s" : ""}`);
+    summaryParts.push(
+      `Found ${stackingContexts.length} stacking context${stackingContexts.length !== 1 ? "s" : ""}`
+    );
     if (zIndexNumbers.length > 0) {
       summaryParts.push(`z-index range: ${minZ} to ${maxZ}`);
     }
     if (potentialIssues.length > 0) {
-      summaryParts.push(`${potentialIssues.length} potential issue${potentialIssues.length !== 1 ? "s" : ""} detected`);
+      summaryParts.push(
+        `${potentialIssues.length} potential issue${potentialIssues.length !== 1 ? "s" : ""} detected`
+      );
     }
     const summary = summaryParts.join(". ");
+    const portals = includePortals ? detectPortals(content, sourceFile) : [];
     const result = {
-      file: path3.relative(projectRoot, filePath).replace(/\\/g, "/"),
+      file: path4.relative(projectRoot, filePath).replace(/\\/g, "/"),
       stacking_tree: stackingTree,
       stacking_contexts: stackingContexts,
       context_creators: contextCreators,
       z_index_values: zIndexValues,
       potential_issues: potentialIssues,
       issues: potentialIssues,
-      // Alias for backward compatibility
-      summary
+      summary,
+      ...portals.length > 0 ? { portals } : {}
     };
-    if (includePortals) {
-      const portals = detectPortals(content, sourceFile);
-      if (portals.length > 0) {
-        result.portals = portals;
-      }
-    }
-    return createSuccessResponse2(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse2(message, { file: args.file });
+    return failFromException(error2, "Failed to analyze stacking context");
   }
 }
-__name(handleAnalyzeStackingContext, "handleAnalyzeStackingContext");
+__name(analyzeStackingContext, "analyzeStackingContext");
+var handleAnalyzeStackingContext = analyzeStackingContext;
 
-// src/handlers/analyze-layout-hierarchy.ts
-var fs3 = __toESM(require("fs"), 1);
-var path4 = __toESM(require("path"), 1);
+// src/extensions/responsive-breakpoints.ts
+var fs5 = __toESM(require("fs"), 1);
+var path6 = __toESM(require("path"), 1);
 var import_typescript10 = __toESM(require_typescript(), 1);
 
-// src/handlers/layout-hierarchy-analyzers.ts
-function detectIssues(node, context = { depth: 0 }) {
-  const issues = [];
-  if (node.sizing.height.strategy === "fixed" && node.overflow.y === "visible" && node.children.some((c) => c.sizing.height.strategy === "auto")) {
-    issues.push({
-      element: node.element,
-      issue: "Fixed height container with auto-height children may overflow without proper handling",
-      suggestion: "Add overflow-y-auto or overflow-hidden to prevent content from overflowing"
-    });
-  }
-  if (context.parentDisplay === "flex" && node.flex_props && node.flex_props.shrink === 1 && node.sizing.width.strategy === "auto") {
-    const hasFixedWidthSibling = false;
-    if (!hasFixedWidthSibling) {
-      if (node.flex_props.grow > 0 && node.flex_props.basis === "auto") {
-        issues.push({
-          element: node.element,
-          issue: "Flex item with grow but no explicit basis may collapse unexpectedly",
-          suggestion: "Consider adding flex-basis (e.g., basis-0 for equal distribution or a specific value)"
-        });
-      }
-    }
-  }
-  if ((node.display === "flex" || node.display === "inline-flex") && context.parentDisplay === "flex" && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && !node.flex_props?.basis) {
-    issues.push({
-      element: node.element,
-      issue: "Nested flex container without explicit sizing may have unpredictable dimensions",
-      suggestion: "Consider adding explicit width/height or flex-basis for more predictable layout behavior"
-    });
-  }
-  if ((node.display === "grid" || node.display === "inline-grid") && !node.grid_props?.template_columns) {
-    issues.push({
-      element: node.element,
-      issue: "Grid container without explicit column template - items will stack in single column",
-      suggestion: "Add grid-cols-N or grid-template-columns to define the grid structure"
-    });
-  }
-  if ((node.position === "absolute" || node.position === "fixed") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto") {
-    issues.push({
-      element: node.element,
-      issue: `${node.position} positioned element without explicit dimensions may have zero size`,
-      suggestion: "Add explicit width/height or use inset properties (inset-0, left/right, top/bottom)"
-    });
-  }
-  if (node.sizing.height.strategy === "percentage" && context.parentSizing?.height.strategy === "auto") {
-    issues.push({
-      element: node.element,
-      issue: "Percentage height on element with auto-height parent will have no effect",
-      suggestion: "Ensure parent has explicit height or use flex/grid for height distribution"
-    });
-  }
-  if ((node.overflow.x === "scroll" || node.overflow.y === "scroll" || node.overflow.x === "auto" || node.overflow.y === "auto") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && node.display !== "flex" && context.parentDisplay !== "flex") {
-    issues.push({
-      element: node.element,
-      issue: "Overflow scroll/auto without constrained dimensions may not scroll as expected",
-      suggestion: "Add explicit height/width or use flex layout to constrain the scrollable area"
-    });
-  }
-  const childContext = {
-    parentDisplay: node.display,
-    parentSizing: node.sizing,
-    parentOverflow: node.overflow,
-    parentPosition: node.position,
-    depth: context.depth + 1
-  };
-  for (const child of node.children) {
-    issues.push(...detectIssues(child, childContext));
-  }
-  return issues;
-}
-__name(detectIssues, "detectIssues");
-function generateConstraintNotes(node, notes = [], path23 = "") {
-  const currentPath = path23 ? `${path23} > ${node.element}` : node.element;
-  if (node.sizing.width.strategy === "fixed" && node.sizing.width.value) {
-    notes.push(`${currentPath}: Fixed width of ${node.sizing.width.value}`);
-  }
-  if (node.sizing.height.strategy === "fixed" && node.sizing.height.value) {
-    notes.push(`${currentPath}: Fixed height of ${node.sizing.height.value}`);
-  }
-  if (node.sizing.width.strategy === "percentage" && node.sizing.width.value) {
-    notes.push(`${currentPath}: Width constrained to ${node.sizing.width.value} of parent`);
-  }
-  if (node.sizing.height.strategy === "percentage" && node.sizing.height.value) {
-    notes.push(`${currentPath}: Height constrained to ${node.sizing.height.value} of parent`);
-  }
-  if (node.display === "flex" && node.flex_props) {
-    const flexDesc = [];
-    if (node.flex_props.direction !== "row") {
-      flexDesc.push(`direction: ${node.flex_props.direction}`);
-    }
-    if (node.flex_props.gap) {
-      flexDesc.push(`gap: ${node.flex_props.gap}`);
-    }
-    if (node.flex_props.justify && node.flex_props.justify !== "flex-start") {
-      flexDesc.push(`justify: ${node.flex_props.justify}`);
-    }
-    if (node.flex_props.align && node.flex_props.align !== "stretch") {
-      flexDesc.push(`align: ${node.flex_props.align}`);
-    }
-    if (flexDesc.length > 0) {
-      notes.push(`${currentPath}: Flex container (${flexDesc.join(", ")})`);
-    }
-  }
-  if (node.display === "grid" && node.grid_props) {
-    const gridDesc = [];
-    if (node.grid_props.template_columns) {
-      gridDesc.push(`columns: ${node.grid_props.template_columns}`);
-    }
-    if (node.grid_props.template_rows) {
-      gridDesc.push(`rows: ${node.grid_props.template_rows}`);
-    }
-    if (node.grid_props.gap) {
-      gridDesc.push(`gap: ${node.grid_props.gap}`);
-    }
-    if (gridDesc.length > 0) {
-      notes.push(`${currentPath}: Grid container (${gridDesc.join(", ")})`);
-    }
-  }
-  if (node.overflow.x !== "visible" || node.overflow.y !== "visible") {
-    const overflowDesc = node.overflow.x === node.overflow.y ? node.overflow.x : `x: ${node.overflow.x}, y: ${node.overflow.y}`;
-    notes.push(`${currentPath}: Overflow handling (${overflowDesc})`);
-  }
-  if (node.position !== "static") {
-    notes.push(`${currentPath}: Positioned (${node.position})`);
-  }
-  for (const child of node.children) {
-    generateConstraintNotes(child, notes, currentPath);
-  }
-  return notes;
-}
-__name(generateConstraintNotes, "generateConstraintNotes");
-function generateSummary(tree, issues) {
-  const parts = [];
-  const displayCounts = {};
-  const positionCounts = {};
-  function countNodes(node) {
-    displayCounts[node.display] = (displayCounts[node.display] || 0) + 1;
-    if (node.position !== "static") {
-      positionCounts[node.position] = (positionCounts[node.position] || 0) + 1;
-    }
-    node.children.forEach(countNodes);
-  }
-  __name(countNodes, "countNodes");
-  countNodes(tree);
-  parts.push(`Root element: ${tree.element}`);
-  const layoutTypes = [];
-  if (displayCounts.flex || displayCounts["inline-flex"]) {
-    layoutTypes.push(`${(displayCounts.flex || 0) + (displayCounts["inline-flex"] || 0)} flex containers`);
-  }
-  if (displayCounts.grid || displayCounts["inline-grid"]) {
-    layoutTypes.push(`${(displayCounts.grid || 0) + (displayCounts["inline-grid"] || 0)} grid containers`);
-  }
-  if (layoutTypes.length > 0) {
-    parts.push(`Layout structure: ${layoutTypes.join(", ")}`);
-  }
-  const positionTypes = Object.entries(positionCounts).map(([type, count]) => `${count} ${type}`).join(", ");
-  if (positionTypes) {
-    parts.push(`Positioned elements: ${positionTypes}`);
-  }
-  if (issues.length === 0) {
-    parts.push("No potential layout issues detected.");
-  } else {
-    parts.push(`${issues.length} potential issue${issues.length > 1 ? "s" : ""} detected.`);
-  }
-  return parts.join(". ");
-}
-__name(generateSummary, "generateSummary");
-
-// src/handlers/layout-hierarchy-core.ts
-var import_typescript9 = __toESM(require_typescript(), 1);
-
-// src/handlers/layout-hierarchy-utils.ts
+// src/core/tailwind/constants.ts
 var TAILWIND_SPACING = {
   "0": "0px",
   "px": "1px",
@@ -247338,6 +246960,2365 @@ var TAILWIND_FRACTIONS = {
   "10/12": "83.333333%",
   "11/12": "91.666667%"
 };
+var MAX_WIDTH_VALUES = {
+  "none": "none",
+  "xs": "20rem",
+  "sm": "24rem",
+  "md": "28rem",
+  "lg": "32rem",
+  "xl": "36rem",
+  "2xl": "42rem",
+  "3xl": "48rem",
+  "4xl": "56rem",
+  "5xl": "64rem",
+  "6xl": "72rem",
+  "7xl": "80rem",
+  "full": "100%",
+  "min": "min-content",
+  "max": "max-content",
+  "fit": "fit-content",
+  "prose": "65ch",
+  "screen-sm": "640px",
+  "screen-md": "768px",
+  "screen-lg": "1024px",
+  "screen-xl": "1280px",
+  "screen-2xl": "1536px"
+};
+var BREAKPOINT_SIZES = {
+  base: "0px",
+  sm: "640px",
+  md: "768px",
+  lg: "1024px",
+  xl: "1280px",
+  "2xl": "1536px"
+};
+var CLASS_TO_PROPERTY = {
+  // Display
+  flex: "display",
+  grid: "display",
+  block: "display",
+  hidden: "display",
+  inline: "display",
+  "inline-block": "display",
+  "inline-flex": "display",
+  "inline-grid": "display",
+  contents: "display",
+  "flow-root": "display",
+  // Flex direction
+  "flex-row": "flex-direction",
+  "flex-col": "flex-direction",
+  "flex-row-reverse": "flex-direction",
+  "flex-col-reverse": "flex-direction",
+  // Flex wrap
+  "flex-wrap": "flex-wrap",
+  "flex-nowrap": "flex-wrap",
+  "flex-wrap-reverse": "flex-wrap",
+  // Justify content
+  "justify-start": "justify-content",
+  "justify-end": "justify-content",
+  "justify-center": "justify-content",
+  "justify-between": "justify-content",
+  "justify-around": "justify-content",
+  "justify-evenly": "justify-content",
+  // Align items
+  "items-start": "align-items",
+  "items-end": "align-items",
+  "items-center": "align-items",
+  "items-baseline": "align-items",
+  "items-stretch": "align-items",
+  // Grid columns
+  "grid-cols-1": "grid-template-columns",
+  "grid-cols-2": "grid-template-columns",
+  "grid-cols-3": "grid-template-columns",
+  "grid-cols-4": "grid-template-columns",
+  "grid-cols-5": "grid-template-columns",
+  "grid-cols-6": "grid-template-columns",
+  "grid-cols-7": "grid-template-columns",
+  "grid-cols-8": "grid-template-columns",
+  "grid-cols-9": "grid-template-columns",
+  "grid-cols-10": "grid-template-columns",
+  "grid-cols-11": "grid-template-columns",
+  "grid-cols-12": "grid-template-columns",
+  "grid-cols-none": "grid-template-columns",
+  "grid-cols-subgrid": "grid-template-columns",
+  // Grid rows
+  "grid-rows-1": "grid-template-rows",
+  "grid-rows-2": "grid-template-rows",
+  "grid-rows-3": "grid-template-rows",
+  "grid-rows-4": "grid-template-rows",
+  "grid-rows-5": "grid-template-rows",
+  "grid-rows-6": "grid-template-rows",
+  "grid-rows-none": "grid-template-rows",
+  "grid-rows-subgrid": "grid-template-rows",
+  // Order
+  "order-first": "order",
+  "order-last": "order",
+  "order-none": "order",
+  // Position
+  static: "position",
+  fixed: "position",
+  absolute: "position",
+  relative: "position",
+  sticky: "position",
+  // Visibility
+  visible: "visibility",
+  invisible: "visibility",
+  collapse: "visibility",
+  // Overflow
+  "overflow-auto": "overflow",
+  "overflow-hidden": "overflow",
+  "overflow-clip": "overflow",
+  "overflow-visible": "overflow",
+  "overflow-scroll": "overflow",
+  "overflow-x-auto": "overflow-x",
+  "overflow-y-auto": "overflow-y",
+  "overflow-x-hidden": "overflow-x",
+  "overflow-y-hidden": "overflow-y",
+  "overflow-x-scroll": "overflow-x",
+  "overflow-y-scroll": "overflow-y",
+  // Text alignment
+  "text-left": "text-align",
+  "text-center": "text-align",
+  "text-right": "text-align",
+  "text-justify": "text-align",
+  "text-start": "text-align",
+  "text-end": "text-align",
+  // Float
+  "float-start": "float",
+  "float-end": "float",
+  "float-right": "float",
+  "float-left": "float",
+  "float-none": "float"
+};
+var CLASS_PREFIX_TO_PROPERTY = [
+  // Width
+  [/^w-/, "width"],
+  [/^min-w-/, "min-width"],
+  [/^max-w-/, "max-width"],
+  // Height
+  [/^h-/, "height"],
+  [/^min-h-/, "min-height"],
+  [/^max-h-/, "max-height"],
+  // Sizing
+  [/^size-/, "size"],
+  // Gap
+  [/^gap-/, "gap"],
+  [/^gap-x-/, "column-gap"],
+  [/^gap-y-/, "row-gap"],
+  // Padding
+  [/^p-/, "padding"],
+  [/^px-/, "padding-inline"],
+  [/^py-/, "padding-block"],
+  [/^pt-/, "padding-top"],
+  [/^pr-/, "padding-right"],
+  [/^pb-/, "padding-bottom"],
+  [/^pl-/, "padding-left"],
+  [/^ps-/, "padding-inline-start"],
+  [/^pe-/, "padding-inline-end"],
+  // Margin
+  [/^m-/, "margin"],
+  [/^mx-/, "margin-inline"],
+  [/^my-/, "margin-block"],
+  [/^mt-/, "margin-top"],
+  [/^mr-/, "margin-right"],
+  [/^mb-/, "margin-bottom"],
+  [/^ml-/, "margin-left"],
+  [/^ms-/, "margin-inline-start"],
+  [/^me-/, "margin-inline-end"],
+  [/^-m-/, "margin"],
+  [/^-mx-/, "margin-inline"],
+  [/^-my-/, "margin-block"],
+  [/^-mt-/, "margin-top"],
+  [/^-mr-/, "margin-right"],
+  [/^-mb-/, "margin-bottom"],
+  [/^-ml-/, "margin-left"],
+  // Space between
+  [/^space-x-/, "space-x"],
+  [/^space-y-/, "space-y"],
+  [/^-space-x-/, "space-x"],
+  [/^-space-y-/, "space-y"],
+  // Font size
+  [/^text-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)$/, "font-size"],
+  // Font weight
+  [/^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$/, "font-weight"],
+  // Line height
+  [/^leading-/, "line-height"],
+  // Flex
+  [/^flex-1$/, "flex"],
+  [/^flex-auto$/, "flex"],
+  [/^flex-initial$/, "flex"],
+  [/^flex-none$/, "flex"],
+  [/^flex-grow/, "flex-grow"],
+  [/^flex-shrink/, "flex-shrink"],
+  [/^grow/, "flex-grow"],
+  [/^shrink/, "flex-shrink"],
+  [/^basis-/, "flex-basis"],
+  // Grid span
+  [/^col-span-/, "grid-column"],
+  [/^col-start-/, "grid-column-start"],
+  [/^col-end-/, "grid-column-end"],
+  [/^row-span-/, "grid-row"],
+  [/^row-start-/, "grid-row-start"],
+  [/^row-end-/, "grid-row-end"],
+  // Positioning
+  [/^inset-/, "inset"],
+  [/^top-/, "top"],
+  [/^right-/, "right"],
+  [/^bottom-/, "bottom"],
+  [/^left-/, "left"],
+  [/^start-/, "inset-inline-start"],
+  [/^end-/, "inset-inline-end"],
+  [/^-inset-/, "inset"],
+  [/^-top-/, "top"],
+  [/^-right-/, "right"],
+  [/^-bottom-/, "bottom"],
+  [/^-left-/, "left"],
+  // Z-index
+  [/^z-/, "z-index"],
+  [/^-z-/, "z-index"],
+  // Order
+  [/^order-\d+$/, "order"],
+  [/^-order-\d+$/, "order"],
+  // Aspect ratio
+  [/^aspect-/, "aspect-ratio"],
+  // Object fit/position
+  [/^object-(contain|cover|fill|none|scale-down)$/, "object-fit"],
+  [/^object-(bottom|center|left|left-bottom|left-top|right|right-bottom|right-top|top)$/, "object-position"],
+  // Container
+  [/^container$/, "container"],
+  // Columns
+  [/^columns-/, "columns"],
+  // Break
+  [/^break-after-/, "break-after"],
+  [/^break-before-/, "break-before"],
+  [/^break-inside-/, "break-inside"],
+  // Box decoration
+  [/^box-decoration-/, "box-decoration-break"],
+  [/^box-/, "box-sizing"],
+  // Isolation
+  [/^isolate/, "isolation"]
+];
+
+// src/core/responsive/class-parser.ts
+function parseClassName(className) {
+  const cleaned = className.replace(/\$\{[^}]+\}/g, " ").replace(/`/g, "").replace(/\s+/g, " ").trim();
+  return cleaned.split(" ").filter((c) => c.length > 0);
+}
+__name(parseClassName, "parseClassName");
+function parseBreakpointClasses(classes, breakpoints) {
+  const result = { base: [] };
+  const bpPattern = breakpoints.filter((bp) => bp.length <= 20).map((bp) => bp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const breakpointRegex = bpPattern.length > 0 ? new RegExp(`^(${bpPattern}):(.+)$`) : null;
+  for (const cls of classes) {
+    const match = breakpointRegex ? cls.match(breakpointRegex) : null;
+    if (match) {
+      const [, breakpoint, utility] = match;
+      if (!result[breakpoint])
+        result[breakpoint] = [];
+      result[breakpoint].push(utility);
+    } else {
+      result.base.push(cls);
+    }
+  }
+  return result;
+}
+__name(parseBreakpointClasses, "parseBreakpointClasses");
+function getPropertyFromClass(cls) {
+  if (CLASS_TO_PROPERTY[cls]) {
+    return CLASS_TO_PROPERTY[cls];
+  }
+  for (const [pattern, property] of CLASS_PREFIX_TO_PROPERTY) {
+    if (pattern.test(cls)) {
+      return property;
+    }
+  }
+  return null;
+}
+__name(getPropertyFromClass, "getPropertyFromClass");
+function trackPropertyChanges(breakpointClasses, breakpoints) {
+  const properties = /* @__PURE__ */ new Map();
+  for (const cls of breakpointClasses.base) {
+    const property = getPropertyFromClass(cls);
+    if (!property)
+      continue;
+    if (!properties.has(property)) {
+      properties.set(property, {
+        property,
+        base_value: cls,
+        transitions: []
+      });
+    } else {
+      properties.get(property).base_value = cls;
+    }
+  }
+  for (const bp of breakpoints) {
+    const classes = breakpointClasses[bp];
+    if (!classes)
+      continue;
+    for (const cls of classes) {
+      const property = getPropertyFromClass(cls);
+      if (!property)
+        continue;
+      if (!properties.has(property)) {
+        properties.set(property, {
+          property,
+          base_value: "",
+          transitions: [{ breakpoint: bp, value: cls }]
+        });
+      } else {
+        properties.get(property).transitions.push({ breakpoint: bp, value: cls });
+      }
+    }
+  }
+  return [...properties.values()].filter(
+    (p) => p.base_value !== "" || p.transitions.length > 0
+  );
+}
+__name(trackPropertyChanges, "trackPropertyChanges");
+
+// src/core/responsive/issue-detector.ts
+function detectIssues(elements, breakpoints) {
+  const warnings = [];
+  const smallestBreakpoint = breakpoints[0];
+  for (const el of elements) {
+    for (const change of el.property_changes) {
+      if (change.base_value === "" && change.transitions.length > 0) {
+        const firstBreakpoint = change.transitions[0].breakpoint;
+        if (firstBreakpoint !== smallestBreakpoint) {
+          warnings.push({
+            element: el.element,
+            breakpoint: firstBreakpoint,
+            issue: `Desktop-first pattern: "${change.property}" only defined at ${firstBreakpoint}: breakpoint with no mobile base`,
+            suggestion: `Add base mobile class for ${change.property} (mobile-first approach)`
+          });
+        }
+      }
+    }
+    const hasHiddenBase = el.classes_by_breakpoint.base.includes("hidden");
+    const hasBlockBreakpoint = breakpoints.some((bp) => {
+      const classes = el.classes_by_breakpoint[bp];
+      return classes?.some((c) => ["block", "flex", "grid", "inline", "inline-block", "inline-flex", "inline-grid"].includes(c));
+    });
+    if (hasHiddenBase && !hasBlockBreakpoint) {
+      warnings.push({
+        element: el.element,
+        issue: "Element hidden on mobile but never shown at larger breakpoints",
+        suggestion: "Add a breakpoint display class (e.g., md:block) to show the element on larger screens"
+      });
+    }
+    const usedBreakpoints = breakpoints.filter((bp) => {
+      const classes = el.classes_by_breakpoint[bp];
+      return classes && classes.length > 0;
+    });
+    if (usedBreakpoints.length >= 2) {
+      const indices = usedBreakpoints.map((bp) => breakpoints.indexOf(bp));
+      for (let i = 1; i < indices.length; i++) {
+        const gap = indices[i] - indices[i - 1];
+        if (gap > 1) {
+          const skippedBreakpoints = breakpoints.slice(indices[i - 1] + 1, indices[i]);
+          warnings.push({
+            element: el.element,
+            issue: `Breakpoint gap: defined at ${usedBreakpoints[i - 1]} and ${usedBreakpoints[i]}, skipping ${skippedBreakpoints.join(", ")}`,
+            suggestion: `Consider if ${skippedBreakpoints.join(", ")} breakpoints need specific styling`
+          });
+        }
+      }
+    }
+    const flexDirectionChanges = el.property_changes.find((p) => p.property === "flex-direction");
+    if (flexDirectionChanges && flexDirectionChanges.transitions.length > 0) {
+      const hasBaseDirection = flexDirectionChanges.base_value !== "";
+      if (!hasBaseDirection) {
+        warnings.push({
+          element: el.element,
+          issue: "flex-direction changes at breakpoint without base direction",
+          suggestion: "Add base flex-direction class (e.g., flex-col for mobile, then md:flex-row)"
+        });
+      }
+    }
+    for (const [bpKey, classes] of Object.entries(el.classes_by_breakpoint)) {
+      if (!classes)
+        continue;
+      const displayClasses = classes.filter((c) => getPropertyFromClass(c) === "display");
+      if (displayClasses.length > 1) {
+        warnings.push({
+          element: el.element,
+          breakpoint: bpKey === "base" ? void 0 : bpKey,
+          issue: `Multiple display classes at ${bpKey}: ${displayClasses.join(", ")}`,
+          suggestion: "Use only one display class per breakpoint"
+        });
+      }
+    }
+  }
+  return warnings;
+}
+__name(detectIssues, "detectIssues");
+
+// src/core/responsive/jsx-extractor.ts
+var import_typescript9 = __toESM(require_typescript(), 1);
+function extractClassNames(sourceFile, elementFilter) {
+  const results = [];
+  let elementCounter = 0;
+  function getElementName(node) {
+    return node.tagName.getText(sourceFile);
+  }
+  __name(getElementName, "getElementName");
+  function getLineNumber7(node) {
+    const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    return line + 1;
+  }
+  __name(getLineNumber7, "getLineNumber");
+  function extractStringValue(node) {
+    if (import_typescript9.default.isStringLiteral(node)) {
+      return node.text;
+    }
+    if (import_typescript9.default.isNoSubstitutionTemplateLiteral(node)) {
+      return node.text;
+    }
+    if (import_typescript9.default.isTemplateExpression(node)) {
+      let result = node.head.text;
+      for (const span of node.templateSpans) {
+        const spanText = span.literal.text.split(/\s+/).filter(Boolean).join(" ");
+        if (spanText)
+          result += " " + spanText;
+      }
+      return result;
+    }
+    if (import_typescript9.default.isJsxExpression(node) && node.expression) {
+      return extractStringValue(node.expression);
+    }
+    if (import_typescript9.default.isCallExpression(node)) {
+      const classes = [];
+      for (const arg of node.arguments) {
+        extractClassesFromNode(arg, classes);
+      }
+      return classes.join(" ");
+    }
+    if (import_typescript9.default.isConditionalExpression(node)) {
+      return extractStringValue(node.whenTrue) + " " + extractStringValue(node.whenFalse);
+    }
+    if (import_typescript9.default.isBinaryExpression(node) && node.operatorToken.kind === import_typescript9.default.SyntaxKind.PlusToken) {
+      return extractStringValue(node.left) + " " + extractStringValue(node.right);
+    }
+    if (import_typescript9.default.isBinaryExpression(node) && node.operatorToken.kind === import_typescript9.default.SyntaxKind.AmpersandAmpersandToken) {
+      return extractStringValue(node.right);
+    }
+    if (import_typescript9.default.isParenthesizedExpression(node)) {
+      return extractStringValue(node.expression);
+    }
+    return "";
+  }
+  __name(extractStringValue, "extractStringValue");
+  function processAttributes(attributes, elementName, line) {
+    for (const attr of attributes.properties) {
+      if (import_typescript9.default.isJsxAttribute(attr) && attr.name) {
+        const attrName = attr.name.getText(sourceFile);
+        if (attrName === "className" || attrName === "class") {
+          let classValue = "";
+          if (attr.initializer) {
+            if (import_typescript9.default.isStringLiteral(attr.initializer)) {
+              classValue = attr.initializer.text;
+            } else if (import_typescript9.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+              classValue = extractStringValue(attr.initializer.expression);
+            }
+          }
+          if (classValue.trim()) {
+            elementCounter++;
+            const elementId = `${elementName}#${elementCounter}`;
+            if (!elementFilter || elementId.includes(elementFilter) || elementName.includes(elementFilter)) {
+              results.push({
+                element: elementId,
+                className: classValue,
+                line
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+  __name(processAttributes, "processAttributes");
+  function visit(node) {
+    if (import_typescript9.default.isJsxOpeningElement(node)) {
+      const elementName = getElementName(node);
+      const line = getLineNumber7(node);
+      processAttributes(node.attributes, elementName, line);
+    } else if (import_typescript9.default.isJsxSelfClosingElement(node)) {
+      const elementName = getElementName(node);
+      const line = getLineNumber7(node);
+      processAttributes(node.attributes, elementName, line);
+    }
+    import_typescript9.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return results;
+}
+__name(extractClassNames, "extractClassNames");
+
+// src/core/responsive/breakpoint-resolver.ts
+var fs4 = __toESM(require("fs"), 1);
+var path5 = __toESM(require("path"), 1);
+var TAILWIND_CONFIG_FILES = [
+  "tailwind.config.js",
+  "tailwind.config.ts",
+  "tailwind.config.mjs",
+  "tailwind.config.cjs"
+];
+function parsePx(value) {
+  const pxMatch = value.match(/^(\d+(?:\.\d+)?)px$/);
+  if (pxMatch)
+    return parseFloat(pxMatch[1]);
+  const remMatch = value.match(/^(\d+(?:\.\d+)?)r?em$/);
+  if (remMatch)
+    return parseFloat(remMatch[1]) * 16;
+  return Infinity;
+}
+__name(parsePx, "parsePx");
+function sortBreakpointsBySize(names, sizes) {
+  return [...names].sort((a, b) => parsePx(sizes[a] ?? "0px") - parsePx(sizes[b] ?? "0px"));
+}
+__name(sortBreakpointsBySize, "sortBreakpointsBySize");
+function extractBracedBlock(content, keyword) {
+  const startIdx = content.indexOf(keyword);
+  if (startIdx === -1)
+    return null;
+  const braceStart = content.indexOf("{", startIdx);
+  if (braceStart === -1)
+    return null;
+  let depth = 0;
+  for (let i = braceStart; i < content.length; i++) {
+    if (content[i] === "{")
+      depth++;
+    if (content[i] === "}")
+      depth--;
+    if (depth === 0)
+      return content.slice(braceStart + 1, i);
+  }
+  return null;
+}
+__name(extractBracedBlock, "extractBracedBlock");
+function parseTailwindScreens(content) {
+  const screensBlock = extractBracedBlock(content, "screens");
+  if (!screensBlock)
+    return null;
+  const result = {};
+  let foundAny = false;
+  const stringValuePattern = /['"]?(\w+(?:-\w+)*)['"]?\s*:\s*['"]([^'"]+)['"]\s*(?:,|$)/g;
+  let m;
+  while ((m = stringValuePattern.exec(screensBlock)) !== null) {
+    const [, name, value] = m;
+    if (value.includes("(") || value.includes("$") || value.includes(" "))
+      continue;
+    result[name] = value;
+    foundAny = true;
+  }
+  const objectValuePattern = /['"]?(\w+(?:-\w+)*)['"]?\s*:\s*\{[^}]*['"]([0-9]+px)['"][^}]*\}/g;
+  while ((m = objectValuePattern.exec(screensBlock)) !== null) {
+    const [, name, value] = m;
+    if (!result[name]) {
+      result[name] = value;
+      foundAny = true;
+    }
+  }
+  return foundAny ? result : null;
+}
+__name(parseTailwindScreens, "parseTailwindScreens");
+function readTailwindConfig(projectRoot) {
+  for (const configFile of TAILWIND_CONFIG_FILES) {
+    const configPath = path5.join(projectRoot, configFile);
+    const resolved = path5.resolve(configPath);
+    if (!resolved.startsWith(path5.resolve(projectRoot) + path5.sep))
+      continue;
+    if (!fs4.existsSync(configPath))
+      continue;
+    try {
+      const content = fs4.readFileSync(configPath, "utf-8");
+      const parsed = parseTailwindScreens(content);
+      if (parsed)
+        return parsed;
+    } catch {
+    }
+    break;
+  }
+  return null;
+}
+__name(readTailwindConfig, "readTailwindConfig");
+function resolveBreakpoints(explicitBreakpoints, projectRoot) {
+  const root = projectRoot ?? getProjectRoot();
+  let mergedSizes = { ...BREAKPOINT_SIZES };
+  if (explicitBreakpoints && Object.keys(explicitBreakpoints).length > 0) {
+    for (const [name, size] of Object.entries(explicitBreakpoints)) {
+      if (name !== "base")
+        mergedSizes[name] = size;
+    }
+  } else {
+    const tailwindScreens = readTailwindConfig(root);
+    if (tailwindScreens) {
+      for (const [name, size] of Object.entries(tailwindScreens)) {
+        if (name !== "base")
+          mergedSizes[name] = size;
+      }
+    }
+  }
+  mergedSizes["base"] = "0px";
+  const breakpointNames = Object.keys(mergedSizes).filter((k) => k !== "base");
+  const sortedBreakpoints = sortBreakpointsBySize(breakpointNames, mergedSizes);
+  return {
+    breakpoints: sortedBreakpoints,
+    sizes: mergedSizes
+  };
+}
+__name(resolveBreakpoints, "resolveBreakpoints");
+
+// src/extensions/responsive-breakpoints.ts
+async function analyzeResponsiveBreakpoints(args) {
+  const typedArgs = args;
+  const projectRoot = getProjectRoot();
+  if (!typedArgs.file) {
+    return missingArg("file");
+  }
+  try {
+    const { breakpoints, sizes } = resolveBreakpoints(typedArgs.breakpoints, projectRoot);
+    const filePath = path6.isAbsolute(typedArgs.file) ? typedArgs.file : path6.resolve(projectRoot, typedArgs.file);
+    if (!fs5.existsSync(filePath)) {
+      return fail(`File not found: ${typedArgs.file}`, {
+        provided_path: typedArgs.file,
+        resolved_path: filePath
+      });
+    }
+    const ext = path6.extname(filePath).toLowerCase();
+    if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
+      return fail(`Unsupported file type: ${ext}. Expected .tsx, .jsx, .ts, or .js`, {
+        file: typedArgs.file
+      });
+    }
+    const content = fs5.readFileSync(filePath, "utf-8");
+    const scriptKind = ext === ".tsx" ? import_typescript10.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript10.default.ScriptKind.JSX : ext === ".ts" ? import_typescript10.default.ScriptKind.TS : import_typescript10.default.ScriptKind.JS;
+    const sourceFile = import_typescript10.default.createSourceFile(
+      filePath,
+      content,
+      import_typescript10.default.ScriptTarget.Latest,
+      true,
+      scriptKind
+    );
+    const classNameExtractions = extractClassNames(sourceFile, typedArgs.element);
+    const buildEmptyCoverage = /* @__PURE__ */ __name(() => {
+      const coverage = { base: false };
+      for (const bp of breakpoints) {
+        coverage[bp] = false;
+      }
+      return coverage;
+    }, "buildEmptyCoverage");
+    const relativeFile = path6.relative(projectRoot, filePath).replace(/\\/g, "/");
+    if (classNameExtractions.length === 0) {
+      return ok({
+        file: relativeFile,
+        breakpoints_used: [],
+        breakpoint_coverage: buildEmptyCoverage(),
+        elements: [],
+        issues: [],
+        summary: "No className attributes found in file."
+      });
+    }
+    const elements = [];
+    const allBreakpointsUsed = /* @__PURE__ */ new Set();
+    const breakpointCoverage = buildEmptyCoverage();
+    for (const extraction of classNameExtractions) {
+      const classes = parseClassName(extraction.className);
+      const breakpointClasses = parseBreakpointClasses(classes, breakpoints);
+      const propertyChanges = trackPropertyChanges(breakpointClasses, breakpoints);
+      if (breakpointClasses.base.length > 0) {
+        allBreakpointsUsed.add("base");
+        breakpointCoverage.base = true;
+      }
+      for (const bp of breakpoints) {
+        if (breakpointClasses[bp] && breakpointClasses[bp].length > 0) {
+          allBreakpointsUsed.add(bp);
+          breakpointCoverage[bp] = true;
+        }
+      }
+      elements.push({
+        element: extraction.element,
+        classes_by_breakpoint: breakpointClasses,
+        property_changes: propertyChanges
+      });
+    }
+    const issues = detectIssues(elements, breakpoints);
+    const breakpointsUsed = Array.from(allBreakpointsUsed).sort((a, b) => {
+      const order = ["base", ...breakpoints];
+      return order.indexOf(a) - order.indexOf(b);
+    });
+    const midIndex = Math.ceil(breakpoints.length / 2);
+    const largeBreakpoints = new Set(breakpoints.slice(midIndex));
+    let mobileFirst = true;
+    let desktopFirstCount = 0;
+    for (const el of elements) {
+      for (const change of el.property_changes) {
+        if (change.base_value === "" && change.transitions.length > 0) {
+          const firstBp = change.transitions[0].breakpoint;
+          if (largeBreakpoints.has(firstBp)) {
+            desktopFirstCount++;
+          }
+        }
+      }
+    }
+    if (desktopFirstCount > elements.length / 2) {
+      mobileFirst = false;
+    }
+    const notes = [];
+    notes.push(`Analyzed ${elements.length} elements with className attributes`);
+    if (!breakpointCoverage.base && elements.length > 0) {
+      notes.push(
+        "Warning: No base (mobile) styles defined - consider mobile-first approach"
+      );
+    }
+    if (mobileFirst) {
+      notes.push("Using mobile-first responsive pattern");
+    } else {
+      notes.push(
+        "Detected desktop-first patterns - consider refactoring to mobile-first"
+      );
+    }
+    if (issues.length > 0) {
+      notes.push(`Found ${issues.length} potential responsive design issues`);
+    }
+    if (breakpointsUsed.length > 0) {
+      notes.push(`Breakpoints used: ${breakpointsUsed.join(", ")}`);
+    }
+    const usedSizes = breakpointsUsed.map((bp) => `${bp}: ${sizes[bp]}`);
+    if (usedSizes.length > 0) {
+      notes.push(`Breakpoint sizes: ${usedSizes.join(", ")}`);
+    }
+    const summaryText = notes.join(". ") + (notes.length > 0 ? "." : "");
+    const result = {
+      file: relativeFile,
+      breakpoints_used: breakpointsUsed,
+      breakpoint_coverage: breakpointCoverage,
+      elements,
+      issues,
+      summary: summaryText
+    };
+    return ok(result);
+  } catch (error2) {
+    return failFromException(error2, "Responsive breakpoints analysis failed");
+  }
+}
+__name(analyzeResponsiveBreakpoints, "analyzeResponsiveBreakpoints");
+var handleAnalyzeResponsiveBreakpoints = analyzeResponsiveBreakpoints;
+
+// src/extensions/component-state.ts
+var fs6 = __toESM(require("fs"), 1);
+var path7 = __toESM(require("path"), 1);
+var import_typescript17 = __toESM(require_typescript(), 1);
+
+// src/core/component-state/detector.ts
+var import_typescript11 = __toESM(require_typescript(), 1);
+function containsJsxReturn3(node) {
+  let hasJsx = false;
+  function visit(n) {
+    if (import_typescript11.default.isJsxElement(n) || import_typescript11.default.isJsxSelfClosingElement(n) || import_typescript11.default.isJsxFragment(n)) {
+      hasJsx = true;
+      return;
+    }
+    if (!hasJsx) {
+      import_typescript11.default.forEachChild(n, visit);
+    }
+  }
+  __name(visit, "visit");
+  visit(node);
+  return hasJsx;
+}
+__name(containsJsxReturn3, "containsJsxReturn");
+function isReactComponent2(node, sourceFile) {
+  if (import_typescript11.default.isFunctionDeclaration(node) && node.name) {
+    const name = node.name.getText(sourceFile);
+    if (/^[A-Z]/.test(name)) {
+      return containsJsxReturn3(node);
+    }
+  }
+  if (import_typescript11.default.isVariableStatement(node)) {
+    for (const decl of node.declarationList.declarations) {
+      if (import_typescript11.default.isIdentifier(decl.name)) {
+        const name = decl.name.getText(sourceFile);
+        if (/^[A-Z]/.test(name) && decl.initializer) {
+          if (import_typescript11.default.isArrowFunction(decl.initializer) || import_typescript11.default.isFunctionExpression(decl.initializer)) {
+            return containsJsxReturn3(decl.initializer);
+          }
+          if (import_typescript11.default.isCallExpression(decl.initializer)) {
+            const callExpr = decl.initializer;
+            const callText = callExpr.expression.getText(sourceFile);
+            if (/^(React\.)?(memo|forwardRef)$/.test(callText)) {
+              const firstArg = callExpr.arguments[0];
+              if (firstArg && (import_typescript11.default.isArrowFunction(firstArg) || import_typescript11.default.isFunctionExpression(firstArg))) {
+                return containsJsxReturn3(firstArg);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+__name(isReactComponent2, "isReactComponent");
+function getComponentName2(node, sourceFile) {
+  if (import_typescript11.default.isFunctionDeclaration(node) && node.name) {
+    return node.name.getText(sourceFile);
+  }
+  if (import_typescript11.default.isVariableStatement(node)) {
+    for (const decl of node.declarationList.declarations) {
+      if (import_typescript11.default.isIdentifier(decl.name)) {
+        return decl.name.getText(sourceFile);
+      }
+    }
+  }
+  return null;
+}
+__name(getComponentName2, "getComponentName");
+
+// src/core/component-state/hook-analyzer.ts
+var import_typescript13 = __toESM(require_typescript(), 1);
+
+// src/core/component-state/utils.ts
+var import_typescript12 = __toESM(require_typescript(), 1);
+function getTypeString(node, sourceFile) {
+  if (!node)
+    return "unknown";
+  if (import_typescript12.default.isTypeReferenceNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (import_typescript12.default.isTypeLiteralNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (import_typescript12.default.isUnionTypeNode(node) || import_typescript12.default.isIntersectionTypeNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (import_typescript12.default.isArrayTypeNode(node)) {
+    return node.getText(sourceFile);
+  }
+  if (node.kind === import_typescript12.default.SyntaxKind.StringKeyword)
+    return "string";
+  if (node.kind === import_typescript12.default.SyntaxKind.NumberKeyword)
+    return "number";
+  if (node.kind === import_typescript12.default.SyntaxKind.BooleanKeyword)
+    return "boolean";
+  return node.getText(sourceFile);
+}
+__name(getTypeString, "getTypeString");
+function inferTypeFromValue(node, sourceFile) {
+  if (!node)
+    return "unknown";
+  if (import_typescript12.default.isStringLiteral(node) || import_typescript12.default.isNoSubstitutionTemplateLiteral(node))
+    return "string";
+  if (import_typescript12.default.isNumericLiteral(node))
+    return "number";
+  if (node.kind === import_typescript12.default.SyntaxKind.TrueKeyword || node.kind === import_typescript12.default.SyntaxKind.FalseKeyword)
+    return "boolean";
+  if (import_typescript12.default.isArrayLiteralExpression(node)) {
+    if (node.elements.length === 0)
+      return "unknown[]";
+    const firstType = inferTypeFromValue(node.elements[0], sourceFile);
+    return `${firstType}[]`;
+  }
+  if (import_typescript12.default.isObjectLiteralExpression(node))
+    return "object";
+  if (node.kind === import_typescript12.default.SyntaxKind.NullKeyword)
+    return "null";
+  if (node.kind === import_typescript12.default.SyntaxKind.UndefinedKeyword)
+    return "undefined";
+  if (import_typescript12.default.isArrowFunction(node) || import_typescript12.default.isFunctionExpression(node))
+    return "function";
+  const text = node.getText(sourceFile);
+  return text.length > 120 ? text.slice(0, 117) + "..." : text;
+}
+__name(inferTypeFromValue, "inferTypeFromValue");
+function extractDestructuredNames(node, sourceFile) {
+  if (import_typescript12.default.isVariableDeclaration(node.parent)) {
+    const binding = node.parent.name;
+    if (import_typescript12.default.isArrayBindingPattern(binding) && binding.elements.length >= 1) {
+      const first = binding.elements[0];
+      const second = binding.elements.length >= 2 ? binding.elements[1] : void 0;
+      const firstName = import_typescript12.default.isBindingElement(first) && import_typescript12.default.isIdentifier(first.name) ? first.name.getText(sourceFile) : void 0;
+      const secondName = second && import_typescript12.default.isBindingElement(second) && import_typescript12.default.isIdentifier(second.name) ? second.name.getText(sourceFile) : void 0;
+      return [firstName ?? "unknown", secondName];
+    }
+    if (import_typescript12.default.isIdentifier(binding)) {
+      return [binding.getText(sourceFile), void 0];
+    }
+  }
+  return ["unknown", void 0];
+}
+__name(extractDestructuredNames, "extractDestructuredNames");
+function extractDependencyArray(node, sourceFile) {
+  if (!node)
+    return [];
+  if (import_typescript12.default.isArrayLiteralExpression(node)) {
+    return node.elements.map((el) => el.getText(sourceFile));
+  }
+  return [];
+}
+__name(extractDependencyArray, "extractDependencyArray");
+function hasCleanupReturn(node, sourceFile) {
+  let hasCleanup = false;
+  function visit(n) {
+    if (import_typescript12.default.isReturnStatement(n) && n.expression) {
+      if (import_typescript12.default.isArrowFunction(n.expression) || import_typescript12.default.isFunctionExpression(n.expression)) {
+        hasCleanup = true;
+      }
+    }
+    if (!hasCleanup) {
+      import_typescript12.default.forEachChild(n, visit);
+    }
+  }
+  __name(visit, "visit");
+  visit(node);
+  return hasCleanup;
+}
+__name(hasCleanupReturn, "hasCleanupReturn");
+
+// src/core/component-state/hook-analyzer.ts
+function isKnownHookOrImported(fnName, sourceFile) {
+  for (const statement of sourceFile.statements) {
+    if (import_typescript13.default.isImportDeclaration(statement) && statement.importClause) {
+      const clause = statement.importClause;
+      if (clause.namedBindings && import_typescript13.default.isNamedImports(clause.namedBindings)) {
+        for (const specifier of clause.namedBindings.elements) {
+          if (specifier.name.getText(sourceFile) === fnName)
+            return true;
+        }
+      }
+      if (clause.name && clause.name.getText(sourceFile) === fnName)
+        return true;
+    }
+    if (import_typescript13.default.isFunctionDeclaration(statement) && statement.name?.getText(sourceFile) === fnName)
+      return true;
+    if (import_typescript13.default.isVariableStatement(statement)) {
+      for (const decl of statement.declarationList.declarations) {
+        if (import_typescript13.default.isIdentifier(decl.name) && decl.name.getText(sourceFile) === fnName)
+          return true;
+      }
+    }
+  }
+  return false;
+}
+__name(isKnownHookOrImported, "isKnownHookOrImported");
+function extractHooks(componentNode, ctx) {
+  const states = [];
+  const effects = [];
+  const contexts = [];
+  const { sourceFile } = ctx;
+  let nestedFunctionDepth = 0;
+  function visit(node) {
+    if (import_typescript13.default.isCallExpression(node)) {
+      const fnText = node.expression.getText(sourceFile);
+      const fnName = fnText.replace(/^React\./, "");
+      if (fnName === "useState") {
+        const [stateName, setterName] = extractDestructuredNames(node, sourceFile);
+        const initialValue = node.arguments[0]?.getText(sourceFile);
+        let stateType = "unknown";
+        if (node.typeArguments && node.typeArguments.length > 0) {
+          stateType = getTypeString(node.typeArguments[0], sourceFile);
+        } else if (node.arguments[0]) {
+          stateType = inferTypeFromValue(node.arguments[0], sourceFile);
+        }
+        const stateInfo = {
+          name: stateName,
+          type: stateType,
+          hook: "useState",
+          initial_value: initialValue,
+          setter: setterName,
+          used_in_jsx: false,
+          passed_to_children: []
+        };
+        states.push(stateInfo);
+        ctx.stateVariables.set(stateName, stateInfo);
+        if (setterName) {
+          ctx.stateVariables.set(setterName, stateInfo);
+        }
+      }
+      if (fnName === "useReducer") {
+        const [stateName, dispatchName] = extractDestructuredNames(node, sourceFile);
+        const initialState = node.arguments[1]?.getText(sourceFile);
+        let stateType = "unknown";
+        if (node.typeArguments && node.typeArguments.length > 0) {
+          stateType = getTypeString(node.typeArguments[0], sourceFile);
+        }
+        const stateInfo = {
+          name: stateName,
+          type: stateType,
+          hook: "useReducer",
+          initial_value: initialState,
+          setter: dispatchName,
+          used_in_jsx: false,
+          passed_to_children: []
+        };
+        states.push(stateInfo);
+        ctx.stateVariables.set(stateName, stateInfo);
+        if (dispatchName) {
+          ctx.stateVariables.set(dispatchName, stateInfo);
+        }
+      }
+      if (fnName === "useRef") {
+        const [refName] = extractDestructuredNames(node, sourceFile);
+        const initialValue = node.arguments[0]?.getText(sourceFile);
+        let refType = "unknown";
+        if (node.typeArguments && node.typeArguments.length > 0) {
+          refType = getTypeString(node.typeArguments[0], sourceFile);
+        } else if (node.arguments[0]) {
+          refType = inferTypeFromValue(node.arguments[0], sourceFile);
+        }
+        const stateInfo = {
+          name: refName,
+          type: refType,
+          hook: "useRef",
+          initial_value: initialValue,
+          used_in_jsx: false,
+          passed_to_children: []
+        };
+        states.push(stateInfo);
+        ctx.stateVariables.set(refName, stateInfo);
+      }
+      if (fnName === "useContext") {
+        const contextArg = node.arguments[0]?.getText(sourceFile);
+        const [valueName] = extractDestructuredNames(node, sourceFile);
+        const contextInfo = {
+          hook: "useContext",
+          context_name: contextArg,
+          values_used: valueName !== "unknown" ? [valueName] : []
+        };
+        contexts.push(contextInfo);
+        ctx.contextValues.set(valueName, contextInfo);
+      }
+      if (fnName.startsWith("use") && fnName.length > 3 && fnName[3].match(/[A-Z]/) && ![
+        "useState",
+        "useReducer",
+        "useRef",
+        "useEffect",
+        "useLayoutEffect",
+        "useMemo",
+        "useCallback",
+        "useContext",
+        "useImperativeHandle",
+        "useDebugValue",
+        "useDeferredValue",
+        "useTransition",
+        "useId",
+        "useSyncExternalStore",
+        "useInsertionEffect"
+      ].includes(fnName) && nestedFunctionDepth === 0 && isKnownHookOrImported(fnName, sourceFile)) {
+        const [valueName] = extractDestructuredNames(node, sourceFile);
+        const contextInfo = {
+          hook: fnName,
+          values_used: valueName !== "unknown" ? [valueName] : []
+        };
+        contexts.push(contextInfo);
+        ctx.contextValues.set(valueName, contextInfo);
+      }
+      if (fnName === "useEffect" || fnName === "useLayoutEffect") {
+        const callback = node.arguments[0];
+        const depsArg = node.arguments[1];
+        const deps = extractDependencyArray(depsArg, sourceFile);
+        const hasCleanup = callback ? hasCleanupReturn(callback, sourceFile) : false;
+        effects.push({
+          type: fnName,
+          dependencies: deps,
+          has_cleanup: hasCleanup
+        });
+      }
+      if (fnName === "useMemo" || fnName === "useCallback") {
+        const depsArg = node.arguments[1];
+        const deps = extractDependencyArray(depsArg, sourceFile);
+        effects.push({
+          type: fnName,
+          dependencies: deps,
+          has_cleanup: false
+        });
+      }
+    }
+    const isNestedFunctionBoundary = node !== componentNode && (import_typescript13.default.isArrowFunction(node) || import_typescript13.default.isFunctionExpression(node) || import_typescript13.default.isFunctionDeclaration(node));
+    if (isNestedFunctionBoundary) {
+      nestedFunctionDepth++;
+      import_typescript13.default.forEachChild(node, visit);
+      nestedFunctionDepth--;
+    } else {
+      import_typescript13.default.forEachChild(node, visit);
+    }
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+  return { states, effects, contexts };
+}
+__name(extractHooks, "extractHooks");
+
+// src/core/component-state/jsx-analyzer.ts
+var import_typescript14 = __toESM(require_typescript(), 1);
+function collectUsedIdentifiers(node, sourceFile, identifiers) {
+  if (import_typescript14.default.isIdentifier(node)) {
+    identifiers.add(node.getText(sourceFile));
+  }
+  import_typescript14.default.forEachChild(node, (child) => collectUsedIdentifiers(child, sourceFile, identifiers));
+}
+__name(collectUsedIdentifiers, "collectUsedIdentifiers");
+function analyzeJsx(componentNode, ctx) {
+  const { sourceFile, stateVariables, propNames, contextValues, jsxUsedIdentifiers, jsxPassedProps, inlineCallbacks } = ctx;
+  function determineSource(name) {
+    if (propNames.has(name))
+      return "prop";
+    if (stateVariables.has(name))
+      return "state";
+    if (contextValues.has(name))
+      return "context";
+    return "derived";
+  }
+  __name(determineSource, "determineSource");
+  function visit(node) {
+    if (import_typescript14.default.isJsxOpeningElement(node) || import_typescript14.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      if (/^[A-Z]/.test(tagName)) {
+        for (const attr of node.attributes.properties) {
+          if (import_typescript14.default.isJsxAttribute(attr) && attr.name) {
+            const attrName = attr.name.getText(sourceFile);
+            const initializer3 = attr.initializer;
+            if (initializer3 && import_typescript14.default.isJsxExpression(initializer3) && initializer3.expression) {
+              const expr = initializer3.expression;
+              const exprText = expr.getText(sourceFile);
+              if (import_typescript14.default.isArrowFunction(expr) || import_typescript14.default.isFunctionExpression(expr)) {
+                const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+                inlineCallbacks.push({
+                  component: tagName,
+                  propName: attrName,
+                  line: line + 1
+                });
+              }
+              let source = "derived";
+              if (import_typescript14.default.isIdentifier(expr)) {
+                const name = expr.getText(sourceFile);
+                source = determineSource(name);
+                jsxUsedIdentifiers.add(name);
+              } else if (import_typescript14.default.isPropertyAccessExpression(expr)) {
+                const objectName = expr.expression.getText(sourceFile);
+                source = determineSource(objectName);
+                jsxUsedIdentifiers.add(objectName);
+              }
+              jsxPassedProps.push({
+                prop_name: attrName,
+                to_component: tagName,
+                original_source: source
+              });
+            }
+          }
+        }
+      }
+    }
+    if (import_typescript14.default.isJsxExpression(node) && node.expression) {
+      collectUsedIdentifiers(node.expression, sourceFile, jsxUsedIdentifiers);
+    }
+    import_typescript14.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+}
+__name(analyzeJsx, "analyzeJsx");
+
+// src/core/component-state/props-analyzer.ts
+var import_typescript15 = __toESM(require_typescript(), 1);
+function extractReceivedProps(componentNode, ctx) {
+  const props = [];
+  const { sourceFile } = ctx;
+  let params;
+  if (import_typescript15.default.isFunctionDeclaration(componentNode)) {
+    params = componentNode.parameters;
+  } else if (import_typescript15.default.isVariableStatement(componentNode)) {
+    for (const decl of componentNode.declarationList.declarations) {
+      if (decl.initializer) {
+        if (import_typescript15.default.isArrowFunction(decl.initializer)) {
+          params = decl.initializer.parameters;
+        } else if (import_typescript15.default.isFunctionExpression(decl.initializer)) {
+          params = decl.initializer.parameters;
+        }
+      }
+    }
+  }
+  if (!params || params.length === 0)
+    return props;
+  const firstParam = params[0];
+  if (import_typescript15.default.isObjectBindingPattern(firstParam.name)) {
+    for (const element of firstParam.name.elements) {
+      if (import_typescript15.default.isBindingElement(element) && import_typescript15.default.isIdentifier(element.name)) {
+        const propName = element.name.getText(sourceFile);
+        const hasDefault = element.initializer !== void 0;
+        const defaultValue = element.initializer?.getText(sourceFile);
+        let propType;
+        if (firstParam.type && import_typescript15.default.isTypeLiteralNode(firstParam.type)) {
+          for (const member of firstParam.type.members) {
+            if (import_typescript15.default.isPropertySignature(member) && member.name?.getText(sourceFile) === propName) {
+              propType = member.type ? getTypeString(member.type, sourceFile) : void 0;
+            }
+          }
+        }
+        props.push({
+          name: propName,
+          type: propType,
+          required: !hasDefault && !element.dotDotDotToken,
+          default_value: defaultValue
+        });
+        ctx.propNames.add(propName);
+      }
+    }
+  }
+  if (firstParam.type && import_typescript15.default.isTypeReferenceNode(firstParam.type)) {
+    const typeName = firstParam.type.typeName.getText(sourceFile);
+    extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx);
+  }
+  return props;
+}
+__name(extractReceivedProps, "extractReceivedProps");
+function extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx) {
+  function visit(node) {
+    if (import_typescript15.default.isInterfaceDeclaration(node) && node.name.getText(sourceFile) === typeName) {
+      for (const member of node.members) {
+        if (import_typescript15.default.isPropertySignature(member) && member.name) {
+          const propName = member.name.getText(sourceFile);
+          const isOptional = member.questionToken !== void 0;
+          const propType = member.type ? getTypeString(member.type, sourceFile) : void 0;
+          const existingProp = props.find((p) => p.name === propName);
+          if (existingProp) {
+            if (isOptional) {
+              existingProp.required = false;
+            }
+            if (!existingProp.type && propType) {
+              existingProp.type = propType;
+            }
+          } else {
+            props.push({
+              name: propName,
+              type: propType,
+              required: !isOptional
+            });
+          }
+          ctx.propNames.add(propName);
+        }
+      }
+    }
+    if (import_typescript15.default.isTypeAliasDeclaration(node) && node.name.getText(sourceFile) === typeName) {
+      if (import_typescript15.default.isTypeLiteralNode(node.type)) {
+        for (const member of node.type.members) {
+          if (import_typescript15.default.isPropertySignature(member) && member.name) {
+            const propName = member.name.getText(sourceFile);
+            const isOptional = member.questionToken !== void 0;
+            const propType = member.type ? getTypeString(member.type, sourceFile) : void 0;
+            const existingProp = props.find((p) => p.name === propName);
+            if (existingProp) {
+              if (isOptional) {
+                existingProp.required = false;
+              }
+              if (!existingProp.type && propType) {
+                existingProp.type = propType;
+              }
+            } else {
+              props.push({
+                name: propName,
+                type: propType,
+                required: !isOptional
+              });
+            }
+            ctx.propNames.add(propName);
+          }
+        }
+      }
+    }
+    import_typescript15.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+}
+__name(extractPropsFromTypeDefinition, "extractPropsFromTypeDefinition");
+function findProvidedContexts(componentNode, ctx) {
+  const provided = [];
+  const { sourceFile } = ctx;
+  function visit(node) {
+    if (import_typescript15.default.isJsxOpeningElement(node) || import_typescript15.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      if (tagName.endsWith(".Provider")) {
+        const contextName = tagName.replace(".Provider", "");
+        for (const attr of node.attributes.properties) {
+          if (import_typescript15.default.isJsxAttribute(attr) && attr.name?.getText(sourceFile) === "value") {
+            const valueSource = attr.initializer?.getText(sourceFile) ?? "unknown";
+            provided.push({
+              context_name: contextName,
+              value_source: valueSource.replace(/^\{|\}$/g, "")
+            });
+          }
+        }
+      }
+    }
+    import_typescript15.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+  return provided;
+}
+__name(findProvidedContexts, "findProvidedContexts");
+
+// src/core/component-state/issue-detector.ts
+var import_typescript16 = __toESM(require_typescript(), 1);
+function detectIssues2(componentNode, ctx, receivedProps, effects) {
+  const issues = [];
+  const { sourceFile, inlineCallbacks, jsxPassedProps, stateVariables, propNames } = ctx;
+  for (const passedProp of jsxPassedProps) {
+    if (passedProp.original_source === "prop") {
+      const receivedProp = receivedProps.find((p) => p.name === passedProp.prop_name);
+      if (receivedProp) {
+        issues.push({
+          type: "prop_drilling",
+          severity: "warning",
+          location: `${passedProp.to_component}.${passedProp.prop_name}`,
+          description: `Prop "${passedProp.prop_name}" is received and passed through unchanged to ${passedProp.to_component}`,
+          suggestion: "Consider using Context or a state management library to avoid prop drilling"
+        });
+      }
+    }
+  }
+  for (const callback of inlineCallbacks) {
+    issues.push({
+      type: "callback_instability",
+      severity: "warning",
+      location: `line ${callback.line}: ${callback.component}.${callback.propName}`,
+      description: `Inline function passed to ${callback.component} as ${callback.propName} recreates on every render`,
+      suggestion: "Use useCallback to memoize the function, or extract to a stable reference"
+    });
+  }
+  for (const passedProp of jsxPassedProps) {
+    if (passedProp.original_source === "derived") {
+      issues.push({
+        type: "missing_memo",
+        severity: "info",
+        location: `${passedProp.to_component}.${passedProp.prop_name}`,
+        description: `Derived value passed to ${passedProp.to_component} may recreate on every render`,
+        suggestion: "Consider using useMemo if this is an expensive computation"
+      });
+    }
+  }
+  for (const effect of effects) {
+    if (effect.type === "useEffect" || effect.type === "useLayoutEffect") {
+      if (effect.dependencies.length === 0) {
+        const hasStateOrPropDeps = stateVariables.size > 0 || propNames.size > 0;
+        if (hasStateOrPropDeps) {
+          issues.push({
+            type: "effect_deps",
+            severity: "info",
+            location: effect.type,
+            description: `${effect.type} has no dependencies - verify this is intentional`,
+            suggestion: "Add dependencies if the effect uses props or state, or use [] for mount-only effects"
+          });
+        }
+      }
+    }
+  }
+  function checkStateInRender(node) {
+    if (import_typescript16.default.isCallExpression(node)) {
+      const fnText = node.expression.getText(sourceFile);
+      if (fnText === "useState" || fnText === "React.useState") {
+        const initializer3 = node.arguments[0];
+        if (initializer3 && import_typescript16.default.isCallExpression(initializer3)) {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+          issues.push({
+            type: "state_in_render",
+            severity: "error",
+            location: `line ${line + 1}`,
+            description: "useState initializer calls a function on every render instead of using lazy initialization",
+            suggestion: "Use () => expensiveFunction() instead of expensiveFunction() for lazy initialization"
+          });
+        }
+      }
+    }
+    import_typescript16.default.forEachChild(node, checkStateInRender);
+  }
+  __name(checkStateInRender, "checkStateInRender");
+  checkStateInRender(componentNode);
+  return issues;
+}
+__name(detectIssues2, "detectIssues");
+
+// src/extensions/component-state.ts
+function resolveFilePath(filePath, projectRoot) {
+  return path7.isAbsolute(filePath) ? filePath : path7.resolve(projectRoot, filePath);
+}
+__name(resolveFilePath, "resolveFilePath");
+function resolveImportPath(name, sourceFilePath, projectRoot, sourceFile) {
+  const dir = path7.dirname(sourceFilePath);
+  for (const statement of sourceFile.statements) {
+    if (!import_typescript17.default.isImportDeclaration(statement))
+      continue;
+    const clause = statement.importClause;
+    if (!clause)
+      continue;
+    let found = false;
+    if (clause.name?.getText(sourceFile) === name) {
+      found = true;
+    } else if (clause.namedBindings && import_typescript17.default.isNamedImports(clause.namedBindings)) {
+      for (const spec of clause.namedBindings.elements) {
+        if (spec.name.getText(sourceFile) === name) {
+          found = true;
+          break;
+        }
+      }
+    }
+    if (!found)
+      continue;
+    const moduleSpec = statement.moduleSpecifier.text;
+    if (!moduleSpec.startsWith("."))
+      return null;
+    const extensions = [".tsx", ".jsx", ".ts", ".js", "/index.tsx", "/index.jsx", "/index.ts", "/index.js"];
+    const resolved = path7.resolve(dir, moduleSpec);
+    const normalizedRoot = projectRoot.endsWith(path7.sep) ? projectRoot : projectRoot + path7.sep;
+    if (!resolved.startsWith(normalizedRoot) && resolved !== projectRoot)
+      return null;
+    for (const ext of extensions) {
+      const candidate = resolved + ext;
+      if (fs6.existsSync(candidate))
+        return candidate;
+    }
+    if (fs6.existsSync(resolved))
+      return resolved;
+  }
+  return null;
+}
+__name(resolveImportPath, "resolveImportPath");
+function findJsxComponentNames(sourceFile) {
+  const seen = /* @__PURE__ */ new Set();
+  function visit(node) {
+    if (import_typescript17.default.isJsxOpeningElement(node) || import_typescript17.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName;
+      let name;
+      if (import_typescript17.default.isPropertyAccessExpression(tagName)) {
+        name = tagName.expression.getText(sourceFile);
+      } else {
+        name = tagName.getText(sourceFile);
+      }
+      if (/^[A-Z]/.test(name)) {
+        seen.add(name);
+      }
+    }
+    import_typescript17.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return Array.from(seen);
+}
+__name(findJsxComponentNames, "findJsxComponentNames");
+async function analyzeComponent(filePath, args, projectRoot, visitedFiles) {
+  visitedFiles.add(filePath);
+  const ext = path7.extname(filePath).toLowerCase();
+  const content = fs6.readFileSync(filePath, "utf-8");
+  const scriptKind = ext === ".tsx" ? import_typescript17.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript17.default.ScriptKind.JSX : ext === ".ts" ? import_typescript17.default.ScriptKind.TS : import_typescript17.default.ScriptKind.JS;
+  const sourceFile = import_typescript17.default.createSourceFile(
+    filePath,
+    content,
+    import_typescript17.default.ScriptTarget.Latest,
+    true,
+    scriptKind
+  );
+  let componentNode = null;
+  let componentName = null;
+  const targetComponent = args.component;
+  function findComponent(node) {
+    if (!componentNode && isReactComponent2(node, sourceFile)) {
+      const name = getComponentName2(node, sourceFile);
+      if (targetComponent) {
+        if (name === targetComponent) {
+          componentNode = node;
+          componentName = name;
+        }
+      } else {
+        componentNode = node;
+        componentName = name;
+      }
+    }
+    if (!componentNode) {
+      import_typescript17.default.forEachChild(node, findComponent);
+    }
+  }
+  __name(findComponent, "findComponent");
+  findComponent(sourceFile);
+  if (!componentNode || !componentName) {
+    return { message: "No React components found in file", file: makeRelativePath(filePath, projectRoot) };
+  }
+  const ctx = {
+    sourceFile,
+    projectRoot,
+    stateVariables: /* @__PURE__ */ new Map(),
+    propNames: /* @__PURE__ */ new Set(),
+    contextValues: /* @__PURE__ */ new Map(),
+    jsxUsedIdentifiers: /* @__PURE__ */ new Set(),
+    jsxPassedProps: [],
+    inlineCallbacks: []
+  };
+  const { states, effects, contexts } = extractHooks(componentNode, ctx);
+  const receivedProps = extractReceivedProps(componentNode, ctx);
+  analyzeJsx(componentNode, ctx);
+  const providedContexts = findProvidedContexts(componentNode, ctx);
+  for (const state of states) {
+    if (ctx.jsxUsedIdentifiers.has(state.name) || state.setter && ctx.jsxUsedIdentifiers.has(state.setter)) {
+      state.used_in_jsx = true;
+    }
+    for (const passedProp of ctx.jsxPassedProps) {
+      if (passedProp.original_source === "state") {
+        state.passed_to_children = state.passed_to_children || [];
+        if (!state.passed_to_children.includes(passedProp.to_component)) {
+          state.passed_to_children.push(passedProp.to_component);
+        }
+      }
+    }
+  }
+  const issues = detectIssues2(componentNode, ctx, receivedProps, effects);
+  const result = {
+    component: componentName,
+    file: makeRelativePath(filePath, projectRoot),
+    local_state: states,
+    props: {
+      received: receivedProps,
+      passed_down: ctx.jsxPassedProps
+    },
+    context: {
+      consumed: contexts,
+      provided: providedContexts
+    },
+    effects,
+    issues
+  };
+  if (args.include_children && (args.depth ?? 2) > 0) {
+    const childDepth = args.depth ?? 2;
+    const componentNames = findJsxComponentNames(sourceFile);
+    const children = [];
+    for (const name of componentNames) {
+      const childFilePath = resolveImportPath(name, filePath, projectRoot, sourceFile);
+      if (!childFilePath)
+        continue;
+      if (visitedFiles.has(childFilePath))
+        continue;
+      try {
+        const childArgs = {
+          file: childFilePath,
+          component: name,
+          include_children: childDepth > 1,
+          depth: childDepth - 1
+        };
+        const childResult = await analyzeComponent(childFilePath, childArgs, projectRoot, visitedFiles);
+        if ("message" in childResult)
+          continue;
+        children.push({
+          component: name,
+          file: childFilePath.startsWith(projectRoot) ? childFilePath.slice(projectRoot.length).replace(/^\//, "") : childFilePath,
+          analysis: childResult
+        });
+      } catch {
+      }
+    }
+    result.children = children;
+  }
+  return result;
+}
+__name(analyzeComponent, "analyzeComponent");
+async function analyzeComponentState(args) {
+  if (!args || typeof args !== "object") {
+    return fail("Invalid arguments: expected an object");
+  }
+  const a = args;
+  if (!a.file) {
+    return missingArg("file");
+  }
+  if (typeof a.file !== "string") {
+    return invalidArg("file", "must be a string");
+  }
+  if (a.component !== void 0 && typeof a.component !== "string") {
+    return invalidArg("component", "must be a string");
+  }
+  if (a.include_children !== void 0 && typeof a.include_children !== "boolean") {
+    return invalidArg("include_children", "must be a boolean");
+  }
+  if (a.depth !== void 0 && (typeof a.depth !== "number" || !Number.isInteger(a.depth) || a.depth < 0)) {
+    return invalidArg("depth", "must be a non-negative integer");
+  }
+  const typedArgs = {
+    file: a.file,
+    component: a.component,
+    include_children: a.include_children,
+    depth: a.depth
+  };
+  const projectRoot = getProjectRoot();
+  const filePath = resolveFilePath(typedArgs.file, projectRoot);
+  if (!fs6.existsSync(filePath)) {
+    return fail(`File not found: ${typedArgs.file}`, { provided_path: typedArgs.file });
+  }
+  const ext = path7.extname(filePath).toLowerCase();
+  if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
+    return fail(`Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`, { file: typedArgs.file });
+  }
+  try {
+    const result = await analyzeComponent(filePath, typedArgs, projectRoot, /* @__PURE__ */ new Set());
+    return ok(result);
+  } catch (error2) {
+    return failFromException(error2, "Component state analysis failed");
+  }
+}
+__name(analyzeComponentState, "analyzeComponentState");
+var handleTraceComponentState = analyzeComponentState;
+
+// src/extensions/render-triggers.ts
+var fs7 = __toESM(require("fs"), 1);
+var path8 = __toESM(require("path"), 1);
+var import_typescript21 = __toESM(require_typescript(), 1);
+
+// src/core/render-triggers/memoization.ts
+var import_typescript19 = __toESM(require_typescript(), 1);
+
+// src/core/render-triggers/utils.ts
+var import_typescript18 = __toESM(require_typescript(), 1);
+function getLineNumber3(node, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  return line + 1;
+}
+__name(getLineNumber3, "getLineNumber");
+function getCodeSnippet(node, sourceFile, maxLength = 80) {
+  const text = node.getText(sourceFile).replace(/\s+/g, " ").trim();
+  return text.length > maxLength ? text.substring(0, maxLength - 3) + "..." : text;
+}
+__name(getCodeSnippet, "getCodeSnippet");
+function isInsideJsxAttribute(node) {
+  let current = node.parent;
+  while (current) {
+    if (import_typescript18.default.isJsxAttribute(current)) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+__name(isInsideJsxAttribute, "isInsideJsxAttribute");
+function isInsideMemoizationHook(node, sourceFile) {
+  let current = node.parent;
+  while (current) {
+    if (import_typescript18.default.isCallExpression(current)) {
+      const callText = current.expression.getText(sourceFile);
+      if (callText === "useCallback" || callText === "useMemo" || callText === "React.useCallback" || callText === "React.useMemo") {
+        return true;
+      }
+    }
+    current = current.parent;
+  }
+  return false;
+}
+__name(isInsideMemoizationHook, "isInsideMemoizationHook");
+
+// src/core/render-triggers/memoization.ts
+function detectMemoization(sourceFile) {
+  const memoInfo = /* @__PURE__ */ new Map();
+  function visit(node) {
+    if (import_typescript19.default.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (import_typescript19.default.isIdentifier(decl.name) && decl.initializer) {
+          const componentName = decl.name.getText(sourceFile);
+          if (import_typescript19.default.isCallExpression(decl.initializer)) {
+            const callExpr = decl.initializer.expression.getText(sourceFile);
+            if (callExpr === "memo" || callExpr === "React.memo") {
+              memoInfo.set(componentName, {
+                is_memoized: true,
+                memo_type: "React.memo"
+              });
+            }
+          }
+        }
+      }
+    }
+    if (import_typescript19.default.isClassDeclaration(node) && node.name) {
+      const className = node.name.getText(sourceFile);
+      if (node.heritageClauses) {
+        for (const clause of node.heritageClauses) {
+          const clauseText = clause.getText(sourceFile);
+          if (clauseText.includes("PureComponent")) {
+            memoInfo.set(className, {
+              is_memoized: true,
+              memo_type: "PureComponent"
+            });
+          }
+        }
+      }
+      if (node.members) {
+        for (const member of node.members) {
+          if (import_typescript19.default.isMethodDeclaration(member) && member.name) {
+            const methodName = member.name.getText(sourceFile);
+            if (methodName === "shouldComponentUpdate") {
+              if (!memoInfo.has(className)) {
+                memoInfo.set(className, {
+                  is_memoized: true,
+                  memo_type: "shouldComponentUpdate"
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    import_typescript19.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return memoInfo;
+}
+__name(detectMemoization, "detectMemoization");
+function containsJsxReturn4(node) {
+  let hasJsx = false;
+  function visit(n) {
+    if (hasJsx)
+      return;
+    if (import_typescript19.default.isJsxElement(n) || import_typescript19.default.isJsxSelfClosingElement(n) || import_typescript19.default.isJsxFragment(n)) {
+      hasJsx = true;
+      return;
+    }
+    import_typescript19.default.forEachChild(n, visit);
+  }
+  __name(visit, "visit");
+  visit(node);
+  return hasJsx;
+}
+__name(containsJsxReturn4, "containsJsxReturn");
+function findComponents(sourceFile, memoInfo) {
+  const components = [];
+  function visit(node) {
+    if (import_typescript19.default.isFunctionDeclaration(node) && node.name) {
+      const name = node.name.getText(sourceFile);
+      if (/^[A-Z]/.test(name) && containsJsxReturn4(node)) {
+        components.push({
+          name,
+          node,
+          line: getLineNumber3(node, sourceFile),
+          memoInfo: memoInfo.get(name) || { is_memoized: false }
+        });
+      }
+    }
+    if (import_typescript19.default.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (import_typescript19.default.isIdentifier(decl.name)) {
+          const name = decl.name.getText(sourceFile);
+          if (/^[A-Z]/.test(name) && decl.initializer) {
+            if (import_typescript19.default.isCallExpression(decl.initializer)) {
+              const callText = decl.initializer.expression.getText(sourceFile);
+              if ((callText === "memo" || callText === "React.memo") && decl.initializer.arguments.length > 0) {
+                const arg = decl.initializer.arguments[0];
+                if (containsJsxReturn4(arg)) {
+                  components.push({
+                    name,
+                    node: arg,
+                    line: getLineNumber3(node, sourceFile),
+                    memoInfo: memoInfo.get(name) || { is_memoized: true, memo_type: "React.memo" }
+                  });
+                }
+              }
+            } else if (import_typescript19.default.isArrowFunction(decl.initializer) || import_typescript19.default.isFunctionExpression(decl.initializer)) {
+              if (containsJsxReturn4(decl.initializer)) {
+                components.push({
+                  name,
+                  node: decl.initializer,
+                  line: getLineNumber3(node, sourceFile),
+                  memoInfo: memoInfo.get(name) || { is_memoized: false }
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    if (import_typescript19.default.isClassDeclaration(node) && node.name) {
+      const name = node.name.getText(sourceFile);
+      if (/^[A-Z]/.test(name) && node.heritageClauses) {
+        for (const clause of node.heritageClauses) {
+          const text = clause.getText(sourceFile);
+          if (text.includes("Component") || text.includes("PureComponent")) {
+            components.push({
+              name,
+              node,
+              line: getLineNumber3(node, sourceFile),
+              memoInfo: memoInfo.get(name) || { is_memoized: false }
+            });
+          }
+        }
+      }
+    }
+    import_typescript19.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return components;
+}
+__name(findComponents, "findComponents");
+
+// src/core/render-triggers/analyzers.ts
+var import_typescript20 = __toESM(require_typescript(), 1);
+function findStateHooks(componentNode, sourceFile) {
+  const triggers = [];
+  function visit(node) {
+    if (import_typescript20.default.isCallExpression(node)) {
+      const callText = node.expression.getText(sourceFile);
+      if (callText === "useState" || callText === "React.useState") {
+        const parent = node.parent;
+        if (import_typescript20.default.isVariableDeclaration(parent) && import_typescript20.default.isArrayBindingPattern(parent.name)) {
+          const elements = parent.name.elements;
+          if (elements.length >= 1 && import_typescript20.default.isBindingElement(elements[0])) {
+            const stateName = elements[0].name.getText(sourceFile);
+            triggers.push({
+              type: "state",
+              name: stateName,
+              source: `useState hook at line ${getLineNumber3(node, sourceFile)}`,
+              frequency: "on_change",
+              preventable: false
+            });
+          }
+        }
+      } else if (callText === "useReducer" || callText === "React.useReducer") {
+        const parent = node.parent;
+        if (import_typescript20.default.isVariableDeclaration(parent) && import_typescript20.default.isArrayBindingPattern(parent.name)) {
+          const elements = parent.name.elements;
+          if (elements.length >= 1 && import_typescript20.default.isBindingElement(elements[0])) {
+            const stateName = elements[0].name.getText(sourceFile);
+            triggers.push({
+              type: "state",
+              name: stateName,
+              source: `useReducer hook at line ${getLineNumber3(node, sourceFile)}`,
+              frequency: "on_change",
+              preventable: false
+            });
+          }
+        }
+      }
+    }
+    import_typescript20.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+  return triggers;
+}
+__name(findStateHooks, "findStateHooks");
+function findPropTriggers(componentNode, sourceFile, isMemoized) {
+  const triggers = [];
+  const props = [];
+  let params;
+  if (import_typescript20.default.isFunctionDeclaration(componentNode)) {
+    params = componentNode.parameters;
+  } else if (import_typescript20.default.isArrowFunction(componentNode) || import_typescript20.default.isFunctionExpression(componentNode)) {
+    params = componentNode.parameters;
+  }
+  if (params && params.length > 0) {
+    const firstParam = params[0];
+    if (import_typescript20.default.isObjectBindingPattern(firstParam.name)) {
+      for (const element of firstParam.name.elements) {
+        if (import_typescript20.default.isBindingElement(element) && import_typescript20.default.isIdentifier(element.name)) {
+          props.push(element.name.getText(sourceFile));
+        }
+      }
+    }
+  }
+  if (props.length > 0) {
+    triggers.push({
+      type: "prop",
+      name: props.join(", "),
+      source: "Component props",
+      frequency: isMemoized ? "on_change" : "every_render",
+      preventable: !isMemoized,
+      prevention_method: isMemoized ? void 0 : "Wrap component with React.memo()"
+    });
+  }
+  return triggers;
+}
+__name(findPropTriggers, "findPropTriggers");
+function findForceUpdateTriggers(componentNode, sourceFile) {
+  const triggers = [];
+  function visit(node) {
+    if (import_typescript20.default.isCallExpression(node)) {
+      const callText = node.expression.getText(sourceFile);
+      if (callText === "this.forceUpdate" || callText.endsWith(".forceUpdate")) {
+        triggers.push({
+          type: "force_update",
+          source: `forceUpdate() call at line ${getLineNumber3(node, sourceFile)}`,
+          frequency: "rare",
+          preventable: true,
+          prevention_method: "Avoid forceUpdate; use state or props to trigger re-renders"
+        });
+      }
+    }
+    import_typescript20.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+  return triggers;
+}
+__name(findForceUpdateTriggers, "findForceUpdateTriggers");
+function findInlineDefinitions(componentNode, sourceFile) {
+  const issues = [];
+  function visitJsxAttribute(node) {
+    const initializer3 = node.initializer;
+    if (!initializer3 || !import_typescript20.default.isJsxExpression(initializer3))
+      return;
+    const expr = initializer3.expression;
+    if (!expr)
+      return;
+    if (isInsideMemoizationHook(expr, sourceFile))
+      return;
+    const attrName = node.name.getText(sourceFile);
+    if (import_typescript20.default.isObjectLiteralExpression(expr)) {
+      issues.push({
+        type: "object",
+        code_snippet: getCodeSnippet(expr, sourceFile),
+        line: getLineNumber3(expr, sourceFile),
+        issue: `Inline object for "${attrName}" creates new reference on every render`,
+        fix: "Extract to useMemo or constant outside component"
+      });
+    }
+    if (import_typescript20.default.isArrowFunction(expr) || import_typescript20.default.isFunctionExpression(expr)) {
+      issues.push({
+        type: "function",
+        code_snippet: getCodeSnippet(expr, sourceFile),
+        line: getLineNumber3(expr, sourceFile),
+        issue: `Inline function for "${attrName}" creates new reference on every render`,
+        fix: "Use useCallback with proper dependencies"
+      });
+    }
+    if (import_typescript20.default.isArrayLiteralExpression(expr)) {
+      issues.push({
+        type: "array",
+        code_snippet: getCodeSnippet(expr, sourceFile),
+        line: getLineNumber3(expr, sourceFile),
+        issue: `Inline array for "${attrName}" creates new reference on every render`,
+        fix: "Extract to useMemo or constant outside component"
+      });
+    }
+    if (import_typescript20.default.isJsxElement(expr) || import_typescript20.default.isJsxSelfClosingElement(expr)) {
+      issues.push({
+        type: "jsx",
+        code_snippet: getCodeSnippet(expr, sourceFile),
+        line: getLineNumber3(expr, sourceFile),
+        issue: `Inline JSX for "${attrName}" creates new element on every render`,
+        fix: "Extract to a memoized component or useMemo"
+      });
+    }
+  }
+  __name(visitJsxAttribute, "visitJsxAttribute");
+  function visit(node) {
+    if (import_typescript20.default.isJsxAttribute(node)) {
+      visitJsxAttribute(node);
+    }
+    import_typescript20.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+  return issues;
+}
+__name(findInlineDefinitions, "findInlineDefinitions");
+function findExpensiveComputations(componentNode, sourceFile) {
+  const computations = [];
+  const memoizedVars = /* @__PURE__ */ new Set();
+  function findMemoized(node) {
+    if (import_typescript20.default.isVariableDeclaration(node) && node.initializer && import_typescript20.default.isCallExpression(node.initializer)) {
+      const callText = node.initializer.expression.getText(sourceFile);
+      if (callText === "useMemo" || callText === "React.useMemo") {
+        if (import_typescript20.default.isIdentifier(node.name)) {
+          memoizedVars.add(node.name.getText(sourceFile));
+        }
+      }
+    }
+    import_typescript20.default.forEachChild(node, findMemoized);
+  }
+  __name(findMemoized, "findMemoized");
+  findMemoized(componentNode);
+  function findExpensive(node) {
+    if (import_typescript20.default.isCallExpression(node)) {
+      if (isInsideMemoizationHook(node, sourceFile)) {
+        import_typescript20.default.forEachChild(node, findExpensive);
+        return;
+      }
+      const callText = node.expression.getText(sourceFile);
+      if (["useMemo", "useCallback", "React.useMemo", "React.useCallback"].includes(callText)) {
+        import_typescript20.default.forEachChild(node, findExpensive);
+        return;
+      }
+      if (import_typescript20.default.isPropertyAccessExpression(node.expression)) {
+        const methodName = node.expression.name.getText(sourceFile);
+        const expensiveMethods = ["map", "filter", "reduce", "sort", "flatMap", "find", "findIndex"];
+        if (expensiveMethods.includes(methodName)) {
+          const line = getLineNumber3(node, sourceFile);
+          computations.push({
+            description: `Array ${methodName}() operation`,
+            line,
+            is_memoized: false,
+            suggestion: `Wrap in useMemo if the array or callback rarely changes`
+          });
+        }
+      }
+      if (import_typescript20.default.isPropertyAccessExpression(node.expression)) {
+        const text = node.expression.getText(sourceFile);
+        if (text.match(/^Object\.(keys|values|entries)$/)) {
+          computations.push({
+            description: `${text}() creates new array on every call`,
+            line: getLineNumber3(node, sourceFile),
+            is_memoized: false,
+            suggestion: "Wrap in useMemo if the object rarely changes"
+          });
+        }
+      }
+    }
+    if (import_typescript20.default.isObjectLiteralExpression(node) && !isInsideJsxAttribute(node) && !isInsideMemoizationHook(node, sourceFile)) {
+      const hasSpread = node.properties.some((p) => import_typescript20.default.isSpreadAssignment(p));
+      if (hasSpread) {
+        const parent = node.parent;
+        if (import_typescript20.default.isVariableDeclaration(parent) || import_typescript20.default.isReturnStatement(parent)) {
+          computations.push({
+            description: "Object spread creates new object reference",
+            line: getLineNumber3(node, sourceFile),
+            is_memoized: false,
+            suggestion: "Wrap in useMemo if spread rarely changes"
+          });
+        }
+      }
+    }
+    import_typescript20.default.forEachChild(node, findExpensive);
+  }
+  __name(findExpensive, "findExpensive");
+  findExpensive(componentNode);
+  return computations;
+}
+__name(findExpensiveComputations, "findExpensiveComputations");
+function analyzeContextUsage(componentNode, sourceFile) {
+  const subscriptions = [];
+  function visit(node) {
+    if (import_typescript20.default.isCallExpression(node)) {
+      const callText = node.expression.getText(sourceFile);
+      if (callText === "useContext" || callText === "React.useContext") {
+        const args = node.arguments;
+        if (args.length > 0) {
+          const contextName = args[0].getText(sourceFile);
+          const parent = node.parent;
+          let selector;
+          let granularity = "entire_context";
+          let issue2;
+          if (import_typescript20.default.isVariableDeclaration(parent) && import_typescript20.default.isObjectBindingPattern(parent.name)) {
+            const props = parent.name.elements.filter((e) => import_typescript20.default.isBindingElement(e) && import_typescript20.default.isIdentifier(e.name)).map((e) => e.name.getText(sourceFile));
+            if (props.length > 0) {
+              selector = `{ ${props.join(", ")} }`;
+              issue2 = `Destructuring ${props.length} properties, but component re-renders when ANY context value changes`;
+            }
+          }
+          if (!selector) {
+            issue2 = "Subscribes to entire context; any change will trigger re-render";
+          }
+          subscriptions.push({
+            context: contextName,
+            selector,
+            granularity,
+            issue: issue2
+          });
+        }
+      }
+      if (callText === "useSelector") {
+        const args = node.arguments;
+        if (args.length > 0) {
+          const selectorCode = getCodeSnippet(args[0], sourceFile);
+          subscriptions.push({
+            context: "Redux Store",
+            selector: selectorCode,
+            granularity: "selected_value"
+          });
+        }
+      }
+    }
+    import_typescript20.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+  return subscriptions;
+}
+__name(analyzeContextUsage, "analyzeContextUsage");
+function analyzeChildProps(componentNode, sourceFile, inlineDefinitions, memoInfo) {
+  const children = [];
+  const inlineLines = new Set(inlineDefinitions.map((d) => d.line));
+  function visit(node) {
+    if (import_typescript20.default.isJsxOpeningElement(node) || import_typescript20.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      if (/^[A-Z]/.test(tagName)) {
+        const unstableProps = [];
+        const attributes = node.attributes;
+        if (attributes && import_typescript20.default.isJsxAttributes(attributes)) {
+          for (const attr of attributes.properties) {
+            if (import_typescript20.default.isJsxAttribute(attr) && attr.initializer && import_typescript20.default.isJsxExpression(attr.initializer)) {
+              const expr = attr.initializer.expression;
+              if (expr) {
+                const attrLine = getLineNumber3(expr, sourceFile);
+                const attrName = attr.name.getText(sourceFile);
+                if (inlineLines.has(attrLine)) {
+                  unstableProps.push(attrName);
+                }
+                if (import_typescript20.default.isArrowFunction(expr) || import_typescript20.default.isFunctionExpression(expr) || import_typescript20.default.isObjectLiteralExpression(expr) || import_typescript20.default.isArrayLiteralExpression(expr)) {
+                  if (!isInsideMemoizationHook(expr, sourceFile) && !unstableProps.includes(attrName)) {
+                    unstableProps.push(attrName);
+                  }
+                }
+              }
+            }
+          }
+        }
+        children.push({
+          component: tagName,
+          // Note: memoInfo only contains components defined in the current file.
+          // Imported components (e.g., from other modules) default to unmemoized.
+          memoized: memoInfo.get(tagName)?.is_memoized ?? false,
+          receives_unstable_props: unstableProps.length > 0,
+          unstable_props: unstableProps.length > 0 ? unstableProps : void 0
+        });
+      }
+    }
+    import_typescript20.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(componentNode);
+  const uniqueChildren = /* @__PURE__ */ new Map();
+  for (const child of children) {
+    const existing = uniqueChildren.get(child.component);
+    if (existing) {
+      if (child.unstable_props) {
+        existing.unstable_props = [
+          .../* @__PURE__ */ new Set([...existing.unstable_props || [], ...child.unstable_props])
+        ];
+        existing.receives_unstable_props = true;
+      }
+    } else {
+      uniqueChildren.set(child.component, child);
+    }
+  }
+  return Array.from(uniqueChildren.values());
+}
+__name(analyzeChildProps, "analyzeChildProps");
+
+// src/core/render-triggers/suggestions.ts
+function generateSuggestions(isMemoized, inlineDefinitions, expensiveComputations, contextSubscriptions, childrenAnalysis, hasPropTriggers = false) {
+  const suggestions = [];
+  if (!isMemoized && (childrenAnalysis.length > 0 || hasPropTriggers)) {
+    suggestions.push({
+      priority: "medium",
+      type: "memo",
+      description: "Consider wrapping component with React.memo() to prevent unnecessary re-renders from parent",
+      estimated_impact: "Prevents re-renders when props are shallowly equal",
+      code_example: "export const MyComponent = React.memo(function MyComponent(props) { ... })"
+    });
+  }
+  const inlineFunctions = inlineDefinitions.filter((d) => d.type === "function");
+  if (inlineFunctions.length > 0) {
+    suggestions.push({
+      priority: "high",
+      type: "useCallback",
+      description: `${inlineFunctions.length} inline function(s) create new references on every render`,
+      estimated_impact: "Prevents child components from re-rendering when using React.memo",
+      code_example: `const handleClick = useCallback(() => {
+  // handler logic
+}, [dependency]);`
+    });
+  }
+  const inlineObjects = inlineDefinitions.filter((d) => d.type === "object" || d.type === "array");
+  if (inlineObjects.length > 0) {
+    suggestions.push({
+      priority: "high",
+      type: "useMemo",
+      description: `${inlineObjects.length} inline object(s)/array(s) create new references on every render`,
+      estimated_impact: "Prevents unnecessary re-renders in memoized child components",
+      code_example: `const style = useMemo(() => ({ margin: 10 }), []);`
+    });
+  }
+  const unmemoizedComputations = expensiveComputations.filter((c) => !c.is_memoized);
+  if (unmemoizedComputations.length > 0) {
+    suggestions.push({
+      priority: "medium",
+      type: "useMemo",
+      description: `${unmemoizedComputations.length} potentially expensive computation(s) run on every render`,
+      estimated_impact: "Reduces CPU usage by caching computation results",
+      code_example: `const sortedItems = useMemo(() => items.sort(compareFn), [items]);`
+    });
+  }
+  const broadContextSubs = contextSubscriptions.filter(
+    (c) => c.granularity === "entire_context" && c.issue
+  );
+  if (broadContextSubs.length > 0) {
+    suggestions.push({
+      priority: "medium",
+      type: "context_split",
+      description: "Component subscribes to entire context(s) and re-renders on any change",
+      estimated_impact: "Split context or use selectors to reduce unnecessary re-renders",
+      code_example: `// Split context into smaller pieces
+const UserContext = createContext(null);
+const ThemeContext = createContext(null);
+
+// Or use a selector library like use-context-selector`
+    });
+  }
+  const unstableChildren = childrenAnalysis.filter((c) => c.receives_unstable_props);
+  if (unstableChildren.length > 0 && isMemoized) {
+    suggestions.push({
+      priority: "high",
+      type: "useCallback",
+      description: `${unstableChildren.length} child component(s) receive unstable props, negating any memoization`,
+      estimated_impact: "Critical - memoized children will still re-render due to unstable props"
+    });
+  }
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+  return suggestions;
+}
+__name(generateSuggestions, "generateSuggestions");
+
+// src/extensions/render-triggers.ts
+async function analyzeRenderTriggers(args) {
+  if (!args || typeof args !== "object") {
+    return fail("Invalid arguments: expected an object");
+  }
+  const a = args;
+  if (!a.file) {
+    return missingArg("file");
+  }
+  if (typeof a.file !== "string") {
+    return invalidArg("file", "must be a string");
+  }
+  if (a.include_children !== void 0 && typeof a.include_children !== "boolean") {
+    return invalidArg("include_children", "must be a boolean");
+  }
+  const typedArgs = {
+    file: a.file,
+    include_children: a.include_children
+  };
+  const projectRoot = getProjectRoot();
+  const filePath = path8.isAbsolute(typedArgs.file) ? typedArgs.file : path8.resolve(projectRoot, typedArgs.file);
+  if (!fs7.existsSync(filePath)) {
+    return fail(`File not found: ${typedArgs.file}`, { provided_path: typedArgs.file });
+  }
+  const ext = path8.extname(filePath).toLowerCase();
+  if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
+    return fail(
+      `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
+      { file: typedArgs.file }
+    );
+  }
+  const includeChildren = typedArgs.include_children ?? false;
+  try {
+    let analyzeComponent3 = function(comp) {
+      const memo = comp.memoInfo;
+      const triggers = [
+        ...findStateHooks(comp.node, sourceFile),
+        ...findPropTriggers(comp.node, sourceFile, memo.is_memoized),
+        ...findForceUpdateTriggers(comp.node, sourceFile)
+      ];
+      const hasPropTriggers = triggers.some((t) => t.type === "prop");
+      triggers.push({
+        type: "parent",
+        source: "Parent component re-render",
+        frequency: memo.is_memoized ? "on_change" : "every_render",
+        preventable: !memo.is_memoized,
+        prevention_method: memo.is_memoized ? void 0 : "Wrap component with React.memo()"
+      });
+      const inlineDefs = findInlineDefinitions(comp.node, sourceFile);
+      const expensiveComps = findExpensiveComputations(comp.node, sourceFile);
+      const ctxSubs = analyzeContextUsage(comp.node, sourceFile);
+      let childrenAnalysis;
+      if (includeChildren) {
+        childrenAnalysis = analyzeChildProps(comp.node, sourceFile, inlineDefs, memoMap);
+      }
+      const suggestions = generateSuggestions(
+        memo.is_memoized,
+        inlineDefs,
+        expensiveComps,
+        ctxSubs,
+        childrenAnalysis || [],
+        hasPropTriggers
+      );
+      return {
+        component: comp.name,
+        is_memoized: memo.is_memoized,
+        memo_type: memo.memo_type,
+        render_triggers: triggers,
+        inline_definitions: inlineDefs,
+        expensive_computations: expensiveComps,
+        context_subscriptions: ctxSubs,
+        children_analysis: childrenAnalysis,
+        optimization_suggestions: suggestions
+      };
+    };
+    var analyzeComponent2 = analyzeComponent3;
+    __name(analyzeComponent3, "analyzeComponent");
+    const content = fs7.readFileSync(filePath, "utf-8");
+    const scriptKind = ext === ".tsx" ? import_typescript21.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript21.default.ScriptKind.JSX : ext === ".ts" ? import_typescript21.default.ScriptKind.TS : import_typescript21.default.ScriptKind.JS;
+    const sourceFile = import_typescript21.default.createSourceFile(
+      filePath,
+      content,
+      import_typescript21.default.ScriptTarget.Latest,
+      true,
+      scriptKind
+    );
+    const relativePath = makeRelativePath(filePath, projectRoot);
+    const memoMap = detectMemoization(sourceFile);
+    const components = findComponents(sourceFile, memoMap);
+    if (components.length === 0) {
+      return ok({
+        message: "No React components found in file",
+        file: relativePath
+      });
+    }
+    let defaultExportName;
+    import_typescript21.default.forEachChild(sourceFile, (node) => {
+      if (import_typescript21.default.isExportAssignment(node) && !node.isExportEquals) {
+        if (import_typescript21.default.isIdentifier(node.expression)) {
+          defaultExportName = node.expression.getText(sourceFile);
+        } else if (import_typescript21.default.isCallExpression(node.expression)) {
+          const arg = node.expression.arguments[0];
+          if (arg && import_typescript21.default.isIdentifier(arg)) {
+            defaultExportName = arg.getText(sourceFile);
+          }
+        }
+      }
+      if (import_typescript21.default.isFunctionDeclaration(node) || import_typescript21.default.isClassDeclaration(node)) {
+        const modifiers = import_typescript21.default.getModifiers(node);
+        if (modifiers && modifiers.some((m) => m.kind === import_typescript21.default.SyntaxKind.DefaultKeyword) && node.name) {
+          defaultExportName = node.name.getText(sourceFile);
+        }
+      }
+    });
+    const mainComponent = defaultExportName && components.find((c) => c.name === defaultExportName) || components[components.length - 1];
+    const allComponentResults = components.map(analyzeComponent3);
+    const mainResult = allComponentResults.find((r) => r.component === mainComponent.name);
+    const result = {
+      component: mainResult.component,
+      file: relativePath,
+      is_memoized: mainResult.is_memoized,
+      memo_type: mainResult.memo_type,
+      render_triggers: mainResult.render_triggers,
+      inline_definitions: mainResult.inline_definitions,
+      expensive_computations: mainResult.expensive_computations,
+      context_subscriptions: mainResult.context_subscriptions,
+      children_analysis: mainResult.children_analysis,
+      optimization_suggestions: mainResult.optimization_suggestions,
+      components: allComponentResults
+    };
+    return ok(result);
+  } catch (error2) {
+    return failFromException(error2, "Render trigger analysis failed");
+  }
+}
+__name(analyzeRenderTriggers, "analyzeRenderTriggers");
+var handleAnalyzeRenderTriggers = analyzeRenderTriggers;
+
+// src/extensions/layout-hierarchy.ts
+var fs8 = __toESM(require("node:fs"), 1);
+var path9 = __toESM(require("node:path"), 1);
+var import_typescript24 = __toESM(require_typescript(), 1);
+
+// src/core/layout/analyzer.ts
+var import_typescript23 = __toESM(require_typescript(), 1);
+
+// src/core/tailwind/parser.ts
 function parseWidthClass(className) {
   const fixedMatch = className.match(/^w-(\d+(?:\.\d+)?|px)$/);
   if (fixedMatch) {
@@ -247359,18 +249340,21 @@ function parseWidthClass(className) {
     if (value.endsWith("%")) {
       return { strategy: "percentage", value };
     }
+    if (value.includes("vw") || value.includes("dvw") || value.includes("svw") || value.includes("lvw")) {
+      return { strategy: "viewport", value };
+    }
     return { strategy: "fixed", value };
   }
   const specialWidths = {
-    "w-auto": { strategy: "auto" },
+    "w-auto": { strategy: "auto", value: "auto" },
     "w-full": { strategy: "percentage", value: "100%" },
-    "w-screen": { strategy: "fixed", value: "100vw" },
-    "w-svw": { strategy: "fixed", value: "100svw" },
-    "w-lvw": { strategy: "fixed", value: "100lvw" },
-    "w-dvw": { strategy: "fixed", value: "100dvw" },
-    "w-min": { strategy: "fit-content", value: "min-content" },
-    "w-max": { strategy: "fit-content", value: "max-content" },
-    "w-fit": { strategy: "fit-content", value: "fit-content" }
+    "w-screen": { strategy: "viewport", value: "100vw" },
+    "w-svw": { strategy: "viewport", value: "100svw" },
+    "w-lvw": { strategy: "viewport", value: "100lvw" },
+    "w-dvw": { strategy: "viewport", value: "100dvw" },
+    "w-min": { strategy: "content-based", value: "min-content" },
+    "w-max": { strategy: "content-based", value: "max-content" },
+    "w-fit": { strategy: "content-based", value: "fit-content" }
   };
   return specialWidths[className];
 }
@@ -247396,33 +249380,45 @@ function parseHeightClass(className) {
     if (value.endsWith("%")) {
       return { strategy: "percentage", value };
     }
+    if (value.includes("vh") || value.includes("dvh") || value.includes("svh") || value.includes("lvh")) {
+      return { strategy: "viewport", value };
+    }
     return { strategy: "fixed", value };
   }
   const specialHeights = {
-    "h-auto": { strategy: "auto" },
+    "h-auto": { strategy: "auto", value: "auto" },
     "h-full": { strategy: "percentage", value: "100%" },
-    "h-screen": { strategy: "fixed", value: "100vh" },
-    "h-svh": { strategy: "fixed", value: "100svh" },
-    "h-lvh": { strategy: "fixed", value: "100lvh" },
-    "h-dvh": { strategy: "fixed", value: "100dvh" },
-    "h-min": { strategy: "fit-content", value: "min-content" },
-    "h-max": { strategy: "fit-content", value: "max-content" },
-    "h-fit": { strategy: "fit-content", value: "fit-content" }
+    "h-screen": { strategy: "viewport", value: "100vh" },
+    "h-svh": { strategy: "viewport", value: "100svh" },
+    "h-lvh": { strategy: "viewport", value: "100lvh" },
+    "h-dvh": { strategy: "viewport", value: "100dvh" },
+    "h-min": { strategy: "content-based", value: "min-content" },
+    "h-max": { strategy: "content-based", value: "max-content" },
+    "h-fit": { strategy: "content-based", value: "fit-content" }
   };
   return specialHeights[className];
 }
 __name(parseHeightClass, "parseHeightClass");
 function parseTailwindClasses(classes) {
-  const props = {};
+  const props = {
+    display: "block",
+    position: "static",
+    overflowX: "visible",
+    overflowY: "visible"
+  };
+  const widthClasses = [];
+  const heightClasses = [];
   for (const className of classes) {
-    const widthStrategy = parseWidthClass(className);
-    if (widthStrategy) {
-      props.width = widthStrategy;
+    const widthResult = parseWidthClass(className);
+    if (widthResult) {
+      props.width = { ...widthResult, classes: [...widthClasses, className] };
+      widthClasses.push(className);
       continue;
     }
-    const heightStrategy = parseHeightClass(className);
-    if (heightStrategy) {
-      props.height = heightStrategy;
+    const heightResult = parseHeightClass(className);
+    if (heightResult) {
+      props.height = { ...heightResult, classes: [...heightClasses, className] };
+      heightClasses.push(className);
       continue;
     }
     if (className.startsWith("min-w-")) {
@@ -247446,32 +249442,271 @@ function parseTailwindClasses(classes) {
     }
     if (className.startsWith("max-w-")) {
       const value = className.slice(6);
-      const maxWidthValues = {
-        "none": "none",
-        "xs": "20rem",
-        "sm": "24rem",
-        "md": "28rem",
-        "lg": "32rem",
-        "xl": "36rem",
-        "2xl": "42rem",
-        "3xl": "48rem",
-        "4xl": "56rem",
-        "5xl": "64rem",
-        "6xl": "72rem",
-        "7xl": "80rem",
-        "full": "100%",
-        "min": "min-content",
-        "max": "max-content",
-        "fit": "fit-content",
-        "prose": "65ch",
-        "screen-sm": "640px",
-        "screen-md": "768px",
-        "screen-lg": "1024px",
-        "screen-xl": "1280px",
-        "screen-2xl": "1536px"
-      };
-      if (maxWidthValues[value]) {
-        props.maxWidth = maxWidthValues[value];
+      if (MAX_WIDTH_VALUES[value]) {
+        props.maxWidth = MAX_WIDTH_VALUES[value];
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.maxWidth = value.slice(1, -1);
+      }
+      continue;
+    }
+    if (className.startsWith("min-h-")) {
+      const value = className.slice(6);
+      if (value === "full")
+        props.minHeight = "100%";
+      else if (value === "screen")
+        props.minHeight = "100vh";
+      else if (value === "min")
+        props.minHeight = "min-content";
+      else if (value === "max")
+        props.minHeight = "max-content";
+      else if (value === "fit")
+        props.minHeight = "fit-content";
+      else if (value === "0")
+        props.minHeight = "0px";
+      else if (value.startsWith("[") && value.endsWith("]")) {
+        props.minHeight = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.minHeight = TAILWIND_SPACING[value];
+      }
+      continue;
+    }
+    if (className.startsWith("max-h-")) {
+      const value = className.slice(6);
+      if (value === "full")
+        props.maxHeight = "100%";
+      else if (value === "screen")
+        props.maxHeight = "100vh";
+      else if (value === "min")
+        props.maxHeight = "min-content";
+      else if (value === "max")
+        props.maxHeight = "max-content";
+      else if (value === "fit")
+        props.maxHeight = "fit-content";
+      else if (value === "none")
+        props.maxHeight = "none";
+      else if (value.startsWith("[") && value.endsWith("]")) {
+        props.maxHeight = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.maxHeight = TAILWIND_SPACING[value];
+      }
+      continue;
+    }
+    const displayClasses = {
+      "block": "block",
+      "inline-block": "inline-block",
+      "inline": "inline",
+      "flex": "flex",
+      "inline-flex": "inline-flex",
+      "grid": "grid",
+      "inline-grid": "inline-grid",
+      "contents": "contents",
+      "hidden": "none"
+    };
+    if (displayClasses[className]) {
+      props.display = displayClasses[className];
+      continue;
+    }
+    const flexDirections = {
+      "flex-row": "row",
+      "flex-row-reverse": "row-reverse",
+      "flex-col": "column",
+      "flex-col-reverse": "column-reverse"
+    };
+    if (flexDirections[className]) {
+      props.flexDirection = flexDirections[className];
+      continue;
+    }
+    if (className === "flex-1") {
+      props.flexGrow = 1;
+      props.flexShrink = 1;
+      props.flexBasis = "0%";
+      continue;
+    }
+    if (className === "flex-auto") {
+      props.flexGrow = 1;
+      props.flexShrink = 1;
+      props.flexBasis = "auto";
+      continue;
+    }
+    if (className === "flex-initial") {
+      props.flexGrow = 0;
+      props.flexShrink = 1;
+      props.flexBasis = "auto";
+      continue;
+    }
+    if (className === "flex-none") {
+      props.flexGrow = 0;
+      props.flexShrink = 0;
+      props.flexBasis = "auto";
+      continue;
+    }
+    if (className === "grow" || className === "flex-grow") {
+      props.flexGrow = 1;
+      continue;
+    }
+    if (className === "grow-0" || className === "flex-grow-0") {
+      props.flexGrow = 0;
+      continue;
+    }
+    if (className === "shrink" || className === "flex-shrink") {
+      props.flexShrink = 1;
+      continue;
+    }
+    if (className === "shrink-0" || className === "flex-shrink-0") {
+      props.flexShrink = 0;
+      continue;
+    }
+    const basisMatch = className.match(/^basis-(.+)$/);
+    if (basisMatch) {
+      const value = basisMatch[1];
+      if (value === "auto")
+        props.flexBasis = "auto";
+      else if (value === "full")
+        props.flexBasis = "100%";
+      else if (TAILWIND_SPACING[value])
+        props.flexBasis = TAILWIND_SPACING[value];
+      else if (TAILWIND_FRACTIONS[value])
+        props.flexBasis = TAILWIND_FRACTIONS[value];
+      else if (value.startsWith("[") && value.endsWith("]")) {
+        props.flexBasis = value.slice(1, -1);
+      }
+      continue;
+    }
+    const colSpanMatch = className.match(/^col-span-(\d+|full)$/);
+    if (colSpanMatch) {
+      const value = colSpanMatch[1];
+      props.gridColumn = value === "full" ? "1 / -1" : `span ${value} / span ${value}`;
+      continue;
+    }
+    const rowSpanMatch = className.match(/^row-span-(\d+|full)$/);
+    if (rowSpanMatch) {
+      const value = rowSpanMatch[1];
+      props.gridRow = value === "full" ? "1 / -1" : `span ${value} / span ${value}`;
+      continue;
+    }
+    const colStartMatch = className.match(/^col-start-(\d+|auto)$/);
+    if (colStartMatch) {
+      const existing = props.gridColumn || "";
+      props.gridColumn = `${colStartMatch[1]}${existing ? ` / ${existing.split("/")[1]?.trim() || "auto"}` : ""}`;
+      continue;
+    }
+    const colEndMatch = className.match(/^col-end-(\d+|auto)$/);
+    if (colEndMatch) {
+      const existing = props.gridColumn || "auto";
+      props.gridColumn = `${existing.split("/")[0]?.trim() || "auto"} / ${colEndMatch[1]}`;
+      continue;
+    }
+    const gridColsMatch = className.match(/^grid-cols-(\d+|none|\[.+\])$/);
+    if (gridColsMatch) {
+      const value = gridColsMatch[1];
+      if (value === "none") {
+        props.gridTemplateColumns = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.gridTemplateColumns = value.slice(1, -1);
+      } else {
+        props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
+      }
+      continue;
+    }
+    const gridRowsMatch = className.match(/^grid-rows-(\d+|none|\[.+\])$/);
+    if (gridRowsMatch) {
+      const value = gridRowsMatch[1];
+      if (value === "none") {
+        props.gridTemplateRows = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.gridTemplateRows = value.slice(1, -1);
+      } else {
+        props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
+      }
+      continue;
+    }
+    const overflows = {
+      "overflow-auto": "auto",
+      "overflow-hidden": "hidden",
+      "overflow-clip": "clip",
+      "overflow-visible": "visible",
+      "overflow-scroll": "scroll"
+    };
+    if (overflows[className]) {
+      props.overflowX = overflows[className];
+      props.overflowY = overflows[className];
+      continue;
+    }
+    const overflowX = {
+      "overflow-x-auto": "auto",
+      "overflow-x-hidden": "hidden",
+      "overflow-x-clip": "clip",
+      "overflow-x-visible": "visible",
+      "overflow-x-scroll": "scroll"
+    };
+    if (overflowX[className]) {
+      props.overflowX = overflowX[className];
+      continue;
+    }
+    const overflowY = {
+      "overflow-y-auto": "auto",
+      "overflow-y-hidden": "hidden",
+      "overflow-y-clip": "clip",
+      "overflow-y-visible": "visible",
+      "overflow-y-scroll": "scroll"
+    };
+    if (overflowY[className]) {
+      props.overflowY = overflowY[className];
+      continue;
+    }
+    const positions = {
+      "static": "static",
+      "fixed": "fixed",
+      "absolute": "absolute",
+      "relative": "relative",
+      "sticky": "sticky"
+    };
+    if (positions[className]) {
+      props.position = positions[className];
+      continue;
+    }
+  }
+  return props;
+}
+__name(parseTailwindClasses, "parseTailwindClasses");
+function parseTailwindClassesLayout(classes) {
+  const props = {};
+  for (const className of classes) {
+    const widthResult = parseWidthClass(className);
+    if (widthResult) {
+      const strategy = widthResult.strategy === "content-based" ? "fit-content" : widthResult.strategy === "viewport" ? "fixed" : widthResult.strategy === "flex-controlled" ? "flex" : widthResult.strategy === "grid-controlled" ? "auto" : widthResult.strategy === "inherit" ? "auto" : widthResult.strategy;
+      props.width = { strategy, value: widthResult.value };
+      continue;
+    }
+    const heightResult = parseHeightClass(className);
+    if (heightResult) {
+      const strategy = heightResult.strategy === "content-based" ? "fit-content" : heightResult.strategy === "viewport" ? "fixed" : heightResult.strategy === "flex-controlled" ? "flex" : heightResult.strategy === "grid-controlled" ? "auto" : heightResult.strategy === "inherit" ? "auto" : heightResult.strategy;
+      props.height = { strategy, value: heightResult.value };
+      continue;
+    }
+    if (className.startsWith("min-w-")) {
+      const value = className.slice(6);
+      if (value === "full")
+        props.minWidth = "100%";
+      else if (value === "min")
+        props.minWidth = "min-content";
+      else if (value === "max")
+        props.minWidth = "max-content";
+      else if (value === "fit")
+        props.minWidth = "fit-content";
+      else if (value === "0")
+        props.minWidth = "0px";
+      else if (value.startsWith("[") && value.endsWith("]")) {
+        props.minWidth = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.minWidth = TAILWIND_SPACING[value];
+      }
+      continue;
+    }
+    if (className.startsWith("max-w-")) {
+      const value = className.slice(6);
+      if (MAX_WIDTH_VALUES[value]) {
+        props.maxWidth = MAX_WIDTH_VALUES[value];
       } else if (value.startsWith("[") && value.endsWith("]")) {
         props.maxWidth = value.slice(1, -1);
       }
@@ -247748,33 +249983,9 @@ function parseTailwindClasses(classes) {
   }
   return props;
 }
-__name(parseTailwindClasses, "parseTailwindClasses");
+__name(parseTailwindClassesLayout, "parseTailwindClassesLayout");
 
-// src/handlers/layout-hierarchy-core.ts
-function extractClassName(node, sourceFile) {
-  const classes = [];
-  for (const attr of node.attributes.properties) {
-    if (import_typescript9.default.isJsxAttribute(attr)) {
-      const attrName = attr.name.getText(sourceFile);
-      if (attrName === "className" || attrName === "class") {
-        classes.push(...extractClassesFromAttribute(attr));
-      }
-    }
-  }
-  return classes;
-}
-__name(extractClassName, "extractClassName");
-function extractId(node, sourceFile) {
-  for (const attr of node.attributes.properties) {
-    if (import_typescript9.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
-      if (attr.initializer && import_typescript9.default.isStringLiteral(attr.initializer)) {
-        return attr.initializer.text;
-      }
-    }
-  }
-  return void 0;
-}
-__name(extractId, "extractId");
+// src/core/tailwind/identifier.ts
 function createElementIdentifier(tagName, classes, id) {
   if (id) {
     return `${tagName}#${id}`;
@@ -247789,6 +250000,286 @@ function createElementIdentifier(tagName, classes, id) {
   return tagName;
 }
 __name(createElementIdentifier, "createElementIdentifier");
+
+// src/core/jsx/element-finder.ts
+var import_typescript22 = __toESM(require_typescript(), 1);
+function extractClassName(node, sourceFile) {
+  const classes = [];
+  for (const attr of node.attributes.properties) {
+    if (import_typescript22.default.isJsxAttribute(attr)) {
+      const attrName = attr.name.getText(sourceFile);
+      if (attrName === "className" || attrName === "class") {
+        classes.push(...extractClassesFromAttribute(attr));
+      }
+    }
+  }
+  return classes;
+}
+__name(extractClassName, "extractClassName");
+function extractId(node, sourceFile) {
+  for (const attr of node.attributes.properties) {
+    if (import_typescript22.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
+      if (attr.initializer && import_typescript22.default.isStringLiteral(attr.initializer)) {
+        return attr.initializer.text;
+      }
+    }
+  }
+  return void 0;
+}
+__name(extractId, "extractId");
+function buildElementNode(tagName, classes, id, parent) {
+  const props = parseTailwindClasses(classes);
+  return {
+    tagName,
+    classes,
+    id,
+    parent,
+    children: [],
+    display: props.display || "block",
+    position: props.position || "static",
+    overflowX: props.overflowX || "visible",
+    overflowY: props.overflowY || "visible",
+    width: props.width,
+    height: props.height,
+    minWidth: props.minWidth,
+    maxWidth: props.maxWidth,
+    minHeight: props.minHeight,
+    maxHeight: props.maxHeight,
+    flexDirection: props.flexDirection,
+    flexGrow: props.flexGrow,
+    flexShrink: props.flexShrink,
+    flexBasis: props.flexBasis,
+    gridColumn: props.gridColumn,
+    gridRow: props.gridRow,
+    gridArea: props.gridArea,
+    gridTemplateColumns: props.gridTemplateColumns,
+    gridTemplateRows: props.gridTemplateRows
+  };
+}
+__name(buildElementNode, "buildElementNode");
+function matchesSelector(tagName, classes, id, selector) {
+  if (selector.startsWith("#")) {
+    return id === selector.slice(1);
+  }
+  if (selector.startsWith(".")) {
+    return classes.includes(selector.slice(1));
+  }
+  return tagName.toLowerCase() === selector.toLowerCase();
+}
+__name(matchesSelector, "matchesSelector");
+function parseJsxTree(node, sourceFile, parent, selector) {
+  if (import_typescript22.default.isJsxElement(node)) {
+    const openingElement = node.openingElement;
+    const tagName = openingElement.tagName.getText(sourceFile);
+    const classes = extractClassName(openingElement, sourceFile);
+    const id = extractId(openingElement, sourceFile);
+    const elementNode = buildElementNode(tagName, classes, id, parent);
+    if (matchesSelector(tagName, classes, id, selector)) {
+      for (const child of node.children) {
+        const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
+        if (childResult) {
+          elementNode.children.push(childResult);
+        }
+      }
+      return elementNode;
+    }
+    for (const child of node.children) {
+      const result2 = parseJsxTree(child, sourceFile, elementNode, selector);
+      if (result2) {
+        return result2;
+      }
+    }
+    return null;
+  }
+  if (import_typescript22.default.isJsxSelfClosingElement(node)) {
+    const tagName = node.tagName.getText(sourceFile);
+    const classes = extractClassName(node, sourceFile);
+    const id = extractId(node, sourceFile);
+    if (matchesSelector(tagName, classes, id, selector)) {
+      return buildElementNode(tagName, classes, id, parent);
+    }
+    return null;
+  }
+  if (import_typescript22.default.isJsxFragment(node)) {
+    for (const child of node.children) {
+      const result2 = parseJsxTree(child, sourceFile, parent, selector);
+      if (result2) {
+        return result2;
+      }
+    }
+    return null;
+  }
+  if (import_typescript22.default.isJsxExpression(node) && node.expression) {
+    let result2 = null;
+    import_typescript22.default.forEachChild(node.expression, (child) => {
+      if (!result2) {
+        result2 = parseJsxTree(child, sourceFile, parent, selector);
+      }
+    });
+    return result2;
+  }
+  let result = null;
+  import_typescript22.default.forEachChild(node, (child) => {
+    if (!result) {
+      result = parseJsxTree(child, sourceFile, parent, selector);
+    }
+  });
+  return result;
+}
+__name(parseJsxTree, "parseJsxTree");
+function parseJsxTreeForChildren(node, sourceFile, parent) {
+  if (import_typescript22.default.isJsxElement(node)) {
+    const openingElement = node.openingElement;
+    const tagName = openingElement.tagName.getText(sourceFile);
+    const classes = extractClassName(openingElement, sourceFile);
+    const id = extractId(openingElement, sourceFile);
+    const elementNode = buildElementNode(tagName, classes, id, parent);
+    for (const child of node.children) {
+      const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
+      if (childResult) {
+        elementNode.children.push(childResult);
+      }
+    }
+    return elementNode;
+  }
+  if (import_typescript22.default.isJsxSelfClosingElement(node)) {
+    const tagName = node.tagName.getText(sourceFile);
+    const classes = extractClassName(node, sourceFile);
+    const id = extractId(node, sourceFile);
+    return buildElementNode(tagName, classes, id, parent);
+  }
+  if (import_typescript22.default.isJsxFragment(node)) {
+    const fragmentNode = buildElementNode("Fragment", [], void 0, parent);
+    fragmentNode.display = "contents";
+    for (const child of node.children) {
+      const childResult = parseJsxTreeForChildren(child, sourceFile, fragmentNode);
+      if (childResult) {
+        fragmentNode.children.push(childResult);
+      }
+    }
+    return fragmentNode.children.length > 0 ? fragmentNode : null;
+  }
+  return null;
+}
+__name(parseJsxTreeForChildren, "parseJsxTreeForChildren");
+function findRootJsx(sourceFile) {
+  let rootJsx = null;
+  function visit(node) {
+    if (rootJsx)
+      return;
+    if (import_typescript22.default.isReturnStatement(node) && node.expression) {
+      if (import_typescript22.default.isJsxElement(node.expression) || import_typescript22.default.isJsxSelfClosingElement(node.expression) || import_typescript22.default.isJsxFragment(node.expression)) {
+        rootJsx = node.expression;
+        return;
+      }
+      if (import_typescript22.default.isParenthesizedExpression(node.expression)) {
+        const inner = node.expression.expression;
+        if (import_typescript22.default.isJsxElement(inner) || import_typescript22.default.isJsxSelfClosingElement(inner) || import_typescript22.default.isJsxFragment(inner)) {
+          rootJsx = inner;
+          return;
+        }
+      }
+    }
+    if (import_typescript22.default.isArrowFunction(node) && node.body) {
+      if (import_typescript22.default.isJsxElement(node.body) || import_typescript22.default.isJsxSelfClosingElement(node.body) || import_typescript22.default.isJsxFragment(node.body)) {
+        rootJsx = node.body;
+        return;
+      }
+      if (import_typescript22.default.isParenthesizedExpression(node.body)) {
+        const inner = node.body.expression;
+        if (import_typescript22.default.isJsxElement(inner) || import_typescript22.default.isJsxSelfClosingElement(inner) || import_typescript22.default.isJsxFragment(inner)) {
+          rootJsx = inner;
+          return;
+        }
+      }
+    }
+    import_typescript22.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  if (!rootJsx) {
+    for (const statement of sourceFile.statements) {
+      if (import_typescript22.default.isExpressionStatement(statement)) {
+        const expr = statement.expression;
+        if (import_typescript22.default.isJsxElement(expr) || import_typescript22.default.isJsxSelfClosingElement(expr) || import_typescript22.default.isJsxFragment(expr)) {
+          rootJsx = expr;
+          break;
+        }
+      }
+    }
+  }
+  return rootJsx;
+}
+__name(findRootJsx, "findRootJsx");
+function findElementBySelector(rootJsx, sourceFile, selector) {
+  return parseJsxTree(rootJsx, sourceFile, void 0, selector);
+}
+__name(findElementBySelector, "findElementBySelector");
+function getAllElements(node, sourceFile, elements = []) {
+  if (import_typescript22.default.isJsxElement(node)) {
+    const openingElement = node.openingElement;
+    const tagName = openingElement.tagName.getText(sourceFile);
+    const classes = extractClassName(openingElement, sourceFile);
+    const id = extractId(openingElement, sourceFile);
+    const selector = id ? `#${id}` : classes.length > 0 ? `.${classes[0]}` : tagName;
+    elements.push({ selector, tag: tagName });
+    for (const child of node.children) {
+      getAllElements(child, sourceFile, elements);
+    }
+    return elements;
+  }
+  if (import_typescript22.default.isJsxSelfClosingElement(node)) {
+    const tagName = node.tagName.getText(sourceFile);
+    const classes = extractClassName(node, sourceFile);
+    const id = extractId(node, sourceFile);
+    const selector = id ? `#${id}` : classes.length > 0 ? `.${classes[0]}` : tagName;
+    elements.push({ selector, tag: tagName });
+    return elements;
+  }
+  if (import_typescript22.default.isJsxFragment(node)) {
+    for (const child of node.children) {
+      getAllElements(child, sourceFile, elements);
+    }
+    return elements;
+  }
+  if (import_typescript22.default.isJsxExpression(node) && node.expression) {
+    import_typescript22.default.forEachChild(node.expression, (child) => {
+      getAllElements(child, sourceFile, elements);
+    });
+    return elements;
+  }
+  import_typescript22.default.forEachChild(node, (child) => {
+    getAllElements(child, sourceFile, elements);
+  });
+  return elements;
+}
+__name(getAllElements, "getAllElements");
+
+// src/core/layout/analyzer.ts
+function extractClassName2(node, sourceFile) {
+  const classes = [];
+  for (const attr of node.attributes.properties) {
+    if (import_typescript23.default.isJsxAttribute(attr)) {
+      const attrName = attr.name.getText(sourceFile);
+      if (attrName === "className" || attrName === "class") {
+        classes.push(...extractClassesFromAttribute(attr));
+      }
+    }
+  }
+  return classes;
+}
+__name(extractClassName2, "extractClassName");
+function extractId2(node, sourceFile) {
+  for (const attr of node.attributes.properties) {
+    if (import_typescript23.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
+      if (attr.initializer && import_typescript23.default.isStringLiteral(attr.initializer)) {
+        return attr.initializer.text;
+      }
+    }
+  }
+  return void 0;
+}
+__name(extractId2, "extractId");
 function buildLayoutNode(tagName, classes, id, props, children) {
   const element = createElementIdentifier(tagName, classes, id);
   const sizing = {
@@ -247848,7 +250339,7 @@ function buildLayoutNode(tagName, classes, id, props, children) {
   };
 }
 __name(buildLayoutNode, "buildLayoutNode");
-function matchesSelector(tagName, classes, id, selector) {
+function matchesSelector2(tagName, classes, id, selector) {
   if (selector.startsWith("#")) {
     return id === selector.slice(1);
   }
@@ -247857,15 +250348,15 @@ function matchesSelector(tagName, classes, id, selector) {
   }
   return tagName.toLowerCase() === selector.toLowerCase();
 }
-__name(matchesSelector, "matchesSelector");
+__name(matchesSelector2, "matchesSelector");
 function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
-  if (import_typescript9.default.isJsxElement(node)) {
+  if (import_typescript23.default.isJsxElement(node)) {
     const openingElement = node.openingElement;
     const tagName = openingElement.tagName.getText(sourceFile);
-    const classes = extractClassName(openingElement, sourceFile);
-    const id = extractId(openingElement, sourceFile);
-    const props = parseTailwindClasses(classes);
-    const elementMatches = selector ? matchesSelector(tagName, classes, id, selector) : false;
+    const classes = extractClassName2(openingElement, sourceFile);
+    const id = extractId2(openingElement, sourceFile);
+    const props = parseTailwindClassesLayout(classes);
+    const elementMatches = selector ? matchesSelector2(tagName, classes, id, selector) : false;
     const shouldInclude = !selector || foundSelector || elementMatches;
     const children = [];
     for (const child of node.children) {
@@ -247890,18 +250381,18 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
     }
     return null;
   }
-  if (import_typescript9.default.isJsxSelfClosingElement(node)) {
+  if (import_typescript23.default.isJsxSelfClosingElement(node)) {
     const tagName = node.tagName.getText(sourceFile);
-    const classes = extractClassName(node, sourceFile);
-    const id = extractId(node, sourceFile);
-    const props = parseTailwindClasses(classes);
-    const elementMatches = selector ? matchesSelector(tagName, classes, id, selector) : true;
+    const classes = extractClassName2(node, sourceFile);
+    const id = extractId2(node, sourceFile);
+    const props = parseTailwindClassesLayout(classes);
+    const elementMatches = selector ? matchesSelector2(tagName, classes, id, selector) : true;
     if (!selector || foundSelector || elementMatches) {
       return buildLayoutNode(tagName, classes, id, props, []);
     }
     return null;
   }
-  if (import_typescript9.default.isJsxFragment(node)) {
+  if (import_typescript23.default.isJsxFragment(node)) {
     const children = [];
     for (const child of node.children) {
       const childNode = parseJsxElement(child, sourceFile, selector, foundSelector);
@@ -247926,9 +250417,9 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
     }
     return null;
   }
-  if (import_typescript9.default.isJsxExpression(node) && node.expression) {
+  if (import_typescript23.default.isJsxExpression(node) && node.expression) {
     let result = null;
-    import_typescript9.default.forEachChild(node.expression, (child) => {
+    import_typescript23.default.forEachChild(node.expression, (child) => {
       if (!result) {
         result = parseJsxElement(child, sourceFile, selector, foundSelector);
       }
@@ -247938,115 +250429,220 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
   return null;
 }
 __name(parseJsxElement, "parseJsxElement");
-function findRootJsx(sourceFile) {
-  let rootJsx = null;
-  function visit(node) {
-    if (rootJsx)
-      return;
-    if (import_typescript9.default.isReturnStatement(node) && node.expression) {
-      if (import_typescript9.default.isJsxElement(node.expression) || import_typescript9.default.isJsxSelfClosingElement(node.expression) || import_typescript9.default.isJsxFragment(node.expression)) {
-        rootJsx = node.expression;
-        return;
-      }
-      if (import_typescript9.default.isParenthesizedExpression(node.expression)) {
-        const inner = node.expression.expression;
-        if (import_typescript9.default.isJsxElement(inner) || import_typescript9.default.isJsxSelfClosingElement(inner) || import_typescript9.default.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-    if (import_typescript9.default.isArrowFunction(node) && node.body) {
-      if (import_typescript9.default.isJsxElement(node.body) || import_typescript9.default.isJsxSelfClosingElement(node.body) || import_typescript9.default.isJsxFragment(node.body)) {
-        rootJsx = node.body;
-        return;
-      }
-      if (import_typescript9.default.isParenthesizedExpression(node.body)) {
-        const inner = node.body.expression;
-        if (import_typescript9.default.isJsxElement(inner) || import_typescript9.default.isJsxSelfClosingElement(inner) || import_typescript9.default.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-    import_typescript9.default.forEachChild(node, visit);
+function detectIssues3(node, context = { depth: 0 }) {
+  const issues = [];
+  if (node.sizing.height.strategy === "fixed" && node.overflow.y === "visible" && node.children.some((c) => c.sizing.height.strategy === "auto")) {
+    issues.push({
+      element: node.element,
+      issue: "Fixed height container with auto-height children may overflow without proper handling",
+      suggestion: "Add overflow-y-auto or overflow-hidden to prevent content from overflowing"
+    });
   }
-  __name(visit, "visit");
-  visit(sourceFile);
-  if (!rootJsx) {
-    for (const statement of sourceFile.statements) {
-      if (import_typescript9.default.isExpressionStatement(statement)) {
-        const expr = statement.expression;
-        if (import_typescript9.default.isJsxElement(expr) || import_typescript9.default.isJsxSelfClosingElement(expr) || import_typescript9.default.isJsxFragment(expr)) {
-          rootJsx = expr;
-          break;
-        }
+  if (context.parentDisplay === "flex" && node.flex_props && node.flex_props.shrink === 1 && node.sizing.width.strategy === "auto") {
+    const hasFixedWidthSibling = false;
+    if (!hasFixedWidthSibling) {
+      if (node.flex_props.grow > 0 && node.flex_props.basis === "auto") {
+        issues.push({
+          element: node.element,
+          issue: "Flex item with grow but no explicit basis may collapse unexpectedly",
+          suggestion: "Consider adding flex-basis (e.g., basis-0 for equal distribution or a specific value)"
+        });
       }
     }
   }
-  return rootJsx;
+  if ((node.display === "flex" || node.display === "inline-flex") && context.parentDisplay === "flex" && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && !node.flex_props?.basis) {
+    issues.push({
+      element: node.element,
+      issue: "Nested flex container without explicit sizing may have unpredictable dimensions",
+      suggestion: "Consider adding explicit width/height or flex-basis for more predictable layout behavior"
+    });
+  }
+  if ((node.display === "grid" || node.display === "inline-grid") && !node.grid_props?.template_columns) {
+    issues.push({
+      element: node.element,
+      issue: "Grid container without explicit column template - items will stack in single column",
+      suggestion: "Add grid-cols-N or grid-template-columns to define the grid structure"
+    });
+  }
+  if ((node.position === "absolute" || node.position === "fixed") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto") {
+    issues.push({
+      element: node.element,
+      issue: `${node.position} positioned element without explicit dimensions may have zero size`,
+      suggestion: "Add explicit width/height or use inset properties (inset-0, left/right, top/bottom)"
+    });
+  }
+  if (node.sizing.height.strategy === "percentage" && context.parentSizing?.height.strategy === "auto") {
+    issues.push({
+      element: node.element,
+      issue: "Percentage height on element with auto-height parent will have no effect",
+      suggestion: "Ensure parent has explicit height or use flex/grid for height distribution"
+    });
+  }
+  if ((node.overflow.x === "scroll" || node.overflow.y === "scroll" || node.overflow.x === "auto" || node.overflow.y === "auto") && node.sizing.width.strategy === "auto" && node.sizing.height.strategy === "auto" && node.display !== "flex" && context.parentDisplay !== "flex") {
+    issues.push({
+      element: node.element,
+      issue: "Overflow scroll/auto without constrained dimensions may not scroll as expected",
+      suggestion: "Add explicit height/width or use flex layout to constrain the scrollable area"
+    });
+  }
+  const childContext = {
+    parentDisplay: node.display,
+    parentSizing: node.sizing,
+    parentOverflow: node.overflow,
+    parentPosition: node.position,
+    depth: context.depth + 1
+  };
+  for (const child of node.children) {
+    issues.push(...detectIssues3(child, childContext));
+  }
+  return issues;
 }
-__name(findRootJsx, "findRootJsx");
+__name(detectIssues3, "detectIssues");
+function generateConstraintNotes(node, notes = [], path22 = "") {
+  const currentPath = path22 ? `${path22} > ${node.element}` : node.element;
+  if (node.sizing.width.strategy === "fixed" && node.sizing.width.value) {
+    notes.push(`${currentPath}: Fixed width of ${node.sizing.width.value}`);
+  }
+  if (node.sizing.height.strategy === "fixed" && node.sizing.height.value) {
+    notes.push(`${currentPath}: Fixed height of ${node.sizing.height.value}`);
+  }
+  if (node.sizing.width.strategy === "percentage" && node.sizing.width.value) {
+    notes.push(`${currentPath}: Width constrained to ${node.sizing.width.value} of parent`);
+  }
+  if (node.sizing.height.strategy === "percentage" && node.sizing.height.value) {
+    notes.push(`${currentPath}: Height constrained to ${node.sizing.height.value} of parent`);
+  }
+  if (node.display === "flex" && node.flex_props) {
+    const flexDesc = [];
+    if (node.flex_props.direction !== "row") {
+      flexDesc.push(`direction: ${node.flex_props.direction}`);
+    }
+    if (node.flex_props.gap) {
+      flexDesc.push(`gap: ${node.flex_props.gap}`);
+    }
+    if (node.flex_props.justify && node.flex_props.justify !== "flex-start") {
+      flexDesc.push(`justify: ${node.flex_props.justify}`);
+    }
+    if (node.flex_props.align && node.flex_props.align !== "stretch") {
+      flexDesc.push(`align: ${node.flex_props.align}`);
+    }
+    if (flexDesc.length > 0) {
+      notes.push(`${currentPath}: Flex container (${flexDesc.join(", ")})`);
+    }
+  }
+  if (node.display === "grid" && node.grid_props) {
+    const gridDesc = [];
+    if (node.grid_props.template_columns) {
+      gridDesc.push(`columns: ${node.grid_props.template_columns}`);
+    }
+    if (node.grid_props.template_rows) {
+      gridDesc.push(`rows: ${node.grid_props.template_rows}`);
+    }
+    if (node.grid_props.gap) {
+      gridDesc.push(`gap: ${node.grid_props.gap}`);
+    }
+    if (gridDesc.length > 0) {
+      notes.push(`${currentPath}: Grid container (${gridDesc.join(", ")})`);
+    }
+  }
+  if (node.overflow.x !== "visible" || node.overflow.y !== "visible") {
+    const overflowDesc = node.overflow.x === node.overflow.y ? node.overflow.x : `x: ${node.overflow.x}, y: ${node.overflow.y}`;
+    notes.push(`${currentPath}: Overflow handling (${overflowDesc})`);
+  }
+  if (node.position !== "static") {
+    notes.push(`${currentPath}: Positioned (${node.position})`);
+  }
+  for (const child of node.children) {
+    generateConstraintNotes(child, notes, currentPath);
+  }
+  return notes;
+}
+__name(generateConstraintNotes, "generateConstraintNotes");
+function generateSummary(tree, issues) {
+  const parts = [];
+  const displayCounts = {};
+  const positionCounts = {};
+  function countNodes(node) {
+    displayCounts[node.display] = (displayCounts[node.display] || 0) + 1;
+    if (node.position !== "static") {
+      positionCounts[node.position] = (positionCounts[node.position] || 0) + 1;
+    }
+    node.children.forEach(countNodes);
+  }
+  __name(countNodes, "countNodes");
+  countNodes(tree);
+  parts.push(`Root element: ${tree.element}`);
+  const layoutTypes = [];
+  if (displayCounts.flex || displayCounts["inline-flex"]) {
+    layoutTypes.push(`${(displayCounts.flex || 0) + (displayCounts["inline-flex"] || 0)} flex containers`);
+  }
+  if (displayCounts.grid || displayCounts["inline-grid"]) {
+    layoutTypes.push(`${(displayCounts.grid || 0) + (displayCounts["inline-grid"] || 0)} grid containers`);
+  }
+  if (layoutTypes.length > 0) {
+    parts.push(`Layout structure: ${layoutTypes.join(", ")}`);
+  }
+  const positionTypes = Object.entries(positionCounts).map(([type, count]) => `${count} ${type}`).join(", ");
+  if (positionTypes) {
+    parts.push(`Positioned elements: ${positionTypes}`);
+  }
+  if (issues.length === 0) {
+    parts.push("No potential layout issues detected.");
+  } else {
+    parts.push(`${issues.length} potential issue${issues.length > 1 ? "s" : ""} detected.`);
+  }
+  return parts.join(". ");
+}
+__name(generateSummary, "generateSummary");
 
-// src/handlers/analyze-layout-hierarchy.ts
-function createSuccessResponse3(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse3, "createSuccessResponse");
-function createErrorResponse3(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse3, "createErrorResponse");
-async function handleAnalyzeLayoutHierarchy(args) {
+// src/extensions/layout-hierarchy.ts
+async function analyzeLayoutHierarchy(args) {
+  const typedArgs = args;
   const projectRoot = process.cwd();
+  if (!typedArgs.file) {
+    return missingArg("file");
+  }
   try {
-    const filePath = path4.isAbsolute(args.file) ? args.file : path4.resolve(projectRoot, args.file);
-    if (!fs3.existsSync(filePath)) {
-      return createErrorResponse3(`File not found: ${args.file}`, { provided_path: args.file });
+    const filePath = path9.isAbsolute(typedArgs.file) ? typedArgs.file : path9.resolve(projectRoot, typedArgs.file);
+    if (!fs8.existsSync(filePath)) {
+      return fail(`File not found: ${typedArgs.file}`, { provided_path: typedArgs.file });
     }
-    const ext = path4.extname(filePath).toLowerCase();
+    const ext = path9.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-      return createErrorResponse3(
+      return fail(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
-        { provided_path: args.file }
+        { provided_path: typedArgs.file }
       );
     }
-    const content = fs3.readFileSync(filePath, "utf-8");
-    const scriptKind = ext === ".tsx" ? import_typescript10.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript10.default.ScriptKind.JSX : ext === ".ts" ? import_typescript10.default.ScriptKind.TSX : import_typescript10.default.ScriptKind.JSX;
-    const sourceFile = import_typescript10.default.createSourceFile(
+    const scriptKind = ext === ".tsx" ? import_typescript24.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript24.default.ScriptKind.JSX : ext === ".ts" ? import_typescript24.default.ScriptKind.TS : import_typescript24.default.ScriptKind.JS;
+    const content = fs8.readFileSync(filePath, "utf-8");
+    const sourceFile = import_typescript24.default.createSourceFile(
       filePath,
       content,
-      import_typescript10.default.ScriptTarget.Latest,
+      import_typescript24.default.ScriptTarget.Latest,
       true,
       scriptKind
     );
     const rootJsxNode = findRootJsx(sourceFile);
     if (!rootJsxNode) {
-      return createErrorResponse3("No JSX element found in file. Ensure the component returns JSX.", {
-        file: args.file
+      return fail("No JSX element found in file. Ensure the component returns JSX.", {
+        file: typedArgs.file
       });
     }
-    const layoutTree = parseJsxElement(rootJsxNode, sourceFile, args.selector);
+    const layoutTree = parseJsxElement(rootJsxNode, sourceFile, typedArgs.selector);
     if (!layoutTree) {
-      if (args.selector) {
-        return createErrorResponse3(`No element matching selector "${args.selector}" found in component.`, {
-          file: args.file,
-          selector: args.selector
-        });
+      if (typedArgs.selector) {
+        return fail(
+          `No element matching selector "${typedArgs.selector}" found in component.`,
+          { file: typedArgs.file, selector: typedArgs.selector }
+        );
       }
-      return createErrorResponse3("Failed to parse layout hierarchy from JSX.", {
-        file: args.file
-      });
+      return fail("Failed to parse layout hierarchy from JSX.", { file: typedArgs.file });
     }
-    const potentialIssues = detectIssues(layoutTree);
+    const potentialIssues = detectIssues3(layoutTree);
     const constraintNotes = generateConstraintNotes(layoutTree);
     const summary = generateSummary(layoutTree, potentialIssues);
-    const relativePath = path4.relative(projectRoot, filePath).replace(/\\/g, "/");
+    const relativePath = path9.relative(projectRoot, filePath).replace(/\\/g, "/");
     const result = {
       file: relativePath,
       root_element: layoutTree.element,
@@ -248055,776 +250651,21 @@ async function handleAnalyzeLayoutHierarchy(args) {
       potential_issues: potentialIssues,
       summary
     };
-    return createSuccessResponse3(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse3(message, { file: args.file });
+    return failFromException(error2, "Analysis failed");
   }
 }
-__name(handleAnalyzeLayoutHierarchy, "handleAnalyzeLayoutHierarchy");
+__name(analyzeLayoutHierarchy, "analyzeLayoutHierarchy");
+var handleAnalyzeLayoutHierarchy = analyzeLayoutHierarchy;
 
-// src/handlers/responsive-breakpoints/index.ts
-var fs5 = __toESM(require("fs"), 1);
-var path7 = __toESM(require("path"), 1);
-var import_typescript12 = __toESM(require_typescript(), 1);
+// src/extensions/overflow-diagnosis.ts
+var fs9 = __toESM(require("fs"), 1);
+var path10 = __toESM(require("path"), 1);
+var import_typescript25 = __toESM(require_typescript(), 1);
 
-// src/handlers/responsive-breakpoints/utils.ts
-var path5 = __toESM(require("path"), 1);
-function createSuccessResponse4(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse4, "createSuccessResponse");
-function createErrorResponse4(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse4, "createErrorResponse");
-function normalizeFilePath2(filePath) {
-  return filePath.replace(/\\/g, "/");
-}
-__name(normalizeFilePath2, "normalizeFilePath");
-function makeRelativePath2(absolutePath, projectRoot) {
-  return normalizeFilePath2(path5.relative(projectRoot, absolutePath));
-}
-__name(makeRelativePath2, "makeRelativePath");
-
-// src/handlers/responsive-breakpoints/constants.ts
-var BREAKPOINT_SIZES = {
-  base: "0px",
-  sm: "640px",
-  md: "768px",
-  lg: "1024px",
-  xl: "1280px",
-  "2xl": "1536px"
-};
-var CLASS_TO_PROPERTY = {
-  // Display
-  flex: "display",
-  grid: "display",
-  block: "display",
-  hidden: "display",
-  inline: "display",
-  "inline-block": "display",
-  "inline-flex": "display",
-  "inline-grid": "display",
-  contents: "display",
-  "flow-root": "display",
-  // Flex direction
-  "flex-row": "flex-direction",
-  "flex-col": "flex-direction",
-  "flex-row-reverse": "flex-direction",
-  "flex-col-reverse": "flex-direction",
-  // Flex wrap
-  "flex-wrap": "flex-wrap",
-  "flex-nowrap": "flex-wrap",
-  "flex-wrap-reverse": "flex-wrap",
-  // Justify content
-  "justify-start": "justify-content",
-  "justify-end": "justify-content",
-  "justify-center": "justify-content",
-  "justify-between": "justify-content",
-  "justify-around": "justify-content",
-  "justify-evenly": "justify-content",
-  // Align items
-  "items-start": "align-items",
-  "items-end": "align-items",
-  "items-center": "align-items",
-  "items-baseline": "align-items",
-  "items-stretch": "align-items",
-  // Grid columns
-  "grid-cols-1": "grid-template-columns",
-  "grid-cols-2": "grid-template-columns",
-  "grid-cols-3": "grid-template-columns",
-  "grid-cols-4": "grid-template-columns",
-  "grid-cols-5": "grid-template-columns",
-  "grid-cols-6": "grid-template-columns",
-  "grid-cols-7": "grid-template-columns",
-  "grid-cols-8": "grid-template-columns",
-  "grid-cols-9": "grid-template-columns",
-  "grid-cols-10": "grid-template-columns",
-  "grid-cols-11": "grid-template-columns",
-  "grid-cols-12": "grid-template-columns",
-  "grid-cols-none": "grid-template-columns",
-  "grid-cols-subgrid": "grid-template-columns",
-  // Grid rows
-  "grid-rows-1": "grid-template-rows",
-  "grid-rows-2": "grid-template-rows",
-  "grid-rows-3": "grid-template-rows",
-  "grid-rows-4": "grid-template-rows",
-  "grid-rows-5": "grid-template-rows",
-  "grid-rows-6": "grid-template-rows",
-  "grid-rows-none": "grid-template-rows",
-  "grid-rows-subgrid": "grid-template-rows",
-  // Order
-  "order-first": "order",
-  "order-last": "order",
-  "order-none": "order",
-  // Position
-  static: "position",
-  fixed: "position",
-  absolute: "position",
-  relative: "position",
-  sticky: "position",
-  // Visibility
-  visible: "visibility",
-  invisible: "visibility",
-  collapse: "visibility",
-  // Overflow
-  "overflow-auto": "overflow",
-  "overflow-hidden": "overflow",
-  "overflow-clip": "overflow",
-  "overflow-visible": "overflow",
-  "overflow-scroll": "overflow",
-  "overflow-x-auto": "overflow-x",
-  "overflow-y-auto": "overflow-y",
-  "overflow-x-hidden": "overflow-x",
-  "overflow-y-hidden": "overflow-y",
-  "overflow-x-scroll": "overflow-x",
-  "overflow-y-scroll": "overflow-y",
-  // Text alignment
-  "text-left": "text-align",
-  "text-center": "text-align",
-  "text-right": "text-align",
-  "text-justify": "text-align",
-  "text-start": "text-align",
-  "text-end": "text-align",
-  // Float
-  "float-start": "float",
-  "float-end": "float",
-  "float-right": "float",
-  "float-left": "float",
-  "float-none": "float"
-};
-var CLASS_PREFIX_TO_PROPERTY = [
-  // Width
-  [/^w-/, "width"],
-  [/^min-w-/, "min-width"],
-  [/^max-w-/, "max-width"],
-  // Height
-  [/^h-/, "height"],
-  [/^min-h-/, "min-height"],
-  [/^max-h-/, "max-height"],
-  // Sizing
-  [/^size-/, "size"],
-  // Gap
-  [/^gap-/, "gap"],
-  [/^gap-x-/, "column-gap"],
-  [/^gap-y-/, "row-gap"],
-  // Padding
-  [/^p-/, "padding"],
-  [/^px-/, "padding-inline"],
-  [/^py-/, "padding-block"],
-  [/^pt-/, "padding-top"],
-  [/^pr-/, "padding-right"],
-  [/^pb-/, "padding-bottom"],
-  [/^pl-/, "padding-left"],
-  [/^ps-/, "padding-inline-start"],
-  [/^pe-/, "padding-inline-end"],
-  // Margin
-  [/^m-/, "margin"],
-  [/^mx-/, "margin-inline"],
-  [/^my-/, "margin-block"],
-  [/^mt-/, "margin-top"],
-  [/^mr-/, "margin-right"],
-  [/^mb-/, "margin-bottom"],
-  [/^ml-/, "margin-left"],
-  [/^ms-/, "margin-inline-start"],
-  [/^me-/, "margin-inline-end"],
-  [/^-m-/, "margin"],
-  [/^-mx-/, "margin-inline"],
-  [/^-my-/, "margin-block"],
-  [/^-mt-/, "margin-top"],
-  [/^-mr-/, "margin-right"],
-  [/^-mb-/, "margin-bottom"],
-  [/^-ml-/, "margin-left"],
-  // Space between
-  [/^space-x-/, "space-x"],
-  [/^space-y-/, "space-y"],
-  [/^-space-x-/, "space-x"],
-  [/^-space-y-/, "space-y"],
-  // Font size
-  [/^text-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)$/, "font-size"],
-  // Font weight
-  [/^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$/, "font-weight"],
-  // Line height
-  [/^leading-/, "line-height"],
-  // Flex
-  [/^flex-1$/, "flex"],
-  [/^flex-auto$/, "flex"],
-  [/^flex-initial$/, "flex"],
-  [/^flex-none$/, "flex"],
-  [/^flex-grow/, "flex-grow"],
-  [/^flex-shrink/, "flex-shrink"],
-  [/^grow/, "flex-grow"],
-  [/^shrink/, "flex-shrink"],
-  [/^basis-/, "flex-basis"],
-  // Grid span
-  [/^col-span-/, "grid-column"],
-  [/^col-start-/, "grid-column-start"],
-  [/^col-end-/, "grid-column-end"],
-  [/^row-span-/, "grid-row"],
-  [/^row-start-/, "grid-row-start"],
-  [/^row-end-/, "grid-row-end"],
-  // Positioning
-  [/^inset-/, "inset"],
-  [/^top-/, "top"],
-  [/^right-/, "right"],
-  [/^bottom-/, "bottom"],
-  [/^left-/, "left"],
-  [/^start-/, "inset-inline-start"],
-  [/^end-/, "inset-inline-end"],
-  [/^-inset-/, "inset"],
-  [/^-top-/, "top"],
-  [/^-right-/, "right"],
-  [/^-bottom-/, "bottom"],
-  [/^-left-/, "left"],
-  // Z-index
-  [/^z-/, "z-index"],
-  [/^-z-/, "z-index"],
-  // Order
-  [/^order-\d+$/, "order"],
-  [/^-order-\d+$/, "order"],
-  // Aspect ratio
-  [/^aspect-/, "aspect-ratio"],
-  // Object fit/position
-  [/^object-(contain|cover|fill|none|scale-down)$/, "object-fit"],
-  [/^object-(bottom|center|left|left-bottom|left-top|right|right-bottom|right-top|top)$/, "object-position"],
-  // Container
-  [/^container$/, "container"],
-  // Columns
-  [/^columns-/, "columns"],
-  // Break
-  [/^break-after-/, "break-after"],
-  [/^break-before-/, "break-before"],
-  [/^break-inside-/, "break-inside"],
-  // Box decoration
-  [/^box-decoration-/, "box-decoration-break"],
-  [/^box-/, "box-sizing"],
-  // Isolation
-  [/^isolate/, "isolation"]
-];
-
-// src/handlers/responsive-breakpoints/class-parser.ts
-function parseClassName(className) {
-  const cleaned = className.replace(/\$\{[^}]+\}/g, " ").replace(/`/g, "").replace(/\s+/g, " ").trim();
-  return cleaned.split(" ").filter((c) => c.length > 0);
-}
-__name(parseClassName, "parseClassName");
-function parseBreakpointClasses(classes, breakpoints) {
-  const result = { base: [] };
-  const bpPattern = breakpoints.filter((bp) => bp.length <= 20).map((bp) => bp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-  const breakpointRegex = bpPattern.length > 0 ? new RegExp(`^(${bpPattern}):(.+)$`) : null;
-  for (const cls of classes) {
-    const match = breakpointRegex ? cls.match(breakpointRegex) : null;
-    if (match) {
-      const [, breakpoint, utility] = match;
-      if (!result[breakpoint])
-        result[breakpoint] = [];
-      result[breakpoint].push(utility);
-    } else {
-      result.base.push(cls);
-    }
-  }
-  return result;
-}
-__name(parseBreakpointClasses, "parseBreakpointClasses");
-function getPropertyFromClass(cls) {
-  if (CLASS_TO_PROPERTY[cls]) {
-    return CLASS_TO_PROPERTY[cls];
-  }
-  for (const [pattern, property] of CLASS_PREFIX_TO_PROPERTY) {
-    if (pattern.test(cls)) {
-      return property;
-    }
-  }
-  return null;
-}
-__name(getPropertyFromClass, "getPropertyFromClass");
-function trackPropertyChanges(breakpointClasses, breakpoints) {
-  const properties = /* @__PURE__ */ new Map();
-  for (const cls of breakpointClasses.base) {
-    const property = getPropertyFromClass(cls);
-    if (!property)
-      continue;
-    if (!properties.has(property)) {
-      properties.set(property, {
-        property,
-        base_value: cls,
-        transitions: []
-      });
-    } else {
-      properties.get(property).base_value = cls;
-    }
-  }
-  for (const bp of breakpoints) {
-    const classes = breakpointClasses[bp];
-    if (!classes)
-      continue;
-    for (const cls of classes) {
-      const property = getPropertyFromClass(cls);
-      if (!property)
-        continue;
-      if (!properties.has(property)) {
-        properties.set(property, {
-          property,
-          base_value: "",
-          transitions: [{ breakpoint: bp, value: cls }]
-        });
-      } else {
-        properties.get(property).transitions.push({ breakpoint: bp, value: cls });
-      }
-    }
-  }
-  return [...properties.values()].filter(
-    (p) => p.base_value !== "" || p.transitions.length > 0
-  );
-}
-__name(trackPropertyChanges, "trackPropertyChanges");
-
-// src/handlers/responsive-breakpoints/issue-detector.ts
-function detectIssues2(elements, breakpoints) {
-  const warnings = [];
-  const smallestBreakpoint = breakpoints[0];
-  for (const el of elements) {
-    for (const change of el.property_changes) {
-      if (change.base_value === "" && change.transitions.length > 0) {
-        const firstBreakpoint = change.transitions[0].breakpoint;
-        if (firstBreakpoint !== smallestBreakpoint) {
-          warnings.push({
-            element: el.element,
-            breakpoint: firstBreakpoint,
-            issue: `Desktop-first pattern: "${change.property}" only defined at ${firstBreakpoint}: breakpoint with no mobile base`,
-            suggestion: `Add base mobile class for ${change.property} (mobile-first approach)`
-          });
-        }
-      }
-    }
-    const hasHiddenBase = el.classes_by_breakpoint.base.includes("hidden");
-    const hasBlockBreakpoint = breakpoints.some((bp) => {
-      const classes = el.classes_by_breakpoint[bp];
-      return classes?.some((c) => ["block", "flex", "grid", "inline", "inline-block", "inline-flex", "inline-grid"].includes(c));
-    });
-    if (hasHiddenBase && !hasBlockBreakpoint) {
-      warnings.push({
-        element: el.element,
-        issue: "Element hidden on mobile but never shown at larger breakpoints",
-        suggestion: "Add a breakpoint display class (e.g., md:block) to show the element on larger screens"
-      });
-    }
-    const usedBreakpoints = breakpoints.filter((bp) => {
-      const classes = el.classes_by_breakpoint[bp];
-      return classes && classes.length > 0;
-    });
-    if (usedBreakpoints.length >= 2) {
-      const indices = usedBreakpoints.map((bp) => breakpoints.indexOf(bp));
-      for (let i = 1; i < indices.length; i++) {
-        const gap = indices[i] - indices[i - 1];
-        if (gap > 1) {
-          const skippedBreakpoints = breakpoints.slice(indices[i - 1] + 1, indices[i]);
-          warnings.push({
-            element: el.element,
-            issue: `Breakpoint gap: defined at ${usedBreakpoints[i - 1]} and ${usedBreakpoints[i]}, skipping ${skippedBreakpoints.join(", ")}`,
-            suggestion: `Consider if ${skippedBreakpoints.join(", ")} breakpoints need specific styling`
-          });
-        }
-      }
-    }
-    const flexDirectionChanges = el.property_changes.find((p) => p.property === "flex-direction");
-    if (flexDirectionChanges && flexDirectionChanges.transitions.length > 0) {
-      const hasBaseDirection = flexDirectionChanges.base_value !== "";
-      if (!hasBaseDirection) {
-        warnings.push({
-          element: el.element,
-          issue: "flex-direction changes at breakpoint without base direction",
-          suggestion: "Add base flex-direction class (e.g., flex-col for mobile, then md:flex-row)"
-        });
-      }
-    }
-    for (const [bpKey, classes] of Object.entries(el.classes_by_breakpoint)) {
-      if (!classes)
-        continue;
-      const displayClasses = classes.filter((c) => getPropertyFromClass(c) === "display");
-      if (displayClasses.length > 1) {
-        warnings.push({
-          element: el.element,
-          breakpoint: bpKey === "base" ? void 0 : bpKey,
-          issue: `Multiple display classes at ${bpKey}: ${displayClasses.join(", ")}`,
-          suggestion: "Use only one display class per breakpoint"
-        });
-      }
-    }
-  }
-  return warnings;
-}
-__name(detectIssues2, "detectIssues");
-
-// src/handlers/responsive-breakpoints/jsx-extractor.ts
-var import_typescript11 = __toESM(require_typescript(), 1);
-function extractClassNames(sourceFile, elementFilter) {
-  const results = [];
-  let elementCounter = 0;
-  function getElementName(node) {
-    return node.tagName.getText(sourceFile);
-  }
-  __name(getElementName, "getElementName");
-  function getLineNumber7(node) {
-    const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-    return line + 1;
-  }
-  __name(getLineNumber7, "getLineNumber");
-  function extractStringValue(node) {
-    if (import_typescript11.default.isStringLiteral(node)) {
-      return node.text;
-    }
-    if (import_typescript11.default.isNoSubstitutionTemplateLiteral(node)) {
-      return node.text;
-    }
-    if (import_typescript11.default.isTemplateExpression(node)) {
-      let result = node.head.text;
-      for (const span of node.templateSpans) {
-        const spanText = span.literal.text.split(/\s+/).filter(Boolean).join(" ");
-        if (spanText)
-          result += " " + spanText;
-      }
-      return result;
-    }
-    if (import_typescript11.default.isJsxExpression(node) && node.expression) {
-      return extractStringValue(node.expression);
-    }
-    if (import_typescript11.default.isCallExpression(node)) {
-      const classes = [];
-      for (const arg of node.arguments) {
-        extractClassesFromNode(arg, classes);
-      }
-      return classes.join(" ");
-    }
-    if (import_typescript11.default.isConditionalExpression(node)) {
-      return extractStringValue(node.whenTrue) + " " + extractStringValue(node.whenFalse);
-    }
-    if (import_typescript11.default.isBinaryExpression(node) && node.operatorToken.kind === import_typescript11.default.SyntaxKind.PlusToken) {
-      return extractStringValue(node.left) + " " + extractStringValue(node.right);
-    }
-    if (import_typescript11.default.isBinaryExpression(node) && node.operatorToken.kind === import_typescript11.default.SyntaxKind.AmpersandAmpersandToken) {
-      return extractStringValue(node.right);
-    }
-    if (import_typescript11.default.isParenthesizedExpression(node)) {
-      return extractStringValue(node.expression);
-    }
-    return "";
-  }
-  __name(extractStringValue, "extractStringValue");
-  function processAttributes(attributes, elementName, line) {
-    for (const attr of attributes.properties) {
-      if (import_typescript11.default.isJsxAttribute(attr) && attr.name) {
-        const attrName = attr.name.getText(sourceFile);
-        if (attrName === "className" || attrName === "class") {
-          let classValue = "";
-          if (attr.initializer) {
-            if (import_typescript11.default.isStringLiteral(attr.initializer)) {
-              classValue = attr.initializer.text;
-            } else if (import_typescript11.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-              classValue = extractStringValue(attr.initializer.expression);
-            }
-          }
-          if (classValue.trim()) {
-            elementCounter++;
-            const elementId = `${elementName}#${elementCounter}`;
-            if (!elementFilter || elementId.includes(elementFilter) || elementName.includes(elementFilter)) {
-              results.push({
-                element: elementId,
-                className: classValue,
-                line
-              });
-            }
-          }
-        }
-      }
-    }
-  }
-  __name(processAttributes, "processAttributes");
-  function visit(node) {
-    if (import_typescript11.default.isJsxOpeningElement(node)) {
-      const elementName = getElementName(node);
-      const line = getLineNumber7(node);
-      processAttributes(node.attributes, elementName, line);
-    } else if (import_typescript11.default.isJsxSelfClosingElement(node)) {
-      const elementName = getElementName(node);
-      const line = getLineNumber7(node);
-      processAttributes(node.attributes, elementName, line);
-    }
-    import_typescript11.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-  return results;
-}
-__name(extractClassNames, "extractClassNames");
-
-// src/handlers/responsive-breakpoints/breakpoint-resolver.ts
-var fs4 = __toESM(require("fs"), 1);
-var path6 = __toESM(require("path"), 1);
-
-// src/config.ts
-function getProjectRoot() {
-  return process.env.PROJECT_ROOT || process.cwd();
-}
-__name(getProjectRoot, "getProjectRoot");
-
-// src/handlers/responsive-breakpoints/breakpoint-resolver.ts
-var TAILWIND_CONFIG_FILES = [
-  "tailwind.config.js",
-  "tailwind.config.ts",
-  "tailwind.config.mjs",
-  "tailwind.config.cjs"
-];
-function parsePx(value) {
-  const pxMatch = value.match(/^(\d+(?:\.\d+)?)px$/);
-  if (pxMatch)
-    return parseFloat(pxMatch[1]);
-  const remMatch = value.match(/^(\d+(?:\.\d+)?)r?em$/);
-  if (remMatch)
-    return parseFloat(remMatch[1]) * 16;
-  return Infinity;
-}
-__name(parsePx, "parsePx");
-function sortBreakpointsBySize(names, sizes) {
-  return [...names].sort((a, b) => parsePx(sizes[a] ?? "0px") - parsePx(sizes[b] ?? "0px"));
-}
-__name(sortBreakpointsBySize, "sortBreakpointsBySize");
-function extractBracedBlock(content, keyword) {
-  const startIdx = content.indexOf(keyword);
-  if (startIdx === -1)
-    return null;
-  const braceStart = content.indexOf("{", startIdx);
-  if (braceStart === -1)
-    return null;
-  let depth = 0;
-  for (let i = braceStart; i < content.length; i++) {
-    if (content[i] === "{")
-      depth++;
-    if (content[i] === "}")
-      depth--;
-    if (depth === 0)
-      return content.slice(braceStart + 1, i);
-  }
-  return null;
-}
-__name(extractBracedBlock, "extractBracedBlock");
-function parseTailwindScreens(content) {
-  const screensBlock = extractBracedBlock(content, "screens");
-  if (!screensBlock)
-    return null;
-  const result = {};
-  let foundAny = false;
-  const stringValuePattern = /['"]?(\w+(?:-\w+)*)['"]?\s*:\s*['"]([^'"]+)['"]\s*(?:,|$)/g;
-  let m;
-  while ((m = stringValuePattern.exec(screensBlock)) !== null) {
-    const [, name, value] = m;
-    if (value.includes("(") || value.includes("$") || value.includes(" "))
-      continue;
-    result[name] = value;
-    foundAny = true;
-  }
-  const objectValuePattern = /['"]?(\w+(?:-\w+)*)['"]?\s*:\s*\{[^}]*['"]([0-9]+px)['"][^}]*\}/g;
-  while ((m = objectValuePattern.exec(screensBlock)) !== null) {
-    const [, name, value] = m;
-    if (!result[name]) {
-      result[name] = value;
-      foundAny = true;
-    }
-  }
-  return foundAny ? result : null;
-}
-__name(parseTailwindScreens, "parseTailwindScreens");
-function readTailwindConfig(projectRoot) {
-  for (const configFile of TAILWIND_CONFIG_FILES) {
-    const configPath = path6.join(projectRoot, configFile);
-    const resolved = path6.resolve(configPath);
-    if (!resolved.startsWith(path6.resolve(projectRoot) + path6.sep))
-      continue;
-    if (!fs4.existsSync(configPath))
-      continue;
-    try {
-      const content = fs4.readFileSync(configPath, "utf-8");
-      const parsed = parseTailwindScreens(content);
-      if (parsed)
-        return parsed;
-    } catch {
-    }
-    break;
-  }
-  return null;
-}
-__name(readTailwindConfig, "readTailwindConfig");
-function resolveBreakpoints(explicitBreakpoints, projectRoot) {
-  const root = projectRoot ?? getProjectRoot();
-  let mergedSizes = { ...BREAKPOINT_SIZES };
-  if (explicitBreakpoints && Object.keys(explicitBreakpoints).length > 0) {
-    for (const [name, size] of Object.entries(explicitBreakpoints)) {
-      if (name !== "base")
-        mergedSizes[name] = size;
-    }
-  } else {
-    const tailwindScreens = readTailwindConfig(root);
-    if (tailwindScreens) {
-      for (const [name, size] of Object.entries(tailwindScreens)) {
-        if (name !== "base")
-          mergedSizes[name] = size;
-      }
-    }
-  }
-  mergedSizes["base"] = "0px";
-  const breakpointNames = Object.keys(mergedSizes).filter((k) => k !== "base");
-  const sortedBreakpoints = sortBreakpointsBySize(breakpointNames, mergedSizes);
-  return {
-    breakpoints: sortedBreakpoints,
-    sizes: mergedSizes
-  };
-}
-__name(resolveBreakpoints, "resolveBreakpoints");
-
-// src/handlers/responsive-breakpoints/index.ts
-async function handleAnalyzeResponsiveBreakpoints(args) {
-  const projectRoot = process.cwd();
-  try {
-    if (!args.file) {
-      return createErrorResponse4("file argument is required");
-    }
-    const { breakpoints, sizes } = resolveBreakpoints(args.breakpoints, projectRoot);
-    const filePath = path7.isAbsolute(args.file) ? args.file : path7.resolve(projectRoot, args.file);
-    if (!fs5.existsSync(filePath)) {
-      return createErrorResponse4(`File not found: ${args.file}`, {
-        provided_path: args.file,
-        resolved_path: filePath
-      });
-    }
-    const ext = path7.extname(filePath).toLowerCase();
-    if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-      return createErrorResponse4(
-        `Unsupported file type: ${ext}. Expected .tsx, .jsx, .ts, or .js`,
-        { file: args.file }
-      );
-    }
-    const content = fs5.readFileSync(filePath, "utf-8");
-    const scriptKind = ext === ".tsx" || ext === ".ts" ? import_typescript12.default.ScriptKind.TSX : import_typescript12.default.ScriptKind.JSX;
-    const sourceFile = import_typescript12.default.createSourceFile(
-      filePath,
-      content,
-      import_typescript12.default.ScriptTarget.Latest,
-      true,
-      scriptKind
-    );
-    const classNameExtractions = extractClassNames(sourceFile, args.element);
-    const buildEmptyCoverage = /* @__PURE__ */ __name(() => {
-      const coverage = { base: false };
-      for (const bp of breakpoints) {
-        coverage[bp] = false;
-      }
-      return coverage;
-    }, "buildEmptyCoverage");
-    if (classNameExtractions.length === 0) {
-      return createSuccessResponse4({
-        file: makeRelativePath2(filePath, projectRoot),
-        breakpoints_used: [],
-        breakpoint_coverage: buildEmptyCoverage(),
-        elements: [],
-        issues: [],
-        summary: "No className attributes found in file."
-      });
-    }
-    const elements = [];
-    const allBreakpointsUsed = /* @__PURE__ */ new Set();
-    const breakpointCoverage = buildEmptyCoverage();
-    for (const extraction of classNameExtractions) {
-      const classes = parseClassName(extraction.className);
-      const breakpointClasses = parseBreakpointClasses(classes, breakpoints);
-      const propertyChanges = trackPropertyChanges(breakpointClasses, breakpoints);
-      if (breakpointClasses.base.length > 0) {
-        allBreakpointsUsed.add("base");
-        breakpointCoverage.base = true;
-      }
-      for (const bp of breakpoints) {
-        if (breakpointClasses[bp] && breakpointClasses[bp].length > 0) {
-          allBreakpointsUsed.add(bp);
-          breakpointCoverage[bp] = true;
-        }
-      }
-      elements.push({
-        element: extraction.element,
-        classes_by_breakpoint: breakpointClasses,
-        property_changes: propertyChanges
-      });
-    }
-    const issues = detectIssues2(elements, breakpoints);
-    const breakpointsUsed = Array.from(allBreakpointsUsed).sort((a, b) => {
-      const order = ["base", ...breakpoints];
-      return order.indexOf(a) - order.indexOf(b);
-    });
-    const midIndex = Math.ceil(breakpoints.length / 2);
-    const largeBreakpoints = new Set(breakpoints.slice(midIndex));
-    let mobileFirst = true;
-    let desktopFirstCount = 0;
-    for (const el of elements) {
-      for (const change of el.property_changes) {
-        if (change.base_value === "" && change.transitions.length > 0) {
-          const firstBp = change.transitions[0].breakpoint;
-          if (largeBreakpoints.has(firstBp)) {
-            desktopFirstCount++;
-          }
-        }
-      }
-    }
-    if (desktopFirstCount > elements.length / 2) {
-      mobileFirst = false;
-    }
-    const notes = [];
-    notes.push(
-      `Analyzed ${elements.length} elements with className attributes`
-    );
-    if (!breakpointCoverage.base && elements.length > 0) {
-      notes.push("Warning: No base (mobile) styles defined - consider mobile-first approach");
-    }
-    if (mobileFirst) {
-      notes.push("Using mobile-first responsive pattern");
-    } else {
-      notes.push("Detected desktop-first patterns - consider refactoring to mobile-first");
-    }
-    if (issues.length > 0) {
-      notes.push(`Found ${issues.length} potential responsive design issues`);
-    }
-    if (breakpointsUsed.length > 0) {
-      notes.push(`Breakpoints used: ${breakpointsUsed.join(", ")}`);
-    }
-    const usedSizes = breakpointsUsed.map((bp) => `${bp}: ${sizes[bp]}`);
-    if (usedSizes.length > 0) {
-      notes.push(`Breakpoint sizes: ${usedSizes.join(", ")}`);
-    }
-    const summaryText = notes.join(". ") + (notes.length > 0 ? "." : "");
-    const result = {
-      file: makeRelativePath2(filePath, projectRoot),
-      breakpoints_used: breakpointsUsed,
-      breakpoint_coverage: breakpointCoverage,
-      elements,
-      issues,
-      summary: summaryText
-    };
-    return createSuccessResponse4(result);
-  } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse4(message, { file: args.file });
-  }
-}
-__name(handleAnalyzeResponsiveBreakpoints, "handleAnalyzeResponsiveBreakpoints");
-
-// src/handlers/overflow-diagnosis/index.ts
-var path8 = __toESM(require("path"), 1);
-
-// src/handlers/overflow-diagnosis/utils.ts
-function matchesSelector2(node, selector) {
+// src/core/overflow/utils.ts
+function matchesSelector3(node, selector) {
   if (selector.startsWith(".")) {
     const className = selector.slice(1).toLowerCase();
     return node.classes.some((c) => c.toLowerCase() === className);
@@ -248840,22 +250681,7 @@ function matchesSelector2(node, selector) {
   }
   return node.tag.toLowerCase() === selector.toLowerCase();
 }
-__name(matchesSelector2, "matchesSelector");
-function createSuccessResponse5(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse5, "createSuccessResponse");
-function createErrorResponse5(message, context) {
-  return {
-    content: [
-      { type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }
-    ],
-    isError: true
-  };
-}
-__name(createErrorResponse5, "createErrorResponse");
+__name(matchesSelector3, "matchesSelector");
 function enrichTreeWithParents(node, parent) {
   const enrichedNode = {
     ...node,
@@ -248883,11 +250709,11 @@ __name(hasAutoHeightChildren, "hasAutoHeightChildren");
 function matchesHint(node, hint) {
   if (!hint)
     return true;
-  return matchesSelector2(node, hint);
+  return matchesSelector3(node, hint);
 }
 __name(matchesHint, "matchesHint");
 
-// src/handlers/overflow-diagnosis/pattern-detector.ts
+// src/core/overflow/pattern-detector.ts
 function findOverflowPatterns(tree, hint) {
   const patterns = [];
   function traverse(node) {
@@ -248964,7 +250790,7 @@ function findOverflowPatterns(tree, hint) {
 }
 __name(findOverflowPatterns, "findOverflowPatterns");
 
-// src/handlers/overflow-diagnosis/constraint-builder.ts
+// src/core/overflow/constraint-builder.ts
 function describeConstraint(node) {
   const constraints = [];
   if (node.sizing.height.strategy === "fixed" && node.sizing.height.value) {
@@ -248992,17 +250818,17 @@ function describeConstraint(node) {
 __name(describeConstraint, "describeConstraint");
 function buildConstraintChain(tree, target) {
   const chain = [];
-  function traverse(node, path23) {
-    const isMatch = matchesSelector2(node, target);
+  function traverse(node, path22) {
+    const isMatch = matchesSelector3(node, target);
     if (isMatch) {
-      for (let i = 0; i < path23.length; i++) {
-        const ancestor = path23[i];
+      for (let i = 0; i < path22.length; i++) {
+        const ancestor = path22[i];
         const entry = {
           element: ancestor.element,
           constrains: describeConstraint(ancestor)
         };
         if (i > 0) {
-          const parent = path23[i - 1];
+          const parent = path22[i - 1];
           if (parent.display === "flex" || parent.display === "inline-flex" || parent.display === "grid" || parent.display === "inline-grid") {
             entry.receives_from_parent = `${parent.display} layout constraints`;
           } else if (parent.sizing.height.strategy !== "auto") {
@@ -249014,12 +250840,12 @@ function buildConstraintChain(tree, target) {
       chain.push({
         element: node.element,
         constrains: describeConstraint(node),
-        receives_from_parent: path23.length > 0 ? "constraints from parent" : void 0
+        receives_from_parent: path22.length > 0 ? "constraints from parent" : void 0
       });
       return true;
     }
     for (const child of node.children) {
-      if (traverse(child, [...path23, node])) {
+      if (traverse(child, [...path22, node])) {
         return true;
       }
     }
@@ -249031,7 +250857,7 @@ function buildConstraintChain(tree, target) {
 }
 __name(buildConstraintChain, "buildConstraintChain");
 
-// src/handlers/overflow-diagnosis/fix-generator.ts
+// src/core/overflow/fix-generator.ts
 function generateFixes(pattern) {
   const fixes = [];
   switch (pattern.type) {
@@ -249256,1066 +251082,131 @@ function collectRelatedElements(patterns) {
 }
 __name(collectRelatedElements, "collectRelatedElements");
 
-// src/handlers/overflow-diagnosis/index.ts
-var PROJECT_ROOT = getProjectRoot();
-async function handleDiagnoseOverflow(args) {
-  if (!args.file) {
-    return createErrorResponse5("file argument is required");
-  }
-  const layoutResult = await handleAnalyzeLayoutHierarchy({
-    file: args.file,
-    selector: args.element_hint
-  });
-  const resultText = layoutResult.content[0]?.text;
-  if (!resultText) {
-    return createErrorResponse5("Failed to analyze layout hierarchy");
-  }
-  let parsedResult;
-  try {
-    parsedResult = JSON.parse(resultText);
-  } catch {
-    return createErrorResponse5("Failed to parse layout analysis result");
-  }
-  if ("error" in parsedResult) {
-    return layoutResult;
-  }
-  const enrichedTree = enrichTreeWithParents(parsedResult.layout_tree);
-  const patterns = findOverflowPatterns(enrichedTree, args.element_hint);
-  const constraintChain = args.element_hint ? buildConstraintChain(enrichedTree, args.element_hint) : [];
-  const allFixes = [];
-  for (const pattern of patterns) {
-    allFixes.push(...generateFixes(pattern));
-  }
-  const uniqueFixes = allFixes.filter(
-    (fix, index, arr) => index === arr.findIndex(
-      (f) => f.code_change === fix.code_change && f.element === fix.element
-    )
-  );
-  const recommendation = generateRecommendation(patterns, uniqueFixes);
-  let cause = "No specific overflow issue detected";
-  if (patterns.length > 0) {
-    const primaryPattern = patterns[0];
-    cause = primaryPattern.description;
-    if (args.problem_description) {
-      cause = `${primaryPattern.description}. User reports: ${args.problem_description}`;
-    }
-  } else if (args.problem_description) {
-    cause = `User reports: ${args.problem_description}. No matching pattern found in layout analysis.`;
-  }
-  const diagnosis = {
-    overflow_likely: patterns.length > 0,
-    overflow_source: patterns[0]?.element?.element || patterns[0]?.children?.[0]?.element,
-    container: patterns[0]?.parent?.element || patterns[0]?.element?.element,
-    cause,
-    constraint_chain: constraintChain,
-    fix_options: uniqueFixes,
-    recommendation
-  };
-  const relativePath = path8.isAbsolute(args.file) ? path8.relative(PROJECT_ROOT, args.file).replace(/\\/g, "/") : args.file;
-  const result = {
-    file: relativePath,
-    diagnosis,
-    related_elements: collectRelatedElements(patterns)
-  };
-  return createSuccessResponse5(result);
-}
-__name(handleDiagnoseOverflow, "handleDiagnoseOverflow");
-
-// src/handlers/component-state/index.ts
-var fs6 = __toESM(require("fs"), 1);
-var path10 = __toESM(require("path"), 1);
-var import_typescript19 = __toESM(require_typescript(), 1);
-
-// src/handlers/component-state/utils.ts
-var path9 = __toESM(require("path"), 1);
-var import_typescript13 = __toESM(require_typescript(), 1);
-function createSuccessResponse6(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse6, "createSuccessResponse");
-function createErrorResponse6(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse6, "createErrorResponse");
-function normalizeFilePath3(filePath) {
-  return filePath.replace(/\\/g, "/");
-}
-__name(normalizeFilePath3, "normalizeFilePath");
-function makeRelativePath3(absolutePath, projectRoot) {
-  return normalizeFilePath3(path9.relative(projectRoot, absolutePath));
-}
-__name(makeRelativePath3, "makeRelativePath");
-function resolveFilePath(filePath, projectRoot) {
-  return path9.isAbsolute(filePath) ? filePath : path9.resolve(projectRoot, filePath);
-}
-__name(resolveFilePath, "resolveFilePath");
-function getTypeString(node, sourceFile) {
-  if (!node)
-    return "unknown";
-  if (import_typescript13.default.isTypeReferenceNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (import_typescript13.default.isTypeLiteralNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (import_typescript13.default.isUnionTypeNode(node) || import_typescript13.default.isIntersectionTypeNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (import_typescript13.default.isArrayTypeNode(node)) {
-    return node.getText(sourceFile);
-  }
-  if (node.kind === import_typescript13.default.SyntaxKind.StringKeyword)
-    return "string";
-  if (node.kind === import_typescript13.default.SyntaxKind.NumberKeyword)
-    return "number";
-  if (node.kind === import_typescript13.default.SyntaxKind.BooleanKeyword)
-    return "boolean";
-  return node.getText(sourceFile);
-}
-__name(getTypeString, "getTypeString");
-function inferTypeFromValue(node, sourceFile) {
-  if (!node)
-    return "unknown";
-  if (import_typescript13.default.isStringLiteral(node) || import_typescript13.default.isNoSubstitutionTemplateLiteral(node))
-    return "string";
-  if (import_typescript13.default.isNumericLiteral(node))
-    return "number";
-  if (node.kind === import_typescript13.default.SyntaxKind.TrueKeyword || node.kind === import_typescript13.default.SyntaxKind.FalseKeyword)
-    return "boolean";
-  if (import_typescript13.default.isArrayLiteralExpression(node)) {
-    if (node.elements.length === 0)
-      return "unknown[]";
-    const firstType = inferTypeFromValue(node.elements[0], sourceFile);
-    return `${firstType}[]`;
-  }
-  if (import_typescript13.default.isObjectLiteralExpression(node))
-    return "object";
-  if (node.kind === import_typescript13.default.SyntaxKind.NullKeyword)
-    return "null";
-  if (node.kind === import_typescript13.default.SyntaxKind.UndefinedKeyword)
-    return "undefined";
-  if (import_typescript13.default.isArrowFunction(node) || import_typescript13.default.isFunctionExpression(node))
-    return "function";
-  const text = node.getText(sourceFile);
-  return text.length > 120 ? text.slice(0, 117) + "..." : text;
-}
-__name(inferTypeFromValue, "inferTypeFromValue");
-function extractDestructuredNames(node, sourceFile) {
-  if (import_typescript13.default.isVariableDeclaration(node.parent)) {
-    const binding = node.parent.name;
-    if (import_typescript13.default.isArrayBindingPattern(binding) && binding.elements.length >= 1) {
-      const first = binding.elements[0];
-      const second = binding.elements.length >= 2 ? binding.elements[1] : void 0;
-      const firstName = import_typescript13.default.isBindingElement(first) && import_typescript13.default.isIdentifier(first.name) ? first.name.getText(sourceFile) : void 0;
-      const secondName = second && import_typescript13.default.isBindingElement(second) && import_typescript13.default.isIdentifier(second.name) ? second.name.getText(sourceFile) : void 0;
-      return [firstName ?? "unknown", secondName];
-    }
-    if (import_typescript13.default.isIdentifier(binding)) {
-      return [binding.getText(sourceFile), void 0];
-    }
-  }
-  return ["unknown", void 0];
-}
-__name(extractDestructuredNames, "extractDestructuredNames");
-function extractDependencyArray(node, sourceFile) {
-  if (!node)
-    return [];
-  if (import_typescript13.default.isArrayLiteralExpression(node)) {
-    return node.elements.map((el) => el.getText(sourceFile));
-  }
-  return [];
-}
-__name(extractDependencyArray, "extractDependencyArray");
-function hasCleanupReturn(node, sourceFile) {
-  let hasCleanup = false;
-  function visit(n) {
-    if (import_typescript13.default.isReturnStatement(n) && n.expression) {
-      if (import_typescript13.default.isArrowFunction(n.expression) || import_typescript13.default.isFunctionExpression(n.expression)) {
-        hasCleanup = true;
-      }
-    }
-    if (!hasCleanup) {
-      import_typescript13.default.forEachChild(n, visit);
-    }
-  }
-  __name(visit, "visit");
-  visit(node);
-  return hasCleanup;
-}
-__name(hasCleanupReturn, "hasCleanupReturn");
-
-// src/handlers/component-state/hook-analyzer.ts
-var import_typescript14 = __toESM(require_typescript(), 1);
-function isKnownHookOrImported(fnName, sourceFile) {
-  for (const statement of sourceFile.statements) {
-    if (import_typescript14.default.isImportDeclaration(statement) && statement.importClause) {
-      const clause = statement.importClause;
-      if (clause.namedBindings && import_typescript14.default.isNamedImports(clause.namedBindings)) {
-        for (const specifier of clause.namedBindings.elements) {
-          if (specifier.name.getText(sourceFile) === fnName)
-            return true;
-        }
-      }
-      if (clause.name && clause.name.getText(sourceFile) === fnName)
-        return true;
-    }
-    if (import_typescript14.default.isFunctionDeclaration(statement) && statement.name?.getText(sourceFile) === fnName)
-      return true;
-    if (import_typescript14.default.isVariableStatement(statement)) {
-      for (const decl of statement.declarationList.declarations) {
-        if (import_typescript14.default.isIdentifier(decl.name) && decl.name.getText(sourceFile) === fnName)
-          return true;
-      }
-    }
-  }
-  return false;
-}
-__name(isKnownHookOrImported, "isKnownHookOrImported");
-function extractHooks(componentNode, ctx) {
-  const states = [];
-  const effects = [];
-  const contexts = [];
-  const { sourceFile } = ctx;
-  let nestedFunctionDepth = 0;
-  function visit(node) {
-    if (import_typescript14.default.isCallExpression(node)) {
-      const fnText = node.expression.getText(sourceFile);
-      const fnName = fnText.replace(/^React\./, "");
-      if (fnName === "useState") {
-        const [stateName, setterName] = extractDestructuredNames(node, sourceFile);
-        const initialValue = node.arguments[0]?.getText(sourceFile);
-        let stateType = "unknown";
-        if (node.typeArguments && node.typeArguments.length > 0) {
-          stateType = getTypeString(node.typeArguments[0], sourceFile);
-        } else if (node.arguments[0]) {
-          stateType = inferTypeFromValue(node.arguments[0], sourceFile);
-        }
-        const stateInfo = {
-          name: stateName,
-          type: stateType,
-          hook: "useState",
-          initial_value: initialValue,
-          setter: setterName,
-          used_in_jsx: false,
-          passed_to_children: []
-        };
-        states.push(stateInfo);
-        ctx.stateVariables.set(stateName, stateInfo);
-        if (setterName) {
-          ctx.stateVariables.set(setterName, stateInfo);
-        }
-      }
-      if (fnName === "useReducer") {
-        const [stateName, dispatchName] = extractDestructuredNames(node, sourceFile);
-        const initialState = node.arguments[1]?.getText(sourceFile);
-        let stateType = "unknown";
-        if (node.typeArguments && node.typeArguments.length > 0) {
-          stateType = getTypeString(node.typeArguments[0], sourceFile);
-        }
-        const stateInfo = {
-          name: stateName,
-          type: stateType,
-          hook: "useReducer",
-          initial_value: initialState,
-          setter: dispatchName,
-          used_in_jsx: false,
-          passed_to_children: []
-        };
-        states.push(stateInfo);
-        ctx.stateVariables.set(stateName, stateInfo);
-        if (dispatchName) {
-          ctx.stateVariables.set(dispatchName, stateInfo);
-        }
-      }
-      if (fnName === "useRef") {
-        const [refName] = extractDestructuredNames(node, sourceFile);
-        const initialValue = node.arguments[0]?.getText(sourceFile);
-        let refType = "unknown";
-        if (node.typeArguments && node.typeArguments.length > 0) {
-          refType = getTypeString(node.typeArguments[0], sourceFile);
-        } else if (node.arguments[0]) {
-          refType = inferTypeFromValue(node.arguments[0], sourceFile);
-        }
-        const stateInfo = {
-          name: refName,
-          type: refType,
-          hook: "useRef",
-          initial_value: initialValue,
-          used_in_jsx: false,
-          passed_to_children: []
-        };
-        states.push(stateInfo);
-        ctx.stateVariables.set(refName, stateInfo);
-      }
-      if (fnName === "useContext") {
-        const contextArg = node.arguments[0]?.getText(sourceFile);
-        const [valueName] = extractDestructuredNames(node, sourceFile);
-        const contextInfo = {
-          hook: "useContext",
-          context_name: contextArg,
-          values_used: valueName !== "unknown" ? [valueName] : []
-        };
-        contexts.push(contextInfo);
-        ctx.contextValues.set(valueName, contextInfo);
-      }
-      if (fnName.startsWith("use") && fnName.length > 3 && fnName[3].match(/[A-Z]/) && ![
-        "useState",
-        "useReducer",
-        "useRef",
-        "useEffect",
-        "useLayoutEffect",
-        "useMemo",
-        "useCallback",
-        "useContext",
-        "useImperativeHandle",
-        "useDebugValue",
-        "useDeferredValue",
-        "useTransition",
-        "useId",
-        "useSyncExternalStore",
-        "useInsertionEffect"
-      ].includes(fnName) && nestedFunctionDepth === 0 && isKnownHookOrImported(fnName, sourceFile)) {
-        const [valueName] = extractDestructuredNames(node, sourceFile);
-        const contextInfo = {
-          hook: fnName,
-          values_used: valueName !== "unknown" ? [valueName] : []
-        };
-        contexts.push(contextInfo);
-        ctx.contextValues.set(valueName, contextInfo);
-      }
-      if (fnName === "useEffect" || fnName === "useLayoutEffect") {
-        const callback = node.arguments[0];
-        const depsArg = node.arguments[1];
-        const deps = extractDependencyArray(depsArg, sourceFile);
-        const hasCleanup = callback ? hasCleanupReturn(callback, sourceFile) : false;
-        effects.push({
-          type: fnName,
-          dependencies: deps,
-          has_cleanup: hasCleanup
-        });
-      }
-      if (fnName === "useMemo" || fnName === "useCallback") {
-        const depsArg = node.arguments[1];
-        const deps = extractDependencyArray(depsArg, sourceFile);
-        effects.push({
-          type: fnName,
-          dependencies: deps,
-          has_cleanup: false
-        });
-      }
-    }
-    const isNestedFunctionBoundary = node !== componentNode && (import_typescript14.default.isArrowFunction(node) || import_typescript14.default.isFunctionExpression(node) || import_typescript14.default.isFunctionDeclaration(node));
-    if (isNestedFunctionBoundary) {
-      nestedFunctionDepth++;
-      import_typescript14.default.forEachChild(node, visit);
-      nestedFunctionDepth--;
-    } else {
-      import_typescript14.default.forEachChild(node, visit);
-    }
-  }
-  __name(visit, "visit");
-  visit(componentNode);
-  return { states, effects, contexts };
-}
-__name(extractHooks, "extractHooks");
-
-// src/handlers/component-state/props-analyzer.ts
-var import_typescript15 = __toESM(require_typescript(), 1);
-function extractReceivedProps(componentNode, ctx) {
-  const props = [];
-  const { sourceFile } = ctx;
-  let params;
-  if (import_typescript15.default.isFunctionDeclaration(componentNode)) {
-    params = componentNode.parameters;
-  } else if (import_typescript15.default.isVariableStatement(componentNode)) {
-    for (const decl of componentNode.declarationList.declarations) {
-      if (decl.initializer) {
-        if (import_typescript15.default.isArrowFunction(decl.initializer)) {
-          params = decl.initializer.parameters;
-        } else if (import_typescript15.default.isFunctionExpression(decl.initializer)) {
-          params = decl.initializer.parameters;
-        }
-      }
-    }
-  }
-  if (!params || params.length === 0)
-    return props;
-  const firstParam = params[0];
-  if (import_typescript15.default.isObjectBindingPattern(firstParam.name)) {
-    for (const element of firstParam.name.elements) {
-      if (import_typescript15.default.isBindingElement(element) && import_typescript15.default.isIdentifier(element.name)) {
-        const propName = element.name.getText(sourceFile);
-        const hasDefault = element.initializer !== void 0;
-        const defaultValue = element.initializer?.getText(sourceFile);
-        let propType;
-        if (firstParam.type && import_typescript15.default.isTypeLiteralNode(firstParam.type)) {
-          for (const member of firstParam.type.members) {
-            if (import_typescript15.default.isPropertySignature(member) && member.name?.getText(sourceFile) === propName) {
-              propType = member.type ? getTypeString(member.type, sourceFile) : void 0;
-            }
-          }
-        }
-        props.push({
-          name: propName,
-          type: propType,
-          required: !hasDefault && !element.dotDotDotToken,
-          default_value: defaultValue
-        });
-        ctx.propNames.add(propName);
-      }
-    }
-  }
-  if (firstParam.type && import_typescript15.default.isTypeReferenceNode(firstParam.type)) {
-    const typeName = firstParam.type.typeName.getText(sourceFile);
-    extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx);
-  }
-  return props;
-}
-__name(extractReceivedProps, "extractReceivedProps");
-function extractPropsFromTypeDefinition(sourceFile, typeName, props, ctx) {
-  function visit(node) {
-    if (import_typescript15.default.isInterfaceDeclaration(node) && node.name.getText(sourceFile) === typeName) {
-      for (const member of node.members) {
-        if (import_typescript15.default.isPropertySignature(member) && member.name) {
-          const propName = member.name.getText(sourceFile);
-          const isOptional = member.questionToken !== void 0;
-          const propType = member.type ? getTypeString(member.type, sourceFile) : void 0;
-          const existingProp = props.find((p) => p.name === propName);
-          if (existingProp) {
-            if (isOptional) {
-              existingProp.required = false;
-            }
-            if (!existingProp.type && propType) {
-              existingProp.type = propType;
-            }
-          } else {
-            props.push({
-              name: propName,
-              type: propType,
-              required: !isOptional
-            });
-          }
-          ctx.propNames.add(propName);
-        }
-      }
-    }
-    if (import_typescript15.default.isTypeAliasDeclaration(node) && node.name.getText(sourceFile) === typeName) {
-      if (import_typescript15.default.isTypeLiteralNode(node.type)) {
-        for (const member of node.type.members) {
-          if (import_typescript15.default.isPropertySignature(member) && member.name) {
-            const propName = member.name.getText(sourceFile);
-            const isOptional = member.questionToken !== void 0;
-            const propType = member.type ? getTypeString(member.type, sourceFile) : void 0;
-            const existingProp = props.find((p) => p.name === propName);
-            if (existingProp) {
-              if (isOptional) {
-                existingProp.required = false;
-              }
-              if (!existingProp.type && propType) {
-                existingProp.type = propType;
-              }
-            } else {
-              props.push({
-                name: propName,
-                type: propType,
-                required: !isOptional
-              });
-            }
-            ctx.propNames.add(propName);
-          }
-        }
-      }
-    }
-    import_typescript15.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-}
-__name(extractPropsFromTypeDefinition, "extractPropsFromTypeDefinition");
-function findProvidedContexts(componentNode, ctx) {
-  const provided = [];
-  const { sourceFile } = ctx;
-  function visit(node) {
-    if (import_typescript15.default.isJsxOpeningElement(node) || import_typescript15.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      if (tagName.endsWith(".Provider")) {
-        const contextName = tagName.replace(".Provider", "");
-        for (const attr of node.attributes.properties) {
-          if (import_typescript15.default.isJsxAttribute(attr) && attr.name?.getText(sourceFile) === "value") {
-            const valueSource = attr.initializer?.getText(sourceFile) ?? "unknown";
-            provided.push({
-              context_name: contextName,
-              value_source: valueSource.replace(/^\{|\}$/g, "")
-            });
-          }
-        }
-      }
-    }
-    import_typescript15.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(componentNode);
-  return provided;
-}
-__name(findProvidedContexts, "findProvidedContexts");
-
-// src/handlers/component-state/jsx-analyzer.ts
-var import_typescript16 = __toESM(require_typescript(), 1);
-function collectUsedIdentifiers(node, sourceFile, identifiers) {
-  if (import_typescript16.default.isIdentifier(node)) {
-    identifiers.add(node.getText(sourceFile));
-  }
-  import_typescript16.default.forEachChild(node, (child) => collectUsedIdentifiers(child, sourceFile, identifiers));
-}
-__name(collectUsedIdentifiers, "collectUsedIdentifiers");
-function analyzeJsx(componentNode, ctx) {
-  const { sourceFile, stateVariables, propNames, contextValues, jsxUsedIdentifiers, jsxPassedProps, inlineCallbacks } = ctx;
-  function determineSource(name) {
-    if (propNames.has(name))
-      return "prop";
-    if (stateVariables.has(name))
-      return "state";
-    if (contextValues.has(name))
-      return "context";
-    return "derived";
-  }
-  __name(determineSource, "determineSource");
-  function visit(node) {
-    if (import_typescript16.default.isJsxOpeningElement(node) || import_typescript16.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      if (/^[A-Z]/.test(tagName)) {
-        for (const attr of node.attributes.properties) {
-          if (import_typescript16.default.isJsxAttribute(attr) && attr.name) {
-            const attrName = attr.name.getText(sourceFile);
-            const initializer3 = attr.initializer;
-            if (initializer3 && import_typescript16.default.isJsxExpression(initializer3) && initializer3.expression) {
-              const expr = initializer3.expression;
-              const exprText = expr.getText(sourceFile);
-              if (import_typescript16.default.isArrowFunction(expr) || import_typescript16.default.isFunctionExpression(expr)) {
-                const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-                inlineCallbacks.push({
-                  component: tagName,
-                  propName: attrName,
-                  line: line + 1
-                });
-              }
-              let source = "derived";
-              if (import_typescript16.default.isIdentifier(expr)) {
-                const name = expr.getText(sourceFile);
-                source = determineSource(name);
-                jsxUsedIdentifiers.add(name);
-              } else if (import_typescript16.default.isPropertyAccessExpression(expr)) {
-                const objectName = expr.expression.getText(sourceFile);
-                source = determineSource(objectName);
-                jsxUsedIdentifiers.add(objectName);
-              }
-              jsxPassedProps.push({
-                prop_name: attrName,
-                to_component: tagName,
-                original_source: source
-              });
-            }
-          }
-        }
-      }
-    }
-    if (import_typescript16.default.isJsxExpression(node) && node.expression) {
-      collectUsedIdentifiers(node.expression, sourceFile, jsxUsedIdentifiers);
-    }
-    import_typescript16.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(componentNode);
-}
-__name(analyzeJsx, "analyzeJsx");
-
-// src/handlers/component-state/issue-detector.ts
-var import_typescript17 = __toESM(require_typescript(), 1);
-function detectIssues3(componentNode, ctx, receivedProps, effects) {
-  const issues = [];
-  const { sourceFile, inlineCallbacks, jsxPassedProps, stateVariables, propNames } = ctx;
-  for (const passedProp of jsxPassedProps) {
-    if (passedProp.original_source === "prop") {
-      const receivedProp = receivedProps.find((p) => p.name === passedProp.prop_name);
-      if (receivedProp) {
-        issues.push({
-          type: "prop_drilling",
-          severity: "warning",
-          location: `${passedProp.to_component}.${passedProp.prop_name}`,
-          description: `Prop "${passedProp.prop_name}" is received and passed through unchanged to ${passedProp.to_component}`,
-          suggestion: "Consider using Context or a state management library to avoid prop drilling"
-        });
-      }
-    }
-  }
-  for (const callback of inlineCallbacks) {
-    issues.push({
-      type: "callback_instability",
-      severity: "warning",
-      location: `line ${callback.line}: ${callback.component}.${callback.propName}`,
-      description: `Inline function passed to ${callback.component} as ${callback.propName} recreates on every render`,
-      suggestion: "Use useCallback to memoize the function, or extract to a stable reference"
-    });
-  }
-  for (const passedProp of jsxPassedProps) {
-    if (passedProp.original_source === "derived") {
-      issues.push({
-        type: "missing_memo",
-        severity: "info",
-        location: `${passedProp.to_component}.${passedProp.prop_name}`,
-        description: `Derived value passed to ${passedProp.to_component} may recreate on every render`,
-        suggestion: "Consider using useMemo if this is an expensive computation"
-      });
-    }
-  }
-  for (const effect of effects) {
-    if (effect.type === "useEffect" || effect.type === "useLayoutEffect") {
-      if (effect.dependencies.length === 0) {
-        const hasStateOrPropDeps = stateVariables.size > 0 || propNames.size > 0;
-        if (hasStateOrPropDeps) {
-          issues.push({
-            type: "effect_deps",
-            severity: "info",
-            location: effect.type,
-            description: `${effect.type} has no dependencies - verify this is intentional`,
-            suggestion: "Add dependencies if the effect uses props or state, or use [] for mount-only effects"
-          });
-        }
-      }
-    }
-  }
-  function checkStateInRender(node) {
-    if (import_typescript17.default.isCallExpression(node)) {
-      const fnText = node.expression.getText(sourceFile);
-      if (fnText === "useState" || fnText === "React.useState") {
-        const initializer3 = node.arguments[0];
-        if (initializer3 && import_typescript17.default.isCallExpression(initializer3)) {
-          const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-          issues.push({
-            type: "state_in_render",
-            severity: "error",
-            location: `line ${line + 1}`,
-            description: "useState initializer calls a function on every render instead of using lazy initialization",
-            suggestion: "Use () => expensiveFunction() instead of expensiveFunction() for lazy initialization"
-          });
-        }
-      }
-    }
-    import_typescript17.default.forEachChild(node, checkStateInRender);
-  }
-  __name(checkStateInRender, "checkStateInRender");
-  checkStateInRender(componentNode);
-  return issues;
-}
-__name(detectIssues3, "detectIssues");
-
-// src/handlers/component-state/component-detector.ts
-var import_typescript18 = __toESM(require_typescript(), 1);
-function containsJsxReturn2(node) {
-  let hasJsx = false;
-  function visit(n) {
-    if (import_typescript18.default.isJsxElement(n) || import_typescript18.default.isJsxSelfClosingElement(n) || import_typescript18.default.isJsxFragment(n)) {
-      hasJsx = true;
-      return;
-    }
-    if (!hasJsx) {
-      import_typescript18.default.forEachChild(n, visit);
-    }
-  }
-  __name(visit, "visit");
-  visit(node);
-  return hasJsx;
-}
-__name(containsJsxReturn2, "containsJsxReturn");
-function isReactComponent(node, sourceFile) {
-  if (import_typescript18.default.isFunctionDeclaration(node) && node.name) {
-    const name = node.name.getText(sourceFile);
-    if (/^[A-Z]/.test(name)) {
-      return containsJsxReturn2(node);
-    }
-  }
-  if (import_typescript18.default.isVariableStatement(node)) {
-    for (const decl of node.declarationList.declarations) {
-      if (import_typescript18.default.isIdentifier(decl.name)) {
-        const name = decl.name.getText(sourceFile);
-        if (/^[A-Z]/.test(name) && decl.initializer) {
-          if (import_typescript18.default.isArrowFunction(decl.initializer) || import_typescript18.default.isFunctionExpression(decl.initializer)) {
-            return containsJsxReturn2(decl.initializer);
-          }
-          if (import_typescript18.default.isCallExpression(decl.initializer)) {
-            const callExpr = decl.initializer;
-            const callText = callExpr.expression.getText(sourceFile);
-            if (/^(React\.)?(memo|forwardRef)$/.test(callText)) {
-              const firstArg = callExpr.arguments[0];
-              if (firstArg && (import_typescript18.default.isArrowFunction(firstArg) || import_typescript18.default.isFunctionExpression(firstArg))) {
-                return containsJsxReturn2(firstArg);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-__name(isReactComponent, "isReactComponent");
-function getComponentName(node, sourceFile) {
-  if (import_typescript18.default.isFunctionDeclaration(node) && node.name) {
-    return node.name.getText(sourceFile);
-  }
-  if (import_typescript18.default.isVariableStatement(node)) {
-    for (const decl of node.declarationList.declarations) {
-      if (import_typescript18.default.isIdentifier(decl.name)) {
-        return decl.name.getText(sourceFile);
-      }
-    }
-  }
-  return null;
-}
-__name(getComponentName, "getComponentName");
-
-// src/handlers/component-state/index.ts
-function findJsxComponentNames(sourceFile) {
-  const seen = /* @__PURE__ */ new Set();
-  function visit(node) {
-    if (import_typescript19.default.isJsxOpeningElement(node) || import_typescript19.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName;
-      let name;
-      if (import_typescript19.default.isPropertyAccessExpression(tagName)) {
-        name = tagName.expression.getText(sourceFile);
-      } else {
-        name = tagName.getText(sourceFile);
-      }
-      if (/^[A-Z]/.test(name)) {
-        seen.add(name);
-      }
-    }
-    import_typescript19.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-  return Array.from(seen);
-}
-__name(findJsxComponentNames, "findJsxComponentNames");
-function resolveImportPath(name, sourceFilePath, projectRoot, sourceFile) {
-  const dir = path10.dirname(sourceFilePath);
-  for (const statement of sourceFile.statements) {
-    if (!import_typescript19.default.isImportDeclaration(statement))
-      continue;
-    const clause = statement.importClause;
-    if (!clause)
-      continue;
-    let found = false;
-    if (clause.name?.getText(sourceFile) === name) {
-      found = true;
-    } else if (clause.namedBindings && import_typescript19.default.isNamedImports(clause.namedBindings)) {
-      for (const spec of clause.namedBindings.elements) {
-        if (spec.name.getText(sourceFile) === name) {
-          found = true;
-          break;
-        }
-      }
-    }
-    if (!found)
-      continue;
-    const moduleSpec = statement.moduleSpecifier.text;
-    if (!moduleSpec.startsWith("."))
-      return null;
-    const extensions = [".tsx", ".jsx", ".ts", ".js", "/index.tsx", "/index.jsx", "/index.ts", "/index.js"];
-    const resolved = path10.resolve(dir, moduleSpec);
-    const normalizedRoot = projectRoot.endsWith(path10.sep) ? projectRoot : projectRoot + path10.sep;
-    if (!resolved.startsWith(normalizedRoot) && resolved !== projectRoot)
-      return null;
-    for (const ext of extensions) {
-      const candidate = resolved + ext;
-      if (fs6.existsSync(candidate))
-        return candidate;
-    }
-    if (fs6.existsSync(resolved))
-      return resolved;
-  }
-  return null;
-}
-__name(resolveImportPath, "resolveImportPath");
-async function _analyzeComponent(filePath, args, projectRoot, visitedFiles) {
-  visitedFiles.add(filePath);
-  const ext = path10.extname(filePath).toLowerCase();
-  const content = fs6.readFileSync(filePath, "utf-8");
-  const sourceFile = import_typescript19.default.createSourceFile(
-    filePath,
-    content,
-    import_typescript19.default.ScriptTarget.Latest,
-    true,
-    ext === ".tsx" ? import_typescript19.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript19.default.ScriptKind.JSX : import_typescript19.default.ScriptKind.TS
-  );
-  let componentNode = null;
-  let componentName = null;
-  const targetComponent = args.component;
-  function findComponent(node) {
-    if (!componentNode && isReactComponent(node, sourceFile)) {
-      const name = getComponentName(node, sourceFile);
-      if (targetComponent) {
-        if (name === targetComponent) {
-          componentNode = node;
-          componentName = name;
-        }
-      } else {
-        componentNode = node;
-        componentName = name;
-      }
-    }
-    if (!componentNode) {
-      import_typescript19.default.forEachChild(node, findComponent);
-    }
-  }
-  __name(findComponent, "findComponent");
-  findComponent(sourceFile);
-  if (!componentNode || !componentName) {
-    return createSuccessResponse6({ message: "No React components found in file", file: makeRelativePath3(filePath, projectRoot) });
-  }
-  const ctx = {
-    sourceFile,
-    projectRoot,
-    stateVariables: /* @__PURE__ */ new Map(),
-    propNames: /* @__PURE__ */ new Set(),
-    contextValues: /* @__PURE__ */ new Map(),
-    jsxUsedIdentifiers: /* @__PURE__ */ new Set(),
-    jsxPassedProps: [],
-    inlineCallbacks: []
-  };
-  const { states, effects, contexts } = extractHooks(componentNode, ctx);
-  const receivedProps = extractReceivedProps(componentNode, ctx);
-  analyzeJsx(componentNode, ctx);
-  const providedContexts = findProvidedContexts(componentNode, ctx);
-  for (const state of states) {
-    if (ctx.jsxUsedIdentifiers.has(state.name) || state.setter && ctx.jsxUsedIdentifiers.has(state.setter)) {
-      state.used_in_jsx = true;
-    }
-    for (const passedProp of ctx.jsxPassedProps) {
-      if (passedProp.original_source === "state") {
-        state.passed_to_children = state.passed_to_children || [];
-        if (!state.passed_to_children.includes(passedProp.to_component)) {
-          state.passed_to_children.push(passedProp.to_component);
-        }
-      }
-    }
-  }
-  const issues = detectIssues3(componentNode, ctx, receivedProps, effects);
-  const result = {
-    component: componentName,
-    file: makeRelativePath3(filePath, projectRoot),
-    local_state: states,
-    props: {
-      received: receivedProps,
-      passed_down: ctx.jsxPassedProps
-    },
-    context: {
-      consumed: contexts,
-      provided: providedContexts
-    },
-    effects,
-    issues
-  };
-  if (args.include_children && (args.depth ?? 2) > 0) {
-    const childDepth = args.depth ?? 2;
-    const componentNames = findJsxComponentNames(sourceFile);
-    const children = [];
-    for (const name of componentNames) {
-      const childFilePath = resolveImportPath(name, filePath, projectRoot, sourceFile);
-      if (!childFilePath)
-        continue;
-      if (visitedFiles.has(childFilePath))
-        continue;
-      try {
-        const childArgs = {
-          file: childFilePath,
-          component: name,
-          include_children: childDepth > 1,
-          depth: childDepth - 1
-        };
-        const response = await _analyzeComponent(childFilePath, childArgs, projectRoot, visitedFiles);
-        if (response.isError)
-          continue;
-        const analysisData = JSON.parse(response.content[0].text);
-        children.push({
-          component: name,
-          file: childFilePath.startsWith(projectRoot) ? childFilePath.slice(projectRoot.length).replace(/^\//, "") : childFilePath,
-          analysis: analysisData
-        });
-      } catch {
-      }
-    }
-    result.children = children;
-  }
-  return createSuccessResponse6(result);
-}
-__name(_analyzeComponent, "_analyzeComponent");
-async function handleTraceComponentState(args) {
+// src/extensions/overflow-diagnosis.ts
+async function buildLayoutHierarchy(filePath, selector) {
   const projectRoot = getProjectRoot();
-  if (!args.file) {
-    return createErrorResponse6("file argument is required");
-  }
-  const filePath = resolveFilePath(args.file, projectRoot);
-  if (!fs6.existsSync(filePath)) {
-    return createErrorResponse6(`File not found: ${args.file}`, { provided_path: args.file });
+  if (!fs9.existsSync(filePath)) {
+    return { error: `File not found: ${filePath}`, context: { resolved_path: filePath } };
   }
   const ext = path10.extname(filePath).toLowerCase();
   if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-    return createErrorResponse6(`Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`, { file: args.file });
+    return {
+      error: `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
+      context: { resolved_path: filePath }
+    };
   }
-  try {
-    return await _analyzeComponent(filePath, args, projectRoot, /* @__PURE__ */ new Set());
-  } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse6(message, { file: args.file });
+  const content = fs9.readFileSync(filePath, "utf-8");
+  const scriptKind = ext === ".tsx" ? import_typescript25.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript25.default.ScriptKind.JSX : ext === ".ts" ? import_typescript25.default.ScriptKind.TS : import_typescript25.default.ScriptKind.JS;
+  const sourceFile = import_typescript25.default.createSourceFile(
+    filePath,
+    content,
+    import_typescript25.default.ScriptTarget.Latest,
+    true,
+    scriptKind
+  );
+  const rootJsxNode = findRootJsx(sourceFile);
+  if (!rootJsxNode) {
+    return {
+      error: "No JSX element found in file. Ensure the component returns JSX.",
+      context: { file: filePath }
+    };
   }
-}
-__name(handleTraceComponentState, "handleTraceComponentState");
-
-// src/handlers/get-accessibility-tree.ts
-var fs7 = __toESM(require("fs"), 1);
-var path11 = __toESM(require("path"), 1);
-var import_typescript21 = __toESM(require_typescript(), 1);
-
-// src/handlers/accessibility-tree-core.ts
-var import_typescript20 = __toESM(require_typescript(), 1);
-function getLineNumber3(pos, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
-  return line + 1;
-}
-__name(getLineNumber3, "getLineNumber");
-function extractAttributeValue(attr, sourceFile) {
-  if (!attr.initializer) {
-    return "true";
-  }
-  if (import_typescript20.default.isStringLiteral(attr.initializer)) {
-    return attr.initializer.text;
-  }
-  if (import_typescript20.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-    const expr = attr.initializer.expression;
-    if (import_typescript20.default.isStringLiteral(expr)) {
-      return expr.text;
-    }
-    if (expr.kind === import_typescript20.default.SyntaxKind.TrueKeyword) {
-      return "true";
-    }
-    if (expr.kind === import_typescript20.default.SyntaxKind.FalseKeyword) {
-      return "false";
-    }
-    if (import_typescript20.default.isNumericLiteral(expr)) {
-      return expr.text;
-    }
-    if (import_typescript20.default.isPrefixUnaryExpression(expr)) {
-      if (expr.operator === import_typescript20.default.SyntaxKind.MinusToken && import_typescript20.default.isNumericLiteral(expr.operand)) {
-        return "-" + expr.operand.text;
-      }
-    }
-    if (import_typescript20.default.isTemplateExpression(expr)) {
-      return expr.head.text + "[dynamic]";
-    }
-    if (import_typescript20.default.isIdentifier(expr)) {
-      return `[${expr.text}]`;
-    }
-    if (import_typescript20.default.isCallExpression(expr)) {
-      const parts = [];
-      for (const arg of expr.arguments) {
-        if (import_typescript20.default.isStringLiteral(arg)) {
-          parts.push(arg.text);
-        }
-      }
-      return parts.join(" ");
-    }
-    return "[expression]";
-  }
-  return "";
-}
-__name(extractAttributeValue, "extractAttributeValue");
-function extractTextContent(node, sourceFile) {
-  const textParts = [];
-  function visit(child) {
-    if (import_typescript20.default.isJsxText(child)) {
-      const text = child.text.trim();
-      if (text) {
-        textParts.push(text);
-      }
-    } else if (import_typescript20.default.isJsxExpression(child) && child.expression) {
-      if (import_typescript20.default.isStringLiteral(child.expression)) {
-        textParts.push(child.expression.text);
-      }
-    }
-    import_typescript20.default.forEachChild(child, visit);
-  }
-  __name(visit, "visit");
-  import_typescript20.default.forEachChild(node, visit);
-  return textParts.join(" ").trim();
-}
-__name(extractTextContent, "extractTextContent");
-function analyzeJsxFile2(filePath, content, sourceFile, targetElement) {
-  const elements = [];
-  const elementStack = [];
-  function visit(node) {
-    if (import_typescript20.default.isJsxOpeningElement(node) || import_typescript20.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber3(node.getStart(), sourceFile);
-      const isComponent = /^[A-Z]/.test(tagName);
-      if (targetElement && tagName !== targetElement) {
-        if (import_typescript20.default.isJsxOpeningElement(node)) {
-          elementStack.push(-1);
-        }
-        import_typescript20.default.forEachChild(node, visit);
-        return;
-      }
-      const attributes = /* @__PURE__ */ new Map();
-      for (const attr of node.attributes.properties) {
-        if (import_typescript20.default.isJsxAttribute(attr) && attr.name) {
-          const attrName = attr.name.getText(sourceFile);
-          const attrValue = extractAttributeValue(attr, sourceFile);
-          attributes.set(attrName, attrValue);
-        }
-        if (import_typescript20.default.isJsxSpreadAttribute(attr)) {
-          attributes.set("[spread]", "true");
-        }
-      }
-      let textContent = "";
-      if (import_typescript20.default.isJsxElement(node.parent)) {
-        textContent = extractTextContent(node.parent, sourceFile);
-      }
-      const elementInfo = {
-        tag: tagName,
-        line,
-        identifier: `${tagName}:${line}`,
-        attributes,
-        textContent,
-        isComponent,
-        parentIndex: elementStack.length > 0 ? elementStack[elementStack.length - 1] : null,
-        childIndices: []
+  const layoutTree = parseJsxElement(rootJsxNode, sourceFile, selector);
+  if (!layoutTree) {
+    if (selector) {
+      return {
+        error: `No element matching selector "${selector}" found in component.`,
+        context: { file: filePath, selector }
       };
-      const currentIndex = elements.length;
-      elements.push(elementInfo);
-      if (elementInfo.parentIndex !== null && elementInfo.parentIndex >= 0) {
-        elements[elementInfo.parentIndex].childIndices.push(currentIndex);
-      }
-      if (import_typescript20.default.isJsxOpeningElement(node)) {
-        elementStack.push(currentIndex);
-      }
     }
-    if (import_typescript20.default.isJsxClosingElement(node)) {
-      elementStack.pop();
-    }
-    import_typescript20.default.forEachChild(node, visit);
+    return { error: "Failed to parse layout hierarchy from JSX.", context: { file: filePath } };
   }
-  __name(visit, "visit");
-  visit(sourceFile);
-  return elements;
+  const potentialIssues = detectIssues3(layoutTree);
+  const constraintNotes = generateConstraintNotes(layoutTree);
+  const summary = generateSummary(layoutTree, potentialIssues);
+  const relativePath = path10.relative(projectRoot, filePath).replace(/\\/g, "/");
+  return {
+    file: relativePath,
+    root_element: layoutTree.element,
+    layout_tree: layoutTree,
+    constraint_notes: constraintNotes,
+    potential_issues: potentialIssues,
+    summary
+  };
 }
-__name(analyzeJsxFile2, "analyzeJsxFile");
+__name(buildLayoutHierarchy, "buildLayoutHierarchy");
+async function diagnoseOverflow(args) {
+  const typedArgs = args;
+  if (!typedArgs.file) {
+    return missingArg("file");
+  }
+  const projectRoot = getProjectRoot();
+  const ext = path10.extname(typedArgs.file).toLowerCase();
+  if (typedArgs.file && ext && ![".tsx", ".jsx", ".ts", ".js", ""].includes(ext)) {
+    return invalidArg(
+      "file",
+      `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`
+    );
+  }
+  const filePath = path10.isAbsolute(typedArgs.file) ? typedArgs.file : path10.resolve(projectRoot, typedArgs.file);
+  try {
+    const layoutResult = await buildLayoutHierarchy(filePath, typedArgs.element_hint);
+    if ("error" in layoutResult) {
+      return fail(layoutResult.error, layoutResult.context);
+    }
+    const enrichedTree = enrichTreeWithParents(layoutResult.layout_tree);
+    const patterns = findOverflowPatterns(enrichedTree, typedArgs.element_hint);
+    const constraintChain = typedArgs.element_hint ? buildConstraintChain(enrichedTree, typedArgs.element_hint) : [];
+    const allFixes = [];
+    for (const pattern of patterns) {
+      allFixes.push(...generateFixes(pattern));
+    }
+    const uniqueFixes = allFixes.filter(
+      (fix, index, arr) => index === arr.findIndex(
+        (f) => f.code_change === fix.code_change && f.element === fix.element
+      )
+    );
+    const recommendation = generateRecommendation(patterns, uniqueFixes);
+    let cause = "No specific overflow issue detected";
+    if (patterns.length > 0) {
+      const primaryPattern = patterns[0];
+      cause = primaryPattern.description;
+      if (typedArgs.problem_description) {
+        cause = `${primaryPattern.description}. User reports: ${typedArgs.problem_description}`;
+      }
+    } else if (typedArgs.problem_description) {
+      cause = `User reports: ${typedArgs.problem_description}. No matching pattern found in layout analysis.`;
+    }
+    const diagnosis = {
+      overflow_likely: patterns.length > 0,
+      overflow_source: patterns[0]?.element?.element || patterns[0]?.children?.[0]?.element,
+      container: patterns[0]?.parent?.element || patterns[0]?.element?.element,
+      cause,
+      constraint_chain: constraintChain,
+      fix_options: uniqueFixes,
+      recommendation
+    };
+    const relativePath = path10.isAbsolute(typedArgs.file) ? path10.relative(projectRoot, typedArgs.file).replace(/\\/g, "/") : typedArgs.file;
+    const result = {
+      file: relativePath,
+      diagnosis,
+      related_elements: collectRelatedElements(patterns)
+    };
+    return ok(result);
+  } catch (error2) {
+    return failFromException(error2, "Failed to diagnose overflow");
+  }
+}
+__name(diagnoseOverflow, "diagnoseOverflow");
+var handleDiagnoseOverflow = diagnoseOverflow;
 
-// src/handlers/accessibility-tree-utils.ts
+// src/extensions/accessibility-tree.ts
+var fs10 = __toESM(require("fs"), 1);
+var path11 = __toESM(require("path"), 1);
+var import_typescript27 = __toESM(require_typescript(), 1);
+
+// src/core/accessibility/scanner.ts
+var import_typescript26 = __toESM(require_typescript(), 1);
 var SEMANTIC_ROLES = {
   // Interactive elements
   "button": "button",
@@ -250572,8 +251463,138 @@ function isHidden(attrs) {
   return false;
 }
 __name(isHidden, "isHidden");
+function getLineNumber4(pos, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
+  return line + 1;
+}
+__name(getLineNumber4, "getLineNumber");
+function extractAttributeValue(attr, sourceFile) {
+  if (!attr.initializer) {
+    return "true";
+  }
+  if (import_typescript26.default.isStringLiteral(attr.initializer)) {
+    return attr.initializer.text;
+  }
+  if (import_typescript26.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+    const expr = attr.initializer.expression;
+    if (import_typescript26.default.isStringLiteral(expr)) {
+      return expr.text;
+    }
+    if (expr.kind === import_typescript26.default.SyntaxKind.TrueKeyword) {
+      return "true";
+    }
+    if (expr.kind === import_typescript26.default.SyntaxKind.FalseKeyword) {
+      return "false";
+    }
+    if (import_typescript26.default.isNumericLiteral(expr)) {
+      return expr.text;
+    }
+    if (import_typescript26.default.isPrefixUnaryExpression(expr)) {
+      if (expr.operator === import_typescript26.default.SyntaxKind.MinusToken && import_typescript26.default.isNumericLiteral(expr.operand)) {
+        return "-" + expr.operand.text;
+      }
+    }
+    if (import_typescript26.default.isTemplateExpression(expr)) {
+      return expr.head.text + "[dynamic]";
+    }
+    if (import_typescript26.default.isIdentifier(expr)) {
+      return `[${expr.text}]`;
+    }
+    if (import_typescript26.default.isCallExpression(expr)) {
+      const parts = [];
+      for (const arg of expr.arguments) {
+        if (import_typescript26.default.isStringLiteral(arg)) {
+          parts.push(arg.text);
+        }
+      }
+      return parts.join(" ");
+    }
+    return "[expression]";
+  }
+  return "";
+}
+__name(extractAttributeValue, "extractAttributeValue");
+function extractTextContent(node, sourceFile) {
+  const textParts = [];
+  function visit(child) {
+    if (import_typescript26.default.isJsxText(child)) {
+      const text = child.text.trim();
+      if (text) {
+        textParts.push(text);
+      }
+    } else if (import_typescript26.default.isJsxExpression(child) && child.expression) {
+      if (import_typescript26.default.isStringLiteral(child.expression)) {
+        textParts.push(child.expression.text);
+      }
+    }
+    import_typescript26.default.forEachChild(child, visit);
+  }
+  __name(visit, "visit");
+  import_typescript26.default.forEachChild(node, visit);
+  return textParts.join(" ").trim();
+}
+__name(extractTextContent, "extractTextContent");
+function analyzeJsxFile2(filePath, content, sourceFile, targetElement) {
+  const elements = [];
+  const elementStack = [];
+  function visit(node) {
+    if (import_typescript26.default.isJsxOpeningElement(node) || import_typescript26.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      const line = getLineNumber4(node.getStart(), sourceFile);
+      const isComponent = /^[A-Z]/.test(tagName);
+      if (targetElement && tagName !== targetElement) {
+        if (import_typescript26.default.isJsxOpeningElement(node)) {
+          elementStack.push(-1);
+        }
+        import_typescript26.default.forEachChild(node, visit);
+        return;
+      }
+      const attributes = /* @__PURE__ */ new Map();
+      for (const attr of node.attributes.properties) {
+        if (import_typescript26.default.isJsxAttribute(attr) && attr.name) {
+          const attrName = attr.name.getText(sourceFile);
+          const attrValue = extractAttributeValue(attr, sourceFile);
+          attributes.set(attrName, attrValue);
+        }
+        if (import_typescript26.default.isJsxSpreadAttribute(attr)) {
+          attributes.set("[spread]", "true");
+        }
+      }
+      let textContent = "";
+      if (import_typescript26.default.isJsxElement(node.parent)) {
+        textContent = extractTextContent(node.parent, sourceFile);
+      }
+      const elementInfo = {
+        tag: tagName,
+        line,
+        identifier: `${tagName}:${line}`,
+        attributes,
+        textContent,
+        isComponent,
+        parentIndex: elementStack.length > 0 ? elementStack[elementStack.length - 1] : null,
+        childIndices: []
+      };
+      const currentIndex = elements.length;
+      elements.push(elementInfo);
+      if (elementInfo.parentIndex !== null && elementInfo.parentIndex >= 0) {
+        elements[elementInfo.parentIndex].childIndices.push(currentIndex);
+      }
+      if (import_typescript26.default.isJsxOpeningElement(node)) {
+        elementStack.push(currentIndex);
+      }
+    }
+    if (import_typescript26.default.isJsxClosingElement(node)) {
+      elementStack.pop();
+    }
+    import_typescript26.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return elements;
+}
+__name(analyzeJsxFile2, "analyzeJsxFile");
 
-// src/handlers/accessibility-tree-analyzers.ts
+// src/core/accessibility/rules.ts
 function getAccessibleName(elem, elements) {
   const attrs = elem.attributes;
   const labelledBy = attrs.get("aria-labelledby");
@@ -250950,50 +251971,47 @@ function generateSummary2(elements, issues, focusOrder, ariaPatterns) {
 }
 __name(generateSummary2, "generateSummary");
 
-// src/handlers/get-accessibility-tree.ts
-function createSuccessResponse7(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse7, "createSuccessResponse");
-function createErrorResponse7(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse7, "createErrorResponse");
-async function handleGetAccessibilityTree(args) {
-  const projectRoot = process.cwd();
-  const checkPatterns = args.check_patterns ?? true;
+// src/extensions/accessibility-tree.ts
+async function analyzeAccessibilityTree(args) {
+  const typedArgs = args;
+  if (!typedArgs.file) {
+    return missingArg("file");
+  }
+  const projectRoot = getProjectRoot();
+  const checkPatterns = typedArgs.check_patterns ?? true;
   try {
-    const filePath = path11.isAbsolute(args.file) ? args.file : path11.resolve(projectRoot, args.file);
-    if (!fs7.existsSync(filePath)) {
-      return createErrorResponse7(`File not found: ${args.file}`, {
-        provided_path: args.file,
+    const filePath = path11.isAbsolute(typedArgs.file) ? typedArgs.file : path11.resolve(projectRoot, typedArgs.file);
+    if (!fs10.existsSync(filePath)) {
+      return fail(`File not found: ${typedArgs.file}`, {
+        provided_path: typedArgs.file,
         resolved_path: filePath
       });
     }
     const ext = path11.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-      return createErrorResponse7(
+      return fail(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
-        { file: args.file }
+        { file: typedArgs.file }
       );
     }
-    const content = fs7.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript21.default.createSourceFile(
+    const content = fs10.readFileSync(filePath, "utf-8");
+    const sourceFile = import_typescript27.default.createSourceFile(
       filePath,
       content,
-      import_typescript21.default.ScriptTarget.Latest,
+      import_typescript27.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" || ext === ".ts" ? import_typescript21.default.ScriptKind.TSX : import_typescript21.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript27.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript27.default.ScriptKind.JSX : ext === ".ts" ? import_typescript27.default.ScriptKind.TS : import_typescript27.default.ScriptKind.JS
     );
-    const elements = analyzeJsxFile2(filePath, content, sourceFile, args.element);
+    const elements = analyzeJsxFile2(
+      filePath,
+      content,
+      sourceFile,
+      typedArgs.element
+    );
+    const relativePath = path11.relative(projectRoot, filePath).replace(/\\/g, "/");
     if (elements.length === 0) {
-      return createSuccessResponse7({
-        file: path11.relative(projectRoot, filePath).replace(/\\/g, "/"),
+      return ok({
+        file: relativePath,
         a11y_tree: {
           role: "document",
           name: "Document",
@@ -251019,8 +252037,7 @@ async function handleGetAccessibilityTree(args) {
     const ariaPatterns = checkPatterns ? validateAriaPatterns(elements) : [];
     const summary = generateSummary2(elements, issues, focusOrder, ariaPatterns);
     const result = {
-      // Normalize to forward slashes for cross-platform consistency
-      file: path11.relative(projectRoot, filePath).replace(/\\/g, "/"),
+      file: relativePath,
       a11y_tree: a11yTree,
       focus_order: focusOrder,
       issues,
@@ -251028,475 +252045,20 @@ async function handleGetAccessibilityTree(args) {
       aria_patterns: ariaPatterns,
       summary
     };
-    return createSuccessResponse7(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse7(message, { file: args.file });
+    return failFromException(error2, `Failed to analyze accessibility tree: ${typedArgs.file}`);
   }
 }
-__name(handleGetAccessibilityTree, "handleGetAccessibilityTree");
+__name(analyzeAccessibilityTree, "analyzeAccessibilityTree");
+var handleGetAccessibilityTree = analyzeAccessibilityTree;
 
-// src/handlers/get-sizing-strategy.ts
-var fs8 = __toESM(require("fs"), 1);
-var path12 = __toESM(require("path"), 1);
-var import_typescript23 = __toESM(require_typescript(), 1);
+// src/extensions/sizing-strategy.ts
+var fs11 = __toESM(require("node:fs"), 1);
+var path12 = __toESM(require("node:path"), 1);
+var import_typescript28 = __toESM(require_typescript(), 1);
 
-// src/handlers/sizing-strategy-utils.ts
-var TAILWIND_SPACING2 = {
-  "0": "0px",
-  "px": "1px",
-  "0.5": "0.125rem",
-  "1": "0.25rem",
-  "1.5": "0.375rem",
-  "2": "0.5rem",
-  "2.5": "0.625rem",
-  "3": "0.75rem",
-  "3.5": "0.875rem",
-  "4": "1rem",
-  "5": "1.25rem",
-  "6": "1.5rem",
-  "7": "1.75rem",
-  "8": "2rem",
-  "9": "2.25rem",
-  "10": "2.5rem",
-  "11": "2.75rem",
-  "12": "3rem",
-  "14": "3.5rem",
-  "16": "4rem",
-  "20": "5rem",
-  "24": "6rem",
-  "28": "7rem",
-  "32": "8rem",
-  "36": "9rem",
-  "40": "10rem",
-  "44": "11rem",
-  "48": "12rem",
-  "52": "13rem",
-  "56": "14rem",
-  "60": "15rem",
-  "64": "16rem",
-  "72": "18rem",
-  "80": "20rem",
-  "96": "24rem"
-};
-var TAILWIND_FRACTIONS2 = {
-  "1/2": "50%",
-  "1/3": "33.333333%",
-  "2/3": "66.666667%",
-  "1/4": "25%",
-  "2/4": "50%",
-  "3/4": "75%",
-  "1/5": "20%",
-  "2/5": "40%",
-  "3/5": "60%",
-  "4/5": "80%",
-  "1/6": "16.666667%",
-  "2/6": "33.333333%",
-  "3/6": "50%",
-  "4/6": "66.666667%",
-  "5/6": "83.333333%",
-  "1/12": "8.333333%",
-  "2/12": "16.666667%",
-  "3/12": "25%",
-  "4/12": "33.333333%",
-  "5/12": "41.666667%",
-  "6/12": "50%",
-  "7/12": "58.333333%",
-  "8/12": "66.666667%",
-  "9/12": "75%",
-  "10/12": "83.333333%",
-  "11/12": "91.666667%"
-};
-var MAX_WIDTH_VALUES = {
-  "none": "none",
-  "xs": "20rem",
-  "sm": "24rem",
-  "md": "28rem",
-  "lg": "32rem",
-  "xl": "36rem",
-  "2xl": "42rem",
-  "3xl": "48rem",
-  "4xl": "56rem",
-  "5xl": "64rem",
-  "6xl": "72rem",
-  "7xl": "80rem",
-  "full": "100%",
-  "min": "min-content",
-  "max": "max-content",
-  "fit": "fit-content",
-  "prose": "65ch",
-  "screen-sm": "640px",
-  "screen-md": "768px",
-  "screen-lg": "1024px",
-  "screen-xl": "1280px",
-  "screen-2xl": "1536px"
-};
-function parseWidthClass2(className) {
-  const fixedMatch = className.match(/^w-(\d+(?:\.\d+)?|px)$/);
-  if (fixedMatch) {
-    const value = TAILWIND_SPACING2[fixedMatch[1]];
-    if (value) {
-      return { strategy: "fixed", value };
-    }
-  }
-  const fractionMatch = className.match(/^w-(\d+\/\d+)$/);
-  if (fractionMatch) {
-    const value = TAILWIND_FRACTIONS2[fractionMatch[1]];
-    if (value) {
-      return { strategy: "percentage", value };
-    }
-  }
-  const arbitraryMatch = className.match(/^w-\[(.+)\]$/);
-  if (arbitraryMatch) {
-    const value = arbitraryMatch[1];
-    if (value.endsWith("%")) {
-      return { strategy: "percentage", value };
-    }
-    if (value.includes("vw") || value.includes("dvw") || value.includes("svw") || value.includes("lvw")) {
-      return { strategy: "viewport", value };
-    }
-    return { strategy: "fixed", value };
-  }
-  const specialWidths = {
-    "w-auto": { strategy: "auto", value: "auto" },
-    "w-full": { strategy: "percentage", value: "100%" },
-    "w-screen": { strategy: "viewport", value: "100vw" },
-    "w-svw": { strategy: "viewport", value: "100svw" },
-    "w-lvw": { strategy: "viewport", value: "100lvw" },
-    "w-dvw": { strategy: "viewport", value: "100dvw" },
-    "w-min": { strategy: "content-based", value: "min-content" },
-    "w-max": { strategy: "content-based", value: "max-content" },
-    "w-fit": { strategy: "content-based", value: "fit-content" }
-  };
-  return specialWidths[className];
-}
-__name(parseWidthClass2, "parseWidthClass");
-function parseHeightClass2(className) {
-  const fixedMatch = className.match(/^h-(\d+(?:\.\d+)?|px)$/);
-  if (fixedMatch) {
-    const value = TAILWIND_SPACING2[fixedMatch[1]];
-    if (value) {
-      return { strategy: "fixed", value };
-    }
-  }
-  const fractionMatch = className.match(/^h-(\d+\/\d+)$/);
-  if (fractionMatch) {
-    const value = TAILWIND_FRACTIONS2[fractionMatch[1]];
-    if (value) {
-      return { strategy: "percentage", value };
-    }
-  }
-  const arbitraryMatch = className.match(/^h-\[(.+)\]$/);
-  if (arbitraryMatch) {
-    const value = arbitraryMatch[1];
-    if (value.endsWith("%")) {
-      return { strategy: "percentage", value };
-    }
-    if (value.includes("vh") || value.includes("dvh") || value.includes("svh") || value.includes("lvh")) {
-      return { strategy: "viewport", value };
-    }
-    return { strategy: "fixed", value };
-  }
-  const specialHeights = {
-    "h-auto": { strategy: "auto", value: "auto" },
-    "h-full": { strategy: "percentage", value: "100%" },
-    "h-screen": { strategy: "viewport", value: "100vh" },
-    "h-svh": { strategy: "viewport", value: "100svh" },
-    "h-lvh": { strategy: "viewport", value: "100lvh" },
-    "h-dvh": { strategy: "viewport", value: "100dvh" },
-    "h-min": { strategy: "content-based", value: "min-content" },
-    "h-max": { strategy: "content-based", value: "max-content" },
-    "h-fit": { strategy: "content-based", value: "fit-content" }
-  };
-  return specialHeights[className];
-}
-__name(parseHeightClass2, "parseHeightClass");
-function parseTailwindClasses2(classes) {
-  const props = {
-    display: "block",
-    position: "static",
-    overflowX: "visible",
-    overflowY: "visible"
-  };
-  const widthClasses = [];
-  const heightClasses = [];
-  for (const className of classes) {
-    const widthResult = parseWidthClass2(className);
-    if (widthResult) {
-      props.width = { ...widthResult, classes: [...widthClasses, className] };
-      widthClasses.push(className);
-      continue;
-    }
-    const heightResult = parseHeightClass2(className);
-    if (heightResult) {
-      props.height = { ...heightResult, classes: [...heightClasses, className] };
-      heightClasses.push(className);
-      continue;
-    }
-    if (className.startsWith("min-w-")) {
-      const value = className.slice(6);
-      if (value === "full")
-        props.minWidth = "100%";
-      else if (value === "min")
-        props.minWidth = "min-content";
-      else if (value === "max")
-        props.minWidth = "max-content";
-      else if (value === "fit")
-        props.minWidth = "fit-content";
-      else if (value === "0")
-        props.minWidth = "0px";
-      else if (value.startsWith("[") && value.endsWith("]")) {
-        props.minWidth = value.slice(1, -1);
-      } else if (TAILWIND_SPACING2[value]) {
-        props.minWidth = TAILWIND_SPACING2[value];
-      }
-      continue;
-    }
-    if (className.startsWith("max-w-")) {
-      const value = className.slice(6);
-      if (MAX_WIDTH_VALUES[value]) {
-        props.maxWidth = MAX_WIDTH_VALUES[value];
-      } else if (value.startsWith("[") && value.endsWith("]")) {
-        props.maxWidth = value.slice(1, -1);
-      }
-      continue;
-    }
-    if (className.startsWith("min-h-")) {
-      const value = className.slice(6);
-      if (value === "full")
-        props.minHeight = "100%";
-      else if (value === "screen")
-        props.minHeight = "100vh";
-      else if (value === "min")
-        props.minHeight = "min-content";
-      else if (value === "max")
-        props.minHeight = "max-content";
-      else if (value === "fit")
-        props.minHeight = "fit-content";
-      else if (value === "0")
-        props.minHeight = "0px";
-      else if (value.startsWith("[") && value.endsWith("]")) {
-        props.minHeight = value.slice(1, -1);
-      } else if (TAILWIND_SPACING2[value]) {
-        props.minHeight = TAILWIND_SPACING2[value];
-      }
-      continue;
-    }
-    if (className.startsWith("max-h-")) {
-      const value = className.slice(6);
-      if (value === "full")
-        props.maxHeight = "100%";
-      else if (value === "screen")
-        props.maxHeight = "100vh";
-      else if (value === "min")
-        props.maxHeight = "min-content";
-      else if (value === "max")
-        props.maxHeight = "max-content";
-      else if (value === "fit")
-        props.maxHeight = "fit-content";
-      else if (value === "none")
-        props.maxHeight = "none";
-      else if (value.startsWith("[") && value.endsWith("]")) {
-        props.maxHeight = value.slice(1, -1);
-      } else if (TAILWIND_SPACING2[value]) {
-        props.maxHeight = TAILWIND_SPACING2[value];
-      }
-      continue;
-    }
-    const displayClasses = {
-      "block": "block",
-      "inline-block": "inline-block",
-      "inline": "inline",
-      "flex": "flex",
-      "inline-flex": "inline-flex",
-      "grid": "grid",
-      "inline-grid": "inline-grid",
-      "contents": "contents",
-      "hidden": "none"
-    };
-    if (displayClasses[className]) {
-      props.display = displayClasses[className];
-      continue;
-    }
-    const flexDirections = {
-      "flex-row": "row",
-      "flex-row-reverse": "row-reverse",
-      "flex-col": "column",
-      "flex-col-reverse": "column-reverse"
-    };
-    if (flexDirections[className]) {
-      props.flexDirection = flexDirections[className];
-      continue;
-    }
-    if (className === "flex-1") {
-      props.flexGrow = 1;
-      props.flexShrink = 1;
-      props.flexBasis = "0%";
-      continue;
-    }
-    if (className === "flex-auto") {
-      props.flexGrow = 1;
-      props.flexShrink = 1;
-      props.flexBasis = "auto";
-      continue;
-    }
-    if (className === "flex-initial") {
-      props.flexGrow = 0;
-      props.flexShrink = 1;
-      props.flexBasis = "auto";
-      continue;
-    }
-    if (className === "flex-none") {
-      props.flexGrow = 0;
-      props.flexShrink = 0;
-      props.flexBasis = "auto";
-      continue;
-    }
-    if (className === "grow" || className === "flex-grow") {
-      props.flexGrow = 1;
-      continue;
-    }
-    if (className === "grow-0" || className === "flex-grow-0") {
-      props.flexGrow = 0;
-      continue;
-    }
-    if (className === "shrink" || className === "flex-shrink") {
-      props.flexShrink = 1;
-      continue;
-    }
-    if (className === "shrink-0" || className === "flex-shrink-0") {
-      props.flexShrink = 0;
-      continue;
-    }
-    const basisMatch = className.match(/^basis-(.+)$/);
-    if (basisMatch) {
-      const value = basisMatch[1];
-      if (value === "auto")
-        props.flexBasis = "auto";
-      else if (value === "full")
-        props.flexBasis = "100%";
-      else if (TAILWIND_SPACING2[value])
-        props.flexBasis = TAILWIND_SPACING2[value];
-      else if (TAILWIND_FRACTIONS2[value])
-        props.flexBasis = TAILWIND_FRACTIONS2[value];
-      else if (value.startsWith("[") && value.endsWith("]")) {
-        props.flexBasis = value.slice(1, -1);
-      }
-      continue;
-    }
-    const colSpanMatch = className.match(/^col-span-(\d+|full)$/);
-    if (colSpanMatch) {
-      const value = colSpanMatch[1];
-      props.gridColumn = value === "full" ? "1 / -1" : `span ${value} / span ${value}`;
-      continue;
-    }
-    const rowSpanMatch = className.match(/^row-span-(\d+|full)$/);
-    if (rowSpanMatch) {
-      const value = rowSpanMatch[1];
-      props.gridRow = value === "full" ? "1 / -1" : `span ${value} / span ${value}`;
-      continue;
-    }
-    const colStartMatch = className.match(/^col-start-(\d+|auto)$/);
-    if (colStartMatch) {
-      const existing = props.gridColumn || "";
-      props.gridColumn = `${colStartMatch[1]}${existing ? ` / ${existing.split("/")[1]?.trim() || "auto"}` : ""}`;
-      continue;
-    }
-    const colEndMatch = className.match(/^col-end-(\d+|auto)$/);
-    if (colEndMatch) {
-      const existing = props.gridColumn || "auto";
-      props.gridColumn = `${existing.split("/")[0]?.trim() || "auto"} / ${colEndMatch[1]}`;
-      continue;
-    }
-    const gridColsMatch = className.match(/^grid-cols-(\d+|none|\[.+\])$/);
-    if (gridColsMatch) {
-      const value = gridColsMatch[1];
-      if (value === "none") {
-        props.gridTemplateColumns = "none";
-      } else if (value.startsWith("[") && value.endsWith("]")) {
-        props.gridTemplateColumns = value.slice(1, -1);
-      } else {
-        props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
-      }
-      continue;
-    }
-    const gridRowsMatch = className.match(/^grid-rows-(\d+|none|\[.+\])$/);
-    if (gridRowsMatch) {
-      const value = gridRowsMatch[1];
-      if (value === "none") {
-        props.gridTemplateRows = "none";
-      } else if (value.startsWith("[") && value.endsWith("]")) {
-        props.gridTemplateRows = value.slice(1, -1);
-      } else {
-        props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
-      }
-      continue;
-    }
-    const overflows = {
-      "overflow-auto": "auto",
-      "overflow-hidden": "hidden",
-      "overflow-clip": "clip",
-      "overflow-visible": "visible",
-      "overflow-scroll": "scroll"
-    };
-    if (overflows[className]) {
-      props.overflowX = overflows[className];
-      props.overflowY = overflows[className];
-      continue;
-    }
-    const overflowX = {
-      "overflow-x-auto": "auto",
-      "overflow-x-hidden": "hidden",
-      "overflow-x-clip": "clip",
-      "overflow-x-visible": "visible",
-      "overflow-x-scroll": "scroll"
-    };
-    if (overflowX[className]) {
-      props.overflowX = overflowX[className];
-      continue;
-    }
-    const overflowY = {
-      "overflow-y-auto": "auto",
-      "overflow-y-hidden": "hidden",
-      "overflow-y-clip": "clip",
-      "overflow-y-visible": "visible",
-      "overflow-y-scroll": "scroll"
-    };
-    if (overflowY[className]) {
-      props.overflowY = overflowY[className];
-      continue;
-    }
-    const positions = {
-      "static": "static",
-      "fixed": "fixed",
-      "absolute": "absolute",
-      "relative": "relative",
-      "sticky": "sticky"
-    };
-    if (positions[className]) {
-      props.position = positions[className];
-      continue;
-    }
-  }
-  return props;
-}
-__name(parseTailwindClasses2, "parseTailwindClasses");
-function createElementIdentifier2(tagName, classes, id) {
-  if (id) {
-    return `${tagName}#${id}`;
-  }
-  if (classes.length > 0) {
-    const layoutClasses = classes.filter(
-      (c) => c.startsWith("flex") || c.startsWith("grid") || c.startsWith("w-") || c.startsWith("h-") || c.startsWith("overflow") || c === "block" || c === "inline" || c === "hidden"
-    );
-    const identifierClasses = layoutClasses.length > 0 ? layoutClasses.slice(0, 3) : classes.slice(0, 2);
-    return `${tagName}.${identifierClasses.join(".")}`;
-  }
-  return tagName;
-}
-__name(createElementIdentifier2, "createElementIdentifier");
-
-// src/handlers/sizing-strategy-analyzers.ts
+// src/core/sizing/context.ts
 function getStrategyDescription(strategy, value) {
   switch (strategy) {
     case "fixed":
@@ -251520,155 +252082,6 @@ function getStrategyDescription(strategy, value) {
   }
 }
 __name(getStrategyDescription, "getStrategyDescription");
-function analyzeWidthStrategy(element) {
-  const constraints = [];
-  let strategy = "auto";
-  let specified = "auto";
-  if (element.width) {
-    strategy = element.width.strategy;
-    specified = element.width.classes.join(" ") || element.width.value || "auto";
-  }
-  if (element.parent?.display === "flex" || element.parent?.display === "inline-flex") {
-    const parentDir = element.parent.flexDirection || "row";
-    const isMainAxis = parentDir === "row" || parentDir === "row-reverse";
-    if (isMainAxis) {
-      if (element.flexGrow !== void 0 && element.flexGrow > 0) {
-        if (!element.width || element.width.strategy === "auto") {
-          strategy = "flex-controlled";
-          specified = element.flexBasis || "flex-grow";
-        }
-        constraints.push(`flex-grow: ${element.flexGrow}`);
-      }
-      if (element.flexBasis && element.flexBasis !== "auto") {
-        constraints.push(`flex-basis: ${element.flexBasis}`);
-      }
-    }
-  }
-  if (element.parent?.display === "grid" || element.parent?.display === "inline-grid") {
-    if (element.gridColumn) {
-      if (!element.width || element.width.strategy === "auto") {
-        strategy = "grid-controlled";
-        specified = element.gridColumn;
-      }
-      constraints.push(`grid-column: ${element.gridColumn}`);
-    }
-  }
-  let current = element.parent;
-  while (current) {
-    if (current.maxWidth) {
-      constraints.push(`max-width: ${current.maxWidth} (from ${createElementIdentifier2(current.tagName, current.classes, current.id)})`);
-    }
-    if (current.width?.strategy === "fixed" || current.width?.strategy === "viewport") {
-      constraints.push(`parent width: ${current.width.value} (from ${createElementIdentifier2(current.tagName, current.classes, current.id)})`);
-    }
-    if (current.overflowX === "hidden" || current.overflowX === "clip") {
-      constraints.push(`overflow-x: ${current.overflowX} (from ${createElementIdentifier2(current.tagName, current.classes, current.id)})`);
-    }
-    current = current.parent;
-  }
-  return {
-    specified,
-    strategy,
-    description: getStrategyDescription(strategy, element.width?.value),
-    constrained_by: constraints.length > 0 ? constraints : void 0
-  };
-}
-__name(analyzeWidthStrategy, "analyzeWidthStrategy");
-function analyzeHeightStrategy(element) {
-  const constraints = [];
-  let strategy = "auto";
-  let specified = "auto";
-  if (element.height) {
-    strategy = element.height.strategy;
-    specified = element.height.classes.join(" ") || element.height.value || "auto";
-  }
-  if (element.parent?.display === "flex" || element.parent?.display === "inline-flex") {
-    const parentDir = element.parent.flexDirection || "row";
-    const isMainAxis = parentDir === "column" || parentDir === "column-reverse";
-    if (isMainAxis) {
-      if (element.flexGrow !== void 0 && element.flexGrow > 0) {
-        if (!element.height || element.height.strategy === "auto") {
-          strategy = "flex-controlled";
-          specified = element.flexBasis || "flex-grow";
-        }
-        constraints.push(`flex-grow: ${element.flexGrow}`);
-      }
-      if (element.flexBasis && element.flexBasis !== "auto") {
-        constraints.push(`flex-basis: ${element.flexBasis}`);
-      }
-    }
-  }
-  if (element.parent?.display === "grid" || element.parent?.display === "inline-grid") {
-    if (element.gridRow) {
-      if (!element.height || element.height.strategy === "auto") {
-        strategy = "grid-controlled";
-        specified = element.gridRow;
-      }
-      constraints.push(`grid-row: ${element.gridRow}`);
-    }
-  }
-  let current = element.parent;
-  while (current) {
-    if (current.maxHeight) {
-      constraints.push(`max-height: ${current.maxHeight} (from ${createElementIdentifier2(current.tagName, current.classes, current.id)})`);
-    }
-    if (current.height?.strategy === "fixed" || current.height?.strategy === "viewport") {
-      constraints.push(`parent height: ${current.height.value} (from ${createElementIdentifier2(current.tagName, current.classes, current.id)})`);
-    }
-    if (current.overflowY === "hidden" || current.overflowY === "clip") {
-      constraints.push(`overflow-y: ${current.overflowY} (from ${createElementIdentifier2(current.tagName, current.classes, current.id)})`);
-    }
-    if (element.height?.strategy === "percentage" && (!current.height || current.height.strategy === "auto") && current.display !== "flex" && current.display !== "grid") {
-      constraints.push(`WARNING: percentage height may not work (${createElementIdentifier2(current.tagName, current.classes, current.id)} has auto height)`);
-    }
-    current = current.parent;
-  }
-  return {
-    specified,
-    strategy,
-    description: getStrategyDescription(strategy, element.height?.value),
-    constrained_by: constraints.length > 0 ? constraints : void 0
-  };
-}
-__name(analyzeHeightStrategy, "analyzeHeightStrategy");
-function analyzeFlexBehavior(element) {
-  const hasFlex = element.flexGrow !== void 0 || element.flexShrink !== void 0 || element.flexBasis !== void 0;
-  const isFlexContainer = element.display === "flex" || element.display === "inline-flex";
-  const parentIsFlexContainer = element.parent?.display === "flex" || element.parent?.display === "inline-flex";
-  if (!hasFlex && !isFlexContainer && !parentIsFlexContainer) {
-    return void 0;
-  }
-  const grow = element.flexGrow ?? 0;
-  const shrink = element.flexShrink ?? 1;
-  const basis = element.flexBasis || "auto";
-  return {
-    grow,
-    shrink,
-    basis,
-    will_shrink: shrink > 0,
-    will_grow: grow > 0
-  };
-}
-__name(analyzeFlexBehavior, "analyzeFlexBehavior");
-function analyzeGridBehavior(element) {
-  const hasGrid = element.gridColumn !== void 0 || element.gridRow !== void 0 || element.gridArea !== void 0;
-  const isGridContainer = element.display === "grid" || element.display === "inline-grid";
-  const parentIsGridContainer = element.parent?.display === "grid" || element.parent?.display === "inline-grid";
-  if (!hasGrid && !isGridContainer && !parentIsGridContainer) {
-    return void 0;
-  }
-  const columnSpan = element.gridColumn?.match(/span\s+(\d+)/)?.[1];
-  const rowSpan = element.gridRow?.match(/span\s+(\d+)/)?.[1];
-  return {
-    column: element.gridColumn || "auto",
-    row: element.gridRow || "auto",
-    area: element.gridArea,
-    // Include numeric span values for easier testing
-    ...columnSpan ? { column_span: parseInt(columnSpan, 10) } : {},
-    ...rowSpan ? { row_span: parseInt(rowSpan, 10) } : {}
-  };
-}
-__name(analyzeGridBehavior, "analyzeGridBehavior");
 function getPositionContext(element) {
   if (element.position === "fixed") {
     return "fixed to viewport";
@@ -251677,7 +252090,7 @@ function getPositionContext(element) {
     let current = element.parent;
     while (current) {
       if (current.position !== "static") {
-        return `absolute, relative to ${createElementIdentifier2(current.tagName, current.classes, current.id)} (${current.position})`;
+        return `absolute, relative to ${createElementIdentifier(current.tagName, current.classes, current.id)} (${current.position})`;
       }
       current = current.parent;
     }
@@ -251687,7 +252100,7 @@ function getPositionContext(element) {
     let current = element.parent;
     while (current) {
       if (current.overflowX !== "visible" || current.overflowY !== "visible") {
-        return `sticky within ${createElementIdentifier2(current.tagName, current.classes, current.id)} (overflow container)`;
+        return `sticky within ${createElementIdentifier(current.tagName, current.classes, current.id)} (overflow container)`;
       }
       current = current.parent;
     }
@@ -251729,7 +252142,7 @@ function buildAncestorChain(element) {
     }
     if (impacts.length > 0) {
       chain.push({
-        element: createElementIdentifier2(current.tagName, current.classes, current.id),
+        element: createElementIdentifier(current.tagName, current.classes, current.id),
         sizing_impact: impacts.join("; ")
       });
     }
@@ -251796,311 +252209,194 @@ function generateSummary3(element, widthAnalysis, heightAnalysis, flexBehavior, 
 }
 __name(generateSummary3, "generateSummary");
 
-// src/handlers/sizing-strategy-core.ts
-var import_typescript22 = __toESM(require_typescript(), 1);
-function extractClassName2(node, sourceFile) {
-  const classes = [];
-  for (const attr of node.attributes.properties) {
-    if (import_typescript22.default.isJsxAttribute(attr)) {
-      const attrName = attr.name.getText(sourceFile);
-      if (attrName === "className" || attrName === "class") {
-        classes.push(...extractClassesFromAttribute(attr));
+// src/core/sizing/analyzers.ts
+function analyzeWidthStrategy(element) {
+  const constraints = [];
+  let strategy = element.width?.strategy ?? "auto";
+  let specified = element.width ? element.width.classes.join(" ") || element.width.value || "auto" : "auto";
+  if (element.parent?.display === "flex" || element.parent?.display === "inline-flex") {
+    const parentDir = element.parent.flexDirection || "row";
+    const isMainAxis = parentDir === "row" || parentDir === "row-reverse";
+    if (isMainAxis) {
+      if (element.flexGrow !== void 0 && element.flexGrow > 0) {
+        if (!element.width || element.width.strategy === "auto") {
+          strategy = "flex-controlled";
+          specified = element.flexBasis || "flex-grow";
+        }
+        constraints.push(`flex-grow: ${element.flexGrow}`);
+      }
+      if (element.flexBasis && element.flexBasis !== "auto") {
+        constraints.push(`flex-basis: ${element.flexBasis}`);
       }
     }
   }
-  return classes;
-}
-__name(extractClassName2, "extractClassName");
-function extractId2(node, sourceFile) {
-  for (const attr of node.attributes.properties) {
-    if (import_typescript22.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
-      if (attr.initializer && import_typescript22.default.isStringLiteral(attr.initializer)) {
-        return attr.initializer.text;
+  if (element.parent?.display === "grid" || element.parent?.display === "inline-grid") {
+    if (element.gridColumn) {
+      if (!element.width || element.width.strategy === "auto") {
+        strategy = "grid-controlled";
+        specified = element.gridColumn;
       }
+      constraints.push(`grid-column: ${element.gridColumn}`);
     }
   }
-  return void 0;
-}
-__name(extractId2, "extractId");
-function buildElementNode(tagName, classes, id, parent) {
-  const props = parseTailwindClasses2(classes);
+  let current = element.parent;
+  while (current) {
+    if (current.maxWidth) {
+      constraints.push(`max-width: ${current.maxWidth} (from ${createElementIdentifier(current.tagName, current.classes, current.id)})`);
+    }
+    if (current.width?.strategy === "fixed" || current.width?.strategy === "viewport") {
+      constraints.push(`parent width: ${current.width.value} (from ${createElementIdentifier(current.tagName, current.classes, current.id)})`);
+    }
+    if (current.overflowX === "hidden" || current.overflowX === "clip") {
+      constraints.push(`overflow-x: ${current.overflowX} (from ${createElementIdentifier(current.tagName, current.classes, current.id)})`);
+    }
+    current = current.parent;
+  }
   return {
-    tagName,
-    classes,
-    id,
-    parent,
-    children: [],
-    display: props.display || "block",
-    position: props.position || "static",
-    overflowX: props.overflowX || "visible",
-    overflowY: props.overflowY || "visible",
-    width: props.width,
-    height: props.height,
-    minWidth: props.minWidth,
-    maxWidth: props.maxWidth,
-    minHeight: props.minHeight,
-    maxHeight: props.maxHeight,
-    flexDirection: props.flexDirection,
-    flexGrow: props.flexGrow,
-    flexShrink: props.flexShrink,
-    flexBasis: props.flexBasis,
-    gridColumn: props.gridColumn,
-    gridRow: props.gridRow,
-    gridArea: props.gridArea,
-    gridTemplateColumns: props.gridTemplateColumns,
-    gridTemplateRows: props.gridTemplateRows
+    specified,
+    strategy,
+    description: getStrategyDescription(strategy, element.width?.value),
+    constrained_by: constraints.length > 0 ? constraints : void 0
   };
 }
-__name(buildElementNode, "buildElementNode");
-function matchesSelector3(tagName, classes, id, selector) {
-  if (selector.startsWith("#")) {
-    return id === selector.slice(1);
-  }
-  if (selector.startsWith(".")) {
-    return classes.includes(selector.slice(1));
-  }
-  return tagName.toLowerCase() === selector.toLowerCase();
-}
-__name(matchesSelector3, "matchesSelector");
-function parseJsxTree(node, sourceFile, parent, selector) {
-  if (import_typescript22.default.isJsxElement(node)) {
-    const openingElement = node.openingElement;
-    const tagName = openingElement.tagName.getText(sourceFile);
-    const classes = extractClassName2(openingElement, sourceFile);
-    const id = extractId2(openingElement, sourceFile);
-    const elementNode = buildElementNode(tagName, classes, id, parent);
-    if (matchesSelector3(tagName, classes, id, selector)) {
-      for (const child of node.children) {
-        const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
-        if (childResult) {
-          elementNode.children.push(childResult);
+__name(analyzeWidthStrategy, "analyzeWidthStrategy");
+function analyzeHeightStrategy(element) {
+  const constraints = [];
+  let strategy = element.height?.strategy ?? "auto";
+  let specified = element.height ? element.height.classes.join(" ") || element.height.value || "auto" : "auto";
+  if (element.parent?.display === "flex" || element.parent?.display === "inline-flex") {
+    const parentDir = element.parent.flexDirection || "row";
+    const isMainAxis = parentDir === "column" || parentDir === "column-reverse";
+    if (isMainAxis) {
+      if (element.flexGrow !== void 0 && element.flexGrow > 0) {
+        if (!element.height || element.height.strategy === "auto") {
+          strategy = "flex-controlled";
+          specified = element.flexBasis || "flex-grow";
         }
+        constraints.push(`flex-grow: ${element.flexGrow}`);
       }
-      return elementNode;
-    }
-    for (const child of node.children) {
-      const result2 = parseJsxTree(child, sourceFile, elementNode, selector);
-      if (result2) {
-        return result2;
+      if (element.flexBasis && element.flexBasis !== "auto") {
+        constraints.push(`flex-basis: ${element.flexBasis}`);
       }
     }
-    return null;
   }
-  if (import_typescript22.default.isJsxSelfClosingElement(node)) {
-    const tagName = node.tagName.getText(sourceFile);
-    const classes = extractClassName2(node, sourceFile);
-    const id = extractId2(node, sourceFile);
-    if (matchesSelector3(tagName, classes, id, selector)) {
-      return buildElementNode(tagName, classes, id, parent);
-    }
-    return null;
-  }
-  if (import_typescript22.default.isJsxFragment(node)) {
-    for (const child of node.children) {
-      const result2 = parseJsxTree(child, sourceFile, parent, selector);
-      if (result2) {
-        return result2;
+  if (element.parent?.display === "grid" || element.parent?.display === "inline-grid") {
+    if (element.gridRow) {
+      if (!element.height || element.height.strategy === "auto") {
+        strategy = "grid-controlled";
+        specified = element.gridRow;
       }
+      constraints.push(`grid-row: ${element.gridRow}`);
     }
-    return null;
   }
-  if (import_typescript22.default.isJsxExpression(node) && node.expression) {
-    let result2 = null;
-    import_typescript22.default.forEachChild(node.expression, (child) => {
-      if (!result2) {
-        result2 = parseJsxTree(child, sourceFile, parent, selector);
-      }
-    });
-    return result2;
-  }
-  let result = null;
-  import_typescript22.default.forEachChild(node, (child) => {
-    if (!result) {
-      result = parseJsxTree(child, sourceFile, parent, selector);
+  let current = element.parent;
+  while (current) {
+    if (current.maxHeight) {
+      constraints.push(`max-height: ${current.maxHeight} (from ${createElementIdentifier(current.tagName, current.classes, current.id)})`);
     }
-  });
-  return result;
+    if (current.height?.strategy === "fixed" || current.height?.strategy === "viewport") {
+      constraints.push(`parent height: ${current.height.value} (from ${createElementIdentifier(current.tagName, current.classes, current.id)})`);
+    }
+    if (current.overflowY === "hidden" || current.overflowY === "clip") {
+      constraints.push(`overflow-y: ${current.overflowY} (from ${createElementIdentifier(current.tagName, current.classes, current.id)})`);
+    }
+    if (element.height?.strategy === "percentage" && (!current.height || current.height.strategy === "auto") && current.display !== "flex" && current.display !== "grid") {
+      constraints.push(`WARNING: percentage height may not work (${createElementIdentifier(current.tagName, current.classes, current.id)} has auto height)`);
+    }
+    current = current.parent;
+  }
+  return {
+    specified,
+    strategy,
+    description: getStrategyDescription(strategy, element.height?.value),
+    constrained_by: constraints.length > 0 ? constraints : void 0
+  };
 }
-__name(parseJsxTree, "parseJsxTree");
-function parseJsxTreeForChildren(node, sourceFile, parent) {
-  if (import_typescript22.default.isJsxElement(node)) {
-    const openingElement = node.openingElement;
-    const tagName = openingElement.tagName.getText(sourceFile);
-    const classes = extractClassName2(openingElement, sourceFile);
-    const id = extractId2(openingElement, sourceFile);
-    const elementNode = buildElementNode(tagName, classes, id, parent);
-    for (const child of node.children) {
-      const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
-      if (childResult) {
-        elementNode.children.push(childResult);
-      }
-    }
-    return elementNode;
+__name(analyzeHeightStrategy, "analyzeHeightStrategy");
+function analyzeFlexBehavior(element) {
+  const hasFlex = element.flexGrow !== void 0 || element.flexShrink !== void 0 || element.flexBasis !== void 0;
+  const isFlexContainer = element.display === "flex" || element.display === "inline-flex";
+  const parentIsFlexContainer = element.parent?.display === "flex" || element.parent?.display === "inline-flex";
+  if (!hasFlex && !isFlexContainer && !parentIsFlexContainer) {
+    return void 0;
   }
-  if (import_typescript22.default.isJsxSelfClosingElement(node)) {
-    const tagName = node.tagName.getText(sourceFile);
-    const classes = extractClassName2(node, sourceFile);
-    const id = extractId2(node, sourceFile);
-    return buildElementNode(tagName, classes, id, parent);
-  }
-  if (import_typescript22.default.isJsxFragment(node)) {
-    const fragmentNode = buildElementNode("Fragment", [], void 0, parent);
-    fragmentNode.display = "contents";
-    for (const child of node.children) {
-      const childResult = parseJsxTreeForChildren(child, sourceFile, fragmentNode);
-      if (childResult) {
-        fragmentNode.children.push(childResult);
-      }
-    }
-    return fragmentNode.children.length > 0 ? fragmentNode : null;
-  }
-  return null;
+  const grow = element.flexGrow ?? 0;
+  const shrink = element.flexShrink ?? 1;
+  const basis = element.flexBasis || "auto";
+  return {
+    grow,
+    shrink,
+    basis,
+    will_shrink: shrink > 0,
+    will_grow: grow > 0
+  };
 }
-__name(parseJsxTreeForChildren, "parseJsxTreeForChildren");
-function findRootJsx2(sourceFile) {
-  let rootJsx = null;
-  function visit(node) {
-    if (rootJsx)
-      return;
-    if (import_typescript22.default.isReturnStatement(node) && node.expression) {
-      if (import_typescript22.default.isJsxElement(node.expression) || import_typescript22.default.isJsxSelfClosingElement(node.expression) || import_typescript22.default.isJsxFragment(node.expression)) {
-        rootJsx = node.expression;
-        return;
-      }
-      if (import_typescript22.default.isParenthesizedExpression(node.expression)) {
-        const inner = node.expression.expression;
-        if (import_typescript22.default.isJsxElement(inner) || import_typescript22.default.isJsxSelfClosingElement(inner) || import_typescript22.default.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-    if (import_typescript22.default.isArrowFunction(node) && node.body) {
-      if (import_typescript22.default.isJsxElement(node.body) || import_typescript22.default.isJsxSelfClosingElement(node.body) || import_typescript22.default.isJsxFragment(node.body)) {
-        rootJsx = node.body;
-        return;
-      }
-      if (import_typescript22.default.isParenthesizedExpression(node.body)) {
-        const inner = node.body.expression;
-        if (import_typescript22.default.isJsxElement(inner) || import_typescript22.default.isJsxSelfClosingElement(inner) || import_typescript22.default.isJsxFragment(inner)) {
-          rootJsx = inner;
-          return;
-        }
-      }
-    }
-    import_typescript22.default.forEachChild(node, visit);
+__name(analyzeFlexBehavior, "analyzeFlexBehavior");
+function analyzeGridBehavior(element) {
+  const hasGrid = element.gridColumn !== void 0 || element.gridRow !== void 0 || element.gridArea !== void 0;
+  const isGridContainer = element.display === "grid" || element.display === "inline-grid";
+  const parentIsGridContainer = element.parent?.display === "grid" || element.parent?.display === "inline-grid";
+  if (!hasGrid && !isGridContainer && !parentIsGridContainer) {
+    return void 0;
   }
-  __name(visit, "visit");
-  visit(sourceFile);
-  if (!rootJsx) {
-    for (const statement of sourceFile.statements) {
-      if (import_typescript22.default.isExpressionStatement(statement)) {
-        const expr = statement.expression;
-        if (import_typescript22.default.isJsxElement(expr) || import_typescript22.default.isJsxSelfClosingElement(expr) || import_typescript22.default.isJsxFragment(expr)) {
-          rootJsx = expr;
-          break;
-        }
-      }
-    }
-  }
-  return rootJsx;
+  const columnSpan = element.gridColumn?.match(/span\s+(\d+)/)?.[1];
+  const rowSpan = element.gridRow?.match(/span\s+(\d+)/)?.[1];
+  return {
+    column: element.gridColumn || "auto",
+    row: element.gridRow || "auto",
+    area: element.gridArea,
+    // Include numeric span values for easier testing
+    ...columnSpan ? { column_span: parseInt(columnSpan, 10) } : {},
+    ...rowSpan ? { row_span: parseInt(rowSpan, 10) } : {}
+  };
 }
-__name(findRootJsx2, "findRootJsx");
-function findElementBySelector(rootJsx, sourceFile, selector) {
-  return parseJsxTree(rootJsx, sourceFile, void 0, selector);
-}
-__name(findElementBySelector, "findElementBySelector");
-function getAllElements(node, sourceFile, elements = []) {
-  if (import_typescript22.default.isJsxElement(node)) {
-    const openingElement = node.openingElement;
-    const tagName = openingElement.tagName.getText(sourceFile);
-    const classes = extractClassName2(openingElement, sourceFile);
-    const id = extractId2(openingElement, sourceFile);
-    const selector = id ? `#${id}` : classes.length > 0 ? `.${classes[0]}` : tagName;
-    elements.push({ selector, tag: tagName });
-    for (const child of node.children) {
-      getAllElements(child, sourceFile, elements);
-    }
-    return elements;
-  }
-  if (import_typescript22.default.isJsxSelfClosingElement(node)) {
-    const tagName = node.tagName.getText(sourceFile);
-    const classes = extractClassName2(node, sourceFile);
-    const id = extractId2(node, sourceFile);
-    const selector = id ? `#${id}` : classes.length > 0 ? `.${classes[0]}` : tagName;
-    elements.push({ selector, tag: tagName });
-    return elements;
-  }
-  if (import_typescript22.default.isJsxFragment(node)) {
-    for (const child of node.children) {
-      getAllElements(child, sourceFile, elements);
-    }
-    return elements;
-  }
-  if (import_typescript22.default.isJsxExpression(node) && node.expression) {
-    import_typescript22.default.forEachChild(node.expression, (child) => {
-      getAllElements(child, sourceFile, elements);
-    });
-    return elements;
-  }
-  import_typescript22.default.forEachChild(node, (child) => {
-    getAllElements(child, sourceFile, elements);
-  });
-  return elements;
-}
-__name(getAllElements, "getAllElements");
+__name(analyzeGridBehavior, "analyzeGridBehavior");
 
-// src/handlers/get-sizing-strategy.ts
-function createSuccessResponse8(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse8, "createSuccessResponse");
-function createErrorResponse8(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse8, "createErrorResponse");
-async function handleGetSizingStrategy(args) {
+// src/extensions/sizing-strategy.ts
+async function analyzeSizingStrategy(args) {
+  const typedArgs = args;
   const projectRoot = process.cwd();
+  if (!typedArgs.file) {
+    return missingArg("file");
+  }
+  if (!typedArgs.element) {
+    return missingArg("element");
+  }
   try {
-    const filePath = path12.isAbsolute(args.file) ? args.file : path12.resolve(projectRoot, args.file);
-    if (!fs8.existsSync(filePath)) {
-      return createErrorResponse8(`File not found: ${args.file}`, { provided_path: args.file });
+    const filePath = path12.isAbsolute(typedArgs.file) ? typedArgs.file : path12.resolve(projectRoot, typedArgs.file);
+    if (!fs11.existsSync(filePath)) {
+      return fail(`File not found: ${typedArgs.file}`, { provided_path: typedArgs.file });
     }
     const ext = path12.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-      return createErrorResponse8(
+      return fail(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
-        { provided_path: args.file }
+        { provided_path: typedArgs.file }
       );
     }
-    const content = fs8.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript23.default.createSourceFile(
+    const content = fs11.readFileSync(filePath, "utf-8");
+    const sourceFile = import_typescript28.default.createSourceFile(
       filePath,
       content,
-      import_typescript23.default.ScriptTarget.Latest,
+      import_typescript28.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" || ext === ".ts" ? import_typescript23.default.ScriptKind.TSX : import_typescript23.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript28.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript28.default.ScriptKind.JSX : ext === ".ts" ? import_typescript28.default.ScriptKind.TS : import_typescript28.default.ScriptKind.JS
     );
-    const rootJsxNode = findRootJsx2(sourceFile);
+    const rootJsxNode = findRootJsx(sourceFile);
     if (!rootJsxNode) {
-      return createErrorResponse8("No JSX element found in file. Ensure the component returns JSX.", {
-        file: args.file
+      return fail("No JSX element found in file. Ensure the component returns JSX.", {
+        file: typedArgs.file
       });
     }
-    const elementNode = findElementBySelector(rootJsxNode, sourceFile, args.element);
+    const elementNode = findElementBySelector(rootJsxNode, sourceFile, typedArgs.element);
     if (!elementNode) {
       const availableElements = getAllElements(rootJsxNode, sourceFile);
       const suggestions = availableElements.slice(0, 10).map((e) => e.selector);
-      return createErrorResponse8(
-        `Element "${args.element}" not found in component.`,
+      return fail(
+        `Element "${typedArgs.element}" not found in component.`,
         {
-          file: args.file,
-          selector: args.element,
+          file: typedArgs.file,
+          selector: typedArgs.element,
           available_selectors: suggestions,
           hint: "Use #id, .className, or tagName as selector"
         }
@@ -252112,17 +252408,11 @@ async function handleGetSizingStrategy(args) {
     const gridBehavior = analyzeGridBehavior(elementNode);
     const positionContext = getPositionContext(elementNode);
     const ancestorChain = buildAncestorChain(elementNode);
-    const summary = generateSummary3(
-      elementNode,
-      widthAnalysis,
-      heightAnalysis,
-      flexBehavior,
-      gridBehavior
-    );
+    const summary = generateSummary3(elementNode, widthAnalysis, heightAnalysis, flexBehavior, gridBehavior);
     const relativePath = path12.relative(projectRoot, filePath).replace(/\\/g, "/");
     const result = {
       file: relativePath,
-      element: createElementIdentifier2(elementNode.tagName, elementNode.classes, elementNode.id),
+      element: createElementIdentifier(elementNode.tagName, elementNode.classes, elementNode.id),
       classes: elementNode.classes,
       width: widthAnalysis,
       height: heightAnalysis,
@@ -252132,20 +252422,776 @@ async function handleGetSizingStrategy(args) {
       ancestor_chain: ancestorChain,
       summary
     };
-    return createSuccessResponse8(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse8(message, { file: args.file });
+    return failFromException(error2, "Analysis failed");
   }
 }
-__name(handleGetSizingStrategy, "handleGetSizingStrategy");
+__name(analyzeSizingStrategy, "analyzeSizingStrategy");
+var handleGetSizingStrategy = analyzeSizingStrategy;
 
-// src/handlers/analyze-tailwind-conflicts.ts
-var fs9 = __toESM(require("fs"), 1);
+// src/extensions/event-flow.ts
+var fs12 = __toESM(require("fs"), 1);
 var path13 = __toESM(require("path"), 1);
-var import_typescript25 = __toESM(require_typescript(), 1);
+var import_typescript31 = __toESM(require_typescript(), 1);
 
-// src/handlers/tailwind-conflicts-utils.ts
+// src/core/event-flow/tracer.ts
+var import_typescript30 = __toESM(require_typescript(), 1);
+
+// src/core/event-flow/analyzer.ts
+var import_typescript29 = __toESM(require_typescript(), 1);
+function findNestedClickables(tree) {
+  const result = [];
+  function visit(node, ancestorsWithHandlers) {
+    const hasClickHandler = node.handlers.some((h) => h.event === "click");
+    if (hasClickHandler) {
+      for (const ancestor of ancestorsWithHandlers) {
+        result.push({ parent: ancestor, child: node });
+      }
+    }
+    const newAncestors = hasClickHandler ? [...ancestorsWithHandlers, node] : ancestorsWithHandlers;
+    for (const child of node.children) {
+      visit(child, newAncestors);
+    }
+  }
+  __name(visit, "visit");
+  for (const child of tree.children) {
+    visit(child, []);
+  }
+  return result;
+}
+__name(findNestedClickables, "findNestedClickables");
+function areNested(nodeA, nodeB) {
+  let current = nodeB.parent;
+  while (current) {
+    if (current === nodeA)
+      return true;
+    current = current.parent;
+  }
+  current = nodeA.parent;
+  while (current) {
+    if (current === nodeB)
+      return true;
+    current = current.parent;
+  }
+  return false;
+}
+__name(areNested, "areNested");
+function findNodeByLine(tree, line) {
+  if (tree.line === line)
+    return tree;
+  for (const child of tree.children) {
+    const found = findNodeByLine(child, line);
+    if (found)
+      return found;
+  }
+  return null;
+}
+__name(findNodeByLine, "findNodeByLine");
+function detectIssues4(handlers, tree, sourceFile) {
+  const issues = [];
+  const clickHandlers = handlers.filter((h) => h.event === "click");
+  const keyboardHandlers = handlers.filter(
+    (h) => ["keydown", "keyup", "keypress"].includes(h.event)
+  );
+  const nestedClickables = findNestedClickables(tree);
+  if (nestedClickables.length > 0) {
+    for (const { parent, child } of nestedClickables) {
+      const parentHandler = clickHandlers.find((h) => h.line === parent.line);
+      const childHandler = clickHandlers.find((h) => h.line === child.line);
+      if (parentHandler && childHandler && !childHandler.stops_propagation) {
+        issues.push({
+          issue: "nested_clickable_elements",
+          elements: [child.element, parent.element],
+          explanation: `Clicking ${child.element} (line ${child.line}) will also trigger the click handler on ${parent.element} (line ${parent.line}) due to event bubbling`,
+          fix: `Add e.stopPropagation() in the ${child.element} handler, or restructure to avoid nesting`
+        });
+      }
+    }
+  }
+  for (const handler of clickHandlers) {
+    const elementLower = handler.element.toLowerCase();
+    if (NON_INTERACTIVE_ELEMENTS.has(elementLower)) {
+      const hasKeyboardHandler = keyboardHandlers.some(
+        (kh) => kh.line === handler.line || Math.abs(kh.line - handler.line) <= 2
+      );
+      if (!hasKeyboardHandler) {
+        issues.push({
+          issue: "missing_keyboard_alternative",
+          elements: [handler.element],
+          explanation: `Click handler on ${handler.element} (line ${handler.line}) may not be accessible to keyboard users. Non-interactive elements like <div> don't receive keyboard events by default`,
+          fix: `Use a <button> element instead, or add role="button" tabIndex={0} and an onKeyDown handler that triggers on Enter/Space`
+        });
+      }
+    }
+  }
+  const eventGroups = /* @__PURE__ */ new Map();
+  for (const handler of handlers) {
+    const existing = eventGroups.get(handler.event) || [];
+    existing.push(handler);
+    eventGroups.set(handler.event, existing);
+  }
+  for (const [eventType, eventHandlers] of eventGroups) {
+    if (eventHandlers.length > 1 && BUBBLING_EVENTS.has(eventType)) {
+      const noneStopPropagation = eventHandlers.filter((h) => !h.stops_propagation);
+      if (noneStopPropagation.length > 1) {
+        let hasNesting = false;
+        for (let i = 0; i < noneStopPropagation.length; i++) {
+          for (let j = i + 1; j < noneStopPropagation.length; j++) {
+            const nodeA = findNodeByLine(tree, noneStopPropagation[i].line);
+            const nodeB = findNodeByLine(tree, noneStopPropagation[j].line);
+            if (nodeA && nodeB && areNested(nodeA, nodeB)) {
+              hasNesting = true;
+              break;
+            }
+          }
+          if (hasNesting)
+            break;
+        }
+        if (hasNesting) {
+          issues.push({
+            issue: "potential_double_firing",
+            elements: noneStopPropagation.map((h) => h.element),
+            explanation: `Multiple ${eventType} handlers without stopPropagation may cause double-firing when event bubbles`,
+            fix: `Add e.stopPropagation() to the innermost handler if the parent handler shouldn't be triggered`
+          });
+        }
+      }
+    }
+  }
+  const submitHandlers = handlers.filter((h) => h.event === "submit");
+  for (const handler of submitHandlers) {
+    if (!handler.prevents_default) {
+      issues.push({
+        issue: "form_submit_no_prevent_default",
+        elements: [handler.element],
+        explanation: `Form submit handler (line ${handler.line}) doesn't call preventDefault(). This will cause a page reload in traditional form submissions`,
+        fix: `Add e.preventDefault() at the start of the submit handler`
+      });
+    }
+  }
+  return issues;
+}
+__name(detectIssues4, "detectIssues");
+function buildEventFlows(handlers, tree, eventFilter) {
+  const flows = {};
+  const handlersByEvent = /* @__PURE__ */ new Map();
+  for (const handler of handlers) {
+    const existing = handlersByEvent.get(handler.event) || [];
+    existing.push(handler);
+    handlersByEvent.set(handler.event, existing);
+  }
+  for (const [eventType, eventHandlers] of handlersByEvent) {
+    if (!BUBBLING_EVENTS.has(eventType))
+      continue;
+    const sortedByDepth = [...eventHandlers].sort((a, b) => {
+      const nodeA = findNodeByLine(tree, a.line);
+      const nodeB = findNodeByLine(tree, b.line);
+      return (nodeB?.depth ?? 0) - (nodeA?.depth ?? 0);
+    });
+    if (sortedByDepth.length === 0)
+      continue;
+    const steps = [];
+    let stepNum = 1;
+    for (const handler of sortedByDepth) {
+      const node = findNodeByLine(tree, handler.line);
+      if (!node)
+        continue;
+      steps.push({
+        step: stepNum,
+        element: handler.element,
+        handler: handler.handler,
+        stops_here: handler.stops_propagation
+      });
+      stepNum++;
+      if (handler.stops_propagation)
+        break;
+    }
+    if (steps.length > 0) {
+      const scenarioName = `${eventType}_from_${steps[0].element}`;
+      flows[scenarioName] = {
+        scenario: `${eventType} event starting at ${steps[0].element}`,
+        steps
+      };
+    }
+  }
+  return flows;
+}
+__name(buildEventFlows, "buildEventFlows");
+function findDelegationTargets(node, sourceFile) {
+  const targets = [];
+  function visit(n) {
+    if (import_typescript29.default.isCallExpression(n)) {
+      const callText = n.expression.getText(sourceFile);
+      if (callText.match(/\.target\.closest$/)) {
+        const arg = n.arguments[0];
+        if (arg && import_typescript29.default.isStringLiteral(arg)) {
+          targets.push(arg.text);
+        }
+      }
+      if (callText.match(/\.target\.matches$/)) {
+        const arg = n.arguments[0];
+        if (arg && import_typescript29.default.isStringLiteral(arg)) {
+          targets.push(arg.text);
+        }
+      }
+    }
+    if (import_typescript29.default.isBinaryExpression(n) && n.operatorToken.kind === import_typescript29.default.SyntaxKind.EqualsEqualsEqualsToken) {
+      const leftText = n.left.getText(sourceFile);
+      if (leftText.match(/\.target\.tagName$/)) {
+        if (import_typescript29.default.isStringLiteral(n.right)) {
+          targets.push(n.right.text.toLowerCase());
+        }
+      }
+    }
+    if (import_typescript29.default.isPropertyAccessExpression(n)) {
+      const text = n.getText(sourceFile);
+      if (text.match(/\.target\.dataset\./)) {
+        targets.push(`[data-${n.name.getText(sourceFile)}]`);
+      }
+    }
+    import_typescript29.default.forEachChild(n, visit);
+  }
+  __name(visit, "visit");
+  visit(node);
+  return targets;
+}
+__name(findDelegationTargets, "findDelegationTargets");
+function generateSummary4(handlers, issues, delegationPatterns) {
+  const parts = [];
+  const eventCounts = /* @__PURE__ */ new Map();
+  for (const handler of handlers) {
+    eventCounts.set(handler.event, (eventCounts.get(handler.event) || 0) + 1);
+  }
+  const eventSummary = Array.from(eventCounts.entries()).map(([event, count]) => `${count} ${event}`).join(", ");
+  parts.push(
+    `Found ${handlers.length} event handler${handlers.length !== 1 ? "s" : ""} (${eventSummary}).`
+  );
+  const stopPropCount = handlers.filter((h) => h.stops_propagation).length;
+  const preventDefaultCount = handlers.filter((h) => h.prevents_default).length;
+  if (stopPropCount > 0 || preventDefaultCount > 0) {
+    const propagationInfo = [];
+    if (stopPropCount > 0) {
+      propagationInfo.push(`${stopPropCount} use stopPropagation`);
+    }
+    if (preventDefaultCount > 0) {
+      propagationInfo.push(`${preventDefaultCount} use preventDefault`);
+    }
+    parts.push(propagationInfo.join(", ") + ".");
+  }
+  if (issues.length > 0) {
+    const criticalIssues = issues.filter(
+      (i) => ["nested_clickable_elements", "potential_double_firing"].includes(i.issue)
+    );
+    const a11yIssues = issues.filter((i) => i.issue === "missing_keyboard_alternative");
+    if (criticalIssues.length > 0) {
+      parts.push(
+        `${criticalIssues.length} potential event propagation issue${criticalIssues.length !== 1 ? "s" : ""} detected.`
+      );
+    }
+    if (a11yIssues.length > 0) {
+      parts.push(
+        `${a11yIssues.length} accessibility concern${a11yIssues.length !== 1 ? "s" : ""} (missing keyboard alternatives).`
+      );
+    }
+  } else {
+    parts.push("No significant issues detected.");
+  }
+  if (delegationPatterns.length > 0) {
+    parts.push(
+      `${delegationPatterns.length} event delegation pattern${delegationPatterns.length !== 1 ? "s" : ""} found.`
+    );
+  }
+  return parts.join(" ");
+}
+__name(generateSummary4, "generateSummary");
+
+// src/core/event-flow/tracer.ts
+var EVENT_PROPS = {
+  // Mouse events
+  onClick: "click",
+  onDoubleClick: "dblclick",
+  onMouseDown: "mousedown",
+  onMouseUp: "mouseup",
+  onMouseEnter: "mouseenter",
+  onMouseLeave: "mouseleave",
+  onMouseMove: "mousemove",
+  onMouseOver: "mouseover",
+  onMouseOut: "mouseout",
+  onContextMenu: "contextmenu",
+  // Form events
+  onChange: "change",
+  onInput: "input",
+  onSubmit: "submit",
+  onReset: "reset",
+  onFocus: "focus",
+  onBlur: "blur",
+  // Keyboard events
+  onKeyDown: "keydown",
+  onKeyUp: "keyup",
+  onKeyPress: "keypress",
+  // Touch events
+  onTouchStart: "touchstart",
+  onTouchEnd: "touchend",
+  onTouchMove: "touchmove",
+  onTouchCancel: "touchcancel",
+  // Drag events
+  onDrag: "drag",
+  onDragStart: "dragstart",
+  onDragEnd: "dragend",
+  onDragEnter: "dragenter",
+  onDragLeave: "dragleave",
+  onDragOver: "dragover",
+  onDrop: "drop",
+  // Scroll/Wheel events
+  onScroll: "scroll",
+  onWheel: "wheel",
+  // Pointer events
+  onPointerDown: "pointerdown",
+  onPointerUp: "pointerup",
+  onPointerMove: "pointermove",
+  onPointerEnter: "pointerenter",
+  onPointerLeave: "pointerleave",
+  onPointerCancel: "pointercancel",
+  // Clipboard events
+  onCopy: "copy",
+  onCut: "cut",
+  onPaste: "paste",
+  // Animation events
+  onAnimationStart: "animationstart",
+  onAnimationEnd: "animationend",
+  onAnimationIteration: "animationiteration",
+  // Transition events
+  onTransitionEnd: "transitionend"
+};
+var BUBBLING_EVENTS = /* @__PURE__ */ new Set([
+  "click",
+  "dblclick",
+  "mousedown",
+  "mouseup",
+  "mousemove",
+  "mouseover",
+  "mouseout",
+  "contextmenu",
+  "keydown",
+  "keyup",
+  "keypress",
+  "change",
+  "input",
+  "submit",
+  "reset",
+  "scroll",
+  "wheel",
+  "touchstart",
+  "touchend",
+  "touchmove",
+  "drag",
+  "dragstart",
+  "dragend",
+  "dragenter",
+  "dragleave",
+  "dragover",
+  "drop",
+  "pointerdown",
+  "pointerup",
+  "pointermove",
+  "copy",
+  "cut",
+  "paste"
+]);
+var NON_INTERACTIVE_ELEMENTS = /* @__PURE__ */ new Set([
+  "div",
+  "span",
+  "p",
+  "section",
+  "article",
+  "aside",
+  "header",
+  "footer",
+  "main",
+  "nav",
+  "li",
+  "ul",
+  "ol",
+  "table",
+  "tr",
+  "td",
+  "th",
+  "img"
+]);
+function normalizeFilePath2(filePath) {
+  return filePath.replace(/\\/g, "/");
+}
+__name(normalizeFilePath2, "normalizeFilePath");
+function getLineNumber5(node, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  return line + 1;
+}
+__name(getLineNumber5, "getLineNumber");
+function getCodeSnippet2(node, sourceFile, maxLength = 60) {
+  const text = node.getText(sourceFile).replace(/\s+/g, " ").trim();
+  return text.length > maxLength ? text.substring(0, maxLength - 3) + "..." : text;
+}
+__name(getCodeSnippet2, "getCodeSnippet");
+function containsStopPropagation(node, sourceFile) {
+  let found = false;
+  function visit(n) {
+    if (found)
+      return;
+    if (import_typescript30.default.isCallExpression(n)) {
+      const callText = n.expression.getText(sourceFile);
+      if (callText.endsWith(".stopPropagation") || callText.endsWith(".stopImmediatePropagation") || callText === "stopPropagation") {
+        found = true;
+        return;
+      }
+    }
+    import_typescript30.default.forEachChild(n, visit);
+  }
+  __name(visit, "visit");
+  visit(node);
+  return found;
+}
+__name(containsStopPropagation, "containsStopPropagation");
+function containsPreventDefault(node, sourceFile) {
+  let found = false;
+  function visit(n) {
+    if (found)
+      return;
+    if (import_typescript30.default.isCallExpression(n)) {
+      const callText = n.expression.getText(sourceFile);
+      if (callText.endsWith(".preventDefault") || callText === "preventDefault") {
+        found = true;
+        return;
+      }
+    }
+    import_typescript30.default.forEachChild(n, visit);
+  }
+  __name(visit, "visit");
+  visit(node);
+  return found;
+}
+__name(containsPreventDefault, "containsPreventDefault");
+function resolveHandlerBody(handlerExpr, sourceFile) {
+  if (import_typescript30.default.isArrowFunction(handlerExpr) || import_typescript30.default.isFunctionExpression(handlerExpr)) {
+    return handlerExpr.body;
+  }
+  if (import_typescript30.default.isIdentifier(handlerExpr)) {
+    let findHandler2 = function(node) {
+      if (foundBody)
+        return;
+      if (import_typescript30.default.isFunctionDeclaration(node) && node.name?.getText(sourceFile) === handlerName && node.body) {
+        foundBody = node.body;
+        return;
+      }
+      if (import_typescript30.default.isVariableStatement(node)) {
+        for (const decl of node.declarationList.declarations) {
+          if (import_typescript30.default.isIdentifier(decl.name) && decl.name.getText(sourceFile) === handlerName) {
+            if (decl.initializer) {
+              if (import_typescript30.default.isArrowFunction(decl.initializer) || import_typescript30.default.isFunctionExpression(decl.initializer)) {
+                foundBody = decl.initializer.body;
+                return;
+              }
+            }
+          }
+        }
+      }
+      import_typescript30.default.forEachChild(node, findHandler2);
+    };
+    var findHandler = findHandler2;
+    __name(findHandler2, "findHandler");
+    const handlerName = handlerExpr.getText(sourceFile);
+    let foundBody = null;
+    findHandler2(sourceFile);
+    return foundBody;
+  }
+  return null;
+}
+__name(resolveHandlerBody, "resolveHandlerBody");
+function extractEventHandlers(componentNode, sourceFile, eventFilter) {
+  const handlers = [];
+  const rootNode = {
+    element: "root",
+    parent: null,
+    children: [],
+    handlers: [],
+    line: 0,
+    depth: 0
+  };
+  let currentParent = rootNode;
+  function visit(node, depth) {
+    if (import_typescript30.default.isJsxElement(node)) {
+      const opening = node.openingElement;
+      const tagName = opening.tagName.getText(sourceFile);
+      const line = getLineNumber5(opening, sourceFile);
+      const componentNode2 = {
+        element: tagName,
+        parent: currentParent,
+        children: [],
+        handlers: [],
+        line,
+        depth
+      };
+      currentParent.children.push(componentNode2);
+      processAttributes(opening, componentNode2, tagName, line);
+      const prevParent = currentParent;
+      currentParent = componentNode2;
+      for (const child of node.children) {
+        visit(child, depth + 1);
+      }
+      currentParent = prevParent;
+      return;
+    }
+    if (import_typescript30.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      const line = getLineNumber5(node, sourceFile);
+      const componentNode2 = {
+        element: tagName,
+        parent: currentParent,
+        children: [],
+        handlers: [],
+        line,
+        depth
+      };
+      currentParent.children.push(componentNode2);
+      processAttributes(node, componentNode2, tagName, line);
+      return;
+    }
+    import_typescript30.default.forEachChild(node, (child) => visit(child, depth));
+  }
+  __name(visit, "visit");
+  function processAttributes(node, componentNode2, tagName, line) {
+    for (const attr of node.attributes.properties) {
+      if (import_typescript30.default.isJsxAttribute(attr) && attr.name && attr.initializer) {
+        const attrName = attr.name.getText(sourceFile);
+        const eventType = EVENT_PROPS[attrName];
+        if (eventType) {
+          if (eventFilter && eventType !== eventFilter.toLowerCase()) {
+            continue;
+          }
+          let handlerName = attrName;
+          let stopsPropagation = false;
+          let preventsDefault = false;
+          if (import_typescript30.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+            const expr = attr.initializer.expression;
+            handlerName = getCodeSnippet2(expr, sourceFile);
+            const handlerBody = resolveHandlerBody(expr, sourceFile);
+            if (handlerBody) {
+              stopsPropagation = containsStopPropagation(handlerBody, sourceFile);
+              preventsDefault = containsPreventDefault(handlerBody, sourceFile);
+            } else {
+              stopsPropagation = containsStopPropagation(expr, sourceFile);
+              preventsDefault = containsPreventDefault(expr, sourceFile);
+            }
+          }
+          const handler = {
+            element: tagName,
+            event: eventType,
+            handler: handlerName,
+            line,
+            stops_propagation: stopsPropagation,
+            prevents_default: preventsDefault
+          };
+          handlers.push(handler);
+          componentNode2.handlers.push(handler);
+        }
+      }
+    }
+  }
+  __name(processAttributes, "processAttributes");
+  visit(componentNode, 0);
+  return { handlers, tree: rootNode };
+}
+__name(extractEventHandlers, "extractEventHandlers");
+function containsJsxReturn5(node) {
+  let hasJsx = false;
+  function visit(n) {
+    if (hasJsx)
+      return;
+    if (import_typescript30.default.isJsxElement(n) || import_typescript30.default.isJsxSelfClosingElement(n) || import_typescript30.default.isJsxFragment(n)) {
+      hasJsx = true;
+      return;
+    }
+    import_typescript30.default.forEachChild(n, visit);
+  }
+  __name(visit, "visit");
+  visit(node);
+  return hasJsx;
+}
+__name(containsJsxReturn5, "containsJsxReturn");
+function findReactComponent(sourceFile) {
+  let componentNode = null;
+  function visit(node) {
+    if (componentNode)
+      return;
+    if (import_typescript30.default.isFunctionDeclaration(node) && node.name) {
+      const name = node.name.getText(sourceFile);
+      if (/^[A-Z]/.test(name) && containsJsxReturn5(node)) {
+        componentNode = node;
+        return;
+      }
+    }
+    if (import_typescript30.default.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (import_typescript30.default.isIdentifier(decl.name) && decl.initializer) {
+          const name = decl.name.getText(sourceFile);
+          if (/^[A-Z]/.test(name)) {
+            if (import_typescript30.default.isCallExpression(decl.initializer)) {
+              const callText = decl.initializer.expression.getText(sourceFile);
+              if ((callText === "memo" || callText === "React.memo") && decl.initializer.arguments.length > 0) {
+                const arg = decl.initializer.arguments[0];
+                if (containsJsxReturn5(arg)) {
+                  componentNode = arg;
+                  return;
+                }
+              }
+            } else if (import_typescript30.default.isArrowFunction(decl.initializer) || import_typescript30.default.isFunctionExpression(decl.initializer)) {
+              if (containsJsxReturn5(decl.initializer)) {
+                componentNode = decl.initializer;
+                return;
+              }
+            }
+          }
+        }
+      }
+    }
+    import_typescript30.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return componentNode;
+}
+__name(findReactComponent, "findReactComponent");
+function detectDelegationPatterns(handlers, sourceFile) {
+  const patterns = [];
+  function findDelegation(handler) {
+    let foundPattern = null;
+    function visit(node) {
+      if (foundPattern)
+        return;
+      if (import_typescript30.default.isJsxOpeningElement(node) || import_typescript30.default.isJsxSelfClosingElement(node)) {
+        const line = getLineNumber5(node, sourceFile);
+        if (line === handler.line) {
+          for (const attr of node.attributes.properties) {
+            if (import_typescript30.default.isJsxAttribute(attr) && attr.initializer && import_typescript30.default.isJsxExpression(attr.initializer)) {
+              const expr = attr.initializer.expression;
+              if (expr) {
+                const handlerBody = resolveHandlerBody(expr, sourceFile);
+                const nodeToCheck = handlerBody || expr;
+                const delegateTargets = findDelegationTargets(nodeToCheck, sourceFile);
+                if (delegateTargets.length > 0) {
+                  foundPattern = {
+                    container: handler.element,
+                    delegates_for: delegateTargets,
+                    event: handler.event
+                  };
+                }
+              }
+            }
+          }
+        }
+      }
+      if (!foundPattern) {
+        import_typescript30.default.forEachChild(node, visit);
+      }
+    }
+    __name(visit, "visit");
+    visit(sourceFile);
+    return foundPattern;
+  }
+  __name(findDelegation, "findDelegation");
+  for (const handler of handlers) {
+    const pattern = findDelegation(handler);
+    if (pattern) {
+      patterns.push(pattern);
+    }
+  }
+  return patterns;
+}
+__name(detectDelegationPatterns, "detectDelegationPatterns");
+
+// src/extensions/event-flow.ts
+async function analyzeEventFlow(args) {
+  const typedArgs = args;
+  if (!typedArgs.file) {
+    return missingArg("file");
+  }
+  const projectRoot = getProjectRoot();
+  try {
+    const filePath = path13.isAbsolute(typedArgs.file) ? typedArgs.file : path13.resolve(projectRoot, typedArgs.file);
+    if (!fs12.existsSync(filePath)) {
+      return fail(`File not found: ${typedArgs.file}`, { provided_path: typedArgs.file });
+    }
+    const ext = path13.extname(filePath).toLowerCase();
+    if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
+      return fail(
+        "File must be a component file (.tsx, .jsx, .ts, .js)",
+        { provided_extension: ext }
+      );
+    }
+    const content = fs12.readFileSync(filePath, "utf-8");
+    const sourceFile = import_typescript31.default.createSourceFile(
+      filePath,
+      content,
+      import_typescript31.default.ScriptTarget.Latest,
+      true,
+      ext === ".tsx" ? import_typescript31.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript31.default.ScriptKind.JSX : ext === ".ts" ? import_typescript31.default.ScriptKind.TS : import_typescript31.default.ScriptKind.JS
+    );
+    const relativePath = normalizeFilePath2(path13.relative(projectRoot, filePath));
+    const componentNode = findReactComponent(sourceFile);
+    if (!componentNode) {
+      return ok({
+        message: "No React component found in file",
+        file: relativePath,
+        handlers: [],
+        event_flows: {},
+        issues: [],
+        delegation_patterns: [],
+        summary: "No component found to analyze."
+      });
+    }
+    const { handlers, tree } = extractEventHandlers(
+      componentNode,
+      sourceFile,
+      typedArgs.event
+    );
+    if (handlers.length === 0) {
+      const eventMsg = typedArgs.event ? ` for event type "${typedArgs.event}"` : "";
+      return ok({
+        file: relativePath,
+        handlers: [],
+        event_flows: {},
+        issues: [],
+        delegation_patterns: [],
+        summary: `No event handlers found${eventMsg}.`
+      });
+    }
+    const eventFlows = buildEventFlows(handlers, tree, typedArgs.event);
+    const issues = detectIssues4(handlers, tree, sourceFile);
+    const delegationPatterns = detectDelegationPatterns(handlers, sourceFile);
+    const summary = generateSummary4(handlers, issues, delegationPatterns);
+    const result = {
+      file: relativePath,
+      handlers,
+      event_flows: eventFlows,
+      issues,
+      delegation_patterns: delegationPatterns,
+      summary
+    };
+    return ok(result);
+  } catch (error2) {
+    return failFromException(error2, `Failed to analyze event flow: ${typedArgs.file}`);
+  }
+}
+__name(analyzeEventFlow, "analyzeEventFlow");
+var handleAnalyzeEventFlow = analyzeEventFlow;
+
+// src/extensions/tailwind-conflicts.ts
+var fs13 = __toESM(require("fs"), 1);
+var path14 = __toESM(require("path"), 1);
+var import_typescript33 = __toESM(require_typescript(), 1);
+
+// src/core/tailwind-conflicts/scanner.ts
+var import_typescript32 = __toESM(require_typescript(), 1);
 var CLASS_CATEGORIES = {
   // Spacing - Padding
   "padding": ["p-"],
@@ -252611,8 +253657,86 @@ function longhandOverridesShorthand(shorthandClass, longhandClass) {
   return false;
 }
 __name(longhandOverridesShorthand, "longhandOverridesShorthand");
+function getLineNumber6(pos, sourceFile) {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
+  return line + 1;
+}
+__name(getLineNumber6, "getLineNumber");
+function getRawClassName(attr, sourceFile) {
+  if (!attr.initializer)
+    return "";
+  if (import_typescript32.default.isStringLiteral(attr.initializer)) {
+    return attr.initializer.text;
+  }
+  if (import_typescript32.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+    const expr = attr.initializer.expression;
+    if (import_typescript32.default.isStringLiteral(expr)) {
+      return expr.text;
+    }
+    return expr.getText(sourceFile);
+  }
+  return "";
+}
+__name(getRawClassName, "getRawClassName");
+function analyzeJsxFile3(content, sourceFile) {
+  const elements = [];
+  function visit(node) {
+    if (import_typescript32.default.isJsxOpeningElement(node) || import_typescript32.default.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName.getText(sourceFile);
+      const line = getLineNumber6(node.getStart(), sourceFile);
+      for (const attr of node.attributes.properties) {
+        if (import_typescript32.default.isJsxAttribute(attr)) {
+          const attrName = attr.name.getText(sourceFile);
+          if (attrName === "className" || attrName === "class") {
+            const classes = extractClassesFromAttribute(attr);
+            const rawClassName = getRawClassName(attr, sourceFile);
+            if (classes.length > 0) {
+              elements.push({
+                element: `${tagName}:${line}`,
+                line,
+                classes,
+                rawClassName
+              });
+            }
+          }
+        }
+      }
+    }
+    import_typescript32.default.forEachChild(node, visit);
+  }
+  __name(visit, "visit");
+  visit(sourceFile);
+  return elements;
+}
+__name(analyzeJsxFile3, "analyzeJsxFile");
 
-// src/handlers/tailwind-conflicts-analyzers.ts
+// src/core/tailwind-conflicts/analyzer.ts
+function generateSummary5(elementCount, conflicts, redundant, specificityIssues, suggestions) {
+  const parts = [];
+  parts.push(`Analyzed ${elementCount} elements with Tailwind classes`);
+  if (conflicts.length === 0 && redundant.length === 0 && specificityIssues.length === 0) {
+    parts.push("No conflicts detected");
+  } else {
+    if (conflicts.length > 0) {
+      const overrides = conflicts.filter((c) => c.conflict_type === "override").length;
+      const contradictions = conflicts.filter((c) => c.conflict_type === "contradiction").length;
+      parts.push(
+        `Found ${conflicts.length} conflicts (${overrides} overrides, ${contradictions} contradictions)`
+      );
+    }
+    if (redundant.length > 0) {
+      parts.push(`Found ${redundant.length} redundant classes`);
+    }
+    if (specificityIssues.length > 0) {
+      parts.push(`Found ${specificityIssues.length} specificity issues`);
+    }
+  }
+  if (suggestions.length > 0) {
+    parts.push(`${suggestions.length} optimization suggestions available`);
+  }
+  return parts.join(". ");
+}
+__name(generateSummary5, "generateSummary");
 function detectConflicts(element, line, classes, includeArbitrary) {
   const conflicts = [];
   const redundant = [];
@@ -252843,105 +253967,42 @@ function generateSuggestions2(element, classes, rawClassName) {
 }
 __name(generateSuggestions2, "generateSuggestions");
 
-// src/handlers/tailwind-conflicts-core.ts
-var import_typescript24 = __toESM(require_typescript(), 1);
-function getLineNumber4(pos, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
-  return line + 1;
-}
-__name(getLineNumber4, "getLineNumber");
-function getRawClassName(attr, sourceFile) {
-  if (!attr.initializer)
-    return "";
-  if (import_typescript24.default.isStringLiteral(attr.initializer)) {
-    return attr.initializer.text;
+// src/extensions/tailwind-conflicts.ts
+async function analyzeTailwindConflicts(args) {
+  const typedArgs = args;
+  if (!typedArgs.file) {
+    return missingArg("file");
   }
-  if (import_typescript24.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-    const expr = attr.initializer.expression;
-    if (import_typescript24.default.isStringLiteral(expr)) {
-      return expr.text;
-    }
-    return expr.getText(sourceFile);
-  }
-  return "";
-}
-__name(getRawClassName, "getRawClassName");
-function analyzeJsxFile3(content, sourceFile) {
-  const elements = [];
-  function visit(node) {
-    if (import_typescript24.default.isJsxOpeningElement(node) || import_typescript24.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber4(node.getStart(), sourceFile);
-      for (const attr of node.attributes.properties) {
-        if (import_typescript24.default.isJsxAttribute(attr)) {
-          const attrName = attr.name.getText(sourceFile);
-          if (attrName === "className" || attrName === "class") {
-            const classes = extractClassesFromAttribute(attr);
-            const rawClassName = getRawClassName(attr, sourceFile);
-            if (classes.length > 0) {
-              elements.push({
-                element: `${tagName}:${line}`,
-                line,
-                classes,
-                rawClassName
-              });
-            }
-          }
-        }
-      }
-    }
-    import_typescript24.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-  return elements;
-}
-__name(analyzeJsxFile3, "analyzeJsxFile");
-
-// src/handlers/analyze-tailwind-conflicts.ts
-function createSuccessResponse9(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse9, "createSuccessResponse");
-function createErrorResponse9(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse9, "createErrorResponse");
-async function handleAnalyzeTailwindConflicts(args) {
-  const projectRoot = process.cwd();
-  const includeArbitrary = args.include_arbitrary ?? true;
+  const projectRoot = getProjectRoot();
+  const includeArbitrary = typedArgs.include_arbitrary ?? true;
   try {
-    const filePath = path13.isAbsolute(args.file) ? args.file : path13.resolve(projectRoot, args.file);
-    if (!fs9.existsSync(filePath)) {
-      return createErrorResponse9(`File not found: ${args.file}`, {
-        provided_path: args.file,
+    const filePath = path14.isAbsolute(typedArgs.file) ? typedArgs.file : path14.resolve(projectRoot, typedArgs.file);
+    if (!fs13.existsSync(filePath)) {
+      return fail(`File not found: ${typedArgs.file}`, {
+        provided_path: typedArgs.file,
         resolved_path: filePath
       });
     }
-    const ext = path13.extname(filePath).toLowerCase();
+    const ext = path14.extname(filePath).toLowerCase();
     if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-      return createErrorResponse9(
+      return fail(
         `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
-        { file: args.file }
+        { file: typedArgs.file }
       );
     }
-    const content = fs9.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript25.default.createSourceFile(
+    const content = fs13.readFileSync(filePath, "utf-8");
+    const sourceFile = import_typescript33.default.createSourceFile(
       filePath,
       content,
-      import_typescript25.default.ScriptTarget.Latest,
+      import_typescript33.default.ScriptTarget.Latest,
       true,
-      ext === ".tsx" || ext === ".ts" ? import_typescript25.default.ScriptKind.TSX : import_typescript25.default.ScriptKind.JSX
+      ext === ".tsx" ? import_typescript33.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript33.default.ScriptKind.JSX : ext === ".ts" ? import_typescript33.default.ScriptKind.TS : import_typescript33.default.ScriptKind.JS
     );
     const elements = analyzeJsxFile3(content, sourceFile);
+    const relativePath = path14.relative(projectRoot, filePath).replace(/\\/g, "/");
     if (elements.length === 0) {
-      return createSuccessResponse9({
-        file: path13.relative(projectRoot, filePath),
+      return ok({
+        file: relativePath,
         elements_analyzed: 0,
         conflicts: [],
         redundant_classes: [],
@@ -252968,1337 +254029,38 @@ async function handleAnalyzeTailwindConflicts(args) {
       const suggestions = generateSuggestions2(elem.element, elem.classes, elem.rawClassName);
       allSuggestions.push(...suggestions);
     }
-    const summaryParts = [];
-    summaryParts.push(`Analyzed ${elements.length} elements with Tailwind classes`);
-    if (allConflicts.length === 0 && allRedundant.length === 0 && allSpecificityIssues.length === 0) {
-      summaryParts.push("No conflicts detected");
-    } else {
-      if (allConflicts.length > 0) {
-        const overrides = allConflicts.filter((c) => c.conflict_type === "override").length;
-        const contradictions = allConflicts.filter((c) => c.conflict_type === "contradiction").length;
-        summaryParts.push(
-          `Found ${allConflicts.length} conflicts (${overrides} overrides, ${contradictions} contradictions)`
-        );
-      }
-      if (allRedundant.length > 0) {
-        summaryParts.push(`Found ${allRedundant.length} redundant classes`);
-      }
-      if (allSpecificityIssues.length > 0) {
-        summaryParts.push(`Found ${allSpecificityIssues.length} specificity issues`);
-      }
-    }
-    if (allSuggestions.length > 0) {
-      summaryParts.push(`${allSuggestions.length} optimization suggestions available`);
-    }
+    const summary = generateSummary5(
+      elements.length,
+      allConflicts,
+      allRedundant,
+      allSpecificityIssues,
+      allSuggestions
+    );
     const result = {
-      file: path13.relative(projectRoot, filePath).replace(/\\/g, "/"),
+      file: relativePath,
       elements_analyzed: elements.length,
       conflicts: allConflicts,
       redundant_classes: allRedundant,
       specificity_issues: allSpecificityIssues,
       suggestions: allSuggestions,
-      summary: summaryParts.join(". ")
-    };
-    return createSuccessResponse9(result);
-  } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse9(message, { file: args.file });
-  }
-}
-__name(handleAnalyzeTailwindConflicts, "handleAnalyzeTailwindConflicts");
-
-// src/handlers/analyze-event-flow.ts
-var fs10 = __toESM(require("fs"), 1);
-var path14 = __toESM(require("path"), 1);
-var import_typescript28 = __toESM(require_typescript(), 1);
-
-// src/handlers/event-flow-utils.ts
-var EVENT_PROPS = {
-  // Mouse events
-  onClick: "click",
-  onDoubleClick: "dblclick",
-  onMouseDown: "mousedown",
-  onMouseUp: "mouseup",
-  onMouseEnter: "mouseenter",
-  onMouseLeave: "mouseleave",
-  onMouseMove: "mousemove",
-  onMouseOver: "mouseover",
-  onMouseOut: "mouseout",
-  onContextMenu: "contextmenu",
-  // Form events
-  onChange: "change",
-  onInput: "input",
-  onSubmit: "submit",
-  onReset: "reset",
-  onFocus: "focus",
-  onBlur: "blur",
-  // Keyboard events
-  onKeyDown: "keydown",
-  onKeyUp: "keyup",
-  onKeyPress: "keypress",
-  // Touch events
-  onTouchStart: "touchstart",
-  onTouchEnd: "touchend",
-  onTouchMove: "touchmove",
-  onTouchCancel: "touchcancel",
-  // Drag events
-  onDrag: "drag",
-  onDragStart: "dragstart",
-  onDragEnd: "dragend",
-  onDragEnter: "dragenter",
-  onDragLeave: "dragleave",
-  onDragOver: "dragover",
-  onDrop: "drop",
-  // Scroll/Wheel events
-  onScroll: "scroll",
-  onWheel: "wheel",
-  // Pointer events
-  onPointerDown: "pointerdown",
-  onPointerUp: "pointerup",
-  onPointerMove: "pointermove",
-  onPointerEnter: "pointerenter",
-  onPointerLeave: "pointerleave",
-  onPointerCancel: "pointercancel",
-  // Clipboard events
-  onCopy: "copy",
-  onCut: "cut",
-  onPaste: "paste",
-  // Animation events
-  onAnimationStart: "animationstart",
-  onAnimationEnd: "animationend",
-  onAnimationIteration: "animationiteration",
-  // Transition events
-  onTransitionEnd: "transitionend"
-};
-var BUBBLING_EVENTS = /* @__PURE__ */ new Set([
-  "click",
-  "dblclick",
-  "mousedown",
-  "mouseup",
-  "mousemove",
-  "mouseover",
-  "mouseout",
-  "contextmenu",
-  "keydown",
-  "keyup",
-  "keypress",
-  "change",
-  "input",
-  "submit",
-  "reset",
-  "scroll",
-  "wheel",
-  "touchstart",
-  "touchend",
-  "touchmove",
-  "drag",
-  "dragstart",
-  "dragend",
-  "dragenter",
-  "dragleave",
-  "dragover",
-  "drop",
-  "pointerdown",
-  "pointerup",
-  "pointermove",
-  "copy",
-  "cut",
-  "paste"
-]);
-var NON_INTERACTIVE_ELEMENTS = /* @__PURE__ */ new Set([
-  "div",
-  "span",
-  "p",
-  "section",
-  "article",
-  "aside",
-  "header",
-  "footer",
-  "main",
-  "nav",
-  "li",
-  "ul",
-  "ol",
-  "table",
-  "tr",
-  "td",
-  "th",
-  "img"
-]);
-function normalizeFilePath4(filePath) {
-  return filePath.replace(/\\/g, "/");
-}
-__name(normalizeFilePath4, "normalizeFilePath");
-
-// src/handlers/event-flow-analyzers.ts
-var import_typescript26 = __toESM(require_typescript(), 1);
-function findNestedClickables(tree) {
-  const result = [];
-  function visit(node, ancestorsWithHandlers) {
-    const hasClickHandler = node.handlers.some((h) => h.event === "click");
-    if (hasClickHandler) {
-      for (const ancestor of ancestorsWithHandlers) {
-        result.push({ parent: ancestor, child: node });
-      }
-    }
-    const newAncestors = hasClickHandler ? [...ancestorsWithHandlers, node] : ancestorsWithHandlers;
-    for (const child of node.children) {
-      visit(child, newAncestors);
-    }
-  }
-  __name(visit, "visit");
-  for (const child of tree.children) {
-    visit(child, []);
-  }
-  return result;
-}
-__name(findNestedClickables, "findNestedClickables");
-function areNested(nodeA, nodeB) {
-  let current = nodeB.parent;
-  while (current) {
-    if (current === nodeA)
-      return true;
-    current = current.parent;
-  }
-  current = nodeA.parent;
-  while (current) {
-    if (current === nodeB)
-      return true;
-    current = current.parent;
-  }
-  return false;
-}
-__name(areNested, "areNested");
-function findNodeByLine(tree, line) {
-  if (tree.line === line)
-    return tree;
-  for (const child of tree.children) {
-    const found = findNodeByLine(child, line);
-    if (found)
-      return found;
-  }
-  return null;
-}
-__name(findNodeByLine, "findNodeByLine");
-function detectIssues4(handlers, tree, sourceFile) {
-  const issues = [];
-  const clickHandlers = handlers.filter((h) => h.event === "click");
-  const keyboardHandlers = handlers.filter(
-    (h) => ["keydown", "keyup", "keypress"].includes(h.event)
-  );
-  const nestedClickables = findNestedClickables(tree);
-  if (nestedClickables.length > 0) {
-    for (const { parent, child } of nestedClickables) {
-      const parentHandler = clickHandlers.find((h) => h.line === parent.line);
-      const childHandler = clickHandlers.find((h) => h.line === child.line);
-      if (parentHandler && childHandler && !childHandler.stops_propagation) {
-        issues.push({
-          issue: "nested_clickable_elements",
-          elements: [child.element, parent.element],
-          explanation: `Clicking ${child.element} (line ${child.line}) will also trigger the click handler on ${parent.element} (line ${parent.line}) due to event bubbling`,
-          fix: `Add e.stopPropagation() in the ${child.element} handler, or restructure to avoid nesting`
-        });
-      }
-    }
-  }
-  for (const handler of clickHandlers) {
-    const elementLower = handler.element.toLowerCase();
-    if (NON_INTERACTIVE_ELEMENTS.has(elementLower)) {
-      const hasKeyboardHandler = keyboardHandlers.some(
-        (kh) => kh.line === handler.line || Math.abs(kh.line - handler.line) <= 2
-      );
-      if (!hasKeyboardHandler) {
-        issues.push({
-          issue: "missing_keyboard_alternative",
-          elements: [handler.element],
-          explanation: `Click handler on ${handler.element} (line ${handler.line}) may not be accessible to keyboard users. Non-interactive elements like <div> don't receive keyboard events by default`,
-          fix: `Use a <button> element instead, or add role="button" tabIndex={0} and an onKeyDown handler that triggers on Enter/Space`
-        });
-      }
-    }
-  }
-  const eventGroups = /* @__PURE__ */ new Map();
-  for (const handler of handlers) {
-    const existing = eventGroups.get(handler.event) || [];
-    existing.push(handler);
-    eventGroups.set(handler.event, existing);
-  }
-  for (const [eventType, eventHandlers] of eventGroups) {
-    if (eventHandlers.length > 1 && BUBBLING_EVENTS.has(eventType)) {
-      const noneStopPropagation = eventHandlers.filter((h) => !h.stops_propagation);
-      if (noneStopPropagation.length > 1) {
-        let hasNesting = false;
-        for (let i = 0; i < noneStopPropagation.length; i++) {
-          for (let j = i + 1; j < noneStopPropagation.length; j++) {
-            const nodeA = findNodeByLine(tree, noneStopPropagation[i].line);
-            const nodeB = findNodeByLine(tree, noneStopPropagation[j].line);
-            if (nodeA && nodeB && areNested(nodeA, nodeB)) {
-              hasNesting = true;
-              break;
-            }
-          }
-          if (hasNesting)
-            break;
-        }
-        if (hasNesting) {
-          issues.push({
-            issue: "potential_double_firing",
-            elements: noneStopPropagation.map((h) => h.element),
-            explanation: `Multiple ${eventType} handlers without stopPropagation may cause double-firing when event bubbles`,
-            fix: `Add e.stopPropagation() to the innermost handler if the parent handler shouldn't be triggered`
-          });
-        }
-      }
-    }
-  }
-  const submitHandlers = handlers.filter((h) => h.event === "submit");
-  for (const handler of submitHandlers) {
-    if (!handler.prevents_default) {
-      issues.push({
-        issue: "form_submit_no_prevent_default",
-        elements: [handler.element],
-        explanation: `Form submit handler (line ${handler.line}) doesn't call preventDefault(). This will cause a page reload in traditional form submissions`,
-        fix: `Add e.preventDefault() at the start of the submit handler`
-      });
-    }
-  }
-  return issues;
-}
-__name(detectIssues4, "detectIssues");
-function buildEventFlows(handlers, tree, eventFilter) {
-  const flows = {};
-  const handlersByEvent = /* @__PURE__ */ new Map();
-  for (const handler of handlers) {
-    const existing = handlersByEvent.get(handler.event) || [];
-    existing.push(handler);
-    handlersByEvent.set(handler.event, existing);
-  }
-  for (const [eventType, eventHandlers] of handlersByEvent) {
-    if (!BUBBLING_EVENTS.has(eventType))
-      continue;
-    const sortedByDepth = [...eventHandlers].sort((a, b) => {
-      const nodeA = findNodeByLine(tree, a.line);
-      const nodeB = findNodeByLine(tree, b.line);
-      return (nodeB?.depth ?? 0) - (nodeA?.depth ?? 0);
-    });
-    if (sortedByDepth.length === 0)
-      continue;
-    const steps = [];
-    let stepNum = 1;
-    for (const handler of sortedByDepth) {
-      const node = findNodeByLine(tree, handler.line);
-      if (!node)
-        continue;
-      steps.push({
-        step: stepNum,
-        element: handler.element,
-        handler: handler.handler,
-        stops_here: handler.stops_propagation
-      });
-      stepNum++;
-      if (handler.stops_propagation)
-        break;
-    }
-    if (steps.length > 0) {
-      const scenarioName = `${eventType}_from_${steps[0].element}`;
-      flows[scenarioName] = {
-        scenario: `${eventType} event starting at ${steps[0].element}`,
-        steps
-      };
-    }
-  }
-  return flows;
-}
-__name(buildEventFlows, "buildEventFlows");
-function findDelegationTargets(node, sourceFile) {
-  const targets = [];
-  function visit(n) {
-    if (import_typescript26.default.isCallExpression(n)) {
-      const callText = n.expression.getText(sourceFile);
-      if (callText.match(/\.target\.closest$/)) {
-        const arg = n.arguments[0];
-        if (arg && import_typescript26.default.isStringLiteral(arg)) {
-          targets.push(arg.text);
-        }
-      }
-      if (callText.match(/\.target\.matches$/)) {
-        const arg = n.arguments[0];
-        if (arg && import_typescript26.default.isStringLiteral(arg)) {
-          targets.push(arg.text);
-        }
-      }
-    }
-    if (import_typescript26.default.isBinaryExpression(n) && n.operatorToken.kind === import_typescript26.default.SyntaxKind.EqualsEqualsEqualsToken) {
-      const leftText = n.left.getText(sourceFile);
-      if (leftText.match(/\.target\.tagName$/)) {
-        if (import_typescript26.default.isStringLiteral(n.right)) {
-          targets.push(n.right.text.toLowerCase());
-        }
-      }
-    }
-    if (import_typescript26.default.isPropertyAccessExpression(n)) {
-      const text = n.getText(sourceFile);
-      if (text.match(/\.target\.dataset\./)) {
-        targets.push(`[data-${n.name.getText(sourceFile)}]`);
-      }
-    }
-    import_typescript26.default.forEachChild(n, visit);
-  }
-  __name(visit, "visit");
-  visit(node);
-  return targets;
-}
-__name(findDelegationTargets, "findDelegationTargets");
-function generateSummary4(handlers, issues, delegationPatterns) {
-  const parts = [];
-  const eventCounts = /* @__PURE__ */ new Map();
-  for (const handler of handlers) {
-    eventCounts.set(handler.event, (eventCounts.get(handler.event) || 0) + 1);
-  }
-  const eventSummary = Array.from(eventCounts.entries()).map(([event, count]) => `${count} ${event}`).join(", ");
-  parts.push(
-    `Found ${handlers.length} event handler${handlers.length !== 1 ? "s" : ""} (${eventSummary}).`
-  );
-  const stopPropCount = handlers.filter((h) => h.stops_propagation).length;
-  const preventDefaultCount = handlers.filter((h) => h.prevents_default).length;
-  if (stopPropCount > 0 || preventDefaultCount > 0) {
-    const propagationInfo = [];
-    if (stopPropCount > 0) {
-      propagationInfo.push(`${stopPropCount} use stopPropagation`);
-    }
-    if (preventDefaultCount > 0) {
-      propagationInfo.push(`${preventDefaultCount} use preventDefault`);
-    }
-    parts.push(propagationInfo.join(", ") + ".");
-  }
-  if (issues.length > 0) {
-    const criticalIssues = issues.filter(
-      (i) => ["nested_clickable_elements", "potential_double_firing"].includes(i.issue)
-    );
-    const a11yIssues = issues.filter((i) => i.issue === "missing_keyboard_alternative");
-    if (criticalIssues.length > 0) {
-      parts.push(
-        `${criticalIssues.length} potential event propagation issue${criticalIssues.length !== 1 ? "s" : ""} detected.`
-      );
-    }
-    if (a11yIssues.length > 0) {
-      parts.push(
-        `${a11yIssues.length} accessibility concern${a11yIssues.length !== 1 ? "s" : ""} (missing keyboard alternatives).`
-      );
-    }
-  } else {
-    parts.push("No significant issues detected.");
-  }
-  if (delegationPatterns.length > 0) {
-    parts.push(
-      `${delegationPatterns.length} event delegation pattern${delegationPatterns.length !== 1 ? "s" : ""} found.`
-    );
-  }
-  return parts.join(" ");
-}
-__name(generateSummary4, "generateSummary");
-
-// src/handlers/event-flow-core.ts
-var import_typescript27 = __toESM(require_typescript(), 1);
-function getLineNumber5(node, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return line + 1;
-}
-__name(getLineNumber5, "getLineNumber");
-function getCodeSnippet2(node, sourceFile, maxLength = 60) {
-  const text = node.getText(sourceFile).replace(/\s+/g, " ").trim();
-  return text.length > maxLength ? text.substring(0, maxLength - 3) + "..." : text;
-}
-__name(getCodeSnippet2, "getCodeSnippet");
-function containsStopPropagation(node, sourceFile) {
-  let found = false;
-  function visit(n) {
-    if (found)
-      return;
-    if (import_typescript27.default.isCallExpression(n)) {
-      const callText = n.expression.getText(sourceFile);
-      if (callText.endsWith(".stopPropagation") || callText.endsWith(".stopImmediatePropagation") || callText === "stopPropagation") {
-        found = true;
-        return;
-      }
-    }
-    import_typescript27.default.forEachChild(n, visit);
-  }
-  __name(visit, "visit");
-  visit(node);
-  return found;
-}
-__name(containsStopPropagation, "containsStopPropagation");
-function containsPreventDefault(node, sourceFile) {
-  let found = false;
-  function visit(n) {
-    if (found)
-      return;
-    if (import_typescript27.default.isCallExpression(n)) {
-      const callText = n.expression.getText(sourceFile);
-      if (callText.endsWith(".preventDefault") || callText === "preventDefault") {
-        found = true;
-        return;
-      }
-    }
-    import_typescript27.default.forEachChild(n, visit);
-  }
-  __name(visit, "visit");
-  visit(node);
-  return found;
-}
-__name(containsPreventDefault, "containsPreventDefault");
-function resolveHandlerBody(handlerExpr, sourceFile) {
-  if (import_typescript27.default.isArrowFunction(handlerExpr) || import_typescript27.default.isFunctionExpression(handlerExpr)) {
-    return handlerExpr.body;
-  }
-  if (import_typescript27.default.isIdentifier(handlerExpr)) {
-    let findHandler2 = function(node) {
-      if (foundBody)
-        return;
-      if (import_typescript27.default.isFunctionDeclaration(node) && node.name?.getText(sourceFile) === handlerName && node.body) {
-        foundBody = node.body;
-        return;
-      }
-      if (import_typescript27.default.isVariableStatement(node)) {
-        for (const decl of node.declarationList.declarations) {
-          if (import_typescript27.default.isIdentifier(decl.name) && decl.name.getText(sourceFile) === handlerName) {
-            if (decl.initializer) {
-              if (import_typescript27.default.isArrowFunction(decl.initializer) || import_typescript27.default.isFunctionExpression(decl.initializer)) {
-                foundBody = decl.initializer.body;
-                return;
-              }
-            }
-          }
-        }
-      }
-      import_typescript27.default.forEachChild(node, findHandler2);
-    };
-    var findHandler = findHandler2;
-    __name(findHandler2, "findHandler");
-    const handlerName = handlerExpr.getText(sourceFile);
-    let foundBody = null;
-    findHandler2(sourceFile);
-    return foundBody;
-  }
-  return null;
-}
-__name(resolveHandlerBody, "resolveHandlerBody");
-function extractEventHandlers(componentNode, sourceFile, eventFilter) {
-  const handlers = [];
-  const rootNode = {
-    element: "root",
-    parent: null,
-    children: [],
-    handlers: [],
-    line: 0,
-    depth: 0
-  };
-  let currentParent = rootNode;
-  function visit(node, depth) {
-    if (import_typescript27.default.isJsxElement(node)) {
-      const opening = node.openingElement;
-      const tagName = opening.tagName.getText(sourceFile);
-      const line = getLineNumber5(opening, sourceFile);
-      const componentNode2 = {
-        element: tagName,
-        parent: currentParent,
-        children: [],
-        handlers: [],
-        line,
-        depth
-      };
-      currentParent.children.push(componentNode2);
-      processAttributes(opening, componentNode2, tagName, line);
-      const prevParent = currentParent;
-      currentParent = componentNode2;
-      for (const child of node.children) {
-        visit(child, depth + 1);
-      }
-      currentParent = prevParent;
-      return;
-    }
-    if (import_typescript27.default.isJsxSelfClosingElement(node)) {
-      const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber5(node, sourceFile);
-      const componentNode2 = {
-        element: tagName,
-        parent: currentParent,
-        children: [],
-        handlers: [],
-        line,
-        depth
-      };
-      currentParent.children.push(componentNode2);
-      processAttributes(node, componentNode2, tagName, line);
-      return;
-    }
-    import_typescript27.default.forEachChild(node, (child) => visit(child, depth));
-  }
-  __name(visit, "visit");
-  function processAttributes(node, componentNode2, tagName, line) {
-    for (const attr of node.attributes.properties) {
-      if (import_typescript27.default.isJsxAttribute(attr) && attr.name && attr.initializer) {
-        const attrName = attr.name.getText(sourceFile);
-        const eventType = EVENT_PROPS[attrName];
-        if (eventType) {
-          if (eventFilter && eventType !== eventFilter.toLowerCase()) {
-            continue;
-          }
-          let handlerName = attrName;
-          let stopsPropagation = false;
-          let preventsDefault = false;
-          if (import_typescript27.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-            const expr = attr.initializer.expression;
-            handlerName = getCodeSnippet2(expr, sourceFile);
-            const handlerBody = resolveHandlerBody(expr, sourceFile);
-            if (handlerBody) {
-              stopsPropagation = containsStopPropagation(handlerBody, sourceFile);
-              preventsDefault = containsPreventDefault(handlerBody, sourceFile);
-            } else {
-              stopsPropagation = containsStopPropagation(expr, sourceFile);
-              preventsDefault = containsPreventDefault(expr, sourceFile);
-            }
-          }
-          const handler = {
-            element: tagName,
-            event: eventType,
-            handler: handlerName,
-            line,
-            stops_propagation: stopsPropagation,
-            prevents_default: preventsDefault
-          };
-          handlers.push(handler);
-          componentNode2.handlers.push(handler);
-        }
-      }
-    }
-  }
-  __name(processAttributes, "processAttributes");
-  visit(componentNode, 0);
-  return { handlers, tree: rootNode };
-}
-__name(extractEventHandlers, "extractEventHandlers");
-function containsJsxReturn3(node) {
-  let hasJsx = false;
-  function visit(n) {
-    if (hasJsx)
-      return;
-    if (import_typescript27.default.isJsxElement(n) || import_typescript27.default.isJsxSelfClosingElement(n) || import_typescript27.default.isJsxFragment(n)) {
-      hasJsx = true;
-      return;
-    }
-    import_typescript27.default.forEachChild(n, visit);
-  }
-  __name(visit, "visit");
-  visit(node);
-  return hasJsx;
-}
-__name(containsJsxReturn3, "containsJsxReturn");
-function findReactComponent(sourceFile) {
-  let componentNode = null;
-  function visit(node) {
-    if (componentNode)
-      return;
-    if (import_typescript27.default.isFunctionDeclaration(node) && node.name) {
-      const name = node.name.getText(sourceFile);
-      if (/^[A-Z]/.test(name) && containsJsxReturn3(node)) {
-        componentNode = node;
-        return;
-      }
-    }
-    if (import_typescript27.default.isVariableStatement(node)) {
-      for (const decl of node.declarationList.declarations) {
-        if (import_typescript27.default.isIdentifier(decl.name) && decl.initializer) {
-          const name = decl.name.getText(sourceFile);
-          if (/^[A-Z]/.test(name)) {
-            if (import_typescript27.default.isCallExpression(decl.initializer)) {
-              const callText = decl.initializer.expression.getText(sourceFile);
-              if ((callText === "memo" || callText === "React.memo") && decl.initializer.arguments.length > 0) {
-                const arg = decl.initializer.arguments[0];
-                if (containsJsxReturn3(arg)) {
-                  componentNode = arg;
-                  return;
-                }
-              }
-            } else if (import_typescript27.default.isArrowFunction(decl.initializer) || import_typescript27.default.isFunctionExpression(decl.initializer)) {
-              if (containsJsxReturn3(decl.initializer)) {
-                componentNode = decl.initializer;
-                return;
-              }
-            }
-          }
-        }
-      }
-    }
-    import_typescript27.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-  return componentNode;
-}
-__name(findReactComponent, "findReactComponent");
-function detectDelegationPatterns(handlers, sourceFile) {
-  const patterns = [];
-  function findDelegation(handler) {
-    let foundPattern = null;
-    function visit(node) {
-      if (foundPattern)
-        return;
-      if (import_typescript27.default.isJsxOpeningElement(node) || import_typescript27.default.isJsxSelfClosingElement(node)) {
-        const line = getLineNumber5(node, sourceFile);
-        if (line === handler.line) {
-          for (const attr of node.attributes.properties) {
-            if (import_typescript27.default.isJsxAttribute(attr) && attr.initializer && import_typescript27.default.isJsxExpression(attr.initializer)) {
-              const expr = attr.initializer.expression;
-              if (expr) {
-                const handlerBody = resolveHandlerBody(expr, sourceFile);
-                const nodeToCheck = handlerBody || expr;
-                const delegateTargets = findDelegationTargets(nodeToCheck, sourceFile);
-                if (delegateTargets.length > 0) {
-                  foundPattern = {
-                    container: handler.element,
-                    delegates_for: delegateTargets,
-                    event: handler.event
-                  };
-                }
-              }
-            }
-          }
-        }
-      }
-      if (!foundPattern) {
-        import_typescript27.default.forEachChild(node, visit);
-      }
-    }
-    __name(visit, "visit");
-    visit(sourceFile);
-    return foundPattern;
-  }
-  __name(findDelegation, "findDelegation");
-  for (const handler of handlers) {
-    const pattern = findDelegation(handler);
-    if (pattern) {
-      patterns.push(pattern);
-    }
-  }
-  return patterns;
-}
-__name(detectDelegationPatterns, "detectDelegationPatterns");
-
-// src/handlers/analyze-event-flow.ts
-function createSuccessResponse10(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse10, "createSuccessResponse");
-function createErrorResponse10(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse10, "createErrorResponse");
-function makeRelativePath4(absolutePath, projectRoot) {
-  return normalizeFilePath4(path14.relative(projectRoot, absolutePath));
-}
-__name(makeRelativePath4, "makeRelativePath");
-async function handleAnalyzeEventFlow(args) {
-  const projectRoot = process.cwd();
-  if (!args.file) {
-    return createErrorResponse10("file argument is required");
-  }
-  const filePath = path14.isAbsolute(args.file) ? args.file : path14.resolve(projectRoot, args.file);
-  if (!fs10.existsSync(filePath)) {
-    return createErrorResponse10(`File not found: ${args.file}`, { provided_path: args.file });
-  }
-  const ext = path14.extname(filePath).toLowerCase();
-  if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-    return createErrorResponse10(
-      "File must be a component file (.tsx, .jsx, .ts, .js)",
-      { provided_extension: ext }
-    );
-  }
-  try {
-    const content = fs10.readFileSync(filePath, "utf-8");
-    const sourceFile = import_typescript28.default.createSourceFile(
-      filePath,
-      content,
-      import_typescript28.default.ScriptTarget.Latest,
-      true,
-      ext === ".tsx" || ext === ".jsx" ? import_typescript28.default.ScriptKind.TSX : import_typescript28.default.ScriptKind.TS
-    );
-    const relativePath = makeRelativePath4(filePath, projectRoot);
-    const componentNode = findReactComponent(sourceFile);
-    if (!componentNode) {
-      return createSuccessResponse10({
-        message: "No React component found in file",
-        file: relativePath,
-        handlers: [],
-        event_flows: {},
-        issues: [],
-        delegation_patterns: [],
-        summary: "No component found to analyze."
-      });
-    }
-    const { handlers, tree } = extractEventHandlers(componentNode, sourceFile, args.event);
-    if (handlers.length === 0) {
-      const eventMsg = args.event ? ` for event type "${args.event}"` : "";
-      return createSuccessResponse10({
-        file: relativePath,
-        handlers: [],
-        event_flows: {},
-        issues: [],
-        delegation_patterns: [],
-        summary: `No event handlers found${eventMsg}.`
-      });
-    }
-    const eventFlows = buildEventFlows(handlers, tree, args.event);
-    const issues = detectIssues4(handlers, tree, sourceFile);
-    const delegationPatterns = detectDelegationPatterns(handlers, sourceFile);
-    const summary = generateSummary4(handlers, issues, delegationPatterns);
-    const result = {
-      file: relativePath,
-      handlers,
-      event_flows: eventFlows,
-      issues,
-      delegation_patterns: delegationPatterns,
       summary
     };
-    return createSuccessResponse10(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse10(message, { file: args.file });
+    return failFromException(error2, `Failed to analyze Tailwind conflicts: ${typedArgs.file}`);
   }
 }
-__name(handleAnalyzeEventFlow, "handleAnalyzeEventFlow");
+__name(analyzeTailwindConflicts, "analyzeTailwindConflicts");
+var handleAnalyzeTailwindConflicts = analyzeTailwindConflicts;
 
-// src/handlers/react.ts
-var fs11 = __toESM(require("fs"), 1);
-var path15 = __toESM(require("path"), 1);
-var import_typescript29 = __toESM(require_typescript(), 1);
+// src/extensions/client-boundary.ts
+var fs16 = __toESM(require("fs"), 1);
+var path17 = __toESM(require("path"), 1);
 
-// src/handlers/response-utils.ts
-function createSuccessResponse11(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse11, "createSuccessResponse");
-function createErrorResponse11(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse11, "createErrorResponse");
-
-// src/handlers/react.ts
-function normalizeFilePath5(filePath) {
-  return filePath.replace(/\\/g, "/");
-}
-__name(normalizeFilePath5, "normalizeFilePath");
-function makeRelativePath5(absolutePath, projectRoot) {
-  return normalizeFilePath5(path15.relative(projectRoot, absolutePath));
-}
-__name(makeRelativePath5, "makeRelativePath");
-function isReactComponent2(node, sourceFile) {
-  if (import_typescript29.default.isFunctionDeclaration(node) && node.name) {
-    const name = node.name.getText(sourceFile);
-    if (/^[A-Z]/.test(name)) {
-      return containsJsxReturn4(node, sourceFile);
-    }
-  }
-  if (import_typescript29.default.isVariableStatement(node)) {
-    for (const decl of node.declarationList.declarations) {
-      if (import_typescript29.default.isIdentifier(decl.name)) {
-        const name = decl.name.getText(sourceFile);
-        if (/^[A-Z]/.test(name) && decl.initializer) {
-          if (import_typescript29.default.isArrowFunction(decl.initializer) || import_typescript29.default.isFunctionExpression(decl.initializer)) {
-            return containsJsxReturn4(decl.initializer, sourceFile);
-          }
-          if (import_typescript29.default.isCallExpression(decl.initializer)) {
-            return detectHocWrappedComponent(decl, sourceFile) !== null;
-          }
-        }
-      }
-    }
-  }
-  if (import_typescript29.default.isClassDeclaration(node) && node.name) {
-    const name = node.name.getText(sourceFile);
-    if (/^[A-Z]/.test(name) && node.heritageClauses) {
-      for (const clause of node.heritageClauses) {
-        const text = clause.getText(sourceFile);
-        if (text.includes("Component") || text.includes("PureComponent")) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-__name(isReactComponent2, "isReactComponent");
-function containsJsxReturn4(node, sourceFile) {
-  let hasJsx = false;
-  function visit(n) {
-    if (import_typescript29.default.isJsxElement(n) || import_typescript29.default.isJsxSelfClosingElement(n) || import_typescript29.default.isJsxFragment(n)) {
-      hasJsx = true;
-      return;
-    }
-    import_typescript29.default.forEachChild(n, visit);
-  }
-  __name(visit, "visit");
-  visit(node);
-  return hasJsx;
-}
-__name(containsJsxReturn4, "containsJsxReturn");
-var MEMO_CALLEE = /* @__PURE__ */ new Set(["memo", "React.memo"]);
-var FORWARD_REF_CALLEE = /* @__PURE__ */ new Set(["forwardRef", "React.forwardRef"]);
-var LAZY_CALLEE = /* @__PURE__ */ new Set(["lazy", "React.lazy"]);
-var HOC_WRAPPING_CALLEE = /* @__PURE__ */ new Set([
-  ...MEMO_CALLEE,
-  ...FORWARD_REF_CALLEE,
-  ...LAZY_CALLEE
-]);
-function getCalleeName(callExpr, sourceFile) {
-  let expr = callExpr.expression;
-  while (import_typescript29.default.isCallExpression(expr)) {
-    expr = expr.expression;
-  }
-  return expr.getText(sourceFile);
-}
-__name(getCalleeName, "getCalleeName");
-function unwrapHocCall(callExpr, sourceFile) {
-  const result = {
-    innerFn: null,
-    wrappers: [],
-    isLazy: false,
-    hoistedComponent: null
-  };
-  let current = callExpr;
-  while (true) {
-    const calleeName = getCalleeName(current, sourceFile);
-    const args = current.arguments;
-    if (HOC_WRAPPING_CALLEE.has(calleeName)) {
-      result.wrappers.push(calleeName);
-      if (LAZY_CALLEE.has(calleeName)) {
-        result.isLazy = true;
-        break;
-      }
-      if (args.length > 0) {
-        const firstArg = args[0];
-        if (import_typescript29.default.isArrowFunction(firstArg) || import_typescript29.default.isFunctionExpression(firstArg)) {
-          result.innerFn = firstArg;
-          break;
-        } else if (import_typescript29.default.isCallExpression(firstArg)) {
-          current = firstArg;
-          continue;
-        }
-      }
-      break;
-    } else {
-      for (const arg of args) {
-        if (import_typescript29.default.isIdentifier(arg)) {
-          const name = arg.getText(sourceFile);
-          if (/^[A-Z]/.test(name)) {
-            result.hoistedComponent = name;
-            result.wrappers.push(calleeName);
-            break;
-          }
-        }
-      }
-      break;
-    }
-  }
-  return result;
-}
-__name(unwrapHocCall, "unwrapHocCall");
-function detectHocWrappedComponent(decl, sourceFile) {
-  if (!decl.initializer || !import_typescript29.default.isCallExpression(decl.initializer))
-    return null;
-  if (!import_typescript29.default.isIdentifier(decl.name))
-    return null;
-  const varName = decl.name.getText(sourceFile);
-  if (!/^[A-Z]/.test(varName))
-    return null;
-  const unwrapped = unwrapHocCall(decl.initializer, sourceFile);
-  if (unwrapped.wrappers.length === 0)
-    return null;
-  if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
-    if (!unwrapped.innerFn)
-      return null;
-    if (!containsJsxReturn4(unwrapped.innerFn, sourceFile))
-      return null;
-  }
-  return unwrapped;
-}
-__name(detectHocWrappedComponent, "detectHocWrappedComponent");
-function detectDefaultExportHoc(node, sourceFile) {
-  const expr = node.expression;
-  if (!import_typescript29.default.isCallExpression(expr))
-    return null;
-  const unwrapped = unwrapHocCall(expr, sourceFile);
-  if (unwrapped.wrappers.length === 0)
-    return null;
-  if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
-    if (!unwrapped.innerFn)
-      return null;
-    if (!containsJsxReturn4(unwrapped.innerFn, sourceFile))
-      return null;
-  }
-  let name;
-  if (unwrapped.hoistedComponent) {
-    name = unwrapped.hoistedComponent;
-  } else {
-    name = "DefaultExport";
-  }
-  return { name, unwrapped };
-}
-__name(detectDefaultExportHoc, "detectDefaultExportHoc");
-function getComponentName2(node, sourceFile) {
-  if (import_typescript29.default.isFunctionDeclaration(node) && node.name) {
-    return node.name.getText(sourceFile);
-  }
-  if (import_typescript29.default.isVariableStatement(node)) {
-    for (const decl of node.declarationList.declarations) {
-      if (import_typescript29.default.isIdentifier(decl.name)) {
-        return decl.name.getText(sourceFile);
-      }
-    }
-  }
-  if (import_typescript29.default.isClassDeclaration(node) && node.name) {
-    return node.name.getText(sourceFile);
-  }
-  return null;
-}
-__name(getComponentName2, "getComponentName");
-function extractProps(node, sourceFile, precomputedUnwrap) {
-  if (import_typescript29.default.isFunctionDeclaration(node)) {
-    return extractPropsFromFn(node, sourceFile);
-  }
-  if (import_typescript29.default.isVariableStatement(node)) {
-    for (const decl of node.declarationList.declarations) {
-      if (decl.initializer && (import_typescript29.default.isArrowFunction(decl.initializer) || import_typescript29.default.isFunctionExpression(decl.initializer))) {
-        return extractPropsFromFn(decl.initializer, sourceFile);
-      }
-      if (decl.initializer && import_typescript29.default.isCallExpression(decl.initializer)) {
-        const unwrapped = precomputedUnwrap ?? detectHocWrappedComponent(decl, sourceFile);
-        if (unwrapped?.innerFn) {
-          return extractPropsFromFn(unwrapped.innerFn, sourceFile);
-        }
-      }
-    }
-    return [];
-  }
-  if (import_typescript29.default.isClassDeclaration(node)) {
-    let findPropsUsage2 = function(n) {
-      if (import_typescript29.default.isPropertyAccessExpression(n)) {
-        const text = n.getText(sourceFile);
-        if (text.startsWith("this.props.")) {
-          const propName = text.replace("this.props.", "").split(".")[0];
-          props.add(propName);
-        }
-      }
-      import_typescript29.default.forEachChild(n, findPropsUsage2);
-    };
-    var findPropsUsage = findPropsUsage2;
-    __name(findPropsUsage2, "findPropsUsage");
-    const props = /* @__PURE__ */ new Set();
-    findPropsUsage2(node);
-    return Array.from(props);
-  }
-  return [];
-}
-__name(extractProps, "extractProps");
-function extractPropsFromInterface(sourceFile, interfaceName, props) {
-  function visit(node) {
-    if (import_typescript29.default.isInterfaceDeclaration(node) && node.name.getText(sourceFile) === interfaceName) {
-      for (const member of node.members) {
-        if (import_typescript29.default.isPropertySignature(member) && member.name) {
-          props.add(member.name.getText(sourceFile));
-        }
-      }
-    }
-    if (import_typescript29.default.isTypeAliasDeclaration(node) && node.name.getText(sourceFile) === interfaceName) {
-      if (import_typescript29.default.isTypeLiteralNode(node.type)) {
-        for (const member of node.type.members) {
-          if (import_typescript29.default.isPropertySignature(member) && member.name) {
-            props.add(member.name.getText(sourceFile));
-          }
-        }
-      }
-    }
-    import_typescript29.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-}
-__name(extractPropsFromInterface, "extractPropsFromInterface");
-function extractPropsFromFn(fn, sourceFile) {
-  const props = /* @__PURE__ */ new Set();
-  const params = fn.parameters;
-  if (params.length > 0) {
-    const firstParam = params[0];
-    if (import_typescript29.default.isObjectBindingPattern(firstParam.name)) {
-      for (const element of firstParam.name.elements) {
-        if (import_typescript29.default.isBindingElement(element) && import_typescript29.default.isIdentifier(element.name)) {
-          props.add(element.name.getText(sourceFile));
-        }
-      }
-    }
-    if (firstParam.type) {
-      if (import_typescript29.default.isTypeLiteralNode(firstParam.type)) {
-        for (const member of firstParam.type.members) {
-          if (import_typescript29.default.isPropertySignature(member) && member.name) {
-            props.add(member.name.getText(sourceFile));
-          }
-        }
-      }
-      if (import_typescript29.default.isTypeReferenceNode(firstParam.type)) {
-        const typeName = firstParam.type.typeName.getText(sourceFile);
-        if (typeName.endsWith("Props")) {
-          extractPropsFromInterface(sourceFile, typeName, props);
-        }
-      }
-    }
-  }
-  return Array.from(props);
-}
-__name(extractPropsFromFn, "extractPropsFromFn");
-function findUsedComponents(node, sourceFile) {
-  const used = /* @__PURE__ */ new Set();
-  function visit(n) {
-    if (import_typescript29.default.isJsxOpeningElement(n) || import_typescript29.default.isJsxSelfClosingElement(n)) {
-      const tagName = n.tagName.getText(sourceFile);
-      if (/^[A-Z]/.test(tagName)) {
-        const componentName = tagName.split(".").pop() || tagName;
-        used.add(componentName);
-      }
-    }
-    import_typescript29.default.forEachChild(n, visit);
-  }
-  __name(visit, "visit");
-  visit(node);
-  return Array.from(used);
-}
-__name(findUsedComponents, "findUsedComponents");
-function getLineNumber6(node, sourceFile) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return line + 1;
-}
-__name(getLineNumber6, "getLineNumber");
-function findComponentFiles(dirPath, projectRoot) {
-  const files = [];
-  const extensions = [".tsx", ".jsx"];
-  function walk(dir) {
-    if (!fs11.existsSync(dir))
-      return;
-    const entries = fs11.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path15.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (["node_modules", ".git", "dist", "build", ".next", "coverage"].includes(entry.name)) {
-          continue;
-        }
-        walk(fullPath);
-      } else if (entry.isFile()) {
-        const ext = path15.extname(entry.name);
-        if (extensions.includes(ext)) {
-          files.push(fullPath);
-        }
-      }
-    }
-  }
-  __name(walk, "walk");
-  const absoluteDir = path15.isAbsolute(dirPath) ? dirPath : path15.resolve(projectRoot, dirPath);
-  walk(absoluteDir);
-  return files;
-}
-__name(findComponentFiles, "findComponentFiles");
-function analyzeFile(filePath, projectRoot) {
-  const components = [];
-  if (!fs11.existsSync(filePath)) {
-    return components;
-  }
-  const content = fs11.readFileSync(filePath, "utf-8");
-  const sourceFile = import_typescript29.default.createSourceFile(
-    filePath,
-    content,
-    import_typescript29.default.ScriptTarget.Latest,
-    true,
-    filePath.endsWith(".tsx") ? import_typescript29.default.ScriptKind.TSX : import_typescript29.default.ScriptKind.JSX
-  );
-  const relativePath = makeRelativePath5(filePath, projectRoot);
-  const detectedNames = /* @__PURE__ */ new Set();
-  function visit(node) {
-    if (isReactComponent2(node, sourceFile)) {
-      const name = getComponentName2(node, sourceFile);
-      if (name) {
-        let lazy2;
-        let wrappers;
-        let precomputedUnwrap = null;
-        if (import_typescript29.default.isVariableStatement(node)) {
-          for (const decl of node.declarationList.declarations) {
-            if (decl.initializer && import_typescript29.default.isCallExpression(decl.initializer)) {
-              const unwrapped = detectHocWrappedComponent(decl, sourceFile);
-              if (unwrapped) {
-                precomputedUnwrap = unwrapped;
-                wrappers = unwrapped.wrappers.length > 0 ? unwrapped.wrappers : void 0;
-                lazy2 = unwrapped.isLazy || void 0;
-              }
-            }
-          }
-        }
-        detectedNames.add(name);
-        components.push({
-          name,
-          file: relativePath,
-          line: getLineNumber6(node, sourceFile),
-          props: extractProps(node, sourceFile, precomputedUnwrap),
-          used_by: [],
-          // Will be filled later
-          uses: findUsedComponents(node, sourceFile),
-          ...lazy2 !== void 0 && { lazy: lazy2 },
-          ...wrappers !== void 0 && { wrappers }
-        });
-      }
-    }
-    if (import_typescript29.default.isExportAssignment(node) && !node.isExportEquals) {
-      const detected = detectDefaultExportHoc(node, sourceFile);
-      if (detected) {
-        const { name, unwrapped } = detected;
-        if (!detectedNames.has(name)) {
-          detectedNames.add(name);
-          components.push({
-            name,
-            file: relativePath,
-            line: getLineNumber6(node, sourceFile),
-            props: unwrapped.innerFn ? extractPropsFromFn(unwrapped.innerFn, sourceFile) : [],
-            used_by: [],
-            uses: unwrapped.innerFn ? findUsedComponents(unwrapped.innerFn, sourceFile) : [],
-            ...unwrapped.isLazy && { lazy: true },
-            ...unwrapped.wrappers.length > 0 && { wrappers: unwrapped.wrappers }
-          });
-        }
-      }
-    }
-    import_typescript29.default.forEachChild(node, visit);
-  }
-  __name(visit, "visit");
-  visit(sourceFile);
-  return components;
-}
-__name(analyzeFile, "analyzeFile");
-function buildUsedByRelationships(components) {
-  const componentMap = /* @__PURE__ */ new Map();
-  for (const comp of components) {
-    componentMap.set(comp.name, comp);
-  }
-  for (const comp of components) {
-    for (const usedName of comp.uses) {
-      const usedComp = componentMap.get(usedName);
-      if (usedComp && !usedComp.used_by.includes(comp.name)) {
-        usedComp.used_by.push(comp.name);
-      }
-    }
-  }
-}
-__name(buildUsedByRelationships, "buildUsedByRelationships");
-function buildTree(rootName, components, depth, visited = /* @__PURE__ */ new Set()) {
-  if (depth <= 0 || visited.has(rootName)) {
-    return null;
-  }
-  const component = components.find((c) => c.name === rootName);
-  if (!component) {
-    return null;
-  }
-  visited.add(rootName);
-  const children = [];
-  for (const childName of component.uses) {
-    const childNode = buildTree(childName, components, depth - 1, new Set(visited));
-    if (childNode) {
-      children.push(childNode);
-    }
-  }
-  return {
-    name: component.name,
-    file: component.file,
-    props: component.props,
-    children,
-    ...component.lazy !== void 0 && { lazy: component.lazy },
-    ...component.wrappers !== void 0 && { wrappers: component.wrappers }
-  };
-}
-__name(buildTree, "buildTree");
-function findRootComponent(components) {
-  const priorityNames = ["App", "Main", "Root", "Application", "Layout"];
-  for (const name of priorityNames) {
-    const comp = components.find((c) => c.name === name);
-    if (comp)
-      return comp.name;
-  }
-  const rootCandidates = components.filter((c) => c.used_by.length === 0);
-  if (rootCandidates.length > 0) {
-    return rootCandidates[0].name;
-  }
-  return components.length > 0 ? components[0].name : null;
-}
-__name(findRootComponent, "findRootComponent");
-async function handleGetReactComponentTree(args) {
-  const projectRoot = process.cwd();
-  const searchPath = args.path || "src";
-  const maxDepth = args.depth ?? 5;
-  try {
-    let allComponents = [];
-    if (args.file) {
-      const filePath = path15.isAbsolute(args.file) ? args.file : path15.resolve(projectRoot, args.file);
-      if (!fs11.existsSync(filePath)) {
-        return createErrorResponse11(`File not found: ${args.file}`, { provided_path: args.file });
-      }
-      allComponents = analyzeFile(filePath, projectRoot);
-    } else {
-      const files = findComponentFiles(searchPath, projectRoot);
-      if (files.length === 0) {
-        return createSuccessResponse11({
-          tree: null,
-          components: [],
-          count: 0,
-          message: `No React component files found in ${searchPath}`
-        });
-      }
-      for (const file2 of files) {
-        const fileComponents = analyzeFile(file2, projectRoot);
-        allComponents.push(...fileComponents);
-      }
-    }
-    buildUsedByRelationships(allComponents);
-    const rootName = args.root_component || findRootComponent(allComponents);
-    let tree = null;
-    if (rootName) {
-      tree = buildTree(rootName, allComponents, maxDepth);
-    }
-    const result = {
-      tree,
-      components: allComponents,
-      count: allComponents.length
-    };
-    return createSuccessResponse11(result);
-  } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse11(message, { path: searchPath });
-  }
-}
-__name(handleGetReactComponentTree, "handleGetReactComponentTree");
-
-// src/handlers/client-boundary/index.ts
+// src/core/client-boundary/scanner.ts
 var fs14 = __toESM(require("fs"), 1);
-var path18 = __toESM(require("path"), 1);
-
-// src/handlers/client-boundary/scanner.ts
-var fs12 = __toESM(require("fs"), 1);
-var path16 = __toESM(require("path"), 1);
-var import_typescript30 = __toESM(require_typescript(), 1);
+var path15 = __toESM(require("path"), 1);
+var import_typescript34 = __toESM(require_typescript(), 1);
 var CLIENT_HOOKS = /* @__PURE__ */ new Set([
   "useState",
   "useEffect",
@@ -254405,17 +254167,17 @@ function findClientOnlyAPIs(sourceFile) {
   function visit(node) {
     if (found)
       return;
-    if (import_typescript30.default.isCallExpression(node)) {
+    if (import_typescript34.default.isCallExpression(node)) {
       const expr = node.expression;
-      if (import_typescript30.default.isIdentifier(expr)) {
+      if (import_typescript34.default.isIdentifier(expr)) {
         const name = expr.text;
         if (CLIENT_HOOKS.has(name) || BROWSER_APIS.has(name)) {
           found = true;
           return;
         }
       }
-      if (import_typescript30.default.isPropertyAccessExpression(expr)) {
-        if (import_typescript30.default.isIdentifier(expr.expression)) {
+      if (import_typescript34.default.isPropertyAccessExpression(expr)) {
+        if (import_typescript34.default.isIdentifier(expr.expression)) {
           if (BROWSER_APIS.has(expr.expression.text)) {
             found = true;
             return;
@@ -254423,24 +254185,24 @@ function findClientOnlyAPIs(sourceFile) {
         }
       }
     }
-    if (import_typescript30.default.isJsxAttribute(node)) {
-      if (import_typescript30.default.isIdentifier(node.name)) {
+    if (import_typescript34.default.isJsxAttribute(node)) {
+      if (import_typescript34.default.isIdentifier(node.name)) {
         if (CLIENT_EVENT_HANDLERS.has(node.name.text)) {
           found = true;
           return;
         }
       }
     }
-    if (import_typescript30.default.isIdentifier(node)) {
+    if (import_typescript34.default.isIdentifier(node)) {
       if (BROWSER_APIS.has(node.text)) {
         const parent = node.parent;
-        if (!import_typescript30.default.isPropertyAccessExpression(parent) || parent.name !== node) {
+        if (!import_typescript34.default.isPropertyAccessExpression(parent) || parent.name !== node) {
           found = true;
           return;
         }
       }
     }
-    import_typescript30.default.forEachChild(node, visit);
+    import_typescript34.default.forEachChild(node, visit);
   }
   __name(visit, "visit");
   visit(sourceFile);
@@ -254449,16 +254211,16 @@ function findClientOnlyAPIs(sourceFile) {
 __name(findClientOnlyAPIs, "findClientOnlyAPIs");
 function findServerOnlyImports(sourceFile) {
   let found = false;
-  import_typescript30.default.forEachChild(sourceFile, (node) => {
+  import_typescript34.default.forEachChild(sourceFile, (node) => {
     if (found)
       return;
     let moduleSpecifier;
-    if (import_typescript30.default.isImportDeclaration(node) && import_typescript30.default.isStringLiteral(node.moduleSpecifier)) {
+    if (import_typescript34.default.isImportDeclaration(node) && import_typescript34.default.isStringLiteral(node.moduleSpecifier)) {
       moduleSpecifier = node.moduleSpecifier.text;
-    } else if (import_typescript30.default.isVariableStatement(node)) {
+    } else if (import_typescript34.default.isVariableStatement(node)) {
       const decls = node.declarationList.declarations;
       for (const decl of decls) {
-        if (decl.initializer && import_typescript30.default.isCallExpression(decl.initializer) && import_typescript30.default.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === "require" && decl.initializer.arguments.length > 0 && import_typescript30.default.isStringLiteral(decl.initializer.arguments[0])) {
+        if (decl.initializer && import_typescript34.default.isCallExpression(decl.initializer) && import_typescript34.default.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === "require" && decl.initializer.arguments.length > 0 && import_typescript34.default.isStringLiteral(decl.initializer.arguments[0])) {
           moduleSpecifier = decl.initializer.arguments[0].text;
         }
       }
@@ -254487,15 +254249,15 @@ var SCANNABLE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts"];
 function collectFiles(dirPath) {
   const results = [];
   try {
-    const entries = fs12.readdirSync(dirPath, { withFileTypes: true });
+    const entries = fs14.readdirSync(dirPath, { withFileTypes: true });
     for (const entry of entries) {
-      const fullPath = path16.join(dirPath, entry.name);
+      const fullPath = path15.join(dirPath, entry.name);
       if (entry.isDirectory()) {
         if (entry.name === "node_modules" || entry.name.startsWith("."))
           continue;
         results.push(...collectFiles(fullPath));
       } else if (entry.isFile()) {
-        const ext = path16.extname(entry.name).toLowerCase();
+        const ext = path15.extname(entry.name).toLowerCase();
         if (SCANNABLE_EXTENSIONS.includes(ext)) {
           results.push(fullPath);
         }
@@ -254507,14 +254269,14 @@ function collectFiles(dirPath) {
 }
 __name(collectFiles, "collectFiles");
 function parseFile(filePath, content) {
-  const ext = path16.extname(filePath).toLowerCase();
-  const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript30.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript30.default.ScriptKind.JS : import_typescript30.default.ScriptKind.TS;
-  return import_typescript30.default.createSourceFile(filePath, content, import_typescript30.default.ScriptTarget.Latest, true, scriptKind);
+  const ext = path15.extname(filePath).toLowerCase();
+  const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript34.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript34.default.ScriptKind.JS : import_typescript34.default.ScriptKind.TS;
+  return import_typescript34.default.createSourceFile(filePath, content, import_typescript34.default.ScriptTarget.Latest, true, scriptKind);
 }
 __name(parseFile, "parseFile");
 function scanForDirectives(projectRoot, scanPath) {
   let filePaths;
-  const stat = fs12.statSync(scanPath, { throwIfNoEntry: false });
+  const stat = fs14.statSync(scanPath, { throwIfNoEntry: false });
   if (!stat)
     return [];
   if (stat.isFile()) {
@@ -254525,13 +254287,13 @@ function scanForDirectives(projectRoot, scanPath) {
   const results = [];
   for (const filePath of filePaths) {
     try {
-      const content = fs12.readFileSync(filePath, "utf-8");
+      const content = fs14.readFileSync(filePath, "utf-8");
       const directive = detectDirective(content);
       const sourceFile = parseFile(filePath, content);
       const hasClientAPIs = findClientOnlyAPIs(sourceFile);
       const hasServerOnlyImports = findServerOnlyImports(sourceFile);
       results.push({
-        file: path16.relative(projectRoot, filePath).replace(/\\/g, "/"),
+        file: path15.relative(projectRoot, filePath).replace(/\\/g, "/"),
         directive,
         hasClientAPIs,
         hasServerOnlyImports
@@ -254543,52 +254305,52 @@ function scanForDirectives(projectRoot, scanPath) {
 }
 __name(scanForDirectives, "scanForDirectives");
 
-// src/handlers/client-boundary/graph-builder.ts
-var fs13 = __toESM(require("fs"), 1);
-var path17 = __toESM(require("path"), 1);
-var import_typescript31 = __toESM(require_typescript(), 1);
+// src/core/client-boundary/graph-builder.ts
+var fs15 = __toESM(require("fs"), 1);
+var path16 = __toESM(require("path"), 1);
+var import_typescript35 = __toESM(require_typescript(), 1);
 function extractImports(sourceFile) {
   const imports = [];
-  import_typescript31.default.forEachChild(sourceFile, (node) => {
-    if (import_typescript31.default.isImportDeclaration(node) && import_typescript31.default.isStringLiteral(node.moduleSpecifier)) {
+  import_typescript35.default.forEachChild(sourceFile, (node) => {
+    if (import_typescript35.default.isImportDeclaration(node) && import_typescript35.default.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text;
       if (spec.startsWith(".")) {
         imports.push(spec);
       }
-    } else if (import_typescript31.default.isExportDeclaration(node) && node.moduleSpecifier && import_typescript31.default.isStringLiteral(node.moduleSpecifier)) {
+    } else if (import_typescript35.default.isExportDeclaration(node) && node.moduleSpecifier && import_typescript35.default.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text;
       if (spec.startsWith(".")) {
         imports.push(spec);
       }
     }
   });
-  import_typescript31.default.forEachChild(sourceFile, /* @__PURE__ */ __name(function visitForRequire(node) {
-    if (import_typescript31.default.isCallExpression(node) && import_typescript31.default.isIdentifier(node.expression) && node.expression.text === "require" && node.arguments.length > 0) {
+  import_typescript35.default.forEachChild(sourceFile, /* @__PURE__ */ __name(function visitForRequire(node) {
+    if (import_typescript35.default.isCallExpression(node) && import_typescript35.default.isIdentifier(node.expression) && node.expression.text === "require" && node.arguments.length > 0) {
       const arg = node.arguments[0];
-      if (import_typescript31.default.isStringLiteral(arg) && (arg.text.startsWith("./") || arg.text.startsWith("../"))) {
+      if (import_typescript35.default.isStringLiteral(arg) && (arg.text.startsWith("./") || arg.text.startsWith("../"))) {
         imports.push(arg.text);
       }
     }
-    import_typescript31.default.forEachChild(node, visitForRequire);
+    import_typescript35.default.forEachChild(node, visitForRequire);
   }, "visitForRequire"));
   return imports;
 }
 __name(extractImports, "extractImports");
 function resolveImport(importSpec, fromFile) {
-  const dir = path17.dirname(fromFile);
-  const base = path17.resolve(dir, importSpec);
+  const dir = path16.dirname(fromFile);
+  const base = path16.resolve(dir, importSpec);
   const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts"];
   for (const ext of extensions) {
     const candidate = base + ext;
-    if (fs13.existsSync(candidate))
+    if (fs15.existsSync(candidate))
       return candidate;
   }
   for (const ext of extensions) {
-    const candidate = path17.join(base, `index${ext}`);
-    if (fs13.existsSync(candidate))
+    const candidate = path16.join(base, `index${ext}`);
+    if (fs15.existsSync(candidate))
       return candidate;
   }
-  if (fs13.existsSync(base))
+  if (fs15.existsSync(base))
     return base;
   return null;
 }
@@ -254597,20 +254359,20 @@ function buildImportGraph(files, projectRoot) {
   const graph = /* @__PURE__ */ new Map();
   const knownFiles = new Set(files);
   for (const filePath of files) {
-    const relPath = path17.relative(projectRoot, filePath).replace(/\\/g, "/");
+    const relPath = path16.relative(projectRoot, filePath).replace(/\\/g, "/");
     let content;
     try {
-      content = fs13.readFileSync(filePath, "utf-8");
+      content = fs15.readFileSync(filePath, "utf-8");
     } catch {
       graph.set(relPath, []);
       continue;
     }
-    const ext = path17.extname(filePath).toLowerCase();
-    const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript31.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript31.default.ScriptKind.JS : import_typescript31.default.ScriptKind.TS;
-    const sourceFile = import_typescript31.default.createSourceFile(
+    const ext = path16.extname(filePath).toLowerCase();
+    const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript35.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript35.default.ScriptKind.JS : import_typescript35.default.ScriptKind.TS;
+    const sourceFile = import_typescript35.default.createSourceFile(
       filePath,
       content,
-      import_typescript31.default.ScriptTarget.Latest,
+      import_typescript35.default.ScriptTarget.Latest,
       true,
       scriptKind
     );
@@ -254619,7 +254381,7 @@ function buildImportGraph(files, projectRoot) {
     for (const spec of importSpecs) {
       const resolved = resolveImport(spec, filePath);
       if (resolved && knownFiles.has(resolved)) {
-        const relImport = path17.relative(projectRoot, resolved).replace(/\\/g, "/");
+        const relImport = path16.relative(projectRoot, resolved).replace(/\\/g, "/");
         resolvedImports.push(relImport);
       }
     }
@@ -254715,7 +254477,7 @@ function buildBoundaryMap(graph, classifications) {
 }
 __name(buildBoundaryMap, "buildBoundaryMap");
 
-// src/handlers/client-boundary/issue-detector.ts
+// src/core/client-boundary/issue-detector.ts
 var LARGE_CLIENT_SUBTREE_THRESHOLD = 5;
 function detectUnnecessaryClient(classifications, directiveMap) {
   const issues = [];
@@ -254831,58 +254593,62 @@ function detectIssues5(classifications, directiveMap, graph, boundaryMap) {
 }
 __name(detectIssues5, "detectIssues");
 
-// src/handlers/client-boundary/index.ts
+// src/extensions/client-boundary.ts
 function resolveScanPath(projectRoot, providedPath, entryFile) {
-  const normalizedRoot = projectRoot.endsWith(path18.sep) ? projectRoot : projectRoot + path18.sep;
+  const normalizedRoot = projectRoot.endsWith(path17.sep) ? projectRoot : projectRoot + path17.sep;
   if (entryFile) {
-    const entryAbs = path18.isAbsolute(entryFile) ? entryFile : path18.resolve(projectRoot, entryFile);
+    const entryAbs = path17.isAbsolute(entryFile) ? entryFile : path17.resolve(projectRoot, entryFile);
     if (!entryAbs.startsWith(normalizedRoot) && entryAbs !== projectRoot) {
       return { scanPath: "", description: "", error: "Path is outside project root" };
     }
     return { scanPath: entryAbs, description: entryFile };
   }
   if (providedPath) {
-    const provided = path18.isAbsolute(providedPath) ? providedPath : path18.resolve(projectRoot, providedPath);
+    const provided = path17.isAbsolute(providedPath) ? providedPath : path17.resolve(projectRoot, providedPath);
     if (!provided.startsWith(normalizedRoot) && provided !== projectRoot) {
       return { scanPath: "", description: "", error: "Path is outside project root" };
     }
     return { scanPath: provided, description: providedPath };
   }
   const candidates = [
-    path18.join(projectRoot, "app"),
-    path18.join(projectRoot, "src", "app"),
-    path18.join(projectRoot, "src"),
+    path17.join(projectRoot, "app"),
+    path17.join(projectRoot, "src", "app"),
+    path17.join(projectRoot, "src"),
     projectRoot
   ];
   for (const candidate of candidates) {
-    if (fs14.existsSync(candidate)) {
-      const rel = path18.relative(projectRoot, candidate) || ".";
+    if (fs16.existsSync(candidate)) {
+      const rel = path17.relative(projectRoot, candidate) || ".";
       return { scanPath: candidate, description: rel };
     }
   }
   return { scanPath: projectRoot, description: "." };
 }
 __name(resolveScanPath, "resolveScanPath");
-async function handleAnalyzeClientBoundary(args) {
+async function analyzeClientBoundary(args) {
+  if (!args || typeof args !== "object") {
+    return fail("Invalid arguments: expected an object");
+  }
+  const typedArgs = args;
   const projectRoot = getProjectRoot();
   const { scanPath, description, error: pathError } = resolveScanPath(
     projectRoot,
-    args.path,
-    args.entry
+    typedArgs.path,
+    typedArgs.entry
   );
   if (pathError) {
-    return createErrorResponse11(pathError, { provided: args.path ?? args.entry });
+    return fail(pathError, { provided: typedArgs.path ?? typedArgs.entry });
   }
-  if (!fs14.existsSync(scanPath)) {
-    return createErrorResponse11(
-      `Scan path not found: ${description}`,
-      { provided: args.path ?? args.entry, resolved: scanPath }
-    );
+  if (!fs16.existsSync(scanPath)) {
+    return fail(`Scan path not found: ${description}`, {
+      provided: typedArgs.path ?? typedArgs.entry,
+      resolved: scanPath
+    });
   }
   try {
     const fileInfos = scanForDirectives(projectRoot, scanPath);
     if (fileInfos.length === 0) {
-      return createSuccessResponse11({
+      return ok({
         scanned_path: description,
         message: "No TypeScript/JavaScript files found in scan path.",
         components: [],
@@ -254892,9 +254658,7 @@ async function handleAnalyzeClientBoundary(args) {
       });
     }
     const clientFiles = fileInfos.filter((f) => f.directive === '"use client"');
-    const absoluteFiles = fileInfos.map(
-      (f) => path18.resolve(projectRoot, f.file)
-    );
+    const absoluteFiles = fileInfos.map((f) => path17.resolve(projectRoot, f.file));
     const graph = buildImportGraph(absoluteFiles, projectRoot);
     const directiveMap = new Map(
       fileInfos.map((info) => [info.file, info])
@@ -254908,7 +254672,9 @@ async function handleAnalyzeClientBoundary(args) {
       client: classifications.filter((c) => c.classification === "client").length,
       clientInherited: classifications.filter((c) => c.classification === "client-inherited").length,
       ambiguous: classifications.filter((c) => c.classification === "ambiguous").length,
-      ...clientFiles.length === 0 && !args.entry ? { note: 'No "use client" directives found in the scanned directory \u2014 all files are treated as server components.' } : {}
+      ...clientFiles.length === 0 && !typedArgs.entry ? {
+        note: 'No "use client" directives found in the scanned directory \u2014 all files are treated as server components.'
+      } : {}
     };
     const boundaries = Array.from(boundaryMap.entries()).map(([file2, childCount]) => ({ file: file2, childCount })).sort((a, b) => b.childCount - a.childCount);
     const result = {
@@ -254918,21 +254684,21 @@ async function handleAnalyzeClientBoundary(args) {
       summary,
       boundaries
     };
-    return createSuccessResponse11(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse11(message, { scanned_path: description });
+    return failFromException(error2, "Client boundary analysis failed");
   }
 }
-__name(handleAnalyzeClientBoundary, "handleAnalyzeClientBoundary");
+__name(analyzeClientBoundary, "analyzeClientBoundary");
+var handleAnalyzeClientBoundary = analyzeClientBoundary;
 
-// src/handlers/hook-dependencies/index.ts
-var fs15 = __toESM(require("fs"), 1);
-var path19 = __toESM(require("path"), 1);
-var import_typescript33 = __toESM(require_typescript(), 1);
+// src/extensions/hook-dependencies.ts
+var fs17 = __toESM(require("fs"), 1);
+var path18 = __toESM(require("path"), 1);
+var import_typescript37 = __toESM(require_typescript(), 1);
 
-// src/handlers/hook-dependencies/hook-extractor.ts
-var import_typescript32 = __toESM(require_typescript(), 1);
+// src/core/hooks/extractor.ts
+var import_typescript36 = __toESM(require_typescript(), 1);
 var HOOKS_WITH_DEPS = /* @__PURE__ */ new Set([
   "useEffect",
   "useMemo",
@@ -254996,32 +254762,32 @@ function extractBodyRefs(node, sourceFile) {
   const refs = /* @__PURE__ */ new Set();
   const localDecls = /* @__PURE__ */ new Set();
   function collectLocals(n) {
-    if (import_typescript32.default.isVariableDeclaration(n) && import_typescript32.default.isIdentifier(n.name)) {
+    if (import_typescript36.default.isVariableDeclaration(n) && import_typescript36.default.isIdentifier(n.name)) {
       localDecls.add(n.name.getText(sourceFile));
     }
-    if (import_typescript32.default.isParameter(n) && import_typescript32.default.isIdentifier(n.name)) {
+    if (import_typescript36.default.isParameter(n) && import_typescript36.default.isIdentifier(n.name)) {
       localDecls.add(n.name.getText(sourceFile));
     }
-    if ((import_typescript32.default.isArrowFunction(n) || import_typescript32.default.isFunctionExpression(n)) && n !== node) {
+    if ((import_typescript36.default.isArrowFunction(n) || import_typescript36.default.isFunctionExpression(n)) && n !== node) {
       for (const param of n.parameters) {
-        if (import_typescript32.default.isIdentifier(param.name)) {
+        if (import_typescript36.default.isIdentifier(param.name)) {
           localDecls.add(param.name.getText(sourceFile));
         }
       }
     }
-    import_typescript32.default.forEachChild(n, collectLocals);
+    import_typescript36.default.forEachChild(n, collectLocals);
   }
   __name(collectLocals, "collectLocals");
   collectLocals(node);
   function collectRefs(n) {
-    if (import_typescript32.default.isIdentifier(n)) {
+    if (import_typescript36.default.isIdentifier(n)) {
       const text = n.getText(sourceFile);
-      const isPropertyName = n.parent && import_typescript32.default.isPropertyAccessExpression(n.parent) && n.parent.name === n;
+      const isPropertyName = n.parent && import_typescript36.default.isPropertyAccessExpression(n.parent) && n.parent.name === n;
       if (!isPropertyName && !localDecls.has(text) && !GLOBAL_IDENTIFIERS.has(text)) {
         refs.add(text);
       }
     }
-    import_typescript32.default.forEachChild(n, collectRefs);
+    import_typescript36.default.forEachChild(n, collectRefs);
   }
   __name(collectRefs, "collectRefs");
   collectRefs(node);
@@ -255031,13 +254797,13 @@ __name(extractBodyRefs, "extractBodyRefs");
 function hasCleanupReturn2(node, sourceFile) {
   let hasCleanup = false;
   function visit(n) {
-    if (import_typescript32.default.isReturnStatement(n) && n.expression) {
-      if (import_typescript32.default.isArrowFunction(n.expression) || import_typescript32.default.isFunctionExpression(n.expression)) {
+    if (import_typescript36.default.isReturnStatement(n) && n.expression) {
+      if (import_typescript36.default.isArrowFunction(n.expression) || import_typescript36.default.isFunctionExpression(n.expression)) {
         hasCleanup = true;
       }
     }
     if (!hasCleanup) {
-      import_typescript32.default.forEachChild(n, visit);
+      import_typescript36.default.forEachChild(n, visit);
     }
   }
   __name(visit, "visit");
@@ -255051,7 +254817,7 @@ function detectSubscriptions(bodyText) {
 __name(detectSubscriptions, "detectSubscriptions");
 function getAssignedVariableName(callNode, sourceFile) {
   const parent = callNode.parent;
-  if (import_typescript32.default.isVariableDeclaration(parent) && import_typescript32.default.isIdentifier(parent.name)) {
+  if (import_typescript36.default.isVariableDeclaration(parent) && import_typescript36.default.isIdentifier(parent.name)) {
     return parent.name.getText(sourceFile);
   }
   return void 0;
@@ -255060,7 +254826,7 @@ __name(getAssignedVariableName, "getAssignedVariableName");
 function extractHooksWithDeps(componentNode, sourceFile, scope) {
   const hooks = [];
   function visit(node) {
-    if (import_typescript32.default.isCallExpression(node)) {
+    if (import_typescript36.default.isCallExpression(node)) {
       const fnText = node.expression.getText(sourceFile);
       const fnName = fnText.replace(/^React\./, "");
       if (HOOKS_WITH_DEPS.has(fnName)) {
@@ -255073,7 +254839,7 @@ function extractHooksWithDeps(componentNode, sourceFile, scope) {
         let hasNoDeps = false;
         if (!depsArg) {
           hasNoDeps = true;
-        } else if (import_typescript32.default.isArrayLiteralExpression(depsArg)) {
+        } else if (import_typescript36.default.isArrayLiteralExpression(depsArg)) {
           rawDeps = depsArg.elements.map((el) => el.getText(sourceFile));
           hasEmptyDeps = rawDeps.length === 0;
         }
@@ -255112,7 +254878,7 @@ function extractHooksWithDeps(componentNode, sourceFile, scope) {
         });
       }
     }
-    import_typescript32.default.forEachChild(node, visit);
+    import_typescript36.default.forEachChild(node, visit);
   }
   __name(visit, "visit");
   visit(componentNode);
@@ -255132,29 +254898,29 @@ function buildComponentScope(componentNode, sourceFile) {
     useIdVars: /* @__PURE__ */ new Set()
   };
   for (const statement of sourceFile.statements) {
-    if (import_typescript32.default.isImportDeclaration(statement) && statement.importClause) {
+    if (import_typescript36.default.isImportDeclaration(statement) && statement.importClause) {
       const clause = statement.importClause;
       if (clause.name) {
         scope.importedIdentifiers.add(clause.name.getText(sourceFile));
       }
       if (clause.namedBindings) {
-        if (import_typescript32.default.isNamedImports(clause.namedBindings)) {
+        if (import_typescript36.default.isNamedImports(clause.namedBindings)) {
           for (const spec of clause.namedBindings.elements) {
             scope.importedIdentifiers.add(spec.name.getText(sourceFile));
           }
-        } else if (import_typescript32.default.isNamespaceImport(clause.namedBindings)) {
+        } else if (import_typescript36.default.isNamespaceImport(clause.namedBindings)) {
           scope.importedIdentifiers.add(clause.namedBindings.name.getText(sourceFile));
         }
       }
     }
-    if (import_typescript32.default.isVariableStatement(statement) || import_typescript32.default.isFunctionDeclaration(statement) || import_typescript32.default.isClassDeclaration(statement)) {
-      if (import_typescript32.default.isVariableStatement(statement)) {
+    if (import_typescript36.default.isVariableStatement(statement) || import_typescript36.default.isFunctionDeclaration(statement) || import_typescript36.default.isClassDeclaration(statement)) {
+      if (import_typescript36.default.isVariableStatement(statement)) {
         for (const decl of statement.declarationList.declarations) {
-          if (import_typescript32.default.isIdentifier(decl.name)) {
+          if (import_typescript36.default.isIdentifier(decl.name)) {
             scope.moduleScopeIdentifiers.add(decl.name.getText(sourceFile));
           }
         }
-      } else if (import_typescript32.default.isFunctionDeclaration(statement) || import_typescript32.default.isClassDeclaration(statement)) {
+      } else if (import_typescript36.default.isFunctionDeclaration(statement) || import_typescript36.default.isClassDeclaration(statement)) {
         if (statement.name) {
           scope.moduleScopeIdentifiers.add(statement.name.getText(sourceFile));
         }
@@ -255162,67 +254928,67 @@ function buildComponentScope(componentNode, sourceFile) {
     }
   }
   function visitComponent(node) {
-    if (import_typescript32.default.isCallExpression(node)) {
+    if (import_typescript36.default.isCallExpression(node)) {
       const fnText = node.expression.getText(sourceFile);
       const fnName = fnText.replace(/^React\./, "");
       if (fnName === "useState") {
         const parent = node.parent;
-        if (import_typescript32.default.isVariableDeclaration(parent) && import_typescript32.default.isArrayBindingPattern(parent.name)) {
+        if (import_typescript36.default.isVariableDeclaration(parent) && import_typescript36.default.isArrayBindingPattern(parent.name)) {
           const elements = parent.name.elements;
-          if (elements.length >= 1 && import_typescript32.default.isBindingElement(elements[0])) {
+          if (elements.length >= 1 && import_typescript36.default.isBindingElement(elements[0])) {
             const valName = elements[0].name;
-            if (import_typescript32.default.isIdentifier(valName))
+            if (import_typescript36.default.isIdentifier(valName))
               scope.stateVars.add(valName.getText(sourceFile));
           }
-          if (elements.length >= 2 && import_typescript32.default.isBindingElement(elements[1])) {
+          if (elements.length >= 2 && import_typescript36.default.isBindingElement(elements[1])) {
             const setterName = elements[1].name;
-            if (import_typescript32.default.isIdentifier(setterName))
+            if (import_typescript36.default.isIdentifier(setterName))
               scope.setterVars.add(setterName.getText(sourceFile));
           }
         }
       }
       if (fnName === "useReducer") {
         const parent = node.parent;
-        if (import_typescript32.default.isVariableDeclaration(parent) && import_typescript32.default.isArrayBindingPattern(parent.name)) {
+        if (import_typescript36.default.isVariableDeclaration(parent) && import_typescript36.default.isArrayBindingPattern(parent.name)) {
           const elements = parent.name.elements;
-          if (elements.length >= 1 && import_typescript32.default.isBindingElement(elements[0])) {
+          if (elements.length >= 1 && import_typescript36.default.isBindingElement(elements[0])) {
             const stateName = elements[0].name;
-            if (import_typescript32.default.isIdentifier(stateName))
+            if (import_typescript36.default.isIdentifier(stateName))
               scope.stateVars.add(stateName.getText(sourceFile));
           }
-          if (elements.length >= 2 && import_typescript32.default.isBindingElement(elements[1])) {
+          if (elements.length >= 2 && import_typescript36.default.isBindingElement(elements[1])) {
             const dispatchName = elements[1].name;
-            if (import_typescript32.default.isIdentifier(dispatchName))
+            if (import_typescript36.default.isIdentifier(dispatchName))
               scope.dispatchVars.add(dispatchName.getText(sourceFile));
           }
         }
       }
       if (fnName === "useRef") {
         const parent = node.parent;
-        if (import_typescript32.default.isVariableDeclaration(parent) && import_typescript32.default.isIdentifier(parent.name)) {
+        if (import_typescript36.default.isVariableDeclaration(parent) && import_typescript36.default.isIdentifier(parent.name)) {
           scope.refVars.add(parent.name.getText(sourceFile));
         }
       }
       if (fnName === "useId") {
         const parent = node.parent;
-        if (import_typescript32.default.isVariableDeclaration(parent) && import_typescript32.default.isIdentifier(parent.name)) {
+        if (import_typescript36.default.isVariableDeclaration(parent) && import_typescript36.default.isIdentifier(parent.name)) {
           scope.useIdVars.add(parent.name.getText(sourceFile));
         }
       }
       if (fnName === "useCallback") {
         const parent = node.parent;
-        if (import_typescript32.default.isVariableDeclaration(parent) && import_typescript32.default.isIdentifier(parent.name)) {
+        if (import_typescript36.default.isVariableDeclaration(parent) && import_typescript36.default.isIdentifier(parent.name)) {
           scope.useCallbackVars.add(parent.name.getText(sourceFile));
         }
       }
       if (fnName === "useMemo") {
         const parent = node.parent;
-        if (import_typescript32.default.isVariableDeclaration(parent) && import_typescript32.default.isIdentifier(parent.name)) {
+        if (import_typescript36.default.isVariableDeclaration(parent) && import_typescript36.default.isIdentifier(parent.name)) {
           scope.useMemoVars.add(parent.name.getText(sourceFile));
         }
       }
     }
-    import_typescript32.default.forEachChild(node, visitComponent);
+    import_typescript36.default.forEachChild(node, visitComponent);
   }
   __name(visitComponent, "visitComponent");
   visitComponent(componentNode);
@@ -255230,7 +254996,7 @@ function buildComponentScope(componentNode, sourceFile) {
 }
 __name(buildComponentScope, "buildComponentScope");
 
-// src/handlers/hook-dependencies/stability-analyzer.ts
+// src/core/hooks/stability-analyzer.ts
 var UNSTABLE_ARRAY_METHODS = /* @__PURE__ */ new Set([
   "map",
   "filter",
@@ -255376,7 +255142,7 @@ function analyzeDependencies(rawDeps, scope, sourceFile) {
 }
 __name(analyzeDependencies, "analyzeDependencies");
 
-// src/handlers/hook-dependencies/issue-detector.ts
+// src/core/hooks/issue-detector.ts
 var SET_STATE_PATTERN = /\bset[A-Z]\w*\s*\(/;
 function detectStaleClosure(hook, scope) {
   if (hook.name !== "useEffect" && hook.name !== "useLayoutEffect") {
@@ -255531,48 +255297,27 @@ function detectAllIssues(hook, scope) {
 }
 __name(detectAllIssues, "detectAllIssues");
 
-// src/handlers/hook-dependencies/index.ts
-function createSuccessResponse12(data) {
-  return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
-  };
-}
-__name(createSuccessResponse12, "createSuccessResponse");
-function createErrorResponse12(message, context) {
-  return {
-    content: [{ type: "text", text: JSON.stringify({ error: message, ...context }, null, 2) }],
-    isError: true
-  };
-}
-__name(createErrorResponse12, "createErrorResponse");
-function makeRelativePath6(absolutePath, projectRoot) {
-  return path19.relative(projectRoot, absolutePath).replace(/\\/g, "/");
-}
-__name(makeRelativePath6, "makeRelativePath");
+// src/extensions/hook-dependencies.ts
 function resolveFilePath2(filePath, projectRoot) {
-  return path19.isAbsolute(filePath) ? filePath : path19.resolve(projectRoot, filePath);
+  return path18.isAbsolute(filePath) ? filePath : path18.resolve(projectRoot, filePath);
 }
 __name(resolveFilePath2, "resolveFilePath");
 function detectComponentName(sourceFile, filePath) {
   for (const statement of sourceFile.statements) {
-    if (import_typescript33.default.isFunctionDeclaration(statement) && statement.name && /^[A-Z]/.test(statement.name.getText(sourceFile))) {
+    if (import_typescript37.default.isFunctionDeclaration(statement) && statement.name && /^[A-Z]/.test(statement.name.getText(sourceFile))) {
       return statement.name.getText(sourceFile);
     }
-    if (import_typescript33.default.isVariableStatement(statement)) {
+    if (import_typescript37.default.isVariableStatement(statement)) {
       for (const decl of statement.declarationList.declarations) {
-        if (import_typescript33.default.isIdentifier(decl.name) && /^[A-Z]/.test(decl.name.getText(sourceFile)) && decl.initializer && (import_typescript33.default.isArrowFunction(decl.initializer) || import_typescript33.default.isFunctionExpression(decl.initializer))) {
+        if (import_typescript37.default.isIdentifier(decl.name) && /^[A-Z]/.test(decl.name.getText(sourceFile)) && decl.initializer && (import_typescript37.default.isArrowFunction(decl.initializer) || import_typescript37.default.isFunctionExpression(decl.initializer))) {
           return decl.name.getText(sourceFile);
         }
       }
     }
   }
-  return path19.basename(filePath, path19.extname(filePath));
+  return path18.basename(filePath, path18.extname(filePath));
 }
 __name(detectComponentName, "detectComponentName");
-function findComponentNode(sourceFile) {
-  return sourceFile;
-}
-__name(findComponentNode, "findComponentNode");
 function filterHooks(hooks, hookFilter) {
   const lineNum = parseInt(hookFilter, 10);
   if (!isNaN(lineNum)) {
@@ -255583,40 +255328,55 @@ function filterHooks(hooks, hookFilter) {
   );
 }
 __name(filterHooks, "filterHooks");
-async function handleAuditHookDependencies(args) {
-  if (!args.file) {
-    return createErrorResponse12("file argument is required");
+async function analyzeHookDependencies(args) {
+  if (!args || typeof args !== "object") {
+    return fail("Invalid arguments: expected an object");
   }
+  const a = args;
+  if (!a.file) {
+    return missingArg("file");
+  }
+  if (typeof a.file !== "string") {
+    return invalidArg("file", "must be a string");
+  }
+  if (a.hook !== void 0 && typeof a.hook !== "string") {
+    return invalidArg("hook", "must be a string (variable name or line number)");
+  }
+  if (a.include_stable_analysis !== void 0 && typeof a.include_stable_analysis !== "boolean") {
+    return invalidArg("include_stable_analysis", "must be a boolean");
+  }
+  const typedArgs = {
+    file: a.file,
+    hook: a.hook,
+    include_stable_analysis: a.include_stable_analysis
+  };
   const projectRoot = getProjectRoot();
-  const filePath = resolveFilePath2(args.file, projectRoot);
-  if (!fs15.existsSync(filePath)) {
-    return createErrorResponse12(`File not found: ${args.file}`, { provided_path: args.file });
+  const filePath = resolveFilePath2(typedArgs.file, projectRoot);
+  if (!fs17.existsSync(filePath)) {
+    return fail(`File not found: ${typedArgs.file}`, { provided_path: typedArgs.file });
   }
-  const ext = path19.extname(filePath).toLowerCase();
+  const ext = path18.extname(filePath).toLowerCase();
   if (![".tsx", ".jsx", ".ts", ".js"].includes(ext)) {
-    return createErrorResponse12(
-      `Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`,
-      { file: args.file }
-    );
+    return fail(`Unsupported file type: ${ext}. Supported: .tsx, .jsx, .ts, .js`, { file: typedArgs.file });
   }
   try {
-    const content = fs15.readFileSync(filePath, "utf-8");
-    const scriptKind = ext === ".tsx" ? import_typescript33.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript33.default.ScriptKind.JSX : import_typescript33.default.ScriptKind.TS;
-    const sourceFile = import_typescript33.default.createSourceFile(
+    const content = fs17.readFileSync(filePath, "utf-8");
+    const scriptKind = ext === ".tsx" ? import_typescript37.default.ScriptKind.TSX : ext === ".jsx" ? import_typescript37.default.ScriptKind.JSX : ext === ".ts" ? import_typescript37.default.ScriptKind.TS : import_typescript37.default.ScriptKind.JS;
+    const sourceFile = import_typescript37.default.createSourceFile(
       filePath,
       content,
-      import_typescript33.default.ScriptTarget.Latest,
+      import_typescript37.default.ScriptTarget.Latest,
       true,
       scriptKind
     );
     const componentName = detectComponentName(sourceFile, filePath);
-    const componentNode = findComponentNode(sourceFile);
+    const componentNode = sourceFile;
     const scope = buildComponentScope(componentNode, sourceFile);
     let hooks = extractHooksWithDeps(componentNode, sourceFile, scope);
-    if (args.hook) {
-      hooks = filterHooks(hooks, args.hook);
+    if (typedArgs.hook) {
+      hooks = filterHooks(hooks, typedArgs.hook);
     }
-    const includeStable = args.include_stable_analysis !== false;
+    const includeStable = typedArgs.include_stable_analysis !== false;
     for (const hook of hooks) {
       const analyzedDeps = analyzeDependencies(hook.rawDeps, scope, sourceFile);
       hook.deps = includeStable ? analyzedDeps : analyzedDeps.filter((d) => d.stability !== "stable");
@@ -255633,7 +255393,7 @@ async function handleAuditHookDependencies(args) {
       byType[issue2.type] = (byType[issue2.type] ?? 0) + 1;
     }
     const result = {
-      file: makeRelativePath6(filePath, projectRoot),
+      file: makeRelativePath(filePath, projectRoot),
       component: componentName,
       hooks,
       issues: allIssues,
@@ -255644,22 +255404,22 @@ async function handleAuditHookDependencies(args) {
         by_type: byType
       }
     };
-    return createSuccessResponse12(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse12(message, { file: args.file });
+    return failFromException(error2, "Hook dependency analysis failed");
   }
 }
-__name(handleAuditHookDependencies, "handleAuditHookDependencies");
+__name(analyzeHookDependencies, "analyzeHookDependencies");
+var handleAuditHookDependencies = analyzeHookDependencies;
 
-// src/handlers/error-boundaries/index.ts
+// src/extensions/error-boundaries.ts
+var fs20 = __toESM(require("fs"), 1);
+var path21 = __toESM(require("path"), 1);
+
+// src/core/error-boundaries/scanner.ts
 var fs18 = __toESM(require("fs"), 1);
-var path22 = __toESM(require("path"), 1);
-
-// src/handlers/error-boundaries/scanner.ts
-var fs16 = __toESM(require("fs"), 1);
-var path20 = __toESM(require("path"), 1);
-var import_typescript34 = __toESM(require_typescript(), 1);
+var path19 = __toESM(require("path"), 1);
+var import_typescript38 = __toESM(require_typescript(), 1);
 var SCANNABLE_EXTENSIONS2 = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts", ".cjs"];
 var REACT_ERROR_BOUNDARY_COMPONENTS = /* @__PURE__ */ new Set([
   "ErrorBoundary",
@@ -255679,23 +255439,23 @@ var ERROR_BOUNDARY_METHODS = /* @__PURE__ */ new Set([
   "componentDidCatch"
 ]);
 function parseFile2(filePath, content) {
-  const ext = path20.extname(filePath).toLowerCase();
-  const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript34.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript34.default.ScriptKind.JS : import_typescript34.default.ScriptKind.TS;
-  return import_typescript34.default.createSourceFile(filePath, content, import_typescript34.default.ScriptTarget.Latest, true, scriptKind);
+  const ext = path19.extname(filePath).toLowerCase();
+  const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript38.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript38.default.ScriptKind.JS : import_typescript38.default.ScriptKind.TS;
+  return import_typescript38.default.createSourceFile(filePath, content, import_typescript38.default.ScriptTarget.Latest, true, scriptKind);
 }
 __name(parseFile2, "parseFile");
 function collectFiles2(dirPath) {
   const results = [];
   try {
-    const entries = fs16.readdirSync(dirPath, { withFileTypes: true });
+    const entries = fs18.readdirSync(dirPath, { withFileTypes: true });
     for (const entry of entries) {
-      const fullPath = path20.join(dirPath, entry.name);
+      const fullPath = path19.join(dirPath, entry.name);
       if (entry.isDirectory()) {
         if (entry.name === "node_modules" || entry.name.startsWith("."))
           continue;
         results.push(...collectFiles2(fullPath));
       } else if (entry.isFile()) {
-        const ext = path20.extname(entry.name).toLowerCase();
+        const ext = path19.extname(entry.name).toLowerCase();
         if (SCANNABLE_EXTENSIONS2.includes(ext)) {
           results.push(fullPath);
         }
@@ -255708,8 +255468,8 @@ function collectFiles2(dirPath) {
 __name(collectFiles2, "collectFiles");
 function hasErrorBoundaryMethods(node) {
   for (const member of node.members) {
-    if (import_typescript34.default.isMethodDeclaration(member) || import_typescript34.default.isPropertyDeclaration(member)) {
-      const name = member.name && import_typescript34.default.isIdentifier(member.name) ? member.name.text : "";
+    if (import_typescript38.default.isMethodDeclaration(member) || import_typescript38.default.isPropertyDeclaration(member)) {
+      const name = member.name && import_typescript38.default.isIdentifier(member.name) ? member.name.text : "";
       if (ERROR_BOUNDARY_METHODS.has(name)) {
         return true;
       }
@@ -255720,13 +255480,13 @@ function hasErrorBoundaryMethods(node) {
 __name(hasErrorBoundaryMethods, "hasErrorBoundaryMethods");
 function classHasFallback(node, sourceFile) {
   for (const member of node.members) {
-    if (import_typescript34.default.isMethodDeclaration(member) && member.name && import_typescript34.default.isIdentifier(member.name) && member.name.text === "render" && member.body) {
+    if (import_typescript38.default.isMethodDeclaration(member) && member.name && import_typescript38.default.isIdentifier(member.name) && member.name.text === "render" && member.body) {
       const renderText = member.body.getText(sourceFile);
       if (renderText.includes("this.state.hasError") || renderText.includes("this.state.error") || renderText.includes("fallback") || renderText.includes("FallbackComponent")) {
         return true;
       }
     }
-    if (import_typescript34.default.isPropertyDeclaration(member) && member.name && import_typescript34.default.isIdentifier(member.name) && member.name.text === "fallback") {
+    if (import_typescript38.default.isPropertyDeclaration(member) && member.name && import_typescript38.default.isIdentifier(member.name) && member.name.text === "fallback") {
       return true;
     }
   }
@@ -255735,7 +255495,7 @@ function classHasFallback(node, sourceFile) {
 __name(classHasFallback, "classHasFallback");
 function classHasReset(node, sourceFile) {
   for (const member of node.members) {
-    if (import_typescript34.default.isMethodDeclaration(member) && member.name && import_typescript34.default.isIdentifier(member.name)) {
+    if (import_typescript38.default.isMethodDeclaration(member) && member.name && import_typescript38.default.isIdentifier(member.name)) {
       const name = member.name.text.toLowerCase();
       if (name.includes("reset") || name.includes("retry") || name.includes("recover")) {
         return true;
@@ -255749,15 +255509,15 @@ __name(classHasReset, "classHasReset");
 function collectJsxElementNames(sourceFile) {
   const names = /* @__PURE__ */ new Set();
   function visit(node) {
-    if (import_typescript34.default.isJsxOpeningElement(node) || import_typescript34.default.isJsxSelfClosingElement(node)) {
+    if (import_typescript38.default.isJsxOpeningElement(node) || import_typescript38.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName;
-      if (import_typescript34.default.isIdentifier(tagName)) {
+      if (import_typescript38.default.isIdentifier(tagName)) {
         names.add(tagName.text);
-      } else if (import_typescript34.default.isPropertyAccessExpression(tagName)) {
+      } else if (import_typescript38.default.isPropertyAccessExpression(tagName)) {
         names.add(tagName.getText(sourceFile));
       }
     }
-    import_typescript34.default.forEachChild(node, visit);
+    import_typescript38.default.forEachChild(node, visit);
   }
   __name(visit, "visit");
   visit(sourceFile);
@@ -255769,18 +255529,18 @@ function jsxHasFallbackProp(sourceFile, componentName) {
   function visit(node) {
     if (hasFallback)
       return;
-    if (import_typescript34.default.isJsxOpeningElement(node) || import_typescript34.default.isJsxSelfClosingElement(node)) {
+    if (import_typescript38.default.isJsxOpeningElement(node) || import_typescript38.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       if (tagName === componentName || tagName.endsWith("." + componentName)) {
         for (const attr of node.attributes.properties) {
-          if (import_typescript34.default.isJsxAttribute(attr) && import_typescript34.default.isIdentifier(attr.name) && (attr.name.text === "fallback" || attr.name.text === "FallbackComponent" || attr.name.text === "fallbackRender")) {
+          if (import_typescript38.default.isJsxAttribute(attr) && import_typescript38.default.isIdentifier(attr.name) && (attr.name.text === "fallback" || attr.name.text === "FallbackComponent" || attr.name.text === "fallbackRender")) {
             hasFallback = true;
             return;
           }
         }
       }
     }
-    import_typescript34.default.forEachChild(node, visit);
+    import_typescript38.default.forEachChild(node, visit);
   }
   __name(visit, "visit");
   visit(sourceFile);
@@ -255792,18 +255552,18 @@ function jsxHasResetProp(sourceFile, componentName) {
   function visit(node) {
     if (hasReset)
       return;
-    if (import_typescript34.default.isJsxOpeningElement(node) || import_typescript34.default.isJsxSelfClosingElement(node)) {
+    if (import_typescript38.default.isJsxOpeningElement(node) || import_typescript38.default.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       if (tagName === componentName || tagName.endsWith("." + componentName)) {
         for (const attr of node.attributes.properties) {
-          if (import_typescript34.default.isJsxAttribute(attr) && import_typescript34.default.isIdentifier(attr.name) && (attr.name.text === "onReset" || attr.name.text === "resetKeys" || attr.name.text === "onError")) {
+          if (import_typescript38.default.isJsxAttribute(attr) && import_typescript38.default.isIdentifier(attr.name) && (attr.name.text === "onReset" || attr.name.text === "resetKeys" || attr.name.text === "onError")) {
             hasReset = true;
             return;
           }
         }
       }
     }
-    import_typescript34.default.forEachChild(node, visit);
+    import_typescript38.default.forEachChild(node, visit);
   }
   __name(visit, "visit");
   visit(sourceFile);
@@ -255812,10 +255572,10 @@ function jsxHasResetProp(sourceFile, componentName) {
 __name(jsxHasResetProp, "jsxHasResetProp");
 function extractImports2(sourceFile) {
   const imports = /* @__PURE__ */ new Map();
-  import_typescript34.default.forEachChild(sourceFile, (node) => {
-    if (!import_typescript34.default.isImportDeclaration(node))
+  import_typescript38.default.forEachChild(sourceFile, (node) => {
+    if (!import_typescript38.default.isImportDeclaration(node))
       return;
-    if (!import_typescript34.default.isStringLiteral(node.moduleSpecifier))
+    if (!import_typescript38.default.isStringLiteral(node.moduleSpecifier))
       return;
     const moduleName = node.moduleSpecifier.text;
     const clause = node.importClause;
@@ -255825,12 +255585,12 @@ function extractImports2(sourceFile) {
     if (clause.name) {
       imports.set(clause.name.text, { moduleName, line });
     }
-    if (clause.namedBindings && import_typescript34.default.isNamedImports(clause.namedBindings)) {
+    if (clause.namedBindings && import_typescript38.default.isNamedImports(clause.namedBindings)) {
       for (const element of clause.namedBindings.elements) {
         imports.set(element.name.text, { moduleName, line });
       }
     }
-    if (clause.namedBindings && import_typescript34.default.isNamespaceImport(clause.namedBindings)) {
+    if (clause.namedBindings && import_typescript38.default.isNamespaceImport(clause.namedBindings)) {
       imports.set(clause.namedBindings.name.text + ".*", { moduleName, line });
     }
   });
@@ -255841,7 +255601,7 @@ function scanFileForErrorBoundaries(filePath, projectRoot, includeLibraries) {
   const results = [];
   let content;
   try {
-    content = fs16.readFileSync(filePath, "utf-8");
+    content = fs18.readFileSync(filePath, "utf-8");
   } catch {
     return results;
   }
@@ -255851,11 +255611,11 @@ function scanFileForErrorBoundaries(filePath, projectRoot, includeLibraries) {
   } catch {
     return results;
   }
-  const relativeFile = path20.relative(projectRoot, filePath).replace(/\\/g, "/");
+  const relativeFile = path19.relative(projectRoot, filePath).replace(/\\/g, "/");
   const imports = extractImports2(sourceFile);
   const jsxNames = collectJsxElementNames(sourceFile);
-  import_typescript34.default.forEachChild(sourceFile, (node) => {
-    if (!import_typescript34.default.isClassDeclaration(node))
+  import_typescript38.default.forEachChild(sourceFile, (node) => {
+    if (!import_typescript38.default.isClassDeclaration(node))
       return;
     if (!hasErrorBoundaryMethods(node))
       return;
@@ -255922,7 +255682,7 @@ __name(scanFileForErrorBoundaries, "scanFileForErrorBoundaries");
 function fileHasAsyncOperations(filePath) {
   let content;
   try {
-    content = fs16.readFileSync(filePath, "utf-8");
+    content = fs18.readFileSync(filePath, "utf-8");
   } catch {
     return false;
   }
@@ -255936,15 +255696,15 @@ function fileHasAsyncOperations(filePath) {
   function visit(node) {
     if (hasAsync)
       return;
-    if ((import_typescript34.default.isFunctionDeclaration(node) || import_typescript34.default.isFunctionExpression(node) || import_typescript34.default.isArrowFunction(node)) && node.modifiers?.some((m) => m.kind === import_typescript34.default.SyntaxKind.AsyncKeyword)) {
+    if ((import_typescript38.default.isFunctionDeclaration(node) || import_typescript38.default.isFunctionExpression(node) || import_typescript38.default.isArrowFunction(node)) && node.modifiers?.some((m) => m.kind === import_typescript38.default.SyntaxKind.AsyncKeyword)) {
       hasAsync = true;
       return;
     }
-    if (import_typescript34.default.isAwaitExpression(node)) {
+    if (import_typescript38.default.isAwaitExpression(node)) {
       hasAsync = true;
       return;
     }
-    import_typescript34.default.forEachChild(node, visit);
+    import_typescript38.default.forEachChild(node, visit);
   }
   __name(visit, "visit");
   visit(sourceFile);
@@ -255956,7 +255716,7 @@ function scanNextjsRouteSegments(appDir, projectRoot) {
   function scanDir(dirPath) {
     let entries;
     try {
-      entries = fs16.readdirSync(dirPath, { withFileTypes: true });
+      entries = fs18.readdirSync(dirPath, { withFileTypes: true });
     } catch {
       return;
     }
@@ -255965,7 +255725,7 @@ function scanNextjsRouteSegments(appDir, projectRoot) {
     const hasPage = fileNames.has("page.tsx") || fileNames.has("page.jsx") || fileNames.has("page.ts") || fileNames.has("page.js");
     const hasErrorFile = fileNames.has("error.tsx") || fileNames.has("error.jsx") || fileNames.has("error.ts") || fileNames.has("error.js");
     if (hasPage || hasLayout) {
-      const segmentPath = path20.relative(projectRoot, dirPath).replace(/\\/g, "/");
+      const segmentPath = path19.relative(projectRoot, dirPath).replace(/\\/g, "/");
       segments.push({
         segmentPath,
         hasLayout,
@@ -255977,7 +255737,7 @@ function scanNextjsRouteSegments(appDir, projectRoot) {
     }
     for (const entry of entries) {
       if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
-        scanDir(path20.join(dirPath, entry.name));
+        scanDir(path19.join(dirPath, entry.name));
       }
     }
   }
@@ -255987,56 +255747,56 @@ function scanNextjsRouteSegments(appDir, projectRoot) {
 }
 __name(scanNextjsRouteSegments, "scanNextjsRouteSegments");
 
-// src/handlers/error-boundaries/coverage-analyzer.ts
-var fs17 = __toESM(require("fs"), 1);
-var path21 = __toESM(require("path"), 1);
-var import_typescript35 = __toESM(require_typescript(), 1);
+// src/core/error-boundaries/coverage-analyzer.ts
+var fs19 = __toESM(require("fs"), 1);
+var path20 = __toESM(require("path"), 1);
+var import_typescript39 = __toESM(require_typescript(), 1);
 function extractImportPaths(filePath, projectRoot) {
   let content;
   try {
-    content = fs17.readFileSync(filePath, "utf-8");
+    content = fs19.readFileSync(filePath, "utf-8");
   } catch {
     return [];
   }
-  const ext = path21.extname(filePath).toLowerCase();
-  const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript35.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript35.default.ScriptKind.JS : import_typescript35.default.ScriptKind.TS;
+  const ext = path20.extname(filePath).toLowerCase();
+  const scriptKind = ext === ".tsx" || ext === ".jsx" ? import_typescript39.default.ScriptKind.TSX : ext === ".js" || ext === ".mjs" || ext === ".cjs" ? import_typescript39.default.ScriptKind.JS : import_typescript39.default.ScriptKind.TS;
   let sourceFile;
   try {
-    sourceFile = import_typescript35.default.createSourceFile(filePath, content, import_typescript35.default.ScriptTarget.Latest, true, scriptKind);
+    sourceFile = import_typescript39.default.createSourceFile(filePath, content, import_typescript39.default.ScriptTarget.Latest, true, scriptKind);
   } catch {
     return [];
   }
   const imports = [];
-  import_typescript35.default.forEachChild(sourceFile, (node) => {
+  import_typescript39.default.forEachChild(sourceFile, (node) => {
     let moduleSpecifier;
-    if (import_typescript35.default.isImportDeclaration(node) && import_typescript35.default.isStringLiteral(node.moduleSpecifier)) {
+    if (import_typescript39.default.isImportDeclaration(node) && import_typescript39.default.isStringLiteral(node.moduleSpecifier)) {
       moduleSpecifier = node.moduleSpecifier.text;
-    } else if (import_typescript35.default.isExportDeclaration(node) && node.moduleSpecifier && import_typescript35.default.isStringLiteral(node.moduleSpecifier)) {
+    } else if (import_typescript39.default.isExportDeclaration(node) && node.moduleSpecifier && import_typescript39.default.isStringLiteral(node.moduleSpecifier)) {
       moduleSpecifier = node.moduleSpecifier.text;
     }
     if (!moduleSpecifier || !moduleSpecifier.startsWith("."))
       return;
-    const dir = path21.dirname(filePath);
+    const dir = path20.dirname(filePath);
     let resolved;
-    const base = path21.resolve(dir, moduleSpecifier);
+    const base = path20.resolve(dir, moduleSpecifier);
     for (const ext2 of SCANNABLE_EXTENSIONS2) {
       const candidate = base + ext2;
-      if (fs17.existsSync(candidate)) {
+      if (fs19.existsSync(candidate)) {
         resolved = candidate;
         break;
       }
     }
     if (!resolved) {
       for (const ext2 of SCANNABLE_EXTENSIONS2) {
-        const candidate = path21.join(base, "index" + ext2);
-        if (fs17.existsSync(candidate)) {
+        const candidate = path20.join(base, "index" + ext2);
+        if (fs19.existsSync(candidate)) {
           resolved = candidate;
           break;
         }
       }
     }
     if (resolved) {
-      const normalizedRoot = projectRoot.endsWith(path21.sep) ? projectRoot : projectRoot + path21.sep;
+      const normalizedRoot = projectRoot.endsWith(path20.sep) ? projectRoot : projectRoot + path20.sep;
       if (resolved.startsWith(normalizedRoot) || resolved === projectRoot) {
         imports.push(resolved);
       }
@@ -256076,7 +255836,7 @@ __name(collectSubtree, "collectSubtree");
 function analyzeCoverage(boundaries, allFiles, forwardGraph, projectRoot) {
   const relToAbs = /* @__PURE__ */ new Map();
   for (const f of allFiles) {
-    const rel = path21.relative(projectRoot, f).replace(/\\/g, "/");
+    const rel = path20.relative(projectRoot, f).replace(/\\/g, "/");
     relToAbs.set(rel, f);
   }
   const boundaryProtectedSets = /* @__PURE__ */ new Map();
@@ -256089,7 +255849,7 @@ function analyzeCoverage(boundaries, allFiles, forwardGraph, projectRoot) {
   }
   const coverage = [];
   for (const absPath of allFiles) {
-    const relPath = path21.relative(projectRoot, absPath).replace(/\\/g, "/");
+    const relPath = path20.relative(projectRoot, absPath).replace(/\\/g, "/");
     let isProtected = false;
     let protectedBy;
     for (const [boundaryFile, subtree] of boundaryProtectedSets) {
@@ -256135,7 +255895,7 @@ function updateSegmentProtection(segments) {
 }
 __name(updateSegmentProtection, "updateSegmentProtection");
 
-// src/handlers/error-boundaries/issue-detector.ts
+// src/core/error-boundaries/issue-detector.ts
 function detectMissingFallback(boundaries) {
   const issues = [];
   for (const boundary of boundaries) {
@@ -256270,11 +256030,11 @@ function detectAllIssues2(boundaries, segments, coverage, asyncFiles, isNextjsAp
 }
 __name(detectAllIssues2, "detectAllIssues");
 
-// src/handlers/error-boundaries/index.ts
+// src/extensions/error-boundaries.ts
 function resolveProjectPath(projectPath) {
   const configRoot = getProjectRoot();
-  const absPath = path22.isAbsolute(projectPath) ? projectPath : path22.resolve(configRoot, projectPath);
-  const normalizedRoot = configRoot.endsWith(path22.sep) ? configRoot : configRoot + path22.sep;
+  const absPath = path21.isAbsolute(projectPath) ? projectPath : path21.resolve(configRoot, projectPath);
+  const normalizedRoot = configRoot.endsWith(path21.sep) ? configRoot : configRoot + path21.sep;
   if (!absPath.startsWith(normalizedRoot) && absPath !== configRoot) {
     return { absPath: "", error: "project_path is outside the configured project root" };
   }
@@ -256283,54 +256043,55 @@ function resolveProjectPath(projectPath) {
 __name(resolveProjectPath, "resolveProjectPath");
 function detectAppRouterDir(projectPath) {
   const candidates = [
-    path22.join(projectPath, "app"),
-    path22.join(projectPath, "src", "app")
+    path21.join(projectPath, "app"),
+    path21.join(projectPath, "src", "app")
   ];
   for (const candidate of candidates) {
-    if (fs18.existsSync(candidate) && fs18.statSync(candidate).isDirectory()) {
+    if (fs20.existsSync(candidate) && fs20.statSync(candidate).isDirectory()) {
       return candidate;
     }
   }
   return null;
 }
 __name(detectAppRouterDir, "detectAppRouterDir");
-async function handleAnalyzeErrorBoundaries(args) {
-  if (!args.project_path) {
-    return createErrorResponse11("project_path argument is required");
+async function analyzeErrorBoundaries(args) {
+  const typedArgs = args;
+  if (!typedArgs.project_path) {
+    return missingArg("project_path");
   }
-  const { absPath: projectPath, error: pathError } = resolveProjectPath(args.project_path);
+  const { absPath: projectPath, error: pathError } = resolveProjectPath(
+    typedArgs.project_path
+  );
   if (pathError) {
-    return createErrorResponse11(pathError, { provided: args.project_path });
+    return fail(pathError, { provided: typedArgs.project_path });
   }
-  if (!fs18.existsSync(projectPath)) {
-    return createErrorResponse11(
-      `project_path not found: ${args.project_path}`,
-      { resolved: projectPath }
-    );
+  if (!fs20.existsSync(projectPath)) {
+    return fail(`project_path not found: ${typedArgs.project_path}`, {
+      resolved: projectPath
+    });
   }
-  const stat = fs18.statSync(projectPath);
+  const stat = fs20.statSync(projectPath);
   if (!stat.isDirectory()) {
-    return createErrorResponse11(
-      `project_path must be a directory: ${args.project_path}`,
-      { resolved: projectPath }
-    );
+    return fail(`project_path must be a directory: ${typedArgs.project_path}`, {
+      resolved: projectPath
+    });
   }
-  const includeLibraries = args.include_library_boundaries !== false;
+  const includeLibraries = typedArgs.include_library_boundaries !== false;
   try {
     let allFiles;
-    if (args.entry) {
-      const entryAbs = path22.isAbsolute(args.entry) ? args.entry : path22.resolve(projectPath, args.entry);
-      const normalizedRoot = projectPath.endsWith(path22.sep) ? projectPath : projectPath + path22.sep;
+    if (typedArgs.entry) {
+      const entryAbs = path21.isAbsolute(typedArgs.entry) ? typedArgs.entry : path21.resolve(projectPath, typedArgs.entry);
+      const normalizedRoot = projectPath.endsWith(path21.sep) ? projectPath : projectPath + path21.sep;
       if (!entryAbs.startsWith(normalizedRoot) && entryAbs !== projectPath) {
-        return createErrorResponse11("entry path is outside project_path", { provided: args.entry });
+        return fail("entry path is outside project_path", { provided: typedArgs.entry });
       }
-      allFiles = fs18.existsSync(entryAbs) ? [entryAbs] : [];
+      allFiles = fs20.existsSync(entryAbs) ? [entryAbs] : [];
     } else {
       allFiles = collectFiles2(projectPath);
     }
     if (allFiles.length === 0) {
-      return createSuccessResponse11({
-        project_path: args.project_path,
+      return ok({
+        project_path: typedArgs.project_path,
         boundaries: [],
         route_segments: [],
         coverage: [],
@@ -256361,7 +256122,7 @@ async function handleAnalyzeErrorBoundaries(args) {
     const asyncFiles = /* @__PURE__ */ new Set();
     for (const f of allFiles) {
       if (fileHasAsyncOperations(f)) {
-        const rel = path22.relative(projectPath, f).replace(/\\/g, "/");
+        const rel = path21.relative(projectPath, f).replace(/\\/g, "/");
         asyncFiles.add(rel);
       }
     }
@@ -256391,20 +256152,20 @@ async function handleAnalyzeErrorBoundaries(args) {
       is_nextjs_app_router: isNextjsAppRouter
     };
     const result = {
-      project_path: args.project_path,
+      project_path: typedArgs.project_path,
       boundaries,
       route_segments: routeSegments,
       coverage,
       issues,
       summary
     };
-    return createSuccessResponse11(result);
+    return ok(result);
   } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : "Unknown error during analysis";
-    return createErrorResponse11(message, { project_path: args.project_path });
+    return failFromException(error2, "Error boundary analysis failed");
   }
 }
-__name(handleAnalyzeErrorBoundaries, "handleAnalyzeErrorBoundaries");
+__name(analyzeErrorBoundaries, "analyzeErrorBoundaries");
+var handleAnalyzeErrorBoundaries = analyzeErrorBoundaries;
 
 // src/plugins/dispatch.ts
 var DISPATCH_TABLE = /* @__PURE__ */ new Map([

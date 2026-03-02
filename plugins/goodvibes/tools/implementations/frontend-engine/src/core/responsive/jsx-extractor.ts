@@ -8,7 +8,7 @@
 
 import ts from 'typescript';
 import type { ClassNameExtraction } from './types.js';
-import { extractClassesFromNode } from '../../handlers/jsx-class-utils.js';
+import { extractClassesFromNode } from '../jsx/class-extractor.js';
 
 /**
  * Extract className attributes from JSX elements

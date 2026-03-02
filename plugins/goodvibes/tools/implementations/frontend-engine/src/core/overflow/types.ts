@@ -4,7 +4,7 @@
  * @module core/overflow/types
  */
 
-import type { LayoutNode as BaseLayoutNode } from '../../handlers/analyze-layout-hierarchy.js';
+import type { LayoutNode as BaseLayoutNode } from '../layout/types.js';
 
 /**
  * Arguments for the diagnose_overflow tool
@@ -97,4 +97,4 @@ export interface DiagnoseOverflowResult {
 }
 
 // Re-export the base type for convenience
-export type { LayoutNode as BaseLayoutNode } from '../../handlers/analyze-layout-hierarchy.js';
+export type { LayoutNode as BaseLayoutNode } from '../layout/types.js';
