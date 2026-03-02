@@ -252556,7 +252556,7 @@ async function detectBackendPath(projectPath) {
 __name(detectBackendPath, "detectBackendPath");
 async function parseBackendRoutes(projectPath, backendPath, framework) {
   const routes = [];
-  const apiRoutesResponse = getApiRoutes({ path: projectPath, framework: framework || "auto" });
+  const apiRoutesResponse = getApiRoutes({ path: path21.join(projectPath, backendPath), framework: framework || "auto" });
   if (apiRoutesResponse.isError) {
     return routes;
   }
@@ -256743,17 +256743,14 @@ __name(calculateRateAnalysis, "calculateRateAnalysis");
 function matchPatterns(entries, patterns) {
   if (!patterns || patterns.length === 0) return {};
   const results = {};
-  for (const pattern of patterns) {
-    results[pattern.name] = 0;
-    if (!pattern.regex || pattern.regex.trim() === "") continue;
+  for (const patternDef of patterns) {
+    results[patternDef.name] = 0;
+    if (!patternDef.pattern || patternDef.pattern.trim() === "") continue;
     try {
-      const regex = new RegExp(pattern.regex, "i");
+      const regex = new RegExp(patternDef.pattern, "i");
       for (const entry of entries) {
         if (regex.test(entry.raw)) {
-          results[pattern.name]++;
-          if (!entry.level) {
-            entry.level = pattern.level;
-          }
+          results[patternDef.name]++;
         }
       }
     } catch {

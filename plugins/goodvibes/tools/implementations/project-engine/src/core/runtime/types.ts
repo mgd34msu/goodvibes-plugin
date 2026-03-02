@@ -23,8 +23,7 @@ export interface LogAnalyzerArgs {
   /** Custom patterns to detect */
   patterns?: Array<{
     name: string;
-    regex: string;
-    level: 'debug' | 'info' | 'warn' | 'error';
+    pattern: string;
   }>;
   /** Time window filter (e.g., "5m", "1h", "24h") */
   time_window?: string;

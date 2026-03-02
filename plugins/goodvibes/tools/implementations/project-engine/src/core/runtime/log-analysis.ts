@@ -308,19 +308,15 @@ export function matchPatterns(
 
   const results: Record<string, number> = {};
 
-  for (const pattern of patterns) {
-    results[pattern.name] = 0;
-    // Skip empty regex patterns — new RegExp('') matches every line
-    if (!pattern.regex || pattern.regex.trim() === '') continue;
+  for (const patternDef of patterns) {
+    results[patternDef.name] = 0;
+    // Skip empty patterns — new RegExp('') matches every line
+    if (!patternDef.pattern || patternDef.pattern.trim() === '') continue;
     try {
-      const regex = new RegExp(pattern.regex, 'i');
+      const regex = new RegExp(patternDef.pattern, 'i');
       for (const entry of entries) {
         if (regex.test(entry.raw)) {
-          results[pattern.name]++;
-          // Optionally set level if not already set
-          if (!entry.level) {
-            entry.level = pattern.level;
-          }
+          results[patternDef.name]++;
         }
       }
     } catch {

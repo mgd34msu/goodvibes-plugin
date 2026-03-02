@@ -62,8 +62,8 @@ async function parseBackendRoutes(
 ): Promise<BackendRoute[]> {
   const routes: BackendRoute[] = [];
 
-  // Use the routes extension to discover API routes, passing framework if specified
-  const apiRoutesResponse = getApiRoutes({ path: projectPath, framework: framework || 'auto' });
+  // Use the routes extension to discover API routes, passing framework and backend path if specified
+  const apiRoutesResponse = getApiRoutes({ path: path.join(projectPath, backendPath), framework: framework || 'auto' });
 
   if (apiRoutesResponse.isError) {
     return routes;

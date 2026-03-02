@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info:
+  title: Delete Me Test API
+  version: 1.0.0
+  description: VibePlug - Claude Code Plugin Framework
+paths: {}
+components:
+  schemas: {}
+tags: []
