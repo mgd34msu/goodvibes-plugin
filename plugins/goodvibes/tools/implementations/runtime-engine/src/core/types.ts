@@ -11,57 +11,7 @@
  * This file NEVER changes after stabilisation.
  */
 
-import { generateEventId } from '../shared/utils.js';
-
-// ─── Event Source ─────────────────────────────────────────────────────────────
-
-/**
- * The high-level origin category of an event.
- * Layer 2 extensions narrow each source to a specific typed interface.
- */
-export type EventSource = 'time' | 'human' | 'external' | 'internal' | 'agent';
-
-// ─── Event Context ────────────────────────────────────────────────────────────
-
-/**
- * Causal and routing context attached to an event.
- * Optional on root events; populated when events are chained.
- */
-export interface EventContext {
-  /** Workflow this event belongs to (enables workflow-level locking). */
-  workflow_id?: string;
-  /** Agent that produced this event. */
-  agent_id?: string;
-  /** ID of the event that directly caused this one. */
-  parent_event_id?: string;
-  /** Depth of the causal chain (0 for root events). */
-  chain_depth?: number;
-  /** Cancellation reference tag — cancel all events sharing this ref. */
-  ref?: string;
-}
-
-// ─── Runtime Event ────────────────────────────────────────────────────────────
-
-/**
- * Base event schema. Every event flowing through the system implements this.
- * Layer 2 extends it with source-specific fields.
- */
-export interface RuntimeEvent {
-  /** Globally unique event identifier. */
-  id: string;
-  /** High-level origin category. */
-  source: EventSource;
-  /** Namespaced type string, e.g. 'user:login', 'cron:daily'. */
-  type: string;
-  /** Event-specific payload. Typed by Layer 2 extensions. */
-  payload: unknown;
-  /** Unix epoch milliseconds. */
-  timestamp: number;
-  /** Processing priority. Higher numbers are processed first. */
-  priority: number;
-  /** Optional causal/routing context. */
-  context?: EventContext;
-}
+import type { RuntimeEvent, EventSource, EventContext } from '../shared/events.js';
 
 // ─── Event Matcher ────────────────────────────────────────────────────────────
 
@@ -459,23 +409,6 @@ function isEventContext(value: unknown): value is EventContext {
 // ─── Factory Helpers ──────────────────────────────────────────────────────────
 
 /**
- * Creates a RuntimeEvent with sensible defaults.
- * The caller must supply `source`, `type`, and `payload`;
- * all other fields have defaults.
- */
-export function createEvent(
-  overrides: Pick<RuntimeEvent, 'source' | 'type' | 'payload'> &
-    Partial<Omit<RuntimeEvent, 'source' | 'type' | 'payload'>>,
-): RuntimeEvent {
-  return {
-    id: overrides.id ?? generateEventId(),
-    timestamp: overrides.timestamp ?? Date.now(),
-    priority: overrides.priority ?? 0,
-    ...overrides,
-  };
-}
-
-/**
  * Creates a Trigger with sensible defaults.
  * The caller must supply `id`, `event_match`, and `actions`;
  * `enabled` defaults to true.
@@ -489,3 +422,20 @@ export function createTrigger(
     ...overrides,
   };
 }
+
+// ─── Deprecated Re-exports ──────────────────────────────────────────────────────────
+// These types have moved to 'shared/events.js'. They are re-exported here for
+// backwards compatibility during the migration period. Import directly from
+// 'shared/events.js' going forward.
+
+/** @deprecated Import from '../shared/events.js' instead */
+export type { RuntimeEvent } from '../shared/events.js';
+
+/** @deprecated Import from '../shared/events.js' instead */
+export type { EventSource } from '../shared/events.js';
+
+/** @deprecated Import from '../shared/events.js' instead */
+export type { EventContext } from '../shared/events.js';
+
+/** @deprecated Import from '../shared/events.js' instead */
+export { createEvent } from '../shared/events.js';

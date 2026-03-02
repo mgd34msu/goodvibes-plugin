@@ -21,7 +21,7 @@ import type {
   EventFilter,
   Unsubscribe,
   EventType,
-} from './types.js';
+} from '../../shared/events.js';
 
 const logger = createLogger('event-bus');
 

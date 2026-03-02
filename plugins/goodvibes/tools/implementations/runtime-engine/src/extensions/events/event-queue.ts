@@ -11,7 +11,7 @@
  * event loop between items to prevent the queue from monopolising the CPU.
  */
 
-import type { RuntimeEvent } from './types.js';
+import type { RuntimeEvent } from '../../shared/events.js';
 import { generateId, timestamp, toErrorMessage } from '../../shared/utils.js';
 import { QueueError } from '../../shared/errors.js';
 import { createLogger } from '../../shared/logger.js';

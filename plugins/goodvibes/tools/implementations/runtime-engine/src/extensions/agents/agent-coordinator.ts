@@ -23,7 +23,7 @@ import type { AgentsConfig } from '../../shared/config.js';
 import { createLogger } from '../../shared/logger.js';
 import { generateEventId, generateId, timestamp, toErrorMessage } from '../../shared/utils.js';
 import { ProcessingError } from '../../shared/errors.js';
-import type { EventType } from '../events/types.js';
+import type { EventType } from '../../shared/events.js';
 import { BudgetTracker } from './budget-tracker.js';
 import type {
   AgentBudgetSnapshot,

@@ -26,7 +26,7 @@ import { createLogger } from '../../shared/logger.js';
 import { generateEventId, generateWorkflowId, timestamp, toErrorMessage } from '../../shared/utils.js';
 import { WorkflowError } from '../../shared/errors.js';
 import type { WorkflowsConfig } from '../../shared/config.js';
-import type { RuntimeEvent, EventType } from '../events/types.js';
+import type { RuntimeEvent, EventType } from '../../shared/events.js';
 import type {
   WorkflowDefinition,
   WorkflowInstance,

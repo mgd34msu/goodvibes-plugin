@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { StateStoreInterface, RuntimeEvent, Trigger } from '../../../core/types.js';
+import type { RuntimeEvent } from '../../../shared/events.js';
+import type { StateStoreInterface, Trigger } from '../../../core/types.js';
 
 // ─── Mocks ─────────────────────────────────────────────────────────────────
 
@@ -36,10 +37,10 @@ vi.mock('../../../extensions/directives/gv-tag-parser.js', () => ({
   parseGvTag: vi.fn().mockReturnValue({ found: false }),
 }));
 
-// Mock core/types createEvent — return a minimal RuntimeEvent shape
+// Mock shared/events createEvent — return a minimal RuntimeEvent shape
 const mockCreateEvent = vi.fn();
-vi.mock('../../../core/types.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../core/types.js')>();
+vi.mock('../../../shared/events.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../../shared/events.js')>();
   return {
     ...original,
     createEvent: (...args: unknown[]) => mockCreateEvent(...args),

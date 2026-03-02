@@ -22,7 +22,7 @@ import {
 import * as readline from 'node:readline';
 import { join, dirname } from 'node:path';
 import type { WriteStream } from 'node:fs';
-import type { RuntimeEvent, EventFilter } from './types.js';
+import type { RuntimeEvent, EventFilter } from '../../shared/events.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage, safeJsonParse } from '../../shared/utils.js';
 import { ensureDirSync } from '../../core/utils/fs-utils.js';

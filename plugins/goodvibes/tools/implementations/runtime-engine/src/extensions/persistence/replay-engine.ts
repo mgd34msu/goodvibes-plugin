@@ -16,7 +16,7 @@ import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
-import type { EventType, RuntimeEvent } from '../events/types.js';
+import type { EventType, RuntimeEvent } from '../../shared/events.js';
 import type { WorkflowInstance } from '../workflow/types.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';

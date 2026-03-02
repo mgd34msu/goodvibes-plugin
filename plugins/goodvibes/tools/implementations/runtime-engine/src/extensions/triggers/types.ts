@@ -5,7 +5,7 @@
  * trigger definitions, condition variants, action variants, and results.
  */
 
-import type { EventType, EventTypePattern, RuntimeEvent } from '../events/types.js';
+import type { EventType, EventTypePattern, RuntimeEvent } from '../../shared/events.js';
 
 // ─── Trigger Definition ────────────────────────────────────────────────────────
 

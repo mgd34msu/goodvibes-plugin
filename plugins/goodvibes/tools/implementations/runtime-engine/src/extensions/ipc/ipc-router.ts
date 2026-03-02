@@ -9,7 +9,7 @@
 import type { ResponseEnvelope } from '../../shared/ipc/ipc-server.js';
 import { HOLD_TTL_MS } from '../directives/directive-queue.js';
 import type { EventBus } from '../events/event-bus.js';
-import type { EventType, EventSource, EventPayload, RuntimeEvent } from '../events/types.js';
+import type { EventType, EventSource, EventPayload, RuntimeEvent } from '../../shared/events.js';
 import type { TriggerRegistry } from '../triggers/trigger-registry.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';

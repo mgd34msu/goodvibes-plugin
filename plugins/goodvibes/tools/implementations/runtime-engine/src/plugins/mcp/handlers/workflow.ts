@@ -8,7 +8,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { createLogger } from '../../../shared/logger.js';
 import { assertOptionalString, generateEventId, timestamp, toErrorMessage } from '../../../shared/utils.js';
-import type { EventType, EventSource, EventPayload } from '../../../extensions/events/types.js';
+import type { EventType, EventSource, EventPayload } from '../../../shared/events.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
 

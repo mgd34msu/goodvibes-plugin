@@ -12,7 +12,7 @@
  * - Chronological order: start at `(head - count + capacity) % capacity`
  */
 
-import type { RuntimeEvent, EventTypePattern } from '../events/types.js';
+import type { RuntimeEvent, EventTypePattern } from '../../shared/events.js';
 import type {
   TriggerCondition,
   EventCondition,

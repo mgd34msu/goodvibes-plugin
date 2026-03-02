@@ -7,7 +7,8 @@
  * Each factory creates a typed event with sensible defaults.
  */
 
-import { RuntimeEvent, EventContext, createEvent } from '../../core/types.js';
+import type { RuntimeEvent, EventContext } from '../../shared/events.js';
+import { createEvent } from '../../shared/events.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HookEvent

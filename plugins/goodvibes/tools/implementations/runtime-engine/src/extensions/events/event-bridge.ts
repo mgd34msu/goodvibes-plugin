@@ -6,9 +6,10 @@
  * Uses origin tagging to prevent infinite forwarding loops.
  */
 import { createLogger } from '../../shared/logger.js';
-import type { EventQueueInterface, RuntimeEvent as CoreRuntimeEvent } from '../../core/types.js';
+import type { EventQueueInterface } from '../../core/types.js';
+import type { RuntimeEvent as CoreRuntimeEvent } from '../../shared/events.js';
 import type { EventBus } from './event-bus.js';
-import type { RuntimeEvent } from './types.js';
+import type { RuntimeEvent } from '../../shared/events.js';
 
 const logger = createLogger('event-bridge');
 

@@ -11,7 +11,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createLogger } from '../../../shared/logger.js';
 import { generateEventId, timestamp, toErrorMessage } from '../../../shared/utils.js';
 import { MAX_EVENT_TYPE_LENGTH } from '../../../shared/constants.js';
-import type { EventType, EventPayload } from '../../../extensions/events/types.js';
+import type { EventType, EventPayload } from '../../../shared/events.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
 

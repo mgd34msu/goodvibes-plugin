@@ -14,7 +14,7 @@ import {
   handleRuntimeEvents,
 } from '../events.js';
 import type { HandlerContext } from '../types.js';
-import type { RuntimeEvent } from '../../../../extensions/events/types.js';
+import type { RuntimeEvent } from '../../../../shared/events.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@
 
 import { generateEventId, timestamp, toErrorMessage } from '../../shared/utils.js';
 import { createLogger } from '../../shared/logger.js';
-import type { RuntimeEvent, EventType } from '../events/types.js';
+import type { RuntimeEvent, EventType } from '../../shared/events.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';

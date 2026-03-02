@@ -8,7 +8,7 @@
 
 import { createLogger } from '../../shared/logger.js';
 import { QueueError } from '../../shared/errors.js';
-import type { RuntimeEvent } from '../events/types.js';
+import type { RuntimeEvent } from '../../shared/events.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { TriggersConfig } from '../../shared/config.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';

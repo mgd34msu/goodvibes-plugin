@@ -6,7 +6,7 @@
  * shared between the WorkflowEngine and built-in workflow definitions.
  */
 
-import type { EventType, RuntimeEvent } from '../events/types.js';
+import type { EventType, RuntimeEvent } from '../../shared/events.js';
 
 // ─── Workflow Definition ──────────────────────────────────────────────────────
 
