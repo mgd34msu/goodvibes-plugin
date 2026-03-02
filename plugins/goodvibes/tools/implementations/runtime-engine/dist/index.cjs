@@ -33975,10 +33975,10 @@ var IPCRouter = class {
     const emittedEvent = {
       id: msg.id,
       timestamp: msg.timestamp,
-      type: `hook:${msg.hook_name}`,
+      type: msg.hook_name,
       source: { kind: "hook", hook_name: msg.hook_name },
       payload: {
-        type: `hook:${msg.hook_name}`,
+        type: msg.hook_name,
         data: msg.hook_input
       },
       metadata: {
@@ -33988,15 +33988,6 @@ var IPCRouter = class {
       }
     };
     this.eventBus.emit(emittedEvent);
-    if (this.triggerRegistry) {
-      try {
-        await this.triggerRegistry.evaluate(emittedEvent);
-      } catch (err) {
-        logger54.warn("IPC hook_event: trigger evaluation error", {
-          error: toErrorMessage(err)
-        });
-      }
-    }
     if (msg.hook_name === "session:started" && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();
     }

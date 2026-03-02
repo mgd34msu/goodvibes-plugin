@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Items</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Items</h1>
+
+    <form id="add-form">
+      <input
+        type="text"
+        id="item-input"
+        placeholder="Enter item name"
+        autocomplete="off"
+        required
+      >
+      <button type="submit">Add</button>
+    </form>
+
+    <p id="error-msg" class="error" hidden></p>
+
+    <ul id="items-list"></ul>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -238,14 +238,19 @@ export class IPCRouter {
    * session pointers, store WRFC config, and optionally route through HookProcessor.
    */
   private async handleHookEvent(msg: HookEventMessage): Promise<IPCResponse | ResponseEnvelope> {
-    // Emit as a hook:* event on the EventBus
+    // Emit as the bare event type (e.g. 'agent:completed') on the EventBus.
+    // The source.kind === 'hook' field already provides traceability of hook origin.
+    // Using the bare event type is required so that:
+    //   1. EventBridge FORWARDED_PATTERNS (e.g. 'agent:completed') can match.
+    //   2. Trigger conditions in wrfc-plugin (e.g. type: 'agent:completed') can match.
+    // Previously this was prefixed with 'hook:' which broke both matching paths.
     const emittedEvent: RuntimeEvent = {
       id: msg.id,
       timestamp: msg.timestamp,
-      type: `hook:${msg.hook_name}` as EventType,
+      type: msg.hook_name as EventType,
       source: { kind: 'hook', hook_name: msg.hook_name } as EventSource,
       payload: {
-        type: `hook:${msg.hook_name}` as EventType,
+        type: msg.hook_name as EventType,
         data: msg.hook_input,
       } as EventPayload,
       metadata: {
@@ -255,16 +260,11 @@ export class IPCRouter {
       },
     };
     this.eventBus.emit(emittedEvent);
-    // Await trigger evaluation so directives are enqueued before the hook's follow-up query
-    if (this.triggerRegistry) {
-      try {
-        await this.triggerRegistry.evaluate(emittedEvent);
-      } catch (err) {
-        logger.warn('IPC hook_event: trigger evaluation error', {
-          error: toErrorMessage(err),
-        });
-      }
-    }
+    // NOTE: We intentionally do NOT call triggerRegistry.evaluate() directly here.
+    // WRFC triggers have actions: [] so direct evaluation does nothing useful.
+    // The actual handler execution path is: EventBridge → EventQueue → EventProcessor.
+    // Direct evaluate would increment fires_count, risking double-fire when the
+    // EventProcessor evaluates the same event from the EventQueue path.
     // Reset trigger fire counts on new session so budgets are per-session
     if (msg.hook_name === 'session:started' && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();

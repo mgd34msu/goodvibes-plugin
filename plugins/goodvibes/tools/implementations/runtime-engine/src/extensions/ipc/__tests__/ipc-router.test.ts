@@ -231,22 +231,27 @@ describe('IPCRouter', () => {
       mockValidateWRFCConfig.mockImplementation((cfg: Record<string, unknown>) => cfg);
     });
 
-    it('emits hook event on eventBus with hook: prefix', async () => {
+    it('emits hook event on eventBus with bare event type (no hook: prefix)', async () => {
       const result = await router.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
       const response = 'response' in result ? result.response : result;
       expect(response.status).toBe('ok');
       expect((deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit).toHaveBeenCalledOnce();
       const emitted = (deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit.mock.calls[0][0];
-      expect(emitted.type).toBe('hook:pre_tool_use');
+      // Event type must be the bare hook_name so EventBridge FORWARDED_PATTERNS can match.
+      // source.kind === 'hook' provides traceability of hook origin.
+      expect(emitted.type).toBe('pre_tool_use');
       expect(emitted.source.kind).toBe('hook');
       expect(emitted.source.hook_name).toBe('pre_tool_use');
     });
 
-    it('calls triggerRegistry.evaluate with the emitted event', async () => {
+    it('does NOT call triggerRegistry.evaluate directly (EventBridge path handles evaluation)', async () => {
+      // Direct triggerRegistry.evaluate was removed to prevent double-fire:
+      // WRFC triggers have actions:[] so direct eval is useless, but increments fires_count.
+      // The actual handler execution path is EventBridge → EventQueue → EventProcessor.
       await router.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
       expect(
         (deps.triggerRegistry as unknown as { evaluate: ReturnType<typeof vi.fn> }).evaluate
-      ).toHaveBeenCalledOnce();
+      ).not.toHaveBeenCalled();
     });
 
     it('does not throw when triggerRegistry is null', async () => {
@@ -256,9 +261,9 @@ describe('IPCRouter', () => {
       expect(response.status).toBe('ok');
     });
 
-    it('logs warning but does not throw when triggerRegistry.evaluate rejects', async () => {
-      (deps.triggerRegistry as unknown as { evaluate: ReturnType<typeof vi.fn> }).evaluate
-        .mockRejectedValueOnce(new Error('trigger failure'));
+    it('returns ok status for hook_event regardless of triggerRegistry state', async () => {
+      // triggerRegistry.evaluate is no longer called directly, so rejection cannot occur here.
+      // This test verifies the overall hook_event handling remains robust.
       const result = await router.route(makeHookEventMsg());
       const response = 'response' in result ? result.response : result;
       expect(response.status).toBe('ok');
