@@ -10,6 +10,7 @@
 import ts from 'typescript';
 import type { ElementInfo } from './types.js';
 import { extractClassesFromAttribute } from '../jsx/class-extractor.js';
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 // =============================================================================
 // Class Category Mapping
@@ -568,14 +569,6 @@ export function longhandOverridesShorthand(shorthandClass: string, longhandClass
 // =============================================================================
 
 /**
- * Get line number for a position
- */
-export function getLineNumber(pos: number, sourceFile: ts.SourceFile): number {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
-  return line + 1;
-}
-
-/**
  * Get raw className string
  */
 export function getRawClassName(attr: ts.JsxAttribute, sourceFile: ts.SourceFile): string {
@@ -611,7 +604,7 @@ export function analyzeJsxFile(content: string, sourceFile: ts.SourceFile): Elem
   function visit(node: ts.Node): void {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber(node.getStart(), sourceFile);
+      const line = getLineNumberFromSourceFile(node.getStart(), sourceFile);
 
       for (const attr of node.attributes.properties) {
         if (ts.isJsxAttribute(attr)) {

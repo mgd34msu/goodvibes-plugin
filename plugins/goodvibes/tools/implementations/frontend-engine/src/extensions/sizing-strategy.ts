@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 
 import { ok, fail, failFromException, missingArg } from '../shared/response.js';
+import { getProjectRoot } from '../shared/config.js';
 import type { McpResponse } from '../shared/types.js';
 import { createElementIdentifier } from '../core/tailwind/identifier.js';
 import {
@@ -83,7 +84,7 @@ export interface GetSizingStrategyResult {
  */
 export async function analyzeSizingStrategy(args: unknown): Promise<McpResponse> {
   const typedArgs = args as GetSizingStrategyArgs;
-  const projectRoot = process.cwd();
+  const projectRoot = getProjectRoot();
 
   if (!typedArgs.file) {
     return missingArg('file');

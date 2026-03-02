@@ -17,11 +17,11 @@ import type {
   MemoInfo,
 } from './types.js';
 import {
-  getLineNumber,
   getCodeSnippet,
   isInsideJsxAttribute,
   isInsideMemoizationHook,
 } from './utils.js';
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 // =============================================================================
 // State Hook Analysis
@@ -47,7 +47,7 @@ export function findStateHooks(componentNode: ts.Node, sourceFile: ts.SourceFile
             triggers.push({
               type: 'state',
               name: stateName,
-              source: `useState hook at line ${getLineNumber(node, sourceFile)}`,
+              source: `useState hook at line ${getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile)}`,
               frequency: 'on_change',
               preventable: false,
             });
@@ -62,7 +62,7 @@ export function findStateHooks(componentNode: ts.Node, sourceFile: ts.SourceFile
             triggers.push({
               type: 'state',
               name: stateName,
-              source: `useReducer hook at line ${getLineNumber(node, sourceFile)}`,
+              source: `useReducer hook at line ${getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile)}`,
               frequency: 'on_change',
               preventable: false,
             });
@@ -134,7 +134,7 @@ export function findForceUpdateTriggers(componentNode: ts.Node, sourceFile: ts.S
       if (callText === 'this.forceUpdate' || callText.endsWith('.forceUpdate')) {
         triggers.push({
           type: 'force_update',
-          source: `forceUpdate() call at line ${getLineNumber(node, sourceFile)}`,
+          source: `forceUpdate() call at line ${getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile)}`,
           frequency: 'rare',
           preventable: true,
           prevention_method: 'Avoid forceUpdate; use state or props to trigger re-renders',
@@ -175,7 +175,7 @@ export function findInlineDefinitions(componentNode: ts.Node, sourceFile: ts.Sou
       issues.push({
         type: 'object',
         code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
+        line: getLineNumberFromSourceFile(expr.getStart(sourceFile), sourceFile),
         issue: `Inline object for "${attrName}" creates new reference on every render`,
         fix: 'Extract to useMemo or constant outside component',
       });
@@ -186,7 +186,7 @@ export function findInlineDefinitions(componentNode: ts.Node, sourceFile: ts.Sou
       issues.push({
         type: 'function',
         code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
+        line: getLineNumberFromSourceFile(expr.getStart(sourceFile), sourceFile),
         issue: `Inline function for "${attrName}" creates new reference on every render`,
         fix: 'Use useCallback with proper dependencies',
       });
@@ -197,7 +197,7 @@ export function findInlineDefinitions(componentNode: ts.Node, sourceFile: ts.Sou
       issues.push({
         type: 'array',
         code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
+        line: getLineNumberFromSourceFile(expr.getStart(sourceFile), sourceFile),
         issue: `Inline array for "${attrName}" creates new reference on every render`,
         fix: 'Extract to useMemo or constant outside component',
       });
@@ -208,7 +208,7 @@ export function findInlineDefinitions(componentNode: ts.Node, sourceFile: ts.Sou
       issues.push({
         type: 'jsx',
         code_snippet: getCodeSnippet(expr, sourceFile),
-        line: getLineNumber(expr, sourceFile),
+        line: getLineNumberFromSourceFile(expr.getStart(sourceFile), sourceFile),
         issue: `Inline JSX for "${attrName}" creates new element on every render`,
         fix: 'Extract to a memoized component or useMemo',
       });
@@ -274,7 +274,7 @@ export function findExpensiveComputations(componentNode: ts.Node, sourceFile: ts
 
         if (expensiveMethods.includes(methodName)) {
           // Check if it's in a useMemo dependency
-          const line = getLineNumber(node, sourceFile);
+          const line = getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile);
           computations.push({
             description: `Array ${methodName}() operation`,
             line,
@@ -290,7 +290,7 @@ export function findExpensiveComputations(componentNode: ts.Node, sourceFile: ts
         if (text.match(/^Object\.(keys|values|entries)$/)) {
           computations.push({
             description: `${text}() creates new array on every call`,
-            line: getLineNumber(node, sourceFile),
+            line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
             is_memoized: false,
             suggestion: 'Wrap in useMemo if the object rarely changes',
           });
@@ -307,7 +307,7 @@ export function findExpensiveComputations(componentNode: ts.Node, sourceFile: ts
         if (ts.isVariableDeclaration(parent) || ts.isReturnStatement(parent)) {
           computations.push({
             description: 'Object spread creates new object reference',
-            line: getLineNumber(node, sourceFile),
+            line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
             is_memoized: false,
             suggestion: 'Wrap in useMemo if spread rarely changes',
           });
@@ -427,7 +427,7 @@ export function analyzeChildProps(
             if (ts.isJsxAttribute(attr) && attr.initializer && ts.isJsxExpression(attr.initializer)) {
               const expr = attr.initializer.expression;
               if (expr) {
-                const attrLine = getLineNumber(expr, sourceFile);
+                const attrLine = getLineNumberFromSourceFile(expr.getStart(sourceFile), sourceFile);
                 const attrName = attr.name.getText(sourceFile);
 
                 // Check if this attribute has an inline definition issue

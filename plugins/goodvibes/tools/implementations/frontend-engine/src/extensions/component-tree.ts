@@ -20,6 +20,7 @@ import type {
   ComponentTreeResult,
 } from '../core/react/types.js';
 import { analyzeFile, findComponentFiles } from '../core/react/component-analyzer.js';
+import { getProjectRoot } from '../shared/config.js';
 import {
   buildUsedByRelationships,
   buildTree,
@@ -46,7 +47,7 @@ export async function analyzeComponentTree(args: unknown): Promise<McpResponse> 
     return fail('Invalid arguments: expected an object');
   }
   const typedArgs = args as GetReactComponentTreeArgs;
-  const projectRoot = process.cwd();
+  const projectRoot = getProjectRoot();
   const searchPath = typedArgs.path ?? 'src';
   const maxDepth = typedArgs.depth ?? 5;
 

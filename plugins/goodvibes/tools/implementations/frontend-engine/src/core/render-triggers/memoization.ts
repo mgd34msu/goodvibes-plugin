@@ -8,7 +8,7 @@
 
 import ts from 'typescript';
 import type { MemoInfo, MemoType, ComponentAnalysis } from './types.js';
-import { getLineNumber } from './utils.js';
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 // =============================================================================
 // Memoization Detection
@@ -121,7 +121,7 @@ export function findComponents(sourceFile: ts.SourceFile, memoInfo: Map<string, 
         components.push({
           name,
           node,
-          line: getLineNumber(node, sourceFile),
+          line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
           memoInfo: memoInfo.get(name) || { is_memoized: false },
         });
       }
@@ -143,7 +143,7 @@ export function findComponents(sourceFile: ts.SourceFile, memoInfo: Map<string, 
                   components.push({
                     name,
                     node: arg,
-                    line: getLineNumber(node, sourceFile),
+                    line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
                     memoInfo: memoInfo.get(name) || { is_memoized: true, memo_type: 'React.memo' },
                   });
                 }
@@ -153,7 +153,7 @@ export function findComponents(sourceFile: ts.SourceFile, memoInfo: Map<string, 
                 components.push({
                   name,
                   node: decl.initializer,
-                  line: getLineNumber(node, sourceFile),
+                  line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
                   memoInfo: memoInfo.get(name) || { is_memoized: false },
                 });
               }
@@ -173,7 +173,7 @@ export function findComponents(sourceFile: ts.SourceFile, memoInfo: Map<string, 
             components.push({
               name,
               node,
-              line: getLineNumber(node, sourceFile),
+              line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
               memoInfo: memoInfo.get(name) || { is_memoized: false },
             });
           }

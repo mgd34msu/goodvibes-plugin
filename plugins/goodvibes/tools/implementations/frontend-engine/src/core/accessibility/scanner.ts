@@ -9,6 +9,7 @@
 
 import ts from 'typescript';
 import type { ElementInfo, AriaPatternDef } from './types.js';
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 // =============================================================================
 // Semantic Role Constants
@@ -17,7 +18,7 @@ import type { ElementInfo, AriaPatternDef } from './types.js';
 /**
  * Maps HTML elements to their implicit ARIA roles
  */
-export const SEMANTIC_ROLES: Record<string, string> = {
+const SEMANTIC_ROLES: Record<string, string> = {
   // Interactive elements
   'button': 'button',
   'a': 'link',
@@ -95,7 +96,7 @@ export const SEMANTIC_ROLES: Record<string, string> = {
 /**
  * Input type to role mapping
  */
-export const INPUT_TYPE_ROLES: Record<string, string> = {
+const INPUT_TYPE_ROLES: Record<string, string> = {
   'text': 'textbox',
   'password': 'textbox',
   'email': 'textbox',
@@ -346,17 +347,9 @@ export function isHidden(attrs: Map<string, string>): boolean {
 // =============================================================================
 
 /**
- * Get line number for a position
- */
-export function getLineNumber(pos: number, sourceFile: ts.SourceFile): number {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
-  return line + 1;
-}
-
-/**
  * Extract attribute value from a JSX attribute
  */
-export function extractAttributeValue(attr: ts.JsxAttribute, sourceFile: ts.SourceFile): string {
+function extractAttributeValue(attr: ts.JsxAttribute, sourceFile: ts.SourceFile): string {
   if (!attr.initializer) {
     // Boolean attribute (e.g., disabled)
     return 'true';
@@ -427,7 +420,7 @@ export function extractAttributeValue(attr: ts.JsxAttribute, sourceFile: ts.Sour
 /**
  * Extract text content from JSX children
  */
-export function extractTextContent(node: ts.Node, sourceFile: ts.SourceFile): string {
+function extractTextContent(node: ts.Node, sourceFile: ts.SourceFile): string {
   const textParts: string[] = [];
 
   function visit(child: ts.Node): void {
@@ -468,7 +461,7 @@ export function analyzeJsxFile(
     // JSX Opening Element or Self-Closing Element
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber(node.getStart(), sourceFile);
+      const line = getLineNumberFromSourceFile(node.getStart(), sourceFile);
       const isComponent = /^[A-Z]/.test(tagName);
 
       // Filter by target element if specified

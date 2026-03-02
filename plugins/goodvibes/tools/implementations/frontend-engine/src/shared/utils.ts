@@ -8,6 +8,7 @@
  */
 
 import * as path from 'node:path';
+import ts from 'typescript';
 
 // =============================================================================
 // Path Utilities
@@ -44,4 +45,16 @@ export function makeRelativePath(absPath: string, root: string): string {
 export function getLineNumber(source: string, position: number): number {
   const textBefore = source.substring(0, position);
   return textBefore.split('\n').length;
+}
+
+/**
+ * Get the 1-based line number for a position within a TypeScript SourceFile.
+ *
+ * @param pos - The character offset within the source file
+ * @param sourceFile - The TypeScript SourceFile object
+ * @returns 1-based line number containing the given position
+ */
+export function getLineNumberFromSourceFile(pos: number, sourceFile: ts.SourceFile): number {
+  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
+  return line + 1;
 }

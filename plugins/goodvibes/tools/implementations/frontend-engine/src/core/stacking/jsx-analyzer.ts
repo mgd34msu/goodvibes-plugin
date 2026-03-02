@@ -10,14 +10,7 @@ import ts from 'typescript';
 import type { ElementInfo } from './types.js';
 import { createsStackingContext, extractZIndex, extractPosition } from './context-rules.js';
 import { extractClassesFromAttribute } from '../jsx/class-extractor.js';
-
-/**
- * Get line number for a position in source file
- */
-export function getLineNumber(pos: number, sourceFile: ts.SourceFile): number {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(pos);
-  return line + 1;
-}
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 /**
  * Analyze a JSX file for stacking contexts
@@ -63,7 +56,7 @@ export function analyzeJsxFile(
         return;
       }
 
-      const line = getLineNumber(node.getStart(), sourceFile);
+      const line = getLineNumberFromSourceFile(node.getStart(), sourceFile);
       const isComponent = /^[A-Z]/.test(tagName);
 
       // Extract classes from className attribute

@@ -9,7 +9,7 @@
 
 import ts from 'typescript';
 import type { EventHandler, ComponentNode, DelegationPattern } from './types.js';
-import { findDelegationTargets } from './analyzer.js';
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 // =============================================================================
 // Constants
@@ -176,14 +176,6 @@ export function normalizeFilePath(filePath: string): string {
 // =============================================================================
 
 /**
- * Get line number for a node (1-based)
- */
-export function getLineNumber(node: ts.Node, sourceFile: ts.SourceFile): number {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return line + 1;
-}
-
-/**
  * Get a clean code snippet for a node
  */
 export function getCodeSnippet(node: ts.Node, sourceFile: ts.SourceFile, maxLength = 60): string {
@@ -328,7 +320,7 @@ export function extractEventHandlers(
     if (ts.isJsxElement(node)) {
       const opening = node.openingElement;
       const tagName = opening.tagName.getText(sourceFile);
-      const line = getLineNumber(opening, sourceFile);
+      const line = getLineNumberFromSourceFile(opening.getStart(sourceFile), sourceFile);
 
       const componentNode: ComponentNode = {
         element: tagName,
@@ -356,7 +348,7 @@ export function extractEventHandlers(
     // Handle self-closing JSX elements
     if (ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
-      const line = getLineNumber(node, sourceFile);
+      const line = getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile);
 
       const componentNode: ComponentNode = {
         element: tagName,
@@ -522,6 +514,67 @@ export function findReactComponent(sourceFile: ts.SourceFile): ts.Node | null {
 // =============================================================================
 
 /**
+ * Find delegation targets in handler code
+ */
+export function findDelegationTargets(node: ts.Node, sourceFile: ts.SourceFile): string[] {
+  const targets: string[] = [];
+
+  function visit(n: ts.Node): void {
+    // Look for patterns like:
+    // - e.target.closest('button')
+    // - e.target.matches('.item')
+    // - e.target.tagName === 'BUTTON'
+    // - e.target.dataset.action
+
+    if (ts.isCallExpression(n)) {
+      const callText = n.expression.getText(sourceFile);
+
+      // e.target.closest('selector')
+      if (callText.match(/\.target\.closest$/)) {
+        const arg = n.arguments[0];
+        if (arg && ts.isStringLiteral(arg)) {
+          targets.push(arg.text);
+        }
+      }
+
+      // e.target.matches('selector')
+      if (callText.match(/\.target\.matches$/)) {
+        const arg = n.arguments[0];
+        if (arg && ts.isStringLiteral(arg)) {
+          targets.push(arg.text);
+        }
+      }
+    }
+
+    // e.target.tagName === 'TAG'
+    if (
+      ts.isBinaryExpression(n) &&
+      n.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
+    ) {
+      const leftText = n.left.getText(sourceFile);
+      if (leftText.match(/\.target\.tagName$/)) {
+        if (ts.isStringLiteral(n.right)) {
+          targets.push(n.right.text.toLowerCase());
+        }
+      }
+    }
+
+    // e.target.dataset.X checks
+    if (ts.isPropertyAccessExpression(n)) {
+      const text = n.getText(sourceFile);
+      if (text.match(/\.target\.dataset\./)) {
+        targets.push(`[data-${n.name.getText(sourceFile)}]`);
+      }
+    }
+
+    ts.forEachChild(n, visit);
+  }
+
+  visit(node);
+  return targets;
+}
+
+/**
  * Detect event delegation patterns
  */
 export function detectDelegationPatterns(
@@ -537,7 +590,7 @@ export function detectDelegationPatterns(
       if (foundPattern) return;
 
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
-        const line = getLineNumber(node, sourceFile);
+        const line = getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile);
 
         if (line === handler.line) {
           // Find the handler attribute

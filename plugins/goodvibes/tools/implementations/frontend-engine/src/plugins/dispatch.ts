@@ -11,6 +11,8 @@
  * @module plugins/dispatch
  */
 
+import type { McpResponse } from '../shared/types.js';
+
 // Import dispatchers from extensions/ layer
 import { handleGetReactComponentTree } from '../extensions/component-tree.js';
 import { handleAnalyzeStackingContext } from '../extensions/stacking-context.js';
@@ -35,7 +37,7 @@ import { handleAnalyzeErrorBoundaries } from '../extensions/error-boundaries.js'
  * Dispatcher function signature — receives raw unknown args and returns a
  * Promise resolving to an MCP-compliant content response.
  */
-export type ToolDispatcher = (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }>;
+export type ToolDispatcher = (args: unknown) => Promise<McpResponse>;
 
 /** @deprecated Use ToolDispatcher instead */
 export type ToolHandler = ToolDispatcher;
@@ -49,20 +51,20 @@ export type ToolHandler = ToolDispatcher;
  * Contains 14 entries for all frontend analysis tools.
  */
 export const DISPATCH_TABLE: ReadonlyMap<string, ToolDispatcher> = new Map<string, ToolDispatcher>([
-  ['frontend_component_tree', handleGetReactComponentTree as ToolDispatcher],
-  ['frontend_stacking_context', handleAnalyzeStackingContext as ToolDispatcher],
-  ['frontend_responsive_breakpoints', handleAnalyzeResponsiveBreakpoints as ToolDispatcher],
-  ['frontend_component_state', handleTraceComponentState as ToolDispatcher],
-  ['frontend_render_triggers', handleAnalyzeRenderTriggers as ToolDispatcher],
-  ['frontend_layout_hierarchy', handleAnalyzeLayoutHierarchy as ToolDispatcher],
-  ['frontend_overflow', handleDiagnoseOverflow as ToolDispatcher],
-  ['frontend_accessibility_tree', handleGetAccessibilityTree as ToolDispatcher],
-  ['frontend_sizing_strategy', handleGetSizingStrategy as ToolDispatcher],
-  ['frontend_event_flow', handleAnalyzeEventFlow as ToolDispatcher],
-  ['frontend_tailwind_conflicts', handleAnalyzeTailwindConflicts as ToolDispatcher],
-  ['frontend_client_boundary', handleAnalyzeClientBoundary as ToolDispatcher],
-  ['frontend_hook_dependencies', handleAuditHookDependencies as ToolDispatcher],
-  ['frontend_error_boundaries', handleAnalyzeErrorBoundaries as ToolDispatcher],
+  ['frontend_component_tree', handleGetReactComponentTree],
+  ['frontend_stacking_context', handleAnalyzeStackingContext],
+  ['frontend_responsive_breakpoints', handleAnalyzeResponsiveBreakpoints],
+  ['frontend_component_state', handleTraceComponentState],
+  ['frontend_render_triggers', handleAnalyzeRenderTriggers],
+  ['frontend_layout_hierarchy', handleAnalyzeLayoutHierarchy],
+  ['frontend_overflow', handleDiagnoseOverflow],
+  ['frontend_accessibility_tree', handleGetAccessibilityTree],
+  ['frontend_sizing_strategy', handleGetSizingStrategy],
+  ['frontend_event_flow', handleAnalyzeEventFlow],
+  ['frontend_tailwind_conflicts', handleAnalyzeTailwindConflicts],
+  ['frontend_client_boundary', handleAnalyzeClientBoundary],
+  ['frontend_hook_dependencies', handleAuditHookDependencies],
+  ['frontend_error_boundaries', handleAnalyzeErrorBoundaries],
 ]);
 
 // =============================================================================

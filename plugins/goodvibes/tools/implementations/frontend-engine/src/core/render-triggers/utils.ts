@@ -6,6 +6,7 @@
 
 import * as path from 'path';
 import ts from 'typescript';
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 // =============================================================================
 // Path Helpers
@@ -22,14 +23,6 @@ export function makeRelativePath(absolutePath: string, projectRoot: string): str
 // =============================================================================
 // AST Helpers
 // =============================================================================
-
-/**
- * Get line number for a node (1-based)
- */
-export function getLineNumber(node: ts.Node, sourceFile: ts.SourceFile): number {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return line + 1;
-}
 
 /**
  * Get a clean code snippet for a node

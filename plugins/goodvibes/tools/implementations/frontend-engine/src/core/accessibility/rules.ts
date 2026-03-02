@@ -25,7 +25,7 @@ import {
 /**
  * Compute accessible name for an element
  */
-export function getAccessibleName(elem: ElementInfo, elements: ElementInfo[]): string {
+function getAccessibleName(elem: ElementInfo, elements: ElementInfo[]): string {
   const attrs = elem.attributes;
 
   // Priority 1: aria-labelledby
@@ -95,7 +95,7 @@ export function getAccessibleName(elem: ElementInfo, elements: ElementInfo[]): s
 /**
  * Get accessible description
  */
-export function getAccessibleDescription(attrs: Map<string, string>): string | undefined {
+function getAccessibleDescription(attrs: Map<string, string>): string | undefined {
   // aria-describedby
   const describedBy = attrs.get('aria-describedby');
   if (describedBy) {
