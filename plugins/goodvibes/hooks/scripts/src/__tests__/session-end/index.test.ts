@@ -14,15 +14,17 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock node:fs module (used by cleanupDashboardPanes)
+// Mock node:fs module (used by cleanupDashboardPanes and pointer cleanup)
 const mockExistsSync = vi.fn();
 const mockReadFileSync = vi.fn();
 const mockWriteFileSync = vi.fn();
+const mockUnlinkSync = vi.fn();
 
 vi.mock('node:fs', () => ({
   existsSync: (...args: unknown[]) => mockExistsSync(...args),
   readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
   writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
+  unlinkSync: (...args: unknown[]) => mockUnlinkSync(...args),
 }));
 
 // Mock node:child_process (used by cleanupDashboardPanes)
@@ -76,6 +78,7 @@ describe('session-end/index', () => {
     mockExistsSync.mockReturnValue(false); // state file does not exist by default
     mockReadFileSync.mockReturnValue('{}');
     mockWriteFileSync.mockReturnValue(undefined);
+    mockUnlinkSync.mockReturnValue(undefined);
     mockExecFileSync.mockReturnValue(undefined);
     mockEnsureGlobalAnalyticsDir.mockReturnValue(undefined);
 
@@ -483,6 +486,74 @@ describe('session-end/index', () => {
 
       // Verify createResponse was called (could be with or without args)
       expect(mockCreateResponse).toHaveBeenCalled();
+    });
+  });
+
+  describe('pointer file cleanup', () => {
+    it('deletes pointer file when it exists', async () => {
+      // existsSync returns true only for the pointer file path
+      mockExistsSync.mockImplementation((path: unknown) => {
+        return typeof path === 'string' && path.endsWith('runtime-test-session-123.socket');
+      });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('runtime-test-session-123.socket')
+      );
+    });
+
+    it('does not call unlinkSync when pointer file does not exist', async () => {
+      // existsSync returns false (default) — pointer file absent
+      mockExistsSync.mockReturnValue(false);
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      expect(mockUnlinkSync).not.toHaveBeenCalled();
+    });
+
+    it('continues session-end processing when unlinkSync throws', async () => {
+      mockExistsSync.mockImplementation((path: unknown) => {
+        return typeof path === 'string' && path.endsWith('runtime-test-session-123.socket');
+      });
+      mockUnlinkSync.mockImplementation(() => { throw new Error('Permission denied'); });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      // Session-end must complete and respond despite the unlinkSync failure
+      expect(mockCreateResponse).toHaveBeenCalled();
+      expect(mockRespond).toHaveBeenCalled();
+    });
+
+    it('uses session_id from input for pointer file path', async () => {
+      mockReadHookInput.mockResolvedValue({
+        session_id: 'custom-session-id-abc',
+        cwd: '/test/cwd',
+        hook_event_name: 'SessionEnd',
+        transcript_path: '/test/transcript',
+        permission_mode: 'default',
+      });
+      mockExistsSync.mockImplementation((path: unknown) => {
+        return typeof path === 'string' && path.endsWith('runtime-custom-session-id-abc.socket');
+      });
+      mockLoadAnalytics.mockResolvedValue(null);
+
+      const importPromise = import('../../session-end/index.js');
+      await vi.runAllTimersAsync();
+      await importPromise;
+
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('runtime-custom-session-id-abc.socket')
+      );
     });
   });
 

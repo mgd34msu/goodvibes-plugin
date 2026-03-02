@@ -377,9 +377,10 @@ var TRANSCRIPT_KEYWORD_REGEX_MAP = new Map(
 
 // src/shared/runtime-client.ts
 import * as net from "node:net";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join as join2 } from "node:path";
 import { tmpdir } from "node:os";
+var DEBUG = process.env["GOODVIBES_DEBUG"] === "1";
 
 // src/shared/notification-idle.ts
 var IDLE_PROMPT_MESSAGE = "CRITICAL: IF YOU ARE WORKING ON A LONG TASK CHECK IF AGENTS HAVE FINISHED, CHECK ANY WORK COMPLETED, COMMIT VERIFIED WORK, CONTINUE WRFC LOOP. GO!";

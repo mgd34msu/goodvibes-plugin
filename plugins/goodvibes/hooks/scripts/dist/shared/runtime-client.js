@@ -21,13 +21,20 @@
  * path, os) so it can be safely imported by any hook script.
  */
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 /** Timeout in ms for hook event sends (fire-and-forget with short wait). */
 const HOOK_EVENT_TIMEOUT_MS = 500;
 /** Timeout in ms for synchronous query calls. */
 const QUERY_TIMEOUT_MS = 500;
+/** Enable debug logging via GOODVIBES_DEBUG=1 env var. */
+const DEBUG = process.env['GOODVIBES_DEBUG'] === '1';
+/** Debug logger — no-op unless GOODVIBES_DEBUG=1. */
+function debug(msg, ...args) {
+    if (DEBUG)
+        process.stderr.write(`[RuntimeClient] ${msg} ${args.map(String).join(' ')}\n`);
+}
 /**
  * Generates a simple unique ID for correlating request/response pairs.
  * Uses Date.now() + random suffix — sufficient for short-lived hook connections.
@@ -57,12 +64,16 @@ function generateId() {
 export class RuntimeClient {
     /** Absolute path to the Unix domain socket, or null if not discoverable. */
     socketPath;
+    /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
+    stateDir;
     /**
      * @param sessionId - Optional Claude Code session ID for session-keyed
      *   socket pointer lookup. When provided, enables exact-match discovery
      *   via `runtime-{sessionId}.socket` pointer files.
      */
     constructor(sessionId) {
+        const cwd = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd();
+        this.stateDir = join(cwd, '.goodvibes', 'state');
         this.socketPath = this.discoverSocket(sessionId);
     }
     // ─── Public API ─────────────────────────────────────────────────────────────
@@ -70,7 +81,13 @@ export class RuntimeClient {
      * Returns true if the runtime engine socket path was discovered and the
      * socket file currently exists on disk.
      *
-     * This is a fast synchronous check — it does NOT attempt a connection.
+     * NOTE: This is a fast synchronous file-existence check only — it does NOT
+     * attempt an actual socket connection. A stale socket file (from a dead
+     * runtime process) will still return true. Use this as a fast-path guard;
+     * actual connectivity is validated lazily on the first sendMessage call.
+     * Strategy 3 of discoverSocket() sorts by mtime descending to prefer the
+     * most recently written pointer file, reducing the chance of picking a stale
+     * socket here.
      */
     isAvailable() {
         return this.socketPath !== null && existsSync(this.socketPath);
@@ -125,6 +142,46 @@ export class RuntimeClient {
     }
     // ─── Private helpers ────────────────────────────────────────────────────────
     /**
+     * Best-effort cleanup of a confirmed-dead socket and its pointer file.
+     *
+     * Called from the sendMessage error handler when ECONNREFUSED is received
+     * (the socket file exists but no process is listening). Scans the state
+     * directory for pointer files that reference `deadSocketPath` and removes
+     * both the pointer file and the dead socket file. Failures are ignored —
+     * the cleanup is opportunistic and must never throw.
+     *
+     * @param deadSocketPath - Absolute path to the unresponsive socket file.
+     */
+    tryCleanStaleSocket(deadSocketPath) {
+        try {
+            debug(`Cleaning stale socket: ${deadSocketPath}`);
+            // Remove the dead socket file itself.
+            try {
+                unlinkSync(deadSocketPath);
+            }
+            catch { /* ignore */ }
+            // Remove any pointer files in stateDir that referenced this socket.
+            try {
+                const entries = readdirSync(this.stateDir);
+                for (const entry of entries) {
+                    if (!/^runtime-[a-zA-Z0-9_-]+\.socket$/.test(entry))
+                        continue;
+                    const pointerPath = join(this.stateDir, entry);
+                    try {
+                        const target = readFileSync(pointerPath, 'utf-8').trim();
+                        if (target === deadSocketPath) {
+                            debug(`Removing stale pointer file: ${pointerPath}`);
+                            unlinkSync(pointerPath);
+                        }
+                    }
+                    catch { /* ignore */ }
+                }
+            }
+            catch { /* ignore */ }
+        }
+        catch { /* ignore — best-effort only */ }
+    }
+    /**
      * Open a new Unix domain socket connection, write the JSON message
      * (newline-terminated), read the JSON response (newline-terminated),
      * then close. Returns null on timeout or any socket error.
@@ -149,7 +206,14 @@ export class RuntimeClient {
                 done(null);
             }, timeoutMs);
             const socket = net.createConnection({ path: socketPath });
-            socket.once('error', () => {
+            socket.once('error', (err) => {
+                debug(`Connection failed to ${socketPath}:`, `code=${err.code ?? 'unknown'}`, `msg=${err.message}`);
+                // Clean up stale pointer+socket files when we can confirm the socket
+                // is dead. ECONNREFUSED means the file exists but no process is
+                // listening — safe to remove both the socket file and its pointer.
+                if (err.code === 'ECONNREFUSED' || err.code === 'ENOENT') {
+                    this.tryCleanStaleSocket(socketPath);
+                }
                 done(null);
             });
             socket.once('connect', () => {
@@ -196,8 +260,8 @@ export class RuntimeClient {
         if (envPath) {
             return envPath;
         }
-        const cwd = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd();
-        const stateDir = join(cwd, '.goodvibes', 'state');
+        // Use the stateDir field set in the constructor.
+        const stateDir = this.stateDir;
         const stateDirExists = existsSync(stateDir);
         // Strategy 2: Session-keyed pointer file (exact match, no ambiguity).
         // Written by IPC router on session:started. Preferred over PID scan
@@ -215,24 +279,48 @@ export class RuntimeClient {
         }
         // Strategy 3: Scan for per-PID pointer files written by concurrent sessions.
         // Multiple Claude Code sessions for the same project each write their own
-        // runtime-{pid}.socket file. We pick the first one that points to an
-        // existing socket file.
+        // runtime-{pid}.socket file. We pick the most recently modified one that
+        // points to an existing socket file.
+        //
+        // IMPORTANT: Unix domain socket files persist on disk after the owning
+        // process dies, so existsSync() alone cannot detect a dead socket. To
+        // avoid silently picking a stale socket, entries are sorted by mtime
+        // DESCENDING (newest first) so the most recently created pointer file —
+        // which is most likely to belong to the live runtime — is checked first.
+        // Stale pointer+socket files are cleaned up when detected (best-effort).
         if (stateDirExists) {
             try {
                 const entries = readdirSync(stateDir);
+                // Collect matching pointer files with their mtime for sorting.
+                const pointerFiles = [];
                 for (const entry of entries) {
                     // Widened pattern matches both PID-based (runtime-12345.socket) and
                     // session-keyed (runtime-{uuid}.socket) pointer files as a fallback
                     // when sessionId was not provided (Strategy 2 was skipped).
                     if (/^runtime-[a-zA-Z0-9_-]+\.socket$/.test(entry)) {
                         try {
-                            const socketPath = readFileSync(join(stateDir, entry), 'utf-8').trim();
-                            if (socketPath && existsSync(socketPath))
-                                return socketPath;
+                            const mtimeMs = statSync(join(stateDir, entry)).mtimeMs;
+                            pointerFiles.push({ entry, mtimeMs });
                         }
                         catch {
-                            // Ignore — try next entry
+                            // Stat failed — skip this entry
                         }
+                    }
+                }
+                // Sort newest first so the live runtime wins over stale predecessors.
+                pointerFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
+                for (const { entry } of pointerFiles) {
+                    const pointerPath = join(stateDir, entry);
+                    try {
+                        const socketPath = readFileSync(pointerPath, 'utf-8').trim();
+                        if (!socketPath || !existsSync(socketPath))
+                            continue;
+                        // Return optimistically — the newest pointer is most likely live.
+                        // Stale sockets are cleaned up in sendMessage() on ECONNREFUSED.
+                        return socketPath;
+                    }
+                    catch {
+                        // Ignore — try next entry
                     }
                 }
             }

@@ -21,6 +21,8 @@ vi.mock('fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
   readdirSync: vi.fn(),
+  statSync: vi.fn(),
+  unlinkSync: vi.fn(),
 }));
 
 vi.mock('net', () => ({
@@ -33,7 +35,7 @@ vi.mock('os', () => ({
 
 // ─── Import after mocks ────────────────────────────────────────────────────
 
-import { existsSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'fs';
 import * as net from 'net';
 import { tmpdir } from 'os';
 import { RuntimeClient } from '../../shared/runtime-client.js';
@@ -41,6 +43,8 @@ import { RuntimeClient } from '../../shared/runtime-client.js';
 const mockedExistsSync = vi.mocked(existsSync);
 const mockedReadFileSync = vi.mocked(readFileSync);
 const mockedReaddirSync = vi.mocked(readdirSync);
+const mockedStatSync = vi.mocked(statSync);
+const mockedUnlinkSync = vi.mocked(unlinkSync);
 const mockedCreateConnection = vi.mocked(net.createConnection);
 const mockedTmpdir = vi.mocked(tmpdir);
 
@@ -98,6 +102,8 @@ describe('RuntimeClient', () => {
     mockedExistsSync.mockReturnValue(false);
     // Default: no pointer files in state dir (Strategy 3 finds nothing)
     mockedReaddirSync.mockReturnValue([] as unknown as ReturnType<typeof readdirSync>);
+    // Default: statSync returns a recent mtime so Strategy 3 pointer files are processable
+    mockedStatSync.mockReturnValue({ mtimeMs: Date.now() } as unknown as ReturnType<typeof statSync>);
   });
 
   afterEach(() => {
@@ -210,6 +216,7 @@ describe('RuntimeClient', () => {
         return false;
       });
       mockedReaddirSync.mockReturnValue(['runtime-12345.socket'] as unknown as ReturnType<typeof readdirSync>);
+      mockedStatSync.mockReturnValue({ mtimeMs: 1000 } as unknown as ReturnType<typeof statSync>);
       mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
 
       const client = new RuntimeClient();
@@ -249,6 +256,7 @@ describe('RuntimeClient', () => {
         return false;
       });
       mockedReaddirSync.mockReturnValue(['runtime-99999.socket'] as unknown as ReturnType<typeof readdirSync>);
+      mockedStatSync.mockReturnValue({ mtimeMs: 1000 } as unknown as ReturnType<typeof statSync>);
       mockedReadFileSync.mockReturnValue(missingSocketPath as unknown as Buffer);
 
       const client = new RuntimeClient();
@@ -267,6 +275,60 @@ describe('RuntimeClient', () => {
 
       const client = new RuntimeClient();
       // Strategies 3 and 4 both fail; client is unavailable
+      expect(client.isAvailable()).toBe(false);
+    });
+
+    it('selects the newest pointer file first when multiple exist (mtime sort)', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+      const olderSocketPath = '/var/run/runtime-old.sock';
+      const newerSocketPath = '/var/run/runtime-new.sock';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === '/project/.goodvibes/state') return true;
+        if (p === olderSocketPath) return true;
+        if (p === newerSocketPath) return true;
+        return false;
+      });
+      mockedReaddirSync.mockReturnValue([
+        'runtime-11111.socket',
+        'runtime-22222.socket',
+      ] as unknown as ReturnType<typeof readdirSync>);
+      // runtime-11111.socket is older, runtime-22222.socket is newer
+      mockedStatSync.mockImplementation((p) => {
+        if (String(p).includes('runtime-11111')) return { mtimeMs: 1000 } as unknown as ReturnType<typeof statSync>;
+        if (String(p).includes('runtime-22222')) return { mtimeMs: 2000 } as unknown as ReturnType<typeof statSync>;
+        return { mtimeMs: 0 } as unknown as ReturnType<typeof statSync>;
+      });
+      mockedReadFileSync.mockImplementation((p) => {
+        if (String(p).includes('runtime-22222')) return newerSocketPath as unknown as Buffer;
+        return olderSocketPath as unknown as Buffer;
+      });
+
+      const client = new RuntimeClient();
+      // isAvailable uses existsSync on the discovered socket path
+      mockedExistsSync.mockImplementation((p) => p === newerSocketPath);
+      // The client should have discovered newerSocketPath (highest mtimeMs)
+      expect(client.isAvailable()).toBe(true);
+      expect(mockedExistsSync).toHaveBeenCalledWith(newerSocketPath);
+    });
+
+    it('falls through to Strategy 4 when all pointer files point to dead sockets', () => {
+      process.env['CLAUDE_PROJECT_DIR'] = '/project';
+
+      mockedExistsSync.mockImplementation((p) => {
+        if (p === '/project/.goodvibes/state') return true;
+        // All socket files are dead (existsSync returns false for them)
+        return false;
+      });
+      mockedReaddirSync.mockReturnValue([
+        'runtime-11111.socket',
+        'runtime-22222.socket',
+      ] as unknown as ReturnType<typeof readdirSync>);
+      mockedStatSync.mockReturnValue({ mtimeMs: 1000 } as unknown as ReturnType<typeof statSync>);
+      mockedReadFileSync.mockReturnValue('/var/run/dead.sock' as unknown as Buffer);
+
+      const client = new RuntimeClient();
+      // Strategy 3 yields nothing; Strategy 4 also absent
       expect(client.isAvailable()).toBe(false);
     });
   });
@@ -579,8 +641,8 @@ describe('RuntimeClient', () => {
       const client = new RuntimeClient();
       const resultPromise = client.sendHookEvent('session:started', {});
 
-      // Simulate a socket error
-      emit('error', new Error('ECONNREFUSED'));
+      // Simulate a socket error with correct .code property (source checks err.code === 'ECONNREFUSED')
+      emit('error', Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' }));
 
       const result = await resultPromise;
       expect(result).toBeNull();
@@ -916,6 +978,61 @@ describe('RuntimeClient', () => {
 
       // Should still be the original result
       expect(result1).toEqual({ kind: 'ack' });
+    });
+
+    it('calls unlinkSync (tryCleanStaleSocket) when ECONNREFUSED error fires', async () => {
+      process.env['GOODVIBES_RUNTIME_SOCKET'] = '/run/goodvibes.sock';
+      mockedExistsSync.mockReturnValue(true);
+
+      const { socket, emit } = makeFakeSocket();
+      mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
+
+      const client = new RuntimeClient();
+      const resultPromise = client.sendHookEvent('session:started', {});
+
+      // Emit ECONNREFUSED error with proper .code property
+      emit('error', Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' }));
+
+      const result = await resultPromise;
+      expect(result).toBeNull();
+      // tryCleanStaleSocket should call unlinkSync on the socket file
+      expect(mockedUnlinkSync).toHaveBeenCalled();
+    });
+
+    it('calls unlinkSync (tryCleanStaleSocket) when ENOENT error fires', async () => {
+      process.env['GOODVIBES_RUNTIME_SOCKET'] = '/run/goodvibes.sock';
+      mockedExistsSync.mockReturnValue(true);
+
+      const { socket, emit } = makeFakeSocket();
+      mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
+
+      const client = new RuntimeClient();
+      const resultPromise = client.sendHookEvent('session:started', {});
+
+      // Emit ENOENT error — socket was deleted between isAvailable() and connect attempt
+      emit('error', Object.assign(new Error('no such file or directory'), { code: 'ENOENT' }));
+
+      const result = await resultPromise;
+      expect(result).toBeNull();
+      // tryCleanStaleSocket should call unlinkSync on the (already-gone) socket file
+      expect(mockedUnlinkSync).toHaveBeenCalled();
+    });
+
+    it('does NOT call unlinkSync on non-ECONNREFUSED/non-ENOENT errors', async () => {
+      process.env['GOODVIBES_RUNTIME_SOCKET'] = '/run/goodvibes.sock';
+      mockedExistsSync.mockReturnValue(true);
+
+      const { socket, emit } = makeFakeSocket();
+      mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
+
+      const client = new RuntimeClient();
+      const resultPromise = client.sendHookEvent('session:started', {});
+
+      emit('error', Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }));
+
+      const result = await resultPromise;
+      expect(result).toBeNull();
+      expect(mockedUnlinkSync).not.toHaveBeenCalled();
     });
 
     it('double-resolution guard: error after data is a no-op', async () => {

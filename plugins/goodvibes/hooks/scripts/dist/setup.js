@@ -427,9 +427,10 @@ async function runHook(hookName, handler, options = {}) {
 
 // src/shared/runtime-client.ts
 import * as net from "node:net";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join as join2 } from "node:path";
 import { tmpdir } from "node:os";
+var DEBUG = process.env["GOODVIBES_DEBUG"] === "1";
 
 // src/session-start/claude-md-manager.ts
 import * as fs from "fs";

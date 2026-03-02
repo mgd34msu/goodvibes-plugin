@@ -5,7 +5,7 @@
  * Handles cleanup, logging, and saving session state.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, CACHE_DIR, createResponse, isTestEnvironment, ensureGlobalAnalyticsDir, } from '../shared/index.js';
@@ -74,6 +74,23 @@ async function runSessionEndHook() {
             // Runtime integration must never break session-end cleanup
         }
         // ─── End Phase 6 integration ───
+        // ─── Clean up session socket pointer file ───
+        // Remove the session-keyed pointer file so stale pointers don't accumulate.
+        // This runs directly in the hook process — no runtime dependency needed.
+        try {
+            const goodvibesDir = process.env.GOODVIBES_DIR
+                || join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.goodvibes');
+            const stateDir = join(goodvibesDir, 'state');
+            const pointerFile = join(stateDir, `runtime-${input.session_id}.socket`);
+            if (existsSync(pointerFile)) {
+                unlinkSync(pointerFile);
+                debug(`Cleaned up session pointer file: ${pointerFile}`);
+            }
+        }
+        catch {
+            // Best-effort cleanup — never break session-end processing
+        }
+        // ─── End pointer cleanup ───
         debug('SessionEnd received input', {
             session_id: input.session_id,
         });

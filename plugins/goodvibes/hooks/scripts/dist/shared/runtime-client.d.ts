@@ -120,6 +120,8 @@ export type RuntimeResponseData = IPCResponseData;
 export declare class RuntimeClient {
     /** Absolute path to the Unix domain socket, or null if not discoverable. */
     private readonly socketPath;
+    /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
+    private readonly stateDir;
     /**
      * @param sessionId - Optional Claude Code session ID for session-keyed
      *   socket pointer lookup. When provided, enables exact-match discovery
@@ -130,7 +132,13 @@ export declare class RuntimeClient {
      * Returns true if the runtime engine socket path was discovered and the
      * socket file currently exists on disk.
      *
-     * This is a fast synchronous check — it does NOT attempt a connection.
+     * NOTE: This is a fast synchronous file-existence check only — it does NOT
+     * attempt an actual socket connection. A stale socket file (from a dead
+     * runtime process) will still return true. Use this as a fast-path guard;
+     * actual connectivity is validated lazily on the first sendMessage call.
+     * Strategy 3 of discoverSocket() sorts by mtime descending to prefer the
+     * most recently written pointer file, reducing the chance of picking a stale
+     * socket here.
      */
     isAvailable(): boolean;
     /**
@@ -155,6 +163,18 @@ export declare class RuntimeClient {
      * @returns Response data from the engine, or null on timeout/error.
      */
     query(query: IPCQueryKind): Promise<RuntimeResponseData | null>;
+    /**
+     * Best-effort cleanup of a confirmed-dead socket and its pointer file.
+     *
+     * Called from the sendMessage error handler when ECONNREFUSED is received
+     * (the socket file exists but no process is listening). Scans the state
+     * directory for pointer files that reference `deadSocketPath` and removes
+     * both the pointer file and the dead socket file. Failures are ignored —
+     * the cleanup is opportunistic and must never throw.
+     *
+     * @param deadSocketPath - Absolute path to the unresponsive socket file.
+     */
+    private tryCleanStaleSocket;
     /**
      * Open a new Unix domain socket connection, write the JSON message
      * (newline-terminated), read the JSON response (newline-terminated),
