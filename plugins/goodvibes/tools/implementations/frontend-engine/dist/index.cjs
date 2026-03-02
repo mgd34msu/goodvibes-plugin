@@ -7194,9 +7194,9 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../../../../node_modules/typescript/lib/typescript.js
+// node_modules/typescript/lib/typescript.js
 var require_typescript = __commonJS({
-  "../../../../../node_modules/typescript/lib/typescript.js"(exports2, module2) {
+  "node_modules/typescript/lib/typescript.js"(exports2, module2) {
     var ts39 = {};
     ((module3) => {
       "use strict";
