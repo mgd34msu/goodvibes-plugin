@@ -8,7 +8,7 @@
  */
 
 // WRFC plugin
-export { registerWRFCPlugin, getDefaultWRFCConfig } from './wrfc/index.js';
+export { registerWRFCPlugin, getDefaultWRFCConfig, WRFCPlugin } from './wrfc/index.js';
 export type { WRFCPluginConfig, PluginContext } from './wrfc/index.js';
 
 // Hook processing plugin

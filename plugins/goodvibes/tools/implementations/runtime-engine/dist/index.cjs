@@ -31288,6 +31288,104 @@ var TRIGGER_IDS = {
   REVIEW_COMPLETED: "wrfc_plugin:trigger:review_completed"
 };
 
+// src/plugins/wrfc/workflows.ts
+function getWRFCWorkflowDefinitions() {
+  return [
+    {
+      id: "wrfc_loop",
+      name: "WRFC Loop",
+      description: "Write-Review-Fix-Confirm quality loop: agents write code, reviewers score it, fixers address issues until the score threshold is met.",
+      states: ["idle", "writing", "reviewing", "fixing", "completed", "failed", "escalated"],
+      initial_state: "idle",
+      transitions: [
+        { from: "idle", to: "writing", event_type: "workflow:created" },
+        { from: "writing", to: "reviewing", event_type: "agent:completed" },
+        { from: "reviewing", to: "completed", event_type: "wrfc:review_completed", conditions: [{ type: "expression", expression: "context.review_score >= context.min_review_score" }] },
+        { from: "reviewing", to: "fixing", event_type: "wrfc:review_completed", conditions: [{ type: "expression", expression: "context.review_score < context.min_review_score" }] },
+        { from: "fixing", to: "reviewing", event_type: "agent:completed" },
+        { from: "fixing", to: "escalated", event_type: "wrfc:max_attempts_reached" },
+        { from: "reviewing", to: "escalated", event_type: "wrfc:max_attempts_reached" }
+      ]
+    },
+    {
+      id: "fix_loop",
+      name: "Fix Loop",
+      description: "Diagnose-fix-verify loop: identifies issues, applies fixes, and verifies resolution.",
+      states: ["idle", "diagnosing", "fixing", "verifying", "completed", "failed"],
+      initial_state: "idle",
+      transitions: [
+        { from: "idle", to: "diagnosing", event_type: "workflow:created" },
+        { from: "diagnosing", to: "fixing", event_type: "agent:completed" },
+        { from: "fixing", to: "verifying", event_type: "agent:completed" },
+        { from: "verifying", to: "completed", event_type: "agent:completed", conditions: [{ type: "expression", expression: "context.verification_result.passed === true" }] },
+        { from: "verifying", to: "fixing", event_type: "agent:completed", conditions: [{ type: "expression", expression: "context.verification_result.passed === false" }] }
+      ]
+    },
+    {
+      id: "test_then_fix",
+      name: "Test Then Fix",
+      description: "Run tests and automatically fix failures.",
+      states: ["idle", "testing", "fixing", "completed", "failed"],
+      initial_state: "idle",
+      transitions: [
+        { from: "idle", to: "testing", event_type: "workflow:created" },
+        { from: "testing", to: "completed", event_type: "agent:completed", conditions: [{ type: "expression", expression: "context.tests_passed === true" }] },
+        { from: "testing", to: "fixing", event_type: "agent:completed", conditions: [{ type: "expression", expression: "context.tests_passed === false" }] },
+        { from: "fixing", to: "testing", event_type: "agent:completed" }
+      ]
+    },
+    {
+      id: "review_only",
+      name: "Review Only",
+      description: "Single-pass review without a fix loop.",
+      states: ["idle", "reviewing", "completed", "failed"],
+      initial_state: "idle",
+      transitions: [
+        { from: "idle", to: "reviewing", event_type: "workflow:created" },
+        { from: "reviewing", to: "completed", event_type: "wrfc:review_completed" }
+      ]
+    }
+  ];
+}
+__name(getWRFCWorkflowDefinitions, "getWRFCWorkflowDefinitions");
+
+// src/plugins/wrfc/triggers.ts
+function getWRFCTriggerDefinitions() {
+  return [
+    {
+      id: "wrfc_agent_spawned",
+      name: "wrfc_agent_spawned",
+      description: "Initialise WRFC workflow state when a new agent is spawned",
+      event_type: "agent:spawned",
+      conditions: [{ source: ["agent", "internal"] }],
+      actions: [],
+      enabled: true,
+      max_fires: 500
+    },
+    {
+      id: "wrfc_agent_completed",
+      name: "wrfc_agent_completed",
+      description: "Route agent to review, fix, or complete when it finishes",
+      event_type: "agent:completed",
+      conditions: [{ source: ["agent", "internal"] }],
+      actions: [],
+      enabled: true,
+      max_fires: 500
+    },
+    {
+      id: "wrfc_review_completed",
+      name: "wrfc_review_completed",
+      description: "Quality gate evaluation when a review completes (event-driven path)",
+      event_type: "wrfc:review_completed",
+      conditions: [{ source: "internal" }],
+      actions: [],
+      enabled: true,
+      max_fires: 500
+    }
+  ];
+}
+__name(getWRFCTriggerDefinitions, "getWRFCTriggerDefinitions");
+
 // src/plugins/wrfc/wrfc-plugin.ts
 var log7 = createLogger("wrfc-plugin");
 function getDefaultWRFCConfig() {
@@ -31371,6 +31469,89 @@ function registerWRFCPlugin(ctx) {
   });
 }
 __name(registerWRFCPlugin, "registerWRFCPlugin");
+var WRFCPlugin = class {
+  static {
+    __name(this, "WRFCPlugin");
+  }
+  name = "wrfc";
+  version = "1.0.0";
+  state = "registered";
+  config;
+  _services = null;
+  constructor(config2) {
+    this.config = { ...getDefaultWRFCConfig(), ...config2 };
+  }
+  /**
+   * Register plugin with runtime services.
+   * Stores services reference for use during start().
+   */
+  register(services) {
+    this._services = services;
+    this.state = "starting";
+    log7.debug("WRFCPlugin registered with runtime services");
+  }
+  /**
+   * Start the plugin.
+   * Seeds config into state store via RuntimeServices.
+   */
+  start() {
+    if (!this._services) {
+      throw new Error("WRFCPlugin: register() must be called before start()");
+    }
+    const { setState } = this._services;
+    setState("wrfc.config.min_review_score", this.config.score_threshold);
+    setState("wrfc.config.max_fix_attempts", this.config.max_fix_attempts);
+    setState("wrfc.config.enable_quality_gates", this.config.enable_quality_gates);
+    if (this.config.require_review_types && this.config.require_review_types.length > 0) {
+      setState("wrfc.config.require_review_types", this.config.require_review_types);
+    }
+    this.state = "running";
+    log7.info("WRFCPlugin started", { config: this.config });
+  }
+  /** Stop the plugin and clean up. */
+  stop() {
+    this.state = "stopped";
+    this._services = null;
+    log7.debug("WRFCPlugin stopped");
+  }
+  /** Returns WRFC workflow definition metadata for plugin registration. */
+  getWorkflowDefinitions() {
+    return getWRFCWorkflowDefinitions();
+  }
+  /** Returns WRFC trigger definitions for plugin registration. */
+  getTriggerDefinitions() {
+    return getWRFCTriggerDefinitions();
+  }
+  /**
+   * Returns WRFC event handler registrations.
+   *
+   * Note: The full handler wiring (including TriggerRegistry and EventProcessor
+   * integration) is performed by registerWRFCPlugin(). This method provides
+   * the handler metadata summary for the RuntimePlugin interface.
+   */
+  getHandlers() {
+    return [
+      {
+        event_type: "agent:spawned",
+        handler: /* @__PURE__ */ __name(() => {
+        }, "handler"),
+        priority: 10
+      },
+      {
+        event_type: "agent:completed",
+        handler: /* @__PURE__ */ __name(() => {
+        }, "handler"),
+        priority: 10
+      },
+      {
+        event_type: "wrfc:review_completed",
+        handler: /* @__PURE__ */ __name(() => {
+        }, "handler"),
+        priority: 10
+      }
+    ];
+  }
+};
 
 // src/extensions/events/factories.ts
 var hookTypeSlugMap = {
@@ -34919,6 +35100,7 @@ var RuntimeEngine = class {
   ipcSubsystem = null;
   wrfcConfigStore = null;
   watchdog = null;
+  wrfcPlugin = null;
   constructor(config2, projectRoot = process.cwd()) {
     this.startTime = Date.now();
     this.config = config2;
@@ -34989,11 +35171,29 @@ var RuntimeEngine = class {
     this.executorSubsystem = createExecutorSubsystem(this.config, this.events.eventBus);
     const actionExecutor = this.directives ? new ActionExecutor(this.directives.directiveQueue) : void 0;
     this.coreRuntime = createCoreRuntime(actionExecutor);
+    const wrfcConfig = getDefaultWRFCConfig();
     registerWRFCPlugin({
       processor: this.coreRuntime.eventProcessor,
       registry: this.coreRuntime.triggerRegistry,
       store: this.coreRuntime.stateStore,
-      config: getDefaultWRFCConfig()
+      config: wrfcConfig
+    });
+    const coreStore = this.coreRuntime.stateStore;
+    const eventBusRef = this.events.eventBus;
+    const runtimeServices = {
+      emit: /* @__PURE__ */ __name((event) => eventBusRef.emit(event), "emit"),
+      subscribe: /* @__PURE__ */ __name((eventType, handler) => eventBusRef.on(eventType, handler), "subscribe"),
+      getConfig: /* @__PURE__ */ __name(() => this.config, "getConfig"),
+      getState: /* @__PURE__ */ __name((key) => coreStore.get(key), "getState"),
+      setState: /* @__PURE__ */ __name((key, value) => coreStore.set(key, value), "setState")
+    };
+    this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
+    this.wrfcPlugin.register(runtimeServices);
+    this.wrfcPlugin.start();
+    logger59.debug("WRFC plugin registered via RuntimePlugin interface", {
+      name: this.wrfcPlugin.name,
+      version: this.wrfcPlugin.version,
+      state: this.wrfcPlugin.state
     });
     this.coreRuntime.eventProcessor.start();
     this.eventBridge = new EventBridge(
@@ -35111,6 +35311,8 @@ var RuntimeEngine = class {
     shutdownTimer.unref();
     try {
       this.workflow?.shutdown();
+      this.wrfcPlugin?.stop();
+      this.wrfcPlugin = null;
       this.tickDriver?.stop();
       const coreStateStoreForShutdown = this.coreRuntime?.stateStore ?? null;
       this.eventBridge?.stop();

@@ -9,9 +9,27 @@
  *   registerWRFCPlugin({ processor, registry, store, config: getDefaultWRFCConfig() });
  */
 
-// Plugin registration
+// Plugin registration (function-based API, backward compat)
 export { registerWRFCPlugin, getDefaultWRFCConfig } from './wrfc-plugin.js';
 export type { WRFCPluginConfig, PluginContext } from './wrfc-plugin.js';
+
+// Plugin class (RuntimePlugin interface implementation)
+export { WRFCPlugin } from './wrfc-plugin.js';
+
+// WRFC types (L3 domain types)
+export type {
+  WRFCPhaseName,
+  WRFCPhase,
+  WRFCChain,
+  ExecutionPlanAgent,
+  ExecutionPhaseInfo,
+  ExecutionPlan,
+  BudgetSummary,
+} from './types.js';
+
+// Workflow and trigger definitions
+export { getWRFCWorkflowDefinitions } from './workflows.js';
+export { getWRFCTriggerDefinitions } from './triggers.js';
 
 // Event handlers (exported for testing and direct use)
 export {

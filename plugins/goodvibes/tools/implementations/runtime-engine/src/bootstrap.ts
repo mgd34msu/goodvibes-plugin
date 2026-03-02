@@ -33,11 +33,13 @@ import { createCoreRuntime, type CoreRuntime, type EventProcessor } from './core
 import {
   registerWRFCPlugin,
   getDefaultWRFCConfig,
+  WRFCPlugin,
   TimePlugin,
   ExternalPlugin,
   type ExternalPluginConfig,
   type HookProcessor,
 } from './plugins/index.js';
+import type { RuntimeServices } from './shared/plugin.js';
 import { createHookSubsystem } from './plugins/hooks/index.js';
 import type { ExecutorModeManager } from './core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from './extensions/executor/executor-budget.js';
@@ -72,6 +74,7 @@ export class RuntimeEngine {
   private ipcSubsystem: IPCSubsystem | null = null;
   private wrfcConfigStore: WRFCConfigStore | null = null;
   private watchdog: WatchdogCoordinator | null = null;
+  private wrfcPlugin: WRFCPlugin | null = null;
 
   constructor(config: RuntimeConfig, projectRoot: string = process.cwd()) {
     this.startTime = Date.now();
@@ -174,12 +177,35 @@ export class RuntimeEngine {
       : undefined;
     this.coreRuntime = createCoreRuntime(actionExecutor);
 
-    // 14. WRFC plugin (L3)
+    // 14. WRFC plugin (L3) — function-based registration (backward compat)
+    const wrfcConfig = getDefaultWRFCConfig();
     registerWRFCPlugin({
       processor: this.coreRuntime.eventProcessor,
       registry: this.coreRuntime.triggerRegistry,
       store: this.coreRuntime.stateStore,
-      config: getDefaultWRFCConfig(),
+      config: wrfcConfig,
+    });
+
+    // 14.1. WRFC plugin — RuntimePlugin class-based loading path
+    // Creates a RuntimeServices adapter bridging existing subsystem APIs to the
+    // plugin interface, enabling plugin lifecycle management (register/start/stop).
+    const coreStore = this.coreRuntime.stateStore;
+    const eventBusRef = this.events.eventBus;
+    const runtimeServices: RuntimeServices = {
+      emit: (event) => eventBusRef.emit(event),
+      subscribe: (eventType, handler) =>
+        eventBusRef.on(eventType as '*', handler as Parameters<typeof eventBusRef.on>[1]),
+      getConfig: () => this.config as unknown as Record<string, unknown>,
+      getState: (key) => coreStore.get(key),
+      setState: (key, value) => coreStore.set(key, value),
+    };
+    this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
+    this.wrfcPlugin.register(runtimeServices);
+    this.wrfcPlugin.start();
+    logger.debug('WRFC plugin registered via RuntimePlugin interface', {
+      name: this.wrfcPlugin.name,
+      version: this.wrfcPlugin.version,
+      state: this.wrfcPlugin.state,
     });
 
     // 14.5 Start core event processor lifecycle
@@ -322,6 +348,10 @@ export class RuntimeEngine {
     try {
       // Stop active workflows
       this.workflow?.shutdown();
+
+      // Stop WRFC plugin lifecycle
+      this.wrfcPlugin?.stop();
+      this.wrfcPlugin = null;
 
       // Stop tick driver and event bridge
       this.tickDriver?.stop();

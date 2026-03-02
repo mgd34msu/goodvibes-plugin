@@ -11,6 +11,12 @@
  * Usage:
  *   import { registerWRFCPlugin, getDefaultWRFCConfig } from './wrfc-plugin.js';
  *   registerWRFCPlugin({ processor, registry, config: getDefaultWRFCConfig() });
+ *
+ * Or use the RuntimePlugin class API:
+ *   import { WRFCPlugin } from './wrfc-plugin.js';
+ *   const plugin = new WRFCPlugin(config);
+ *   await plugin.register(services);
+ *   await plugin.start();
  */
 
 import { createLogger } from '../../shared/logger.js';
@@ -18,6 +24,14 @@ import type { EventProcessor } from '../../core/processing/event-processor.js';
 import type { TriggerRegistry } from '../../core/trigger-registry.js';
 import type { StateStoreInterface, TriggerHandlerFn, HandlerResult } from '../../core/types.js';
 import { createWRFCTrigger } from '../../extensions/triggers/factories.js';
+import type {
+  RuntimePlugin,
+  PluginState,
+  PluginWorkflowDefinition,
+  PluginTriggerDefinition,
+  PluginEventHandler,
+  RuntimeServices,
+} from '../../shared/plugin.js';
 import {
   handleWorkflowCreated,
   handleAgentCompleted,
@@ -25,6 +39,8 @@ import {
   HANDLER_IDS,
   TRIGGER_IDS,
 } from './handlers.js';
+import { getWRFCWorkflowDefinitions } from './workflows.js';
+import { getWRFCTriggerDefinitions } from './triggers.js';
 
 const log = createLogger('wrfc-plugin');
 
@@ -175,4 +191,101 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
     handlers: Object.values(HANDLER_IDS),
     config,
   });
+}
+
+// ─── RuntimePlugin Class ──────────────────────────────────────────────────────
+
+/**
+ * WRFCPlugin — RuntimePlugin implementation for the WRFC quality loop.
+ *
+ * Implements the RuntimePlugin interface, providing the plugin lifecycle
+ * contract alongside the existing registerWRFCPlugin() function API.
+ *
+ * The class-based API is designed for use with a future plugin registry;
+ * the function-based API (registerWRFCPlugin) remains for backward compat.
+ */
+export class WRFCPlugin implements RuntimePlugin {
+  readonly name = 'wrfc';
+  readonly version = '1.0.0';
+  state: PluginState = 'registered';
+
+  private config: WRFCPluginConfig;
+  private _services: RuntimeServices | null = null;
+
+  constructor(config?: Partial<WRFCPluginConfig>) {
+    this.config = { ...getDefaultWRFCConfig(), ...config };
+  }
+
+  /**
+   * Register plugin with runtime services.
+   * Stores services reference for use during start().
+   */
+  register(services: RuntimeServices): void {
+    this._services = services;
+    this.state = 'starting';
+    log.debug('WRFCPlugin registered with runtime services');
+  }
+
+  /**
+   * Start the plugin.
+   * Seeds config into state store via RuntimeServices.
+   */
+  start(): void {
+    if (!this._services) {
+      throw new Error('WRFCPlugin: register() must be called before start()');
+    }
+    const { setState } = this._services;
+    setState('wrfc.config.min_review_score', this.config.score_threshold);
+    setState('wrfc.config.max_fix_attempts', this.config.max_fix_attempts);
+    setState('wrfc.config.enable_quality_gates', this.config.enable_quality_gates);
+    if (this.config.require_review_types && this.config.require_review_types.length > 0) {
+      setState('wrfc.config.require_review_types', this.config.require_review_types);
+    }
+    this.state = 'running';
+    log.info('WRFCPlugin started', { config: this.config });
+  }
+
+  /** Stop the plugin and clean up. */
+  stop(): void {
+    this.state = 'stopped';
+    this._services = null;
+    log.debug('WRFCPlugin stopped');
+  }
+
+  /** Returns WRFC workflow definition metadata for plugin registration. */
+  getWorkflowDefinitions(): PluginWorkflowDefinition[] {
+    return getWRFCWorkflowDefinitions();
+  }
+
+  /** Returns WRFC trigger definitions for plugin registration. */
+  getTriggerDefinitions(): PluginTriggerDefinition[] {
+    return getWRFCTriggerDefinitions();
+  }
+
+  /**
+   * Returns WRFC event handler registrations.
+   *
+   * Note: The full handler wiring (including TriggerRegistry and EventProcessor
+   * integration) is performed by registerWRFCPlugin(). This method provides
+   * the handler metadata summary for the RuntimePlugin interface.
+   */
+  getHandlers(): PluginEventHandler[] {
+    return [
+      {
+        event_type: 'agent:spawned',
+        handler: () => { /* handled via registerWRFCPlugin wiring */ },
+        priority: 10,
+      },
+      {
+        event_type: 'agent:completed',
+        handler: () => { /* handled via registerWRFCPlugin wiring */ },
+        priority: 10,
+      },
+      {
+        event_type: 'wrfc:review_completed',
+        handler: () => { /* handled via registerWRFCPlugin wiring */ },
+        priority: 10,
+      },
+    ];
+  }
 }
