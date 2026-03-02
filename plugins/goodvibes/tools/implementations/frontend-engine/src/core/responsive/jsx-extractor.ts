@@ -9,6 +9,7 @@
 import ts from 'typescript';
 import type { ClassNameExtraction } from './types.js';
 import { extractClassesFromNode } from '../jsx/class-extractor.js';
+import { getLineNumberFromSourceFile } from '../../shared/utils.js';
 
 /**
  * Extract className attributes from JSX elements
@@ -19,11 +20,6 @@ export function extractClassNames(sourceFile: ts.SourceFile, elementFilter?: str
 
   function getElementName(node: ts.JsxOpeningElement | ts.JsxSelfClosingElement): string {
     return node.tagName.getText(sourceFile);
-  }
-
-  function getLineNumber(node: ts.Node): number {
-    const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-    return line + 1;
   }
 
   function extractStringValue(node: ts.Node): string {
@@ -112,11 +108,11 @@ export function extractClassNames(sourceFile: ts.SourceFile, elementFilter?: str
   function visit(node: ts.Node): void {
     if (ts.isJsxOpeningElement(node)) {
       const elementName = getElementName(node);
-      const line = getLineNumber(node);
+      const line = getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile);
       processAttributes(node.attributes, elementName, line);
     } else if (ts.isJsxSelfClosingElement(node)) {
       const elementName = getElementName(node);
-      const line = getLineNumber(node);
+      const line = getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile);
       processAttributes(node.attributes, elementName, line);
     }
 

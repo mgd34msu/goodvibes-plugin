@@ -13,14 +13,13 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "typescript": "^5.3.0"
+    "@modelcontextprotocol/sdk": "^1.27.1"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@vitest/coverage-v8": "^2.0.0",
-    "esbuild": "^0.20.0",
+    "@types/node": "^20.17.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "esbuild": "^0.27.3",
     "typescript": "^5.9.3",
-    "vitest": "^2.0.0"
+    "vitest": "^4.0.18"
   }
 }

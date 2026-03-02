@@ -22,8 +22,8 @@ import type {
   DelegationPattern,
   AnalyzeEventFlowArgs,
 } from '../core/event-flow/types.js';
+import { normalizeFilePath } from '../shared/utils.js';
 import {
-  normalizeFilePath,
   extractEventHandlers,
   findReactComponent,
   detectDelegationPatterns,

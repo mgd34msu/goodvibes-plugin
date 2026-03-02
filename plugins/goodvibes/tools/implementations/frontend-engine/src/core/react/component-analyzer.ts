@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
-import { makeRelativePath } from '../../shared/utils.js';
+import { makeRelativePath, getLineNumberFromSourceFile } from '../../shared/utils.js';
 import { isReactComponent, containsJsxReturn } from '../../shared/ast.js';
 import {
   getComponentName,
@@ -20,18 +20,6 @@ import {
 } from './component-detector.js';
 import { findUsedComponents } from './relationship-builder.js';
 import type { ComponentInfo, UnwrapResult } from './types.js';
-
-// =============================================================================
-// Line Number Helper
-// =============================================================================
-
-/**
- * Get line number for an AST node (1-based)
- */
-function getLineNumber(node: ts.Node, sourceFile: ts.SourceFile): number {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return line + 1; // Convert to 1-based
-}
 
 // =============================================================================
 // Props Extraction
@@ -254,7 +242,7 @@ export function analyzeFile(filePath: string, projectRoot: string): ComponentInf
         components.push({
           name,
           file: relativePath,
-          line: getLineNumber(node, sourceFile),
+          line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
           props: extractProps(node, sourceFile, precomputedUnwrap),
           used_by: [], // Will be filled later
           uses: findUsedComponents(node, sourceFile),
@@ -275,7 +263,7 @@ export function analyzeFile(filePath: string, projectRoot: string): ComponentInf
           components.push({
             name,
             file: relativePath,
-            line: getLineNumber(node, sourceFile),
+            line: getLineNumberFromSourceFile(node.getStart(sourceFile), sourceFile),
             props: unwrapped.innerFn ? extractPropsFromFn(unwrapped.innerFn, sourceFile) : [],
             used_by: [],
             uses: unwrapped.innerFn ? findUsedComponents(unwrapped.innerFn, sourceFile) : [],

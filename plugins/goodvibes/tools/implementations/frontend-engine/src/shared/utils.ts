@@ -36,18 +36,6 @@ export function makeRelativePath(absPath: string, root: string): string {
 }
 
 /**
- * Get the 1-based line number for a character position within source text.
- *
- * @param source - The source file text
- * @param position - The character offset within the source
- * @returns 1-based line number containing the given position
- */
-export function getLineNumber(source: string, position: number): number {
-  const textBefore = source.substring(0, position);
-  return textBefore.split('\n').length;
-}
-
-/**
  * Get the 1-based line number for a position within a TypeScript SourceFile.
  *
  * @param pos - The character offset within the source file
