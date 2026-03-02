@@ -7,16 +7,39 @@
  */
 
 /** Agent types that produce code and must be reviewed */
-export const ENGINEER_AGENT_TYPES = new Set<string>(['engineer', 'goodvibes:engineer']);
+export const ENGINEER_AGENT_TYPES = new Set<string>([
+  'engineer', 'goodvibes:engineer',
+  'goodvibes:tester',
+  'goodvibes:integrator-ai',
+  'goodvibes:integrator-services',
+  'goodvibes:integrator-state',
+]);
 
 /** Agent types that perform reviews */
 export const REVIEWER_AGENT_TYPES = new Set<string>(['reviewer', 'goodvibes:reviewer']);
 
 /** Agent types that auto-complete without review (utility/exploration agents) */
 export const AUTO_COMPLETE_AGENT_TYPES = new Set<string>([
-  'Explore', 'Plan', 'Bash', 'general-purpose',
+  'Explore', 'explore',
+  'Plan', 'plan',
+  'Bash', 'bash',
+  'general-purpose',
+  'goodvibes:architect',
+  'goodvibes:planner',
+  'goodvibes:deployer',
   ...REVIEWER_AGENT_TYPES,
 ]);
+
+/** Case-insensitive agent type matching helper */
+export function matchesAgentType(agentType: string | undefined, typeSet: Set<string>): boolean {
+  if (!agentType) return false;
+  if (typeSet.has(agentType)) return true;
+  const lower = agentType.toLowerCase();
+  for (const entry of typeSet) {
+    if (entry.toLowerCase() === lower) return true;
+  }
+  return false;
+}
 
 /**
  * Agent types that MUST always be reviewed (Layer 0 force-review).

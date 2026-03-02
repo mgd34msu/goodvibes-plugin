@@ -11,7 +11,7 @@ import type { EventBus } from '../../../extensions/events/event-bus.js';
 import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
 import { createLogger } from '../../../shared/logger.js';
 import { safeJsonParse } from '../../../shared/utils.js';
-import { REVIEWER_AGENT_TYPES, DEFAULT_MIN_REVIEW_SCORE } from '../../../shared/wrfc-constants.js';
+import { REVIEWER_AGENT_TYPES, DEFAULT_MIN_REVIEW_SCORE, matchesAgentType } from '../../../shared/wrfc-constants.js';
 
 const logger = createLogger('handler:subagent-stop');
 
@@ -45,7 +45,7 @@ export function createSubagentStopHandler(
     logger.debug('SubagentStop', { agentId, agentType });
 
     // ── Quality gate for reviewers ──────────────────────────────────────────
-    if (REVIEWER_AGENT_TYPES.has(agentType)) {
+    if (matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       const score = extractReviewScore(output);
       const minScore = deps.minReviewScore ?? DEFAULT_MIN_REVIEW_SCORE;
 

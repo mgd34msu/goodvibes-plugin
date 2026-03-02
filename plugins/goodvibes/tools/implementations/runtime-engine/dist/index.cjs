@@ -27980,15 +27980,38 @@ var WRFCConfigStore = class {
 };
 
 // src/shared/wrfc-constants.ts
-var ENGINEER_AGENT_TYPES = /* @__PURE__ */ new Set(["engineer", "goodvibes:engineer"]);
+var ENGINEER_AGENT_TYPES = /* @__PURE__ */ new Set([
+  "engineer",
+  "goodvibes:engineer",
+  "goodvibes:tester",
+  "goodvibes:integrator-ai",
+  "goodvibes:integrator-services",
+  "goodvibes:integrator-state"
+]);
 var REVIEWER_AGENT_TYPES = /* @__PURE__ */ new Set(["reviewer", "goodvibes:reviewer"]);
 var AUTO_COMPLETE_AGENT_TYPES = /* @__PURE__ */ new Set([
   "Explore",
+  "explore",
   "Plan",
+  "plan",
   "Bash",
+  "bash",
   "general-purpose",
+  "goodvibes:architect",
+  "goodvibes:planner",
+  "goodvibes:deployer",
   ...REVIEWER_AGENT_TYPES
 ]);
+function matchesAgentType(agentType, typeSet) {
+  if (!agentType) return false;
+  if (typeSet.has(agentType)) return true;
+  const lower = agentType.toLowerCase();
+  for (const entry of typeSet) {
+    if (entry.toLowerCase() === lower) return true;
+  }
+  return false;
+}
+__name(matchesAgentType, "matchesAgentType");
 var REQUIRE_REVIEW_AGENT_TYPES = /* @__PURE__ */ new Set([...ENGINEER_AGENT_TYPES]);
 var DEFAULT_MIN_REVIEW_SCORE = 9.5;
 var EARLY_WORKFLOW_STATES = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
@@ -30503,6 +30526,10 @@ function handleWorkflowCreated(event, _trigger, store) {
   const agentType = typeof data["agent_type"] === "string" ? data["agent_type"] : "";
   const incomingWid = typeof data["workflow_id"] === "string" && data["workflow_id"].length > 0 ? data["workflow_id"] : null;
   const task = typeof data["task"] === "string" ? data["task"] : "";
+  if (!incomingWid && agentType && matchesAgentType(agentType, AUTO_COMPLETE_AGENT_TYPES)) {
+    log6.debug("handleWorkflowCreated: skipping auto-complete agent type", { agent_type: agentType });
+    return {};
+  }
   let wid;
   if (incomingWid) {
     wid = incomingWid;
@@ -30511,7 +30538,7 @@ function handleWorkflowCreated(event, _trigger, store) {
     if (!agentType) {
       log6.warn("handleWorkflowCreated: agent_type is empty/missing, cannot determine if review is required", { agent_id: agentId });
     }
-    if (agentType && effectiveRequireReview.has(agentType)) {
+    if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       wid = `wrfc_auto_${Date.now()}_${agentId.slice(0, 8)}_${Math.random().toString(36).slice(2, 6)}`;
       log6.info("handleWorkflowCreated: auto-creating workflow for require-review agent type", {
         wid,
@@ -30578,7 +30605,7 @@ function handleAgentCompleted(event, _trigger, store) {
     if (!agentType) {
       log6.warn("handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required", { wid, agent_id: agentId });
     }
-    if (agentType && effectiveRequireReview.has(agentType)) {
+    if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       const task2 = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
       const actions2 = [buildSpawnAction({ wid, type: "reviewer", task: task2, files: filesModified })];
       const state_updates2 = phaseUpdate(wid, "REVIEWING");
@@ -30589,7 +30616,7 @@ function handleAgentCompleted(event, _trigger, store) {
       });
       return { actions: actions2, state_updates: state_updates2, events: events2 };
     }
-    if (agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
+    if (agentType && matchesAgentType(agentType, AUTO_COMPLETE_AGENT_TYPES)) {
       const actions2 = [buildCompleteAction(wid)];
       const state_updates2 = [
         ...phaseUpdate(wid, "COMPLETED"),
@@ -30609,7 +30636,7 @@ function handleAgentCompleted(event, _trigger, store) {
     return { actions, state_updates, events };
   }
   if (effectivePhase === "REVIEWING") {
-    if (!REVIEWER_AGENT_TYPES.has(agentType)) {
+    if (!matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       log6.debug("handleAgentCompleted: REVIEWING phase but not a reviewer, skipping", {
         wid,
         agent_type: agentType
@@ -30671,7 +30698,7 @@ Files: ${filesModified.join(", ")}.` : "");
     }
   }
   if (effectivePhase === "FIXING") {
-    if (!ENGINEER_AGENT_TYPES.has(agentType)) {
+    if (!matchesAgentType(agentType, ENGINEER_AGENT_TYPES)) {
       log6.debug("handleAgentCompleted: FIXING phase but not an engineer, skipping", {
         wid,
         agent_type: agentType
@@ -31256,7 +31283,7 @@ function createSubagentStopHandler(deps) {
     const agentType = typeof input["agent_type"] === "string" ? input["agent_type"] : "unknown";
     const output = typeof input["output"] === "string" ? input["output"] : "";
     logger36.debug("SubagentStop", { agentId, agentType });
-    if (REVIEWER_AGENT_TYPES.has(agentType)) {
+    if (matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       const score = extractReviewScore2(output);
       const minScore = deps.minReviewScore ?? DEFAULT_MIN_REVIEW_SCORE;
       if (score !== null && score < minScore) {

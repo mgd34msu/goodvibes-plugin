@@ -23,6 +23,7 @@ import {
   REVIEWER_AGENT_TYPES,
   DEFAULT_MIN_REVIEW_SCORE,
   EARLY_WORKFLOW_STATES,
+  matchesAgentType,
 } from '../../shared/wrfc-constants.js';
 import type { RuntimeEvent, HandlerResult, StateUpdate, Action, StateStoreInterface } from '../../core/types.js';
 import { createEvent } from '../../core/types.js';
@@ -154,6 +155,12 @@ export function handleWorkflowCreated(
     : null;
   const task = typeof data['task'] === 'string' ? data['task'] : '';
 
+  // Skip workflow creation for utility/auto-complete agents (no incomingWid)
+  if (!incomingWid && agentType && matchesAgentType(agentType, AUTO_COMPLETE_AGENT_TYPES)) {
+    log.debug('handleWorkflowCreated: skipping auto-complete agent type', { agent_type: agentType });
+    return {};
+  }
+
   // Determine workflow ID:
   // - Chain agents (with incomingWid): bind to existing workflow.
   // - REQUIRE_REVIEW agents (no incomingWid): auto-create with timestamped ID for easy tracing.
@@ -166,7 +173,7 @@ export function handleWorkflowCreated(
     if (!agentType) {
       log.warn('handleWorkflowCreated: agent_type is empty/missing, cannot determine if review is required', { agent_id: agentId });
     }
-    if (agentType && effectiveRequireReview.has(agentType)) {
+    if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       // Auto-create a timestamped workflow ID so each require-review spawn is uniquely traceable
       wid = `wrfc_auto_${Date.now()}_${agentId.slice(0, 8)}_${Math.random().toString(36).slice(2, 6)}`;
       log.info('handleWorkflowCreated: auto-creating workflow for require-review agent type', {
@@ -288,7 +295,7 @@ export function handleAgentCompleted(
     if (!agentType) {
       log.warn('handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required', { wid, agent_id: agentId });
     }
-    if (agentType && effectiveRequireReview.has(agentType)) {
+    if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` +
         (filesModified.length > 0
           ? `Files modified: ${filesModified.join(', ')}.`
@@ -305,7 +312,7 @@ export function handleAgentCompleted(
     }
 
     // Auto-complete whitelist: no review needed
-    if (agentType && AUTO_COMPLETE_AGENT_TYPES.has(agentType)) {
+    if (agentType && matchesAgentType(agentType, AUTO_COMPLETE_AGENT_TYPES)) {
       const actions: Action[] = [buildCompleteAction(wid)];
       const state_updates: StateUpdate[] = [
         ...phaseUpdate(wid, 'COMPLETED'),
@@ -334,7 +341,7 @@ export function handleAgentCompleted(
 
   // ─── REVIEWING phase ──────────────────────────────────────────────────────────
   if (effectivePhase === 'REVIEWING') {
-    if (!REVIEWER_AGENT_TYPES.has(agentType)) {
+    if (!matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       log.debug('handleAgentCompleted: REVIEWING phase but not a reviewer, skipping', {
         wid, agent_type: agentType,
       });
@@ -400,7 +407,7 @@ export function handleAgentCompleted(
 
   // ─── FIXING phase ────────────────────────────────────────────────────────────
   if (effectivePhase === 'FIXING') {
-    if (!ENGINEER_AGENT_TYPES.has(agentType)) {
+    if (!matchesAgentType(agentType, ENGINEER_AGENT_TYPES)) {
       log.debug('handleAgentCompleted: FIXING phase but not an engineer, skipping', {
         wid, agent_type: agentType,
       });
