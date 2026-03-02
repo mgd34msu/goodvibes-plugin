@@ -31285,18 +31285,8 @@ function createSubagentStopHandler(deps) {
     logger36.debug("SubagentStop", { agentId, agentType });
     if (matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       const score = extractReviewScore2(output);
-      const minScore = deps.minReviewScore ?? DEFAULT_MIN_REVIEW_SCORE;
-      if (score !== null && score < minScore) {
-        logger36.info("Quality gate: review score below threshold", {
-          agentId,
-          agentType,
-          score,
-          minScore
-        });
-        return {
-          decision: "block",
-          reason: `Review score ${score} is below minimum required score of ${minScore}. The reviewer must re-evaluate.`
-        };
+      if (score !== null) {
+        logger36.info("Reviewer completed with score", { agentId, agentType, score });
       }
     }
     if (deps.eventBus) {

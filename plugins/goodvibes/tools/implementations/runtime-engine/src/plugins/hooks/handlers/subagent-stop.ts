@@ -11,7 +11,7 @@ import type { EventBus } from '../../../extensions/events/event-bus.js';
 import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
 import { createLogger } from '../../../shared/logger.js';
 import { safeJsonParse } from '../../../shared/utils.js';
-import { REVIEWER_AGENT_TYPES, DEFAULT_MIN_REVIEW_SCORE, matchesAgentType } from '../../../shared/wrfc-constants.js';
+import { REVIEWER_AGENT_TYPES, matchesAgentType } from '../../../shared/wrfc-constants.js';
 
 const logger = createLogger('handler:subagent-stop');
 
@@ -26,8 +26,8 @@ export interface SubagentStopDeps {
 /**
  * Creates a SubagentStop handler.
  *
- * For reviewer agents: checks the review score from the <gv> output tag.
- * If below threshold, blocks the stop (forces the reviewer to redo).
+ * For reviewer agents: logs the review score from the <gv> output tag.
+ * Score-based branching (fix/complete) is handled by the WRFC handler.
  *
  * For all agents: emits agent:completed to the event bus so WRFC triggers fire.
  */
@@ -44,22 +44,11 @@ export function createSubagentStopHandler(
 
     logger.debug('SubagentStop', { agentId, agentType });
 
-    // ── Quality gate for reviewers ──────────────────────────────────────────
+    // ── Score logging (quality gate removed — WRFC handler decides fix/complete) ──
     if (matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       const score = extractReviewScore(output);
-      const minScore = deps.minReviewScore ?? DEFAULT_MIN_REVIEW_SCORE;
-
-      if (score !== null && score < minScore) {
-        logger.info('Quality gate: review score below threshold', {
-          agentId,
-          agentType,
-          score,
-          minScore,
-        });
-        return {
-          decision: 'block',
-          reason: `Review score ${score} is below minimum required score of ${minScore}. The reviewer must re-evaluate.`,
-        };
+      if (score !== null) {
+        logger.info('Reviewer completed with score', { agentId, agentType, score });
       }
     }
 
