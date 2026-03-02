@@ -254,17 +254,27 @@ export function handleAgentCompleted(
 
   const agentType: string =
     (hookInput['agent_type'] as string | undefined) ??
-    (hookInput['subagent_type'] as string | undefined) ?? '';
+    (hookInput['subagent_type'] as string | undefined) ??
+    (typeof dataPayload?.['agent_type'] === 'string' ? dataPayload['agent_type'] : null) ??
+    (typeof dataPayload?.['subagent_type'] === 'string' ? dataPayload['subagent_type'] : null) ?? '';
 
   const agentOutput: string | undefined =
     (hookInput['last_assistant_message'] as string | undefined) ??
     (hookInput['task_output'] as string | undefined) ??
-    (hookInput['result'] as string | undefined);
+    (hookInput['result'] as string | undefined) ??
+    (typeof dataPayload?.['last_assistant_message'] === 'string' ? dataPayload['last_assistant_message'] : null) ??
+    (typeof dataPayload?.['task_output'] === 'string' ? dataPayload['task_output'] : null) ??
+    (typeof dataPayload?.['result'] === 'string' ? dataPayload['result'] : null) ??
+    (typeof dataPayload?.['output'] === 'string' ? dataPayload['output'] : null) ??
+    undefined;
 
   // Resolve workflow ID from agent map in store
   let wid: string | null = agentId ? storeGet<string | null>(store, `wrfc.agent_map.${agentId}`, null) : null;
   if (!wid) {
     wid = typeof payload['workflow_id'] === 'string' ? payload['workflow_id'] : null;
+  }
+  if (!wid) {
+    wid = typeof dataPayload?.['workflow_id'] === 'string' ? dataPayload['workflow_id'] : null;
   }
   if (!wid) {
     log.debug('handleAgentCompleted: no workflow binding found, skipping', { agent_id: agentId });
