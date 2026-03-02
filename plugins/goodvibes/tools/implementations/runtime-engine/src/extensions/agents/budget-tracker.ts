@@ -15,9 +15,9 @@ import { createLogger } from '../../shared/logger.js';
 import { generateEventId, timestamp, toErrorMessage } from '../../shared/utils.js';
 import type {
   AgentBudgetSnapshot,
-  BudgetSummary,
   BudgetThreshold,
 } from './types.js';
+import type { BudgetSummary } from '../../plugins/wrfc/types.js';
 
 const logger = createLogger('budget-tracker');
 

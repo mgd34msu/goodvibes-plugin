@@ -27,15 +27,17 @@ import type { EventType } from '../../shared/events.js';
 import { BudgetTracker } from './budget-tracker.js';
 import type {
   AgentBudgetSnapshot,
-  BudgetSummary,
   CoordinatedAgent,
   CoordinatedSpawnOptions,
   CoordinatorStats,
+} from './types.js';
+import type {
+  BudgetSummary,
   ExecutionPlan,
   ExecutionPhaseInfo,
   WRFCChain,
   WRFCPhaseName,
-} from './types.js';
+} from '../../plugins/wrfc/types.js';
 
 const logger = createLogger('agent-coordinator');
 

@@ -241,7 +241,7 @@ export class IPCRouter {
     // Emit as the bare event type (e.g. 'agent:completed') on the EventBus.
     // The source.kind === 'hook' field already provides traceability of hook origin.
     // Using the bare event type is required so that:
-    //   1. EventBridge FORWARDED_PATTERNS (e.g. 'agent:completed') can match.
+    //   1. EventProcessor trigger evaluation (e.g. 'agent:completed') can match.
     //   2. Trigger conditions in wrfc-plugin (e.g. type: 'agent:completed') can match.
     // Previously this was prefixed with 'hook:' which broke both matching paths.
     const emittedEvent: RuntimeEvent = {
@@ -262,9 +262,9 @@ export class IPCRouter {
     this.eventBus.emit(emittedEvent);
     // NOTE: We intentionally do NOT call triggerRegistry.evaluate() directly here.
     // WRFC triggers have actions: [] so direct evaluation does nothing useful.
-    // The actual handler execution path is: EventBridge → EventQueue → EventProcessor.
+    // The actual handler execution path is: EventBus → EventProcessor → TriggerRegistry.
     // Direct evaluate would increment fires_count, risking double-fire when the
-    // EventProcessor evaluates the same event from the EventQueue path.
+    // EventProcessor evaluates the same event via the EventBus subscription.
     // Reset trigger fire counts on new session so budgets are per-session
     if (msg.hook_name === 'session:started' && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();

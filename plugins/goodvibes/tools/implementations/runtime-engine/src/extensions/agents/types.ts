@@ -69,47 +69,6 @@ export interface CoordinatedAgent {
   duration_ms?: number;
 }
 
-/**
- * @deprecated Import from '../../plugins/wrfc/types.js' instead.
- * WRFCPhaseName has moved to the WRFC plugin (L3).
- */
-export type { WRFCPhaseName } from '../../plugins/wrfc/types.js';
-
-/**
- * @deprecated Import from '../../plugins/wrfc/types.js' instead.
- * WRFCPhase has moved to the WRFC plugin (L3).
- */
-export type { WRFCPhase } from '../../plugins/wrfc/types.js';
-
-/**
- * @deprecated Import from '../../plugins/wrfc/types.js' instead.
- * WRFCChain has moved to the WRFC plugin (L3).
- */
-export type { WRFCChain } from '../../plugins/wrfc/types.js';
-
-/**
- * @deprecated Import from '../../plugins/wrfc/types.js' instead.
- * ExecutionPlanAgent has moved to the WRFC plugin (L3).
- */
-export type { ExecutionPlanAgent } from '../../plugins/wrfc/types.js';
-
-/**
- * @deprecated Import from '../../plugins/wrfc/types.js' instead.
- * ExecutionPhaseInfo has moved to the WRFC plugin (L3).
- */
-export type { ExecutionPhaseInfo } from '../../plugins/wrfc/types.js';
-
-/**
- * @deprecated Import from '../../plugins/wrfc/types.js' instead.
- * ExecutionPlan has moved to the WRFC plugin (L3).
- */
-export type { ExecutionPlan } from '../../plugins/wrfc/types.js';
-
-/**
- * @deprecated Import from '../../plugins/wrfc/types.js' instead.
- * BudgetSummary has moved to the WRFC plugin (L3).
- */
-export type { BudgetSummary } from '../../plugins/wrfc/types.js';
 
 /** Budget threshold levels (as percentages) for warning events. */
 export type BudgetThreshold = 50 | 80 | 95;

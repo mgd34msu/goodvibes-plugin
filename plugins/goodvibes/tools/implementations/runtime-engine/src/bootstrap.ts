@@ -21,7 +21,6 @@ import { createPersistenceSubsystem, type PersistenceSubsystem } from './extensi
 import type { JsonStateStore } from './extensions/persistence/state-store.js';
 import type { EventBus } from './extensions/events/event-bus.js';
 import type { EventLog } from './extensions/events/event-log.js';
-import type { EventQueue } from './extensions/events/event-queue.js';
 import type { WorkflowEngine } from './extensions/workflow/workflow-engine.js';
 import type { TriggerRegistry } from './core/trigger-registry.js';
 import type { AgentCoordinator } from './extensions/agents/agent-coordinator.js';
@@ -46,7 +45,6 @@ import type { ExecutorBudgetManager } from './extensions/executor/executor-budge
 import type { DaemonTickHandler } from './extensions/executor/daemon-tick-handler.js';
 import { createExecutorSubsystem, type ExecutorSubsystem, ActionExecutor, TickDriver } from './extensions/executor/index.js';
 import { createTimeAdapter, createExternalAdapter } from './extensions/adapters/index.js';
-import { EventBridge } from './extensions/events/event-bridge.js';
 import { createIPCSubsystem, teardownIPC } from './extensions/ipc/index.js';
 import type { IPCSubsystem } from './extensions/ipc/index.js';
 
@@ -68,7 +66,6 @@ export class RuntimeEngine {
   private persistence: PersistenceSubsystem | null = null;
   private coreRuntime: CoreRuntime | null = null;
   private executorSubsystem: ExecutorSubsystem | null = null;
-  private eventBridge: EventBridge | null = null;
   private tickDriver: TickDriver | null = null;
   private hookProcessor: HookProcessor | null = null;
   private ipcSubsystem: IPCSubsystem | null = null;
@@ -126,7 +123,7 @@ export class RuntimeEngine {
       this.workflow?.workflowEngine ?? null,
       this.wrfcConfigStore,
     );
-    this.events.eventBus.on('*', async (event: import('./extensions/events/types.js').RuntimeEvent) => {
+    this.events.eventBus.on('*', async (event: import('./shared/events.js').RuntimeEvent) => {
       if (event.source?.kind === 'hook') return;
       try {
         if (this.triggers) await this.triggers.triggerRegistry.evaluate(event);
@@ -211,13 +208,7 @@ export class RuntimeEngine {
     // 14.5 Start core event processor lifecycle
     this.coreRuntime.eventProcessor.start();
 
-    // 15. Event bridge (L2 EventBus -> L1 core EventQueue)
-    this.eventBridge = new EventBridge(
-      this.events.eventBus,
-      this.coreRuntime.eventQueue,
-      () => { void this.coreRuntime!.eventProcessor.processBatch(); },
-    );
-    this.eventBridge.start();
+    // 15. (EventBridge removed — event processing handled directly by L1 core event processor)
 
     // 16. Hook subsystem (L3)
     const hookSubsystem = createHookSubsystem({
@@ -353,11 +344,9 @@ export class RuntimeEngine {
       this.wrfcPlugin?.stop();
       this.wrfcPlugin = null;
 
-      // Stop tick driver and event bridge
+      // Stop tick driver
       this.tickDriver?.stop();
       const coreStateStoreForShutdown = this.coreRuntime?.stateStore ?? null;
-      this.eventBridge?.stop();
-      this.eventBridge = null;
 
       // Emit shutdown event
       if (this.events) {
@@ -434,11 +423,6 @@ export class RuntimeEngine {
     if (!this.events?.eventLog) throw new ProcessingError('getEventLog() called before startup()');
     return this.events.eventLog;
   }
-  getEventQueue(): EventQueue {
-    if (!this.events?.eventQueue) throw new ProcessingError('getEventQueue() called before startup()');
-    return this.events.eventQueue;
-  }
-
   getIPCServer(): import('./shared/ipc/ipc-server.js').IPCServer | null { return this.ipcSubsystem?.ipcServer ?? null; }
   getWorkflowEngine(): WorkflowEngine | null { return this.workflow?.workflowEngine ?? null; }
   getTriggerRegistry(): TriggerRegistry | null { return this.triggers?.triggerRegistry ?? null; }

@@ -57,8 +57,6 @@ export type {
   PersistenceRecoveryResult,
 } from './extensions/persistence/types.js';
 export { JsonStateStore } from './extensions/persistence/state-store.js';
-export { EventQueue, QueuePriority } from './extensions/events/event-queue.js';
-export type { QueueEntry, DeadLetterEntry, QueueStats, QueueHandler, EventQueueConfig } from './extensions/events/event-queue.js';
 export { EventLog } from './extensions/events/event-log.js';
 export type { EventLogStats } from './extensions/events/event-log.js';
 export type {
@@ -83,7 +81,7 @@ export type {
   Unsubscribe,
   EventFilter,
   RuntimeEvent,
-} from './extensions/events/types.js';
+} from './shared/events.js';
 export { EventBus } from './extensions/events/event-bus.js';
 export { ConditionEvaluator } from './extensions/triggers/condition-evaluator.js';
 export { TriggerActionExecutor } from './extensions/triggers/trigger-action-executor.js';
@@ -166,6 +164,11 @@ export { BudgetTracker } from './extensions/agents/budget-tracker.js';
 export type {
   CoordinatedAgent,
   AgentBudgetSnapshot,
+  BudgetThreshold,
+  CoordinatorStats,
+  CoordinatedSpawnOptions,
+} from './extensions/agents/types.js';
+export type {
   WRFCChain,
   WRFCPhase,
   WRFCPhaseName,
@@ -173,7 +176,4 @@ export type {
   ExecutionPhaseInfo,
   ExecutionPlanAgent,
   BudgetSummary,
-  BudgetThreshold,
-  CoordinatorStats,
-  CoordinatedSpawnOptions,
-} from './extensions/agents/types.js';
+} from './plugins/wrfc/types.js';

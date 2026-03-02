@@ -15,7 +15,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createLogger } from '../../../shared/logger.js';
 import { assertOptionalString, parseRelativeTime, toErrorMessage } from '../../../shared/utils.js';
 import { DEFAULT_EVENT_QUERY_LIMIT } from '../../../shared/constants.js';
-import type { EventFilter } from '../../../extensions/events/types.js';
+import type { EventFilter } from '../../../shared/events.js';
 import type { EventType, RuntimeEvent } from '../../../shared/events.js';
 import type { Directive } from '../../../shared/ipc/protocol.js';
 import type { HandlerContext } from './types.js';
@@ -176,10 +176,10 @@ export const handleRuntimeEvents = async (
         : undefined;
 
       // Separate exact types from wildcard patterns for the log query
-      let exactTypes: import('../../../extensions/events/types.js').EventType[] | undefined;
+      let exactTypes: import('../../../shared/events.js').EventType[] | undefined;
       let hasWildcards = false;
       if (typePatterns && typePatterns.length > 0) {
-        const exact: import('../../../extensions/events/types.js').EventType[] = [];
+        const exact: import('../../../shared/events.js').EventType[] = [];
         for (const p of typePatterns) {
           if (p === '*' || p.endsWith(':*')) {
             hasWildcards = true;

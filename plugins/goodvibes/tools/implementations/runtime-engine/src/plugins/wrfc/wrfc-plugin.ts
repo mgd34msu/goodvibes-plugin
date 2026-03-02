@@ -228,18 +228,12 @@ export class WRFCPlugin implements RuntimePlugin {
 
   /**
    * Start the plugin.
-   * Seeds config into state store via RuntimeServices.
+   * Config is seeded into the state store by registerWRFCPlugin().
+   * This method only transitions the lifecycle state to 'running'.
    */
   start(): void {
     if (!this._services) {
       throw new Error('WRFCPlugin: register() must be called before start()');
-    }
-    const { setState } = this._services;
-    setState('wrfc.config.min_review_score', this.config.score_threshold);
-    setState('wrfc.config.max_fix_attempts', this.config.max_fix_attempts);
-    setState('wrfc.config.enable_quality_gates', this.config.enable_quality_gates);
-    if (this.config.require_review_types && this.config.require_review_types.length > 0) {
-      setState('wrfc.config.require_review_types', this.config.require_review_types);
     }
     this.state = 'running';
     log.info('WRFCPlugin started', { config: this.config });
@@ -265,27 +259,12 @@ export class WRFCPlugin implements RuntimePlugin {
   /**
    * Returns WRFC event handler registrations.
    *
-   * Note: The full handler wiring (including TriggerRegistry and EventProcessor
-   * integration) is performed by registerWRFCPlugin(). This method provides
-   * the handler metadata summary for the RuntimePlugin interface.
+   * Handler wiring (TriggerRegistry + EventProcessor integration) is performed
+   * entirely by registerWRFCPlugin(). The RuntimePlugin interface's getHandlers()
+   * contract is satisfied by returning an empty array — no additional handler
+   * registration through this path is needed or desired.
    */
   getHandlers(): PluginEventHandler[] {
-    return [
-      {
-        event_type: 'agent:spawned',
-        handler: () => { /* handled via registerWRFCPlugin wiring */ },
-        priority: 10,
-      },
-      {
-        event_type: 'agent:completed',
-        handler: () => { /* handled via registerWRFCPlugin wiring */ },
-        priority: 10,
-      },
-      {
-        event_type: 'wrfc:review_completed',
-        handler: () => { /* handled via registerWRFCPlugin wiring */ },
-        priority: 10,
-      },
-    ];
+    return [];
   }
 }

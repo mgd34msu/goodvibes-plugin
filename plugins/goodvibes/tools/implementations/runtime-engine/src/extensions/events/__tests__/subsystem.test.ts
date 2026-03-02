@@ -7,10 +7,8 @@ import { join } from 'node:path';
 const {
   mockEventBus,
   mockEventLog,
-  mockEventQueue,
   MockEventBus,
   MockEventLog,
-  MockEventQueue,
 } = vi.hoisted(() => {
   const mockEventBus = {
     setEventLog: vi.fn(),
@@ -26,12 +24,6 @@ const {
     append: vi.fn(),
   };
 
-  const mockEventQueue = {
-    start: vi.fn(),
-    stop: vi.fn(),
-    drain: vi.fn().mockResolvedValue({ remaining: 0, drained: 0 }),
-  };
-
   // Use regular functions so they can be used as constructors with `new`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const MockEventBus = vi.fn().mockImplementation(function(this: any) {
@@ -41,12 +33,8 @@ const {
   const MockEventLog = vi.fn().mockImplementation(function(this: any) {
     return mockEventLog;
   });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const MockEventQueue = vi.fn().mockImplementation(function(this: any) {
-    return mockEventQueue;
-  });
 
-  return { mockEventBus, mockEventLog, mockEventQueue, MockEventBus, MockEventLog, MockEventQueue };
+  return { mockEventBus, mockEventLog, MockEventBus, MockEventLog };
 });
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
@@ -66,7 +54,6 @@ vi.mock('../../../core/utils/fs-utils.js', () => ({
 
 vi.mock('../event-bus.js', () => ({ EventBus: MockEventBus }));
 vi.mock('../event-log.js', () => ({ EventLog: MockEventLog }));
-vi.mock('../event-queue.js', () => ({ EventQueue: MockEventQueue }));
 
 // ─── Subject ─────────────────────────────────────────────────────────────────
 
@@ -84,15 +71,12 @@ describe('createEventSubsystem', () => {
     vi.clearAllMocks();
     MockEventBus.mockClear();
     MockEventLog.mockClear();
-    MockEventQueue.mockClear();
     // Re-apply implementations after clearAllMocks
     MockEventBus.mockImplementation(function() { return mockEventBus; });
     MockEventLog.mockImplementation(function() { return mockEventLog; });
-    MockEventQueue.mockImplementation(function() { return mockEventQueue; });
     mockEventLog.initialize.mockResolvedValue(undefined);
     mockEventLog.flush.mockResolvedValue(undefined);
     mockEventLog.close.mockResolvedValue(undefined);
-    mockEventQueue.drain.mockResolvedValue({ remaining: 0, drained: 0 });
   });
 
   it('returns all expected fields', async () => {
@@ -100,7 +84,6 @@ describe('createEventSubsystem', () => {
 
     expect(subsystem).toHaveProperty('eventBus');
     expect(subsystem).toHaveProperty('eventLog');
-    expect(subsystem).toHaveProperty('eventQueue');
     expect(subsystem).toHaveProperty('shutdown');
     expect(typeof subsystem.shutdown).toBe('function');
   });
@@ -110,7 +93,6 @@ describe('createEventSubsystem', () => {
 
     expect(subsystem.eventBus).toBe(mockEventBus);
     expect(subsystem.eventLog).toBe(mockEventLog);
-    expect(subsystem.eventQueue).toBe(mockEventQueue);
   });
 
   it('creates state directory using projectRoot and config.persistence.state_dir', async () => {
@@ -132,18 +114,6 @@ describe('createEventSubsystem', () => {
     expect(mockEventBus.setEventLog).toHaveBeenCalledWith(mockEventLog);
   });
 
-  it('starts EventQueue during creation', async () => {
-    await createEventSubsystem(config, projectRoot);
-
-    expect(mockEventQueue.start).toHaveBeenCalledOnce();
-  });
-
-  it('constructs EventQueue with queue config', async () => {
-    await createEventSubsystem(config, projectRoot);
-
-    expect(MockEventQueue).toHaveBeenCalledWith(config.queue);
-  });
-
   it('constructs EventLog with stateDir and persistence config', async () => {
     await createEventSubsystem(config, projectRoot);
 
@@ -152,14 +122,6 @@ describe('createEventSubsystem', () => {
   });
 
   describe('shutdown()', () => {
-    it('drains and stops the event queue', async () => {
-      const subsystem = await createEventSubsystem(config, projectRoot);
-      await subsystem.shutdown();
-
-      expect(mockEventQueue.drain).toHaveBeenCalledWith(5_000);
-      expect(mockEventQueue.stop).toHaveBeenCalledOnce();
-    });
-
     it('removes all EventBus listeners', async () => {
       const subsystem = await createEventSubsystem(config, projectRoot);
       await subsystem.shutdown();

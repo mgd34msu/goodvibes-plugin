@@ -237,17 +237,17 @@ describe('IPCRouter', () => {
       expect(response.status).toBe('ok');
       expect((deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit).toHaveBeenCalledOnce();
       const emitted = (deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit.mock.calls[0][0];
-      // Event type must be the bare hook_name so EventBridge FORWARDED_PATTERNS can match.
+      // Event type must be the bare hook_name so EventProcessor trigger conditions can match.
       // source.kind === 'hook' provides traceability of hook origin.
       expect(emitted.type).toBe('pre_tool_use');
       expect(emitted.source.kind).toBe('hook');
       expect(emitted.source.hook_name).toBe('pre_tool_use');
     });
 
-    it('does NOT call triggerRegistry.evaluate directly (EventBridge path handles evaluation)', async () => {
+    it('does NOT call triggerRegistry.evaluate directly (EventProcessor path handles evaluation)', async () => {
       // Direct triggerRegistry.evaluate was removed to prevent double-fire:
       // WRFC triggers have actions:[] so direct eval is useless, but increments fires_count.
-      // The actual handler execution path is EventBridge → EventQueue → EventProcessor.
+      // The actual handler execution path is EventBus → EventProcessor → TriggerRegistry.
       await router.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
       expect(
         (deps.triggerRegistry as unknown as { evaluate: ReturnType<typeof vi.fn> }).evaluate

@@ -423,19 +423,3 @@ export function createTrigger(
   };
 }
 
-// ─── Deprecated Re-exports ──────────────────────────────────────────────────────────
-// These types have moved to 'shared/events.js'. They are re-exported here for
-// backwards compatibility during the migration period. Import directly from
-// 'shared/events.js' going forward.
-
-/** @deprecated Import from '../shared/events.js' instead */
-export type { RuntimeEvent } from '../shared/events.js';
-
-/** @deprecated Import from '../shared/events.js' instead */
-export type { EventSource } from '../shared/events.js';
-
-/** @deprecated Import from '../shared/events.js' instead */
-export type { EventContext } from '../shared/events.js';
-
-/** @deprecated Import from '../shared/events.js' instead */
-export { createEvent } from '../shared/events.js';
