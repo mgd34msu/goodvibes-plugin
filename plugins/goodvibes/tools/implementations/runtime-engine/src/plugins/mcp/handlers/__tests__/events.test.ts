@@ -103,39 +103,46 @@ describe('matchesTypePattern', () => {
 // ─── resolveTimestamp ────────────────────────────────────────────────────────
 
 describe('resolveTimestamp', () => {
-  it('passes through ISO timestamps unchanged', () => {
+  it('converts ISO timestamps to epoch ms', () => {
     const iso = '2024-01-01T00:00:00.000Z';
-    expect(resolveTimestamp(iso)).toBe(iso);
+    const expected = new Date(iso).getTime();
+    expect(resolveTimestamp(iso)).toBe(expected);
   });
 
-  it('passes through date strings containing a hyphen', () => {
+  it('converts date strings containing a hyphen to epoch ms', () => {
     const dateStr = '2024-06-01';
-    expect(resolveTimestamp(dateStr)).toBe(dateStr);
+    const expected = new Date(dateStr).getTime();
+    expect(resolveTimestamp(dateStr)).toBe(expected);
   });
 
-  it('converts relative time string like 5m to an ISO timestamp in the past', () => {
+  it('converts relative time string like 5m to an epoch ms number in the past', () => {
     const before = Date.now();
     const result = resolveTimestamp('5m');
     const after = Date.now();
 
-    const resultMs = new Date(result).getTime();
     // Should be approximately 5 minutes ago (4:30 to 5:30 minutes in ms)
-    expect(resultMs).toBeLessThan(before - 4 * 60 * 1000);
-    expect(resultMs).toBeGreaterThan(after - 6 * 60 * 1000);
+    expect(result).toBeLessThan(before - 4 * 60 * 1000);
+    expect(result).toBeGreaterThan(after - 6 * 60 * 1000);
+    expect(typeof result).toBe('number');
   });
 
-  it('converts relative time string like 1h to an ISO timestamp in the past', () => {
+  it('converts relative time string like 1h to an epoch ms number in the past', () => {
     const result = resolveTimestamp('1h');
-    const resultMs = new Date(result).getTime();
-    expect(resultMs).toBeLessThan(Date.now() - 55 * 60 * 1000);
+    expect(result).toBeLessThan(Date.now() - 55 * 60 * 1000);
+    expect(typeof result).toBe('number');
   });
 
-  it('falls back to returning the original value for invalid relative strings', () => {
-    // An invalid relative string should be returned as-is (the catch returns `value`)
-    const result = resolveTimestamp('invalid-relative-time');
-    // Either the original string is returned, or it contains 'invalid-relative-time'
-    // The function passes through strings containing '-' unchanged
-    expect(result).toBe('invalid-relative-time');
+  it('falls back to Date.now() for invalid relative strings', () => {
+    // Input must not contain 'T' or '-' (those are treated as date strings, not relative)
+    // 'invalidstring' has no dashes, is not a number, and is not a valid relative time,
+    // so parseRelativeTime throws and the catch block returns Date.now()
+    const before = Date.now();
+    const result = resolveTimestamp('invalidstring');
+    const after = Date.now();
+    // Should be current time (catch block fallback)
+    expect(result).toBeGreaterThanOrEqual(before);
+    expect(result).toBeLessThanOrEqual(after + 10);
+    expect(typeof result).toBe('number');
   });
 });
 
@@ -330,9 +337,11 @@ describe('handleRuntimeEvents', () => {
         ctx,
       );
 
-      const callFilter = getHistoryMock.mock.calls[0][0] as { since: string };
-      // since should be resolved to an ISO timestamp
-      expect(callFilter.since).toMatch(/\d{4}-\d{2}-\d{2}T/u);
+      const callFilter = getHistoryMock.mock.calls[0][0] as { since: number };
+      // since should be resolved to an epoch ms number
+      expect(typeof callFilter.since).toBe('number');
+      // Should be approximately 5 minutes in the past
+      expect(callFilter.since).toBeLessThan(Date.now() - 4 * 60 * 1000);
     });
   });
 

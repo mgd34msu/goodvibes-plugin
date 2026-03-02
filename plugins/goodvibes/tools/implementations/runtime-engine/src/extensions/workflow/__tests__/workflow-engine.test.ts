@@ -166,15 +166,15 @@ describe('WorkflowEngine', () => {
   });
 
   describe('setDirectiveQueue', () => {
-    it('stores the directive queue so it is purged on terminal transitions', () => {
+    it('stores the directive queue so it is purged on terminal transitions', async () => {
       const queue = makeDirectiveQueue();
       const bus = makeEventBus();
       engine.setDirectiveQueue(queue);
       engine.setEventBus(bus);
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:completed'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:completed'));
       expect(queue.purge).toHaveBeenCalledWith(instance.id);
     });
   });
@@ -284,32 +284,32 @@ describe('WorkflowEngine', () => {
   // ─── sendEvent ───────────────────────────────────────────────────────────
 
   describe('sendEvent', () => {
-    it('returns null for unknown workflow id', () => {
-      expect(engine.sendEvent('no_such_id', makeEvent('task:started'))).toBeNull();
+    it('returns null for unknown workflow id', async () => {
+      expect(await engine.sendEvent('no_such_id', makeEvent('task:started'))).toBeNull();
     });
 
-    it('returns null when workflow is not active (completed)', () => {
+    it('returns null when workflow is not active (completed)', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:completed'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:completed'));
       // Now completed — further events are ignored
-      const result = engine.sendEvent(instance.id, makeEvent('task:started'));
+      const result = await engine.sendEvent(instance.id, makeEvent('task:started'));
       expect(result).toBeNull();
     });
 
-    it('returns null when workflow is not active (cancelled)', () => {
+    it('returns null when workflow is not active (cancelled)', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
       engine.cancel(instance.id, 'test cancel');
-      expect(engine.sendEvent(instance.id, makeEvent('task:started'))).toBeNull();
+      expect(await engine.sendEvent(instance.id, makeEvent('task:started'))).toBeNull();
     });
 
-    it('returns null when no matching transition exists for event type', () => {
+    it('returns null when no matching transition exists for event type', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
       // 'idle' state has no transition for 'task:completed'
-      const result = engine.sendEvent(instance.id, makeEvent('task:completed'));
+      const result = await engine.sendEvent(instance.id, makeEvent('task:completed'));
       expect(result).toBeNull();
       expect(instance.current_state).toBe('idle');
     });
@@ -324,69 +324,69 @@ describe('WorkflowEngine', () => {
       expect(transition!.event).toBe('task:started');
     });
 
-    it('updates current_state after a valid transition', () => {
+    it('updates current_state after a valid transition', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
       expect(instance.current_state).toBe('working');
     });
 
-    it('records transition in history', () => {
+    it('records transition in history', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
       expect(instance.history).toHaveLength(1);
       expect(instance.history[0].from_state).toBe('idle');
       expect(instance.history[0].to_state).toBe('working');
     });
 
-    it('marks instance as completed when transitioning to terminal state', () => {
+    it('marks instance as completed when transitioning to terminal state', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:completed'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:completed'));
       expect(instance.status).toBe('completed');
       expect(instance.completed_at).toBeDefined();
     });
 
-    it('emits workflow:state_changed and workflow:completed when terminal', () => {
+    it('emits workflow:state_changed and workflow:completed when terminal', async () => {
       const bus = makeEventBus();
       engine.setEventBus(bus);
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
       bus.emit.mockClear();
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:completed'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:completed'));
       const types = (bus.emit as Mock).mock.calls.map((c) => c[0].type);
       expect(types).toContain('workflow:state_changed');
       expect(types).toContain('workflow:completed');
     });
 
-    it('purges directive queue when reaching terminal state', () => {
+    it('purges directive queue when reaching terminal state', async () => {
       const queue = makeDirectiveQueue();
       engine.setDirectiveQueue(queue);
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:completed'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:completed'));
       expect(queue.purge).toHaveBeenCalledWith(instance.id);
     });
 
-    it('halts with failed status when max_transitions is exceeded', () => {
+    it('halts with failed status when max_transitions is exceeded', async () => {
       const def = makeDefinition({ max_transitions: 1 });
       engine.registerDefinition(def);
       const instance = engine.create('test_workflow');
       // First transition succeeds
-      engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
       expect(instance.history).toHaveLength(1);
       // Second transition: max_transitions (1) reached in history check
-      const result = engine.sendEvent(instance.id, makeEvent('task:completed'));
+      const result = await engine.sendEvent(instance.id, makeEvent('task:completed'));
       expect(result).toBeNull();
       expect(instance.status).toBe('failed');
       expect(instance.error).toMatch(/Exceeded max transitions/);
     });
 
-    it('uses per-definition max_transitions over engine default', () => {
+    it('uses per-definition max_transitions over engine default', async () => {
       // Engine has a high default (100), but definition caps at 2.
       // Use a cycling definition so we can trigger the limit before reaching terminal.
       const cyclingDef: WorkflowDefinition = {
@@ -404,35 +404,35 @@ describe('WorkflowEngine', () => {
       };
       engine.registerDefinition(cyclingDef);
       const instance = engine.create('cycle_def');
-      engine.sendEvent(instance.id, makeEvent('go')); // s1 -> s2 (history length: 1)
-      engine.sendEvent(instance.id, makeEvent('go')); // s2 -> s1 (history length: 2)
+      await engine.sendEvent(instance.id, makeEvent('go')); // s1 -> s2 (history length: 1)
+      await engine.sendEvent(instance.id, makeEvent('go')); // s2 -> s1 (history length: 2)
       // history.length (2) >= max_transitions (2) — next sendEvent should fail the workflow
-      const result = engine.sendEvent(instance.id, makeEvent('go'));
+      const result = await engine.sendEvent(instance.id, makeEvent('go'));
       expect(result).toBeNull();
       expect(instance.status).toBe('failed');
     });
 
-    it('emits workflow:failed when max transitions exceeded', () => {
+    it('emits workflow:failed when max transitions exceeded', async () => {
       const bus = makeEventBus();
       engine.setEventBus(bus);
       const def = makeDefinition({ max_transitions: 1 });
       engine.registerDefinition(def);
       const instance = engine.create('test_workflow');
       bus.emit.mockClear();
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
       const types = (bus.emit as Mock).mock.calls.map((c) => c[0].type);
       expect(types).toContain('workflow:failed');
     });
 
-    it('purges directive queue when max transitions exceeded', () => {
+    it('purges directive queue when max transitions exceeded', async () => {
       const queue = makeDirectiveQueue();
       engine.setDirectiveQueue(queue);
       const def = makeDefinition({ max_transitions: 1 });
       engine.registerDefinition(def);
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
       expect(queue.purge).toHaveBeenCalledWith(instance.id);
     });
 
@@ -568,7 +568,7 @@ describe('WorkflowEngine', () => {
         );
       });
 
-      it('returns false when function guard is not registered', () => {
+      it('returns false when function guard is not registered', async () => {
         const def: WorkflowDefinition = {
           id: 'missing_guard_def',
           name: 'Missing Guard',
@@ -591,7 +591,7 @@ describe('WorkflowEngine', () => {
         };
         engine.registerDefinition(def);
         const instance = engine.create('missing_guard_def');
-        const result = engine.sendEvent(instance.id, makeEvent('go'));
+        const result = await engine.sendEvent(instance.id, makeEvent('go'));
         expect(result).toBeNull();
         expect(instance.current_state).toBe('start');
       });
@@ -1121,7 +1121,7 @@ describe('WorkflowEngine', () => {
         expect(instance.current_state).toBe('end');
       });
 
-      it('invoke_handler logs error when handler throws but continues', async () => {
+      it('invoke_handler logs error when handler throws and rolls back the transition', async () => {
         const throwingHandler: ActionHandler = vi.fn().mockRejectedValue(new Error('boom'));
         engine.registerAction('throwing_handler', throwingHandler);
         const def: WorkflowDefinition = {
@@ -1146,11 +1146,10 @@ describe('WorkflowEngine', () => {
         };
         engine.registerDefinition(def);
         const instance = engine.create(def.id);
-        engine.sendEvent(instance.id, makeEvent('go'));
-        // Flush microtasks
-        await new Promise((r) => setImmediate(r));
-        // Transition still happened — error is logged but doesn't revert state
-        expect(instance.current_state).toBe('end');
+        const result = await engine.sendEvent(instance.id, makeEvent('go'));
+        // Handler throws — transition is rolled back, returns null
+        expect(result).toBeNull();
+        expect(instance.current_state).toBe('start');
       });
 
       it('spawn_agent action logs an error (placeholder)', async () => {
@@ -1233,12 +1232,12 @@ describe('WorkflowEngine', () => {
       expect(engine.listActive()).toEqual([]);
     });
 
-    it('returns only active instances', () => {
+    it('returns only active instances', async () => {
       engine.registerDefinition(makeDefinition());
       const i1 = engine.create('test_workflow', {}, 'wf_1');
       const i2 = engine.create('test_workflow', {}, 'wf_2');
-      engine.sendEvent(i1.id, makeEvent('task:started'));
-      engine.sendEvent(i1.id, makeEvent('task:completed'));
+      await engine.sendEvent(i1.id, makeEvent('task:started'));
+      await engine.sendEvent(i1.id, makeEvent('task:completed'));
       // i1 is completed, i2 is still active
       const active = engine.listActive();
       expect(active).toHaveLength(1);
@@ -1372,11 +1371,11 @@ describe('WorkflowEngine', () => {
       expect(() => engine.cancel('no_such_id', 'reason')).not.toThrow();
     });
 
-    it('does nothing when workflow is already not active', () => {
+    it('does nothing when workflow is already not active', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      engine.sendEvent(instance.id, makeEvent('task:started'));
-      engine.sendEvent(instance.id, makeEvent('task:completed'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:completed'));
       // Already completed — cancel should be a no-op
       engine.cancel(instance.id, 'late cancel');
       expect(instance.status).toBe('completed'); // not changed to cancelled
@@ -1563,7 +1562,7 @@ describe('WorkflowEngine', () => {
   // ─── Workflow lifecycle end-to-end ───────────────────────────────────────
 
   describe('full workflow lifecycle', () => {
-    it('drives a workflow from initial to terminal state', () => {
+    it('drives a workflow from initial to terminal state', async () => {
       const bus = makeEventBus();
       const queue = makeDirectiveQueue();
       engine.setEventBus(bus);
@@ -1574,18 +1573,18 @@ describe('WorkflowEngine', () => {
       expect(instance.status).toBe('active');
       expect(instance.current_state).toBe('idle');
 
-      engine.sendEvent(instance.id, makeEvent('task:started'));
+      await engine.sendEvent(instance.id, makeEvent('task:started'));
       expect(instance.current_state).toBe('working');
       expect(instance.history).toHaveLength(1);
 
-      engine.sendEvent(instance.id, makeEvent('task:completed'));
+      await engine.sendEvent(instance.id, makeEvent('task:completed'));
       expect(instance.current_state).toBe('done');
       expect(instance.status).toBe('completed');
       expect(instance.history).toHaveLength(2);
       expect(queue.purge).toHaveBeenCalledWith(instance.id);
     });
 
-    it('correctly tracks history across multiple transitions', () => {
+    it('correctly tracks history across multiple transitions', async () => {
       const def: WorkflowDefinition = {
         id: 'multi_def',
         name: 'Multi Step',
@@ -1601,9 +1600,9 @@ describe('WorkflowEngine', () => {
       };
       engine.registerDefinition(def);
       const instance = engine.create('multi_def');
-      engine.sendEvent(instance.id, makeEvent('next'));
-      engine.sendEvent(instance.id, makeEvent('next'));
-      engine.sendEvent(instance.id, makeEvent('next'));
+      await engine.sendEvent(instance.id, makeEvent('next'));
+      await engine.sendEvent(instance.id, makeEvent('next'));
+      await engine.sendEvent(instance.id, makeEvent('next'));
 
       expect(instance.history).toHaveLength(3);
       expect(instance.history.map((h) => h.to_state)).toEqual(['s2', 's3', 's4']);

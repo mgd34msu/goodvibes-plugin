@@ -153,7 +153,7 @@ describe('createCoreRuntime', () => {
   });
 
   it('returns correct instances', () => {
-    const runtime = createCoreRuntime();
+    const runtime = createCoreRuntime(undefined, mockTriggerRegistry);
 
     expect(runtime.eventQueue).toBe(mockEventQueue);
     expect(runtime.triggerRegistry).toBe(mockTriggerRegistry);
@@ -168,11 +168,14 @@ describe('createCoreRuntime', () => {
     expect(MockEventQueue).toHaveBeenCalledWith();
   });
 
-  it('instantiates TriggerRegistry with no arguments', () => {
-    createCoreRuntime();
+  it('uses inline stub registry when no triggerRegistry is provided', () => {
+    const runtime = createCoreRuntime();
 
-    expect(MockTriggerRegistry).toHaveBeenCalledOnce();
-    expect(MockTriggerRegistry).toHaveBeenCalledWith();
+    // When no registry is passed, an inline stub is used (not MockTriggerRegistry)
+    expect(runtime.triggerRegistry).toBeDefined();
+    expect(typeof runtime.triggerRegistry.match).toBe('function');
+    expect(typeof runtime.triggerRegistry.register).toBe('function');
+    expect(MockTriggerRegistry).not.toHaveBeenCalled();
   });
 
   it('instantiates CoreStateStore with no arguments', () => {
@@ -204,7 +207,7 @@ describe('createCoreRuntime', () => {
   });
 
   it('constructs EventProcessor with all required dependencies', () => {
-    createCoreRuntime();
+    createCoreRuntime(undefined, mockTriggerRegistry);
 
     expect(MockEventProcessor).toHaveBeenCalledOnce();
     const [q, reg, store, lc, metrics, errHandler, dl, opts] = MockEventProcessor.mock.calls[0];
@@ -246,9 +249,11 @@ describe('createCoreRuntime', () => {
     createCoreRuntime();
     createCoreRuntime();
 
+    // Each call creates a new EventQueue, StateStore, and EventProcessor
     expect(MockEventQueue).toHaveBeenCalledTimes(2);
-    expect(MockTriggerRegistry).toHaveBeenCalledTimes(2);
     expect(MockCoreStateStore).toHaveBeenCalledTimes(2);
     expect(MockEventProcessor).toHaveBeenCalledTimes(2);
+    // TriggerRegistry is NOT instantiated by createCoreRuntime (inline stub used when not provided)
+    expect(MockTriggerRegistry).not.toHaveBeenCalled();
   });
 });

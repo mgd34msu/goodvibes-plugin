@@ -374,7 +374,8 @@ function isRuntimeEvent(value: unknown): value is RuntimeEvent {
   const v = value as Record<string, unknown>;
   return (
     typeof v['id'] === 'string' &&
-    typeof v['source'] === 'string' &&
+    typeof v['source'] === 'object' && v['source'] !== null &&
+    typeof (v['source'] as Record<string, unknown>)['kind'] === 'string' &&
     typeof v['type'] === 'string' &&
     typeof v['timestamp'] === 'number' &&
     typeof v['priority'] === 'number' &&

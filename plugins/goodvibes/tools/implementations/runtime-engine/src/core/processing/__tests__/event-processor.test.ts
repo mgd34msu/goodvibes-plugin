@@ -240,7 +240,7 @@ describe('EventProcessor', () => {
       );
 
       processor.registerHandler('handler-trigger', handler);
-      (deps.queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (deps.queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       await processor.processBatch();
 
@@ -291,7 +291,7 @@ describe('EventProcessor', () => {
         {},
         { lifecycle: makeLifecycle(true) },
       );
-      (deps.queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (deps.queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
       const result = await processor.processBatch();
       expect(result).toBe(1);
     });
@@ -442,7 +442,7 @@ describe('EventProcessor', () => {
         (args: any[]) => (args[0] as RuntimeEvent).type === 'core:queue_depth_warning',
       );
       expect(warningCall).toBeDefined();
-      expect((warningCall as any[])[0].payload).toMatchObject({ depth: 10, threshold: 10 });
+      expect((warningCall as any[])[0].payload.data).toMatchObject({ depth: 10, threshold: 10 });
     });
 
     it('does not enqueue a warning event when depth is below threshold', async () => {
@@ -507,7 +507,7 @@ describe('EventProcessor', () => {
         { lock_timeout_ms: 1 }, // 1ms timeout — stale almost immediately
       );
 
-      (deps.queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (deps.queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       // First batch: acquires lock
       await processor.processBatch();
@@ -520,7 +520,7 @@ describe('EventProcessor', () => {
       // If locks were not released, activeWorkflowCount() would remain non-zero after a batch.
       const wfEvent = makeEvent({ id: 'wf-evt-1', context: { workflow_id: 'wf-check' } });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([wfEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([wfEvent]);
 
       const { processor } = buildProcessor(
         { lock_timeout_ms: 30_000 },
@@ -553,7 +553,7 @@ describe('EventProcessor', () => {
       };
 
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([wfEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([wfEvent]);
 
       const { processor } = buildProcessor(
         { lock_timeout_ms: 30_000 },
@@ -589,7 +589,7 @@ describe('EventProcessor', () => {
         makeEvent({ id: `evt-${i}` }),
       );
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue(events);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce(events);
 
       const { processor } = buildProcessor({ max_events_per_batch: 3 }, { queue });
       await processor.processBatch();
@@ -626,7 +626,7 @@ describe('EventProcessor', () => {
     it('skips events with priority below the floor', async () => {
       const lowPriorityEvent = makeEvent({ priority: 1 });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([lowPriorityEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([lowPriorityEvent]);
 
       const metrics = makeMetrics();
       const { processor } = buildProcessor(
@@ -643,7 +643,7 @@ describe('EventProcessor', () => {
     it('processes events at exactly the priority floor', async () => {
       const event = makeEvent({ priority: 5 });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const metrics = makeMetrics();
       const { processor } = buildProcessor(
@@ -660,7 +660,7 @@ describe('EventProcessor', () => {
     it('processes all events when priority_floor is not set', async () => {
       const event = makeEvent({ priority: 0 });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor({}, { queue });
       const processed = await processor.processBatch();
@@ -745,7 +745,7 @@ describe('EventProcessor', () => {
         context: { chain_depth: 11 },
       });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([deepEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([deepEvent]);
 
       const { processor } = buildProcessor(
         { max_chain_depth: 10 },
@@ -760,7 +760,7 @@ describe('EventProcessor', () => {
         (args: any[]) => (args[0] as RuntimeEvent).type === 'core:chain_depth_exceeded',
       );
       expect(exceededEvt).toBeDefined();
-      expect((exceededEvt as any[])[0].payload).toMatchObject({
+      expect((exceededEvt as any[])[0].payload.data).toMatchObject({
         original_event_id: 'deep-event',
         original_event_type: 'test:event',
         depth: 11,
@@ -771,7 +771,7 @@ describe('EventProcessor', () => {
     it('processes events at exactly max_chain_depth (boundary)', async () => {
       const event = makeEvent({ context: { chain_depth: 10 } });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor({ max_chain_depth: 10 }, { queue });
       const processed = await processor.processBatch();
@@ -783,7 +783,7 @@ describe('EventProcessor', () => {
     it('processes events with no context (chain_depth defaults to 0)', async () => {
       const event = makeEvent({ context: undefined });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor({ max_chain_depth: 10 }, { queue });
       const processed = await processor.processBatch();
@@ -794,7 +794,7 @@ describe('EventProcessor', () => {
     it('swallows enqueue errors for chain_depth_exceeded event', async () => {
       const deepEvent = makeEvent({ context: { chain_depth: 11 } });
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([deepEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([deepEvent]);
       (queue.enqueue as ReturnType<typeof vi.fn>).mockImplementation(() => {
         throw new Error('queue full');
       });
@@ -813,7 +813,7 @@ describe('EventProcessor', () => {
       const store = makeStore();
       const registry = makeRegistry([]);
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor({}, { queue, registry, store });
       await processor.processBatch();
@@ -828,7 +828,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger1, trigger2]);
       const metrics = makeMetrics();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor({}, { queue, registry, metrics });
       await processor.processBatch();
@@ -843,7 +843,7 @@ describe('EventProcessor', () => {
       const event = makeEvent();
       const metrics = makeMetrics();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor({}, { queue, metrics });
       await processor.processBatch();
@@ -854,7 +854,7 @@ describe('EventProcessor', () => {
     it('updates queue depth metric before and after processing', async () => {
       const event = makeEvent();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
       (queue.depth as ReturnType<typeof vi.fn>)
         .mockReturnValueOnce(0) // first call during stale sweep / warning check
         .mockReturnValue(0);
@@ -891,7 +891,7 @@ describe('EventProcessor', () => {
       const event = makeEvent();
       const registry = makeRegistry([trigger]);
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       // No handler registered
       const { processor } = buildProcessor({}, { queue, registry });
@@ -913,7 +913,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const event = makeEvent();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler });
       processor.registerHandler('my-trigger', handler);
@@ -942,7 +942,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const metrics = makeMetrics();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler, metrics });
       processor.registerHandler('failing-trigger', handler);
@@ -971,7 +971,7 @@ describe('EventProcessor', () => {
       });
       const registry = makeRegistry([trigger]);
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
       (queue.enqueue as ReturnType<typeof vi.fn>).mockImplementation(() => {
         throw new Error('queue full');
       });
@@ -1001,7 +1001,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([failingTrigger, successTrigger]);
       const metrics = makeMetrics();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler, metrics });
       processor.registerHandler('fail-trigger', handler);
@@ -1032,7 +1032,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const store = makeStore();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, store, errorHandler });
       processor.registerHandler('state-trigger', vi.fn().mockResolvedValue({}));
@@ -1054,7 +1054,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const store = makeStore();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, store, errorHandler });
       processor.registerHandler('delete-trigger', vi.fn().mockResolvedValue({}));
@@ -1076,7 +1076,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const store = makeStore();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, store, errorHandler });
       processor.registerHandler('merge-trigger', vi.fn().mockResolvedValue({}));
@@ -1098,7 +1098,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const store = makeStore();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, store, errorHandler });
       processor.registerHandler('merge-fallback-trigger', vi.fn().mockResolvedValue({}));
@@ -1121,7 +1121,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const store = makeStore();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, store, errorHandler });
       processor.registerHandler('merge-null-trigger', vi.fn().mockResolvedValue({}));
@@ -1143,7 +1143,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const store = makeStore();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, store, errorHandler });
       processor.registerHandler('merge-array-trigger', vi.fn().mockResolvedValue({}));
@@ -1162,7 +1162,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const store = makeStore();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, store, errorHandler });
       processor.registerHandler('no-updates-trigger', vi.fn().mockResolvedValue({}));
@@ -1188,7 +1188,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const queue = makeQueue();
       const parentEvent = makeEvent({ id: 'parent-event' });
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([parentEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([parentEvent]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler });
       processor.registerHandler('chain-trigger', vi.fn().mockResolvedValue({}));
@@ -1219,7 +1219,7 @@ describe('EventProcessor', () => {
         id: 'parent-wf',
         context: { workflow_id: 'wf-inherit' },
       });
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([parentEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([parentEvent]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler });
       processor.registerHandler('wf-chain-trigger', vi.fn().mockResolvedValue({}));
@@ -1250,7 +1250,7 @@ describe('EventProcessor', () => {
         id: 'parent-own-wf',
         context: { workflow_id: 'parent-wf' },
       });
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([parentEvent]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([parentEvent]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler });
       processor.registerHandler('own-wf-trigger', vi.fn().mockResolvedValue({}));
@@ -1272,7 +1272,7 @@ describe('EventProcessor', () => {
       });
       const registry = makeRegistry([trigger]);
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler });
       processor.registerHandler('no-events-trigger', vi.fn().mockResolvedValue({}));
@@ -1296,7 +1296,7 @@ describe('EventProcessor', () => {
       });
       const registry = makeRegistry([trigger]);
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
       (queue.enqueue as ReturnType<typeof vi.fn>).mockImplementation(() => {
         throw new Error('backpressure');
       });
@@ -1326,7 +1326,7 @@ describe('EventProcessor', () => {
       const actionExecutor = makeActionExecutor();
       const queue = makeQueue();
       const event = makeEvent({ context: { workflow_id: 'wf-action' } });
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor(
         { action_executor: actionExecutor },
@@ -1359,7 +1359,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const actionExecutor = makeActionExecutor();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       // No action_executor in options
       const { processor } = buildProcessor({}, { queue, registry, errorHandler });
@@ -1379,7 +1379,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const actionExecutor = makeActionExecutor();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor(
         { action_executor: actionExecutor },
@@ -1404,7 +1404,7 @@ describe('EventProcessor', () => {
         execute: vi.fn().mockRejectedValue(new Error('action failed')),
       };
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor(
         { action_executor: actionExecutor },
@@ -1427,7 +1427,7 @@ describe('EventProcessor', () => {
       const actionExecutor = makeActionExecutor();
       const queue = makeQueue();
       const event = makeEvent({ context: undefined });
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
 
       const { processor } = buildProcessor(
         { action_executor: actionExecutor },
@@ -1451,7 +1451,7 @@ describe('EventProcessor', () => {
       const registry = makeRegistry([trigger]);
       const actionExecutor = makeActionExecutor();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       // No handler registered for 'trigger-action-only'
       const { processor } = buildProcessor(
@@ -1475,7 +1475,7 @@ describe('EventProcessor', () => {
       const event = makeEvent();
       const registry = makeRegistry([]); // no triggers
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
       const metrics = makeMetrics();
 
       const { processor } = buildProcessor({}, { queue, registry, metrics });
@@ -1511,7 +1511,7 @@ describe('EventProcessor', () => {
 
       const registry = makeRegistry([trigger1, trigger2]);
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([makeEvent()]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([makeEvent()]);
 
       const { processor } = buildProcessor({}, { queue, registry, errorHandler });
       processor.registerHandler('multi-1', vi.fn().mockResolvedValue({}));
@@ -1531,7 +1531,7 @@ describe('EventProcessor', () => {
     it('calls onQueueDepthChange(0) after drain and final depth at end of batch', async () => {
       const event = makeEvent();
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue([event]);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce([event]);
       (queue.depth as ReturnType<typeof vi.fn>).mockReturnValue(3);
 
       const metrics = makeMetrics();

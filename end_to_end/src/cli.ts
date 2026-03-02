@@ -1,62 +1,55 @@
 import { TaskStore } from './store.js';
 
+function formatTask(task: { id: string; title: string; description: string; status: string; createdAt: Date; updatedAt: Date }): string {
+  return `  [${task.status.toUpperCase().padEnd(11)}] ${task.title} (id: ${task.id})`;
+}
+
 async function main(): Promise<void> {
-  console.log('=== Task Manager CLI Demo ===\n');
-
-  // 1. Create a new TaskStore
   const store = new TaskStore();
-  console.log('Created new TaskStore.');
 
-  // 2. Add 3 sample tasks
-  console.log('\n--- Adding Tasks ---');
-  const task1 = store.addTask('Design API');
-  console.log(`Added: [${task1.id}] "${task1.title}" (${task1.status})`);
+  console.log('=== Task Manager Demo ===\n');
 
-  const task2 = store.addTask('Implement endpoints');
-  console.log(`Added: [${task2.id}] "${task2.title}" (${task2.status})`);
+  // Step 1: Add 3 sample tasks
+  console.log('--- Adding tasks ---');
+  const task1 = store.create({ title: 'Design API', description: 'Define REST endpoints and data models' });
+  const task2 = store.create({ title: 'Implement endpoints', description: 'Build the API handlers and business logic' });
+  const task3 = store.create({ title: 'Write tests', description: 'Add unit and integration test coverage' });
+  console.log(`Created: ${task1.title} (id: ${task1.id})`);
+  console.log(`Created: ${task2.title} (id: ${task2.id})`);
+  console.log(`Created: ${task3.title} (id: ${task3.id})`);
 
-  const task3 = store.addTask('Write tests');
-  console.log(`Added: [${task3.id}] "${task3.title}" (${task3.status})`);
+  // Step 2: List all tasks
+  console.log('\n--- All tasks ---');
+  const allTasks = store.getAll();
+  allTasks.forEach((t) => console.log(formatTask(t)));
 
-  // 3. List all tasks
-  console.log('\n--- All Tasks ---');
-  const allTasks = store.listTasks();
-  allTasks.forEach((task) => {
-    console.log(`  [${task.id}] "${task.title}" — ${task.status} (created: ${task.createdAt.toISOString()})`);
-  });
+  // Step 3: Update one task to 'in_progress'
+  console.log('\n--- Updating task to in_progress ---');
+  const updated = store.update(task2.id, { status: 'in_progress' });
+  console.log(`Updated: "${updated.title}" -> status: ${updated.status}`);
 
-  // 4. Update one task to 'in_progress'
-  console.log('\n--- Updating Task ---');
-  const updated = store.updateTask(task1.id, { status: 'in_progress' });
-  if (updated) {
-    console.log(`Updated: [${updated.id}] "${updated.title}" -> ${updated.status}`);
-  }
+  // Step 4: Get tasks by status
+  console.log('\n--- Tasks by status ---');
+  const pending = store.getByStatus('pending');
+  const inProgress = store.getByStatus('in_progress');
+  console.log(`Pending (${pending.length}):`);
+  pending.forEach((t) => console.log(formatTask(t)));
+  console.log(`In Progress (${inProgress.length}):`);
+  inProgress.forEach((t) => console.log(formatTask(t)));
 
-  // 5. Get tasks by status
-  console.log('\n--- Tasks by Status ---');
-  const pendingTasks = store.getTasksByStatus('pending');
-  console.log(`Pending (${pendingTasks.length}):`);
-  pendingTasks.forEach((t) => console.log(`  - "${t.title}"`));
+  // Step 5: Delete one task
+  console.log('\n--- Deleting a task ---');
+  const deleted = store.delete(task3.id);
+  console.log(`Deleted "${task3.title}": ${deleted}`);
 
-  const inProgressTasks = store.getTasksByStatus('in_progress');
-  console.log(`In Progress (${inProgressTasks.length}):`);
-  inProgressTasks.forEach((t) => console.log(`  - "${t.title}"`));
-
-  // 6. Delete one task
-  console.log('\n--- Deleting Task ---');
-  const deleted = store.deleteTask(task3.id);
-  console.log(`Deleted task [${task3.id}]: ${deleted ? 'success' : 'not found'}`);
-
-  // 7. Show final count
-  console.log('\n--- Final Count ---');
-  const finalTasks = store.listTasks();
-  console.log(`Remaining tasks: ${finalTasks.length}`);
-  finalTasks.forEach((t) => console.log(`  [${t.id}] "${t.title}" — ${t.status}`));
-
-  console.log('\n=== Demo Complete ===');
+  // Step 6: Show final count
+  console.log('\n--- Final state ---');
+  const finalTasks = store.getAll();
+  finalTasks.forEach((t) => console.log(formatTask(t)));
+  console.log(`\nTotal tasks remaining: ${store.count()}`);
 }
 
 main().catch((err: unknown) => {
-  console.error('Error running demo:', err);
+  console.error('Error:', err instanceof Error ? err.message : String(err));
   process.exit(1);
 });

@@ -164,26 +164,25 @@ describe('createSubagentStopHandler', () => {
     });
   });
 
-  // ── Reviewer agents — quality gate ────────────────────────────────────────
+  // ── Reviewer agents — score logging (quality gate removed) ─────────────────
 
   describe('reviewer quality gate', () => {
-    it('blocks when review score is below the default minimum', async () => {
+    it('returns null for a reviewer agent (quality gate removed, score is logged only)', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
       const lowScore = DEFAULT_MIN_REVIEW_SCORE - 1;
 
+      // Quality gate has been removed from SubagentStop handler.
+      // Score is logged via logger.info, but no blocking decision is returned.
       const result = await handler(makeMockEvent(), {
         agent_id: 'r1',
         agent_type: 'reviewer',
         output: makeGvOutput(lowScore),
       });
 
-      expect(result).not.toBeNull();
-      expect(result?.decision).toBe('block');
-      expect(result?.reason).toContain(String(lowScore));
-      expect(result?.reason).toContain(String(DEFAULT_MIN_REVIEW_SCORE));
+      expect(result).toBeNull();
     });
 
-    it('does not block when review score meets the default minimum', async () => {
+    it('returns null when review score meets the default minimum', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
 
       const result = await handler(makeMockEvent(), {
@@ -195,7 +194,7 @@ describe('createSubagentStopHandler', () => {
       expect(result).toBeNull();
     });
 
-    it('does not block when review score exceeds the default minimum', async () => {
+    it('returns null when review score exceeds the default minimum', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
 
       const result = await handler(makeMockEvent(), {
@@ -207,31 +206,31 @@ describe('createSubagentStopHandler', () => {
       expect(result).toBeNull();
     });
 
-    it('uses custom minReviewScore when provided', async () => {
+    it('returns null regardless of minReviewScore (quality gate removed)', async () => {
       const handler = createSubagentStopHandler({
         eventBus: null,
         agentWorkflowMap: null,
         minReviewScore: 7,
       });
 
-      // Score 6 is below custom threshold of 7 — should block
-      const blockedResult = await handler(makeMockEvent(), {
+      // Score 6 is below custom threshold, but quality gate is removed — no blocking
+      const resultBelowThreshold = await handler(makeMockEvent(), {
         agent_id: 'r1',
         agent_type: 'reviewer',
         output: makeGvOutput(6),
       });
-      expect(blockedResult?.decision).toBe('block');
+      expect(resultBelowThreshold).toBeNull();
 
-      // Score 7 meets custom threshold — should not block
-      const passedResult = await handler(makeMockEvent(), {
+      // Score 7 meets custom threshold — also null
+      const resultAtThreshold = await handler(makeMockEvent(), {
         agent_id: 'r1',
         agent_type: 'reviewer',
         output: makeGvOutput(7),
       });
-      expect(passedResult).toBeNull();
+      expect(resultAtThreshold).toBeNull();
     });
 
-    it('does not block when reviewer output has no <gv> tag', async () => {
+    it('returns null when reviewer output has no <gv> tag', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
 
       const result = await handler(makeMockEvent(), {
@@ -243,7 +242,7 @@ describe('createSubagentStopHandler', () => {
       expect(result).toBeNull();
     });
 
-    it('does not block when <gv> tag has no score field', async () => {
+    it('returns null when <gv> tag has no score field', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
 
       const result = await handler(makeMockEvent(), {
@@ -255,7 +254,7 @@ describe('createSubagentStopHandler', () => {
       expect(result).toBeNull();
     });
 
-    it('does not block when <gv> tag has malformed JSON', async () => {
+    it('returns null when <gv> tag has malformed JSON', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
 
       const result = await handler(makeMockEvent(), {
@@ -267,22 +266,23 @@ describe('createSubagentStopHandler', () => {
       expect(result).toBeNull();
     });
 
-    it('handles goodvibes:reviewer agent type as a reviewer', async () => {
+    it('handles goodvibes:reviewer agent type as a reviewer (score logged, no block)', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
 
+      // goodvibes:reviewer is recognized as a reviewer type — score is logged
+      // but the quality gate is removed, so null is returned
       const result = await handler(makeMockEvent(), {
         agent_id: 'r2',
         agent_type: 'goodvibes:reviewer',
         output: makeGvOutput(1),
       });
 
-      expect(result?.decision).toBe('block');
+      expect(result).toBeNull();
     });
 
     it('does not apply quality gate to non-reviewer types (engineer)', async () => {
       const handler = createSubagentStopHandler({ eventBus: null, agentWorkflowMap: null });
 
-      // Engineer with very low score should not block
       const result = await handler(makeMockEvent(), {
         agent_id: 'e1',
         agent_type: 'engineer',
@@ -292,7 +292,7 @@ describe('createSubagentStopHandler', () => {
       expect(result).toBeNull();
     });
 
-    it('blocks reviewer but still emits agent:completed when eventBus available', async () => {
+    it('reviewer emits agent:completed when eventBus available (no blocking)', async () => {
       const eventBus = makeMockEventBus();
       const handler = createSubagentStopHandler({ eventBus, agentWorkflowMap: null });
 
@@ -302,10 +302,11 @@ describe('createSubagentStopHandler', () => {
         output: makeGvOutput(1),
       });
 
-      // Quality gate fires first: block is returned, emit still happens
-      expect(result?.decision).toBe('block');
-      // emit is NOT called because block returns early before the emit block
-      expect(eventBus.emit).not.toHaveBeenCalled();
+      // Quality gate removed: null is returned, agent:completed is emitted
+      expect(result).toBeNull();
+      expect(eventBus.emit).toHaveBeenCalledOnce();
+      const emittedEvent = (eventBus.emit as ReturnType<typeof vi.fn>).mock.calls[0][0] as Record<string, unknown>;
+      expect(emittedEvent.type).toBe('agent:completed');
     });
   });
 });
