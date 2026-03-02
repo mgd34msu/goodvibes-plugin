@@ -264,8 +264,12 @@ try {
   const socketPath = discoverSocket(projectDir, sessionId);
 
   if (!socketPath || !existsSync(socketPath)) {
+    console.error('[UPS-Directives] runtime engine not available (socket not found), skipping directive drain');
+    console.error('[UPS-Directives] hint: start the runtime engine or check GOODVIBES_RUNTIME_SOCKET env var');
     respond(continueResponse()); // process.exit(0) — no code executes after this
   }
+
+  console.error('[UPS-Directives] runtime engine socket found:', socketPath);
 
   // Keep queue auditor ledger current
   try {
@@ -284,13 +288,20 @@ try {
   // condition where PreToolUse drain-all grabs the directive before UPS fires,
   // causing per-agent queries to return empty. Drain-all is consistent with
   // PreToolUse and ensures whichever hook fires first gets all pending directives.
+  // Exponential backoff: 100ms, 250ms, 500ms (total 850ms max wait).
+  // Allows time for the runtime to process agent:completed -> triggers -> directive enqueue.
+  // 850ms total is short enough to not noticeably delay the orchestrator's response.
   const RETRY_DELAYS = [100, 250, 500];
   let result = await queryDirectives(socketPath, null);
+  console.error('[UPS-Directives] initial query result:', result ? `${result.directives?.length ?? 0} directives` : 'null (IPC error)');
 
   if (!result || !result.directives || result.directives.length === 0) {
-    for (const delay of RETRY_DELAYS) {
+    for (let retryIdx = 0; retryIdx < RETRY_DELAYS.length; retryIdx++) {
+      const delay = RETRY_DELAYS[retryIdx];
+      console.error(`[UPS-Directives] no directives yet, retry ${retryIdx + 1}/${RETRY_DELAYS.length} in ${delay}ms`);
       await sleep(delay);
       result = await queryDirectives(socketPath, null);
+      console.error(`[UPS-Directives] retry ${retryIdx + 1} result:`, result ? `${result.directives?.length ?? 0} directives` : 'null (IPC error)');
       if (result?.directives?.length > 0) break;
     }
   }
@@ -307,6 +318,7 @@ try {
   }
 
   if (result && result.directives && result.directives.length > 0) {
+    console.error(`[UPS-Directives] delivering ${result.directives.length} directive(s) to orchestrator`);
     const directivePayload = JSON.stringify({
       action: 'directives',
       directives: result.directives,
@@ -324,6 +336,7 @@ try {
     }
     respond(continueResponse(gvTag)); // process.exit(0) — no code executes after this
   } else {
+    console.error('[UPS-Directives] no directives found after all retries, continuing without injection');
     respond(continueResponse()); // process.exit(0) — no code executes after this
   }
 } catch (err) {

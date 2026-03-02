@@ -42,7 +42,7 @@ export interface AgentFieldInput {
  */
 export interface NormalizedAgentFields {
   agent_id: string | undefined;
-  agent_type: string | undefined;
+  agent_type: string;
 }
 
 /**
@@ -61,7 +61,7 @@ export interface NormalizedAgentFields {
 export function normalizeAgentFields(input: AgentFieldInput): NormalizedAgentFields {
   return {
     agent_id: input.agent_id ?? input.subagent_id,
-    agent_type: input.agent_type ?? input.subagent_type,
+    agent_type: input.agent_type ?? input.subagent_type ?? 'unknown',
   };
 }
 

@@ -22,6 +22,7 @@ import {
   REQUIRE_REVIEW_AGENT_TYPES,
   REVIEWER_AGENT_TYPES,
   DEFAULT_MIN_REVIEW_SCORE,
+  EARLY_WORKFLOW_STATES,
 } from '../../shared/wrfc-constants.js';
 import type { RuntimeEvent, HandlerResult, StateUpdate, Action, StateStoreInterface } from '../../core/types.js';
 import { createEvent } from '../../core/types.js';
@@ -151,8 +152,32 @@ export function handleWorkflowCreated(
   const incomingWid = typeof data['workflow_id'] === 'string' && data['workflow_id'].length > 0
     ? data['workflow_id']
     : null;
-  const wid = incomingWid ?? `wrfc_${agentId}`;
   const task = typeof data['task'] === 'string' ? data['task'] : '';
+
+  // Determine workflow ID:
+  // - Chain agents (with incomingWid): bind to existing workflow.
+  // - REQUIRE_REVIEW agents (no incomingWid): auto-create with timestamped ID for easy tracing.
+  // - All other agents (no incomingWid): bind with simple agent-based ID.
+  let wid: string;
+  if (incomingWid) {
+    wid = incomingWid;
+  } else {
+    const effectiveRequireReview = getEffectiveRequireReviewTypes(store);
+    if (!agentType) {
+      log.warn('handleWorkflowCreated: agent_type is empty/missing, cannot determine if review is required', { agent_id: agentId });
+    }
+    if (agentType && effectiveRequireReview.has(agentType)) {
+      // Auto-create a timestamped workflow ID so each require-review spawn is uniquely traceable
+      wid = `wrfc_auto_${Date.now()}_${agentId.slice(0, 8)}_${Math.random().toString(36).slice(2, 6)}`;
+      log.info('handleWorkflowCreated: auto-creating workflow for require-review agent type', {
+        wid,
+        agent_id: agentId,
+        agent_type: agentType,
+      });
+    } else {
+      wid = `wrfc_${agentId}`;
+    }
+  }
 
   // Bind agent → workflow in state store
   const state_updates: StateUpdate[] = [
@@ -246,10 +271,9 @@ export function handleAgentCompleted(
   const filesModified = storeGet<string[]>(store, WS(wid, 'files_modified'), []);
 
   // Treat early-stuck states the same as WRITING
-  const earlyStates = new Set(['IDLE', 'GATHERING', 'PLANNING']);
-  const effectivePhase = earlyStates.has(phase) ? 'WRITING' : phase;
+  const effectivePhase = EARLY_WORKFLOW_STATES.has(phase) ? 'WRITING' : phase;
 
-  if (earlyStates.has(phase)) {
+  if (EARLY_WORKFLOW_STATES.has(phase)) {
     log.warn('handleAgentCompleted: workflow stuck in early state, treating as WRITING', {
       wid, actual_phase: phase,
     });
@@ -261,6 +285,9 @@ export function handleAgentCompleted(
     // Takes precedence over all auto-complete logic below.
     const effectiveRequireReview = getEffectiveRequireReviewTypes(store);
 
+    if (!agentType) {
+      log.warn('handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required', { wid, agent_id: agentId });
+    }
     if (agentType && effectiveRequireReview.has(agentType)) {
       const task = `Review the work completed in workflow ${wid}. ` +
         (filesModified.length > 0

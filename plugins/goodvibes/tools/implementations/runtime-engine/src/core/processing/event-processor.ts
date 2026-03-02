@@ -223,6 +223,9 @@ export class EventProcessor {
   private rateLimitCount = 0;
   private rateLimitWindowStart = 0;
 
+  /** True once the "no actionExecutor" warning has been logged; prevents log spam. */
+  private actionExecutorWarningLogged = false;
+
   constructor(
     queue: EventQueueInterface,
     registry: TriggerRegistryInterface,
@@ -513,20 +516,33 @@ export class EventProcessor {
       }
 
       // Execute actions if executor is available
-      if (result.actions && result.actions.length > 0 && this.actionExecutor) {
-        for (const action of result.actions) {
-          try {
-            await this.actionExecutor.execute(action, {
+      if (result.actions && result.actions.length > 0) {
+        if (!this.actionExecutor) {
+          if (!this.actionExecutorWarningLogged) {
+            logger.warn('Actions produced but no actionExecutor configured — actions will be dropped', {
+              action_count: result.actions.length,
+              action_types: result.actions.map((a) => a.type),
               handler_id: trigger.id ?? 'unknown',
               event_type: event.type,
               workflow_id: event.context?.workflow_id,
             });
-          } catch (err) {
-            logger.error('Action execution failed', {
-              action_type: action.type,
-              handler_id: trigger.id ?? 'unknown',
-              error: err instanceof Error ? err.message : String(err),
-            });
+            this.actionExecutorWarningLogged = true;
+          }
+        } else {
+          for (const action of result.actions) {
+            try {
+              await this.actionExecutor.execute(action, {
+                handler_id: trigger.id ?? 'unknown',
+                event_type: event.type,
+                workflow_id: event.context?.workflow_id,
+              });
+            } catch (err) {
+              logger.error('Action execution failed', {
+                action_type: action.type,
+                handler_id: trigger.id ?? 'unknown',
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
           }
         }
       }

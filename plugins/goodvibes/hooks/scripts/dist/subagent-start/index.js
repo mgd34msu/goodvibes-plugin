@@ -215,22 +215,35 @@ async function runSubagentStartHook() {
                         debug('Phase 6: consume_pending_bind cleanup failed, non-critical');
                     }
                 }
-                // PRIORITY 2: Fall back to pending bind queue (for agents without WRFC tag)
-                if (!resolvedWorkflowId && agent_type) {
-                    const pendingBindResult = await runtimeClient.query({ kind: 'resolve_pending_bind', agent_type });
+                // PRIORITY 2: Fall back to pending bind queue (for agents without WRFC tag).
+                // Use normalizedAgentType (guaranteed string) — agent_type may be undefined
+                // if Claude Code didn't provide the field, which would cause the guard to
+                // skip the lookup entirely and prevent auto-workflow creation.
+                const normalizedAgentTypeForBind = agent_type;
+                if (!resolvedWorkflowId) {
+                    debug('Phase 6: no WRFC tag found, trying pending bind queue', { agent_type: normalizedAgentTypeForBind });
+                    const pendingBindResult = await runtimeClient.query({ kind: 'resolve_pending_bind', agent_type: normalizedAgentTypeForBind });
                     if (pendingBindResult?.kind === 'pending_bind' && pendingBindResult.workflow_id) {
                         resolvedWorkflowId = pendingBindResult.workflow_id;
-                        debug('Phase 6: resolved pending bind from runtime', { workflow_id: resolvedWorkflowId, agent_type });
+                        debug('Phase 6: resolved pending bind from runtime', { workflow_id: resolvedWorkflowId, agent_type: normalizedAgentTypeForBind });
+                    }
+                    else {
+                        debug('Phase 6: no pending bind found for agent', { agent_type: normalizedAgentTypeForBind });
                     }
                 }
+                // agent_type MUST be a string in the payload so the runtime can decide
+                // whether this agent needs review. normalizedAgentTypeForBind (defined above)
+                // is the guaranteed-string version — reuse it here to avoid duplication.
+                debug('Phase 6: agent fields', { agent_id, agent_type: normalizedAgentTypeForBind, resolved_workflow_id: resolvedWorkflowId });
                 const spawnedData = {
                     ...rawInput,
                     agent_id,
-                    agent_type,
+                    agent_type: normalizedAgentTypeForBind,
                 };
                 if (resolvedWorkflowId) {
                     spawnedData['workflow_id'] = resolvedWorkflowId;
                 }
+                debug('Phase 6: sending agent:spawned event', { has_workflow_id: !!resolvedWorkflowId, agent_type: normalizedAgentTypeForBind });
                 await runtimeClient.sendHookEvent('agent:spawned', spawnedData);
                 const queryResult = await runtimeClient.query({ kind: 'get_system_message' });
                 if (queryResult?.kind === 'system_message') {

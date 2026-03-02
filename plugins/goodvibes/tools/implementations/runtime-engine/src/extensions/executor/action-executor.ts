@@ -14,6 +14,13 @@ import type { Action, ActionExecutorInterface } from '../../core/types.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { Directive } from '../../shared/ipc/protocol.js';
 
+/** Parameters shape for the 'send_message' action type. */
+export interface SendMessageParams {
+  content: string;
+  priority?: number;
+  target?: string;
+}
+
 const logger = createLogger('action-executor');
 
 export class ActionExecutor implements ActionExecutorInterface {
@@ -24,11 +31,7 @@ export class ActionExecutor implements ActionExecutorInterface {
       case 'send_message': {
         // Action shape from directive-builder.ts:
         // { type: 'send_message', params: { content: string, priority: number, target: string } }
-        const params = action.params as {
-          content?: string;
-          priority?: number;
-          target?: string;
-        };
+        const params = action.params as SendMessageParams;
 
         const content = params.content;
         const target = typeof params.target === 'string' ? params.target : 'subagent_stop';
@@ -54,12 +57,22 @@ export class ActionExecutor implements ActionExecutorInterface {
           ...(workflowId !== undefined && { workflow_id: workflowId }),
         };
 
-        this.directiveQueue.enqueue(target, directive);
-        logger.debug('ActionExecutor: enqueued directive', {
-          target,
-          priority,
-          workflow_id: workflowId,
-        });
+        try {
+          this.directiveQueue.enqueue(target, directive);
+          logger.info('ActionExecutor: directive enqueued successfully', {
+            target,
+            priority,
+            workflow_id: workflowId,
+            content_length: content.length,
+          });
+        } catch (err) {
+          logger.error('ActionExecutor: failed to enqueue directive', {
+            target,
+            priority,
+            workflow_id: workflowId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
         break;
       }
 

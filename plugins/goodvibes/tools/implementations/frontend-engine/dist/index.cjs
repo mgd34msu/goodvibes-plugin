@@ -245320,15 +245320,11 @@ var StdioServerTransport = class {
   }
 };
 
-// src/config.ts
+// src/shared/constants.ts
 var SERVER_NAME = "frontend-engine";
 var SERVER_VERSION = "1.0.0";
-function getProjectRoot() {
-  return process.env.PROJECT_ROOT || process.cwd();
-}
-__name(getProjectRoot, "getProjectRoot");
 
-// src/logging.ts
+// src/shared/logger.ts
 function formatLog(entry) {
   const prefix = `[${entry.timestamp}] [${entry.level.toUpperCase()}]`;
   if (entry.data !== void 0) {
@@ -245352,7 +245348,10 @@ var logger = {
   info: (message, data) => log("info", message, data),
   warn: (message, data) => log("warn", message, data),
   error: (message, data) => log("error", message, data),
-  tool: (name, args) => log("tool", `Calling ${name}`, args)
+  /** Log an MCP tool/handler invocation. */
+  tool: (name, args) => log("tool", `Calling ${name}`, args),
+  /** Log an MCP tool/handler invocation. Alias for tool(). */
+  request: (name, args) => log("request", `Calling ${name}`, args)
 };
 
 // src/schemas/index.ts
@@ -245634,7 +245633,6 @@ var FRONTEND_SCHEMAS = [
     }
   }
 ];
-var allSchemas = FRONTEND_SCHEMAS;
 
 // src/handlers/render-triggers/index.ts
 var fs = __toESM(require("fs"), 1);
@@ -248569,6 +248567,14 @@ __name(extractClassNames, "extractClassNames");
 // src/handlers/responsive-breakpoints/breakpoint-resolver.ts
 var fs4 = __toESM(require("fs"), 1);
 var path6 = __toESM(require("path"), 1);
+
+// src/config.ts
+function getProjectRoot() {
+  return process.env.PROJECT_ROOT || process.cwd();
+}
+__name(getProjectRoot, "getProjectRoot");
+
+// src/handlers/responsive-breakpoints/breakpoint-resolver.ts
 var TAILWIND_CONFIG_FILES = [
   "tailwind.config.js",
   "tailwind.config.ts",
@@ -256400,8 +256406,8 @@ async function handleAnalyzeErrorBoundaries(args) {
 }
 __name(handleAnalyzeErrorBoundaries, "handleAnalyzeErrorBoundaries");
 
-// src/handlers/index.ts
-var handlerRegistry = /* @__PURE__ */ new Map([
+// src/plugins/dispatch.ts
+var DISPATCH_TABLE = /* @__PURE__ */ new Map([
   ["frontend_component_tree", handleGetReactComponentTree],
   ["frontend_stacking_context", handleAnalyzeStackingContext],
   ["frontend_responsive_breakpoints", handleAnalyzeResponsiveBreakpoints],
@@ -256417,20 +256423,16 @@ var handlerRegistry = /* @__PURE__ */ new Map([
   ["frontend_hook_dependencies", handleAuditHookDependencies],
   ["frontend_error_boundaries", handleAnalyzeErrorBoundaries]
 ]);
-function getHandler(toolName) {
-  return handlerRegistry.get(toolName);
+function getDispatcher(name) {
+  return DISPATCH_TABLE.get(name);
 }
-__name(getHandler, "getHandler");
-function hasHandler(toolName) {
-  return handlerRegistry.has(toolName);
+__name(getDispatcher, "getDispatcher");
+function listTools() {
+  return Array.from(DISPATCH_TABLE.keys());
 }
-__name(hasHandler, "hasHandler");
-function listHandlers() {
-  return Array.from(handlerRegistry.keys());
-}
-__name(listHandlers, "listHandlers");
+__name(listTools, "listTools");
 
-// src/index.ts
+// src/plugins/server.ts
 var FrontendEngineServer = class {
   static {
     __name(this, "FrontendEngineServer");
@@ -256441,29 +256443,29 @@ var FrontendEngineServer = class {
       { name: SERVER_NAME, version: SERVER_VERSION },
       { capabilities: { tools: {} } }
     );
-    this.setupHandlers();
-    this.setupErrorHandling();
+    this.setupRoutes();
+    this.setupLifecycle();
   }
-  setupHandlers() {
+  /**
+   * Wire ListTools and CallTool request handlers.
+   */
+  setupRoutes() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       logger.debug("ListTools request");
-      return { tools: allSchemas };
+      return { tools: FRONTEND_SCHEMAS };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       logger.tool(name, args);
-      if (!hasHandler(name)) {
+      const dispatch = getDispatcher(name);
+      if (!dispatch) {
         throw new McpError(
           ErrorCode.MethodNotFound,
-          `Unknown tool: ${name}. Available: ${listHandlers().join(", ")}`
+          `Unknown tool: ${name}. Available: ${listTools().join(", ")}`
         );
       }
-      const handler = getHandler(name);
-      if (!handler) {
-        throw new McpError(ErrorCode.InternalError, `Handler not found: ${name}`);
-      }
       try {
-        return await handler(args);
+        return await dispatch(args);
       } catch (error2) {
         const message = error2 instanceof Error ? error2.message : String(error2);
         logger.error(`Tool ${name} failed`, { error: message, args });
@@ -256471,36 +256473,50 @@ var FrontendEngineServer = class {
       }
     });
   }
-  setupErrorHandling() {
+  /**
+   * Wire error handler and graceful shutdown signals.
+   */
+  setupLifecycle() {
     this.server.onerror = (error2) => logger.error("MCP Server error", error2);
-    process.on("SIGINT", async () => {
-      logger.info("Shutting down");
-      await this.stop();
-      process.exit(0);
-    });
-    process.on("SIGTERM", async () => {
-      logger.info("Shutting down");
-      await this.stop();
-      process.exit(0);
-    });
+    const handleShutdown = /* @__PURE__ */ __name(async (signal) => {
+      logger.info(`Shutting down (${signal})`);
+      try {
+        await this.stop();
+        process.exit(0);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`Error during shutdown (${signal})`, { error: message });
+        process.exit(1);
+      }
+    }, "handleShutdown");
+    process.on("SIGINT", () => handleShutdown("SIGINT"));
+    process.on("SIGTERM", () => handleShutdown("SIGTERM"));
   }
+  /**
+   * Connect to stdio transport and begin serving requests.
+   */
   async start() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     logger.info(`${SERVER_NAME} v${SERVER_VERSION} started`);
-    logger.info(`Tools: ${listHandlers().join(", ")}`);
+    logger.info(`Tools: ${listTools().join(", ")}`);
   }
+  /**
+   * Close the MCP server connection.
+   */
   async stop() {
     await this.server.close();
   }
 };
-async function main() {
+async function bootstrap() {
   const server2 = new FrontendEngineServer();
   await server2.start();
 }
-__name(main, "main");
-main().catch((error2) => {
-  logger.error("Failed to start", error2);
+__name(bootstrap, "bootstrap");
+
+// src/index.ts
+bootstrap().catch((error2) => {
+  console.error("Failed to start frontend-engine:", error2);
   process.exit(1);
 });
 /*! Bundled license information:

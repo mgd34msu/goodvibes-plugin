@@ -27,3 +27,9 @@ export const REQUIRE_REVIEW_AGENT_TYPES = new Set<string>([...ENGINEER_AGENT_TYP
 
 /** Default minimum score a review must reach for auto-complete */
 export const DEFAULT_MIN_REVIEW_SCORE = 9.5;
+
+/**
+ * Workflow states that are considered "early" / not yet processing.
+ * Used to treat stuck workflows as WRITING for routing purposes.
+ */
+export const EARLY_WORKFLOW_STATES = new Set(['IDLE', 'GATHERING', 'PLANNING']);

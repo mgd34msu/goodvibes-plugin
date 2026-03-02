@@ -33,7 +33,7 @@ export interface AgentFieldInput {
  */
 export interface NormalizedAgentFields {
     agent_id: string | undefined;
-    agent_type: string | undefined;
+    agent_type: string;
 }
 /**
  * Normalises agent identity fields from raw hook input.

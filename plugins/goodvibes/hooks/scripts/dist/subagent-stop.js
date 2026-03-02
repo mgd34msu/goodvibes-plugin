@@ -883,7 +883,7 @@ function getAgentChainingReminder(agentType, success) {
 function normalizeAgentFields(input) {
   return {
     agent_id: input.agent_id ?? input.subagent_id,
-    agent_type: input.agent_type ?? input.subagent_type
+    agent_type: input.agent_type ?? input.subagent_type ?? "unknown"
   };
 }
 

@@ -27991,6 +27991,7 @@ var AUTO_COMPLETE_AGENT_TYPES = /* @__PURE__ */ new Set([
 ]);
 var REQUIRE_REVIEW_AGENT_TYPES = /* @__PURE__ */ new Set([...ENGINEER_AGENT_TYPES]);
 var DEFAULT_MIN_REVIEW_SCORE = 9.5;
+var EARLY_WORKFLOW_STATES = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
 
 // src/extensions/directives/gv-tag-parser.ts
 var GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
@@ -29243,6 +29244,8 @@ var EventProcessor = class {
   /** Rate limiter state: events processed in the current window. */
   rateLimitCount = 0;
   rateLimitWindowStart = 0;
+  /** True once the "no actionExecutor" warning has been logged; prevents log spam. */
+  actionExecutorWarningLogged = false;
   constructor(queue, registry2, store, lifecycle, metrics, errorHandler, deadLetter, options = {}) {
     this.queue = queue;
     this.registry = registry2;
@@ -29491,20 +29494,33 @@ var EventProcessor = class {
           chainedEvents.push(chainEvent(newEvt, event));
         }
       }
-      if (result.actions && result.actions.length > 0 && this.actionExecutor) {
-        for (const action of result.actions) {
-          try {
-            await this.actionExecutor.execute(action, {
+      if (result.actions && result.actions.length > 0) {
+        if (!this.actionExecutor) {
+          if (!this.actionExecutorWarningLogged) {
+            logger25.warn("Actions produced but no actionExecutor configured \u2014 actions will be dropped", {
+              action_count: result.actions.length,
+              action_types: result.actions.map((a) => a.type),
               handler_id: trigger.id ?? "unknown",
               event_type: event.type,
               workflow_id: event.context?.workflow_id
             });
-          } catch (err) {
-            logger25.error("Action execution failed", {
-              action_type: action.type,
-              handler_id: trigger.id ?? "unknown",
-              error: err instanceof Error ? err.message : String(err)
-            });
+            this.actionExecutorWarningLogged = true;
+          }
+        } else {
+          for (const action of result.actions) {
+            try {
+              await this.actionExecutor.execute(action, {
+                handler_id: trigger.id ?? "unknown",
+                event_type: event.type,
+                workflow_id: event.context?.workflow_id
+              });
+            } catch (err) {
+              logger25.error("Action execution failed", {
+                action_type: action.type,
+                handler_id: trigger.id ?? "unknown",
+                error: err instanceof Error ? err.message : String(err)
+              });
+            }
           }
         }
       }
@@ -30486,8 +30502,26 @@ function handleWorkflowCreated(event, _trigger, store) {
   }
   const agentType = typeof data["agent_type"] === "string" ? data["agent_type"] : "";
   const incomingWid = typeof data["workflow_id"] === "string" && data["workflow_id"].length > 0 ? data["workflow_id"] : null;
-  const wid = incomingWid ?? `wrfc_${agentId}`;
   const task = typeof data["task"] === "string" ? data["task"] : "";
+  let wid;
+  if (incomingWid) {
+    wid = incomingWid;
+  } else {
+    const effectiveRequireReview = getEffectiveRequireReviewTypes(store);
+    if (!agentType) {
+      log6.warn("handleWorkflowCreated: agent_type is empty/missing, cannot determine if review is required", { agent_id: agentId });
+    }
+    if (agentType && effectiveRequireReview.has(agentType)) {
+      wid = `wrfc_auto_${Date.now()}_${agentId.slice(0, 8)}_${Math.random().toString(36).slice(2, 6)}`;
+      log6.info("handleWorkflowCreated: auto-creating workflow for require-review agent type", {
+        wid,
+        agent_id: agentId,
+        agent_type: agentType
+      });
+    } else {
+      wid = `wrfc_${agentId}`;
+    }
+  }
   const state_updates = [
     { key: `wrfc.agent_map.${agentId}`, value: wid, op: "set" }
   ];
@@ -30532,9 +30566,8 @@ function handleAgentCompleted(event, _trigger, store) {
   const maxFix = storeGet(store, WS(wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
   const fixAttempts = storeGet(store, WS(wid, "fix_attempts"), 0);
   const filesModified = storeGet(store, WS(wid, "files_modified"), []);
-  const earlyStates = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
-  const effectivePhase = earlyStates.has(phase) ? "WRITING" : phase;
-  if (earlyStates.has(phase)) {
+  const effectivePhase = EARLY_WORKFLOW_STATES.has(phase) ? "WRITING" : phase;
+  if (EARLY_WORKFLOW_STATES.has(phase)) {
     log6.warn("handleAgentCompleted: workflow stuck in early state, treating as WRITING", {
       wid,
       actual_phase: phase
@@ -30542,6 +30575,9 @@ function handleAgentCompleted(event, _trigger, store) {
   }
   if (effectivePhase === "WRITING") {
     const effectiveRequireReview = getEffectiveRequireReviewTypes(store);
+    if (!agentType) {
+      log6.warn("handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required", { wid, agent_id: agentId });
+    }
     if (agentType && effectiveRequireReview.has(agentType)) {
       const task2 = `Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
       const actions2 = [buildSpawnAction({ wid, type: "reviewer", task: task2, files: filesModified })];
@@ -33302,12 +33338,22 @@ var ActionExecutor = class {
           source: "wrfc",
           ...workflowId !== void 0 && { workflow_id: workflowId }
         };
-        this.directiveQueue.enqueue(target, directive);
-        logger49.debug("ActionExecutor: enqueued directive", {
-          target,
-          priority,
-          workflow_id: workflowId
-        });
+        try {
+          this.directiveQueue.enqueue(target, directive);
+          logger49.info("ActionExecutor: directive enqueued successfully", {
+            target,
+            priority,
+            workflow_id: workflowId,
+            content_length: content.length
+          });
+        } catch (err) {
+          logger49.error("ActionExecutor: failed to enqueue directive", {
+            target,
+            priority,
+            workflow_id: workflowId,
+            error: err instanceof Error ? err.message : String(err)
+          });
+        }
         break;
       }
       default: {

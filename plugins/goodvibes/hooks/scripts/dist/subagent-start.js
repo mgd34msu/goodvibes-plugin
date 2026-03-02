@@ -1137,7 +1137,7 @@ function extractWorkflowId(taskDescription) {
 function normalizeAgentFields(input) {
   return {
     agent_id: input.agent_id ?? input.subagent_id,
-    agent_type: input.agent_type ?? input.subagent_type
+    agent_type: input.agent_type ?? input.subagent_type ?? "unknown"
   };
 }
 function mergeSystemMessages(runtimeMessage, hookMessage) {
@@ -1254,21 +1254,27 @@ async function runSubagentStartHook() {
             debug("Phase 6: consume_pending_bind cleanup failed, non-critical");
           }
         }
-        if (!resolvedWorkflowId && agent_type) {
-          const pendingBindResult = await runtimeClient.query({ kind: "resolve_pending_bind", agent_type });
+        const normalizedAgentTypeForBind = agent_type;
+        if (!resolvedWorkflowId) {
+          debug("Phase 6: no WRFC tag found, trying pending bind queue", { agent_type: normalizedAgentTypeForBind });
+          const pendingBindResult = await runtimeClient.query({ kind: "resolve_pending_bind", agent_type: normalizedAgentTypeForBind });
           if (pendingBindResult?.kind === "pending_bind" && pendingBindResult.workflow_id) {
             resolvedWorkflowId = pendingBindResult.workflow_id;
-            debug("Phase 6: resolved pending bind from runtime", { workflow_id: resolvedWorkflowId, agent_type });
+            debug("Phase 6: resolved pending bind from runtime", { workflow_id: resolvedWorkflowId, agent_type: normalizedAgentTypeForBind });
+          } else {
+            debug("Phase 6: no pending bind found for agent", { agent_type: normalizedAgentTypeForBind });
           }
         }
+        debug("Phase 6: agent fields", { agent_id, agent_type: normalizedAgentTypeForBind, resolved_workflow_id: resolvedWorkflowId });
         const spawnedData = {
           ...rawInput,
           agent_id,
-          agent_type
+          agent_type: normalizedAgentTypeForBind
         };
         if (resolvedWorkflowId) {
           spawnedData["workflow_id"] = resolvedWorkflowId;
         }
+        debug("Phase 6: sending agent:spawned event", { has_workflow_id: !!resolvedWorkflowId, agent_type: normalizedAgentTypeForBind });
         await runtimeClient.sendHookEvent("agent:spawned", spawnedData);
         const queryResult = await runtimeClient.query({ kind: "get_system_message" });
         if (queryResult?.kind === "system_message") {
