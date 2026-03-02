@@ -1,6 +1,6 @@
 import { createApp } from './api/routes';
 
-const PORT = parseInt(process.env.API_PORT || '3999', 10);
+const PORT = parseInt(process.env.PORT || process.env.API_PORT || '3999', 10);
 const app = createApp();
 
 const server = app.listen(PORT, () => {
