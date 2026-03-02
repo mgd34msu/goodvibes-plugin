@@ -263,6 +263,16 @@ export class EventProcessor {
     this.handlers.set(trigger_id, handler);
   }
 
+  /** Start the event processing lifecycle. Must be called before processBatch() will process events. */
+  start(): void {
+    this.lifecycle.start();
+  }
+
+  /** Stop the event processing lifecycle gracefully. */
+  async stop(): Promise<void> {
+    await this.lifecycle.shutdown();
+  }
+
   /**
    * Process a single batch of events from the queue.
    * Only runs when the lifecycle is in 'running' state.

@@ -42,6 +42,7 @@ export class EventBridge {
   constructor(
     private readonly eventBus: EventBus,
     private readonly eventQueue: EventQueueInterface,
+    private readonly onEventBridged?: () => void | Promise<void>,
   ) {}
 
   /**
@@ -95,6 +96,15 @@ export class EventBridge {
 
       this.eventQueue.enqueue(coreEvent);
       this.forwarded++;
+
+      // Trigger immediate processing of bridged events
+      if (this.onEventBridged) {
+        Promise.resolve(this.onEventBridged()).catch((err) => {
+          logger.warn('onEventBridged callback error', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
 
       logger.debug('Bridged event', {
         type: event.type,

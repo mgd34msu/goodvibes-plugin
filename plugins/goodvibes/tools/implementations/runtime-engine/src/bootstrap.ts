@@ -181,8 +181,15 @@ export class RuntimeEngine {
       config: getDefaultWRFCConfig(),
     });
 
+    // 14.5 Start core event processor lifecycle
+    this.coreRuntime.eventProcessor.start();
+
     // 15. Event bridge (L2 EventBus -> L1 core EventQueue)
-    this.eventBridge = new EventBridge(this.events.eventBus, this.coreRuntime.eventQueue);
+    this.eventBridge = new EventBridge(
+      this.events.eventBus,
+      this.coreRuntime.eventQueue,
+      () => { void this.coreRuntime!.eventProcessor.processBatch(); },
+    );
     this.eventBridge.start();
 
     // 16. Hook subsystem (L3)

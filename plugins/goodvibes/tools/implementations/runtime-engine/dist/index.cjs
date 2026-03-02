@@ -29270,6 +29270,14 @@ var EventProcessor = class {
   registerHandler(trigger_id, handler) {
     this.handlers.set(trigger_id, handler);
   }
+  /** Start the event processing lifecycle. Must be called before processBatch() will process events. */
+  start() {
+    this.lifecycle.start();
+  }
+  /** Stop the event processing lifecycle gracefully. */
+  async stop() {
+    await this.lifecycle.shutdown();
+  }
   /**
    * Process a single batch of events from the queue.
    * Only runs when the lifecycle is in 'running' state.
@@ -33366,9 +33374,10 @@ var FORWARDED_PATTERNS = /* @__PURE__ */ new Set([
   "workflow:state_changed"
 ]);
 var EventBridge = class {
-  constructor(eventBus, eventQueue) {
+  constructor(eventBus, eventQueue, onEventBridged) {
     this.eventBus = eventBus;
     this.eventQueue = eventQueue;
+    this.onEventBridged = onEventBridged;
   }
   static {
     __name(this, "EventBridge");
@@ -33411,6 +33420,13 @@ var EventBridge = class {
       };
       this.eventQueue.enqueue(coreEvent);
       this.forwarded++;
+      if (this.onEventBridged) {
+        Promise.resolve(this.onEventBridged()).catch((err) => {
+          logger51.warn("onEventBridged callback error", {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        });
+      }
       logger51.debug("Bridged event", {
         type: event.type,
         forwarded: this.forwarded
@@ -34357,7 +34373,14 @@ var RuntimeEngine = class {
       store: this.coreRuntime.stateStore,
       config: getDefaultWRFCConfig()
     });
-    this.eventBridge = new EventBridge(this.events.eventBus, this.coreRuntime.eventQueue);
+    this.coreRuntime.eventProcessor.start();
+    this.eventBridge = new EventBridge(
+      this.events.eventBus,
+      this.coreRuntime.eventQueue,
+      () => {
+        void this.coreRuntime.eventProcessor.processBatch();
+      }
+    );
     this.eventBridge.start();
     const hookSubsystem = createHookSubsystem({
       eventBus: this.events.eventBus,
