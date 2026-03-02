@@ -245836,6 +245836,7 @@ var TS_ANALYSIS_OPTIONS = {
   target: import_typescript.default.ScriptTarget.ESNext,
   module: import_typescript.default.ModuleKind.ESNext,
   moduleResolution: import_typescript.default.ModuleResolutionKind.Bundler,
+  lib: ["lib.esnext.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
   jsx: import_typescript.default.JsxEmit.ReactJSX,
   esModuleInterop: true,
   skipLibCheck: true,

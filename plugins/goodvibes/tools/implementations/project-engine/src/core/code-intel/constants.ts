@@ -19,6 +19,7 @@ export const TS_ANALYSIS_OPTIONS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler,
+  lib: ['lib.esnext.d.ts', 'lib.dom.d.ts', 'lib.dom.iterable.d.ts'],
   jsx: ts.JsxEmit.ReactJSX,
   esModuleInterop: true,
   skipLibCheck: true,
