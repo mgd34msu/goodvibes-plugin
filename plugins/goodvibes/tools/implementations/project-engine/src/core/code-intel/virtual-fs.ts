@@ -8,12 +8,33 @@
  */
 
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import ts from 'typescript';
 
 import { normalizePath } from '../../shared/utils.js';
 import { TS_ANALYSIS_OPTIONS } from './constants.js';
 import { findTsConfig, readTsConfig } from './tsconfig.js';
 import type { ProposedEdit } from './types.js';
+
+/**
+ * Find the TypeScript lib directory by walking up from a start directory.
+ * Needed because the bundled TypeScript can't resolve its own lib files.
+ *
+ * @param startDir - Directory to start searching from
+ * @returns Absolute path to TypeScript's lib directory, or null
+ */
+function findTypescriptLibDir(startDir: string): string | null {
+  let dir = startDir;
+  const root = path.parse(dir).root;
+  while (dir !== root) {
+    const tsLibDir = path.join(dir, 'node_modules', 'typescript', 'lib');
+    if (fs.existsSync(tsLibDir)) return tsLibDir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
 
 /**
  * Virtual file system that holds modified file contents.
@@ -143,6 +164,11 @@ export async function createVirtualLanguageService(
     fileVersions.set(normalized, 1);
   }
 
+  // Resolve TypeScript lib directory from project's node_modules.
+  // The bundled TypeScript can't find its own .d.ts lib files since
+  // ts.getDefaultLibFilePath() resolves relative to the bundle's __dirname.
+  const tsLibDir = findTypescriptLibDir(projectRoot);
+
   const host: ts.LanguageServiceHost = {
     getScriptFileNames: () => filesToCheck.map(normalizePath),
     getScriptVersion: (fileName) => {
@@ -158,7 +184,13 @@ export async function createVirtualLanguageService(
     },
     getCurrentDirectory: () => projectRoot,
     getCompilationSettings: () => compilerOptions,
-    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+    getDefaultLibFileName: (options) => {
+      const libFileName = ts.getDefaultLibFileName(options);
+      if (tsLibDir) {
+        return path.join(tsLibDir, libFileName);
+      }
+      return ts.getDefaultLibFilePath(options);
+    },
     fileExists: (fileName) => vfs.exists(fileName),
     readFile: (fileName) => vfs.getContent(fileName),
     readDirectory: ts.sys.readDirectory,
