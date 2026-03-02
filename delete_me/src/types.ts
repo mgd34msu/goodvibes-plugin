@@ -4,6 +4,7 @@ export interface User {
   name: string | null;
   role: 'user' | 'admin';
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Post {
@@ -46,6 +47,25 @@ export type UserRole = 'user' | 'admin' | 'moderator';
 
 export const MAX_PAGE_SIZE = 100;
 export const DEFAULT_PAGE_SIZE = 20;
+
+/**
+ * Build a paginated response envelope.
+ */
+export function createPaginatedResponse<T>(
+  data: T[],
+  page: number,
+  pageSize: number,
+  total: number,
+): PaginatedResponse<T> {
+  return {
+    success: true,
+    data,
+    page,
+    pageSize,
+    total,
+    timestamp: Date.now(),
+  };
+}
 
 /** Dead code - never imported anywhere */
 export function formatTimestamp(date: Date): string {

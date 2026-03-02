@@ -1,6 +1,6 @@
 import express, { Request, Response, Router } from 'express';
 import { z } from 'zod';
-import { ApiResponse, User, Post, PaginatedResponse } from '../types';
+import { ApiResponse, User, Post, PaginatedResponse, createPaginatedResponse } from '../types';
 
 const CreateUserSchema = z.object({
   email: z.string().email(),
@@ -22,14 +22,7 @@ export function createApp(): express.Application {
 
   // GET /api/users
   router.get('/api/users', (_req: Request, res: Response) => {
-    const response: PaginatedResponse<User> = {
-      success: true,
-      data: [],
-      page: 1,
-      pageSize: 20,
-      total: 0,
-      timestamp: Date.now(),
-    };
+    const response = createPaginatedResponse<User>([], 1, 20, 0);
     res.json(response);
   });
 
@@ -45,9 +38,10 @@ export function createApp(): express.Application {
       res.status(400).json(response);
       return;
     }
+    const now = new Date();
     const response: ApiResponse<User> = {
       success: true,
-      data: { id: 1, ...result.data, name: result.data.name || null, role: 'user', createdAt: new Date() },
+      data: { id: 1, ...result.data, name: result.data.name || null, role: 'user', createdAt: now, updatedAt: now },
       timestamp: Date.now(),
     };
     res.status(201).json(response);
@@ -75,14 +69,7 @@ export function createApp(): express.Application {
 
   // GET /api/posts
   router.get('/api/posts', (_req: Request, res: Response) => {
-    const response: PaginatedResponse<Post> = {
-      success: true,
-      data: [],
-      page: 1,
-      pageSize: 20,
-      total: 0,
-      timestamp: Date.now(),
-    };
+    const response = createPaginatedResponse<Post>([], 1, 20, 0);
     res.json(response);
   });
 
