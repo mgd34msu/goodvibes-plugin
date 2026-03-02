@@ -97,6 +97,32 @@ export class TriggerRegistry {
   }
 
   /**
+   * Atomically replaces an existing trigger definition, preserving runtime state.
+   *
+   * Unlike `unregister` + `register`, this method is a single Map operation with
+   * no gap during which the trigger is absent.
+   *
+   * @param trigger - The replacement trigger definition. Must share the same `id`
+   *   as the trigger being replaced.
+   * @throws {QueueError} If no trigger with the given ID is currently registered.
+   */
+  replace(trigger: TriggerDefinition): void {
+    const existing = this.triggers.get(trigger.id);
+    if (!existing) {
+      throw new QueueError(`Cannot replace trigger '${trigger.id}': not registered`);
+    }
+    // Preserve runtime state from old trigger
+    if (existing.fires_count !== undefined && trigger.fires_count === undefined) {
+      trigger.fires_count = existing.fires_count;
+    }
+    if (existing.last_fired !== undefined && trigger.last_fired === undefined) {
+      trigger.last_fired = existing.last_fired;
+    }
+    this.triggers.set(trigger.id, trigger);
+    log.info('Trigger replaced', { trigger_id: trigger.id });
+  }
+
+  /**
    * Removes a trigger by ID. No-op if the trigger does not exist.
    *
    * @param triggerId - ID of the trigger to remove.

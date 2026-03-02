@@ -12,15 +12,16 @@ var init_gitignore = __esm({
 });
 
 // src/shared/hook-io.ts
+import process2 from "process";
 function isTestEnvironment() {
-  return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
+  return process2.env.NODE_ENV === "test" || process2.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
 }
 function formatResponse(response) {
   return JSON.stringify(response);
 }
 function respond(response, _block = false) {
   console.log(formatResponse(response));
-  process.exit(0);
+  process2.exit(0);
 }
 function createResponse(options = {}) {
   const response = {

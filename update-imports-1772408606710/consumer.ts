@@ -1,0 +1,1 @@
+import { auth } from './auth-v2/index';

@@ -619,7 +619,7 @@ export class WorkflowEngine {
           }
           case 'spawn_agent': {
             // Placeholder for Phase 5 — agent spawning not yet implemented
-            log.error('spawn_agent action type is not yet implemented (Phase 5 stub)', {
+            log.warn('spawn_agent action type is not yet implemented (Phase 5 stub)', {
               action_type: action.type,
               workflow_id: (context.workflow_id as string | undefined) ?? 'unknown',
             });

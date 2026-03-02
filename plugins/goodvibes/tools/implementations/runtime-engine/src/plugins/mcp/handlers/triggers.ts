@@ -143,14 +143,7 @@ export const handleRuntimeTriggers = async (
       if (validationError !== null) {
         return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
-      // Non-atomic update: unregister then re-register.
-      // Risk: if register() throws after unregister() succeeds, the trigger
-      // is permanently lost. In practice, register() only fails on validation
-      // (already done above) or OOM, both of which are unrecoverable anyway.
-      // A future improvement could add a TriggerRegistry.replace() method that
-      // swaps the entry in a single operation.
-      registry.unregister(triggerDef.id);
-      registry.register(triggerDef);
+      registry.replace(triggerDef);
       logger.info('runtime_triggers: updated', { id: triggerDef.id });
       return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }

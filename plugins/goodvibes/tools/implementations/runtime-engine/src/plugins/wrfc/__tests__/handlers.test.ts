@@ -52,6 +52,7 @@ import {
   handleAgentCompleted,
   handleQualityGate,
   resolveWorkflowId,
+  resetRequireReviewCache,
   DEFAULT_MAX_FIX_ATTEMPTS,
   HANDLER_IDS,
   TRIGGER_IDS,
@@ -102,6 +103,7 @@ describe('WRFC Handlers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRequireReviewCache();
     // Default mock return values
     mockExtractScore.mockReturnValue(null);
     mockExtractFiles.mockReturnValue([]);

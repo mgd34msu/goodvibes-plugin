@@ -50,20 +50,16 @@ interface SpawnDirective {
  *
  * @param agentType  - Short agent type label (e.g. "reviewer", "engineer").
  * @param task       - Task description/instructions for the spawned agent.
- * @param budget     - Token and turn budget. Not emitted in the directive.
- * @deprecated The `budget` parameter is unused and will be removed.
- *   Pass `undefined` for new call sites.
+ * @param _budget    - Token and turn budget (unused, kept for backward-compatible signature).
  * @param context    - Optional WRFC context (files, score, issues, attempts).
  * @returns Structured <gv> directive string.
  */
 export function buildSpawnDirectiveMessage(
   agentType: string,
   task: string,
-  budget?: { max_tokens: number; max_turns: number },
+  _budget?: { max_tokens: number; max_turns: number },
   context?: SpawnDirectiveContext,
 ): string {
-  // budget param kept for backward-compatible call signature
-  void budget;
 
   const directive: SpawnDirective = {
     action: 'spawn',
@@ -80,14 +76,10 @@ export function buildSpawnDirectiveMessage(
  * has passed review and the WRFC chain is done.
  *
  * @param workflowId - ID of the completed workflow instance.
- * @param state      - Terminal state name. Not emitted in the directive.
- * @deprecated The `state` parameter is unused and will be removed.
- *   Pass `undefined` for new call sites.
+ * @param _state     - Terminal state name (unused, kept for backward-compatible signature).
  * @returns Structured <gv> directive string.
  */
-export function buildWorkflowCompleteMessage(workflowId: string, state?: string): string {
-  // state param kept for backward-compatible call signature
-  void state;
+export function buildWorkflowCompleteMessage(workflowId: string, _state?: string): string {
 
   const directive = {
     action: "complete",

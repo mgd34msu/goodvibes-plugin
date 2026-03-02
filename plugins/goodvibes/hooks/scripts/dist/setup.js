@@ -12,7 +12,7 @@ var init_gitignore = __esm({
 });
 
 // src/shared/hook-io.ts
-import { stdin } from "process";
+import process2 from "process";
 function isValidHookInput(value) {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -22,7 +22,7 @@ function isValidHookInput(value) {
 }
 async function readHookInput() {
   const chunks = [];
-  for await (const chunk of stdin) {
+  for await (const chunk of process2.stdin) {
     chunks.push(chunk);
   }
   const parsed = JSON.parse(Buffer.concat(chunks).toString());
@@ -36,7 +36,7 @@ function formatResponse(response) {
 }
 function respond(response, _block = false) {
   console.log(formatResponse(response));
-  process.exit(0);
+  process2.exit(0);
 }
 function createResponse(options = {}) {
   const response = {

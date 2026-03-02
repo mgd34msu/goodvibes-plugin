@@ -12,7 +12,7 @@ var init_gitignore = __esm({
 });
 
 // src/shared/hook-io.ts
-import { stdin } from "process";
+import process2 from "process";
 function isValidHookInput(value) {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -22,7 +22,7 @@ function isValidHookInput(value) {
 }
 async function readHookInput() {
   const chunks = [];
-  for await (const chunk of stdin) {
+  for await (const chunk of process2.stdin) {
     chunks.push(chunk);
   }
   const parsed = JSON.parse(Buffer.concat(chunks).toString());
@@ -57,7 +57,7 @@ function formatResponse(response) {
 }
 function respond(response, _block = false) {
   console.log(formatResponse(response));
-  process.exit(0);
+  process2.exit(0);
 }
 
 // src/shared/logging.ts
@@ -1326,6 +1326,11 @@ async function runPreToolUseHook() {
       }
     } catch {
     }
+    debug("PreToolUse hook received input", {
+      tool_name: input.tool_name,
+      cwd: input.cwd,
+      is_subagent: input.is_subagent
+    });
     if (input.tool_name === "Bash" || input.tool_name?.endsWith("__Bash")) {
       await handleBashTool(input);
       return;
@@ -1337,10 +1342,12 @@ async function runPreToolUseHook() {
       }
     }
     const toolName = input.tool_name?.split("__").pop() ?? "";
+    debug(`Extracted tool name: ${toolName}`);
     const validator = TOOL_VALIDATORS[toolName];
     if (validator) {
       await validator(input);
     } else {
+      debug(`Unknown tool '${toolName}', allowing by default`);
       respond(allowTool("PreToolUse"));
     }
   } catch (error) {

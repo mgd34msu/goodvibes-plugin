@@ -125,6 +125,13 @@ export class EventQueue {
    * non-empty bucket.
    */
   private buckets: [QueueEntry[], QueueEntry[], QueueEntry[], QueueEntry[]] = [[], [], [], []];
+  /**
+   * Read-head index per priority bucket. Entries before the head have already
+   * been dequeued. Using a head pointer makes dequeue O(1) instead of O(n).
+   * The consumed prefix is compacted (spliced) once the head exceeds a threshold
+   * to prevent unbounded memory growth.
+   */
+  private bucketHeads: [number, number, number, number] = [0, 0, 0, 0];
   /** Entries that exhausted all retry attempts. */
   private deadLetters: DeadLetterEntry[] = [];
   /** Registered handler functions keyed by name. */
@@ -259,12 +266,17 @@ export class EventQueue {
       [QueuePriority.LOW]: 0,
     };
     for (let p = 0; p < 4; p++) {
-      byPriority[p] = (this.buckets[p as QueuePriority] ?? []).length;
+      byPriority[p] = this.buckets[p as QueuePriority].length - this.bucketHeads[p as QueuePriority];
     }
 
     const now = Date.now();
-    const firstBucket = this.buckets.find((b) => b.length > 0);
-    const oldest = firstBucket?.[0];
+    const firstBucketIdx = this.bucketHeads.findIndex(
+      (head, i) => this.buckets[i as QueuePriority].length - head > 0,
+    );
+    const firstBucket = firstBucketIdx >= 0 ? this.buckets[firstBucketIdx as QueuePriority] : undefined;
+    const oldest = firstBucket
+      ? firstBucket[this.bucketHeads[firstBucketIdx as QueuePriority]]
+      : undefined;
     const oldestAgeMs = oldest ? now - new Date(oldest.enqueued_at).getTime() : 0;
 
     return {
@@ -368,7 +380,12 @@ export class EventQueue {
 
   /** Returns total number of pending entries across all priority buckets. */
   private totalPending(): number {
-    return (this.buckets[0]?.length ?? 0) + (this.buckets[1]?.length ?? 0) + (this.buckets[2]?.length ?? 0) + (this.buckets[3]?.length ?? 0);
+    return (
+      (this.buckets[0].length - this.bucketHeads[0]) +
+      (this.buckets[1].length - this.bucketHeads[1]) +
+      (this.buckets[2].length - this.bucketHeads[2]) +
+      (this.buckets[3].length - this.bucketHeads[3])
+    );
   }
 
   /**
@@ -415,8 +432,18 @@ export class EventQueue {
     if (this.processing) return;
 
     this.processing = true;
-    const bucket = this.buckets.find((b) => b.length > 0)!;
-    const entry = bucket.shift()!;
+    const bucketIdx = this.bucketHeads.findIndex(
+      (head, i) => this.buckets[i as QueuePriority].length - head > 0,
+    );
+    const bucket = this.buckets[bucketIdx as QueuePriority];
+    const entry = bucket[this.bucketHeads[bucketIdx as QueuePriority]++]!;
+    // Compact the consumed prefix once the head offset grows large enough
+    // to reclaim memory without paying the O(n) cost on every dequeue.
+    const head = this.bucketHeads[bucketIdx as QueuePriority];
+    if (head >= 64 && head >= bucket.length / 2) {
+      bucket.splice(0, head);
+      this.bucketHeads[bucketIdx as QueuePriority] = 0;
+    }
     const startMs = Date.now();
     let retryBackoffMs = 0;
 

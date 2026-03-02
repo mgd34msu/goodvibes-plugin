@@ -1,0 +1,1 @@
+export function main() { const x = 1; }

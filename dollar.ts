@@ -1,0 +1,1 @@
+const price = $100;

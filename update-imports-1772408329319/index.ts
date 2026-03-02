@@ -1,0 +1,1 @@
+export { Foo } from './types-v2';

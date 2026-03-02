@@ -66,9 +66,9 @@ var init_gitignore = __esm({
 import * as path9 from "path";
 
 // src/shared/hook-io.ts
-import { stdin } from "process";
+import process2 from "process";
 function isTestEnvironment() {
-  return process.env.NODE_ENV === "test" || process.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
+  return process2.env.NODE_ENV === "test" || process2.env.VITEST === "true" || typeof globalThis.__vitest_worker__ !== "undefined";
 }
 function isValidHookInput(value) {
   if (typeof value !== "object" || value === null) {
@@ -79,7 +79,7 @@ function isValidHookInput(value) {
 }
 async function readHookInput() {
   const chunks = [];
-  for await (const chunk of stdin) {
+  for await (const chunk of process2.stdin) {
     chunks.push(chunk);
   }
   const parsed = JSON.parse(Buffer.concat(chunks).toString());
@@ -93,7 +93,7 @@ function formatResponse(response) {
 }
 function respond(response, _block = false) {
   console.log(formatResponse(response));
-  process.exit(0);
+  process2.exit(0);
 }
 
 // src/shared/logging.ts

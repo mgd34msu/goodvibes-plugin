@@ -97,8 +97,12 @@ export class IPCServer {
   /** Tracks in-flight holdIds per socket for async write confirmation and error recovery. */
   private readonly inFlightHolds = new WeakMap<net.Socket, string>();
 
-  /** Sliding window of recent message timestamps for rate limiting. */
-  private readonly recentMessages: number[] = [];
+  /** Circular buffer of recent message timestamps for O(1) rate limiting. */
+  private readonly recentMessages: number[] = new Array(RATE_LIMIT_MAX).fill(0) as number[];
+  /** Next write position in the circular buffer. */
+  private msgHead = 0;
+  /** Current count of entries in the buffer. */
+  private msgCount = 0;
 
   /**
    * @param socketPath - Absolute path for the Unix domain socket file.
@@ -453,31 +457,19 @@ export class IPCServer {
    * Check if the current message rate exceeds the limit.
    */
   private isRateLimited(): boolean {
-    const now = Date.now();
-    const windowStart = now - RATE_LIMIT_WINDOW_MS;
-    // Count messages within the window (timestamps are ordered, scan from end)
-    let count = 0;
-    for (let i = this.recentMessages.length - 1; i >= 0; i--) {
-      if (this.recentMessages[i] >= windowStart) {
-        count++;
-      } else {
-        break;
-      }
-    }
-    return count >= RATE_LIMIT_MAX;
+    if (this.msgCount < RATE_LIMIT_MAX) return false;
+    // Buffer is full — check if the oldest entry is within the window
+    const oldest = this.recentMessages[(this.msgHead - this.msgCount + RATE_LIMIT_MAX) % RATE_LIMIT_MAX];
+    return (Date.now() - oldest) < RATE_LIMIT_WINDOW_MS;
   }
 
   /**
    * Record a message timestamp and prune old entries.
    */
   private recordMessage(): void {
-    const now = Date.now();
-    this.recentMessages.push(now);
-    // Prune entries outside the window (keep array from growing unbounded)
-    const windowStart = now - RATE_LIMIT_WINDOW_MS;
-    while (this.recentMessages.length > 0 && this.recentMessages[0] < windowStart) {
-      this.recentMessages.shift();
-    }
+    this.recentMessages[this.msgHead] = Date.now();
+    this.msgHead = (this.msgHead + 1) % RATE_LIMIT_MAX;
+    if (this.msgCount < RATE_LIMIT_MAX) this.msgCount++;
   }
 
   /**

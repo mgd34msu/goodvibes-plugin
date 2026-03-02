@@ -574,4 +574,64 @@ describe('EventQueue', () => {
       expect(QueuePriority.NORMAL).toBeLessThan(QueuePriority.LOW);
     });
   });
+
+  // ─── Head-pointer compaction ─────────────────────────────────────────────
+
+  describe('head-pointer compaction', () => {
+    it('drains 100+ entries cleanly and leaves size at 0', async () => {
+      const ENTRY_COUNT = 100;
+      let processedCount = 0;
+      queue.registerHandler('compactHandler', async () => {
+        processedCount++;
+      });
+
+      for (let i = 0; i < ENTRY_COUNT; i++) {
+        queue.enqueue(makeEntryInput('compactHandler', QueuePriority.NORMAL));
+      }
+
+      expect(queue.size).toBe(ENTRY_COUNT);
+
+      await queue.drain(10000);
+
+      expect(queue.size).toBe(0);
+      expect(processedCount).toBe(ENTRY_COUNT);
+    });
+
+    it('getStats().by_priority is accurate after draining 100+ entries', async () => {
+      queue.registerHandler('compactHandler', vi.fn());
+
+      for (let i = 0; i < 100; i++) {
+        queue.enqueue(makeEntryInput('compactHandler', QueuePriority.NORMAL));
+      }
+
+      await queue.drain(10000);
+
+      const stats = queue.getStats();
+      expect(stats.by_priority[QueuePriority.NORMAL]).toBe(0);
+      expect(stats.pending).toBe(0);
+    });
+
+    it('compaction threshold fires at head >= 64 and head >= bucket.length / 2', async () => {
+      // Enqueue exactly 128 entries so that after the 64th dequeue:
+      // head=64, bucket.length=128 → 64 >= 64 && 64 >= 64 → compaction fires.
+      // After compaction bucket is spliced to length 64 with head reset to 0.
+      // Remaining 64 entries continue processing normally.
+      const ENTRY_COUNT = 128;
+      let processedCount = 0;
+      queue.registerHandler('compactHandler', async () => {
+        processedCount++;
+      });
+
+      for (let i = 0; i < ENTRY_COUNT; i++) {
+        queue.enqueue(makeEntryInput('compactHandler', QueuePriority.NORMAL));
+      }
+
+      await queue.drain(10000);
+
+      // All entries processed; compaction ran mid-drain without data loss
+      expect(processedCount).toBe(ENTRY_COUNT);
+      expect(queue.size).toBe(0);
+      expect(queue.getStats().by_priority[QueuePriority.NORMAL]).toBe(0);
+    });
+  });
 });

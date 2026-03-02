@@ -51,6 +51,16 @@ let _cachedRequireReviewTypes: Set<string> | null = null;
 let _cachedConfigSnapshot = '';
 
 /**
+ * Resets the cached require-review type set to its initial state.
+ *
+ * Intended for use in test suites to prevent cross-test cache pollution.
+ */
+export function resetRequireReviewCache(): void {
+  _cachedRequireReviewTypes = null;
+  _cachedConfigSnapshot = '';
+}
+
+/**
  * Returns the effective require-review set, caching the merged result.
  * Invalidates when the underlying config changes.
  */
@@ -200,12 +210,11 @@ export function handleAgentCompleted(
   const dataPayload = (typeof payload['data'] === 'object' && payload['data'] !== null)
     ? payload['data'] as Record<string, unknown>
     : null;
+  const hookInputForId = payload['hook_input'] as Record<string, unknown> | null;
   const agentId: string | null =
     (typeof payload['agent_id'] === 'string' ? payload['agent_id'] : null) ??
     (typeof dataPayload?.['agent_id'] === 'string' ? dataPayload['agent_id'] : null) ??
-    (typeof (payload['hook_input'] as Record<string, unknown> | null)?.['agent_id'] === 'string'
-      ? (payload['hook_input'] as Record<string, unknown>)['agent_id'] as string
-      : null);
+    (typeof hookInputForId?.['agent_id'] === 'string' ? hookInputForId['agent_id'] : null);
 
   const hookInput = (typeof payload['hook_input'] === 'object' && payload['hook_input'] !== null)
     ? payload['hook_input'] as Record<string, unknown>
@@ -502,6 +511,10 @@ export function handleQualityGate(
 /**
  * Convenience: resolves the workflow ID for a given agent ID.
  * Returns null if no binding exists in the store.
+ *
+ * @param agentId - The agent ID to look up, or null.
+ * @param store   - Core state store that holds the agent → workflow map.
+ * @returns The workflow ID bound to this agent, or null if no binding exists.
  */
 export function resolveWorkflowId(
   agentId: string | null,

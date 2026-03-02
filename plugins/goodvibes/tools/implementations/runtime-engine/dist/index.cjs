@@ -23036,6 +23036,13 @@ var EventQueue = class {
    * non-empty bucket.
    */
   buckets = [[], [], [], []];
+  /**
+   * Read-head index per priority bucket. Entries before the head have already
+   * been dequeued. Using a head pointer makes dequeue O(1) instead of O(n).
+   * The consumed prefix is compacted (spliced) once the head exceeds a threshold
+   * to prevent unbounded memory growth.
+   */
+  bucketHeads = [0, 0, 0, 0];
   /** Entries that exhausted all retry attempts. */
   deadLetters = [];
   /** Registered handler functions keyed by name. */
@@ -23153,11 +23160,14 @@ var EventQueue = class {
       [3 /* LOW */]: 0
     };
     for (let p = 0; p < 4; p++) {
-      byPriority[p] = (this.buckets[p] ?? []).length;
+      byPriority[p] = this.buckets[p].length - this.bucketHeads[p];
     }
     const now = Date.now();
-    const firstBucket = this.buckets.find((b) => b.length > 0);
-    const oldest = firstBucket?.[0];
+    const firstBucketIdx = this.bucketHeads.findIndex(
+      (head, i) => this.buckets[i].length - head > 0
+    );
+    const firstBucket = firstBucketIdx >= 0 ? this.buckets[firstBucketIdx] : void 0;
+    const oldest = firstBucket ? firstBucket[this.bucketHeads[firstBucketIdx]] : void 0;
     const oldestAgeMs = oldest ? now - new Date(oldest.enqueued_at).getTime() : 0;
     return {
       pending: this.totalPending(),
@@ -23242,7 +23252,7 @@ var EventQueue = class {
   // ---------------------------------------------------------------------------
   /** Returns total number of pending entries across all priority buckets. */
   totalPending() {
-    return (this.buckets[0]?.length ?? 0) + (this.buckets[1]?.length ?? 0) + (this.buckets[2]?.length ?? 0) + (this.buckets[3]?.length ?? 0);
+    return this.buckets[0].length - this.bucketHeads[0] + (this.buckets[1].length - this.bucketHeads[1]) + (this.buckets[2].length - this.bucketHeads[2]) + (this.buckets[3].length - this.bucketHeads[3]);
   }
   /**
    * Pushes an entry into the appropriate priority bucket.
@@ -23285,8 +23295,16 @@ var EventQueue = class {
     if (!this.running || this.totalPending() === 0) return;
     if (this.processing) return;
     this.processing = true;
-    const bucket = this.buckets.find((b) => b.length > 0);
-    const entry = bucket.shift();
+    const bucketIdx = this.bucketHeads.findIndex(
+      (head2, i) => this.buckets[i].length - head2 > 0
+    );
+    const bucket = this.buckets[bucketIdx];
+    const entry = bucket[this.bucketHeads[bucketIdx]++];
+    const head = this.bucketHeads[bucketIdx];
+    if (head >= 64 && head >= bucket.length / 2) {
+      bucket.splice(0, head);
+      this.bucketHeads[bucketIdx] = 0;
+    }
     const startMs = Date.now();
     let retryBackoffMs = 0;
     try {
@@ -23864,7 +23882,7 @@ var WorkflowEngine = class {
             break;
           }
           case "spawn_agent": {
-            log.error("spawn_agent action type is not yet implemented (Phase 5 stub)", {
+            log.warn("spawn_agent action type is not yet implemented (Phase 5 stub)", {
               action_type: action.type,
               workflow_id: context.workflow_id ?? "unknown"
             });
@@ -24763,8 +24781,7 @@ var ConditionEvaluator = class {
 };
 
 // src/extensions/directives/legacy-directive-builder.ts
-function buildSpawnDirectiveMessage(agentType, task, budget, context) {
-  void budget;
+function buildSpawnDirectiveMessage(agentType, task, _budget, context) {
   const directive = {
     action: "spawn",
     wid: context?.workflow_id ?? "unknown",
@@ -24774,8 +24791,7 @@ function buildSpawnDirectiveMessage(agentType, task, budget, context) {
   return "<gv>" + JSON.stringify(directive) + "</gv>";
 }
 __name(buildSpawnDirectiveMessage, "buildSpawnDirectiveMessage");
-function buildWorkflowCompleteMessage(workflowId, state) {
-  void state;
+function buildWorkflowCompleteMessage(workflowId, _state) {
   const directive = {
     action: "complete",
     wid: workflowId
@@ -25180,6 +25196,30 @@ var TriggerRegistry = class {
     }
     this.triggers.set(trigger.id, trigger);
     log4.debug("Trigger registered", { id: trigger.id, name: trigger.name, priority: trigger.priority });
+  }
+  /**
+   * Atomically replaces an existing trigger definition, preserving runtime state.
+   *
+   * Unlike `unregister` + `register`, this method is a single Map operation with
+   * no gap during which the trigger is absent.
+   *
+   * @param trigger - The replacement trigger definition. Must share the same `id`
+   *   as the trigger being replaced.
+   * @throws {QueueError} If no trigger with the given ID is currently registered.
+   */
+  replace(trigger) {
+    const existing = this.triggers.get(trigger.id);
+    if (!existing) {
+      throw new QueueError(`Cannot replace trigger '${trigger.id}': not registered`);
+    }
+    if (existing.fires_count !== void 0 && trigger.fires_count === void 0) {
+      trigger.fires_count = existing.fires_count;
+    }
+    if (existing.last_fired !== void 0 && trigger.last_fired === void 0) {
+      trigger.last_fired = existing.last_fired;
+    }
+    this.triggers.set(trigger.id, trigger);
+    log4.info("Trigger replaced", { trigger_id: trigger.id });
   }
   /**
    * Removes a trigger by ID. No-op if the trigger does not exist.
@@ -30466,7 +30506,8 @@ __name(handleWorkflowCreated, "handleWorkflowCreated");
 function handleAgentCompleted(event, _trigger, store) {
   const payload = event.payload;
   const dataPayload = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : null;
-  const agentId = (typeof payload["agent_id"] === "string" ? payload["agent_id"] : null) ?? (typeof dataPayload?.["agent_id"] === "string" ? dataPayload["agent_id"] : null) ?? (typeof payload["hook_input"]?.["agent_id"] === "string" ? payload["hook_input"]["agent_id"] : null);
+  const hookInputForId = payload["hook_input"];
+  const agentId = (typeof payload["agent_id"] === "string" ? payload["agent_id"] : null) ?? (typeof dataPayload?.["agent_id"] === "string" ? dataPayload["agent_id"] : null) ?? (typeof hookInputForId?.["agent_id"] === "string" ? hookInputForId["agent_id"] : null);
   const hookInput = typeof payload["hook_input"] === "object" && payload["hook_input"] !== null ? payload["hook_input"] : payload;
   const agentType = hookInput["agent_type"] ?? hookInput["subagent_type"] ?? "";
   const agentOutput = hookInput["last_assistant_message"] ?? hookInput["task_output"] ?? hookInput["result"];
@@ -33467,8 +33508,12 @@ var IPCServer = class {
   writeResultCallback;
   /** Tracks in-flight holdIds per socket for async write confirmation and error recovery. */
   inFlightHolds = /* @__PURE__ */ new WeakMap();
-  /** Sliding window of recent message timestamps for rate limiting. */
-  recentMessages = [];
+  /** Circular buffer of recent message timestamps for O(1) rate limiting. */
+  recentMessages = new Array(RATE_LIMIT_MAX).fill(0);
+  /** Next write position in the circular buffer. */
+  msgHead = 0;
+  /** Current count of entries in the buffer. */
+  msgCount = 0;
   /**
    * @param socketPath - Absolute path for the Unix domain socket file.
    *   The parent directory is created automatically if it does not exist.
@@ -33759,28 +33804,17 @@ var IPCServer = class {
    * Check if the current message rate exceeds the limit.
    */
   isRateLimited() {
-    const now = Date.now();
-    const windowStart = now - RATE_LIMIT_WINDOW_MS2;
-    let count = 0;
-    for (let i = this.recentMessages.length - 1; i >= 0; i--) {
-      if (this.recentMessages[i] >= windowStart) {
-        count++;
-      } else {
-        break;
-      }
-    }
-    return count >= RATE_LIMIT_MAX;
+    if (this.msgCount < RATE_LIMIT_MAX) return false;
+    const oldest = this.recentMessages[(this.msgHead - this.msgCount + RATE_LIMIT_MAX) % RATE_LIMIT_MAX];
+    return Date.now() - oldest < RATE_LIMIT_WINDOW_MS2;
   }
   /**
    * Record a message timestamp and prune old entries.
    */
   recordMessage() {
-    const now = Date.now();
-    this.recentMessages.push(now);
-    const windowStart = now - RATE_LIMIT_WINDOW_MS2;
-    while (this.recentMessages.length > 0 && this.recentMessages[0] < windowStart) {
-      this.recentMessages.shift();
-    }
+    this.recentMessages[this.msgHead] = Date.now();
+    this.msgHead = (this.msgHead + 1) % RATE_LIMIT_MAX;
+    if (this.msgCount < RATE_LIMIT_MAX) this.msgCount++;
   }
   /**
    * Remove the socket file from the filesystem, ignoring errors.
@@ -35299,8 +35333,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       if (validationError !== null) {
         return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
       }
-      registry2.unregister(triggerDef.id);
-      registry2.register(triggerDef);
+      registry2.replace(triggerDef);
       logger63.info("runtime_triggers: updated", { id: triggerDef.id });
       return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }

@@ -138,6 +138,59 @@ describe('TriggerRegistry', () => {
     });
   });
 
+  // ─── replace ──────────────────────────────────────────────────────────────
+
+  describe('replace', () => {
+    it('replaces an existing trigger atomically (single Map.set, no gap)', () => {
+      const original = makeTrigger({ name: 'Original', fires_count: 0 });
+      registry.register(original);
+      const replacement = makeTrigger({ name: 'Replacement', fires_count: 0 });
+      registry.replace(replacement);
+      expect(registry.get('trigger-1')?.name).toBe('Replacement');
+    });
+
+    it('preserves fires_count when replacement does not specify it', () => {
+      const original = makeTrigger({ fires_count: 5 });
+      registry.register(original);
+      const replacement = makeTrigger({ name: 'Updated' });
+      // makeTrigger always sets fires_count: 0 — we need one without it
+      const replacementWithoutCount = { ...replacement } as TriggerDefinition;
+      delete (replacementWithoutCount as Partial<TriggerDefinition>).fires_count;
+      registry.replace(replacementWithoutCount);
+      expect(registry.get('trigger-1')?.fires_count).toBe(5);
+    });
+
+    it('preserves last_fired when replacement does not specify it', () => {
+      const ts = Date.now() - 1000;
+      registry.register(makeTrigger({ fires_count: 3, last_fired: ts }));
+      const replacement = makeTrigger({ name: 'Updated', fires_count: 0 }) as Partial<TriggerDefinition>;
+      delete replacement.last_fired;
+      registry.replace(replacement as TriggerDefinition);
+      expect(registry.get('trigger-1')?.last_fired).toBe(ts);
+    });
+
+    it('throws QueueError when trigger ID does not exist', () => {
+      expect(() => registry.replace(makeTrigger({ id: 'nonexistent' }))).toThrow();
+    });
+
+    it('does NOT preserve fires_count when replacement explicitly sets it to 0', () => {
+      const original = makeTrigger({ fires_count: 5 });
+      registry.register(original);
+      const replacement = makeTrigger({ fires_count: 0 });
+      registry.replace(replacement);
+      expect(registry.get('trigger-1')?.fires_count).toBe(0);
+    });
+
+    it('does NOT preserve last_fired when replacement explicitly provides one', () => {
+      const oldTs = Date.now() - 5000;
+      const newTs = Date.now() - 100;
+      registry.register(makeTrigger({ fires_count: 2, last_fired: oldTs }));
+      const replacement = makeTrigger({ fires_count: 0, last_fired: newTs });
+      registry.replace(replacement);
+      expect(registry.get('trigger-1')?.last_fired).toBe(newTs);
+    });
+  });
+
   // ─── setEnabled ───────────────────────────────────────────────────────────
 
   describe('setEnabled', () => {

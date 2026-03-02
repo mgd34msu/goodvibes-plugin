@@ -1,0 +1,1 @@
+const config = require('./config-v2');
