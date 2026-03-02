@@ -8,23 +8,29 @@
  *
  * Design principles:
  * - No eval() or Function() for guard expressions — explicit string parsing only
- * - All state mutations are synchronous; action handlers are async but fire-and-forget
+ * - All state mutations are awaited; action handlers are async with timeout + rollback
  * - Instances are kept in-memory; persistence is the caller's responsibility
+ * - Per-workflow cooperative mutex prevents concurrent state mutations
  */
 
 /**
- * Design Note: Synchronous Transitions, Async Actions
+ * Design Note: Async Transitions with Cooperative Mutex
  *
- * sendEvent() transitions state synchronously but executes state actions
- * (on_enter, on_exit) asynchronously via fire-and-forget. This design choice
- * ensures transitions are fast and predictable while allowing actions to perform
- * I/O (emit events, update context). Action errors are logged but do not block
- * or revert transitions. See sendEvent() JSDoc for details.
+ * sendEvent() is async and serialises concurrent transition attempts for the
+ * same workflow via a per-workflow promise chain (cooperative mutex). If a
+ * transition is already in-flight for a workflow, the incoming request is
+ * queued (up to max_transition_queue_depth). Requests beyond the depth cap
+ * are dropped with a warning.
+ *
+ * Actions (on_enter, on_exit, transition actions) are awaited with a
+ * configurable timeout (action_timeout_ms). If an action exceeds the timeout
+ * or throws, the transition is rolled back to its pre-transition state and
+ * the error is logged with full context.
  */
 
 import { createLogger } from '../../shared/logger.js';
 import { generateEventId, generateWorkflowId, timestamp, toErrorMessage } from '../../shared/utils.js';
-import { WorkflowError } from '../../shared/errors.js';
+import { WorkflowError, WorkflowTimeoutError } from '../../shared/errors.js';
 import type { WorkflowsConfig } from '../../shared/config.js';
 import type { RuntimeEvent, EventType } from '../../shared/events.js';
 import type {
@@ -73,6 +79,13 @@ export interface PurgableQueue {
  * engine.sendEvent(instance.id, myEvent);
  * ```
  */
+/** Internal type representing a queued transition request. */
+interface QueuedTransition {
+  event: RuntimeEvent;
+  resolve: (result: WorkflowTransition | null) => void;
+  reject: (err: unknown) => void;
+}
+
 export class WorkflowEngine {
   private readonly definitions: Map<string, WorkflowDefinition> = new Map();
   private readonly instances: Map<string, WorkflowInstance> = new Map();
@@ -80,6 +93,24 @@ export class WorkflowEngine {
   private readonly actionHandlers: Map<string, ActionHandler> = new Map();
   private readonly maxActive: number;
   private readonly maxTransitions: number;
+  private readonly actionTimeoutMs: number;
+  private readonly maxQueueDepth: number;
+  /**
+   * Per-workflow in-flight promise for the cooperative mutex.
+   *
+   * Keyed by workflow ID. The value is a Promise that resolves when the
+   * current in-flight transition (and all previously queued transitions)
+   * have completed. New callers chain onto this promise.
+   */
+  private readonly _inFlight: Map<string, Promise<void>> = new Map();
+  /**
+   * Per-workflow transition queue.
+   *
+   * Holds pending sendEvent() calls that arrived while a transition was
+   * already in-flight for the same workflow. Drained in FIFO order after
+   * each transition completes.
+   */
+  private readonly _queue: Map<string, QueuedTransition[]> = new Map();
   private eventBus?: WorkflowEventBusDep;
   private directiveQueue?: PurgableQueue;
 
@@ -89,6 +120,8 @@ export class WorkflowEngine {
   constructor(config: WorkflowsConfig) {
     this.maxActive = config.max_active;
     this.maxTransitions = config.max_transitions_per_workflow;
+    this.actionTimeoutMs = config.action_timeout_ms ?? 30_000;
+    this.maxQueueDepth = config.max_transition_queue_depth ?? 10;
   }
 
   // ─── Public API ────────────────────────────────────────────────────────
@@ -209,45 +242,175 @@ export class WorkflowEngine {
    * Sends a RuntimeEvent to a specific workflow instance, potentially
    * triggering a state transition.
    *
+   * **Concurrency:** `sendEvent()` is async and serialises concurrent
+   * transition requests for the same workflow via a cooperative per-workflow
+   * mutex (promise chain). If a transition is already in-flight, the new
+   * request is queued. If the queue is full (max_transition_queue_depth), the
+   * request is dropped and `null` is returned.
+   *
+   * **Action execution:** All actions (on_exit, transition, on_enter) are
+   * awaited in sequence. If any action exceeds `action_timeout_ms`, a
+   * WorkflowTimeoutError is thrown. If any action throws, the transition is
+   * rolled back to its pre-transition state.
+   *
    * Transition selection:
    * 1. Find all transitions in the current state matching `event.type`
    * 2. For each, evaluate the guard condition (if any)
    * 3. Execute the first transition whose guard passes
-   * 4. Run on_exit actions → transition actions → on_enter actions
+   * 4. Await on_exit actions → transition actions → on_enter actions
    * 5. Update history and emit `workflow:state_changed`
-   *
-   * **Important: Action execution is fire-and-forget.**
-   * State actions (on_enter, on_exit) and transition actions execute
-   * asynchronously after the transition completes. This means:
-   * - State transitions are synchronous — the new state is set before actions run.
-   * - Action execution errors are logged but do not affect the transition.
-   * - `on_exit` actions from the previous state may run concurrently with
-   *   `on_enter` actions for the next state.
-   * - `update_context` actions may not be visible in the returned `contextChanges`,
-   *   since context is captured before the async actions resolve.
-   *
-   * For use cases requiring action completion before proceeding, consider awaiting
-   * `executeActions` directly.
    *
    * @param workflowId - ID of the workflow instance to send the event to.
    * @param event      - The RuntimeEvent that may trigger a transition.
-   * @returns The WorkflowTransition that was applied, or `null` if no
-   *          matching transition was found or the instance is not active.
+   * @returns A Promise resolving to the WorkflowTransition that was applied,
+   *          or `null` if no matching transition was found, the instance is
+   *          not active, or the queue is full.
    */
-  sendEvent(workflowId: string, event: RuntimeEvent): WorkflowTransition | null {
-    const instance = this.instances.get(workflowId);
-    if (!instance) {
+  async sendEvent(workflowId: string, event: RuntimeEvent): Promise<WorkflowTransition | null> {
+    // Fast-path: reject immediately if instance is unknown or inactive
+    // (no need to queue)
+    const instanceCheck = this.instances.get(workflowId);
+    if (!instanceCheck) {
       log.warn('sendEvent: workflow instance not found', { workflowId });
       return null;
     }
+    if (instanceCheck.status !== 'active') {
+      log.warn('sendEvent: workflow is not active', { workflowId, status: instanceCheck.status });
+      return null;
+    }
+
+    // ── Cooperative mutex ──────────────────────────────────────────────────
+    // If a transition is already in-flight for this workflow, queue this one.
+    if (this._inFlight.has(workflowId)) {
+      const queue = this._queue.get(workflowId) ?? [];
+      if (queue.length >= this.maxQueueDepth) {
+        log.warn('sendEvent: transition queue full; dropping event', {
+          workflowId,
+          event: event.type,
+          queue_depth: queue.length,
+          max_queue_depth: this.maxQueueDepth,
+        });
+        return null;
+      }
+      // Enqueue and return a promise that resolves when the queued transition runs
+      return new Promise<WorkflowTransition | null>((resolve, reject) => {
+        queue.push({ event, resolve, reject });
+        this._queue.set(workflowId, queue);
+      });
+    }
+
+    // No in-flight: acquire the mutex and run
+    return this._acquireAndRun(workflowId, event);
+  }
+
+  /**
+   * Acquires the per-workflow mutex, executes the transition, then drains
+   * the queue for this workflow.
+   *
+   * @param workflowId - The workflow to run.
+   * @param event      - The event to process.
+   * @returns The result of the transition.
+   */
+  private _acquireAndRun(
+    workflowId: string,
+    event: RuntimeEvent,
+  ): Promise<WorkflowTransition | null> {
+    let resolveInFlight!: () => void;
+    const inFlight = new Promise<void>((res) => { resolveInFlight = res; });
+    this._inFlight.set(workflowId, inFlight);
+
+    const runAndDrain = async (): Promise<WorkflowTransition | null> => {
+      let result: WorkflowTransition | null = null;
+      try {
+        result = await this._executeTransition(workflowId, event);
+      } finally {
+        // Drain the next queued item (if any) before releasing the mutex
+        const queue = this._queue.get(workflowId);
+        if (queue && queue.length > 0) {
+          const next = queue.shift()!;
+          if (queue.length === 0) this._queue.delete(workflowId);
+          // Keep the mutex held for the next transition
+          const nextResult = this._executeTransition(workflowId, next.event)
+            .then(next.resolve, next.reject)
+            .finally(() => {
+              // After the queued item finishes, drain any further queued items
+              this._drainQueue(workflowId);
+              resolveInFlight();
+              this._inFlight.delete(workflowId);
+            });
+          void nextResult;
+          // Don't release the mutex here — the queued item's finally() does it
+          return result;
+        } else {
+          // No queued items — release the mutex
+          resolveInFlight();
+          this._inFlight.delete(workflowId);
+        }
+      }
+      return result;
+    };
+
+    return runAndDrain();
+  }
+
+  /**
+   * Recursively drains the per-workflow transition queue after a queued
+   * transition completes. Each drained item runs as a chained promise,
+   * serialised in FIFO order.
+   *
+   * @param workflowId - The workflow whose queue to drain.
+   */
+  private _drainQueue(workflowId: string): void {
+    const queue = this._queue.get(workflowId);
+    if (!queue || queue.length === 0) return;
+
+    const next = queue.shift()!;
+    if (queue.length === 0) this._queue.delete(workflowId);
+
+    this._executeTransition(workflowId, next.event)
+      .then(next.resolve, next.reject)
+      .finally(() => this._drainQueue(workflowId));
+  }
+
+  /**
+   * Executes a single state transition for the given workflow instance.
+   *
+   * This method performs the full transition sequence:
+   * 1. Guard evaluation and transition matching
+   * 2. Context snapshot (for rollback)
+   * 3. Await on_exit actions (with timeout)
+   * 4. Update state
+   * 5. Await transition actions (with timeout)
+   * 6. Await on_enter actions for the new state (with timeout)
+   * 7. Record history and emit events
+   *
+   * On action failure or timeout, the transition is rolled back by restoring
+   * the pre-transition state, updated_at, and removing the history entry.
+   *
+   * **Must be called only while holding the per-workflow mutex** (`_inFlight`).
+   *
+   * @param workflowId - ID of the workflow instance.
+   * @param event      - The RuntimeEvent being processed.
+   * @returns The recorded WorkflowTransition, or `null` if no matching
+   *          transition was found or preconditions failed.
+   */
+  private async _executeTransition(
+    workflowId: string,
+    event: RuntimeEvent,
+  ): Promise<WorkflowTransition | null> {
+    const instance = this.instances.get(workflowId);
+    if (!instance) {
+      log.warn('_executeTransition: workflow instance not found', { workflowId });
+      return null;
+    }
     if (instance.status !== 'active') {
-      log.warn('sendEvent: workflow is not active', { workflowId, status: instance.status });
+      log.warn('_executeTransition: workflow is not active', { workflowId, status: instance.status });
       return null;
     }
 
     const def = this.definitions.get(instance.definition_id);
     if (!def) {
-      log.error('sendEvent: definition not found for instance', {
+      log.error('_executeTransition: definition not found for instance', {
         workflowId,
         definition_id: instance.definition_id,
       });
@@ -272,7 +435,7 @@ export class WorkflowEngine {
 
     const currentStateDef = def.states[instance.current_state];
     if (!currentStateDef) {
-      log.error('sendEvent: current state not found in definition', {
+      log.error('_executeTransition: current state not found in definition', {
         workflowId,
         current_state: instance.current_state,
       });
@@ -299,33 +462,60 @@ export class WorkflowEngine {
     const toState = matchingTransition.target;
     const transitionTimestamp = timestamp();
 
-    // Capture context before changes for diff
+    // Snapshot pre-transition state for rollback on action failure
+    const preTransitionState = instance.current_state;
+    const preTransitionUpdatedAt = instance.updated_at;
+    // Snapshot context for diff computation (captured before actions mutate it)
     const contextBefore = { ...instance.context };
 
-    // Execute on_exit actions for current state
-    if (currentStateDef.on_exit) {
-      // Fire-and-forget: actions run async after transition (see sendEvent JSDoc)
-      void this.executeActions(currentStateDef.on_exit, instance.context);
+    // ── Action execution with rollback ─────────────────────────────────────
+    try {
+      // on_exit actions for the current state
+      if (currentStateDef.on_exit) {
+        await this.executeActionsWithTimeout(
+          currentStateDef.on_exit,
+          instance.context,
+          { workflowId, fromState, toState, phase: 'on_exit' },
+        );
+      }
+
+      // Move to target state (committed only after all actions succeed)
+      instance.current_state = toState;
+      instance.updated_at = transitionTimestamp;
+
+      // Transition-level actions
+      if (matchingTransition.actions) {
+        await this.executeActionsWithTimeout(
+          matchingTransition.actions,
+          instance.context,
+          { workflowId, fromState, toState, phase: 'transition' },
+        );
+      }
+
+      // on_enter actions for the new state
+      const targetStateDef = def.states[toState];
+      if (targetStateDef?.on_enter) {
+        await this.executeActionsWithTimeout(
+          targetStateDef.on_enter,
+          instance.context,
+          { workflowId, fromState, toState, phase: 'on_enter' },
+        );
+      }
+    } catch (err) {
+      // ── Rollback ───────────────────────────────────────────────────────────
+      const isTimeout = err instanceof WorkflowTimeoutError;
+      log.error(isTimeout ? 'Action timeout — rolling back transition' : 'Action failure — rolling back transition', {
+        workflow_id: workflowId,
+        from_state: fromState,
+        to_state: toState,
+        error: toErrorMessage(err),
+      });
+      instance.current_state = preTransitionState;
+      instance.updated_at = preTransitionUpdatedAt;
+      return null;
     }
 
-    // Execute transition actions
-    if (matchingTransition.actions) {
-      // Fire-and-forget: actions run async after transition (see sendEvent JSDoc)
-      void this.executeActions(matchingTransition.actions, instance.context);
-    }
-
-    // Move to target state
-    instance.current_state = toState;
-    instance.updated_at = transitionTimestamp;
-
-    // Execute on_enter actions for new state
-    const targetStateDef = def.states[toState];
-    if (targetStateDef?.on_enter) {
-      // Fire-and-forget: actions run async after transition (see sendEvent JSDoc)
-      void this.executeActions(targetStateDef.on_enter, instance.context);
-    }
-
-    // Compute context changes
+    // Compute context changes (after all actions have run)
     const contextChanges: Record<string, unknown> = {};
     for (const key of Object.keys(instance.context)) {
       if (instance.context[key] !== contextBefore[key]) {
@@ -564,10 +754,53 @@ export class WorkflowEngine {
   }
 
   /**
+   * Wraps a list of ActionDefinitions in a timeout and delegates to
+   * `executeActions`. If the actions exceed `actionTimeoutMs`, a
+   * `WorkflowTimeoutError` is thrown, which causes the caller to roll back
+   * the transition.
+   *
+   * @param actions  - Ordered list of ActionDefinitions to execute.
+   * @param context  - Workflow context (mutated in-place by update_context).
+   * @param logCtx   - Contextual information for rollback/warning log messages.
+   * @throws {WorkflowTimeoutError} When actions exceed the configured timeout.
+   * @throws {Error} When an individual action throws.
+   */
+  private async executeActionsWithTimeout(
+    actions: ActionDefinition[],
+    context: WorkflowContext,
+    logCtx: { workflowId: string; fromState: string; toState: string; phase: string },
+  ): Promise<void> {
+    const timeout = this.actionTimeoutMs;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new WorkflowTimeoutError(
+          `Action phase '${logCtx.phase}' exceeded ${timeout} ms timeout`,
+          timeout,
+        ));
+      }, timeout);
+    });
+
+    try {
+      await Promise.race([this.executeActions(actions, context), timeoutPromise]);
+    } catch (err) {
+      if (err instanceof WorkflowTimeoutError) {
+        log.warn('Action execution timeout', {
+          ...logCtx,
+          timeout_ms: timeout,
+        });
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
    * Executes a list of ActionDefinitions against the current context.
    *
-   * Actions run sequentially. Failures are logged but do not abort
-   * subsequent actions or the enclosing transition.
+   * Actions run sequentially. Failures are propagated to the caller
+   * (which handles rollback).
    *
    * Supported action types:
    * - `emit_event`     — emits a runtime event via the injected EventBus
@@ -630,10 +863,12 @@ export class WorkflowEngine {
           }
         }
       } catch (err) {
+        // Rethrow so executeActionsWithTimeout can propagate to the rollback handler
         log.error('Action execution error', {
           action_type: action.type,
           error: toErrorMessage(err),
         });
+        throw err;
       }
     }
   }

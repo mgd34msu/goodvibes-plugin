@@ -4,11 +4,16 @@
  * Receives hook events from the IPC layer, normalises them to HookEvent,
  * runs registered handlers in priority order, and merges their responses
  * into a single ClaudeHookResponse.
+ *
+ * Hook name normalisation is delegated to HookAdapter (L2) which fixes the
+ * colon-syntax bug where names like 'hook:pre_tool_use' would fail PascalCase
+ * conversion and silently return null.
  */
 
 import { createHookEvent, HookType } from '../../extensions/events/factories.js';
 import { HookRegistry } from './hook-registry.js';
 import { createLogger } from '../../shared/logger.js';
+import { normalizeHookName } from '../../extensions/adapters/hook-adapter.js';
 
 const logger = createLogger('hook-processor');
 
@@ -47,40 +52,6 @@ export interface HookProcessorDeps {
   registry: HookRegistry;
   /** Session ID for the current Claude Code session. */
   sessionId: string;
-}
-
-// ─── Hook Name Normalisation ───────────────────────────────────────────────────
-
-/** Canonical set of all valid HookType values. */
-const VALID_HOOK_TYPES = new Set<HookType>([
-  'PreToolUse',
-  'PostToolUse',
-  'PostToolUseFailure',
-  'SubagentStart',
-  'SubagentStop',
-  'SessionStart',
-  'SessionEnd',
-  'PreCompact',
-  'UserPromptSubmit',
-  'Notification',
-  'Stop',
-]);
-
-/**
- * Normalise a raw hook name string (PascalCase or snake_case) to HookType.
- * Returns null for unknown hook names.
- *
- * Strategy:
- * 1. Exact match against the canonical HookType set (PascalCase, already valid).
- * 2. Convert snake_case to PascalCase and try again (Claude Code sends snake_case).
- */
-function normalizeHookName(raw: string): HookType | null {
-  if (VALID_HOOK_TYPES.has(raw as HookType)) return raw as HookType;
-  const pascal = raw
-    .split('_')
-    .map((s) => (s[0]?.toUpperCase() ?? '') + s.slice(1))
-    .join('');
-  return VALID_HOOK_TYPES.has(pascal as HookType) ? (pascal as HookType) : null;
 }
 
 // ─── HookProcessor ────────────────────────────────────────────────────────────

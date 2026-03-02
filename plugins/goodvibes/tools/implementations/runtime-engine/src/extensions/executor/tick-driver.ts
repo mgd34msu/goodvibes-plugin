@@ -18,9 +18,9 @@
 import { execFileSync, execFile } from 'node:child_process';
 import { Timer } from '../../core/observability/timer.js';
 import { ExecutorModeManager } from '../../core/processing/executor-mode.js';
-import type { TimePlugin } from '../../plugins/time/index.js';
 import type { ExecutorConfig } from '../../shared/config.js';
-import type { ExternalPlugin } from '../../plugins/external/index.js';
+import type { TimeSourceAdapter } from '../adapters/types.js';
+import type { ExternalSourceAdapter } from '../adapters/types.js';
 import type { EventProcessor } from '../../core/processing/event-processor.js';
 import { createLogger } from '../../shared/logger.js';
 
@@ -36,8 +36,10 @@ const DAEMON_HEARTBEAT_EVENT = 'daemon:tick';
 export interface TickDriverDeps {
   config: ExecutorConfig;
   executorMode: ExecutorModeManager;
-  timePlugin: TimePlugin;
-  externalPlugin?: ExternalPlugin;
+  /** Time source adapter (wraps L3 TimePlugin). */
+  timePlugin: TimeSourceAdapter;
+  /** External source adapter (wraps L3 ExternalPlugin). Optional. */
+  externalPlugin?: ExternalSourceAdapter;
   eventProcessor?: EventProcessor;
   staleWorkflowChecker?: () => void;
 }
@@ -49,8 +51,8 @@ export class TickDriver {
   private timer: Timer;
   private config: ExecutorConfig;
   private readonly executorMode: ExecutorModeManager;
-  private readonly timePlugin: TimePlugin;
-  private readonly externalPlugin?: ExternalPlugin;
+  private readonly timePlugin: TimeSourceAdapter;
+  private readonly externalPlugin?: ExternalSourceAdapter;
   private readonly eventProcessor?: EventProcessor;
   private readonly staleWorkflowChecker?: () => void;
   private evalFailureCount = 0;

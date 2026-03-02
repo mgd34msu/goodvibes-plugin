@@ -2,33 +2,37 @@
  * Extensions barrel — all domain extension modules.
  *
  * Re-exports events, workflow, agents, triggers, directives, executor,
- * and persistence from their respective sub-modules.
+ * persistence, and adapters from their respective sub-modules.
  */
 
-// ─── Event Extensions ─────────────────────────────────────────────────────────
+// ─── Event Extensions ──────────────────────────────────────────────────────────────
 
 export * from './events/index.js';
 
-// ─── Workflow Extensions ──────────────────────────────────────────────────────
+// ─── Workflow Extensions ──────────────────────────────────────────────────────────
 
 export * from './workflow/index.js';
 
-// ─── Agent Extensions ─────────────────────────────────────────────────────────
+// ─── Agent Extensions ──────────────────────────────────────────────────────────────
 
 export * from './agents/index.js';
 
-// ─── Trigger Extensions ───────────────────────────────────────────────────────
+// ─── Trigger Extensions ─────────────────────────────────────────────────────────────
 
 export * from './triggers/index.js';
 
-// ─── Directive Extensions ─────────────────────────────────────────────────────
+// ─── Directive Extensions ─────────────────────────────────────────────────────────
 
 export * from './directives/index.js';
 
-// ─── Executor Extensions ──────────────────────────────────────────────────────
+// ─── Executor Extensions ──────────────────────────────────────────────────────────
 
 export * from './executor/index.js';
 
-// ─── Persistence Extensions ───────────────────────────────────────────────────
+// ─── Persistence Extensions ───────────────────────────────────────────────────────
 
 export * from './persistence/index.js';
+
+// ─── Adapter Extensions ──────────────────────────────────────────────────────────
+
+export * from './adapters/index.js';

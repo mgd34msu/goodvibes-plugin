@@ -131,3 +131,26 @@ export class HookError extends RuntimeEngineError {
     super(message, 'HOOK_ERROR', cause);
   }
 }
+
+/**
+ * Thrown when a workflow action exceeds the configured execution timeout.
+ *
+ * When caught by the workflow engine the transition is rolled back to the
+ * pre-transition state and the error is logged with full context.
+ *
+ * @example
+ * throw new WorkflowTimeoutError(
+ *   `Action 'invoke_handler' exceeded 30000 ms timeout`,
+ *   30000,
+ * );
+ */
+export class WorkflowTimeoutError extends RuntimeEngineError {
+  /** The timeout value in milliseconds that was exceeded. */
+  constructor(
+    message: string,
+    public readonly timeoutMs: number,
+    cause?: unknown,
+  ) {
+    super(message, 'WORKFLOW_TIMEOUT_ERROR', cause);
+  }
+}

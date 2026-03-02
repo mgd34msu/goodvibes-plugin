@@ -39,6 +39,8 @@ const DEFAULT_CONFIG = {
   max_transitions_per_workflow: 100,
   wrfc_max_fix_iterations: 3,
   fix_loop_max_attempts: 5,
+  action_timeout_ms: 30_000,
+  max_transition_queue_depth: 10,
 };
 
 function makeEngine(config = DEFAULT_CONFIG): WorkflowEngine {
@@ -312,10 +314,10 @@ describe('WorkflowEngine', () => {
       expect(instance.current_state).toBe('idle');
     });
 
-    it('returns the applied WorkflowTransition on success', () => {
+    it('returns the applied WorkflowTransition on success', async () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow');
-      const transition = engine.sendEvent(instance.id, makeEvent('task:started'));
+      const transition = await engine.sendEvent(instance.id, makeEvent('task:started'));
       expect(transition).not.toBeNull();
       expect(transition!.from_state).toBe('idle');
       expect(transition!.to_state).toBe('working');
@@ -458,7 +460,7 @@ describe('WorkflowEngine', () => {
       };
       engine.registerDefinition(def);
       const instance = engine.create('ctx_def', { review_score: 5 });
-      const transition = engine.sendEvent(instance.id, makeEvent('go'));
+      const transition = await engine.sendEvent(instance.id, makeEvent('go'));
       // context_changes will be empty since no mutation happened before capture
       expect(transition).not.toBeNull();
       expect(transition!.context_changes).toEqual({});

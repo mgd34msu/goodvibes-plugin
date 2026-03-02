@@ -13,7 +13,7 @@ import type { EventBus } from '../../../extensions/events/event-bus.js';
 import type { EventLog } from '../../../extensions/events/event-log.js';
 import type { EventQueue } from '../../../extensions/events/event-queue.js';
 import type { WorkflowEngine } from '../../../extensions/workflow/workflow-engine.js';
-import type { TriggerRegistry } from '../../../extensions/triggers/trigger-registry.js';
+import type { TriggerRegistry } from '../../../core/trigger-registry.js';
 import type { AgentCoordinator } from '../../../extensions/agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../../../extensions/directives/directive-queue.js';
 

@@ -383,7 +383,7 @@ export class TriggerActionExecutor {
       let sentCount = 0;
       for (const instance of activeWorkflows) {
         try {
-          this.workflowEngine.sendEvent(instance.id, event);
+          await this.workflowEngine.sendEvent(instance.id, event);
           sentCount++;
         } catch (err) {
           log.warn('send_workflow_event: failed to send to workflow', {

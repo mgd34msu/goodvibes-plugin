@@ -94,7 +94,7 @@ export const handleRuntimeWorkflow = async (
         return toError('Missing required field: event', ctx.version, uptimeMs, Date.now() - start);
       }
       const context = (params.context as Record<string, unknown> | undefined) ?? {};
-      const transition = engine.sendEvent(workflowId, {
+      const transition = await engine.sendEvent(workflowId, {
         id: generateEventId(),
         timestamp: timestamp(),
         type: event as EventType,

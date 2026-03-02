@@ -6,10 +6,10 @@
  * Key behaviors:
  * - Pattern matching supports exact type, namespace wildcard (`hook:*`), and global wildcard (`*`)
  * - Sync handlers execute in registration order. Async handlers are fire-and-forget (errors caught and logged)
- * - Async handlers are fire-and-forget: errors are caught and logged via structured logger
  * - Every emitted event receives an auto-incremented sequence number and metadata defaults
  * - An in-memory ring buffer retains the last `maxHistorySize` events for fast replay
  * - Optional event log integration is set post-construction by the process-manager
+ * - Subscriptions support optional backpressure (maxConcurrent), timeout, dead-letter callback, and ordered delivery
  */
 
 import { generateEventId, timestamp, toErrorMessage } from '../../shared/utils.js';
@@ -35,6 +35,210 @@ export interface EventLogLike {
 }
 
 /**
+ * Error thrown when a handler exceeds its configured `timeout` limit.
+ */
+export class TimeoutError extends Error {
+  readonly code = 'HANDLER_TIMEOUT';
+  constructor(timeoutMs: number) {
+    super(`Handler timed out after ${timeoutMs}ms`);
+    this.name = 'TimeoutError';
+  }
+}
+
+/**
+ * Options that can be passed when subscribing to an event pattern.
+ *
+ * All fields are optional and default to unrestricted / parallel / no-timeout.
+ */
+export interface SubscriptionOptions {
+  /**
+   * Maximum number of concurrent handler executions for this subscription.
+   *
+   * When set, uses a semaphore to limit parallelism. If the limit is reached,
+   * new invocations are queued until a running invocation completes.
+   *
+   * Default: unlimited (no semaphore).
+   */
+  maxConcurrent?: number;
+
+  /**
+   * Timeout in milliseconds for each handler invocation.
+   *
+   * If the handler (or its returned Promise) does not resolve within this
+   * period, a `TimeoutError` is raised and the invocation is treated as
+   * failed (routed to `onError` if provided, otherwise logged as a warning).
+   *
+   * Default: no timeout.
+   */
+  timeout?: number;
+
+  /**
+   * Dead-letter callback invoked when the handler throws or rejects.
+   *
+   * Receives the error and the event that triggered the handler.
+   * If omitted, errors are logged as warnings (previous default behavior).
+   *
+   * Default: log warning.
+   */
+  onError?: (error: Error, event: RuntimeEvent) => void;
+
+  /**
+   * When `true`, handler invocations for this subscription are serialised:
+   * each invocation awaits completion before the next starts.
+   *
+   * When `false` (default), all matching handlers fire in parallel.
+   *
+   * Default: `false`.
+   */
+  ordered?: boolean;
+}
+
+/** Internal subscription record stored per registered handler. */
+interface SubscriptionEntry {
+  handler: EventHandler;
+  options: SubscriptionOptions;
+  /** Semaphore state, allocated lazily when maxConcurrent is set. */
+  semaphore?: SemaphoreState;
+  /**
+   * Queue tail Promise used for ordered delivery.
+   * Each invocation chains onto this tail so executions are sequential.
+   */
+  orderedTail?: Promise<void>;
+}
+
+/** Semaphore state for maxConcurrent limiting. */
+interface SemaphoreState {
+  /** Number of currently executing invocations. */
+  running: number;
+  /** Maximum allowed concurrent invocations. */
+  max: number;
+  /** Queue of resolvers waiting for a slot to become available. */
+  queue: Array<() => void>;
+}
+
+/**
+ * Acquire one slot from the semaphore.
+ * If at capacity, waits until a slot is released.
+ */
+function semaphoreAcquire(sem: SemaphoreState): Promise<void> {
+  if (sem.running < sem.max) {
+    sem.running++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    sem.queue.push(resolve);
+  });
+}
+
+/**
+ * Release one slot back to the semaphore.
+ * If waiters are queued, the next one is resolved immediately.
+ */
+function semaphoreRelease(sem: SemaphoreState): void {
+  const next = sem.queue.shift();
+  if (next) {
+    // Slot transferred directly to waiter — running count stays the same
+    next();
+  } else {
+    sem.running--;
+  }
+}
+
+/**
+ * Wraps `handler(event)` in a timeout race if `timeoutMs` is set.
+ * Always returns a Promise regardless of whether the handler is sync or async.
+ */
+function invokeWithTimeout(
+  handler: EventHandler,
+  event: RuntimeEvent,
+  timeoutMs?: number,
+): Promise<void> {
+  let resultPromise: Promise<void>;
+  try {
+    const result = handler(event);
+    resultPromise = result instanceof Promise ? result : Promise.resolve();
+  } catch (err) {
+    return Promise.reject(err);
+  }
+
+  if (timeoutMs === undefined || timeoutMs <= 0) {
+    return resultPromise;
+  }
+
+  let timer: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new TimeoutError(timeoutMs)), timeoutMs);
+  });
+
+  return Promise.race([resultPromise, timeoutPromise]).finally(() => {
+    clearTimeout(timer!);
+  });
+}
+
+/**
+ * Dispatches a single event to one subscription entry, respecting all options.
+ *
+ * Errors are routed to `onError` when configured, otherwise logged as warnings.
+ * This function never throws — all rejections are swallowed after routing.
+ */
+function dispatchToEntry(
+  entry: SubscriptionEntry,
+  event: RuntimeEvent,
+  pattern: EventTypePattern,
+): void {
+  const { handler, options } = entry;
+
+  const handleError = (err: unknown): void => {
+    const error = err instanceof Error ? err : new Error(String(err));
+    if (options.onError) {
+      try {
+        options.onError(error, event);
+      } catch (cbErr) {
+        logger.warn('onError callback threw', { pattern, error: toErrorMessage(cbErr) });
+      }
+    } else {
+      logger.warn('Async handler error', { pattern, error: toErrorMessage(err) });
+    }
+  };
+
+  const execute = async (): Promise<void> => {
+    const sem = entry.semaphore;
+    if (sem) {
+      await semaphoreAcquire(sem);
+    }
+    try {
+      await invokeWithTimeout(handler, event, options.timeout);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      if (sem) {
+        semaphoreRelease(sem);
+      }
+    }
+  };
+
+  if (options.ordered) {
+    // Chain onto the ordered tail so invocations are sequential
+    const prev = entry.orderedTail ?? Promise.resolve();
+    const current = prev.then(execute).catch(() => {
+      // errors already handled inside execute(); swallow chain rejection
+    });
+    entry.orderedTail = current;
+    current.then(() => {
+      // Reset tail when chain is idle to allow GC
+      if (entry.orderedTail === current) {
+        entry.orderedTail = undefined;
+      }
+    });
+  } else {
+    // Fire-and-forget (parallel)
+    execute().catch(() => {
+      // errors already handled inside execute(); swallow here
+    });
+  }
+}
+
+/**
  * Publish-subscribe bus for all runtime events.
  *
  * Instantiate once per engine instance and share via dependency injection.
@@ -46,6 +250,20 @@ export interface EventLogLike {
  * const off = bus.on('hook:*', (event) => {
  *   logger.info('Hook fired:', event.type);
  * });
+ *
+ * // Subscription with backpressure, timeout, and dead-letter handling
+ * bus.on(
+ *   'agent:*',
+ *   async (event) => { await processAgent(event); },
+ *   { maxConcurrent: 3, timeout: 5000, onError: (err, ev) => dlq.push({ err, ev }) },
+ * );
+ *
+ * // Ordered delivery (sequential processing)
+ * bus.on(
+ *   'hook:post_tool_use',
+ *   async (event) => { await writeLog(event); },
+ *   { ordered: true },
+ * );
  *
  * bus.emit({
  *   id: generateEventId(),
@@ -59,8 +277,12 @@ export interface EventLogLike {
  * ```
  */
 export class EventBus {
-  /** Registered handlers keyed by subscription pattern. */
-  private readonly handlers: Map<EventTypePattern, Set<EventHandler>>;
+  /**
+   * Registered handlers keyed by subscription pattern.
+   * Each pattern maps to a Map of (unique symbol → SubscriptionEntry).
+   * Using a symbol key preserves insertion order and supports O(1) deletion.
+   */
+  private readonly handlers: Map<EventTypePattern, Map<symbol, SubscriptionEntry>>;
 
   /** Monotonically increasing sequence counter. Starts at 1 for the first event. */
   private sequence: number = 0;
@@ -170,19 +392,10 @@ export class EventBus {
     }
 
     // Dispatch to matching handlers
-    for (const [pattern, handlerSet] of this.handlers) {
+    for (const [pattern, entryMap] of this.handlers) {
       if (this.matchPattern(full.type, pattern)) {
-        for (const handler of handlerSet) {
-          try {
-            const result = handler(full);
-            if (result instanceof Promise) {
-              result.catch((err: unknown) => {
-                logger.warn('Async handler error', { pattern, error: toErrorMessage(err) });
-              });
-            }
-          } catch (err) {
-            logger.warn('Sync handler error', { pattern, error: toErrorMessage(err) });
-          }
+        for (const entry of entryMap.values()) {
+          dispatchToEntry(entry, full, pattern);
         }
       }
     }
@@ -195,18 +408,35 @@ export class EventBus {
    *
    * @param pattern - Exact event type, namespace wildcard (`hook:*`), or global wildcard (`*`).
    * @param handler - Callback invoked for each matching event.
+   * @param options - Optional subscription options (backpressure, timeout, dead-letter, ordering).
    * @returns An unsubscribe function; call it to stop receiving events.
    */
-  on(pattern: EventTypePattern, handler: EventHandler): Unsubscribe {
+  on(pattern: EventTypePattern, handler: EventHandler, options?: SubscriptionOptions): Unsubscribe {
     if (!this.handlers.has(pattern)) {
-      this.handlers.set(pattern, new Set());
+      this.handlers.set(pattern, new Map());
     }
-    this.handlers.get(pattern)?.add(handler);
+
+    const key = Symbol();
+    const opts = options ?? {};
+
+    const entry: SubscriptionEntry = {
+      handler,
+      options: opts,
+      semaphore:
+        opts.maxConcurrent !== undefined && opts.maxConcurrent > 0
+          ? { running: 0, max: opts.maxConcurrent, queue: [] }
+          : undefined,
+    };
+
+    this.handlers.get(pattern)?.set(key, entry);
 
     return () => {
-      this.handlers.get(pattern)?.delete(handler);
-      if (this.handlers.get(pattern)?.size === 0) {
-        this.handlers.delete(pattern);
+      const entryMap = this.handlers.get(pattern);
+      if (entryMap) {
+        entryMap.delete(key);
+        if (entryMap.size === 0) {
+          this.handlers.delete(pattern);
+        }
       }
     };
   }
@@ -218,18 +448,22 @@ export class EventBus {
    *
    * @param pattern - Exact event type, namespace wildcard, or global wildcard.
    * @param handler - Callback invoked once for the next matching event.
+   * @param options - Optional subscription options (backpressure, timeout, dead-letter, ordering).
    * @returns An unsubscribe function; call it to cancel before the event fires.
    */
-  once(pattern: EventTypePattern, handler: EventHandler): Unsubscribe {
-    const off = this.on(pattern, (event) => {
-      off();
-      const result = handler(event);
-      if (result instanceof Promise) {
-        result.catch((err: unknown) => {
-          logger.warn('Once handler error', { pattern, error: toErrorMessage(err) });
-        });
-      }
-    });
+  once(
+    pattern: EventTypePattern,
+    handler: EventHandler,
+    options?: SubscriptionOptions,
+  ): Unsubscribe {
+    const off = this.on(
+      pattern,
+      (event) => {
+        off();
+        return handler(event);
+      },
+      options,
+    );
     return off;
   }
 
@@ -311,8 +545,8 @@ export class EventBus {
       return this.handlers.get(pattern)?.size ?? 0;
     }
     let total = 0;
-    for (const handlerSet of this.handlers.values()) {
-      total += handlerSet.size;
+    for (const entryMap of this.handlers.values()) {
+      total += entryMap.size;
     }
     return total;
   }

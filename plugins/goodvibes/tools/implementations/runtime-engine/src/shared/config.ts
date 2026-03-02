@@ -60,6 +60,18 @@ export interface WorkflowsConfig {
   wrfc_max_fix_iterations: number;
   /** Maximum attempts in a fix loop before aborting */
   fix_loop_max_attempts: number;
+  /**
+   * Maximum time in milliseconds that a state action (on_enter, on_exit, or
+   * transition action) may run before it is forcibly cancelled and the
+   * transition is rolled back. Defaults to 30 000 ms (30 seconds).
+   */
+  action_timeout_ms: number;
+  /**
+   * Maximum number of transitions that may be queued while another is
+   * in-flight for the same workflow instance. Requests that exceed this
+   * limit are dropped and logged as a warning. Defaults to 10.
+   */
+  max_transition_queue_depth: number;
 }
 
 /** Event trigger configuration */
@@ -269,6 +281,8 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     max_transitions_per_workflow: 100,
     wrfc_max_fix_iterations: 3,
     fix_loop_max_attempts: 5,
+    action_timeout_ms: 30_000,
+    max_transition_queue_depth: 10,
   },
   triggers: {
     max_triggers: 100,

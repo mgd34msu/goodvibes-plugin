@@ -15,8 +15,12 @@
  *     g. Update metrics
  *
  * Concurrency:
+ *  - Re-entrancy guard: processBatch() is non-reentrant; concurrent calls are
+ *    deflected via queueMicrotask so they run after the current batch finishes
  *  - Workflow-level locking: events within the same workflow_id are serialised
  *  - Events without a workflow_id process freely (no locking)
+ *  - Batch overflow: events beyond max_events_per_batch are re-queued and a
+ *    follow-up tick is scheduled automatically via queueMicrotask
  *
  * Budget:
  *  - Emits a warning event at the warning threshold
@@ -226,6 +230,15 @@ export class EventProcessor {
   /** True once the "no actionExecutor" warning has been logged; prevents log spam. */
   private actionExecutorWarningLogged = false;
 
+  /**
+   * Re-entrancy guard for processBatch().
+   * Set to true while a batch is actively being processed; prevents concurrent
+   * invocations from overlapping when handlers emit events synchronously or
+   * when the external scheduler calls processBatch() before the current run
+   * has resolved.
+   */
+  private processing = false;
+
   constructor(
     queue: EventQueueInterface,
     registry: TriggerRegistryInterface,
@@ -280,11 +293,30 @@ export class EventProcessor {
    * Process a single batch of events from the queue.
    * Only runs when the lifecycle is in 'running' state.
    * Returns the number of events processed.
+   *
+   * Re-entrancy: if this method is called while a batch is already in flight,
+   * it schedules another pass via queueMicrotask and returns 0 immediately.
+   * This prevents recursive or overlapping batch processing when handlers
+   * emit events synchronously or when an external scheduler fires early.
+   *
+   * Batch size: at most `max_events_per_batch` events are processed per call.
+   * If the queue contains more events, the remainder are re-queued and another
+   * pass is scheduled automatically via queueMicrotask.
    */
   async processBatch(): Promise<number> {
     if (!this.lifecycle.isProcessing()) {
       return 0;
     }
+
+    // Re-entrancy guard: if a batch is already processing, schedule a follow-up
+    // tick and return immediately to avoid concurrent overlapping batches.
+    if (this.processing) {
+      queueMicrotask(() => { void this.processBatch(); });
+      return 0;
+    }
+    this.processing = true;
+
+    try {
 
     // Check budget
     if (this.budget && this.budget.total > 0) {
@@ -327,15 +359,21 @@ export class EventProcessor {
 
     // Drain the queue
     const events = this.queue.drain();
-    if (events.length === 0) return 0;
+    if (events.length === 0) {
+      return 0;
+    }
 
     this.metrics.onQueueDepthChange(0);
 
     const toProcess = events.slice(0, this.options.max_events_per_batch);
-    // If we cut the batch, re-enqueue the remainder bypassing dedup
+    // If we cut the batch, re-enqueue the remainder bypassing dedup and
+    // schedule another pass so the overflow is not silently dropped.
     if (events.length > this.options.max_events_per_batch) {
       try {
         this.queue.requeue(events.slice(this.options.max_events_per_batch));
+        // Schedule the next tick automatically so the caller does not need to
+        // poll; this ensures overflow events are processed without delay.
+        queueMicrotask(() => { void this.processBatch(); });
       } catch (err) { logger.debug('Failed to requeue overflow batch events', { error: err instanceof Error ? err.message : String(err) }); }
     }
 
@@ -421,6 +459,9 @@ export class EventProcessor {
 
     this.metrics.onQueueDepthChange(this.queue.depth());
     return processed;
+    } finally {
+      this.processing = false;
+    }
   }
 
   /**

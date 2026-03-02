@@ -23,7 +23,7 @@ import type { EventBus } from './extensions/events/event-bus.js';
 import type { EventLog } from './extensions/events/event-log.js';
 import type { EventQueue } from './extensions/events/event-queue.js';
 import type { WorkflowEngine } from './extensions/workflow/workflow-engine.js';
-import type { TriggerRegistry } from './extensions/triggers/trigger-registry.js';
+import type { TriggerRegistry } from './core/trigger-registry.js';
 import type { AgentCoordinator } from './extensions/agents/agent-coordinator.js';
 import type { DirectiveQueue } from './extensions/directives/directive-queue.js';
 import { WRFCConfigStore } from './extensions/directives/index.js';
@@ -43,6 +43,7 @@ import type { ExecutorModeManager } from './core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from './extensions/executor/executor-budget.js';
 import type { DaemonTickHandler } from './extensions/executor/daemon-tick-handler.js';
 import { createExecutorSubsystem, type ExecutorSubsystem, ActionExecutor, TickDriver } from './extensions/executor/index.js';
+import { createTimeAdapter, createExternalAdapter } from './extensions/adapters/index.js';
 import { EventBridge } from './extensions/events/event-bridge.js';
 import { createIPCSubsystem, teardownIPC } from './extensions/ipc/index.js';
 import type { IPCSubsystem } from './extensions/ipc/index.js';
@@ -241,8 +242,8 @@ export class RuntimeEngine {
       this.tickDriver = new TickDriver({
         config: this.config.executor,
         executorMode: this.executorSubsystem.executorMode,
-        timePlugin,
-        externalPlugin: externalPlugin,
+        timePlugin: createTimeAdapter(timePlugin),
+        externalPlugin: createExternalAdapter(externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor ?? undefined,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
       });
