@@ -19,7 +19,7 @@ import type { RuntimeEvent, EventSource, EventContext } from '../shared/events.j
  * Describes which events a trigger should match.
  * All fields are ANDed together.
  */
-interface EventMatcher {
+export interface EventMatcher {
   /** Filter by source. Single value or array (OR semantics). */
   source?: EventSource | EventSource[];
   /** Match event type exactly (string) or by pattern (RegExp). */

@@ -87,7 +87,7 @@ export type {
 export { EventBus } from './extensions/events/event-bus.js';
 export { ConditionEvaluator } from './extensions/triggers/condition-evaluator.js';
 export { TriggerActionExecutor } from './extensions/triggers/trigger-action-executor.js';
-export { TriggerRegistry } from './extensions/triggers/trigger-registry.js';
+export { TriggerRegistry } from './core/trigger-registry.js';
 export { getBuiltinTriggers } from './extensions/triggers/builtins.js';
 export type {
   TriggerDefinition,
@@ -104,7 +104,7 @@ export type {
   CompositeAction,
   TriggerResult,
   TriggerActionHandler,
-} from './extensions/triggers/types.js';
+} from './core/trigger-registry.js';
 // Workflow extension
 export type {
   WorkflowDefinition,

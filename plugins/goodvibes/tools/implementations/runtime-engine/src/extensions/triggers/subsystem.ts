@@ -11,7 +11,7 @@
 import type { RuntimeConfig } from '../../shared/config.js';
 import { createLogger } from '../../shared/logger.js';
 
-import { TriggerRegistry } from './trigger-registry.js';
+import { TriggerRegistry } from '../../core/trigger-registry.js';
 import { getBuiltinTriggers } from './builtins.js';
 
 const logger = createLogger('triggers-subsystem');

@@ -7,6 +7,7 @@
  */
 
 export * from './types.js';
+export * from './trigger-registry.js';
 export * from './queues/index.js';
 export * from './matching/index.js';
 export * from './processing/index.js';
