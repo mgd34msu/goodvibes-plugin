@@ -1,0 +1,13 @@
+{
+  "name": "task-manager",
+  "version": "1.0.0",
+  "description": "A simple TypeScript task manager",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
