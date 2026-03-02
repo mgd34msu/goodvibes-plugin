@@ -40,7 +40,6 @@
         ]
       }
     ],
-
     "PostToolUseFailure": [
       {
         "matcher": "Bash",

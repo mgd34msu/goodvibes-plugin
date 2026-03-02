@@ -1,1 +1,0 @@
-import { auth } from './auth-v2';
