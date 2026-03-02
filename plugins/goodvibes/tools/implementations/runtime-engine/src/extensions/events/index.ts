@@ -1,7 +1,9 @@
 /**
  * Events Extension — Barrel Export
  *
- * Re-exports all public types and classes from the events sub-module.
+ * Exports the EventBus (typed pub/sub with wildcard patterns and history),
+ * EventLog (persistent JSONL query interface), and the createEventSubsystem
+ * factory used by bootstrap.ts to wire the events layer.
  */
 
 export * from './event-bus.js';

@@ -36,7 +36,7 @@ export type HookType =
  */
 export interface HookEvent extends RuntimeEvent {
   /** Hook events always originate from the internal (Claude Code) source. */
-  source: 'internal';
+  source: { kind: 'internal' };
   /** The hook lifecycle point that produced this event. */
   hook_type: HookType;
   /** Raw input data passed to the hook by Claude Code. */
@@ -50,7 +50,10 @@ export interface HookEvent extends RuntimeEvent {
  */
 function isHookEvent(event: RuntimeEvent): event is HookEvent {
   return (
-    event.source === 'internal' &&
+    typeof event.source === 'object' &&
+    event.source !== null &&
+    'kind' in event.source &&
+    (event.source as { kind: string }).kind === 'internal' &&
     'hook_type' in event &&
     'hook_input' in event
   );
@@ -100,15 +103,16 @@ export function createHookEvent(params: {
   context?: EventContext;
 }): HookEvent {
   const base = createEvent({
-    source: 'internal',
-    type: params.type ?? `hook:${hookTypeToSlug(params.hook_type)}`,
-    payload: params.payload ?? params.hook_input,
+    source: { kind: 'internal' } as const,
+    type: (params.type ?? `hook:${hookTypeToSlug(params.hook_type)}`) as import('../../shared/events.js').EventType,
+    payload: (params.payload ?? params.hook_input) as import('../../shared/events.js').EventPayload,
     priority: params.priority ?? 50,
     context: params.context,
+    metadata: { session_id: '', sequence: 0 },
   });
   return {
     ...base,
-    source: 'internal',
+    source: { kind: 'internal' } as const,
     hook_type: params.hook_type,
     hook_input: params.hook_input,
     session_id: params.session_id,
@@ -124,7 +128,7 @@ export function createHookEvent(params: {
  */
 interface AgentEvent extends RuntimeEvent {
   /** Agent events always originate from the agent source. */
-  source: 'agent';
+  source: { kind: 'agent'; agent_id: string };
   /** Unique identifier for the agent instance that produced this event. */
   agent_id: string;
   /** Agent role/type descriptor (e.g. 'goodvibes:engineer', 'goodvibes:reviewer'). */
@@ -144,7 +148,14 @@ interface AgentEvent extends RuntimeEvent {
  * Narrows a RuntimeEvent to AgentEvent.
  */
 function isAgentEvent(event: RuntimeEvent): event is AgentEvent {
-  return event.source === 'agent' && 'agent_id' in event && 'agent_type' in event;
+  return (
+    typeof event.source === 'object' &&
+    event.source !== null &&
+    'kind' in event.source &&
+    (event.source as { kind: string }).kind === 'agent' &&
+    'agent_id' in event &&
+    'agent_type' in event
+  );
 }
 
 /**
@@ -165,15 +176,16 @@ function createAgentEvent(params: {
   context?: EventContext;
 }): AgentEvent {
   const base = createEvent({
-    source: 'agent',
-    type: params.type,
-    payload: params.payload ?? { agent_id: params.agent_id, agent_type: params.agent_type },
+    source: { kind: 'agent', agent_id: params.agent_id } as const,
+    type: params.type as import('../../shared/events.js').EventType,
+    payload: (params.payload ?? { agent_id: params.agent_id, agent_type: params.agent_type }) as import('../../shared/events.js').EventPayload,
     priority: params.priority ?? 60,
     context: params.context,
+    metadata: { session_id: '', sequence: 0 },
   });
   return {
     ...base,
-    source: 'agent',
+    source: { kind: 'agent', agent_id: params.agent_id } as const,
     agent_id: params.agent_id,
     agent_type: params.agent_type,
     ...(params.result !== undefined && { result: params.result }),
@@ -191,7 +203,7 @@ function createAgentEvent(params: {
  */
 export interface ExternalEvent extends RuntimeEvent {
   /** External events always originate from the external source. */
-  source: 'external';
+  source: { kind: 'external'; origin: string };
   /** Identifier for the originating external system (e.g. 'github', 'slack', 'ci', 'stripe'). */
   external_source: string;
   /** The original, unmodified webhook payload. */
@@ -205,7 +217,10 @@ export interface ExternalEvent extends RuntimeEvent {
  */
 function isExternalEvent(event: RuntimeEvent): event is ExternalEvent {
   return (
-    event.source === 'external' &&
+    typeof event.source === 'object' &&
+    event.source !== null &&
+    'kind' in event.source &&
+    (event.source as { kind: string }).kind === 'external' &&
     'external_source' in event &&
     'raw_payload' in event
   );
@@ -229,15 +244,16 @@ export function createExternalEvent(params: {
   context?: EventContext;
 }): ExternalEvent {
   const base = createEvent({
-    source: 'external',
-    type: params.type,
-    payload: params.payload ?? params.raw_payload,
+    source: { kind: 'external', origin: params.external_source } as const,
+    type: params.type as import('../../shared/events.js').EventType,
+    payload: (params.payload ?? params.raw_payload) as import('../../shared/events.js').EventPayload,
     priority: params.priority ?? 30,
     context: params.context,
+    metadata: { session_id: '', sequence: 0 },
   });
   return {
     ...base,
-    source: 'external',
+    source: { kind: 'external', origin: params.external_source } as const,
     external_source: params.external_source,
     raw_payload: params.raw_payload,
     normalized: params.normalized ?? false,
@@ -253,7 +269,7 @@ export function createExternalEvent(params: {
  */
 interface HumanEvent extends RuntimeEvent {
   /** Human events always originate from the human source. */
-  source: 'human';
+  source: { kind: 'user' };
   /** Raw user prompt text, if applicable. */
   prompt?: string;
   /** Slash command issued by the user (e.g. '/stop', '/pause'), if applicable. */
@@ -268,7 +284,12 @@ interface HumanEvent extends RuntimeEvent {
  * Any event with source 'human' is a valid HumanEvent by definition.
  */
 function isHumanEvent(event: RuntimeEvent): event is HumanEvent {
-  return event.source === 'human';
+  return (
+    typeof event.source === 'object' &&
+    event.source !== null &&
+    'kind' in event.source &&
+    (event.source as { kind: string }).kind === 'user'
+  );
 }
 
 /**
@@ -287,15 +308,16 @@ function createHumanEvent(params: {
   context?: EventContext;
 }): HumanEvent {
   const base = createEvent({
-    source: 'human',
-    type: params.type,
-    payload: params.payload ?? {},
+    source: { kind: 'user' } as const,
+    type: params.type as import('../../shared/events.js').EventType,
+    payload: (params.payload ?? {}) as import('../../shared/events.js').EventPayload,
     priority: params.priority ?? 100,
     context: params.context,
+    metadata: { session_id: '', sequence: 0 },
   });
   return {
     ...base,
-    source: 'human',
+    source: { kind: 'user' } as const,
     ...(params.prompt !== undefined && { prompt: params.prompt }),
     ...(params.command !== undefined && { command: params.command }),
     ...(params.approval !== undefined && { approval: params.approval }),
@@ -316,7 +338,7 @@ type TimeType = 'heartbeat' | 'cron' | 'scheduled' | 'one_shot';
  */
 export interface TimeEvent extends RuntimeEvent {
   /** Time events always originate from the time source. */
-  source: 'time';
+  source: { kind: 'time'; schedule_id?: string };
   /** Category of this time event. */
   time_type: TimeType;
   /** Interval in milliseconds (heartbeat events). */
@@ -335,7 +357,13 @@ export interface TimeEvent extends RuntimeEvent {
  * Narrows a RuntimeEvent to TimeEvent.
  */
 function isTimeEvent(event: RuntimeEvent): event is TimeEvent {
-  return event.source === 'time' && 'time_type' in event;
+  return (
+    typeof event.source === 'object' &&
+    event.source !== null &&
+    'kind' in event.source &&
+    (event.source as { kind: string }).kind === 'time' &&
+    'time_type' in event
+  );
 }
 
 /**
@@ -373,15 +401,16 @@ export function createTimeEvent(params: {
   context?: EventContext;
 }): TimeEvent {
   const base = createEvent({
-    source: 'time',
-    type: params.type ?? defaultTimeEventType(params.time_type),
-    payload: params.payload ?? {},
+    source: { kind: 'time' } as const,
+    type: (params.type ?? defaultTimeEventType(params.time_type)) as import('../../shared/events.js').EventType,
+    payload: (params.payload ?? {}) as import('../../shared/events.js').EventPayload,
     priority: params.priority ?? 10,
     context: params.context,
+    metadata: { session_id: '', sequence: 0 },
   });
   return {
     ...base,
-    source: 'time',
+    source: { kind: 'time' } as const,
     time_type: params.time_type,
     ...(params.interval_ms !== undefined && { interval_ms: params.interval_ms }),
     ...(params.schedule !== undefined && { schedule: params.schedule }),

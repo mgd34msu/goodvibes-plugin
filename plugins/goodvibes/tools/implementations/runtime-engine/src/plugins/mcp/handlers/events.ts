@@ -4,7 +4,7 @@
  * Actions:
  * - query: filter the persistent event log using the provided filter
  * - tail: retrieve last N events from the in-memory EventBus history
- * - stats: return EventLog stats + EventQueue stats
+ * - stats: return EventLog stats + event queue depth
  * - directives: query the DirectiveQueue for pending orchestrator directives
  *
  * Input schema: { action: 'query'|'tail'|'stats'|'directives', filter?: {...}, mode?: string, target?: string, verbosity?: string }
@@ -45,19 +45,22 @@ export function matchesTypePattern(eventType: string, pattern: string): boolean 
  * Resolves a time string to an ISO 8601 timestamp.
  * Supports ISO strings directly, or relative strings like '5m', '1h', '30s'.
  *
- * @param value - ISO timestamp string or relative duration (e.g. '5m', '1h', '30s').
- * @returns An ISO 8601 timestamp string representing the resolved point in time.
+ * @param value - ISO timestamp string, epoch ms number string, or relative duration (e.g. '5m', '1h', '30s').
+ * @returns Epoch ms number representing the resolved point in time.
  */
-export function resolveTimestamp(value: string): string {
-  // If it already looks like an ISO timestamp, pass through
-  if (value.includes('T') || value.includes('-')) return value;
+export function resolveTimestamp(value: string): number {
+  // If it looks like an ISO timestamp, convert to epoch ms
+  if (value.includes('T') || value.includes('-')) return new Date(value).getTime();
+  // If it looks like a number (epoch ms), parse it directly
+  const asNumber = Number(value);
+  if (!isNaN(asNumber) && asNumber > 0) return asNumber;
   // parseRelativeTime returns a future Date (throws on invalid input)
   try {
     const futureDate = parseRelativeTime(value);
     const durationMs = futureDate.getTime() - Date.now();
-    return new Date(Date.now() - durationMs).toISOString();
+    return Date.now() - durationMs;
   } catch {
-    return value;
+    return Date.now();
   }
 }
 
@@ -98,7 +101,7 @@ export function applyVerbosity(
  * Actions:
  * - query: filter the persistent event log using the provided filter
  * - tail: retrieve last N events from the in-memory EventBus history
- * - stats: return EventLog stats + EventQueue stats
+ * - stats: return EventLog stats + event queue depth
  * - directives: query the DirectiveQueue (peek or drain)
  */
 export const handleRuntimeEvents = async (
@@ -147,7 +150,7 @@ export const handleRuntimeEvents = async (
       const historyFilter: EventFilter = {
         correlation_id: assertOptionalString(filterRaw.correlation_id, 'filter.correlation_id'),
         since: filterRaw.since ? resolveTimestamp(assertOptionalString(filterRaw.since, 'filter.since') ?? '') : undefined,
-        until: assertOptionalString(filterRaw.until, 'filter.until'),
+        until: filterRaw.until ? resolveTimestamp(assertOptionalString(filterRaw.until, 'filter.until') ?? '') : undefined,
         limit,
       };
 
@@ -197,7 +200,7 @@ export const handleRuntimeEvents = async (
         types: exactTypes,
         correlation_id: assertOptionalString(filterRaw.correlation_id, 'filter.correlation_id'),
         since: filterRaw.since ? resolveTimestamp(assertOptionalString(filterRaw.since, 'filter.since') ?? '') : undefined,
-        until: assertOptionalString(filterRaw.until, 'filter.until'),
+        until: filterRaw.until ? resolveTimestamp(assertOptionalString(filterRaw.until, 'filter.until') ?? '') : undefined,
         limit: typeof filterRaw.limit === 'number' ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT,
       };
 

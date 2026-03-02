@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventBus } from '../event-bus.js';
-import type { RuntimeEvent, EventType, EventPayload } from '../types.js';
+import type { RuntimeEvent, EventType, EventPayload } from '../../../shared/events.js';
 
 // Suppress logger output
 vi.mock('../../../shared/logger.js', () => ({
@@ -16,11 +16,11 @@ vi.mock('../../../shared/logger.js', () => ({
 
 function makeEvent(
   type: EventType,
-  overrides: Partial<Omit<RuntimeEvent, 'metadata'> & { metadata?: Partial<RuntimeEvent['metadata']> }> = {},
-): Omit<RuntimeEvent, 'metadata'> & { metadata?: Partial<RuntimeEvent['metadata']> } {
+  overrides: Partial<Omit<RuntimeEvent, 'metadata' | 'priority'> & { priority?: number; metadata?: Partial<RuntimeEvent['metadata']> }> = {},
+): Omit<RuntimeEvent, 'metadata' | 'priority'> & { priority?: number; metadata?: Partial<RuntimeEvent['metadata']> } {
   return {
     id: `evt_test_${Math.random().toString(36).slice(2)}`,
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     type,
     source: { kind: 'system' },
     payload: { type, data: {} } as EventPayload,
@@ -382,21 +382,21 @@ describe('EventBus', () => {
     });
 
     it('filter by since excludes older events', () => {
-      const past = new Date(Date.now() - 10_000).toISOString();
-      const now = new Date().toISOString();
+      const past = Date.now() - 10_000;
+      const now = Date.now();
       bus.emit(makeEvent('session:started', { timestamp: past }));
       bus.emit(makeEvent('session:ending', { timestamp: now }));
-      const filtered = bus.getHistory({ since: new Date(Date.now() - 5_000).toISOString() });
+      const filtered = bus.getHistory({ since: Date.now() - 5_000 });
       expect(filtered).toHaveLength(1);
       expect(filtered[0]?.type).toBe('session:ending');
     });
 
     it('filter by until excludes newer events', () => {
-      const past = new Date(Date.now() - 10_000).toISOString();
-      const now = new Date().toISOString();
+      const past = Date.now() - 10_000;
+      const now = Date.now();
       bus.emit(makeEvent('session:started', { timestamp: past }));
       bus.emit(makeEvent('session:ending', { timestamp: now }));
-      const filtered = bus.getHistory({ until: new Date(Date.now() - 5_000).toISOString() });
+      const filtered = bus.getHistory({ until: Date.now() - 5_000 });
       expect(filtered).toHaveLength(1);
       expect(filtered[0]?.type).toBe('session:started');
     });

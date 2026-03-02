@@ -333,10 +333,12 @@ export class WorkflowEngine {
           const nextResult = this._executeTransition(workflowId, next.event)
             .then(next.resolve, next.reject)
             .finally(() => {
-              // After the queued item finishes, drain any further queued items
-              this._drainQueue(workflowId);
-              resolveInFlight();
-              this._inFlight.delete(workflowId);
+              // After the queued item finishes, drain any further queued items,
+              // then release the mutex only after the entire queue is empty.
+              return this._drainQueue(workflowId).then(() => {
+                resolveInFlight();
+                this._inFlight.delete(workflowId);
+              });
             });
           void nextResult;
           // Don't release the mutex here — the queued item's finally() does it
@@ -360,16 +362,16 @@ export class WorkflowEngine {
    *
    * @param workflowId - The workflow whose queue to drain.
    */
-  private _drainQueue(workflowId: string): void {
+  private _drainQueue(workflowId: string): Promise<void> {
     const queue = this._queue.get(workflowId);
-    if (!queue || queue.length === 0) return;
+    if (!queue || queue.length === 0) return Promise.resolve();
 
     const next = queue.shift()!;
     if (queue.length === 0) this._queue.delete(workflowId);
 
-    this._executeTransition(workflowId, next.event)
+    return this._executeTransition(workflowId, next.event)
       .then(next.resolve, next.reject)
-      .finally(() => this._drainQueue(workflowId));
+      .then(() => this._drainQueue(workflowId));
   }
 
   /**
@@ -465,8 +467,8 @@ export class WorkflowEngine {
     // Snapshot pre-transition state for rollback on action failure
     const preTransitionState = instance.current_state;
     const preTransitionUpdatedAt = instance.updated_at;
-    // Snapshot context for diff computation (captured before actions mutate it)
-    const contextBefore = { ...instance.context };
+    // Deep-clone context for rollback AND diff computation (captured before actions mutate it)
+    const contextBefore = JSON.parse(JSON.stringify(instance.context)) as WorkflowContext;
 
     // ── Action execution with rollback ─────────────────────────────────────
     try {
@@ -512,6 +514,11 @@ export class WorkflowEngine {
       });
       instance.current_state = preTransitionState;
       instance.updated_at = preTransitionUpdatedAt;
+      // Restore context to pre-transition snapshot (remove keys added by actions)
+      for (const key of Object.keys(instance.context)) {
+        if (!(key in contextBefore)) delete instance.context[key];
+      }
+      Object.assign(instance.context, contextBefore);
       return null;
     }
 
@@ -587,7 +594,7 @@ export class WorkflowEngine {
    */
   listAll(): WorkflowInstance[] {
     return Array.from(this.instances.values()).sort(
-      (a, b) => a.created_at.localeCompare(b.created_at)
+      (a, b) => a.created_at - b.created_at
     );
   }
 
@@ -826,6 +833,7 @@ export class WorkflowEngine {
                 timestamp: timestamp(),
                 type: eventType,
                 source: { kind: 'system' },
+                priority: 0,
                 payload: { type: eventType, data: { ...action.config } } as RuntimeEvent['payload'],
               });
             }
@@ -998,6 +1006,7 @@ export class WorkflowEngine {
         timestamp: timestamp(),
         type,
         source: { kind: 'workflow', workflow_id: instance.id },
+        priority: 0,
         payload: {
           type,
           data: {

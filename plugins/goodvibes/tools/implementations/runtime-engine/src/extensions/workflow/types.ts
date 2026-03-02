@@ -134,12 +134,12 @@ export interface WorkflowInstance {
   context: WorkflowContext;
   /** Ordered list of all transitions this instance has executed. */
   history: WorkflowTransition[];
-  /** ISO 8601 timestamp when this instance was created. */
-  created_at: string;
-  /** ISO 8601 timestamp of the last state change. */
-  updated_at: string;
-  /** ISO 8601 timestamp when the instance reached a terminal state. */
-  completed_at?: string;
+  /** Epoch milliseconds when this instance was created. */
+  created_at: number;
+  /** Epoch milliseconds of the last state change. */
+  updated_at: number;
+  /** Epoch milliseconds when the instance reached a terminal state. */
+  completed_at?: number;
   /** Lifecycle status of this instance. */
   status: 'active' | 'completed' | 'failed' | 'cancelled' | 'timed_out';
   /** Human-readable error message when status is 'failed' or 'timed_out'. */
@@ -215,8 +215,8 @@ export interface WorkflowTransition {
   to_state: string;
   /** EventType that triggered the transition. */
   event: EventType;
-  /** ISO 8601 timestamp when the transition occurred. */
-  timestamp: string;
+  /** Epoch milliseconds when the transition occurred. */
+  timestamp: number;
   /** Keys in WorkflowContext that changed as a result of this transition. */
   context_changes: Record<string, unknown>;
 }

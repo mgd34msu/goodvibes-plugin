@@ -17,16 +17,16 @@ vi.mock('../../../shared/logger.js', () => ({
 // ─── Factories ────────────────────────────────────────────────────────────────
 
 let _seq = 0;
-function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
+function makeEvent(overrides: Partial<Omit<RuntimeEvent, 'source' | 'type' | 'payload'>> & { source?: unknown; type?: string; payload?: unknown } = {}): RuntimeEvent {
   return {
     id: `evt-${++_seq}`,
-    source: 'external',
-    type: 'test:event',
-    payload: {},
+    source: { kind: 'external', origin: 'test' },
+    type: 'session:started' as RuntimeEvent['type'],
+    payload: {} as RuntimeEvent['payload'],
     timestamp: Date.now(),
     priority: 10,
     ...overrides,
-  };
+  } as RuntimeEvent;
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

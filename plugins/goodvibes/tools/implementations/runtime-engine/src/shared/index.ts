@@ -11,6 +11,5 @@ export * from './file-io.js';
 export * from './logger.js';
 export * from './utils.js';
 export * from './types.js';
-export * from './wrfc-constants.js';
 export * from './events.js';
 export * from './plugin.js';

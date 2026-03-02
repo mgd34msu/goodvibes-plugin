@@ -30,7 +30,6 @@ import { WatchdogCoordinator } from './extensions/workflow/watchdog.js';
 
 import { createCoreRuntime, type CoreRuntime, type EventProcessor } from './core/index.js';
 import {
-  registerWRFCPlugin,
   getDefaultWRFCConfig,
   WRFCPlugin,
   TimePlugin,
@@ -38,6 +37,7 @@ import {
   type ExternalPluginConfig,
   type HookProcessor,
 } from './plugins/index.js';
+import { createWRFCTrigger } from './extensions/triggers/factories.js';
 import type { RuntimeServices } from './shared/plugin.js';
 import { createHookSubsystem } from './plugins/hooks/index.js';
 import type { ExecutorModeManager } from './core/processing/executor-mode.js';
@@ -169,32 +169,67 @@ export class RuntimeEngine {
     this.executorSubsystem = createExecutorSubsystem(this.config, this.events.eventBus);
 
     // 13. Core runtime (L1)
+    // Pass the unified TriggerRegistry from step 5 so that EventProcessor
+    // and all extension subsystems share a SINGLE registry instance.
     const actionExecutor = this.directives
       ? new ActionExecutor(this.directives.directiveQueue)
       : undefined;
-    this.coreRuntime = createCoreRuntime(actionExecutor);
+    this.coreRuntime = createCoreRuntime(
+      actionExecutor,
+      this.triggers?.triggerRegistry,
+    );
 
-    // 14. WRFC plugin (L3) — function-based registration (backward compat)
+    // 14. WRFC plugin (L3) — class-based registration via RuntimePlugin interface.
+    // WRFCPlugin.register() is the single canonical entry point: it seeds config,
+    // registers all triggers, and wires all event handlers via RuntimeServices.
+    // No separate registerWRFCPlugin() call is needed.
     const wrfcConfig = getDefaultWRFCConfig();
-    registerWRFCPlugin({
-      processor: this.coreRuntime.eventProcessor,
-      registry: this.coreRuntime.triggerRegistry,
-      store: this.coreRuntime.stateStore,
-      config: wrfcConfig,
-    });
-
-    // 14.1. WRFC plugin — RuntimePlugin class-based loading path
-    // Creates a RuntimeServices adapter bridging existing subsystem APIs to the
-    // plugin interface, enabling plugin lifecycle management (register/start/stop).
     const coreStore = this.coreRuntime.stateStore;
+    const coreEventProcessor = this.coreRuntime.eventProcessor;
+    const coreTriggerRegistry = this.triggers?.triggerRegistry;
     const eventBusRef = this.events.eventBus;
     const runtimeServices: RuntimeServices = {
       emit: (event) => eventBusRef.emit(event),
-      subscribe: (eventType, handler) =>
-        eventBusRef.on(eventType as '*', handler as Parameters<typeof eventBusRef.on>[1]),
+      subscribe: (eventType, handler) => {
+        return eventBusRef.on(
+          eventType as import('./shared/events.js').EventTypePattern,
+          handler,
+        );
+      },
       getConfig: () => this.config as unknown as Record<string, unknown>,
       getState: (key) => coreStore.get(key),
       setState: (key, value) => coreStore.set(key, value),
+      registerTrigger: (id, definition, handler) => {
+        if (!coreTriggerRegistry) {
+          logger.warn('registerTrigger: trigger subsystem not available', { id });
+          return;
+        }
+        const trigger = createWRFCTrigger({
+          id: definition.id,
+          event_match: {
+            source: (
+              definition.conditions[0]?.['source'] as
+                | import('./shared/events.js').EventSource
+                | import('./shared/events.js').EventSource[]
+                | undefined
+            ) ?? { kind: 'internal' as const },
+            type: definition.event_type as import('./shared/events.js').EventType,
+          },
+          actions: [],
+          max_fires: definition.max_fires,
+          priority: 10,
+        });
+        coreTriggerRegistry.register(trigger as unknown as import('./core/trigger-registry.js').TriggerDefinition);
+        const registeredTrigger = coreTriggerRegistry.get(id);
+        coreEventProcessor.registerHandler(id, async (event) => {
+          if (!registeredTrigger) return {};
+          return (await Promise.resolve(handler(event))) ?? {};
+        });
+      },
+      unregisterTrigger: (id) => {
+        coreTriggerRegistry?.unregister(id);
+      },
+      getLogger: (name) => createLogger(name) as unknown as import('./shared/plugin.js').PluginLogger,
     };
     this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
     this.wrfcPlugin.register(runtimeServices);
@@ -422,6 +457,10 @@ export class RuntimeEngine {
   getEventLog(): EventLog {
     if (!this.events?.eventLog) throw new ProcessingError('getEventLog() called before startup()');
     return this.events.eventLog;
+  }
+  getEventQueue(): import('./core/queues/event-queue.js').EventQueue {
+    if (!this.coreRuntime?.eventQueue) throw new ProcessingError('getEventQueue() called before startup()');
+    return this.coreRuntime.eventQueue;
   }
   getIPCServer(): import('./shared/ipc/ipc-server.js').IPCServer | null { return this.ipcSubsystem?.ipcServer ?? null; }
   getWorkflowEngine(): WorkflowEngine | null { return this.workflow?.workflowEngine ?? null; }

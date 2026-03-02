@@ -18,12 +18,12 @@ export function generateId(): string {
 }
 
 /**
- * Returns the current time as an ISO-8601 string.
+ * Returns the current time as epoch milliseconds (Unix timestamp).
  *
- * @returns A string in the form "2026-02-23T12:34:56.789Z".
+ * @returns A number representing milliseconds since the Unix epoch.
  */
-export function timestamp(): string {
-  return new Date().toISOString();
+export function timestamp(): number {
+  return Date.now();
 }
 
 /**

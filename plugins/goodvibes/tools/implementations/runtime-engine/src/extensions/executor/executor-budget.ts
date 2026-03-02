@@ -20,10 +20,10 @@ export interface SpendingRecord {
   total_usd: number;
   /** USD spent today (daily cap tracking). */
   daily_usd: number;
-  /** ISO-8601 timestamp of the last daily reset. */
-  daily_reset_at: string;
-  /** ISO-8601 timestamp of the last spending update. */
-  last_updated: string;
+  /** Epoch ms timestamp of the last daily reset. */
+  daily_reset_at: number;
+  /** Epoch ms timestamp of the last spending update. */
+  last_updated: number;
 }
 
 /** State store key for persisting budget data. */
@@ -275,7 +275,7 @@ export class ExecutorBudgetManager {
   checkDailyReset(): boolean {
     const now = new Date();
     const currentHour = now.getHours();
-    const resetAt = new Date(this.spending.daily_reset_at);
+    const resetAt = new Date(this.spending.daily_reset_at); // number is valid for new Date()
     const lastResetDay = resetAt.toDateString();
     const today = now.toDateString();
 
@@ -385,8 +385,8 @@ export class ExecutorBudgetManager {
       this.spending = {
         total_usd: typeof stored.total_usd === 'number' ? stored.total_usd : 0,
         daily_usd: typeof stored.daily_usd === 'number' ? stored.daily_usd : 0,
-        daily_reset_at: typeof stored.daily_reset_at === 'string' ? stored.daily_reset_at : timestamp(),
-        last_updated: typeof stored.last_updated === 'string' ? stored.last_updated : timestamp(),
+        daily_reset_at: typeof stored.daily_reset_at === 'number' ? stored.daily_reset_at : timestamp(),
+        last_updated: typeof stored.last_updated === 'number' ? stored.last_updated : timestamp(),
       };
       logger.info('Budget state restored', {
         total_usd: this.spending.total_usd,

@@ -31,7 +31,7 @@ export class ActionExecutor implements ActionExecutorInterface {
       case 'send_message': {
         // Action shape from directive-builder.ts:
         // { type: 'send_message', params: { content: string, priority: number, target: string } }
-        const params = action.params as SendMessageParams;
+        const params = action.params as unknown as SendMessageParams;
 
         const content = params.content;
         const target = typeof params.target === 'string' ? params.target : 'subagent_stop';

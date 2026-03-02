@@ -190,7 +190,9 @@ export type EventType =
   /** The WRFC loop completed successfully. */
   | 'wrfc:completed'
   /** The active phase of a WRFC chain changed. */
-  | 'wrfc:phase_changed'
+  | 'workflow:phase_changed'
+  /** Review score could not be parsed from reviewer output. */
+  | 'wrfc:review_parse_failed'
 
   // ── Test-then-fix events ──────────────────────────────────────────────────
   /** The test-then-fix workflow has started its initial test run. */
@@ -344,7 +346,15 @@ export type EventType =
   /** Executor processing was paused due to budget. */
   | 'executor:paused'
   /** Executor processing was resumed (budget increased or reset). */
-  | 'executor:resumed';
+  | 'executor:resumed'
+
+  // ── Core internal events ──────────────────────────────────────────────────
+  /** A trigger handler threw an error while processing an event. */
+  | 'core:handler_error'
+  /** An event's causal chain exceeded the maximum allowed depth. */
+  | 'core:chain_depth_exceeded'
+  /** The event queue depth exceeded the configured warning threshold. */
+  | 'core:queue_depth_warning';
 
 // ─── Payload Interfaces ───────────────────────────────────────────────────────
 
@@ -625,7 +635,9 @@ export type EventPayload =
   // Agent events without dedicated payloads
   | { type: 'agent:started' | 'agent:completed' | 'agent:failed' | 'agent:cancelled' | 'agent:budget_warning' | 'agent:budget_exhausted' | 'agent:dependency_resolved'; data: Record<string, unknown> }
   // WRFC phase change event
-  | { type: 'wrfc:phase_changed'; data: Record<string, unknown> }
+  | { type: 'workflow:phase_changed'; data: Record<string, unknown> }
+  // WRFC review parse failed event
+  | { type: 'wrfc:review_parse_failed'; data: Record<string, unknown> }
   // System events without dedicated payloads
   | { type: 'system:startup' | 'system:shutdown' | 'system:health_check' | 'system:gc'; data: Record<string, unknown> }
   // Executor events with inline typed payloads
@@ -634,6 +646,10 @@ export type EventPayload =
   | { type: 'executor:tick_completed'; data: { tick_number: number; events_processed: number; duration_ms: number } }
   | { type: 'executor:context_clearing'; data: { method: 'tmux' | 'queue_injection'; success: boolean } }
   | { type: 'executor:budget_warning'; data: { cap_type: 'flat' | 'daily'; spent_usd: number; cap_usd: number; threshold: number } }
+  // Core internal events
+  | { type: 'core:handler_error'; data: { trigger_id: string; error_message: string; original_event_id: string; original_event_type: string } }
+  | { type: 'core:chain_depth_exceeded'; data: { original_event_id: string; original_event_type: string; depth: number; max_depth: number } }
+  | { type: 'core:queue_depth_warning'; data: { depth: number; threshold: number } }
   | { type: 'executor:budget_exceeded'; data: { cap_type: 'flat' | 'daily'; spent_usd: number; cap_usd: number } }
   | { type: 'executor:budget_reset'; data: { previous_daily_spent: number; reset_hour: number } }
   | { type: 'executor:paused' | 'executor:resumed'; data: { reason: string } };
@@ -710,7 +726,7 @@ type EventMetadataInput = Omit<EventMetadata, 'version'> & { version?: 1 };
  */
 export function createEvent(
   overrides: Pick<RuntimeEvent, 'source' | 'type' | 'payload'> & {
-    metadata: EventMetadataInput;
+    metadata?: Partial<EventMetadataInput>;
   } & Partial<Omit<RuntimeEvent, 'source' | 'type' | 'payload' | 'metadata'>>,
 ): RuntimeEvent {
   return {
@@ -720,6 +736,8 @@ export function createEvent(
     ...overrides,
     metadata: {
       version: 1,
+      session_id: '',
+      sequence: 0,
       ...overrides.metadata,
     },
   };
@@ -753,8 +771,8 @@ export type Unsubscribe = () => void;
 export interface EventFilter {
   /** Restrict results to these event types. */
   types?: EventType[];
-  /** Restrict results by event source (partial match). */
-  source?: Partial<EventSource>;
+  /** Restrict results by event source kind. */
+  source?: { kind: EventSource['kind'] };
   /**
    * Include only events at or after this timestamp (epoch ms).
    * @migration Changed from L2's ISO 8601 string to epoch ms number for arithmetic compatibility.
@@ -775,17 +793,3 @@ export interface EventFilter {
    */
   since_sequence?: number;
 }
-
-// ─── Deprecated Aliases ───────────────────────────────────────────────────────
-
-/**
- * @deprecated Use `EventSource` from `shared/events.ts` instead.
- * The L1 string-union source type has been superseded by the discriminated union.
- */
-export type L1EventSource = 'time' | 'human' | 'external' | 'internal' | 'agent';
-
-/**
- * @deprecated Import `RuntimeEvent` from `shared/events.ts` instead.
- * Alias preserved for any L2 consumers referencing the old import path.
- */
-export type L2RuntimeEvent = RuntimeEvent;

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TriggerActionExecutor } from '../trigger-action-executor.js';
-import type { RuntimeEvent } from '../../events/types.js';
+import type { RuntimeEvent } from '../../../shared/events.js';
 import type { TriggerAction, TriggerActionHandler } from '../types.js';
 import type { TriggersConfig } from '../../../shared/config.js';
 
@@ -37,12 +37,13 @@ function makeEvent(type: string, data: Record<string, unknown> = {}, id = 'evt-1
   return {
     id,
     type: type as RuntimeEvent['type'],
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     source: { kind: 'system' } as RuntimeEvent['source'],
     payload: {
       type: type as RuntimeEvent['payload']['type'],
       data,
     } as RuntimeEvent['payload'],
+    priority: 0,
     metadata: {
       sequence: 1,
       version: 1,

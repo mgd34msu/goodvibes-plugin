@@ -12,6 +12,7 @@
  */
 
 import type { RuntimeEvent, EventSource, EventContext } from '../shared/events.js';
+export type { RuntimeEvent, EventSource, EventContext } from '../shared/events.js';
 
 // ─── Event Matcher ────────────────────────────────────────────────────────────
 
@@ -214,14 +215,18 @@ export interface StateStoreInterface {
 /**
  * Contract for the trigger registry.
  * Enables Layer 2/3 to provide alternative registry implementations.
+ *
+ * The `register()` and `get()` methods accept/return `Trigger | TriggerDefinition`
+ * so that the unified L2 TriggerRegistry (which operates on `TriggerDefinition`)
+ * can implement this interface without down-casting.
  */
 export interface TriggerRegistryInterface {
   /** Match an event against all registered triggers, returning those that fire. */
   match(event: RuntimeEvent, store: StateStoreInterface): Trigger[];
   /** Record that a trigger has fired. */
   recordFire(trigger_id: string): void;
-  /** Register a new trigger. */
-  register(trigger: Trigger): void;
+  /** Register a new trigger or trigger definition. */
+  register(trigger: Trigger | import('../extensions/triggers/types.js').TriggerDefinition): void;
   /** Unregister a trigger by ID. Returns true if it existed. */
   unregister(id: string): boolean;
   /** Enable a trigger. */
@@ -229,7 +234,7 @@ export interface TriggerRegistryInterface {
   /** Disable a trigger without removing it. */
   disable(id: string): void;
   /** Get a registered trigger by ID. */
-  get(id: string): Trigger | undefined;
+  get(id: string): Trigger | import('../extensions/triggers/types.js').TriggerDefinition | undefined;
 }
 
 /**

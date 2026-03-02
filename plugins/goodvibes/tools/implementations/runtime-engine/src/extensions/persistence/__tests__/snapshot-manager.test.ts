@@ -340,8 +340,8 @@ describe('SnapshotManager — restoreFromSnapshot()', () => {
   it('calls workflowEngine.restoreInstance() for each workflow', () => {
     const store = makeStateStore();
     const manager = new SnapshotManager(store);
-    const instance1 = { id: 'wf1', definition_id: 'd1', current_state: 's1', context: {}, history: [], created_at: '', updated_at: '', status: 'active' as const };
-    const instance2 = { id: 'wf2', definition_id: 'd2', current_state: 's1', context: {}, history: [], created_at: '', updated_at: '', status: 'active' as const };
+    const instance1 = { id: 'wf1', definition_id: 'd1', current_state: 's1', context: {}, history: [], created_at: 0, updated_at: 0, status: 'active' as const };
+    const instance2 = { id: 'wf2', definition_id: 'd2', current_state: 's1', context: {}, history: [], created_at: 0, updated_at: 0, status: 'active' as const };
     const snapshot = makeValidSnapshot({ workflows: [instance1, instance2] });
     const deps = makeDeps();
     manager.restoreFromSnapshot(snapshot, deps);
@@ -370,7 +370,7 @@ describe('SnapshotManager — restoreFromSnapshot()', () => {
   it('does not throw when workflowEngine is null', () => {
     const store = makeStateStore();
     const manager = new SnapshotManager(store);
-    const snapshot = makeValidSnapshot({ workflows: [{ id: 'wf1', definition_id: 'd1', current_state: 's1', context: {}, history: [], created_at: '', updated_at: '', status: 'active' as const }] });
+    const snapshot = makeValidSnapshot({ workflows: [{ id: 'wf1', definition_id: 'd1', current_state: 's1', context: {}, history: [], created_at: 0, updated_at: 0, status: 'active' as const }] });
     const deps = makeDeps({ workflowEngine: null });
     expect(() => manager.restoreFromSnapshot(snapshot, deps)).not.toThrow();
   });
@@ -378,7 +378,7 @@ describe('SnapshotManager — restoreFromSnapshot()', () => {
   it('does not throw when restoreInstance() throws', () => {
     const store = makeStateStore();
     const manager = new SnapshotManager(store);
-    const snapshot = makeValidSnapshot({ workflows: [{ id: 'wf1', definition_id: 'd1', current_state: 's1', context: {}, history: [], created_at: '', updated_at: '', status: 'active' as const }] });
+    const snapshot = makeValidSnapshot({ workflows: [{ id: 'wf1', definition_id: 'd1', current_state: 's1', context: {}, history: [], created_at: 0, updated_at: 0, status: 'active' as const }] });
     const deps = makeDeps({
       workflowEngine: {
         getAllInstances: vi.fn(),

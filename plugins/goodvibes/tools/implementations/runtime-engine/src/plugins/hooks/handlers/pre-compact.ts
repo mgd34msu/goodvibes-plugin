@@ -38,7 +38,7 @@ export function createPreCompactHandler(
       try {
         deps.eventBus.emit({
           id: `evt_pre_compact_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
           type: 'session:compact',
           source: { kind: 'hook', hook_name: 'pre_compact' },
           payload: {

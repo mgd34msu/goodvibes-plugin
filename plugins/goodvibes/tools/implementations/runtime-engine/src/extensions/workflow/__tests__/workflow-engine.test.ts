@@ -7,7 +7,7 @@ import type {
   GuardFunction,
   ActionHandler,
 } from '../types.js';
-import type { RuntimeEvent } from '../../events/types.js';
+import type { RuntimeEvent } from '../../../shared/events.js';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -1256,8 +1256,8 @@ describe('WorkflowEngine', () => {
         current_state: 'done',
         context: {},
         history: [],
-        created_at: '2023-01-01T00:00:00.000Z',
-        updated_at: '2023-01-01T00:00:00.000Z',
+        created_at: new Date('2023-01-01T00:00:00.000Z').getTime(),
+        updated_at: new Date('2023-01-01T00:00:00.000Z').getTime(),
         status: 'completed',
       };
       const newer: WorkflowInstance = {
@@ -1266,8 +1266,8 @@ describe('WorkflowEngine', () => {
         current_state: 'idle',
         context: {},
         history: [],
-        created_at: '2024-01-01T00:00:00.000Z',
-        updated_at: '2024-01-01T00:00:00.000Z',
+        created_at: new Date('2024-01-01T00:00:00.000Z').getTime(),
+        updated_at: new Date('2024-01-01T00:00:00.000Z').getTime(),
         status: 'active',
       };
       engine.restoreInstance(newer);
@@ -1304,12 +1304,12 @@ describe('WorkflowEngine', () => {
             from_state: 'idle',
             to_state: 'working',
             event: 'task:started' as any,
-            timestamp: '2024-01-01T00:00:00.000Z',
+            timestamp: new Date('2024-01-01T00:00:00.000Z').getTime(),
             context_changes: {},
           },
         ],
-        created_at: '2024-01-01T00:00:00.000Z',
-        updated_at: '2024-01-01T00:00:00.000Z',
+        created_at: new Date('2024-01-01T00:00:00.000Z').getTime(),
+        updated_at: new Date('2024-01-01T00:00:00.000Z').getTime(),
         status: 'active',
       };
       engine.restoreInstance(instance);
@@ -1327,8 +1327,8 @@ describe('WorkflowEngine', () => {
         current_state: 'done',
         context: { task: 'replacement' },
         history: [],
-        created_at: '2024-01-01T00:00:00.000Z',
-        updated_at: '2024-01-01T00:00:00.000Z',
+        created_at: new Date('2024-01-01T00:00:00.000Z').getTime(),
+        updated_at: new Date('2024-01-01T00:00:00.000Z').getTime(),
         status: 'completed',
       };
       engine.restoreInstance(replacement);
@@ -1425,7 +1425,7 @@ describe('WorkflowEngine', () => {
       const instance = engine.create('test_workflow', {}, 'wf_old');
       // Manually mark as completed with an old timestamp
       instance.status = 'completed';
-      instance.completed_at = new Date(Date.now() - 7_200_000).toISOString(); // 2 hours ago
+      instance.completed_at = Date.now() - 7_200_000; // 2 hours ago
       const pruned = engine.prune(3_600_000); // 1 hour max age
       expect(pruned).toBe(1);
       expect(engine.get('wf_old')).toBeUndefined();
@@ -1435,7 +1435,7 @@ describe('WorkflowEngine', () => {
       engine.registerDefinition(makeDefinition());
       const instance = engine.create('test_workflow', {}, 'wf_recent');
       instance.status = 'completed';
-      instance.completed_at = new Date(Date.now() - 1_000).toISOString(); // 1 second ago
+      instance.completed_at = Date.now() - 1_000; // 1 second ago
       const pruned = engine.prune(3_600_000); // 1 hour max age
       expect(pruned).toBe(0);
       expect(engine.get('wf_recent')).toBeDefined();
@@ -1454,7 +1454,7 @@ describe('WorkflowEngine', () => {
       const i1 = engine.create('test_workflow', {}, 'wf_failed');
       const i2 = engine.create('test_workflow', {}, 'wf_cancelled');
       i1.status = 'failed';
-      i1.updated_at = new Date(Date.now() - 7_200_000).toISOString();
+      i1.updated_at = Date.now() - 7_200_000;
       engine.cancel(i2.id, 'test');
       const pruned = engine.prune(3_600_000);
       expect(pruned).toBe(0);
@@ -1465,7 +1465,7 @@ describe('WorkflowEngine', () => {
       const instance = engine.create('test_workflow', {}, 'wf_no_completed_at');
       instance.status = 'completed';
       // completed_at is undefined; falls back to updated_at
-      instance.updated_at = new Date(Date.now() - 7_200_000).toISOString();
+      instance.updated_at = Date.now() - 7_200_000;
       const pruned = engine.prune(3_600_000);
       expect(pruned).toBe(1);
     });
@@ -1475,7 +1475,7 @@ describe('WorkflowEngine', () => {
       for (let i = 0; i < 3; i++) {
         const inst = engine.create('test_workflow', {}, `wf_prune_${i}`);
         inst.status = 'completed';
-        inst.completed_at = new Date(Date.now() - 7_200_000).toISOString();
+        inst.completed_at = Date.now() - 7_200_000;
       }
       expect(engine.prune(3_600_000)).toBe(3);
     });

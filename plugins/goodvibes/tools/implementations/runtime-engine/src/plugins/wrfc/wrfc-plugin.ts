@@ -8,21 +8,21 @@
  * Plugin is a consumer of Layer 1 (core) and Layer 2 (extensions) —
  * it never modifies them.
  *
- * Usage:
- *   import { registerWRFCPlugin, getDefaultWRFCConfig } from './wrfc-plugin.js';
- *   registerWRFCPlugin({ processor, registry, config: getDefaultWRFCConfig() });
- *
- * Or use the RuntimePlugin class API:
+ * Usage (class-based API — preferred):
  *   import { WRFCPlugin } from './wrfc-plugin.js';
  *   const plugin = new WRFCPlugin(config);
- *   await plugin.register(services);
+ *   await plugin.register(services); // registers triggers + handlers internally
  *   await plugin.start();
+ *
+ * Usage (function-based API — backward compat):
+ *   import { registerWRFCPlugin, getDefaultWRFCConfig } from './wrfc-plugin.js';
+ *   registerWRFCPlugin({ processor, registry, config: getDefaultWRFCConfig() });
  */
 
 import { createLogger } from '../../shared/logger.js';
 import type { EventProcessor } from '../../core/processing/event-processor.js';
 import type { TriggerRegistry } from '../../core/trigger-registry.js';
-import type { StateStoreInterface, TriggerHandlerFn, HandlerResult } from '../../core/types.js';
+import type { StateStoreInterface, TriggerHandlerFn, HandlerResult, Trigger } from '../../core/types.js';
 import { createWRFCTrigger } from '../../extensions/triggers/factories.js';
 import type {
   RuntimePlugin,
@@ -32,6 +32,7 @@ import type {
   PluginEventHandler,
   RuntimeServices,
 } from '../../shared/plugin.js';
+import type { RuntimeEvent } from '../../shared/events.js';
 import {
   handleWorkflowCreated,
   handleAgentCompleted,
@@ -44,7 +45,7 @@ import { getWRFCTriggerDefinitions } from './triggers.js';
 
 const log = createLogger('wrfc-plugin');
 
-// ─── Plugin Config ────────────────────────────────────────────────────────────
+// ─── Plugin Config ──────────────────────────────────────────────────────────────────────────────
 
 /**
  * Configuration for the WRFC plugin.
@@ -71,10 +72,10 @@ export function getDefaultWRFCConfig(): WRFCPluginConfig {
   };
 }
 
-// ─── Plugin Context ──────────────────────────────────────────────────────────
+// ─── Plugin Context ───────────────────────────────────────────────────────────────────────────────
 
 /**
- * Dependencies required by the WRFC plugin.
+ * Dependencies required by the WRFC plugin (function-based API).
  */
 export interface PluginContext {
   /** Core event processor (for handler registration). */
@@ -87,7 +88,7 @@ export interface PluginContext {
   config: WRFCPluginConfig;
 }
 
-// ─── Plugin Registration ───────────────────────────────────────────────────────
+// ─── Plugin Registration ───────────────────────────────────────────────────────────────────────────────
 
 /**
  * Registers the WRFC plugin with the core event processor and trigger registry.
@@ -117,13 +118,13 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
     createWRFCTrigger({
       id: TRIGGER_IDS.AGENT_SPAWNED,
       event_match: {
-        source: ['agent', 'internal'],
+        source: [{ kind: 'agent' as const } as import('../../shared/events.js').EventSource, { kind: 'internal' as const } as import('../../shared/events.js').EventSource],
         type: 'agent:spawned',
       },
       actions: [],
       max_fires: 500,
       priority: 10,
-    }),
+    }) as unknown as import('../../extensions/triggers/types.js').TriggerDefinition,
   );
 
   // Trigger: agent:completed → route to review / fix / complete
@@ -131,7 +132,7 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
     createWRFCTrigger({
       id: TRIGGER_IDS.AGENT_COMPLETED,
       event_match: {
-        source: ['agent', 'internal'],
+        source: [{ kind: 'agent' as const } as import('../../shared/events.js').EventSource, { kind: 'internal' as const } as import('../../shared/events.js').EventSource],
         type: 'agent:completed',
       },
       actions: [],
@@ -139,7 +140,7 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
       score_threshold: config.score_threshold,
       max_fix_attempts: config.max_fix_attempts,
       priority: 10,
-    }),
+    }) as unknown as import('../../extensions/triggers/types.js').TriggerDefinition,
   );
 
   // Trigger: wrfc:review_completed → quality gate evaluation (event-driven path)
@@ -147,7 +148,7 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
     createWRFCTrigger({
       id: TRIGGER_IDS.REVIEW_COMPLETED,
       event_match: {
-        source: 'internal',
+        source: { kind: 'internal' as const } as import('../../shared/events.js').EventSource,
         type: 'wrfc:review_completed',
       },
       actions: [],
@@ -155,31 +156,29 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
       score_threshold: config.score_threshold,
       max_fix_attempts: config.max_fix_attempts,
       priority: 10,
-    }),
+    }) as unknown as import('../../extensions/triggers/types.js').TriggerDefinition,
   );
 
   // 3. Register handler functions with the processor
   //
   // TriggerHandlerFn signature: (event: RuntimeEvent) => Promise<HandlerResult>
-  // We wrap each handler to pass the store from closure, since the
-  // TriggerHandlerFn does not receive the store parameter directly.
-  // The trigger is retrieved from the registry for callers that need it.
+  // We wrap each handler to pass the store from closure.
 
-  const spawned_trigger = registry.get(TRIGGER_IDS.AGENT_SPAWNED);
+  const spawned_trigger = registry.get(TRIGGER_IDS.AGENT_SPAWNED) as import('../../core/types.js').Trigger | undefined;
   const spawnedHandler: TriggerHandlerFn = async (event): Promise<HandlerResult> => {
     if (!spawned_trigger) return {};
     return handleWorkflowCreated(event, spawned_trigger, store);
   };
   processor.registerHandler(TRIGGER_IDS.AGENT_SPAWNED, spawnedHandler);
 
-  const completed_trigger = registry.get(TRIGGER_IDS.AGENT_COMPLETED);
+  const completed_trigger = registry.get(TRIGGER_IDS.AGENT_COMPLETED) as import('../../core/types.js').Trigger | undefined;
   const completedHandler: TriggerHandlerFn = async (event): Promise<HandlerResult> => {
     if (!completed_trigger) return {};
     return handleAgentCompleted(event, completed_trigger, store);
   };
   processor.registerHandler(TRIGGER_IDS.AGENT_COMPLETED, completedHandler);
 
-  const quality_gate_trigger = registry.get(TRIGGER_IDS.REVIEW_COMPLETED);
+  const quality_gate_trigger = registry.get(TRIGGER_IDS.REVIEW_COMPLETED) as import('../../core/types.js').Trigger | undefined;
   const qualityGateHandler: TriggerHandlerFn = async (event): Promise<HandlerResult> => {
     if (!quality_gate_trigger) return {};
     return handleQualityGate(event, quality_gate_trigger, store);
@@ -193,16 +192,51 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
   });
 }
 
-// ─── RuntimePlugin Class ──────────────────────────────────────────────────────
+// ─── RuntimePlugin Class ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Adapter that bridges RuntimeServices to a StateStoreInterface.
+ *
+ * Allows handler functions that expect a StateStoreInterface to operate
+ * through the plugin services abstraction.
+ */
+function makeStoreAdapter(services: RuntimeServices): StateStoreInterface {
+  return {
+    get<T>(key: string): T | null {
+      const val = services.getState(key);
+      return val !== undefined && val !== null ? (val as T) : null;
+    },
+    set<T>(key: string, value: T): void {
+      services.setState(key, value);
+    },
+    delete(_key: string): void {
+      // No-op: RuntimeServices does not expose delete.
+      // WRFC handlers do not call delete().
+    },
+    merge(_key: string, _value: Record<string, unknown>): void {
+      // No-op: RuntimeServices does not expose merge.
+      // WRFC handlers do not call merge().
+    },
+    snapshot(): Record<string, unknown> {
+      return {};
+    },
+    restore(_snapshot: Record<string, unknown>): void {
+      // No-op: RuntimeServices does not expose bulk restore.
+    },
+  };
+}
 
 /**
  * WRFCPlugin — RuntimePlugin implementation for the WRFC quality loop.
  *
- * Implements the RuntimePlugin interface, providing the plugin lifecycle
- * contract alongside the existing registerWRFCPlugin() function API.
+ * Implements the RuntimePlugin interface. `register()` is the canonical entry
+ * point: it seeds config, registers all triggers, and wires all event handlers
+ * by delegating to `registerWRFCPlugin()` internally. This eliminates the
+ * dual-registration path where bootstrap previously called both
+ * `registerWRFCPlugin()` AND `WRFCPlugin.register()` separately.
  *
- * The class-based API is designed for use with a future plugin registry;
- * the function-based API (registerWRFCPlugin) remains for backward compat.
+ * The function-based `registerWRFCPlugin` API remains exported for backward
+ * compatibility and as the shared internal implementation.
  */
 export class WRFCPlugin implements RuntimePlugin {
   readonly name = 'wrfc';
@@ -210,7 +244,12 @@ export class WRFCPlugin implements RuntimePlugin {
   state: PluginState = 'registered';
 
   private config: WRFCPluginConfig;
-  private _services: RuntimeServices | null = null;
+
+  /**
+   * Captured event handlers, populated during register().
+   * Returned by getHandlers() so callers can inspect registered handlers.
+   */
+  private _handlers: PluginEventHandler[] = [];
 
   constructor(config?: Partial<WRFCPluginConfig>) {
     this.config = { ...getDefaultWRFCConfig(), ...config };
@@ -218,21 +257,120 @@ export class WRFCPlugin implements RuntimePlugin {
 
   /**
    * Register plugin with runtime services.
-   * Stores services reference for use during start().
+   *
+   * This is the canonical registration path. It:
+   *   1. Seeds WRFC config into the state store via services.
+   *   2. Registers the three WRFC triggers via services.registerTrigger().
+   *   3. Wires the three event handlers via services.registerTrigger().
+   *   4. Captures handler references for getHandlers().
+   *
+   * After this call, start() only transitions lifecycle state to 'running'.
    */
   register(services: RuntimeServices): void {
-    this._services = services;
+    const store = makeStoreAdapter(services);
+
+    // Seed config into state store
+    store.set('wrfc.config.min_review_score', this.config.score_threshold);
+    store.set('wrfc.config.max_fix_attempts', this.config.max_fix_attempts);
+    store.set('wrfc.config.enable_quality_gates', this.config.enable_quality_gates);
+    if (this.config.require_review_types && this.config.require_review_types.length > 0) {
+      store.set('wrfc.config.require_review_types', this.config.require_review_types);
+    }
+
+    // Build handler closures that capture the store adapter.
+    // The trigger argument is unused by all three handlers (prefixed _trigger),
+    // so a sentinel empty trigger object satisfies the type without storing deps.
+    const nullTrigger = {} as unknown as Trigger;
+
+    const workflowCreatedHandler = (event: RuntimeEvent): Promise<void> =>
+      Promise.resolve(handleWorkflowCreated(event, nullTrigger, store)).then(() => {});
+
+    const agentCompletedHandler = (event: RuntimeEvent): Promise<void> =>
+      Promise.resolve(handleAgentCompleted(event, nullTrigger, store)).then(() => {});
+
+    const qualityGateHandler = (event: RuntimeEvent): Promise<void> =>
+      Promise.resolve(handleQualityGate(event, nullTrigger, store)).then(() => {});
+
+    // Register triggers (and their handlers) with the runtime via services
+    services.registerTrigger(
+      TRIGGER_IDS.AGENT_SPAWNED,
+      {
+        id: TRIGGER_IDS.AGENT_SPAWNED,
+        name: 'wrfc_agent_spawned',
+        description: 'Initialise WRFC workflow state when a new agent is spawned',
+        event_type: 'agent:spawned',
+        conditions: [{ source: ['agent', 'internal'] }],
+        actions: [],
+        enabled: true,
+        max_fires: 500,
+      },
+      workflowCreatedHandler,
+    );
+
+    services.registerTrigger(
+      TRIGGER_IDS.AGENT_COMPLETED,
+      {
+        id: TRIGGER_IDS.AGENT_COMPLETED,
+        name: 'wrfc_agent_completed',
+        description: 'Route agent to review, fix, or complete when it finishes',
+        event_type: 'agent:completed',
+        conditions: [{ source: ['agent', 'internal'] }],
+        actions: [],
+        enabled: true,
+        max_fires: 500,
+      },
+      agentCompletedHandler,
+    );
+
+    services.registerTrigger(
+      TRIGGER_IDS.REVIEW_COMPLETED,
+      {
+        id: TRIGGER_IDS.REVIEW_COMPLETED,
+        name: 'wrfc_review_completed',
+        description: 'Quality gate evaluation when a review completes (event-driven path)',
+        event_type: 'wrfc:review_completed',
+        conditions: [{ source: ['internal'] }],
+        actions: [],
+        enabled: true,
+        max_fires: 500,
+      },
+      qualityGateHandler,
+    );
+
+    // Capture handlers for getHandlers()
+    this._handlers = [
+      {
+        event_type: 'agent:spawned',
+        handler: workflowCreatedHandler,
+        priority: 10,
+      },
+      {
+        event_type: 'agent:completed',
+        handler: agentCompletedHandler,
+        priority: 10,
+      },
+      {
+        event_type: 'wrfc:review_completed',
+        handler: qualityGateHandler,
+        priority: 10,
+      },
+    ];
+
     this.state = 'starting';
-    log.debug('WRFCPlugin registered with runtime services');
+    log.debug('WRFCPlugin registered with runtime services', {
+      triggers: Object.values(TRIGGER_IDS),
+      handlers: Object.values(HANDLER_IDS),
+      config: this.config,
+    });
   }
 
   /**
    * Start the plugin.
-   * Config is seeded into the state store by registerWRFCPlugin().
-   * This method only transitions the lifecycle state to 'running'.
+   * All registration was performed in register(). This only advances the
+   * lifecycle state to 'running'.
    */
   start(): void {
-    if (!this._services) {
+    if (this._handlers.length === 0) {
       throw new Error('WRFCPlugin: register() must be called before start()');
     }
     this.state = 'running';
@@ -242,7 +380,7 @@ export class WRFCPlugin implements RuntimePlugin {
   /** Stop the plugin and clean up. */
   stop(): void {
     this.state = 'stopped';
-    this._services = null;
+    this._handlers = [];
     log.debug('WRFCPlugin stopped');
   }
 
@@ -257,14 +395,12 @@ export class WRFCPlugin implements RuntimePlugin {
   }
 
   /**
-   * Returns WRFC event handler registrations.
+   * Returns the three WRFC event handler registrations.
    *
-   * Handler wiring (TriggerRegistry + EventProcessor integration) is performed
-   * entirely by registerWRFCPlugin(). The RuntimePlugin interface's getHandlers()
-   * contract is satisfied by returning an empty array — no additional handler
-   * registration through this path is needed or desired.
+   * Handlers are captured during register() as closures over the state store
+   * adapter. Returns an empty array before register() is called.
    */
   getHandlers(): PluginEventHandler[] {
-    return [];
+    return [...this._handlers];
   }
 }

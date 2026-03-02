@@ -17,7 +17,7 @@ vi.mock('../../../shared/logger.js', () => ({
 }));
 
 /** Build a minimal RuntimeEvent for testing */
-function makeEvent(overrides: Partial<RuntimeEvent> & { chain_depth?: number } = {}): RuntimeEvent {
+function makeEvent(overrides: Partial<Omit<RuntimeEvent, 'type'>> & { type?: string; chain_depth?: number } = {}): RuntimeEvent {
   const { chain_depth, ...rest } = overrides;
   return {
     id: 'evt-001',
@@ -235,8 +235,8 @@ describe('EventMetrics', () => {
       metrics.onEventProcessed(makeEvent({ type: 'hook:pre' }), 10);
       metrics.onEventProcessed(makeEvent({ type: 'hook:pre' }), 10);
       metrics.onEventProcessed(makeEvent({ type: 'hook:post' }), 10);
-      expect(metrics.getEventTypeCount('hook:pre')).toBe(2);
-      expect(metrics.getEventTypeCount('hook:post')).toBe(1);
+      expect(metrics.getEventTypeCount('hook:pre' as never)).toBe(2);
+      expect(metrics.getEventTypeCount('hook:post' as never)).toBe(1);
     });
 
     it('tracks chain depth with chain_depth from event context', () => {
@@ -408,7 +408,7 @@ describe('EventMetrics', () => {
     it('clears per-type event counts after reset', () => {
       metrics.onEventProcessed(makeEvent({ type: 'custom:type' }), 10);
       metrics.reset();
-      expect(metrics.getEventTypeCount('custom:type')).toBe(0);
+      expect(metrics.getEventTypeCount('custom:type' as never)).toBe(0);
     });
 
     it('can accumulate again after reset', () => {

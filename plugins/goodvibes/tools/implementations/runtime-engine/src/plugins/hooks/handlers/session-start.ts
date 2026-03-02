@@ -38,7 +38,7 @@ export function createSessionStartHandler(
       try {
         deps.eventBus.emit({
           id: `evt_session_start_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
           type: 'session:started',
           source: { kind: 'hook', hook_name: 'session_start' },
           payload: {

@@ -34,7 +34,7 @@ export function createSessionEndHandler(
       try {
         deps.eventBus.emit({
           id: `evt_session_end_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
           type: 'session:ended',
           source: { kind: 'hook', hook_name: 'session_end' },
           payload: {

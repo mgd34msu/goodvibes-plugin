@@ -13,7 +13,6 @@ export {
   buildWorkflowCompleteMessage,
   buildEscalationMessage,
 } from './legacy-directive-builder.js';
-export { AUTO_COMPLETE_AGENT_TYPES, REQUIRE_REVIEW_AGENT_TYPES } from '../../shared/wrfc-constants.js';
 export { AgentWorkflowMap } from './agent-workflow-map.js';
 export { parseGvTag, parseAllGvTags, extractReviewScore, extractFiles } from './gv-tag-parser.js';
 export type { GvTagData, GvParseResult } from './gv-tag-parser.js';

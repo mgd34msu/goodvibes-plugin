@@ -131,7 +131,7 @@ export class RuntimeClient {
       id: generateId(),
       hook_name: hookName,
       hook_input: hookInput,
-      timestamp: timestamp(),
+      timestamp: new Date().toISOString(),
     };
 
     const response = await this.send(socketPath, message, this.hookEventTimeoutMs);

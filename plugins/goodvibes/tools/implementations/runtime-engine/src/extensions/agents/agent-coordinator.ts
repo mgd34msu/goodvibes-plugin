@@ -1,7 +1,7 @@
 /**
  * Agent Coordinator
  *
- * Wraps the conceptual AgentPool with workflow context, WRFC chain tracking,
+ * Wraps the conceptual AgentPool with workflow context, workflow chain tracking,
  * and budget enforcement. Every agent lifecycle change emits a RuntimeEvent
  * on the EventBus. Since the runtime engine runs as a separate MCP process
  * and cannot directly access Claude Code's AgentPool, the coordinator
@@ -35,9 +35,8 @@ import type {
   BudgetSummary,
   ExecutionPlan,
   ExecutionPhaseInfo,
-  WRFCChain,
-  WRFCPhaseName,
-} from '../../plugins/wrfc/types.js';
+  WorkflowChain,
+} from './workflow-types.js';
 
 const logger = createLogger('agent-coordinator');
 
@@ -62,7 +61,7 @@ export class AgentCoordinator {
   private readonly budgetTracker: BudgetTracker;
   private config: AgentsConfig;
   private readonly agents: Map<string, CoordinatedAgent> = new Map();
-  private readonly wrfcChains: Map<string, WRFCChain> = new Map();
+  private readonly workflowChains: Map<string, WorkflowChain> = new Map();
 
   /** Timer for periodic cleanup of terminated agents. */
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
@@ -133,7 +132,7 @@ export class AgentCoordinator {
         cost_usd: 0,
       },
       workflow_id: options.workflow_id,
-      wrfc_phase: options.wrfc_phase,
+      workflow_phase: options.workflow_phase,
       depends_on: options.depends_on ?? [],
       depended_by: [],
       files_modified: [],
@@ -151,16 +150,16 @@ export class AgentCoordinator {
     this.agents.set(id, agent);
     this.budgetTracker.registerAgent(id, options.type, options.workflow_id);
 
-    // Update WRFC chain if applicable
-    if (options.workflow_id && options.wrfc_phase) {
-      this.addAgentToWRFCChain(id, options.workflow_id, options.wrfc_phase, options.task);
+    // Update workflow chain if applicable
+    if (options.workflow_id && options.workflow_phase) {
+      this.addAgentToWorkflowChain(id, options.workflow_id, options.workflow_phase, options.task);
     }
 
     this.emitEvent('agent:spawned', id, {
       type: options.type,
       task: options.task,
       workflow_id: options.workflow_id,
-      wrfc_phase: options.wrfc_phase,
+      workflow_phase: options.workflow_phase,
       depends_on: agent.depends_on,
     });
 
@@ -217,7 +216,7 @@ export class AgentCoordinator {
     if (status === 'completed' || status === 'failed' || status === 'cancelled') {
       agent.completed_at = timestamp();
       if (agent.started_at) {
-        agent.duration_ms = Date.now() - new Date(agent.started_at).getTime();
+        agent.duration_ms = Date.now() - agent.started_at;
       }
     }
 
@@ -238,7 +237,7 @@ export class AgentCoordinator {
     // On completion, check if any waiting agents can now start
     if (status === 'completed') {
       this.resolveDependencies(agentId);
-      this.updateWRFCPhaseOnCompletion(agentId);
+      this.updateWorkflowPhaseOnCompletion(agentId);
     }
 
     logger.info('Agent status updated', { agentId, from: prev, to: status });
@@ -319,10 +318,10 @@ export class AgentCoordinator {
   getExecutionPlan(workflowId: string): ExecutionPlan {
     const workflowAgents = this.listByWorkflow(workflowId);
 
-    // Group agents by wrfc_phase
+    // Group agents by workflow_phase
     const phaseMap = new Map<string, CoordinatedAgent[]>();
     for (const agent of workflowAgents) {
-      const phase = agent.wrfc_phase ?? 'unknown';
+      const phase = agent.workflow_phase ?? 'unknown';
       if (!phaseMap.has(phase)) phaseMap.set(phase, []);
       const phaseList = phaseMap.get(phase);
       if (phaseList) phaseList.push(agent);
@@ -451,7 +450,7 @@ export class AgentCoordinator {
     this.stopPeriodicCleanup();
     this.cleanupTimer = setInterval(() => {
       const pruned = this.prune(maxAgeMs);
-      const chainsRemoved = this.pruneStaleWRFCChains();
+      const chainsRemoved = this.pruneStaleWorkflowChains();
       if (pruned > 0 || chainsRemoved > 0) {
         logger.debug('Periodic cleanup completed', { agents_pruned: pruned, chains_removed: chainsRemoved });
       }
@@ -474,28 +473,28 @@ export class AgentCoordinator {
   }
 
   /**
-   * Retrieve the WRFC chain for a workflow, or undefined.
+   * Retrieve the workflow chain for a workflow, or undefined.
    *
    * @param workflowId - Workflow ID.
-   * @returns WRFCChain or undefined.
+   * @returns WorkflowChain or undefined.
    */
-  getWRFCChain(workflowId: string): WRFCChain | undefined {
-    return this.wrfcChains.get(workflowId);
+  getWorkflowChain(workflowId: string): WorkflowChain | undefined {
+    return this.workflowChains.get(workflowId);
   }
 
   /**
-   * Advance the active phase of a WRFC chain.
+   * Advance the active phase of a workflow chain.
    *
    * Marks the current phase as completed and activates the next phase
-   * with the given name. Emits `wrfc:phase_changed` on the EventBus.
+   * with the given name. Emits `workflow:phase_changed` on the EventBus.
    *
    * @param workflowId - Workflow whose chain to advance.
    * @param phase      - Name of the phase to transition to.
    */
-  advanceWRFCPhase(workflowId: string, phase: WRFCPhaseName): void {
-    const chain = this.wrfcChains.get(workflowId);
+  advanceWorkflowPhase(workflowId: string, phase: string): void {
+    const chain = this.workflowChains.get(workflowId);
     if (!chain) {
-      logger.warn('advanceWRFCPhase: no chain found', { workflowId });
+      logger.warn('advanceWorkflowPhase: no chain found', { workflowId });
       return;
     }
 
@@ -531,13 +530,13 @@ export class AgentCoordinator {
       chain.review_iterations++;
     }
 
-    this.emitEvent('wrfc:phase_changed', workflowId, {
+    this.emitEvent('workflow:phase_changed', workflowId, {
       from_phase: prevPhase,
       to_phase: phase,
       review_iterations: chain.review_iterations,
     });
 
-    logger.info('WRFC phase advanced', { workflowId, from: prevPhase, to: phase });
+    logger.info('Workflow phase advanced', { workflowId, from: prevPhase, to: phase });
   }
 
   /**
@@ -554,7 +553,7 @@ export class AgentCoordinator {
       if (
         (agent.status === 'completed' || agent.status === 'failed' || agent.status === 'cancelled') &&
         agent.completed_at &&
-        new Date(agent.completed_at).getTime() < cutoff
+        agent.completed_at < cutoff
       ) {
         this.agents.delete(id);
         this.budgetTracker.removeAgent(id);
@@ -576,13 +575,13 @@ export class AgentCoordinator {
   // ─── Private helpers ────────────────────────────────────────────────────────
 
   /**
-   * Remove WRFC chains whose workflows have no active agents.
+   * Remove workflow chains whose workflows have no active agents.
    *
    * @returns Number of chains removed.
    */
-  private pruneStaleWRFCChains(): number {
+  private pruneStaleWorkflowChains(): number {
     let removed = 0;
-    for (const [workflowId, chain] of this.wrfcChains) {
+    for (const [workflowId, chain] of this.workflowChains) {
       const hasActiveAgents = chain.phases.some((phase) =>
         phase.agent_ids.some((aid) => {
           const agent = this.agents.get(aid);
@@ -590,7 +589,7 @@ export class AgentCoordinator {
         })
       );
       if (!hasActiveAgents) {
-        this.wrfcChains.delete(workflowId);
+        this.workflowChains.delete(workflowId);
         removed++;
       }
     }
@@ -614,7 +613,7 @@ export class AgentCoordinator {
         payload: {
           type: type as EventType,
           data: { subject, ...data },
-        } as import('../events/types.js').EventPayload,
+        } as import('../../shared/events.js').EventPayload,
         metadata: { correlation_id: subject },
       });
     } catch (err) {
@@ -659,23 +658,23 @@ export class AgentCoordinator {
   }
 
   /**
-   * Register an agent with its WRFC chain, creating the chain if needed.
+   * Register an agent with its workflow chain, creating the chain if needed.
    *
    * @param agentId    - Agent to register.
    * @param workflowId - Parent workflow.
-   * @param phase      - WRFC phase the agent is in.
+   * @param phase      - Workflow phase the agent is in.
    * @param task       - Task description (used for chain initialisation).
    */
-  private addAgentToWRFCChain(
+  private addAgentToWorkflowChain(
     agentId: string,
     workflowId: string,
-    phase: WRFCPhaseName,
+    phase: string,
     task: string
   ): void {
-    let chain = this.wrfcChains.get(workflowId);
+    let chain = this.workflowChains.get(workflowId);
     if (!chain) {
       chain = {
-        id: `wrfc_${generateId()}`,
+        id: `workflow_${generateId()}`,
         workflow_id: workflowId,
         task,
         phases: [],
@@ -683,7 +682,7 @@ export class AgentCoordinator {
         review_iterations: 0,
         max_review_iterations: this.config.max_review_iterations,
       };
-      this.wrfcChains.set(workflowId, chain);
+      this.workflowChains.set(workflowId, chain);
     }
 
     // Find or create this phase entry
@@ -700,19 +699,19 @@ export class AgentCoordinator {
   }
 
   /**
-   * When an agent completes, check if all agents in its WRFC phase
+   * When an agent completes, check if all agents in its workflow phase
    * are done and mark the phase complete.
    *
    * @param completedAgentId - The agent that just completed.
    */
-  private updateWRFCPhaseOnCompletion(completedAgentId: string): void {
+  private updateWorkflowPhaseOnCompletion(completedAgentId: string): void {
     const agent = this.agents.get(completedAgentId);
-    if (!agent?.workflow_id || !agent.wrfc_phase) return;
+    if (!agent?.workflow_id || !agent.workflow_phase) return;
 
-    const chain = this.wrfcChains.get(agent.workflow_id);
+    const chain = this.workflowChains.get(agent.workflow_id);
     if (!chain) return;
 
-    const phase = chain.phases.find((p) => p.name === agent.wrfc_phase);
+    const phase = chain.phases.find((p) => p.name === agent.workflow_phase);
     if (!phase || phase.status === 'completed') return;
 
     const allDone = phase.agent_ids.every((aid) => {
@@ -723,9 +722,9 @@ export class AgentCoordinator {
     if (allDone) {
       phase.status = 'completed';
       phase.completed_at = timestamp();
-      logger.debug('WRFC phase auto-completed', {
+      logger.debug('Workflow phase auto-completed', {
         workflowId: agent.workflow_id,
-        phase: agent.wrfc_phase,
+        phase: agent.workflow_phase,
       });
     }
   }

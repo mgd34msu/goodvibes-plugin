@@ -161,16 +161,20 @@ function applyStateUpdates(store: StateStoreInterface, updates: StateUpdate[]): 
 function buildChainDepthExceededEvent(event: RuntimeEvent, maxDepth: number): RuntimeEvent {
   return {
     id: generateEventId(),
-    source: 'internal',
+    source: { kind: 'internal' as const },
     type: 'core:chain_depth_exceeded',
     payload: {
-      original_event_id: event.id,
-      original_event_type: event.type,
-      depth: event.context?.chain_depth ?? 0,
-      max_depth: maxDepth,
+      type: 'core:chain_depth_exceeded' as const,
+      data: {
+        original_event_id: event.id,
+        original_event_type: event.type,
+        depth: event.context?.chain_depth ?? 0,
+        max_depth: maxDepth,
+      },
     },
     timestamp: Date.now(),
     priority: INTERNAL_EVENT_PRIORITY,
+    metadata: { session_id: '', sequence: 0, version: 1 as const },
   };
 }
 
@@ -180,11 +184,12 @@ function buildChainDepthExceededEvent(event: RuntimeEvent, maxDepth: number): Ru
 function buildQueueDepthWarningEvent(depth: number, threshold: number): RuntimeEvent {
   return {
     id: generateEventId(),
-    source: 'internal',
+    source: { kind: 'internal' as const },
     type: 'core:queue_depth_warning',
-    payload: { depth, threshold },
+    payload: { type: 'core:queue_depth_warning' as const, data: { depth, threshold } },
     timestamp: Date.now(),
     priority: INTERNAL_EVENT_PRIORITY,
+    metadata: { session_id: '', sequence: 0, version: 1 as const },
   };
 }
 
@@ -238,6 +243,13 @@ export class EventProcessor {
    * has resolved.
    */
   private processing = false;
+
+  /**
+   * Guards against unbounded microtask scheduling under sustained load.
+   * When true, a follow-up processBatch() microtask is already queued;
+   * additional re-entrancy deflections are coalesced into the pending one.
+   */
+  private pendingRetry = false;
 
   constructor(
     queue: EventQueueInterface,
@@ -308,10 +320,13 @@ export class EventProcessor {
       return 0;
     }
 
-    // Re-entrancy guard: if a batch is already processing, schedule a follow-up
-    // tick and return immediately to avoid concurrent overlapping batches.
+    // Re-entrancy guard: if a batch is already processing, schedule at most one
+    // follow-up microtask to avoid unbounded scheduling under sustained load.
     if (this.processing) {
-      queueMicrotask(() => { void this.processBatch(); });
+      if (!this.pendingRetry) {
+        this.pendingRetry = true;
+        queueMicrotask(() => { this.pendingRetry = false; void this.processBatch(); });
+      }
       return 0;
     }
     this.processing = true;

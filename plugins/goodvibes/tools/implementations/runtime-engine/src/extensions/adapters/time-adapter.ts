@@ -43,7 +43,7 @@ export class TimeAdapter implements TimeSourceAdapter {
   /**
    * Delegates to TimePlugin.onTick().
    * Heartbeat and scheduled events are enqueued by the plugin into the
-   * shared EventQueue — no additional normalization is needed here since
+   * shared event queue — no additional normalization is needed here since
    * TimePlugin already uses createTimeEvent() from extensions/events/factories.
    */
   onTick(): TimeTickResult {

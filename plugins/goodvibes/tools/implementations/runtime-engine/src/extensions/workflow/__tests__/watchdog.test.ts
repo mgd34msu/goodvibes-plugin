@@ -67,8 +67,8 @@ function makeWorkflow(overrides: Partial<WorkflowInstance> = {}): WorkflowInstan
     current_state: 'REVIEWING',
     context: {},
     history: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date(Date.now() - STALE_MS - 1000).toISOString(), // stale by default
+    created_at: Date.now(),
+    updated_at: Date.now() - STALE_MS - 1000, // stale by default
     status: 'active',
     ...overrides,
   };
@@ -211,7 +211,7 @@ describe('WatchdogCoordinator', () => {
       const deps = makeDeps();
       const wf = makeWorkflow({
         current_state: 'REVIEWING',
-        updated_at: new Date(Date.now() - 1000).toISOString(), // 1 second old — not stale
+        updated_at: Date.now() - 1000, // 1 second old — not stale
       });
       (deps.workflowEngine.listActive as any).mockReturnValue([wf]);
       const watchdog = new WatchdogCoordinator(deps);
@@ -419,7 +419,7 @@ describe('WatchdogCoordinator', () => {
       const wf = makeWorkflow({
         id: 'wf_nonarray',
         current_state: 'REVIEWING',
-        context: { files_modified: 'single-file.ts' }, // not an array
+        context: { files_modified: 'single-file.ts' as unknown as string[] }, // not an array
       });
       (deps.workflowEngine.listActive as any).mockReturnValue([wf]);
       (deps.directiveQueue.peek as any).mockReturnValue([]);

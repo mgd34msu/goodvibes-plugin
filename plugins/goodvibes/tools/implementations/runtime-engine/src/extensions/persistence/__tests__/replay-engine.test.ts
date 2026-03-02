@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { replayEvents } from '../replay-engine.js';
 import type { ReplayDeps, ReplayOptions } from '../replay-engine.js';
-import type { RuntimeEvent } from '../../events/types.js';
+import type { RuntimeEvent } from '../../../shared/events.js';
 
 // ---------------------------------------------------------------------------
 // Module mocks

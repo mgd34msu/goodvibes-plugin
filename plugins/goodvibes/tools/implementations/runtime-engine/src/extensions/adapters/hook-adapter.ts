@@ -12,6 +12,7 @@
  * in a silent no-op (unknown hook name returned null).
  */
 
+import { randomUUID } from 'crypto';
 import type { RuntimeEvent } from '../../shared/events.js';
 import type { EventSourceAdapter, AdapterStatus } from './types.js';
 import type { HookType } from '../events/factories.js';
@@ -97,8 +98,6 @@ export interface RawHookPayload {
 }
 
 // ─── HookAdapter ───────────────────────────────────────────────────────────────────────────
-
-import { randomUUID } from 'crypto';
 
 /**
  * L2 adapter for Claude Code hook events.

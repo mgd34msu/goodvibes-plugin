@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventLog } from '../event-log.js';
-import type { RuntimeEvent } from '../types.js';
+import type { RuntimeEvent } from '../../../shared/events.js';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
@@ -31,10 +31,11 @@ function makeEvent(
 ): RuntimeEvent {
   return {
     id: `evt_${Math.random().toString(36).slice(2)}`,
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     type: type as RuntimeEvent['type'],
     source: { kind: 'system' },
     payload: { type: type as never, data: {} as never },
+    priority: 0,
     metadata: {
       session_id: 'test-session',
       sequence: 1,
@@ -44,9 +45,9 @@ function makeEvent(
   };
 }
 
-function makeSequencedEvent(seq: number, type = 'session:started', tsOverride?: string): RuntimeEvent {
+function makeSequencedEvent(seq: number, type = 'session:started', tsOverride?: number): RuntimeEvent {
   return makeEvent(type, {
-    timestamp: tsOverride ?? new Date(Date.now() + seq * 1000).toISOString(),
+    timestamp: tsOverride ?? (Date.now() + seq * 1000),
     metadata: { session_id: 'test-session', sequence: seq, version: 1 },
   });
 }
@@ -119,8 +120,8 @@ describe('EventLog', () => {
 
     it('recovers oldest and newest timestamps', async () => {
       const logPath = path.join(tmpDir, 'events.jsonl');
-      const ts1 = '2024-01-01T00:00:00.000Z';
-      const ts2 = '2024-06-15T12:00:00.000Z';
+      const ts1 = new Date('2024-01-01T00:00:00.000Z').getTime();
+      const ts2 = new Date('2024-06-15T12:00:00.000Z').getTime();
       const events = [
         makeSequencedEvent(1, 'session:started', ts1),
         makeSequencedEvent(2, 'session:ending', ts2),
@@ -177,8 +178,8 @@ describe('EventLog', () => {
 
     it('updates oldest and newest event timestamps', async () => {
       await log.initialize();
-      const ts1 = '2024-03-01T00:00:00.000Z';
-      const ts2 = '2024-03-02T00:00:00.000Z';
+      const ts1 = new Date('2024-03-01T00:00:00.000Z').getTime();
+      const ts2 = new Date('2024-03-02T00:00:00.000Z').getTime();
       log.append(makeSequencedEvent(1, 'session:started', ts1));
       log.append(makeSequencedEvent(2, 'session:started', ts2));
       const stats = log.getStats();
@@ -314,26 +315,26 @@ describe('EventLog', () => {
 
     it('filters by since timestamp', async () => {
       await log.initialize();
-      const ts1 = '2024-01-01T00:00:00.000Z';
-      const ts2 = '2024-06-01T00:00:00.000Z';
+      const ts1 = new Date('2024-01-01T00:00:00.000Z').getTime();
+      const ts2 = new Date('2024-06-01T00:00:00.000Z').getTime();
       log.append(makeSequencedEvent(1, 'session:started', ts1));
       log.append(makeSequencedEvent(2, 'session:started', ts2));
       await log.flush();
 
-      const results = await log.query({ since: '2024-03-01T00:00:00.000Z' });
+      const results = await log.query({ since: new Date('2024-03-01T00:00:00.000Z').getTime() });
       expect(results).toHaveLength(1);
       expect(results[0]?.timestamp).toBe(ts2);
     });
 
     it('filters by until timestamp', async () => {
       await log.initialize();
-      const ts1 = '2024-01-01T00:00:00.000Z';
-      const ts2 = '2024-06-01T00:00:00.000Z';
+      const ts1 = new Date('2024-01-01T00:00:00.000Z').getTime();
+      const ts2 = new Date('2024-06-01T00:00:00.000Z').getTime();
       log.append(makeSequencedEvent(1, 'session:started', ts1));
       log.append(makeSequencedEvent(2, 'session:started', ts2));
       await log.flush();
 
-      const results = await log.query({ until: '2024-03-01T00:00:00.000Z' });
+      const results = await log.query({ until: new Date('2024-03-01T00:00:00.000Z').getTime() });
       expect(results).toHaveLength(1);
       expect(results[0]?.timestamp).toBe(ts1);
     });
@@ -465,20 +466,20 @@ describe('EventLog', () => {
     it('returns 0 archived and 0 remaining when file does not exist', async () => {
       await log.initialize();
       // Don't append anything, so file doesn't exist
-      const result = await log.compact('2024-01-01T00:00:00.000Z');
+      const result = await log.compact(new Date('2024-01-01T00:00:00.000Z').getTime());
       expect(result).toEqual({ archived: 0, remaining: 0 });
     });
 
     it('archives events older than the cutoff timestamp', async () => {
       await log.initialize();
 
-      const oldTs = '2024-01-01T00:00:00.000Z';
-      const newTs = '2025-01-01T00:00:00.000Z';
+      const oldTs = new Date('2024-01-01T00:00:00.000Z').getTime();
+      const newTs = new Date('2025-01-01T00:00:00.000Z').getTime();
       log.append(makeSequencedEvent(1, 'session:started', oldTs));
       log.append(makeSequencedEvent(2, 'session:started', newTs));
       await log.flush();
 
-      const result = await log.compact('2024-06-01T00:00:00.000Z');
+      const result = await log.compact(new Date('2024-06-01T00:00:00.000Z').getTime());
       expect(result.archived).toBe(1);
       expect(result.remaining).toBe(1);
     });
@@ -486,11 +487,11 @@ describe('EventLog', () => {
     it('creates an archive JSONL file in the archive directory', async () => {
       await log.initialize();
 
-      const oldTs = '2024-01-01T00:00:00.000Z';
+      const oldTs = new Date('2024-01-01T00:00:00.000Z').getTime();
       log.append(makeSequencedEvent(1, 'session:started', oldTs));
       await log.flush();
 
-      await log.compact('2024-06-01T00:00:00.000Z');
+      await log.compact(new Date('2024-06-01T00:00:00.000Z').getTime());
 
       const archiveDir = path.join(tmpDir, 'event-archives');
       expect(fs.existsSync(archiveDir)).toBe(true);
@@ -501,13 +502,13 @@ describe('EventLog', () => {
     it('atomically replaces the main log with only retained events', async () => {
       await log.initialize();
 
-      const oldTs = '2024-01-01T00:00:00.000Z';
-      const newTs = '2025-01-01T00:00:00.000Z';
+      const oldTs = new Date('2024-01-01T00:00:00.000Z').getTime();
+      const newTs = new Date('2025-01-01T00:00:00.000Z').getTime();
       log.append(makeSequencedEvent(1, 'session:started', oldTs));
       log.append(makeSequencedEvent(2, 'hook:pre_tool_use', newTs));
       await log.flush();
 
-      await log.compact('2024-06-01T00:00:00.000Z');
+      await log.compact(new Date('2024-06-01T00:00:00.000Z').getTime());
 
       const logPath = path.join(tmpDir, 'events.jsonl');
       const content = fs.readFileSync(logPath, 'utf-8');
@@ -520,11 +521,11 @@ describe('EventLog', () => {
     it('returns 0 archived and remaining count when no events are older than cutoff', async () => {
       await log.initialize();
 
-      const newTs = '2025-06-01T00:00:00.000Z';
+      const newTs = new Date('2025-06-01T00:00:00.000Z').getTime();
       log.append(makeSequencedEvent(1, 'session:started', newTs));
       await log.flush();
 
-      const result = await log.compact('2020-01-01T00:00:00.000Z');
+      const result = await log.compact(new Date('2020-01-01T00:00:00.000Z').getTime());
       expect(result.archived).toBe(0);
       expect(result.remaining).toBe(1);
     });

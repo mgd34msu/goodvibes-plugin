@@ -193,6 +193,7 @@ export const handleRuntimeTriggers = async (
         type: (testEvent.type as EventType) ?? 'test:mock' as EventType,
         source: (testEvent.source as EventSource) ?? { kind: 'mcp_tool', tool_name: 'runtime_triggers' } as EventSource,
         payload: (testEvent.payload as EventPayload) ?? { type: 'test:mock' as EventType, data: {} } as EventPayload,
+        priority: 0,
         metadata: { session_id: '', sequence: 0, version: 1 as const },
       };
       const results = await registry.evaluate(mockEvent);

@@ -13,6 +13,40 @@
 
 import type { PluginWorkflowDefinition } from '../../shared/plugin.js';
 
+// ─── Reusable condition constants ────────────────────────────────────────────────────────────
+
+/** Transition passes when the review score meets the configured minimum. */
+const COND_SCORE_PASSES = [
+  { type: 'expression', expression: 'context.review_score >= context.min_review_score' },
+];
+
+/** Transition passes when the review score is below the configured minimum. */
+const COND_SCORE_FAILS = [
+  { type: 'expression', expression: 'context.review_score < context.min_review_score' },
+];
+
+/** Transition passes when tests have all passed. */
+const COND_TESTS_PASSED = [
+  { type: 'expression', expression: 'context.tests_passed === true' },
+];
+
+/** Transition passes when one or more tests have failed. */
+const COND_TESTS_FAILED = [
+  { type: 'expression', expression: 'context.tests_passed === false' },
+];
+
+/** Transition passes when verification reports success. */
+const COND_VERIFICATION_PASSED = [
+  { type: 'expression', expression: 'context.verification_result.passed === true' },
+];
+
+/** Transition passes when verification reports failure. */
+const COND_VERIFICATION_FAILED = [
+  { type: 'expression', expression: 'context.verification_result.passed === false' },
+];
+
+// ─── Workflow definitions ─────────────────────────────────────────────────────────────────────
+
 /**
  * Returns WRFC workflow definition metadata for plugin registration.
  *
@@ -29,12 +63,12 @@ export function getWRFCWorkflowDefinitions(): PluginWorkflowDefinition[] {
       states: ['idle', 'writing', 'reviewing', 'fixing', 'completed', 'failed', 'escalated'],
       initial_state: 'idle',
       transitions: [
-        { from: 'idle', to: 'writing', event_type: 'workflow:created' },
-        { from: 'writing', to: 'reviewing', event_type: 'agent:completed' },
-        { from: 'reviewing', to: 'completed', event_type: 'wrfc:review_completed', conditions: [{ type: 'expression', expression: 'context.review_score >= context.min_review_score' }] },
-        { from: 'reviewing', to: 'fixing', event_type: 'wrfc:review_completed', conditions: [{ type: 'expression', expression: 'context.review_score < context.min_review_score' }] },
-        { from: 'fixing', to: 'reviewing', event_type: 'agent:completed' },
-        { from: 'fixing', to: 'escalated', event_type: 'wrfc:max_attempts_reached' },
+        { from: 'idle',      to: 'writing',   event_type: 'workflow:created' },
+        { from: 'writing',   to: 'reviewing', event_type: 'agent:completed' },
+        { from: 'reviewing', to: 'completed', event_type: 'wrfc:review_completed', conditions: COND_SCORE_PASSES },
+        { from: 'reviewing', to: 'fixing',    event_type: 'wrfc:review_completed', conditions: COND_SCORE_FAILS },
+        { from: 'fixing',    to: 'reviewing', event_type: 'agent:completed' },
+        { from: 'fixing',    to: 'escalated', event_type: 'wrfc:max_attempts_reached' },
         { from: 'reviewing', to: 'escalated', event_type: 'wrfc:max_attempts_reached' },
       ],
     },
@@ -45,11 +79,11 @@ export function getWRFCWorkflowDefinitions(): PluginWorkflowDefinition[] {
       states: ['idle', 'diagnosing', 'fixing', 'verifying', 'completed', 'failed'],
       initial_state: 'idle',
       transitions: [
-        { from: 'idle', to: 'diagnosing', event_type: 'workflow:created' },
-        { from: 'diagnosing', to: 'fixing', event_type: 'agent:completed' },
-        { from: 'fixing', to: 'verifying', event_type: 'agent:completed' },
-        { from: 'verifying', to: 'completed', event_type: 'agent:completed', conditions: [{ type: 'expression', expression: 'context.verification_result.passed === true' }] },
-        { from: 'verifying', to: 'fixing', event_type: 'agent:completed', conditions: [{ type: 'expression', expression: 'context.verification_result.passed === false' }] },
+        { from: 'idle',       to: 'diagnosing', event_type: 'workflow:created' },
+        { from: 'diagnosing', to: 'fixing',     event_type: 'agent:completed' },
+        { from: 'fixing',     to: 'verifying',  event_type: 'agent:completed' },
+        { from: 'verifying',  to: 'completed',  event_type: 'agent:completed', conditions: COND_VERIFICATION_PASSED },
+        { from: 'verifying',  to: 'fixing',     event_type: 'agent:completed', conditions: COND_VERIFICATION_FAILED },
       ],
     },
     {
@@ -59,10 +93,11 @@ export function getWRFCWorkflowDefinitions(): PluginWorkflowDefinition[] {
       states: ['idle', 'testing', 'fixing', 'completed', 'failed'],
       initial_state: 'idle',
       transitions: [
-        { from: 'idle', to: 'testing', event_type: 'workflow:created' },
-        { from: 'testing', to: 'completed', event_type: 'agent:completed', conditions: [{ type: 'expression', expression: 'context.tests_passed === true' }] },
-        { from: 'testing', to: 'fixing', event_type: 'agent:completed', conditions: [{ type: 'expression', expression: 'context.tests_passed === false' }] },
-        { from: 'fixing', to: 'testing', event_type: 'agent:completed' },
+        { from: 'idle',    to: 'completed', event_type: 'agent:completed', conditions: COND_TESTS_PASSED },
+        { from: 'idle',    to: 'testing',   event_type: 'workflow:created' },
+        { from: 'testing', to: 'completed', event_type: 'agent:completed', conditions: COND_TESTS_PASSED },
+        { from: 'testing', to: 'fixing',    event_type: 'agent:completed', conditions: COND_TESTS_FAILED },
+        { from: 'fixing',  to: 'testing',   event_type: 'agent:completed' },
       ],
     },
     {
@@ -72,7 +107,7 @@ export function getWRFCWorkflowDefinitions(): PluginWorkflowDefinition[] {
       states: ['idle', 'reviewing', 'completed', 'failed'],
       initial_state: 'idle',
       transitions: [
-        { from: 'idle', to: 'reviewing', event_type: 'workflow:created' },
+        { from: 'idle',      to: 'reviewing', event_type: 'workflow:created' },
         { from: 'reviewing', to: 'completed', event_type: 'wrfc:review_completed' },
       ],
     },

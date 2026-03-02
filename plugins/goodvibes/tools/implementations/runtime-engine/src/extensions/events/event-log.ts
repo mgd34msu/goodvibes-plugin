@@ -42,10 +42,10 @@ export interface EventLogStats {
   total_events: number;
   /** Current size of the log file in bytes. */
   file_size_bytes: number;
-  /** ISO-8601 timestamp of the oldest event in the log, or undefined if empty. */
-  oldest_event?: string;
-  /** ISO-8601 timestamp of the newest event in the log, or undefined if empty. */
-  newest_event?: string;
+  /** Epoch ms timestamp of the oldest event in the log, or undefined if empty. */
+  oldest_event?: number;
+  /** Epoch ms timestamp of the newest event in the log, or undefined if empty. */
+  newest_event?: number;
   /** Event count broken down by event type. */
   events_per_type: Record<string, number>;
 }
@@ -71,9 +71,9 @@ export class EventLog {
   /** Cached per-type event counts (updated on every append). */
   private typeCountCache: Record<string, number> = {};
   /** Timestamp of the oldest event (recovered on init). */
-  private oldestEvent?: string;
+  private oldestEvent?: number;
   /** Timestamp of the newest event (updated on every append). */
-  private newestEvent?: string;
+  private newestEvent?: number;
   /** Maximum log file size in megabytes before rotation is needed. */
   private readonly maxSizeMb: number;
   /** Events older than this many hours are eligible for compaction. */
@@ -350,12 +350,12 @@ export class EventLog {
    * The main log is atomically replaced with only the retained events
    * (tmp write + rename, matching the state-store pattern).
    *
-   * @param beforeTimestamp - Optional ISO-8601 cutoff; events before this
+   * @param beforeTimestamp - Optional epoch ms cutoff; events before this
    *   timestamp are archived. Defaults to `compactAfterHours` ago.
    * @returns Counts of archived and remaining events.
    */
   async compact(
-    beforeTimestamp?: string,
+    beforeTimestamp?: number,
   ): Promise<{ archived: number; remaining: number }> {
     // Flush any buffered writes before reading the file for compaction
     if (this.writeBuffer.length > 0) {
@@ -364,9 +364,7 @@ export class EventLog {
 
     const cutoff =
       beforeTimestamp ??
-      new Date(
-        Date.now() - this.compactAfterHours * 60 * 60 * 1000,
-      ).toISOString();
+      (Date.now() - this.compactAfterHours * 60 * 60 * 1000);
 
     const toArchive: string[] = [];
     const toKeep: string[] = [];
@@ -382,9 +380,8 @@ export class EventLog {
             skippedLines++;
             return true;
           }
-          // Timestamps are compared as ISO 8601 strings (UTC); lexicographic order
-          // matches chronological order only when all values share the same UTC offset.
-          const ts = event.timestamp ?? '';
+          // Timestamps are compared as epoch ms numbers.
+          const ts = event.timestamp ?? 0;
           if (ts < cutoff) {
             toArchive.push(line);
           } else {
@@ -716,8 +713,8 @@ export class EventLog {
   /** Rebuilds the in-memory type/oldest/newest cache from a set of raw JSONL lines. */
   private rebuildCacheFromLines(lines: string[]): void {
     const typeCount: Record<string, number> = {};
-    let oldest: string | undefined;
-    let newest: string | undefined;
+    let oldest: number | undefined;
+    let newest: number | undefined;
 
     let skippedLines = 0;
     for (const line of lines) {

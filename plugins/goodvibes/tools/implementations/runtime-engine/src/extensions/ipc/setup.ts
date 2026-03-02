@@ -17,7 +17,7 @@ import { ensureDirSync } from '../../core/utils/fs-utils.js';
 
 import type { RuntimeConfig } from '../../shared/config.js';
 import type { EventBus } from '../events/event-bus.js';
-import type { TriggerRegistry } from '../triggers/trigger-registry.js';
+import type { TriggerRegistry } from '../../core/trigger-registry.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';

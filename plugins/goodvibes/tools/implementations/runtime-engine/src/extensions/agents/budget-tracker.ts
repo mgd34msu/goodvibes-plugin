@@ -17,7 +17,7 @@ import type {
   AgentBudgetSnapshot,
   BudgetThreshold,
 } from './types.js';
-import type { BudgetSummary } from '../../plugins/wrfc/types.js';
+import type { BudgetSummary } from './workflow-types.js';
 
 const logger = createLogger('budget-tracker');
 

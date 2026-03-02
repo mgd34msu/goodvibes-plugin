@@ -48,7 +48,7 @@ export {
   AUTO_COMPLETE_AGENT_TYPES,
   REQUIRE_REVIEW_AGENT_TYPES,
   DEFAULT_MIN_REVIEW_SCORE,
-} from '../../shared/wrfc-constants.js';
+} from './constants.js';
 export type { HandlerIdKey } from './handlers.js';
 
 // Score evaluation

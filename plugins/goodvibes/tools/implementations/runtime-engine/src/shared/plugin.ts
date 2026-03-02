@@ -46,6 +46,14 @@ export interface PluginEventHandler {
   filter?: Record<string, unknown>;
 }
 
+/** Minimal logger interface exposed to plugins */
+export interface PluginLogger {
+  debug: (...args: unknown[]) => void;
+  info: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+}
+
 /** Runtime services exposed to plugins during registration */
 export interface RuntimeServices {
   emit: (event: RuntimeEvent) => void;
@@ -53,6 +61,12 @@ export interface RuntimeServices {
   getConfig: () => Record<string, unknown>;
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => void;
+  /** Register a trigger with the core trigger registry */
+  registerTrigger: (id: string, definition: PluginTriggerDefinition, handler: (event: RuntimeEvent) => void | Promise<void>) => void;
+  /** Unregister a previously registered trigger */
+  unregisterTrigger: (id: string) => void;
+  /** Get a named logger for the plugin */
+  getLogger: (name: string) => PluginLogger;
 }
 
 /**

@@ -58,15 +58,16 @@ vi.mock('../generic.js', () => ({
 function makeNormalizer(name: string): Normalizer {
   return vi.fn((_rawPayload: unknown, _headers?: Record<string, string>): ExternalEvent => ({
     id: `${name}-id`,
-    timestamp: '2025-01-01T00:00:00.000Z',
-    type: `webhook:${name}:event`,
-    source: { kind: 'external', external_source: name },
+    timestamp: new Date('2025-01-01T00:00:00.000Z').getTime(),
+    type: `webhook:${name}:event` as never,
+    source: { kind: 'external', origin: name },
     external_source: name,
     raw_payload: null,
-    payload: {},
+    payload: {} as never,
     normalized: false,
     priority: 50,
     context: {},
+    metadata: { session_id: '', sequence: 0, version: 1 as const },
   }));
 }
 

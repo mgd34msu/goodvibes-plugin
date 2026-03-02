@@ -1,9 +1,9 @@
 /**
- * WRFC Agent Type Constants — Shared Layer
+ * WRFC Agent Type Constants — WRFC Plugin (Layer 3)
  *
  * Canonical definitions for all WRFC-related agent type sets.
- * Imported by extensions and plugins layers. Do NOT define these
- * constants locally in any other file.
+ * These constants are WRFC-domain-specific and belong in L3.
+ * Do NOT define these constants locally in any other file.
  */
 
 /** Agent types that produce code and must be reviewed */

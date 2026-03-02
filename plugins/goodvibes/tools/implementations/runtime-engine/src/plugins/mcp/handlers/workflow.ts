@@ -100,6 +100,7 @@ export const handleRuntimeWorkflow = async (
         type: event as EventType,
         source: { kind: 'mcp_tool', tool_name: 'runtime_workflow' } as EventSource,
         payload: { type: event as EventType, data: context } as EventPayload,
+        priority: 0,
         metadata: { session_id: '', sequence: 0, version: 1 as const },
       });
       const instance = engine.get(workflowId);

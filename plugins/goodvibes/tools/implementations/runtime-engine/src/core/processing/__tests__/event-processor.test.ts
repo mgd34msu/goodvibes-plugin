@@ -29,16 +29,16 @@ vi.mock('../../../shared/logger.js', () => ({
 
 // ─── Factories ───────────────────────────────────────────────────────────────
 
-function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
+function makeEvent(overrides: Partial<Omit<RuntimeEvent, 'source' | 'type' | 'payload'>> & { source?: unknown; type?: string; payload?: unknown } = {}): RuntimeEvent {
   return {
     id: `evt-${Math.random().toString(36).slice(2)}`,
-    source: 'external',
-    type: 'test:event',
-    payload: {},
+    source: { kind: 'external', origin: 'test' },
+    type: 'session:started' as RuntimeEvent['type'],
+    payload: {} as RuntimeEvent['payload'],
     timestamp: Date.now(),
     priority: 10,
     ...overrides,
-  };
+  } as RuntimeEvent;
 }
 
 function makeTrigger(overrides: Partial<Trigger> = {}): Trigger {
@@ -1196,7 +1196,7 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const enqueuedChained = enqueuedCalls.find(
-        (args: any[]) => (args[0] as RuntimeEvent).type === 'chained:event',
+        (args: any[]) => (args[0] as RuntimeEvent).type as string === 'chained:event',
       );
       expect(enqueuedChained).toBeDefined();
       // Chained event should have parent_event_id set
@@ -1227,7 +1227,7 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const enqueuedChild = enqueuedCalls.find(
-        (args: any[]) => (args[0] as RuntimeEvent).type === 'child:event',
+        (args: any[]) => (args[0] as RuntimeEvent).type as string === 'child:event',
       );
       expect((enqueuedChild as any[])[0].context?.workflow_id).toBe('wf-inherit');
     });
@@ -1258,7 +1258,7 @@ describe('EventProcessor', () => {
 
       const enqueuedCalls = (queue.enqueue as ReturnType<typeof vi.fn>).mock.calls;
       const enqueuedChild = enqueuedCalls.find(
-        (args: any[]) => (args[0] as RuntimeEvent).type === 'child:own:event',
+        (args: any[]) => (args[0] as RuntimeEvent).type as string === 'child:own:event',
       );
       expect((enqueuedChild as any[])[0].context?.workflow_id).toBe('child-wf');
     });

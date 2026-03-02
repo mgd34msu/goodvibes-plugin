@@ -66,16 +66,20 @@ function buildErrorEvent(
 ): RuntimeEvent {
   return {
     id: generateEventId(),
-    source: 'internal',
+    source: { kind: 'internal' as const },
     type: 'core:handler_error',
     payload: {
-      trigger_id,
-      error_message: error.message,
-      original_event_id: original_event.id,
-      original_event_type: original_event.type,
+      type: 'core:handler_error' as const,
+      data: {
+        trigger_id,
+        error_message: error.message,
+        original_event_id: original_event.id,
+        original_event_type: original_event.type,
+      },
     },
     timestamp: Date.now(),
     priority: -1, // low priority — processed after normal events
+    metadata: { session_id: '', sequence: 0, version: 1 as const },
     context: {
       workflow_id: original_event.context?.workflow_id,
       parent_event_id: original_event.id,

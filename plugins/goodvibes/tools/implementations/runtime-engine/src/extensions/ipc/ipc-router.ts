@@ -10,7 +10,7 @@ import type { ResponseEnvelope } from '../../shared/ipc/ipc-server.js';
 import { HOLD_TTL_MS } from '../directives/directive-queue.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { EventType, EventSource, EventPayload, RuntimeEvent } from '../../shared/events.js';
-import type { TriggerRegistry } from '../triggers/trigger-registry.js';
+import type { TriggerRegistry } from '../../core/trigger-registry.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
@@ -246,7 +246,7 @@ export class IPCRouter {
     // Previously this was prefixed with 'hook:' which broke both matching paths.
     const emittedEvent: RuntimeEvent = {
       id: msg.id,
-      timestamp: msg.timestamp,
+      timestamp: new Date(msg.timestamp).getTime(),
       type: msg.hook_name as EventType,
       source: { kind: 'hook', hook_name: msg.hook_name } as EventSource,
       payload: {
@@ -258,6 +258,7 @@ export class IPCRouter {
         sequence: 0,
         version: 1,
       },
+      priority: 0,
     };
     this.eventBus.emit(emittedEvent);
     // NOTE: We intentionally do NOT call triggerRegistry.evaluate() directly here.

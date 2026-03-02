@@ -262,9 +262,9 @@ export const allSchemas = [
             priority: { type: 'number' },
             depends_on: { type: 'array', items: { type: 'string' } },
             workflow_id: { type: 'string' },
-            wrfc_phase: {
+            workflow_phase: {
               type: 'string',
-              enum: ['gather', 'plan', 'write', 'review', 'fix'],
+              description: 'Workflow phase this agent is executing (e.g. gather, plan, write, review, fix)',
             },
           },
         },

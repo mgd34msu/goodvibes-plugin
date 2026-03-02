@@ -68,7 +68,7 @@ export class AdapterRegistry {
 
   /**
    * Start all registered adapters.
-   * Adapters are started in registration order.
+   * Adapters are started in parallel.
    * If any adapter fails to start, the error is logged and remaining adapters
    * are still attempted (partial start is allowed).
    */

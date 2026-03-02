@@ -341,7 +341,7 @@ describe('RuntimeEngineServer', () => {
       new RuntimeEngineServer();
       // Capture the ListTools handler
       const listToolsCall = mockSetRequestHandler.mock.calls.find(
-        ([schema]: [string]) => schema === 'ListToolsRequestSchema'
+        (call: unknown[]) => call[0] === 'ListToolsRequestSchema'
       );
       expect(listToolsCall).toBeDefined();
       const listToolsHandler = listToolsCall![1] as () => Promise<unknown>;
@@ -356,7 +356,7 @@ describe('RuntimeEngineServer', () => {
     function getCallToolHandler() {
       new RuntimeEngineServer();
       const callToolCall = mockSetRequestHandler.mock.calls.find(
-        ([schema]: [string]) => schema === 'CallToolRequestSchema'
+        (call: unknown[]) => call[0] === 'CallToolRequestSchema'
       );
       expect(callToolCall).toBeDefined();
       return callToolCall![1] as (req: unknown) => Promise<unknown>;

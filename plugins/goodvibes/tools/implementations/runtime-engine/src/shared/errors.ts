@@ -76,7 +76,7 @@ export class StateError extends RuntimeEngineError {
  * Thrown when event queue capacity or invariant constraints are violated.
  *
  * @example
- * throw new QueueError(`EventQueue is full (max_size=${maxSize})`);
+ * throw new QueueError(`event queue is full (max_size=${maxSize})`);
  */
 export class QueueError extends RuntimeEngineError {
   constructor(message: string, cause?: unknown) {

@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createSubagentStopHandler } from '../../handlers/subagent-stop.js';
-import { DEFAULT_MIN_REVIEW_SCORE } from '../../../../shared/wrfc-constants.js';
+import { DEFAULT_MIN_REVIEW_SCORE } from '../../../../plugins/wrfc/constants.js';
 import type { HookEvent } from '../../../../extensions/events/factories.js';
 import type { EventBus } from '../../../../extensions/events/event-bus.js';
 import type { AgentWorkflowMap } from '../../../../extensions/directives/agent-workflow-map.js';

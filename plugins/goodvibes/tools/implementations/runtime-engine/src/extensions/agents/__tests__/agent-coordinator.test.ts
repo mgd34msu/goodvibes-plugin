@@ -140,21 +140,21 @@ describe('AgentCoordinator', () => {
       );
     });
 
-    it('creates a WRFC chain when workflow_id and wrfc_phase are provided', () => {
+    it('creates a workflow chain when workflow_id and workflow_phase are provided', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      const chain = coordinator.getWRFCChain('wf-1');
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
+      const chain = coordinator.getWorkflowChain('wf-1');
       expect(chain).toBeDefined();
       expect(chain!.workflow_id).toBe('wf-1');
       expect(chain!.phases).toHaveLength(1);
       expect(chain!.phases[0].name).toBe('write');
     });
 
-    it('adds agent to existing WRFC chain when workflow_id already exists', () => {
+    it('adds agent to existing workflow chain when workflow_id already exists', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      coordinator.spawn({ type: 'reviewer', task: 'review', workflow_id: 'wf-1', wrfc_phase: 'review' });
-      const chain = coordinator.getWRFCChain('wf-1');
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
+      coordinator.spawn({ type: 'reviewer', task: 'review', workflow_id: 'wf-1', workflow_phase: 'review' });
+      const chain = coordinator.getWorkflowChain('wf-1');
       expect(chain!.phases).toHaveLength(2);
     });
 
@@ -539,43 +539,43 @@ describe('AgentCoordinator', () => {
     });
   });
 
-  // ─── getWRFCChain ─────────────────────────────────────────────────────────────
+  // ─── getWorkflowChain ─────────────────────────────────────────────────────────
 
-  describe('getWRFCChain', () => {
+  describe('getWorkflowChain', () => {
     it('returns undefined for unknown workflow', () => {
       const { coordinator } = makeCoordinator();
-      expect(coordinator.getWRFCChain('unknown')).toBeUndefined();
+      expect(coordinator.getWorkflowChain('unknown')).toBeUndefined();
     });
 
     it('returns chain with initial review_iterations of 0', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      const chain = coordinator.getWRFCChain('wf-1')!;
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
+      const chain = coordinator.getWorkflowChain('wf-1')!;
       expect(chain.review_iterations).toBe(0);
     });
 
     it('sets max_review_iterations from config', () => {
       const { coordinator } = makeCoordinator({ max_review_iterations: 5 });
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      const chain = coordinator.getWRFCChain('wf-1')!;
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
+      const chain = coordinator.getWorkflowChain('wf-1')!;
       expect(chain.max_review_iterations).toBe(5);
     });
   });
 
-  // ─── advanceWRFCPhase ─────────────────────────────────────────────────────────
+  // ─── advanceWorkflowPhase ─────────────────────────────────────────────────────
 
-  describe('advanceWRFCPhase', () => {
+  describe('advanceWorkflowPhase', () => {
     it('does nothing when no chain exists for the workflow', () => {
       const { coordinator } = makeCoordinator();
       // Should not throw
-      expect(() => coordinator.advanceWRFCPhase('nonexistent', 'review')).not.toThrow();
+      expect(() => coordinator.advanceWorkflowPhase('nonexistent', 'review')).not.toThrow();
     });
 
     it('advances to the next phase', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      coordinator.advanceWRFCPhase('wf-1', 'review');
-      const chain = coordinator.getWRFCChain('wf-1')!;
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
+      coordinator.advanceWorkflowPhase('wf-1', 'review');
+      const chain = coordinator.getWorkflowChain('wf-1')!;
       const reviewPhase = chain.phases.find((p) => p.name === 'review');
       expect(reviewPhase).toBeDefined();
       expect(reviewPhase!.status).toBe('active');
@@ -583,25 +583,25 @@ describe('AgentCoordinator', () => {
 
     it('increments review_iterations when advancing to review phase', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      coordinator.advanceWRFCPhase('wf-1', 'review');
-      expect(coordinator.getWRFCChain('wf-1')!.review_iterations).toBe(1);
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
+      coordinator.advanceWorkflowPhase('wf-1', 'review');
+      expect(coordinator.getWorkflowChain('wf-1')!.review_iterations).toBe(1);
     });
 
     it('does not increment review_iterations when advancing to non-review phase', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      coordinator.advanceWRFCPhase('wf-1', 'fix');
-      expect(coordinator.getWRFCChain('wf-1')!.review_iterations).toBe(0);
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
+      coordinator.advanceWorkflowPhase('wf-1', 'fix');
+      expect(coordinator.getWorkflowChain('wf-1')!.review_iterations).toBe(0);
     });
 
-    it('emits wrfc:phase_changed event', () => {
+    it('emits workflow:phase_changed event', () => {
       const { coordinator, eventBus } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
       (eventBus.emit as ReturnType<typeof vi.fn>).mockClear();
-      coordinator.advanceWRFCPhase('wf-1', 'review');
+      coordinator.advanceWorkflowPhase('wf-1', 'review');
       const emitted = (eventBus.emit as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(emitted.type).toBe('wrfc:phase_changed');
+      expect(emitted.type).toBe('workflow:phase_changed');
     });
   });
 
@@ -615,7 +615,7 @@ describe('AgentCoordinator', () => {
       coordinator.updateStatus(id, 'completed');
       // Force completed_at to a very old date
       const agent = coordinator.getAgent(id)!;
-      (agent as { completed_at: string }).completed_at = new Date(0).toISOString();
+      (agent as { completed_at: number }).completed_at = 0;
       const pruned = coordinator.prune(0);
       expect(pruned).toBe(1);
       expect(coordinator.getAgent(id)).toBeUndefined();
@@ -627,7 +627,7 @@ describe('AgentCoordinator', () => {
       coordinator.updateStatus(id, 'running');
       coordinator.updateStatus(id, 'failed');
       const agent = coordinator.getAgent(id)!;
-      (agent as { completed_at: string }).completed_at = new Date(0).toISOString();
+      (agent as { completed_at: number }).completed_at = 0;
       const pruned = coordinator.prune(0);
       expect(pruned).toBe(1);
     });
@@ -661,7 +661,7 @@ describe('AgentCoordinator', () => {
       coordinator.updateStatus(id, 'running');
       coordinator.updateStatus(id, 'completed');
       const agent = coordinator.getAgent(id)!;
-      (agent as { completed_at: string }).completed_at = new Date(0).toISOString();
+      (agent as { completed_at: number }).completed_at = 0;
       coordinator.prune(0);
       expect(budgetTracker.removeAgent).toHaveBeenCalledWith(id);
     });
@@ -673,7 +673,7 @@ describe('AgentCoordinator', () => {
       coordinator.updateStatus(id1, 'running');
       coordinator.updateStatus(id1, 'completed');
       // Force completed_at to old date for id1
-      coordinator.getAgent(id1)!.completed_at = new Date(0).toISOString();
+      coordinator.getAgent(id1)!.completed_at = 0;
       coordinator.prune(0);
       const agent2 = coordinator.getAgent(id2)!;
       expect(agent2.depends_on).not.toContain(id1);
@@ -692,10 +692,10 @@ describe('AgentCoordinator', () => {
       expect(plan.estimated_tokens).toBe(0);
     });
 
-    it('groups agents by wrfc_phase', () => {
+    it('groups agents by workflow_phase', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write', budget: 100 });
-      coordinator.spawn({ type: 'reviewer', task: 'review', workflow_id: 'wf-1', wrfc_phase: 'review', budget: 50 });
+      coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write', budget: 100 });
+      coordinator.spawn({ type: 'reviewer', task: 'review', workflow_id: 'wf-1', workflow_phase: 'review', budget: 50 });
       const plan = coordinator.getExecutionPlan('wf-1');
       expect(plan.phases).toHaveLength(2);
       expect(plan.estimated_tokens).toBe(150);
@@ -703,8 +703,8 @@ describe('AgentCoordinator', () => {
 
     it('computes max_parallelism for independent agents', () => {
       const { coordinator } = makeCoordinator();
-      coordinator.spawn({ type: 'engineer', task: 'a', workflow_id: 'wf-1', wrfc_phase: 'write', budget: 100 });
-      coordinator.spawn({ type: 'engineer', task: 'b', workflow_id: 'wf-1', wrfc_phase: 'write', budget: 100 });
+      coordinator.spawn({ type: 'engineer', task: 'a', workflow_id: 'wf-1', workflow_phase: 'write', budget: 100 });
+      coordinator.spawn({ type: 'engineer', task: 'b', workflow_id: 'wf-1', workflow_phase: 'write', budget: 100 });
       const plan = coordinator.getExecutionPlan('wf-1');
       expect(plan.max_parallelism).toBeGreaterThanOrEqual(2);
     });
@@ -720,24 +720,24 @@ describe('AgentCoordinator', () => {
 
   // ─── WRFC phase auto-completion on agent completion ───────────────────────────
 
-  describe('WRFC phase auto-completion', () => {
-    it('marks the WRFC phase as completed when all its agents are done', () => {
+  describe('Workflow phase auto-completion', () => {
+    it('marks the workflow phase as completed when all its agents are done', () => {
       const { coordinator } = makeCoordinator();
-      const id = coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', wrfc_phase: 'write' });
+      const id = coordinator.spawn({ type: 'engineer', task: 'write', workflow_id: 'wf-1', workflow_phase: 'write' });
       coordinator.updateStatus(id, 'running');
       coordinator.updateStatus(id, 'completed');
-      const chain = coordinator.getWRFCChain('wf-1')!;
+      const chain = coordinator.getWorkflowChain('wf-1')!;
       const writePhase = chain.phases.find((p) => p.name === 'write');
       expect(writePhase!.status).toBe('completed');
     });
 
     it('does not mark phase completed when some agents are still pending', () => {
       const { coordinator } = makeCoordinator();
-      const id1 = coordinator.spawn({ type: 'engineer', task: 'write-1', workflow_id: 'wf-1', wrfc_phase: 'write' });
-      const id2 = coordinator.spawn({ type: 'engineer', task: 'write-2', workflow_id: 'wf-1', wrfc_phase: 'write' });
+      const id1 = coordinator.spawn({ type: 'engineer', task: 'write-1', workflow_id: 'wf-1', workflow_phase: 'write' });
+      const id2 = coordinator.spawn({ type: 'engineer', task: 'write-2', workflow_id: 'wf-1', workflow_phase: 'write' });
       coordinator.updateStatus(id1, 'running');
       coordinator.updateStatus(id1, 'completed');
-      const chain = coordinator.getWRFCChain('wf-1')!;
+      const chain = coordinator.getWorkflowChain('wf-1')!;
       const writePhase = chain.phases.find((p) => p.name === 'write');
       // id2 still pending
       expect(writePhase!.status).toBe('pending');

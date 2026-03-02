@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ConditionEvaluator } from '../condition-evaluator.js';
-import type { RuntimeEvent } from '../../events/types.js';
+import type { RuntimeEvent, EventTypePattern } from '../../../shared/events.js';
 import type { TriggerCondition } from '../types.js';
-import type { EventTypePattern } from '../../events/types.js';
 
 function makeEvent(type: string, data: Record<string, unknown> = {}, id = 'evt-1'): RuntimeEvent {
   return {
     id,
     type: type as RuntimeEvent['type'],
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     source: { kind: 'system' } as RuntimeEvent['source'],
     payload: {
       type: type as RuntimeEvent['payload']['type'],
       data,
     } as RuntimeEvent['payload'],
+    priority: 0,
     metadata: {
       sequence: 1,
       version: 1,
@@ -143,9 +143,10 @@ describe('ConditionEvaluator', () => {
       const event: RuntimeEvent = {
         id: 'evt-nodatafield',
         type: 'system:started' as RuntimeEvent['type'],
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         source: { kind: 'system' } as RuntimeEvent['source'],
         payload: { type: 'system:started' as RuntimeEvent['payload']['type'] } as RuntimeEvent['payload'],
+        priority: 0,
         metadata: { sequence: 1, version: 1, session_id: '' },
       };
       evaluator.recordEvent(event);

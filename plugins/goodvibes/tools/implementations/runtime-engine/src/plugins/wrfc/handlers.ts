@@ -24,7 +24,7 @@ import {
   DEFAULT_MIN_REVIEW_SCORE,
   EARLY_WORKFLOW_STATES,
   matchesAgentType,
-} from '../../shared/wrfc-constants.js';
+} from './constants.js';
 import type { RuntimeEvent } from '../../shared/events.js';
 import { createEvent } from '../../shared/events.js';
 import type { HandlerResult, StateUpdate, Action, StateStoreInterface, Trigger } from '../../core/types.js';
@@ -99,9 +99,9 @@ function storeGet<T>(store: StateStoreInterface, key: string, defaultVal: T): T 
  */
 function makeChainEvent(type: string, wid: string, parentEvent: RuntimeEvent): RuntimeEvent {
   return createEvent({
-    source: 'internal',
-    type,
-    payload: { workflow_id: wid },
+    source: { kind: 'internal' },
+    type: type as import('../../shared/events.js').EventType,
+    payload: { type: type as import('../../shared/events.js').EventType, data: { workflow_id: wid } } as import('../../shared/events.js').EventPayload,
     priority: 70,
     context: {
       workflow_id: wid,
@@ -365,14 +365,14 @@ export function handleAgentCompleted(
       });
       // Emit error event and escalate — returning {} would stall the workflow permanently
       const errorEvent = createEvent({
-        source: 'internal',
+        source: { kind: 'internal' },
         type: 'wrfc:review_parse_failed',
-        payload: {
+        payload: { type: 'wrfc:review_parse_failed', data: {
           workflow_id: wid,
           agent_id: agentId,
           output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_LENGTH) ?? null,
           attempt_count: fixAttempts,
-        },
+        } },
         priority: 80,
         context: { workflow_id: wid },
       });

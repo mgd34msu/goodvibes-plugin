@@ -56,6 +56,8 @@ export interface SchedulerAccessor {
  * Used by TickDriver to process time-based events without importing L3 directly.
  */
 export interface TimeSourceAdapter {
+  /** Discriminator for the adapter kind. */
+  readonly kind: string;
   /** Process one time tick — emit heartbeat and/or scheduled events. */
   onTick(): TimeTickResult;
   /** Returns a restricted view of the EventScheduler. */
@@ -69,6 +71,10 @@ export interface TimeSourceAdapter {
  * Used by TickDriver to scan for external file-drop events without importing L3 directly.
  */
 export interface ExternalSourceAdapter {
+  /** Discriminator for the adapter kind. */
+  readonly kind: string;
+  /** Optional initialization step (e.g., create directories before first tick). */
+  initialize?(): Promise<void>;
   /** Scan for and ingest external events on this tick. */
   onTick(): Promise<ExternalTickResult>;
 }

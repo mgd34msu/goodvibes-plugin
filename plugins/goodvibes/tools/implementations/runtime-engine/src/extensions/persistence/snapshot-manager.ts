@@ -12,7 +12,7 @@
 import type { StateStore } from './types.js';
 import { Timer } from '../../core/observability/timer.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
-import type { TriggerRegistry } from '../triggers/trigger-registry.js';
+import type { TriggerRegistry } from '../../core/trigger-registry.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 import type { WorkflowInstance } from '../workflow/types.js';

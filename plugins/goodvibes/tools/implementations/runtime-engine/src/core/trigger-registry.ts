@@ -14,8 +14,8 @@
  *  - L2 TriggerActionExecutor: template resolution + action dispatch
  *  - L1 TriggerRegistryInterface: match(event, store) + recordFire() shims
  *
- * Phase 2B will migrate extensions/triggers/trigger-registry.ts to re-export
- * from here and become a thin compatibility shim.
+ * The extensions/triggers/trigger-registry.ts compatibility shim was removed
+ * in Phase 6. All consumers should import from core/trigger-registry.js directly.
  */
 
 import { createLogger } from '../shared/logger.js';
@@ -37,6 +37,7 @@ import type {
   Trigger,
   EventMatcher,
   StateStoreInterface,
+  TriggerRegistryInterface,
 } from './types.js';
 
 // Re-export L2 types so consumers can import from core
@@ -78,7 +79,7 @@ const log = createLogger('trigger-registry');
  * 3. Register built-in and user-defined triggers via `register`.
  * 4. Call `evaluate(event)` for every event that flows through the engine.
  */
-export class TriggerRegistry {
+export class TriggerRegistry implements TriggerRegistryInterface {
   /** All registered trigger definitions, keyed by trigger ID. */
   private readonly triggers: Map<string, TriggerDefinition> = new Map();
   /** Stateful condition evaluator with recent-event O(1) ring buffer. */
@@ -89,6 +90,14 @@ export class TriggerRegistry {
   private readonly actionHandlers: Map<string, TriggerActionHandler> = new Map();
   /** Resolved triggers configuration. */
   private readonly config: TriggersConfig;
+  /**
+   * Cached sorted trigger list for evaluate(). Invalidated on any structural
+   * mutation (register, unregister, replace, setEnabled) so we only re-sort
+   * when the set or priority order has actually changed.
+   */
+  private sortedTriggerCache: TriggerDefinition[] | null = null;
+  /** Guards against repeated _store warning spam — log once per instance. */
+  private storeWarningLogged = false;
 
   /**
    * @param config - Triggers section of the resolved {@link RuntimeConfig}.
@@ -131,12 +140,17 @@ export class TriggerRegistry {
     //
     // Callers migrating from L1 should express state-store conditions as L2
     // EventCondition or PatternCondition rather than relying on `_store`.
+    if (!this.storeWarningLogged) {
+      this.storeWarningLogged = true;
+      log.warn(
+        'State-store condition evaluation not supported in unified registry — L1 Condition[] guards ignored',
+      );
+    }
     const now = Date.now();
     const matched: Trigger[] = [];
 
     for (const trigger of this.triggers.values()) {
-      if (!trigger.enabled) continue;
-      if (!this.passesGuards(trigger, now)) continue;
+      if (this.passesGuards(trigger, now) !== true) continue;
 
       // Use the condition evaluator synchronously for simple event conditions;
       // threshold/sequence require event history so we record first.
@@ -229,6 +243,7 @@ export class TriggerRegistry {
       );
     }
     this.triggers.set(trigger.id, trigger);
+    this.sortedTriggerCache = null;
     log.debug('Trigger registered', {
       id: trigger.id,
       name: trigger.name,
@@ -257,6 +272,7 @@ export class TriggerRegistry {
     trigger.fires_count = existing.fires_count;
     trigger.last_fired = existing.last_fired ?? trigger.last_fired;
     this.triggers.set(trigger.id, trigger);
+    this.sortedTriggerCache = null;
     log.info('Trigger replaced', { trigger_id: trigger.id });
   }
 
@@ -269,6 +285,7 @@ export class TriggerRegistry {
   unregister(triggerId: string): boolean {
     const existed = this.triggers.delete(triggerId);
     if (existed) {
+      this.sortedTriggerCache = null;
       log.debug('Trigger unregistered', { id: triggerId });
     }
     return existed;
@@ -287,6 +304,7 @@ export class TriggerRegistry {
       return;
     }
     trigger.enabled = enabled;
+    this.sortedTriggerCache = null;
     log.debug('Trigger enabled state updated', { id: triggerId, enabled });
   }
 
@@ -308,10 +326,14 @@ export class TriggerRegistry {
 
     const results: TriggerResult[] = [];
 
-    // Sort enabled triggers by priority (lower number = higher priority)
-    const sorted = [...this.triggers.values()]
-      .filter((t) => t.enabled)
-      .sort((a, b) => a.priority - b.priority);
+    // Use cached sorted list; only rebuild when the trigger set has changed.
+    // sortedTriggerCache is invalidated on register/unregister/replace/setEnabled.
+    if (this.sortedTriggerCache === null) {
+      this.sortedTriggerCache = [...this.triggers.values()]
+        .filter((t) => t.enabled)
+        .sort((a, b) => a.priority - b.priority);
+    }
+    const sorted = this.sortedTriggerCache;
 
     const settled = await Promise.allSettled(
       sorted.map((trigger) => this.evaluateTrigger(trigger, event)),
@@ -447,52 +469,52 @@ export class TriggerRegistry {
   // ─── Private Helpers ──────────────────────────────────────────────────────
 
   /**
+   * Returns `true` if the trigger passes all guard checks, or a string
+   * discriminant identifying which guard blocked it.
+   *
+   * Extracted from both `match()` and `evaluateTrigger()` to eliminate the
+   * duplicate guard logic that previously re-checked the same conditions to
+   * determine `skippedReason`. Guards are stateless checks against trigger
+   * fields only — no event context needed.
+   *
+   * @param trigger - The trigger to check.
+   * @param now - Current epoch ms (pass Date.now() from the caller to avoid
+   *   multiple clock reads per evaluation batch).
+   * @returns `true` when all guards pass, or `'cooldown'` / `'max_fires'` /
+   *   `'disabled'` to identify the first failing guard.
+   */
+  private passesGuards(trigger: TriggerDefinition, now: number): true | 'cooldown' | 'max_fires' | 'disabled' {
+    if (!trigger.enabled) return 'disabled';
+    // Guard: cooldown
+    if (trigger.last_fired !== undefined && trigger.cooldown_ms !== undefined) {
+      if (now - trigger.last_fired < trigger.cooldown_ms) return 'cooldown';
+    }
+    // Guard: max_fires (use config default if trigger has no max set)
+    const effectiveMax = trigger.max_fires ?? this.config.max_fires_per_session;
+    if (trigger.fires_count >= effectiveMax) return 'max_fires';
+    return true;
+  }
+
+  /**
    * Evaluates a single trigger against an event, applying guards and
    * recording fires.
    *
    * Re-entrant safe: all mutations to trigger state happen AFTER the
    * condition/action results are known (no Map mutations during evaluation).
    */
-  /**
-   * Returns true if the trigger passes all guard checks (cooldown + max_fires).
-   *
-   * Extracted from both `match()` and `evaluateTrigger()` to eliminate the
-   * duplicate guard logic. Guards are stateless checks against trigger fields
-   * only — no event context needed.
-   *
-   * @param trigger - The trigger to check.
-   * @param now - Current epoch ms (pass Date.now() from the caller to avoid
-   *   multiple clock reads per evaluation batch).
-   */
-  private passesGuards(trigger: TriggerDefinition, now: number): boolean {
-    // Guard: cooldown
-    if (trigger.last_fired !== undefined && trigger.cooldown_ms !== undefined) {
-      if (now - trigger.last_fired < trigger.cooldown_ms) return false;
-    }
-    // Guard: max_fires (use config default if trigger has no max set)
-    const effectiveMax = trigger.max_fires ?? this.config.max_fires_per_session;
-    if (trigger.fires_count >= effectiveMax) return false;
-    return true;
-  }
-
   private async evaluateTrigger(
     trigger: TriggerDefinition,
     event: RuntimeEvent,
   ): Promise<TriggerResult> {
     const now = Date.now();
 
-    if (!this.passesGuards(trigger, now)) {
-      const skippedReason =
-        trigger.last_fired !== undefined &&
-        trigger.cooldown_ms !== undefined &&
-        now - trigger.last_fired < trigger.cooldown_ms
-          ? 'cooldown'
-          : 'max_fires';
+    const guardResult = this.passesGuards(trigger, now);
+    if (guardResult !== true) {
       return {
         trigger_id: trigger.id,
         trigger_name: trigger.name,
         fired: false,
-        skipped_reason: skippedReason,
+        skipped_reason: guardResult,
       };
     }
 

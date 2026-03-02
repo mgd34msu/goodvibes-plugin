@@ -11,7 +11,7 @@ import type { EventBus } from '../../../extensions/events/event-bus.js';
 import type { AgentWorkflowMap } from '../../../extensions/directives/agent-workflow-map.js';
 import { createLogger } from '../../../shared/logger.js';
 import { safeJsonParse } from '../../../shared/utils.js';
-import { REVIEWER_AGENT_TYPES, matchesAgentType } from '../../../shared/wrfc-constants.js';
+import { REVIEWER_AGENT_TYPES, matchesAgentType } from '../../wrfc/constants.js';
 
 const logger = createLogger('handler:subagent-stop');
 
@@ -57,7 +57,7 @@ export function createSubagentStopHandler(
       try {
         deps.eventBus.emit({
           id: `evt_subagent_stop_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
           type: 'agent:completed',
           source: { kind: 'hook', hook_name: 'subagent_stop' },
           payload: {

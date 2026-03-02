@@ -43,7 +43,7 @@ export function getWRFCTriggerDefinitions(): PluginTriggerDefinition[] {
       name: 'wrfc_review_completed',
       description: 'Quality gate evaluation when a review completes (event-driven path)',
       event_type: 'wrfc:review_completed',
-      conditions: [{ source: 'internal' }],
+      conditions: [{ source: ['internal'] }],
       actions: [],
       enabled: true,
       max_fires: 500,

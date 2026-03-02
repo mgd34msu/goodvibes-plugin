@@ -24,16 +24,16 @@ vi.mock('../../state/file-io.js', () => ({
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
-function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
+function makeEvent(overrides: Partial<Omit<RuntimeEvent, 'source' | 'type' | 'payload'>> & { source?: unknown; type?: string; payload?: unknown } = {}): RuntimeEvent {
   return {
     id: `evt-${Math.random().toString(36).slice(2, 9)}`,
-    source: 'external',
-    type: 'test:failed',
-    payload: {},
+    source: { kind: 'external', origin: 'test' },
+    type: 'session:started' as RuntimeEvent['type'],
+    payload: {} as RuntimeEvent['payload'],
     timestamp: Date.now(),
     priority: 5,
     ...overrides,
-  };
+  } as RuntimeEvent;
 }
 
 function makeEntry(overrides: Partial<DeadLetterEntry> = {}): DeadLetterEntry {
@@ -203,7 +203,7 @@ describe('DeadLetterQueue', () => {
       dlq.add(makeEntry({ event: makeEvent({ type: 'other:event' }) }));
       const results = dlq.getByType('auth:failed');
       expect(results).toHaveLength(2);
-      expect(results.every((e) => e.event.type === 'auth:failed')).toBe(true);
+      expect(results.every((e) => e.event.type as string === 'auth:failed')).toBe(true);
     });
 
     it('returns empty array when no entries match the type', () => {

@@ -179,6 +179,17 @@ export class EventQueue implements EventQueueInterface {
   }
 
   /**
+   * Returns summary stats about the queue's current state.
+   */
+  getStats(): { pending: number; max_depth: number; dedup_cache_size: number } {
+    return {
+      pending: this._size,
+      max_depth: this.maxDepth,
+      dedup_cache_size: this.dedupCache.size,
+    };
+  }
+
+  /**
    * Check whether an event is a duplicate.
    * If not seen before, records the event ID and returns false.
    * If already seen within the TTL window, returns true.

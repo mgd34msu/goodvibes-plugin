@@ -115,7 +115,7 @@ export const handleRuntimeAgents = async (
         priority: spawnOpts.priority as number | undefined,
         depends_on: spawnOpts.depends_on as string[] | undefined,
         workflow_id: assertOptionalString(spawnOpts.workflow_id, 'spawn.workflow_id'),
-        wrfc_phase: spawnOpts.wrfc_phase as CoordinatedSpawnOptions['wrfc_phase'],
+        workflow_phase: spawnOpts.workflow_phase as CoordinatedSpawnOptions['workflow_phase'],
       };
       const agentId = coordinator.spawn(options);
       const agent = coordinator.getAgent(agentId);

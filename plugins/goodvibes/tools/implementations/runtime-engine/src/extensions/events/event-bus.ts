@@ -347,13 +347,14 @@ export class EventBus {
    * @returns The fully-formed RuntimeEvent as stored in history.
    */
   emit(
-    event: Omit<RuntimeEvent, 'metadata'> & { metadata?: Partial<RuntimeEvent['metadata']> },
+    event: Omit<RuntimeEvent, 'metadata' | 'priority'> & { priority?: number; metadata?: Partial<RuntimeEvent['metadata']> },
   ): RuntimeEvent {
     const seq = ++this.sequence;
 
     const full: RuntimeEvent = {
       id: event.id ?? generateEventId(),
       timestamp: event.timestamp ?? timestamp(),
+      priority: event.priority ?? 0,
       source: event.source,
       type: event.type,
       payload: event.payload,

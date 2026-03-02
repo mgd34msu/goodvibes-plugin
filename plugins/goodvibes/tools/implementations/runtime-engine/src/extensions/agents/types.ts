@@ -2,7 +2,7 @@
  * Agent Coordinator Type Definitions
  *
  * Types for workflow-aware agent management. CoordinatedAgent extends the
- * core AgentPool's PoolAgent concept with workflow context, WRFC phase
+ * core AgentPool's PoolAgent concept with workflow context, workflow phase
  * tracking, dependency graphs, and file modification tracking.
  */
 
@@ -51,8 +51,8 @@ export interface CoordinatedAgent {
   // ── Coordinator additions ────────────────────────────────────────────────
   /** Workflow this agent belongs to, if any. */
   workflow_id?: string;
-  /** WRFC phase this agent is executing. */
-  wrfc_phase?: 'gather' | 'plan' | 'write' | 'review' | 'fix';
+  /** Workflow phase this agent is executing (generic; L3 plugins may constrain further). */
+  workflow_phase?: string;
   /** Agent IDs that must complete before this agent can start. */
   depends_on: string[];
   /** Agent IDs that are waiting on this agent to complete. */
@@ -61,10 +61,10 @@ export interface CoordinatedAgent {
   files_modified: string[];
   /** Total number of tool calls made by this agent. */
   tools_called: number;
-  /** ISO-8601 timestamp when the agent started running. */
-  started_at?: string;
+  /** Epoch ms timestamp when the agent started running. */
+  started_at?: number;
   /** ISO-8601 timestamp when the agent completed or failed. */
-  completed_at?: string;
+  completed_at?: number;
   /** Wall-clock duration in ms from start to completion. */
   duration_ms?: number;
 }
@@ -113,6 +113,6 @@ export interface CoordinatedSpawnOptions {
   depends_on?: string[];
   /** Workflow this agent belongs to. */
   workflow_id?: string;
-  /** WRFC phase this agent is executing. */
-  wrfc_phase?: CoordinatedAgent['wrfc_phase'];
+  /** Workflow phase this agent is executing. */
+  workflow_phase?: string;
 }
