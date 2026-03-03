@@ -325,7 +325,12 @@ export class RuntimeClient {
           } catch { /* ignore */ }
         }
       } catch { /* ignore */ }
-    } catch { /* ignore — best-effort only */ }
+    } catch {
+      // Best-effort cleanup — log to stderr only in debug mode
+      if (process.env['GOODVIBES_DEBUG']) {
+        console.error('[RuntimeClient] tryCleanStaleSocket failed silently');
+      }
+    }
   }
 
   /**
@@ -341,7 +346,8 @@ export class RuntimeClient {
     message: IPCMessage,
     timeoutMs: number
   ): Promise<IPCResponse | null> {
-    const socketPath = this._socketPath!
+    if (!this._socketPath) return Promise.resolve(null);
+    const socketPath = this._socketPath;
 
     return new Promise<IPCResponse | null>((resolve) => {
       let resolved = false;

@@ -83,9 +83,11 @@ export function cleanStalePointerFiles(stateDir: string, log: Logger): void {
       }
 
       // Delete the actual socket file.
+      let socketCleaned = false;
       if (socketFilePath) {
         try {
           unlinkSync(socketFilePath);
+          socketCleaned = true;
         } catch (err: unknown) {
           if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
             log.warn('Could not remove stale socket file', {
@@ -108,7 +110,7 @@ export function cleanStalePointerFiles(stateDir: string, log: Logger): void {
         }
       }
 
-      log.info('Cleaned stale socket pointer', { pid, pointer: pointerPath });
+      log.info('Cleaned stale socket pointer', { pid, pointer: pointerPath, socketCleaned });
     }
   } catch (err: unknown) {
     log.warn('Stale pointer cleanup failed', { err: toErrorMessage(err) });

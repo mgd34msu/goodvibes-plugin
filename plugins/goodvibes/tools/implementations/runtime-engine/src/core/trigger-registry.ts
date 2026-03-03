@@ -22,6 +22,9 @@ import { createLogger } from '../shared/logger.js';
 import { QueueError } from '../shared/errors.js';
 import type { RuntimeEvent } from '../shared/events.js';
 import type { TriggersConfig } from '../shared/config.js';
+// Architecture note: type-only imports from L2 — these are compile-time only and create
+// no runtime dependency. TriggerDefinition is the canonical L2 trigger shape that extends
+// TriggerDefinitionBase (L1). This import is intentional per the pragmatic type-import exception.
 import type {
   TriggerDefinition,
   TriggerResult,

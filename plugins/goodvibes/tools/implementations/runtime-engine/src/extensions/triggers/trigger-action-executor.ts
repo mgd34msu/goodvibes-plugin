@@ -10,7 +10,7 @@
 import { generateEventId, timestamp, toErrorMessage } from '../../shared/utils.js';
 import { createLogger } from '../../shared/logger.js';
 import type { RuntimeEvent, EventType } from '../../shared/events.js';
-import type { EventBus } from '../events/event-bus.js';
+import type { EventEmitter } from '../../core/types.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggersConfig } from '../../shared/config.js';
@@ -139,8 +139,8 @@ function resolveValue(value: unknown, event: RuntimeEvent): unknown {
 export class TriggerActionExecutor {
   /** Named handler registry. */
   private readonly handlers: Map<string, TriggerActionHandler> = new Map();
-  /** Event bus for emit_event actions. */
-  private readonly eventBus: EventBus | null;
+  /** Event emitter for emit_event actions. Only .emit() is called — EventEmitter (L1) suffices over EventBus (L2). */
+  private readonly eventBus: EventEmitter | null;
   /** Directive queue for spawn_agent and workflow actions. */
   private readonly directiveQueue: DirectiveQueue | null;
   /** Workflow engine for start_workflow and send_workflow_event actions. */
@@ -158,7 +158,7 @@ export class TriggerActionExecutor {
    * @param contextProvider - Optional provider for workflow context defaults.
    */
   constructor(
-    eventBus: EventBus | null = null,
+    eventBus: EventEmitter | null = null,
     directiveQueue: DirectiveQueue | null = null,
     workflowEngine: WorkflowEngine | null = null,
     config: TriggersConfig | null = null,

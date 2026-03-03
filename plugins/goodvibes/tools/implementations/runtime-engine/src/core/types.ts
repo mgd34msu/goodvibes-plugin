@@ -420,54 +420,6 @@ export interface TriggerActionExecutorInterface {
   registerHandler(name: string, handler: TriggerActionHandler): void;
 }
 
-// ─── Type Guards ──────────────────────────────────────────────────────────────
-
-/**
- * Narrows an unknown value to RuntimeEvent.
- */
-function isRuntimeEvent(value: unknown): value is RuntimeEvent {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v['id'] === 'string' &&
-    typeof v['source'] === 'object' && v['source'] !== null &&
-    typeof (v['source'] as Record<string, unknown>)['kind'] === 'string' &&
-    typeof v['type'] === 'string' &&
-    typeof v['timestamp'] === 'number' &&
-    typeof v['priority'] === 'number' &&
-    'payload' in v
-  );
-}
-
-/**
- * Narrows an unknown value to Trigger.
- */
-function isTrigger(value: unknown): value is Trigger {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v['id'] === 'string' &&
-    typeof v['event_match'] === 'object' &&
-    v['event_match'] !== null &&
-    Array.isArray(v['actions']) &&
-    typeof v['enabled'] === 'boolean'
-  );
-}
-
-/**
- * Narrows an unknown value to EventContext.
- */
-function isEventContext(value: unknown): value is EventContext {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    (v['workflow_id'] === undefined || typeof v['workflow_id'] === 'string') &&
-    (v['agent_id'] === undefined || typeof v['agent_id'] === 'string') &&
-    (v['parent_event_id'] === undefined || typeof v['parent_event_id'] === 'string') &&
-    (v['chain_depth'] === undefined || typeof v['chain_depth'] === 'number')
-  );
-}
-
 // ─── Factory Helpers ──────────────────────────────────────────────────────────
 
 /**

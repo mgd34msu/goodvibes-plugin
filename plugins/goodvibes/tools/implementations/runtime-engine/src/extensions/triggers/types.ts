@@ -196,7 +196,7 @@ export interface TriggerResult {
   skipped_reason?: 'cooldown' | 'max_fires' | 'disabled' | 'guard_failed';
 }
 
-// TriggerActionHandler is canonical in core/types.ts (TriggerActionExecutorInterface depends on it)
+/** Re-exported from core/types.ts where it is canonically defined */
 export type { TriggerActionHandler } from '../../core/types.js';
 
 /**

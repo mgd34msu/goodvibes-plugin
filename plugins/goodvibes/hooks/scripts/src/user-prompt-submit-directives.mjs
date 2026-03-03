@@ -289,6 +289,7 @@ try {
       }
     }
     respond(continueResponse()); // process.exit(0) — no code executes after this
+    return;
   }
 
   const projectDir = hookInput?.cwd || null;
@@ -300,6 +301,7 @@ try {
     console.error('[UPS-Directives] runtime engine not available (socket not found), skipping directive drain');
     console.error('[UPS-Directives] hint: start the runtime engine or check GOODVIBES_RUNTIME_SOCKET env var');
     respond(continueResponse()); // process.exit(0) — no code executes after this
+    return;
   }
 
   console.error('[UPS-Directives] runtime engine socket found:', socketPath);
@@ -368,6 +370,7 @@ try {
       }
     }
     respond(continueResponse(gvTag)); // process.exit(0) — no code executes after this
+    return;
   } else {
     console.error('[UPS-Directives] no directives found after all retries, continuing without injection');
     respond(continueResponse()); // process.exit(0) — no code executes after this

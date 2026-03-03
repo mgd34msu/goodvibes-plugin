@@ -239,6 +239,8 @@ export class RuntimeEngine {
           max_fires: definition.max_fires,
           priority: 10,
         });
+        // Note: createWRFCTrigger returns PluginTriggerDefinition (L3 type) which is structurally
+        // compatible with TriggerDefinitionBase but TypeScript can't verify this without the cast.
         coreTriggerRegistry.register(trigger as unknown as TriggerDefinitionBase);
         const registeredTrigger = coreTriggerRegistry.get(id);
         coreEventProcessor.registerHandler(id, async (event) => {
