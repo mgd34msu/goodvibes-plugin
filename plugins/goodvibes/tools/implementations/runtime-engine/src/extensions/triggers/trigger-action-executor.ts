@@ -232,6 +232,7 @@ export class TriggerActionExecutor {
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
+      priority: 0,
       type: action.event_type as EventType,
       source: { kind: 'trigger', trigger_id: event.id },
       payload: {
@@ -241,7 +242,7 @@ export class TriggerActionExecutor {
       metadata: {
         causation_id: event.id,
         correlation_id: event.metadata?.correlation_id,
-        session_id: event.metadata?.session_id,
+        session_id: event.metadata?.session_id ?? '',
         sequence: 0, // Will be overwritten by EventBus
         version: 1,
       },

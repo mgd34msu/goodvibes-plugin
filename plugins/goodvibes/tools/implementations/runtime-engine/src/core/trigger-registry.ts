@@ -1,35 +1,25 @@
 /**
  * Unified Trigger Registry — Layer 1 Core
  *
- * Merges L1 (core/types.ts Trigger + Condition + EventMatcher) and
- * L2 (extensions/triggers) capabilities into a single canonical registry.
+ * Canonical trigger registry that implements both the full-featured L1 TriggerDefinition
+ * lifecycle (priority, cooldown, max_fires) and the L1 TriggerRegistryInterface
+ * (match + recordFire) for compatibility with core layer consumers.
  *
  * Capabilities:
- *  - L2 TriggerDefinition with priority, cooldown, max_fires lifecycle
- *  - L2 TriggerCondition union: EventCondition, CompositeCondition,
- *    ThresholdCondition, PatternCondition (sequence)
- *  - L2 TriggerAction union: emit_event, spawn_agent, invoke_handler,
- *    start_workflow, send_workflow_event, parallel, sequence
- *  - L2 ConditionEvaluator: O(1) ring-buffer for threshold/sequence evaluation
- *  - L2 TriggerActionExecutor: template resolution + action dispatch
+ *  - TriggerDefinition with priority, cooldown, max_fires lifecycle
+ *  - Condition evaluation via ConditionEvaluatorInterface (O(1) ring-buffer)
+ *  - Action execution via TriggerActionExecutorInterface (template resolution + dispatch)
  *  - L1 TriggerRegistryInterface: match(event, store) + recordFire() shims
  *
  * The extensions/triggers/trigger-registry.ts compatibility shim was removed
  * in Phase 6. All consumers should import from core/trigger-registry.js directly.
+ * All types are sourced from core/types.ts — zero L2 imports.
  */
 
 import { createLogger } from '../shared/logger.js';
 import { QueueError } from '../shared/errors.js';
 import type { RuntimeEvent } from '../shared/events.js';
 import type { TriggersConfig } from '../shared/config.js';
-// Architecture note: type-only imports from L2 — these are compile-time only and create
-// no runtime dependency. TriggerDefinition is the canonical L2 trigger shape that extends
-// TriggerDefinitionBase (L1). This import is intentional per the pragmatic type-import exception.
-import type {
-  TriggerDefinition,
-  TriggerResult,
-  TriggerActionHandler,
-} from '../extensions/triggers/types.js';
 import type {
   Trigger,
   EventMatcher,
@@ -37,6 +27,9 @@ import type {
   TriggerRegistryInterface,
   ConditionEvaluatorInterface,
   TriggerActionExecutorInterface,
+  TriggerDefinition,
+  TriggerResult,
+  TriggerActionHandler,
 } from './types.js';
 
 const log = createLogger('trigger-registry');
@@ -224,8 +217,12 @@ export class TriggerRegistry implements TriggerRegistryInterface {
     // does not explicitly provide a value. Using 'in' allows callers to reset
     // fires_count to 0 or set a new last_fired by explicitly providing the
     // field; omitting the field preserves the running counter.
-    if (!('fires_count' in trigger)) trigger.fires_count = existing.fires_count;
-    if (!('last_fired' in trigger)) trigger.last_fired = existing.last_fired;
+    //
+    // Cast to Partial to avoid TypeScript narrowing `trigger` to `never` when
+    // checking for `fires_count` (which is required in TriggerDefinition).
+    const partial = trigger as Partial<TriggerDefinition>;
+    if (!('fires_count' in partial)) trigger.fires_count = existing.fires_count;
+    if (!('last_fired' in partial)) trigger.last_fired = existing.last_fired;
     this.triggers.set(trigger.id, trigger);
     this.sortedTriggerCache = null;
     log.info('Trigger replaced', { trigger_id: trigger.id });
@@ -544,7 +541,8 @@ export class TriggerRegistry implements TriggerRegistryInterface {
    * For all others: returns a wildcard matcher (any event).
    */
   private toEventMatcher(trigger: TriggerDefinition): EventMatcher {
-    const cond = trigger.condition;
+    // trigger.condition is typed as unknown in L1 — narrow to structural shape before accessing fields.
+    const cond = trigger.condition as { type?: string; event_type?: unknown };
     if (cond.type === 'event') {
       const pattern = cond.event_type;
       // Convert EventTypePattern ('*', 'ns:*', or exact) to L1 EventMatcher
@@ -555,7 +553,9 @@ export class TriggerRegistry implements TriggerRegistryInterface {
         const prefix = pattern.slice(0, -1);
         return { type: new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) };
       }
-      return { type: pattern };
+      if (typeof pattern === 'string') {
+        return { type: pattern };
+      }
     }
     // Non-event conditions (composite, threshold, sequence) — wildcard
     return { type: /.*/ };

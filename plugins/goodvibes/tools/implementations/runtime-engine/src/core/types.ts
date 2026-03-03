@@ -13,6 +13,9 @@
 
 import type { RuntimeEvent, EventSource, EventContext } from '../shared/events.js';
 
+// Re-export shared event types for consumers that import from core/types.ts
+export type { RuntimeEvent, EventSource, EventContext } from '../shared/events.js';
+
 
 // ─── Event Matcher ────────────────────────────────────────────────────────────
 
@@ -418,6 +421,49 @@ export interface ConditionEvaluatorInterface {
 export interface TriggerActionExecutorInterface {
   execute(action: unknown, event: RuntimeEvent): Promise<TriggerActionResult>;
   registerHandler(name: string, handler: TriggerActionHandler): void;
+}
+
+// ─── Trigger Definition (L1) ─────────────────────────────────────────────────
+
+/**
+ * A complete trigger definition stored in the registry.
+ *
+ * This is the canonical L1 trigger shape used by TriggerRegistry. It extends
+ * TriggerDefinitionBase by requiring `description` and `fires_count`, and keeps
+ * `condition` and `action` as `unknown` so the core layer remains decoupled from
+ * the L2 TriggerCondition/TriggerAction union types.
+ *
+ * The L2 TriggerDefinition (extensions/triggers/types.ts) extends this interface
+ * with typed `condition: TriggerCondition` and `action: TriggerAction`.
+ */
+export interface TriggerDefinition extends TriggerDefinitionBase {
+  /** Description of what this trigger does (required in the concrete definition). */
+  description: string;
+  /** Number of times this trigger has fired in the current session (required). */
+  fires_count: number;
+}
+
+// ─── Trigger Result (L1) ──────────────────────────────────────────────────────
+
+/**
+ * The outcome of evaluating a single trigger against an event.
+ *
+ * Produced by TriggerRegistry.evaluate() for every trigger checked.
+ */
+export interface TriggerResult {
+  /** ID of the evaluated trigger. */
+  trigger_id: string;
+  /** Name of the evaluated trigger. */
+  trigger_name: string;
+  /** Whether the trigger fired (condition met and action executed). */
+  fired: boolean;
+  /** Result of the action execution, present if fired is true. */
+  action_result?: {
+    success: boolean;
+    error?: string;
+  };
+  /** Why the trigger was skipped, if it was not fired. */
+  skipped_reason?: 'cooldown' | 'max_fires' | 'disabled' | 'guard_failed';
 }
 
 // ─── Factory Helpers ──────────────────────────────────────────────────────────

@@ -95,6 +95,7 @@ export class ExecutorModeManager {
       this.eventBus.emit({
         id: generateEventId(),
         timestamp: timestamp(),
+        priority: 0,
         type: 'executor:mode_set',
         source: { kind: 'system' },
         payload: {
@@ -105,6 +106,7 @@ export class ExecutorModeManager {
             detection_method: 'explicit',
           },
         },
+        metadata: { session_id: '', sequence: 0, version: 1 },
       });
     }
   }

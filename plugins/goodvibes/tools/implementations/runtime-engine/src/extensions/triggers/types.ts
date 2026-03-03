@@ -6,22 +6,22 @@
  */
 
 import type { EventType, EventTypePattern } from '../../shared/events.js';
-import type { TriggerDefinitionBase } from '../../core/types.js';
+import type { TriggerDefinition as CoreTriggerDefinition } from '../../core/types.js';
 
 // ─── Trigger Definition ────────────────────────────────────────────────────────
 
 /**
  * A complete trigger definition stored in the registry.
+ *
+ * Extends the L1 TriggerDefinition (core/types.ts) with typed condition and action
+ * fields. The L1 base keeps condition/action as unknown; this L2 interface narrows
+ * them to the concrete TriggerCondition and TriggerAction union types.
  */
-export interface TriggerDefinition extends TriggerDefinitionBase {
-  /** Description of what this trigger does (required in L2, optional in base). */
-  description: string;
+export interface TriggerDefinition extends CoreTriggerDefinition {
   /** The condition that must be true for this trigger to fire. */
   condition: TriggerCondition;
   /** The action to execute when the condition is met. */
   action: TriggerAction;
-  /** Number of times this trigger has fired in the current session. */
-  fires_count: number;
 }
 
 // ─── Condition Types ───────────────────────────────────────────────────────────
@@ -177,27 +177,8 @@ export interface CompositeAction {
 
 // ─── Result Types ──────────────────────────────────────────────────────────────
 
-/**
- * The outcome of evaluating a single trigger against an event.
- */
-export interface TriggerResult {
-  /** ID of the evaluated trigger. */
-  trigger_id: string;
-  /** Name of the evaluated trigger. */
-  trigger_name: string;
-  /** Whether the trigger fired (condition met and action executed). */
-  fired: boolean;
-  /** Result of the action execution, present if fired is true. */
-  action_result?: {
-    success: boolean;
-    error?: string;
-  };
-  /** Why the trigger was skipped, if it was not fired. */
-  skipped_reason?: 'cooldown' | 'max_fires' | 'disabled' | 'guard_failed';
-}
-
-/** Re-exported from core/types.ts where it is canonically defined */
-export type { TriggerActionHandler } from '../../core/types.js';
+/** Re-exported from core/types.ts where both are now canonically defined */
+export type { TriggerResult, TriggerActionHandler } from '../../core/types.js';
 
 /**
  * Generic provider for workflow context defaults.

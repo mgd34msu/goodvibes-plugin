@@ -58,19 +58,57 @@ import type { TriggerDefinitionBase, Trigger } from './core/types.js';
 const logger = createLogger('bootstrap');
 
 /**
- * Adapts a L1 Trigger to the TriggerDefinitionBase interface required by the
- * TriggerRegistry. Maps trigger fields to the base definition shape so L3
- * plugin triggers can be registered via the L1 interface without double-casting.
+ * Converts an L1 EventMatcher to an L2 TriggerCondition (EventCondition).
+ *
+ * The EventCondition type only supports event_type matching and optional
+ * payload.data field filters. Source filtering is not representable in
+ * TriggerCondition — callers relying on source discrimination should
+ * handle that at the handler level if needed.
+ *
+ * When the EventMatcher.type is a RegExp (e.g. from the L1 compat shim),
+ * falls back to the wildcard '*' pattern so all events reach registered
+ * handlers (which can apply their own filtering).
  */
-function toTriggerDefinitionBase(trigger: Trigger): TriggerDefinitionBase {
+function eventMatcherToCondition(eventMatch: import('./core/types.js').EventMatcher): import('./extensions/triggers/types.js').EventCondition {
+  const eventType = eventMatch.type;
+  // EventTypePattern is: EventType | `${string}:*` | '*'
+  // Cast through unknown to satisfy the type checker — at runtime the string
+  // value is always a valid EventType literal (set by createWRFCTrigger callers).
+  const pattern = (typeof eventType === 'string' ? eventType : '*') as import('./shared/events.js').EventTypePattern;
+  return {
+    type: 'event' as const,
+    event_type: pattern,
+  };
+}
+
+/**
+ * Adapts a L1 Trigger to the TriggerDefinition interface required by the
+ * TriggerRegistry. Maps trigger fields to the L2 shape so L3 plugin
+ * triggers can be registered via the L1 interface.
+ *
+ * Key difference from a naive cast: converts `event_match` (EventMatcher)
+ * to a proper `condition` (EventCondition) so the ConditionEvaluator can
+ * evaluate it correctly. Without this conversion, trigger.condition.type
+ * would be the event type string (e.g. 'agent:spawned') which does not
+ * match any TriggerCondition discriminant, causing all triggers to never fire.
+ */
+function toTriggerDefinitionBase(trigger: Trigger): import('./extensions/triggers/types.js').TriggerDefinition {
+  // No-op composite action: WRFC triggers have actions: [] because handlers
+  // are registered directly with EventProcessor via registerHandler(), not
+  // via TriggerActionExecutor. The action field must be a valid TriggerAction
+  // to satisfy the type, so we use an empty sequence (no-op).
+  const noopAction: import('./extensions/triggers/types.js').CompositeAction = {
+    type: 'sequence',
+    actions: [],
+  };
   return {
     id: trigger.id,
     name: trigger.id,
     description: 'Plugin trigger',
     enabled: trigger.enabled,
     priority: trigger.priority ?? 0,
-    condition: trigger.event_match,
-    action: trigger.actions,
+    condition: eventMatcherToCondition(trigger.event_match),
+    action: noopAction,
     cooldown_ms: trigger.cooldown_ms,
     max_fires: trigger.max_fires,
     fires_count: 0,
@@ -179,7 +217,22 @@ export class RuntimeEngine {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
     this.events.eventBus.on('*', async (event: RuntimeEvent) => {
-      if (event.source?.kind === 'hook') return;
+      // Hook-originated events (source.kind === 'hook') route through the L1
+      // EventProcessor queue so that trigger evaluation and registered handlers
+      // (e.g. WRFC plugin handlers) are invoked via the processBatch() path.
+      // Non-hook events use the L2 TriggerRegistry.evaluate() path which
+      // supports richer action execution (start_workflow, emit_event, etc.).
+      if (event.source?.kind === 'hook') {
+        try {
+          const queue = this.coreRuntime?.eventQueue;
+          if (queue) {
+            queue.enqueue(event);
+          }
+        } catch (err) {
+          logger.warn('Failed to enqueue hook event into EventProcessor queue', { error: toErrorMessage(err) });
+        }
+        return;
+      }
       try {
         if (this.triggers) await this.triggers.triggerRegistry.evaluate(event);
       } catch (err) {

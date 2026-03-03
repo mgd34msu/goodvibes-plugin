@@ -31,6 +31,11 @@ const {
     register: vi.fn(),
     match: vi.fn().mockReturnValue([]),
     size: vi.fn().mockReturnValue(0),
+    recordFire: vi.fn(),
+    unregister: vi.fn().mockReturnValue(false),
+    enable: vi.fn(),
+    disable: vi.fn(),
+    get: vi.fn().mockReturnValue(undefined),
   };
 
   const mockStateStore = {
