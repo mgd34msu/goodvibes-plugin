@@ -267,6 +267,7 @@ function readStdin() {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
+(async () => {
 try {
   const hookInput = await readStdin();
 
@@ -380,3 +381,4 @@ try {
   console.error(`[UPS-Directives] error: ${err}`);
   respond(continueResponse());
 }
+})();
