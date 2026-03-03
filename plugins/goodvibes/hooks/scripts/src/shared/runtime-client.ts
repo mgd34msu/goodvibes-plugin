@@ -125,9 +125,6 @@ function generateId(): string {
  * ```
  */
 export class RuntimeClient {
-  /** Absolute path to the Unix domain socket, or null if not discoverable. */
-  private readonly socketPath: string | null;
-
   /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
   private readonly stateDir: string;
 
@@ -135,10 +132,19 @@ export class RuntimeClient {
   private readonly _sessionId: string | undefined;
 
   /**
-   * Active socket path — may be updated by isAvailableAsync() after
-   * a self-heal rediscovery.
+   * Active socket path — single source of truth. May be updated by
+   * isAvailableAsync() after a self-heal rediscovery.
    */
   private _socketPath: string | null;
+
+  /**
+   * Public accessor for the resolved socket path. Returns the current
+   * _socketPath value, which may be updated by isAvailableAsync() after
+   * self-heal rediscovery.
+   */
+  get socketPath(): string | null {
+    return this._socketPath;
+  }
 
   /**
    * @param sessionId - Optional Claude Code session ID for session-keyed
@@ -149,8 +155,7 @@ export class RuntimeClient {
     const cwd = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd();
     this.stateDir = join(cwd, '.goodvibes', 'state');
     this._sessionId = sessionId;
-    this.socketPath = this.discoverSocket(sessionId);
-    this._socketPath = this.socketPath;
+    this._socketPath = this.discoverSocket(sessionId);
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -231,7 +236,7 @@ export class RuntimeClient {
    * socket here.
    */
   isAvailable(): boolean {
-    return this.socketPath !== null && existsSync(this.socketPath);
+    return this._socketPath !== null && existsSync(this._socketPath);
   }
 
   /**
@@ -336,7 +341,7 @@ export class RuntimeClient {
     message: IPCMessage,
     timeoutMs: number
   ): Promise<IPCResponse | null> {
-    const socketPath = this.socketPath!;
+    const socketPath = this._socketPath!
 
     return new Promise<IPCResponse | null>((resolve) => {
       let resolved = false;

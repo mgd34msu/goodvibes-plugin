@@ -6,35 +6,22 @@
  */
 
 import type { EventType, EventTypePattern } from '../../shared/events.js';
+import type { TriggerDefinitionBase } from '../../core/types.js';
 
 // ─── Trigger Definition ────────────────────────────────────────────────────────
 
 /**
  * A complete trigger definition stored in the registry.
  */
-export interface TriggerDefinition {
-  /** Unique identifier for this trigger. */
-  id: string;
-  /** Human-readable name. */
-  name: string;
-  /** Description of what this trigger does. */
+export interface TriggerDefinition extends TriggerDefinitionBase {
+  /** Description of what this trigger does (required in L2, optional in base). */
   description: string;
-  /** Whether this trigger is currently active. */
-  enabled: boolean;
-  /** Evaluation priority — lower number = higher priority. */
-  priority: number;
   /** The condition that must be true for this trigger to fire. */
   condition: TriggerCondition;
   /** The action to execute when the condition is met. */
   action: TriggerAction;
-  /** Minimum milliseconds between consecutive fires. */
-  cooldown_ms?: number;
-  /** Maximum number of times this trigger may fire in a session. */
-  max_fires?: number;
   /** Number of times this trigger has fired in the current session. */
   fires_count: number;
-  /** Epoch milliseconds of the last time this trigger fired (from `Date.now()`). */
-  last_fired?: number;
 }
 
 // ─── Condition Types ───────────────────────────────────────────────────────────

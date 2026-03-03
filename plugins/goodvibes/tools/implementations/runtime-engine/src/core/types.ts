@@ -213,10 +213,40 @@ export interface StateStoreInterface {
 // ─── Component Interfaces ─────────────────────────────────────────────────────
 
 /**
+ * Minimal trigger definition shape for the L1 registry interface.
+ * Captures the fields used by TriggerRegistry without coupling L1 to L2 types.
+ * The L2 `TriggerDefinition` extends this base.
+ */
+export interface TriggerDefinitionBase {
+  /** Unique identifier for this trigger. */
+  id: string;
+  /** Human-readable name. */
+  name: string;
+  /** Description of what this trigger does. */
+  description?: string;
+  /** Whether this trigger is currently active. */
+  enabled: boolean;
+  /** Evaluation priority — lower number = higher priority. */
+  priority: number;
+  /** The condition that must be true for this trigger to fire. */
+  condition: unknown;
+  /** The action to execute when the condition is met. */
+  action: unknown;
+  /** Minimum milliseconds between consecutive fires. */
+  cooldown_ms?: number;
+  /** Maximum number of times this trigger may fire in a session. */
+  max_fires?: number;
+  /** Number of times this trigger has fired in the current session. */
+  fires_count?: number;
+  /** Epoch milliseconds of the last time this trigger fired. */
+  last_fired?: number;
+}
+
+/**
  * Contract for the trigger registry.
  * Enables Layer 2/3 to provide alternative registry implementations.
  *
- * The `register()` and `get()` methods accept/return `Trigger | TriggerDefinition`
+ * The `register()` and `get()` methods accept/return `Trigger | TriggerDefinitionBase`
  * so that the unified L2 TriggerRegistry (which operates on `TriggerDefinition`)
  * can implement this interface without down-casting.
  */
@@ -226,7 +256,7 @@ export interface TriggerRegistryInterface {
   /** Record that a trigger has fired. */
   recordFire(trigger_id: string): void;
   /** Register a new trigger or trigger definition. */
-  register(trigger: Trigger | import('../extensions/triggers/types.js').TriggerDefinition): void;
+  register(trigger: Trigger | TriggerDefinitionBase): void;
   /** Unregister a trigger by ID. Returns true if it existed. */
   unregister(id: string): boolean;
   /** Enable a trigger. */
@@ -234,7 +264,7 @@ export interface TriggerRegistryInterface {
   /** Disable a trigger without removing it. */
   disable(id: string): void;
   /** Get a registered trigger by ID. */
-  get(id: string): Trigger | import('../extensions/triggers/types.js').TriggerDefinition | undefined;
+  get(id: string): Trigger | TriggerDefinitionBase | undefined;
 }
 
 /**

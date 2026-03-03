@@ -118,17 +118,21 @@ export type RuntimeResponseData = IPCResponseData;
  * ```
  */
 export declare class RuntimeClient {
-    /** Absolute path to the Unix domain socket, or null if not discoverable. */
-    private readonly socketPath;
     /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
     private readonly stateDir;
     /** Session ID stored for re-discovery in isAvailableAsync(). */
     private readonly _sessionId;
     /**
-     * Active socket path — may be updated by isAvailableAsync() after
-     * a self-heal rediscovery.
+     * Active socket path — single source of truth. May be updated by
+     * isAvailableAsync() after a self-heal rediscovery.
      */
     private _socketPath;
+    /**
+     * Public accessor for the resolved socket path. Returns the current
+     * _socketPath value, which may be updated by isAvailableAsync() after
+     * self-heal rediscovery.
+     */
+    get socketPath(): string | null;
     /**
      * @param sessionId - Optional Claude Code session ID for session-keyed
      *   socket pointer lookup. When provided, enables exact-match discovery

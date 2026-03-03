@@ -48,6 +48,11 @@ import { createExecutorSubsystem, type ExecutorSubsystem, ActionExecutor, TickDr
 import { createTimeAdapter, createExternalAdapter } from './extensions/adapters/index.js';
 import { createIPCSubsystem, teardownIPC } from './extensions/ipc/index.js';
 import type { IPCSubsystem } from './extensions/ipc/index.js';
+import type { RuntimeEvent, EventTypePattern, EventSource, EventType } from './shared/events.js';
+import type { PluginLogger } from './shared/plugin.js';
+import type { EventQueue } from './core/queues/event-queue.js';
+import type { IPCServer } from './shared/ipc/ipc-server.js';
+import type { TriggerDefinitionBase } from './core/types.js';
 
 const logger = createLogger('bootstrap');
 
@@ -138,7 +143,7 @@ export class RuntimeEngine {
     if (this.workflow) {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
-    this.events.eventBus.on('*', async (event: import('./shared/events.js').RuntimeEvent) => {
+    this.events.eventBus.on('*', async (event: RuntimeEvent) => {
       if (event.source?.kind === 'hook') return;
       try {
         if (this.triggers) await this.triggers.triggerRegistry.evaluate(event);
@@ -207,7 +212,7 @@ export class RuntimeEngine {
       emit: (event) => eventBusRef.emit(event),
       subscribe: (eventType, handler) => {
         return eventBusRef.on(
-          eventType as import('./shared/events.js').EventTypePattern,
+          eventType as EventTypePattern,
           handler,
         );
       },
@@ -224,17 +229,17 @@ export class RuntimeEngine {
           event_match: {
             source: (
               definition.conditions[0]?.['source'] as
-                | import('./shared/events.js').EventSource
-                | import('./shared/events.js').EventSource[]
+                | EventSource
+                | EventSource[]
                 | undefined
             ) ?? { kind: 'internal' as const },
-            type: definition.event_type as import('./shared/events.js').EventType,
+            type: definition.event_type as EventType,
           },
           actions: [],
           max_fires: definition.max_fires,
           priority: 10,
         });
-        coreTriggerRegistry.register(trigger as unknown as import('./core/trigger-registry.js').TriggerDefinition);
+        coreTriggerRegistry.register(trigger as unknown as TriggerDefinitionBase);
         const registeredTrigger = coreTriggerRegistry.get(id);
         coreEventProcessor.registerHandler(id, async (event) => {
           if (!registeredTrigger) return {};
@@ -244,7 +249,7 @@ export class RuntimeEngine {
       unregisterTrigger: (id) => {
         coreTriggerRegistry?.unregister(id);
       },
-      getLogger: (name) => createLogger(name) as unknown as import('./shared/plugin.js').PluginLogger,
+      getLogger: (name) => createLogger(name) as unknown as PluginLogger,
     };
     this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
     this.wrfcPlugin.register(runtimeServices);
@@ -311,7 +316,7 @@ export class RuntimeEngine {
         executorMode: this.executorSubsystem.executorMode,
         timePlugin: createTimeAdapter(timePlugin),
         externalPlugin: createExternalAdapter(externalPlugin),
-        eventProcessor: this.coreRuntime.eventProcessor ?? undefined,
+        eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
       });
     }
@@ -473,11 +478,11 @@ export class RuntimeEngine {
     if (!this.events?.eventLog) throw new ProcessingError('getEventLog() called before startup()');
     return this.events.eventLog;
   }
-  getEventQueue(): import('./core/queues/event-queue.js').EventQueue {
+  getEventQueue(): EventQueue {
     if (!this.coreRuntime?.eventQueue) throw new ProcessingError('getEventQueue() called before startup()');
     return this.coreRuntime.eventQueue;
   }
-  getIPCServer(): import('./shared/ipc/ipc-server.js').IPCServer | null { return this.ipcSubsystem?.ipcServer ?? null; }
+  getIPCServer(): IPCServer | null { return this.ipcSubsystem?.ipcServer ?? null; }
   getWorkflowEngine(): WorkflowEngine | null { return this.workflow?.workflowEngine ?? null; }
   getTriggerRegistry(): TriggerRegistry | null { return this.triggers?.triggerRegistry ?? null; }
   getAgentCoordinator(): AgentCoordinator | null { return this.agents?.agentCoordinator ?? null; }

@@ -62,17 +62,23 @@ function generateId() {
  * ```
  */
 export class RuntimeClient {
-    /** Absolute path to the Unix domain socket, or null if not discoverable. */
-    socketPath;
     /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
     stateDir;
     /** Session ID stored for re-discovery in isAvailableAsync(). */
     _sessionId;
     /**
-     * Active socket path — may be updated by isAvailableAsync() after
-     * a self-heal rediscovery.
+     * Active socket path — single source of truth. May be updated by
+     * isAvailableAsync() after a self-heal rediscovery.
      */
     _socketPath;
+    /**
+     * Public accessor for the resolved socket path. Returns the current
+     * _socketPath value, which may be updated by isAvailableAsync() after
+     * self-heal rediscovery.
+     */
+    get socketPath() {
+        return this._socketPath;
+    }
     /**
      * @param sessionId - Optional Claude Code session ID for session-keyed
      *   socket pointer lookup. When provided, enables exact-match discovery
@@ -82,8 +88,7 @@ export class RuntimeClient {
         const cwd = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd();
         this.stateDir = join(cwd, '.goodvibes', 'state');
         this._sessionId = sessionId;
-        this.socketPath = this.discoverSocket(sessionId);
-        this._socketPath = this.socketPath;
+        this._socketPath = this.discoverSocket(sessionId);
     }
     // ─── Public API ─────────────────────────────────────────────────────────────
     /**
@@ -162,7 +167,7 @@ export class RuntimeClient {
      * socket here.
      */
     isAvailable() {
-        return this.socketPath !== null && existsSync(this.socketPath);
+        return this._socketPath !== null && existsSync(this._socketPath);
     }
     /**
      * Notify the runtime engine of a hook event.
@@ -263,7 +268,7 @@ export class RuntimeClient {
      * @returns Parsed {@link IPCResponse}, or null on failure.
      */
     sendMessage(message, timeoutMs) {
-        const socketPath = this.socketPath;
+        const socketPath = this._socketPath;
         return new Promise((resolve) => {
             let resolved = false;
             const done = (result) => {

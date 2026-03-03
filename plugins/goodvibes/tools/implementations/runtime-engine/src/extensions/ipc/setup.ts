@@ -188,6 +188,7 @@ export async function createIPCSubsystem(
       });
     }
 
+    // Clean stale pointer files from state dir (separate from socket dir created below)
     cleanStalePointerFiles(stateDir, logger);
     mkdirSync(socketDir, { recursive: true, mode: 0o700 });
     await ipcServer.listen();

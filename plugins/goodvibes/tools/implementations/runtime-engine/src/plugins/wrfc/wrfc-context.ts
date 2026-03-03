@@ -31,11 +31,3 @@ export function getWRFCFields(ctx: WorkflowContext): WRFCFields {
   };
 }
 
-/** Type-safe setter for WRFC fields in a generic WorkflowContext */
-export function setWRFCField<K extends keyof WRFCFields>(
-  ctx: WorkflowContext,
-  key: K,
-  value: WRFCFields[K],
-): void {
-  (ctx as Record<string, unknown>)[key] = value;
-}
