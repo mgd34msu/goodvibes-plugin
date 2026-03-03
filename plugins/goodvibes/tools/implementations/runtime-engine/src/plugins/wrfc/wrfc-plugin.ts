@@ -282,14 +282,14 @@ export class WRFCPlugin implements RuntimePlugin {
     // so a sentinel empty trigger object satisfies the type without storing deps.
     const nullTrigger = {} as unknown as Trigger;
 
-    const workflowCreatedHandler = (event: RuntimeEvent): Promise<void> =>
-      Promise.resolve(handleWorkflowCreated(event, nullTrigger, store)).then(() => {});
+    const workflowCreatedHandler = (event: RuntimeEvent): Promise<unknown> =>
+      Promise.resolve(handleWorkflowCreated(event, nullTrigger, store));
 
-    const agentCompletedHandler = (event: RuntimeEvent): Promise<void> =>
-      Promise.resolve(handleAgentCompleted(event, nullTrigger, store)).then(() => {});
+    const agentCompletedHandler = (event: RuntimeEvent): Promise<unknown> =>
+      Promise.resolve(handleAgentCompleted(event, nullTrigger, store));
 
-    const qualityGateHandler = (event: RuntimeEvent): Promise<void> =>
-      Promise.resolve(handleQualityGate(event, nullTrigger, store)).then(() => {});
+    const qualityGateHandler = (event: RuntimeEvent): Promise<unknown> =>
+      Promise.resolve(handleQualityGate(event, nullTrigger, store));
 
     // Register triggers (and their handlers) with the runtime via services
     services.registerTrigger(

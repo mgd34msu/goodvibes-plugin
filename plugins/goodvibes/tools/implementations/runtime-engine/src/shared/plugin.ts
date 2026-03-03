@@ -62,7 +62,7 @@ export interface RuntimeServices {
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => void;
   /** Register a trigger with the core trigger registry */
-  registerTrigger: (id: string, definition: PluginTriggerDefinition, handler: (event: RuntimeEvent) => void | Promise<void>) => void;
+  registerTrigger: (id: string, definition: PluginTriggerDefinition, handler: (event: RuntimeEvent) => unknown | Promise<unknown>) => void;
   /** Unregister a previously registered trigger */
   unregisterTrigger: (id: string) => void;
   /** Get a named logger for the plugin */

@@ -30865,12 +30865,9 @@ var WRFCPlugin = class {
       store.set("wrfc.config.require_review_types", this.config.require_review_types);
     }
     const nullTrigger = {};
-    const workflowCreatedHandler = /* @__PURE__ */ __name((event) => Promise.resolve(handleWorkflowCreated(event, nullTrigger, store)).then(() => {
-    }), "workflowCreatedHandler");
-    const agentCompletedHandler = /* @__PURE__ */ __name((event) => Promise.resolve(handleAgentCompleted(event, nullTrigger, store)).then(() => {
-    }), "agentCompletedHandler");
-    const qualityGateHandler = /* @__PURE__ */ __name((event) => Promise.resolve(handleQualityGate(event, nullTrigger, store)).then(() => {
-    }), "qualityGateHandler");
+    const workflowCreatedHandler = /* @__PURE__ */ __name((event) => Promise.resolve(handleWorkflowCreated(event, nullTrigger, store)), "workflowCreatedHandler");
+    const agentCompletedHandler = /* @__PURE__ */ __name((event) => Promise.resolve(handleAgentCompleted(event, nullTrigger, store)), "agentCompletedHandler");
+    const qualityGateHandler = /* @__PURE__ */ __name((event) => Promise.resolve(handleQualityGate(event, nullTrigger, store)), "qualityGateHandler");
     services.registerTrigger(
       TRIGGER_IDS.AGENT_SPAWNED,
       {
