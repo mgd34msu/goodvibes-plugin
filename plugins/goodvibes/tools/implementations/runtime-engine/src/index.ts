@@ -102,7 +102,8 @@ export type {
   CompositeAction,
   TriggerResult,
   TriggerActionHandler,
-} from './core/trigger-registry.js';
+  WorkflowContextProvider,
+} from './extensions/triggers/types.js';
 // Workflow extension
 export type {
   WorkflowDefinition,

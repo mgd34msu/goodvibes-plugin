@@ -156,7 +156,7 @@ describe('handleRuntimeEmit', () => {
       expect(emittedArg['type']).toBe('session:started');
       expect(emittedArg['source']).toMatchObject({ kind: 'mcp_tool', tool_name: 'runtime_emit' });
       expect(typeof emittedArg['id']).toBe('string');
-      expect(typeof emittedArg['timestamp']).toBe('string');
+      expect(typeof emittedArg['timestamp']).toBe('number');
     });
 
     it('returns success with emitted event data', async () => {

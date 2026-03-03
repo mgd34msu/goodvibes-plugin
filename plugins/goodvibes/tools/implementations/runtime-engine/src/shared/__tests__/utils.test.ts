@@ -67,12 +67,13 @@ describe('generateWorkflowId', () => {
 });
 
 describe('timestamp', () => {
-  it('returns an ISO-8601 formatted string', () => {
+  it('returns a number (epoch milliseconds)', () => {
     const ts = timestamp();
-    expect(ts).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(typeof ts).toBe('number');
+    expect(ts).toBeGreaterThan(0);
   });
 
-  it('returns a string parseable by Date', () => {
+  it('returns a value usable as a Date constructor argument', () => {
     const ts = timestamp();
     const d = new Date(ts);
     expect(d.getTime()).not.toBeNaN();
@@ -82,9 +83,8 @@ describe('timestamp', () => {
     const before = Date.now();
     const ts = timestamp();
     const after = Date.now();
-    const parsed = new Date(ts).getTime();
-    expect(parsed).toBeGreaterThanOrEqual(before);
-    expect(parsed).toBeLessThanOrEqual(after);
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
   });
 });
 

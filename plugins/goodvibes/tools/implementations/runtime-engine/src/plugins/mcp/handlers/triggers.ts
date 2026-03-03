@@ -9,7 +9,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createLogger } from '../../../shared/logger.js';
 import { assertOptionalString, generateEventId, timestamp, toErrorMessage } from '../../../shared/utils.js';
 import type { EventType, EventSource, EventPayload } from '../../../shared/events.js';
-import type { TriggerDefinition } from '../../../core/trigger-registry.js';
+import type { TriggerDefinition } from '../../../extensions/triggers/types.js';
 import type { HandlerContext } from './types.js';
 import { toSuccess, toError } from './shared.js';
 

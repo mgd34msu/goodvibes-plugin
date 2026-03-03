@@ -14,7 +14,8 @@ import { HealthChecker } from './core/observability/health.js';
 
 import { createEventSubsystem, type EventSubsystem } from './extensions/events/subsystem.js';
 import { createWorkflowSubsystem, type WorkflowSubsystem } from './extensions/workflow/subsystem.js';
-import { createTriggerSubsystem, type TriggerSubsystem } from './extensions/triggers/subsystem.js';
+import { createTriggerSubsystem, type TriggerSubsystem, type TriggerSubsystemDeps } from './extensions/triggers/subsystem.js';
+import type { WorkflowContextProvider } from './extensions/triggers/types.js';
 import { createAgentSubsystem, type AgentSubsystem } from './extensions/agents/subsystem.js';
 import { createDirectiveSubsystem, type DirectiveSubsystem } from './extensions/directives/subsystem.js';
 import { createPersistenceSubsystem, type PersistenceSubsystem } from './extensions/persistence/subsystem.js';
@@ -106,23 +107,37 @@ export class RuntimeEngine {
       this.workflow.workflowEngine.setEventBus(this.events.eventBus);
     }
 
-    // 5. Trigger subsystem
-    this.triggers = createTriggerSubsystem(this.config);
-
-    // 6. Directive subsystem
+    // 5. Directive subsystem
     this.directives = createDirectiveSubsystem();
 
-    // 7. Cross-layer wiring: trigger dependencies + wildcard listener
+    // 6. Trigger subsystem (created after events, workflow, and directives so all deps are available)
     this.wrfcConfigStore = new WRFCConfigStore();
+    const wrfcContextProvider: WorkflowContextProvider = (type) => {
+      if (type !== 'wrfc') return {};
+      const wrfcStore = this.wrfcConfigStore;
+      if (!wrfcStore) return {};
+      const config = wrfcStore.get();
+      const defaults: Record<string, unknown> = {};
+      if (typeof config.min_review_score === 'number' && Number.isFinite(config.min_review_score)) {
+        defaults.min_review_score = config.min_review_score;
+      }
+      if (typeof config.max_fix_attempts === 'number' && Number.isFinite(config.max_fix_attempts)) {
+        defaults.max_fix_attempts = config.max_fix_attempts;
+      }
+      return defaults;
+    };
+    const triggerDeps: TriggerSubsystemDeps = {
+      eventBus: this.events.eventBus,
+      directiveQueue: this.directives.directiveQueue,
+      workflowEngine: this.workflow?.workflowEngine ?? null,
+      contextProvider: wrfcContextProvider,
+    };
+    this.triggers = createTriggerSubsystem(this.config, triggerDeps);
+
+    // 7. Cross-layer wiring: workflow directive queue + wildcard event listener
     if (this.workflow) {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
-    this.triggers.triggerRegistry.setDependencies(
-      this.events.eventBus,
-      this.directives.directiveQueue,
-      this.workflow?.workflowEngine ?? null,
-      this.wrfcConfigStore,
-    );
     this.events.eventBus.on('*', async (event: import('./shared/events.js').RuntimeEvent) => {
       if (event.source?.kind === 'hook') return;
       try {

@@ -26,6 +26,7 @@ import {
   buildEscalationMessage,
 } from '../directives/legacy-directive-builder.js';
 import type { Directive } from '../../shared/ipc/protocol.js';
+import { getWRFCFields } from '../../plugins/wrfc/wrfc-context.js';
 
 const logger = createLogger('watchdog');
 
@@ -222,9 +223,8 @@ export class WatchdogCoordinator {
     const { directiveQueue, agentWorkflowMap } = this.deps;
     if (!directiveQueue) return;
 
-    const filesModified = Array.isArray(workflow.context.files_modified)
-      ? (workflow.context.files_modified as string[])
-      : [];
+    const wrfc = getWRFCFields(workflow.context);
+    const filesModified = Array.isArray(wrfc.files_modified) ? wrfc.files_modified : [];
 
     if (state === 'REVIEWING') {
       const task =
@@ -256,14 +256,9 @@ export class WatchdogCoordinator {
         workflow_id: workflow.id,
       });
     } else if (state === 'FIXING') {
-      const fixAttempts =
-        typeof workflow.context.fix_attempts === 'number' ? workflow.context.fix_attempts : 0;
-      const maxFixAttempts =
-        typeof workflow.context.max_fix_attempts === 'number'
-          ? (workflow.context.max_fix_attempts as number)
-          : 3;
-      const lastScore =
-        typeof workflow.context.review_score === 'number' ? workflow.context.review_score : 0;
+      const fixAttempts = typeof wrfc.fix_attempts === 'number' ? wrfc.fix_attempts : 0;
+      const maxFixAttempts = typeof wrfc.max_fix_attempts === 'number' ? wrfc.max_fix_attempts : 3;
+      const lastScore = typeof wrfc.review_score === 'number' ? wrfc.review_score : 0;
 
       if (fixAttempts >= maxFixAttempts) {
         // Fix budget exhausted — should have escalated
@@ -282,8 +277,8 @@ export class WatchdogCoordinator {
         });
       } else {
         // Still have fix budget — spawn engineer
-        const reviewIssues = Array.isArray(workflow.context.review_issues)
-          ? (workflow.context.review_issues as Array<{ dimension: string; severity: string; description: string }>)
+        const reviewIssues = Array.isArray(wrfc.review_issues)
+          ? (wrfc.review_issues as Array<{ dimension: string; severity: string; description: string }>)
           : [];
         const issuesSummary =
           reviewIssues.length > 0

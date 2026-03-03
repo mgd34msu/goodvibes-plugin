@@ -9,6 +9,7 @@ export default defineConfig({
     exclude: ['node_modules', 'dist', '**/.claude/worktrees/**', '**/delete_me/**'],
     coverage: {
       provider: 'v8',
+      reportsDirectory: './coverage',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'src/index.ts'],

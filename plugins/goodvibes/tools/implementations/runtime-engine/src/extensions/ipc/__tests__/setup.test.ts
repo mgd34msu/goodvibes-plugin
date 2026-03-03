@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────────
 
@@ -54,10 +54,16 @@ vi.mock('../ipc-router.js', () => ({
 // fs mocks via stable module-level functions
 const mockMkdirSync = vi.fn();
 const mockWriteFileSync = vi.fn();
+const mockReaddirSync = vi.fn().mockReturnValue([]);
+const mockReadFileSync = vi.fn();
+const mockUnlinkSync = vi.fn();
 
 vi.mock('node:fs', () => ({
   mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
   writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
+  readdirSync: (...args: unknown[]) => mockReaddirSync(...args),
+  readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
+  unlinkSync: (...args: unknown[]) => mockUnlinkSync(...args),
 }));
 
 // crypto: plain functions (not vi.fn, avoids clearAllMocks issues)
@@ -82,7 +88,7 @@ vi.mock('../../../core/utils/fs-utils.js', () => ({
 
 // ─── Import after mocks ─────────────────────────────────────────────────────────────────
 
-import { createIPCSubsystem } from '../setup.js';
+import { createIPCSubsystem, cleanStalePointerFiles } from '../setup.js';
 import type { CreateIPCOptions } from '../setup.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
@@ -115,11 +121,26 @@ function makeOpts(overrides: Partial<CreateIPCOptions> = {}): CreateIPCOptions {
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Helpers for cleanStalePointerFiles unit tests ──────────────────────────────────────
+
+function makeLogger() {
+  return {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
+}
+
 describe('createIPCSubsystem', () => {
   beforeEach(() => {
     mockMkdirSync.mockClear();
     mockWriteFileSync.mockClear();
     mockEnsureDirSync.mockClear();
+    mockReaddirSync.mockClear();
+    mockReaddirSync.mockReturnValue([]);
+    mockReadFileSync.mockClear();
+    mockUnlinkSync.mockClear();
     // _ipcServer and _ipcRouter are recreated fresh each time createIPCSubsystem is called
     // because the constructor functions reassign them.
   });
@@ -312,6 +333,47 @@ describe('createIPCSubsystem', () => {
     });
   });
 
+  // ─── cleanStalePointerFiles calls during startup ───────────────────────────────────────
+
+  describe('stale pointer cleanup (called via createIPCSubsystem)', () => {
+    it('calls readdirSync on the state dir during startup', async () => {
+      await createIPCSubsystem(makeOpts());
+      expect(mockReaddirSync).toHaveBeenCalledTimes(1);
+      expect((mockReaddirSync as Mock).mock.calls[0][0]).toContain('.runtime-state');
+    });
+
+    it('does not unlink anything when state dir is empty', async () => {
+      mockReaddirSync.mockReturnValueOnce([]);
+      await createIPCSubsystem(makeOpts());
+      expect(mockUnlinkSync).not.toHaveBeenCalled();
+    });
+
+    it('does not unlink anything when no pointer files exist', async () => {
+      mockReaddirSync.mockReturnValueOnce(['some-other-file.txt', 'unrelated.sock']);
+      await createIPCSubsystem(makeOpts());
+      expect(mockUnlinkSync).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── cleanStalePointerFiles (readdirSync error paths) ──────────────────────────────────
+
+  describe('stale pointer cleanup (readdirSync error paths in createIPCSubsystem)', () => {
+    it('does not crash when readdirSync throws ENOENT (state dir missing)', async () => {
+      const err = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      mockReaddirSync.mockImplementationOnce(() => { throw err; });
+      const result = await createIPCSubsystem(makeOpts());
+      // Startup still succeeds; ENOENT during cleanup is silently swallowed.
+      expect(result).not.toBeNull();
+    });
+
+    it('does not crash when readdirSync throws an unexpected error', async () => {
+      mockReaddirSync.mockImplementationOnce(() => { throw new Error('EPERM'); });
+      const result = await createIPCSubsystem(makeOpts());
+      // Cleanup failure is caught; startup continues.
+      expect(result).not.toBeNull();
+    });
+  });
+
   // ─── Error / failure path ─────────────────────────────────────────────────────────────
 
   describe('error / failure path', () => {
@@ -353,5 +415,140 @@ describe('createIPCSubsystem', () => {
       const result = await createIPCSubsystem(makeOpts());
       expect(result).toBeNull();
     });
+  });
+});
+
+// ─── cleanStalePointerFiles unit tests ─────────────────────────────────────────────────────────────
+
+describe('cleanStalePointerFiles', () => {
+  let killSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockReaddirSync.mockClear();
+    mockReadFileSync.mockClear();
+    mockUnlinkSync.mockClear();
+    // Default: process.kill(pid, 0) throws (PID dead)
+    killSpy = vi.spyOn(process, 'kill').mockImplementation(() => { throw new Error('ESRCH'); });
+  });
+
+  afterEach(() => {
+    killSpy.mockRestore();
+  });
+
+  it('does nothing when state dir does not exist (ENOENT)', () => {
+    const err = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    mockReaddirSync.mockImplementationOnce(() => { throw err; });
+    const log = makeLogger();
+    expect(() => cleanStalePointerFiles('/state', log)).not.toThrow();
+    expect(mockUnlinkSync).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when there are no pointer files in the state dir', () => {
+    mockReaddirSync.mockReturnValueOnce(['events.log', 'runtime-abc.txt', 'session.json']);
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    expect(mockUnlinkSync).not.toHaveBeenCalled();
+  });
+
+  it('skips pointer files for alive PIDs', () => {
+    mockReaddirSync.mockReturnValueOnce([`runtime-${process.pid}.socket`]);
+    // Override: PID alive (kill does not throw)
+    killSpy.mockImplementation(() => true as unknown as never);
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    expect(mockUnlinkSync).not.toHaveBeenCalled();
+  });
+
+  it('removes pointer file and socket file for dead PIDs', () => {
+    const deadPid = 99999;
+    mockReaddirSync.mockReturnValueOnce([`runtime-${deadPid}.socket`]);
+    mockReadFileSync.mockReturnValueOnce('/tmp/goodvibes/goodvibes-runtime-abc-99999.sock');
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(2);
+    expect((mockUnlinkSync as Mock).mock.calls[0][0]).toBe('/tmp/goodvibes/goodvibes-runtime-abc-99999.sock');
+    expect((mockUnlinkSync as Mock).mock.calls[1][0]).toContain(`runtime-${deadPid}.socket`);
+  });
+
+  it('logs info message after cleaning stale pointer', () => {
+    const deadPid = 99999;
+    mockReaddirSync.mockReturnValueOnce([`runtime-${deadPid}.socket`]);
+    mockReadFileSync.mockReturnValueOnce('/tmp/sock');
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    expect(log.info).toHaveBeenCalledWith(
+      'Cleaned stale socket pointer',
+      expect.objectContaining({ pid: deadPid }),
+    );
+  });
+
+  it('still removes pointer file when socket file does not exist (ENOENT)', () => {
+    const deadPid = 99999;
+    mockReaddirSync.mockReturnValueOnce([`runtime-${deadPid}.socket`]);
+    mockReadFileSync.mockReturnValueOnce('/tmp/gone.sock');
+    mockUnlinkSync.mockImplementationOnce(() => {
+      const err = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      throw err;
+    });
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    // Socket file ENOENT is swallowed; pointer file unlink still called
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(2);
+    expect(log.warn).not.toHaveBeenCalled();
+  });
+
+  it('logs warn when socket file unlink fails with non-ENOENT error', () => {
+    const deadPid = 99999;
+    mockReaddirSync.mockReturnValueOnce([`runtime-${deadPid}.socket`]);
+    mockReadFileSync.mockReturnValueOnce('/tmp/locked.sock');
+    mockUnlinkSync.mockImplementationOnce(() => {
+      const err = Object.assign(new Error('EPERM'), { code: 'EPERM' });
+      throw err;
+    });
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    expect(log.warn).toHaveBeenCalledWith(
+      expect.stringContaining('stale socket file'),
+      expect.any(Object),
+    );
+  });
+
+  it('still removes socket file when pointer file readFileSync fails', () => {
+    const deadPid = 99999;
+    mockReaddirSync.mockReturnValueOnce([`runtime-${deadPid}.socket`]);
+    mockReadFileSync.mockImplementationOnce(() => { throw new Error('EACCES'); });
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    // Socket unlink skipped (no path), but pointer unlink still happens
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+    expect((mockUnlinkSync as Mock).mock.calls[0][0]).toContain(`runtime-${deadPid}.socket`);
+  });
+
+  it('handles multiple stale pointer files in one pass', () => {
+    const pid1 = 11111;
+    const pid2 = 22222;
+    mockReaddirSync.mockReturnValueOnce([
+      `runtime-${pid1}.socket`,
+      `runtime-${pid2}.socket`,
+      'other-file.json',
+    ]);
+    mockReadFileSync.mockReturnValueOnce('/tmp/sock1.sock');
+    mockReadFileSync.mockReturnValueOnce('/tmp/sock2.sock');
+    const log = makeLogger();
+    cleanStalePointerFiles('/state', log);
+    // 2 socket files + 2 pointer files = 4 unlinks
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(4);
+    expect(log.info).toHaveBeenCalledTimes(2);
+  });
+
+  it('swallows outer errors and logs warn instead of throwing', () => {
+    // Simulate readdirSync returning bad data that causes an unexpected error
+    mockReaddirSync.mockReturnValueOnce(null as unknown as string[]);
+    const log = makeLogger();
+    expect(() => cleanStalePointerFiles('/state', log)).not.toThrow();
+    expect(log.warn).toHaveBeenCalledWith(
+      'Stale pointer cleanup failed',
+      expect.any(Object),
+    );
   });
 });

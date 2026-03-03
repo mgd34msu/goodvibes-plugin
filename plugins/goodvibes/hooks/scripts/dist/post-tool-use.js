@@ -2138,11 +2138,18 @@ function debug2(msg, ...args) {
 function generateId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
-var RuntimeClient = class {
+var RuntimeClient = class _RuntimeClient {
   /** Absolute path to the Unix domain socket, or null if not discoverable. */
   socketPath;
   /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
   stateDir;
+  /** Session ID stored for re-discovery in isAvailableAsync(). */
+  _sessionId;
+  /**
+   * Active socket path — may be updated by isAvailableAsync() after
+   * a self-heal rediscovery.
+   */
+  _socketPath;
   /**
    * @param sessionId - Optional Claude Code session ID for session-keyed
    *   socket pointer lookup. When provided, enables exact-match discovery
@@ -2151,9 +2158,70 @@ var RuntimeClient = class {
   constructor(sessionId) {
     const cwd = process.env["CLAUDE_PROJECT_DIR"] ?? process.cwd();
     this.stateDir = join4(cwd, ".goodvibes", "state");
+    this._sessionId = sessionId;
     this.socketPath = this.discoverSocket(sessionId);
+    this._socketPath = this.socketPath;
   }
   // ─── Public API ─────────────────────────────────────────────────────────────
+  /**
+   * Checks whether a process is alive by sending signal 0.
+   * Returns true if the process exists, false if it is dead or the PID is invalid.
+   *
+   * @param pid - OS process ID to probe.
+   */
+  static isProcessAlive(pid) {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Probes a Unix domain socket by attempting a real connection with a 100 ms
+   * timeout. Returns true only if the connection succeeds (i.e. a live process
+   * is listening), false otherwise.
+   *
+   * @param socketPath - Absolute path to the Unix domain socket file.
+   */
+  static probeSocket(socketPath) {
+    return new Promise((resolve2) => {
+      const timeout = setTimeout(() => {
+        socket.destroy();
+        resolve2(false);
+      }, 100);
+      const socket = net.createConnection(socketPath, () => {
+        clearTimeout(timeout);
+        socket.destroy();
+        resolve2(true);
+      });
+      socket.on("error", () => {
+        clearTimeout(timeout);
+        resolve2(false);
+      });
+    });
+  }
+  /**
+   * Async liveness check: probes the socket with an actual connection attempt.
+   *
+   * Unlike the synchronous {@link isAvailable}, this method verifies that a
+   * process is actively listening on the socket. If the probe fails, it
+   * attempts a self-heal: cleans up the stale socket, re-runs discovery, and
+   * probes the newly discovered path (if any).
+   *
+   * @returns `true` if a live runtime engine is reachable, `false` otherwise.
+   */
+  async isAvailableAsync() {
+    if (!this._socketPath) return false;
+    const alive = await _RuntimeClient.probeSocket(this._socketPath);
+    if (!alive) {
+      this.tryCleanStaleSocket(this._socketPath);
+      this._socketPath = this.discoverSocket(this._sessionId);
+      if (!this._socketPath) return false;
+      return _RuntimeClient.probeSocket(this._socketPath);
+    }
+    return true;
+  }
   /**
    * Returns true if the runtime engine socket path was discovered and the
    * socket file currently exists on disk.
@@ -2356,6 +2424,22 @@ var RuntimeClient = class {
           try {
             const socketPath = readFileSync(pointerPath, "utf-8").trim();
             if (!socketPath || !existsSync(socketPath)) continue;
+            const pidMatch = /^runtime-(\d+)\.socket$/.exec(entry);
+            if (pidMatch) {
+              const pid = parseInt(pidMatch[1], 10);
+              if (!_RuntimeClient.isProcessAlive(pid)) {
+                debug2(`Dead PID ${pid}, removing stale pointer ${entry}`);
+                try {
+                  unlinkSync(pointerPath);
+                } catch {
+                }
+                try {
+                  unlinkSync(socketPath);
+                } catch {
+                }
+                continue;
+              }
+            }
             return socketPath;
           } catch {
           }

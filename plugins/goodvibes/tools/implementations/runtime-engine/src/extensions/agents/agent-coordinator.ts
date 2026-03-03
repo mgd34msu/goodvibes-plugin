@@ -552,7 +552,7 @@ export class AgentCoordinator {
     for (const [id, agent] of this.agents) {
       if (
         (agent.status === 'completed' || agent.status === 'failed' || agent.status === 'cancelled') &&
-        agent.completed_at &&
+        agent.completed_at !== undefined &&
         agent.completed_at < cutoff
       ) {
         this.agents.delete(id);

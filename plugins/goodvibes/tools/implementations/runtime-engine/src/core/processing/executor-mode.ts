@@ -10,7 +10,7 @@
  */
 
 import type { ExecutorMode, ExecutorConfig } from '../../shared/config.js';
-import { EventBus } from '../../extensions/events/event-bus.js';
+import type { EventEmitter } from '../types.js';
 import { createLogger } from '../../shared/logger.js';
 import { generateEventId, timestamp } from '../../shared/utils.js';
 
@@ -23,9 +23,9 @@ export class ExecutorModeManager {
   private currentMode: ExecutorMode;
   private detectionMethod: DetectionMethod;
   private config: ExecutorConfig;
-  private eventBus: EventBus | null;
+  private eventBus: EventEmitter | null;
 
-  constructor(config: ExecutorConfig, eventBus?: EventBus) {
+  constructor(config: ExecutorConfig, eventBus?: EventEmitter) {
     this.config = config;
     this.eventBus = eventBus ?? null;
     this.detectionMethod = 'default';

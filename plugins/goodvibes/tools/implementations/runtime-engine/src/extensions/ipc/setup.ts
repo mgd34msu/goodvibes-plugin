@@ -4,11 +4,12 @@
  * Creates and wires the IPC server and router with L2 extension deps.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 import { createLogger } from '../../shared/logger.js';
+import type { Logger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
 import { IPCServer } from '../../shared/ipc/ipc-server.js';
 import { IPCRouter } from './ipc-router.js';
@@ -31,6 +32,88 @@ import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';
 export { IHookProcessor } from './types.js';
 
 const logger = createLogger('ipc-setup');
+
+/**
+ * Check whether a given PID is alive.
+ */
+function isPidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Clean up stale socket pointer files left behind by unclean runtime exits.
+ *
+ * Reads all `runtime-{pid}.socket` pointer files in stateDir. For each one
+ * whose PID is no longer alive, deletes both the referenced socket file and
+ * the pointer file itself.
+ */
+export function cleanStalePointerFiles(stateDir: string, log: Logger): void {
+  try {
+    let entries: string[];
+    try {
+      entries = readdirSync(stateDir);
+    } catch (err: unknown) {
+      // State dir doesn't exist yet — nothing to clean.
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw err;
+    }
+
+    const pointerFiles = entries.filter((f) => /^runtime-\d+\.socket$/.test(f));
+
+    for (const filename of pointerFiles) {
+      const match = filename.match(/^runtime-(\d+)\.socket$/);
+      if (!match) continue;
+      const pid = parseInt(match[1], 10);
+
+      if (isPidAlive(pid)) continue;
+
+      const pointerPath = join(stateDir, filename);
+
+      // Read the socket file path from the pointer file content.
+      let socketFilePath: string | undefined;
+      try {
+        socketFilePath = readFileSync(pointerPath, 'utf-8').trim();
+      } catch {
+        // Pointer file unreadable — skip socket deletion, still try to remove pointer.
+      }
+
+      // Delete the actual socket file.
+      if (socketFilePath) {
+        try {
+          unlinkSync(socketFilePath);
+        } catch (err: unknown) {
+          if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+            log.warn('Could not remove stale socket file', {
+              path: socketFilePath,
+              err: toErrorMessage(err),
+            });
+          }
+        }
+      }
+
+      // Delete the pointer file itself.
+      try {
+        unlinkSync(pointerPath);
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          log.warn('Could not remove stale socket pointer file', {
+            path: pointerPath,
+            err: toErrorMessage(err),
+          });
+        }
+      }
+
+      log.info('Cleaned stale socket pointer', { pid, pointer: pointerPath });
+    }
+  } catch (err: unknown) {
+    log.warn('Stale pointer cleanup failed', { err: toErrorMessage(err) });
+  }
+}
 
 export interface CreateIPCOptions {
   config: RuntimeConfig;
@@ -105,6 +188,7 @@ export async function createIPCSubsystem(
       });
     }
 
+    cleanStalePointerFiles(stateDir, logger);
     mkdirSync(socketDir, { recursive: true, mode: 0o700 });
     await ipcServer.listen();
 

@@ -21,13 +21,7 @@
 import { createLogger } from '../shared/logger.js';
 import { QueueError } from '../shared/errors.js';
 import type { RuntimeEvent } from '../shared/events.js';
-import type { EventBus } from '../extensions/events/event-bus.js';
 import type { TriggersConfig } from '../shared/config.js';
-import type { DirectiveQueue } from '../extensions/directives/directive-queue.js';
-import type { WRFCConfigStore } from '../extensions/directives/wrfc-config-store.js';
-import type { WorkflowEngine } from '../extensions/workflow/workflow-engine.js';
-import { ConditionEvaluator } from '../extensions/triggers/condition-evaluator.js';
-import { TriggerActionExecutor } from '../extensions/triggers/trigger-action-executor.js';
 import type {
   TriggerDefinition,
   TriggerResult,
@@ -38,25 +32,9 @@ import type {
   EventMatcher,
   StateStoreInterface,
   TriggerRegistryInterface,
+  ConditionEvaluatorInterface,
+  TriggerActionExecutorInterface,
 } from './types.js';
-
-// Re-export L2 types so consumers can import from core
-export type {
-  TriggerDefinition,
-  TriggerCondition,
-  TriggerAction,
-  TriggerResult,
-  TriggerActionHandler,
-  EventCondition,
-  CompositeCondition,
-  ThresholdCondition,
-  PatternCondition,
-  EmitEventAction,
-  SpawnAgentAction,
-  InvokeHandlerAction,
-  WorkflowAction,
-  CompositeAction,
-} from '../extensions/triggers/types.js';
 
 const log = createLogger('trigger-registry');
 
@@ -74,18 +52,17 @@ const log = createLogger('trigger-registry');
  * are fully implemented as compatibility shims.
  *
  * Lifecycle:
- * 1. Construct with a {@link TriggersConfig}.
- * 2. Inject all dependencies via `setDependencies`.
- * 3. Register built-in and user-defined triggers via `register`.
- * 4. Call `evaluate(event)` for every event that flows through the engine.
+ * 1. Construct with a {@link TriggersConfig}, {@link ConditionEvaluatorInterface}, and {@link TriggerActionExecutorInterface}.
+ * 2. Register built-in and user-defined triggers via `register`.
+ * 3. Call `evaluate(event)` for every event that flows through the engine.
  */
 export class TriggerRegistry implements TriggerRegistryInterface {
   /** All registered trigger definitions, keyed by trigger ID. */
   private readonly triggers: Map<string, TriggerDefinition> = new Map();
   /** Stateful condition evaluator with recent-event O(1) ring buffer. */
-  private readonly evaluator: ConditionEvaluator;
+  private readonly evaluator: ConditionEvaluatorInterface;
   /** Action executor with handler registry. */
-  private executor: TriggerActionExecutor;
+  private readonly executor: TriggerActionExecutorInterface;
   /** Named action handlers — mirrored here so they survive executor replacement. */
   private readonly actionHandlers: Map<string, TriggerActionHandler> = new Map();
   /** Resolved triggers configuration. */
@@ -101,11 +78,17 @@ export class TriggerRegistry implements TriggerRegistryInterface {
 
   /**
    * @param config - Triggers section of the resolved {@link RuntimeConfig}.
+   * @param evaluator - Condition evaluator implementation.
+   * @param executor - Action executor implementation.
    */
-  constructor(config: TriggersConfig) {
+  constructor(
+    config: TriggersConfig,
+    evaluator: ConditionEvaluatorInterface,
+    executor: TriggerActionExecutorInterface,
+  ) {
     this.config = config;
-    this.evaluator = new ConditionEvaluator();
-    this.executor = new TriggerActionExecutor(null, null, null, config);
+    this.evaluator = evaluator;
+    this.executor = executor;
   }
 
   // ─── L1 TriggerRegistryInterface — Compatibility Shims ────────────────────
@@ -198,37 +181,6 @@ export class TriggerRegistry implements TriggerRegistryInterface {
   // ─── L2 Full-Featured Interface ───────────────────────────────────────────
 
   /**
-   * Injects all shared dependencies into the ActionExecutor.
-   *
-   * Replaces the internal TriggerActionExecutor with a new instance wired to
-   * the provided dependencies. Any handlers registered before this call are
-   * preserved on the new executor.
-   *
-   * @param bus - The shared EventBus instance.
-   * @param directiveQueue - The shared DirectiveQueue instance, or null.
-   * @param workflowEngine - The shared WorkflowEngine instance, or null.
-   * @param wrfcConfigStore - The WRFC config store, or null.
-   */
-  setDependencies(
-    bus: EventBus,
-    directiveQueue: DirectiveQueue | null = null,
-    workflowEngine: WorkflowEngine | null = null,
-    wrfcConfigStore: WRFCConfigStore | null = null,
-  ): void {
-    this.executor = new TriggerActionExecutor(
-      bus,
-      directiveQueue,
-      workflowEngine,
-      this.config,
-      wrfcConfigStore,
-    );
-    // Re-register any handlers registered before setDependencies was called
-    for (const [name, handler] of this.actionHandlers) {
-      this.executor.registerHandler(name, handler);
-    }
-  }
-
-  /**
    * Registers a trigger definition.
    *
    * Rejects registration if the `max_triggers` limit would be exceeded.
@@ -265,12 +217,12 @@ export class TriggerRegistry implements TriggerRegistryInterface {
     if (!existing) {
       throw new QueueError(`Cannot replace trigger '${trigger.id}': not registered`);
     }
-    // Unconditionally preserve runtime state from the old trigger.
-    // fires_count is a required number field on TriggerDefinition — it is
-    // never undefined, so the old conditional guard was dead code that always
-    // skipped the assignment, causing fire counts to reset on replace().
-    trigger.fires_count = existing.fires_count;
-    trigger.last_fired = existing.last_fired ?? trigger.last_fired;
+    // Preserve runtime state from the old trigger only when the replacement
+    // does not explicitly provide a value. Using 'in' allows callers to reset
+    // fires_count to 0 or set a new last_fired by explicitly providing the
+    // field; omitting the field preserves the running counter.
+    if (!('fires_count' in trigger)) trigger.fires_count = existing.fires_count;
+    if (!('last_fired' in trigger)) trigger.last_fired = existing.last_fired;
     this.triggers.set(trigger.id, trigger);
     this.sortedTriggerCache = null;
     log.info('Trigger replaced', { trigger_id: trigger.id });
@@ -370,22 +322,20 @@ export class TriggerRegistry implements TriggerRegistryInterface {
   }
 
   /**
-   * Returns the TriggerActionExecutor instance.
+   * Returns the action executor instance.
    *
-   * Exposed for external handler registration. Dependency injection is handled
-   * via {@link setDependencies}.
+   * Exposed for external handler registration.
    *
-   * @returns The internal TriggerActionExecutor.
+   * @returns The internal action executor.
    */
-  getActionExecutor(): TriggerActionExecutor {
+  getActionExecutor(): TriggerActionExecutorInterface {
     return this.executor;
   }
 
   /**
    * Registers a named action handler delegate.
    *
-   * Handlers survive executor replacement (setDependencies) because they are
-   * mirrored in `actionHandlers` and re-registered on each replacement.
+   * Handlers are mirrored in `actionHandlers` for book-keeping.
    *
    * @param name - The handler name used in `InvokeHandlerAction.handler`.
    * @param handler - The async handler function.

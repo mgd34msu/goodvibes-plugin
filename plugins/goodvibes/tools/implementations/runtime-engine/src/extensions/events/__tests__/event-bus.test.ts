@@ -106,8 +106,9 @@ describe('EventBus', () => {
     it('auto-generates timestamp if omitted', () => {
       const { timestamp: _removed, ...eventWithoutTs } = makeEvent('session:started');
       const result = bus.emit(eventWithoutTs as never);
-      expect(typeof result.timestamp).toBe('string');
-      // Should be a valid ISO 8601 string
+      expect(typeof result.timestamp).toBe('number');
+      // Should be a valid epoch ms value usable as a Date constructor argument
+      expect(result.timestamp).toBeGreaterThan(0);
       expect(() => new Date(result.timestamp)).not.toThrow();
     });
 

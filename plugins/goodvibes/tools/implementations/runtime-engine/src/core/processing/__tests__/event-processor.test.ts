@@ -576,7 +576,7 @@ describe('EventProcessor', () => {
         makeEvent({ id: `evt-${i}` }),
       );
       const queue = makeQueue();
-      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValue(events);
+      (queue.drain as ReturnType<typeof vi.fn>).mockReturnValueOnce(events);
 
       const { processor } = buildProcessor({ max_events_per_batch: 3 }, { queue });
       const processed = await processor.processBatch();
@@ -742,6 +742,7 @@ describe('EventProcessor', () => {
     it('drops events that exceed max_chain_depth and emits a chain_depth_exceeded event', async () => {
       const deepEvent = makeEvent({
         id: 'deep-event',
+        type: 'test:event',
         context: { chain_depth: 11 },
       });
       const queue = makeQueue();

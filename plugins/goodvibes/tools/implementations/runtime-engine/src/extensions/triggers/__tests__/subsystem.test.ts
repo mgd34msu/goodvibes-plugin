@@ -40,13 +40,25 @@ vi.mock('../../../shared/logger.js', () => ({
   }),
 }));
 
-vi.mock('../trigger-registry.js', () => ({ TriggerRegistry: MockTriggerRegistry }));
+vi.mock('../../../core/trigger-registry.js', () => ({ TriggerRegistry: MockTriggerRegistry }));
+vi.mock('../condition-evaluator.js', () => ({ ConditionEvaluator: vi.fn().mockImplementation(function() { return {}; }) }));
+vi.mock('../trigger-action-executor.js', () => ({ TriggerActionExecutor: vi.fn().mockImplementation(function() { return {}; }) }));
 vi.mock('../builtins.js', () => ({ getBuiltinTriggers: mockGetBuiltinTriggers }));
 
 // ─── Subject ─────────────────────────────────────────────────────────────────
 
-import { createTriggerSubsystem } from '../subsystem.js';
+import { createTriggerSubsystem, type TriggerSubsystemDeps } from '../subsystem.js';
 import { DEFAULT_CONFIG } from '../../../shared/config.js';
+
+function makeDeps(overrides?: Partial<TriggerSubsystemDeps>): TriggerSubsystemDeps {
+  return {
+    eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn() } as any,
+    directiveQueue: null,
+    workflowEngine: null,
+    contextProvider: undefined,
+    ...overrides,
+  };
+}
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -61,31 +73,31 @@ describe('createTriggerSubsystem', () => {
   });
 
   it('returns all expected fields', () => {
-    const subsystem = createTriggerSubsystem(config);
+    const subsystem = createTriggerSubsystem(config, makeDeps());
 
     expect(subsystem).toHaveProperty('triggerRegistry');
   });
 
   it('returns the TriggerRegistry instance', () => {
-    const subsystem = createTriggerSubsystem(config);
+    const subsystem = createTriggerSubsystem(config, makeDeps());
 
     expect(subsystem.triggerRegistry).toBe(mockTriggerRegistry);
   });
 
   it('constructs TriggerRegistry with triggers config', () => {
-    createTriggerSubsystem(config);
+    createTriggerSubsystem(config, makeDeps());
 
-    expect(MockTriggerRegistry).toHaveBeenCalledWith(config.triggers);
+    expect(MockTriggerRegistry).toHaveBeenCalledWith(config.triggers, expect.anything(), expect.anything());
   });
 
   it('calls getBuiltinTriggers to get triggers list', () => {
-    createTriggerSubsystem(config);
+    createTriggerSubsystem(config, makeDeps());
 
     expect(mockGetBuiltinTriggers).toHaveBeenCalledOnce();
   });
 
   it('registers all built-in triggers', () => {
-    createTriggerSubsystem(config);
+    createTriggerSubsystem(config, makeDeps());
 
     expect(mockTriggerRegistry.register).toHaveBeenCalledTimes(mockBuiltinTriggers.length);
     for (const trigger of mockBuiltinTriggers) {
@@ -94,7 +106,7 @@ describe('createTriggerSubsystem', () => {
   });
 
   it('is synchronous', () => {
-    const result = createTriggerSubsystem(config);
+    const result = createTriggerSubsystem(config, makeDeps());
     // Should return an object directly, not a Promise
     expect(result).not.toBeInstanceOf(Promise);
     expect(result).toHaveProperty('triggerRegistry');
@@ -102,7 +114,7 @@ describe('createTriggerSubsystem', () => {
 
   it('handles zero built-in triggers gracefully', () => {
     mockGetBuiltinTriggers.mockReturnValue([]);
-    createTriggerSubsystem(config);
+    createTriggerSubsystem(config, makeDeps());
 
     expect(mockTriggerRegistry.register).not.toHaveBeenCalled();
   });
@@ -110,14 +122,14 @@ describe('createTriggerSubsystem', () => {
   it('registers a single built-in trigger', () => {
     const singleTrigger = [{ id: 'only-one', name: 'Only One' }];
     mockGetBuiltinTriggers.mockReturnValue(singleTrigger);
-    createTriggerSubsystem(config);
+    createTriggerSubsystem(config, makeDeps());
 
     expect(mockTriggerRegistry.register).toHaveBeenCalledTimes(1);
     expect(mockTriggerRegistry.register).toHaveBeenCalledWith(singleTrigger[0]);
   });
 
   it('does not expose a shutdown method', () => {
-    const subsystem = createTriggerSubsystem(config);
+    const subsystem = createTriggerSubsystem(config, makeDeps());
     expect(subsystem).not.toHaveProperty('shutdown');
   });
 
@@ -126,8 +138,8 @@ describe('createTriggerSubsystem', () => {
       ...config,
       triggers: { ...config.triggers, max_triggers: 200 },
     };
-    createTriggerSubsystem(customConfig);
+    createTriggerSubsystem(customConfig, makeDeps());
 
-    expect(MockTriggerRegistry).toHaveBeenCalledWith(customConfig.triggers);
+    expect(MockTriggerRegistry).toHaveBeenCalledWith(customConfig.triggers, expect.anything(), expect.anything());
   });
 });

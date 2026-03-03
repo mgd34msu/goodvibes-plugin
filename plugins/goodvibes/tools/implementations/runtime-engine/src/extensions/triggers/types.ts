@@ -5,7 +5,7 @@
  * trigger definitions, condition variants, action variants, and results.
  */
 
-import type { EventType, EventTypePattern, RuntimeEvent } from '../../shared/events.js';
+import type { EventType, EventTypePattern } from '../../shared/events.js';
 
 // ─── Trigger Definition ────────────────────────────────────────────────────────
 
@@ -209,11 +209,12 @@ export interface TriggerResult {
   skipped_reason?: 'cooldown' | 'max_fires' | 'disabled' | 'guard_failed';
 }
 
+// TriggerActionHandler is canonical in core/types.ts (TriggerActionExecutorInterface depends on it)
+export type { TriggerActionHandler } from '../../core/types.js';
+
 /**
- * A named action handler function registered with the TriggerActionExecutor.
- * Receives resolved arguments and the triggering event.
+ * Generic provider for workflow context defaults.
+ * Plugins register their own implementation to seed workflow context
+ * at trigger-action execution time, keyed by workflow type/definition name.
  */
-export type TriggerActionHandler = (
-  args: Record<string, unknown>,
-  event: RuntimeEvent,
-) => Promise<void>;
+export type WorkflowContextProvider = (workflowType: string) => Record<string, unknown>;

@@ -24535,6 +24535,428 @@ async function createWorkflowSubsystem(config2, projectRoot) {
 }
 __name(createWorkflowSubsystem, "createWorkflowSubsystem");
 
+// src/core/trigger-registry.ts
+var log3 = createLogger("trigger-registry");
+var TriggerRegistry = class {
+  static {
+    __name(this, "TriggerRegistry");
+  }
+  /** All registered trigger definitions, keyed by trigger ID. */
+  triggers = /* @__PURE__ */ new Map();
+  /** Stateful condition evaluator with recent-event O(1) ring buffer. */
+  evaluator;
+  /** Action executor with handler registry. */
+  executor;
+  /** Named action handlers — mirrored here so they survive executor replacement. */
+  actionHandlers = /* @__PURE__ */ new Map();
+  /** Resolved triggers configuration. */
+  config;
+  /**
+   * Cached sorted trigger list for evaluate(). Invalidated on any structural
+   * mutation (register, unregister, replace, setEnabled) so we only re-sort
+   * when the set or priority order has actually changed.
+   */
+  sortedTriggerCache = null;
+  /** Guards against repeated _store warning spam — log once per instance. */
+  storeWarningLogged = false;
+  /**
+   * @param config - Triggers section of the resolved {@link RuntimeConfig}.
+   * @param evaluator - Condition evaluator implementation.
+   * @param executor - Action executor implementation.
+   */
+  constructor(config2, evaluator, executor) {
+    this.config = config2;
+    this.evaluator = evaluator;
+    this.executor = executor;
+  }
+  // ─── L1 TriggerRegistryInterface — Compatibility Shims ────────────────────
+  /**
+   * L1 compatibility: match an event against all enabled triggers, returning
+   * triggers whose `EventCondition` fires (condition met, guards passed).
+   *
+   * This is a synchronous approximation — it evaluates EventCondition types
+   * only (no threshold/sequence, no action execution). For full L2 evaluation
+   * with action dispatch, use `evaluate(event)` instead.
+   *
+   * @param event - Incoming runtime event.
+   * @param _store - State store (used by L1 `Condition` evaluation; not used
+   *   by L2 TriggerDefinition — provided for interface compatibility).
+   * @returns L1 `Trigger[]` stubs for each fired TriggerDefinition.
+   */
+  match(event, _store) {
+    if (!this.storeWarningLogged) {
+      this.storeWarningLogged = true;
+      log3.warn(
+        "State-store condition evaluation not supported in unified registry \u2014 L1 Condition[] guards ignored"
+      );
+    }
+    const now = Date.now();
+    const matched = [];
+    for (const trigger of this.triggers.values()) {
+      if (this.passesGuards(trigger, now) !== true) continue;
+      const conditionMet = this.evaluator.evaluate(trigger.condition, event);
+      if (!conditionMet) continue;
+      matched.push(this.toL1Trigger(trigger));
+    }
+    return matched;
+  }
+  /**
+   * L1 compatibility: record that a trigger has fired (increments fire count).
+   *
+   * @param trigger_id - ID of the trigger that fired.
+   */
+  recordFire(trigger_id) {
+    const trigger = this.triggers.get(trigger_id);
+    if (trigger) {
+      trigger.fires_count++;
+      trigger.last_fired = Date.now();
+    }
+  }
+  /**
+   * L1 compatibility: enable a trigger by ID.
+   *
+   * @param id - Trigger ID to enable.
+   */
+  enable(id) {
+    this.setEnabled(id, true);
+  }
+  /**
+   * L1 compatibility: disable a trigger without removing it.
+   *
+   * @param id - Trigger ID to disable.
+   */
+  disable(id) {
+    this.setEnabled(id, false);
+  }
+  // ─── L2 Full-Featured Interface ───────────────────────────────────────────
+  /**
+   * Registers a trigger definition.
+   *
+   * Rejects registration if the `max_triggers` limit would be exceeded.
+   *
+   * @param trigger - The trigger definition to register.
+   * @throws {QueueError} If the trigger limit is reached.
+   */
+  register(trigger) {
+    if (this.triggers.size >= this.config.max_triggers) {
+      throw new QueueError(
+        `TriggerRegistry: max_triggers limit reached (${this.config.max_triggers}). Cannot register '${trigger.id}'.`
+      );
+    }
+    this.triggers.set(trigger.id, trigger);
+    this.sortedTriggerCache = null;
+    log3.debug("Trigger registered", {
+      id: trigger.id,
+      name: trigger.name,
+      priority: trigger.priority
+    });
+  }
+  /**
+   * Atomically replaces an existing trigger definition, preserving runtime state.
+   *
+   * Unlike `unregister` + `register`, this is a single Map operation with no gap
+   * during which the trigger is absent.
+   *
+   * @param trigger - The replacement definition. Must share the same `id`.
+   * @throws {QueueError} If no trigger with the given ID is currently registered.
+   */
+  replace(trigger) {
+    const existing = this.triggers.get(trigger.id);
+    if (!existing) {
+      throw new QueueError(`Cannot replace trigger '${trigger.id}': not registered`);
+    }
+    if (!("fires_count" in trigger)) trigger.fires_count = existing.fires_count;
+    if (!("last_fired" in trigger)) trigger.last_fired = existing.last_fired;
+    this.triggers.set(trigger.id, trigger);
+    this.sortedTriggerCache = null;
+    log3.info("Trigger replaced", { trigger_id: trigger.id });
+  }
+  /**
+   * Removes a trigger by ID. No-op if the trigger does not exist.
+   *
+   * @param triggerId - ID of the trigger to remove.
+   * @returns `true` if the trigger existed, `false` otherwise.
+   */
+  unregister(triggerId) {
+    const existed = this.triggers.delete(triggerId);
+    if (existed) {
+      this.sortedTriggerCache = null;
+      log3.debug("Trigger unregistered", { id: triggerId });
+    }
+    return existed;
+  }
+  /**
+   * Enables or disables a trigger.
+   *
+   * @param triggerId - ID of the trigger to update.
+   * @param enabled - `true` to enable, `false` to disable.
+   */
+  setEnabled(triggerId, enabled) {
+    const trigger = this.triggers.get(triggerId);
+    if (!trigger) {
+      log3.warn("setEnabled: trigger not found", { id: triggerId });
+      return;
+    }
+    trigger.enabled = enabled;
+    this.sortedTriggerCache = null;
+    log3.debug("Trigger enabled state updated", { id: triggerId, enabled });
+  }
+  /**
+   * Evaluates all enabled triggers against the incoming event.
+   *
+   * Processing order:
+   * 1. Record the event in the condition evaluator (needed for threshold/sequence).
+   * 2. Sort enabled triggers by priority (ascending — lower number = first).
+   * 3. Evaluate all enabled triggers in parallel (guards + condition + action).
+   * 4. Collect results; log any unexpected rejections.
+   *
+   * @param event - The event to evaluate against all triggers.
+   * @returns Results for every trigger that was checked (fired or skipped).
+   */
+  async evaluate(event) {
+    this.evaluator.recordEvent(event);
+    const results = [];
+    if (this.sortedTriggerCache === null) {
+      this.sortedTriggerCache = [...this.triggers.values()].filter((t) => t.enabled).sort((a, b) => a.priority - b.priority);
+    }
+    const sorted = this.sortedTriggerCache;
+    const settled = await Promise.allSettled(
+      sorted.map((trigger) => this.evaluateTrigger(trigger, event))
+    );
+    for (const outcome of settled) {
+      if (outcome.status === "fulfilled") {
+        results.push(outcome.value);
+      } else {
+        log3.error("Unexpected error evaluating trigger", { error: outcome.reason });
+      }
+    }
+    return results;
+  }
+  /**
+   * Retrieves a trigger definition by ID.
+   *
+   * @param triggerId - The trigger ID to look up.
+   * @returns The trigger definition, or `undefined` if not found.
+   */
+  get(triggerId) {
+    return this.triggers.get(triggerId);
+  }
+  /**
+   * Lists all registered triggers in registration order.
+   *
+   * @returns An array of all trigger definitions.
+   */
+  list() {
+    return [...this.triggers.values()];
+  }
+  /**
+   * Returns the action executor instance.
+   *
+   * Exposed for external handler registration.
+   *
+   * @returns The internal action executor.
+   */
+  getActionExecutor() {
+    return this.executor;
+  }
+  /**
+   * Registers a named action handler delegate.
+   *
+   * Handlers are mirrored in `actionHandlers` for book-keeping.
+   *
+   * @param name - The handler name used in `InvokeHandlerAction.handler`.
+   * @param handler - The async handler function.
+   */
+  registerHandler(name, handler) {
+    this.actionHandlers.set(name, handler);
+    this.executor.registerHandler(name, handler);
+    log3.debug("Action handler registered", { name });
+  }
+  /**
+   * Restores trigger fire counts and last-fired timestamps from a previous
+   * session. Only updates triggers that are already registered; unknown
+   * trigger IDs are silently ignored.
+   *
+   * @param state - Array of trigger state entries to restore.
+   */
+  restoreTriggerState(state) {
+    let restored = 0;
+    for (const entry of state) {
+      const trigger = this.triggers.get(entry.triggerId);
+      if (trigger) {
+        trigger.fires_count = entry.firesCount;
+        if (entry.lastFired !== void 0) {
+          trigger.last_fired = entry.lastFired;
+        }
+        restored++;
+      } else {
+        log3.debug("restoreTriggerState: trigger not found, skipping", {
+          id: entry.triggerId
+        });
+      }
+    }
+    log3.info("Trigger states restored", { restored, total: state.length });
+  }
+  /**
+   * Returns a snapshot of the current fire counts and last-fired timestamps
+   * for all registered triggers. Used by the snapshot/persistence subsystem.
+   *
+   * @returns Array of trigger state snapshots.
+   */
+  getTriggerStates() {
+    return Array.from(this.triggers.values()).map((trigger) => ({
+      triggerId: trigger.id,
+      firesCount: trigger.fires_count,
+      lastFired: trigger.last_fired
+    }));
+  }
+  /**
+   * Resets fire counts and last-fired timestamps for all registered triggers.
+   *
+   * Called at session start to ensure trigger budgets are per-session, not
+   * accumulated across snapshot recoveries.
+   */
+  resetAllFireCounts() {
+    let reset = 0;
+    for (const trigger of this.triggers.values()) {
+      trigger.fires_count = 0;
+      trigger.last_fired = void 0;
+      reset++;
+    }
+    log3.info("All trigger fire counts reset", { count: reset });
+  }
+  /**
+   * Removes events older than `maxAgeMs` from the evaluator's ring buffer.
+   *
+   * Delegates to the ConditionEvaluator's pruneOldEvents method. Call
+   * periodically on low-traffic triggers to prevent unbounded buffer growth.
+   *
+   * @param maxAgeMs - Maximum event age to retain in milliseconds.
+   */
+  pruneOldEvents(maxAgeMs) {
+    this.evaluator.pruneOldEvents(maxAgeMs);
+  }
+  // ─── Private Helpers ──────────────────────────────────────────────────────
+  /**
+   * Returns `true` if the trigger passes all guard checks, or a string
+   * discriminant identifying which guard blocked it.
+   *
+   * Extracted from both `match()` and `evaluateTrigger()` to eliminate the
+   * duplicate guard logic that previously re-checked the same conditions to
+   * determine `skippedReason`. Guards are stateless checks against trigger
+   * fields only — no event context needed.
+   *
+   * @param trigger - The trigger to check.
+   * @param now - Current epoch ms (pass Date.now() from the caller to avoid
+   *   multiple clock reads per evaluation batch).
+   * @returns `true` when all guards pass, or `'cooldown'` / `'max_fires'` /
+   *   `'disabled'` to identify the first failing guard.
+   */
+  passesGuards(trigger, now) {
+    if (!trigger.enabled) return "disabled";
+    if (trigger.last_fired !== void 0 && trigger.cooldown_ms !== void 0) {
+      if (now - trigger.last_fired < trigger.cooldown_ms) return "cooldown";
+    }
+    const effectiveMax = trigger.max_fires ?? this.config.max_fires_per_session;
+    if (trigger.fires_count >= effectiveMax) return "max_fires";
+    return true;
+  }
+  /**
+   * Evaluates a single trigger against an event, applying guards and
+   * recording fires.
+   *
+   * Re-entrant safe: all mutations to trigger state happen AFTER the
+   * condition/action results are known (no Map mutations during evaluation).
+   */
+  async evaluateTrigger(trigger, event) {
+    const now = Date.now();
+    const guardResult = this.passesGuards(trigger, now);
+    if (guardResult !== true) {
+      return {
+        trigger_id: trigger.id,
+        trigger_name: trigger.name,
+        fired: false,
+        skipped_reason: guardResult
+      };
+    }
+    const conditionMet = this.evaluator.evaluate(trigger.condition, event);
+    if (!conditionMet) {
+      return {
+        trigger_id: trigger.id,
+        trigger_name: trigger.name,
+        fired: false
+      };
+    }
+    log3.info("Trigger condition met, executing action", {
+      trigger_id: trigger.id,
+      trigger_name: trigger.name,
+      event_type: event.type,
+      event_id: event.id
+    });
+    const actionResult = await this.executor.execute(trigger.action, event);
+    trigger.fires_count++;
+    trigger.last_fired = Date.now();
+    if (!actionResult.success) {
+      log3.warn("Trigger action failed", {
+        trigger_id: trigger.id,
+        error: actionResult.error
+      });
+    }
+    return {
+      trigger_id: trigger.id,
+      trigger_name: trigger.name,
+      fired: true,
+      action_result: actionResult
+    };
+  }
+  /**
+   * Converts a TriggerDefinition (L2) to a minimal L1 Trigger stub.
+   *
+   * Used by the `match()` compatibility shim. Only the fields that L1
+   * consumers actually use are populated; others use safe defaults.
+   */
+  toL1Trigger(trigger) {
+    return {
+      id: trigger.id,
+      enabled: trigger.enabled,
+      priority: trigger.priority,
+      max_fires: trigger.max_fires,
+      cooldown_ms: trigger.cooldown_ms,
+      // L2 uses TriggerCondition; L1 uses EventMatcher. Bridge:
+      // Synthesise an EventMatcher from EventCondition if possible,
+      // otherwise use a catch-all that matches any event.
+      event_match: this.toEventMatcher(trigger),
+      // L2 uses TriggerAction union; L1 uses Action[]. Bridge:
+      // Synthesise a single emit_event Action as a stub.
+      actions: [{
+        type: "emit_event",
+        params: { trigger_id: trigger.id, source: "trigger-registry" }
+      }]
+    };
+  }
+  /**
+   * Derives an L1 EventMatcher from a TriggerDefinition's condition.
+   *
+   * For EventCondition: uses event_type directly.
+   * For all others: returns a wildcard matcher (any event).
+   */
+  toEventMatcher(trigger) {
+    const cond = trigger.condition;
+    if (cond.type === "event") {
+      const pattern = cond.event_type;
+      if (pattern === "*") {
+        return { type: /.*/ };
+      }
+      if (typeof pattern === "string" && pattern.endsWith(":*")) {
+        const prefix = pattern.slice(0, -1);
+        return { type: new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) };
+      }
+      return { type: pattern };
+    }
+    return { type: /.*/ };
+  }
+};
+
 // src/extensions/triggers/condition-evaluator.ts
 var ConditionEvaluator = class {
   static {
@@ -24746,13 +25168,13 @@ function buildEscalationMessage(workflowId, fixAttempts, lastScore) {
 __name(buildEscalationMessage, "buildEscalationMessage");
 
 // src/extensions/triggers/trigger-action-executor.ts
-var log3 = createLogger("action-executor");
+var log4 = createLogger("action-executor");
 var DENIED_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 function resolveStringTemplate(value, event) {
   return value.replace(/\$event\.([\w.]+)/g, (_match, path3) => {
     const parts = path3.split(".");
     if (parts.some((part) => DENIED_PATH_SEGMENTS.has(part))) {
-      log3.warn("Blocked prototype chain traversal attempt in template", { path: path3, template: value });
+      log4.warn("Blocked prototype chain traversal attempt in template", { path: path3, template: value });
       return "";
     }
     let current = event;
@@ -24763,11 +25185,11 @@ function resolveStringTemplate(value, event) {
       current = current[part];
     }
     if (current === void 0 || current === null) {
-      log3.debug("Template reference resolved to null/undefined", { path: path3, template: value });
+      log4.debug("Template reference resolved to null/undefined", { path: path3, template: value });
       return "";
     }
     if (typeof current === "object") {
-      log3.debug("Template reference resolved to object (not serializable)", { path: path3, template: value });
+      log4.debug("Template reference resolved to object (not serializable)", { path: path3, template: value });
       return "";
     }
     return String(current);
@@ -24809,21 +25231,21 @@ var TriggerActionExecutor = class {
   workflowEngine;
   /** Triggers configuration for timeout and other settings. */
   config;
-  /** WRFC config store for reading runtime WRFC configuration. */
-  wrfcConfigStore;
+  /** Optional provider for workflow context defaults — plugins register their own. */
+  contextProvider;
   /**
    * @param eventBus - The shared EventBus instance, or null if not available.
    * @param directiveQueue - The shared DirectiveQueue instance, or null if not available.
    * @param workflowEngine - The shared WorkflowEngine instance, or null if not available.
    * @param config - The triggers configuration, or null to use built-in defaults.
-   * @param wrfcConfigStore - The WRFC config store, or null if not available.
+   * @param contextProvider - Optional provider for workflow context defaults.
    */
-  constructor(eventBus = null, directiveQueue = null, workflowEngine = null, config2 = null, wrfcConfigStore = null) {
+  constructor(eventBus = null, directiveQueue = null, workflowEngine = null, config2 = null, contextProvider) {
     this.eventBus = eventBus;
     this.directiveQueue = directiveQueue;
     this.workflowEngine = workflowEngine;
     this.config = config2;
-    this.wrfcConfigStore = wrfcConfigStore;
+    this.contextProvider = contextProvider;
   }
   /**
    * Registers a named action handler.
@@ -24867,7 +25289,7 @@ var TriggerActionExecutor = class {
       }
     } catch (err) {
       const message = toErrorMessage(err);
-      log3.error("Action execution threw unexpected error", { error: message });
+      log4.error("Action execution threw unexpected error", { error: message });
       return { success: false, error: message };
     }
   }
@@ -24897,7 +25319,7 @@ var TriggerActionExecutor = class {
         version: 1
       }
     });
-    log3.debug("emit_event action executed", { event_type: action.event_type });
+    log4.debug("emit_event action executed", { event_type: action.event_type });
     return { success: true };
   }
   /**
@@ -24907,7 +25329,7 @@ var TriggerActionExecutor = class {
   async executeSpawnAgent(action, event) {
     const resolvedTask = resolveStringTemplate(action.task_template, event);
     if (!this.directiveQueue) {
-      log3.warn("spawn_agent action: directiveQueue not set \u2014 logging intent only", {
+      log4.warn("spawn_agent action: directiveQueue not set \u2014 logging intent only", {
         agent_type: action.agent_type,
         task: resolvedTask,
         triggered_by: event.id
@@ -24926,7 +25348,7 @@ var TriggerActionExecutor = class {
       source: "action-executor:spawn_agent",
       workflow_id: void 0
     });
-    log3.info("spawn_agent action: directive enqueued", {
+    log4.info("spawn_agent action: directive enqueued", {
       agent_type: action.agent_type,
       task: resolvedTask,
       triggered_by: event.id
@@ -24967,7 +25389,7 @@ var TriggerActionExecutor = class {
         clearTimeout(timeoutHandle);
       }
     }
-    log3.debug("invoke_handler action executed", { handler: action.handler });
+    log4.debug("invoke_handler action executed", { handler: action.handler });
     return { success: true };
   }
   /**
@@ -24976,7 +25398,7 @@ var TriggerActionExecutor = class {
   async executeWorkflowAction(action, event) {
     const resolvedContext = action.context_template ? resolveTemplate(action.context_template, event) : {};
     if (!this.workflowEngine) {
-      log3.info("workflow action: workflowEngine not set \u2014 logging intent only", {
+      log4.info("workflow action: workflowEngine not set \u2014 logging intent only", {
         action_type: action.type,
         workflow_definition: action.workflow_definition,
         context: resolvedContext,
@@ -24989,19 +25411,19 @@ var TriggerActionExecutor = class {
         return { success: false, error: "start_workflow: workflow_definition is required" };
       }
       try {
-        const wrfcDefaults = this.directiveQueue ? this.getWRFCContextDefaults() : {};
+        const contextDefaults = this.contextProvider?.(action.workflow_definition ?? "") ?? {};
         const instance = this.workflowEngine.create(
           action.workflow_definition,
-          { ...wrfcDefaults, ...resolvedContext }
+          { ...contextDefaults, ...resolvedContext }
         );
-        log3.info("start_workflow action: workflow created", {
+        log4.info("start_workflow action: workflow created", {
           definition: action.workflow_definition,
           instance_id: instance.id,
           triggered_by: event.id
         });
       } catch (err) {
         const message = toErrorMessage(err);
-        log3.error("start_workflow action: failed to create workflow", { error: message });
+        log4.error("start_workflow action: failed to create workflow", { error: message });
         return { success: false, error: message };
       }
       return { success: true };
@@ -25014,35 +25436,19 @@ var TriggerActionExecutor = class {
           await this.workflowEngine.sendEvent(instance.id, event);
           sentCount++;
         } catch (err) {
-          log3.warn("send_workflow_event: failed to send to workflow", {
+          log4.warn("send_workflow_event: failed to send to workflow", {
             workflow_id: instance.id,
             error: toErrorMessage(err)
           });
         }
       }
-      log3.info("send_workflow_event action: sent to active workflows", {
+      log4.info("send_workflow_event action: sent to active workflows", {
         count: sentCount,
         triggered_by: event.id
       });
       return { success: true };
     }
     return { success: false, error: `Unknown workflow action type: ${String(action.type)}` };
-  }
-  /**
-   * Extract WRFC-relevant config values from DirectiveQueue for workflow context seeding.
-   * Returns only numeric, finite values — omits keys that aren't set in the user's config.
-   */
-  getWRFCContextDefaults() {
-    if (!this.wrfcConfigStore) return {};
-    const config2 = this.wrfcConfigStore.get();
-    const defaults = {};
-    if (typeof config2.min_review_score === "number" && Number.isFinite(config2.min_review_score)) {
-      defaults.min_review_score = config2.min_review_score;
-    }
-    if (typeof config2.max_fix_attempts === "number" && Number.isFinite(config2.max_fix_attempts)) {
-      defaults.max_fix_attempts = config2.max_fix_attempts;
-    }
-    return defaults;
   }
   /**
    * Executes all actions in parallel via `Promise.all`.
@@ -25072,452 +25478,6 @@ var TriggerActionExecutor = class {
       }
     }
     return { success: true };
-  }
-};
-
-// src/core/trigger-registry.ts
-var log4 = createLogger("trigger-registry");
-var TriggerRegistry = class {
-  static {
-    __name(this, "TriggerRegistry");
-  }
-  /** All registered trigger definitions, keyed by trigger ID. */
-  triggers = /* @__PURE__ */ new Map();
-  /** Stateful condition evaluator with recent-event O(1) ring buffer. */
-  evaluator;
-  /** Action executor with handler registry. */
-  executor;
-  /** Named action handlers — mirrored here so they survive executor replacement. */
-  actionHandlers = /* @__PURE__ */ new Map();
-  /** Resolved triggers configuration. */
-  config;
-  /**
-   * Cached sorted trigger list for evaluate(). Invalidated on any structural
-   * mutation (register, unregister, replace, setEnabled) so we only re-sort
-   * when the set or priority order has actually changed.
-   */
-  sortedTriggerCache = null;
-  /** Guards against repeated _store warning spam — log once per instance. */
-  storeWarningLogged = false;
-  /**
-   * @param config - Triggers section of the resolved {@link RuntimeConfig}.
-   */
-  constructor(config2) {
-    this.config = config2;
-    this.evaluator = new ConditionEvaluator();
-    this.executor = new TriggerActionExecutor(null, null, null, config2);
-  }
-  // ─── L1 TriggerRegistryInterface — Compatibility Shims ────────────────────
-  /**
-   * L1 compatibility: match an event against all enabled triggers, returning
-   * triggers whose `EventCondition` fires (condition met, guards passed).
-   *
-   * This is a synchronous approximation — it evaluates EventCondition types
-   * only (no threshold/sequence, no action execution). For full L2 evaluation
-   * with action dispatch, use `evaluate(event)` instead.
-   *
-   * @param event - Incoming runtime event.
-   * @param _store - State store (used by L1 `Condition` evaluation; not used
-   *   by L2 TriggerDefinition — provided for interface compatibility).
-   * @returns L1 `Trigger[]` stubs for each fired TriggerDefinition.
-   */
-  match(event, _store) {
-    if (!this.storeWarningLogged) {
-      this.storeWarningLogged = true;
-      log4.warn(
-        "State-store condition evaluation not supported in unified registry \u2014 L1 Condition[] guards ignored"
-      );
-    }
-    const now = Date.now();
-    const matched = [];
-    for (const trigger of this.triggers.values()) {
-      if (this.passesGuards(trigger, now) !== true) continue;
-      const conditionMet = this.evaluator.evaluate(trigger.condition, event);
-      if (!conditionMet) continue;
-      matched.push(this.toL1Trigger(trigger));
-    }
-    return matched;
-  }
-  /**
-   * L1 compatibility: record that a trigger has fired (increments fire count).
-   *
-   * @param trigger_id - ID of the trigger that fired.
-   */
-  recordFire(trigger_id) {
-    const trigger = this.triggers.get(trigger_id);
-    if (trigger) {
-      trigger.fires_count++;
-      trigger.last_fired = Date.now();
-    }
-  }
-  /**
-   * L1 compatibility: enable a trigger by ID.
-   *
-   * @param id - Trigger ID to enable.
-   */
-  enable(id) {
-    this.setEnabled(id, true);
-  }
-  /**
-   * L1 compatibility: disable a trigger without removing it.
-   *
-   * @param id - Trigger ID to disable.
-   */
-  disable(id) {
-    this.setEnabled(id, false);
-  }
-  // ─── L2 Full-Featured Interface ───────────────────────────────────────────
-  /**
-   * Injects all shared dependencies into the ActionExecutor.
-   *
-   * Replaces the internal TriggerActionExecutor with a new instance wired to
-   * the provided dependencies. Any handlers registered before this call are
-   * preserved on the new executor.
-   *
-   * @param bus - The shared EventBus instance.
-   * @param directiveQueue - The shared DirectiveQueue instance, or null.
-   * @param workflowEngine - The shared WorkflowEngine instance, or null.
-   * @param wrfcConfigStore - The WRFC config store, or null.
-   */
-  setDependencies(bus, directiveQueue = null, workflowEngine = null, wrfcConfigStore = null) {
-    this.executor = new TriggerActionExecutor(
-      bus,
-      directiveQueue,
-      workflowEngine,
-      this.config,
-      wrfcConfigStore
-    );
-    for (const [name, handler] of this.actionHandlers) {
-      this.executor.registerHandler(name, handler);
-    }
-  }
-  /**
-   * Registers a trigger definition.
-   *
-   * Rejects registration if the `max_triggers` limit would be exceeded.
-   *
-   * @param trigger - The trigger definition to register.
-   * @throws {QueueError} If the trigger limit is reached.
-   */
-  register(trigger) {
-    if (this.triggers.size >= this.config.max_triggers) {
-      throw new QueueError(
-        `TriggerRegistry: max_triggers limit reached (${this.config.max_triggers}). Cannot register '${trigger.id}'.`
-      );
-    }
-    this.triggers.set(trigger.id, trigger);
-    this.sortedTriggerCache = null;
-    log4.debug("Trigger registered", {
-      id: trigger.id,
-      name: trigger.name,
-      priority: trigger.priority
-    });
-  }
-  /**
-   * Atomically replaces an existing trigger definition, preserving runtime state.
-   *
-   * Unlike `unregister` + `register`, this is a single Map operation with no gap
-   * during which the trigger is absent.
-   *
-   * @param trigger - The replacement definition. Must share the same `id`.
-   * @throws {QueueError} If no trigger with the given ID is currently registered.
-   */
-  replace(trigger) {
-    const existing = this.triggers.get(trigger.id);
-    if (!existing) {
-      throw new QueueError(`Cannot replace trigger '${trigger.id}': not registered`);
-    }
-    trigger.fires_count = existing.fires_count;
-    trigger.last_fired = existing.last_fired ?? trigger.last_fired;
-    this.triggers.set(trigger.id, trigger);
-    this.sortedTriggerCache = null;
-    log4.info("Trigger replaced", { trigger_id: trigger.id });
-  }
-  /**
-   * Removes a trigger by ID. No-op if the trigger does not exist.
-   *
-   * @param triggerId - ID of the trigger to remove.
-   * @returns `true` if the trigger existed, `false` otherwise.
-   */
-  unregister(triggerId) {
-    const existed = this.triggers.delete(triggerId);
-    if (existed) {
-      this.sortedTriggerCache = null;
-      log4.debug("Trigger unregistered", { id: triggerId });
-    }
-    return existed;
-  }
-  /**
-   * Enables or disables a trigger.
-   *
-   * @param triggerId - ID of the trigger to update.
-   * @param enabled - `true` to enable, `false` to disable.
-   */
-  setEnabled(triggerId, enabled) {
-    const trigger = this.triggers.get(triggerId);
-    if (!trigger) {
-      log4.warn("setEnabled: trigger not found", { id: triggerId });
-      return;
-    }
-    trigger.enabled = enabled;
-    this.sortedTriggerCache = null;
-    log4.debug("Trigger enabled state updated", { id: triggerId, enabled });
-  }
-  /**
-   * Evaluates all enabled triggers against the incoming event.
-   *
-   * Processing order:
-   * 1. Record the event in the condition evaluator (needed for threshold/sequence).
-   * 2. Sort enabled triggers by priority (ascending — lower number = first).
-   * 3. Evaluate all enabled triggers in parallel (guards + condition + action).
-   * 4. Collect results; log any unexpected rejections.
-   *
-   * @param event - The event to evaluate against all triggers.
-   * @returns Results for every trigger that was checked (fired or skipped).
-   */
-  async evaluate(event) {
-    this.evaluator.recordEvent(event);
-    const results = [];
-    if (this.sortedTriggerCache === null) {
-      this.sortedTriggerCache = [...this.triggers.values()].filter((t) => t.enabled).sort((a, b) => a.priority - b.priority);
-    }
-    const sorted = this.sortedTriggerCache;
-    const settled = await Promise.allSettled(
-      sorted.map((trigger) => this.evaluateTrigger(trigger, event))
-    );
-    for (const outcome of settled) {
-      if (outcome.status === "fulfilled") {
-        results.push(outcome.value);
-      } else {
-        log4.error("Unexpected error evaluating trigger", { error: outcome.reason });
-      }
-    }
-    return results;
-  }
-  /**
-   * Retrieves a trigger definition by ID.
-   *
-   * @param triggerId - The trigger ID to look up.
-   * @returns The trigger definition, or `undefined` if not found.
-   */
-  get(triggerId) {
-    return this.triggers.get(triggerId);
-  }
-  /**
-   * Lists all registered triggers in registration order.
-   *
-   * @returns An array of all trigger definitions.
-   */
-  list() {
-    return [...this.triggers.values()];
-  }
-  /**
-   * Returns the TriggerActionExecutor instance.
-   *
-   * Exposed for external handler registration. Dependency injection is handled
-   * via {@link setDependencies}.
-   *
-   * @returns The internal TriggerActionExecutor.
-   */
-  getActionExecutor() {
-    return this.executor;
-  }
-  /**
-   * Registers a named action handler delegate.
-   *
-   * Handlers survive executor replacement (setDependencies) because they are
-   * mirrored in `actionHandlers` and re-registered on each replacement.
-   *
-   * @param name - The handler name used in `InvokeHandlerAction.handler`.
-   * @param handler - The async handler function.
-   */
-  registerHandler(name, handler) {
-    this.actionHandlers.set(name, handler);
-    this.executor.registerHandler(name, handler);
-    log4.debug("Action handler registered", { name });
-  }
-  /**
-   * Restores trigger fire counts and last-fired timestamps from a previous
-   * session. Only updates triggers that are already registered; unknown
-   * trigger IDs are silently ignored.
-   *
-   * @param state - Array of trigger state entries to restore.
-   */
-  restoreTriggerState(state) {
-    let restored = 0;
-    for (const entry of state) {
-      const trigger = this.triggers.get(entry.triggerId);
-      if (trigger) {
-        trigger.fires_count = entry.firesCount;
-        if (entry.lastFired !== void 0) {
-          trigger.last_fired = entry.lastFired;
-        }
-        restored++;
-      } else {
-        log4.debug("restoreTriggerState: trigger not found, skipping", {
-          id: entry.triggerId
-        });
-      }
-    }
-    log4.info("Trigger states restored", { restored, total: state.length });
-  }
-  /**
-   * Returns a snapshot of the current fire counts and last-fired timestamps
-   * for all registered triggers. Used by the snapshot/persistence subsystem.
-   *
-   * @returns Array of trigger state snapshots.
-   */
-  getTriggerStates() {
-    return Array.from(this.triggers.values()).map((trigger) => ({
-      triggerId: trigger.id,
-      firesCount: trigger.fires_count,
-      lastFired: trigger.last_fired
-    }));
-  }
-  /**
-   * Resets fire counts and last-fired timestamps for all registered triggers.
-   *
-   * Called at session start to ensure trigger budgets are per-session, not
-   * accumulated across snapshot recoveries.
-   */
-  resetAllFireCounts() {
-    let reset = 0;
-    for (const trigger of this.triggers.values()) {
-      trigger.fires_count = 0;
-      trigger.last_fired = void 0;
-      reset++;
-    }
-    log4.info("All trigger fire counts reset", { count: reset });
-  }
-  /**
-   * Removes events older than `maxAgeMs` from the evaluator's ring buffer.
-   *
-   * Delegates to the ConditionEvaluator's pruneOldEvents method. Call
-   * periodically on low-traffic triggers to prevent unbounded buffer growth.
-   *
-   * @param maxAgeMs - Maximum event age to retain in milliseconds.
-   */
-  pruneOldEvents(maxAgeMs) {
-    this.evaluator.pruneOldEvents(maxAgeMs);
-  }
-  // ─── Private Helpers ──────────────────────────────────────────────────────
-  /**
-   * Returns `true` if the trigger passes all guard checks, or a string
-   * discriminant identifying which guard blocked it.
-   *
-   * Extracted from both `match()` and `evaluateTrigger()` to eliminate the
-   * duplicate guard logic that previously re-checked the same conditions to
-   * determine `skippedReason`. Guards are stateless checks against trigger
-   * fields only — no event context needed.
-   *
-   * @param trigger - The trigger to check.
-   * @param now - Current epoch ms (pass Date.now() from the caller to avoid
-   *   multiple clock reads per evaluation batch).
-   * @returns `true` when all guards pass, or `'cooldown'` / `'max_fires'` /
-   *   `'disabled'` to identify the first failing guard.
-   */
-  passesGuards(trigger, now) {
-    if (!trigger.enabled) return "disabled";
-    if (trigger.last_fired !== void 0 && trigger.cooldown_ms !== void 0) {
-      if (now - trigger.last_fired < trigger.cooldown_ms) return "cooldown";
-    }
-    const effectiveMax = trigger.max_fires ?? this.config.max_fires_per_session;
-    if (trigger.fires_count >= effectiveMax) return "max_fires";
-    return true;
-  }
-  /**
-   * Evaluates a single trigger against an event, applying guards and
-   * recording fires.
-   *
-   * Re-entrant safe: all mutations to trigger state happen AFTER the
-   * condition/action results are known (no Map mutations during evaluation).
-   */
-  async evaluateTrigger(trigger, event) {
-    const now = Date.now();
-    const guardResult = this.passesGuards(trigger, now);
-    if (guardResult !== true) {
-      return {
-        trigger_id: trigger.id,
-        trigger_name: trigger.name,
-        fired: false,
-        skipped_reason: guardResult
-      };
-    }
-    const conditionMet = this.evaluator.evaluate(trigger.condition, event);
-    if (!conditionMet) {
-      return {
-        trigger_id: trigger.id,
-        trigger_name: trigger.name,
-        fired: false
-      };
-    }
-    log4.info("Trigger condition met, executing action", {
-      trigger_id: trigger.id,
-      trigger_name: trigger.name,
-      event_type: event.type,
-      event_id: event.id
-    });
-    const actionResult = await this.executor.execute(trigger.action, event);
-    trigger.fires_count++;
-    trigger.last_fired = Date.now();
-    if (!actionResult.success) {
-      log4.warn("Trigger action failed", {
-        trigger_id: trigger.id,
-        error: actionResult.error
-      });
-    }
-    return {
-      trigger_id: trigger.id,
-      trigger_name: trigger.name,
-      fired: true,
-      action_result: actionResult
-    };
-  }
-  /**
-   * Converts a TriggerDefinition (L2) to a minimal L1 Trigger stub.
-   *
-   * Used by the `match()` compatibility shim. Only the fields that L1
-   * consumers actually use are populated; others use safe defaults.
-   */
-  toL1Trigger(trigger) {
-    return {
-      id: trigger.id,
-      enabled: trigger.enabled,
-      priority: trigger.priority,
-      max_fires: trigger.max_fires,
-      cooldown_ms: trigger.cooldown_ms,
-      // L2 uses TriggerCondition; L1 uses EventMatcher. Bridge:
-      // Synthesise an EventMatcher from EventCondition if possible,
-      // otherwise use a catch-all that matches any event.
-      event_match: this.toEventMatcher(trigger),
-      // L2 uses TriggerAction union; L1 uses Action[]. Bridge:
-      // Synthesise a single emit_event Action as a stub.
-      actions: [{
-        type: "emit_event",
-        params: { trigger_id: trigger.id, source: "trigger-registry" }
-      }]
-    };
-  }
-  /**
-   * Derives an L1 EventMatcher from a TriggerDefinition's condition.
-   *
-   * For EventCondition: uses event_type directly.
-   * For all others: returns a wildcard matcher (any event).
-   */
-  toEventMatcher(trigger) {
-    const cond = trigger.condition;
-    if (cond.type === "event") {
-      const pattern = cond.event_type;
-      if (pattern === "*") {
-        return { type: /.*/ };
-      }
-      if (typeof pattern === "string" && pattern.endsWith(":*")) {
-        const prefix = pattern.slice(0, -1);
-        return { type: new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) };
-      }
-      return { type: pattern };
-    }
-    return { type: /.*/ };
   }
 };
 
@@ -25662,8 +25622,16 @@ __name(getBuiltinTriggers, "getBuiltinTriggers");
 
 // src/extensions/triggers/subsystem.ts
 var logger6 = createLogger("triggers-subsystem");
-function createTriggerSubsystem(config2) {
-  const triggerRegistry = new TriggerRegistry(config2.triggers);
+function createTriggerSubsystem(config2, deps) {
+  const evaluator = new ConditionEvaluator();
+  const executor = new TriggerActionExecutor(
+    deps.eventBus,
+    deps.directiveQueue,
+    deps.workflowEngine,
+    config2.triggers,
+    deps.contextProvider
+  );
+  const triggerRegistry = new TriggerRegistry(config2.triggers, evaluator, executor);
   for (const trigger of getBuiltinTriggers()) {
     triggerRegistry.register(trigger);
   }
@@ -26349,7 +26317,7 @@ var AgentCoordinator = class {
     const cutoff = Date.now() - olderThanMs;
     let count = 0;
     for (const [id, agent] of this.agents) {
-      if ((agent.status === "completed" || agent.status === "failed" || agent.status === "cancelled") && agent.completed_at && agent.completed_at < cutoff) {
+      if ((agent.status === "completed" || agent.status === "failed" || agent.status === "cancelled") && agent.completed_at !== void 0 && agent.completed_at < cutoff) {
         this.agents.delete(id);
         this.budgetTracker.removeAgent(id);
         for (const remaining of this.agents.values()) {
@@ -28127,6 +28095,21 @@ __name(extractFiles, "extractFiles");
 // src/extensions/workflow/watchdog.ts
 var import_node_fs8 = require("node:fs");
 var import_node_path8 = require("node:path");
+
+// src/plugins/wrfc/wrfc-context.ts
+function getWRFCFields(ctx) {
+  return {
+    review_score: ctx["review_score"],
+    review_issues: ctx["review_issues"],
+    min_review_score: ctx["min_review_score"],
+    fix_attempts: ctx["fix_attempts"],
+    max_fix_attempts: ctx["max_fix_attempts"],
+    files_modified: ctx["files_modified"]
+  };
+}
+__name(getWRFCFields, "getWRFCFields");
+
+// src/extensions/workflow/watchdog.ts
 var logger18 = createLogger("watchdog");
 var WATCHDOG_STALE_MS = 12e4;
 var WATCHDOG_COOLDOWN_MS = 12e4;
@@ -28252,7 +28235,8 @@ var WatchdogCoordinator = class {
   recoverStaleWorkflow(workflow, state) {
     const { directiveQueue, agentWorkflowMap } = this.deps;
     if (!directiveQueue) return;
-    const filesModified = Array.isArray(workflow.context.files_modified) ? workflow.context.files_modified : [];
+    const wrfc = getWRFCFields(workflow.context);
+    const filesModified = Array.isArray(wrfc.files_modified) ? wrfc.files_modified : [];
     if (state === "REVIEWING") {
       const task = `Review the work completed in workflow ${workflow.id}. Current state: ${workflow.current_state}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "Check all recently modified files.");
       const message = buildSpawnDirectiveMessage("reviewer", task, void 0, {
@@ -28274,9 +28258,9 @@ var WatchdogCoordinator = class {
         workflow_id: workflow.id
       });
     } else if (state === "FIXING") {
-      const fixAttempts = typeof workflow.context.fix_attempts === "number" ? workflow.context.fix_attempts : 0;
-      const maxFixAttempts = typeof workflow.context.max_fix_attempts === "number" ? workflow.context.max_fix_attempts : 3;
-      const lastScore = typeof workflow.context.review_score === "number" ? workflow.context.review_score : 0;
+      const fixAttempts = typeof wrfc.fix_attempts === "number" ? wrfc.fix_attempts : 0;
+      const maxFixAttempts = typeof wrfc.max_fix_attempts === "number" ? wrfc.max_fix_attempts : 3;
+      const lastScore = typeof wrfc.review_score === "number" ? wrfc.review_score : 0;
       if (fixAttempts >= maxFixAttempts) {
         const escalationMessage = buildEscalationMessage(workflow.id, fixAttempts, lastScore);
         directiveQueue.enqueue("subagent_stop", {
@@ -28292,7 +28276,7 @@ var WatchdogCoordinator = class {
           max_fix_attempts: maxFixAttempts
         });
       } else {
-        const reviewIssues = Array.isArray(workflow.context.review_issues) ? workflow.context.review_issues : [];
+        const reviewIssues = Array.isArray(wrfc.review_issues) ? wrfc.review_issues : [];
         const issuesSummary = reviewIssues.length > 0 ? reviewIssues.map((i) => `[${i.severity}] ${i.dimension}: ${i.description}`).join("; ") : "See previous review output for details.";
         const fixTask = `Fix the issues identified in the code review for workflow ${workflow.id}. Review score: ${lastScore}/10. Issues: ${issuesSummary}` + (filesModified.length > 0 ? ` Files: ${filesModified.join(", ")}.` : "");
         const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, void 0, {
@@ -34320,6 +34304,65 @@ var IPCRouter = class {
 
 // src/extensions/ipc/setup.ts
 var logger54 = createLogger("ipc-setup");
+function isPidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+__name(isPidAlive, "isPidAlive");
+function cleanStalePointerFiles(stateDir, log8) {
+  try {
+    let entries;
+    try {
+      entries = (0, import_node_fs13.readdirSync)(stateDir);
+    } catch (err) {
+      if (err.code === "ENOENT") return;
+      throw err;
+    }
+    const pointerFiles = entries.filter((f) => /^runtime-\d+\.socket$/.test(f));
+    for (const filename of pointerFiles) {
+      const match = filename.match(/^runtime-(\d+)\.socket$/);
+      if (!match) continue;
+      const pid = parseInt(match[1], 10);
+      if (isPidAlive(pid)) continue;
+      const pointerPath = (0, import_node_path13.join)(stateDir, filename);
+      let socketFilePath;
+      try {
+        socketFilePath = (0, import_node_fs13.readFileSync)(pointerPath, "utf-8").trim();
+      } catch {
+      }
+      if (socketFilePath) {
+        try {
+          (0, import_node_fs13.unlinkSync)(socketFilePath);
+        } catch (err) {
+          if (err.code !== "ENOENT") {
+            log8.warn("Could not remove stale socket file", {
+              path: socketFilePath,
+              err: toErrorMessage(err)
+            });
+          }
+        }
+      }
+      try {
+        (0, import_node_fs13.unlinkSync)(pointerPath);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          log8.warn("Could not remove stale socket pointer file", {
+            path: pointerPath,
+            err: toErrorMessage(err)
+          });
+        }
+      }
+      log8.info("Cleaned stale socket pointer", { pid, pointer: pointerPath });
+    }
+  } catch (err) {
+    log8.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
+  }
+}
+__name(cleanStalePointerFiles, "cleanStalePointerFiles");
 async function createIPCSubsystem(opts) {
   const { config: config2, projectRoot, directiveQueue, agentWorkflowMap } = opts;
   const stateDir = (0, import_node_path13.join)(projectRoot, config2.persistence.state_dir);
@@ -34360,6 +34403,7 @@ async function createIPCSubsystem(opts) {
         return awm.lookup(agentId) ?? null;
       });
     }
+    cleanStalePointerFiles(stateDir, logger54);
     (0, import_node_fs13.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
     ensureDirSync(stateDir);
@@ -34462,18 +34506,32 @@ var RuntimeEngine = class {
       this.workflow = await createWorkflowSubsystem(this.config, this.projectRoot);
       this.workflow.workflowEngine.setEventBus(this.events.eventBus);
     }
-    this.triggers = createTriggerSubsystem(this.config);
     this.directives = createDirectiveSubsystem();
     this.wrfcConfigStore = new WRFCConfigStore();
+    const wrfcContextProvider = /* @__PURE__ */ __name((type) => {
+      if (type !== "wrfc") return {};
+      const wrfcStore = this.wrfcConfigStore;
+      if (!wrfcStore) return {};
+      const config2 = wrfcStore.get();
+      const defaults = {};
+      if (typeof config2.min_review_score === "number" && Number.isFinite(config2.min_review_score)) {
+        defaults.min_review_score = config2.min_review_score;
+      }
+      if (typeof config2.max_fix_attempts === "number" && Number.isFinite(config2.max_fix_attempts)) {
+        defaults.max_fix_attempts = config2.max_fix_attempts;
+      }
+      return defaults;
+    }, "wrfcContextProvider");
+    const triggerDeps = {
+      eventBus: this.events.eventBus,
+      directiveQueue: this.directives.directiveQueue,
+      workflowEngine: this.workflow?.workflowEngine ?? null,
+      contextProvider: wrfcContextProvider
+    };
+    this.triggers = createTriggerSubsystem(this.config, triggerDeps);
     if (this.workflow) {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
-    this.triggers.triggerRegistry.setDependencies(
-      this.events.eventBus,
-      this.directives.directiveQueue,
-      this.workflow?.workflowEngine ?? null,
-      this.wrfcConfigStore
-    );
     this.events.eventBus.on("*", async (event) => {
       if (event.source?.kind === "hook") return;
       try {

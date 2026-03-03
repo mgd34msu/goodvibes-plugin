@@ -66,6 +66,13 @@ export class RuntimeClient {
     socketPath;
     /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
     stateDir;
+    /** Session ID stored for re-discovery in isAvailableAsync(). */
+    _sessionId;
+    /**
+     * Active socket path — may be updated by isAvailableAsync() after
+     * a self-heal rediscovery.
+     */
+    _socketPath;
     /**
      * @param sessionId - Optional Claude Code session ID for session-keyed
      *   socket pointer lookup. When provided, enables exact-match discovery
@@ -74,9 +81,74 @@ export class RuntimeClient {
     constructor(sessionId) {
         const cwd = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd();
         this.stateDir = join(cwd, '.goodvibes', 'state');
+        this._sessionId = sessionId;
         this.socketPath = this.discoverSocket(sessionId);
+        this._socketPath = this.socketPath;
     }
     // ─── Public API ─────────────────────────────────────────────────────────────
+    /**
+     * Checks whether a process is alive by sending signal 0.
+     * Returns true if the process exists, false if it is dead or the PID is invalid.
+     *
+     * @param pid - OS process ID to probe.
+     */
+    static isProcessAlive(pid) {
+        try {
+            process.kill(pid, 0);
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
+    /**
+     * Probes a Unix domain socket by attempting a real connection with a 100 ms
+     * timeout. Returns true only if the connection succeeds (i.e. a live process
+     * is listening), false otherwise.
+     *
+     * @param socketPath - Absolute path to the Unix domain socket file.
+     */
+    static probeSocket(socketPath) {
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                socket.destroy();
+                resolve(false);
+            }, 100);
+            const socket = net.createConnection(socketPath, () => {
+                clearTimeout(timeout);
+                socket.destroy();
+                resolve(true);
+            });
+            socket.on('error', () => {
+                clearTimeout(timeout);
+                resolve(false);
+            });
+        });
+    }
+    /**
+     * Async liveness check: probes the socket with an actual connection attempt.
+     *
+     * Unlike the synchronous {@link isAvailable}, this method verifies that a
+     * process is actively listening on the socket. If the probe fails, it
+     * attempts a self-heal: cleans up the stale socket, re-runs discovery, and
+     * probes the newly discovered path (if any).
+     *
+     * @returns `true` if a live runtime engine is reachable, `false` otherwise.
+     */
+    async isAvailableAsync() {
+        if (!this._socketPath)
+            return false;
+        const alive = await RuntimeClient.probeSocket(this._socketPath);
+        if (!alive) {
+            // Self-heal: clean up stale socket and try to rediscover a live one.
+            this.tryCleanStaleSocket(this._socketPath);
+            this._socketPath = this.discoverSocket(this._sessionId);
+            if (!this._socketPath)
+                return false;
+            return RuntimeClient.probeSocket(this._socketPath);
+        }
+        return true;
+    }
     /**
      * Returns true if the runtime engine socket path was discovered and the
      * socket file currently exists on disk.
@@ -255,7 +327,9 @@ export class RuntimeClient {
      * @returns Absolute socket path string, or null if none is discoverable.
      */
     discoverSocket(sessionId) {
-        // Strategy 1: Explicit env var (set by runtime engine at startup)
+        // Strategy 1: Manual override only — not set by the runtime engine. Set this
+        // env var to force a specific socket path. (The runtime engine runs as a child
+        // process of MCP and cannot propagate env vars to the parent Claude Code process.)
         const envPath = process.env['GOODVIBES_RUNTIME_SOCKET'];
         if (envPath) {
             return envPath;
@@ -315,8 +389,29 @@ export class RuntimeClient {
                         const socketPath = readFileSync(pointerPath, 'utf-8').trim();
                         if (!socketPath || !existsSync(socketPath))
                             continue;
+                        // Phase 1C: PID liveness check for pointer files whose name encodes
+                        // the owning PID (runtime-{digits}.socket). If the process is dead,
+                        // clean up both the pointer file and the stale socket file, then
+                        // continue to the next candidate.
+                        const pidMatch = /^runtime-(\d+)\.socket$/.exec(entry);
+                        if (pidMatch) {
+                            const pid = parseInt(pidMatch[1], 10);
+                            if (!RuntimeClient.isProcessAlive(pid)) {
+                                debug(`Dead PID ${pid}, removing stale pointer ${entry}`);
+                                try {
+                                    unlinkSync(pointerPath);
+                                }
+                                catch { /* ignore */ }
+                                try {
+                                    unlinkSync(socketPath);
+                                }
+                                catch { /* ignore */ }
+                                continue;
+                            }
+                        }
                         // Return optimistically — the newest pointer is most likely live.
-                        // Stale sockets are cleaned up in sendMessage() on ECONNREFUSED.
+                        // Non-PID pointer files (session-keyed UUIDs) are cleaned up on
+                        // ECONNREFUSED in sendMessage().
                         return socketPath;
                     }
                     catch {

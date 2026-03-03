@@ -12,13 +12,13 @@ import { createLogger } from '../../shared/logger.js';
 import type { RuntimeEvent, EventType } from '../../shared/events.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
-import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { TriggersConfig } from '../../shared/config.js';
 import { buildSpawnDirectiveMessage } from '../directives/legacy-directive-builder.js';
 import type {
   TriggerAction,
   TriggerActionHandler,
+  WorkflowContextProvider,
   EmitEventAction,
   SpawnAgentAction,
   InvokeHandlerAction,
@@ -147,28 +147,28 @@ export class TriggerActionExecutor {
   private readonly workflowEngine: WorkflowEngine | null;
   /** Triggers configuration for timeout and other settings. */
   private readonly config: TriggersConfig | null;
-  /** WRFC config store for reading runtime WRFC configuration. */
-  private readonly wrfcConfigStore: WRFCConfigStore | null;
+  /** Optional provider for workflow context defaults — plugins register their own. */
+  private readonly contextProvider: WorkflowContextProvider | undefined;
 
   /**
    * @param eventBus - The shared EventBus instance, or null if not available.
    * @param directiveQueue - The shared DirectiveQueue instance, or null if not available.
    * @param workflowEngine - The shared WorkflowEngine instance, or null if not available.
    * @param config - The triggers configuration, or null to use built-in defaults.
-   * @param wrfcConfigStore - The WRFC config store, or null if not available.
+   * @param contextProvider - Optional provider for workflow context defaults.
    */
   constructor(
     eventBus: EventBus | null = null,
     directiveQueue: DirectiveQueue | null = null,
     workflowEngine: WorkflowEngine | null = null,
     config: TriggersConfig | null = null,
-    wrfcConfigStore: WRFCConfigStore | null = null,
+    contextProvider?: WorkflowContextProvider,
   ) {
     this.eventBus = eventBus;
     this.directiveQueue = directiveQueue;
     this.workflowEngine = workflowEngine;
     this.config = config;
-    this.wrfcConfigStore = wrfcConfigStore;
+    this.contextProvider = contextProvider;
   }
 
   /**
@@ -354,16 +354,13 @@ export class TriggerActionExecutor {
         return { success: false, error: 'start_workflow: workflow_definition is required' };
       }
       try {
-        // Seed WRFC config (min_review_score, max_fix_attempts) from user's goodvibes.json
-        // so all workflow types respect the user's configured thresholds.
-        const wrfcDefaults = this.directiveQueue ? this.getWRFCContextDefaults() : {};
-        // WRFC config defaults are spread first so trigger context_templates can override.
-        // This is safe because downstream consumers validate types — if a template resolves
-        // to a non-numeric value (e.g. empty string from unresolvable $event reference),
-        // the typeof+isFinite guard falls through to the hardcoded default.
+        // Seed context defaults from registered provider (e.g. WRFC config) so all
+        // workflow types respect plugin-configured thresholds.
+        // Provider defaults are spread first so trigger context_templates can override.
+        const contextDefaults = this.contextProvider?.(action.workflow_definition ?? '') ?? {};
         const instance = this.workflowEngine.create(
           action.workflow_definition,
-          { ...wrfcDefaults, ...resolvedContext },
+          { ...contextDefaults, ...resolvedContext },
         );
         log.info('start_workflow action: workflow created', {
           definition: action.workflow_definition,
@@ -400,23 +397,6 @@ export class TriggerActionExecutor {
     }
 
     return { success: false, error: `Unknown workflow action type: ${String(action.type)}` };
-  }
-
-  /**
-   * Extract WRFC-relevant config values from DirectiveQueue for workflow context seeding.
-   * Returns only numeric, finite values — omits keys that aren't set in the user's config.
-   */
-  private getWRFCContextDefaults(): Record<string, unknown> {
-    if (!this.wrfcConfigStore) return {};
-    const config = this.wrfcConfigStore.get();
-    const defaults: Record<string, unknown> = {};
-    if (typeof config.min_review_score === 'number' && Number.isFinite(config.min_review_score)) {
-      defaults.min_review_score = config.min_review_score;
-    }
-    if (typeof config.max_fix_attempts === 'number' && Number.isFinite(config.max_fix_attempts)) {
-      defaults.max_fix_attempts = config.max_fix_attempts;
-    }
-    return defaults;
   }
 
   /**

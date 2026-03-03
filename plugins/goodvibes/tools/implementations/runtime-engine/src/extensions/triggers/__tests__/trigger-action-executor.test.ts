@@ -69,10 +69,8 @@ function makeWorkflowEngine(instanceId = 'wf-1') {
   };
 }
 
-function makeWRFCConfigStore(min_review_score = 8, max_fix_attempts = 3) {
-  return {
-    get: vi.fn(() => ({ min_review_score, max_fix_attempts })),
-  };
+function makeContextProvider(min_review_score = 8, max_fix_attempts = 3) {
+  return vi.fn((_workflowType: string) => ({ min_review_score, max_fix_attempts }));
 }
 
 describe('TriggerActionExecutor', () => {
@@ -415,16 +413,16 @@ describe('TriggerActionExecutor', () => {
       expect(result.error).toContain('create failed');
     });
 
-    it('seeds WRFC defaults from wrfcConfigStore when directiveQueue and wrfcConfigStore are provided', async () => {
+    it('seeds context defaults from contextProvider when provided', async () => {
       const workflowEngine = makeWorkflowEngine();
       const directiveQueue = makeDirectiveQueue();
-      const wrfcStore = makeWRFCConfigStore(7, 4);
+      const contextProvider = makeContextProvider(7, 4);
       const executor = new TriggerActionExecutor(
         null,
         directiveQueue as any,
         workflowEngine as any,
         DEFAULT_CONFIG,
-        wrfcStore as any,
+        contextProvider,
       );
       const action: TriggerAction = {
         type: 'start_workflow',
@@ -436,18 +434,24 @@ describe('TriggerActionExecutor', () => {
       const [, context] = workflowEngine.create.mock.calls[0] as unknown[];
       expect((context as Record<string, unknown>)['min_review_score']).toBe(7);
       expect((context as Record<string, unknown>)['max_fix_attempts']).toBe(4);
+      expect(contextProvider).toHaveBeenCalledWith('fix_loop');
     });
 
-    it('does not include non-finite WRFC config values', async () => {
+    it('passes contextProvider return values to workflow context without filtering', async () => {
       const workflowEngine = makeWorkflowEngine();
       const directiveQueue = makeDirectiveQueue();
-      const wrfcStore = { get: vi.fn(() => ({ min_review_score: NaN, max_fix_attempts: Infinity })) };
+      // The executor no longer filters values — filtering is the provider's responsibility.
+      // Pass a contextProvider that returns non-finite values to verify pass-through.
+      const contextProvider = vi.fn((_workflowType: string) => ({
+        min_review_score: NaN,
+        max_fix_attempts: Infinity,
+      }));
       const executor = new TriggerActionExecutor(
         null,
         directiveQueue as any,
         workflowEngine as any,
         DEFAULT_CONFIG,
-        wrfcStore as any,
+        contextProvider,
       );
       const action: TriggerAction = {
         type: 'start_workflow',
@@ -456,10 +460,11 @@ describe('TriggerActionExecutor', () => {
       };
       const result = await executor.execute(action, makeEvent('build:failed'));
       expect(result.success).toBe(true);
+      expect(contextProvider).toHaveBeenCalledWith('fix_loop');
       const [, context] = workflowEngine.create.mock.calls[0] as unknown[];
-      expect((context as Record<string, unknown>)['min_review_score']).toBeUndefined();
-      // Infinity is not finite
-      expect((context as Record<string, unknown>)['max_fix_attempts']).toBeUndefined();
+      // Values are passed through as-is; filtering is the provider's responsibility.
+      expect(Number.isNaN((context as Record<string, unknown>)['min_review_score'])).toBe(true);
+      expect((context as Record<string, unknown>)['max_fix_attempts']).toBe(Infinity);
     });
 
     it('handles missing context_template (uses empty context)', async () => {

@@ -122,12 +122,45 @@ export declare class RuntimeClient {
     private readonly socketPath;
     /** Resolved state directory (.goodvibes/state) used for stale-socket cleanup. */
     private readonly stateDir;
+    /** Session ID stored for re-discovery in isAvailableAsync(). */
+    private readonly _sessionId;
+    /**
+     * Active socket path — may be updated by isAvailableAsync() after
+     * a self-heal rediscovery.
+     */
+    private _socketPath;
     /**
      * @param sessionId - Optional Claude Code session ID for session-keyed
      *   socket pointer lookup. When provided, enables exact-match discovery
      *   via `runtime-{sessionId}.socket` pointer files.
      */
     constructor(sessionId?: string);
+    /**
+     * Checks whether a process is alive by sending signal 0.
+     * Returns true if the process exists, false if it is dead or the PID is invalid.
+     *
+     * @param pid - OS process ID to probe.
+     */
+    static isProcessAlive(pid: number): boolean;
+    /**
+     * Probes a Unix domain socket by attempting a real connection with a 100 ms
+     * timeout. Returns true only if the connection succeeds (i.e. a live process
+     * is listening), false otherwise.
+     *
+     * @param socketPath - Absolute path to the Unix domain socket file.
+     */
+    private static probeSocket;
+    /**
+     * Async liveness check: probes the socket with an actual connection attempt.
+     *
+     * Unlike the synchronous {@link isAvailable}, this method verifies that a
+     * process is actively listening on the socket. If the probe fails, it
+     * attempts a self-heal: cleans up the stale socket, re-runs discovery, and
+     * probes the newly discovered path (if any).
+     *
+     * @returns `true` if a live runtime engine is reachable, `false` otherwise.
+     */
+    isAvailableAsync(): Promise<boolean>;
     /**
      * Returns true if the runtime engine socket path was discovered and the
      * socket file currently exists on disk.

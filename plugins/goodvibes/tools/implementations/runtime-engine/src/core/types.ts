@@ -12,7 +12,7 @@
  */
 
 import type { RuntimeEvent, EventSource, EventContext } from '../shared/events.js';
-export type { RuntimeEvent, EventSource, EventContext } from '../shared/events.js';
+
 
 // ─── Event Matcher ────────────────────────────────────────────────────────────
 
@@ -353,15 +353,41 @@ export interface MetricsCollector {
   setActiveWorkflows(count: number): void;
 }
 
-// ─── Disposable ───────────────────────────────────────────────────────────────
+// ─── Trigger Action Interfaces ───────────────────────────────────────────────
 
 /**
- * Disposable resource interface.
- * Aspirational — no consumer migrations now, apply to new code going forward.
+ * Result of executing a trigger action.
  */
-interface Disposable {
-  /** Release all resources held by this object. */
-  dispose(): Promise<void>;
+export interface TriggerActionResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * A named action handler function registered with the TriggerActionExecutor.
+ * Receives resolved arguments and the triggering event.
+ */
+export type TriggerActionHandler = (
+  args: Record<string, unknown>,
+  event: RuntimeEvent,
+) => Promise<void>;
+
+/** L1 interface for event emission — implemented by EventBus in L2 */
+export interface EventEmitter {
+  emit(event: RuntimeEvent): void;
+}
+
+/** L1 interface for condition evaluation — implemented by ConditionEvaluator in L2 */
+export interface ConditionEvaluatorInterface {
+  evaluate(condition: unknown, event: RuntimeEvent): boolean;
+  recordEvent(event: RuntimeEvent): void;
+  pruneOldEvents(maxAgeMs: number): void;
+}
+
+/** L1 interface for trigger action execution — implemented by TriggerActionExecutor in L2 */
+export interface TriggerActionExecutorInterface {
+  execute(action: unknown, event: RuntimeEvent): Promise<TriggerActionResult>;
+  registerHandler(name: string, handler: TriggerActionHandler): void;
 }
 
 // ─── Type Guards ──────────────────────────────────────────────────────────────

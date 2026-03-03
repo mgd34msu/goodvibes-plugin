@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TriggerRegistry } from '../../../core/trigger-registry.js';
+import { ConditionEvaluator } from '../condition-evaluator.js';
+import { TriggerActionExecutor } from '../trigger-action-executor.js';
 import type { TriggerDefinition } from '../types.js';
 import type { TriggersConfig } from '../../../shared/config.js';
 import type { RuntimeEvent } from '../../../shared/events.js';
@@ -62,11 +64,15 @@ function makeEvent(type: string, data: Record<string, unknown> = {}, id = 'evt-1
   };
 }
 
+function makeRegistry(config: TriggersConfig = DEFAULT_CONFIG): TriggerRegistry {
+  return new TriggerRegistry(config, new ConditionEvaluator(), new TriggerActionExecutor());
+}
+
 describe('TriggerRegistry', () => {
   let registry: TriggerRegistry;
 
   beforeEach(() => {
-    registry = new TriggerRegistry(DEFAULT_CONFIG);
+    registry = makeRegistry();
   });
 
   // ─── register ────────────────────────────────────────────────────────────────
@@ -98,20 +104,20 @@ describe('TriggerRegistry', () => {
     });
 
     it('throws QueueError when max_triggers limit is exceeded', () => {
-      const smallRegistry = new TriggerRegistry({ ...DEFAULT_CONFIG, max_triggers: 2 });
+      const smallRegistry = makeRegistry({ ...DEFAULT_CONFIG, max_triggers: 2 });
       smallRegistry.register(makeTrigger({ id: 't1' }));
       smallRegistry.register(makeTrigger({ id: 't2' }));
       expect(() => smallRegistry.register(makeTrigger({ id: 't3' }))).toThrow();
     });
 
     it('includes trigger ID in the limit error message', () => {
-      const smallRegistry = new TriggerRegistry({ ...DEFAULT_CONFIG, max_triggers: 1 });
+      const smallRegistry = makeRegistry({ ...DEFAULT_CONFIG, max_triggers: 1 });
       smallRegistry.register(makeTrigger({ id: 't1' }));
       expect(() => smallRegistry.register(makeTrigger({ id: 't2' }))).toThrow('t2');
     });
 
     it('allows registration up to the exact max_triggers limit', () => {
-      const smallRegistry = new TriggerRegistry({ ...DEFAULT_CONFIG, max_triggers: 3 });
+      const smallRegistry = makeRegistry({ ...DEFAULT_CONFIG, max_triggers: 3 });
       smallRegistry.register(makeTrigger({ id: 't1' }));
       smallRegistry.register(makeTrigger({ id: 't2' }));
       expect(() => smallRegistry.register(makeTrigger({ id: 't3' }))).not.toThrow();
@@ -132,7 +138,7 @@ describe('TriggerRegistry', () => {
     });
 
     it('frees up capacity for new registrations after unregister', () => {
-      const smallRegistry = new TriggerRegistry({ ...DEFAULT_CONFIG, max_triggers: 1 });
+      const smallRegistry = makeRegistry({ ...DEFAULT_CONFIG, max_triggers: 1 });
       smallRegistry.register(makeTrigger({ id: 't1' }));
       smallRegistry.unregister('t1');
       expect(() => smallRegistry.register(makeTrigger({ id: 't2' }))).not.toThrow();
@@ -269,13 +275,9 @@ describe('TriggerRegistry', () => {
       expect(handlerFn).toHaveBeenCalledOnce();
     });
 
-    it('handler survives setDependencies() call', async () => {
+    it('handler is accessible via evaluate after registerHandler', async () => {
       const handlerFn = vi.fn().mockResolvedValue(undefined);
       registry.registerHandler('persistentHandler', handlerFn);
-      // Replace the executor via setDependencies
-      const mockBus = { emit: vi.fn() };
-      registry.setDependencies(mockBus as any);
-      // Handler should still be accessible after setDependencies
       registry.register(
         makeTrigger({
           action: {
@@ -393,7 +395,7 @@ describe('TriggerRegistry', () => {
 
     it('uses config max_fires_per_session when trigger has no max_fires', async () => {
       const configWithLimit: TriggersConfig = { ...DEFAULT_CONFIG, max_fires_per_session: 2 };
-      const limitedRegistry = new TriggerRegistry(configWithLimit);
+      const limitedRegistry = makeRegistry(configWithLimit);
       const handler = vi.fn().mockResolvedValue(undefined);
       limitedRegistry.registerHandler('h', handler);
       const trigger = makeTrigger({
@@ -582,21 +584,12 @@ describe('TriggerRegistry', () => {
     });
   });
 
-  // ─── setDependencies ────────────────────────────────────────────────────────
+  // ─── constructor DI ─────────────────────────────────────────────────────────
 
-  describe('setDependencies', () => {
-    it('accepts null dependencies without throwing', () => {
-      const mockBus = { emit: vi.fn() };
-      expect(() => registry.setDependencies(mockBus as any, null, null, null)).not.toThrow();
-    });
-
-    it('replaces the internal executor while preserving action handlers', async () => {
+  describe('constructor DI', () => {
+    it('injects executor and invokes registerHandler on it', async () => {
       const handlerFn = vi.fn().mockResolvedValue(undefined);
-      // Register handler before setDependencies
       registry.registerHandler('earlyHandler', handlerFn);
-      const mockBus = { emit: vi.fn() };
-      registry.setDependencies(mockBus as any);
-      // Handler should still work after setDependencies
       registry.register(
         makeTrigger({
           action: { type: 'invoke_handler', handler: 'earlyHandler', args_template: {} },

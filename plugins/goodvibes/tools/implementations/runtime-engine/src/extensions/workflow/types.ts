@@ -92,8 +92,8 @@ export interface GuardCondition {
    * string literals (unquoted), and `null`.
    *
    * Examples:
-   * - `"context.review_score >= 9.5"`
-   * - `"context.fix_attempts < context.max_fix_attempts"`
+   * - `"context.quality_score >= 9.5"`
+   * - `"context.attempts < context.max_attempts"`
    * - `"context.status === null"`
    */
   expression?: string;
@@ -151,30 +151,11 @@ export interface WorkflowInstance {
  * the instance progresses through states.
  */
 export interface WorkflowContext {
-  // ── WRFC-specific context ──────────────────────────────────────────────
-  /** Human-readable task description for the WRFC loop. */
+  // ── Generic workflow context ───────────────────────────────────────────
+  /** Human-readable task description for the workflow. */
   task?: string;
   /** IDs of agent instances involved in this workflow. */
   agents?: string[];
-  /** Numeric review score from the most recent review (0–10). */
-  review_score?: number;
-  /** Issues flagged by the most recent review. */
-  review_issues?: Array<{
-    /** The review dimension the issue was found in. */
-    dimension: string;
-    /** Severity level of the issue. */
-    severity: string;
-    /** Human-readable description of the issue. */
-    description: string;
-  }>;
-  /** Minimum review score required to pass (0–10). Defaults to 9.5. */
-  min_review_score?: number;
-  /** Number of fix iterations completed so far in this WRFC cycle. */
-  fix_attempts?: number;
-  /** Maximum fix iterations allowed before escalating. */
-  max_fix_attempts?: number;
-  /** Paths of files modified during the write or fix phase. */
-  files_modified?: string[];
 
   // ── Fix-loop-specific context ─────────────────────────────────────────
   /** Issues identified during the diagnosis phase. */
