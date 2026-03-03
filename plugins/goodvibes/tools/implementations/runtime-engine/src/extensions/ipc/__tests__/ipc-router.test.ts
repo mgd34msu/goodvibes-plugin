@@ -442,6 +442,66 @@ describe('IPCRouter', () => {
         expect(response.status).toBe('ok');
       });
     });
+
+    describe('processHookEvent callback', () => {
+      it('awaits processHookEvent before returning the ack response', async () => {
+        const callOrder: string[] = [];
+        const processHookEvent = vi.fn().mockImplementation(async () => {
+          callOrder.push('processHookEvent');
+        });
+        const r = new IPCRouter(makeDeps({ processHookEvent }));
+        const result = await r.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
+        callOrder.push('ack');
+        const response = 'response' in result ? result.response : result;
+        // processHookEvent must have been called and resolved before the ack returns
+        expect(processHookEvent).toHaveBeenCalledOnce();
+        expect(response).toMatchObject({ id: 'msg-1', status: 'ok', data: { kind: 'ack' } });
+        expect(callOrder).toEqual(['processHookEvent', 'ack']);
+      });
+
+      it('catches processHookEvent errors and still returns an ok ack', async () => {
+        const processHookEvent = vi.fn().mockRejectedValueOnce(new Error('callback failure'));
+        const r = new IPCRouter(makeDeps({ processHookEvent }));
+        const result = await r.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
+        const response = 'response' in result ? result.response : result;
+        expect(response).toMatchObject({ id: 'msg-1', status: 'ok', data: { kind: 'ack' } });
+      });
+
+      it('works correctly when processHookEvent is not provided (graceful degradation)', async () => {
+        // makeDeps() does not include processHookEvent — it defaults to null inside IPCRouter
+        const r = new IPCRouter(makeDeps());
+        const result = await r.route(makeHookEventMsg({ hook_name: 'pre_tool_use' }));
+        const response = 'response' in result ? result.response : result;
+        expect(response).toMatchObject({ id: 'msg-1', status: 'ok', data: { kind: 'ack' } });
+      });
+
+      it('receives a RuntimeEvent with the correct shape', async () => {
+        const processHookEvent = vi.fn().mockResolvedValue(undefined);
+        const r = new IPCRouter(makeDeps({ processHookEvent }));
+        await r.route(
+          makeHookEventMsg({
+            id: 'evt-shape',
+            hook_name: 'agent:completed',
+            hook_input: { agent_id: 'a-1' },
+            timestamp: '2026-01-01T00:00:00.000Z',
+          })
+        );
+        expect(processHookEvent).toHaveBeenCalledOnce();
+        const receivedEvent = processHookEvent.mock.calls[0][0];
+        expect(receivedEvent).toMatchObject({
+          id: 'evt-shape',
+          type: 'agent:completed',
+          source: { kind: 'hook', hook_name: 'agent:completed' },
+          payload: {
+            type: 'agent:completed',
+            data: { agent_id: 'a-1' },
+          },
+          timestamp: expect.any(Number),
+          priority: 0,
+          metadata: expect.objectContaining({ sequence: 0, version: 1 }),
+        });
+      });
+    });
   });
 
   // ─── query ─────────────────────────────────────────────────────────────────────────────
@@ -556,19 +616,26 @@ describe('IPCRouter', () => {
     });
 
     describe('get_system_message', () => {
-      it('returns system_message response (same as get_directives)', async () => {
+      it('returns system_message response with empty message and directives', async () => {
         const result = await router.route(makeQueryMsg('get_system_message'));
         const response = 'response' in result ? result.response : result;
         expect(response.status).toBe('ok');
-        expect((response.data as { kind: string }).kind).toBe('system_message');
+        expect(response.data).toMatchObject({
+          kind: 'system_message',
+          message: '',
+          directives: [],
+        });
       });
 
-      it('does not pass agent_id for get_system_message (uses undefined)', async () => {
+      it('does NOT drain directives for get_system_message (prevents directive theft)', async () => {
+        // get_system_message must NOT call holdDrain: it is used by SubagentStart for
+        // context injection only. Draining here would permanently lose WRFC directives
+        // that are meant for the orchestrator's UPS hook (get_directives).
         router.setAgentWorkflowResolver(() => 'wf-abc');
         await router.route(makeQueryMsg('get_system_message'));
         expect(
           (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
-        ).toHaveBeenCalledWith('subagent_stop', undefined);
+        ).not.toHaveBeenCalled();
       });
     });
 

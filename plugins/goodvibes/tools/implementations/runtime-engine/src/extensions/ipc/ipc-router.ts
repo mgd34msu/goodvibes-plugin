@@ -81,6 +81,13 @@ export interface IPCRouterDeps {
   executorBudget?: ExecutorBudgetManager | null;
   /** Daemon tick handler for process_tick queries. */
   daemonTickHandler?: DaemonTickHandler | null;
+  /**
+   * Optional callback invoked synchronously (awaited) inside handleHookEvent,
+   * BEFORE the IPC ack is returned. When provided, the hook event is processed
+   * through the trigger pipeline in-band so that any enqueued WRFC directives
+   * are available when the subsequent get_directives query arrives.
+   */
+  processHookEvent?: (event: RuntimeEvent) => Promise<void>;
 }
 
 /** Return type for {@link IPCRouter.drainDirectiveMessages}. */
@@ -111,6 +118,8 @@ export class IPCRouter {
   /** Optional DaemonTickHandler for process_tick queries. */
   private readonly daemonTickHandler: DaemonTickHandler | null;
   private readonly wrfcConfigStore: WRFCConfigStore | null;
+  /** Optional callback for synchronous in-band hook event processing. */
+  private readonly processHookEvent: ((event: RuntimeEvent) => Promise<void>) | null;
 
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
@@ -135,6 +144,7 @@ export class IPCRouter {
     this.executorBudget = deps.executorBudget ?? null;
     this.daemonTickHandler = deps.daemonTickHandler ?? null;
     this.wrfcConfigStore = deps.wrfcConfigStore ?? null;
+    this.processHookEvent = deps.processHookEvent ?? null;
   }
 
   /**
@@ -176,7 +186,7 @@ export class IPCRouter {
   /**
    * Drains directives from the queue and composes a system message string.
    *
-   * Shared by get_directives and get_system_message query handlers.
+   * Used by get_directives query handler via buildDirectivesResponse.
    * Returns both the joined message string and the raw directive array.
    *
    * @param workflowId - Optional workflow ID for per-workflow isolation.
@@ -195,9 +205,8 @@ export class IPCRouter {
   }
 
   /**
-   * Build the IPC response for directive-query kinds (get_directives,
-   * get_system_message). Both query kinds are semantically equivalent
-   * and return the same payload; this helper centralises that logic.
+   * Build the IPC response for get_directives queries.
+   * This helper centralises the drain + response-envelope construction logic.
    *
    * @param msgId - The IPC message ID to correlate the response.
    * @param agentId - Optional agent ID from the query. When provided and a
@@ -261,6 +270,16 @@ export class IPCRouter {
       priority: 0,
     };
     this.eventBus.emit(emittedEvent);
+    // Process hook event through the trigger pipeline synchronously BEFORE
+    // returning the ack. This ensures WRFC directives are enqueued before
+    // any subsequent get_directives query from the UPS hook.
+    if (this.processHookEvent) {
+      try {
+        await this.processHookEvent(emittedEvent);
+      } catch (err) {
+        logger.warn('processHookEvent callback failed', { error: toErrorMessage(err) });
+      }
+    }
     // NOTE: We intentionally do NOT call triggerRegistry.evaluate() directly here.
     // WRFC triggers have actions: [] so direct evaluation does nothing useful.
     // The actual handler execution path is: EventBus → EventProcessor → TriggerRegistry.
@@ -323,9 +342,20 @@ export class IPCRouter {
    */
   private async handleQuery(msg: QueryMessage): Promise<IPCResponse | ResponseEnvelope> {
     const q = msg.query;
-    if (q.kind === 'get_directives' || q.kind === 'get_system_message') {
-      const agentId = q.kind === 'get_directives' ? q.agent_id : undefined;
-      return this.buildDirectivesResponse(msg.id, agentId);
+    if (q.kind === 'get_directives') {
+      return this.buildDirectivesResponse(msg.id, q.agent_id);
+    }
+    if (q.kind === 'get_system_message') {
+      // Return empty — get_system_message is for subagent context injection only.
+      // Draining here would steal directives meant for the orchestrator's UPS hook.
+      // Only explicit get_directives queries should consume the directive queue.
+      return {
+        response: {
+          id: msg.id,
+          status: 'ok',
+          data: { kind: 'system_message', message: '', directives: [] },
+        },
+      };
     }
     if (q.kind === 'get_workflow_state') {
       const instance = this.workflowEngine?.get(q.workflow_id);

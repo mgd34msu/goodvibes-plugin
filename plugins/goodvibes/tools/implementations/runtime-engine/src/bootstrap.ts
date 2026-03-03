@@ -217,20 +217,10 @@ export class RuntimeEngine {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
     this.events.eventBus.on('*', async (event: RuntimeEvent) => {
-      // Hook-originated events (source.kind === 'hook') are processed immediately
-      // through the L1 EventProcessor so directives are available before the IPC
-      // response returns. This is critical for WRFC: when agent:completed arrives,
-      // the handler must run and generate the directive synchronously so that the
-      // subsequent get_directives query finds it.
       if (event.source?.kind === 'hook') {
-        try {
-          const processor = this.coreRuntime?.eventProcessor;
-          if (processor) {
-            await processor.processImmediate(event);
-          }
-        } catch (err) {
-          logger.warn('Failed to process hook event immediately', { error: toErrorMessage(err) });
-        }
+        // Hook events are now processed synchronously by the IPC router
+        // (via processHookEvent callback) before the ack returns. Skip
+        // here to avoid double-processing through the fire-and-forget path.
         return;
       }
       try {
@@ -437,6 +427,16 @@ export class RuntimeEngine {
         executorMode: this.executorSubsystem?.executorMode ?? null,
         executorBudget: this.executorSubsystem?.executorBudget ?? null,
         daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
+        processHookEvent: async (event) => {
+          const processor = this.coreRuntime?.eventProcessor;
+          if (processor) {
+            try {
+              await processor.processImmediate(event);
+            } catch (err) {
+              logger.warn('Failed to process hook event immediately', { error: toErrorMessage(err) });
+            }
+          }
+        },
       });
       if (ipcResult) {
         this.ipcSubsystem = ipcResult.subsystem;

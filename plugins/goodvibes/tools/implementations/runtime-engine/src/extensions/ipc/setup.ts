@@ -132,6 +132,8 @@ export interface CreateIPCOptions {
   executorMode: ExecutorModeManager | null;
   executorBudget: ExecutorBudgetManager | null;
   daemonTickHandler: DaemonTickHandler | null;
+  /** Optional callback for synchronous in-band hook event processing — see IPCRouterDeps. */
+  processHookEvent?: (event: import('../../shared/events.js').RuntimeEvent) => Promise<void>;
 }
 
 /**
@@ -166,6 +168,7 @@ export async function createIPCSubsystem(
       executorMode: opts.executorMode,
       executorBudget: opts.executorBudget,
       daemonTickHandler: opts.daemonTickHandler,
+      processHookEvent: opts.processHookEvent,
     });
     ipcServer.onMessage(ipcRouter.route.bind(ipcRouter));
 
