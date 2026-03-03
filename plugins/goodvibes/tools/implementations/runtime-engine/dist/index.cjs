@@ -33991,6 +33991,8 @@ var IPCRouter = class {
   /** Optional DaemonTickHandler for process_tick queries. */
   daemonTickHandler;
   wrfcConfigStore;
+  /** Optional callback for synchronous in-band hook event processing. */
+  processHookEvent;
   /** Session IDs that have been registered via session:started events. */
   registeredSessions = /* @__PURE__ */ new Set();
   /**
@@ -34012,6 +34014,7 @@ var IPCRouter = class {
     this.executorBudget = deps.executorBudget ?? null;
     this.daemonTickHandler = deps.daemonTickHandler ?? null;
     this.wrfcConfigStore = deps.wrfcConfigStore ?? null;
+    this.processHookEvent = deps.processHookEvent ?? null;
   }
   /**
    * Inject a resolver that maps agent_id → workflow_id.
@@ -34050,7 +34053,7 @@ var IPCRouter = class {
   /**
    * Drains directives from the queue and composes a system message string.
    *
-   * Shared by get_directives and get_system_message query handlers.
+   * Used by get_directives query handler via buildDirectivesResponse.
    * Returns both the joined message string and the raw directive array.
    *
    * @param workflowId - Optional workflow ID for per-workflow isolation.
@@ -34063,9 +34066,8 @@ var IPCRouter = class {
     return { message, directives: result.directives, holdId: result.holdId };
   }
   /**
-   * Build the IPC response for directive-query kinds (get_directives,
-   * get_system_message). Both query kinds are semantically equivalent
-   * and return the same payload; this helper centralises that logic.
+   * Build the IPC response for get_directives queries.
+   * This helper centralises the drain + response-envelope construction logic.
    *
    * @param msgId - The IPC message ID to correlate the response.
    * @param agentId - Optional agent ID from the query. When provided and a
@@ -34121,6 +34123,13 @@ var IPCRouter = class {
       priority: 0
     };
     this.eventBus.emit(emittedEvent);
+    if (this.processHookEvent) {
+      try {
+        await this.processHookEvent(emittedEvent);
+      } catch (err) {
+        logger53.warn("processHookEvent callback failed", { error: toErrorMessage(err) });
+      }
+    }
     if (msg.hook_name === "session:started" && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();
     }
@@ -34169,9 +34178,17 @@ var IPCRouter = class {
    */
   async handleQuery(msg) {
     const q = msg.query;
-    if (q.kind === "get_directives" || q.kind === "get_system_message") {
-      const agentId = q.kind === "get_directives" ? q.agent_id : void 0;
-      return this.buildDirectivesResponse(msg.id, agentId);
+    if (q.kind === "get_directives") {
+      return this.buildDirectivesResponse(msg.id, q.agent_id);
+    }
+    if (q.kind === "get_system_message") {
+      return {
+        response: {
+          id: msg.id,
+          status: "ok",
+          data: { kind: "system_message", message: "", directives: [] }
+        }
+      };
     }
     if (q.kind === "get_workflow_state") {
       const instance = this.workflowEngine?.get(q.workflow_id);
@@ -34376,7 +34393,8 @@ async function createIPCSubsystem(opts) {
       hookProcessor: opts.hookProcessor,
       executorMode: opts.executorMode,
       executorBudget: opts.executorBudget,
-      daemonTickHandler: opts.daemonTickHandler
+      daemonTickHandler: opts.daemonTickHandler,
+      processHookEvent: opts.processHookEvent
     });
     ipcServer.onMessage(ipcRouter.route.bind(ipcRouter));
     if (directiveQueue) {
@@ -34563,14 +34581,6 @@ var RuntimeEngine = class {
     }
     this.events.eventBus.on("*", async (event) => {
       if (event.source?.kind === "hook") {
-        try {
-          const processor = this.coreRuntime?.eventProcessor;
-          if (processor) {
-            await processor.processImmediate(event);
-          }
-        } catch (err) {
-          logger56.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
-        }
         return;
       }
       try {
@@ -34732,7 +34742,17 @@ var RuntimeEngine = class {
         hookProcessor: this.hookProcessor,
         executorMode: this.executorSubsystem?.executorMode ?? null,
         executorBudget: this.executorSubsystem?.executorBudget ?? null,
-        daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null
+        daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
+        processHookEvent: /* @__PURE__ */ __name(async (event) => {
+          const processor = this.coreRuntime?.eventProcessor;
+          if (processor) {
+            try {
+              await processor.processImmediate(event);
+            } catch (err) {
+              logger56.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
+            }
+          }
+        }, "processHookEvent")
       });
       if (ipcResult) {
         this.ipcSubsystem = ipcResult.subsystem;
