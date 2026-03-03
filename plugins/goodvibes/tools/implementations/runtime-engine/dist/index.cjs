@@ -21794,7 +21794,7 @@ var DEFAULT_CONFIG = {
       tmux_session_name: "claude-daemon",
       tick_command: "tick",
       tick_interval_ms: 3e4,
-      auto_tick: false,
+      auto_tick: true,
       eval_interval_ms: 1e4
     },
     budget: {
@@ -29537,8 +29537,7 @@ var ExecutorModeManager = class {
    * Determine mode using priority order:
    * 1. GOODVIBES_EXECUTOR_MODE env var (explicit override)
    * 2. config.executor.mode != 'engaged' (explicit config)
-   * 3. TMUX env var present + no GOODVIBES_INTERACTIVE (inferred daemon)
-   * 4. Default: 'engaged'
+   * 3. Default: 'engaged'
    */
   detectMode() {
     const envMode = process.env["GOODVIBES_EXECUTOR_MODE"];
@@ -29552,13 +29551,6 @@ var ExecutorModeManager = class {
       this.detectionMethod = "explicit";
       this.currentMode = this.config.mode;
       logger25.info("Executor mode set from config", { mode: this.currentMode });
-      return this.currentMode;
-    }
-    const inferred = this.inferFromEnvironment();
-    if (inferred !== null) {
-      this.detectionMethod = "inferred";
-      this.currentMode = inferred;
-      logger25.info("Executor mode inferred from environment", { mode: this.currentMode });
       return this.currentMode;
     }
     this.detectionMethod = "default";
@@ -29619,19 +29611,6 @@ var ExecutorModeManager = class {
    */
   updateConfig(config2) {
     this.config = config2;
-  }
-  /**
-   * Infer the executor mode from the process environment.
-   * If TMUX is set and GOODVIBES_INTERACTIVE is not set, infer daemon.
-   * Hybrid is never inferred — always explicit.
-   */
-  inferFromEnvironment() {
-    const tmux = process.env["TMUX"];
-    const interactive = process.env["GOODVIBES_INTERACTIVE"];
-    if (tmux && !interactive) {
-      return "daemon";
-    }
-    return null;
   }
 };
 

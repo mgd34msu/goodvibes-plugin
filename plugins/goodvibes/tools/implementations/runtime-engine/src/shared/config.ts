@@ -316,7 +316,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
       tmux_session_name: 'claude-daemon',
       tick_command: 'tick',
       tick_interval_ms: 30_000,
-      auto_tick: false,
+      auto_tick: true,
       eval_interval_ms: 10_000,
     },
     budget: {

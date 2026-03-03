@@ -5,8 +5,10 @@
  * Mode detection priority:
  *   1. Env var GOODVIBES_EXECUTOR_MODE (explicit override)
  *   2. Config executor.mode != 'engaged' (explicit config)
- *   3. TMUX env var present + no GOODVIBES_INTERACTIVE (inferred daemon)
- *   4. Default: 'engaged'
+ *   3. Default: 'engaged'
+ *
+ * Note: TMUX auto-detection was removed. Daemon mode must be opted in to
+ * explicitly via GOODVIBES_EXECUTOR_MODE env var or config.executor.mode.
  */
 
 import type { ExecutorMode, ExecutorConfig } from '../../shared/config.js';
@@ -37,8 +39,7 @@ export class ExecutorModeManager {
    * Determine mode using priority order:
    * 1. GOODVIBES_EXECUTOR_MODE env var (explicit override)
    * 2. config.executor.mode != 'engaged' (explicit config)
-   * 3. TMUX env var present + no GOODVIBES_INTERACTIVE (inferred daemon)
-   * 4. Default: 'engaged'
+   * 3. Default: 'engaged'
    */
   detectMode(): ExecutorMode {
     // Priority 1: Explicit env var override
@@ -58,16 +59,7 @@ export class ExecutorModeManager {
       return this.currentMode;
     }
 
-    // Priority 3: Infer from environment
-    const inferred = this.inferFromEnvironment();
-    if (inferred !== null) {
-      this.detectionMethod = 'inferred';
-      this.currentMode = inferred;
-      logger.info('Executor mode inferred from environment', { mode: this.currentMode });
-      return this.currentMode;
-    }
-
-    // Priority 4: Default
+    // Priority 3: Default
     this.detectionMethod = 'default';
     this.currentMode = 'engaged';
     logger.debug('Executor mode defaulting to engaged');
@@ -138,17 +130,5 @@ export class ExecutorModeManager {
     this.config = config;
   }
 
-  /**
-   * Infer the executor mode from the process environment.
-   * If TMUX is set and GOODVIBES_INTERACTIVE is not set, infer daemon.
-   * Hybrid is never inferred — always explicit.
-   */
-  private inferFromEnvironment(): ExecutorMode | null {
-    const tmux = process.env['TMUX'];
-    const interactive = process.env['GOODVIBES_INTERACTIVE'];
-    if (tmux && !interactive) {
-      return 'daemon';
-    }
-    return null;
-  }
 }
+

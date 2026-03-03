@@ -1,0 +1,32 @@
+
+
+# GoodVibes plugin state
+.goodvibes/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secret files
+*.pem
+*.key
+credentials.json
+secrets.json
+service-account*.json
+
+# Cloud credentials
+.aws/
+.gcp/
+kubeconfig
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+prisma/*.db
+
+# Log files
+*.log
+logs/

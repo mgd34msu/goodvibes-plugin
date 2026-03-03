@@ -104,7 +104,7 @@ describe('DEFAULT_CONFIG', () => {
     expect(DEFAULT_CONFIG.executor.daemon.tmux_session_name).toBe('claude-daemon');
     expect(DEFAULT_CONFIG.executor.daemon.tick_command).toBe('tick');
     expect(DEFAULT_CONFIG.executor.daemon.tick_interval_ms).toBe(30000);
-    expect(DEFAULT_CONFIG.executor.daemon.auto_tick).toBe(false);
+    expect(DEFAULT_CONFIG.executor.daemon.auto_tick).toBe(true);
     expect(DEFAULT_CONFIG.executor.daemon.eval_interval_ms).toBe(10000);
     expect(DEFAULT_CONFIG.executor.budget.warning_threshold).toBe(0.8);
     expect(DEFAULT_CONFIG.executor.budget.daily_reset_hour).toBe(0);
