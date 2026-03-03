@@ -689,7 +689,7 @@ export class EventLog {
       const src = filter.source;
       if (src.kind && event.source.kind !== src.kind) return false;
       if ('hook_name' in src && src.hook_name) {
-        if (event.source.kind !== 'hook' || (event.source as { kind: 'hook'; hook_name: string }).hook_name !== src.hook_name) return false;
+        if (event.source.kind !== 'internal' || (event.source as { kind: 'internal'; hook_name?: string }).hook_name !== src.hook_name) return false;
       }
       if ('workflow_id' in src && src.workflow_id) {
         if (event.source.kind !== 'workflow' || (event.source as { kind: 'workflow'; workflow_id: string }).workflow_id !== src.workflow_id) return false;

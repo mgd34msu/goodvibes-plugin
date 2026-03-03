@@ -36,7 +36,7 @@ export function createSessionEndHandler(
           id: `evt_session_end_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: 'session:ended',
-          source: { kind: 'hook', hook_name: 'session_end' },
+          source: { kind: 'internal', hook_name: 'session_end' },
           payload: {
             type: 'session:ended',
             data: { session_id: sessionId },

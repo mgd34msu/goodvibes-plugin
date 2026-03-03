@@ -29,14 +29,14 @@ export { generateEventId };
  *
  * Every variant carries a `kind` discriminant that enables structural narrowing:
  * ```ts
- * if (event.source.kind === 'hook') {
+ * if (event.source.kind === 'internal' && event.source.hook_name) {
  *   console.log(event.source.hook_name);
  * }
  * ```
  */
 export type EventSource =
-  /** Emitted from a hook script (pre_tool_use, post_tool_use, etc.). */
-  | { kind: 'hook'; hook_name: string }
+  /** Emitted from an internal engine subsystem (hooks run in-process, non-webhook). */
+  | { kind: 'internal'; hook_name?: string }
   /** Emitted from a workflow instance. */
   | { kind: 'workflow'; workflow_id: string }
   /** Emitted from an agent instance. */
@@ -53,8 +53,6 @@ export type EventSource =
   | { kind: 'time'; schedule_id?: string }
   /** Emitted from an external system or webhook. */
   | { kind: 'external'; origin: string }
-  /** Emitted from an internal engine subsystem (non-hook). */
-  | { kind: 'internal' }
   /** Emitted directly by the user (e.g. via a UI or CLI). */
   | { kind: 'user' };
 
@@ -694,7 +692,7 @@ export type EventPayload =
  * @example
  * ```ts
  * const event = createEvent({
- *   source: { kind: 'hook', hook_name: 'pre_tool_use' },
+ *   source: { kind: 'internal', hook_name: 'pre_tool_use' },
  *   type: 'hook:pre_tool_use',
  *   payload: { type: 'hook:pre_tool_use', data: { hook_name: 'pre_tool_use', duration_ms: 0 } },
  *   metadata: { session_id: 'sess_123', sequence: 1, version: 1 },

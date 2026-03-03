@@ -41,7 +41,7 @@ export interface PluginTriggerDefinition {
 /** Event handler registration provided by a plugin */
 export interface PluginEventHandler {
   event_type: string;
-  handler: (event: RuntimeEvent) => void | Promise<void>;
+  handler: (event: RuntimeEvent) => unknown | Promise<unknown>;
   priority?: number;
   filter?: Record<string, unknown>;
 }

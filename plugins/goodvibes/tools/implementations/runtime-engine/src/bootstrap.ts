@@ -218,10 +218,11 @@ export class RuntimeEngine {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
     this.events.eventBus.on('*', async (event: RuntimeEvent) => {
-      if (event.source?.kind === 'hook') {
-        // Hook events are now processed synchronously by the IPC router
-        // (via processHookEvent callback) before the ack returns. Skip
-        // here to avoid double-processing through the fire-and-forget path.
+      if (event.source?.kind === 'internal' && event.source.hook_name) {
+        // Hook events (identified by hook_name in source) are processed
+        // synchronously by the IPC router (via processHookEvent callback)
+        // before the ack returns. Skip here to avoid double-processing
+        // through the fire-and-forget path.
         return;
       }
       try {

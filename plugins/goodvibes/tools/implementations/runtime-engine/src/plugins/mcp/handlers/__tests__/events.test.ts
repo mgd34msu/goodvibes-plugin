@@ -23,7 +23,7 @@ function makeEvent(overrides: Partial<RuntimeEvent> = {}): RuntimeEvent {
     id: 'evt-1',
     timestamp: '2024-01-01T00:00:00.000Z',
     type: 'hook:pre_tool_use',
-    source: { kind: 'hook' },
+    source: { kind: 'internal' },
     payload: { type: 'hook:pre_tool_use', data: {} },
     ...overrides,
   } as RuntimeEvent;
@@ -150,7 +150,7 @@ describe('resolveTimestamp', () => {
 
 describe('applyVerbosity', () => {
   const events = [
-    makeEvent({ id: 'e1', type: 'hook:pre_tool_use', source: { kind: 'hook' } as unknown as RuntimeEvent['source'] }),
+    makeEvent({ id: 'e1', type: 'hook:pre_tool_use', source: { kind: 'internal' } as unknown as RuntimeEvent['source'] }),
     makeEvent({ id: 'e2', type: 'agent:spawned', source: { kind: 'internal' } as unknown as RuntimeEvent['source'] }),
   ];
 
@@ -171,7 +171,7 @@ describe('applyVerbosity', () => {
       id: 'e1',
       type: 'hook:pre_tool_use',
       timestamp: expect.any(String) as string,
-      source_kind: 'hook',
+      source_kind: 'internal',
     });
     // Should NOT include full payload
     expect('payload' in result.events[0]).toBe(false);
@@ -294,15 +294,15 @@ describe('handleRuntimeEvents', () => {
 
     it('applies source_kind filter post-history', async () => {
       const events = [
-        makeEvent({ id: 'e1', source: { kind: 'hook' } as unknown as RuntimeEvent['source'] }),
-        makeEvent({ id: 'e2', source: { kind: 'internal' } as unknown as RuntimeEvent['source'] }),
+        makeEvent({ id: 'e1', source: { kind: 'internal', hook_name: 'test' } as unknown as RuntimeEvent['source'] }),
+        makeEvent({ id: 'e2', source: { kind: 'system' } as unknown as RuntimeEvent['source'] }),
       ];
       ctx = makeContext({
         getEventBus: vi.fn().mockReturnValue({ getHistory: vi.fn().mockReturnValue(events) }),
       });
 
       const result = await handleRuntimeEvents(
-        { action: 'tail', filter: { source_kind: 'hook' } },
+        { action: 'tail', filter: { source_kind: 'internal' } },
         ctx,
       );
       const parsed = parseResult(result);
@@ -411,7 +411,7 @@ describe('handleRuntimeEvents', () => {
 
     it('applies source_kind filter post-query', async () => {
       const events = [
-        makeEvent({ id: 'e1', source: { kind: 'hook' } as unknown as RuntimeEvent['source'] }),
+        makeEvent({ id: 'e1', source: { kind: 'internal' } as unknown as RuntimeEvent['source'] }),
         makeEvent({ id: 'e2', source: { kind: 'mcp_tool' } as unknown as RuntimeEvent['source'] }),
       ];
       const queryMock = vi.fn().mockResolvedValue(events);

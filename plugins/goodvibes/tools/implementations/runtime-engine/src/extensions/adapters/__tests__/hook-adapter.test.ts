@@ -247,7 +247,7 @@ describe('HookAdapter', () => {
     it('event source has kind=hook and hook_name', () => {
       const event = adapter.normalize('PreCompact');
       const source = event!.source as { kind: string; hook_name: string };
-      expect(source.kind).toBe('hook');
+      expect(source.kind).toBe('internal');
       expect(source.hook_name).toBe('PreCompact');
     });
   });

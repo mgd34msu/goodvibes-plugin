@@ -16,7 +16,7 @@ function makeMockEvent(session_id = 'session-1'): HookEvent {
     id: 'evt-1',
     timestamp: Date.now(),
     type: 'hook',
-    source: { kind: 'hook', hook_name: 'subagent_start' },
+    source: { kind: 'internal', hook_name: 'subagent_start' },
     hook_type: 'SubagentStart',
     hook_input: {},
     session_id,

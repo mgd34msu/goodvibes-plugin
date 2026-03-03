@@ -40,7 +40,7 @@ export function createSessionStartHandler(
           id: `evt_session_start_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: 'session:started',
-          source: { kind: 'hook', hook_name: 'session_start' },
+          source: { kind: 'internal', hook_name: 'session_start' },
           payload: {
             type: 'session:started',
             data: {

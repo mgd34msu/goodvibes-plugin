@@ -51,7 +51,7 @@ export function createPostToolUseHandler(
             id: `evt_file_modified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             timestamp: Date.now(),
             type: 'file:modified',
-            source: { kind: 'hook', hook_name: 'post_tool_use' },
+            source: { kind: 'internal', hook_name: 'post_tool_use' },
             payload: {
               type: 'file:modified',
               data: {

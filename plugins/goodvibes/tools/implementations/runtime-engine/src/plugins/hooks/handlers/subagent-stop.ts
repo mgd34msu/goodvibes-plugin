@@ -59,7 +59,7 @@ export function createSubagentStopHandler(
           id: `evt_subagent_stop_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: 'agent:completed',
-          source: { kind: 'hook', hook_name: 'subagent_stop' },
+          source: { kind: 'internal', hook_name: 'subagent_stop' },
           payload: {
             type: 'agent:completed',
             data: {

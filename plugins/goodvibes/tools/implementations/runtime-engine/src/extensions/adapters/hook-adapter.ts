@@ -104,7 +104,7 @@ export interface RawHookPayload {
  *
  * Normalises raw hook payloads (from the IPC router or Claude Code hook scripts)
  * into unified RuntimeEvents with:
- *   - source: { kind: 'hook', hook_name: <PascalCase hook type> }
+ *   - source: { kind: 'internal', hook_name: <PascalCase hook type> }
  *   - type: 'hook:<snake_case>' (e.g. 'hook:pre_tool_use')
  *   - payload: typed HookEventPayload matching the event type
  */
@@ -187,7 +187,7 @@ export class HookAdapter implements EventSourceAdapter {
       // Metadata (session_id, sequence) is populated by the EventBus on emit.
       const event: RuntimeEvent = {
         id: generateEventId(),
-        source: { kind: 'hook', hook_name: hookType },
+        source: { kind: 'internal', hook_name: hookType },
         // Cast needed: eventType is a runtime string mapped from known HookType values
         // so it is always a valid EventType member.
         type: eventType as RuntimeEvent['type'],

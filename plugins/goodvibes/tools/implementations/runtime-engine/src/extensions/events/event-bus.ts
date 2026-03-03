@@ -269,7 +269,7 @@ function dispatchToEntry(
  *   id: generateEventId(),
  *   timestamp: timestamp(),
  *   type: 'hook:pre_tool_use',
- *   source: { kind: 'hook', hook_name: 'pre_tool_use' },
+ *   source: { kind: 'internal', hook_name: 'pre_tool_use' },
  *   payload: { type: 'hook:pre_tool_use', data: { hook_name: 'pre_tool_use', duration_ms: 0 } },
  * });
  *

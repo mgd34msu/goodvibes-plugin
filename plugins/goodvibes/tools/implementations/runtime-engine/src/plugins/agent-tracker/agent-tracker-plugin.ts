@@ -29,6 +29,13 @@ const AGENT_KEY = (id: string) => `agent_tracker.agents.${id}`;
 const INDEX_KEY = 'agent_tracker.agent_ids';
 const WRFC_MAP_KEY = (id: string) => `wrfc.agent_map.${id}`;
 
+/**
+ * Trigger IDs used by the AgentTrackerPlugin.
+ * The plugin currently uses EventBus subscriptions rather than triggers,
+ * so this object is empty. Preserved for backward compatibility.
+ */
+export const TRACKER_TRIGGER_IDS: Record<string, string> = {};
+
 // ─── Payload extraction ─────────────────────────────────────────────────────────
 
 function extractAgentData(event: RuntimeEvent): {

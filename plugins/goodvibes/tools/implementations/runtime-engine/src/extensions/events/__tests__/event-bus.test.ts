@@ -375,11 +375,11 @@ describe('EventBus', () => {
     });
 
     it('filter by source returns only matching events', () => {
-      bus.emit(makeEvent('session:started', { source: { kind: 'hook', hook_name: 'test' } }));
+      bus.emit(makeEvent('session:started', { source: { kind: 'internal', hook_name: 'test' } }));
       bus.emit(makeEvent('hook:pre_tool_use', { source: { kind: 'system' } }));
-      const filtered = bus.getHistory({ source: { kind: 'hook' } });
+      const filtered = bus.getHistory({ source: { kind: 'internal' } });
       expect(filtered).toHaveLength(1);
-      expect(filtered[0]?.source).toEqual({ kind: 'hook', hook_name: 'test' });
+      expect(filtered[0]?.source).toEqual({ kind: 'internal', hook_name: 'test' });
     });
 
     it('filter by since excludes older events', () => {

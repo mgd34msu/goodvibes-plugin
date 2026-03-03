@@ -22,7 +22,7 @@
 import { createLogger } from '../../shared/logger.js';
 import type { EventProcessor } from '../../core/processing/event-processor.js';
 import type { TriggerRegistry } from '../../core/trigger-registry.js';
-import type { StateStoreInterface, TriggerHandlerFn, HandlerResult, Trigger } from '../../core/types.js';
+import type { StateStoreInterface, TriggerHandlerFn, HandlerResult, Trigger, StateChange } from '../../core/types.js';
 import { createWRFCTrigger } from '../../extensions/triggers/factories.js';
 import type {
   RuntimePlugin,
@@ -225,6 +225,10 @@ function makeStoreAdapter(services: RuntimeServices): StateStoreInterface {
     keys(prefix?: string): string[] {
       return services.listStateKeys(prefix);
     },
+    onStateChange(_listener: (change: StateChange) => void): void {
+      // No-op: RuntimeServices does not expose state change listeners.
+      // WRFC handlers do not need state change callbacks.
+    },
   };
 }
 
@@ -284,13 +288,13 @@ export class WRFCPlugin implements RuntimePlugin {
     // so a sentinel empty trigger object satisfies the type without storing deps.
     const nullTrigger = {} as unknown as Trigger;
 
-    const workflowCreatedHandler = (event: RuntimeEvent): Promise<unknown> =>
+    const workflowCreatedHandler = (event: RuntimeEvent): Promise<HandlerResult> =>
       Promise.resolve(handleWorkflowCreated(event, nullTrigger, store));
 
-    const agentCompletedHandler = (event: RuntimeEvent): Promise<unknown> =>
+    const agentCompletedHandler = (event: RuntimeEvent): Promise<HandlerResult> =>
       Promise.resolve(handleAgentCompleted(event, nullTrigger, store));
 
-    const qualityGateHandler = (event: RuntimeEvent): Promise<unknown> =>
+    const qualityGateHandler = (event: RuntimeEvent): Promise<HandlerResult> =>
       Promise.resolve(handleQualityGate(event, nullTrigger, store));
 
     // Register triggers (and their handlers) with the runtime via services

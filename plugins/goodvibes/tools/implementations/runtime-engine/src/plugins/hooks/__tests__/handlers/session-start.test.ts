@@ -16,7 +16,7 @@ function makeMockEvent(session_id = 'session-abc'): HookEvent {
     id: 'evt-1',
     timestamp: Date.now(),
     type: 'hook',
-    source: { kind: 'hook', hook_name: 'session_start' },
+    source: { kind: 'internal', hook_name: 'session_start' },
     hook_type: 'SessionStart',
     hook_input: {},
     session_id,
@@ -180,7 +180,7 @@ describe('createSessionStartHandler', () => {
 
     const emittedEvent = (eventBus.emit as ReturnType<typeof vi.fn>).mock.calls[0][0] as Record<string, unknown>;
     const source = emittedEvent.source as Record<string, unknown>;
-    expect(source.kind).toBe('hook');
+    expect(source.kind).toBe('internal');
     expect(source.hook_name).toBe('session_start');
   });
 });

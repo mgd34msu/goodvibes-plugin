@@ -40,7 +40,7 @@ export function createPreCompactHandler(
           id: `evt_pre_compact_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: 'session:compact',
-          source: { kind: 'hook', hook_name: 'pre_compact' },
+          source: { kind: 'internal', hook_name: 'pre_compact' },
           payload: {
             type: 'session:compact',
             data: { session_id: sessionId },

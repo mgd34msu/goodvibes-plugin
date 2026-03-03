@@ -248,7 +248,7 @@ export class IPCRouter {
    */
   private async handleHookEvent(msg: HookEventMessage): Promise<IPCResponse | ResponseEnvelope> {
     // Emit as the bare event type (e.g. 'agent:completed') on the EventBus.
-    // The source.kind === 'hook' field already provides traceability of hook origin.
+    // The source.kind === 'internal' + hook_name field already provides traceability of hook origin.
     // Using the bare event type is required so that:
     //   1. EventProcessor trigger evaluation (e.g. 'agent:completed') can match.
     //   2. Trigger conditions in wrfc-plugin (e.g. type: 'agent:completed') can match.
@@ -257,7 +257,7 @@ export class IPCRouter {
       id: msg.id,
       timestamp: new Date(msg.timestamp).getTime(),
       type: msg.hook_name as EventType,
-      source: { kind: 'hook', hook_name: msg.hook_name } as EventSource,
+      source: { kind: 'internal', hook_name: msg.hook_name } as EventSource,
       payload: {
         type: msg.hook_name as EventType,
         data: msg.hook_input,

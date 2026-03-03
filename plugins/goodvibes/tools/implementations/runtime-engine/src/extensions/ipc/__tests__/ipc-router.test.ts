@@ -238,9 +238,9 @@ describe('IPCRouter', () => {
       expect((deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit).toHaveBeenCalledOnce();
       const emitted = (deps.eventBus as unknown as { emit: ReturnType<typeof vi.fn> }).emit.mock.calls[0][0];
       // Event type must be the bare hook_name so EventProcessor trigger conditions can match.
-      // source.kind === 'hook' provides traceability of hook origin.
+      // source.kind === 'internal' + hook_name provides traceability of hook origin.
       expect(emitted.type).toBe('pre_tool_use');
-      expect(emitted.source.kind).toBe('hook');
+      expect(emitted.source.kind).toBe('internal');
       expect(emitted.source.hook_name).toBe('pre_tool_use');
     });
 
@@ -491,7 +491,7 @@ describe('IPCRouter', () => {
         expect(receivedEvent).toMatchObject({
           id: 'evt-shape',
           type: 'agent:completed',
-          source: { kind: 'hook', hook_name: 'agent:completed' },
+          source: { kind: 'internal', hook_name: 'agent:completed' },
           payload: {
             type: 'agent:completed',
             data: { agent_id: 'a-1' },

@@ -399,7 +399,7 @@ describe('EventLog', () => {
     it('filters by source kind', async () => {
       await log.initialize();
       const hookEvent = makeEvent('hook:pre_tool_use', {
-        source: { kind: 'hook', hook_name: 'test' },
+        source: { kind: 'internal', hook_name: 'test' },
         metadata: { session_id: 'test', sequence: 1, version: 1 },
       });
       const systemEvent = makeEvent('session:started', {
@@ -410,9 +410,9 @@ describe('EventLog', () => {
       log.append(systemEvent);
       await log.flush();
 
-      const results = await log.query({ source: { kind: 'hook' } });
+      const results = await log.query({ source: { kind: 'internal' } });
       expect(results).toHaveLength(1);
-      expect(results[0]?.source.kind).toBe('hook');
+      expect(results[0]?.source.kind).toBe('internal');
     });
   });
 
