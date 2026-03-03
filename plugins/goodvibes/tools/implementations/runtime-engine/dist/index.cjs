@@ -24665,8 +24665,9 @@ var TriggerRegistry = class {
     if (!existing) {
       throw new QueueError(`Cannot replace trigger '${trigger.id}': not registered`);
     }
-    if (!("fires_count" in trigger)) trigger.fires_count = existing.fires_count;
-    if (!("last_fired" in trigger)) trigger.last_fired = existing.last_fired;
+    const partial2 = trigger;
+    if (!("fires_count" in partial2)) trigger.fires_count = existing.fires_count;
+    if (!("last_fired" in partial2)) trigger.last_fired = existing.last_fired;
     this.triggers.set(trigger.id, trigger);
     this.sortedTriggerCache = null;
     log3.info("Trigger replaced", { trigger_id: trigger.id });
@@ -24951,7 +24952,9 @@ var TriggerRegistry = class {
         const prefix = pattern.slice(0, -1);
         return { type: new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) };
       }
-      return { type: pattern };
+      if (typeof pattern === "string") {
+        return { type: pattern };
+      }
     }
     return { type: /.*/ };
   }
@@ -25223,7 +25226,7 @@ var TriggerActionExecutor = class {
   }
   /** Named handler registry. */
   handlers = /* @__PURE__ */ new Map();
-  /** Event bus for emit_event actions. */
+  /** Event emitter for emit_event actions. Only .emit() is called — EventEmitter (L1) suffices over EventBus (L2). */
   eventBus;
   /** Directive queue for spawn_agent and workflow actions. */
   directiveQueue;
@@ -25304,6 +25307,7 @@ var TriggerActionExecutor = class {
     this.eventBus.emit({
       id: generateEventId(),
       timestamp: timestamp(),
+      priority: 0,
       type: action.event_type,
       source: { kind: "trigger", trigger_id: event.id },
       payload: {
@@ -25313,7 +25317,7 @@ var TriggerActionExecutor = class {
       metadata: {
         causation_id: event.id,
         correlation_id: event.metadata?.correlation_id,
-        session_id: event.metadata?.session_id,
+        session_id: event.metadata?.session_id ?? "",
         sequence: 0,
         // Will be overwritten by EventBus
         version: 1
@@ -28096,7 +28100,7 @@ __name(extractFiles, "extractFiles");
 var import_node_fs8 = require("node:fs");
 var import_node_path8 = require("node:path");
 
-// src/plugins/wrfc/wrfc-context.ts
+// src/extensions/workflow/wrfc-fields.ts
 function getWRFCFields(ctx) {
   return {
     review_score: ctx["review_score"],
@@ -29580,6 +29584,7 @@ var ExecutorModeManager = class {
       this.eventBus.emit({
         id: generateEventId(),
         timestamp: timestamp(),
+        priority: 0,
         type: "executor:mode_set",
         source: { kind: "system" },
         payload: {
@@ -29589,7 +29594,8 @@ var ExecutorModeManager = class {
             previous_mode: previousMode,
             detection_method: "explicit"
           }
-        }
+        },
+        metadata: { session_id: "", sequence: 0, version: 1 }
       });
     }
   }
@@ -34334,9 +34340,11 @@ function cleanStalePointerFiles(stateDir, log8) {
         socketFilePath = (0, import_node_fs13.readFileSync)(pointerPath, "utf-8").trim();
       } catch {
       }
+      let socketCleaned = false;
       if (socketFilePath) {
         try {
           (0, import_node_fs13.unlinkSync)(socketFilePath);
+          socketCleaned = true;
         } catch (err) {
           if (err.code !== "ENOENT") {
             log8.warn("Could not remove stale socket file", {
@@ -34356,7 +34364,7 @@ function cleanStalePointerFiles(stateDir, log8) {
           });
         }
       }
-      log8.info("Cleaned stale socket pointer", { pid, pointer: pointerPath });
+      log8.info("Cleaned stale socket pointer", { pid, pointer: pointerPath, socketCleaned });
     }
   } catch (err) {
     log8.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
@@ -34460,6 +34468,43 @@ __name(teardownIPC, "teardownIPC");
 
 // src/bootstrap.ts
 var logger56 = createLogger("bootstrap");
+function eventMatcherToCondition(eventMatch) {
+  const eventType = eventMatch.type;
+  const pattern = typeof eventType === "string" ? eventType : "*";
+  return {
+    type: "event",
+    event_type: pattern
+  };
+}
+__name(eventMatcherToCondition, "eventMatcherToCondition");
+function toTriggerDefinitionBase(trigger) {
+  const noopAction = {
+    type: "sequence",
+    actions: []
+  };
+  return {
+    id: trigger.id,
+    name: trigger.id,
+    description: "Plugin trigger",
+    enabled: trigger.enabled,
+    priority: trigger.priority ?? 0,
+    condition: eventMatcherToCondition(trigger.event_match),
+    action: noopAction,
+    cooldown_ms: trigger.cooldown_ms,
+    max_fires: trigger.max_fires,
+    fires_count: 0
+  };
+}
+__name(toTriggerDefinitionBase, "toTriggerDefinitionBase");
+function loggerToPluginLogger(log8) {
+  return {
+    debug: /* @__PURE__ */ __name((...args) => log8.debug(String(args[0]), args[1]), "debug"),
+    info: /* @__PURE__ */ __name((...args) => log8.info(String(args[0]), args[1]), "info"),
+    warn: /* @__PURE__ */ __name((...args) => log8.warn(String(args[0]), args[1]), "warn"),
+    error: /* @__PURE__ */ __name((...args) => log8.error(String(args[0]), args[1]), "error")
+  };
+}
+__name(loggerToPluginLogger, "loggerToPluginLogger");
 var RuntimeEngine = class {
   static {
     __name(this, "RuntimeEngine");
@@ -34533,7 +34578,17 @@ var RuntimeEngine = class {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
     this.events.eventBus.on("*", async (event) => {
-      if (event.source?.kind === "hook") return;
+      if (event.source?.kind === "hook") {
+        try {
+          const queue = this.coreRuntime?.eventQueue;
+          if (queue) {
+            queue.enqueue(event);
+          }
+        } catch (err) {
+          logger56.warn("Failed to enqueue hook event into EventProcessor queue", { error: toErrorMessage(err) });
+        }
+        return;
+      }
       try {
         if (this.triggers) await this.triggers.triggerRegistry.evaluate(event);
       } catch (err) {
@@ -34602,7 +34657,7 @@ var RuntimeEngine = class {
           max_fires: definition.max_fires,
           priority: 10
         });
-        coreTriggerRegistry.register(trigger);
+        coreTriggerRegistry.register(toTriggerDefinitionBase(trigger));
         const registeredTrigger = coreTriggerRegistry.get(id);
         coreEventProcessor.registerHandler(id, async (event) => {
           if (!registeredTrigger) return {};
@@ -34612,7 +34667,7 @@ var RuntimeEngine = class {
       unregisterTrigger: /* @__PURE__ */ __name((id) => {
         coreTriggerRegistry?.unregister(id);
       }, "unregisterTrigger"),
-      getLogger: /* @__PURE__ */ __name((name) => createLogger(name), "getLogger")
+      getLogger: /* @__PURE__ */ __name((name) => loggerToPluginLogger(createLogger(name)), "getLogger")
     };
     this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
     this.wrfcPlugin.register(runtimeServices);
@@ -34667,7 +34722,7 @@ var RuntimeEngine = class {
         executorMode: this.executorSubsystem.executorMode,
         timePlugin: createTimeAdapter(timePlugin),
         externalPlugin: createExternalAdapter(externalPlugin),
-        eventProcessor: this.coreRuntime.eventProcessor ?? void 0,
+        eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: /* @__PURE__ */ __name(() => this.watchdog?.checkStaleWorkflows(), "staleWorkflowChecker")
       });
     }
