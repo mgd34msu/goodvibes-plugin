@@ -28,7 +28,7 @@ import { loadState, saveState } from '../state/index.js';
 
 import { buildOrchestratorContext } from './context-injection.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
-import { normalizeAgentFields } from '../subagent-start/wrfc-utils.js';
+import { normalizeAgentFields, extractWorkflowId } from '../subagent-start/wrfc-utils.js';
 import { validateAgentOutput } from './output-validation.js';
 import {
   getAgentTracking,
@@ -290,6 +290,36 @@ async function runSubagentStopHook(): Promise<void> {
           agent_id,
           agent_type,
         };
+
+        // Resolve workflow_id from tracking (saved by SubagentStart) or agent output.
+        // This redundant binding ensures the runtime can route the completion even if
+        // the agent_map binding failed (e.g. SubagentStart couldn't extract [WRFC:wid]).
+        let resolvedWorkflowId: string | null = null;
+        const stopAgentId = input.agent_id ?? input.subagent_id ?? '';
+        const stopCwd = input.cwd ?? process.cwd();
+        if (stopAgentId) {
+          try {
+            const earlyTracking = await getAgentTracking(stopCwd, stopAgentId);
+            if (earlyTracking && typeof (earlyTracking as unknown as Record<string, unknown>).workflow_id === 'string') {
+              resolvedWorkflowId = (earlyTracking as unknown as Record<string, unknown>).workflow_id as string;
+              debug('Phase 6: resolved workflow_id from tracking', { workflow_id: resolvedWorkflowId });
+            }
+          } catch { /* non-critical */ }
+        }
+        // Fallback: extract [WRFC:wid] from agent's last output
+        if (!resolvedWorkflowId) {
+          const agentOutput = input.last_assistant_message ?? input.task_output ?? input.result ?? '';
+          if (agentOutput) {
+            resolvedWorkflowId = extractWorkflowId(agentOutput);
+            if (resolvedWorkflowId) {
+              debug('Phase 6: extracted workflow_id from agent output', { workflow_id: resolvedWorkflowId });
+            }
+          }
+        }
+        if (resolvedWorkflowId) {
+          normalizedData['workflow_id'] = resolvedWorkflowId;
+        }
+
         await runtimeClient.sendHookEvent(eventName, normalizedData);
       }
     } catch {

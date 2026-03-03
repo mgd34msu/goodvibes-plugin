@@ -34,6 +34,7 @@ import { createCoreRuntime, type CoreRuntime, type EventProcessor } from './core
 import {
   getDefaultWRFCConfig,
   WRFCPlugin,
+  AgentTrackerPlugin,
   TimePlugin,
   ExternalPlugin,
   type ExternalPluginConfig,
@@ -336,6 +337,16 @@ export class RuntimeEngine {
       name: this.wrfcPlugin.name,
       version: this.wrfcPlugin.version,
       state: this.wrfcPlugin.state,
+    });
+
+    // 14b. Agent Tracker plugin (L3) — tracks agent lifecycle via hook events
+    const agentTrackerPlugin = new AgentTrackerPlugin();
+    agentTrackerPlugin.register(runtimeServices);
+    agentTrackerPlugin.start();
+    logger.debug('AgentTracker plugin registered', {
+      name: agentTrackerPlugin.name,
+      version: agentTrackerPlugin.version,
+      state: agentTrackerPlugin.state,
     });
 
     // 14.5 Start core event processor lifecycle

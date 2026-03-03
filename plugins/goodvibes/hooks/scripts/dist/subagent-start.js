@@ -1339,7 +1339,7 @@ function extractStartInputFields(input) {
     sessionId: input.session_id ?? ""
   };
 }
-function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription) {
+function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription, workflowId) {
   return {
     agent_id: agentId,
     agent_type: agentType,
@@ -1349,7 +1349,8 @@ function createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gi
     git_branch: gitInfo.branch,
     git_commit: gitInfo.commit,
     started_at: (/* @__PURE__ */ new Date()).toISOString(),
-    task_description: taskDescription || void 0
+    task_description: taskDescription || void 0,
+    workflow_id: workflowId || void 0
   };
 }
 async function trackInAnalytics(agentType, taskDescription, startedAt) {
@@ -1465,7 +1466,7 @@ async function runSubagentStartHook() {
     debug("Git info", gitInfo);
     const projectName = deriveProjectName(cwd);
     debug("Project name", projectName);
-    const tracking = createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription);
+    const tracking = createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription, resolvedWorkflowId);
     await saveAgentTracking(cwd, tracking);
     debug("Saved agent tracking", { agent_id: agentId });
     const analytics = await trackInAnalytics(agentType, taskDescription, tracking.started_at);

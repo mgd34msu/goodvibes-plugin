@@ -40,4 +40,6 @@ export interface TelemetryTracking {
     started_at: string;
     /** Description of the task assigned to this agent, if available */
     task_description?: string;
+    /** WRFC workflow ID bound to this agent, if resolved during SubagentStart */
+    workflow_id?: string;
 }

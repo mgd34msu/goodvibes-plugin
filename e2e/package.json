@@ -1,11 +1,12 @@
 {
-  "name": "quotes-api",
+  "name": "e2e-quotes-users",
   "version": "1.0.0",
-  "type": "module",
+  "private": true,
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test src/**/*.test.js"
   },
   "dependencies": {
-    "express": "^5.0.0"
+    "express": "^4.21.2"
   }
 }

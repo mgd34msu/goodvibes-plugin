@@ -151,7 +151,8 @@ function createTrackingEntry(
   cwd: string,
   projectName: string,
   gitInfo: { branch?: string; commit?: string },
-  taskDescription: string
+  taskDescription: string,
+  workflowId?: string | null
 ): TelemetryTracking {
   return {
     agent_id: agentId,
@@ -163,6 +164,7 @@ function createTrackingEntry(
     git_commit: gitInfo.commit,
     started_at: new Date().toISOString(),
     task_description: taskDescription || undefined,
+    workflow_id: workflowId || undefined,
   };
 }
 
@@ -380,7 +382,7 @@ async function runSubagentStartHook(): Promise<void> {
     const projectName = deriveProjectName(cwd);
     debug('Project name', projectName);
 
-    const tracking = createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription);
+    const tracking = createTrackingEntry(agentId, agentType, sessionId, cwd, projectName, gitInfo, taskDescription, resolvedWorkflowId);
     await saveAgentTracking(cwd, tracking);
     debug('Saved agent tracking', { agent_id: agentId });
 

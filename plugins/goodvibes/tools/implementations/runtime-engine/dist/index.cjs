@@ -4614,11 +4614,11 @@ var require_core = __commonJS({
     Ajv2.ValidationError = validation_error_1.default;
     Ajv2.MissingRefError = ref_error_1.default;
     exports2.default = Ajv2;
-    function checkOptions(checkOpts, options, msg, log8 = "error") {
+    function checkOptions(checkOpts, options, msg, log9 = "error") {
       for (const key in checkOpts) {
         const opt = key;
         if (opt in options)
-          this.logger[log8](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log9](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
     __name(checkOptions, "checkOptions");
@@ -22335,8 +22335,8 @@ var EventBus = class {
    *
    * @param log - An object with an `append` method.
    */
-  setEventLog(log8) {
-    this.eventLog = log8;
+  setEventLog(log9) {
+    this.eventLog = log9;
   }
   /**
    * Emits a runtime event.
@@ -22721,8 +22721,8 @@ var EventLog = class {
     }
     if (this.writeBuffer.length > 0) {
       try {
-        const { appendFileSync } = await import("fs");
-        appendFileSync(this.logPath, this.writeBuffer, "utf-8");
+        const { appendFileSync: appendFileSync2 } = await import("fs");
+        appendFileSync2(this.logPath, this.writeBuffer, "utf-8");
         this.writeBuffer = "";
         this.writeBufferBytes = 0;
       } catch (syncErr) {
@@ -22864,8 +22864,8 @@ var EventLog = class {
       `events-archive-${archiveDate}.jsonl`
     );
     try {
-      const { appendFileSync } = await import("fs");
-      appendFileSync(archivePath, toArchive.join("\n") + "\n", "utf-8");
+      const { appendFileSync: appendFileSync2 } = await import("fs");
+      appendFileSync2(archivePath, toArchive.join("\n") + "\n", "utf-8");
     } catch (archiveErr) {
       logger3.debug("Archive append failed, creating new archive file", { error: toErrorMessage(archiveErr) });
       (0, import_node_fs5.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
@@ -22992,8 +22992,8 @@ var EventLog = class {
           });
         });
       } else {
-        const { appendFileSync } = await import("fs");
-        appendFileSync(this.logPath, data, "utf-8");
+        const { appendFileSync: appendFileSync2 } = await import("fs");
+        appendFileSync2(this.logPath, data, "utf-8");
       }
     } catch (err) {
       drainError = err instanceof Error ? err : new Error(toErrorMessage(err));
@@ -30286,6 +30286,9 @@ function extractScore(text) {
 }
 __name(extractScore, "extractScore");
 
+// src/plugins/wrfc/handlers.ts
+var import_node_fs11 = require("node:fs");
+
 // src/plugins/wrfc/directive-builder.ts
 function buildSpawnAction(params) {
   const context = {
@@ -30328,6 +30331,13 @@ function buildEscalateAction(wid, reason, params) {
 __name(buildEscalateAction, "buildEscalateAction");
 
 // src/plugins/wrfc/handlers.ts
+var _T = /* @__PURE__ */ __name((m) => {
+  try {
+    (0, import_node_fs11.appendFileSync)("/tmp/wrfc-trace.log", `[${(/* @__PURE__ */ new Date()).toISOString()}] HANDLER ${m}
+`);
+  } catch {
+  }
+}, "_T");
 var log6 = createLogger("wrfc-plugin:handlers");
 var FALLBACK_NO_REVIEW_OUTPUT = "No review output captured.";
 var FALLBACK_SEE_PAYLOAD = "See the wrfc:review_completed event payload for review details.";
@@ -30431,7 +30441,9 @@ function handleWorkflowCreated(event, _trigger, store) {
 __name(handleWorkflowCreated, "handleWorkflowCreated");
 function handleAgentCompleted(event, _trigger, store) {
   const payload = event.payload;
+  _T(`handleAgentCompleted ENTRY event.type=${event.type} payloadKeys=${Object.keys(payload).join(",")}`);
   const dataPayload = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : null;
+  _T(`dataPayload=${dataPayload ? Object.keys(dataPayload).join(",") : "null"}`);
   const hookInputForId = payload["hook_input"];
   const agentId = (typeof payload["agent_id"] === "string" ? payload["agent_id"] : null) ?? (typeof dataPayload?.["agent_id"] === "string" ? dataPayload["agent_id"] : null) ?? (typeof hookInputForId?.["agent_id"] === "string" ? hookInputForId["agent_id"] : null);
   const hookInput = typeof payload["hook_input"] === "object" && payload["hook_input"] !== null ? payload["hook_input"] : payload;
@@ -30445,10 +30457,13 @@ function handleAgentCompleted(event, _trigger, store) {
     wid = typeof dataPayload?.["workflow_id"] === "string" ? dataPayload["workflow_id"] : null;
   }
   if (!wid) {
+    _T(`NO WID FOUND agentId=${agentId} \u2014 returning empty`);
     log6.debug("handleAgentCompleted: no workflow binding found, skipping", { agent_id: agentId });
     return {};
   }
+  _T(`RESOLVED wid=${wid} agentId=${agentId}`);
   const phase = storeGet(store, WS(wid, "phase"), "WRITING").toUpperCase();
+  _T(`PHASE=${phase} wid=${wid} agentType=${agentType}`);
   const minScore = storeGet(store, WS(wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
   const maxFix = storeGet(store, WS(wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
   const fixAttempts = storeGet(store, WS(wid, "fix_attempts"), 0);
@@ -30496,6 +30511,7 @@ function handleAgentCompleted(event, _trigger, store) {
     return { actions, state_updates, events };
   }
   if (effectivePhase === "REVIEWING") {
+    _T(`REVIEWING branch: agentType=${agentType} isReviewer=${matchesAgentType(agentType, REVIEWER_AGENT_TYPES)}`);
     if (!matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       log6.debug("handleAgentCompleted: REVIEWING phase but not a reviewer, skipping", {
         wid,
@@ -30504,6 +30520,7 @@ function handleAgentCompleted(event, _trigger, store) {
       return {};
     }
     const score = extractScore(agentOutput);
+    _T(`SCORE=${score} minScore=${minScore} agentOutput=${agentOutput?.slice(0, 200) ?? "undefined"}`);
     if (score === null) {
       log6.warn("handleAgentCompleted: could not parse review score", {
         wid,
@@ -30549,6 +30566,7 @@ Files: ${filesModified.join(", ")}.` : "");
         ...phaseUpdate(wid, "FIXING"),
         { key: WS(wid, "review_score"), value: score, op: "set" }
       ];
+      _T(`SPAWNING FIXER wid=${wid} score=${score} actions=${actions.length}`);
       log6.info("handleAgentCompleted: review failed, spawning fixer", {
         wid,
         score,
@@ -32589,6 +32607,244 @@ var ExternalPlugin = class {
   }
 };
 
+// src/plugins/agent-tracker/agent-tracker-plugin.ts
+var log8 = createLogger("agent-tracker-plugin");
+var AGENT_KEY = /* @__PURE__ */ __name((id) => `agent_tracker.agents.${id}`, "AGENT_KEY");
+var INDEX_KEY = "agent_tracker.agent_ids";
+var TRACKER_TRIGGER_IDS = {
+  AGENT_SPAWNED: "agent_tracker:agent_spawned",
+  AGENT_COMPLETED: "agent_tracker:agent_completed",
+  AGENT_FAILED: "agent_tracker:agent_failed"
+};
+function extractAgentData(event) {
+  const payload = event.payload;
+  const data = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : payload;
+  const agent_id = typeof data["agent_id"] === "string" ? data["agent_id"] : null;
+  const agent_type = typeof data["agent_type"] === "string" ? data["agent_type"] : "unknown";
+  const workflow_id = typeof data["workflow_id"] === "string" && data["workflow_id"].length > 0 ? data["workflow_id"] : null;
+  return { agent_id, agent_type, workflow_id };
+}
+__name(extractAgentData, "extractAgentData");
+var AgentTrackerPlugin = class {
+  static {
+    __name(this, "AgentTrackerPlugin");
+  }
+  name = "agent-tracker";
+  version = "1.0.0";
+  state = "registered";
+  _handlers = [];
+  _services = null;
+  // ─── RuntimePlugin interface ──────────────────────────────────────────────
+  register(services) {
+    this._services = services;
+    const existing = services.getState(INDEX_KEY);
+    if (!existing) {
+      services.setState(INDEX_KEY, []);
+    }
+    const onSpawned = /* @__PURE__ */ __name(async (event) => {
+      this.handleSpawned(event);
+    }, "onSpawned");
+    const onCompleted = /* @__PURE__ */ __name(async (event) => {
+      this.handleFinished(event, "completed");
+    }, "onCompleted");
+    const onFailed = /* @__PURE__ */ __name(async (event) => {
+      this.handleFinished(event, "failed");
+    }, "onFailed");
+    services.registerTrigger(
+      TRACKER_TRIGGER_IDS.AGENT_SPAWNED,
+      {
+        id: TRACKER_TRIGGER_IDS.AGENT_SPAWNED,
+        name: "agent_tracker_spawned",
+        description: "Track agent when it is spawned",
+        event_type: "agent:spawned",
+        conditions: [{ source: ["agent", "hook", "internal"] }],
+        actions: [],
+        enabled: true,
+        max_fires: 1e3
+      },
+      onSpawned
+    );
+    services.registerTrigger(
+      TRACKER_TRIGGER_IDS.AGENT_COMPLETED,
+      {
+        id: TRACKER_TRIGGER_IDS.AGENT_COMPLETED,
+        name: "agent_tracker_completed",
+        description: "Update tracker when agent completes",
+        event_type: "agent:completed",
+        conditions: [{ source: ["agent", "hook", "internal"] }],
+        actions: [],
+        enabled: true,
+        max_fires: 1e3
+      },
+      onCompleted
+    );
+    services.registerTrigger(
+      TRACKER_TRIGGER_IDS.AGENT_FAILED,
+      {
+        id: TRACKER_TRIGGER_IDS.AGENT_FAILED,
+        name: "agent_tracker_failed",
+        description: "Update tracker when agent fails",
+        event_type: "agent:failed",
+        conditions: [{ source: ["agent", "hook", "internal"] }],
+        actions: [],
+        enabled: true,
+        max_fires: 1e3
+      },
+      onFailed
+    );
+    this._handlers = [
+      { event_type: "agent:spawned", handler: onSpawned, priority: 5 },
+      { event_type: "agent:completed", handler: onCompleted, priority: 5 },
+      { event_type: "agent:failed", handler: onFailed, priority: 5 }
+    ];
+    this.state = "starting";
+    log8.debug("AgentTrackerPlugin registered");
+  }
+  start() {
+    if (this._handlers.length === 0) {
+      throw new Error("AgentTrackerPlugin: register() must be called before start()");
+    }
+    this.state = "running";
+    log8.info("AgentTrackerPlugin started");
+  }
+  stop() {
+    this.state = "stopped";
+    this._handlers = [];
+    this._services = null;
+    log8.debug("AgentTrackerPlugin stopped");
+  }
+  getWorkflowDefinitions() {
+    return [];
+  }
+  getTriggerDefinitions() {
+    return [
+      {
+        id: TRACKER_TRIGGER_IDS.AGENT_SPAWNED,
+        name: "agent_tracker_spawned",
+        description: "Track agent when it is spawned",
+        event_type: "agent:spawned",
+        conditions: [{ source: ["agent", "hook", "internal"] }],
+        actions: [],
+        enabled: true,
+        max_fires: 1e3
+      },
+      {
+        id: TRACKER_TRIGGER_IDS.AGENT_COMPLETED,
+        name: "agent_tracker_completed",
+        description: "Update tracker when agent completes",
+        event_type: "agent:completed",
+        conditions: [{ source: ["agent", "hook", "internal"] }],
+        actions: [],
+        enabled: true,
+        max_fires: 1e3
+      },
+      {
+        id: TRACKER_TRIGGER_IDS.AGENT_FAILED,
+        name: "agent_tracker_failed",
+        description: "Update tracker when agent fails",
+        event_type: "agent:failed",
+        conditions: [{ source: ["agent", "hook", "internal"] }],
+        actions: [],
+        enabled: true,
+        max_fires: 1e3
+      }
+    ];
+  }
+  getHandlers() {
+    return [...this._handlers];
+  }
+  // ─── Event handlers ───────────────────────────────────────────────────────
+  handleSpawned(event) {
+    const { agent_id, agent_type, workflow_id } = extractAgentData(event);
+    if (!agent_id) {
+      log8.debug("handleSpawned: no agent_id, skipping");
+      return;
+    }
+    const tracked = {
+      id: agent_id,
+      type: agent_type,
+      workflow_id,
+      status: "spawned",
+      spawned_at: event.timestamp,
+      finished_at: null,
+      duration_ms: null
+    };
+    this._services.setState(AGENT_KEY(agent_id), tracked);
+    this.addToIndex(agent_id);
+    log8.info("Agent tracked: spawned", { agent_id, agent_type, workflow_id });
+  }
+  handleFinished(event, status) {
+    const { agent_id, agent_type, workflow_id } = extractAgentData(event);
+    if (!agent_id) {
+      log8.debug(`handleFinished(${status}): no agent_id, skipping`);
+      return;
+    }
+    const existing = this._services.getState(AGENT_KEY(agent_id));
+    const now = event.timestamp;
+    const tracked = {
+      id: agent_id,
+      type: existing?.type ?? agent_type,
+      workflow_id: existing?.workflow_id ?? workflow_id,
+      status,
+      spawned_at: existing?.spawned_at ?? now,
+      finished_at: now,
+      duration_ms: existing ? now - existing.spawned_at : null
+    };
+    this._services.setState(AGENT_KEY(agent_id), tracked);
+    this.addToIndex(agent_id);
+    log8.info(`Agent tracked: ${status}`, {
+      agent_id,
+      agent_type: tracked.type,
+      workflow_id: tracked.workflow_id,
+      duration_ms: tracked.duration_ms
+    });
+  }
+  // ─── Index management ─────────────────────────────────────────────────────
+  addToIndex(agentId) {
+    const ids = this._services.getState(INDEX_KEY) ?? [];
+    if (!ids.includes(agentId)) {
+      this._services.setState(INDEX_KEY, [...ids, agentId]);
+    }
+  }
+  // ─── Query methods ────────────────────────────────────────────────────────
+  /** Get a tracked agent by ID. */
+  getAgent(agentId) {
+    if (!this._services) return null;
+    return this._services.getState(AGENT_KEY(agentId)) ?? null;
+  }
+  /** Get all tracked agents. */
+  getAllAgents() {
+    if (!this._services) return [];
+    const ids = this._services.getState(INDEX_KEY) ?? [];
+    const agents = [];
+    for (const id of ids) {
+      const agent = this._services.getState(AGENT_KEY(id));
+      if (agent) agents.push(agent);
+    }
+    return agents;
+  }
+  /** Get agents filtered by status. */
+  getAgentsByStatus(status) {
+    return this.getAllAgents().filter((a) => a.status === status);
+  }
+  /** Get agents filtered by workflow ID. */
+  getAgentsByWorkflow(workflowId) {
+    return this.getAllAgents().filter((a) => a.workflow_id === workflowId);
+  }
+  /** Get aggregate stats. */
+  getStats() {
+    const agents = this.getAllAgents();
+    const workflowIds = new Set(agents.map((a) => a.workflow_id).filter(Boolean));
+    return {
+      total: agents.length,
+      active: agents.filter((a) => a.status === "spawned").length,
+      completed: agents.filter((a) => a.status === "completed").length,
+      failed: agents.filter((a) => a.status === "failed").length,
+      workflows: workflowIds.size
+    };
+  }
+};
+
 // src/extensions/executor/tick-driver.ts
 var import_node_child_process = require("node:child_process");
 var logger44 = createLogger("tick-driver");
@@ -33574,13 +33830,13 @@ function createExternalAdapter(plugin) {
 __name(createExternalAdapter, "createExternalAdapter");
 
 // src/extensions/ipc/setup.ts
-var import_node_fs13 = require("node:fs");
+var import_node_fs14 = require("node:fs");
 var import_node_crypto4 = require("node:crypto");
 var import_node_path13 = require("node:path");
 
 // src/shared/ipc/ipc-server.ts
 var net = __toESM(require("node:net"), 1);
-var import_node_fs11 = require("node:fs");
+var import_node_fs12 = require("node:fs");
 var import_node_path11 = require("node:path");
 
 // src/shared/ipc/protocol.ts
@@ -33689,11 +33945,11 @@ var IPCServer = class {
    */
   async listen() {
     const dir = (0, import_node_path11.dirname)(this.socketPath);
-    (0, import_node_fs11.mkdirSync)(dir, { recursive: true, mode: 448 });
-    (0, import_node_fs11.chmodSync)(dir, 448);
-    if ((0, import_node_fs11.existsSync)(this.socketPath)) {
+    (0, import_node_fs12.mkdirSync)(dir, { recursive: true, mode: 448 });
+    (0, import_node_fs12.chmodSync)(dir, 448);
+    if ((0, import_node_fs12.existsSync)(this.socketPath)) {
       try {
-        (0, import_node_fs11.unlinkSync)(this.socketPath);
+        (0, import_node_fs12.unlinkSync)(this.socketPath);
         logger52.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
         logger52.warn("Could not remove stale socket file", {
@@ -33714,7 +33970,7 @@ var IPCServer = class {
       }
       srv.once("error", reject);
       srv.listen(this.socketPath, () => {
-        (0, import_node_fs11.chmodSync)(this.socketPath, 384);
+        (0, import_node_fs12.chmodSync)(this.socketPath, 384);
         logger52.info("IPC server listening", { path: this.socketPath });
         srv.removeListener("error", reject);
         resolve();
@@ -33953,8 +34209,8 @@ var IPCServer = class {
    */
   removeSocketFile() {
     try {
-      if ((0, import_node_fs11.existsSync)(this.socketPath)) {
-        (0, import_node_fs11.unlinkSync)(this.socketPath);
+      if ((0, import_node_fs12.existsSync)(this.socketPath)) {
+        (0, import_node_fs12.unlinkSync)(this.socketPath);
         logger52.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
@@ -33967,7 +34223,7 @@ var IPCServer = class {
 };
 
 // src/extensions/ipc/ipc-router.ts
-var import_node_fs12 = require("node:fs");
+var import_node_fs13 = require("node:fs");
 var import_node_path12 = require("node:path");
 var logger53 = createLogger("ipc-router");
 var IPCRouter = class {
@@ -34037,7 +34293,7 @@ var IPCRouter = class {
     for (const sessionId of this.registeredSessions) {
       const pointerFile = (0, import_node_path12.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
-        (0, import_node_fs12.unlinkSync)(pointerFile);
+        (0, import_node_fs13.unlinkSync)(pointerFile);
         logger53.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
@@ -34138,7 +34394,7 @@ var IPCRouter = class {
       if (typeof sessionId === "string" && sessionId.length > 0) {
         try {
           const pointerFile = (0, import_node_path12.join)(this.stateDir, `runtime-${sessionId}.socket`);
-          (0, import_node_fs12.writeFileSync)(pointerFile, this.socketPath, "utf-8");
+          (0, import_node_fs13.writeFileSync)(pointerFile, this.socketPath, "utf-8");
           this.registeredSessions.add(sessionId);
           logger53.info("Session pointer file written", { sessionId, pointer: pointerFile });
         } catch (err) {
@@ -34320,11 +34576,11 @@ function isPidAlive(pid) {
   }
 }
 __name(isPidAlive, "isPidAlive");
-function cleanStalePointerFiles(stateDir, log8) {
+function cleanStalePointerFiles(stateDir, log9) {
   try {
     let entries;
     try {
-      entries = (0, import_node_fs13.readdirSync)(stateDir);
+      entries = (0, import_node_fs14.readdirSync)(stateDir);
     } catch (err) {
       if (err.code === "ENOENT") return;
       throw err;
@@ -34338,17 +34594,17 @@ function cleanStalePointerFiles(stateDir, log8) {
       const pointerPath = (0, import_node_path13.join)(stateDir, filename);
       let socketFilePath;
       try {
-        socketFilePath = (0, import_node_fs13.readFileSync)(pointerPath, "utf-8").trim();
+        socketFilePath = (0, import_node_fs14.readFileSync)(pointerPath, "utf-8").trim();
       } catch {
       }
       let socketCleaned = false;
       if (socketFilePath) {
         try {
-          (0, import_node_fs13.unlinkSync)(socketFilePath);
+          (0, import_node_fs14.unlinkSync)(socketFilePath);
           socketCleaned = true;
         } catch (err) {
           if (err.code !== "ENOENT") {
-            log8.warn("Could not remove stale socket file", {
+            log9.warn("Could not remove stale socket file", {
               path: socketFilePath,
               err: toErrorMessage(err)
             });
@@ -34356,19 +34612,19 @@ function cleanStalePointerFiles(stateDir, log8) {
         }
       }
       try {
-        (0, import_node_fs13.unlinkSync)(pointerPath);
+        (0, import_node_fs14.unlinkSync)(pointerPath);
       } catch (err) {
         if (err.code !== "ENOENT") {
-          log8.warn("Could not remove stale socket pointer file", {
+          log9.warn("Could not remove stale socket pointer file", {
             path: pointerPath,
             err: toErrorMessage(err)
           });
         }
       }
-      log8.info("Cleaned stale socket pointer", { pid, pointer: pointerPath, socketCleaned });
+      log9.info("Cleaned stale socket pointer", { pid, pointer: pointerPath, socketCleaned });
     }
   } catch (err) {
-    log8.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
+    log9.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
   }
 }
 __name(cleanStalePointerFiles, "cleanStalePointerFiles");
@@ -34414,11 +34670,11 @@ async function createIPCSubsystem(opts) {
       });
     }
     cleanStalePointerFiles(stateDir, logger54);
-    (0, import_node_fs13.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+    (0, import_node_fs14.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
     ensureDirSync(stateDir);
     const pointerFile = (0, import_node_path13.join)(stateDir, `runtime-${process.pid}.socket`);
-    (0, import_node_fs13.writeFileSync)(pointerFile, socketPath, "utf-8");
+    (0, import_node_fs14.writeFileSync)(pointerFile, socketPath, "utf-8");
     logger54.info("IPC subsystem created", { socket: socketPath });
     return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
   } catch (err) {
@@ -34432,7 +34688,7 @@ async function createIPCSubsystem(opts) {
 __name(createIPCSubsystem, "createIPCSubsystem");
 
 // src/extensions/ipc/teardown.ts
-var import_node_fs14 = require("node:fs");
+var import_node_fs15 = require("node:fs");
 var import_node_path14 = require("node:path");
 var logger55 = createLogger("ipc-teardown");
 function removeSocketPointerFile(projectRoot, config2) {
@@ -34442,7 +34698,7 @@ function removeSocketPointerFile(projectRoot, config2) {
     `runtime-${process.pid}.socket`
   );
   try {
-    (0, import_node_fs14.unlinkSync)(pointerFile);
+    (0, import_node_fs15.unlinkSync)(pointerFile);
     logger55.debug("Socket pointer file removed", { path: pointerFile });
   } catch (err) {
     if (err.code !== "ENOENT") {
@@ -34498,12 +34754,12 @@ function toTriggerDefinitionBase(trigger) {
   };
 }
 __name(toTriggerDefinitionBase, "toTriggerDefinitionBase");
-function loggerToPluginLogger(log8) {
+function loggerToPluginLogger(log9) {
   return {
-    debug: /* @__PURE__ */ __name((...args) => log8.debug(String(args[0]), args[1]), "debug"),
-    info: /* @__PURE__ */ __name((...args) => log8.info(String(args[0]), args[1]), "info"),
-    warn: /* @__PURE__ */ __name((...args) => log8.warn(String(args[0]), args[1]), "warn"),
-    error: /* @__PURE__ */ __name((...args) => log8.error(String(args[0]), args[1]), "error")
+    debug: /* @__PURE__ */ __name((...args) => log9.debug(String(args[0]), args[1]), "debug"),
+    info: /* @__PURE__ */ __name((...args) => log9.info(String(args[0]), args[1]), "info"),
+    warn: /* @__PURE__ */ __name((...args) => log9.warn(String(args[0]), args[1]), "warn"),
+    error: /* @__PURE__ */ __name((...args) => log9.error(String(args[0]), args[1]), "error")
   };
 }
 __name(loggerToPluginLogger, "loggerToPluginLogger");
@@ -34670,6 +34926,14 @@ var RuntimeEngine = class {
       name: this.wrfcPlugin.name,
       version: this.wrfcPlugin.version,
       state: this.wrfcPlugin.state
+    });
+    const agentTrackerPlugin = new AgentTrackerPlugin();
+    agentTrackerPlugin.register(runtimeServices);
+    agentTrackerPlugin.start();
+    logger56.debug("AgentTracker plugin registered", {
+      name: agentTrackerPlugin.name,
+      version: agentTrackerPlugin.version,
+      state: agentTrackerPlugin.state
     });
     this.coreRuntime.eventProcessor.start();
     const hookSubsystem = createHookSubsystem({

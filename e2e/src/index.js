@@ -1,25 +1,18 @@
-import express from 'express';
-import quotesRouter from './routes/quotes.js';
-import searchRouter from './routes/search.js';
-import statsRouter from './routes/stats.js';
-
+const express = require('express');
 const app = express();
-const PORT = 3456;
+const PORT = process.env.PORT || 3456;
+const { router: quotesRouter } = require('./routes/quotes');
 
 app.use(express.json());
 
-app.use('/quotes', quotesRouter);
-app.use('/search', searchRouter);
-app.use('/stats', statsRouter);
+// Routes
+app.use('/api', quotesRouter);
+// - GET/POST /api/users  (Engineer 2)
+const usersRouter = require('./routes/users');
+app.use('/api/users', usersRouter);
 
-// Basic error handler
-app.use((err, req, res, next) => {
-  const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'Internal Server Error' });
-});
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-app.listen(PORT, () => {
-  console.log(`Quotes API running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-export default app;
+module.exports = app;

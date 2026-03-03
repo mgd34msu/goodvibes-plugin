@@ -28,3 +28,7 @@ export type { TimePluginConfig, TimePluginContext } from './time/index.js';
 // External events plugin
 export { ExternalPlugin, createDefaultExternalPluginConfig } from './external/index.js';
 export type { ExternalPluginConfig } from './external/index.js';
+
+// Agent tracker plugin
+export { AgentTrackerPlugin, TRACKER_TRIGGER_IDS } from './agent-tracker/index.js';
+export type { TrackedAgent, TrackedAgentStatus, AgentTrackerStats } from './agent-tracker/index.js';

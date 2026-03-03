@@ -137,9 +137,9 @@ describe('normalizeAgentFields', () => {
       expect(result.agent_type).toBe('goodvibes:reviewer');
     });
 
-    it('returns undefined for agent_type when neither field is provided', () => {
+    it('returns default unknown for agent_type when neither field is provided', () => {
       const result = normalizeAgentFields({});
-      expect(result.agent_type).toBeUndefined();
+      expect(result.agent_type).toBe('unknown');
     });
   });
 
@@ -164,10 +164,10 @@ describe('normalizeAgentFields', () => {
       expect(result.agent_type).toBe('sub-type');
     });
 
-    it('returns both as undefined for completely empty input', () => {
+    it('returns undefined agent_id and default agent_type for completely empty input', () => {
       const result = normalizeAgentFields({});
       expect(result.agent_id).toBeUndefined();
-      expect(result.agent_type).toBeUndefined();
+      expect(result.agent_type).toBe('unknown');
     });
 
     it('does not include unexpected keys in the result', () => {
