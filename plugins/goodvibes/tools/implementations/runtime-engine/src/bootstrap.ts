@@ -217,19 +217,19 @@ export class RuntimeEngine {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
     this.events.eventBus.on('*', async (event: RuntimeEvent) => {
-      // Hook-originated events (source.kind === 'hook') route through the L1
-      // EventProcessor queue so that trigger evaluation and registered handlers
-      // (e.g. WRFC plugin handlers) are invoked via the processBatch() path.
-      // Non-hook events use the L2 TriggerRegistry.evaluate() path which
-      // supports richer action execution (start_workflow, emit_event, etc.).
+      // Hook-originated events (source.kind === 'hook') are processed immediately
+      // through the L1 EventProcessor so directives are available before the IPC
+      // response returns. This is critical for WRFC: when agent:completed arrives,
+      // the handler must run and generate the directive synchronously so that the
+      // subsequent get_directives query finds it.
       if (event.source?.kind === 'hook') {
         try {
-          const queue = this.coreRuntime?.eventQueue;
-          if (queue) {
-            queue.enqueue(event);
+          const processor = this.coreRuntime?.eventProcessor;
+          if (processor) {
+            await processor.processImmediate(event);
           }
         } catch (err) {
-          logger.warn('Failed to enqueue hook event into EventProcessor queue', { error: toErrorMessage(err) });
+          logger.warn('Failed to process hook event immediately', { error: toErrorMessage(err) });
         }
         return;
       }

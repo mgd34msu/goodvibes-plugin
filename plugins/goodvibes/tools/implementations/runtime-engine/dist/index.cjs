@@ -29282,6 +29282,14 @@ var EventProcessor = class {
   activeWorkflowCount() {
     return this.workflowLocks.size;
   }
+  /**
+   * Process a single event immediately, bypassing the queue.
+   * Used for hook-originated events where the directive must be available
+   * before the IPC response returns (e.g. WRFC agent:completed → spawn reviewer).
+   */
+  async processImmediate(event) {
+    await this.processEvent(event);
+  }
   // ─── Private ────────────────────────────────────────────────────────────────────────
   async processEvent(event) {
     const startMs = Date.now();
@@ -34556,12 +34564,12 @@ var RuntimeEngine = class {
     this.events.eventBus.on("*", async (event) => {
       if (event.source?.kind === "hook") {
         try {
-          const queue = this.coreRuntime?.eventQueue;
-          if (queue) {
-            queue.enqueue(event);
+          const processor = this.coreRuntime?.eventProcessor;
+          if (processor) {
+            await processor.processImmediate(event);
           }
         } catch (err) {
-          logger56.warn("Failed to enqueue hook event into EventProcessor queue", { error: toErrorMessage(err) });
+          logger56.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
         }
         return;
       }

@@ -517,6 +517,15 @@ export class EventProcessor {
     return this.workflowLocks.size;
   }
 
+  /**
+   * Process a single event immediately, bypassing the queue.
+   * Used for hook-originated events where the directive must be available
+   * before the IPC response returns (e.g. WRFC agent:completed → spawn reviewer).
+   */
+  async processImmediate(event: RuntimeEvent): Promise<void> {
+    await this.processEvent(event);
+  }
+
   // ─── Private ────────────────────────────────────────────────────────────────────────
 
   private async processEvent(event: RuntimeEvent): Promise<void> {
