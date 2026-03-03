@@ -23075,7 +23075,7 @@ var EventLog = class {
       const src = filter.source;
       if (src.kind && event.source.kind !== src.kind) return false;
       if ("hook_name" in src && src.hook_name) {
-        if (event.source.kind !== "hook" || event.source.hook_name !== src.hook_name) return false;
+        if (event.source.kind !== "internal" || event.source.hook_name !== src.hook_name) return false;
       }
       if ("workflow_id" in src && src.workflow_id) {
         if (event.source.kind !== "workflow" || event.source.workflow_id !== src.workflow_id) return false;
@@ -30880,6 +30880,8 @@ function makeStoreAdapter(services) {
     },
     keys(prefix) {
       return services.listStateKeys(prefix);
+    },
+    onStateChange(_listener) {
     }
   };
 }
@@ -31438,7 +31440,7 @@ function createSubagentStopHandler(deps) {
           id: `evt_subagent_stop_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: "agent:completed",
-          source: { kind: "hook", hook_name: "subagent_stop" },
+          source: { kind: "internal", hook_name: "subagent_stop" },
           payload: {
             type: "agent:completed",
             data: {
@@ -31484,7 +31486,7 @@ function createSessionStartHandler(deps) {
           id: `evt_session_start_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: "session:started",
-          source: { kind: "hook", hook_name: "session_start" },
+          source: { kind: "internal", hook_name: "session_start" },
           payload: {
             type: "session:started",
             data: {
@@ -31522,7 +31524,7 @@ function createSessionEndHandler(deps) {
           id: `evt_session_end_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: "session:ended",
-          source: { kind: "hook", hook_name: "session_end" },
+          source: { kind: "internal", hook_name: "session_end" },
           payload: {
             type: "session:ended",
             data: { session_id: sessionId }
@@ -31553,7 +31555,7 @@ function createPreCompactHandler(deps) {
           id: `evt_pre_compact_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           timestamp: Date.now(),
           type: "session:compact",
-          source: { kind: "hook", hook_name: "pre_compact" },
+          source: { kind: "internal", hook_name: "pre_compact" },
           payload: {
             type: "session:compact",
             data: { session_id: sessionId }
@@ -31598,7 +31600,7 @@ function createPostToolUseHandler(deps) {
             id: `evt_file_modified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             timestamp: Date.now(),
             type: "file:modified",
-            source: { kind: "hook", hook_name: "post_tool_use" },
+            source: { kind: "internal", hook_name: "post_tool_use" },
             payload: {
               type: "file:modified",
               data: {
@@ -34373,7 +34375,7 @@ var IPCRouter = class {
       id: msg.id,
       timestamp: new Date(msg.timestamp).getTime(),
       type: msg.hook_name,
-      source: { kind: "hook", hook_name: msg.hook_name },
+      source: { kind: "internal", hook_name: msg.hook_name },
       payload: {
         type: msg.hook_name,
         data: msg.hook_input
@@ -34843,7 +34845,7 @@ var RuntimeEngine = class {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
     }
     this.events.eventBus.on("*", async (event) => {
-      if (event.source?.kind === "hook") {
+      if (event.source?.kind === "internal" && event.source.hook_name) {
         return;
       }
       try {

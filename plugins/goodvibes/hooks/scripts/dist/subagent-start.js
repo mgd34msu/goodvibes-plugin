@@ -1334,7 +1334,7 @@ function extractStartInputFields(input) {
   return {
     agentId: input.agent_id ?? input.subagent_id ?? "agent_" + Date.now(),
     agentType: input.agent_type ?? input.subagent_type ?? "unknown",
-    taskDescription: input.task_description ?? input.task ?? "",
+    taskDescription: input.task_description ?? input.task ?? input.prompt ?? "",
     cwd: input.cwd ?? process.cwd(),
     sessionId: input.session_id ?? ""
   };
@@ -1407,6 +1407,32 @@ async function runSubagentStartHook() {
         const { agent_id, agent_type } = normalizeAgentFields(input);
         const taskDesc = input.task_description ?? input.task ?? "";
         resolvedWorkflowId = extractWorkflowId(taskDesc);
+        if (!resolvedWorkflowId) {
+          const rawObj = rawInput;
+          const candidateFields = ["prompt", "description", "tool_input"];
+          for (const field of candidateFields) {
+            const val = rawObj[field];
+            if (typeof val === "string" && val.includes("[WRFC:")) {
+              resolvedWorkflowId = extractWorkflowId(val);
+              if (resolvedWorkflowId) {
+                debug("Phase 6: extracted workflow_id from field: " + field, { workflow_id: resolvedWorkflowId });
+                break;
+              }
+            }
+            if (typeof val === "object" && val !== null) {
+              for (const nested of Object.values(val)) {
+                if (typeof nested === "string" && nested.includes("[WRFC:")) {
+                  resolvedWorkflowId = extractWorkflowId(nested);
+                  if (resolvedWorkflowId) {
+                    debug("Phase 6: extracted workflow_id from nested field: " + field, { workflow_id: resolvedWorkflowId });
+                    break;
+                  }
+                }
+              }
+              if (resolvedWorkflowId) break;
+            }
+          }
+        }
         if (resolvedWorkflowId) {
           debug("Phase 6: extracted workflow_id from WRFC tag", { workflow_id: resolvedWorkflowId });
           try {
