@@ -32611,11 +32611,7 @@ var ExternalPlugin = class {
 var log8 = createLogger("agent-tracker-plugin");
 var AGENT_KEY = /* @__PURE__ */ __name((id) => `agent_tracker.agents.${id}`, "AGENT_KEY");
 var INDEX_KEY = "agent_tracker.agent_ids";
-var TRACKER_TRIGGER_IDS = {
-  AGENT_SPAWNED: "agent_tracker:agent_spawned",
-  AGENT_COMPLETED: "agent_tracker:agent_completed",
-  AGENT_FAILED: "agent_tracker:agent_failed"
-};
+var WRFC_MAP_KEY = /* @__PURE__ */ __name((id) => `wrfc.agent_map.${id}`, "WRFC_MAP_KEY");
 function extractAgentData(event) {
   const payload = event.payload;
   const data = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : payload;
@@ -32634,6 +32630,7 @@ var AgentTrackerPlugin = class {
   state = "registered";
   _handlers = [];
   _services = null;
+  _unsubscribes = [];
   // ─── RuntimePlugin interface ──────────────────────────────────────────────
   register(services) {
     this._services = services;
@@ -32641,64 +32638,29 @@ var AgentTrackerPlugin = class {
     if (!existing) {
       services.setState(INDEX_KEY, []);
     }
-    const onSpawned = /* @__PURE__ */ __name(async (event) => {
+    const unsubSpawned = services.subscribe("agent:spawned", (event) => {
       this.handleSpawned(event);
-    }, "onSpawned");
-    const onCompleted = /* @__PURE__ */ __name(async (event) => {
+    });
+    const unsubCompleted = services.subscribe("agent:completed", (event) => {
       this.handleFinished(event, "completed");
-    }, "onCompleted");
-    const onFailed = /* @__PURE__ */ __name(async (event) => {
+    });
+    const unsubFailed = services.subscribe("agent:failed", (event) => {
       this.handleFinished(event, "failed");
-    }, "onFailed");
-    services.registerTrigger(
-      TRACKER_TRIGGER_IDS.AGENT_SPAWNED,
-      {
-        id: TRACKER_TRIGGER_IDS.AGENT_SPAWNED,
-        name: "agent_tracker_spawned",
-        description: "Track agent when it is spawned",
-        event_type: "agent:spawned",
-        conditions: [{ source: ["agent", "hook", "internal"] }],
-        actions: [],
-        enabled: true,
-        max_fires: 1e3
-      },
-      onSpawned
-    );
-    services.registerTrigger(
-      TRACKER_TRIGGER_IDS.AGENT_COMPLETED,
-      {
-        id: TRACKER_TRIGGER_IDS.AGENT_COMPLETED,
-        name: "agent_tracker_completed",
-        description: "Update tracker when agent completes",
-        event_type: "agent:completed",
-        conditions: [{ source: ["agent", "hook", "internal"] }],
-        actions: [],
-        enabled: true,
-        max_fires: 1e3
-      },
-      onCompleted
-    );
-    services.registerTrigger(
-      TRACKER_TRIGGER_IDS.AGENT_FAILED,
-      {
-        id: TRACKER_TRIGGER_IDS.AGENT_FAILED,
-        name: "agent_tracker_failed",
-        description: "Update tracker when agent fails",
-        event_type: "agent:failed",
-        conditions: [{ source: ["agent", "hook", "internal"] }],
-        actions: [],
-        enabled: true,
-        max_fires: 1e3
-      },
-      onFailed
-    );
+    });
+    this._unsubscribes = [unsubSpawned, unsubCompleted, unsubFailed];
     this._handlers = [
-      { event_type: "agent:spawned", handler: onSpawned, priority: 5 },
-      { event_type: "agent:completed", handler: onCompleted, priority: 5 },
-      { event_type: "agent:failed", handler: onFailed, priority: 5 }
+      { event_type: "agent:spawned", handler: /* @__PURE__ */ __name((e) => {
+        this.handleSpawned(e);
+      }, "handler"), priority: 5 },
+      { event_type: "agent:completed", handler: /* @__PURE__ */ __name((e) => {
+        this.handleFinished(e, "completed");
+      }, "handler"), priority: 5 },
+      { event_type: "agent:failed", handler: /* @__PURE__ */ __name((e) => {
+        this.handleFinished(e, "failed");
+      }, "handler"), priority: 5 }
     ];
     this.state = "starting";
-    log8.debug("AgentTrackerPlugin registered");
+    log8.debug("AgentTrackerPlugin registered with EventBus subscriptions");
   }
   start() {
     if (this._handlers.length === 0) {
@@ -32708,62 +32670,38 @@ var AgentTrackerPlugin = class {
     log8.info("AgentTrackerPlugin started");
   }
   stop() {
-    this.state = "stopped";
+    for (const unsub of this._unsubscribes) unsub();
+    this._unsubscribes = [];
     this._handlers = [];
     this._services = null;
+    this.state = "stopped";
     log8.debug("AgentTrackerPlugin stopped");
   }
   getWorkflowDefinitions() {
     return [];
   }
   getTriggerDefinitions() {
-    return [
-      {
-        id: TRACKER_TRIGGER_IDS.AGENT_SPAWNED,
-        name: "agent_tracker_spawned",
-        description: "Track agent when it is spawned",
-        event_type: "agent:spawned",
-        conditions: [{ source: ["agent", "hook", "internal"] }],
-        actions: [],
-        enabled: true,
-        max_fires: 1e3
-      },
-      {
-        id: TRACKER_TRIGGER_IDS.AGENT_COMPLETED,
-        name: "agent_tracker_completed",
-        description: "Update tracker when agent completes",
-        event_type: "agent:completed",
-        conditions: [{ source: ["agent", "hook", "internal"] }],
-        actions: [],
-        enabled: true,
-        max_fires: 1e3
-      },
-      {
-        id: TRACKER_TRIGGER_IDS.AGENT_FAILED,
-        name: "agent_tracker_failed",
-        description: "Update tracker when agent fails",
-        event_type: "agent:failed",
-        conditions: [{ source: ["agent", "hook", "internal"] }],
-        actions: [],
-        enabled: true,
-        max_fires: 1e3
-      }
-    ];
+    return [];
   }
   getHandlers() {
     return [...this._handlers];
   }
   // ─── Event handlers ───────────────────────────────────────────────────────
   handleSpawned(event) {
+    if (!this._services) {
+      log8.warn("handleSpawned: plugin not registered, skipping");
+      return;
+    }
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
       log8.debug("handleSpawned: no agent_id, skipping");
       return;
     }
+    const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id);
     const tracked = {
       id: agent_id,
       type: agent_type,
-      workflow_id,
+      workflow_id: resolvedWid,
       status: "spawned",
       spawned_at: event.timestamp,
       finished_at: null,
@@ -32771,9 +32709,13 @@ var AgentTrackerPlugin = class {
     };
     this._services.setState(AGENT_KEY(agent_id), tracked);
     this.addToIndex(agent_id);
-    log8.info("Agent tracked: spawned", { agent_id, agent_type, workflow_id });
+    log8.info("Agent tracked: spawned", { agent_id, agent_type, workflow_id: resolvedWid });
   }
   handleFinished(event, status) {
+    if (!this._services) {
+      log8.warn(`handleFinished(${status}): plugin not registered, skipping`);
+      return;
+    }
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
       log8.debug(`handleFinished(${status}): no agent_id, skipping`);
@@ -32781,10 +32723,11 @@ var AgentTrackerPlugin = class {
     }
     const existing = this._services.getState(AGENT_KEY(agent_id));
     const now = event.timestamp;
+    const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id);
     const tracked = {
       id: agent_id,
       type: existing?.type ?? agent_type,
-      workflow_id: existing?.workflow_id ?? workflow_id,
+      workflow_id: resolvedWid,
       status,
       spawned_at: existing?.spawned_at ?? now,
       finished_at: now,
@@ -32799,20 +32742,29 @@ var AgentTrackerPlugin = class {
       duration_ms: tracked.duration_ms
     });
   }
+  // ─── Workflow ID resolution ────────────────────────────────────────────────
+  resolveWorkflowId(agentId) {
+    if (!this._services) return null;
+    const wid = this._services.getState(WRFC_MAP_KEY(agentId));
+    if (typeof wid === "string" && wid.length > 0) {
+      log8.debug("Resolved workflow_id from WRFC state", { agent_id: agentId, workflow_id: wid });
+      return wid;
+    }
+    return null;
+  }
   // ─── Index management ─────────────────────────────────────────────────────
   addToIndex(agentId) {
+    if (!this._services) return;
     const ids = this._services.getState(INDEX_KEY) ?? [];
     if (!ids.includes(agentId)) {
       this._services.setState(INDEX_KEY, [...ids, agentId]);
     }
   }
   // ─── Query methods ────────────────────────────────────────────────────────
-  /** Get a tracked agent by ID. */
   getAgent(agentId) {
     if (!this._services) return null;
     return this._services.getState(AGENT_KEY(agentId)) ?? null;
   }
-  /** Get all tracked agents. */
   getAllAgents() {
     if (!this._services) return [];
     const ids = this._services.getState(INDEX_KEY) ?? [];
@@ -32823,15 +32775,12 @@ var AgentTrackerPlugin = class {
     }
     return agents;
   }
-  /** Get agents filtered by status. */
   getAgentsByStatus(status) {
     return this.getAllAgents().filter((a) => a.status === status);
   }
-  /** Get agents filtered by workflow ID. */
   getAgentsByWorkflow(workflowId) {
     return this.getAllAgents().filter((a) => a.workflow_id === workflowId);
   }
-  /** Get aggregate stats. */
   getStats() {
     const agents = this.getAllAgents();
     const workflowIds = new Set(agents.map((a) => a.workflow_id).filter(Boolean));

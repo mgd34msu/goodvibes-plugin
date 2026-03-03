@@ -1,4 +1,2 @@
-const calculator = require('./calculator.js');
-const greeter = require('./greeter.js');
-
-module.exports = { ...calculator, ...greeter };
+export * from './calculator.js';
+export * from './greeter.js';
