@@ -6,6 +6,7 @@ import type { RuntimeConfig } from './shared/config.js';
 import { loadConfig } from './shared/config.js';
 import { ENGINE_VERSION } from './shared/constants.js';
 import { createLogger } from './shared/logger.js';
+import type { Logger } from './shared/logger.js';
 import { generateEventId, timestamp, toErrorMessage } from './shared/utils.js';
 import { ProcessingError } from './shared/errors.js';
 
@@ -52,9 +53,43 @@ import type { RuntimeEvent, EventTypePattern, EventSource, EventType } from './s
 import type { PluginLogger } from './shared/plugin.js';
 import type { EventQueue } from './core/queues/event-queue.js';
 import type { IPCServer } from './shared/ipc/ipc-server.js';
-import type { TriggerDefinitionBase } from './core/types.js';
+import type { TriggerDefinitionBase, Trigger } from './core/types.js';
 
 const logger = createLogger('bootstrap');
+
+/**
+ * Adapts a L1 Trigger to the TriggerDefinitionBase interface required by the
+ * TriggerRegistry. Maps trigger fields to the base definition shape so L3
+ * plugin triggers can be registered via the L1 interface without double-casting.
+ */
+function toTriggerDefinitionBase(trigger: Trigger): TriggerDefinitionBase {
+  return {
+    id: trigger.id,
+    name: trigger.id,
+    description: 'Plugin trigger',
+    enabled: trigger.enabled,
+    priority: trigger.priority ?? 0,
+    condition: trigger.event_match,
+    action: trigger.actions,
+    cooldown_ms: trigger.cooldown_ms,
+    max_fires: trigger.max_fires,
+    fires_count: 0,
+  };
+}
+
+/**
+ * Wraps a shared Logger as a PluginLogger so L3 plugins receive the
+ * minimal logging interface defined in shared/plugin.ts without a double-cast.
+ */
+function loggerToPluginLogger(log: Logger): PluginLogger {
+  return {
+    debug: (...args: unknown[]) => log.debug(String(args[0]), args[1] as Record<string, unknown> | undefined),
+    info: (...args: unknown[]) => log.info(String(args[0]), args[1] as Record<string, unknown> | undefined),
+    warn: (...args: unknown[]) => log.warn(String(args[0]), args[1] as Record<string, unknown> | undefined),
+    error: (...args: unknown[]) => log.error(String(args[0]), args[1] as Record<string, unknown> | undefined),
+  };
+}
+
 
 export class RuntimeEngine {
   private readonly startTime: number;
@@ -216,7 +251,7 @@ export class RuntimeEngine {
           handler,
         );
       },
-      getConfig: () => this.config as unknown as Record<string, unknown>,
+      getConfig: () => this.config as RuntimeConfig & Record<string, unknown>,
       getState: (key) => coreStore.get(key),
       setState: (key, value) => coreStore.set(key, value),
       registerTrigger: (id, definition, handler) => {
@@ -239,9 +274,7 @@ export class RuntimeEngine {
           max_fires: definition.max_fires,
           priority: 10,
         });
-        // Note: createWRFCTrigger returns PluginTriggerDefinition (L3 type) which is structurally
-        // compatible with TriggerDefinitionBase but TypeScript can't verify this without the cast.
-        coreTriggerRegistry.register(trigger as unknown as TriggerDefinitionBase);
+        coreTriggerRegistry.register(toTriggerDefinitionBase(trigger));
         const registeredTrigger = coreTriggerRegistry.get(id);
         coreEventProcessor.registerHandler(id, async (event) => {
           if (!registeredTrigger) return {};
@@ -251,7 +284,7 @@ export class RuntimeEngine {
       unregisterTrigger: (id) => {
         coreTriggerRegistry?.unregister(id);
       },
-      getLogger: (name) => createLogger(name) as unknown as PluginLogger,
+      getLogger: (name) => loggerToPluginLogger(createLogger(name)),
     };
     this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
     this.wrfcPlugin.register(runtimeServices);

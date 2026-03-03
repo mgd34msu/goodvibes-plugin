@@ -28,6 +28,7 @@ const QUERY_TIMEOUT_MS = 500;
 const TASK_NOTIFICATION_PATTERN = '<task-notification>';
 const DEFAULT_TICK_COMMAND = 'tick';
 
+/** Delay for retry backoff in directive polling */
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -8,7 +8,7 @@
  */
 
 import type { RuntimeConfig } from '../../shared/config.js';
-import type { EventBus } from '../events/event-bus.js';
+import type { EventEmitter } from '../../core/types.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import { createLogger } from '../../shared/logger.js';
@@ -26,7 +26,7 @@ export interface TriggerSubsystem {
 }
 
 export interface TriggerSubsystemDeps {
-  eventBus: EventBus;
+  eventBus: EventEmitter;
   directiveQueue: DirectiveQueue | null;
   workflowEngine: WorkflowEngine | null;
   contextProvider?: WorkflowContextProvider;

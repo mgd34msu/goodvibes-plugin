@@ -26,9 +26,7 @@ import {
   buildEscalationMessage,
 } from '../directives/legacy-directive-builder.js';
 import type { Directive } from '../../shared/ipc/protocol.js';
-// Cross-layer note: watchdog imports from L3 wrfc plugin for type-safe WRFC field access.
-// This is intentional — watchdog's stale workflow recovery needs WRFC-specific field inspection.
-import { getWRFCFields } from '../../plugins/wrfc/wrfc-context.js';
+import { getWRFCFields } from './wrfc-fields.js';
 
 const logger = createLogger('watchdog');
 

@@ -309,7 +309,9 @@ export class RuntimeClient {
     try {
       debug(`Cleaning stale socket: ${deadSocketPath}`);
       // Remove the dead socket file itself.
-      try { unlinkSync(deadSocketPath); } catch { /* ignore */ }
+      try { unlinkSync(deadSocketPath); } catch {
+        // Best-effort cleanup — ENOENT or permission errors are non-fatal
+      }
       // Remove any pointer files in stateDir that referenced this socket.
       try {
         const entries = readdirSync(this.stateDir);
@@ -322,9 +324,13 @@ export class RuntimeClient {
               debug(`Removing stale pointer file: ${pointerPath}`);
               unlinkSync(pointerPath);
             }
-          } catch { /* ignore */ }
+          } catch {
+            // Best-effort cleanup — ENOENT or permission errors are non-fatal
+          }
         }
-      } catch { /* ignore */ }
+      } catch {
+        // Best-effort cleanup — ENOENT or permission errors are non-fatal
+      }
     } catch {
       // Best-effort cleanup — log to stderr only in debug mode
       if (process.env['GOODVIBES_DEBUG']) {

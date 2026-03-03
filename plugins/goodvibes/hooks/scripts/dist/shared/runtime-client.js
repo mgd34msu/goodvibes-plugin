@@ -236,7 +236,9 @@ export class RuntimeClient {
             try {
                 unlinkSync(deadSocketPath);
             }
-            catch { /* ignore */ }
+            catch {
+                // Best-effort cleanup — ENOENT or permission errors are non-fatal
+            }
             // Remove any pointer files in stateDir that referenced this socket.
             try {
                 const entries = readdirSync(this.stateDir);
@@ -251,12 +253,21 @@ export class RuntimeClient {
                             unlinkSync(pointerPath);
                         }
                     }
-                    catch { /* ignore */ }
+                    catch {
+                        // Best-effort cleanup — ENOENT or permission errors are non-fatal
+                    }
                 }
             }
-            catch { /* ignore */ }
+            catch {
+                // Best-effort cleanup — ENOENT or permission errors are non-fatal
+            }
         }
-        catch { /* ignore — best-effort only */ }
+        catch {
+            // Best-effort cleanup — log to stderr only in debug mode
+            if (process.env['GOODVIBES_DEBUG']) {
+                console.error('[RuntimeClient] tryCleanStaleSocket failed silently');
+            }
+        }
     }
     /**
      * Open a new Unix domain socket connection, write the JSON message
@@ -268,6 +279,8 @@ export class RuntimeClient {
      * @returns Parsed {@link IPCResponse}, or null on failure.
      */
     sendMessage(message, timeoutMs) {
+        if (!this._socketPath)
+            return Promise.resolve(null);
         const socketPath = this._socketPath;
         return new Promise((resolve) => {
             let resolved = false;

@@ -2322,6 +2322,9 @@ var RuntimeClient = class _RuntimeClient {
       } catch {
       }
     } catch {
+      if (process.env["GOODVIBES_DEBUG"]) {
+        console.error("[RuntimeClient] tryCleanStaleSocket failed silently");
+      }
     }
   }
   /**
@@ -2334,6 +2337,7 @@ var RuntimeClient = class _RuntimeClient {
    * @returns Parsed {@link IPCResponse}, or null on failure.
    */
   sendMessage(message, timeoutMs) {
+    if (!this._socketPath) return Promise.resolve(null);
     const socketPath = this._socketPath;
     return new Promise((resolve2) => {
       let resolved = false;

@@ -41,6 +41,7 @@ function isPidAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch {
+    // process.kill(pid, 0) throws when PID doesn't exist — expected behavior
     return false;
   }
 }

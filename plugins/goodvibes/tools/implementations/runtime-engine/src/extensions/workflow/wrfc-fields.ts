@@ -1,13 +1,13 @@
 /**
- * WRFC Context Helpers — WRFC Plugin (Layer 3)
+ * WRFC Field Helpers — Layer 2 Workflow Extension
  *
  * Provides typed access to WRFC-specific fields stored in the generic
- * WorkflowContext via its index signature. This keeps WRFC concerns
- * fully in Layer 3 while allowing L2 watchdog/guards to access these
- * fields via bracket notation with type assertions.
+ * WorkflowContext via its index signature. Lives in L2 (extensions/workflow)
+ * so that the watchdog and other L2 components can use it without
+ * importing from the L3 plugin layer.
  */
 
-import type { WorkflowContext } from '../../extensions/workflow/types.js';
+import type { WorkflowContext } from './types.js';
 
 /** Typed WRFC-specific fields stored in WorkflowContext via index signature */
 export interface WRFCFields {
@@ -30,4 +30,3 @@ export function getWRFCFields(ctx: WorkflowContext): WRFCFields {
     files_modified: ctx['files_modified'] as string[] | undefined,
   };
 }
-
