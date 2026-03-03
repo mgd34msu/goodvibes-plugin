@@ -271,7 +271,6 @@ export class TriggerActionExecutor {
     const message = buildSpawnDirectiveMessage(
       action.agent_type,
       resolvedTask,
-      action.budget,
     );
 
     this.directiveQueue.enqueue('subagent_stop', {

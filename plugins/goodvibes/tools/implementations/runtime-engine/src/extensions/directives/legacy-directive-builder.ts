@@ -50,14 +50,12 @@ interface SpawnDirective {
  *
  * @param agentType  - Short agent type label (e.g. "reviewer", "engineer").
  * @param task       - Task description/instructions for the spawned agent.
- * @param _budget    - Token and turn budget (unused, kept for backward-compatible signature).
  * @param context    - Optional WRFC context (files, score, issues, attempts).
  * @returns Structured <gv> directive string.
  */
 export function buildSpawnDirectiveMessage(
   agentType: string,
   task: string,
-  _budget?: { max_tokens: number; max_turns: number },
   context?: SpawnDirectiveContext,
 ): string {
 
@@ -76,10 +74,9 @@ export function buildSpawnDirectiveMessage(
  * has passed review and the WRFC chain is done.
  *
  * @param workflowId - ID of the completed workflow instance.
- * @param _state     - Terminal state name (unused, kept for backward-compatible signature).
  * @returns Structured <gv> directive string.
  */
-export function buildWorkflowCompleteMessage(workflowId: string, _state?: string): string {
+export function buildWorkflowCompleteMessage(workflowId: string): string {
 
   const directive = {
     action: "complete",

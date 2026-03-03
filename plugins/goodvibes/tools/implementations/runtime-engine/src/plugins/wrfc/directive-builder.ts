@@ -46,7 +46,7 @@ export function buildSpawnAction(params: {
     workflow_id: params.wid,
     ...(params.files && params.files.length > 0 && { files_modified: params.files }),
   };
-  const content = buildSpawnDirectiveMessage(params.type, params.task, undefined, context);
+  const content = buildSpawnDirectiveMessage(params.type, params.task, context);
   return {
     type: 'send_message',
     params: { content, priority: 20, target: 'subagent_stop' },
@@ -109,37 +109,3 @@ export function buildEscalateAction(wid: string, reason: string, params?: Escala
   };
 }
 
-/**
- * Builds a complete directive as a structured object (for direct use).
- * @deprecated Prefer buildCompleteAction for HandlerResult integration.
- * @since v1.3.0
- * @removal Planned removal — migrate to buildCompleteAction.
- */
-export function buildCompleteDirective(wid: string): Action {
-  return buildCompleteAction(wid);
-}
-
-/**
- * Builds an escalate directive as a structured object (for direct use).
- * @deprecated Prefer buildEscalateAction for HandlerResult integration.
- * @since v1.3.0
- * @removal Planned removal — migrate to buildEscalateAction.
- */
-export function buildEscalateDirective(wid: string, reason: string): Action {
-  return buildEscalateAction(wid, reason);
-}
-
-/**
- * Builds a spawn directive as a structured object (for direct use).
- * @deprecated Prefer buildSpawnAction for HandlerResult integration.
- * @since v1.3.0
- * @removal Planned removal — migrate to buildSpawnAction.
- */
-export function buildSpawnDirective(params: {
-  wid: string;
-  type: 'engineer' | 'reviewer' | 'tester' | 'fixer';
-  task: string;
-  files?: string[];
-}): Action {
-  return buildSpawnAction(params);
-}

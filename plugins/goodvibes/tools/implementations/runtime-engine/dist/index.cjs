@@ -22721,8 +22721,8 @@ var EventLog = class {
     }
     if (this.writeBuffer.length > 0) {
       try {
-        const { appendFileSync: appendFileSync2 } = await import("fs");
-        appendFileSync2(this.logPath, this.writeBuffer, "utf-8");
+        const { appendFileSync } = await import("fs");
+        appendFileSync(this.logPath, this.writeBuffer, "utf-8");
         this.writeBuffer = "";
         this.writeBufferBytes = 0;
       } catch (syncErr) {
@@ -22864,8 +22864,8 @@ var EventLog = class {
       `events-archive-${archiveDate}.jsonl`
     );
     try {
-      const { appendFileSync: appendFileSync2 } = await import("fs");
-      appendFileSync2(archivePath, toArchive.join("\n") + "\n", "utf-8");
+      const { appendFileSync } = await import("fs");
+      appendFileSync(archivePath, toArchive.join("\n") + "\n", "utf-8");
     } catch (archiveErr) {
       logger3.debug("Archive append failed, creating new archive file", { error: toErrorMessage(archiveErr) });
       (0, import_node_fs5.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
@@ -22992,8 +22992,8 @@ var EventLog = class {
           });
         });
       } else {
-        const { appendFileSync: appendFileSync2 } = await import("fs");
-        appendFileSync2(this.logPath, data, "utf-8");
+        const { appendFileSync } = await import("fs");
+        appendFileSync(this.logPath, data, "utf-8");
       }
     } catch (err) {
       drainError = err instanceof Error ? err : new Error(toErrorMessage(err));
@@ -25142,7 +25142,7 @@ var ConditionEvaluator = class {
 };
 
 // src/extensions/directives/legacy-directive-builder.ts
-function buildSpawnDirectiveMessage(agentType, task, _budget, context) {
+function buildSpawnDirectiveMessage(agentType, task, context) {
   const directive = {
     action: "spawn",
     wid: context?.workflow_id ?? "unknown",
@@ -25152,7 +25152,7 @@ function buildSpawnDirectiveMessage(agentType, task, _budget, context) {
   return "<gv>" + JSON.stringify(directive) + "</gv>";
 }
 __name(buildSpawnDirectiveMessage, "buildSpawnDirectiveMessage");
-function buildWorkflowCompleteMessage(workflowId, _state) {
+function buildWorkflowCompleteMessage(workflowId) {
   const directive = {
     action: "complete",
     wid: workflowId
@@ -25342,8 +25342,7 @@ var TriggerActionExecutor = class {
     }
     const message = buildSpawnDirectiveMessage(
       action.agent_type,
-      resolvedTask,
-      action.budget
+      resolvedTask
     );
     this.directiveQueue.enqueue("subagent_stop", {
       type: "inject_system_message",
@@ -28243,7 +28242,7 @@ var WatchdogCoordinator = class {
     const filesModified = Array.isArray(wrfc.files_modified) ? wrfc.files_modified : [];
     if (state === "REVIEWING") {
       const task = `Review the work completed in workflow ${workflow.id}. Current state: ${workflow.current_state}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "Check all recently modified files.");
-      const message = buildSpawnDirectiveMessage("reviewer", task, void 0, {
+      const message = buildSpawnDirectiveMessage("reviewer", task, {
         files_modified: filesModified,
         workflow_id: workflow.id
       });
@@ -28283,7 +28282,7 @@ var WatchdogCoordinator = class {
         const reviewIssues = Array.isArray(wrfc.review_issues) ? wrfc.review_issues : [];
         const issuesSummary = reviewIssues.length > 0 ? reviewIssues.map((i) => `[${i.severity}] ${i.dimension}: ${i.description}`).join("; ") : "See previous review output for details.";
         const fixTask = `Fix the issues identified in the code review for workflow ${workflow.id}. Review score: ${lastScore}/10. Issues: ${issuesSummary}` + (filesModified.length > 0 ? ` Files: ${filesModified.join(", ")}.` : "");
-        const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, void 0, {
+        const fixMessage = buildSpawnDirectiveMessage("engineer", fixTask, {
           files_modified: filesModified,
           review_score: lastScore,
           review_issues: reviewIssues,
@@ -30351,16 +30350,13 @@ function extractScore(text) {
 }
 __name(extractScore, "extractScore");
 
-// src/plugins/wrfc/handlers.ts
-var import_node_fs11 = require("node:fs");
-
 // src/plugins/wrfc/directive-builder.ts
 function buildSpawnAction(params) {
   const context = {
     workflow_id: params.wid,
     ...params.files && params.files.length > 0 && { files_modified: params.files }
   };
-  const content = buildSpawnDirectiveMessage(params.type, params.task, void 0, context);
+  const content = buildSpawnDirectiveMessage(params.type, params.task, context);
   return {
     type: "send_message",
     params: { content, priority: 20, target: "subagent_stop" }
@@ -30396,13 +30392,6 @@ function buildEscalateAction(wid, reason, params) {
 __name(buildEscalateAction, "buildEscalateAction");
 
 // src/plugins/wrfc/handlers.ts
-var _T = /* @__PURE__ */ __name((m) => {
-  try {
-    (0, import_node_fs11.appendFileSync)("/tmp/wrfc-trace.log", `[${(/* @__PURE__ */ new Date()).toISOString()}] HANDLER ${m}
-`);
-  } catch {
-  }
-}, "_T");
 var log6 = createLogger("wrfc-plugin:handlers");
 var FALLBACK_NO_REVIEW_OUTPUT = "No review output captured.";
 var FALLBACK_SEE_PAYLOAD = "See the wrfc:review_completed event payload for review details.";
@@ -30506,9 +30495,7 @@ function handleWorkflowCreated(event, _trigger, store) {
 __name(handleWorkflowCreated, "handleWorkflowCreated");
 function handleAgentCompleted(event, _trigger, store) {
   const payload = event.payload;
-  _T(`handleAgentCompleted ENTRY event.type=${event.type} payloadKeys=${Object.keys(payload).join(",")}`);
   const dataPayload = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : null;
-  _T(`dataPayload=${dataPayload ? Object.keys(dataPayload).join(",") : "null"}`);
   const hookInputForId = payload["hook_input"];
   const agentId = (typeof payload["agent_id"] === "string" ? payload["agent_id"] : null) ?? (typeof dataPayload?.["agent_id"] === "string" ? dataPayload["agent_id"] : null) ?? (typeof hookInputForId?.["agent_id"] === "string" ? hookInputForId["agent_id"] : null);
   const hookInput = typeof payload["hook_input"] === "object" && payload["hook_input"] !== null ? payload["hook_input"] : payload;
@@ -30522,13 +30509,10 @@ function handleAgentCompleted(event, _trigger, store) {
     wid = typeof dataPayload?.["workflow_id"] === "string" ? dataPayload["workflow_id"] : null;
   }
   if (!wid) {
-    _T(`NO WID FOUND agentId=${agentId} \u2014 returning empty`);
     log6.debug("handleAgentCompleted: no workflow binding found, skipping", { agent_id: agentId });
     return {};
   }
-  _T(`RESOLVED wid=${wid} agentId=${agentId}`);
   const phase = storeGet(store, WS(wid, "phase"), "WRITING").toUpperCase();
-  _T(`PHASE=${phase} wid=${wid} agentType=${agentType}`);
   const minScore = storeGet(store, WS(wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
   const maxFix = storeGet(store, WS(wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
   const fixAttempts = storeGet(store, WS(wid, "fix_attempts"), 0);
@@ -30576,7 +30560,6 @@ function handleAgentCompleted(event, _trigger, store) {
     return { actions, state_updates, events };
   }
   if (effectivePhase === "REVIEWING") {
-    _T(`REVIEWING branch: agentType=${agentType} isReviewer=${matchesAgentType(agentType, REVIEWER_AGENT_TYPES)}`);
     if (!matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       log6.debug("handleAgentCompleted: REVIEWING phase but not a reviewer, skipping", {
         wid,
@@ -30585,7 +30568,6 @@ function handleAgentCompleted(event, _trigger, store) {
       return {};
     }
     const score = extractScore(agentOutput);
-    _T(`SCORE=${score} minScore=${minScore} agentOutput=${agentOutput?.slice(0, 200) ?? "undefined"}`);
     if (score === null) {
       log6.warn("handleAgentCompleted: could not parse review score", {
         wid,
@@ -30631,7 +30613,6 @@ Files: ${filesModified.join(", ")}.` : "");
         ...phaseUpdate(wid, "FIXING"),
         { key: WS(wid, "review_score"), value: score, op: "set" }
       ];
-      _T(`SPAWNING FIXER wid=${wid} score=${score} actions=${actions.length}`);
       log6.info("handleAgentCompleted: review failed, spawning fixer", {
         wid,
         score,
@@ -33856,13 +33837,13 @@ function createExternalAdapter(plugin) {
 __name(createExternalAdapter, "createExternalAdapter");
 
 // src/extensions/ipc/setup.ts
-var import_node_fs14 = require("node:fs");
+var import_node_fs13 = require("node:fs");
 var import_node_crypto4 = require("node:crypto");
 var import_node_path13 = require("node:path");
 
 // src/shared/ipc/ipc-server.ts
 var net = __toESM(require("node:net"), 1);
-var import_node_fs12 = require("node:fs");
+var import_node_fs11 = require("node:fs");
 var import_node_path11 = require("node:path");
 
 // src/shared/ipc/protocol.ts
@@ -33971,11 +33952,11 @@ var IPCServer = class {
    */
   async listen() {
     const dir = (0, import_node_path11.dirname)(this.socketPath);
-    (0, import_node_fs12.mkdirSync)(dir, { recursive: true, mode: 448 });
-    (0, import_node_fs12.chmodSync)(dir, 448);
-    if ((0, import_node_fs12.existsSync)(this.socketPath)) {
+    (0, import_node_fs11.mkdirSync)(dir, { recursive: true, mode: 448 });
+    (0, import_node_fs11.chmodSync)(dir, 448);
+    if ((0, import_node_fs11.existsSync)(this.socketPath)) {
       try {
-        (0, import_node_fs12.unlinkSync)(this.socketPath);
+        (0, import_node_fs11.unlinkSync)(this.socketPath);
         logger52.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
         logger52.warn("Could not remove stale socket file", {
@@ -33996,7 +33977,7 @@ var IPCServer = class {
       }
       srv.once("error", reject);
       srv.listen(this.socketPath, () => {
-        (0, import_node_fs12.chmodSync)(this.socketPath, 384);
+        (0, import_node_fs11.chmodSync)(this.socketPath, 384);
         logger52.info("IPC server listening", { path: this.socketPath });
         srv.removeListener("error", reject);
         resolve();
@@ -34235,8 +34216,8 @@ var IPCServer = class {
    */
   removeSocketFile() {
     try {
-      if ((0, import_node_fs12.existsSync)(this.socketPath)) {
-        (0, import_node_fs12.unlinkSync)(this.socketPath);
+      if ((0, import_node_fs11.existsSync)(this.socketPath)) {
+        (0, import_node_fs11.unlinkSync)(this.socketPath);
         logger52.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
@@ -34249,7 +34230,7 @@ var IPCServer = class {
 };
 
 // src/extensions/ipc/ipc-router.ts
-var import_node_fs13 = require("node:fs");
+var import_node_fs12 = require("node:fs");
 var import_node_path12 = require("node:path");
 var logger53 = createLogger("ipc-router");
 var IPCRouter = class {
@@ -34319,7 +34300,7 @@ var IPCRouter = class {
     for (const sessionId of this.registeredSessions) {
       const pointerFile = (0, import_node_path12.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
-        (0, import_node_fs13.unlinkSync)(pointerFile);
+        (0, import_node_fs12.unlinkSync)(pointerFile);
         logger53.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
@@ -34420,7 +34401,7 @@ var IPCRouter = class {
       if (typeof sessionId === "string" && sessionId.length > 0) {
         try {
           const pointerFile = (0, import_node_path12.join)(this.stateDir, `runtime-${sessionId}.socket`);
-          (0, import_node_fs13.writeFileSync)(pointerFile, this.socketPath, "utf-8");
+          (0, import_node_fs12.writeFileSync)(pointerFile, this.socketPath, "utf-8");
           this.registeredSessions.add(sessionId);
           logger53.info("Session pointer file written", { sessionId, pointer: pointerFile });
         } catch (err) {
@@ -34606,7 +34587,7 @@ function cleanStalePointerFiles(stateDir, log9) {
   try {
     let entries;
     try {
-      entries = (0, import_node_fs14.readdirSync)(stateDir);
+      entries = (0, import_node_fs13.readdirSync)(stateDir);
     } catch (err) {
       if (err.code === "ENOENT") return;
       throw err;
@@ -34620,13 +34601,13 @@ function cleanStalePointerFiles(stateDir, log9) {
       const pointerPath = (0, import_node_path13.join)(stateDir, filename);
       let socketFilePath;
       try {
-        socketFilePath = (0, import_node_fs14.readFileSync)(pointerPath, "utf-8").trim();
+        socketFilePath = (0, import_node_fs13.readFileSync)(pointerPath, "utf-8").trim();
       } catch {
       }
       let socketCleaned = false;
       if (socketFilePath) {
         try {
-          (0, import_node_fs14.unlinkSync)(socketFilePath);
+          (0, import_node_fs13.unlinkSync)(socketFilePath);
           socketCleaned = true;
         } catch (err) {
           if (err.code !== "ENOENT") {
@@ -34638,7 +34619,7 @@ function cleanStalePointerFiles(stateDir, log9) {
         }
       }
       try {
-        (0, import_node_fs14.unlinkSync)(pointerPath);
+        (0, import_node_fs13.unlinkSync)(pointerPath);
       } catch (err) {
         if (err.code !== "ENOENT") {
           log9.warn("Could not remove stale socket pointer file", {
@@ -34696,11 +34677,11 @@ async function createIPCSubsystem(opts) {
       });
     }
     cleanStalePointerFiles(stateDir, logger54);
-    (0, import_node_fs14.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+    (0, import_node_fs13.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
     ensureDirSync(stateDir);
     const pointerFile = (0, import_node_path13.join)(stateDir, `runtime-${process.pid}.socket`);
-    (0, import_node_fs14.writeFileSync)(pointerFile, socketPath, "utf-8");
+    (0, import_node_fs13.writeFileSync)(pointerFile, socketPath, "utf-8");
     logger54.info("IPC subsystem created", { socket: socketPath });
     return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
   } catch (err) {
@@ -34714,7 +34695,7 @@ async function createIPCSubsystem(opts) {
 __name(createIPCSubsystem, "createIPCSubsystem");
 
 // src/extensions/ipc/teardown.ts
-var import_node_fs15 = require("node:fs");
+var import_node_fs14 = require("node:fs");
 var import_node_path14 = require("node:path");
 var logger55 = createLogger("ipc-teardown");
 function removeSocketPointerFile(projectRoot, config2) {
@@ -34724,7 +34705,7 @@ function removeSocketPointerFile(projectRoot, config2) {
     `runtime-${process.pid}.socket`
   );
   try {
-    (0, import_node_fs15.unlinkSync)(pointerFile);
+    (0, import_node_fs14.unlinkSync)(pointerFile);
     logger55.debug("Socket pointer file removed", { path: pointerFile });
   } catch (err) {
     if (err.code !== "ENOENT") {

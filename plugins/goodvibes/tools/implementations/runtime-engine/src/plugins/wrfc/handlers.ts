@@ -30,8 +30,6 @@ import { createEvent } from '../../shared/events.js';
 import type { HandlerResult, StateUpdate, Action, StateStoreInterface, Trigger } from '../../core/types.js';
 import { extractFiles } from '../../extensions/directives/gv-tag-parser.js';
 import { extractScore } from './score-evaluator.js';
-import { appendFileSync } from 'node:fs';
-const _T = (m: string) => { try { appendFileSync('/tmp/wrfc-trace.log', `[${new Date().toISOString()}] HANDLER ${m}\n`); } catch {} };
 import {
   buildSpawnAction,
   buildCompleteAction,
@@ -239,13 +237,11 @@ export function handleAgentCompleted(
 ): HandlerResult {
 
   const payload = event.payload as Record<string, unknown>;
-  _T(`handleAgentCompleted ENTRY event.type=${event.type} payloadKeys=${Object.keys(payload).join(',')}`);
 
   // Extract agent metadata (compatible with hook-event, agent-event, and nested data shapes)
   const dataPayload = (typeof payload['data'] === 'object' && payload['data'] !== null)
     ? payload['data'] as Record<string, unknown>
     : null;
-  _T(`dataPayload=${dataPayload ? Object.keys(dataPayload).join(',') : 'null'}`);
   const hookInputForId = payload['hook_input'] as Record<string, unknown> | null;
   const agentId: string | null =
     (typeof payload['agent_id'] === 'string' ? payload['agent_id'] : null) ??
@@ -281,14 +277,11 @@ export function handleAgentCompleted(
     wid = typeof dataPayload?.['workflow_id'] === 'string' ? dataPayload['workflow_id'] : null;
   }
   if (!wid) {
-    _T(`NO WID FOUND agentId=${agentId} — returning empty`);
     log.debug('handleAgentCompleted: no workflow binding found, skipping', { agent_id: agentId });
     return {};
   }
-  _T(`RESOLVED wid=${wid} agentId=${agentId}`);
 
   const phase = storeGet(store, WS(wid, 'phase'), 'WRITING').toUpperCase();
-  _T(`PHASE=${phase} wid=${wid} agentType=${agentType}`);
   const minScore = storeGet(store, WS(wid, 'min_review_score'), DEFAULT_MIN_REVIEW_SCORE);
   const maxFix = storeGet(store, WS(wid, 'max_fix_attempts'), DEFAULT_MAX_FIX_ATTEMPTS);
   const fixAttempts = storeGet(store, WS(wid, 'fix_attempts'), 0);
@@ -358,7 +351,6 @@ export function handleAgentCompleted(
 
   // ─── REVIEWING phase ──────────────────────────────────────────────────────────
   if (effectivePhase === 'REVIEWING') {
-    _T(`REVIEWING branch: agentType=${agentType} isReviewer=${matchesAgentType(agentType, REVIEWER_AGENT_TYPES)}`);
     if (!matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
       log.debug('handleAgentCompleted: REVIEWING phase but not a reviewer, skipping', {
         wid, agent_type: agentType,
@@ -367,7 +359,6 @@ export function handleAgentCompleted(
     }
 
     const score = extractScore(agentOutput);
-    _T(`SCORE=${score} minScore=${minScore} agentOutput=${agentOutput?.slice(0, 200) ?? 'undefined'}`);
     if (score === null) {
       log.warn('handleAgentCompleted: could not parse review score', {
         wid, output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_LENGTH),
@@ -417,7 +408,6 @@ export function handleAgentCompleted(
         { key: WS(wid, 'review_score'), value: score, op: 'set' },
       ];
 
-      _T(`SPAWNING FIXER wid=${wid} score=${score} actions=${actions.length}`);
       log.info('handleAgentCompleted: review failed, spawning fixer', {
         wid, score, threshold: minScore,
       });

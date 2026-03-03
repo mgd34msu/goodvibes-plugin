@@ -344,7 +344,6 @@ describe('WatchdogCoordinator', () => {
       expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.any(String),
-        undefined,
         expect.objectContaining({ workflow_id: 'wf_rev_msg' }),
       );
     });
@@ -388,7 +387,6 @@ describe('WatchdogCoordinator', () => {
       expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.stringContaining('src/a.ts'),
-        undefined,
         expect.objectContaining({ workflow_id: 'wf_files' }),
       );
     });
@@ -409,7 +407,6 @@ describe('WatchdogCoordinator', () => {
       expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.stringContaining('Check all recently modified files'),
-        undefined,
         expect.any(Object),
       );
     });
@@ -430,7 +427,6 @@ describe('WatchdogCoordinator', () => {
       expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'reviewer',
         expect.stringContaining('Check all recently modified files'),
-        undefined,
         expect.any(Object),
       );
     });
@@ -522,7 +518,6 @@ describe('WatchdogCoordinator', () => {
       expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'engineer',
         expect.stringContaining('Bug A'),
-        undefined,
         expect.objectContaining({ review_score: 5 }),
       );
     });
@@ -543,7 +538,6 @@ describe('WatchdogCoordinator', () => {
       expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'engineer',
         expect.stringContaining('See previous review output'),
-        undefined,
         expect.any(Object),
       );
     });
@@ -564,7 +558,6 @@ describe('WatchdogCoordinator', () => {
       expect(mocks.buildSpawnDirectiveMessage).toHaveBeenCalledWith(
         'engineer',
         expect.stringContaining('See previous review output'),
-        undefined,
         expect.any(Object),
       );
     });

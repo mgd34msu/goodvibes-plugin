@@ -17,9 +17,6 @@ import {
   buildSpawnAction,
   buildCompleteAction,
   buildEscalateAction,
-  buildCompleteDirective,
-  buildEscalateDirective,
-  buildSpawnDirective,
 } from '../directive-builder.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -61,7 +58,6 @@ describe('buildSpawnAction', () => {
     expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
       'engineer',
       'Fix the bug',
-      undefined,
       expect.objectContaining({ workflow_id: 'wf-1' })
     );
   });
@@ -71,20 +67,19 @@ describe('buildSpawnAction', () => {
     expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(
       'reviewer',
       'Review',
-      undefined,
       expect.objectContaining({ workflow_id: 'wf-1', files_modified: ['src/a.ts'] })
     );
   });
 
   it('omits files_modified from context when files is empty array', () => {
     buildSpawnAction({ wid: 'wf-1', type: 'reviewer', task: 'Review', files: [] });
-    const context = mockBuildSpawnDirectiveMessage.mock.calls[0][3];
+    const context = mockBuildSpawnDirectiveMessage.mock.calls[0][2];
     expect(context.files_modified).toBeUndefined();
   });
 
   it('omits files_modified from context when files is not provided', () => {
     buildSpawnAction({ wid: 'wf-1', type: 'tester', task: 'Test' });
-    const context = mockBuildSpawnDirectiveMessage.mock.calls[0][3];
+    const context = mockBuildSpawnDirectiveMessage.mock.calls[0][2];
     expect(context.files_modified).toBeUndefined();
   });
 
@@ -95,7 +90,7 @@ describe('buildSpawnAction', () => {
       mockBuildSpawnDirectiveMessage.mockReturnValue(SPAWN_MESSAGE);
       const action = buildSpawnAction({ wid: 'wf-1', type, task: 'Task' });
       expect(action.type).toBe('send_message');
-      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(type, 'Task', undefined, expect.any(Object));
+      expect(mockBuildSpawnDirectiveMessage).toHaveBeenCalledWith(type, 'Task', expect.any(Object));
     }
   });
 });
@@ -203,44 +198,4 @@ describe('buildEscalateAction', () => {
   });
 });
 
-// ─── deprecated wrappers ──────────────────────────────────────────────────────
 
-describe('buildCompleteDirective (deprecated wrapper)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockBuildWorkflowCompleteMessage.mockReturnValue(COMPLETE_MESSAGE);
-  });
-
-  it('delegates to buildCompleteAction and returns same result', () => {
-    const action = buildCompleteDirective('wf-1');
-    expect(action.type).toBe('send_message');
-    expect(action.params.priority).toBe(20);
-    expect(action.params.target).toBe('subagent_stop');
-  });
-});
-
-describe('buildEscalateDirective (deprecated wrapper)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockBuildEscalationMessage.mockReturnValue(ESCALATE_MESSAGE);
-  });
-
-  it('delegates to buildEscalateAction and returns same result', () => {
-    const action = buildEscalateDirective('wf-1', 'some reason');
-    expect(action.type).toBe('send_message');
-    expect(action.params.priority).toBe(30);
-  });
-});
-
-describe('buildSpawnDirective (deprecated wrapper)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockBuildSpawnDirectiveMessage.mockReturnValue(SPAWN_MESSAGE);
-  });
-
-  it('delegates to buildSpawnAction and returns same result', () => {
-    const action = buildSpawnDirective({ wid: 'wf-1', type: 'reviewer', task: 'Review' });
-    expect(action.type).toBe('send_message');
-    expect(action.params.priority).toBe(20);
-  });
-});

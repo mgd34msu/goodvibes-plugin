@@ -234,7 +234,7 @@ export class WatchdogCoordinator {
           ? `Files modified: ${filesModified.join(', ')}.`
           : 'Check all recently modified files.');
 
-      const message = buildSpawnDirectiveMessage('reviewer', task, undefined, {
+      const message = buildSpawnDirectiveMessage('reviewer', task, {
         files_modified: filesModified,
         workflow_id: workflow.id,
       });
@@ -290,7 +290,7 @@ export class WatchdogCoordinator {
           `Review score: ${lastScore}/10. Issues: ${issuesSummary}` +
           (filesModified.length > 0 ? ` Files: ${filesModified.join(', ')}.` : '');
 
-        const fixMessage = buildSpawnDirectiveMessage('engineer', fixTask, undefined, {
+        const fixMessage = buildSpawnDirectiveMessage('engineer', fixTask, {
           files_modified: filesModified,
           review_score: lastScore,
           review_issues: reviewIssues,
