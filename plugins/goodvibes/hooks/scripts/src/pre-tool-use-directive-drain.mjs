@@ -26,7 +26,7 @@
  */
 
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -57,12 +57,14 @@ function allowResponse(additionalContext) {
 // ─── Socket discovery ────────────────────────────────────────────────────────
 
 function discoverSocket(projectDir, sessionId) {
+  // Strategy 1: Manual override only — not set by the runtime engine.
   const envPath = process.env['GOODVIBES_RUNTIME_SOCKET'];
   if (envPath) return envPath;
 
   const cwd = projectDir || process.env['CLAUDE_PROJECT_DIR'] || process.cwd();
   const stateDir = join(cwd, '.goodvibes', 'state');
 
+  // Strategy 2: Session-keyed pointer file (exact match, no ambiguity)
   if (sessionId && existsSync(stateDir)) {
     try {
       const sessionPointer = join(stateDir, `runtime-${sessionId}.socket`);
@@ -71,16 +73,48 @@ function discoverSocket(projectDir, sessionId) {
     } catch { /* fall through */ }
   }
 
+  // Strategy 3: Per-PID pointer files, sorted by mtime descending (newest first)
+  // to prefer the most recently written pointer file — same as RuntimeClient.ts.
   if (existsSync(stateDir)) {
     try {
       const entries = readdirSync(stateDir);
+
+      // Collect matching pointer files with their mtime for sorting.
+      const pointerFiles = [];
       for (const entry of entries) {
-        if (/^runtime-\d+\.socket$/.test(entry)) {
+        if (/^runtime-[a-zA-Z0-9_-]+\.socket$/.test(entry)) {
           try {
-            const socketPath = readFileSync(join(stateDir, entry), 'utf-8').trim();
-            if (socketPath && existsSync(socketPath)) return socketPath;
-          } catch { /* next */ }
+            const mtimeMs = statSync(join(stateDir, entry)).mtimeMs;
+            pointerFiles.push({ entry, mtimeMs });
+          } catch { /* skip */ }
         }
+      }
+
+      // Sort newest first so the live runtime wins over stale predecessors.
+      pointerFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+      for (const { entry } of pointerFiles) {
+        try {
+          const socketPath = readFileSync(join(stateDir, entry), 'utf-8').trim();
+          if (!socketPath || !existsSync(socketPath)) continue;
+
+          // PID liveness check: extract PID from filename and verify the
+          // owning process is still alive. If dead, clean up both the pointer
+          // file and the stale socket file before trying the next entry.
+          const pidMatch = /^runtime-(\d+)\.socket$/.exec(entry);
+          if (pidMatch) {
+            const pid = parseInt(pidMatch[1], 10);
+            let processAlive = false;
+            try { process.kill(pid, 0); processAlive = true; } catch { /* dead */ }
+            if (!processAlive) {
+              try { unlinkSync(join(stateDir, entry)); } catch { /* ignore */ }
+              try { unlinkSync(socketPath); } catch { /* ignore */ }
+              continue;
+            }
+          }
+
+          return socketPath;
+        } catch { /* next */ }
       }
     } catch { /* fall through */ }
   }
