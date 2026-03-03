@@ -54,4 +54,6 @@ export interface HandlerContext {
   getAgentCoordinator: () => AgentCoordinator | null;
   /** The directive queue (may be null if not yet initialised). */
   getDirectiveQueue: () => DirectiveQueue | null;
+  /** The core state store (in-memory, synchronous). May be null before startup. */
+  getCoreStateStore: () => import('../../../core/state/state-store.js').CoreStateStore | null;
 }

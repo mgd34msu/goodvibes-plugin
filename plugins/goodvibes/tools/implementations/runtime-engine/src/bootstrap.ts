@@ -298,6 +298,8 @@ export class RuntimeEngine {
       getConfig: () => this.config as RuntimeConfig & Record<string, unknown>,
       getState: (key) => coreStore.get(key),
       setState: (key, value) => coreStore.set(key, value),
+      deleteState: (key) => coreStore.delete(key),
+      listStateKeys: (prefix) => coreStore.keys(prefix),
       registerTrigger: (id, definition, handler) => {
         if (!coreTriggerRegistry) {
           logger.warn('registerTrigger: trigger subsystem not available', { id });
@@ -586,6 +588,10 @@ export class RuntimeEngine {
   getTriggerRegistry(): TriggerRegistry | null { return this.triggers?.triggerRegistry ?? null; }
   getAgentCoordinator(): AgentCoordinator | null { return this.agents?.agentCoordinator ?? null; }
   getDirectiveQueue(): DirectiveQueue | null { return this.directives?.directiveQueue ?? null; }
+  getCoreStateStore(): import('./core/state/state-store.js').CoreStateStore {
+    if (!this.coreRuntime?.stateStore) throw new ProcessingError('getCoreStateStore() called before startup()');
+    return this.coreRuntime.stateStore;
+  }
   getHookProcessor(): HookProcessor | null { return this.hookProcessor; }
   getEventProcessor(): EventProcessor | null { return this.coreRuntime?.eventProcessor ?? null; }
   getExecutorMode(): ExecutorModeManager | null { return this.executorSubsystem?.executorMode ?? null; }

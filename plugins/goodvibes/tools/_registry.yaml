@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-03-03T17:28:56.194Z'
-total: 73
+generated: '2026-03-03T18:01:43.393Z'
+total: 74
 servers:
   - name: precision-engine
     count: 12
@@ -342,7 +342,7 @@ servers:
           route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
           boundaries, and async components without protection.
   - name: runtime-engine
-    count: 7
+    count: 8
     tools:
       - name: runtime_status
         path: runtime-engine/runtime-status.yaml
@@ -379,6 +379,12 @@ servers:
         description: >-
           Manage coordinated agents: spawn with workflow context, track WRFC chains, ' + 'monitor budgets, view
           execution plans. Workflow-aware agent orchestration.
+      - name: runtime_state
+        path: runtime-engine/runtime-state.yaml
+        description: >-
+          Query the runtime engine in-memory state store. ' + 'Read plugin state by key, list keys in a namespace,
+          discover namespaces, or take snapshots. ' + 'Use to inspect agent-tracker data, WRFC state, or any plugin
+          state.
 search_index:
   - name: precision_write
     keywords:
@@ -2394,4 +2400,33 @@ search_index:
     description: >-
       Manage coordinated agents: spawn with workflow context, track WRFC chains, ' + 'monitor budgets, view execution
       plans. Workflow-aware agent orchestration.
+    server: runtime-engine
+  - name: runtime_state
+    keywords:
+      - runtime
+      - state
+      - query
+      - engine
+      - memory
+      - store
+      - read
+      - plugin
+      - key
+      - list
+      - keys
+      - namespace
+      - discover
+      - namespaces
+      - take
+      - snapshots
+      - inspect
+      - agent
+      - tracker
+      - data
+      - wrfc
+      - any
+    path: runtime-engine/runtime-state.yaml
+    description: >-
+      Query the runtime engine in-memory state store. ' + 'Read plugin state by key, list keys in a namespace, discover
+      namespaces, or take snapshots. ' + 'Use to inspect agent-tracker data, WRFC state, or any plugin state.
     server: runtime-engine

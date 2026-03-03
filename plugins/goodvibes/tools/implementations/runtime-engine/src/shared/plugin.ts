@@ -61,6 +61,10 @@ export interface RuntimeServices {
   getConfig: () => Record<string, unknown>;
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => void;
+  /** Delete a key from the state store. */
+  deleteState: (key: string) => void;
+  /** List all keys in the state store, optionally filtered by dot-path prefix. */
+  listStateKeys: (prefix?: string) => string[];
   /** Register a trigger with the core trigger registry */
   registerTrigger: (id: string, definition: PluginTriggerDefinition, handler: (event: RuntimeEvent) => unknown | Promise<unknown>) => void;
   /** Unregister a previously registered trigger */

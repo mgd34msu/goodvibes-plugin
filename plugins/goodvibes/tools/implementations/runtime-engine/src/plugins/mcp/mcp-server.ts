@@ -101,6 +101,9 @@ export class RuntimeEngineServer {
         getTriggerRegistry: () => this.processManager.getTriggerRegistry(),
         getAgentCoordinator: () => this.processManager.getAgentCoordinator(),
         getDirectiveQueue: () => this.processManager.getDirectiveQueue(),
+        getCoreStateStore: () => {
+          try { return this.processManager.getCoreStateStore(); } catch { return null; }
+        },
       };
 
       try {

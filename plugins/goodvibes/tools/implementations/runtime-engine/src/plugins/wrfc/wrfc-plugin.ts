@@ -209,9 +209,8 @@ function makeStoreAdapter(services: RuntimeServices): StateStoreInterface {
     set<T>(key: string, value: T): void {
       services.setState(key, value);
     },
-    delete(_key: string): void {
-      // No-op: RuntimeServices does not expose delete.
-      // WRFC handlers do not call delete().
+    delete(key: string): void {
+      services.deleteState(key);
     },
     merge(_key: string, _value: Record<string, unknown>): void {
       // No-op: RuntimeServices does not expose merge.
@@ -222,6 +221,9 @@ function makeStoreAdapter(services: RuntimeServices): StateStoreInterface {
     },
     restore(_snapshot: Record<string, unknown>): void {
       // No-op: RuntimeServices does not expose bulk restore.
+    },
+    keys(prefix?: string): string[] {
+      return services.listStateKeys(prefix);
     },
   };
 }

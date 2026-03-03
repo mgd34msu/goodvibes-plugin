@@ -249,6 +249,39 @@ export class CoreStateStore implements StateStoreInterface {
     this.flush();
   }
 
+  /**
+   * List all dot-path keys in the store.
+   * If prefix is provided, only return keys that start with `${prefix}.` or equal prefix exactly.
+   */
+  keys(prefix?: string): string[] {
+    const allKeys = this.collectKeys(this.data, '');
+    if (!prefix) return allKeys;
+    return allKeys.filter(k => k === prefix || k.startsWith(prefix + '.'));
+  }
+
+  /**
+   * Recursively collect all leaf dot-path keys from a nested object.
+   * Empty objects ({}) have no leaves and are therefore not enumerated.
+   * Recursion is limited to {@link DEEP_MERGE_MAX_DEPTH} levels.
+   */
+  private collectKeys(obj: Record<string, unknown>, parentPath: string, depth = 0): string[] {
+    if (depth >= DEEP_MERGE_MAX_DEPTH) {
+      logger.warn('collectKeys depth limit exceeded; treating as leaf', { depth, path: parentPath });
+      if (parentPath) return [parentPath];
+      return [];
+    }
+    const result: string[] = [];
+    for (const [key, value] of Object.entries(obj)) {
+      const fullPath = parentPath ? `${parentPath}.${key}` : key;
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        result.push(...this.collectKeys(value as Record<string, unknown>, fullPath, depth + 1));
+      } else {
+        result.push(fullPath);
+      }
+    }
+    return result;
+  }
+
   // ─── Private Helpers ──────────────────────────────────────────────────────
 
   /** Load from disk on construction. Missing file is not an error. */

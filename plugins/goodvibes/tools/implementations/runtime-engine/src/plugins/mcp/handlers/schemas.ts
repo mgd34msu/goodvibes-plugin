@@ -276,4 +276,39 @@ export const allSchemas = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'runtime_state',
+    description:
+      'Query the runtime engine in-memory state store. ' +
+      'Read plugin state by key, list keys in a namespace, discover namespaces, or take snapshots. ' +
+      'Use to inspect agent-tracker data, WRFC state, or any plugin state.',
+    inputSchema: {
+      type: 'object',
+      required: ['action'],
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['get', 'list', 'namespaces', 'snapshot'],
+          description:
+            'get: read a specific key, ' +
+            'list: list keys under a namespace prefix, ' +
+            'namespaces: discover top-level state namespaces, ' +
+            'snapshot: dump state (optionally filtered by namespace).',
+        },
+        key: {
+          type: 'string',
+          description: 'Dot-separated state key (for get action).',
+        },
+        namespace: {
+          type: 'string',
+          description: 'Namespace prefix to filter (for list/snapshot actions). E.g. "agent_tracker".',
+        },
+        prefix: {
+          type: 'string',
+          description: 'Alias for namespace.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;

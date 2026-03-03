@@ -401,4 +401,84 @@ describe('CoreStateStore', () => {
       expect(() => vi.advanceTimersByTime(10)).not.toThrow();
     });
   });
+
+  // ─── keys() ───────────────────────────────────────────────────────────────
+
+  describe('keys()', () => {
+    it('returns empty array for empty store', () => {
+      const store = makeStore({ file_path: '/tmp/keys-empty.json' });
+      expect(store.keys()).toEqual([]);
+    });
+
+    it('returns flat keys', () => {
+      const store = makeStore({ file_path: '/tmp/keys-flat.json' });
+      store.set('alpha', 1);
+      store.set('beta', 'hello');
+      store.set('gamma', true);
+      const keys = store.keys();
+      expect(keys).toContain('alpha');
+      expect(keys).toContain('beta');
+      expect(keys).toContain('gamma');
+      expect(keys).toHaveLength(3);
+    });
+
+    it('returns nested dot-path keys', () => {
+      const store = makeStore({ file_path: '/tmp/keys-nested.json' });
+      store.set('a.b.c', 1);
+      store.set('a.b.d', 2);
+      store.set('a.e', 3);
+      const keys = store.keys();
+      expect(keys).toContain('a.b.c');
+      expect(keys).toContain('a.b.d');
+      expect(keys).toContain('a.e');
+      expect(keys).toHaveLength(3);
+    });
+
+    it('filters by prefix', () => {
+      const store = makeStore({ file_path: '/tmp/keys-prefix.json' });
+      store.set('agent_tracker.agents.abc', { id: 'abc' });
+      store.set('agent_tracker.agent_ids', ['abc']);
+      store.set('wrfc.config.min_score', 8);
+      const trackerKeys = store.keys('agent_tracker');
+      expect(trackerKeys).toContain('agent_tracker.agents.abc.id');
+      expect(trackerKeys).toContain('agent_tracker.agent_ids');
+      expect(trackerKeys.every(k => k.startsWith('agent_tracker'))).toBe(true);
+      expect(trackerKeys).not.toContain('wrfc.config.min_score');
+    });
+
+    it('returns exact prefix match', () => {
+      const store = makeStore({ file_path: '/tmp/keys-exact.json' });
+      store.set('mykey', 42);
+      const keys = store.keys('mykey');
+      expect(keys).toContain('mykey');
+    });
+
+    it('treats arrays as leaves', () => {
+      const store = makeStore({ file_path: '/tmp/keys-array.json' });
+      store.set('list', [1, 2, 3]);
+      const keys = store.keys();
+      expect(keys).toContain('list');
+      expect(keys).toHaveLength(1);
+    });
+
+    it('treats null as leaf', () => {
+      const store = makeStore({ file_path: '/tmp/keys-null.json' });
+      store.set('nothing', null);
+      const keys = store.keys();
+      expect(keys).toContain('nothing');
+    });
+
+    it('does not enumerate empty objects', () => {
+      const store = makeStore({ file_path: '/tmp/keys-empty-obj.json' });
+      store.set('empty', {});
+      const keys = store.keys();
+      expect(keys).toEqual([]);
+    });
+
+    it('returns empty for non-matching prefix', () => {
+      const store = makeStore({ file_path: '/tmp/keys-nomatch.json' });
+      store.set('a.b', 1);
+      expect(store.keys('xyz')).toEqual([]);
+    });
+  });
 });

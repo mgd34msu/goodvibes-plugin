@@ -211,6 +211,8 @@ export interface StateStoreInterface {
   snapshot(): Record<string, unknown>;
   /** Restore from a snapshot (replaces all current state). */
   restore(snapshot: Record<string, unknown>): void;
+  /** List all keys, optionally filtered by dot-path prefix. */
+  keys(prefix?: string): string[];
 }
 
 // ─── Component Interfaces ─────────────────────────────────────────────────────

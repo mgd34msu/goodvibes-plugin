@@ -4671,13 +4671,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger65) {
-      if (logger65 === false)
+    function getLogger(logger66) {
+      if (logger66 === false)
         return noLogs;
-      if (logger65 === void 0)
+      if (logger66 === void 0)
         return console;
-      if (logger65.log && logger65.warn && logger65.error)
-        return logger65;
+      if (logger66.log && logger66.warn && logger66.error)
+        return logger66;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -29868,6 +29868,37 @@ var CoreStateStore = class {
   dispose() {
     this.flush();
   }
+  /**
+   * List all dot-path keys in the store.
+   * If prefix is provided, only return keys that start with `${prefix}.` or equal prefix exactly.
+   */
+  keys(prefix) {
+    const allKeys = this.collectKeys(this.data, "");
+    if (!prefix) return allKeys;
+    return allKeys.filter((k) => k === prefix || k.startsWith(prefix + "."));
+  }
+  /**
+   * Recursively collect all leaf dot-path keys from a nested object.
+   * Empty objects ({}) have no leaves and are therefore not enumerated.
+   * Recursion is limited to {@link DEEP_MERGE_MAX_DEPTH} levels.
+   */
+  collectKeys(obj, parentPath, depth = 0) {
+    if (depth >= DEEP_MERGE_MAX_DEPTH) {
+      logger26.warn("collectKeys depth limit exceeded; treating as leaf", { depth, path: parentPath });
+      if (parentPath) return [parentPath];
+      return [];
+    }
+    const result = [];
+    for (const [key, value] of Object.entries(obj)) {
+      const fullPath = parentPath ? `${parentPath}.${key}` : key;
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        result.push(...this.collectKeys(value, fullPath, depth + 1));
+      } else {
+        result.push(fullPath);
+      }
+    }
+    return result;
+  }
   // ─── Private Helpers ──────────────────────────────────────────────────────
   /** Load from disk on construction. Missing file is not an error. */
   load() {
@@ -30822,7 +30853,8 @@ function makeStoreAdapter(services) {
     set(key, value) {
       services.setState(key, value);
     },
-    delete(_key) {
+    delete(key) {
+      services.deleteState(key);
     },
     merge(_key, _value) {
     },
@@ -30830,6 +30862,9 @@ function makeStoreAdapter(services) {
       return {};
     },
     restore(_snapshot) {
+    },
+    keys(prefix) {
+      return services.listStateKeys(prefix);
     }
   };
 }
@@ -34841,6 +34876,8 @@ var RuntimeEngine = class {
       getConfig: /* @__PURE__ */ __name(() => this.config, "getConfig"),
       getState: /* @__PURE__ */ __name((key) => coreStore.get(key), "getState"),
       setState: /* @__PURE__ */ __name((key, value) => coreStore.set(key, value), "setState"),
+      deleteState: /* @__PURE__ */ __name((key) => coreStore.delete(key), "deleteState"),
+      listStateKeys: /* @__PURE__ */ __name((prefix) => coreStore.keys(prefix), "listStateKeys"),
       registerTrigger: /* @__PURE__ */ __name((id, definition, handler) => {
         if (!coreTriggerRegistry) {
           logger56.warn("registerTrigger: trigger subsystem not available", { id });
@@ -35092,6 +35129,10 @@ var RuntimeEngine = class {
   }
   getDirectiveQueue() {
     return this.directives?.directiveQueue ?? null;
+  }
+  getCoreStateStore() {
+    if (!this.coreRuntime?.stateStore) throw new ProcessingError("getCoreStateStore() called before startup()");
+    return this.coreRuntime.stateStore;
   }
   getHookProcessor() {
     return this.hookProcessor;
@@ -36070,6 +36111,103 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   }
 }, "handleRuntimeAgents");
 
+// src/plugins/mcp/handlers/state.ts
+var logger64 = createLogger("tool-handlers:state");
+var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const uptimeMs = ctx.getUptime();
+  try {
+    if (args === null || args === void 0 || typeof args !== "object") {
+      return toError("Invalid arguments: expected an object", ctx.version, uptimeMs, Date.now() - start);
+    }
+    const params = args;
+    const action = assertOptionalString(params.action, "action");
+    if (!action) {
+      return toError(
+        "Missing required field: action. Use 'get', 'list', 'namespaces', or 'snapshot'.",
+        ctx.version,
+        uptimeMs,
+        Date.now() - start
+      );
+    }
+    const stateStore = ctx.getCoreStateStore();
+    if (!stateStore) {
+      return toError("State store not available (engine not started)", ctx.version, uptimeMs, Date.now() - start);
+    }
+    if (action === "get") {
+      const key = assertOptionalString(params.key, "key");
+      if (!key) {
+        return toError("Missing required field: key.", ctx.version, uptimeMs, Date.now() - start);
+      }
+      const value = stateStore.get(key);
+      return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
+    }
+    if (action === "list") {
+      const prefix = assertOptionalString(params.namespace, "namespace") ?? assertOptionalString(params.prefix, "prefix");
+      const allKeys = stateStore.keys(prefix);
+      if (prefix) {
+        const stripped = allKeys.map(
+          (k) => k.startsWith(prefix + ".") ? k.slice(prefix.length + 1) : k
+        );
+        return toSuccess(
+          { namespace: prefix, count: allKeys.length, keys: stripped, full_keys: allKeys },
+          ctx.version,
+          uptimeMs,
+          Date.now() - start
+        );
+      }
+      return toSuccess({ count: allKeys.length, keys: allKeys }, ctx.version, uptimeMs, Date.now() - start);
+    }
+    if (action === "namespaces") {
+      const allKeys = stateStore.keys();
+      const namespaces = /* @__PURE__ */ new Set();
+      for (const key of allKeys) {
+        const firstDot = key.indexOf(".");
+        if (firstDot > 0) {
+          namespaces.add(key.slice(0, firstDot));
+        } else {
+          namespaces.add(key);
+        }
+      }
+      const sorted = Array.from(namespaces).sort();
+      return toSuccess({ count: sorted.length, namespaces: sorted }, ctx.version, uptimeMs, Date.now() - start);
+    }
+    if (action === "snapshot") {
+      const namespace = assertOptionalString(params.namespace, "namespace") ?? assertOptionalString(params.prefix, "prefix");
+      const fullSnapshot = stateStore.snapshot();
+      if (namespace) {
+        const filtered = {};
+        const pfx = namespace + ".";
+        const MAX_WALK_DEPTH = 20;
+        const walk = /* @__PURE__ */ __name((obj, path3, depth = 0) => {
+          if (depth >= MAX_WALK_DEPTH) return;
+          for (const [k, v] of Object.entries(obj)) {
+            const full = path3 ? `${path3}.${k}` : k;
+            if (full === namespace || full.startsWith(pfx)) {
+              filtered[full] = v;
+            } else if (typeof v === "object" && v !== null && !Array.isArray(v) && namespace.startsWith(full)) {
+              walk(v, full, depth + 1);
+            }
+          }
+        }, "walk");
+        walk(fullSnapshot, "");
+        return toSuccess({ namespace, snapshot: filtered }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      return toSuccess({ snapshot: fullSnapshot }, ctx.version, uptimeMs, Date.now() - start);
+    }
+    return toError(
+      `Unknown action: '${action}'. Use 'get', 'list', 'namespaces', or 'snapshot'.`,
+      ctx.version,
+      uptimeMs,
+      Date.now() - start
+    );
+  } catch (err) {
+    const message = toErrorMessage(err);
+    logger64.error("runtime_state failed", { error: message });
+    return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
+  }
+}, "handleRuntimeState");
+
 // src/plugins/mcp/handlers/schemas.ts
 var allSchemas = [
   {
@@ -36320,6 +36458,34 @@ var allSchemas = [
       },
       additionalProperties: false
     }
+  },
+  {
+    name: "runtime_state",
+    description: "Query the runtime engine in-memory state store. Read plugin state by key, list keys in a namespace, discover namespaces, or take snapshots. Use to inspect agent-tracker data, WRFC state, or any plugin state.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "list", "namespaces", "snapshot"],
+          description: "get: read a specific key, list: list keys under a namespace prefix, namespaces: discover top-level state namespaces, snapshot: dump state (optionally filtered by namespace)."
+        },
+        key: {
+          type: "string",
+          description: "Dot-separated state key (for get action)."
+        },
+        namespace: {
+          type: "string",
+          description: 'Namespace prefix to filter (for list/snapshot actions). E.g. "agent_tracker".'
+        },
+        prefix: {
+          type: "string",
+          description: "Alias for namespace."
+        }
+      },
+      additionalProperties: false
+    }
   }
 ];
 
@@ -36331,7 +36497,8 @@ var handlerRegistry = /* @__PURE__ */ new Map([
   ["runtime_emit", handleRuntimeEmit],
   ["runtime_workflow", handleRuntimeWorkflow],
   ["runtime_triggers", handleRuntimeTriggers],
-  ["runtime_agents", handleRuntimeAgents]
+  ["runtime_agents", handleRuntimeAgents],
+  ["runtime_state", handleRuntimeState]
 ]);
 function getHandler(toolName) {
   return handlerRegistry.get(toolName);
@@ -36344,7 +36511,7 @@ __name(listHandlers, "listHandlers");
 
 // src/plugins/mcp/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger64 = createLogger("mcp-server");
+var logger65 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -36367,12 +36534,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger64.debug("ListTools request");
+      logger65.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger64.debug("CallTool request", { name });
+      logger65.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -36393,14 +36560,21 @@ var RuntimeEngineServer = class {
         getWorkflowEngine: /* @__PURE__ */ __name(() => this.processManager.getWorkflowEngine(), "getWorkflowEngine"),
         getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager.getTriggerRegistry(), "getTriggerRegistry"),
         getAgentCoordinator: /* @__PURE__ */ __name(() => this.processManager.getAgentCoordinator(), "getAgentCoordinator"),
-        getDirectiveQueue: /* @__PURE__ */ __name(() => this.processManager.getDirectiveQueue(), "getDirectiveQueue")
+        getDirectiveQueue: /* @__PURE__ */ __name(() => this.processManager.getDirectiveQueue(), "getDirectiveQueue"),
+        getCoreStateStore: /* @__PURE__ */ __name(() => {
+          try {
+            return this.processManager.getCoreStateStore();
+          } catch {
+            return null;
+          }
+        }, "getCoreStateStore")
       };
       try {
         return await handler(args, ctx);
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = toErrorMessage(error2);
-        logger64.error(`Tool ${name} failed`, { error: message });
+        logger65.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -36412,7 +36586,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger64.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger65.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -36431,7 +36605,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger64.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger65.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid
     });
@@ -36445,22 +36619,22 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger64.info("Stopping runtime engine");
+    logger65.info("Stopping runtime engine");
     try {
       await this.processManager.shutdown();
     } catch (err) {
-      logger64.warn("RuntimeEngine shutdown error", {
+      logger65.warn("RuntimeEngine shutdown error", {
         err: toErrorMessage(err)
       });
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger64.warn("MCP server close error", {
+      logger65.warn("MCP server close error", {
         err: toErrorMessage(err)
       });
     }
-    logger64.info("Runtime engine stopped");
+    logger65.info("Runtime engine stopped");
   }
 };
 

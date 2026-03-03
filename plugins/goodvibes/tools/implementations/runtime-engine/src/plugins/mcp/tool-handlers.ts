@@ -18,6 +18,7 @@ export {
   handleRuntimeWorkflow,
   handleRuntimeTriggers,
   handleRuntimeAgents,
+  handleRuntimeState,
   toSuccess,
   toError,
   VALID_CONFIG_KEYS,

@@ -34,6 +34,9 @@ export { handleRuntimeTriggers, VALID_TRIGGER_ACTION_TYPES, validateTriggerDefin
 import { handleRuntimeAgents } from './agents.js';
 export { handleRuntimeAgents };
 
+import { handleRuntimeState } from './state.js';
+export { handleRuntimeState };
+
 // ─── Tool schemas ─────────────────────────────────────────────────────────────
 
 export { allSchemas } from './schemas.js';
@@ -52,6 +55,7 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['runtime_workflow', handleRuntimeWorkflow],
   ['runtime_triggers', handleRuntimeTriggers],
   ['runtime_agents', handleRuntimeAgents],
+  ['runtime_state', handleRuntimeState],
 ]);
 
 /**
