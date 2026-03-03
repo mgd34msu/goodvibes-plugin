@@ -34,7 +34,7 @@ import { getActiveAgentsFilePath } from '../telemetry/index.js';
 
 import { buildSubagentContext } from './context-injection.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
-import { extractWorkflowId, normalizeAgentFields, mergeSystemMessages } from './wrfc-utils.js';
+import { extractWorkflowId, extractWorkflowIdFromTranscript, normalizeAgentFields, mergeSystemMessages } from './wrfc-utils.js';
 
 import type { HookResponse } from '../shared/index.js';
 import type { TelemetryTracking } from '../types/telemetry.js';
@@ -335,6 +335,16 @@ async function runSubagentStartHook(): Promise<void> {
               }
               if (resolvedWorkflowId) break;
             }
+          }
+        }
+
+        // PRIORITY 1c: Read parent session transcript as last resort
+        // Claude Code's SubagentStart only provides agent_id + agent_type, not the prompt.
+        // The Agent tool_use in the parent session JSONL contains the prompt with [WRFC:wid].
+        if (!resolvedWorkflowId && input.transcript_path) {
+          resolvedWorkflowId = extractWorkflowIdFromTranscript(input.transcript_path, agent_type);
+          if (resolvedWorkflowId) {
+            debug('Phase 6: extracted workflow_id from transcript', { workflow_id: resolvedWorkflowId });
           }
         }
 

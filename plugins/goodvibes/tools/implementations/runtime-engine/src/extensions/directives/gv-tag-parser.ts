@@ -8,13 +8,25 @@
 
 import { safeJsonParse } from '../../shared/utils.js';
 
+/** Agent type metadata embedded in <gv> tags. */
+export interface AgentTypeMetadata {
+  /** Agent name (e.g. "goodvibes:engineer") */
+  name: string;
+  /** Map of field names to required/optional booleans */
+  'required-fields': Record<string, boolean>;
+}
+
 /** Parsed fields from a <gv> tag. All optional — agents emit only what applies. */
 export interface GvTagData {
+  /** Agent type metadata with name and required-fields */
+  'agent-type'?: AgentTypeMetadata;
+  /** Minimum review score threshold, emitted by reviewer agents */
+  minimum_score?: number | null;
   /** Review score (0-10), emitted by reviewer agents */
   score?: number;
   /** Files modified/reviewed, emitted by engineer/deployer/integrator agents */
   files?: string[];
-  /** Count of items (e.g., test count), emitted by tester agents */
+  /** Count of items (e.g., test count, issue count), emitted by tester/reviewer agents */
   count?: number;
   /** Any additional fields the agent included */
   [key: string]: unknown;
@@ -43,7 +55,7 @@ export interface GvParseResult {
 const GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
 
 /** Known <gv> tag fields — anything else goes to the index signature. */
-const KNOWN_FIELDS = new Set(['score', 'files', 'count']);
+const KNOWN_FIELDS = new Set(['score', 'files', 'count', 'minimum_score', 'agent-type']);
 
 /**
  * Parses a raw JSON string into GvTagData.
@@ -63,6 +75,14 @@ function parseRawJson(raw: string): GvParseResult {
       data.files = parsed.files.filter((f): f is string => typeof f === 'string');
     }
     if (typeof parsed.count === 'number') data.count = parsed.count;
+    if (typeof parsed.minimum_score === 'number') {
+      data.minimum_score = Math.max(0, Math.min(10, parsed.minimum_score));
+    } else if (parsed.minimum_score === null) {
+      data.minimum_score = null;
+    }
+    if (typeof parsed['agent-type'] === 'object' && parsed['agent-type'] !== null && !Array.isArray(parsed['agent-type'])) {
+      data['agent-type'] = parsed['agent-type'] as AgentTypeMetadata;
+    }
     for (const [key, value] of Object.entries(parsed)) {
       if (!KNOWN_FIELDS.has(key)) {
         data[key] = value;
@@ -145,5 +165,33 @@ export function extractFiles(text: string | undefined | null): string[] {
     return result.data.files;
   }
   return [];
+}
+
+/**
+ * Convenience: extracts minimum score threshold from agent output.
+ *
+ * @param text - Raw output text from an agent (typically a reviewer)
+ * @returns Minimum score threshold, or null if not found
+ */
+export function extractMinimumScore(text: string | undefined | null): number | null {
+  const result = parseGvTag(text);
+  if (result.found && typeof result.data?.minimum_score === 'number') {
+    return result.data.minimum_score;
+  }
+  return null;
+}
+
+/**
+ * Convenience: extracts agent type metadata from agent output.
+ *
+ * @param text - Raw output text from an agent
+ * @returns AgentTypeMetadata, or null if not found
+ */
+export function extractAgentType(text: string | undefined | null): AgentTypeMetadata | null {
+  const result = parseGvTag(text);
+  if (result.found && result.data?.['agent-type']) {
+    return result.data['agent-type'];
+  }
+  return null;
 }
 

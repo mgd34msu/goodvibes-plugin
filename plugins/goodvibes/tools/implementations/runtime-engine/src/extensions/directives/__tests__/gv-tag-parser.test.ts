@@ -4,6 +4,8 @@ import {
   parseAllGvTags,
   extractReviewScore,
   extractFiles,
+  extractMinimumScore,
+  extractAgentType,
 } from '../gv-tag-parser.js';
 
 // ─── parseGvTag ──────────────────────────────────────────────────────────────
@@ -69,6 +71,60 @@ describe('parseGvTag', () => {
     const result = parseGvTag('<gv>{"score":7,"custom_field":"hello"}</gv>');
     expect(result.found).toBe(true);
     expect(result.data!['custom_field']).toBe('hello');
+  });
+
+  // ─── New format: agent-type and minimum_score ────────────────────────────────
+
+  it('parses agent-type metadata', () => {
+    const tag = '{"agent-type":{"name":"goodvibes:engineer","required-fields":{"agent_files":true,"agent_score":false}},"files":["a.ts"],"score":null,"count":null}';
+    const result = parseGvTag(`<gv>${tag}</gv>`);
+    expect(result.found).toBe(true);
+    expect(result.data!['agent-type']).toEqual({
+      name: 'goodvibes:engineer',
+      'required-fields': { agent_files: true, agent_score: false },
+    });
+    expect(result.data!.files).toEqual(['a.ts']);
+  });
+
+  it('parses minimum_score as number', () => {
+    const result = parseGvTag('<gv>{"minimum_score":9.5,"score":8.0}</gv>');
+    expect(result.found).toBe(true);
+    expect(result.data!.minimum_score).toBe(9.5);
+    expect(result.data!.score).toBe(8);
+  });
+
+  it('preserves minimum_score as null', () => {
+    const result = parseGvTag('<gv>{"minimum_score":null,"score":null,"files":["a.ts"],"count":null}</gv>');
+    expect(result.found).toBe(true);
+    expect(result.data!.minimum_score).toBeNull();
+  });
+
+  it('clamps minimum_score to 0-10 range', () => {
+    const result = parseGvTag('<gv>{"minimum_score":15}</gv>');
+    expect(result.data!.minimum_score).toBe(10);
+    const result2 = parseGvTag('<gv>{"minimum_score":-3}</gv>');
+    expect(result2.data!.minimum_score).toBe(0);
+  });
+
+  it('parses full new-format reviewer tag', () => {
+    const tag = '{"agent-type":{"name":"goodvibes:reviewer","required-fields":{"agent_minimum_score":true,"agent_score":true,"agent_files":true,"agent_count":true}},"minimum_score":9.5,"score":6.8,"files":[],"count":10}';
+    const result = parseGvTag(`<gv>${tag}</gv>`);
+    expect(result.found).toBe(true);
+    expect(result.data!['agent-type']!.name).toBe('goodvibes:reviewer');
+    expect(result.data!.minimum_score).toBe(9.5);
+    expect(result.data!.score).toBe(6.8);
+    expect(result.data!.files).toEqual([]);
+    expect(result.data!.count).toBe(10);
+  });
+
+  it('does not leak agent-type or minimum_score to index signature', () => {
+    const tag = '{"agent-type":{"name":"goodvibes:engineer","required-fields":{}},"minimum_score":null,"score":null,"files":[],"count":null,"extra":"val"}';
+    const result = parseGvTag(`<gv>${tag}</gv>`);
+    expect(result.data!['extra']).toBe('val');
+    // agent-type and minimum_score are known fields, should not duplicate
+    const keys = Object.keys(result.data!);
+    expect(keys.filter(k => k === 'agent-type')).toHaveLength(1);
+    expect(keys.filter(k => k === 'minimum_score')).toHaveLength(1);
   });
 
   it('handles tag embedded in surrounding text', () => {
@@ -268,6 +324,55 @@ describe('extractReviewScore', () => {
   it('prefers <gv> tag score over legacy regex', () => {
     const text = '<gv>{"score":9}</gv>\nSCORE: 5/10';
     expect(extractReviewScore(text)).toBe(9);
+  });
+});
+
+// ─── extractMinimumScore ────────────────────────────────────────────────────────
+
+describe('extractMinimumScore', () => {
+  it('returns null for null input', () => {
+    expect(extractMinimumScore(null)).toBeNull();
+  });
+
+  it('returns null when no tag present', () => {
+    expect(extractMinimumScore('no tags')).toBeNull();
+  });
+
+  it('returns null when minimum_score is null in tag', () => {
+    expect(extractMinimumScore('<gv>{"minimum_score":null}</gv>')).toBeNull();
+  });
+
+  it('extracts minimum_score from tag', () => {
+    expect(extractMinimumScore('<gv>{"minimum_score":9.5}</gv>')).toBe(9.5);
+  });
+
+  it('returns null when tag has no minimum_score field', () => {
+    expect(extractMinimumScore('<gv>{"score":8}</gv>')).toBeNull();
+  });
+});
+
+// ─── extractAgentType ──────────────────────────────────────────────────────────
+
+describe('extractAgentType', () => {
+  it('returns null for null input', () => {
+    expect(extractAgentType(null)).toBeNull();
+  });
+
+  it('returns null when no tag present', () => {
+    expect(extractAgentType('no tags')).toBeNull();
+  });
+
+  it('returns null when tag has no agent-type field', () => {
+    expect(extractAgentType('<gv>{"score":8}</gv>')).toBeNull();
+  });
+
+  it('extracts agent-type metadata', () => {
+    const text = '<gv>{"agent-type":{"name":"goodvibes:reviewer","required-fields":{"agent_score":true}},"score":9}</gv>';
+    const result = extractAgentType(text);
+    expect(result).toEqual({
+      name: 'goodvibes:reviewer',
+      'required-fields': { agent_score: true },
+    });
   });
 });
 

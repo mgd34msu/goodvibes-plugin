@@ -19,6 +19,17 @@
  */
 export declare function extractWorkflowId(taskDescription: string): string | null;
 /**
+ * Extracts a workflow ID by grepping the parent session transcript for [WRFC:wid].
+ *
+ * Uses a targeted grep to find the last [WRFC:...] tag in lines that also
+ * contain the agent type, avoiding bulk file reads and JSON parsing.
+ *
+ * @param transcriptPath - Path to the parent session JSONL file
+ * @param agentType - The agent type to match in the transcript
+ * @returns Extracted workflow ID, or null if not found
+ */
+export declare function extractWorkflowIdFromTranscript(transcriptPath: string, agentType: string): string | null;
+/**
  * Input shape accepted by normalizeAgentFields.
  * Mirrors the SubagentStartInput fields relevant to Phase 6.
  */

@@ -236,11 +236,11 @@ Report results in a structured, token-efficient format that enables orchestrator
 The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"files":[],"score":null,"count":42}</gv>
+<gv>{"agent-type":{"name":"goodvibes:tester","required-fields":{"agent_minimum_score":false,"agent_score":false,"agent_files":false,"agent_count":false}},"minimum_score":null,"score":null,"files":[],"count":42}</gv>
 ```
 
-Required for this agent: `count` (number of tests written/run)
-Optional (null when N/A): `files`, `score`
+Required for this agent: `name` is "goodvibes:tester", `agent_minimum_score` is false, `agent_score` is false, `agent_files` is false, `agent_count` is false, `files` (array of test files), `count` (number of tests written/run)
+Optional (null when N/A): `minimum_score`, `score`
 All fields must be present. The runtime engine parses this mechanically.
 
 ## Capabilities

@@ -28052,7 +28052,7 @@ var WRFCConfigStore = class {
 
 // src/extensions/directives/gv-tag-parser.ts
 var GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
-var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "files", "count"]);
+var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "files", "count", "minimum_score", "agent-type"]);
 function parseRawJson(raw) {
   const parsed = safeJsonParse(raw, null);
   try {
@@ -28067,6 +28067,14 @@ function parseRawJson(raw) {
       data.files = parsed.files.filter((f) => typeof f === "string");
     }
     if (typeof parsed.count === "number") data.count = parsed.count;
+    if (typeof parsed.minimum_score === "number") {
+      data.minimum_score = Math.max(0, Math.min(10, parsed.minimum_score));
+    } else if (parsed.minimum_score === null) {
+      data.minimum_score = null;
+    }
+    if (typeof parsed["agent-type"] === "object" && parsed["agent-type"] !== null && !Array.isArray(parsed["agent-type"])) {
+      data["agent-type"] = parsed["agent-type"];
+    }
     for (const [key, value] of Object.entries(parsed)) {
       if (!KNOWN_FIELDS.has(key)) {
         data[key] = value;
@@ -30530,7 +30538,7 @@ function handleAgentCompleted(event, _trigger, store) {
       log6.warn("handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required", { wid, agent_id: agentId });
     }
     if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
-      const task2 = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
+      const task2 = `[WRFC:${wid}] Review the work completed in workflow ${wid}. Minimum score: ${minScore}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
       const actions2 = [buildSpawnAction({ wid, type: "reviewer", task: task2, files: filesModified })];
       const state_updates2 = phaseUpdate(wid, "REVIEWING");
       const events2 = [makeChainEvent("wrfc:review_started", wid, event)];
@@ -30552,7 +30560,7 @@ function handleAgentCompleted(event, _trigger, store) {
       });
       return { actions: actions2, state_updates: state_updates2 };
     }
-    const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
+    const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. Minimum score: ${minScore}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
     const actions = [buildSpawnAction({ wid, type: "reviewer", task, files: filesModified })];
     const state_updates = phaseUpdate(wid, "REVIEWING");
     const events = [makeChainEvent("wrfc:review_started", wid, event)];
@@ -30649,7 +30657,7 @@ Files: ${filesModified.join(", ")}.` : "");
       });
       return { actions, state_updates };
     } else {
-      const task = `[WRFC:${wid}] Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. ` + (mergedFiles.length > 0 ? `Files modified: ${mergedFiles.join(", ")}.` : "Check all recently modified files.");
+      const task = `[WRFC:${wid}] Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. Minimum score: ${minScore}. ` + (mergedFiles.length > 0 ? `Files modified: ${mergedFiles.join(", ")}.` : "Check all recently modified files.");
       const actions = [buildSpawnAction({ wid, type: "reviewer", task, files: mergedFiles })];
       const state_updates = [
         ...phaseUpdate(wid, "REVIEWING"),

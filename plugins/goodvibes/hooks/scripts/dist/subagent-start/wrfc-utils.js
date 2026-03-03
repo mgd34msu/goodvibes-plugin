@@ -7,6 +7,7 @@
  *   2. Agent field normalization (agent_id ?? subagent_id, agent_type ?? subagent_type)
  *   3. Runtime system message merging with hook-built system message
  */
+import { execSync } from 'child_process';
 /** Regex that matches [WRFC:some_workflow_id] in a task description string. */
 const WRFC_REGEX = /\[WRFC:([^\]]+)\]/;
 /**
@@ -22,6 +23,29 @@ const WRFC_REGEX = /\[WRFC:([^\]]+)\]/;
 export function extractWorkflowId(taskDescription) {
     const match = WRFC_REGEX.exec(taskDescription);
     return match ? match[1] : null;
+}
+/**
+ * Extracts a workflow ID by grepping the parent session transcript for [WRFC:wid].
+ *
+ * Uses a targeted grep to find the last [WRFC:...] tag in lines that also
+ * contain the agent type, avoiding bulk file reads and JSON parsing.
+ *
+ * @param transcriptPath - Path to the parent session JSONL file
+ * @param agentType - The agent type to match in the transcript
+ * @returns Extracted workflow ID, or null if not found
+ */
+export function extractWorkflowIdFromTranscript(transcriptPath, agentType) {
+    try {
+        // Grep for lines containing both the agent type and a WRFC tag, take the last match
+        const result = execSync(`grep -F '${agentType}' "${transcriptPath}" | grep -oP '\\[WRFC:[^\\]]+\\]' | tail -1`, { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        if (!result)
+            return null;
+        return extractWorkflowId(result);
+    }
+    catch {
+        // grep returns exit code 1 on no match, or any other failure — never break the hook
+        return null;
+    }
 }
 /**
  * Normalises agent identity fields from raw hook input.

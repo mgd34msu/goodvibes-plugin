@@ -110,11 +110,11 @@ Report results in a structured, token-efficient format that enables orchestrator
 The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"files":["path/to/file.ts"],"score":null,"count":null}</gv>
+<gv>{"agent-type":{"name":"goodvibes:integrator-ai","required-fields":{"agent_minimum_score":false,"agent_score":false,"agent_files":false,"agent_count":false}},"minimum_score":null,"score":null,"files":["path/to/file.ts"],"count":null}</gv>
 ```
 
-Required for this agent: `files` (array of files created/modified)
-Optional (null when N/A): `score`, `count`
+Required for this agent: `name` is "goodvibes:integrator-ai", `agent_minimum_score` is false, `agent_score` is false, `agent_files` is false, `agent_count` is false, `files` (array of files created/modified)
+Optional (null when N/A): `minimum_score`, `score`, `count`
 All fields must be present. The runtime engine parses this mechanically.
 
 ## Precision Tools (MANDATORY)

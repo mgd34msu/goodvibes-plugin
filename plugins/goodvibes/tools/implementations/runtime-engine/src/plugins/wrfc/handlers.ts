@@ -307,6 +307,7 @@ export function handleAgentCompleted(
     }
     if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` +
+        `Minimum score: ${minScore}. ` +
         (filesModified.length > 0
           ? `Files modified: ${filesModified.join(', ')}.`
           : 'No files recorded yet.');
@@ -337,6 +338,7 @@ export function handleAgentCompleted(
 
     // Normal work agent: spawn reviewer
     const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. ` +
+      `Minimum score: ${minScore}. ` +
       (filesModified.length > 0
         ? `Files modified: ${filesModified.join(', ')}.`
         : 'No files recorded yet.');
@@ -451,6 +453,7 @@ export function handleAgentCompleted(
     } else {
       // Still budget: re-review
       const task = `[WRFC:${wid}] Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. ` +
+        `Minimum score: ${minScore}. ` +
         (mergedFiles.length > 0 ? `Files modified: ${mergedFiles.join(', ')}.` : 'Check all recently modified files.');
 
       const actions: Action[] = [buildSpawnAction({ wid, type: 'reviewer', task, files: mergedFiles })];
