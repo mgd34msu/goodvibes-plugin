@@ -157,6 +157,22 @@ export interface HandlerResult {
 }
 
 /**
+ * Describes a mutation to the state store.
+ */
+export interface StateChange {
+  /** The full dot-path key that changed. */
+  key: string;
+  /** Which operation triggered the change. */
+  operation: 'set' | 'delete' | 'merge';
+  /** Top-level namespace (first segment of key, e.g. 'agent_tracker'). */
+  namespace: string;
+  /** Value before the mutation (null if key didn't exist). */
+  oldValue: unknown;
+  /** Value after the mutation (null for delete). */
+  newValue: unknown;
+}
+
+/**
  * A single state update operation.
  */
 export interface StateUpdate {
@@ -213,6 +229,8 @@ export interface StateStoreInterface {
   restore(snapshot: Record<string, unknown>): void;
   /** List all keys, optionally filtered by dot-path prefix. */
   keys(prefix?: string): string[];
+  /** Register a listener that is called on every state mutation. Only one listener supported. */
+  onStateChange(listener: (change: StateChange) => void): void;
 }
 
 // ─── Component Interfaces ─────────────────────────────────────────────────────

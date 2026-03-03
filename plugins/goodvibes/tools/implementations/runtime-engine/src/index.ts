@@ -66,6 +66,7 @@ export type {
   SessionStartedPayload,
   HookEventPayload,
   WorkflowStateChangedPayload,
+  StateChangedPayload,
   AgentSpawnedPayload,
   AgentProgressPayload,
   TriggerFiredPayload,

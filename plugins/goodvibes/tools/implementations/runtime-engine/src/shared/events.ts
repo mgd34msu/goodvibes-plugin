@@ -354,7 +354,11 @@ export type EventType =
   /** An event's causal chain exceeded the maximum allowed depth. */
   | 'core:chain_depth_exceeded'
   /** The event queue depth exceeded the configured warning threshold. */
-  | 'core:queue_depth_warning';
+  | 'core:queue_depth_warning'
+
+  // ── State events ──────────────────────────────────────────────────────────
+  /** A value in the state store was created or updated. */
+  | 'state:changed';
 
 // ─── Payload Interfaces ───────────────────────────────────────────────────────
 
@@ -464,6 +468,22 @@ export interface TriggerFiredPayload {
   matched_event_id: string;
   /** The action expression that will be / was executed. */
   action: string;
+}
+
+/**
+ * Payload for `state:changed` — describes a state store mutation.
+ */
+export interface StateChangedPayload {
+  /** The full dot-path key that was mutated. */
+  key: string;
+  /** Which operation triggered the change: set, delete, or merge. */
+  operation: 'set' | 'delete' | 'merge';
+  /** Top-level namespace (first segment of key, e.g. 'agent_tracker'). */
+  namespace: string;
+  /** Value before the mutation (null if key didn't exist). */
+  old_value: unknown;
+  /** Value after the mutation (null for delete). */
+  new_value: unknown;
 }
 
 /**
@@ -652,7 +672,9 @@ export type EventPayload =
   | { type: 'core:queue_depth_warning'; data: { depth: number; threshold: number } }
   | { type: 'executor:budget_exceeded'; data: { cap_type: 'flat' | 'daily'; spent_usd: number; cap_usd: number } }
   | { type: 'executor:budget_reset'; data: { previous_daily_spent: number; reset_hour: number } }
-  | { type: 'executor:paused' | 'executor:resumed'; data: { reason: string } };
+  | { type: 'executor:paused' | 'executor:resumed'; data: { reason: string } }
+  // State events
+  | { type: 'state:changed'; data: StateChangedPayload };
 
 // ─── Unified RuntimeEvent Interface ──────────────────────────────────────────
 

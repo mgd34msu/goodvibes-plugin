@@ -29784,6 +29784,7 @@ var CoreStateStore = class {
   filePath;
   saveDebounceMs;
   saveTimer = null;
+  changeListener;
   constructor(options = {}) {
     const cwd = process.cwd();
     const defaultPath = (0, import_node_path10.join)(cwd, ".goodvibes", "memory", "runtime-state.json");
@@ -29810,8 +29811,18 @@ var CoreStateStore = class {
    */
   set(key, value) {
     validateDotPath(key);
+    const oldValue = this.get(key);
     setPath(this.data, key, value);
     this.scheduleSave();
+    if (this.changeListener) {
+      this.changeListener({
+        key,
+        operation: "set",
+        namespace: key.split(".")[0] || key,
+        oldValue,
+        newValue: value
+      });
+    }
   }
   /**
    * Delete a key (dot-separated path). No-op if not found.
@@ -29820,8 +29831,18 @@ var CoreStateStore = class {
    */
   delete(key) {
     validateDotPath(key);
+    const oldValue = this.get(key);
     deletePath(this.data, key);
     this.scheduleSave();
+    if (this.changeListener) {
+      this.changeListener({
+        key,
+        operation: "delete",
+        namespace: key.split(".")[0] || key,
+        oldValue,
+        newValue: null
+      });
+    }
   }
   /**
    * Apply a merge at a dot-separated path.
@@ -29829,11 +29850,20 @@ var CoreStateStore = class {
    * If there is no existing value, this is equivalent to set().
    */
   merge(key, value) {
-    const existing = this.get(key);
-    if (existing === null || typeof existing !== "object" || Array.isArray(existing)) {
-      this.set(key, value);
-    } else {
-      this.set(key, deepMerge2(existing, value));
+    validateDotPath(key);
+    const oldValue = this.get(key);
+    const existing = oldValue;
+    const merged = existing !== null && typeof existing === "object" && !Array.isArray(existing) ? deepMerge2(existing, value) : value;
+    setPath(this.data, key, merged);
+    this.scheduleSave();
+    if (this.changeListener) {
+      this.changeListener({
+        key,
+        operation: "merge",
+        namespace: key.split(".")[0] || key,
+        oldValue,
+        newValue: this.get(key)
+      });
     }
   }
   /**
@@ -29872,6 +29902,10 @@ var CoreStateStore = class {
    * List all dot-path keys in the store.
    * If prefix is provided, only return keys that start with `${prefix}.` or equal prefix exactly.
    */
+  /** Register a listener that is called on every state mutation. Only one listener supported. */
+  onStateChange(listener) {
+    this.changeListener = listener;
+  }
   keys(prefix) {
     const allKeys = this.collectKeys(this.data, "");
     if (!prefix) return allKeys;
@@ -32651,7 +32685,7 @@ function extractAgentData(event) {
   const payload = event.payload;
   const data = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : payload;
   const agent_id = typeof data["agent_id"] === "string" ? data["agent_id"] : null;
-  const agent_type = typeof data["agent_type"] === "string" ? data["agent_type"] : "unknown";
+  const agent_type = typeof data["agent_type"] === "string" && data["agent_type"].length > 0 ? data["agent_type"] : "";
   const workflow_id = typeof data["workflow_id"] === "string" && data["workflow_id"].length > 0 ? data["workflow_id"] : null;
   return { agent_id, agent_type, workflow_id };
 }
@@ -32732,6 +32766,10 @@ var AgentTrackerPlugin = class {
       log8.debug("handleSpawned: no agent_id, skipping");
       return;
     }
+    if (!agent_type) {
+      log8.debug("handleSpawned: no agent_type, skipping", { agent_id });
+      return;
+    }
     const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id);
     const tracked = {
       id: agent_id,
@@ -32757,6 +32795,10 @@ var AgentTrackerPlugin = class {
       return;
     }
     const existing = this._services.getState(AGENT_KEY(agent_id));
+    if (!existing && !agent_type) {
+      log8.debug(`handleFinished(${status}): untracked agent with no type, skipping`, { agent_id });
+      return;
+    }
     const now = event.timestamp;
     const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id);
     const tracked = {
@@ -34865,6 +34907,24 @@ var RuntimeEngine = class {
     const coreEventProcessor = this.coreRuntime.eventProcessor;
     const coreTriggerRegistry = this.triggers?.triggerRegistry;
     const eventBusRef = this.events.eventBus;
+    coreStore.onStateChange((change) => {
+      eventBusRef.emit({
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: "state:changed",
+        source: { kind: "system" },
+        payload: {
+          type: "state:changed",
+          data: {
+            key: change.key,
+            operation: change.operation,
+            namespace: change.namespace,
+            old_value: change.oldValue,
+            new_value: change.newValue
+          }
+        }
+      });
+    });
     const runtimeServices = {
       emit: /* @__PURE__ */ __name((event) => eventBusRef.emit(event), "emit"),
       subscribe: /* @__PURE__ */ __name((eventType, handler) => {

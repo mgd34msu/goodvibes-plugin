@@ -89,6 +89,7 @@ function makeStore(): StateStoreInterface {
     snapshot: vi.fn().mockReturnValue({}),
     restore: vi.fn(),
     keys: vi.fn().mockReturnValue([]),
+    onStateChange: vi.fn(),
   };
 }
 

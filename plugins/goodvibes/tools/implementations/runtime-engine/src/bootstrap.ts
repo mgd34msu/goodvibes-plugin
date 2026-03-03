@@ -287,6 +287,27 @@ export class RuntimeEngine {
     const coreEventProcessor = this.coreRuntime.eventProcessor;
     const coreTriggerRegistry = this.triggers?.triggerRegistry;
     const eventBusRef = this.events.eventBus;
+
+    // Wire state change notifications → event bus
+    coreStore.onStateChange((change) => {
+      eventBusRef.emit({
+        id: generateEventId(),
+        timestamp: timestamp(),
+        type: 'state:changed' as const,
+        source: { kind: 'system' as const },
+        payload: {
+          type: 'state:changed' as const,
+          data: {
+            key: change.key,
+            operation: change.operation,
+            namespace: change.namespace,
+            old_value: change.oldValue,
+            new_value: change.newValue,
+          },
+        },
+      });
+    });
+
     const runtimeServices: RuntimeServices = {
       emit: (event) => eventBusRef.emit(event),
       subscribe: (eventType, handler) => {

@@ -42,7 +42,7 @@ function extractAgentData(event: RuntimeEvent): {
     : payload;
 
   const agent_id = typeof data['agent_id'] === 'string' ? data['agent_id'] : null;
-  const agent_type = typeof data['agent_type'] === 'string' ? data['agent_type'] : 'unknown';
+  const agent_type = typeof data['agent_type'] === 'string' && data['agent_type'].length > 0 ? data['agent_type'] : '';
   const workflow_id = typeof data['workflow_id'] === 'string' && data['workflow_id'].length > 0
     ? data['workflow_id']
     : null;
@@ -128,6 +128,10 @@ export class AgentTrackerPlugin implements RuntimePlugin {
       log.debug('handleSpawned: no agent_id, skipping');
       return;
     }
+    if (!agent_type) {
+      log.debug('handleSpawned: no agent_type, skipping', { agent_id });
+      return;
+    }
 
     const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id);
 
@@ -160,6 +164,10 @@ export class AgentTrackerPlugin implements RuntimePlugin {
     }
 
     const existing = this._services.getState(AGENT_KEY(agent_id)) as TrackedAgent | null;
+    if (!existing && !agent_type) {
+      log.debug(`handleFinished(${status}): untracked agent with no type, skipping`, { agent_id });
+      return;
+    }
     const now = event.timestamp;
 
     const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id);

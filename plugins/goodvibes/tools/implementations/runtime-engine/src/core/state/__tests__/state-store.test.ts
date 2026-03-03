@@ -481,4 +481,107 @@ describe('CoreStateStore', () => {
       expect(store.keys('xyz')).toEqual([]);
     });
   });
+
+  // ─── onStateChange ────────────────────────────────────────────────────────
+
+  describe('onStateChange', () => {
+    it('does not crash when no listener is registered', () => {
+      const store = makeStore();
+      expect(() => store.set('key', 'value')).not.toThrow();
+      expect(() => store.delete('key')).not.toThrow();
+      expect(() => store.merge('obj', { x: 1 })).not.toThrow();
+    });
+
+    it('calls listener on set with correct fields', () => {
+      const store = makeStore();
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.set('foo', 'bar');
+      expect(listener).toHaveBeenCalledOnce();
+      expect(listener).toHaveBeenCalledWith({
+        key: 'foo',
+        operation: 'set',
+        namespace: 'foo',
+        oldValue: null,
+        newValue: 'bar',
+      });
+    });
+
+    it('listener receives null oldValue for new keys', () => {
+      const store = makeStore();
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.set('brand.new', 42);
+      const call = listener.mock.calls[0]![0];
+      expect(call.oldValue).toBeNull();
+      expect(call.newValue).toBe(42);
+    });
+
+    it('listener receives previous value as oldValue on overwrite', () => {
+      const store = makeStore();
+      store.set('counter', 1);
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.set('counter', 2);
+      expect(listener).toHaveBeenCalledWith(
+        expect.objectContaining({ oldValue: 1, newValue: 2 }),
+      );
+    });
+
+    it('calls listener on delete with correct fields', () => {
+      const store = makeStore();
+      store.set('toDelete', 'gone');
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.delete('toDelete');
+      expect(listener).toHaveBeenCalledOnce();
+      expect(listener).toHaveBeenCalledWith({
+        key: 'toDelete',
+        operation: 'delete',
+        namespace: 'toDelete',
+        oldValue: 'gone',
+        newValue: null,
+      });
+    });
+
+    it('listener receives null newValue for delete', () => {
+      const store = makeStore();
+      store.set('x', 99);
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.delete('x');
+      expect(listener.mock.calls[0]![0].newValue).toBeNull();
+    });
+
+    it('calls listener on merge with correct fields', () => {
+      const store = makeStore();
+      store.set('config', { theme: 'dark' });
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.merge('config', { lang: 'en' });
+      expect(listener).toHaveBeenCalledOnce();
+      const call = listener.mock.calls[0]![0];
+      expect(call.key).toBe('config');
+      expect(call.operation).toBe('merge');
+      expect(call.namespace).toBe('config');
+      expect(call.oldValue).toEqual({ theme: 'dark' });
+      expect(call.newValue).toEqual({ theme: 'dark', lang: 'en' });
+    });
+
+    it('listener receives correct namespace (first key segment)', () => {
+      const store = makeStore();
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.set('agent_tracker.agents.abc', { id: 'abc' });
+      expect(listener.mock.calls[0]![0].namespace).toBe('agent_tracker');
+    });
+
+    it('listener is only called once per mutation (merge does not double-fire)', () => {
+      const store = makeStore();
+      const listener = vi.fn();
+      store.onStateChange(listener);
+      store.merge('ns', { a: 1 });
+      expect(listener).toHaveBeenCalledOnce();
+    });
+  });
 });

@@ -18,7 +18,7 @@ import { join, isAbsolute } from 'node:path';
 import { writeJsonSync } from './file-io.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage, safeJsonParse } from '../../shared/utils.js';
-import type { StateStoreInterface } from '../types.js';
+import type { StateStoreInterface, StateChange } from '../types.js';
 
 const logger = createLogger('core:state-store');
 
@@ -151,6 +151,7 @@ export class CoreStateStore implements StateStoreInterface {
   private readonly filePath: string;
   private readonly saveDebounceMs: number;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private changeListener?: (change: StateChange) => void;
 
   constructor(options: CoreStateStoreOptions = {}) {
     const cwd = process.cwd();
@@ -184,8 +185,18 @@ export class CoreStateStore implements StateStoreInterface {
    */
   set<T>(key: string, value: T): void {
     validateDotPath(key);
+    const oldValue = this.get(key);
     setPath(this.data, key, value);
     this.scheduleSave();
+    if (this.changeListener) {
+      this.changeListener({
+        key,
+        operation: 'set',
+        namespace: key.split('.')[0] || key,
+        oldValue,
+        newValue: value,
+      });
+    }
   }
 
   /**
@@ -195,8 +206,18 @@ export class CoreStateStore implements StateStoreInterface {
    */
   delete(key: string): void {
     validateDotPath(key);
+    const oldValue = this.get(key);
     deletePath(this.data, key);
     this.scheduleSave();
+    if (this.changeListener) {
+      this.changeListener({
+        key,
+        operation: 'delete',
+        namespace: key.split('.')[0] || key,
+        oldValue,
+        newValue: null,
+      });
+    }
   }
 
   /**
@@ -205,11 +226,23 @@ export class CoreStateStore implements StateStoreInterface {
    * If there is no existing value, this is equivalent to set().
    */
   merge(key: string, value: Record<string, unknown>): void {
-    const existing = this.get<Record<string, unknown>>(key);
-    if (existing === null || typeof existing !== 'object' || Array.isArray(existing)) {
-      this.set(key, value);
-    } else {
-      this.set(key, deepMerge(existing, value));
+    validateDotPath(key);
+    const oldValue = this.get(key);
+    const existing = oldValue as Record<string, unknown> | null;
+    const merged =
+      existing !== null && typeof existing === 'object' && !Array.isArray(existing)
+        ? deepMerge(existing, value)
+        : value;
+    setPath(this.data, key, merged);
+    this.scheduleSave();
+    if (this.changeListener) {
+      this.changeListener({
+        key,
+        operation: 'merge',
+        namespace: key.split('.')[0] || key,
+        oldValue,
+        newValue: this.get(key),
+      });
     }
   }
 
@@ -253,6 +286,11 @@ export class CoreStateStore implements StateStoreInterface {
    * List all dot-path keys in the store.
    * If prefix is provided, only return keys that start with `${prefix}.` or equal prefix exactly.
    */
+  /** Register a listener that is called on every state mutation. Only one listener supported. */
+  onStateChange(listener: (change: StateChange) => void): void {
+    this.changeListener = listener;
+  }
+
   keys(prefix?: string): string[] {
     const allKeys = this.collectKeys(this.data, '');
     if (!prefix) return allKeys;
