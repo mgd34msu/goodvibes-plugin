@@ -16,6 +16,7 @@ export type {
   AgentsConfig,
   ExecutorMode,
   DaemonConfig,
+  DaemonTransportConfig,
   ExecutorBudgetConfig,
   ExecutorConfig,
   HeartbeatPluginConfig,

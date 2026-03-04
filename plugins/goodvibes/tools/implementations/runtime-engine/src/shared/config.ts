@@ -131,6 +131,16 @@ export interface DaemonConfig {
   eval_interval_ms: number;
 }
 
+/** Transport daemon config — hosts RuntimeEngine as a standalone process. */
+export interface DaemonTransportConfig {
+  /** Whether to auto-start the transport daemon on session start. Default: false. */
+  auto_start: boolean;
+  /** Timeout in ms for daemon RPC calls. Default: 5000. */
+  rpc_timeout_ms: number;
+  /** Whether to migrate local state into daemon on join. Default: false. */
+  migrate_state_on_join: boolean;
+}
+
 /** Two-tier budget configuration for executor cost controls. */
 export interface ExecutorBudgetConfig {
   /** Total spending ceiling in USD. When hit, processing pauses. Optional. */
@@ -151,6 +161,8 @@ export interface ExecutorConfig {
   daemon: DaemonConfig;
   /** Two-tier cost controls. Active in all modes. */
   budget: ExecutorBudgetConfig;
+  /** Transport daemon settings. Only consulted when mode is 'daemon' or 'hybrid'. */
+  transport: DaemonTransportConfig;
 }
 
 /** Heartbeat configuration for the time plugin. */
@@ -325,6 +337,11 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
       warning_threshold: 0.8,
       daily_reset_hour: 0,
     },
+    transport: {
+      auto_start: false,
+      rpc_timeout_ms: 5000,
+      migrate_state_on_join: false,
+    },
   },
   time: {
     heartbeat: {
@@ -391,6 +408,7 @@ function validateConfig(config: RuntimeConfig): void {
     ['health.memory_warn_mb', config.health.memory_warn_mb],
     ['health.memory_critical_mb', config.health.memory_critical_mb],
     ['executor.daemon.tick_interval_ms', config.executor.daemon.tick_interval_ms],
+    ['executor.transport.rpc_timeout_ms', config.executor.transport.rpc_timeout_ms],
   ];
   for (const [name, val] of nums) {
     if (typeof val !== 'number' || val < 0 || !Number.isFinite(val)) {
