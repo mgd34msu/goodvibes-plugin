@@ -11,7 +11,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-import { DEFAULT_CONFIG, saveConfig } from '../../../shared/config.js';
+import { DEFAULT_CONFIG, saveConfig, VALID_EXECUTOR_MODES } from '../../../shared/config.js';
 import type { RuntimeConfig } from '../../../shared/config.js';
 import { createLogger } from '../../../shared/logger.js';
 import { assertOptionalString, toErrorMessage } from '../../../shared/utils.js';
@@ -44,9 +44,12 @@ export const VALID_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'workflows.max_transitions_per_workflow',
   'workflows.wrfc_max_fix_iterations',
   'workflows.fix_loop_max_attempts',
+  'workflows.action_timeout_ms',
+  'workflows.max_transition_queue_depth',
   'triggers.max_triggers',
   'triggers.default_cooldown_ms',
   'triggers.max_fires_per_session',
+  'triggers.handler_timeout_ms',
   'health.check_interval_ms',
   'health.memory_warn_mb',
   'health.memory_critical_mb',
@@ -66,6 +69,10 @@ export const VALID_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'executor.daemon.tick_command',
   'executor.daemon.tick_interval_ms',
   'executor.daemon.auto_tick',
+  'executor.daemon.eval_interval_ms',
+  'executor.transport.auto_start',
+  'executor.transport.rpc_timeout_ms',
+  'executor.transport.migrate_state_on_join',
   'executor.budget.flat_cap_usd',
   'executor.budget.daily_cap_usd',
   'executor.budget.warning_threshold',
@@ -108,9 +115,12 @@ export const CONFIG_KEY_TYPES: ReadonlyMap<string, 'boolean' | 'number' | 'strin
   ['workflows.max_transitions_per_workflow', 'number'],
   ['workflows.wrfc_max_fix_iterations', 'number'],
   ['workflows.fix_loop_max_attempts', 'number'],
+  ['workflows.action_timeout_ms', 'number'],
+  ['workflows.max_transition_queue_depth', 'number'],
   ['triggers.max_triggers', 'number'],
   ['triggers.default_cooldown_ms', 'number'],
   ['triggers.max_fires_per_session', 'number'],
+  ['triggers.handler_timeout_ms', 'number'],
   ['health.check_interval_ms', 'number'],
   ['health.memory_warn_mb', 'number'],
   ['health.memory_critical_mb', 'number'],
@@ -130,6 +140,10 @@ export const CONFIG_KEY_TYPES: ReadonlyMap<string, 'boolean' | 'number' | 'strin
   ['executor.daemon.tick_command', 'string'],
   ['executor.daemon.tick_interval_ms', 'number'],
   ['executor.daemon.auto_tick', 'boolean'],
+  ['executor.daemon.eval_interval_ms', 'number'],
+  ['executor.transport.auto_start', 'boolean'],
+  ['executor.transport.rpc_timeout_ms', 'number'],
+  ['executor.transport.migrate_state_on_join', 'boolean'],
   ['executor.budget.flat_cap_usd', 'number'],
   ['executor.budget.daily_cap_usd', 'number'],
   ['executor.budget.warning_threshold', 'number'],
@@ -308,6 +322,18 @@ export const handleRuntimeConfig = async (
         }
       }
 
+      // Validate value-level constraints for specific keys
+      if (key === 'executor.mode') {
+        if (!(VALID_EXECUTOR_MODES as readonly string[]).includes(value as string)) {
+          return toError(
+            `Invalid value for 'executor.mode': "${value}". Must be one of: ${VALID_EXECUTOR_MODES.join(', ')}.`,
+            ctx.version,
+            uptimeMs,
+            Date.now() - start
+          );
+        }
+      }
+
       // Build an updated config with the new key value applied (deep clone to
       // prevent shallow-clone aliasing bugs when setNestedValue mutates in-place)
       const current = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
@@ -325,8 +351,12 @@ export const handleRuntimeConfig = async (
       }
       logger.info('Config key set', { key, value });
 
+      const result: Record<string, unknown> = { key, value, persisted: true };
+      if (key === 'executor.mode') {
+        result.warning = 'executor.mode change takes effect on next session restart.';
+      }
       return toSuccess(
-        { key, value, persisted: true },
+        result,
         ctx.version,
         uptimeMs,
         Date.now() - start

@@ -115,6 +115,9 @@ export interface AgentsConfig {
 /** Executor mode for the runtime engine session. */
 export type ExecutorMode = 'engaged' | 'daemon' | 'hybrid';
 
+/** Valid executor modes — single source of truth for validation. */
+export const VALID_EXECUTOR_MODES: ReadonlyArray<ExecutorMode> = ['engaged', 'daemon', 'hybrid'];
+
 /** Daemon-specific configuration. */
 export interface DaemonConfig {
   /** Whether to clear context after processing each event batch. */
