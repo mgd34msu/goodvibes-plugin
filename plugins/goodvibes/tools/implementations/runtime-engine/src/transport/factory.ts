@@ -34,6 +34,23 @@ export interface TransportFactoryOptions {
 
   /** Session ID to pass to RemoteTransport (optional; random ID generated if omitted). */
   sessionId?: string;
+
+  /** Reconnection options forwarded to RemoteTransport. */
+  reconnect?: {
+    enabled?: boolean;
+    maxAttempts?: number;
+    baseDelayMs?: number;
+    maxDelayMs?: number;
+  };
+
+  /** Called when reconnection attempt starts. */
+  onReconnecting?: (attempt: number) => void;
+
+  /** Called when reconnection succeeds. */
+  onReconnected?: () => void;
+
+  /** Called when transport gives up (maxAttempts exceeded). */
+  onDead?: (error: Error) => void;
 }
 
 /**
@@ -77,7 +94,7 @@ export function discoverDaemonSocket(projectRoot: string): string | undefined {
  * For 'hybrid' mode: attempts RemoteTransport first, falls back to LocalTransport.
  */
 export async function createTransport(options: TransportFactoryOptions): Promise<RuntimeTransport> {
-  const { mode, connectTimeoutMs, sessionId } = options;
+  const { mode, connectTimeoutMs, sessionId, reconnect, onReconnecting, onReconnected, onDead } = options;
 
   if (mode === 'engaged') {
     if (!options.engine) {
@@ -92,13 +109,33 @@ export async function createTransport(options: TransportFactoryOptions): Promise
     socketPath = discoverDaemonSocket(options.projectRoot);
   }
 
+  // Note: TransportFactoryOptions uses camelCase (baseDelayMs, maxDelayMs) which maps 1:1
+  // to RemoteTransportOptions. Config consumers (e.g. MCP handlers) may use snake_case —
+  // conversion to camelCase must happen at the config-to-options bridge before this point.
+  const reconnectOpts = reconnect
+    ? {
+        enabled: reconnect.enabled ?? true,
+        maxAttempts: reconnect.maxAttempts ?? 10,
+        baseDelayMs: reconnect.baseDelayMs ?? 100,
+        maxDelayMs: reconnect.maxDelayMs ?? 10_000,
+      }
+    : undefined;
+
   if (mode === 'daemon') {
     if (!socketPath) {
       throw new Error(
         "TransportFactory: 'socketPath' is required for mode 'daemon' (or provide 'projectRoot' with a daemon.socket pointer file)"
       );
     }
-    const transport = new RemoteTransport({ socketPath, connectTimeoutMs, sessionId });
+    const transport = new RemoteTransport({
+      daemonSocketPath: socketPath,
+      timeoutMs: connectTimeoutMs,
+      sessionId,
+      reconnect: reconnectOpts,
+      onReconnecting,
+      onReconnected,
+      onDead,
+    });
     await transport.connect();
     return transport;
   }
@@ -106,7 +143,15 @@ export async function createTransport(options: TransportFactoryOptions): Promise
   // hybrid: try remote first, fall back to local
   if (socketPath) {
     try {
-      const transport = new RemoteTransport({ socketPath, connectTimeoutMs, sessionId });
+      const transport = new RemoteTransport({
+        daemonSocketPath: socketPath,
+        timeoutMs: connectTimeoutMs,
+        sessionId,
+        reconnect: reconnectOpts,
+        onReconnecting,
+        onReconnected,
+        onDead,
+      });
       await transport.connect();
       return transport;
     } catch {

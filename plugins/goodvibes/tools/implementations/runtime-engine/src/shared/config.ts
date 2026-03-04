@@ -142,6 +142,17 @@ export interface DaemonTransportConfig {
   rpc_timeout_ms: number;
   /** Whether to migrate local state into daemon on join. Default: false. */
   migrate_state_on_join: boolean;
+  /** Reconnection configuration for RemoteTransport. */
+  reconnect: {
+    /** Enable auto-reconnect on socket close/error. Default: true. */
+    enabled: boolean;
+    /** Maximum reconnection attempts before giving up. Default: 10. */
+    max_attempts: number;
+    /** Base delay in ms for exponential backoff. Default: 100. */
+    base_delay_ms: number;
+    /** Maximum delay cap in ms. Default: 10000. */
+    max_delay_ms: number;
+  };
 }
 
 /** Two-tier budget configuration for executor cost controls. */
@@ -344,6 +355,12 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
       auto_start: false,
       rpc_timeout_ms: 5000,
       migrate_state_on_join: false,
+      reconnect: {
+        enabled: true,
+        max_attempts: 10,
+        base_delay_ms: 100,
+        max_delay_ms: 10_000,
+      },
     },
   },
   time: {

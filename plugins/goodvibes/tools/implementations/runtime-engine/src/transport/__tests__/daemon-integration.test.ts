@@ -120,9 +120,9 @@ describe('1.1 DaemonServer lifecycle', () => {
   it('handles multiple concurrent client connections', async () => {
     await server.start();
 
-    const transport1 = new RemoteTransport({ socketPath, sessionId: 'sess-multi-1' });
-    const transport2 = new RemoteTransport({ socketPath, sessionId: 'sess-multi-2' });
-    const transport3 = new RemoteTransport({ socketPath, sessionId: 'sess-multi-3' });
+    const transport1 = new RemoteTransport({ daemonSocketPath: socketPath, sessionId: 'sess-multi-1' });
+    const transport2 = new RemoteTransport({ daemonSocketPath: socketPath, sessionId: 'sess-multi-2' });
+    const transport3 = new RemoteTransport({ daemonSocketPath: socketPath, sessionId: 'sess-multi-3' });
 
     await Promise.all([transport1.connect(), transport2.connect(), transport3.connect()]);
 
@@ -138,7 +138,7 @@ describe('1.1 DaemonServer lifecycle', () => {
   it('cleans up on stop even with active connections', async () => {
     await server.start();
 
-    const transport = new RemoteTransport({ socketPath, sessionId: 'sess-cleanup' });
+    const transport = new RemoteTransport({ daemonSocketPath: socketPath, sessionId: 'sess-cleanup' });
     await transport.connect();
     await waitFor(() => server.getSessionCount() === 1);
     expect(server.getSessionCount()).toBe(1);
@@ -168,7 +168,7 @@ describe('1.2 RPC round-trip', () => {
     engine = createMockEngine();
     server = new DaemonServer({ socketPath, engine: asEngine(engine) });
     await server.start();
-    transport = new RemoteTransport({ socketPath, sessionId: 'sess-rpc' });
+    transport = new RemoteTransport({ daemonSocketPath: socketPath, sessionId: 'sess-rpc' });
     await transport.connect();
     // Wait for session_join to register
     await waitFor(() => server.getSessionCount() === 1);
