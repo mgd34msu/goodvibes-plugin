@@ -103,7 +103,6 @@ import { RemoteTransport } from '../remote-transport.js';
 // ── Constants ──────────────────────────────────────────────────
 
 const SOCKET_PATH = '/tmp/test-daemon.sock';
-const POINTER_FILE = '.goodvibes/state/daemon.socket';
 
 // ── Helpers ────────────────────────────────────────────────────
 

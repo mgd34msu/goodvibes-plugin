@@ -9,10 +9,10 @@ import { resolve } from 'node:path';
 import { RuntimeEngine } from '../bootstrap.js';
 import { loadConfig } from '../shared/config.js';
 import { DaemonServer } from './daemon-server.js';
+import { DAEMON_PID_FILE, DAEMON_SOCKET_POINTER, DAEMON_SOCKET_NAME } from './daemon-constants.js';
+import { createLogger } from '../shared/logger.js';
 
-const DEFAULT_SOCKET_NAME = 'goodvibes-runtime.sock';
-const PID_FILE_NAME = 'goodvibes-runtime.pid';
-const SOCKET_POINTER_NAME = 'daemon.socket';
+const logger = createLogger('daemon');
 
 async function main(): Promise<void> {
   // Resolve project root — prefer GV_PROJECT_ROOT env var, otherwise cwd
@@ -21,10 +21,10 @@ async function main(): Promise<void> {
 
   const socketPath = process.env['GV_DAEMON_SOCKET']
     ? resolve(process.env['GV_DAEMON_SOCKET'])
-    : resolve(goodvibesDir, DEFAULT_SOCKET_NAME);
+    : resolve(goodvibesDir, DAEMON_SOCKET_NAME);
 
-  const pidFilePath = resolve(goodvibesDir, PID_FILE_NAME);
-  const socketPointerPath = resolve(goodvibesDir, SOCKET_POINTER_NAME);
+  const pidFilePath = resolve(goodvibesDir, DAEMON_PID_FILE);
+  const socketPointerPath = resolve(goodvibesDir, DAEMON_SOCKET_POINTER);
 
   // Remove stale socket file if present
   if (existsSync(socketPath)) {
@@ -45,19 +45,19 @@ async function main(): Promise<void> {
     writeFileSync(pidFilePath, String(process.pid), 'utf-8');
     writeFileSync(socketPointerPath, socketPath, 'utf-8');
   } catch (err) {
-    console.error('[daemon] Failed to write PID/socket files:', err);
+    logger.warn('Failed to write PID/socket files', { err: String(err) });
   }
 
-  console.log(`[daemon] Running. PID=${process.pid} socket=${socketPath}`);
+  logger.info('Daemon running', { pid: process.pid, socket: socketPath });
 
   // Graceful shutdown handler
   const shutdown = async (signal: string): Promise<void> => {
-    console.log(`[daemon] Received ${signal}, shutting down...`);
+    logger.info('Received signal, shutting down', { signal });
     try {
       await server.stop();
       await engine.shutdown();
     } catch (err) {
-      console.error('[daemon] Shutdown error:', err);
+      logger.error('Shutdown error', { err: String(err) });
     } finally {
       // Clean up PID and socket pointer files
       try { unlinkSync(pidFilePath); } catch { /* ignore */ }

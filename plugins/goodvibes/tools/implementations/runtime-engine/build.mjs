@@ -20,6 +20,20 @@ async function build() {
     });
 
     console.log('Build completed: dist/index.cjs');
+
+    // Daemon standalone entry point
+    await esbuild.build({
+      entryPoints: [join(__dirname, 'src/transport/daemon.ts')],
+      bundle: true,
+      platform: 'node',
+      target: 'node18',
+      format: 'cjs',
+      outfile: join(__dirname, 'dist/daemon.cjs'),
+      sourcemap: true,
+      minify: false,
+      keepNames: true,
+    });
+    console.log('Build completed: dist/daemon.cjs');
   } catch (error) {
     console.error('Build failed:', error);
     process.exit(1);

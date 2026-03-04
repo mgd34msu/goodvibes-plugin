@@ -3241,7 +3241,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a2 = root.localRefs) === null || _a2 === void 0 ? void 0 : _a2[ref];
         const { schemaId } = this.opts;
@@ -3272,13 +3272,13 @@ var require_compile = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve, "resolve");
+    __name(resolve2, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -3871,13 +3871,13 @@ var require_fast_uri = __commonJS({
       return uri;
     }
     __name(normalize, "normalize");
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    __name(resolve, "resolve");
+    __name(resolve2, "resolve");
     function resolveComponent(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
@@ -4103,7 +4103,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -4674,13 +4674,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger66) {
-      if (logger66 === false)
+    function getLogger(logger68) {
+      if (logger68 === false)
         return noLogs;
-      if (logger66 === void 0)
+      if (logger68 === void 0)
         return console;
-      if (logger66.log && logger66.warn && logger66.error)
-        return logger66;
+      if (logger68.log && logger68.warn && logger68.error)
+        return logger68;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -20588,7 +20588,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -20605,7 +20605,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = /* @__PURE__ */ __name((error2) => {
         reject(error2);
       }, "earlyReject");
@@ -20683,7 +20683,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -20944,12 +20944,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -21700,12 +21700,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve();
+        resolve2();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve2);
       }
     });
   }
@@ -21714,6 +21714,11 @@ var StdioServerTransport = class {
 // src/transport/factory.ts
 var import_node_fs = require("node:fs");
 var import_node_path = require("node:path");
+
+// src/transport/daemon-constants.ts
+var DAEMON_PID_FILE = "goodvibes-runtime.pid";
+var DAEMON_SOCKET_POINTER = "daemon.socket";
+var DAEMON_ENTRY = "dist/daemon.cjs";
 
 // src/shared/constants.ts
 var ENGINE_VERSION = "1.0.0";
@@ -21879,7 +21884,7 @@ var RemoteTransport = class {
   constructor(options) {
     this.socketPath = options.socketPath;
     this.connectTimeoutMs = options.connectTimeoutMs ?? 5e3;
-    this.sessionId = generateId();
+    this.sessionId = options.sessionId ?? generateId();
   }
   isReady() {
     return this._connected;
@@ -21888,7 +21893,7 @@ var RemoteTransport = class {
     return this._connected;
   }
   async connect() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`Connection timeout after ${this.connectTimeoutMs}ms`));
       }, this.connectTimeoutMs);
@@ -21906,7 +21911,7 @@ var RemoteTransport = class {
           session_id: this.sessionId
         }) + "\n";
         socket.write(join19);
-        resolve();
+        resolve2();
       });
       socket.once("error", (err) => {
         clearTimeout(timer);
@@ -21915,18 +21920,19 @@ var RemoteTransport = class {
     });
   }
   async disconnect() {
-    if (!this.socket) return;
+    const sock = this.socket;
+    if (!sock) return;
     try {
       const leave = JSON.stringify({
         type: "session_leave",
         id: generateId(),
         session_id: this.sessionId
       }) + "\n";
-      this.socket.write(leave);
+      sock.write(leave);
     } catch {
     }
-    return new Promise((resolve) => {
-      this.socket.end(() => resolve());
+    return new Promise((resolve2) => {
+      sock.end(() => resolve2());
     });
   }
   onData(chunk) {
@@ -21961,11 +21967,11 @@ var RemoteTransport = class {
     }
   }
   sendRaw(request) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (!this.socket || !this._connected) {
         return reject(new Error("Not connected to daemon"));
       }
-      this.pending.set(request.id, { resolve, reject });
+      this.pending.set(request.id, { resolve: resolve2, reject });
       const line = JSON.stringify(request) + "\n";
       this.socket.write(line, (err) => {
         if (err) {
@@ -22069,18 +22075,40 @@ var RemoteTransport = class {
 
 // src/transport/factory.ts
 function discoverDaemonSocket(projectRoot) {
-  const pointerPath = (0, import_node_path.join)(projectRoot, ".goodvibes", "daemon.socket");
+  const goodvibesDir = (0, import_node_path.join)(projectRoot, ".goodvibes");
+  const pointerPath = (0, import_node_path.join)(goodvibesDir, DAEMON_SOCKET_POINTER);
   if (!(0, import_node_fs.existsSync)(pointerPath)) return void 0;
   try {
     const content = (0, import_node_fs.readFileSync)(pointerPath, "utf-8").trim();
-    return content || void 0;
+    if (!content) return void 0;
+    const pidPath = (0, import_node_path.join)(goodvibesDir, DAEMON_PID_FILE);
+    if ((0, import_node_fs.existsSync)(pidPath)) {
+      const pidStr = (0, import_node_fs.readFileSync)(pidPath, "utf-8").trim();
+      const pid = parseInt(pidStr, 10);
+      if (Number.isFinite(pid)) {
+        try {
+          process.kill(pid, 0);
+        } catch {
+          try {
+            (0, import_node_fs.unlinkSync)(pointerPath);
+          } catch {
+          }
+          try {
+            (0, import_node_fs.unlinkSync)(pidPath);
+          } catch {
+          }
+          return void 0;
+        }
+      }
+    }
+    return content;
   } catch {
     return void 0;
   }
 }
 __name(discoverDaemonSocket, "discoverDaemonSocket");
 async function createTransport(options) {
-  const { mode, connectTimeoutMs } = options;
+  const { mode, connectTimeoutMs, sessionId } = options;
   if (mode === "engaged") {
     if (!options.engine) {
       throw new Error("TransportFactory: 'engine' is required for mode 'engaged'");
@@ -22097,13 +22125,13 @@ async function createTransport(options) {
         "TransportFactory: 'socketPath' is required for mode 'daemon' (or provide 'projectRoot' with a daemon.socket pointer file)"
       );
     }
-    const transport = new RemoteTransport({ socketPath, connectTimeoutMs });
+    const transport = new RemoteTransport({ socketPath, connectTimeoutMs, sessionId });
     await transport.connect();
     return transport;
   }
   if (socketPath) {
     try {
-      const transport = new RemoteTransport({ socketPath, connectTimeoutMs });
+      const transport = new RemoteTransport({ socketPath, connectTimeoutMs, sessionId });
       await transport.connect();
       return transport;
     } catch {
@@ -22652,8 +22680,8 @@ function semaphoreAcquire(sem) {
     sem.running++;
     return Promise.resolve();
   }
-  return new Promise((resolve) => {
-    sem.queue.push(resolve);
+  return new Promise((resolve2) => {
+    sem.queue.push(resolve2);
   });
 }
 __name(semaphoreAcquire, "semaphoreAcquire");
@@ -23150,8 +23178,8 @@ var EventLog = class {
    */
   async flush() {
     if (this.writeBuffer.length === 0) return;
-    return new Promise((resolve, reject) => {
-      this.flushWaiters.push({ resolve, reject });
+    return new Promise((resolve2, reject) => {
+      this.flushWaiters.push({ resolve: resolve2, reject });
       this.scheduleFlush();
     });
   }
@@ -23180,10 +23208,10 @@ var EventLog = class {
     }
     if (this.writeStream) {
       const stream = this.writeStream;
-      await new Promise((resolve) => {
+      await new Promise((resolve2) => {
         stream.end(() => {
           this.writeStream = null;
-          resolve();
+          resolve2();
         });
       });
     }
@@ -23380,8 +23408,8 @@ var EventLog = class {
     if (!this.writeStream) return;
     const stream = this.writeStream;
     this.writeStream = null;
-    await new Promise((resolve) => {
-      stream.end(() => resolve());
+    await new Promise((resolve2) => {
+      stream.end(() => resolve2());
     });
   }
   /**
@@ -23412,7 +23440,7 @@ var EventLog = class {
     if (this.flushing || this.writeBuffer.length === 0) {
       if (this.writeBuffer.length === 0 && this.flushWaiters.length > 0) {
         const waiters = this.flushWaiters.splice(0);
-        for (const { resolve } of waiters) resolve();
+        for (const { resolve: resolve2 } of waiters) resolve2();
       }
       return;
     }
@@ -23434,10 +23462,10 @@ var EventLog = class {
     try {
       if (this.writeStream) {
         const stream = this.writeStream;
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve2, reject) => {
           stream.write(data, (err) => {
             if (err) reject(err);
-            else resolve();
+            else resolve2();
           });
         });
       } else {
@@ -23456,7 +23484,7 @@ var EventLog = class {
         if (drainError) {
           for (const { reject } of waiters) reject(drainError);
         } else {
-          for (const { resolve } of waiters) resolve();
+          for (const { resolve: resolve2 } of waiters) resolve2();
         }
       }
       if (this.writeBuffer.length > 0) {
@@ -23474,7 +23502,7 @@ var EventLog = class {
    * @param onLine   - Callback for each non-empty line. Return false to stop early.
    */
   streamLines(filePath, onLine) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const stream = (0, import_node_fs6.createReadStream)(filePath, { encoding: "utf-8" });
       const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
       let done = false;
@@ -23498,13 +23526,13 @@ var EventLog = class {
         const result = onLine(trimmed);
         if (result === false) {
           cleanup();
-          resolve();
+          resolve2();
         }
       });
       rl.on("close", () => {
         if (!done) {
           done = true;
-          resolve();
+          resolve2();
         }
       });
       rl.on("error", onError);
@@ -23788,8 +23816,8 @@ var WorkflowEngine = class {
         });
         return null;
       }
-      return new Promise((resolve, reject) => {
-        queue.push({ event, resolve, reject });
+      return new Promise((resolve2, reject) => {
+        queue.push({ event, resolve: resolve2, reject });
         this._queue.set(workflowId, queue);
       });
     }
@@ -27567,7 +27595,7 @@ var JsonStateStore = class {
             attempt,
             backoffMs
           });
-          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+          await new Promise((resolve2) => setTimeout(resolve2, backoffMs));
         }
       }
     }
@@ -29337,7 +29365,7 @@ __name(computeDelay, "computeDelay");
 init_utils();
 var logger22 = createLogger("core:error-handler");
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve2) => setTimeout(resolve2, ms));
 }
 __name(sleep, "sleep");
 function buildErrorEvent(trigger_id, error2, original_event) {
@@ -30520,7 +30548,7 @@ var CoreStateStore = class {
 
 // src/core/state/stream-reader.ts
 function readStreamBody(stream, maxBytes) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     const chunks = [];
     let totalBytes = 0;
     let limitExceeded = false;
@@ -30534,7 +30562,7 @@ function readStreamBody(stream, maxBytes) {
         stream.resume();
         if (!resolved) {
           resolved = true;
-          resolve(null);
+          resolve2(null);
         }
         return;
       }
@@ -30544,7 +30572,7 @@ function readStreamBody(stream, maxBytes) {
       if (limitExceeded) return;
       if (!resolved) {
         resolved = true;
-        resolve(Buffer.concat(chunks).toString("utf-8"));
+        resolve2(Buffer.concat(chunks).toString("utf-8"));
       }
     });
     stream.on("error", (err) => {
@@ -32895,7 +32923,7 @@ var HttpListener = class {
       throw new ConfigError("HttpListener is already running");
     }
     await fs2.mkdir(this.dropDir, { recursive: true });
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       this.server = http.createServer((req, res) => {
         this.handleRequest(req, res).catch(() => {
           try {
@@ -32914,7 +32942,7 @@ var HttpListener = class {
           logger42.error("Server error", { error: err });
         });
         this.running = true;
-        resolve();
+        resolve2();
       });
     });
   }
@@ -32927,14 +32955,14 @@ var HttpListener = class {
       return;
     }
     const server = this.server;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       server.close((err) => {
         this.running = false;
         this.server = null;
         if (err) {
           reject(err);
         } else {
-          resolve();
+          resolve2();
         }
       });
     });
@@ -34574,7 +34602,7 @@ var IPCServer = class {
     this.server.on("error", (err) => {
       logger52.error("IPC server error", { err: err.message });
     });
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const srv = this.server;
       if (!srv) {
         reject(new IPCError("IPC server was not created"));
@@ -34585,7 +34613,7 @@ var IPCServer = class {
         (0, import_node_fs12.chmodSync)(this.socketPath, 384);
         logger52.info("IPC server listening", { path: this.socketPath });
         srv.removeListener("error", reject);
-        resolve();
+        resolve2();
       });
     });
   }
@@ -34611,9 +34639,9 @@ var IPCServer = class {
       socket.destroy();
     }
     this.connections.clear();
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       if (!this.server) {
-        resolve();
+        resolve2();
         return;
       }
       const srv = this.server;
@@ -34621,7 +34649,7 @@ var IPCServer = class {
       srv.close(() => {
         this.removeSocketFile();
         logger52.info("IPC server closed");
-        resolve();
+        resolve2();
       });
     });
   }
@@ -35854,6 +35882,213 @@ var RuntimeEngine = class {
   }
 };
 
+// src/transport/daemon-lifecycle.ts
+var import_node_fs17 = require("node:fs");
+var import_node_path17 = require("node:path");
+var import_node_child_process3 = require("node:child_process");
+var import_node_net2 = require("node:net");
+init_utils();
+var logger57 = createLogger("daemon-lifecycle");
+var STARTUP_TIMEOUT_MS = 1e4;
+var HEALTH_CHECK_INTERVAL_MS = 500;
+var DaemonLifecycle = class {
+  static {
+    __name(this, "DaemonLifecycle");
+  }
+  startPromise = null;
+  projectRoot;
+  goodvibesDir;
+  pidFilePath;
+  socketPointerPath;
+  constructor(projectRoot) {
+    this.projectRoot = projectRoot;
+    this.goodvibesDir = (0, import_node_path17.resolve)(projectRoot, ".goodvibes");
+    this.pidFilePath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_PID_FILE);
+    this.socketPointerPath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_SOCKET_POINTER);
+  }
+  /**
+   * Check if the daemon is currently running.
+   * Verifies both PID file existence AND process liveness AND socket responsiveness.
+   */
+  async isRunning() {
+    const pid = this.readPid();
+    if (pid === null) return false;
+    if (!this.isProcessAlive(pid)) {
+      this.cleanupStaleFiles();
+      return false;
+    }
+    const socketPath = this.readSocketPointer();
+    if (!socketPath) {
+      return false;
+    }
+    return this.probeSocket(socketPath);
+  }
+  /**
+   * Start the daemon process.
+   * Uses a single-instance guard to prevent concurrent starts spawning duplicate daemons.
+   */
+  async start() {
+    if (this.startPromise) return this.startPromise;
+    this.startPromise = this.doStart().finally(() => {
+      this.startPromise = null;
+    });
+    return this.startPromise;
+  }
+  async doStart() {
+    if (await this.isRunning()) {
+      logger57.info("Daemon already running");
+      return;
+    }
+    this.cleanupStaleFiles();
+    const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"] ?? process.cwd();
+    const daemonScript = (0, import_node_path17.resolve)(
+      pluginRoot,
+      "tools/implementations/runtime-engine",
+      DAEMON_ENTRY
+    );
+    if (!(0, import_node_fs17.existsSync)(daemonScript)) {
+      throw new Error(
+        `Daemon entry point not found: ${daemonScript}. Run the build first.`
+      );
+    }
+    logger57.info("Starting daemon process", { script: daemonScript });
+    const child = (0, import_node_child_process3.spawn)(process.execPath, [daemonScript], {
+      detached: true,
+      stdio: "ignore",
+      env: {
+        ...process.env,
+        GV_PROJECT_ROOT: this.projectRoot
+      }
+    });
+    child.unref();
+    if (!child.pid) {
+      throw new Error("Failed to spawn daemon process \u2014 no PID returned");
+    }
+    const daemonPid = child.pid;
+    await this.waitForSocket(STARTUP_TIMEOUT_MS);
+    logger57.info("Daemon started", { pid: daemonPid });
+  }
+  /**
+   * Stop the daemon process by sending SIGTERM.
+   */
+  async stop() {
+    const pid = this.readPid();
+    if (pid === null) {
+      logger57.info("No daemon PID file found");
+      return;
+    }
+    if (!this.isProcessAlive(pid)) {
+      logger57.info("Daemon process already dead, cleaning up");
+      this.cleanupStaleFiles();
+      return;
+    }
+    logger57.info("Sending SIGTERM to daemon", { pid });
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch (err) {
+      logger57.warn("Failed to send SIGTERM", { err: toErrorMessage(err) });
+    }
+    const deadline = Date.now() + 5e3;
+    while (Date.now() < deadline) {
+      if (!this.isProcessAlive(pid)) break;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    if (this.isProcessAlive(pid)) {
+      logger57.warn("Daemon did not exit gracefully, sending SIGKILL", { pid });
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+      }
+    }
+    this.cleanupStaleFiles();
+  }
+  /**
+   * Get daemon status information.
+   */
+  async getStatus() {
+    const pid = this.readPid();
+    const socketPath = this.readSocketPointer();
+    const running = pid !== null && this.isProcessAlive(pid) && socketPath !== null && await this.probeSocket(socketPath);
+    return {
+      running,
+      pid: running ? pid : null,
+      socketPath: running ? socketPath : null
+    };
+  }
+  // ── Private Helpers ────────────────────────────────────────────
+  readPid() {
+    if (!(0, import_node_fs17.existsSync)(this.pidFilePath)) return null;
+    try {
+      const content = (0, import_node_fs17.readFileSync)(this.pidFilePath, "utf-8").trim();
+      const pid = parseInt(content, 10);
+      return Number.isFinite(pid) ? pid : null;
+    } catch (err) {
+      logger57.debug("Failed to read PID file", { path: this.pidFilePath, err: toErrorMessage(err) });
+      return null;
+    }
+  }
+  readSocketPointer() {
+    if (!(0, import_node_fs17.existsSync)(this.socketPointerPath)) return null;
+    try {
+      const content = (0, import_node_fs17.readFileSync)(this.socketPointerPath, "utf-8").trim();
+      return content || null;
+    } catch (err) {
+      logger57.debug("Failed to read socket pointer file", { path: this.socketPointerPath, err: toErrorMessage(err) });
+      return null;
+    }
+  }
+  isProcessAlive(pid) {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  probeSocket(socketPath) {
+    return new Promise((done) => {
+      if (!(0, import_node_fs17.existsSync)(socketPath)) {
+        done(false);
+        return;
+      }
+      const timer = setTimeout(() => {
+        socket.destroy();
+        done(false);
+      }, 1e3);
+      const socket = (0, import_node_net2.createConnection)(socketPath, () => {
+        clearTimeout(timer);
+        socket.destroy();
+        done(true);
+      });
+      socket.on("error", () => {
+        clearTimeout(timer);
+        done(false);
+      });
+    });
+  }
+  cleanupStaleFiles() {
+    for (const path3 of [this.pidFilePath, this.socketPointerPath]) {
+      try {
+        (0, import_node_fs17.unlinkSync)(path3);
+      } catch {
+      }
+    }
+  }
+  async waitForSocket(timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const socketPath = this.readSocketPointer();
+      if (socketPath && await this.probeSocket(socketPath)) {
+        return;
+      }
+      await new Promise((r) => setTimeout(r, HEALTH_CHECK_INTERVAL_MS));
+    }
+    throw new Error(
+      `Daemon did not become responsive within ${timeoutMs}ms`
+    );
+  }
+};
+
 // src/plugins/mcp/handlers/shared.ts
 function toSuccess(data, version2, uptime_ms, execution_ms) {
   const result = {
@@ -35882,7 +36117,7 @@ __name(toError, "toError");
 
 // src/plugins/mcp/handlers/status.ts
 init_utils();
-var logger57 = createLogger("tool-handlers:status");
+var logger58 = createLogger("tool-handlers:status");
 var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   if (args !== null && args !== void 0 && typeof args !== "object") {
@@ -35908,11 +36143,11 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
       statusData = ctx.getHealth();
       version2 = ctx.version;
     }
-    logger57.debug("runtime_status computed", { status: statusData.status });
+    logger58.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, version2, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger57.error("runtime_status failed", { error: message });
+    logger58.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
@@ -35920,7 +36155,7 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/config.ts
 init_utils();
 init_errors();
-var logger58 = createLogger("tool-handlers:config");
+var logger59 = createLogger("tool-handlers:config");
 var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "ipc.socket_dir",
   "ipc.connect_timeout_ms",
@@ -36151,7 +36386,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         saveConfig(ctx.projectRoot, updated);
         ctx.updateConfig(updated);
       }
-      logger58.info("Config key set", { key, value });
+      logger59.info("Config key set", { key, value });
       return toSuccess(
         { key, value, persisted: true },
         ctx.version,
@@ -36166,7 +36401,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
         ctx.updateConfig(DEFAULT_CONFIG);
       }
-      logger58.info("Config reset to defaults");
+      logger59.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -36182,14 +36417,14 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger58.error("runtime_config failed", { error: message });
+    logger59.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
 
 // src/plugins/mcp/handlers/events.ts
 init_utils();
-var logger59 = createLogger("tool-handlers:events");
+var logger60 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
   if (pattern === "*") return true;
   if (pattern.endsWith(":*")) {
@@ -36359,14 +36594,14 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger59.error("runtime_events failed", { error: message });
+    logger60.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
 
 // src/plugins/mcp/handlers/emit.ts
 init_utils();
-var logger60 = createLogger("tool-handlers:emit");
+var logger61 = createLogger("tool-handlers:emit");
 var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -36398,7 +36633,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger60.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
+      logger61.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
     }
     const eventId = generateEventId();
     const fullEvent = {
@@ -36424,18 +36659,18 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       emittedId = emitted2.id;
     }
     const emitted = { ...fullEvent, id: emittedId };
-    logger60.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    logger61.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger60.error("runtime_emit failed", { error: message });
+    logger61.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
 
 // src/plugins/mcp/handlers/workflow.ts
 init_utils();
-var logger61 = createLogger("tool-handlers:workflow");
+var logger62 = createLogger("tool-handlers:workflow");
 var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -36462,7 +36697,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       const context = params.context ?? {};
       if (ctx.transport) {
         const result = await ctx.transport.startWorkflow(definitionId, context);
-        logger61.info("runtime_workflow: created", { id: result.workflow_id, definition: definitionId });
+        logger62.info("runtime_workflow: created", { id: result.workflow_id, definition: definitionId });
         return toSuccess({ instance: { id: result.workflow_id, definition_id: definitionId, context } }, ctx.version, uptimeMs, Date.now() - start);
       }
       const engine = ctx.getWorkflowEngine();
@@ -36470,7 +36705,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.create(definitionId, context);
-      logger61.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      logger62.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
@@ -36574,14 +36809,14 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger61.error("runtime_workflow failed", { error: message });
+    logger62.error("runtime_workflow failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeWorkflow");
 
 // src/plugins/mcp/handlers/triggers.ts
 init_utils();
-var logger62 = createLogger("tool-handlers:triggers");
+var logger63 = createLogger("tool-handlers:triggers");
 var VALID_TRIGGER_ACTION_TYPES = /* @__PURE__ */ new Set([
   "emit_event",
   "spawn_agent",
@@ -36674,7 +36909,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       if (ctx.transport) {
         await ctx.transport.registerTrigger(triggerDef);
-        logger62.info("runtime_triggers: registered", { id: triggerDef.id });
+        logger63.info("runtime_triggers: registered", { id: triggerDef.id });
         return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
       }
       const registry2 = ctx.getTriggerRegistry();
@@ -36682,7 +36917,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.register(triggerDef);
-      logger62.info("runtime_triggers: registered", { id: triggerDef.id });
+      logger63.info("runtime_triggers: registered", { id: triggerDef.id });
       return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "update") {
@@ -36699,7 +36934,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       updateRegistry.replace(updateDef);
-      logger62.info("runtime_triggers: updated", { id: updateDef.id });
+      logger63.info("runtime_triggers: updated", { id: updateDef.id });
       return toSuccess({ updated: true, id: updateDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "delete") {
@@ -36709,7 +36944,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       if (ctx.transport) {
         await ctx.transport.unregisterTrigger(deleteTriggerId);
-        logger62.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+        logger63.info("runtime_triggers: unregistered", { id: deleteTriggerId });
         return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
       }
       const deleteRegistry = ctx.getTriggerRegistry();
@@ -36717,7 +36952,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       deleteRegistry.unregister(deleteTriggerId);
-      logger62.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+      logger63.info("runtime_triggers: unregistered", { id: deleteTriggerId });
       return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "enable" || action === "disable") {
@@ -36731,7 +36966,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       enableRegistry.setEnabled(enableTriggerId, enabled);
-      logger62.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
+      logger63.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
       return toSuccess({ [action + "d"]: true, id: enableTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "test") {
@@ -36768,14 +37003,14 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger62.error("runtime_triggers failed", { error: message });
+    logger63.error("runtime_triggers failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeTriggers");
 
 // src/plugins/mcp/handlers/agents.ts
 init_utils();
-var logger63 = createLogger("tool-handlers:agents");
+var logger64 = createLogger("tool-handlers:agents");
 var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -36882,7 +37117,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       };
       const agentId = spawnCoordinator.spawn(options);
       const agent = spawnCoordinator.getAgent(agentId);
-      logger63.info("runtime_agents: spawned", { agentId, type: options.type });
+      logger64.info("runtime_agents: spawned", { agentId, type: options.type });
       return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
@@ -36932,14 +37167,14 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger63.error("runtime_agents failed", { error: message });
+    logger64.error("runtime_agents failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeAgents");
 
 // src/plugins/mcp/handlers/state.ts
 init_utils();
-var logger64 = createLogger("tool-handlers:state");
+var logger65 = createLogger("tool-handlers:state");
 var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -37061,10 +37296,131 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger64.error("runtime_state failed", { error: message });
+    logger65.error("runtime_state failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeState");
+
+// src/plugins/mcp/handlers/daemon-handler.ts
+init_utils();
+var logger66 = createLogger("daemon-handler");
+async function handleDaemon(args, ctx) {
+  const startTime = Date.now();
+  const version2 = ctx.version;
+  const uptime = ctx.getUptime();
+  const params = args ?? {};
+  const { action } = params;
+  if (!action) {
+    return toError(
+      "Missing required parameter: action",
+      version2,
+      uptime,
+      Date.now() - startTime
+    );
+  }
+  const projectRoot = ctx.projectRoot;
+  const lifecycle = new DaemonLifecycle(projectRoot);
+  switch (action) {
+    case "start": {
+      try {
+        logger66.info("Starting daemon");
+        await lifecycle.start();
+        const status = await lifecycle.getStatus();
+        return toSuccess(
+          { message: "Daemon started", ...status },
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      } catch (err) {
+        return toError(
+          `Failed to start daemon: ${toErrorMessage(err)}`,
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      }
+    }
+    case "stop": {
+      try {
+        logger66.info("Stopping daemon");
+        await lifecycle.stop();
+        return toSuccess(
+          { message: "Daemon stopped" },
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      } catch (err) {
+        return toError(
+          `Failed to stop daemon: ${toErrorMessage(err)}`,
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      }
+    }
+    case "status": {
+      try {
+        const status = await lifecycle.getStatus();
+        if (status.running && ctx.transport) {
+          try {
+            status.uptime = await ctx.transport.getUptime();
+          } catch {
+          }
+        }
+        return toSuccess(
+          status,
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      } catch (err) {
+        return toError(
+          `Failed to get daemon status: ${toErrorMessage(err)}`,
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      }
+    }
+    case "sessions": {
+      if (!ctx.transport || ctx.transport.mode !== "remote") {
+        return toError(
+          "Sessions query requires an active daemon connection",
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      }
+      try {
+        const remote = ctx.transport;
+        const sessions = await remote.rpc("listSessions");
+        return toSuccess(
+          { sessions },
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      } catch (err) {
+        return toError(
+          `Failed to query sessions: ${toErrorMessage(err)}`,
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      }
+    }
+    default:
+      return toError(
+        `Unknown daemon action: ${action}. Valid: start, stop, status, sessions`,
+        version2,
+        uptime,
+        Date.now() - startTime
+      );
+  }
+}
+__name(handleDaemon, "handleDaemon");
 
 // src/plugins/mcp/handlers/schemas.ts
 var allSchemas = [
@@ -37344,6 +37700,22 @@ var allSchemas = [
       },
       additionalProperties: false
     }
+  },
+  {
+    name: "runtime_daemon",
+    description: "Manage the GoodVibes runtime daemon process. Start, stop, check status, or list connected sessions.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["start", "stop", "status", "sessions"],
+          description: "Daemon management action."
+        }
+      },
+      additionalProperties: false
+    }
   }
 ];
 
@@ -37356,7 +37728,8 @@ var handlerRegistry = /* @__PURE__ */ new Map([
   ["runtime_workflow", handleRuntimeWorkflow],
   ["runtime_triggers", handleRuntimeTriggers],
   ["runtime_agents", handleRuntimeAgents],
-  ["runtime_state", handleRuntimeState]
+  ["runtime_state", handleRuntimeState],
+  ["runtime_daemon", handleDaemon]
 ]);
 function getHandler(toolName) {
   return handlerRegistry.get(toolName);
@@ -37369,21 +37742,19 @@ __name(listHandlers, "listHandlers");
 
 // src/plugins/mcp/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger65 = createLogger("mcp-server");
+var logger67 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
   }
   server;
-  processManager;
+  processManager = null;
   runtimeTransport = null;
   constructor() {
     this.server = new Server(
       { name: SERVER_NAME, version: ENGINE_VERSION },
       { capabilities: { tools: {} } }
     );
-    const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    this.processManager = new RuntimeEngine(loadConfig(projectRoot), projectRoot);
     this.setupHandlers();
     this.setupErrorHandling();
   }
@@ -37393,12 +37764,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger65.debug("ListTools request");
+      logger67.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger65.debug("CallTool request", { name });
+      logger67.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -37408,22 +37779,24 @@ var RuntimeEngineServer = class {
       }
       const ctx = {
         transport: this.runtimeTransport ?? void 0,
-        getUptime: /* @__PURE__ */ __name(() => this.processManager.getUptime(), "getUptime"),
-        getConfig: /* @__PURE__ */ __name(() => this.processManager.getConfig(), "getConfig"),
-        getHealth: /* @__PURE__ */ __name(() => this.processManager.getHealthChecker().check(), "getHealth"),
-        updateConfig: /* @__PURE__ */ __name((config2) => this.processManager.updateConfig(config2), "updateConfig"),
-        projectRoot: this.processManager.getProjectRoot(),
+        getUptime: /* @__PURE__ */ __name(() => this.processManager?.getUptime() ?? 0, "getUptime"),
+        getConfig: /* @__PURE__ */ __name(() => this.processManager?.getConfig() ?? loadConfig(process.env.CLAUDE_PROJECT_DIR || process.cwd()), "getConfig"),
+        getHealth: /* @__PURE__ */ __name(() => this.processManager?.getHealthChecker().check() ?? { status: "unhealthy", checks: [] }, "getHealth"),
+        updateConfig: /* @__PURE__ */ __name((config2) => {
+          if (this.processManager) this.processManager.updateConfig(config2);
+        }, "updateConfig"),
+        projectRoot: this.processManager?.getProjectRoot() ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
         version: ENGINE_VERSION,
-        getEventBus: /* @__PURE__ */ __name(() => this.processManager.getEventBus(), "getEventBus"),
-        getEventLog: /* @__PURE__ */ __name(() => this.processManager.getEventLog(), "getEventLog"),
-        getEventQueue: /* @__PURE__ */ __name(() => this.processManager.getEventQueue(), "getEventQueue"),
-        getWorkflowEngine: /* @__PURE__ */ __name(() => this.processManager.getWorkflowEngine(), "getWorkflowEngine"),
-        getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager.getTriggerRegistry(), "getTriggerRegistry"),
-        getAgentCoordinator: /* @__PURE__ */ __name(() => this.processManager.getAgentCoordinator(), "getAgentCoordinator"),
-        getDirectiveQueue: /* @__PURE__ */ __name(() => this.processManager.getDirectiveQueue(), "getDirectiveQueue"),
+        getEventBus: /* @__PURE__ */ __name(() => this.processManager?.getEventBus() ?? null, "getEventBus"),
+        getEventLog: /* @__PURE__ */ __name(() => this.processManager?.getEventLog() ?? null, "getEventLog"),
+        getEventQueue: /* @__PURE__ */ __name(() => this.processManager?.getEventQueue() ?? null, "getEventQueue"),
+        getWorkflowEngine: /* @__PURE__ */ __name(() => this.processManager?.getWorkflowEngine() ?? null, "getWorkflowEngine"),
+        getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager?.getTriggerRegistry() ?? null, "getTriggerRegistry"),
+        getAgentCoordinator: /* @__PURE__ */ __name(() => this.processManager?.getAgentCoordinator() ?? null, "getAgentCoordinator"),
+        getDirectiveQueue: /* @__PURE__ */ __name(() => this.processManager?.getDirectiveQueue() ?? null, "getDirectiveQueue"),
         getCoreStateStore: /* @__PURE__ */ __name(() => {
           try {
-            return this.processManager.getCoreStateStore();
+            return this.processManager?.getCoreStateStore() ?? null;
           } catch {
             return null;
           }
@@ -37434,7 +37807,7 @@ var RuntimeEngineServer = class {
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = toErrorMessage(error2);
-        logger65.error(`Tool ${name} failed`, { error: message });
+        logger67.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -37446,7 +37819,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger65.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger67.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -37459,21 +37832,73 @@ var RuntimeEngineServer = class {
    * @throws If the RuntimeEngine startup or transport connection fails.
    */
   async start() {
-    await this.processManager.startup();
-    this.runtimeTransport = await createTransport({
-      engine: this.processManager,
-      mode: this.processManager.getConfig().executor.mode,
-      projectRoot: this.processManager.getProjectRoot()
-    });
+    const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const config2 = loadConfig(projectRoot);
+    const mode = config2.executor.mode;
+    if (mode === "daemon") {
+      await this.ensureDaemonRunning(projectRoot, config2);
+      this.runtimeTransport = await createTransport({
+        mode: "daemon",
+        projectRoot,
+        connectTimeoutMs: config2.executor.transport?.rpc_timeout_ms,
+        sessionId: this.getSessionId()
+      });
+    } else if (mode === "hybrid") {
+      try {
+        await this.ensureDaemonRunning(projectRoot, config2);
+        this.runtimeTransport = await createTransport({
+          mode: "daemon",
+          projectRoot,
+          connectTimeoutMs: config2.executor.transport?.rpc_timeout_ms,
+          sessionId: this.getSessionId()
+        });
+      } catch {
+        this.processManager = new RuntimeEngine(config2, projectRoot);
+        await this.processManager.startup();
+        this.runtimeTransport = await createTransport({
+          mode: "engaged",
+          engine: this.processManager
+        });
+      }
+    } else {
+      this.processManager = new RuntimeEngine(config2, projectRoot);
+      await this.processManager.startup();
+      try {
+        this.runtimeTransport = await createTransport({
+          engine: this.processManager,
+          mode: config2.executor.mode,
+          projectRoot: this.processManager.getProjectRoot()
+        });
+      } catch (err) {
+        logger67.warn("Transport creation failed, falling back to local transport", {
+          mode: config2.executor.mode,
+          err: toErrorMessage(err)
+        });
+        this.runtimeTransport = await createTransport({
+          engine: this.processManager,
+          mode: "engaged"
+        });
+      }
+    }
     setupSignalHandlers(async () => {
       await this.stop();
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger65.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger67.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
-      pid: process.pid
+      pid: process.pid,
+      transportMode: this.runtimeTransport?.mode ?? "unknown"
     });
+  }
+  getSessionId() {
+    return process.env.CLAUDE_SESSION_ID ?? process.env.SESSION_ID ?? `mcp-${process.pid}`;
+  }
+  async ensureDaemonRunning(projectRoot, config2) {
+    if (!config2.executor.transport?.auto_start) return;
+    const lifecycle = new DaemonLifecycle(projectRoot);
+    if (await lifecycle.isRunning()) return;
+    await lifecycle.start();
   }
   /**
    * Stop the runtime engine:
@@ -37484,7 +37909,7 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger65.info("Stopping runtime engine");
+    logger67.info("Stopping runtime engine");
     if (this.runtimeTransport) {
       try {
         await this.runtimeTransport.disconnect();
@@ -37492,21 +37917,23 @@ var RuntimeEngineServer = class {
       }
       this.runtimeTransport = null;
     }
-    try {
-      await this.processManager.shutdown();
-    } catch (err) {
-      logger65.warn("RuntimeEngine shutdown error", {
-        err: toErrorMessage(err)
-      });
+    if (this.processManager) {
+      try {
+        await this.processManager.shutdown();
+      } catch (err) {
+        logger67.warn("RuntimeEngine shutdown error", {
+          err: toErrorMessage(err)
+        });
+      }
     }
     try {
       await this.server.close();
     } catch (err) {
-      logger65.warn("MCP server close error", {
+      logger67.warn("MCP server close error", {
         err: toErrorMessage(err)
       });
     }
-    logger65.info("Runtime engine stopped");
+    logger67.info("Runtime engine stopped");
   }
 };
 

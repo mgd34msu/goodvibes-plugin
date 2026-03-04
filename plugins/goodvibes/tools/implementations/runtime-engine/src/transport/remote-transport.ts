@@ -14,6 +14,7 @@ import { generateId } from '../shared/utils.js';
 export interface RemoteTransportOptions {
   socketPath: string;
   connectTimeoutMs?: number;
+  sessionId?: string;
 }
 
 export class RemoteTransport implements RuntimeTransport {
@@ -30,7 +31,7 @@ export class RemoteTransport implements RuntimeTransport {
   constructor(options: RemoteTransportOptions) {
     this.socketPath = options.socketPath;
     this.connectTimeoutMs = options.connectTimeoutMs ?? 5000;
-    this.sessionId = generateId();
+    this.sessionId = options.sessionId ?? generateId();
   }
 
   isReady(): boolean {
@@ -77,7 +78,8 @@ export class RemoteTransport implements RuntimeTransport {
   }
 
   async disconnect(): Promise<void> {
-    if (!this.socket) return;
+    const sock = this.socket;
+    if (!sock) return;
 
     try {
       const leave = JSON.stringify({
@@ -85,13 +87,13 @@ export class RemoteTransport implements RuntimeTransport {
         id: generateId(),
         session_id: this.sessionId,
       }) + '\n';
-      this.socket.write(leave);
+      sock.write(leave);
     } catch {
       // ignore write errors on disconnect
     }
 
     return new Promise((resolve) => {
-      this.socket!.end(() => resolve());
+      sock.end(() => resolve());
     });
   }
 
@@ -148,7 +150,7 @@ export class RemoteTransport implements RuntimeTransport {
     });
   }
 
-  private async rpc<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
+  async rpc<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
     const request: DaemonRPCRequest = {
       type: 'rpc_call',
       id: generateId(),

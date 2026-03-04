@@ -19,6 +19,7 @@ export {
   handleRuntimeTriggers,
   handleRuntimeAgents,
   handleRuntimeState,
+  handleDaemon,
   toSuccess,
   toError,
   VALID_CONFIG_KEYS,

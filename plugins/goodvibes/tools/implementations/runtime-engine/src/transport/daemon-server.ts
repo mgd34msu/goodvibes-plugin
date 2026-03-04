@@ -13,8 +13,11 @@ import type {
 } from './daemon-protocol.js';
 import { LocalTransport } from './local-transport.js';
 import { generateId } from '../shared/utils.js';
+import { createLogger } from '../shared/logger.js';
 import type { EventType, EventPayload } from '../shared/events.js';
 import { ENGINE_VERSION } from '../shared/constants.js';
+
+const logger = createLogger('daemon-server');
 
 const CONNECTION_TIMEOUT_MS = 10_000;
 
@@ -34,10 +37,12 @@ export class DaemonServer {
   private engine: RuntimeEngine;
   private server: Server | null = null;
   private sessions = new Map<string, ClientSession>();
+  private readonly localTransport: LocalTransport;
 
   constructor(options: DaemonServerOptions) {
     this.socketPath = options.socketPath;
     this.engine = options.engine;
+    this.localTransport = new LocalTransport(this.engine);
   }
 
   getSessionCount(): number {
@@ -51,7 +56,7 @@ export class DaemonServer {
       this.server.once('error', reject);
       this.server.listen(this.socketPath, () => {
         this.server!.removeListener('error', reject);
-        this.server!.on('error', (err) => console.error('[DaemonServer] server error:', err));
+        this.server!.on('error', (err) => logger.error('Server error', { error: String(err) }));
         resolve();
       });
     });
@@ -119,7 +124,7 @@ export class DaemonServer {
 
     socket.on('error', (err) => {
       clearTimeout(idleTimer);
-      console.error('[DaemonServer] socket error:', err);
+      logger.error('Socket error', { error: String(err) });
     });
   }
 
@@ -181,17 +186,13 @@ export class DaemonServer {
     try {
       socket.write(JSON.stringify(resp) + '\n');
     } catch (err) {
-      console.error('[DaemonServer] send error:', err);
+      logger.error('Send error', { error: String(err) });
     }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async dispatchRPC(req: DaemonRPCRequest): Promise<any> {
     const { method, args } = req;
-    // Delegate through LocalTransport to ensure consistent method resolution
-    const transport = new LocalTransport(this.engine);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const t = transport as any;
     const e = this.engine;
 
     switch (method) {
@@ -212,7 +213,7 @@ export class DaemonServer {
         return e.getProjectRoot();
       }
       case 'getUptime': {
-        return t.getUptime();
+        return this.localTransport.getUptime();
       }
       case 'getStateSnapshot': {
         return e.getCoreStateStore().snapshot();
@@ -320,6 +321,16 @@ export class DaemonServer {
           args['workflowId'] as string | undefined
         );
         return { directives: result.directives };
+      }
+      case 'ping': {
+        return { ok: true, pid: process.pid, uptime: process.uptime() };
+      }
+      case 'listSessions': {
+        const sessions: Array<{ sessionId: string }> = [];
+        for (const [id] of this.sessions) {
+          sessions.push({ sessionId: id });
+        }
+        return sessions;
       }
       default:
         throw new Error(`Unknown RPC method: ${method}`);

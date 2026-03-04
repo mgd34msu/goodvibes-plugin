@@ -37,6 +37,9 @@ export { handleRuntimeAgents };
 import { handleRuntimeState } from './state.js';
 export { handleRuntimeState };
 
+import { handleDaemon } from './daemon-handler.js';
+export { handleDaemon };
+
 // ─── Tool schemas ─────────────────────────────────────────────────────────────
 
 export { allSchemas } from './schemas.js';
@@ -56,6 +59,7 @@ export const handlerRegistry = new Map<string, ToolHandler>([
   ['runtime_triggers', handleRuntimeTriggers],
   ['runtime_agents', handleRuntimeAgents],
   ['runtime_state', handleRuntimeState],
+  ['runtime_daemon', handleDaemon],
 ]);
 
 /**

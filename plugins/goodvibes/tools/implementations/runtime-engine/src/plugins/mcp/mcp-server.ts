@@ -25,6 +25,8 @@ import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
 import { RuntimeEngine } from '../../bootstrap.js';
 import { setupSignalHandlers } from '../../core/processing/signals.js';
+import { DaemonLifecycle } from '../../transport/daemon-lifecycle.js';
+import type { HealthStatus } from '../../shared/types.js';
 import {
   allSchemas,
   getHandler,
@@ -48,7 +50,7 @@ const logger = createLogger('mcp-server');
  */
 export class RuntimeEngineServer {
   private readonly server: Server;
-  private readonly processManager: RuntimeEngine;
+  private processManager: RuntimeEngine | null = null;
   private runtimeTransport: RuntimeTransport | null = null;
 
   constructor() {
@@ -56,9 +58,6 @@ export class RuntimeEngineServer {
       { name: SERVER_NAME, version: ENGINE_VERSION },
       { capabilities: { tools: {} } }
     );
-
-    const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    this.processManager = new RuntimeEngine(loadConfig(projectRoot), projectRoot);
 
     this.setupHandlers();
     this.setupErrorHandling();
@@ -92,21 +91,26 @@ export class RuntimeEngineServer {
 
       const ctx: HandlerContext = {
         transport: this.runtimeTransport ?? undefined,
-        getUptime: () => this.processManager.getUptime(),
-        getConfig: () => this.processManager.getConfig(),
-        getHealth: () => this.processManager.getHealthChecker().check(),
-        updateConfig: (config) => this.processManager.updateConfig(config),
-        projectRoot: this.processManager.getProjectRoot(),
+        getUptime: () => this.processManager?.getUptime() ?? 0,
+        getConfig: () => this.processManager?.getConfig()
+          ?? loadConfig(process.env.CLAUDE_PROJECT_DIR || process.cwd()),
+        getHealth: () => this.processManager?.getHealthChecker().check()
+          ?? ({ status: 'unhealthy', checks: [] } as unknown as HealthStatus),
+        updateConfig: (config) => {
+          if (this.processManager) this.processManager.updateConfig(config);
+        },
+        projectRoot: this.processManager?.getProjectRoot() ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
         version: ENGINE_VERSION,
-        getEventBus: () => this.processManager.getEventBus(),
-        getEventLog: () => this.processManager.getEventLog(),
-        getEventQueue: () => this.processManager.getEventQueue(),
-        getWorkflowEngine: () => this.processManager.getWorkflowEngine(),
-        getTriggerRegistry: () => this.processManager.getTriggerRegistry(),
-        getAgentCoordinator: () => this.processManager.getAgentCoordinator(),
-        getDirectiveQueue: () => this.processManager.getDirectiveQueue(),
+        getEventBus: () => this.processManager?.getEventBus() ?? null as any,
+        getEventLog: () => this.processManager?.getEventLog() ?? null as any,
+        getEventQueue: () => this.processManager?.getEventQueue() ?? null as any,
+        getWorkflowEngine: () => this.processManager?.getWorkflowEngine() ?? null,
+        getTriggerRegistry: () => this.processManager?.getTriggerRegistry() ?? null,
+        getAgentCoordinator: () => this.processManager?.getAgentCoordinator() ?? null,
+        getDirectiveQueue: () => this.processManager?.getDirectiveQueue() ?? null,
         getCoreStateStore: () => {
-          try { return this.processManager.getCoreStateStore(); } catch { return null; }
+          try { return this.processManager?.getCoreStateStore() ?? null; }
+          catch { return null; }
         },
       };
 
@@ -144,30 +148,91 @@ export class RuntimeEngineServer {
    * @throws If the RuntimeEngine startup or transport connection fails.
    */
   async start(): Promise<void> {
-    // 1. Startup sequence
-    await this.processManager.startup();
+    const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const config = loadConfig(projectRoot);
+    const mode = config.executor.mode;
 
-    // 1b. Create runtime transport
-    this.runtimeTransport = await createTransport({
-      engine: this.processManager,
-      mode: this.processManager.getConfig().executor.mode,
-      projectRoot: this.processManager.getProjectRoot(),
-    });
+    if (mode === 'daemon') {
+      // Pure daemon mode: no local engine, connect to daemon
+      await this.ensureDaemonRunning(projectRoot, config);
+      this.runtimeTransport = await createTransport({
+        mode: 'daemon',
+        projectRoot,
+        connectTimeoutMs: config.executor.transport?.rpc_timeout_ms,
+        sessionId: this.getSessionId(),
+      });
+    } else if (mode === 'hybrid') {
+      // Hybrid: try daemon first, create local engine only if daemon unavailable
+      try {
+        await this.ensureDaemonRunning(projectRoot, config);
+        this.runtimeTransport = await createTransport({
+          mode: 'daemon',
+          projectRoot,
+          connectTimeoutMs: config.executor.transport?.rpc_timeout_ms,
+          sessionId: this.getSessionId(),
+        });
+        // Daemon available — no local engine needed
+      } catch {
+        // Daemon unavailable — fall back to local engine
+        this.processManager = new RuntimeEngine(config, projectRoot);
+        await this.processManager.startup();
+        this.runtimeTransport = await createTransport({
+          mode: 'engaged',
+          engine: this.processManager,
+        });
+      }
+    } else {
+      // Engaged (local) mode: unchanged behavior
+      this.processManager = new RuntimeEngine(config, projectRoot);
+      await this.processManager.startup();
+      try {
+        this.runtimeTransport = await createTransport({
+          engine: this.processManager,
+          mode: config.executor.mode,
+          projectRoot: this.processManager.getProjectRoot(),
+        });
+      } catch (err) {
+        logger.warn('Transport creation failed, falling back to local transport', {
+          mode: config.executor.mode,
+          err: toErrorMessage(err),
+        });
+        this.runtimeTransport = await createTransport({
+          engine: this.processManager,
+          mode: 'engaged',
+        });
+      }
+    }
 
-    // 2. Register signal handlers — must happen after processManager is ready
+    // Register signal handlers
     setupSignalHandlers(async () => {
       await this.stop();
     });
 
-    // 3. Connect MCP transport
+    // Connect MCP transport
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
 
-    // 4. Ready
     logger.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid,
+      transportMode: this.runtimeTransport?.mode ?? 'unknown',
     });
+  }
+
+  private getSessionId(): string {
+    return process.env.CLAUDE_SESSION_ID
+      ?? process.env.SESSION_ID
+      ?? `mcp-${process.pid}`;
+  }
+
+  private async ensureDaemonRunning(
+    projectRoot: string,
+    config: ReturnType<typeof loadConfig>,
+  ): Promise<void> {
+    if (!config.executor.transport?.auto_start) return;
+    const lifecycle = new DaemonLifecycle(projectRoot);
+    if (await lifecycle.isRunning()) return;
+    await lifecycle.start();
   }
 
   /**
@@ -188,12 +253,14 @@ export class RuntimeEngineServer {
     }
 
     // Shutdown process manager (saves checkpoint, removes PID file)
-    try {
-      await this.processManager.shutdown();
-    } catch (err) {
-      logger.warn('RuntimeEngine shutdown error', {
-        err: toErrorMessage(err),
-      });
+    if (this.processManager) {
+      try {
+        await this.processManager.shutdown();
+      } catch (err) {
+        logger.warn('RuntimeEngine shutdown error', {
+          err: toErrorMessage(err),
+        });
+      }
     }
 
     // Close MCP server

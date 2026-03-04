@@ -3,8 +3,9 @@
  * Falls back to LocalTransport when daemon socket cannot be reached (hybrid mode).
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
+import { DAEMON_SOCKET_POINTER, DAEMON_PID_FILE } from './daemon-constants.js';
 import type { RuntimeTransport } from './types.js';
 import type { RuntimeEngine } from '../bootstrap.js';
 import { LocalTransport } from './local-transport.js';
@@ -30,6 +31,9 @@ export interface TransportFactoryOptions {
 
   /** Project root for daemon socket file discovery (used when socketPath not provided). */
   projectRoot?: string;
+
+  /** Session ID to pass to RemoteTransport (optional; random ID generated if omitted). */
+  sessionId?: string;
 }
 
 /**
@@ -37,11 +41,32 @@ export interface TransportFactoryOptions {
  * Returns undefined if no pointer file exists.
  */
 export function discoverDaemonSocket(projectRoot: string): string | undefined {
-  const pointerPath = join(projectRoot, '.goodvibes', 'daemon.socket');
+  const goodvibesDir = join(projectRoot, '.goodvibes');
+  const pointerPath = join(goodvibesDir, DAEMON_SOCKET_POINTER);
   if (!existsSync(pointerPath)) return undefined;
+
   try {
     const content = readFileSync(pointerPath, 'utf-8').trim();
-    return content || undefined;
+    if (!content) return undefined;
+
+    // Verify the daemon PID is alive
+    const pidPath = join(goodvibesDir, DAEMON_PID_FILE);
+    if (existsSync(pidPath)) {
+      const pidStr = readFileSync(pidPath, 'utf-8').trim();
+      const pid = parseInt(pidStr, 10);
+      if (Number.isFinite(pid)) {
+        try {
+          process.kill(pid, 0);
+        } catch {
+          // PID is dead — clean up orphaned files
+          try { unlinkSync(pointerPath); } catch { /* ignore */ }
+          try { unlinkSync(pidPath); } catch { /* ignore */ }
+          return undefined;
+        }
+      }
+    }
+
+    return content;
   } catch {
     return undefined;
   }
@@ -52,7 +77,7 @@ export function discoverDaemonSocket(projectRoot: string): string | undefined {
  * For 'hybrid' mode: attempts RemoteTransport first, falls back to LocalTransport.
  */
 export async function createTransport(options: TransportFactoryOptions): Promise<RuntimeTransport> {
-  const { mode, connectTimeoutMs } = options;
+  const { mode, connectTimeoutMs, sessionId } = options;
 
   if (mode === 'engaged') {
     if (!options.engine) {
@@ -73,7 +98,7 @@ export async function createTransport(options: TransportFactoryOptions): Promise
         "TransportFactory: 'socketPath' is required for mode 'daemon' (or provide 'projectRoot' with a daemon.socket pointer file)"
       );
     }
-    const transport = new RemoteTransport({ socketPath, connectTimeoutMs });
+    const transport = new RemoteTransport({ socketPath, connectTimeoutMs, sessionId });
     await transport.connect();
     return transport;
   }
@@ -81,7 +106,7 @@ export async function createTransport(options: TransportFactoryOptions): Promise
   // hybrid: try remote first, fall back to local
   if (socketPath) {
     try {
-      const transport = new RemoteTransport({ socketPath, connectTimeoutMs });
+      const transport = new RemoteTransport({ socketPath, connectTimeoutMs, sessionId });
       await transport.connect();
       return transport;
     } catch {
