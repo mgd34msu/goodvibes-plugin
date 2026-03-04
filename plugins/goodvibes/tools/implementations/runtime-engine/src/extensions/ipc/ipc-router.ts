@@ -269,7 +269,7 @@ export class IPCRouter {
         data: msg.hook_input,
       } as EventPayload,
       metadata: {
-        session_id: '',
+        session_id: (msg.hook_input as Record<string, unknown>)?.session_id as string ?? '',
         sequence: 0,
         version: 1,
       },
@@ -295,9 +295,10 @@ export class IPCRouter {
     if (msg.hook_name === 'session:started' && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();
     }
-    // Clear stale WRFC state from the arriving session
+    // Handle all session:started logic in a single block
     if (msg.hook_name === 'session:started') {
       const sessionId = (msg.hook_input as Record<string, unknown>)?.session_id;
+      // Clear stale WRFC state from the arriving session
       if (this.stateStore && typeof sessionId === 'string' && sessionId.length > 0) {
         const sessionKeys = this.stateStore.keys(`wrfc.sessions.${sessionId}`);
         for (const key of sessionKeys) {
@@ -309,16 +310,27 @@ export class IPCRouter {
             keys_deleted: sessionKeys.length,
           });
         }
+        // Also clear wrfc.sessions.default.* as a migration/safety measure for
+        // state written before Fix 1 (when session_id was hardcoded to '' and
+        // eventSessionId() fell back to 'default').
+        const defaultKeys = this.stateStore.keys('wrfc.sessions.default');
+        for (const key of defaultKeys) {
+          this.stateStore.delete(key);
+        }
+        if (defaultKeys.length > 0) {
+          logger.info('Session cleanup: cleared stale WRFC state from default namespace', {
+            keys_deleted: defaultKeys.length,
+          });
+        }
       }
       // Clear stale pending binds from the arriving session
       if (this.agentWorkflowMap && typeof sessionId === 'string' && sessionId.length > 0) {
         this.agentWorkflowMap.clearForSession(sessionId);
       }
-    }
-    // Write session-keyed pointer file when session:started arrives
-    if (msg.hook_name === 'session:started' && this.socketPath && this.stateDir) {
-      const sessionId = (msg.hook_input as Record<string, unknown>)?.session_id;
-      if (typeof sessionId === 'string' && sessionId.length > 0) {
+      // Clear directive queue to prevent stale directives from leaking across sessions.
+      this.directiveQueue?.clear();
+      // Write session-keyed pointer file when socketPath and stateDir are configured
+      if (this.socketPath && this.stateDir && typeof sessionId === 'string' && sessionId.length > 0) {
         try {
           const pointerFile = join(this.stateDir, `runtime-${sessionId}.socket`);
           writeFileSync(pointerFile, this.socketPath, 'utf-8');

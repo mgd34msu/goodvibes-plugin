@@ -95,6 +95,7 @@ function makeDeps(overrides: Partial<IPCRouterDeps> = {}): IPCRouterDeps {
     directiveQueue: {
       holdDrain: vi.fn().mockReturnValue({ holdId: 'hold-1', directives: [] }),
       sweepStaleHolds: vi.fn(),
+      clear: vi.fn(),
     } as unknown as IPCRouterDeps['directiveQueue'],
     wrfcConfigStore: {
       set: vi.fn(),
@@ -104,7 +105,7 @@ function makeDeps(overrides: Partial<IPCRouterDeps> = {}): IPCRouterDeps {
     agentWorkflowMap: {
       resolvePendingBind: vi.fn().mockReturnValue(null),
       consumePendingBindsForWorkflow: vi.fn().mockReturnValue(0),
-      clear: vi.fn(),
+      clearForSession: vi.fn().mockReturnValue(0),
     } as unknown as IPCRouterDeps['agentWorkflowMap'],
     stateStore: {
       keys: vi.fn().mockReturnValue([]),
@@ -391,12 +392,24 @@ describe('IPCRouter', () => {
         ).resolves.toBeDefined();
       });
 
-      it('does not call agentWorkflowMap.clear() on session:started (in-memory bindings are short-lived)', async () => {
+      it('calls agentWorkflowMap.clearForSession with the correct sessionId on session:started', async () => {
         await router.route(
           makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-clear' } })
         );
         expect(
-          (deps.agentWorkflowMap as unknown as { clear: ReturnType<typeof vi.fn> }).clear
+          (deps.agentWorkflowMap as unknown as { clearForSession: ReturnType<typeof vi.fn> }).clearForSession
+        ).toHaveBeenCalledOnce();
+        expect(
+          (deps.agentWorkflowMap as unknown as { clearForSession: ReturnType<typeof vi.fn> }).clearForSession
+        ).toHaveBeenCalledWith('sess-clear');
+      });
+
+      it('does not call agentWorkflowMap.clearForSession when session_id is empty string', async () => {
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: '' } })
+        );
+        expect(
+          (deps.agentWorkflowMap as unknown as { clearForSession: ReturnType<typeof vi.fn> }).clearForSession
         ).not.toHaveBeenCalled();
       });
 
@@ -405,6 +418,66 @@ describe('IPCRouter', () => {
         await expect(
           r.route(makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 's' } }))
         ).resolves.toBeDefined();
+      });
+
+      it('clears directive queue on session:started to prevent stale directives leaking', async () => {
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-clear' } })
+        );
+        expect(
+          (deps.directiveQueue as unknown as { clear: ReturnType<typeof vi.fn> }).clear
+        ).toHaveBeenCalledOnce();
+      });
+
+      it('does not throw when directiveQueue is null on session:started', async () => {
+        const r = new IPCRouter(makeDeps({ directiveQueue: null }));
+        await expect(
+          r.route(makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-x' } }))
+        ).resolves.toBeDefined();
+      });
+
+      it('clears wrfc.sessions.default.* keys on session:started (migration safety)', async () => {
+        const sessionId = 'sess-migrate';
+        const stateStore = {
+          keys: vi.fn().mockImplementation((prefix: string) => {
+            if (prefix === `wrfc.sessions.${sessionId}`) return [];
+            if (prefix === 'wrfc.sessions.default') return ['wrfc.sessions.default.workflows.wf-stale'];
+            return [];
+          }),
+          delete: vi.fn(),
+        } as unknown as IPCRouterDeps['stateStore'];
+        const r = new IPCRouter(makeDeps({ stateStore }));
+        await r.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: sessionId } })
+        );
+        expect((stateStore as unknown as { keys: ReturnType<typeof vi.fn> }).keys).toHaveBeenCalledWith('wrfc.sessions.default');
+        expect((stateStore as unknown as { delete: ReturnType<typeof vi.fn> }).delete).toHaveBeenCalledWith('wrfc.sessions.default.workflows.wf-stale');
+      });
+
+      it('propagates session_id from hook_input into emitted event metadata', async () => {
+        const processHookEvent = vi.fn().mockResolvedValue(undefined);
+        const r = new IPCRouter(makeDeps({ processHookEvent }));
+        await r.route(
+          makeHookEventMsg({
+            hook_name: 'pre_tool_use',
+            hook_input: { session_id: 'sess-meta' },
+          })
+        );
+        const receivedEvent = processHookEvent.mock.calls[0][0];
+        expect(receivedEvent.metadata.session_id).toBe('sess-meta');
+      });
+
+      it('sets empty string session_id in metadata when hook_input has no session_id', async () => {
+        const processHookEvent = vi.fn().mockResolvedValue(undefined);
+        const r = new IPCRouter(makeDeps({ processHookEvent }));
+        await r.route(
+          makeHookEventMsg({
+            hook_name: 'pre_tool_use',
+            hook_input: { tool: 'bash' },
+          })
+        );
+        const receivedEvent = processHookEvent.mock.calls[0][0];
+        expect(receivedEvent.metadata.session_id).toBe('');
       });
     });
 
@@ -542,7 +615,7 @@ describe('IPCRouter', () => {
           makeHookEventMsg({
             id: 'evt-shape',
             hook_name: 'agent:completed',
-            hook_input: { agent_id: 'a-1' },
+            hook_input: { agent_id: 'a-1', session_id: 'sess-456' },
             timestamp: '2026-01-01T00:00:00.000Z',
           })
         );
@@ -558,7 +631,7 @@ describe('IPCRouter', () => {
           },
           timestamp: expect.any(Number),
           priority: 0,
-          metadata: expect.objectContaining({ sequence: 0, version: 1 }),
+          metadata: expect.objectContaining({ session_id: 'sess-456', sequence: 0, version: 1 }),
         });
       });
     });
