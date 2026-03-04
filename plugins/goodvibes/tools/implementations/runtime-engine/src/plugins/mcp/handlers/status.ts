@@ -37,12 +37,24 @@ export const handleRuntimeStatus = async (
   }
 
   try {
-    const uptimeMs = ctx.getUptime();
-    // Delegate to HealthChecker via context to avoid duplicated logic
-    const statusData = ctx.getHealth();
+    let uptimeMs: number;
+    let statusData: ReturnType<typeof ctx.getHealth>;
+    let version: string;
+
+    if (ctx.transport) {
+      [uptimeMs, statusData, version] = await Promise.all([
+        ctx.transport.getUptime(),
+        ctx.transport.getHealth(),
+        ctx.transport.getVersion(),
+      ]);
+    } else {
+      uptimeMs = ctx.getUptime();
+      statusData = ctx.getHealth();
+      version = ctx.version;
+    }
 
     logger.debug('runtime_status computed', { status: statusData.status });
-    return toSuccess(statusData, ctx.version, uptimeMs, Date.now() - start);
+    return toSuccess(statusData, version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
     logger.error('runtime_status failed', { error: message });

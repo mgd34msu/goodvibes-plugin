@@ -38,12 +38,7 @@ export const handleRuntimeWorkflow = async (
       );
     }
 
-    const engine = ctx.getWorkflowEngine();
-
     if (action === 'create') {
-      if (!engine) {
-        return toError('Workflow engine is disabled (set features.workflows_enabled = true to enable)', ctx.version, uptimeMs, Date.now() - start);
-      }
       const workflowType = assertOptionalString(params.workflow_type, 'workflow_type');
       if (!workflowType) {
         return toError('Missing required field: workflow_type', ctx.version, uptimeMs, Date.now() - start);
@@ -52,29 +47,53 @@ export const handleRuntimeWorkflow = async (
         : workflowType === 'fix_loop' ? 'fix_loop'
         : workflowType;
       const context = (params.context as Record<string, unknown> | undefined) ?? {};
+
+      if (ctx.transport) {
+        const result = await ctx.transport.startWorkflow(definitionId, context);
+        logger.info('runtime_workflow: created', { id: result.workflow_id, definition: definitionId });
+        return toSuccess({ instance: { id: result.workflow_id, definition_id: definitionId, context } }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
+      if (!engine) {
+        return toError('Workflow engine is disabled (set features.workflows_enabled = true to enable)', ctx.version, uptimeMs, Date.now() - start);
+      }
       const instance = engine.create(definitionId, context);
       logger.info('runtime_workflow: created', { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'get') {
-      if (!engine) {
-        return toSuccess({ instance: null }, ctx.version, uptimeMs, Date.now() - start);
-      }
       const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
       if (!workflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
+      }
+      if (ctx.transport) {
+        const instance = await ctx.transport.getWorkflow(workflowId);
+        return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
+      if (!engine) {
+        return toSuccess({ instance: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.get(workflowId);
       return toSuccess({ instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'list') {
+      const filter = params.filter as Record<string, unknown> | undefined;
+      const statusFilter = assertOptionalString(filter?.status, 'filter.status');
+
+      if (ctx.transport) {
+        let instances = await ctx.transport.listWorkflows();
+        if (statusFilter) {
+          instances = instances.filter((i) => (i as Record<string, unknown>)['status'] === statusFilter);
+        }
+        return toSuccess({ instances, count: instances.length }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
       if (!engine) {
         return toSuccess({ instances: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
-      const filter = params.filter as Record<string, unknown> | undefined;
-      const statusFilter = assertOptionalString(filter?.status, 'filter.status');
       const instances = statusFilter
         ? engine.listAll().filter((i) => i.status === statusFilter)
         : engine.listActive();
@@ -82,9 +101,6 @@ export const handleRuntimeWorkflow = async (
     }
 
     if (action === 'advance') {
-      if (!engine) {
-        return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
-      }
       const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
       const event = assertOptionalString(params.event, 'event');
       if (!workflowId) {
@@ -94,6 +110,16 @@ export const handleRuntimeWorkflow = async (
         return toError('Missing required field: event', ctx.version, uptimeMs, Date.now() - start);
       }
       const context = (params.context as Record<string, unknown> | undefined) ?? {};
+
+      if (ctx.transport) {
+        const transition = await ctx.transport.transitionWorkflow(workflowId, event, context);
+        const instance = await ctx.transport.getWorkflow(workflowId);
+        return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
+      if (!engine) {
+        return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
+      }
       const transition = await engine.sendEvent(workflowId, {
         id: generateEventId(),
         timestamp: timestamp(),
@@ -108,32 +134,36 @@ export const handleRuntimeWorkflow = async (
     }
 
     if (action === 'cancel') {
-      if (!engine) {
-        return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
-      }
-      const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
-      if (!workflowId) {
+      const cancelWorkflowId = assertOptionalString(params.workflow_id, 'workflow_id');
+      if (!cancelWorkflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = assertOptionalString(params.reason, 'reason') ?? 'cancelled via MCP';
-      engine.cancel(workflowId, reason);
-      const instance = engine.get(workflowId);
-      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
+      // cancel is not covered by transport — fall back to direct engine access
+      const cancelEngine = ctx.getWorkflowEngine();
+      if (!cancelEngine) {
+        return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
+      }
+      cancelEngine.cancel(cancelWorkflowId, reason);
+      const cancelledInstance = cancelEngine.get(cancelWorkflowId);
+      return toSuccess({ cancelled: true, instance: cancelledInstance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'history') {
-      if (!engine) {
-        return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
-      }
-      const workflowId = assertOptionalString(params.workflow_id, 'workflow_id');
-      if (!workflowId) {
+      const historyWorkflowId = assertOptionalString(params.workflow_id, 'workflow_id');
+      if (!historyWorkflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
-      const instance = engine.get(workflowId);
-      if (!instance) {
-        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptimeMs, Date.now() - start);
+      // history is not covered by transport — fall back to direct engine access
+      const historyEngine = ctx.getWorkflowEngine();
+      if (!historyEngine) {
+        return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
-      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptimeMs, Date.now() - start);
+      const historyInstance = historyEngine.get(historyWorkflowId);
+      if (!historyInstance) {
+        return toError(`Workflow not found: ${historyWorkflowId}`, ctx.version, uptimeMs, Date.now() - start);
+      }
+      return toSuccess({ history: historyInstance.history, count: historyInstance.history.length }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     return toError(

@@ -45,9 +45,9 @@ export const handleRuntimeAgents = async (
       );
     }
 
-    const coordinator = ctx.getAgentCoordinator() ?? null;
-
     if (action === 'status') {
+      // status is not covered by transport — fall back to direct coordinator access
+      const coordinator = ctx.getAgentCoordinator() ?? null;
       if (!coordinator) {
         return toSuccess(
           { stats: null, message: 'Agent coordinator is disabled (set features.agents_enabled = true)' },
@@ -60,6 +60,20 @@ export const handleRuntimeAgents = async (
     }
 
     if (action === 'list') {
+      if (ctx.transport) {
+        let agents = await ctx.transport.listAgents();
+        const filter = (params.filter as Record<string, unknown> | undefined) ?? {};
+        const statusFilter = assertOptionalString(filter.status, 'filter.status');
+        const typeFilter = assertOptionalString(filter.type, 'filter.type');
+        if (statusFilter) {
+          agents = agents.filter((a) => (a as Record<string, unknown>)['status'] === statusFilter);
+        }
+        if (typeFilter) {
+          agents = agents.filter((a) => (a as Record<string, unknown>)['type'] === typeFilter);
+        }
+        return toSuccess({ agents, count: agents.length }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const coordinator = ctx.getAgentCoordinator() ?? null;
       if (!coordinator) {
         return toSuccess({ agents: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
@@ -87,6 +101,11 @@ export const handleRuntimeAgents = async (
       if (!agentId) {
         return toError('Missing required field: agent_id', ctx.version, uptimeMs, Date.now() - start);
       }
+      if (ctx.transport) {
+        const agent = await ctx.transport.getAgent(agentId);
+        return toSuccess({ agent }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const coordinator = ctx.getAgentCoordinator() ?? null;
       if (!coordinator) {
         return toSuccess({ agent: null }, ctx.version, uptimeMs, Date.now() - start);
       }
@@ -95,7 +114,9 @@ export const handleRuntimeAgents = async (
     }
 
     if (action === 'spawn') {
-      if (!coordinator) {
+      // spawn is not covered by transport — fall back to direct coordinator access
+      const spawnCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!spawnCoordinator) {
         return toError(
           'Agent coordinator is disabled (set features.agents_enabled = true to enable)',
           ctx.version, uptimeMs, Date.now() - start
@@ -117,8 +138,8 @@ export const handleRuntimeAgents = async (
         workflow_id: assertOptionalString(spawnOpts.workflow_id, 'spawn.workflow_id'),
         workflow_phase: spawnOpts.workflow_phase as CoordinatedSpawnOptions['workflow_phase'],
       };
-      const agentId = coordinator.spawn(options);
-      const agent = coordinator.getAgent(agentId);
+      const agentId = spawnCoordinator.spawn(options);
+      const agent = spawnCoordinator.getAgent(agentId);
       logger.info('runtime_agents: spawned', { agentId, type: options.type });
       return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
@@ -128,23 +149,27 @@ export const handleRuntimeAgents = async (
       if (!agentId) {
         return toError('Missing required field: agent_id', ctx.version, uptimeMs, Date.now() - start);
       }
-      if (!coordinator) {
+      // cancel is not covered by transport — fall back to direct coordinator access
+      const cancelCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!cancelCoordinator) {
         return toError('Agent coordinator is disabled', ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = (params.reason as string | undefined) ?? 'cancelled via MCP';
-      coordinator.cancel(agentId, reason);
-      const agent = coordinator.getAgent(agentId);
+      cancelCoordinator.cancel(agentId, reason);
+      const agent = cancelCoordinator.getAgent(agentId);
       return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'budget') {
-      if (!coordinator) {
+      // budget is not covered by transport — fall back to direct coordinator access
+      const budgetCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!budgetCoordinator) {
         return toSuccess(
           { summary: null, message: 'Agent coordinator is disabled' },
           ctx.version, uptimeMs, Date.now() - start
         );
       }
-      const summary = coordinator.getBudgetSummary();
+      const summary = budgetCoordinator.getBudgetSummary();
       return toSuccess({ summary }, ctx.version, uptimeMs, Date.now() - start);
     }
 
@@ -153,10 +178,12 @@ export const handleRuntimeAgents = async (
       if (!workflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
-      if (!coordinator) {
+      // plan is not covered by transport — fall back to direct coordinator access
+      const planCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!planCoordinator) {
         return toSuccess({ plan: null }, ctx.version, uptimeMs, Date.now() - start);
       }
-      const plan = coordinator.getExecutionPlan(workflowId);
+      const plan = planCoordinator.getExecutionPlan(workflowId);
       return toSuccess({ plan }, ctx.version, uptimeMs, Date.now() - start);
     }
 

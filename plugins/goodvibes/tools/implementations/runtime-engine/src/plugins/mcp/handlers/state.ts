@@ -40,16 +40,19 @@ export const handleRuntimeState = async (
       );
     }
 
-    const stateStore = ctx.getCoreStateStore();
-    if (!stateStore) {
-      return toError('State store not available (engine not started)', ctx.version, uptimeMs, Date.now() - start);
-    }
-
     // ── get ──
     if (action === 'get') {
       const key = assertOptionalString(params.key, 'key');
       if (!key) {
         return toError('Missing required field: key.', ctx.version, uptimeMs, Date.now() - start);
+      }
+      if (ctx.transport) {
+        const value = await ctx.transport.getState(key);
+        return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const stateStore = ctx.getCoreStateStore();
+      if (!stateStore) {
+        return toError('State store not available (engine not started)', ctx.version, uptimeMs, Date.now() - start);
       }
       // CoreStateStore.get() internally validates dot-path (prototype pollution guard)
       const value = stateStore.get(key);
@@ -61,7 +64,16 @@ export const handleRuntimeState = async (
       const prefix =
         assertOptionalString(params.namespace, 'namespace') ??
         assertOptionalString(params.prefix, 'prefix');
-      const allKeys = stateStore.keys(prefix);
+      let allKeys: string[];
+      if (ctx.transport) {
+        allKeys = await ctx.transport.listStateKeys(prefix);
+      } else {
+        const stateStore = ctx.getCoreStateStore();
+        if (!stateStore) {
+          return toError('State store not available (engine not started)', ctx.version, uptimeMs, Date.now() - start);
+        }
+        allKeys = stateStore.keys(prefix);
+      }
 
       if (prefix) {
         const stripped = allKeys.map(k =>
@@ -78,7 +90,16 @@ export const handleRuntimeState = async (
 
     // ── namespaces ──
     if (action === 'namespaces') {
-      const allKeys = stateStore.keys();
+      let allKeys: string[];
+      if (ctx.transport) {
+        allKeys = await ctx.transport.listStateKeys();
+      } else {
+        const stateStore = ctx.getCoreStateStore();
+        if (!stateStore) {
+          return toError('State store not available (engine not started)', ctx.version, uptimeMs, Date.now() - start);
+        }
+        allKeys = stateStore.keys();
+      }
       const namespaces = new Set<string>();
       for (const key of allKeys) {
         const firstDot = key.indexOf('.');
@@ -95,7 +116,16 @@ export const handleRuntimeState = async (
     // ── snapshot ──
     if (action === 'snapshot') {
       const namespace = assertOptionalString(params.namespace, 'namespace') ?? assertOptionalString(params.prefix, 'prefix');
-      const fullSnapshot = stateStore.snapshot();
+      let fullSnapshot: Record<string, unknown>;
+      if (ctx.transport) {
+        fullSnapshot = await ctx.transport.getStateSnapshot();
+      } else {
+        const stateStore = ctx.getCoreStateStore();
+        if (!stateStore) {
+          return toError('State store not available (engine not started)', ctx.version, uptimeMs, Date.now() - start);
+        }
+        fullSnapshot = stateStore.snapshot();
+      }
 
       if (namespace) {
         const filtered: Record<string, unknown> = {};

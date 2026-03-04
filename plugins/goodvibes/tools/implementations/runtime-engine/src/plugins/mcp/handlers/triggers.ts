@@ -98,9 +98,12 @@ export const handleRuntimeTriggers = async (
       );
     }
 
-    const registry = ctx.getTriggerRegistry();
-
     if (action === 'list') {
+      if (ctx.transport) {
+        const triggers = await ctx.transport.listTriggers();
+        return toSuccess({ triggers, count: triggers.length }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const registry = ctx.getTriggerRegistry();
       const triggers = registry ? registry.list() : [];
       return toSuccess({ triggers, count: triggers.length }, ctx.version, uptimeMs, Date.now() - start);
     }
@@ -110,14 +113,16 @@ export const handleRuntimeTriggers = async (
       if (!triggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
+      if (ctx.transport) {
+        const trigger = await ctx.transport.getTrigger(triggerId);
+        return toSuccess({ trigger }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const registry = ctx.getTriggerRegistry();
       const trigger = registry?.get(triggerId) ?? null;
       return toSuccess({ trigger }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'create') {
-      if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
-      }
       const triggerDef = params.trigger as TriggerDefinition | undefined;
       if (!triggerDef) {
         return toError('Missing required field: trigger', ctx.version, uptimeMs, Date.now() - start);
@@ -125,6 +130,15 @@ export const handleRuntimeTriggers = async (
       const validationError = validateTriggerDefinition(triggerDef);
       if (validationError !== null) {
         return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
+      }
+      if (ctx.transport) {
+        await ctx.transport.registerTrigger(triggerDef as unknown as Record<string, unknown>);
+        logger.info('runtime_triggers: registered', { id: triggerDef.id });
+        return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const registry = ctx.getTriggerRegistry();
+      if (!registry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
       registry.register(triggerDef);
       logger.info('runtime_triggers: registered', { id: triggerDef.id });
@@ -132,60 +146,72 @@ export const handleRuntimeTriggers = async (
     }
 
     if (action === 'update') {
-      if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
-      }
-      const triggerDef = params.trigger as TriggerDefinition | undefined;
-      if (!triggerDef) {
+      const updateDef = params.trigger as TriggerDefinition | undefined;
+      if (!updateDef) {
         return toError('Missing required field: trigger', ctx.version, uptimeMs, Date.now() - start);
       }
-      const validationError = validateTriggerDefinition(triggerDef);
-      if (validationError !== null) {
-        return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
+      const updateValidationError = validateTriggerDefinition(updateDef);
+      if (updateValidationError !== null) {
+        return toError(updateValidationError, ctx.version, uptimeMs, Date.now() - start);
       }
-      registry.replace(triggerDef);
-      logger.info('runtime_triggers: updated', { id: triggerDef.id });
-      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
+      // update (replace) is not covered by transport — fall back to direct registry access
+      const updateRegistry = ctx.getTriggerRegistry();
+      if (!updateRegistry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
+      }
+      updateRegistry.replace(updateDef);
+      logger.info('runtime_triggers: updated', { id: updateDef.id });
+      return toSuccess({ updated: true, id: updateDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'delete') {
-      if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
-      }
-      const triggerId = assertOptionalString(params.trigger_id, 'trigger_id');
-      if (!triggerId) {
+      const deleteTriggerId = assertOptionalString(params.trigger_id, 'trigger_id');
+      if (!deleteTriggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
-      registry.unregister(triggerId);
-      logger.info('runtime_triggers: unregistered', { id: triggerId });
-      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
+      if (ctx.transport) {
+        await ctx.transport.unregisterTrigger(deleteTriggerId);
+        logger.info('runtime_triggers: unregistered', { id: deleteTriggerId });
+        return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const deleteRegistry = ctx.getTriggerRegistry();
+      if (!deleteRegistry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
+      }
+      deleteRegistry.unregister(deleteTriggerId);
+      logger.info('runtime_triggers: unregistered', { id: deleteTriggerId });
+      return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'enable' || action === 'disable') {
-      if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
-      }
-      const triggerId = assertOptionalString(params.trigger_id, 'trigger_id');
-      if (!triggerId) {
+      const enableTriggerId = assertOptionalString(params.trigger_id, 'trigger_id');
+      if (!enableTriggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const enabled = action === 'enable';
-      registry.setEnabled(triggerId, enabled);
-      logger.info(`runtime_triggers: ${action}d`, { id: triggerId });
-      return toSuccess({ [action + 'd']: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
+      // enable/disable is not covered by transport — fall back to direct registry access
+      const enableRegistry = ctx.getTriggerRegistry();
+      if (!enableRegistry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
+      }
+      enableRegistry.setEnabled(enableTriggerId, enabled);
+      logger.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
+      return toSuccess({ [action + 'd']: true, id: enableTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     if (action === 'test') {
-      if (!registry) {
-        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
-      }
-      const triggerId = assertOptionalString(params.trigger_id, 'trigger_id');
+      const testTriggerId = assertOptionalString(params.trigger_id, 'trigger_id');
       const testEvent = params.test_event as Record<string, unknown> | undefined;
-      if (!triggerId) {
+      if (!testTriggerId) {
         return toError('Missing required field: trigger_id', ctx.version, uptimeMs, Date.now() - start);
       }
       if (!testEvent) {
         return toError('Missing required field: test_event', ctx.version, uptimeMs, Date.now() - start);
+      }
+      // test is not covered by transport — fall back to direct registry access
+      const testRegistry = ctx.getTriggerRegistry();
+      if (!testRegistry) {
+        return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);
       }
       const mockEvent = {
         id: generateEventId(),
@@ -196,8 +222,8 @@ export const handleRuntimeTriggers = async (
         priority: 0,
         metadata: { session_id: '', sequence: 0, version: 1 as const },
       };
-      const results = await registry.evaluate(mockEvent);
-      const result = results.find((r) => r.trigger_id === triggerId);
+      const results = await testRegistry.evaluate(mockEvent);
+      const result = results.find((r) => r.trigger_id === testTriggerId);
       return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptimeMs, Date.now() - start);
     }
 

@@ -129,6 +129,8 @@ export const handleRuntimeEvents = async (
     const filterRaw = (params.filter ?? {}) as Record<string, unknown>;
 
     // ── stats ─────────────────────────────────────────────────────────────────
+    // stats: not covered by transport — EventLog stats and EventBus history
+    // are not part of the RuntimeTransport interface
     if (action === 'stats') {
       const logStats = ctx.getEventLog().getStats();
       const queueStats = ctx.getEventQueue().getStats();
@@ -139,6 +141,8 @@ export const handleRuntimeEvents = async (
     }
 
     // ── tail ──────────────────────────────────────────────────────────────────
+    // tail: not covered by transport — EventBus in-memory history
+    // is not part of the RuntimeTransport interface
     if (action === 'tail') {
       const limit = typeof filterRaw.limit === 'number' ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT;
       const typePatterns = Array.isArray(filterRaw.types)
@@ -204,7 +208,9 @@ export const handleRuntimeEvents = async (
         limit: typeof filterRaw.limit === 'number' ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT,
       };
 
-      let events = await ctx.getEventLog().query(logFilter);
+      let events = ctx.transport
+        ? await ctx.transport.queryEvents(logFilter)
+        : await ctx.getEventLog().query(logFilter);
 
       // Apply wildcard type patterns post-query
       if (hasWildcards && typePatterns) {
@@ -227,15 +233,20 @@ export const handleRuntimeEvents = async (
       const mode = (params.mode as string | undefined) ?? 'peek';
       const target = (params.target as string | undefined) ?? 'subagent_stop';
 
-      const queue = ctx.getDirectiveQueue();
-      if (!queue) {
-        return toError(
-          'Directive queue not initialized',
-          ctx.version, uptimeMs, Date.now() - start
-        );
+      let directives: unknown[];
+      if (ctx.transport && mode === 'drain') {
+        const result = await ctx.transport.drainDirectives(target);
+        directives = result.directives;
+      } else {
+        const queue = ctx.getDirectiveQueue();
+        if (!queue) {
+          return toError(
+            'Directive queue not initialized',
+            ctx.version, uptimeMs, Date.now() - start
+          );
+        }
+        directives = mode === 'drain' ? queue.drain(target) : queue.peek(target);
       }
-
-      const directives = mode === 'drain' ? queue.drain(target) : queue.peek(target);
       const count = directives.length;
 
       let data: unknown;
@@ -246,7 +257,7 @@ export const handleRuntimeEvents = async (
           count,
           target,
           mode,
-          directives: directives.map((d: Directive) => ({
+          directives: (directives as Directive[]).map((d) => ({
             type: d.type,
             priority: d.priority,
             source: d.source,

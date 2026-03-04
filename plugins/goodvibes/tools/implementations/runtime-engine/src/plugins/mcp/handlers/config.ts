@@ -252,7 +252,7 @@ export const handleRuntimeConfig = async (
     // ── get ──────────────────────────────────────────────────────────────────
     if (action === 'get') {
       const key = assertOptionalString(params.key, 'key');
-      const config = ctx.getConfig();
+      const config = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
 
       if (key) {
         const value = getNestedValue(config as unknown as Record<string, unknown>, key);
@@ -310,15 +310,19 @@ export const handleRuntimeConfig = async (
 
       // Build an updated config with the new key value applied (deep clone to
       // prevent shallow-clone aliasing bugs when setNestedValue mutates in-place)
-      const current = ctx.getConfig();
+      const current = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
       const updated = setNestedValue(
         structuredClone(current) as unknown as Record<string, unknown>,
         key,
         value
       ) as unknown as RuntimeConfig;
 
-      saveConfig(ctx.projectRoot, updated);
-      ctx.updateConfig(updated);
+      if (ctx.transport) {
+        await ctx.transport.updateConfig(updated);
+      } else {
+        saveConfig(ctx.projectRoot, updated);
+        ctx.updateConfig(updated);
+      }
       logger.info('Config key set', { key, value });
 
       return toSuccess(
@@ -331,8 +335,12 @@ export const handleRuntimeConfig = async (
 
     // ── reset ─────────────────────────────────────────────────────────────────
     if (action === 'reset') {
-      saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
-      ctx.updateConfig(DEFAULT_CONFIG);
+      if (ctx.transport) {
+        await ctx.transport.updateConfig(DEFAULT_CONFIG);
+      } else {
+        saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
+        ctx.updateConfig(DEFAULT_CONFIG);
+      }
       logger.info('Config reset to defaults');
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },

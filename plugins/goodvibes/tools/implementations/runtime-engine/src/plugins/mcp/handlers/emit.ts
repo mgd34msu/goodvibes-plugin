@@ -62,14 +62,31 @@ export const handleRuntimeEmit = async (
       logger.warn('runtime_emit: unknown event type prefix', { event_type: safeEventType });
     }
 
-    const emitted = ctx.getEventBus().emit({
-      id: generateEventId(),
+    const eventId = generateEventId();
+    const fullEvent: import('../../../shared/events.js').RuntimeEvent = {
+      id: eventId,
       timestamp: timestamp(),
       type: eventType as EventType,
-      source: { kind: 'mcp_tool', tool_name: 'runtime_emit' },
+      source: { kind: 'mcp_tool' as const, tool_name: 'runtime_emit' },
       payload: { type: eventType as EventType, data: payload } as EventPayload,
-      metadata: correlationId ? { correlation_id: correlationId } : undefined,
-    });
+      priority: 0,
+      metadata: {
+        session_id: '',
+        sequence: 0,
+        version: 1,
+        ...(correlationId ? { correlation_id: correlationId } : {}),
+      },
+    };
+
+    let emittedId: string;
+    if (ctx.transport) {
+      await ctx.transport.emitEvent(fullEvent);
+      emittedId = eventId;
+    } else {
+      const emitted = ctx.getEventBus().emit(fullEvent);
+      emittedId = emitted.id;
+    }
+    const emitted = { ...fullEvent, id: emittedId };
 
     logger.info('runtime_emit: event emitted', { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
