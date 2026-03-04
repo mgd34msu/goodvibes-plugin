@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-03-04T04:34:04.995Z'
-total: 74
+generated: '2026-03-04T17:08:13.367Z'
+total: 75
 servers:
   - name: precision-engine
     count: 12
@@ -342,7 +342,7 @@ servers:
           route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
           boundaries, and async components without protection.
   - name: runtime-engine
-    count: 8
+    count: 9
     tools:
       - name: runtime_status
         path: runtime-engine/runtime-status.yaml
@@ -385,6 +385,9 @@ servers:
           Query the runtime engine in-memory state store. ' + 'Read plugin state by key, list keys in a namespace,
           discover namespaces, or take snapshots. ' + 'Use to inspect agent-tracker data, WRFC state, or any plugin
           state.
+      - name: runtime_daemon
+        path: runtime-engine/runtime-daemon.yaml
+        description: Manage the GoodVibes runtime daemon process. ' + 'Start, stop, check status, or list connected sessions.
 search_index:
   - name: precision_write
     keywords:
@@ -2429,4 +2432,21 @@ search_index:
     description: >-
       Query the runtime engine in-memory state store. ' + 'Read plugin state by key, list keys in a namespace, discover
       namespaces, or take snapshots. ' + 'Use to inspect agent-tracker data, WRFC state, or any plugin state.
+    server: runtime-engine
+  - name: runtime_daemon
+    keywords:
+      - runtime
+      - daemon
+      - manage
+      - goodvibes
+      - process
+      - start
+      - stop
+      - check
+      - status
+      - list
+      - connected
+      - sessions
+    path: runtime-engine/runtime-daemon.yaml
+    description: Manage the GoodVibes runtime daemon process. ' + 'Start, stop, check status, or list connected sessions.
     server: runtime-engine
