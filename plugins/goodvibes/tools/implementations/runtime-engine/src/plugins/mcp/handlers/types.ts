@@ -16,6 +16,7 @@ import type { WorkflowEngine } from '../../../extensions/workflow/workflow-engin
 import type { TriggerRegistry } from '../../../core/trigger-registry.js';
 import type { AgentCoordinator } from '../../../extensions/agents/agent-coordinator.js';
 import type { DirectiveQueue } from '../../../extensions/directives/directive-queue.js';
+import type { RuntimeTransport } from '../../../transport/types.js';
 
 /**
  * A runtime-engine tool handler.
@@ -56,4 +57,6 @@ export interface HandlerContext {
   getDirectiveQueue: () => DirectiveQueue | null;
   /** The core state store (in-memory, synchronous). May be null before startup. */
   getCoreStateStore: () => import('../../../core/state/state-store.js').CoreStateStore | null;
+  /** The runtime transport (local or remote). Preferred over direct engine accessors. */
+  transport?: RuntimeTransport;
 }

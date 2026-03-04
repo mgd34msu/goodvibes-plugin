@@ -17,6 +17,8 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 
+import { createTransport } from '../../transport/factory.js';
+import type { RuntimeTransport } from '../../transport/types.js';
 import { loadConfig } from '../../shared/config.js';
 import { ENGINE_VERSION } from '../../shared/constants.js';
 import { createLogger } from '../../shared/logger.js';
@@ -47,6 +49,7 @@ const logger = createLogger('mcp-server');
 export class RuntimeEngineServer {
   private readonly server: Server;
   private readonly processManager: RuntimeEngine;
+  private runtimeTransport: RuntimeTransport | null = null;
 
   constructor() {
     this.server = new Server(
@@ -88,6 +91,7 @@ export class RuntimeEngineServer {
       }
 
       const ctx: HandlerContext = {
+        transport: this.runtimeTransport ?? undefined,
         getUptime: () => this.processManager.getUptime(),
         getConfig: () => this.processManager.getConfig(),
         getHealth: () => this.processManager.getHealthChecker().check(),
@@ -143,6 +147,13 @@ export class RuntimeEngineServer {
     // 1. Startup sequence
     await this.processManager.startup();
 
+    // 1b. Create runtime transport
+    this.runtimeTransport = await createTransport({
+      engine: this.processManager,
+      mode: this.processManager.getConfig().executor.mode,
+      projectRoot: this.processManager.getProjectRoot(),
+    });
+
     // 2. Register signal handlers — must happen after processManager is ready
     setupSignalHandlers(async () => {
       await this.stop();
@@ -169,6 +180,12 @@ export class RuntimeEngineServer {
    */
   async stop(): Promise<void> {
     logger.info('Stopping runtime engine');
+
+    // Disconnect runtime transport
+    if (this.runtimeTransport) {
+      try { await this.runtimeTransport.disconnect(); } catch { /* ignore */ }
+      this.runtimeTransport = null;
+    }
 
     // Shutdown process manager (saves checkpoint, removes PID file)
     try {
