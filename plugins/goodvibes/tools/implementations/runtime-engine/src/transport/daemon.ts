@@ -9,7 +9,8 @@ import { resolve } from 'node:path';
 import { RuntimeEngine } from '../bootstrap.js';
 import { loadConfig } from '../shared/config.js';
 import { DaemonServer } from './daemon-server.js';
-import { DAEMON_PID_FILE, DAEMON_SOCKET_POINTER, DAEMON_SOCKET_NAME } from './daemon-constants.js';
+import { DaemonHookServer } from './daemon-hook-server.js';
+import { DAEMON_PID_FILE, DAEMON_SOCKET_POINTER, DAEMON_SOCKET_NAME, DAEMON_HOOK_SOCKET_NAME } from './daemon-constants.js';
 import { createLogger } from '../shared/logger.js';
 
 const logger = createLogger('daemon');
@@ -23,12 +24,23 @@ async function main(): Promise<void> {
     ? resolve(process.env['GV_DAEMON_SOCKET'])
     : resolve(goodvibesDir, DAEMON_SOCKET_NAME);
 
+  const hookSocketPath = process.env['GV_DAEMON_HOOK_SOCKET']
+    ? resolve(process.env['GV_DAEMON_HOOK_SOCKET'])
+    : resolve(goodvibesDir, DAEMON_HOOK_SOCKET_NAME);
+
+  const stateDir = resolve(goodvibesDir, 'state');
+
   const pidFilePath = resolve(goodvibesDir, DAEMON_PID_FILE);
   const socketPointerPath = resolve(goodvibesDir, DAEMON_SOCKET_POINTER);
 
   // Remove stale socket file if present
   if (existsSync(socketPath)) {
     try { unlinkSync(socketPath); } catch { /* ignore */ }
+  }
+
+  // Remove stale hook socket file if present (prevents EADDRINUSE after unclean exit)
+  if (existsSync(hookSocketPath)) {
+    try { unlinkSync(hookSocketPath); } catch { /* ignore */ }
   }
 
   // Bootstrap runtime engine
@@ -39,6 +51,10 @@ async function main(): Promise<void> {
   // Start daemon server
   const server = new DaemonServer({ socketPath, engine });
   await server.start();
+
+  // Start daemon hook server (IPC endpoint for hook scripts)
+  const hookServer = new DaemonHookServer({ socketPath: hookSocketPath, engine, stateDir });
+  await hookServer.start();
 
   // Write PID and socket pointer files
   try {
@@ -54,6 +70,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info('Received signal, shutting down', { signal });
     try {
+      await hookServer.stop();
       await server.stop();
       await engine.shutdown();
     } catch (err) {
