@@ -1,6 +1,7 @@
 /** Composition root — sole cross-layer wiring point for the runtime engine. */
 
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 import type { RuntimeConfig } from './shared/config.js';
 import { loadConfig } from './shared/config.js';
@@ -284,6 +285,33 @@ export class RuntimeEngine {
     // registers all triggers, and wires all event handlers via RuntimeServices.
     // No separate registerWRFCPlugin() call is needed.
     const wrfcConfig = getDefaultWRFCConfig();
+
+    // Override WRFC config from .goodvibes/goodvibes.json if present
+    try {
+      const raw = readFileSync(join(this.projectRoot, '.goodvibes', 'goodvibes.json'), 'utf-8');
+      const parsed = JSON.parse(raw);
+      const wrfcOverrides = parsed?.runtime?.wrfc;
+      if (wrfcOverrides && typeof wrfcOverrides === 'object') {
+        if (typeof wrfcOverrides.score_threshold === 'number') {
+          wrfcConfig.score_threshold = Math.max(0, Math.min(10, wrfcOverrides.score_threshold));
+        }
+        if (typeof wrfcOverrides.max_fix_attempts === 'number') {
+          wrfcConfig.max_fix_attempts = Math.max(1, wrfcOverrides.max_fix_attempts);
+        }
+        if (typeof wrfcOverrides.enable_quality_gates === 'boolean') {
+          wrfcConfig.enable_quality_gates = wrfcOverrides.enable_quality_gates;
+        }
+        if (Array.isArray(wrfcOverrides.require_review_types)) {
+          wrfcConfig.require_review_types = wrfcOverrides.require_review_types;
+        }
+        logger.info('WRFC config overrides applied from goodvibes.json', {
+          score_threshold: wrfcConfig.score_threshold,
+          max_fix_attempts: wrfcConfig.max_fix_attempts,
+        });
+      }
+    } catch {
+      // No goodvibes.json or no runtime.wrfc section — use defaults
+    }
     const coreStore = this.coreRuntime.stateStore;
     const coreEventProcessor = this.coreRuntime.eventProcessor;
     const coreTriggerRegistry = this.triggers?.triggerRegistry;

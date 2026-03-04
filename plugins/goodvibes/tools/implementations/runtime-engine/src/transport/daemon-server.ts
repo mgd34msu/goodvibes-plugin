@@ -11,9 +11,12 @@ import type {
   DaemonRPCResponse,
   DaemonSessionMessage,
 } from './daemon-protocol.js';
+import { LocalTransport } from './local-transport.js';
 import { generateId } from '../shared/utils.js';
 import type { EventType, EventPayload } from '../shared/events.js';
 import { ENGINE_VERSION } from '../shared/constants.js';
+
+const CONNECTION_TIMEOUT_MS = 10_000;
 
 export interface DaemonServerOptions {
   socketPath: string;
@@ -35,6 +38,10 @@ export class DaemonServer {
   constructor(options: DaemonServerOptions) {
     this.socketPath = options.socketPath;
     this.engine = options.engine;
+  }
+
+  getSessionCount(): number {
+    return this.sessions.size;
   }
 
   async start(): Promise<void> {
@@ -76,27 +83,42 @@ export class DaemonServer {
       buffer: '',
     };
 
+    // Idle connection timeout — destroy if no message received within CONNECTION_TIMEOUT_MS
+    const idleTimer = setTimeout(() => {
+      socket.destroy();
+    }, CONNECTION_TIMEOUT_MS);
+
     socket.on('data', (chunk: Buffer) => {
+      clearTimeout(idleTimer);
       session.buffer += chunk.toString();
       const lines = session.buffer.split('\n');
       session.buffer = lines.pop() ?? '';
 
       for (const line of lines) {
         if (!line.trim()) continue;
+        let msg: DaemonMessage;
         try {
-          const msg = JSON.parse(line) as DaemonMessage;
-          this.processMessage(session, msg);
-        } catch (err) {
-          console.error('[DaemonServer] parse error:', err);
+          msg = JSON.parse(line) as DaemonMessage;
+        } catch {
+          const resp: DaemonRPCResponse = {
+            id: '',
+            status: 'error',
+            error: 'Invalid JSON',
+          };
+          this.sendResponse(socket, resp);
+          continue;
         }
+        this.processMessage(session, msg);
       }
     });
 
     socket.on('close', () => {
+      clearTimeout(idleTimer);
       this.sessions.delete(session.sessionId);
     });
 
     socket.on('error', (err) => {
+      clearTimeout(idleTimer);
       console.error('[DaemonServer] socket error:', err);
     });
   }
@@ -106,6 +128,13 @@ export class DaemonServer {
       this.handleSessionMessage(session, msg as DaemonSessionMessage);
     } else if (msg.type === 'rpc_call') {
       this.handleRPCCall(session, msg as DaemonRPCRequest);
+    } else {
+      const resp: DaemonRPCResponse = {
+        id: (msg as DaemonRPCRequest).id ?? '',
+        status: 'error',
+        error: `Unknown message type: ${(msg as DaemonRPCRequest).type}`,
+      };
+      this.sendResponse(session.socket, resp);
     }
   }
 
@@ -117,15 +146,17 @@ export class DaemonServer {
     } else if (msg.type === 'session_leave') {
       this.sessions.delete(session.sessionId);
     }
+    const resp: DaemonRPCResponse = { id: msg.id, status: 'ok' };
+    this.sendResponse(session.socket, resp);
   }
 
   private handleRPCCall(session: ClientSession, req: DaemonRPCRequest): void {
-    // Guard: only handle requests from the owning session
-    if (req.session_id !== session.sessionId) {
+    // Guard: only registered sessions can make RPC calls
+    if (!this.sessions.has(session.sessionId) || req.session_id !== session.sessionId) {
       const resp: DaemonRPCResponse = {
         id: req.id,
         status: 'error',
-        error: 'session_id mismatch',
+        error: 'Session not registered — call session_join first',
       };
       this.sendResponse(session.socket, resp);
       return;
@@ -157,6 +188,10 @@ export class DaemonServer {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async dispatchRPC(req: DaemonRPCRequest): Promise<any> {
     const { method, args } = req;
+    // Delegate through LocalTransport to ensure consistent method resolution
+    const transport = new LocalTransport(this.engine);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const t = transport as any;
     const e = this.engine;
 
     switch (method) {
@@ -177,7 +212,7 @@ export class DaemonServer {
         return e.getProjectRoot();
       }
       case 'getUptime': {
-        return e.getUptime();
+        return t.getUptime();
       }
       case 'getStateSnapshot': {
         return e.getCoreStateStore().snapshot();

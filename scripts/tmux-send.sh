@@ -18,3 +18,8 @@ fi
 
 tmux send-keys -t "$pane" "$*"
 tmux send-keys -t "$pane" Enter
+
+# Multi-line text needs an extra Enter to submit
+if [[ "$*" == *$'\n'* ]]; then
+  tmux send-keys -t "$pane" Enter
+fi

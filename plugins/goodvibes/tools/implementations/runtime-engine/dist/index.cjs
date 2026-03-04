@@ -6,6 +6,9 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
@@ -7193,6 +7196,179 @@ var require_dist = __commonJS({
   }
 });
 
+// src/shared/errors.ts
+var RuntimeEngineError, ConfigError, ParseError, StateError, QueueError, ProcessingError, IPCError, WorkflowError, WorkflowTimeoutError;
+var init_errors = __esm({
+  "src/shared/errors.ts"() {
+    "use strict";
+    RuntimeEngineError = class extends Error {
+      constructor(message, code, cause) {
+        super(message);
+        this.code = code;
+        this.cause = cause;
+        this.name = this.constructor.name;
+        Object.setPrototypeOf(this, new.target.prototype);
+      }
+      static {
+        __name(this, "RuntimeEngineError");
+      }
+    };
+    ConfigError = class extends RuntimeEngineError {
+      static {
+        __name(this, "ConfigError");
+      }
+      constructor(message, cause) {
+        super(message, "CONFIG_ERROR", cause);
+      }
+    };
+    ParseError = class extends RuntimeEngineError {
+      static {
+        __name(this, "ParseError");
+      }
+      constructor(message, cause) {
+        super(message, "PARSE_ERROR", cause);
+      }
+    };
+    StateError = class extends RuntimeEngineError {
+      static {
+        __name(this, "StateError");
+      }
+      constructor(message, cause) {
+        super(message, "STATE_ERROR", cause);
+      }
+    };
+    QueueError = class extends RuntimeEngineError {
+      static {
+        __name(this, "QueueError");
+      }
+      constructor(message, cause) {
+        super(message, "QUEUE_ERROR", cause);
+      }
+    };
+    ProcessingError = class extends RuntimeEngineError {
+      static {
+        __name(this, "ProcessingError");
+      }
+      constructor(message, cause) {
+        super(message, "PROCESSING_ERROR", cause);
+      }
+    };
+    IPCError = class extends RuntimeEngineError {
+      static {
+        __name(this, "IPCError");
+      }
+      constructor(message, cause) {
+        super(message, "IPC_ERROR", cause);
+      }
+    };
+    WorkflowError = class extends RuntimeEngineError {
+      static {
+        __name(this, "WorkflowError");
+      }
+      constructor(message, cause) {
+        super(message, "WORKFLOW_ERROR", cause);
+      }
+    };
+    WorkflowTimeoutError = class extends RuntimeEngineError {
+      /** The timeout value in milliseconds that was exceeded. */
+      constructor(message, timeoutMs, cause) {
+        super(message, "WORKFLOW_TIMEOUT_ERROR", cause);
+        this.timeoutMs = timeoutMs;
+      }
+      static {
+        __name(this, "WorkflowTimeoutError");
+      }
+    };
+  }
+});
+
+// src/shared/utils.ts
+var utils_exports = {};
+__export(utils_exports, {
+  assertNever: () => assertNever2,
+  assertOptionalString: () => assertOptionalString,
+  assertString: () => assertString,
+  generateEventId: () => generateEventId,
+  generateId: () => generateId,
+  generateWorkflowId: () => generateWorkflowId,
+  parseRelativeTime: () => parseRelativeTime,
+  safeJsonParse: () => safeJsonParse,
+  timestamp: () => timestamp,
+  toErrorMessage: () => toErrorMessage
+});
+function generateId() {
+  return (0, import_node_crypto.randomUUID)();
+}
+function timestamp() {
+  return Date.now();
+}
+function generateEventId() {
+  return `evt_${(0, import_node_crypto.randomUUID)()}`;
+}
+function generateWorkflowId() {
+  return `wf_${(0, import_node_crypto.randomUUID)()}`;
+}
+function toErrorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+function assertString(value, fieldName) {
+  if (typeof value !== "string") throw new TypeError(`${fieldName} must be a string, got ${typeof value}`);
+  return value;
+}
+function assertOptionalString(value, fieldName) {
+  if (value === void 0 || value === null) return void 0;
+  return assertString(value, fieldName);
+}
+function safeJsonParse(input, fallback, logError) {
+  try {
+    return JSON.parse(input);
+  } catch (err) {
+    if (logError) {
+      logError(err instanceof Error ? err.message : String(err));
+    }
+    return fallback;
+  }
+}
+function assertNever2(value) {
+  throw new Error(`Unhandled discriminated union member: ${String(value)}`);
+}
+function parseRelativeTime(input) {
+  const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
+  if (!match) {
+    throw new ParseError(
+      `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
+    );
+  }
+  const value = parseFloat(match[1]);
+  const unit = match[2];
+  const ms = value * DURATION_UNITS[unit];
+  return new Date(Date.now() + ms);
+}
+var import_node_crypto, DURATION_UNITS;
+var init_utils = __esm({
+  "src/shared/utils.ts"() {
+    "use strict";
+    import_node_crypto = require("node:crypto");
+    init_errors();
+    __name(generateId, "generateId");
+    __name(timestamp, "timestamp");
+    __name(generateEventId, "generateEventId");
+    __name(generateWorkflowId, "generateWorkflowId");
+    __name(toErrorMessage, "toErrorMessage");
+    __name(assertString, "assertString");
+    __name(assertOptionalString, "assertOptionalString");
+    __name(safeJsonParse, "safeJsonParse");
+    __name(assertNever2, "assertNever");
+    DURATION_UNITS = {
+      s: 1e3,
+      m: 6e4,
+      h: 36e5,
+      d: 864e5
+    };
+    __name(parseRelativeTime, "parseRelativeTime");
+  }
+});
+
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
@@ -7202,11 +7378,11 @@ var util;
   }
   __name(assertIs2, "assertIs");
   util2.assertIs = assertIs2;
-  function assertNever2(_x) {
+  function assertNever3(_x) {
     throw new Error();
   }
-  __name(assertNever2, "assertNever");
-  util2.assertNever = assertNever2;
+  __name(assertNever3, "assertNever");
+  util2.assertNever = assertNever3;
   util2.arrayToEnum = (items) => {
     const obj = {};
     for (const item of items) {
@@ -21535,104 +21711,430 @@ var StdioServerTransport = class {
   }
 };
 
-// src/shared/config.ts
-var import_node_fs2 = require("node:fs");
-
-// src/shared/file-io.ts
+// src/transport/factory.ts
 var import_node_fs = require("node:fs");
+var import_node_path = require("node:path");
 
-// src/shared/errors.ts
-var RuntimeEngineError = class extends Error {
-  constructor(message, code, cause) {
-    super(message);
-    this.code = code;
-    this.cause = cause;
-    this.name = this.constructor.name;
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
+// src/shared/constants.ts
+var ENGINE_VERSION = "1.0.0";
+var MAX_EVENT_TYPE_LENGTH = 100;
+var MAX_OUTPUT_PREVIEW_LENGTH = 200;
+var DEFAULT_HTTP_LISTENER_PORT = 3847;
+var DEFAULT_EVENT_QUERY_LIMIT = 50;
+
+// src/transport/local-transport.ts
+var LocalTransport = class {
   static {
-    __name(this, "RuntimeEngineError");
+    __name(this, "LocalTransport");
+  }
+  mode = "local";
+  engine;
+  constructor(engine) {
+    this.engine = engine;
+  }
+  isReady() {
+    return this.engine.isRunning();
+  }
+  async connect() {
+  }
+  async disconnect() {
+  }
+  // ─── Status ─────────────────────────────────────────────────
+  async getUptime() {
+    return this.engine.getUptime();
+  }
+  async getConfig() {
+    return this.engine.getConfig();
+  }
+  async getHealth() {
+    return this.engine.getHealthChecker().check();
+  }
+  async getVersion() {
+    return ENGINE_VERSION;
+  }
+  async getProjectRoot() {
+    return this.engine.getProjectRoot();
+  }
+  // ─── Configuration ──────────────────────────────────────────
+  async updateConfig(config2) {
+    this.engine.updateConfig(config2);
+  }
+  // ─── State ──────────────────────────────────────────────────
+  async getState(key) {
+    return this.engine.getCoreStateStore().get(key);
+  }
+  async setState(key, value) {
+    this.engine.getCoreStateStore().set(key, value);
+  }
+  async deleteState(key) {
+    this.engine.getCoreStateStore().delete(key);
+  }
+  async listStateKeys(prefix) {
+    return this.engine.getCoreStateStore().keys(prefix);
+  }
+  async getStateSnapshot() {
+    return this.engine.getCoreStateStore().snapshot();
+  }
+  // ─── Events ─────────────────────────────────────────────────
+  async emitEvent(event) {
+    this.engine.getEventBus().emit(event);
+  }
+  async queryEvents(filter) {
+    return this.engine.getEventLog().query(filter);
+  }
+  async getQueueDepth() {
+    return this.engine.getEventQueue().depth();
+  }
+  // ─── Workflows ──────────────────────────────────────────────
+  async getWorkflow(workflowId) {
+    const engine = this.engine.getWorkflowEngine();
+    if (!engine) return null;
+    const instance = engine.get(workflowId);
+    return instance ? instance : null;
+  }
+  async listWorkflows() {
+    const engine = this.engine.getWorkflowEngine();
+    if (!engine) return [];
+    return engine.listAll().map((i) => i);
+  }
+  async startWorkflow(definitionId, context) {
+    const engine = this.engine.getWorkflowEngine();
+    if (!engine) throw new Error("Workflow engine not available");
+    const instance = engine.create(definitionId, context);
+    return { workflow_id: instance.id };
+  }
+  async transitionWorkflow(workflowId, event, data) {
+    const engine = this.engine.getWorkflowEngine();
+    if (!engine) throw new Error("Workflow engine not available");
+    const syntheticEvent = {
+      id: (await Promise.resolve().then(() => (init_utils(), utils_exports))).generateId(),
+      type: event,
+      source: { kind: "mcp_tool", tool_name: "transitionWorkflow" },
+      payload: { type: event, data: data ?? {} },
+      timestamp: Date.now(),
+      priority: 0,
+      metadata: { session_id: "", sequence: 0, version: 1 }
+    };
+    const result = await engine.sendEvent(workflowId, syntheticEvent);
+    return result;
+  }
+  // ─── Triggers ───────────────────────────────────────────────
+  async listTriggers() {
+    const registry2 = this.engine.getTriggerRegistry();
+    if (!registry2) return [];
+    return registry2.list().map((t) => t);
+  }
+  async getTrigger(triggerId) {
+    const registry2 = this.engine.getTriggerRegistry();
+    if (!registry2) return null;
+    const trigger = registry2.get(triggerId);
+    return trigger ? trigger : null;
+  }
+  async registerTrigger(definition) {
+    const registry2 = this.engine.getTriggerRegistry();
+    if (!registry2) throw new Error("Trigger registry not available");
+    registry2.register(definition);
+  }
+  async unregisterTrigger(triggerId) {
+    const registry2 = this.engine.getTriggerRegistry();
+    if (!registry2) return false;
+    return registry2.unregister(triggerId);
+  }
+  // ─── Agents ─────────────────────────────────────────────────
+  async getAgent(agentId) {
+    const coordinator = this.engine.getAgentCoordinator();
+    if (!coordinator) return null;
+    const agent = coordinator.getAgent(agentId);
+    return agent ? agent : null;
+  }
+  async listAgents() {
+    const coordinator = this.engine.getAgentCoordinator();
+    if (!coordinator) return [];
+    return coordinator.listActive().map((a) => a);
+  }
+  // ─── Directives ─────────────────────────────────────────────
+  async drainDirectives(target, workflowId) {
+    const queue = this.engine.getDirectiveQueue();
+    if (!queue) return { directives: [] };
+    const result = queue.holdDrain(target, workflowId);
+    return { directives: result.directives };
   }
 };
-var ConfigError = class extends RuntimeEngineError {
+
+// src/transport/remote-transport.ts
+var import_node_net = require("node:net");
+init_utils();
+var RemoteTransport = class {
   static {
-    __name(this, "ConfigError");
+    __name(this, "RemoteTransport");
   }
-  constructor(message, cause) {
-    super(message, "CONFIG_ERROR", cause);
+  mode = "remote";
+  socketPath;
+  connectTimeoutMs;
+  socket = null;
+  buffer = "";
+  pending = /* @__PURE__ */ new Map();
+  sessionId;
+  _connected = false;
+  constructor(options) {
+    this.socketPath = options.socketPath;
+    this.connectTimeoutMs = options.connectTimeoutMs ?? 5e3;
+    this.sessionId = generateId();
+  }
+  isReady() {
+    return this._connected;
+  }
+  get connected() {
+    return this._connected;
+  }
+  async connect() {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Connection timeout after ${this.connectTimeoutMs}ms`));
+      }, this.connectTimeoutMs);
+      const socket = (0, import_node_net.createConnection)(this.socketPath);
+      socket.once("connect", () => {
+        clearTimeout(timer);
+        this._connected = true;
+        this.socket = socket;
+        socket.on("data", (chunk) => this.onData(chunk.toString()));
+        socket.on("close", () => this.onClose());
+        socket.on("error", (err) => this.onError(err));
+        const join19 = JSON.stringify({
+          type: "session_join",
+          id: generateId(),
+          session_id: this.sessionId
+        }) + "\n";
+        socket.write(join19);
+        resolve();
+      });
+      socket.once("error", (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+  }
+  async disconnect() {
+    if (!this.socket) return;
+    try {
+      const leave = JSON.stringify({
+        type: "session_leave",
+        id: generateId(),
+        session_id: this.sessionId
+      }) + "\n";
+      this.socket.write(leave);
+    } catch {
+    }
+    return new Promise((resolve) => {
+      this.socket.end(() => resolve());
+    });
+  }
+  onData(chunk) {
+    this.buffer += chunk;
+    const lines = this.buffer.split("\n");
+    this.buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const msg = JSON.parse(line);
+        const pending = this.pending.get(msg.id);
+        if (pending) {
+          this.pending.delete(msg.id);
+          pending.resolve(msg);
+        }
+      } catch {
+      }
+    }
+  }
+  onClose() {
+    this._connected = false;
+    this.socket = null;
+    for (const [id, p] of this.pending) {
+      p.reject(new Error("Socket closed"));
+      this.pending.delete(id);
+    }
+  }
+  onError(err) {
+    for (const [id, p] of this.pending) {
+      p.reject(err);
+      this.pending.delete(id);
+    }
+  }
+  sendRaw(request) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this._connected) {
+        return reject(new Error("Not connected to daemon"));
+      }
+      this.pending.set(request.id, { resolve, reject });
+      const line = JSON.stringify(request) + "\n";
+      this.socket.write(line, (err) => {
+        if (err) {
+          this.pending.delete(request.id);
+          reject(err);
+        }
+      });
+    });
+  }
+  async rpc(method, args = {}) {
+    const request = {
+      type: "rpc_call",
+      id: generateId(),
+      method,
+      args,
+      session_id: this.sessionId
+    };
+    const response = await this.sendRaw(request);
+    if (response.status === "error") {
+      throw new Error(response.error ?? "RPC error");
+    }
+    return response.result;
+  }
+  // ── RuntimeTransport implementation ────────────────────────────────────────
+  async getUptime() {
+    return this.rpc("getUptime");
+  }
+  async getHealth() {
+    return this.rpc("getHealth");
+  }
+  async getConfig() {
+    return this.rpc("getConfig");
+  }
+  async updateConfig(config2) {
+    return this.rpc("updateConfig", { config: config2 });
+  }
+  async getVersion() {
+    return this.rpc("getVersion");
+  }
+  async getProjectRoot() {
+    return this.rpc("getProjectRoot");
+  }
+  async getStateSnapshot() {
+    return this.rpc("getStateSnapshot");
+  }
+  async getState(key) {
+    return this.rpc("getState", { key });
+  }
+  async setState(key, value) {
+    return this.rpc("setState", { key, value });
+  }
+  async deleteState(key) {
+    return this.rpc("deleteState", { key });
+  }
+  async listStateKeys(prefix) {
+    return this.rpc("listStateKeys", { prefix });
+  }
+  async emitEvent(event) {
+    return this.rpc("emitEvent", { event });
+  }
+  async queryEvents(filter) {
+    return this.rpc("queryEvents", { filter });
+  }
+  async getQueueDepth() {
+    return this.rpc("getQueueDepth");
+  }
+  async getWorkflow(workflowId) {
+    return this.rpc("getWorkflow", { workflowId });
+  }
+  async listWorkflows() {
+    return this.rpc("listWorkflows");
+  }
+  async startWorkflow(definitionId, context) {
+    return this.rpc("startWorkflow", { definitionId, context });
+  }
+  async transitionWorkflow(workflowId, event, data) {
+    return this.rpc("transitionWorkflow", { workflowId, event, data });
+  }
+  async listTriggers() {
+    return this.rpc("listTriggers");
+  }
+  async getTrigger(triggerId) {
+    return this.rpc("getTrigger", { triggerId });
+  }
+  async registerTrigger(definition) {
+    return this.rpc("registerTrigger", { definition });
+  }
+  async unregisterTrigger(triggerId) {
+    return this.rpc("unregisterTrigger", { triggerId });
+  }
+  async getAgent(agentId) {
+    return this.rpc("getAgent", { agentId });
+  }
+  async listAgents() {
+    return this.rpc("listAgents");
+  }
+  async drainDirectives(target, workflowId) {
+    return this.rpc("drainDirectives", { target, workflowId });
   }
 };
-var ParseError = class extends RuntimeEngineError {
-  static {
-    __name(this, "ParseError");
+
+// src/transport/factory.ts
+function discoverDaemonSocket(projectRoot) {
+  const pointerPath = (0, import_node_path.join)(projectRoot, ".goodvibes", "daemon.socket");
+  if (!(0, import_node_fs.existsSync)(pointerPath)) return void 0;
+  try {
+    const content = (0, import_node_fs.readFileSync)(pointerPath, "utf-8").trim();
+    return content || void 0;
+  } catch {
+    return void 0;
   }
-  constructor(message, cause) {
-    super(message, "PARSE_ERROR", cause);
+}
+__name(discoverDaemonSocket, "discoverDaemonSocket");
+async function createTransport(options) {
+  const { mode, connectTimeoutMs } = options;
+  if (mode === "engaged") {
+    if (!options.engine) {
+      throw new Error("TransportFactory: 'engine' is required for mode 'engaged'");
+    }
+    return new LocalTransport(options.engine);
   }
-};
-var StateError = class extends RuntimeEngineError {
-  static {
-    __name(this, "StateError");
+  let socketPath = options.socketPath;
+  if (!socketPath && options.projectRoot) {
+    socketPath = discoverDaemonSocket(options.projectRoot);
   }
-  constructor(message, cause) {
-    super(message, "STATE_ERROR", cause);
+  if (mode === "daemon") {
+    if (!socketPath) {
+      throw new Error(
+        "TransportFactory: 'socketPath' is required for mode 'daemon' (or provide 'projectRoot' with a daemon.socket pointer file)"
+      );
+    }
+    const transport = new RemoteTransport({ socketPath, connectTimeoutMs });
+    await transport.connect();
+    return transport;
   }
-};
-var QueueError = class extends RuntimeEngineError {
-  static {
-    __name(this, "QueueError");
+  if (socketPath) {
+    try {
+      const transport = new RemoteTransport({ socketPath, connectTimeoutMs });
+      await transport.connect();
+      return transport;
+    } catch {
+    }
   }
-  constructor(message, cause) {
-    super(message, "QUEUE_ERROR", cause);
+  if (!options.engine) {
+    throw new Error(
+      "TransportFactory: daemon socket unavailable and 'engine' not provided for local fallback (mode: hybrid)"
+    );
   }
-};
-var ProcessingError = class extends RuntimeEngineError {
-  static {
-    __name(this, "ProcessingError");
-  }
-  constructor(message, cause) {
-    super(message, "PROCESSING_ERROR", cause);
-  }
-};
-var IPCError = class extends RuntimeEngineError {
-  static {
-    __name(this, "IPCError");
-  }
-  constructor(message, cause) {
-    super(message, "IPC_ERROR", cause);
-  }
-};
-var WorkflowError = class extends RuntimeEngineError {
-  static {
-    __name(this, "WorkflowError");
-  }
-  constructor(message, cause) {
-    super(message, "WORKFLOW_ERROR", cause);
-  }
-};
-var WorkflowTimeoutError = class extends RuntimeEngineError {
-  /** The timeout value in milliseconds that was exceeded. */
-  constructor(message, timeoutMs, cause) {
-    super(message, "WORKFLOW_TIMEOUT_ERROR", cause);
-    this.timeoutMs = timeoutMs;
-  }
-  static {
-    __name(this, "WorkflowTimeoutError");
-  }
-};
+  return new LocalTransport(options.engine);
+}
+__name(createTransport, "createTransport");
+
+// src/shared/config.ts
+var import_node_fs3 = require("node:fs");
 
 // src/shared/file-io.ts
-var import_node_path = require("node:path");
+var import_node_fs2 = require("node:fs");
+init_errors();
+var import_node_path2 = require("node:path");
 function writeAtomicSync(filePath, content) {
-  const dir = (0, import_node_path.dirname)(filePath);
-  (0, import_node_fs.mkdirSync)(dir, { recursive: true });
-  const tmpPath = (0, import_node_path.join)(dir, `.tmp_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const dir = (0, import_node_path2.dirname)(filePath);
+  (0, import_node_fs2.mkdirSync)(dir, { recursive: true });
+  const tmpPath = (0, import_node_path2.join)(dir, `.tmp_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2)}`);
   try {
-    (0, import_node_fs.writeFileSync)(tmpPath, content, "utf-8");
-    (0, import_node_fs.renameSync)(tmpPath, filePath);
+    (0, import_node_fs2.writeFileSync)(tmpPath, content, "utf-8");
+    (0, import_node_fs2.renameSync)(tmpPath, filePath);
   } catch (err) {
     try {
-      (0, import_node_fs.unlinkSync)(tmpPath);
+      (0, import_node_fs2.unlinkSync)(tmpPath);
     } catch {
     }
     throw err;
@@ -21644,78 +22146,10 @@ function writeJsonSync(filePath, data) {
 }
 __name(writeJsonSync, "writeJsonSync");
 
-// src/shared/utils.ts
-var import_node_crypto = require("node:crypto");
-function generateId() {
-  return (0, import_node_crypto.randomUUID)();
-}
-__name(generateId, "generateId");
-function timestamp() {
-  return Date.now();
-}
-__name(timestamp, "timestamp");
-function generateEventId() {
-  return `evt_${(0, import_node_crypto.randomUUID)()}`;
-}
-__name(generateEventId, "generateEventId");
-function generateWorkflowId() {
-  return `wf_${(0, import_node_crypto.randomUUID)()}`;
-}
-__name(generateWorkflowId, "generateWorkflowId");
-function toErrorMessage(err) {
-  return err instanceof Error ? err.message : String(err);
-}
-__name(toErrorMessage, "toErrorMessage");
-function assertString(value, fieldName) {
-  if (typeof value !== "string") throw new TypeError(`${fieldName} must be a string, got ${typeof value}`);
-  return value;
-}
-__name(assertString, "assertString");
-function assertOptionalString(value, fieldName) {
-  if (value === void 0 || value === null) return void 0;
-  return assertString(value, fieldName);
-}
-__name(assertOptionalString, "assertOptionalString");
-function safeJsonParse(input, fallback, logError) {
-  try {
-    return JSON.parse(input);
-  } catch (err) {
-    if (logError) {
-      logError(err instanceof Error ? err.message : String(err));
-    }
-    return fallback;
-  }
-}
-__name(safeJsonParse, "safeJsonParse");
-var DURATION_UNITS = {
-  s: 1e3,
-  m: 6e4,
-  h: 36e5,
-  d: 864e5
-};
-function parseRelativeTime(input) {
-  const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
-  if (!match) {
-    throw new ParseError(
-      `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
-    );
-  }
-  const value = parseFloat(match[1]);
-  const unit = match[2];
-  const ms = value * DURATION_UNITS[unit];
-  return new Date(Date.now() + ms);
-}
-__name(parseRelativeTime, "parseRelativeTime");
-
-// src/shared/constants.ts
-var ENGINE_VERSION = "1.0.0";
-var MAX_EVENT_TYPE_LENGTH = 100;
-var MAX_OUTPUT_PREVIEW_LENGTH = 200;
-var DEFAULT_HTTP_LISTENER_PORT = 3847;
-var DEFAULT_EVENT_QUERY_LIMIT = 50;
-
 // src/shared/config.ts
-var import_node_path2 = require("node:path");
+init_utils();
+init_errors();
+var import_node_path3 = require("node:path");
 var import_node_os = require("node:os");
 var DEFAULT_CONFIG = {
   schema_version: "1.0.0",
@@ -21802,6 +22236,11 @@ var DEFAULT_CONFIG = {
       daily_cap_usd: void 0,
       warning_threshold: 0.8,
       daily_reset_hour: 0
+    },
+    transport: {
+      auto_start: false,
+      rpc_timeout_ms: 5e3,
+      migrate_state_on_join: false
     }
   },
   time: {
@@ -21851,7 +22290,8 @@ function validateConfig(config2) {
     ["persistence.checkpoint_interval_ms", config2.persistence.checkpoint_interval_ms],
     ["health.memory_warn_mb", config2.health.memory_warn_mb],
     ["health.memory_critical_mb", config2.health.memory_critical_mb],
-    ["executor.daemon.tick_interval_ms", config2.executor.daemon.tick_interval_ms]
+    ["executor.daemon.tick_interval_ms", config2.executor.daemon.tick_interval_ms],
+    ["executor.transport.rpc_timeout_ms", config2.executor.transport.rpc_timeout_ms]
   ];
   for (const [name, val] of nums) {
     if (typeof val !== "number" || val < 0 || !Number.isFinite(val)) {
@@ -21866,9 +22306,9 @@ function resolveRoot(projectRoot) {
 __name(resolveRoot, "resolveRoot");
 function loadConfig(projectRoot) {
   const root = resolveRoot(projectRoot);
-  const configPath = (0, import_node_path2.join)(root, ".goodvibes", "state", "runtime-config.json");
+  const configPath = (0, import_node_path3.join)(root, ".goodvibes", "state", "runtime-config.json");
   try {
-    const raw = (0, import_node_fs2.readFileSync)(configPath, "utf-8");
+    const raw = (0, import_node_fs3.readFileSync)(configPath, "utf-8");
     const parsed = safeJsonParse(raw, null);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
       process.stderr.write(
@@ -21893,7 +22333,7 @@ function loadConfig(projectRoot) {
 }
 __name(loadConfig, "loadConfig");
 function saveConfig(projectRoot, config2) {
-  const configPath = (0, import_node_path2.join)(projectRoot, ".goodvibes", "state", "runtime-config.json");
+  const configPath = (0, import_node_path3.join)(projectRoot, ".goodvibes", "state", "runtime-config.json");
   writeJsonSync(configPath, config2);
 }
 __name(saveConfig, "saveConfig");
@@ -21940,18 +22380,25 @@ function createLogger(component) {
 }
 __name(createLogger, "createLogger");
 
+// src/plugins/mcp/mcp-server.ts
+init_utils();
+
 // src/bootstrap.ts
-var import_node_path15 = require("node:path");
+var import_node_path16 = require("node:path");
+var import_node_fs16 = require("node:fs");
+init_utils();
+init_errors();
 
 // src/core/utils/pid-file.ts
-var import_node_fs3 = require("node:fs");
+var import_node_fs4 = require("node:fs");
 var import_node_crypto2 = require("node:crypto");
-var import_node_path3 = require("node:path");
+var import_node_path4 = require("node:path");
 var import_node_os2 = require("node:os");
+init_utils();
 var logger = createLogger("pid-file");
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  return (0, import_node_path3.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
+  return (0, import_node_path4.join)((0, import_node_os2.tmpdir)(), `goodvibes-runtime-engine-${hash2}-${process.pid}.pid`);
 }
 __name(getPidFilePath, "getPidFilePath");
 function isProcessRunning(pid) {
@@ -21966,7 +22413,7 @@ __name(isProcessRunning, "isProcessRunning");
 function writePidFile(projectRoot) {
   const pidFilePath = getPidFilePath(projectRoot);
   try {
-    (0, import_node_fs3.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
+    (0, import_node_fs4.writeFileSync)(pidFilePath, String(process.pid), { encoding: "utf-8", mode: 384 });
     logger.debug("PID file written", { path: pidFilePath, pid: process.pid });
   } catch (err) {
     logger.warn("Could not write PID file", {
@@ -21978,7 +22425,7 @@ __name(writePidFile, "writePidFile");
 function removePidFile(projectRoot) {
   const pidFilePath = getPidFilePath(projectRoot);
   try {
-    (0, import_node_fs3.unlinkSync)(pidFilePath);
+    (0, import_node_fs4.unlinkSync)(pidFilePath);
     logger.debug("PID file removed", { path: pidFilePath });
   } catch (err) {
     if (err.code !== "ENOENT") {
@@ -21989,9 +22436,9 @@ function removePidFile(projectRoot) {
 __name(removePidFile, "removePidFile");
 async function checkCrashRecovery(projectRoot) {
   const pidFilePath = getPidFilePath(projectRoot);
-  if (!(0, import_node_fs3.existsSync)(pidFilePath)) return;
+  if (!(0, import_node_fs4.existsSync)(pidFilePath)) return;
   try {
-    const stalePid = (0, import_node_fs3.readFileSync)(pidFilePath, "utf-8").trim();
+    const stalePid = (0, import_node_fs4.readFileSync)(pidFilePath, "utf-8").trim();
     const currentPid = String(process.pid);
     if (stalePid !== currentPid) {
       const pid = Number(stalePid);
@@ -22178,16 +22625,17 @@ var HealthChecker = class {
 };
 
 // src/extensions/events/subsystem.ts
-var import_node_path5 = require("node:path");
+var import_node_path6 = require("node:path");
 
 // src/core/utils/fs-utils.ts
-var import_node_fs4 = require("node:fs");
+var import_node_fs5 = require("node:fs");
 function ensureDirSync(dirPath) {
-  (0, import_node_fs4.mkdirSync)(dirPath, { recursive: true });
+  (0, import_node_fs5.mkdirSync)(dirPath, { recursive: true });
 }
 __name(ensureDirSync, "ensureDirSync");
 
 // src/extensions/events/event-bus.ts
+init_utils();
 var logger2 = createLogger("event-bus");
 var TimeoutError = class extends Error {
   static {
@@ -22548,9 +22996,10 @@ var EventBus = class {
 };
 
 // src/extensions/events/event-log.ts
-var import_node_fs5 = require("node:fs");
+var import_node_fs6 = require("node:fs");
 var readline = __toESM(require("node:readline"), 1);
-var import_node_path4 = require("node:path");
+var import_node_path5 = require("node:path");
+init_utils();
 var logger3 = createLogger("event-log");
 var FLUSH_INTERVAL_MS = 100;
 var FLUSH_THRESHOLD_BYTES = 64 * 1024;
@@ -22609,8 +23058,8 @@ var EventLog = class {
    *     aggressive — use with care in production.
    */
   constructor(stateDir, config2) {
-    this.logPath = (0, import_node_path4.join)(stateDir, "events.jsonl");
-    this.archiveDir = (0, import_node_path4.join)(stateDir, "event-archives");
+    this.logPath = (0, import_node_path5.join)(stateDir, "events.jsonl");
+    this.archiveDir = (0, import_node_path5.join)(stateDir, "event-archives");
     this.maxSizeMb = config2.event_log_max_size_mb;
     this.compactAfterHours = config2.compact_after_hours;
   }
@@ -22859,7 +23308,7 @@ var EventLog = class {
     await this.closeWriteStream();
     ensureDirSync(this.archiveDir);
     const archiveDate = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const archivePath = (0, import_node_path4.join)(
+    const archivePath = (0, import_node_path5.join)(
       this.archiveDir,
       `events-archive-${archiveDate}.jsonl`
     );
@@ -22868,7 +23317,7 @@ var EventLog = class {
       appendFileSync(archivePath, toArchive.join("\n") + "\n", "utf-8");
     } catch (archiveErr) {
       logger3.debug("Archive append failed, creating new archive file", { error: toErrorMessage(archiveErr) });
-      (0, import_node_fs5.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
+      (0, import_node_fs6.writeFileSync)(archivePath, toArchive.join("\n") + "\n", "utf-8");
     }
     writeAtomicSync(this.logPath, toKeep.join("\n") + (toKeep.length > 0 ? "\n" : ""));
     if (!this.closed) {
@@ -22891,7 +23340,7 @@ var EventLog = class {
   getStats() {
     let fileSizeBytes = 0;
     try {
-      fileSizeBytes = (0, import_node_fs5.statSync)(this.logPath).size;
+      fileSizeBytes = (0, import_node_fs6.statSync)(this.logPath).size;
     } catch {
     }
     fileSizeBytes += this.writeBufferBytes;
@@ -22912,8 +23361,8 @@ var EventLog = class {
    */
   openWriteStream() {
     try {
-      ensureDirSync((0, import_node_path4.dirname)(this.logPath));
-      this.writeStream = (0, import_node_fs5.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
+      ensureDirSync((0, import_node_path5.dirname)(this.logPath));
+      this.writeStream = (0, import_node_fs6.createWriteStream)(this.logPath, { flags: "a", encoding: "utf-8" });
       this.writeStream.on("error", (err) => {
         logger3.error("Write stream error", { error: err.message });
         this.writeStream = null;
@@ -23026,7 +23475,7 @@ var EventLog = class {
    */
   streamLines(filePath, onLine) {
     return new Promise((resolve, reject) => {
-      const stream = (0, import_node_fs5.createReadStream)(filePath, { encoding: "utf-8" });
+      const stream = (0, import_node_fs6.createReadStream)(filePath, { encoding: "utf-8" });
       const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
       let done = false;
       const cleanup = /* @__PURE__ */ __name(() => {
@@ -23133,7 +23582,7 @@ var EventLog = class {
 var logger4 = createLogger("events-subsystem");
 async function createEventSubsystem(config2, projectRoot) {
   const eventBus = new EventBus();
-  const stateDir = (0, import_node_path5.join)(projectRoot, config2.persistence.state_dir);
+  const stateDir = (0, import_node_path6.join)(projectRoot, config2.persistence.state_dir);
   ensureDirSync(stateDir);
   const eventLog = new EventLog(stateDir, config2.persistence);
   await eventLog.initialize();
@@ -23153,6 +23602,8 @@ async function createEventSubsystem(config2, projectRoot) {
 __name(createEventSubsystem, "createEventSubsystem");
 
 // src/extensions/workflow/workflow-engine.ts
+init_utils();
+init_errors();
 var log = createLogger("workflow-engine");
 var WorkflowEngine = class {
   static {
@@ -24360,8 +24811,9 @@ var REVIEW_ONLY_DEFINITION = {
 };
 
 // src/extensions/workflow/definitions/custom-loader.ts
-var import_node_fs6 = require("node:fs");
-var import_node_path6 = require("node:path");
+var import_node_fs7 = require("node:fs");
+var import_node_path7 = require("node:path");
+init_utils();
 var log2 = createLogger("custom-loader");
 function validateWorkflowDefinition(def) {
   const errors = [];
@@ -24429,10 +24881,10 @@ function validateWorkflowDefinition(def) {
 }
 __name(validateWorkflowDefinition, "validateWorkflowDefinition");
 async function loadCustomWorkflows(configPath) {
-  const configFile = (0, import_node_path6.join)(configPath, "goodvibes.json");
+  const configFile = (0, import_node_path7.join)(configPath, "goodvibes.json");
   let raw;
   try {
-    raw = await import_node_fs6.promises.readFile(configFile, "utf-8");
+    raw = await import_node_fs7.promises.readFile(configFile, "utf-8");
   } catch (err) {
     if (err.code === "ENOENT") {
       log2.debug("loadCustomWorkflows: no goodvibes.json found, skipping custom workflow loading", {
@@ -24536,6 +24988,7 @@ async function createWorkflowSubsystem(config2, projectRoot) {
 __name(createWorkflowSubsystem, "createWorkflowSubsystem");
 
 // src/core/trigger-registry.ts
+init_errors();
 var log3 = createLogger("trigger-registry");
 var TriggerRegistry = class {
   static {
@@ -25141,6 +25594,9 @@ var ConditionEvaluator = class {
   }
 };
 
+// src/extensions/triggers/trigger-action-executor.ts
+init_utils();
+
 // src/extensions/directives/legacy-directive-builder.ts
 function buildSpawnDirectiveMessage(agentType, task, context) {
   const directive = {
@@ -25644,6 +26100,7 @@ function createTriggerSubsystem(config2, deps) {
 __name(createTriggerSubsystem, "createTriggerSubsystem");
 
 // src/extensions/agents/budget-tracker.ts
+init_utils();
 var logger7 = createLogger("budget-tracker");
 var BudgetTracker = class {
   static {
@@ -25886,6 +26343,8 @@ var BudgetTracker = class {
 };
 
 // src/extensions/agents/agent-coordinator.ts
+init_utils();
+init_errors();
 var logger8 = createLogger("agent-coordinator");
 var DEFAULT_COST_PER_TOKEN = 3e-6;
 var VALID_TRANSITIONS = {
@@ -27016,9 +27475,15 @@ function createDirectiveSubsystem() {
 }
 __name(createDirectiveSubsystem, "createDirectiveSubsystem");
 
+// src/extensions/persistence/subsystem.ts
+init_utils();
+
 // src/extensions/persistence/state-store.ts
-var import_node_fs7 = require("node:fs");
-var import_node_path7 = require("node:path");
+var import_node_fs8 = require("node:fs");
+var import_node_path8 = require("node:path");
+init_utils();
+init_utils();
+init_errors();
 var logger10 = createLogger("state-store");
 var JsonStateStore = class {
   static {
@@ -27034,7 +27499,7 @@ var JsonStateStore = class {
    *   Defaults to `process.cwd()` when omitted.
    */
   constructor(config2, projectRoot = process.cwd()) {
-    this.stateDir = (0, import_node_path7.isAbsolute)(config2.persistence.state_dir) ? config2.persistence.state_dir : (0, import_node_path7.join)(projectRoot, config2.persistence.state_dir);
+    this.stateDir = (0, import_node_path8.isAbsolute)(config2.persistence.state_dir) ? config2.persistence.state_dir : (0, import_node_path8.join)(projectRoot, config2.persistence.state_dir);
   }
   /**
    * {@inheritdoc StateStore.initialize}
@@ -27062,7 +27527,7 @@ var JsonStateStore = class {
    * @returns Path to the corresponding `.json` file.
    */
   keyPath(key) {
-    return (0, import_node_path7.join)(this.stateDir, `${key}.json`);
+    return (0, import_node_path8.join)(this.stateDir, `${key}.json`);
   }
   /**
    * Resolves the advisory lock path for a given state file path.
@@ -27089,7 +27554,7 @@ var JsonStateStore = class {
     const content = String(process.pid);
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        (0, import_node_fs7.writeFileSync)(lockFilePath, content, { flag: "wx" });
+        (0, import_node_fs8.writeFileSync)(lockFilePath, content, { flag: "wx" });
         return;
       } catch (err) {
         const isLockHeld = err instanceof Error && "code" in err && err.code === "EEXIST";
@@ -27120,7 +27585,7 @@ var JsonStateStore = class {
    */
   releaseLock(lockFilePath) {
     try {
-      (0, import_node_fs7.unlinkSync)(lockFilePath);
+      (0, import_node_fs8.unlinkSync)(lockFilePath);
     } catch {
     }
   }
@@ -27154,7 +27619,7 @@ var JsonStateStore = class {
   async get(key) {
     const path3 = this.keyPath(key);
     try {
-      const content = (0, import_node_fs7.readFileSync)(path3, "utf-8");
+      const content = (0, import_node_fs8.readFileSync)(path3, "utf-8");
       const result = safeJsonParse(content, null);
       if (result === null) throw new SyntaxError("Failed to parse JSON");
       return result;
@@ -27177,7 +27642,7 @@ var JsonStateStore = class {
   async delete(key) {
     const path3 = this.keyPath(key);
     try {
-      (0, import_node_fs7.unlinkSync)(path3);
+      (0, import_node_fs8.unlinkSync)(path3);
       logger10.debug("Deleted state", { key });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -27199,8 +27664,8 @@ var JsonStateStore = class {
   async keys() {
     this.ensureDir();
     try {
-      const entries = (0, import_node_fs7.readdirSync)(this.stateDir);
-      return entries.filter((f) => f.endsWith(".json") && !f.endsWith(".json.tmp")).map((f) => (0, import_node_path7.basename)(f, ".json"));
+      const entries = (0, import_node_fs8.readdirSync)(this.stateDir);
+      return entries.filter((f) => f.endsWith(".json") && !f.endsWith(".json.tmp")).map((f) => (0, import_node_path8.basename)(f, ".json"));
     } catch (err) {
       const message = toErrorMessage(err);
       logger10.error("Failed to list state keys", { error: message });
@@ -27234,6 +27699,9 @@ var JsonStateStore = class {
     }
   }
 };
+
+// src/extensions/persistence/checkpoint-manager.ts
+init_utils();
 
 // src/core/observability/timer.ts
 var logger11 = createLogger("timer");
@@ -27387,6 +27855,7 @@ var CheckpointManager = class {
 };
 
 // src/extensions/persistence/snapshot-manager.ts
+init_utils();
 var logger13 = createLogger("snapshot-manager");
 var SNAPSHOT_KEY = "runtime_snapshot";
 var SNAPSHOT_VERSION = 1;
@@ -27595,6 +28064,7 @@ function captureTriggerState(registry2) {
 __name(captureTriggerState, "captureTriggerState");
 
 // src/extensions/persistence/replay-engine.ts
+init_utils();
 var logger14 = createLogger("replay-engine");
 async function replayEvents(eventLog, deps, options = {}) {
   const startMs = Date.now();
@@ -27880,6 +28350,7 @@ function processEvent(event, _deps, restoredWorkflows, restoredAgentBindings, tr
 __name(processEvent, "processEvent");
 
 // src/extensions/persistence/startup-recovery.ts
+init_utils();
 var logger15 = createLogger("startup-recovery");
 async function recoverState(eventLog, snapshotManager, deps) {
   const startMs = Date.now();
@@ -28098,6 +28569,7 @@ var WRFCConfigStore = class {
 };
 
 // src/extensions/directives/gv-tag-parser.ts
+init_utils();
 var GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
 var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "files", "count", "minimum_score", "agent-type"]);
 function parseRawJson(raw) {
@@ -28151,8 +28623,9 @@ function extractFiles(text) {
 __name(extractFiles, "extractFiles");
 
 // src/extensions/workflow/watchdog.ts
-var import_node_fs8 = require("node:fs");
-var import_node_path8 = require("node:path");
+var import_node_fs9 = require("node:fs");
+var import_node_path9 = require("node:path");
+init_utils();
 
 // src/extensions/workflow/wrfc-fields.ts
 function getWRFCFields(ctx) {
@@ -28380,13 +28853,13 @@ var WatchdogCoordinator = class {
     if (matching.length === 0) {
       return;
     }
-    const urgentPath = (0, import_node_path8.join)(stateDir, "urgent-directives.json");
+    const urgentPath = (0, import_node_path9.join)(stateDir, "urgent-directives.json");
     let writeSucceeded = false;
     try {
       ensureDirSync(stateDir);
       let existingDirectives = [];
       try {
-        const existing = (0, import_node_fs8.readFileSync)(urgentPath, "utf-8");
+        const existing = (0, import_node_fs9.readFileSync)(urgentPath, "utf-8");
         const parsed = safeJsonParse(existing, {});
         if (Array.isArray(parsed.directives)) {
           existingDirectives = parsed.directives;
@@ -28435,6 +28908,7 @@ function createTrigger(overrides) {
 __name(createTrigger, "createTrigger");
 
 // src/core/queues/event-queue.ts
+init_errors();
 var logger19 = createLogger("core:event-queue");
 var DEFAULT_MAX_DEPTH = 1e3;
 var DEFAULT_DEDUP_TTL_MS = 6e4;
@@ -28681,8 +29155,9 @@ var EventQueue = class _EventQueue {
 };
 
 // src/core/queues/dead-letter.ts
-var import_node_fs9 = require("node:fs");
-var import_node_path9 = require("node:path");
+var import_node_fs10 = require("node:fs");
+var import_node_path10 = require("node:path");
+init_utils();
 var logger20 = createLogger("core:dead-letter");
 var DeadLetterQueue = class {
   static {
@@ -28696,8 +29171,8 @@ var DeadLetterQueue = class {
     this.maxSize = options.max_size ?? 500;
     this.persistEnabled = options.persist !== false;
     const cwd = process.cwd();
-    const defaultPath = (0, import_node_path9.join)(cwd, ".goodvibes", "memory", "dead-letter.json");
-    this.filePath = options.file_path ? (0, import_node_path9.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path9.join)(cwd, options.file_path) : defaultPath;
+    const defaultPath = (0, import_node_path10.join)(cwd, ".goodvibes", "memory", "dead-letter.json");
+    this.filePath = options.file_path ? (0, import_node_path10.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path10.join)(cwd, options.file_path) : defaultPath;
     if (this.persistEnabled) {
       this.load();
     }
@@ -28803,7 +29278,7 @@ var DeadLetterQueue = class {
   // ─── Private Helpers ──────────────────────────────────────────────────────
   load() {
     try {
-      const content = (0, import_node_fs9.readFileSync)(this.filePath, "utf-8");
+      const content = (0, import_node_fs10.readFileSync)(this.filePath, "utf-8");
       const parsed = safeJsonParse(content, null);
       if (Array.isArray(parsed)) {
         const valid = parsed.filter((item) => {
@@ -28848,6 +29323,7 @@ var DeadLetterQueue = class {
 };
 
 // src/core/utils/retry.ts
+init_errors();
 var logger21 = createLogger("core:retry");
 function computeDelay(backoff, baseMs, attempt) {
   if (backoff === "exponential") {
@@ -28858,6 +29334,7 @@ function computeDelay(backoff, baseMs, attempt) {
 __name(computeDelay, "computeDelay");
 
 // src/core/matching/error-handler.ts
+init_utils();
 var logger22 = createLogger("core:error-handler");
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -28982,6 +29459,7 @@ var ErrorHandler = class {
 };
 
 // src/core/processing/event-processor.ts
+init_utils();
 var logger23 = createLogger("core:event-processor");
 var MAX_EVENTS_PER_BATCH = 100;
 var MAX_CHAIN_DEPTH = 10;
@@ -29435,6 +29913,7 @@ var EventProcessor = class {
 };
 
 // src/core/processing/lifecycle.ts
+init_errors();
 var logger24 = createLogger("core:lifecycle");
 var VALID_TRANSITIONS2 = {
   stopped: ["running"],
@@ -29580,6 +30059,7 @@ var LoopLifecycleManager = class {
 };
 
 // src/core/processing/executor-mode.ts
+init_utils();
 var logger25 = createLogger("executor-mode");
 var ExecutorModeManager = class {
   static {
@@ -29678,6 +30158,7 @@ var ExecutorModeManager = class {
 };
 
 // src/core/processing/signals.ts
+init_utils();
 var SIGTERM_GRACE_MS = 1e4;
 var SIGINT_GRACE_MS = 5e3;
 function setupSignalHandlers(onShutdown) {
@@ -29757,8 +30238,9 @@ function setupSignalHandlers(onShutdown) {
 __name(setupSignalHandlers, "setupSignalHandlers");
 
 // src/core/state/state-store.ts
-var import_node_fs10 = require("node:fs");
-var import_node_path10 = require("node:path");
+var import_node_fs11 = require("node:fs");
+var import_node_path11 = require("node:path");
+init_utils();
 var logger26 = createLogger("core:state-store");
 var FORBIDDEN_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 function validateDotPath(path3) {
@@ -29842,8 +30324,8 @@ var CoreStateStore = class {
   changeListener;
   constructor(options = {}) {
     const cwd = process.cwd();
-    const defaultPath = (0, import_node_path10.join)(cwd, ".goodvibes", "memory", "runtime-state.json");
-    this.filePath = options.file_path ? (0, import_node_path10.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path10.join)(cwd, options.file_path) : defaultPath;
+    const defaultPath = (0, import_node_path11.join)(cwd, ".goodvibes", "memory", "runtime-state.json");
+    this.filePath = options.file_path ? (0, import_node_path11.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path11.join)(cwd, options.file_path) : defaultPath;
     this.saveDebounceMs = options.save_debounce_ms ?? 1e3;
     this.load();
   }
@@ -29992,7 +30474,7 @@ var CoreStateStore = class {
   /** Load from disk on construction. Missing file is not an error. */
   load() {
     try {
-      const content = (0, import_node_fs10.readFileSync)(this.filePath, "utf-8");
+      const content = (0, import_node_fs11.readFileSync)(this.filePath, "utf-8");
       const parsed = safeJsonParse(content, null);
       if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
         this.data = parsed;
@@ -30075,7 +30557,11 @@ function readStreamBody(stream, maxBytes) {
 }
 __name(readStreamBody, "readStreamBody");
 
+// src/core/state/file-fallback.ts
+init_utils();
+
 // src/core/utils/poll.ts
+init_errors();
 var logger27 = createLogger("core:poll");
 
 // src/core/state/file-fallback.ts
@@ -30377,6 +30863,7 @@ var DEFAULT_MIN_REVIEW_SCORE = 9.5;
 var EARLY_WORKFLOW_STATES = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
 
 // src/shared/events.ts
+init_utils();
 function createEvent(overrides) {
   return {
     id: generateEventId(),
@@ -30394,6 +30881,7 @@ function createEvent(overrides) {
 __name(createEvent, "createEvent");
 
 // src/plugins/wrfc/score-evaluator.ts
+init_utils();
 function extractScore(text) {
   if (!text) return null;
   const result = parseGvTag(text);
@@ -31203,6 +31691,7 @@ function createTimeEvent(params) {
 __name(createTimeEvent, "createTimeEvent");
 
 // src/extensions/adapters/hook-adapter.ts
+init_utils();
 var logger30 = createLogger("hook-adapter");
 var VALID_HOOK_TYPES = /* @__PURE__ */ new Set([
   "PreToolUse",
@@ -31506,6 +31995,7 @@ function createSubagentStartHandler(deps) {
 __name(createSubagentStartHandler, "createSubagentStartHandler");
 
 // src/plugins/hooks/handlers/subagent-stop.ts
+init_utils();
 var logger35 = createLogger("handler:subagent-stop");
 function createSubagentStopHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSubagentStop(_event, input) {
@@ -31936,6 +32426,7 @@ var HeartbeatManager = class {
 };
 
 // src/plugins/time/scheduler.ts
+init_errors();
 var PERSIST_KEY = "time_plugin.schedules";
 var EventScheduler = class {
   constructor(config2, store) {
@@ -32242,6 +32733,8 @@ var TimePlugin = class {
 var crypto = __toESM(require("node:crypto"), 1);
 var fs = __toESM(require("node:fs/promises"), 1);
 var path = __toESM(require("node:path"), 1);
+init_errors();
+init_utils();
 var logger41 = createLogger("file-watcher");
 function isDropFilePayload(value) {
   if (typeof value !== "object" || value === null) return false;
@@ -32363,6 +32856,8 @@ var http = __toESM(require("node:http"), 1);
 var fs2 = __toESM(require("node:fs/promises"), 1);
 var path2 = __toESM(require("node:path"), 1);
 var crypto2 = __toESM(require("node:crypto"), 1);
+init_errors();
+init_utils();
 var logger42 = createLogger("http-listener");
 var DEFAULT_HTTP_LISTENER_CONFIG = {
   port: DEFAULT_HTTP_LISTENER_PORT,
@@ -33210,6 +33705,7 @@ var TickDriver = class _TickDriver {
 };
 
 // src/extensions/executor/executor-budget.ts
+init_utils();
 var logger45 = createLogger("executor-budget");
 var BUDGET_STATE_KEY = "executor.budget.spending";
 function checkCapThreshold(params) {
@@ -33524,6 +34020,9 @@ var ExecutorBudgetManager = class {
   }
 };
 
+// src/extensions/executor/daemon-tick-handler.ts
+init_utils();
+
 // src/extensions/executor/context-clearer.ts
 var import_node_child_process2 = require("node:child_process");
 var logger46 = createLogger("context-clearer");
@@ -33825,6 +34324,7 @@ var ActionExecutor = class {
 };
 
 // src/extensions/executor/subsystem.ts
+init_utils();
 var logger49 = createLogger("executor-subsystem");
 function createExecutorSubsystem(config2, eventBus) {
   try {
@@ -33939,14 +34439,15 @@ function createExternalAdapter(plugin) {
 __name(createExternalAdapter, "createExternalAdapter");
 
 // src/extensions/ipc/setup.ts
-var import_node_fs13 = require("node:fs");
+var import_node_fs14 = require("node:fs");
 var import_node_crypto4 = require("node:crypto");
-var import_node_path13 = require("node:path");
+var import_node_path14 = require("node:path");
+init_utils();
 
 // src/shared/ipc/ipc-server.ts
 var net = __toESM(require("node:net"), 1);
-var import_node_fs11 = require("node:fs");
-var import_node_path11 = require("node:path");
+var import_node_fs12 = require("node:fs");
+var import_node_path12 = require("node:path");
 
 // src/shared/ipc/protocol.ts
 var logger51 = createLogger("ipc-protocol");
@@ -33980,6 +34481,8 @@ function validateIPCMessage(obj) {
 __name(validateIPCMessage, "validateIPCMessage");
 
 // src/shared/ipc/ipc-server.ts
+init_utils();
+init_errors();
 var logger52 = createLogger("ipc-server");
 var CONNECTION_TIMEOUT_MS = 5e3;
 var MAX_MESSAGE_SIZE = 1048576;
@@ -34053,12 +34556,12 @@ var IPCServer = class {
    * @throws If the server cannot bind to the socket path.
    */
   async listen() {
-    const dir = (0, import_node_path11.dirname)(this.socketPath);
-    (0, import_node_fs11.mkdirSync)(dir, { recursive: true, mode: 448 });
-    (0, import_node_fs11.chmodSync)(dir, 448);
-    if ((0, import_node_fs11.existsSync)(this.socketPath)) {
+    const dir = (0, import_node_path12.dirname)(this.socketPath);
+    (0, import_node_fs12.mkdirSync)(dir, { recursive: true, mode: 448 });
+    (0, import_node_fs12.chmodSync)(dir, 448);
+    if ((0, import_node_fs12.existsSync)(this.socketPath)) {
       try {
-        (0, import_node_fs11.unlinkSync)(this.socketPath);
+        (0, import_node_fs12.unlinkSync)(this.socketPath);
         logger52.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
         logger52.warn("Could not remove stale socket file", {
@@ -34079,7 +34582,7 @@ var IPCServer = class {
       }
       srv.once("error", reject);
       srv.listen(this.socketPath, () => {
-        (0, import_node_fs11.chmodSync)(this.socketPath, 384);
+        (0, import_node_fs12.chmodSync)(this.socketPath, 384);
         logger52.info("IPC server listening", { path: this.socketPath });
         srv.removeListener("error", reject);
         resolve();
@@ -34318,8 +34821,8 @@ var IPCServer = class {
    */
   removeSocketFile() {
     try {
-      if ((0, import_node_fs11.existsSync)(this.socketPath)) {
-        (0, import_node_fs11.unlinkSync)(this.socketPath);
+      if ((0, import_node_fs12.existsSync)(this.socketPath)) {
+        (0, import_node_fs12.unlinkSync)(this.socketPath);
         logger52.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
@@ -34332,8 +34835,9 @@ var IPCServer = class {
 };
 
 // src/extensions/ipc/ipc-router.ts
-var import_node_fs12 = require("node:fs");
-var import_node_path12 = require("node:path");
+init_utils();
+var import_node_fs13 = require("node:fs");
+var import_node_path13 = require("node:path");
 var logger53 = createLogger("ipc-router");
 var IPCRouter = class {
   static {
@@ -34403,9 +34907,9 @@ var IPCRouter = class {
   removeSessionPointers() {
     if (!this.stateDir) return;
     for (const sessionId of this.registeredSessions) {
-      const pointerFile = (0, import_node_path12.join)(this.stateDir, `runtime-${sessionId}.socket`);
+      const pointerFile = (0, import_node_path13.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
-        (0, import_node_fs12.unlinkSync)(pointerFile);
+        (0, import_node_fs13.unlinkSync)(pointerFile);
         logger53.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
@@ -34530,8 +35034,8 @@ var IPCRouter = class {
       this.directiveQueue?.clear();
       if (this.socketPath && this.stateDir && typeof sessionId === "string" && sessionId.length > 0) {
         try {
-          const pointerFile = (0, import_node_path12.join)(this.stateDir, `runtime-${sessionId}.socket`);
-          (0, import_node_fs12.writeFileSync)(pointerFile, this.socketPath, "utf-8");
+          const pointerFile = (0, import_node_path13.join)(this.stateDir, `runtime-${sessionId}.socket`);
+          (0, import_node_fs13.writeFileSync)(pointerFile, this.socketPath, "utf-8");
           this.registeredSessions.add(sessionId);
           logger53.info("Session pointer file written", { sessionId, pointer: pointerFile });
         } catch (err) {
@@ -34718,7 +35222,7 @@ function cleanStalePointerFiles(stateDir, log9) {
   try {
     let entries;
     try {
-      entries = (0, import_node_fs13.readdirSync)(stateDir);
+      entries = (0, import_node_fs14.readdirSync)(stateDir);
     } catch (err) {
       if (err.code === "ENOENT") return;
       throw err;
@@ -34729,16 +35233,16 @@ function cleanStalePointerFiles(stateDir, log9) {
       if (!match) continue;
       const pid = parseInt(match[1], 10);
       if (isPidAlive(pid)) continue;
-      const pointerPath = (0, import_node_path13.join)(stateDir, filename);
+      const pointerPath = (0, import_node_path14.join)(stateDir, filename);
       let socketFilePath;
       try {
-        socketFilePath = (0, import_node_fs13.readFileSync)(pointerPath, "utf-8").trim();
+        socketFilePath = (0, import_node_fs14.readFileSync)(pointerPath, "utf-8").trim();
       } catch {
       }
       let socketCleaned = false;
       if (socketFilePath) {
         try {
-          (0, import_node_fs13.unlinkSync)(socketFilePath);
+          (0, import_node_fs14.unlinkSync)(socketFilePath);
           socketCleaned = true;
         } catch (err) {
           if (err.code !== "ENOENT") {
@@ -34750,7 +35254,7 @@ function cleanStalePointerFiles(stateDir, log9) {
         }
       }
       try {
-        (0, import_node_fs13.unlinkSync)(pointerPath);
+        (0, import_node_fs14.unlinkSync)(pointerPath);
       } catch (err) {
         if (err.code !== "ENOENT") {
           log9.warn("Could not remove stale socket pointer file", {
@@ -34768,10 +35272,10 @@ function cleanStalePointerFiles(stateDir, log9) {
 __name(cleanStalePointerFiles, "cleanStalePointerFiles");
 async function createIPCSubsystem(opts) {
   const { config: config2, projectRoot, directiveQueue, agentWorkflowMap } = opts;
-  const stateDir = (0, import_node_path13.join)(projectRoot, config2.persistence.state_dir);
+  const stateDir = (0, import_node_path14.join)(projectRoot, config2.persistence.state_dir);
   const socketDir = config2.ipc.socket_dir;
   const hash2 = (0, import_node_crypto4.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  const socketPath = (0, import_node_path13.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
+  const socketPath = (0, import_node_path14.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
   try {
     const ipcServer = new IPCServer(socketPath);
     const ipcRouter = new IPCRouter({
@@ -34809,11 +35313,11 @@ async function createIPCSubsystem(opts) {
       });
     }
     cleanStalePointerFiles(stateDir, logger54);
-    (0, import_node_fs13.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+    (0, import_node_fs14.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
     ensureDirSync(stateDir);
-    const pointerFile = (0, import_node_path13.join)(stateDir, `runtime-${process.pid}.socket`);
-    (0, import_node_fs13.writeFileSync)(pointerFile, socketPath, "utf-8");
+    const pointerFile = (0, import_node_path14.join)(stateDir, `runtime-${process.pid}.socket`);
+    (0, import_node_fs14.writeFileSync)(pointerFile, socketPath, "utf-8");
     logger54.info("IPC subsystem created", { socket: socketPath });
     return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
   } catch (err) {
@@ -34827,17 +35331,18 @@ async function createIPCSubsystem(opts) {
 __name(createIPCSubsystem, "createIPCSubsystem");
 
 // src/extensions/ipc/teardown.ts
-var import_node_fs14 = require("node:fs");
-var import_node_path14 = require("node:path");
+var import_node_fs15 = require("node:fs");
+var import_node_path15 = require("node:path");
+init_utils();
 var logger55 = createLogger("ipc-teardown");
 function removeSocketPointerFile(projectRoot, config2) {
-  const pointerFile = (0, import_node_path14.join)(
+  const pointerFile = (0, import_node_path15.join)(
     projectRoot,
     config2.persistence.state_dir,
     `runtime-${process.pid}.socket`
   );
   try {
-    (0, import_node_fs14.unlinkSync)(pointerFile);
+    (0, import_node_fs15.unlinkSync)(pointerFile);
     logger55.debug("Socket pointer file removed", { path: pointerFile });
   } catch (err) {
     if (err.code !== "ENOENT") {
@@ -34992,7 +35497,7 @@ var RuntimeEngine = class {
         workflowEngine: this.workflow.workflowEngine,
         directiveQueue: this.directives.directiveQueue,
         agentWorkflowMap: this.directives.agentWorkflowMap,
-        stateDir: (0, import_node_path15.join)(this.projectRoot, this.config.persistence.state_dir)
+        stateDir: (0, import_node_path16.join)(this.projectRoot, this.config.persistence.state_dir)
       });
     }
     this.persistence = await createPersistenceSubsystem({
@@ -35016,6 +35521,30 @@ var RuntimeEngine = class {
       this.triggers?.triggerRegistry
     );
     const wrfcConfig = getDefaultWRFCConfig();
+    try {
+      const raw = (0, import_node_fs16.readFileSync)((0, import_node_path16.join)(this.projectRoot, ".goodvibes", "goodvibes.json"), "utf-8");
+      const parsed = JSON.parse(raw);
+      const wrfcOverrides = parsed?.runtime?.wrfc;
+      if (wrfcOverrides && typeof wrfcOverrides === "object") {
+        if (typeof wrfcOverrides.score_threshold === "number") {
+          wrfcConfig.score_threshold = Math.max(0, Math.min(10, wrfcOverrides.score_threshold));
+        }
+        if (typeof wrfcOverrides.max_fix_attempts === "number") {
+          wrfcConfig.max_fix_attempts = Math.max(1, wrfcOverrides.max_fix_attempts);
+        }
+        if (typeof wrfcOverrides.enable_quality_gates === "boolean") {
+          wrfcConfig.enable_quality_gates = wrfcOverrides.enable_quality_gates;
+        }
+        if (Array.isArray(wrfcOverrides.require_review_types)) {
+          wrfcConfig.require_review_types = wrfcOverrides.require_review_types;
+        }
+        logger56.info("WRFC config overrides applied from goodvibes.json", {
+          score_threshold: wrfcConfig.score_threshold,
+          max_fix_attempts: wrfcConfig.max_fix_attempts
+        });
+      }
+    } catch {
+    }
     const coreStore = this.coreRuntime.stateStore;
     const coreEventProcessor = this.coreRuntime.eventProcessor;
     const coreTriggerRegistry = this.triggers?.triggerRegistry;
@@ -35352,6 +35881,7 @@ function toError(error2, version2, uptime_ms, execution_ms) {
 __name(toError, "toError");
 
 // src/plugins/mcp/handlers/status.ts
+init_utils();
 var logger57 = createLogger("tool-handlers:status");
 var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
@@ -35364,10 +35894,22 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   }
   try {
-    const uptimeMs = ctx.getUptime();
-    const statusData = ctx.getHealth();
+    let uptimeMs;
+    let statusData;
+    let version2;
+    if (ctx.transport) {
+      [uptimeMs, statusData, version2] = await Promise.all([
+        ctx.transport.getUptime(),
+        ctx.transport.getHealth(),
+        ctx.transport.getVersion()
+      ]);
+    } else {
+      uptimeMs = ctx.getUptime();
+      statusData = ctx.getHealth();
+      version2 = ctx.version;
+    }
     logger57.debug("runtime_status computed", { status: statusData.status });
-    return toSuccess(statusData, ctx.version, uptimeMs, Date.now() - start);
+    return toSuccess(statusData, version2, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
     logger57.error("runtime_status failed", { error: message });
@@ -35376,6 +35918,8 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeStatus");
 
 // src/plugins/mcp/handlers/config.ts
+init_utils();
+init_errors();
 var logger58 = createLogger("tool-handlers:config");
 var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "ipc.socket_dir",
@@ -35549,7 +36093,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     }
     if (action === "get") {
       const key = assertOptionalString(params.key, "key");
-      const config2 = ctx.getConfig();
+      const config2 = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
       if (key) {
         const value = getNestedValue(config2, key);
         return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
@@ -35595,14 +36139,18 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
           );
         }
       }
-      const current = ctx.getConfig();
+      const current = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
       const updated = setNestedValue(
         structuredClone(current),
         key,
         value
       );
-      saveConfig(ctx.projectRoot, updated);
-      ctx.updateConfig(updated);
+      if (ctx.transport) {
+        await ctx.transport.updateConfig(updated);
+      } else {
+        saveConfig(ctx.projectRoot, updated);
+        ctx.updateConfig(updated);
+      }
       logger58.info("Config key set", { key, value });
       return toSuccess(
         { key, value, persisted: true },
@@ -35612,8 +36160,12 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       );
     }
     if (action === "reset") {
-      saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
-      ctx.updateConfig(DEFAULT_CONFIG);
+      if (ctx.transport) {
+        await ctx.transport.updateConfig(DEFAULT_CONFIG);
+      } else {
+        saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
+        ctx.updateConfig(DEFAULT_CONFIG);
+      }
       logger58.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
@@ -35636,6 +36188,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeConfig");
 
 // src/plugins/mcp/handlers/events.ts
+init_utils();
 var logger59 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
   if (pattern === "*") return true;
@@ -35747,7 +36300,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
         until: filterRaw.until ? resolveTimestamp(assertOptionalString(filterRaw.until, "filter.until") ?? "") : void 0,
         limit: typeof filterRaw.limit === "number" ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT
       };
-      let events = await ctx.getEventLog().query(logFilter);
+      let events = ctx.transport ? await ctx.transport.queryEvents(logFilter) : await ctx.getEventLog().query(logFilter);
       if (hasWildcards && typePatterns) {
         events = events.filter(
           (e) => typePatterns.some((p) => matchesTypePattern(e.type, p))
@@ -35762,16 +36315,22 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     if (action === "directives") {
       const mode = params.mode ?? "peek";
       const target = params.target ?? "subagent_stop";
-      const queue = ctx.getDirectiveQueue();
-      if (!queue) {
-        return toError(
-          "Directive queue not initialized",
-          ctx.version,
-          uptimeMs,
-          Date.now() - start
-        );
+      let directives;
+      if (ctx.transport && mode === "drain") {
+        const result = await ctx.transport.drainDirectives(target);
+        directives = result.directives;
+      } else {
+        const queue = ctx.getDirectiveQueue();
+        if (!queue) {
+          return toError(
+            "Directive queue not initialized",
+            ctx.version,
+            uptimeMs,
+            Date.now() - start
+          );
+        }
+        directives = mode === "drain" ? queue.drain(target) : queue.peek(target);
       }
-      const directives = mode === "drain" ? queue.drain(target) : queue.peek(target);
       const count = directives.length;
       let data;
       if (verbosity === "count_only") {
@@ -35806,6 +36365,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeEvents");
 
 // src/plugins/mcp/handlers/emit.ts
+init_utils();
 var logger60 = createLogger("tool-handlers:emit");
 var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
@@ -35840,14 +36400,30 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     if (!isKnownPrefix) {
       logger60.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
     }
-    const emitted = ctx.getEventBus().emit({
-      id: generateEventId(),
+    const eventId = generateEventId();
+    const fullEvent = {
+      id: eventId,
       timestamp: timestamp(),
       type: eventType,
       source: { kind: "mcp_tool", tool_name: "runtime_emit" },
       payload: { type: eventType, data: payload },
-      metadata: correlationId ? { correlation_id: correlationId } : void 0
-    });
+      priority: 0,
+      metadata: {
+        session_id: "",
+        sequence: 0,
+        version: 1,
+        ...correlationId ? { correlation_id: correlationId } : {}
+      }
+    };
+    let emittedId;
+    if (ctx.transport) {
+      await ctx.transport.emitEvent(fullEvent);
+      emittedId = eventId;
+    } else {
+      const emitted2 = ctx.getEventBus().emit(fullEvent);
+      emittedId = emitted2.id;
+    }
+    const emitted = { ...fullEvent, id: emittedId };
     logger60.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
@@ -35858,6 +36434,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeEmit");
 
 // src/plugins/mcp/handlers/workflow.ts
+init_utils();
 var logger61 = createLogger("tool-handlers:workflow");
 var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
@@ -35876,45 +36453,60 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
         Date.now() - start
       );
     }
-    const engine = ctx.getWorkflowEngine();
     if (action === "create") {
-      if (!engine) {
-        return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptimeMs, Date.now() - start);
-      }
       const workflowType = assertOptionalString(params.workflow_type, "workflow_type");
       if (!workflowType) {
         return toError("Missing required field: workflow_type", ctx.version, uptimeMs, Date.now() - start);
       }
       const definitionId = workflowType === "wrfc_loop" ? "wrfc_loop" : workflowType === "fix_loop" ? "fix_loop" : workflowType;
       const context = params.context ?? {};
+      if (ctx.transport) {
+        const result = await ctx.transport.startWorkflow(definitionId, context);
+        logger61.info("runtime_workflow: created", { id: result.workflow_id, definition: definitionId });
+        return toSuccess({ instance: { id: result.workflow_id, definition_id: definitionId, context } }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
+      if (!engine) {
+        return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptimeMs, Date.now() - start);
+      }
       const instance = engine.create(definitionId, context);
       logger61.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
-      if (!engine) {
-        return toSuccess({ instance: null }, ctx.version, uptimeMs, Date.now() - start);
-      }
       const workflowId = assertOptionalString(params.workflow_id, "workflow_id");
       if (!workflowId) {
         return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
+      }
+      if (ctx.transport) {
+        const instance2 = await ctx.transport.getWorkflow(workflowId);
+        return toSuccess({ instance: instance2 }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
+      if (!engine) {
+        return toSuccess({ instance: null }, ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.get(workflowId);
       return toSuccess({ instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "list") {
+      const filter = params.filter;
+      const statusFilter = assertOptionalString(filter?.status, "filter.status");
+      if (ctx.transport) {
+        let instances2 = await ctx.transport.listWorkflows();
+        if (statusFilter) {
+          instances2 = instances2.filter((i) => i["status"] === statusFilter);
+        }
+        return toSuccess({ instances: instances2, count: instances2.length }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
       if (!engine) {
         return toSuccess({ instances: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
-      const filter = params.filter;
-      const statusFilter = assertOptionalString(filter?.status, "filter.status");
       const instances = statusFilter ? engine.listAll().filter((i) => i.status === statusFilter) : engine.listActive();
       return toSuccess({ instances, count: instances.length }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "advance") {
-      if (!engine) {
-        return toError("Workflow engine is disabled", ctx.version, uptimeMs, Date.now() - start);
-      }
       const workflowId = assertOptionalString(params.workflow_id, "workflow_id");
       const event = assertOptionalString(params.event, "event");
       if (!workflowId) {
@@ -35924,6 +36516,15 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Missing required field: event", ctx.version, uptimeMs, Date.now() - start);
       }
       const context = params.context ?? {};
+      if (ctx.transport) {
+        const transition2 = await ctx.transport.transitionWorkflow(workflowId, event, context);
+        const instance2 = await ctx.transport.getWorkflow(workflowId);
+        return toSuccess({ transition: transition2, instance: instance2 ?? null }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const engine = ctx.getWorkflowEngine();
+      if (!engine) {
+        return toError("Workflow engine is disabled", ctx.version, uptimeMs, Date.now() - start);
+      }
       const transition = await engine.sendEvent(workflowId, {
         id: generateEventId(),
         timestamp: timestamp(),
@@ -35937,31 +36538,33 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       return toSuccess({ transition, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
-      if (!engine) {
-        return toError("Workflow engine is disabled", ctx.version, uptimeMs, Date.now() - start);
-      }
-      const workflowId = assertOptionalString(params.workflow_id, "workflow_id");
-      if (!workflowId) {
+      const cancelWorkflowId = assertOptionalString(params.workflow_id, "workflow_id");
+      if (!cancelWorkflowId) {
         return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = assertOptionalString(params.reason, "reason") ?? "cancelled via MCP";
-      engine.cancel(workflowId, reason);
-      const instance = engine.get(workflowId);
-      return toSuccess({ cancelled: true, instance: instance ?? null }, ctx.version, uptimeMs, Date.now() - start);
+      const cancelEngine = ctx.getWorkflowEngine();
+      if (!cancelEngine) {
+        return toError("Workflow engine is disabled", ctx.version, uptimeMs, Date.now() - start);
+      }
+      cancelEngine.cancel(cancelWorkflowId, reason);
+      const cancelledInstance = cancelEngine.get(cancelWorkflowId);
+      return toSuccess({ cancelled: true, instance: cancelledInstance ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "history") {
-      if (!engine) {
-        return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
-      }
-      const workflowId = assertOptionalString(params.workflow_id, "workflow_id");
-      if (!workflowId) {
+      const historyWorkflowId = assertOptionalString(params.workflow_id, "workflow_id");
+      if (!historyWorkflowId) {
         return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
-      const instance = engine.get(workflowId);
-      if (!instance) {
-        return toError(`Workflow not found: ${workflowId}`, ctx.version, uptimeMs, Date.now() - start);
+      const historyEngine = ctx.getWorkflowEngine();
+      if (!historyEngine) {
+        return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
-      return toSuccess({ history: instance.history, count: instance.history.length }, ctx.version, uptimeMs, Date.now() - start);
+      const historyInstance = historyEngine.get(historyWorkflowId);
+      if (!historyInstance) {
+        return toError(`Workflow not found: ${historyWorkflowId}`, ctx.version, uptimeMs, Date.now() - start);
+      }
+      return toSuccess({ history: historyInstance.history, count: historyInstance.history.length }, ctx.version, uptimeMs, Date.now() - start);
     }
     return toError(
       `Unknown action: '${action}'. Use 'create', 'get', 'list', 'advance', 'cancel', or 'history'.`,
@@ -35977,6 +36580,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeWorkflow");
 
 // src/plugins/mcp/handlers/triggers.ts
+init_utils();
 var logger62 = createLogger("tool-handlers:triggers");
 var VALID_TRIGGER_ACTION_TYPES = /* @__PURE__ */ new Set([
   "emit_event",
@@ -36037,8 +36641,12 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         Date.now() - start
       );
     }
-    const registry2 = ctx.getTriggerRegistry();
     if (action === "list") {
+      if (ctx.transport) {
+        const triggers2 = await ctx.transport.listTriggers();
+        return toSuccess({ triggers: triggers2, count: triggers2.length }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const registry2 = ctx.getTriggerRegistry();
       const triggers = registry2 ? registry2.list() : [];
       return toSuccess({ triggers, count: triggers.length }, ctx.version, uptimeMs, Date.now() - start);
     }
@@ -36047,13 +36655,15 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       if (!triggerId) {
         return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
+      if (ctx.transport) {
+        const trigger2 = await ctx.transport.getTrigger(triggerId);
+        return toSuccess({ trigger: trigger2 }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const registry2 = ctx.getTriggerRegistry();
       const trigger = registry2?.get(triggerId) ?? null;
       return toSuccess({ trigger }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "create") {
-      if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
-      }
       const triggerDef = params.trigger;
       if (!triggerDef) {
         return toError("Missing required field: trigger", ctx.version, uptimeMs, Date.now() - start);
@@ -36061,63 +36671,81 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       const validationError = validateTriggerDefinition(triggerDef);
       if (validationError !== null) {
         return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
+      }
+      if (ctx.transport) {
+        await ctx.transport.registerTrigger(triggerDef);
+        logger62.info("runtime_triggers: registered", { id: triggerDef.id });
+        return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const registry2 = ctx.getTriggerRegistry();
+      if (!registry2) {
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.register(triggerDef);
       logger62.info("runtime_triggers: registered", { id: triggerDef.id });
       return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "update") {
-      if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
-      }
-      const triggerDef = params.trigger;
-      if (!triggerDef) {
+      const updateDef = params.trigger;
+      if (!updateDef) {
         return toError("Missing required field: trigger", ctx.version, uptimeMs, Date.now() - start);
       }
-      const validationError = validateTriggerDefinition(triggerDef);
-      if (validationError !== null) {
-        return toError(validationError, ctx.version, uptimeMs, Date.now() - start);
+      const updateValidationError = validateTriggerDefinition(updateDef);
+      if (updateValidationError !== null) {
+        return toError(updateValidationError, ctx.version, uptimeMs, Date.now() - start);
       }
-      registry2.replace(triggerDef);
-      logger62.info("runtime_triggers: updated", { id: triggerDef.id });
-      return toSuccess({ updated: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
+      const updateRegistry = ctx.getTriggerRegistry();
+      if (!updateRegistry) {
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
+      }
+      updateRegistry.replace(updateDef);
+      logger62.info("runtime_triggers: updated", { id: updateDef.id });
+      return toSuccess({ updated: true, id: updateDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "delete") {
-      if (!registry2) {
-        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
-      }
-      const triggerId = assertOptionalString(params.trigger_id, "trigger_id");
-      if (!triggerId) {
+      const deleteTriggerId = assertOptionalString(params.trigger_id, "trigger_id");
+      if (!deleteTriggerId) {
         return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
-      registry2.unregister(triggerId);
-      logger62.info("runtime_triggers: unregistered", { id: triggerId });
-      return toSuccess({ deleted: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
-    }
-    if (action === "enable" || action === "disable") {
-      if (!registry2) {
+      if (ctx.transport) {
+        await ctx.transport.unregisterTrigger(deleteTriggerId);
+        logger62.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+        return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const deleteRegistry = ctx.getTriggerRegistry();
+      if (!deleteRegistry) {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
-      const triggerId = assertOptionalString(params.trigger_id, "trigger_id");
-      if (!triggerId) {
+      deleteRegistry.unregister(deleteTriggerId);
+      logger62.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+      return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
+    }
+    if (action === "enable" || action === "disable") {
+      const enableTriggerId = assertOptionalString(params.trigger_id, "trigger_id");
+      if (!enableTriggerId) {
         return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const enabled = action === "enable";
-      registry2.setEnabled(triggerId, enabled);
-      logger62.info(`runtime_triggers: ${action}d`, { id: triggerId });
-      return toSuccess({ [action + "d"]: true, id: triggerId }, ctx.version, uptimeMs, Date.now() - start);
-    }
-    if (action === "test") {
-      if (!registry2) {
+      const enableRegistry = ctx.getTriggerRegistry();
+      if (!enableRegistry) {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
-      const triggerId = assertOptionalString(params.trigger_id, "trigger_id");
+      enableRegistry.setEnabled(enableTriggerId, enabled);
+      logger62.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
+      return toSuccess({ [action + "d"]: true, id: enableTriggerId }, ctx.version, uptimeMs, Date.now() - start);
+    }
+    if (action === "test") {
+      const testTriggerId = assertOptionalString(params.trigger_id, "trigger_id");
       const testEvent = params.test_event;
-      if (!triggerId) {
+      if (!testTriggerId) {
         return toError("Missing required field: trigger_id", ctx.version, uptimeMs, Date.now() - start);
       }
       if (!testEvent) {
         return toError("Missing required field: test_event", ctx.version, uptimeMs, Date.now() - start);
+      }
+      const testRegistry = ctx.getTriggerRegistry();
+      if (!testRegistry) {
+        return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       const mockEvent = {
         id: generateEventId(),
@@ -36128,8 +36756,8 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         priority: 0,
         metadata: { session_id: "", sequence: 0, version: 1 }
       };
-      const results = await registry2.evaluate(mockEvent);
-      const result = results.find((r) => r.trigger_id === triggerId);
+      const results = await testRegistry.evaluate(mockEvent);
+      const result = results.find((r) => r.trigger_id === testTriggerId);
       return toSuccess({ result: result ?? null, all_results: results }, ctx.version, uptimeMs, Date.now() - start);
     }
     return toError(
@@ -36146,6 +36774,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeTriggers");
 
 // src/plugins/mcp/handlers/agents.ts
+init_utils();
 var logger63 = createLogger("tool-handlers:agents");
 var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
@@ -36164,8 +36793,8 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
         Date.now() - start
       );
     }
-    const coordinator = ctx.getAgentCoordinator() ?? null;
     if (action === "status") {
+      const coordinator = ctx.getAgentCoordinator() ?? null;
       if (!coordinator) {
         return toSuccess(
           { stats: null, message: "Agent coordinator is disabled (set features.agents_enabled = true)" },
@@ -36179,6 +36808,20 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       return toSuccess({ stats, budget }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "list") {
+      if (ctx.transport) {
+        let agents2 = await ctx.transport.listAgents();
+        const filter2 = params.filter ?? {};
+        const statusFilter2 = assertOptionalString(filter2.status, "filter.status");
+        const typeFilter2 = assertOptionalString(filter2.type, "filter.type");
+        if (statusFilter2) {
+          agents2 = agents2.filter((a) => a["status"] === statusFilter2);
+        }
+        if (typeFilter2) {
+          agents2 = agents2.filter((a) => a["type"] === typeFilter2);
+        }
+        return toSuccess({ agents: agents2, count: agents2.length }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const coordinator = ctx.getAgentCoordinator() ?? null;
       if (!coordinator) {
         return toSuccess({ agents: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
       }
@@ -36200,6 +36843,11 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       if (!agentId) {
         return toError("Missing required field: agent_id", ctx.version, uptimeMs, Date.now() - start);
       }
+      if (ctx.transport) {
+        const agent2 = await ctx.transport.getAgent(agentId);
+        return toSuccess({ agent: agent2 }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const coordinator = ctx.getAgentCoordinator() ?? null;
       if (!coordinator) {
         return toSuccess({ agent: null }, ctx.version, uptimeMs, Date.now() - start);
       }
@@ -36207,7 +36855,8 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       return toSuccess({ agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "spawn") {
-      if (!coordinator) {
+      const spawnCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!spawnCoordinator) {
         return toError(
           "Agent coordinator is disabled (set features.agents_enabled = true to enable)",
           ctx.version,
@@ -36231,8 +36880,8 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
         workflow_id: assertOptionalString(spawnOpts.workflow_id, "spawn.workflow_id"),
         workflow_phase: spawnOpts.workflow_phase
       };
-      const agentId = coordinator.spawn(options);
-      const agent = coordinator.getAgent(agentId);
+      const agentId = spawnCoordinator.spawn(options);
+      const agent = spawnCoordinator.getAgent(agentId);
       logger63.info("runtime_agents: spawned", { agentId, type: options.type });
       return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
@@ -36241,16 +36890,18 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       if (!agentId) {
         return toError("Missing required field: agent_id", ctx.version, uptimeMs, Date.now() - start);
       }
-      if (!coordinator) {
+      const cancelCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!cancelCoordinator) {
         return toError("Agent coordinator is disabled", ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = params.reason ?? "cancelled via MCP";
-      coordinator.cancel(agentId, reason);
-      const agent = coordinator.getAgent(agentId);
+      cancelCoordinator.cancel(agentId, reason);
+      const agent = cancelCoordinator.getAgent(agentId);
       return toSuccess({ cancelled: true, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "budget") {
-      if (!coordinator) {
+      const budgetCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!budgetCoordinator) {
         return toSuccess(
           { summary: null, message: "Agent coordinator is disabled" },
           ctx.version,
@@ -36258,7 +36909,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
           Date.now() - start
         );
       }
-      const summary = coordinator.getBudgetSummary();
+      const summary = budgetCoordinator.getBudgetSummary();
       return toSuccess({ summary }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "plan") {
@@ -36266,10 +36917,11 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       if (!workflowId) {
         return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
-      if (!coordinator) {
+      const planCoordinator = ctx.getAgentCoordinator() ?? null;
+      if (!planCoordinator) {
         return toSuccess({ plan: null }, ctx.version, uptimeMs, Date.now() - start);
       }
-      const plan = coordinator.getExecutionPlan(workflowId);
+      const plan = planCoordinator.getExecutionPlan(workflowId);
       return toSuccess({ plan }, ctx.version, uptimeMs, Date.now() - start);
     }
     return toError(
@@ -36286,6 +36938,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeAgents");
 
 // src/plugins/mcp/handlers/state.ts
+init_utils();
 var logger64 = createLogger("tool-handlers:state");
 var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
@@ -36304,21 +36957,34 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
         Date.now() - start
       );
     }
-    const stateStore = ctx.getCoreStateStore();
-    if (!stateStore) {
-      return toError("State store not available (engine not started)", ctx.version, uptimeMs, Date.now() - start);
-    }
     if (action === "get") {
       const key = assertOptionalString(params.key, "key");
       if (!key) {
         return toError("Missing required field: key.", ctx.version, uptimeMs, Date.now() - start);
+      }
+      if (ctx.transport) {
+        const value2 = await ctx.transport.getState(key);
+        return toSuccess({ key, value: value2 }, ctx.version, uptimeMs, Date.now() - start);
+      }
+      const stateStore = ctx.getCoreStateStore();
+      if (!stateStore) {
+        return toError("State store not available (engine not started)", ctx.version, uptimeMs, Date.now() - start);
       }
       const value = stateStore.get(key);
       return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "list") {
       const prefix = assertOptionalString(params.namespace, "namespace") ?? assertOptionalString(params.prefix, "prefix");
-      const allKeys = stateStore.keys(prefix);
+      let allKeys;
+      if (ctx.transport) {
+        allKeys = await ctx.transport.listStateKeys(prefix);
+      } else {
+        const stateStore = ctx.getCoreStateStore();
+        if (!stateStore) {
+          return toError("State store not available (engine not started)", ctx.version, uptimeMs, Date.now() - start);
+        }
+        allKeys = stateStore.keys(prefix);
+      }
       if (prefix) {
         const stripped = allKeys.map(
           (k) => k.startsWith(prefix + ".") ? k.slice(prefix.length + 1) : k
@@ -36333,7 +36999,16 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
       return toSuccess({ count: allKeys.length, keys: allKeys }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "namespaces") {
-      const allKeys = stateStore.keys();
+      let allKeys;
+      if (ctx.transport) {
+        allKeys = await ctx.transport.listStateKeys();
+      } else {
+        const stateStore = ctx.getCoreStateStore();
+        if (!stateStore) {
+          return toError("State store not available (engine not started)", ctx.version, uptimeMs, Date.now() - start);
+        }
+        allKeys = stateStore.keys();
+      }
       const namespaces = /* @__PURE__ */ new Set();
       for (const key of allKeys) {
         const firstDot = key.indexOf(".");
@@ -36348,7 +37023,16 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
     }
     if (action === "snapshot") {
       const namespace = assertOptionalString(params.namespace, "namespace") ?? assertOptionalString(params.prefix, "prefix");
-      const fullSnapshot = stateStore.snapshot();
+      let fullSnapshot;
+      if (ctx.transport) {
+        fullSnapshot = await ctx.transport.getStateSnapshot();
+      } else {
+        const stateStore = ctx.getCoreStateStore();
+        if (!stateStore) {
+          return toError("State store not available (engine not started)", ctx.version, uptimeMs, Date.now() - start);
+        }
+        fullSnapshot = stateStore.snapshot();
+      }
       if (namespace) {
         const filtered = {};
         const pfx = namespace + ".";
@@ -36692,6 +37376,7 @@ var RuntimeEngineServer = class {
   }
   server;
   processManager;
+  runtimeTransport = null;
   constructor() {
     this.server = new Server(
       { name: SERVER_NAME, version: ENGINE_VERSION },
@@ -36722,6 +37407,7 @@ var RuntimeEngineServer = class {
         );
       }
       const ctx = {
+        transport: this.runtimeTransport ?? void 0,
         getUptime: /* @__PURE__ */ __name(() => this.processManager.getUptime(), "getUptime"),
         getConfig: /* @__PURE__ */ __name(() => this.processManager.getConfig(), "getConfig"),
         getHealth: /* @__PURE__ */ __name(() => this.processManager.getHealthChecker().check(), "getHealth"),
@@ -36774,6 +37460,11 @@ var RuntimeEngineServer = class {
    */
   async start() {
     await this.processManager.startup();
+    this.runtimeTransport = await createTransport({
+      engine: this.processManager,
+      mode: this.processManager.getConfig().executor.mode,
+      projectRoot: this.processManager.getProjectRoot()
+    });
     setupSignalHandlers(async () => {
       await this.stop();
     });
@@ -36794,6 +37485,13 @@ var RuntimeEngineServer = class {
    */
   async stop() {
     logger65.info("Stopping runtime engine");
+    if (this.runtimeTransport) {
+      try {
+        await this.runtimeTransport.disconnect();
+      } catch {
+      }
+      this.runtimeTransport = null;
+    }
     try {
       await this.processManager.shutdown();
     } catch (err) {
@@ -36813,6 +37511,7 @@ var RuntimeEngineServer = class {
 };
 
 // src/server.ts
+init_utils();
 async function main() {
   const server = new RuntimeEngineServer();
   await server.start();
