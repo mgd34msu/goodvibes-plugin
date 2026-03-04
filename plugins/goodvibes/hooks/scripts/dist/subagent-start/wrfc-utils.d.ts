@@ -21,14 +21,32 @@ export declare function extractWorkflowId(taskDescription: string): string | nul
 /**
  * Extracts a workflow ID by grepping the parent session transcript for [WRFC:wid].
  *
- * Uses a targeted grep to find the last [WRFC:...] tag in lines that also
- * contain the agent type, avoiding bulk file reads and JSON parsing.
+ * Uses a targeted grep to find [WRFC:...] tags in lines that also contain the
+ * agent type, avoiding bulk file reads and JSON parsing.
+ *
+ * NOTE: When the orchestrator spawns multiple agents of the same type in a single
+ * turn, all tool calls appear on the same JSONL line. We take the LAST matching
+ * line and extract the FIRST [WRFC:wid] from it to reduce (but not eliminate)
+ * ambiguity. For unambiguous resolution, SubagentStop also greps the agent's
+ * own transcript via extractWorkflowIdFromFile().
  *
  * @param transcriptPath - Path to the parent session JSONL file
  * @param agentType - The agent type to match in the transcript
  * @returns Extracted workflow ID, or null if not found
  */
 export declare function extractWorkflowIdFromTranscript(transcriptPath: string, agentType: string): string | null;
+/**
+ * Extracts a workflow ID by grepping any file for the first [WRFC:wid] marker.
+ *
+ * Used by SubagentStop to search the agent's OWN transcript for the [WRFC:wid]
+ * that was in its system prompt, providing an unambiguous workflow binding
+ * even when the parent transcript grep is ambiguous (multiple agents of the
+ * same type spawned in one turn).
+ *
+ * @param filePath - Path to the file to search
+ * @returns Extracted workflow ID, or null if not found
+ */
+export declare function extractWorkflowIdFromFile(filePath: string): string | null;
 /**
  * Input shape accepted by normalizeAgentFields.
  * Mirrors the SubagentStartInput fields relevant to Phase 6.

@@ -104,7 +104,12 @@ function makeDeps(overrides: Partial<IPCRouterDeps> = {}): IPCRouterDeps {
     agentWorkflowMap: {
       resolvePendingBind: vi.fn().mockReturnValue(null),
       consumePendingBindsForWorkflow: vi.fn().mockReturnValue(0),
+      clear: vi.fn(),
     } as unknown as IPCRouterDeps['agentWorkflowMap'],
+    stateStore: {
+      keys: vi.fn().mockReturnValue([]),
+      delete: vi.fn(),
+    } as unknown as IPCRouterDeps['stateStore'],
     hookProcessor: {
       process: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPCRouterDeps['hookProcessor'],
@@ -342,6 +347,61 @@ describe('IPCRouter', () => {
 
       it('does not reset fire counts when triggerRegistry is null on session:started', async () => {
         const r = new IPCRouter(makeDeps({ triggerRegistry: null }));
+        await expect(
+          r.route(makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 's' } }))
+        ).resolves.toBeDefined();
+      });
+
+      it('clears session-scoped wrfc.sessions.{id} keys from stateStore on session:started', async () => {
+        const sessionId = 'sess-cleanup';
+        const stateStore = {
+          keys: vi.fn().mockImplementation((prefix: string) =>
+            prefix === `wrfc.sessions.${sessionId}`
+              ? [`wrfc.sessions.${sessionId}.agent_map.agent-1`, `wrfc.sessions.${sessionId}.workflows.wf-1`]
+              : []
+          ),
+          delete: vi.fn(),
+        } as unknown as IPCRouterDeps['stateStore'];
+        const r = new IPCRouter(makeDeps({ stateStore }));
+        await r.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: sessionId } })
+        );
+        expect((stateStore as unknown as { keys: ReturnType<typeof vi.fn> }).keys).toHaveBeenCalledWith(`wrfc.sessions.${sessionId}`);
+        expect((stateStore as unknown as { delete: ReturnType<typeof vi.fn> }).delete).toHaveBeenCalledTimes(2);
+        expect((stateStore as unknown as { delete: ReturnType<typeof vi.fn> }).delete).toHaveBeenCalledWith(`wrfc.sessions.${sessionId}.agent_map.agent-1`);
+        expect((stateStore as unknown as { delete: ReturnType<typeof vi.fn> }).delete).toHaveBeenCalledWith(`wrfc.sessions.${sessionId}.workflows.wf-1`);
+      });
+
+      it('does not call stateStore.delete when no stale WRFC keys exist', async () => {
+        const stateStore = {
+          keys: vi.fn().mockReturnValue([]),
+          delete: vi.fn(),
+        } as unknown as IPCRouterDeps['stateStore'];
+        const r = new IPCRouter(makeDeps({ stateStore }));
+        await r.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-empty' } })
+        );
+        expect((stateStore as unknown as { delete: ReturnType<typeof vi.fn> }).delete).not.toHaveBeenCalled();
+      });
+
+      it('does not throw when stateStore is null on session:started', async () => {
+        const r = new IPCRouter(makeDeps({ stateStore: null }));
+        await expect(
+          r.route(makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 's' } }))
+        ).resolves.toBeDefined();
+      });
+
+      it('does not call agentWorkflowMap.clear() on session:started (in-memory bindings are short-lived)', async () => {
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-clear' } })
+        );
+        expect(
+          (deps.agentWorkflowMap as unknown as { clear: ReturnType<typeof vi.fn> }).clear
+        ).not.toHaveBeenCalled();
+      });
+
+      it('does not throw when agentWorkflowMap is null on session:started', async () => {
+        const r = new IPCRouter(makeDeps({ agentWorkflowMap: null }));
         await expect(
           r.route(makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 's' } }))
         ).resolves.toBeDefined();

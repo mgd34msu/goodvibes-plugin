@@ -18,7 +18,7 @@ import { respond, readHookInput, loadAnalytics, saveAnalytics, debug, logError, 
 import { loadState, saveState } from '../state/index.js';
 import { buildOrchestratorContext } from './context-injection.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
-import { normalizeAgentFields, extractWorkflowId } from '../subagent-start/wrfc-utils.js';
+import { normalizeAgentFields, extractWorkflowId, extractWorkflowIdFromFile } from '../subagent-start/wrfc-utils.js';
 import { validateAgentOutput } from './output-validation.js';
 import { getAgentTracking, removeAgentTracking, writeTelemetryEntry, buildTelemetryEntry, } from './telemetry.js';
 import { verifyAgentTests } from './test-verification.js';
@@ -198,6 +198,17 @@ async function runSubagentStopHook() {
                         resolvedWorkflowId = extractWorkflowId(agentOutput);
                         if (resolvedWorkflowId) {
                             debug('Phase 6: extracted workflow_id from agent output', { workflow_id: resolvedWorkflowId });
+                        }
+                    }
+                }
+                // Fallback 2: grep agent's own transcript for [WRFC:wid]
+                // This is unambiguous — the agent's transcript contains only its own prompt.
+                if (!resolvedWorkflowId) {
+                    const agentTranscript = input.agent_transcript_path ?? input.subagent_transcript_path ?? '';
+                    if (agentTranscript) {
+                        resolvedWorkflowId = extractWorkflowIdFromFile(agentTranscript);
+                        if (resolvedWorkflowId) {
+                            debug('Phase 6: extracted workflow_id from agent transcript', { workflow_id: resolvedWorkflowId });
                         }
                     }
                 }

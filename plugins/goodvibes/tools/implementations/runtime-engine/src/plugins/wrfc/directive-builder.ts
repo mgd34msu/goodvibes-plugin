@@ -49,7 +49,7 @@ export function buildSpawnAction(params: {
   const content = buildSpawnDirectiveMessage(params.type, params.task, context);
   return {
     type: 'send_message',
-    params: { content, priority: 20, target: 'subagent_stop' },
+    params: { content, priority: 20, target: 'subagent_stop', agent_type: params.type },
   };
 }
 

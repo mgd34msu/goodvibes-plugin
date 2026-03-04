@@ -27,7 +27,7 @@ export class AgentWorkflowMap {
   private readonly map: Map<string, string> = new Map();
 
   /** Pending binds queue: agentType → workflowId, stored FIFO with timestamp. */
-  private pendingBinds: Array<{ agentType: string; workflowId: string; timestamp: number }> = [];
+  private pendingBinds: Array<{ agentType: string; workflowId: string; sessionId: string; timestamp: number }> = [];
 
   /** Stale pending bind TTL in milliseconds. */
   private static readonly PENDING_BIND_TTL_MS = 60_000;
@@ -129,12 +129,14 @@ export class AgentWorkflowMap {
    *
    * @param agentType  - The agent type to expect (e.g. 'reviewer', 'engineer').
    * @param workflowId - The workflow this agent should bind to.
+   * @param sessionId  - The session this pending bind belongs to (default: 'default').
    */
-  addPendingBind(agentType: string, workflowId: string): void {
-    this.pendingBinds.push({ agentType, workflowId, timestamp: Date.now() });
+  addPendingBind(agentType: string, workflowId: string, sessionId = 'default'): void {
+    this.pendingBinds.push({ agentType, workflowId, sessionId, timestamp: Date.now() });
     log.debug('AgentWorkflowMap.addPendingBind: enqueued pending bind', {
       agent_type: agentType,
       workflow_id: workflowId,
+      session_id: sessionId,
       queue_length: this.pendingBinds.length,
     });
   }
@@ -151,9 +153,11 @@ export class AgentWorkflowMap {
    * separate Set indexed by workflowId for O(1) sibling cleanup.
    *
    * @param agentType - The agent type queried by SubagentStart.
+   * @param sessionId - Optional session ID to scope the lookup. When provided, only
+   *   pending binds from that session are considered. When omitted, all sessions are searched.
    * @returns The workflow_id if a pending bind exists, or null.
    */
-  resolvePendingBind(agentType: string): string | null {
+  resolvePendingBind(agentType: string, sessionId?: string): string | null {
     const now = Date.now();
     // Prune stale entries only when the queue is non-trivially large to avoid
     // unnecessary allocations on every call when the queue is empty or has one entry.
@@ -163,7 +167,9 @@ export class AgentWorkflowMap {
       );
     }
 
-    const idx = this.pendingBinds.findIndex((entry) => entry.agentType === agentType);
+    const idx = this.pendingBinds.findIndex(
+      (entry) => entry.agentType === agentType && (sessionId === undefined || entry.sessionId === sessionId)
+    );
     if (idx === -1) {
       log.debug('AgentWorkflowMap.resolvePendingBind: no pending bind found', { agent_type: agentType });
       return null;
@@ -173,6 +179,7 @@ export class AgentWorkflowMap {
     log.info('AgentWorkflowMap.resolvePendingBind: resolved pending bind', {
       agent_type: agentType,
       workflow_id: resolved.workflowId,
+      session_id: resolved.sessionId,
       remaining_queue_length: this.pendingBinds.length,
     });
 
@@ -207,6 +214,48 @@ export class AgentWorkflowMap {
    * @param workflowId - The workflow ID whose pending binds should be consumed.
    * @returns The number of entries removed.
    */
+  /**
+   * Clears all bindings and pending binds.
+   * Called on session:started to prevent stale cross-session state.
+   */
+  clear(): void {
+    const mapSize = this.map.size;
+    const pendingCount = this.pendingBinds.length;
+    this.map.clear();
+    this.pendingBinds = [];
+    log.info('AgentWorkflowMap.clear: all bindings and pending binds cleared', {
+      bindings_cleared: mapSize,
+      pending_cleared: pendingCount,
+    });
+  }
+
+  /**
+   * Clears all pending binds and map entries associated with the given session.
+   *
+   * Called on `session:started` to prevent stale pending binds from a previous
+   * session being consumed by agents in the new session.
+   *
+   * Map bindings (agentId → workflowId) are not session-scoped in the map itself
+   * because agentIds are unique per session. However, we still clear any pending
+   * binds so stale type-keyed entries don't cross sessions.
+   *
+   * @param sessionId - The session whose pending binds should be removed.
+   * @returns The number of pending bind entries removed.
+   */
+  clearForSession(sessionId: string): number {
+    const before = this.pendingBinds.length;
+    this.pendingBinds = this.pendingBinds.filter((entry) => entry.sessionId !== sessionId);
+    const removed = before - this.pendingBinds.length;
+    if (removed > 0) {
+      log.info('AgentWorkflowMap.clearForSession: cleared pending binds for session', {
+        session_id: sessionId,
+        pending_cleared: removed,
+        remaining_queue_length: this.pendingBinds.length,
+      });
+    }
+    return removed;
+  }
+
   consumePendingBindsForWorkflow(workflowId: string): number {
     const before = this.pendingBinds.length;
     this.pendingBinds = this.pendingBinds.filter(

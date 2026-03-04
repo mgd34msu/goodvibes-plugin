@@ -13,18 +13,24 @@ import { createLogger } from '../../shared/logger.js';
 import type { Action, ActionExecutorInterface } from '../../core/types.js';
 import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { Directive } from '../../shared/ipc/protocol.js';
+import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
 
 /** Parameters shape for the 'send_message' action type. */
 export interface SendMessageParams {
   content: string;
   priority?: number;
   target?: string;
+  /** Agent type for pending bind registration (set by buildSpawnAction). */
+  agent_type?: string;
 }
 
 const logger = createLogger('action-executor');
 
 export class ActionExecutor implements ActionExecutorInterface {
-  constructor(private readonly directiveQueue: DirectiveQueue) {}
+  constructor(
+    private readonly directiveQueue: DirectiveQueue,
+    private readonly agentWorkflowMap?: AgentWorkflowMap | null,
+  ) {}
 
   async execute(action: Action, context: Record<string, unknown>): Promise<void> {
     switch (action.type) {
@@ -48,6 +54,10 @@ export class ActionExecutor implements ActionExecutorInterface {
 
         const workflowId =
           typeof context['workflow_id'] === 'string' ? context['workflow_id'] : undefined;
+        const sessionId =
+          typeof context['session_id'] === 'string' && context['session_id'].length > 0
+            ? context['session_id']
+            : 'default';
 
         const directive: Directive = {
           type: 'inject_system_message',
@@ -65,6 +75,22 @@ export class ActionExecutor implements ActionExecutorInterface {
             workflow_id: workflowId,
             content_length: content.length,
           });
+
+          // Register pending binds so SubagentStart can resolve this spawn
+          // to the correct workflow via PRIORITY 2 (pending bind queue).
+          // Must happen AFTER enqueue so directive exists when agent starts.
+          if (this.agentWorkflowMap && params.agent_type && workflowId) {
+            const agentType = params.agent_type;
+            this.agentWorkflowMap.addPendingBind(agentType, workflowId, sessionId);
+            // Also register goodvibes: prefixed variant for normalized matching
+            if (!agentType.startsWith('goodvibes:')) {
+              this.agentWorkflowMap.addPendingBind(`goodvibes:${agentType}`, workflowId, sessionId);
+            }
+            logger.info('ActionExecutor: pending binds registered for spawn', {
+              agent_type: agentType,
+              workflow_id: workflowId,
+            });
+          }
         } catch (err) {
           logger.error('ActionExecutor: failed to enqueue directive', {
             target,

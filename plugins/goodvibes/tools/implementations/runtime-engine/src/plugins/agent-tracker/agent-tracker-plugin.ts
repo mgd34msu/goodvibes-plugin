@@ -27,7 +27,7 @@ const log = createLogger('agent-tracker-plugin');
 
 const AGENT_KEY = (id: string) => `agent_tracker.agents.${id}`;
 const INDEX_KEY = 'agent_tracker.agent_ids';
-const WRFC_MAP_KEY = (id: string) => `wrfc.agent_map.${id}`;
+const WRFC_MAP_KEY = (sid: string, id: string) => `wrfc.sessions.${sid}.agent_map.${id}`;
 
 /**
  * Trigger IDs used by the AgentTrackerPlugin.
@@ -140,7 +140,10 @@ export class AgentTrackerPlugin implements RuntimePlugin {
       return;
     }
 
-    const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id);
+    const sessionId = typeof (event.metadata as Record<string, unknown> | undefined)?.['session_id'] === 'string'
+      ? (event.metadata as Record<string, unknown>)['session_id'] as string
+      : 'default';
+    const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id, sessionId);
 
     const tracked: TrackedAgent = {
       id: agent_id,
@@ -177,7 +180,10 @@ export class AgentTrackerPlugin implements RuntimePlugin {
     }
     const now = event.timestamp;
 
-    const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id);
+    const sessionId = typeof (event.metadata as Record<string, unknown> | undefined)?.['session_id'] === 'string'
+      ? (event.metadata as Record<string, unknown>)['session_id'] as string
+      : 'default';
+    const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id, sessionId);
 
     const tracked: TrackedAgent = {
       id: agent_id,
@@ -202,9 +208,9 @@ export class AgentTrackerPlugin implements RuntimePlugin {
 
   // ─── Workflow ID resolution ────────────────────────────────────────────────
 
-  private resolveWorkflowId(agentId: string): string | null {
+  private resolveWorkflowId(agentId: string, sessionId: string): string | null {
     if (!this._services) return null;
-    const wid = this._services.getState(WRFC_MAP_KEY(agentId));
+    const wid = this._services.getState(WRFC_MAP_KEY(sessionId, agentId));
     if (typeof wid === 'string' && wid.length > 0) {
       log.debug('Resolved workflow_id from WRFC state', { agent_id: agentId, workflow_id: wid });
       return wid;

@@ -69,7 +69,7 @@ function makeEvent(payload: Record<string, unknown> = {}, contextOverrides: Reco
     type: 'agent:completed' as RuntimeEvent['type'],
     source: { kind: 'agent' },
     payload: payload as RuntimeEvent['payload'],
-    metadata: {},
+    metadata: { session_id: 'test-session' },
     context: { chain_depth: 0, ...contextOverrides },
   } as unknown as RuntimeEvent;
 }
@@ -95,8 +95,11 @@ function makeStore(initial: Record<string, unknown> = {}): StateStoreInterface {
   } as unknown as StateStoreInterface;
 }
 
-/** Helper: workflow state key. */
-const WS = (wid: string, field: string) => `wrfc.workflows.${wid}.${field}`;
+/** Helper: session-scoped workflow state key (uses 'test-session' to match makeEvent). */
+const WS = (wid: string, field: string) => `wrfc.sessions.test-session.workflows.${wid}.${field}`;
+
+/** Helper: session-scoped agent-map key. */
+const AM = (agentId: string) => `wrfc.sessions.test-session.agent_map.${agentId}`;
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -170,7 +173,7 @@ describe('WRFC Handlers', () => {
       expect(result.state_updates).toBeDefined();
       const updates = result.state_updates!;
       // Only agent_map binding, no workflow init
-      const agentMapUpdate = updates.find((u) => u.key === `wrfc.agent_map.agent-2`);
+      const agentMapUpdate = updates.find((u) => u.key === AM('agent-2'));
       expect(agentMapUpdate?.value).toBe('wf-existing');
       // Should NOT have phase or fix_attempts init updates
       const phaseUpdate = updates.find((u) => u.key.endsWith('.phase'));
@@ -194,7 +197,7 @@ describe('WRFC Handlers', () => {
     it('derives workflow ID as wrfc_<agentId> for chain originator', () => {
       const event = makeEvent({ agent_id: 'agent-xyz' });
       const result = handleWorkflowCreated(event, STUB_TRIGGER, makeStore());
-      const agentMapUpdate = result.state_updates!.find((u) => u.key === `wrfc.agent_map.agent-xyz`);
+      const agentMapUpdate = result.state_updates!.find((u) => u.key === AM('agent-xyz'));
       expect(agentMapUpdate?.value).toBe('wrfc_agent-xyz');
     });
   });
@@ -233,7 +236,7 @@ describe('WRFC Handlers', () => {
       for (const agentType of AUTO_TYPES) {
         it(`auto-completes workflow for agent type "${agentType}"`, () => {
           const store = makeStore({
-            [`wrfc.agent_map.agent-auto`]: 'wf-1',
+            [AM('agent-auto')]: 'wf-1',
             [WS('wf-1', 'phase')]: 'WRITING',
             [WS('wf-1', 'min_review_score')]: 9.5,
             [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -259,7 +262,7 @@ describe('WRFC Handlers', () => {
       for (const agentType of REQUIRE_REVIEW_TYPES) {
         it(`force-reviews for agent type "${agentType}"`, () => {
           const store = makeStore({
-            [`wrfc.agent_map.agent-eng`]: 'wf-1',
+            [AM('agent-eng')]: 'wf-1',
             [WS('wf-1', 'phase')]: 'WRITING',
             [WS('wf-1', 'min_review_score')]: 9.5,
             [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -285,7 +288,7 @@ describe('WRFC Handlers', () => {
     describe('WRITING phase — normal work agent', () => {
       it('spawns reviewer and advances to REVIEWING', () => {
         const store = makeStore({
-          [`wrfc.agent_map.agent-work`]: 'wf-1',
+          [AM('agent-work')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -304,7 +307,7 @@ describe('WRFC Handlers', () => {
 
       it('includes files_modified in reviewer task when present', () => {
         const store = makeStore({
-          [`wrfc.agent_map.agent-work`]: 'wf-1',
+          [AM('agent-work')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -323,7 +326,7 @@ describe('WRFC Handlers', () => {
       for (const phase of ['IDLE', 'GATHERING', 'PLANNING']) {
         it(`treats ${phase} phase as WRITING for normal agent type`, () => {
           const store = makeStore({
-            [`wrfc.agent_map.agent-1`]: 'wf-1',
+            [AM('agent-1')]: 'wf-1',
             [WS('wf-1', 'phase')]: phase,
             [WS('wf-1', 'min_review_score')]: 9.5,
             [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -345,7 +348,7 @@ describe('WRFC Handlers', () => {
       it('completes workflow when score meets threshold', () => {
         mockExtractScore.mockReturnValue(9.5);
         const store = makeStore({
-          [`wrfc.agent_map.agent-rev`]: 'wf-1',
+          [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -365,7 +368,7 @@ describe('WRFC Handlers', () => {
       it('completes workflow when score exceeds threshold', () => {
         mockExtractScore.mockReturnValue(10);
         const store = makeStore({
-          [`wrfc.agent_map.agent-rev`]: 'wf-1',
+          [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -385,7 +388,7 @@ describe('WRFC Handlers', () => {
       it('spawns fixer when score is below threshold', () => {
         mockExtractScore.mockReturnValue(7.0);
         const store = makeStore({
-          [`wrfc.agent_map.agent-rev`]: 'wf-1',
+          [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -409,7 +412,7 @@ describe('WRFC Handlers', () => {
       it('escalates when review score cannot be parsed', () => {
         mockExtractScore.mockReturnValue(null);
         const store = makeStore({
-          [`wrfc.agent_map.agent-rev`]: 'wf-1',
+          [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -431,7 +434,7 @@ describe('WRFC Handlers', () => {
     describe('REVIEWING phase — non-reviewer agent', () => {
       it('returns empty result for non-reviewer agent in REVIEWING phase', () => {
         const store = makeStore({
-          [`wrfc.agent_map.agent-eng`]: 'wf-1',
+          [AM('agent-eng')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -449,7 +452,7 @@ describe('WRFC Handlers', () => {
       it('escalates when fix attempts reach max', () => {
         mockExtractFiles.mockReturnValue([]);
         const store = makeStore({
-          [`wrfc.agent_map.agent-fix`]: 'wf-1',
+          [AM('agent-fix')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -472,7 +475,7 @@ describe('WRFC Handlers', () => {
       it('spawns reviewer for re-review when fix budget not exhausted', () => {
         mockExtractFiles.mockReturnValue([]);
         const store = makeStore({
-          [`wrfc.agent_map.agent-fix`]: 'wf-1',
+          [AM('agent-fix')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -494,7 +497,7 @@ describe('WRFC Handlers', () => {
       it('merges engineer-reported files from <gv> tag with existing files', () => {
         mockExtractFiles.mockReturnValue(['src/new.ts']);
         const store = makeStore({
-          [`wrfc.agent_map.agent-fix`]: 'wf-1',
+          [AM('agent-fix')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -512,7 +515,7 @@ describe('WRFC Handlers', () => {
     describe('FIXING phase — non-engineer agent', () => {
       it('returns empty result for non-engineer agent in FIXING phase', () => {
         const store = makeStore({
-          [`wrfc.agent_map.agent-rev`]: 'wf-1',
+          [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -529,7 +532,7 @@ describe('WRFC Handlers', () => {
     describe('unhandled phase', () => {
       it('returns empty result for unknown/unhandled phase', () => {
         const store = makeStore({
-          [`wrfc.agent_map.agent-1`]: 'wf-1',
+          [AM('agent-1')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'COMPLETED',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -546,7 +549,7 @@ describe('WRFC Handlers', () => {
     describe('hook_input payload shape', () => {
       it('resolves agent_id and type from hook_input nested payload', () => {
         const store = makeStore({
-          [`wrfc.agent_map.agent-hook`]: 'wf-1',
+          [AM('agent-hook')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -570,7 +573,7 @@ describe('WRFC Handlers', () => {
       it('adds custom types to require-review set from store config', () => {
         const store = makeStore({
           'wrfc.config.require_review_types': ['custom-writer'],
-          [`wrfc.agent_map.agent-cw`]: 'wf-1',
+          [AM('agent-cw')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
           [WS('wf-1', 'min_review_score')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
@@ -601,6 +604,32 @@ describe('WRFC Handlers', () => {
     it('returns empty when review_score is not a valid number', () => {
       const event = makeEvent({ workflow_id: 'wf-1', review_score: 'not-a-number' });
       const result = handleQualityGate(event, STUB_TRIGGER, makeStore());
+      expect(result).toEqual({});
+    });
+
+    it('returns empty when workflow phase is already COMPLETED', () => {
+      const store = makeStore({
+        [WS('wf-1', 'phase')]: 'COMPLETED',
+        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'fix_attempts')]: 0,
+        [WS('wf-1', 'max_fix_attempts')]: 3,
+        [WS('wf-1', 'files_modified')]: [],
+      });
+      const event = makeEvent({ workflow_id: 'wf-1', review_score: 9.5 });
+      const result = handleQualityGate(event, STUB_TRIGGER, store);
+      expect(result).toEqual({});
+    });
+
+    it('returns empty when workflow phase is already ESCALATED', () => {
+      const store = makeStore({
+        [WS('wf-1', 'phase')]: 'ESCALATED',
+        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'fix_attempts')]: 3,
+        [WS('wf-1', 'max_fix_attempts')]: 3,
+        [WS('wf-1', 'files_modified')]: [],
+      });
+      const event = makeEvent({ workflow_id: 'wf-1', review_score: 5.0 });
+      const result = handleQualityGate(event, STUB_TRIGGER, store);
       expect(result).toEqual({});
     });
 
@@ -724,8 +753,8 @@ describe('WRFC Handlers', () => {
     });
 
     it('returns workflow ID when agent is bound to one', () => {
-      const store = makeStore({ 'wrfc.agent_map.agent-1': 'wf-bound' });
-      expect(resolveWorkflowId('agent-1', store)).toBe('wf-bound');
+      const store = makeStore({ [AM('agent-1')]: 'wf-bound' });
+      expect(resolveWorkflowId('agent-1', store, 'test-session')).toBe('wf-bound');
     });
   });
 });

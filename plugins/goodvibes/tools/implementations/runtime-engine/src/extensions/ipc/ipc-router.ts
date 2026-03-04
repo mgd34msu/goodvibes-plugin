@@ -17,6 +17,7 @@ import type { DirectiveQueue } from '../directives/directive-queue.js';
 import type { WRFCConfigStore } from '../directives/wrfc-config-store.js';
 import { validateWRFCConfig } from '../directives/wrfc-config-store.js';
 import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
+import type { CoreStateStore } from '../../core/state/state-store.js';
 import type { IPCMessage, IPCResponse, Directive, HookEventMessage, QueryMessage, StateUpdateMessage, HeartbeatMessage } from '../../shared/ipc/protocol.js';
 import type { IHookProcessor as IHookProcessorInterface } from './types.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
@@ -69,6 +70,8 @@ export interface IPCRouterDeps {
   stateDir: string | null;
   /** Agent-to-workflow binding map — used by resolve_pending_bind queries. */
   agentWorkflowMap?: AgentWorkflowMap | null;
+  /** CoreStateStore — used to clear stale WRFC state on session:started. */
+  stateStore?: CoreStateStore | null;
   /**
    * Optional HookProcessor. When provided, hook_event messages are also
    * routed through it, bridging hook events to the plugin layer.
@@ -109,6 +112,8 @@ export class IPCRouter {
   private readonly socketPath: string | null;
   private readonly stateDir: string | null;
   private readonly agentWorkflowMap: AgentWorkflowMap | null;
+  /** Optional CoreStateStore for clearing stale WRFC state on session:started. */
+  private readonly stateStore: CoreStateStore | null;
   /** Optional HookProcessor for bridging hook events to the plugin layer. */
   private readonly hookProcessor: IHookProcessorInterface | null;
   /** Optional ExecutorModeManager for get_executor_mode queries. */
@@ -139,6 +144,7 @@ export class IPCRouter {
     this.socketPath = deps.socketPath;
     this.stateDir = deps.stateDir;
     this.agentWorkflowMap = deps.agentWorkflowMap ?? null;
+    this.stateStore = deps.stateStore ?? null;
     this.hookProcessor = deps.hookProcessor ?? null;
     this.executorMode = deps.executorMode ?? null;
     this.executorBudget = deps.executorBudget ?? null;
@@ -289,6 +295,26 @@ export class IPCRouter {
     if (msg.hook_name === 'session:started' && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();
     }
+    // Clear stale WRFC state from the arriving session
+    if (msg.hook_name === 'session:started') {
+      const sessionId = (msg.hook_input as Record<string, unknown>)?.session_id;
+      if (this.stateStore && typeof sessionId === 'string' && sessionId.length > 0) {
+        const sessionKeys = this.stateStore.keys(`wrfc.sessions.${sessionId}`);
+        for (const key of sessionKeys) {
+          this.stateStore.delete(key);
+        }
+        if (sessionKeys.length > 0) {
+          logger.info('Session cleanup: cleared stale WRFC state for session', {
+            session_id: sessionId,
+            keys_deleted: sessionKeys.length,
+          });
+        }
+      }
+      // Clear stale pending binds from the arriving session
+      if (this.agentWorkflowMap && typeof sessionId === 'string' && sessionId.length > 0) {
+        this.agentWorkflowMap.clearForSession(sessionId);
+      }
+    }
     // Write session-keyed pointer file when session:started arrives
     if (msg.hook_name === 'session:started' && this.socketPath && this.stateDir) {
       const sessionId = (msg.hook_input as Record<string, unknown>)?.session_id;
@@ -394,7 +420,10 @@ export class IPCRouter {
       if (!agentType) {
         return { id: msg.id, status: 'ok', data: { kind: 'pending_bind', workflow_id: null } };
       }
-      const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType) ?? null;
+      const sessionId = typeof q.session_id === 'string' && q.session_id.length > 0
+        ? q.session_id
+        : undefined;
+      const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType, sessionId) ?? null;
       return { id: msg.id, status: 'ok',
         data: { kind: 'pending_bind', workflow_id: workflowId } };
     }

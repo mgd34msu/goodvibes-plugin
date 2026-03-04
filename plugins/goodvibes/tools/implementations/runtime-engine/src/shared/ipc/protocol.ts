@@ -167,7 +167,7 @@ export type IPCQuery =
   | { kind: 'get_agent_status'; agent_id: string }
   | { kind: 'should_block_tool'; tool_name: string; tool_input: Record<string, unknown> }
   | { kind: 'get_context_injection' }
-  | { kind: 'resolve_pending_bind'; agent_type: string }
+  | { kind: 'resolve_pending_bind'; agent_type: string; session_id?: string }
   | { kind: 'consume_pending_bind'; workflow_id: string }
   | { kind: 'get_executor_mode' }
   | { kind: 'get_executor_budget' }

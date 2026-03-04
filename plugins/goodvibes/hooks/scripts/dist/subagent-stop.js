@@ -1043,10 +1043,25 @@ function getAgentChainingReminder(agentType, success) {
 }
 
 // src/subagent-start/wrfc-utils.ts
+import { execSync } from "child_process";
 var WRFC_REGEX = /\[WRFC:([^\]]+)\]/;
 function extractWorkflowId(taskDescription) {
   const match = WRFC_REGEX.exec(taskDescription);
-  return match ? match[1] : null;
+  if (!match) return null;
+  const wid = match[1].trim();
+  return wid.length > 0 ? wid : null;
+}
+function extractWorkflowIdFromFile(filePath) {
+  try {
+    const result = execSync(
+      `grep -oP '\\[WRFC:[^\\]]+\\]' "${filePath}" | head -1`,
+      { encoding: "utf-8", timeout: 5e3, stdio: ["pipe", "pipe", "pipe"] }
+    ).trim();
+    if (!result) return null;
+    return extractWorkflowId(result);
+  } catch {
+    return null;
+  }
 }
 function normalizeAgentFields(input) {
   return {
@@ -1415,6 +1430,15 @@ async function runSubagentStopHook() {
             resolvedWorkflowId = extractWorkflowId(agentOutput);
             if (resolvedWorkflowId) {
               debug("Phase 6: extracted workflow_id from agent output", { workflow_id: resolvedWorkflowId });
+            }
+          }
+        }
+        if (!resolvedWorkflowId) {
+          const agentTranscript = input.agent_transcript_path ?? input.subagent_transcript_path ?? "";
+          if (agentTranscript) {
+            resolvedWorkflowId = extractWorkflowIdFromFile(agentTranscript);
+            if (resolvedWorkflowId) {
+              debug("Phase 6: extracted workflow_id from agent transcript", { workflow_id: resolvedWorkflowId });
             }
           }
         }

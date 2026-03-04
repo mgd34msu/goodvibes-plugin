@@ -600,6 +600,7 @@ export class EventProcessor {
                 handler_id: trigger.id ?? 'unknown',
                 event_type: event.type,
                 workflow_id: event.context?.workflow_id,
+                session_id: event.metadata?.session_id,
               });
             } catch (err) {
               logger.error('Action execution failed', {

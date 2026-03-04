@@ -26878,12 +26878,14 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
    *
    * @param agentType  - The agent type to expect (e.g. 'reviewer', 'engineer').
    * @param workflowId - The workflow this agent should bind to.
+   * @param sessionId  - The session this pending bind belongs to (default: 'default').
    */
-  addPendingBind(agentType, workflowId) {
-    this.pendingBinds.push({ agentType, workflowId, timestamp: Date.now() });
+  addPendingBind(agentType, workflowId, sessionId = "default") {
+    this.pendingBinds.push({ agentType, workflowId, sessionId, timestamp: Date.now() });
     log5.debug("AgentWorkflowMap.addPendingBind: enqueued pending bind", {
       agent_type: agentType,
       workflow_id: workflowId,
+      session_id: sessionId,
       queue_length: this.pendingBinds.length
     });
   }
@@ -26899,16 +26901,20 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
    * separate Set indexed by workflowId for O(1) sibling cleanup.
    *
    * @param agentType - The agent type queried by SubagentStart.
+   * @param sessionId - Optional session ID to scope the lookup. When provided, only
+   *   pending binds from that session are considered. When omitted, all sessions are searched.
    * @returns The workflow_id if a pending bind exists, or null.
    */
-  resolvePendingBind(agentType) {
+  resolvePendingBind(agentType, sessionId) {
     const now = Date.now();
     if (this.pendingBinds.length > 0) {
       this.pendingBinds = this.pendingBinds.filter(
         (entry) => now - entry.timestamp < _AgentWorkflowMap.PENDING_BIND_TTL_MS
       );
     }
-    const idx = this.pendingBinds.findIndex((entry) => entry.agentType === agentType);
+    const idx = this.pendingBinds.findIndex(
+      (entry) => entry.agentType === agentType && (sessionId === void 0 || entry.sessionId === sessionId)
+    );
     if (idx === -1) {
       log5.debug("AgentWorkflowMap.resolvePendingBind: no pending bind found", { agent_type: agentType });
       return null;
@@ -26917,6 +26923,7 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
     log5.info("AgentWorkflowMap.resolvePendingBind: resolved pending bind", {
       agent_type: agentType,
       workflow_id: resolved.workflowId,
+      session_id: resolved.sessionId,
       remaining_queue_length: this.pendingBinds.length
     });
     const siblingCount = this.pendingBinds.filter(
@@ -26944,6 +26951,46 @@ var AgentWorkflowMap = class _AgentWorkflowMap {
    * @param workflowId - The workflow ID whose pending binds should be consumed.
    * @returns The number of entries removed.
    */
+  /**
+   * Clears all bindings and pending binds.
+   * Called on session:started to prevent stale cross-session state.
+   */
+  clear() {
+    const mapSize = this.map.size;
+    const pendingCount = this.pendingBinds.length;
+    this.map.clear();
+    this.pendingBinds = [];
+    log5.info("AgentWorkflowMap.clear: all bindings and pending binds cleared", {
+      bindings_cleared: mapSize,
+      pending_cleared: pendingCount
+    });
+  }
+  /**
+   * Clears all pending binds and map entries associated with the given session.
+   *
+   * Called on `session:started` to prevent stale pending binds from a previous
+   * session being consumed by agents in the new session.
+   *
+   * Map bindings (agentId → workflowId) are not session-scoped in the map itself
+   * because agentIds are unique per session. However, we still clear any pending
+   * binds so stale type-keyed entries don't cross sessions.
+   *
+   * @param sessionId - The session whose pending binds should be removed.
+   * @returns The number of pending bind entries removed.
+   */
+  clearForSession(sessionId) {
+    const before = this.pendingBinds.length;
+    this.pendingBinds = this.pendingBinds.filter((entry) => entry.sessionId !== sessionId);
+    const removed = before - this.pendingBinds.length;
+    if (removed > 0) {
+      log5.info("AgentWorkflowMap.clearForSession: cleared pending binds for session", {
+        session_id: sessionId,
+        pending_cleared: removed,
+        remaining_queue_length: this.pendingBinds.length
+      });
+    }
+    return removed;
+  }
   consumePendingBindsForWorkflow(workflowId) {
     const before = this.pendingBinds.length;
     this.pendingBinds = this.pendingBinds.filter(
@@ -29356,7 +29403,8 @@ var EventProcessor = class {
               await this.actionExecutor.execute(action, {
                 handler_id: trigger.id ?? "unknown",
                 event_type: event.type,
-                workflow_id: event.context?.workflow_id
+                workflow_id: event.context?.workflow_id,
+                session_id: event.metadata?.session_id
               });
             } catch (err) {
               logger23.error("Action execution failed", {
@@ -30367,7 +30415,7 @@ function buildSpawnAction(params) {
   const content = buildSpawnDirectiveMessage(params.type, params.task, context);
   return {
     type: "send_message",
-    params: { content, priority: 20, target: "subagent_stop" }
+    params: { content, priority: 20, target: "subagent_stop", agent_type: params.type }
   };
 }
 __name(buildSpawnAction, "buildSpawnAction");
@@ -30420,7 +30468,20 @@ function getEffectiveRequireReviewTypes(store) {
   return _cachedRequireReviewTypes;
 }
 __name(getEffectiveRequireReviewTypes, "getEffectiveRequireReviewTypes");
-var WS = /* @__PURE__ */ __name((wid, field) => `wrfc.workflows.${wid}.${field}`, "WS");
+var WS = /* @__PURE__ */ __name((sid, wid, field) => `wrfc.sessions.${sid}.workflows.${wid}.${field}`, "WS");
+var AM = /* @__PURE__ */ __name((sid, agentId) => `wrfc.sessions.${sid}.agent_map.${agentId}`, "AM");
+function eventSessionId(event) {
+  const sid = event.metadata?.["session_id"];
+  if (!sid || sid.length === 0) {
+    log6.warn("eventSessionId: missing session_id in event metadata, using default", {
+      event_type: event.type,
+      event_id: event.id
+    });
+    return "default";
+  }
+  return sid;
+}
+__name(eventSessionId, "eventSessionId");
 function storeGet(store, key, defaultVal) {
   const val = store.get(key);
   return val !== null ? val : defaultVal;
@@ -30440,8 +30501,8 @@ function makeChainEvent(type, wid, parentEvent) {
   });
 }
 __name(makeChainEvent, "makeChainEvent");
-function phaseUpdate(wid, phase) {
-  return [{ key: WS(wid, "phase"), value: phase, op: "set" }];
+function phaseUpdate(sid, wid, phase) {
+  return [{ key: WS(sid, wid, "phase"), value: phase, op: "set" }];
 }
 __name(phaseUpdate, "phaseUpdate");
 function handleWorkflowCreated(event, _trigger, store) {
@@ -30452,6 +30513,7 @@ function handleWorkflowCreated(event, _trigger, store) {
     log6.debug("handleWorkflowCreated: no agent_id in payload, skipping");
     return {};
   }
+  const sid = eventSessionId(event);
   const agentType = typeof data["agent_type"] === "string" ? data["agent_type"] : "";
   const incomingWid = typeof data["workflow_id"] === "string" && data["workflow_id"].length > 0 ? data["workflow_id"] : null;
   const task = typeof data["task"] === "string" ? data["task"] : "";
@@ -30479,20 +30541,20 @@ function handleWorkflowCreated(event, _trigger, store) {
     }
   }
   const state_updates = [
-    { key: `wrfc.agent_map.${agentId}`, value: wid, op: "set" }
+    { key: AM(sid, agentId), value: wid, op: "set" }
   ];
   if (!incomingWid) {
     const minScore = storeGet(store, "wrfc.config.min_review_score", DEFAULT_MIN_REVIEW_SCORE);
     const maxFix = storeGet(store, "wrfc.config.max_fix_attempts", DEFAULT_MAX_FIX_ATTEMPTS);
     state_updates.push(
-      { key: WS(wid, "phase"), value: "WRITING", op: "set" },
-      { key: WS(wid, "agent_id"), value: agentId, op: "set" },
-      { key: WS(wid, "agent_type"), value: agentType, op: "set" },
-      { key: WS(wid, "task"), value: task, op: "set" },
-      { key: WS(wid, "min_review_score"), value: minScore, op: "set" },
-      { key: WS(wid, "max_fix_attempts"), value: maxFix, op: "set" },
-      { key: WS(wid, "fix_attempts"), value: 0, op: "set" },
-      { key: WS(wid, "files_modified"), value: [], op: "set" }
+      { key: WS(sid, wid, "phase"), value: "WRITING", op: "set" },
+      { key: WS(sid, wid, "agent_id"), value: agentId, op: "set" },
+      { key: WS(sid, wid, "agent_type"), value: agentType, op: "set" },
+      { key: WS(sid, wid, "task"), value: task, op: "set" },
+      { key: WS(sid, wid, "min_review_score"), value: minScore, op: "set" },
+      { key: WS(sid, wid, "max_fix_attempts"), value: maxFix, op: "set" },
+      { key: WS(sid, wid, "fix_attempts"), value: 0, op: "set" },
+      { key: WS(sid, wid, "files_modified"), value: [], op: "set" }
     );
     log6.info("handleWorkflowCreated: initialised workflow", { wid, agent_id: agentId, agent_type: agentType });
   } else {
@@ -30509,7 +30571,8 @@ function handleAgentCompleted(event, _trigger, store) {
   const hookInput = typeof payload["hook_input"] === "object" && payload["hook_input"] !== null ? payload["hook_input"] : payload;
   const agentType = hookInput["agent_type"] ?? hookInput["subagent_type"] ?? (typeof dataPayload?.["agent_type"] === "string" ? dataPayload["agent_type"] : null) ?? (typeof dataPayload?.["subagent_type"] === "string" ? dataPayload["subagent_type"] : null) ?? "";
   const agentOutput = hookInput["last_assistant_message"] ?? hookInput["task_output"] ?? hookInput["result"] ?? (typeof dataPayload?.["last_assistant_message"] === "string" ? dataPayload["last_assistant_message"] : null) ?? (typeof dataPayload?.["task_output"] === "string" ? dataPayload["task_output"] : null) ?? (typeof dataPayload?.["result"] === "string" ? dataPayload["result"] : null) ?? (typeof dataPayload?.["output"] === "string" ? dataPayload["output"] : null) ?? void 0;
-  let wid = agentId ? storeGet(store, `wrfc.agent_map.${agentId}`, null) : null;
+  const sid = eventSessionId(event);
+  let wid = agentId ? storeGet(store, AM(sid, agentId), null) : null;
   if (!wid) {
     wid = typeof payload["workflow_id"] === "string" ? payload["workflow_id"] : null;
   }
@@ -30517,14 +30580,22 @@ function handleAgentCompleted(event, _trigger, store) {
     wid = typeof dataPayload?.["workflow_id"] === "string" ? dataPayload["workflow_id"] : null;
   }
   if (!wid) {
-    log6.debug("handleAgentCompleted: no workflow binding found, skipping", { agent_id: agentId });
+    const isExpectedInWorkflow = agentType && (matchesAgentType(agentType, REQUIRE_REVIEW_AGENT_TYPES) || matchesAgentType(agentType, ENGINEER_AGENT_TYPES) || matchesAgentType(agentType, REVIEWER_AGENT_TYPES));
+    if (isExpectedInWorkflow) {
+      log6.warn("handleAgentCompleted: no workflow binding found for expected agent type", {
+        agent_id: agentId,
+        agent_type: agentType
+      });
+    } else {
+      log6.debug("handleAgentCompleted: no workflow binding found, skipping", { agent_id: agentId });
+    }
     return {};
   }
-  const phase = storeGet(store, WS(wid, "phase"), "WRITING").toUpperCase();
-  const minScore = storeGet(store, WS(wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
-  const maxFix = storeGet(store, WS(wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
-  const fixAttempts = storeGet(store, WS(wid, "fix_attempts"), 0);
-  const filesModified = storeGet(store, WS(wid, "files_modified"), []);
+  const phase = storeGet(store, WS(sid, wid, "phase"), "WRITING").toUpperCase();
+  const minScore = storeGet(store, WS(sid, wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
+  const maxFix = storeGet(store, WS(sid, wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
+  const fixAttempts = storeGet(store, WS(sid, wid, "fix_attempts"), 0);
+  const filesModified = storeGet(store, WS(sid, wid, "files_modified"), []);
   const effectivePhase = EARLY_WORKFLOW_STATES.has(phase) ? "WRITING" : phase;
   if (EARLY_WORKFLOW_STATES.has(phase)) {
     log6.warn("handleAgentCompleted: workflow stuck in early state, treating as WRITING", {
@@ -30540,7 +30611,7 @@ function handleAgentCompleted(event, _trigger, store) {
     if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       const task2 = `[WRFC:${wid}] Review the work completed in workflow ${wid}. Minimum score: ${minScore}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
       const actions2 = [buildSpawnAction({ wid, type: "reviewer", task: task2, files: filesModified })];
-      const state_updates2 = phaseUpdate(wid, "REVIEWING");
+      const state_updates2 = phaseUpdate(sid, wid, "REVIEWING");
       const events2 = [makeChainEvent("wrfc:review_started", wid, event)];
       log6.info("handleAgentCompleted: force-review for require-review agent type", {
         wid,
@@ -30551,8 +30622,8 @@ function handleAgentCompleted(event, _trigger, store) {
     if (agentType && matchesAgentType(agentType, AUTO_COMPLETE_AGENT_TYPES)) {
       const actions2 = [buildCompleteAction(wid)];
       const state_updates2 = [
-        ...phaseUpdate(wid, "COMPLETED"),
-        { key: `wrfc.agent_map.${agentId}`, value: null, op: "delete" }
+        ...phaseUpdate(sid, wid, "COMPLETED"),
+        { key: AM(sid, agentId), value: null, op: "delete" }
       ];
       log6.info("handleAgentCompleted: auto-complete (whitelisted agent type)", {
         wid,
@@ -30562,7 +30633,7 @@ function handleAgentCompleted(event, _trigger, store) {
     }
     const task = `[WRFC:${wid}] Review the work completed in workflow ${wid}. Minimum score: ${minScore}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
     const actions = [buildSpawnAction({ wid, type: "reviewer", task, files: filesModified })];
-    const state_updates = phaseUpdate(wid, "REVIEWING");
+    const state_updates = phaseUpdate(sid, wid, "REVIEWING");
     const events = [makeChainEvent("wrfc:review_started", wid, event)];
     log6.info("handleAgentCompleted: spawning reviewer, advancing to REVIEWING", { wid });
     return { actions, state_updates, events };
@@ -30593,16 +30664,16 @@ function handleAgentCompleted(event, _trigger, store) {
         priority: 80,
         context: { workflow_id: wid }
       });
-      const state_updates = phaseUpdate(wid, "ESCALATED");
+      const state_updates = phaseUpdate(sid, wid, "ESCALATED");
       const actions = [buildEscalateAction(wid, `review score parse failed after ${fixAttempts} attempts`)];
       return { state_updates, actions, events: [errorEvent] };
     }
     if (score >= minScore) {
       const actions = [buildCompleteAction(wid)];
       const state_updates = [
-        ...phaseUpdate(wid, "COMPLETED"),
-        { key: WS(wid, "review_score"), value: score, op: "set" },
-        { key: `wrfc.agent_map.${agentId}`, value: null, op: "delete" }
+        ...phaseUpdate(sid, wid, "COMPLETED"),
+        { key: WS(sid, wid, "review_score"), value: score, op: "set" },
+        { key: AM(sid, agentId), value: null, op: "delete" }
       ];
       const events = [makeChainEvent("wrfc:review_completed", wid, event)];
       log6.info("handleAgentCompleted: review passed, completing workflow", {
@@ -30618,8 +30689,8 @@ ${issuesSummary}` + (filesModified.length > 0 ? `
 Files: ${filesModified.join(", ")}.` : "");
       const actions = [buildSpawnAction({ wid, type: "engineer", task, files: filesModified })];
       const state_updates = [
-        ...phaseUpdate(wid, "FIXING"),
-        { key: WS(wid, "review_score"), value: score, op: "set" }
+        ...phaseUpdate(sid, wid, "FIXING"),
+        { key: WS(sid, wid, "review_score"), value: score, op: "set" }
       ];
       log6.info("handleAgentCompleted: review failed, spawning fixer", {
         wid,
@@ -30641,14 +30712,14 @@ Files: ${filesModified.join(", ")}.` : "");
     const mergedFiles = engineerFiles.length > 0 ? [.../* @__PURE__ */ new Set([...filesModified, ...engineerFiles])] : filesModified;
     const newFixAttempts = fixAttempts + 1;
     if (newFixAttempts >= maxFix) {
-      const lastScore = storeGet(store, WS(wid, "review_score"), 0);
+      const lastScore = storeGet(store, WS(sid, wid, "review_score"), 0);
       const reason = `${newFixAttempts} fix attempts failed, last score ${lastScore}/10`;
       const actions = [buildEscalateAction(wid, reason)];
       const state_updates = [
-        ...phaseUpdate(wid, "ESCALATED"),
-        { key: WS(wid, "fix_attempts"), value: newFixAttempts, op: "set" },
-        { key: WS(wid, "files_modified"), value: mergedFiles, op: "set" },
-        { key: `wrfc.agent_map.${agentId}`, value: null, op: "delete" }
+        ...phaseUpdate(sid, wid, "ESCALATED"),
+        { key: WS(sid, wid, "fix_attempts"), value: newFixAttempts, op: "set" },
+        { key: WS(sid, wid, "files_modified"), value: mergedFiles, op: "set" },
+        { key: AM(sid, agentId), value: null, op: "delete" }
       ];
       log6.warn("handleAgentCompleted: fix budget exhausted, escalating", {
         wid,
@@ -30660,9 +30731,9 @@ Files: ${filesModified.join(", ")}.` : "");
       const task = `[WRFC:${wid}] Re-review the code after fix attempt ${newFixAttempts} of ${maxFix} for workflow ${wid}. Minimum score: ${minScore}. ` + (mergedFiles.length > 0 ? `Files modified: ${mergedFiles.join(", ")}.` : "Check all recently modified files.");
       const actions = [buildSpawnAction({ wid, type: "reviewer", task, files: mergedFiles })];
       const state_updates = [
-        ...phaseUpdate(wid, "REVIEWING"),
-        { key: WS(wid, "fix_attempts"), value: newFixAttempts, op: "set" },
-        { key: WS(wid, "files_modified"), value: mergedFiles, op: "set" }
+        ...phaseUpdate(sid, wid, "REVIEWING"),
+        { key: WS(sid, wid, "fix_attempts"), value: newFixAttempts, op: "set" },
+        { key: WS(sid, wid, "files_modified"), value: mergedFiles, op: "set" }
       ];
       const events = [makeChainEvent("wrfc:fix_completed", wid, event)];
       log6.info("handleAgentCompleted: fix complete, re-reviewing", {
@@ -30684,31 +30755,37 @@ function handleQualityGate(event, _trigger, store) {
     log6.debug("handleQualityGate: no workflow_id in payload, skipping");
     return {};
   }
+  const sid = eventSessionId(event);
   const rawScore = payload["review_score"];
   const score = typeof rawScore === "number" ? rawScore : parseFloat(String(rawScore ?? ""));
   if (isNaN(score)) {
     log6.warn("handleQualityGate: invalid review_score", { wid, raw: rawScore });
     return {};
   }
-  const minScore = storeGet(store, WS(wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
-  const fixAttempts = storeGet(store, WS(wid, "fix_attempts"), 0);
-  const maxFix = storeGet(store, WS(wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
-  const filesModified = storeGet(store, WS(wid, "files_modified"), []);
+  const phase = storeGet(store, WS(sid, wid, "phase"), "");
+  if (phase === "COMPLETED" || phase === "ESCALATED") {
+    log6.debug("handleQualityGate: workflow already terminal, skipping", { wid, phase });
+    return {};
+  }
+  const minScore = storeGet(store, WS(sid, wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
+  const fixAttempts = storeGet(store, WS(sid, wid, "fix_attempts"), 0);
+  const maxFix = storeGet(store, WS(sid, wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
+  const filesModified = storeGet(store, WS(sid, wid, "files_modified"), []);
   const state_updates = [
-    { key: WS(wid, "review_score"), value: score, op: "set" }
+    { key: WS(sid, wid, "review_score"), value: score, op: "set" }
   ];
   if (score >= minScore) {
     const actions2 = [buildCompleteAction(wid)];
-    state_updates.push(...phaseUpdate(wid, "COMPLETED"));
+    state_updates.push(...phaseUpdate(sid, wid, "COMPLETED"));
     log6.info("handleQualityGate: quality gate passed", { wid, score, threshold: minScore });
     return { actions: actions2, state_updates };
   }
   const newFixAttempts = fixAttempts + 1;
-  state_updates.push({ key: WS(wid, "fix_attempts"), value: newFixAttempts, op: "set" });
+  state_updates.push({ key: WS(sid, wid, "fix_attempts"), value: newFixAttempts, op: "set" });
   if (newFixAttempts >= maxFix) {
     const reason = `${newFixAttempts} fix attempts failed, last score ${score}/10`;
     const actions2 = [buildEscalateAction(wid, reason)];
-    state_updates.push(...phaseUpdate(wid, "ESCALATED"));
+    state_updates.push(...phaseUpdate(sid, wid, "ESCALATED"));
     log6.warn("handleQualityGate: fix budget exhausted, escalating", { wid, fix_attempts: newFixAttempts });
     return { actions: actions2, state_updates };
   }
@@ -30718,7 +30795,7 @@ function handleQualityGate(event, _trigger, store) {
 ${issuesSummary}` + (filesModified.length > 0 ? `
 Files: ${filesModified.join(", ")}.` : "");
   const actions = [buildSpawnAction({ wid, type: "engineer", task, files: filesModified })];
-  state_updates.push(...phaseUpdate(wid, "FIXING"));
+  state_updates.push(...phaseUpdate(sid, wid, "FIXING"));
   const events = [makeChainEvent("wrfc:fix_started", wid, event)];
   log6.info("handleQualityGate: quality gate failed, spawning fixer", {
     wid,
@@ -32671,7 +32748,7 @@ var ExternalPlugin = class {
 var log8 = createLogger("agent-tracker-plugin");
 var AGENT_KEY = /* @__PURE__ */ __name((id) => `agent_tracker.agents.${id}`, "AGENT_KEY");
 var INDEX_KEY = "agent_tracker.agent_ids";
-var WRFC_MAP_KEY = /* @__PURE__ */ __name((id) => `wrfc.agent_map.${id}`, "WRFC_MAP_KEY");
+var WRFC_MAP_KEY = /* @__PURE__ */ __name((sid, id) => `wrfc.sessions.${sid}.agent_map.${id}`, "WRFC_MAP_KEY");
 function extractAgentData(event) {
   const payload = event.payload;
   const data = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : payload;
@@ -32761,7 +32838,8 @@ var AgentTrackerPlugin = class {
       log8.debug("handleSpawned: no agent_type, skipping", { agent_id });
       return;
     }
-    const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id);
+    const sessionId = typeof event.metadata?.["session_id"] === "string" ? event.metadata["session_id"] : "default";
+    const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id, sessionId);
     const tracked = {
       id: agent_id,
       type: agent_type,
@@ -32791,7 +32869,8 @@ var AgentTrackerPlugin = class {
       return;
     }
     const now = event.timestamp;
-    const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id);
+    const sessionId = typeof event.metadata?.["session_id"] === "string" ? event.metadata["session_id"] : "default";
+    const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id, sessionId);
     const tracked = {
       id: agent_id,
       type: existing?.type ?? agent_type,
@@ -32811,9 +32890,9 @@ var AgentTrackerPlugin = class {
     });
   }
   // ─── Workflow ID resolution ────────────────────────────────────────────────
-  resolveWorkflowId(agentId) {
+  resolveWorkflowId(agentId, sessionId) {
     if (!this._services) return null;
-    const wid = this._services.getState(WRFC_MAP_KEY(agentId));
+    const wid = this._services.getState(WRFC_MAP_KEY(sessionId, agentId));
     if (typeof wid === "string" && wid.length > 0) {
       log8.debug("Resolved workflow_id from WRFC state", { agent_id: agentId, workflow_id: wid });
       return wid;
@@ -33674,8 +33753,9 @@ Active workflows: ${activeWorkflows}`;
 // src/extensions/executor/action-executor.ts
 var logger48 = createLogger("action-executor");
 var ActionExecutor = class {
-  constructor(directiveQueue) {
+  constructor(directiveQueue, agentWorkflowMap) {
     this.directiveQueue = directiveQueue;
+    this.agentWorkflowMap = agentWorkflowMap;
   }
   static {
     __name(this, "ActionExecutor");
@@ -33696,6 +33776,7 @@ var ActionExecutor = class {
           return;
         }
         const workflowId = typeof context["workflow_id"] === "string" ? context["workflow_id"] : void 0;
+        const sessionId = typeof context["session_id"] === "string" && context["session_id"].length > 0 ? context["session_id"] : "default";
         const directive = {
           type: "inject_system_message",
           content,
@@ -33711,6 +33792,17 @@ var ActionExecutor = class {
             workflow_id: workflowId,
             content_length: content.length
           });
+          if (this.agentWorkflowMap && params.agent_type && workflowId) {
+            const agentType = params.agent_type;
+            this.agentWorkflowMap.addPendingBind(agentType, workflowId, sessionId);
+            if (!agentType.startsWith("goodvibes:")) {
+              this.agentWorkflowMap.addPendingBind(`goodvibes:${agentType}`, workflowId, sessionId);
+            }
+            logger48.info("ActionExecutor: pending binds registered for spawn", {
+              agent_type: agentType,
+              workflow_id: workflowId
+            });
+          }
         } catch (err) {
           logger48.error("ActionExecutor: failed to enqueue directive", {
             target,
@@ -34255,6 +34347,8 @@ var IPCRouter = class {
   socketPath;
   stateDir;
   agentWorkflowMap;
+  /** Optional CoreStateStore for clearing stale WRFC state on session:started. */
+  stateStore;
   /** Optional HookProcessor for bridging hook events to the plugin layer. */
   hookProcessor;
   /** Optional ExecutorModeManager for get_executor_mode queries. */
@@ -34282,6 +34376,7 @@ var IPCRouter = class {
     this.socketPath = deps.socketPath;
     this.stateDir = deps.stateDir;
     this.agentWorkflowMap = deps.agentWorkflowMap ?? null;
+    this.stateStore = deps.stateStore ?? null;
     this.hookProcessor = deps.hookProcessor ?? null;
     this.executorMode = deps.executorMode ?? null;
     this.executorBudget = deps.executorBudget ?? null;
@@ -34406,6 +34501,24 @@ var IPCRouter = class {
     if (msg.hook_name === "session:started" && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();
     }
+    if (msg.hook_name === "session:started") {
+      const sessionId = msg.hook_input?.session_id;
+      if (this.stateStore && typeof sessionId === "string" && sessionId.length > 0) {
+        const sessionKeys = this.stateStore.keys(`wrfc.sessions.${sessionId}`);
+        for (const key of sessionKeys) {
+          this.stateStore.delete(key);
+        }
+        if (sessionKeys.length > 0) {
+          logger53.info("Session cleanup: cleared stale WRFC state for session", {
+            session_id: sessionId,
+            keys_deleted: sessionKeys.length
+          });
+        }
+      }
+      if (this.agentWorkflowMap && typeof sessionId === "string" && sessionId.length > 0) {
+        this.agentWorkflowMap.clearForSession(sessionId);
+      }
+    }
     if (msg.hook_name === "session:started" && this.socketPath && this.stateDir) {
       const sessionId = msg.hook_input?.session_id;
       if (typeof sessionId === "string" && sessionId.length > 0) {
@@ -34499,7 +34612,8 @@ var IPCRouter = class {
       if (!agentType) {
         return { id: msg.id, status: "ok", data: { kind: "pending_bind", workflow_id: null } };
       }
-      const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType) ?? null;
+      const sessionId = typeof q.session_id === "string" && q.session_id.length > 0 ? q.session_id : void 0;
+      const workflowId = this.agentWorkflowMap?.resolvePendingBind(agentType, sessionId) ?? null;
       return {
         id: msg.id,
         status: "ok",
@@ -34663,6 +34777,7 @@ async function createIPCSubsystem(opts) {
       socketPath,
       stateDir,
       agentWorkflowMap,
+      stateStore: opts.stateStore ?? null,
       hookProcessor: opts.hookProcessor,
       executorMode: opts.executorMode,
       executorBudget: opts.executorBudget,
@@ -34888,7 +35003,7 @@ var RuntimeEngine = class {
       }), "getSnapshotDeps")
     });
     this.executorSubsystem = createExecutorSubsystem(this.config, this.events.eventBus);
-    const actionExecutor = this.directives ? new ActionExecutor(this.directives.directiveQueue) : void 0;
+    const actionExecutor = this.directives ? new ActionExecutor(this.directives.directiveQueue, this.directives.agentWorkflowMap) : void 0;
     this.coreRuntime = createCoreRuntime(
       actionExecutor,
       this.triggers?.triggerRegistry
@@ -35040,6 +35155,7 @@ var RuntimeEngine = class {
         directiveQueue: this.directives.directiveQueue,
         wrfcConfigStore: this.wrfcConfigStore,
         agentWorkflowMap: this.directives.agentWorkflowMap,
+        stateStore: this.coreRuntime?.stateStore ?? null,
         hookProcessor: this.hookProcessor,
         executorMode: this.executorSubsystem?.executorMode ?? null,
         executorBudget: this.executorSubsystem?.executorBudget ?? null,

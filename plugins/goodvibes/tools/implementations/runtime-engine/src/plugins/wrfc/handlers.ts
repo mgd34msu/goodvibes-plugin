@@ -82,8 +82,24 @@ function getEffectiveRequireReviewTypes(store: StateStoreInterface): Set<string>
 
 // ─── State key helpers ──────────────────────────────────────────────────────────
 
-/** State store key prefix for WRFC workflow data. */
-const WS = (wid: string, field: string) => `wrfc.workflows.${wid}.${field}`;
+/** Session-scoped workflow state key. */
+const WS = (sid: string, wid: string, field: string) => `wrfc.sessions.${sid}.workflows.${wid}.${field}`;
+
+/** Session-scoped agent-to-workflow map key. */
+const AM = (sid: string, agentId: string) => `wrfc.sessions.${sid}.agent_map.${agentId}`;
+
+/** Extract session ID from event metadata, falling back to 'default'. */
+function eventSessionId(event: RuntimeEvent): string {
+  const sid = (event.metadata as Record<string, unknown> | undefined)?.['session_id'] as string;
+  if (!sid || sid.length === 0) {
+    log.warn('eventSessionId: missing session_id in event metadata, using default', {
+      event_type: event.type,
+      event_id: event.id,
+    });
+    return 'default';
+  }
+  return sid;
+}
 
 /** Read a typed value from the state store, returning a default if absent. */
 function storeGet<T>(store: StateStoreInterface, key: string, defaultVal: T): T {
@@ -114,8 +130,8 @@ function makeChainEvent(type: string, wid: string, parentEvent: RuntimeEvent): R
 /**
  * Builds the state_update array for workflow phase transitions.
  */
-function phaseUpdate(wid: string, phase: string): StateUpdate[] {
-  return [{ key: WS(wid, 'phase'), value: phase, op: 'set' }];
+function phaseUpdate(sid: string, wid: string, phase: string): StateUpdate[] {
+  return [{ key: WS(sid, wid, 'phase'), value: phase, op: 'set' }];
 }
 
 // ─── Exported Handlers ─────────────────────────────────────────────────────────
@@ -149,6 +165,7 @@ export function handleWorkflowCreated(
     return {};
   }
 
+  const sid = eventSessionId(event);
   const agentType = typeof data['agent_type'] === 'string' ? data['agent_type'] : '';
   const incomingWid = typeof data['workflow_id'] === 'string' && data['workflow_id'].length > 0
     ? data['workflow_id']
@@ -188,7 +205,7 @@ export function handleWorkflowCreated(
 
   // Bind agent → workflow in state store
   const state_updates: StateUpdate[] = [
-    { key: `wrfc.agent_map.${agentId}`, value: wid, op: 'set' },
+    { key: AM(sid, agentId), value: wid, op: 'set' },
   ];
 
   if (!incomingWid) {
@@ -197,14 +214,14 @@ export function handleWorkflowCreated(
     const maxFix = storeGet(store, 'wrfc.config.max_fix_attempts', DEFAULT_MAX_FIX_ATTEMPTS);
 
     state_updates.push(
-      { key: WS(wid, 'phase'), value: 'WRITING', op: 'set' },
-      { key: WS(wid, 'agent_id'), value: agentId, op: 'set' },
-      { key: WS(wid, 'agent_type'), value: agentType, op: 'set' },
-      { key: WS(wid, 'task'), value: task, op: 'set' },
-      { key: WS(wid, 'min_review_score'), value: minScore, op: 'set' },
-      { key: WS(wid, 'max_fix_attempts'), value: maxFix, op: 'set' },
-      { key: WS(wid, 'fix_attempts'), value: 0, op: 'set' },
-      { key: WS(wid, 'files_modified'), value: [], op: 'set' },
+      { key: WS(sid, wid, 'phase'), value: 'WRITING', op: 'set' },
+      { key: WS(sid, wid, 'agent_id'), value: agentId, op: 'set' },
+      { key: WS(sid, wid, 'agent_type'), value: agentType, op: 'set' },
+      { key: WS(sid, wid, 'task'), value: task, op: 'set' },
+      { key: WS(sid, wid, 'min_review_score'), value: minScore, op: 'set' },
+      { key: WS(sid, wid, 'max_fix_attempts'), value: maxFix, op: 'set' },
+      { key: WS(sid, wid, 'fix_attempts'), value: 0, op: 'set' },
+      { key: WS(sid, wid, 'files_modified'), value: [], op: 'set' },
     );
 
     log.info('handleWorkflowCreated: initialised workflow', { wid, agent_id: agentId, agent_type: agentType });
@@ -268,8 +285,10 @@ export function handleAgentCompleted(
     (typeof dataPayload?.['output'] === 'string' ? dataPayload['output'] : null) ??
     undefined;
 
+  const sid = eventSessionId(event);
+
   // Resolve workflow ID from agent map in store
-  let wid: string | null = agentId ? storeGet<string | null>(store, `wrfc.agent_map.${agentId}`, null) : null;
+  let wid: string | null = agentId ? storeGet<string | null>(store, AM(sid, agentId), null) : null;
   if (!wid) {
     wid = typeof payload['workflow_id'] === 'string' ? payload['workflow_id'] : null;
   }
@@ -277,15 +296,28 @@ export function handleAgentCompleted(
     wid = typeof dataPayload?.['workflow_id'] === 'string' ? dataPayload['workflow_id'] : null;
   }
   if (!wid) {
-    log.debug('handleAgentCompleted: no workflow binding found, skipping', { agent_id: agentId });
+    // Elevate to warn for agent types that should normally have workflow bindings
+    const isExpectedInWorkflow = agentType && (
+      matchesAgentType(agentType, REQUIRE_REVIEW_AGENT_TYPES) ||
+      matchesAgentType(agentType, ENGINEER_AGENT_TYPES) ||
+      matchesAgentType(agentType, REVIEWER_AGENT_TYPES)
+    );
+    if (isExpectedInWorkflow) {
+      log.warn('handleAgentCompleted: no workflow binding found for expected agent type', {
+        agent_id: agentId,
+        agent_type: agentType,
+      });
+    } else {
+      log.debug('handleAgentCompleted: no workflow binding found, skipping', { agent_id: agentId });
+    }
     return {};
   }
 
-  const phase = storeGet(store, WS(wid, 'phase'), 'WRITING').toUpperCase();
-  const minScore = storeGet(store, WS(wid, 'min_review_score'), DEFAULT_MIN_REVIEW_SCORE);
-  const maxFix = storeGet(store, WS(wid, 'max_fix_attempts'), DEFAULT_MAX_FIX_ATTEMPTS);
-  const fixAttempts = storeGet(store, WS(wid, 'fix_attempts'), 0);
-  const filesModified = storeGet<string[]>(store, WS(wid, 'files_modified'), []);
+  const phase = storeGet(store, WS(sid, wid, 'phase'), 'WRITING').toUpperCase();
+  const minScore = storeGet(store, WS(sid, wid, 'min_review_score'), DEFAULT_MIN_REVIEW_SCORE);
+  const maxFix = storeGet(store, WS(sid, wid, 'max_fix_attempts'), DEFAULT_MAX_FIX_ATTEMPTS);
+  const fixAttempts = storeGet(store, WS(sid, wid, 'fix_attempts'), 0);
+  const filesModified = storeGet<string[]>(store, WS(sid, wid, 'files_modified'), []);
 
   // Treat early-stuck states the same as WRITING
   const effectivePhase = EARLY_WORKFLOW_STATES.has(phase) ? 'WRITING' : phase;
@@ -313,7 +345,7 @@ export function handleAgentCompleted(
           : 'No files recorded yet.');
 
       const actions: Action[] = [buildSpawnAction({ wid, type: 'reviewer', task, files: filesModified })];
-      const state_updates: StateUpdate[] = phaseUpdate(wid, 'REVIEWING');
+      const state_updates: StateUpdate[] = phaseUpdate(sid, wid, 'REVIEWING');
       const events: RuntimeEvent[] = [makeChainEvent('wrfc:review_started', wid, event)];
 
       log.info('handleAgentCompleted: force-review for require-review agent type', {
@@ -326,8 +358,8 @@ export function handleAgentCompleted(
     if (agentType && matchesAgentType(agentType, AUTO_COMPLETE_AGENT_TYPES)) {
       const actions: Action[] = [buildCompleteAction(wid)];
       const state_updates: StateUpdate[] = [
-        ...phaseUpdate(wid, 'COMPLETED'),
-        { key: `wrfc.agent_map.${agentId}`, value: null, op: 'delete' },
+        ...phaseUpdate(sid, wid, 'COMPLETED'),
+        { key: AM(sid, agentId), value: null, op: 'delete' },
       ];
 
       log.info('handleAgentCompleted: auto-complete (whitelisted agent type)', {
@@ -344,7 +376,7 @@ export function handleAgentCompleted(
         : 'No files recorded yet.');
 
     const actions: Action[] = [buildSpawnAction({ wid, type: 'reviewer', task, files: filesModified })];
-    const state_updates: StateUpdate[] = phaseUpdate(wid, 'REVIEWING');
+    const state_updates: StateUpdate[] = phaseUpdate(sid, wid, 'REVIEWING');
     const events: RuntimeEvent[] = [makeChainEvent('wrfc:review_started', wid, event)];
 
     log.info('handleAgentCompleted: spawning reviewer, advancing to REVIEWING', { wid });
@@ -378,7 +410,7 @@ export function handleAgentCompleted(
         priority: 80,
         context: { workflow_id: wid },
       });
-      const state_updates: StateUpdate[] = phaseUpdate(wid, 'ESCALATED');
+      const state_updates: StateUpdate[] = phaseUpdate(sid, wid, 'ESCALATED');
       const actions: Action[] = [buildEscalateAction(wid, `review score parse failed after ${fixAttempts} attempts`)];
       return { state_updates, actions, events: [errorEvent] };
     }
@@ -387,9 +419,9 @@ export function handleAgentCompleted(
       // Pass: complete workflow
       const actions: Action[] = [buildCompleteAction(wid)];
       const state_updates: StateUpdate[] = [
-        ...phaseUpdate(wid, 'COMPLETED'),
-        { key: WS(wid, 'review_score'), value: score, op: 'set' },
-        { key: `wrfc.agent_map.${agentId}`, value: null, op: 'delete' },
+        ...phaseUpdate(sid, wid, 'COMPLETED'),
+        { key: WS(sid, wid, 'review_score'), value: score, op: 'set' },
+        { key: AM(sid, agentId), value: null, op: 'delete' },
       ];
       const events: RuntimeEvent[] = [makeChainEvent('wrfc:review_completed', wid, event)];
 
@@ -406,8 +438,8 @@ export function handleAgentCompleted(
 
       const actions: Action[] = [buildSpawnAction({ wid, type: 'engineer', task, files: filesModified })];
       const state_updates: StateUpdate[] = [
-        ...phaseUpdate(wid, 'FIXING'),
-        { key: WS(wid, 'review_score'), value: score, op: 'set' },
+        ...phaseUpdate(sid, wid, 'FIXING'),
+        { key: WS(sid, wid, 'review_score'), value: score, op: 'set' },
       ];
 
       log.info('handleAgentCompleted: review failed, spawning fixer', {
@@ -436,14 +468,14 @@ export function handleAgentCompleted(
 
     if (newFixAttempts >= maxFix) {
       // Budget exhausted: escalate
-      const lastScore = storeGet(store, WS(wid, 'review_score'), 0);
+      const lastScore = storeGet(store, WS(sid, wid, 'review_score'), 0);
       const reason = `${newFixAttempts} fix attempts failed, last score ${lastScore}/10`;
       const actions: Action[] = [buildEscalateAction(wid, reason)];
       const state_updates: StateUpdate[] = [
-        ...phaseUpdate(wid, 'ESCALATED'),
-        { key: WS(wid, 'fix_attempts'), value: newFixAttempts, op: 'set' },
-        { key: WS(wid, 'files_modified'), value: mergedFiles, op: 'set' },
-        { key: `wrfc.agent_map.${agentId}`, value: null, op: 'delete' },
+        ...phaseUpdate(sid, wid, 'ESCALATED'),
+        { key: WS(sid, wid, 'fix_attempts'), value: newFixAttempts, op: 'set' },
+        { key: WS(sid, wid, 'files_modified'), value: mergedFiles, op: 'set' },
+        { key: AM(sid, agentId), value: null, op: 'delete' },
       ];
 
       log.warn('handleAgentCompleted: fix budget exhausted, escalating', {
@@ -458,9 +490,9 @@ export function handleAgentCompleted(
 
       const actions: Action[] = [buildSpawnAction({ wid, type: 'reviewer', task, files: mergedFiles })];
       const state_updates: StateUpdate[] = [
-        ...phaseUpdate(wid, 'REVIEWING'),
-        { key: WS(wid, 'fix_attempts'), value: newFixAttempts, op: 'set' },
-        { key: WS(wid, 'files_modified'), value: mergedFiles, op: 'set' },
+        ...phaseUpdate(sid, wid, 'REVIEWING'),
+        { key: WS(sid, wid, 'fix_attempts'), value: newFixAttempts, op: 'set' },
+        { key: WS(sid, wid, 'files_modified'), value: mergedFiles, op: 'set' },
       ];
       const events: RuntimeEvent[] = [makeChainEvent('wrfc:fix_completed', wid, event)];
 
@@ -500,6 +532,7 @@ export function handleQualityGate(
     return {};
   }
 
+  const sid = eventSessionId(event);
   const rawScore = payload['review_score'];
   const score = typeof rawScore === 'number' ? rawScore : parseFloat(String(rawScore ?? ''));
   if (isNaN(score)) {
@@ -507,31 +540,37 @@ export function handleQualityGate(
     return {};
   }
 
-  const minScore = storeGet(store, WS(wid, 'min_review_score'), DEFAULT_MIN_REVIEW_SCORE);
-  const fixAttempts = storeGet(store, WS(wid, 'fix_attempts'), 0);
-  const maxFix = storeGet(store, WS(wid, 'max_fix_attempts'), DEFAULT_MAX_FIX_ATTEMPTS);
-  const filesModified = storeGet<string[]>(store, WS(wid, 'files_modified'), []);
+  const phase = storeGet(store, WS(sid, wid, 'phase'), '');
+  if (phase === 'COMPLETED' || phase === 'ESCALATED') {
+    log.debug('handleQualityGate: workflow already terminal, skipping', { wid, phase });
+    return {};
+  }
+
+  const minScore = storeGet(store, WS(sid, wid, 'min_review_score'), DEFAULT_MIN_REVIEW_SCORE);
+  const fixAttempts = storeGet(store, WS(sid, wid, 'fix_attempts'), 0);
+  const maxFix = storeGet(store, WS(sid, wid, 'max_fix_attempts'), DEFAULT_MAX_FIX_ATTEMPTS);
+  const filesModified = storeGet<string[]>(store, WS(sid, wid, 'files_modified'), []);
 
   const state_updates: StateUpdate[] = [
-    { key: WS(wid, 'review_score'), value: score, op: 'set' },
+    { key: WS(sid, wid, 'review_score'), value: score, op: 'set' },
   ];
 
   if (score >= minScore) {
     // Quality gate passed
     const actions: Action[] = [buildCompleteAction(wid)];
-    state_updates.push(...phaseUpdate(wid, 'COMPLETED'));
+    state_updates.push(...phaseUpdate(sid, wid, 'COMPLETED'));
     log.info('handleQualityGate: quality gate passed', { wid, score, threshold: minScore });
     return { actions, state_updates };
   }
 
   // Quality gate failed: check fix budget
   const newFixAttempts = fixAttempts + 1;
-  state_updates.push({ key: WS(wid, 'fix_attempts'), value: newFixAttempts, op: 'set' });
+  state_updates.push({ key: WS(sid, wid, 'fix_attempts'), value: newFixAttempts, op: 'set' });
 
   if (newFixAttempts >= maxFix) {
     const reason = `${newFixAttempts} fix attempts failed, last score ${score}/10`;
     const actions: Action[] = [buildEscalateAction(wid, reason)];
-    state_updates.push(...phaseUpdate(wid, 'ESCALATED'));
+    state_updates.push(...phaseUpdate(sid, wid, 'ESCALATED'));
     log.warn('handleQualityGate: fix budget exhausted, escalating', { wid, fix_attempts: newFixAttempts });
     return { actions, state_updates };
   }
@@ -546,7 +585,7 @@ export function handleQualityGate(
     (filesModified.length > 0 ? `\nFiles: ${filesModified.join(', ')}.` : '');
 
   const actions: Action[] = [buildSpawnAction({ wid, type: 'engineer', task, files: filesModified })];
-  state_updates.push(...phaseUpdate(wid, 'FIXING'));
+  state_updates.push(...phaseUpdate(sid, wid, 'FIXING'));
   const events: RuntimeEvent[] = [makeChainEvent('wrfc:fix_started', wid, event)];
 
   log.info('handleQualityGate: quality gate failed, spawning fixer', {
@@ -561,14 +600,16 @@ export function handleQualityGate(
  *
  * @param agentId - The agent ID to look up, or null.
  * @param store   - Core state store that holds the agent → workflow map.
+ * @param sid     - Session ID to scope the lookup. Defaults to 'default'.
  * @returns The workflow ID bound to this agent, or null if no binding exists.
  */
 export function resolveWorkflowId(
   agentId: string | null,
   store: StateStoreInterface,
+  sid = 'default',
 ): string | null {
   if (!agentId) return null;
-  return store.get<string>(`wrfc.agent_map.${agentId}`);
+  return store.get<string>(AM(sid, agentId));
 }
 
 /** Returns the handler function IDs this module registers. */

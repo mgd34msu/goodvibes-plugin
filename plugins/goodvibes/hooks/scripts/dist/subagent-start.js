@@ -1296,12 +1296,14 @@ import { execSync } from "child_process";
 var WRFC_REGEX = /\[WRFC:([^\]]+)\]/;
 function extractWorkflowId(taskDescription) {
   const match = WRFC_REGEX.exec(taskDescription);
-  return match ? match[1] : null;
+  if (!match) return null;
+  const wid = match[1].trim();
+  return wid.length > 0 ? wid : null;
 }
 function extractWorkflowIdFromTranscript(transcriptPath, agentType) {
   try {
     const result = execSync(
-      `grep -F '${agentType}' "${transcriptPath}" | grep -oP '\\[WRFC:[^\\]]+\\]' | tail -1`,
+      `grep -F '${agentType}' "${transcriptPath}" | tail -1 | grep -oP '\\[WRFC:[^\\]]+\\]' | head -1`,
       { encoding: "utf-8", timeout: 5e3, stdio: ["pipe", "pipe", "pipe"] }
     ).trim();
     if (!result) return null;

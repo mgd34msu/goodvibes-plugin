@@ -128,6 +128,8 @@ export interface CreateIPCOptions {
   directiveQueue: DirectiveQueue | null;
   wrfcConfigStore: WRFCConfigStore | null;
   agentWorkflowMap: AgentWorkflowMap | null;
+  /** CoreStateStore — used to clear stale WRFC state on session:started. */
+  stateStore?: import('../../core/state/state-store.js').CoreStateStore | null;
   hookProcessor: IHookProcessor | null;
   executorMode: ExecutorModeManager | null;
   executorBudget: ExecutorBudgetManager | null;
@@ -164,6 +166,7 @@ export async function createIPCSubsystem(
       socketPath,
       stateDir,
       agentWorkflowMap,
+      stateStore: opts.stateStore ?? null,
       hookProcessor: opts.hookProcessor,
       executorMode: opts.executorMode,
       executorBudget: opts.executorBudget,

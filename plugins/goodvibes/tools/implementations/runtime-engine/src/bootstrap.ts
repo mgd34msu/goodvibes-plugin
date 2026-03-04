@@ -272,7 +272,7 @@ export class RuntimeEngine {
     // Pass the unified TriggerRegistry from step 5 so that EventProcessor
     // and all extension subsystems share a SINGLE registry instance.
     const actionExecutor = this.directives
-      ? new ActionExecutor(this.directives.directiveQueue)
+      ? new ActionExecutor(this.directives.directiveQueue, this.directives.agentWorkflowMap)
       : undefined;
     this.coreRuntime = createCoreRuntime(
       actionExecutor,
@@ -458,6 +458,7 @@ export class RuntimeEngine {
         directiveQueue: this.directives.directiveQueue,
         wrfcConfigStore: this.wrfcConfigStore,
         agentWorkflowMap: this.directives.agentWorkflowMap,
+        stateStore: this.coreRuntime?.stateStore ?? null,
         hookProcessor: this.hookProcessor,
         executorMode: this.executorSubsystem?.executorMode ?? null,
         executorBudget: this.executorSubsystem?.executorBudget ?? null,

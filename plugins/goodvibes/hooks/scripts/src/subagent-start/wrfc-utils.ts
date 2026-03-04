@@ -25,14 +25,22 @@ const WRFC_REGEX = /\[WRFC:([^\]]+)\]/;
  */
 export function extractWorkflowId(taskDescription: string): string | null {
   const match = WRFC_REGEX.exec(taskDescription);
-  return match ? match[1] : null;
+  if (!match) return null;
+  const wid = match[1].trim();
+  return wid.length > 0 ? wid : null;
 }
 
 /**
  * Extracts a workflow ID by grepping the parent session transcript for [WRFC:wid].
  *
- * Uses a targeted grep to find the last [WRFC:...] tag in lines that also
- * contain the agent type, avoiding bulk file reads and JSON parsing.
+ * Uses a targeted grep to find [WRFC:...] tags in lines that also contain the
+ * agent type, avoiding bulk file reads and JSON parsing.
+ *
+ * NOTE: When the orchestrator spawns multiple agents of the same type in a single
+ * turn, all tool calls appear on the same JSONL line. We take the LAST matching
+ * line and extract the FIRST [WRFC:wid] from it to reduce (but not eliminate)
+ * ambiguity. For unambiguous resolution, SubagentStop also greps the agent's
+ * own transcript via extractWorkflowIdFromFile().
  *
  * @param transcriptPath - Path to the parent session JSONL file
  * @param agentType - The agent type to match in the transcript
@@ -43,9 +51,12 @@ export function extractWorkflowIdFromTranscript(
   agentType: string
 ): string | null {
   try {
-    // Grep for lines containing both the agent type and a WRFC tag, take the last match
+    // Take the LAST line containing the agent type, then extract the FIRST
+    // [WRFC:wid] from that line. This scopes to the most recent orchestrator
+    // message and picks the first workflow marker, reducing cross-workflow
+    // contamination when multiple agents are spawned in the same turn.
     const result = execSync(
-      `grep -F '${agentType}' "${transcriptPath}" | grep -oP '\\[WRFC:[^\\]]+\\]' | tail -1`,
+      `grep -F '${agentType}' "${transcriptPath}" | tail -1 | grep -oP '\\[WRFC:[^\\]]+\\]' | head -1`,
       { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
     ).trim();
 
@@ -53,6 +64,31 @@ export function extractWorkflowIdFromTranscript(
     return extractWorkflowId(result);
   } catch {
     // grep returns exit code 1 on no match, or any other failure — never break the hook
+    return null;
+  }
+}
+
+/**
+ * Extracts a workflow ID by grepping any file for the first [WRFC:wid] marker.
+ *
+ * Used by SubagentStop to search the agent's OWN transcript for the [WRFC:wid]
+ * that was in its system prompt, providing an unambiguous workflow binding
+ * even when the parent transcript grep is ambiguous (multiple agents of the
+ * same type spawned in one turn).
+ *
+ * @param filePath - Path to the file to search
+ * @returns Extracted workflow ID, or null if not found
+ */
+export function extractWorkflowIdFromFile(filePath: string): string | null {
+  try {
+    const result = execSync(
+      `grep -oP '\\[WRFC:[^\\]]+\\]' "${filePath}" | head -1`,
+      { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
+    ).trim();
+
+    if (!result) return null;
+    return extractWorkflowId(result);
+  } catch {
     return null;
   }
 }
