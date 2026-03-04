@@ -34484,7 +34484,7 @@ var IPCRouter = class {
         data: msg.hook_input
       },
       metadata: {
-        session_id: "",
+        session_id: msg.hook_input?.session_id ?? "",
         sequence: 0,
         version: 1
       },
@@ -34514,14 +34514,21 @@ var IPCRouter = class {
             keys_deleted: sessionKeys.length
           });
         }
+        const defaultKeys = this.stateStore.keys("wrfc.sessions.default");
+        for (const key of defaultKeys) {
+          this.stateStore.delete(key);
+        }
+        if (defaultKeys.length > 0) {
+          logger53.info("Session cleanup: cleared stale WRFC state from default namespace", {
+            keys_deleted: defaultKeys.length
+          });
+        }
       }
       if (this.agentWorkflowMap && typeof sessionId === "string" && sessionId.length > 0) {
         this.agentWorkflowMap.clearForSession(sessionId);
       }
-    }
-    if (msg.hook_name === "session:started" && this.socketPath && this.stateDir) {
-      const sessionId = msg.hook_input?.session_id;
-      if (typeof sessionId === "string" && sessionId.length > 0) {
+      this.directiveQueue?.clear();
+      if (this.socketPath && this.stateDir && typeof sessionId === "string" && sessionId.length > 0) {
         try {
           const pointerFile = (0, import_node_path12.join)(this.stateDir, `runtime-${sessionId}.socket`);
           (0, import_node_fs12.writeFileSync)(pointerFile, this.socketPath, "utf-8");
