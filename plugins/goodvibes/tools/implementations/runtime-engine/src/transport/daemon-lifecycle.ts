@@ -15,6 +15,7 @@ import { DAEMON_PID_FILE, DAEMON_SOCKET_POINTER, DAEMON_ENTRY } from './daemon-c
 const logger = createLogger('daemon-lifecycle');
 const STARTUP_TIMEOUT_MS = 10_000;
 const HEALTH_CHECK_INTERVAL_MS = 500;
+const DEFAULT_HEALTH_CHECK_INTERVAL_MS = 30_000;
 
 export interface DaemonStatus {
   running: boolean;
@@ -23,18 +24,55 @@ export interface DaemonStatus {
   uptime?: number;
 }
 
+/**
+ * Cached health state maintained by the polling loop.
+ *
+ * Semantics:
+ *   - `running` is the authoritative liveness signal: true only when the process
+ *     is alive AND the socket is responsive.
+ *   - `pid` reflects process existence and is set whenever the process is alive,
+ *     regardless of socket responsiveness. It is null only when the process is
+ *     confirmed dead or no PID file exists. Use `pid` for diagnostics.
+ *
+ * Examples:
+ *   - Process alive + socket responsive  → running=true,  pid=<value>
+ *   - Process alive + socket unresponsive → running=false, pid=<value>
+ *   - Process dead (stale PID file)       → running=false, pid=null
+ *   - No PID file                         → running=false, pid=null
+ */
+export interface HealthState {
+  running: boolean;
+  pid: number | null;
+  socketPath: string | null;
+  /** Was the last socket probe successful? */
+  socketResponsive: boolean;
+  /** Timestamp (ms since epoch) of the last health check. */
+  lastChecked: number;
+  /** Uptime in milliseconds from daemon RPC, if available. */
+  uptime: number | null;
+}
+
+export interface DaemonLifecycleOptions {
+  /** Interval between health checks in milliseconds. Default: 30_000. */
+  healthCheckIntervalMs?: number;
+}
+
 export class DaemonLifecycle {
   private startPromise: Promise<void> | null = null;
   private readonly projectRoot: string;
   private readonly goodvibesDir: string;
   private readonly pidFilePath: string;
   private readonly socketPointerPath: string;
+  private healthCheckIntervalMs: number;
+  private healthCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private cachedHealth: HealthState | null = null;
 
-  constructor(projectRoot: string) {
+  constructor(projectRoot: string, options?: DaemonLifecycleOptions) {
     this.projectRoot = projectRoot;
     this.goodvibesDir = resolve(projectRoot, '.goodvibes');
     this.pidFilePath = resolve(this.goodvibesDir, DAEMON_PID_FILE);
     this.socketPointerPath = resolve(this.goodvibesDir, DAEMON_SOCKET_POINTER);
+    this.healthCheckIntervalMs = options?.healthCheckIntervalMs ?? DEFAULT_HEALTH_CHECK_INTERVAL_MS;
   }
 
   /**
@@ -117,12 +155,14 @@ export class DaemonLifecycle {
     await this.waitForSocket(STARTUP_TIMEOUT_MS);
 
     logger.info('Daemon started', { pid: daemonPid });
+    this.startHealthCheck();
   }
 
   /**
    * Stop the daemon process by sending SIGTERM.
    */
   async stop(): Promise<void> {
+    this.stopHealthCheck();
     const pid = this.readPid();
     if (pid === null) {
       logger.info('No daemon PID file found');
@@ -162,17 +202,120 @@ export class DaemonLifecycle {
 
   /**
    * Get daemon status information.
+   * Returns cached health if available and fresh (< healthCheckIntervalMs old).
+   * Otherwise runs updateHealth() and returns the fresh result.
    */
   async getStatus(): Promise<DaemonStatus> {
-    const pid = this.readPid();
-    const socketPath = this.readSocketPointer();
-    const running = pid !== null && this.isProcessAlive(pid)
-      && socketPath !== null && await this.probeSocket(socketPath);
+    const now = Date.now();
+    if (
+      this.cachedHealth !== null &&
+      now - this.cachedHealth.lastChecked < this.healthCheckIntervalMs
+    ) {
+      const h = this.cachedHealth;
+      return {
+        running: h.running,
+        pid: h.pid,
+        socketPath: h.socketPath,
+        uptime: h.uptime ?? undefined,
+      };
+    }
 
+    await this.updateHealth();
+    if (!this.cachedHealth) {
+      throw new Error('updateHealth failed to set cached state');
+    }
+    const h = this.cachedHealth;
     return {
-      running,
-      pid: running ? pid : null,
-      socketPath: running ? socketPath : null,
+      running: h.running,
+      pid: h.pid,
+      socketPath: h.socketPath,
+      uptime: h.uptime ?? undefined,
+    };
+  }
+
+  /**
+   * Start periodic health check polling.
+   * Runs updateHealth() immediately, then on the given interval.
+   */
+  startHealthCheck(intervalMs: number = this.healthCheckIntervalMs): void {
+    if (this.healthCheckTimer !== null) return;
+    // Update the stored interval to match what is actually being used,
+    // so getStatus() cache-freshness check stays consistent.
+    this.healthCheckIntervalMs = intervalMs;
+    // Run immediately
+    void this.updateHealth();
+    this.healthCheckTimer = setInterval(() => {
+      void this.updateHealth();
+    }, intervalMs);
+  }
+
+  /**
+   * Stop periodic health check polling.
+   */
+  stopHealthCheck(): void {
+    if (this.healthCheckTimer !== null) {
+      clearInterval(this.healthCheckTimer);
+      this.healthCheckTimer = null;
+    }
+  }
+
+  /**
+   * Read PID file, check process liveness, probe socket, and update cachedHealth.
+   * If the process is dead but PID file exists, cleans up stale files.
+   */
+  private async updateHealth(): Promise<void> {
+    const pid = this.readPid();
+    const now = Date.now();
+
+    if (pid === null) {
+      this.cachedHealth = {
+        running: false,
+        pid: null,
+        socketPath: null,
+        socketResponsive: false,
+        lastChecked: now,
+        uptime: null,
+      };
+      return;
+    }
+
+    if (!this.isProcessAlive(pid)) {
+      // Process is dead but PID file exists — clean up stale files
+      this.cleanupStaleFiles();
+      this.cachedHealth = {
+        running: false,
+        pid: null,
+        socketPath: null,
+        socketResponsive: false,
+        lastChecked: now,
+        uptime: null,
+      };
+      return;
+    }
+
+    const socketPath = this.readSocketPointer();
+    if (!socketPath) {
+      this.cachedHealth = {
+        running: false,
+        pid,
+        socketPath: null,
+        socketResponsive: false,
+        lastChecked: now,
+        uptime: null,
+      };
+      return;
+    }
+
+    const socketResponsive = await this.probeSocket(socketPath);
+    this.cachedHealth = {
+      running: socketResponsive,
+      // pid is always set when the process is alive (for diagnostics), regardless
+      // of socket responsiveness. running is the authoritative liveness signal.
+      pid,
+      socketPath,
+      socketResponsive,
+      lastChecked: now,
+      uptime: null,
     };
   }
 

@@ -10,4 +10,4 @@ export { createTransport, discoverDaemonSocket } from './factory.js';
 export type { TransportFactoryOptions } from './factory.js';
 export * from './daemon-protocol.js';
 export { DaemonLifecycle } from './daemon-lifecycle.js';
-export type { DaemonStatus } from './daemon-lifecycle.js';
+export type { DaemonStatus, HealthState, DaemonLifecycleOptions } from './daemon-lifecycle.js';
