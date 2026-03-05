@@ -25077,7 +25077,8 @@ var WorkflowEngine = class {
     this.emitWorkflowEvent("workflow:state_changed", instance, {
       previous_state: fromState,
       current_state: toState,
-      context: { ...instance.context }
+      context: { ...instance.context },
+      instance: JSON.parse(JSON.stringify(instance))
     });
     if (def.terminal_states.includes(toState)) {
       instance.status = "completed";
