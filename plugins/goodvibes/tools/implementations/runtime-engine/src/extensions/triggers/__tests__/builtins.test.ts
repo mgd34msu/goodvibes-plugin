@@ -11,8 +11,8 @@ describe('getBuiltinTriggers', () => {
   // ─── count and structure ───────────────────────────────────────────────────────
 
   describe('count and structure', () => {
-    it('returns exactly 5 built-in triggers', () => {
-      expect(triggers).toHaveLength(5);
+    it('returns exactly 7 built-in triggers', () => {
+      expect(triggers).toHaveLength(7);
     });
 
     it('returns a fresh array on each call (not cached)', () => {
@@ -141,6 +141,38 @@ describe('getBuiltinTriggers', () => {
       expect(t.action.type).toBe('invoke_handler');
       if (t.action.type === 'invoke_handler') {
         expect(t.action.handler).toBe('restartDevServer');
+      }
+    });
+
+    it('builtin_webhook_received: event condition on webhook:*', () => {
+      const t = findTrigger('builtin_webhook_received');
+      expect(t.condition.type).toBe('event');
+      if (t.condition.type === 'event') {
+        expect(t.condition.event_type).toBe('webhook:*');
+      }
+    });
+
+    it('builtin_webhook_received: emit_event action with external:webhook_received type', () => {
+      const t = findTrigger('builtin_webhook_received');
+      expect(t.action.type).toBe('emit_event');
+      if (t.action.type === 'emit_event') {
+        expect(t.action.event_type).toBe('external:webhook_received');
+      }
+    });
+
+    it('builtin_ci_failure: event condition on webhook:ci:*', () => {
+      const t = findTrigger('builtin_ci_failure');
+      expect(t.condition.type).toBe('event');
+      if (t.condition.type === 'event') {
+        expect(t.condition.event_type).toBe('webhook:ci:*');
+      }
+    });
+
+    it('builtin_ci_failure: invoke_handler action for bridgeCIFailure', () => {
+      const t = findTrigger('builtin_ci_failure');
+      expect(t.action.type).toBe('invoke_handler');
+      if (t.action.type === 'invoke_handler') {
+        expect(t.action.handler).toBe('bridgeCIFailure');
       }
     });
 

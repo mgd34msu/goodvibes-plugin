@@ -146,17 +146,27 @@ describe('HeartbeatManager', () => {
   describe('setInterval', () => {
     it('updates the interval used for debouncing', () => {
       let fakeNow = 1_000_000;
-      const hb = makeHeartbeat({ interval_ms: 1000, now: () => fakeNow });
+      const hb = makeHeartbeat({ interval_ms: 2000, now: () => fakeNow });
       hb.tick(); // first tick at 1_000_000
 
-      // With old interval (1000ms), 500ms is < 80% threshold — blocked
-      fakeNow = 1_000_500;
+      // With old interval (2000ms), 1200ms is < 80% threshold (1600ms) — blocked
+      fakeNow = 1_001_200;
       expect(hb.tick()).toBeNull();
 
-      // Reduce interval to 500ms — 500ms elapsed >= 80% of 500ms = 400ms
-      hb.setInterval(500);
-      // elapsed = 1_000_500 - 1_000_000 = 500 >= 0.8*500=400 — passes
+      // Reduce interval to 1000ms — 1200ms elapsed >= 80% of 1000ms = 800ms
+      hb.setInterval(1000);
+      // elapsed = 1_001_200 - 1_000_000 = 1200 >= 0.8*1000=800 — passes
       expect(hb.tick()).not.toBeNull();
+    });
+
+    it('throws for interval below 1000ms minimum', () => {
+      const hb = makeHeartbeat({ interval_ms: 1000 });
+      expect(() => hb.setInterval(500)).toThrow('Invalid heartbeat interval: 500ms (minimum 1000ms)');
+    });
+
+    it('throws for interval of 0', () => {
+      const hb = makeHeartbeat({ interval_ms: 1000 });
+      expect(() => hb.setInterval(0)).toThrow('minimum 1000ms');
     });
   });
 
