@@ -16,6 +16,7 @@ import { generateId } from '../shared/utils.js';
 import { createLogger } from '../shared/logger.js';
 import type { EventType, EventPayload } from '../shared/events.js';
 import { ENGINE_VERSION } from '../shared/constants.js';
+import { saveConfig } from '../shared/config.js';
 
 const logger = createLogger('daemon-server');
 
@@ -203,7 +204,10 @@ export class DaemonServer {
         return e.getConfig();
       }
       case 'updateConfig': {
-        e.updateConfig(args['config'] as Parameters<typeof e.updateConfig>[0]);
+        const updatedConfig = args['config'] as Parameters<typeof e.updateConfig>[0];
+        e.updateConfig(updatedConfig);
+        // TODO: consider async saveConfig to avoid blocking the event loop during concurrent RPCs
+        saveConfig(e.getProjectRoot(), updatedConfig);
         return;
       }
       case 'getVersion': {

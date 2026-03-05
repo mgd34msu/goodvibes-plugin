@@ -4,13 +4,13 @@
  * and health checking.
  */
 
-import { existsSync, readFileSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, openSync, writeSync, closeSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
-import { DAEMON_PID_FILE, DAEMON_SOCKET_POINTER, DAEMON_ENTRY } from './daemon-constants.js';
+import { DAEMON_PID_FILE, DAEMON_SOCKET_POINTER, DAEMON_ENTRY, DAEMON_LOCK_FILE } from './daemon-constants.js';
 
 const logger = createLogger('daemon-lifecycle');
 const STARTUP_TIMEOUT_MS = 10_000;
@@ -63,6 +63,7 @@ export class DaemonLifecycle {
   private readonly goodvibesDir: string;
   private readonly pidFilePath: string;
   private readonly socketPointerPath: string;
+  private readonly lockFilePath: string;
   private healthCheckIntervalMs: number;
   private healthCheckTimer: ReturnType<typeof setInterval> | null = null;
   private cachedHealth: HealthState | null = null;
@@ -72,6 +73,7 @@ export class DaemonLifecycle {
     this.goodvibesDir = resolve(projectRoot, '.goodvibes');
     this.pidFilePath = resolve(this.goodvibesDir, DAEMON_PID_FILE);
     this.socketPointerPath = resolve(this.goodvibesDir, DAEMON_SOCKET_POINTER);
+    this.lockFilePath = resolve(this.goodvibesDir, DAEMON_LOCK_FILE);
     this.healthCheckIntervalMs = options?.healthCheckIntervalMs ?? DEFAULT_HEALTH_CHECK_INTERVAL_MS;
   }
 
@@ -114,6 +116,21 @@ export class DaemonLifecycle {
       return;
     }
 
+    if (!this.acquireLock()) {
+      logger.info('Daemon start in progress by another process, waiting...');
+      await this.waitForLockRelease(STARTUP_TIMEOUT_MS);
+      if (await this.isRunning()) return;
+      throw new Error('Daemon failed to start (spawned by another process)');
+    }
+
+    try {
+      await this.doStartLocked();
+    } finally {
+      this.releaseLock();
+    }
+  }
+
+  private async doStartLocked(): Promise<void> {
     // Clean up any stale files from a previous run
     this.cleanupStaleFiles();
 
@@ -156,6 +173,71 @@ export class DaemonLifecycle {
 
     logger.info('Daemon started', { pid: daemonPid });
     this.startHealthCheck();
+  }
+
+  /**
+   * Attempt to acquire the startup lock using atomic file creation (O_EXCL).
+   * Returns true if lock was acquired, false if another process holds it.
+   * Cleans up stale locks (holder PID dead) and retries once.
+   */
+  private acquireLock(): boolean {
+    return this._tryAcquireLock(true);
+  }
+
+  private _tryAcquireLock(allowStaleRetry: boolean): boolean {
+    try {
+      const fd = openSync(this.lockFilePath, 'wx');
+      try {
+        writeSync(fd, String(process.pid));
+      } finally {
+        closeSync(fd);
+      }
+      return true;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== 'EEXIST') {
+        logger.warn('Unexpected error acquiring daemon lock', { err: toErrorMessage(err) });
+        return false;
+      }
+
+      // Lock exists — check if holder is alive
+      try {
+        const content = readFileSync(this.lockFilePath, 'utf-8').trim();
+        const lockerPid = parseInt(content, 10);
+        if (Number.isFinite(lockerPid) && this.isProcessAlive(lockerPid)) {
+          return false; // Holder is alive, we must wait
+        }
+      } catch {
+        // Can't read lock — assume stale
+      }
+
+      // Stale lock: holder is dead — clean it up and retry once
+      if (allowStaleRetry) {
+        try { unlinkSync(this.lockFilePath); } catch { /* ignore */ }
+        return this._tryAcquireLock(false);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Release the startup lock by removing the lock file.
+   */
+  private releaseLock(): void {
+    try { unlinkSync(this.lockFilePath); } catch { /* ignore */ }
+  }
+
+  /**
+   * Wait for the lock file to disappear (i.e., the other process finishes starting).
+   * After the lock is released, the caller should check isRunning().
+   */
+  private async waitForLockRelease(timeoutMs: number): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (!existsSync(this.lockFilePath)) return;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    // Timed out waiting — proceed anyway; caller will check isRunning()
   }
 
   /**
@@ -378,6 +460,19 @@ export class DaemonLifecycle {
   private cleanupStaleFiles(): void {
     for (const path of [this.pidFilePath, this.socketPointerPath]) {
       try { unlinkSync(path); } catch { /* ignore */ }
+    }
+    // Clean stale lock file if holder is dead
+    if (existsSync(this.lockFilePath)) {
+      try {
+        const content = readFileSync(this.lockFilePath, 'utf-8').trim();
+        const lockerPid = parseInt(content, 10);
+        if (!Number.isFinite(lockerPid) || !this.isProcessAlive(lockerPid)) {
+          try { unlinkSync(this.lockFilePath); } catch { /* ignore */ }
+        }
+      } catch {
+        // Can't read — try to remove
+        try { unlinkSync(this.lockFilePath); } catch { /* ignore */ }
+      }
     }
   }
 

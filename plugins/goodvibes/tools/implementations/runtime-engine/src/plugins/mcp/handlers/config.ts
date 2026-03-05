@@ -353,7 +353,7 @@ export const handleRuntimeConfig = async (
 
       const result: Record<string, unknown> = { key, value, persisted: true };
       if (key === 'executor.mode') {
-        result.warning = 'executor.mode change takes effect on next session restart.';
+        result.warning = 'executor.mode change takes effect on next session restart. Most other config keys are hot-reloaded immediately.';
       }
       return toSuccess(
         result,

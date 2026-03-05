@@ -153,6 +153,7 @@ export class RuntimeEngine {
   private wrfcConfigStore: WRFCConfigStore | null = null;
   private watchdog: WatchdogCoordinator | null = null;
   private wrfcPlugin: WRFCPlugin | null = null;
+  private externalPlugin: import('./plugins/index.js').ExternalPlugin | null = null;
 
   constructor(config: RuntimeConfig, projectRoot: string = process.cwd()) {
     this.startTime = Date.now();
@@ -425,20 +426,17 @@ export class RuntimeEngine {
     });
 
     // 18. External plugin (L3)
-    const { enabled: httpEnabled, ...httpListenerConfig } = this.config.external.http_listener;
-    const externalPluginConfig: ExternalPluginConfig = {
-      file_watcher: this.config.external.file_watcher,
-      ...(httpEnabled ? { http_listener: httpListenerConfig } : {}),
-    };
-    const externalPlugin = new ExternalPlugin(this.coreRuntime.eventQueue, externalPluginConfig);
+    const externalPluginConfig = this.buildExternalConfig(this.config);
+    const httpEnabled = this.config.external.http_listener.enabled;
+    this.externalPlugin = new ExternalPlugin(this.coreRuntime.eventQueue, externalPluginConfig);
     try {
-      await externalPlugin.initialize();
+      await this.externalPlugin.initialize();
     } catch (err) {
       logger.warn('External plugin initialisation failed', { err: toErrorMessage(err) });
     }
     if (httpEnabled) {
       try {
-        await externalPlugin.startHttpListener();
+        await this.externalPlugin.startHttpListener();
         logger.info('HTTP webhook listener started', {
           port: this.config.external.http_listener.port,
           host: this.config.external.http_listener.address,
@@ -456,7 +454,7 @@ export class RuntimeEngine {
         config: this.config.executor,
         executorMode: this.executorSubsystem.executorMode,
         timePlugin: createTimeAdapter(timePlugin),
-        externalPlugin: createExternalAdapter(externalPlugin),
+        externalPlugin: createExternalAdapter(this.externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
       });
@@ -615,11 +613,131 @@ export class RuntimeEngine {
   }
 
   updateConfig(config: RuntimeConfig): void {
+    const oldConfig = this.config;
     this.config = config;
     this.healthChecker.updateConfig(config);
     this.agents?.agentCoordinator?.updateConfig(config.agents);
     this.executorSubsystem?.executorMode?.updateConfig(config.executor);
     this.tickDriver?.reconfigure(config.executor);
+
+    // Reconfigure external plugins if they changed
+    if (this.externalPlugin) {
+      this.reconfigureExternalPlugins(oldConfig, config).catch((err) => {
+        logger.error('Failed to reconfigure external plugins', { error: toErrorMessage(err) });
+        this.events?.eventBus.emit({
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: 'system:error',
+          source: { kind: 'system' },
+          payload: {
+            type: 'system:error',
+            data: {
+              error: toErrorMessage(err),
+              component: 'RuntimeEngine.reconfigureExternalPlugins',
+              severity: 'error',
+            },
+          },
+        });
+      });
+    }
+  }
+
+  /**
+   * Reconfigure running external plugins based on config changes.
+   * Handles HTTP listener enable/disable and port changes without a full restart.
+   */
+  private async reconfigureExternalPlugins(
+    oldConfig: RuntimeConfig,
+    newConfig: RuntimeConfig,
+  ): Promise<void> {
+    if (!this.externalPlugin) return;
+
+    const oldHttp = oldConfig.external.http_listener;
+    const newHttp = newConfig.external.http_listener;
+
+    const wasEnabled = oldHttp.enabled;
+    const nowEnabled = newHttp.enabled;
+    const portChanged = oldHttp.port !== newHttp.port;
+
+    if (wasEnabled && !nowEnabled) {
+      // Disable: stop the listener, then clear http_listener from config
+      try {
+        await this.externalPlugin.stopHttpListener();
+        this.externalPlugin.updateConfig({ file_watcher: newConfig.external.file_watcher });
+        logger.info('HTTP webhook listener stopped (disabled by config change)');
+      } catch (err) {
+        logger.warn('Failed to stop HTTP webhook listener', { error: toErrorMessage(err) });
+      }
+    } else if (!wasEnabled && nowEnabled) {
+      // Enable: push new config with http_listener first, then start
+      try {
+        const newExternalConfig = this.buildExternalConfig(newConfig);
+        this.externalPlugin.updateConfig(newExternalConfig);
+        await this.externalPlugin.startHttpListener();
+        logger.info('HTTP webhook listener started (enabled by config change)', {
+          port: newHttp.port,
+          host: newHttp.address,
+        });
+      } catch (err) {
+        logger.warn('Failed to start HTTP webhook listener', { error: toErrorMessage(err) });
+      }
+    } else if (wasEnabled && nowEnabled && portChanged) {
+      // Port changed: restart the listener
+      const newExternalConfig = this.buildExternalConfig(newConfig);
+      const oldExternalConfig = this.buildExternalConfig(oldConfig);
+      try {
+        await this.externalPlugin.stopHttpListener();
+        this.externalPlugin.updateConfig(newExternalConfig);
+        await this.externalPlugin.startHttpListener();
+        logger.info('HTTP webhook listener restarted (port change)', {
+          oldPort: oldHttp.port,
+          newPort: newHttp.port,
+        });
+      } catch (err) {
+        logger.error('Failed to restart HTTP webhook listener on port change — attempting rollback', {
+          error: toErrorMessage(err),
+          oldPort: oldHttp.port,
+          newPort: newHttp.port,
+        });
+        // Attempt rollback to old config so the listener is not permanently down
+        try {
+          this.externalPlugin.updateConfig(oldExternalConfig);
+          await this.externalPlugin.startHttpListener();
+          logger.warn('HTTP webhook listener rolled back to previous port', { port: oldHttp.port });
+        } catch (rollbackErr) {
+          logger.error('Rollback failed — HTTP webhook listener is permanently down', {
+            error: toErrorMessage(rollbackErr),
+          });
+          this.events?.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: 'system:error',
+            source: { kind: 'system' },
+            payload: {
+              type: 'system:error',
+              data: {
+                error: `HTTP listener permanently down after failed port change rollback: ${toErrorMessage(rollbackErr)}`,
+                component: 'RuntimeEngine.reconfigureExternalPlugins',
+                severity: 'fatal',
+              },
+            },
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Build an ExternalPluginConfig from a RuntimeConfig, stripping the `enabled` flag
+   * from http_listener. If http_listener is absent or disabled, omits it entirely.
+   */
+  private buildExternalConfig(config: RuntimeConfig): ExternalPluginConfig {
+    const http = config.external.http_listener;
+    if (http.enabled) {
+      const { enabled: _, ...httpListenerConfig } = http;
+      return { file_watcher: config.external.file_watcher, http_listener: httpListenerConfig };
+    }
+    return { file_watcher: config.external.file_watcher };
   }
 
   getEventBus(): EventBus {

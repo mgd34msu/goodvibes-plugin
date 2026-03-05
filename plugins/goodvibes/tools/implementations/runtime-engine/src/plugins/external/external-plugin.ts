@@ -64,7 +64,7 @@ export class ExternalPlugin {
 
   constructor(
     private readonly queue: EventQueueInterface,
-    private readonly config: ExternalPluginConfig,
+    private config: ExternalPluginConfig,
   ) {
     this.normalizers = createDefaultRegistry();
     this.watcher = new FileWatcher(this.queue, this.normalizers, this.config.file_watcher);
@@ -131,6 +131,22 @@ export class ExternalPlugin {
    */
   isHttpListenerRunning(): boolean {
     return this.listener?.isRunning() ?? false;
+  }
+
+  /**
+   * Update the plugin configuration at runtime.
+   * The new config will be used for any subsequent startHttpListener() calls.
+   * Does NOT restart a running listener — callers must stop/start explicitly.
+   */
+  updateConfig(config: ExternalPluginConfig): void {
+    this.config = config;
+    // Reset the listener instance so startHttpListener() creates a new one
+    // with the updated config. Only safe to call when the listener is stopped.
+    if (this.listener === null || !this.listener.isRunning()) {
+      this.listener = config.http_listener !== undefined
+        ? new HttpListener(config.file_watcher.incoming_dir, config.http_listener)
+        : null;
+    }
   }
 
   /**

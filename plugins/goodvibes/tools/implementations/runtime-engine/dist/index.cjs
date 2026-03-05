@@ -21718,6 +21718,7 @@ var import_node_path = require("node:path");
 // src/transport/daemon-constants.ts
 var DAEMON_PID_FILE = "goodvibes-runtime.pid";
 var DAEMON_SOCKET_POINTER = "daemon.socket";
+var DAEMON_LOCK_FILE = "daemon.lock";
 var DAEMON_ENTRY = "dist/daemon.cjs";
 
 // src/shared/constants.ts
@@ -33553,6 +33554,17 @@ var ExternalPlugin = class {
     return this.listener?.isRunning() ?? false;
   }
   /**
+   * Update the plugin configuration at runtime.
+   * The new config will be used for any subsequent startHttpListener() calls.
+   * Does NOT restart a running listener — callers must stop/start explicitly.
+   */
+  updateConfig(config2) {
+    this.config = config2;
+    if (this.listener === null || !this.listener.isRunning()) {
+      this.listener = config2.http_listener !== void 0 ? new HttpListener(config2.file_watcher.incoming_dir, config2.http_listener) : null;
+    }
+  }
+  /**
    * Expose the normalizer registry for external customization.
    * Callers can register additional normalizers before the first tick.
    */
@@ -35753,6 +35765,7 @@ var RuntimeEngine = class {
   wrfcConfigStore = null;
   watchdog = null;
   wrfcPlugin = null;
+  externalPlugin = null;
   constructor(config2, projectRoot = process.cwd()) {
     this.startTime = Date.now();
     this.config = config2;
@@ -35960,20 +35973,17 @@ var RuntimeEngine = class {
       store: this.coreRuntime.stateStore,
       config: this.config.time
     });
-    const { enabled: httpEnabled, ...httpListenerConfig } = this.config.external.http_listener;
-    const externalPluginConfig = {
-      file_watcher: this.config.external.file_watcher,
-      ...httpEnabled ? { http_listener: httpListenerConfig } : {}
-    };
-    const externalPlugin = new ExternalPlugin(this.coreRuntime.eventQueue, externalPluginConfig);
+    const externalPluginConfig = this.buildExternalConfig(this.config);
+    const httpEnabled = this.config.external.http_listener.enabled;
+    this.externalPlugin = new ExternalPlugin(this.coreRuntime.eventQueue, externalPluginConfig);
     try {
-      await externalPlugin.initialize();
+      await this.externalPlugin.initialize();
     } catch (err) {
       logger57.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
     }
     if (httpEnabled) {
       try {
-        await externalPlugin.startHttpListener();
+        await this.externalPlugin.startHttpListener();
         logger57.info("HTTP webhook listener started", {
           port: this.config.external.http_listener.port,
           host: this.config.external.http_listener.address
@@ -35989,7 +35999,7 @@ var RuntimeEngine = class {
         config: this.config.executor,
         executorMode: this.executorSubsystem.executorMode,
         timePlugin: createTimeAdapter(timePlugin),
-        externalPlugin: createExternalAdapter(externalPlugin),
+        externalPlugin: createExternalAdapter(this.externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: /* @__PURE__ */ __name(() => this.watchdog?.checkStaleWorkflows(), "staleWorkflowChecker")
       });
@@ -36122,11 +36132,117 @@ var RuntimeEngine = class {
     return this.persistence.stateStore;
   }
   updateConfig(config2) {
+    const oldConfig = this.config;
     this.config = config2;
     this.healthChecker.updateConfig(config2);
     this.agents?.agentCoordinator?.updateConfig(config2.agents);
     this.executorSubsystem?.executorMode?.updateConfig(config2.executor);
     this.tickDriver?.reconfigure(config2.executor);
+    if (this.externalPlugin) {
+      this.reconfigureExternalPlugins(oldConfig, config2).catch((err) => {
+        logger57.error("Failed to reconfigure external plugins", { error: toErrorMessage(err) });
+        this.events?.eventBus.emit({
+          id: generateEventId(),
+          timestamp: timestamp(),
+          type: "system:error",
+          source: { kind: "system" },
+          payload: {
+            type: "system:error",
+            data: {
+              error: toErrorMessage(err),
+              component: "RuntimeEngine.reconfigureExternalPlugins",
+              severity: "error"
+            }
+          }
+        });
+      });
+    }
+  }
+  /**
+   * Reconfigure running external plugins based on config changes.
+   * Handles HTTP listener enable/disable and port changes without a full restart.
+   */
+  async reconfigureExternalPlugins(oldConfig, newConfig) {
+    if (!this.externalPlugin) return;
+    const oldHttp = oldConfig.external.http_listener;
+    const newHttp = newConfig.external.http_listener;
+    const wasEnabled = oldHttp.enabled;
+    const nowEnabled = newHttp.enabled;
+    const portChanged = oldHttp.port !== newHttp.port;
+    if (wasEnabled && !nowEnabled) {
+      try {
+        await this.externalPlugin.stopHttpListener();
+        this.externalPlugin.updateConfig({ file_watcher: newConfig.external.file_watcher });
+        logger57.info("HTTP webhook listener stopped (disabled by config change)");
+      } catch (err) {
+        logger57.warn("Failed to stop HTTP webhook listener", { error: toErrorMessage(err) });
+      }
+    } else if (!wasEnabled && nowEnabled) {
+      try {
+        const newExternalConfig = this.buildExternalConfig(newConfig);
+        this.externalPlugin.updateConfig(newExternalConfig);
+        await this.externalPlugin.startHttpListener();
+        logger57.info("HTTP webhook listener started (enabled by config change)", {
+          port: newHttp.port,
+          host: newHttp.address
+        });
+      } catch (err) {
+        logger57.warn("Failed to start HTTP webhook listener", { error: toErrorMessage(err) });
+      }
+    } else if (wasEnabled && nowEnabled && portChanged) {
+      const newExternalConfig = this.buildExternalConfig(newConfig);
+      const oldExternalConfig = this.buildExternalConfig(oldConfig);
+      try {
+        await this.externalPlugin.stopHttpListener();
+        this.externalPlugin.updateConfig(newExternalConfig);
+        await this.externalPlugin.startHttpListener();
+        logger57.info("HTTP webhook listener restarted (port change)", {
+          oldPort: oldHttp.port,
+          newPort: newHttp.port
+        });
+      } catch (err) {
+        logger57.error("Failed to restart HTTP webhook listener on port change \u2014 attempting rollback", {
+          error: toErrorMessage(err),
+          oldPort: oldHttp.port,
+          newPort: newHttp.port
+        });
+        try {
+          this.externalPlugin.updateConfig(oldExternalConfig);
+          await this.externalPlugin.startHttpListener();
+          logger57.warn("HTTP webhook listener rolled back to previous port", { port: oldHttp.port });
+        } catch (rollbackErr) {
+          logger57.error("Rollback failed \u2014 HTTP webhook listener is permanently down", {
+            error: toErrorMessage(rollbackErr)
+          });
+          this.events?.eventBus.emit({
+            id: generateEventId(),
+            timestamp: timestamp(),
+            type: "system:error",
+            source: { kind: "system" },
+            payload: {
+              type: "system:error",
+              data: {
+                error: `HTTP listener permanently down after failed port change rollback: ${toErrorMessage(rollbackErr)}`,
+                component: "RuntimeEngine.reconfigureExternalPlugins",
+                severity: "fatal"
+              }
+            }
+          });
+        }
+      }
+    }
+  }
+  /**
+   * Build an ExternalPluginConfig from a RuntimeConfig, stripping the `enabled` flag
+   * from http_listener. If http_listener is absent or disabled, omits it entirely.
+   */
+  buildExternalConfig(config2) {
+    const http2 = config2.external.http_listener;
+    if (http2.enabled) {
+      const { enabled: _, ...httpListenerConfig } = http2;
+      return { file_watcher: config2.external.file_watcher, http_listener: httpListenerConfig };
+    }
+    return { file_watcher: config2.external.file_watcher };
   }
   getEventBus() {
     if (!this.events?.eventBus) throw new ProcessingError("getEventBus() called before startup()");
@@ -36195,6 +36311,7 @@ var DaemonLifecycle = class {
   goodvibesDir;
   pidFilePath;
   socketPointerPath;
+  lockFilePath;
   healthCheckIntervalMs;
   healthCheckTimer = null;
   cachedHealth = null;
@@ -36203,6 +36320,7 @@ var DaemonLifecycle = class {
     this.goodvibesDir = (0, import_node_path17.resolve)(projectRoot, ".goodvibes");
     this.pidFilePath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_PID_FILE);
     this.socketPointerPath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_SOCKET_POINTER);
+    this.lockFilePath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_LOCK_FILE);
     this.healthCheckIntervalMs = options?.healthCheckIntervalMs ?? DEFAULT_HEALTH_CHECK_INTERVAL_MS;
   }
   /**
@@ -36238,6 +36356,19 @@ var DaemonLifecycle = class {
       logger58.info("Daemon already running");
       return;
     }
+    if (!this.acquireLock()) {
+      logger58.info("Daemon start in progress by another process, waiting...");
+      await this.waitForLockRelease(STARTUP_TIMEOUT_MS);
+      if (await this.isRunning()) return;
+      throw new Error("Daemon failed to start (spawned by another process)");
+    }
+    try {
+      await this.doStartLocked();
+    } finally {
+      this.releaseLock();
+    }
+  }
+  async doStartLocked() {
     this.cleanupStaleFiles();
     const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"] ?? process.cwd();
     const daemonScript = (0, import_node_path17.resolve)(
@@ -36267,6 +36398,67 @@ var DaemonLifecycle = class {
     await this.waitForSocket(STARTUP_TIMEOUT_MS);
     logger58.info("Daemon started", { pid: daemonPid });
     this.startHealthCheck();
+  }
+  /**
+   * Attempt to acquire the startup lock using atomic file creation (O_EXCL).
+   * Returns true if lock was acquired, false if another process holds it.
+   * Cleans up stale locks (holder PID dead) and retries once.
+   */
+  acquireLock() {
+    return this._tryAcquireLock(true);
+  }
+  _tryAcquireLock(allowStaleRetry) {
+    try {
+      const fd = (0, import_node_fs17.openSync)(this.lockFilePath, "wx");
+      try {
+        (0, import_node_fs17.writeSync)(fd, String(process.pid));
+      } finally {
+        (0, import_node_fs17.closeSync)(fd);
+      }
+      return true;
+    } catch (err) {
+      const code = err.code;
+      if (code !== "EEXIST") {
+        logger58.warn("Unexpected error acquiring daemon lock", { err: toErrorMessage(err) });
+        return false;
+      }
+      try {
+        const content = (0, import_node_fs17.readFileSync)(this.lockFilePath, "utf-8").trim();
+        const lockerPid = parseInt(content, 10);
+        if (Number.isFinite(lockerPid) && this.isProcessAlive(lockerPid)) {
+          return false;
+        }
+      } catch {
+      }
+      if (allowStaleRetry) {
+        try {
+          (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+        } catch {
+        }
+        return this._tryAcquireLock(false);
+      }
+      return false;
+    }
+  }
+  /**
+   * Release the startup lock by removing the lock file.
+   */
+  releaseLock() {
+    try {
+      (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+    } catch {
+    }
+  }
+  /**
+   * Wait for the lock file to disappear (i.e., the other process finishes starting).
+   * After the lock is released, the caller should check isRunning().
+   */
+  async waitForLockRelease(timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (!(0, import_node_fs17.existsSync)(this.lockFilePath)) return;
+      await new Promise((r) => setTimeout(r, 200));
+    }
   }
   /**
    * Stop the daemon process by sending SIGTERM.
@@ -36462,6 +36654,23 @@ var DaemonLifecycle = class {
       try {
         (0, import_node_fs17.unlinkSync)(path3);
       } catch {
+      }
+    }
+    if ((0, import_node_fs17.existsSync)(this.lockFilePath)) {
+      try {
+        const content = (0, import_node_fs17.readFileSync)(this.lockFilePath, "utf-8").trim();
+        const lockerPid = parseInt(content, 10);
+        if (!Number.isFinite(lockerPid) || !this.isProcessAlive(lockerPid)) {
+          try {
+            (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+          } catch {
+          }
+        }
+      } catch {
+        try {
+          (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+        } catch {
+        }
       }
     }
   }
@@ -36804,7 +37013,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       logger60.info("Config key set", { key, value });
       const result = { key, value, persisted: true };
       if (key === "executor.mode") {
-        result.warning = "executor.mode change takes effect on next session restart.";
+        result.warning = "executor.mode change takes effect on next session restart. Most other config keys are hot-reloaded immediately.";
       }
       return toSuccess(
         result,

@@ -111,6 +111,7 @@ describe('handleRuntimeConfig', () => {
       const data = parseData(result);
       expect(typeof data['warning']).toBe('string');
       expect(data['warning']).toContain('executor.mode change takes effect');
+      expect(data['warning']).toContain('Most other config keys are hot-reloaded immediately');
     });
   });
 
@@ -206,6 +207,44 @@ describe('handleRuntimeConfig', () => {
       expect(result.isError).toBe(true);
       const parsed = parseResult(result);
       expect(parsed['error']).toContain('Missing required field: value');
+    });
+  });
+
+  // ── transport (daemon) path ─────────────────────────────────────────────────
+
+  describe('transport path', () => {
+    it('set: delegates to transport.updateConfig when transport is present', async () => {
+      const mockUpdateConfig = vi.fn().mockResolvedValue(undefined);
+      const mockGetConfig = vi.fn().mockResolvedValue(DEFAULT_CONFIG);
+      const transportCtx = makeContext({
+        transport: {
+          updateConfig: mockUpdateConfig,
+          getConfig: mockGetConfig,
+        } as unknown as HandlerContext['transport'],
+      });
+
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'health.check_interval_ms', value: 5000 },
+        transportCtx
+      );
+      expect(result.isError).toBeFalsy();
+      expect(mockUpdateConfig).toHaveBeenCalledOnce();
+      const updatedConfig = mockUpdateConfig.mock.calls[0][0] as Record<string, unknown>;
+      expect((updatedConfig as { health: { check_interval_ms: number } }).health.check_interval_ms).toBe(5000);
+    });
+
+    it('reset: delegates to transport.updateConfig with DEFAULT_CONFIG when transport is present', async () => {
+      const mockUpdateConfig = vi.fn().mockResolvedValue(undefined);
+      const transportCtx = makeContext({
+        transport: {
+          updateConfig: mockUpdateConfig,
+          getConfig: vi.fn().mockResolvedValue(DEFAULT_CONFIG),
+        } as unknown as HandlerContext['transport'],
+      });
+
+      const result = await handleRuntimeConfig({ action: 'reset' }, transportCtx);
+      expect(result.isError).toBeFalsy();
+      expect(mockUpdateConfig).toHaveBeenCalledWith(DEFAULT_CONFIG);
     });
   });
 });

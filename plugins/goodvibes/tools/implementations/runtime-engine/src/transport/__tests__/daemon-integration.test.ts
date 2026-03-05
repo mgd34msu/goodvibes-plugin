@@ -278,6 +278,52 @@ describe('1.2 RPC round-trip', () => {
     expect(typeof depth).toBe('number');
     expect(depth).toBeGreaterThanOrEqual(0);
   });
+
+  it('updateConfig calls engine.updateConfig and persists to disk', async () => {
+    // Use vi.mock-friendly approach: verify engine.updateConfig is called with the config
+    const newConfig = { ...engine.getConfig(), executor: { mode: 'hybrid' } };
+    await transport.updateConfig(newConfig as unknown as Parameters<typeof transport.updateConfig>[0]);
+
+    expect(engine.updateConfig).toHaveBeenCalledWith(newConfig);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 1.2b updateConfig persistence (daemon-server)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+vi.mock('../../shared/config.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../shared/config.js')>();
+  return { ...actual, saveConfig: vi.fn() };
+});
+
+describe('1.2b updateConfig persistence', () => {
+  it('DaemonServer updateConfig RPC persists config to disk via saveConfig', async () => {
+    const { saveConfig } = await import('../../shared/config.js');
+    const saveConfigMock = saveConfig as ReturnType<typeof vi.fn>;
+    saveConfigMock.mockClear();
+
+    const socketPath = tempSocket('persist');
+    const engine = createMockEngine();
+    const server = new DaemonServer({ socketPath, engine: asEngine(engine) });
+    await server.start();
+
+    const transport = new RemoteTransport({ daemonSocketPath: socketPath, sessionId: 'sess-persist' });
+    await transport.connect();
+    await waitFor(() => server.getSessionCount() === 1);
+
+    try {
+      const updatedConfig = { executor: { mode: 'hybrid' } };
+      await transport.updateConfig(updatedConfig as unknown as Parameters<typeof transport.updateConfig>[0]);
+
+      expect(engine.updateConfig).toHaveBeenCalledWith(updatedConfig);
+      expect(saveConfigMock).toHaveBeenCalledWith('/mock-project', updatedConfig);
+    } finally {
+      try { await transport.disconnect(); } catch { /* ignore */ }
+      try { await server.stop(); } catch { /* ignore */ }
+      cleanSocket(socketPath);
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -417,7 +463,7 @@ describe('1.3 Transport factory integration', () => {
 // We mock child_process.spawn and fs for DaemonLifecycle tests
 // since we cannot guarantee the daemon binary exists in test environments.
 
-const { mockSpawn, mockExistsSync, mockReadFileSync, mockUnlinkSync, mockKill } = vi.hoisted(() => {
+const { mockSpawn, mockExistsSync, mockReadFileSync, mockUnlinkSync, mockOpenSync, mockWriteSync, mockCloseSync, mockKill } = vi.hoisted(() => {
   const { EventEmitter } = require('node:events') as typeof import('node:events');
 
   class MockChildProcess extends EventEmitter {
@@ -433,6 +479,9 @@ const { mockSpawn, mockExistsSync, mockReadFileSync, mockUnlinkSync, mockKill } 
     mockExistsSync: vi.fn().mockReturnValue(false),
     mockReadFileSync: vi.fn().mockImplementation(() => { throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); }),
     mockUnlinkSync: vi.fn(),
+    mockOpenSync: vi.fn().mockReturnValue(99),
+    mockWriteSync: vi.fn(),
+    mockCloseSync: vi.fn(),
     mockKill: vi.fn(),
   };
 });
@@ -462,6 +511,18 @@ vi.mock('node:fs', async (importOriginal) => {
       if (lifecycleMockActive) { mockUnlinkSync(p); return; }
       return real.unlinkSync(p);
     },
+    openSync: (p: string, flags: string, ...rest: unknown[]) => {
+      if (lifecycleMockActive) return mockOpenSync(p, flags);
+      return real.openSync(p, flags, ...(rest as []));
+    },
+    writeSync: (fd: number, data: string) => {
+      if (lifecycleMockActive) return mockWriteSync(fd, data);
+      return real.writeSync(fd, data);
+    },
+    closeSync: (fd: number) => {
+      if (lifecycleMockActive) return mockCloseSync(fd);
+      return real.closeSync(fd);
+    },
     default: {
       ...real,
       existsSync: (p: string) => {
@@ -475,6 +536,18 @@ vi.mock('node:fs', async (importOriginal) => {
       unlinkSync: (p: string) => {
         if (lifecycleMockActive) { mockUnlinkSync(p); return; }
         return real.unlinkSync(p);
+      },
+      openSync: (p: string, flags: string, ...rest: unknown[]) => {
+        if (lifecycleMockActive) return mockOpenSync(p, flags);
+        return real.openSync(p, flags, ...(rest as []));
+      },
+      writeSync: (fd: number, data: string) => {
+        if (lifecycleMockActive) return mockWriteSync(fd, data);
+        return real.writeSync(fd, data);
+      },
+      closeSync: (fd: number) => {
+        if (lifecycleMockActive) return mockCloseSync(fd);
+        return real.closeSync(fd);
       },
     },
   };
