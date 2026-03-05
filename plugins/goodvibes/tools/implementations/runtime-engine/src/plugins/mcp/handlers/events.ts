@@ -129,11 +129,20 @@ export const handleRuntimeEvents = async (
     const filterRaw = (params.filter ?? {}) as Record<string, unknown>;
 
     // ── stats ─────────────────────────────────────────────────────────────────
-    // stats: not covered by transport — EventLog stats and EventBus history
-    // are not part of the RuntimeTransport interface
+    // stats: routes through transport when available, falls back to local EventLog/EventBus
     if (action === 'stats') {
-      const logStats = ctx.getEventLog().getStats();
-      const queueStats = ctx.getEventQueue().getStats();
+      let logStats: { total_events: number; file_size_bytes: number; oldest_event?: number; newest_event?: number; events_per_type: Record<string, number> };
+      let queueStats: { pending: number; max_depth: number; dedup_cache_size: number };
+
+      if (ctx.transport) {
+        const stats = await ctx.transport.getEventStats();
+        logStats = stats.log;
+        queueStats = stats.queue;
+      } else {
+        logStats = ctx.getEventLog().getStats();
+        queueStats = ctx.getEventQueue().getStats();
+      }
+
       const data = verbosity === 'count_only'
         ? { event_count: logStats.total_events, queue_pending: queueStats.pending }
         : { log: logStats, queue: queueStats };
@@ -141,8 +150,7 @@ export const handleRuntimeEvents = async (
     }
 
     // ── tail ──────────────────────────────────────────────────────────────────
-    // tail: not covered by transport — EventBus in-memory history
-    // is not part of the RuntimeTransport interface
+    // tail: routes through transport when available, falls back to local EventBus in-memory history
     if (action === 'tail') {
       const limit = typeof filterRaw.limit === 'number' ? filterRaw.limit : DEFAULT_EVENT_QUERY_LIMIT;
       const typePatterns = Array.isArray(filterRaw.types)
@@ -158,7 +166,9 @@ export const handleRuntimeEvents = async (
         limit,
       };
 
-      let events = ctx.getEventBus().getHistory(historyFilter);
+      let events = ctx.transport
+        ? await ctx.transport.getEventHistory(historyFilter)
+        : ctx.getEventBus().getHistory(historyFilter);
 
       // Apply type pattern filtering (supports 'hook:*', 'agent:spawned', '*')
       if (typePatterns && typePatterns.length > 0) {

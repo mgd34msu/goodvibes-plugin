@@ -333,6 +333,49 @@ export class DaemonServer {
         );
         return { directives: result.directives };
       }
+      case 'getEventHistory': {
+        const filter = args['filter'] as Parameters<ReturnType<typeof e.getEventBus>['getHistory']>[0];
+        return e.getEventBus().getHistory(filter);
+      }
+      case 'getEventStats': {
+        return {
+          log: e.getEventLog().getStats(),
+          queue: e.getEventQueue().getStats(),
+        };
+      }
+      case 'getHeartbeat': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        const hb = tp.getHeartbeat();
+        const sched = tp.getScheduler();
+        return {
+          enabled: hb.isEnabled(),
+          tick_count: hb.getTickCount(),
+          last_tick_at: hb.getLastTickAt(),
+          scheduled_count: sched.size(),
+          interval_ms: hb.getInterval(),
+        };
+      }
+      case 'setHeartbeatInterval': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        tp.getHeartbeat().setInterval(args['intervalMs'] as number);
+        return;
+      }
+      case 'getExternalStatus': {
+        const ep = e.getExternalPlugin();
+        if (!ep) throw new Error('ExternalPlugin not available');
+        const sources = ep.getNormalizerRegistry().sources();
+        return {
+          http_listener: {
+            running: ep.isHttpListenerRunning(),
+            port: ep.getHttpPort(),
+            address: ep.getHttpAddress(),
+          },
+          normalizer_count: sources.length,
+          normalizer_sources: sources,
+        };
+      }
       case 'ping': {
         return { ok: true, pid: process.pid, uptime: process.uptime() };
       }

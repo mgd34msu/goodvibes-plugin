@@ -45,7 +45,7 @@ export const handleRuntimeSchedule = async (
   }
 
   const timePlugin = ctx.getTimePlugin?.();
-  if (!timePlugin) {
+  if (!timePlugin && !ctx.transport) {
     return toError(
       'TimePlugin is not available (engine may not be running in local mode)',
       version,
@@ -53,14 +53,24 @@ export const handleRuntimeSchedule = async (
       Date.now() - start,
     );
   }
-  const scheduler = timePlugin.getScheduler();
-  const heartbeat = timePlugin.getHeartbeat();
+  const scheduler = timePlugin?.getScheduler();
+  const heartbeat = timePlugin?.getHeartbeat();
 
   try {
+    // Non-heartbeat actions require local TimePlugin access
+    if (action !== 'heartbeat' && !timePlugin) {
+      return toError(
+        'TimePlugin is not available — schedule operations other than heartbeat are not yet supported in daemon mode',
+        version,
+        uptime,
+        Date.now() - start,
+      );
+    }
+
     switch (action) {
       case 'list': {
         const filter = params.filter as { type?: string } | undefined;
-        let items = scheduler.getAllItems();
+        let items = scheduler!.getAllItems();
         if (filter?.type) {
           items = items.filter(item => item.time_type === filter.type);
         }
@@ -82,7 +92,7 @@ export const handleRuntimeSchedule = async (
             Date.now() - start,
           );
         }
-        const item = scheduler.getItem(scheduleId);
+        const item = scheduler!.getItem(scheduleId);
         if (!item) {
           return toError(
             `Schedule not found: ${scheduleId}`,
@@ -132,7 +142,7 @@ export const handleRuntimeSchedule = async (
               Date.now() - start,
             );
           }
-          item = scheduler.scheduleOneShot({
+          item = scheduler!.scheduleOneShot({
             id: scheduleId,
             event_type: eventType,
             delay_ms: delayMs,
@@ -153,7 +163,7 @@ export const handleRuntimeSchedule = async (
           } catch (err) {
             return toError(toErrorMessage(err), version, uptime, Date.now() - start);
           }
-          item = scheduler.scheduleCron({
+          item = scheduler!.scheduleCron({
             id: scheduleId,
             event_type: eventType,
             interval_ms: intervalMs,
@@ -175,7 +185,7 @@ export const handleRuntimeSchedule = async (
           } catch (err) {
             return toError(toErrorMessage(err), version, uptime, Date.now() - start);
           }
-          item = scheduler.scheduleHeartbeat({
+          item = scheduler!.scheduleHeartbeat({
             id: scheduleId,
             event_type: eventType,
             interval_ms: intervalMs,
@@ -198,7 +208,7 @@ export const handleRuntimeSchedule = async (
             Date.now() - start,
           );
         }
-        const cancelled = scheduler.cancel(scheduleId);
+        const cancelled = scheduler!.cancel(scheduleId);
         return toSuccess(
           { cancelled, schedule_id: scheduleId },
           version,
@@ -210,7 +220,7 @@ export const handleRuntimeSchedule = async (
       case 'pause': {
         const scheduleId = params.schedule_id as string | undefined;
         if (scheduleId) {
-          const paused = scheduler.pause(scheduleId);
+          const paused = scheduler!.pause(scheduleId);
           if (!paused) {
             return toError(
               `Schedule not found: ${scheduleId}`,
@@ -226,7 +236,7 @@ export const handleRuntimeSchedule = async (
             Date.now() - start,
           );
         }
-        heartbeat.disable();
+        heartbeat!.disable();
         return toSuccess(
           { paused: true, target: 'heartbeat' },
           version,
@@ -238,7 +248,7 @@ export const handleRuntimeSchedule = async (
       case 'resume': {
         const scheduleId = params.schedule_id as string | undefined;
         if (scheduleId) {
-          const resumed = scheduler.resume(scheduleId);
+          const resumed = scheduler!.resume(scheduleId);
           if (!resumed) {
             return toError(
               `Schedule not found: ${scheduleId}`,
@@ -254,7 +264,7 @@ export const handleRuntimeSchedule = async (
             Date.now() - start,
           );
         }
-        heartbeat.enable();
+        heartbeat!.enable();
         return toSuccess(
           { resumed: true, target: 'heartbeat' },
           version,
@@ -276,7 +286,11 @@ export const handleRuntimeSchedule = async (
               Date.now() - start,
             );
           }
-          heartbeat.setInterval(intervalMs);
+          if (ctx.transport) {
+            await ctx.transport.setHeartbeatInterval(intervalMs);
+          } else {
+            heartbeat!.setInterval(intervalMs);
+          }
           logger.info('runtime_schedule: heartbeat interval updated', { interval_ms: intervalMs });
           return toSuccess(
             { action: 'heartbeat', sub_action: 'set_interval', interval_ms: intervalMs },
@@ -287,13 +301,17 @@ export const handleRuntimeSchedule = async (
         }
 
         // Default: return current heartbeat status
+        if (ctx.transport) {
+          const hbStatus = await ctx.transport.getHeartbeat();
+          return toSuccess(hbStatus, version, uptime, Date.now() - start);
+        }
         return toSuccess(
           {
-            enabled: heartbeat.isEnabled(),
-            tick_count: heartbeat.getTickCount(),
-            last_tick_at: heartbeat.getLastTickAt(),
-            scheduled_count: scheduler.size(),
-            interval_ms: heartbeat.getInterval(),
+            enabled: heartbeat!.isEnabled(),
+            tick_count: heartbeat!.getTickCount(),
+            last_tick_at: heartbeat!.getLastTickAt(),
+            scheduled_count: scheduler!.size(),
+            interval_ms: heartbeat!.getInterval(),
           },
           version,
           uptime,

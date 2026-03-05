@@ -99,6 +99,20 @@ export class LocalTransport implements RuntimeTransport {
     return this.engine.getEventQueue().depth();
   }
 
+  async getEventHistory(filter?: EventFilter): Promise<RuntimeEvent[]> {
+    return this.engine.getEventBus().getHistory(filter);
+  }
+
+  async getEventStats(): Promise<{
+    log: { total_events: number; file_size_bytes: number; oldest_event?: number; newest_event?: number; events_per_type: Record<string, number> };
+    queue: { pending: number; max_depth: number; dedup_cache_size: number };
+  }> {
+    return {
+      log: this.engine.getEventLog().getStats(),
+      queue: this.engine.getEventQueue().getStats(),
+    };
+  }
+
   // ─── Workflows ──────────────────────────────────────────────
 
   async getWorkflow(workflowId: string): Promise<Record<string, unknown> | null> {
@@ -203,5 +217,54 @@ export class LocalTransport implements RuntimeTransport {
     // is a presentation concern — it stays in the MCP handler layer, not here.
     // Transport returns raw directives only.
     return { directives: result.directives };
+  }
+
+  // ─── Schedule ──────────────────────────────────────────────
+
+  async getHeartbeat(): Promise<{
+    enabled: boolean;
+    tick_count: number;
+    last_tick_at: number;
+    scheduled_count: number;
+    interval_ms: number;
+  }> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    const heartbeat = timePlugin.getHeartbeat();
+    const scheduler = timePlugin.getScheduler();
+    return {
+      enabled: heartbeat.isEnabled(),
+      tick_count: heartbeat.getTickCount(),
+      last_tick_at: heartbeat.getLastTickAt(),
+      scheduled_count: scheduler.size(),
+      interval_ms: heartbeat.getInterval(),
+    };
+  }
+
+  async setHeartbeatInterval(intervalMs: number): Promise<void> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    timePlugin.getHeartbeat().setInterval(intervalMs);
+  }
+
+  // ─── External ──────────────────────────────────────────────
+
+  async getExternalStatus(): Promise<{
+    http_listener: { running: boolean; port: number | null; address: string | null };
+    normalizer_count: number;
+    normalizer_sources: string[];
+  }> {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin) throw new Error('ExternalPlugin not available');
+    const normalizerSources = externalPlugin.getNormalizerRegistry().sources();
+    return {
+      http_listener: {
+        running: externalPlugin.isHttpListenerRunning(),
+        port: externalPlugin.getHttpPort(),
+        address: externalPlugin.getHttpAddress(),
+      },
+      normalizer_count: normalizerSources.length,
+      normalizer_sources: normalizerSources,
+    };
   }
 }

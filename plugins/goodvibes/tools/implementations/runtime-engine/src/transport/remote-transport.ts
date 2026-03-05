@@ -508,6 +508,17 @@ export class RemoteTransport implements RuntimeTransport {
     return this.rpc<number>('getQueueDepth');
   }
 
+  async getEventHistory(filter?: EventFilter): Promise<RuntimeEvent[]> {
+    return this.rpc<RuntimeEvent[]>('getEventHistory', { filter });
+  }
+
+  async getEventStats(): Promise<{
+    log: { total_events: number; file_size_bytes: number; oldest_event?: number; newest_event?: number; events_per_type: Record<string, number> };
+    queue: { pending: number; max_depth: number; dedup_cache_size: number };
+  }> {
+    return this.rpc('getEventStats');
+  }
+
   async getWorkflow(workflowId: string): Promise<Record<string, unknown> | null> {
     return this.rpc<Record<string, unknown> | null>('getWorkflow', { workflowId });
   }
@@ -561,5 +572,27 @@ export class RemoteTransport implements RuntimeTransport {
 
   async drainDirectives(target: string, workflowId?: string): Promise<{ directives: unknown[] }> {
     return this.rpc<{ directives: unknown[] }>('drainDirectives', { target, workflowId });
+  }
+
+  async getHeartbeat(): Promise<{
+    enabled: boolean;
+    tick_count: number;
+    last_tick_at: number;
+    scheduled_count: number;
+    interval_ms: number;
+  }> {
+    return this.rpc('getHeartbeat');
+  }
+
+  async setHeartbeatInterval(intervalMs: number): Promise<void> {
+    return this.rpc<void>('setHeartbeatInterval', { intervalMs });
+  }
+
+  async getExternalStatus(): Promise<{
+    http_listener: { running: boolean; port: number | null; address: string | null };
+    normalizer_count: number;
+    normalizer_sources: string[];
+  }> {
+    return this.rpc('getExternalStatus');
   }
 }

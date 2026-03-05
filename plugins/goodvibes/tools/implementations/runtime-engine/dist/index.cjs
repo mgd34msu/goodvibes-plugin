@@ -22092,6 +22092,15 @@ var LocalTransport = class {
   async getQueueDepth() {
     return this.engine.getEventQueue().depth();
   }
+  async getEventHistory(filter) {
+    return this.engine.getEventBus().getHistory(filter);
+  }
+  async getEventStats() {
+    return {
+      log: this.engine.getEventLog().getStats(),
+      queue: this.engine.getEventQueue().getStats()
+    };
+  }
   // ─── Workflows ──────────────────────────────────────────────
   async getWorkflow(workflowId) {
     const engine = this.engine.getWorkflowEngine();
@@ -22178,6 +22187,43 @@ var LocalTransport = class {
       return { directives: [] };
     const result = await queue.holdDrain(target, workflowId);
     return { directives: result.directives };
+  }
+  // ─── Schedule ──────────────────────────────────────────────
+  async getHeartbeat() {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const heartbeat = timePlugin.getHeartbeat();
+    const scheduler = timePlugin.getScheduler();
+    return {
+      enabled: heartbeat.isEnabled(),
+      tick_count: heartbeat.getTickCount(),
+      last_tick_at: heartbeat.getLastTickAt(),
+      scheduled_count: scheduler.size(),
+      interval_ms: heartbeat.getInterval()
+    };
+  }
+  async setHeartbeatInterval(intervalMs) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    timePlugin.getHeartbeat().setInterval(intervalMs);
+  }
+  // ─── External ──────────────────────────────────────────────
+  async getExternalStatus() {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const normalizerSources = externalPlugin.getNormalizerRegistry().sources();
+    return {
+      http_listener: {
+        running: externalPlugin.isHttpListenerRunning(),
+        port: externalPlugin.getHttpPort(),
+        address: externalPlugin.getHttpAddress()
+      },
+      normalizer_count: normalizerSources.length,
+      normalizer_sources: normalizerSources
+    };
   }
 };
 
@@ -22553,6 +22599,12 @@ var RemoteTransport = class {
   async getQueueDepth() {
     return this.rpc("getQueueDepth");
   }
+  async getEventHistory(filter) {
+    return this.rpc("getEventHistory", { filter });
+  }
+  async getEventStats() {
+    return this.rpc("getEventStats");
+  }
   async getWorkflow(workflowId) {
     return this.rpc("getWorkflow", { workflowId });
   }
@@ -22588,6 +22640,15 @@ var RemoteTransport = class {
   }
   async drainDirectives(target, workflowId) {
     return this.rpc("drainDirectives", { target, workflowId });
+  }
+  async getHeartbeat() {
+    return this.rpc("getHeartbeat");
+  }
+  async setHeartbeatInterval(intervalMs) {
+    return this.rpc("setHeartbeatInterval", { intervalMs });
+  }
+  async getExternalStatus() {
+    return this.rpc("getExternalStatus");
   }
 };
 
@@ -38920,8 +38981,16 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     const verbosity = assertOptionalString(params.verbosity, "verbosity") ?? "standard";
     const filterRaw = params.filter ?? {};
     if (action === "stats") {
-      const logStats = ctx.getEventLog().getStats();
-      const queueStats = ctx.getEventQueue().getStats();
+      let logStats;
+      let queueStats;
+      if (ctx.transport) {
+        const stats = await ctx.transport.getEventStats();
+        logStats = stats.log;
+        queueStats = stats.queue;
+      } else {
+        logStats = ctx.getEventLog().getStats();
+        queueStats = ctx.getEventQueue().getStats();
+      }
       const data = verbosity === "count_only" ? { event_count: logStats.total_events, queue_pending: queueStats.pending } : { log: logStats, queue: queueStats };
       return toSuccess(data, ctx.version, uptimeMs, Date.now() - start);
     }
@@ -38934,7 +39003,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
         until: filterRaw.until ? resolveTimestamp(assertOptionalString(filterRaw.until, "filter.until") ?? "") : void 0,
         limit
       };
-      let events = ctx.getEventBus().getHistory(historyFilter);
+      let events = ctx.transport ? await ctx.transport.getEventHistory(historyFilter) : ctx.getEventBus().getHistory(historyFilter);
       if (typePatterns && typePatterns.length > 0) {
         events = events.filter(
           (e) => typePatterns.some((p) => matchesTypePattern(e.type, p))
@@ -39946,7 +40015,7 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   }
   const timePlugin = ctx.getTimePlugin?.();
-  if (!timePlugin) {
+  if (!timePlugin && !ctx.transport) {
     return toError(
       "TimePlugin is not available (engine may not be running in local mode)",
       version2,
@@ -39954,9 +40023,17 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
       Date.now() - start
     );
   }
-  const scheduler = timePlugin.getScheduler();
-  const heartbeat = timePlugin.getHeartbeat();
+  const scheduler = timePlugin?.getScheduler();
+  const heartbeat = timePlugin?.getHeartbeat();
   try {
+    if (action !== "heartbeat" && !timePlugin) {
+      return toError(
+        "TimePlugin is not available \u2014 schedule operations other than heartbeat are not yet supported in daemon mode",
+        version2,
+        uptime,
+        Date.now() - start
+      );
+    }
     switch (action) {
       case "list": {
         const filter = params.filter;
@@ -40163,7 +40240,11 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
               Date.now() - start
             );
           }
-          heartbeat.setInterval(intervalMs);
+          if (ctx.transport) {
+            await ctx.transport.setHeartbeatInterval(intervalMs);
+          } else {
+            heartbeat.setInterval(intervalMs);
+          }
           logger72.info("runtime_schedule: heartbeat interval updated", { interval_ms: intervalMs });
           return toSuccess(
             { action: "heartbeat", sub_action: "set_interval", interval_ms: intervalMs },
@@ -40171,6 +40252,10 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
             uptime,
             Date.now() - start
           );
+        }
+        if (ctx.transport) {
+          const hbStatus = await ctx.transport.getHeartbeat();
+          return toSuccess(hbStatus, version2, uptime, Date.now() - start);
         }
         return toSuccess(
           {
@@ -40216,7 +40301,7 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   }
   const externalPlugin = ctx.getExternalPlugin?.();
-  if (!externalPlugin) {
+  if (!externalPlugin && !ctx.transport) {
     return toError(
       "ExternalPlugin is not available (engine may not be running in local mode)",
       version2,
@@ -40225,8 +40310,20 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   }
   try {
+    if (action !== "status" && !externalPlugin) {
+      return toError(
+        "ExternalPlugin is not available \u2014 operations other than status are not yet supported in daemon mode",
+        version2,
+        uptime,
+        Date.now() - start
+      );
+    }
     switch (action) {
       case "status": {
+        if (ctx.transport) {
+          const status = await ctx.transport.getExternalStatus();
+          return toSuccess(status, version2, uptime, Date.now() - start);
+        }
         const httpRunning = externalPlugin.isHttpListenerRunning();
         const normalizerSources = externalPlugin.getNormalizerRegistry().sources();
         return toSuccess(

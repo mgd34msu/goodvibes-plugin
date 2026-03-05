@@ -42,7 +42,7 @@ export const handleRuntimeExternal = async (
   }
 
   const externalPlugin = ctx.getExternalPlugin?.();
-  if (!externalPlugin) {
+  if (!externalPlugin && !ctx.transport) {
     return toError(
       'ExternalPlugin is not available (engine may not be running in local mode)',
       version,
@@ -52,16 +52,30 @@ export const handleRuntimeExternal = async (
   }
 
   try {
+    // Non-status actions require local ExternalPlugin access
+    if (action !== 'status' && !externalPlugin) {
+      return toError(
+        'ExternalPlugin is not available — operations other than status are not yet supported in daemon mode',
+        version,
+        uptime,
+        Date.now() - start,
+      );
+    }
+
     switch (action) {
       case 'status': {
-        const httpRunning = externalPlugin.isHttpListenerRunning();
-        const normalizerSources = externalPlugin.getNormalizerRegistry().sources();
+        if (ctx.transport) {
+          const status = await ctx.transport.getExternalStatus();
+          return toSuccess(status, version, uptime, Date.now() - start);
+        }
+        const httpRunning = externalPlugin!.isHttpListenerRunning();
+        const normalizerSources = externalPlugin!.getNormalizerRegistry().sources();
         return toSuccess(
           {
             http_listener: {
               running: httpRunning,
-              port: externalPlugin.getHttpPort(),
-              address: externalPlugin.getHttpAddress(),
+              port: externalPlugin!.getHttpPort(),
+              address: externalPlugin!.getHttpAddress(),
             },
             normalizer_count: normalizerSources.length,
             normalizer_sources: normalizerSources,
@@ -73,7 +87,7 @@ export const handleRuntimeExternal = async (
       }
 
       case 'normalizers': {
-        const registry = externalPlugin.getNormalizerRegistry();
+        const registry = externalPlugin!.getNormalizerRegistry();
         const sources = registry.sources();
         return toSuccess(
           { sources, count: sources.length },
@@ -105,7 +119,7 @@ export const handleRuntimeExternal = async (
           );
         }
 
-        const registry = externalPlugin.getNormalizerRegistry();
+        const registry = externalPlugin!.getNormalizerRegistry();
         try {
           const normalized = registry.normalize(source, payload, headers);
           return toSuccess(
@@ -126,14 +140,14 @@ export const handleRuntimeExternal = async (
 
       case 'stats': {
         const since = params.since ? new Date(params.since as string).getTime() : 0;
-        const normalizerRegistry = externalPlugin.getNormalizerRegistry();
+        const normalizerRegistry = externalPlugin!.getNormalizerRegistry();
         return toSuccess(
           {
             action: 'stats',
             since: since > 0 ? new Date(since).toISOString() : 'all_time',
             normalizers: normalizerRegistry ? normalizerRegistry.sources() : [],
             http_listener: {
-              running: externalPlugin.isHttpListenerRunning(),
+              running: externalPlugin!.isHttpListenerRunning(),
             },
             note: 'Detailed webhook receive/error counts require ExternalPlugin stats tracking (not yet implemented)',
           },

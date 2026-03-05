@@ -15790,6 +15790,15 @@ var LocalTransport = class {
   async getQueueDepth() {
     return this.engine.getEventQueue().depth();
   }
+  async getEventHistory(filter) {
+    return this.engine.getEventBus().getHistory(filter);
+  }
+  async getEventStats() {
+    return {
+      log: this.engine.getEventLog().getStats(),
+      queue: this.engine.getEventQueue().getStats()
+    };
+  }
   // ─── Workflows ──────────────────────────────────────────────
   async getWorkflow(workflowId) {
     const engine = this.engine.getWorkflowEngine();
@@ -15876,6 +15885,43 @@ var LocalTransport = class {
       return { directives: [] };
     const result = await queue.holdDrain(target, workflowId);
     return { directives: result.directives };
+  }
+  // ─── Schedule ──────────────────────────────────────────────
+  async getHeartbeat() {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const heartbeat = timePlugin.getHeartbeat();
+    const scheduler = timePlugin.getScheduler();
+    return {
+      enabled: heartbeat.isEnabled(),
+      tick_count: heartbeat.getTickCount(),
+      last_tick_at: heartbeat.getLastTickAt(),
+      scheduled_count: scheduler.size(),
+      interval_ms: heartbeat.getInterval()
+    };
+  }
+  async setHeartbeatInterval(intervalMs) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    timePlugin.getHeartbeat().setInterval(intervalMs);
+  }
+  // ─── External ──────────────────────────────────────────────
+  async getExternalStatus() {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const normalizerSources = externalPlugin.getNormalizerRegistry().sources();
+    return {
+      http_listener: {
+        running: externalPlugin.isHttpListenerRunning(),
+        port: externalPlugin.getHttpPort(),
+        address: externalPlugin.getHttpAddress()
+      },
+      normalizer_count: normalizerSources.length,
+      normalizer_sources: normalizerSources
+    };
   }
 };
 
@@ -16177,6 +16223,52 @@ var DaemonServer = class {
           args["workflowId"]
         );
         return { directives: result.directives };
+      }
+      case "getEventHistory": {
+        const filter = args["filter"];
+        return e.getEventBus().getHistory(filter);
+      }
+      case "getEventStats": {
+        return {
+          log: e.getEventLog().getStats(),
+          queue: e.getEventQueue().getStats()
+        };
+      }
+      case "getHeartbeat": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        const hb = tp.getHeartbeat();
+        const sched = tp.getScheduler();
+        return {
+          enabled: hb.isEnabled(),
+          tick_count: hb.getTickCount(),
+          last_tick_at: hb.getLastTickAt(),
+          scheduled_count: sched.size(),
+          interval_ms: hb.getInterval()
+        };
+      }
+      case "setHeartbeatInterval": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        tp.getHeartbeat().setInterval(args["intervalMs"]);
+        return;
+      }
+      case "getExternalStatus": {
+        const ep = e.getExternalPlugin();
+        if (!ep)
+          throw new Error("ExternalPlugin not available");
+        const sources = ep.getNormalizerRegistry().sources();
+        return {
+          http_listener: {
+            running: ep.isHttpListenerRunning(),
+            port: ep.getHttpPort(),
+            address: ep.getHttpAddress()
+          },
+          normalizer_count: sources.length,
+          normalizer_sources: sources
+        };
       }
       case "ping": {
         return { ok: true, pid: process.pid, uptime: process.uptime() };

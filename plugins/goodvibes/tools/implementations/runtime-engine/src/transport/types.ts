@@ -85,6 +85,27 @@ export interface RuntimeTransport {
   /** Get current event queue depth. */
   getQueueDepth(): Promise<number>;
 
+  // ─── Events (extended) ───────────────────────────────────────
+
+  /** Get event history from the in-memory EventBus ring buffer. */
+  getEventHistory(filter?: EventFilter): Promise<RuntimeEvent[]>;
+
+  /** Get combined stats from EventLog and EventQueue. */
+  getEventStats(): Promise<{
+    log: {
+      total_events: number;
+      file_size_bytes: number;
+      oldest_event?: number;
+      newest_event?: number;
+      events_per_type: Record<string, number>;
+    };
+    queue: {
+      pending: number;
+      max_depth: number;
+      dedup_cache_size: number;
+    };
+  }>;
+
   // ─── Workflows ─────────────────────────────────────────────
 
   /** Get workflow instance by ID. @returns WorkflowInstance or null */
@@ -138,4 +159,31 @@ export interface RuntimeTransport {
     target: string,
     workflowId?: string,
   ): Promise<{ directives: unknown[] }>;
+
+  // ─── Schedule ──────────────────────────────────────────────
+
+  /** Get heartbeat status and scheduler summary. */
+  getHeartbeat(): Promise<{
+    enabled: boolean;
+    tick_count: number;
+    last_tick_at: number;
+    scheduled_count: number;
+    interval_ms: number;
+  }>;
+
+  /** Set the heartbeat interval (ms). Must be >= 1000. */
+  setHeartbeatInterval(intervalMs: number): Promise<void>;
+
+  // ─── External ──────────────────────────────────────────────
+
+  /** Get external plugin status (HTTP listener, normalizers). */
+  getExternalStatus(): Promise<{
+    http_listener: {
+      running: boolean;
+      port: number | null;
+      address: string | null;
+    };
+    normalizer_count: number;
+    normalizer_sources: string[];
+  }>;
 }
