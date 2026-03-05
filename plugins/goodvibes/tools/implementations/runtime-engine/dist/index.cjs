@@ -37026,11 +37026,10 @@ function bridgeCIFailure(_projectRoot, emitter) {
     const provider = typeof args["provider"] === "string" ? args["provider"] : "ci";
     const branch = typeof args["branch"] === "string" ? args["branch"] : "unknown";
     const commit = typeof args["commit"] === "string" ? args["commit"] : "unknown";
-    const sourceEventId = typeof args["source_event_id"] === "string" ? args["source_event_id"] : "";
     log17.info("CI failure detected \u2014 emitting build:failed", { provider, branch, commit, status });
     emitter.emit(createEvent({
       type: "build:failed",
-      source: { kind: "internal" },
+      source: { kind: "system" },
       payload: {
         type: "build:failed",
         data: {
