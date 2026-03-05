@@ -109,4 +109,14 @@
 
 ## Daemon
 
-(pending)
+(daemon session did not respond — may need manual testing)
+
+## Bug Found During Testing
+
+**workflow cancel/history missing transport paths** — FIXED
+- `create` and `advance` used `ctx.transport` (works in MCP mode)
+- `cancel` and `history` skipped transport, went straight to `getWorkflowEngine()` (null in MCP mode)
+- Fix: Added `cancelWorkflow` to RuntimeTransport interface + both transport implementations
+- Added `ctx.transport` paths for cancel and history in workflow handler
+- Review: 9.9/10
+- Commit: latest
