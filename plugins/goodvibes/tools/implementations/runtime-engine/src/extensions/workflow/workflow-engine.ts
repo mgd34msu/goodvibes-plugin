@@ -573,6 +573,7 @@ export class WorkflowEngine {
       previous_state: fromState,
       current_state: toState,
       context: { ...instance.context },
+      instance: JSON.parse(JSON.stringify(instance)),
     });
 
     // Check if new state is terminal

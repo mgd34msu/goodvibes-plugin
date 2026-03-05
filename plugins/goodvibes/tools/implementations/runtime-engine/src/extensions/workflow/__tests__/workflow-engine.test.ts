@@ -360,6 +360,13 @@ describe('WorkflowEngine', () => {
       const types = (bus.emit as Mock).mock.calls.map((c) => c[0].type);
       expect(types).toContain('workflow:state_changed');
       expect(types).toContain('workflow:completed');
+      const stateChangedCall = (bus.emit as Mock).mock.calls.find(
+        (c: unknown[]) => (c[0] as { type: string }).type === 'workflow:state_changed'
+      );
+      expect(stateChangedCall).toBeDefined();
+      const payload = (stateChangedCall![0] as { payload: { data: { instance: { id: string } } } }).payload;
+      expect(payload.data.instance).toBeDefined();
+      expect(payload.data.instance.id).toBe(instance.id);
     });
 
     it('purges directive queue when reaching terminal state', async () => {
