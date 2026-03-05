@@ -22437,7 +22437,6 @@ var import_node_path3 = require("node:path");
 var import_node_os = require("node:os");
 var VALID_EXECUTOR_MODES = ["engaged", "daemon", "hybrid"];
 var DEFAULT_CONFIG = {
-  schema_version: "1.0.0",
   ipc: {
     socket_dir: (() => {
       try {
@@ -22597,6 +22596,33 @@ function resolveRoot(projectRoot) {
 __name(resolveRoot, "resolveRoot");
 function loadConfig(projectRoot) {
   const root = resolveRoot(projectRoot);
+  const goodvibesPath = (0, import_node_path3.join)(root, ".goodvibes", "goodvibes.json");
+  try {
+    const raw = (0, import_node_fs3.readFileSync)(goodvibesPath, "utf-8");
+    const parsed = safeJsonParse(raw, null);
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) && "runtime" in parsed) {
+      const runtimeSection = parsed.runtime;
+      if (typeof runtimeSection === "object" && runtimeSection !== null && !Array.isArray(runtimeSection)) {
+        const knownKeys = Object.keys(DEFAULT_CONFIG);
+        const filtered = {};
+        for (const key of knownKeys) {
+          if (key in runtimeSection) {
+            filtered[key] = runtimeSection[key];
+          }
+        }
+        const merged = deepMerge(DEFAULT_CONFIG, filtered);
+        validateConfig(merged);
+        return merged;
+      }
+    }
+  } catch (err) {
+    if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
+      process.stderr.write(
+        `[runtime-engine] Warning: failed to read goodvibes.json: ${toErrorMessage(err)} \u2014 trying legacy config
+`
+      );
+    }
+  }
   const configPath = (0, import_node_path3.join)(root, ".goodvibes", "state", "runtime-config.json");
   try {
     const raw = (0, import_node_fs3.readFileSync)(configPath, "utf-8");
@@ -22624,10 +22650,57 @@ function loadConfig(projectRoot) {
 }
 __name(loadConfig, "loadConfig");
 function saveConfig(projectRoot, config2) {
-  const configPath = (0, import_node_path3.join)(projectRoot, ".goodvibes", "state", "runtime-config.json");
-  writeJsonSync(configPath, config2);
+  const goodvibesPath = (0, import_node_path3.join)(projectRoot, ".goodvibes", "goodvibes.json");
+  let existing = {};
+  try {
+    const raw = (0, import_node_fs3.readFileSync)(goodvibesPath, "utf-8");
+    existing = safeJsonParse(raw, {}) ?? {};
+  } catch {
+  }
+  const existingRuntime = typeof existing.runtime === "object" && existing.runtime !== null ? existing.runtime : {};
+  const configKeys = Object.keys(DEFAULT_CONFIG);
+  const updatedRuntime = { ...existingRuntime };
+  for (const key of configKeys) {
+    updatedRuntime[key] = config2[key];
+  }
+  existing.runtime = updatedRuntime;
+  writeJsonSync(goodvibesPath, existing);
 }
 __name(saveConfig, "saveConfig");
+function ensureRuntimeSections(projectRoot) {
+  const root = resolveRoot(projectRoot);
+  const goodvibesPath = (0, import_node_path3.join)(root, ".goodvibes", "goodvibes.json");
+  let existing;
+  try {
+    const raw = (0, import_node_fs3.readFileSync)(goodvibesPath, "utf-8");
+    existing = safeJsonParse(raw, {}) ?? {};
+  } catch {
+    return;
+  }
+  if (typeof existing.runtime !== "object" || existing.runtime === null) {
+    existing.runtime = {};
+  }
+  const runtime = existing.runtime;
+  const defaults = DEFAULT_CONFIG;
+  let changed = false;
+  for (const key of Object.keys(defaults)) {
+    if (!(key in runtime)) {
+      runtime[key] = defaults[key];
+      changed = true;
+    }
+  }
+  if (changed) {
+    try {
+      writeJsonSync(goodvibesPath, existing);
+    } catch (err) {
+      process.stderr.write(
+        `[runtime-engine] Warning: failed to write runtime defaults to goodvibes.json: ${toErrorMessage(err)}
+`
+      );
+    }
+  }
+}
+__name(ensureRuntimeSections, "ensureRuntimeSections");
 
 // src/plugins/mcp/mcp-server.ts
 init_utils();
@@ -38179,6 +38252,7 @@ var RuntimeEngineServer = class {
    */
   async start() {
     const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    ensureRuntimeSections(projectRoot);
     const config2 = loadConfig(projectRoot);
     const mode = config2.executor.mode;
     if (mode === "daemon") {
