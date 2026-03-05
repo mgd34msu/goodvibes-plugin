@@ -16121,6 +16121,14 @@ var DaemonServer = class {
         const result = await wf.sendEvent(args["workflowId"], syntheticEvent);
         return result;
       }
+      case "cancelWorkflow": {
+        const wf = e.getWorkflowEngine();
+        if (!wf)
+          throw new Error("WorkflowEngine not available");
+        wf.cancel(args["workflowId"], args["reason"] ?? "cancelled via IPC");
+        const cancelled = wf.get(args["workflowId"]);
+        return cancelled ? cancelled : null;
+      }
       case "listTriggers": {
         const tr = e.getTriggerRegistry();
         if (!tr)
