@@ -59,7 +59,7 @@ export class WorkflowPersistence {
    *
    * @param instance - Any object with an `id: string` field.
    */
-  async persist(instance: { id: string; [key: string]: unknown }): Promise<void> {
+  async persist<T extends { id: string }>(instance: T): Promise<void> {
     if (!this.enabled) return;
     try {
       await fs.mkdir(this.stateDir, { recursive: true });

@@ -832,7 +832,7 @@ export class WorkflowEngine {
    * - `emit_event`     — emits a runtime event via the injected EventBus
    * - `update_context` — shallow-merges config into the workflow context
    * - `invoke_handler` — calls a registered action handler by name
-   * - `spawn_agent`    — placeholder; logs a warning (Phase 5)
+   * - `spawn_agent`    — enqueues a spawn directive to directiveQueue and registers a pending bind in agentWorkflowMap
    *
    * @param actions - Ordered list of ActionDefinitions to execute.
    * @param context - Workflow context (mutated in-place by update_context).
@@ -912,6 +912,9 @@ export class WorkflowEngine {
             if (this.agentWorkflowMap) {
               const sessionId = (context.session_id as string | undefined) ?? 'default';
               this.agentWorkflowMap.addPendingBind(agentType, workflowId, sessionId);
+              if (!agentType.startsWith('goodvibes:')) {
+                this.agentWorkflowMap.addPendingBind(`goodvibes:${agentType}`, workflowId, sessionId);
+              }
             }
 
             log.info('spawn_agent: directive enqueued, pending bind registered', {

@@ -256,8 +256,8 @@ export class RuntimeEngine {
           this.workflow.workflowEngine.restoreInstance(
             raw as import('./extensions/workflow/types.js').WorkflowInstance
           );
-        } catch {
-          // Ignore instances that fail to restore (e.g. unknown definition_id)
+        } catch (err) {
+          logger.debug('Failed to restore workflow instance', { error: String(err) });
         }
       }
       if (savedInstances.length > 0) {

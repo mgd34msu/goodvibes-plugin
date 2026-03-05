@@ -1152,7 +1152,7 @@ describe('WorkflowEngine', () => {
         expect(instance.current_state).toBe('start');
       });
 
-      it('spawn_agent action logs an error (placeholder)', async () => {
+      it('spawn_agent action handles missing directive queue gracefully', async () => {
         const def: WorkflowDefinition = {
           id: 'spawn_agent_def',
           name: 'Spawn Agent',
@@ -1166,7 +1166,7 @@ describe('WorkflowEngine', () => {
                 {
                   event: 'go' as any,
                   target: 'end',
-                  actions: [{ type: 'spawn_agent', config: { agent: 'engineer' } }],
+                  actions: [{ type: 'spawn_agent', config: { agent_type: 'engineer', task: 'test task' } }],
                 },
               ],
             },
@@ -1179,6 +1179,48 @@ describe('WorkflowEngine', () => {
         expect(() => engine.sendEvent(instance.id, makeEvent('go'))).not.toThrow();
         await new Promise((r) => setImmediate(r));
         expect(instance.current_state).toBe('end');
+      });
+
+      it('spawn_agent action enqueues directive and registers pending bind when queue is set', async () => {
+        const queue = { purge: vi.fn().mockReturnValue(0), enqueue: vi.fn() };
+        const agentWorkflowMap = { addPendingBind: vi.fn() } as any;
+        engine.setDirectiveQueue(queue);
+        engine.setAgentWorkflowMap(agentWorkflowMap);
+        const def: WorkflowDefinition = {
+          id: 'spawn_agent_happy_def',
+          name: 'Spawn Agent Happy',
+          version: 1,
+          initial_state: 'start',
+          terminal_states: ['end'],
+          states: {
+            start: {
+              name: 'start',
+              transitions: [
+                {
+                  event: 'go' as any,
+                  target: 'end',
+                  actions: [{ type: 'spawn_agent', config: { agent_type: 'engineer', task: 'implement feature' } }],
+                },
+              ],
+            },
+            end: { name: 'end', transitions: [] },
+          },
+        };
+        engine.registerDefinition(def);
+        const instance = engine.create(def.id);
+        await engine.sendEvent(instance.id, makeEvent('go'));
+        expect(instance.current_state).toBe('end');
+        // Directive should be enqueued to 'subagent_stop'
+        expect(queue.enqueue).toHaveBeenCalledWith(
+          'subagent_stop',
+          expect.objectContaining({ type: 'inject_system_message' })
+        );
+        // Pending bind should be registered for the agent type and its prefixed variant
+        expect(agentWorkflowMap.addPendingBind).toHaveBeenCalledWith(
+          'engineer',
+          expect.any(String),
+          expect.any(String)
+        );
       });
 
       it('unknown action type logs a warning but continues', async () => {
