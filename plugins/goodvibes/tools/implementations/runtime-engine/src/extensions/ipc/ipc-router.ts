@@ -425,7 +425,7 @@ export class IPCRouter {
       };
     }
     if (q.kind === 'should_block_tool') {
-      const toolName = (q as Record<string, unknown>)['tool_name'] as string ?? '';
+      const toolName = (q as { tool_name?: string }).tool_name ?? '';
       const result = this.toolGateEvaluator?.evaluate(toolName) ?? { allow: true };
       return {
         id: msg.id,

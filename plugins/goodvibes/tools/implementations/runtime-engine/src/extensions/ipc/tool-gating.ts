@@ -9,28 +9,11 @@
 import { createLogger } from '../../shared/logger.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
+import type { ToolBlockRule, ToolGatingConfig } from '../../shared/config.js';
+
+export type { ToolBlockRule, ToolGatingConfig };
 
 const logger = createLogger('tool-gating');
-
-/** A single rule that may block a tool call. */
-export interface ToolBlockRule {
-  /** Glob pattern matching tool names: 'Bash', 'precision_exec', '*', etc. */
-  tool_pattern: string;
-  /** Condition under which the rule fires. */
-  condition: 'always' | 'budget_exceeded' | 'workflow_phase' | 'custom';
-  /** Human-readable reason shown when the tool is blocked. */
-  message?: string;
-}
-
-/** Top-level configuration for the tool gating system. */
-export interface ToolGatingConfig {
-  /** Whether tool gating is active. When false, all tools are allowed. */
-  enabled: boolean;
-  /** When true, bypasses all rules and allows all tools unconditionally. */
-  force_allow_all: boolean;
-  /** Ordered list of block rules. First match wins. */
-  rules: ToolBlockRule[];
-}
 
 /** Result of evaluating a tool against the gate. */
 export interface ToolGateResult {
@@ -150,7 +133,9 @@ export class ToolGateEvaluator {
       }
 
       case 'custom':
-        // Future extension point — not yet implemented
+        // 'custom' conditions require a registered handler function.
+        // Registration API will be added via ToolGateEvaluator.registerCustomCondition().
+        // Until then, custom conditions are skipped with a warning.
         logger.warn('Custom tool block condition is not yet implemented', {
           pattern: rule.tool_pattern,
         });

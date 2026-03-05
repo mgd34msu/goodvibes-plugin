@@ -142,9 +142,9 @@ export interface CreateIPCOptions {
 
 /** Re-export for external consumers. */
 export { ToolGateEvaluator } from './tool-gating.js';
-export type { ToolGatingConfig, ToolBlockRule } from './tool-gating.js';
+export type { ToolGatingConfig, ToolBlockRule } from '../../shared/config.js';
 export { ContextInjector } from './context-injector.js';
-export type { ContextInjectionConfig } from './context-injector.js';
+export type { ContextInjectionConfig, ContextSource } from '../../shared/config.js';
 
 /**
  * Create the IPC subsystem: server + router, wired with L2 deps.

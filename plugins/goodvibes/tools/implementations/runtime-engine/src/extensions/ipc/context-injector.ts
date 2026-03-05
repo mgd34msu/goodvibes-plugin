@@ -13,19 +13,11 @@ import { createLogger } from '../../shared/logger.js';
 import type { WorkflowEngine } from '../workflow/workflow-engine.js';
 import type { AgentCoordinator } from '../agents/agent-coordinator.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
+import type { ContextSource, ContextInjectionConfig } from '../../shared/config.js';
+
+export type { ContextSource, ContextInjectionConfig };
 
 const logger = createLogger('context-injector');
-
-/** Which context sources to include in injected output. */
-export type ContextSource = 'workflow_state' | 'agent_roster' | 'budget_status';
-
-/** Configuration for the context injection system. */
-export interface ContextInjectionConfig {
-  /** Whether context injection is active. When false, returns empty context. */
-  enabled: boolean;
-  /** Ordered list of sources to include in the injected context. */
-  include: Array<ContextSource>;
-}
 
 /** Result returned by getContext(). */
 export interface ContextResult {
@@ -49,6 +41,7 @@ interface ContextInjectorDeps {
  * prevent other sources from contributing context.
  */
 export class ContextInjector {
+  private static readonly DEFAULT_PRIORITY = 5;
   private readonly config: ContextInjectionConfig;
   private readonly workflowEngine: WorkflowEngine | undefined;
   private readonly agentCoordinator: AgentCoordinator | undefined;
@@ -89,7 +82,7 @@ export class ContextInjector {
     }
 
     const context = sections.join('\n\n');
-    return { context, priority: context.length > 0 ? 5 : 0 };
+    return { context, priority: context.length > 0 ? ContextInjector.DEFAULT_PRIORITY : 0 };
   }
 
   /** Gather a single context source and return a Markdown section string. */
