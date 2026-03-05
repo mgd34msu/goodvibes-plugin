@@ -22048,6 +22048,7 @@ var DEFAULT_EVENT_QUERY_LIMIT = 50;
 
 // src/transport/local-transport.ts
 init_events();
+init_utils();
 var LocalTransport = class {
   static {
     __name(this, "LocalTransport");
@@ -22369,7 +22370,7 @@ var LocalTransport = class {
     if (!registry2)
       throw new Error("Trigger registry not available");
     const mockEvent = {
-      id: testEvent["id"] ?? "test-mock-id",
+      id: testEvent["id"] ?? generateId(),
       timestamp: testEvent["timestamp"] ?? Date.now(),
       type: testEvent["type"],
       source: testEvent["source"] ?? { kind: "mcp_tool", tool_name: "runtime_triggers" },

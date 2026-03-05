@@ -7,6 +7,7 @@ import type { RuntimeEvent, EventFilter } from '../shared/events.js';
 import type { HealthStatus } from '../shared/types.js';
 import { ENGINE_VERSION } from '../shared/constants.js';
 import { createEvent } from '../shared/events.js';
+import { generateId } from '../shared/utils.js';
 
 /**
  * In-process transport — wraps RuntimeEngine with zero overhead.
@@ -374,7 +375,7 @@ export class LocalTransport implements RuntimeTransport {
     const externalPlugin = this.engine.getExternalPlugin();
     if (!externalPlugin) throw new Error('ExternalPlugin not available');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const normalized = externalPlugin.getNormalizerRegistry().normalize(source, payload, headers) as any as Record<string, unknown>;
+    const normalized = externalPlugin.getNormalizerRegistry().normalize(source, payload, headers) as unknown as Record<string, unknown>;
     return { normalized, source };
   }
 
@@ -408,7 +409,7 @@ export class LocalTransport implements RuntimeTransport {
     const registry = this.engine.getTriggerRegistry();
     if (!registry) throw new Error('Trigger registry not available');
     const mockEvent = {
-      id: (testEvent['id'] as string) ?? 'test-mock-id',
+      id: (testEvent['id'] as string) ?? generateId(),
       timestamp: (testEvent['timestamp'] as number) ?? Date.now(),
       type: testEvent['type'],
       source: testEvent['source'] ?? { kind: 'mcp_tool', tool_name: 'runtime_triggers' },
