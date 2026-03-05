@@ -6,6 +6,9 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
@@ -3493,8 +3496,8 @@ var require_utils = __commonJS({
       return ind;
     }
     __name(findToken, "findToken");
-    function removeDotSegments(path3) {
-      let input = path3;
+    function removeDotSegments(path4) {
+      let input = path4;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3701,8 +3704,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path3, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path3 && path3 !== "/" ? path3 : void 0;
+        const [path4, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -4614,11 +4617,11 @@ var require_core = __commonJS({
     Ajv2.ValidationError = validation_error_1.default;
     Ajv2.MissingRefError = ref_error_1.default;
     exports2.default = Ajv2;
-    function checkOptions(checkOpts, options, msg, log9 = "error") {
+    function checkOptions(checkOpts, options, msg, log18 = "error") {
       for (const key in checkOpts) {
         const opt = key;
         if (opt in options)
-          this.logger[log9](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log18](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
     __name(checkOptions, "checkOptions");
@@ -4671,13 +4674,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger69) {
-      if (logger69 === false)
+    function getLogger(logger75) {
+      if (logger75 === false)
         return noLogs;
-      if (logger69 === void 0)
+      if (logger75 === void 0)
         return console;
-      if (logger69.log && logger69.warn && logger69.error)
-        return logger69;
+      if (logger75.log && logger75.warn && logger75.error)
+        return logger75;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -7179,17 +7182,453 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs3, exportName) {
+    function addFormats(ajv, list, fs4, exportName) {
       var _a2;
       var _b;
       (_a2 = (_b = ajv.opts.code).formats) !== null && _a2 !== void 0 ? _a2 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs3[f]);
+        ajv.addFormat(f, fs4[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = formatsPlugin;
+  }
+});
+
+// src/shared/errors.ts
+var RuntimeEngineError, ConfigError, ParseError, StateError, QueueError, ProcessingError, IPCError, WorkflowError, WorkflowTimeoutError;
+var init_errors = __esm({
+  "src/shared/errors.ts"() {
+    "use strict";
+    RuntimeEngineError = class extends Error {
+      constructor(message, code, cause) {
+        super(message);
+        this.code = code;
+        this.cause = cause;
+        this.name = this.constructor.name;
+        Object.setPrototypeOf(this, new.target.prototype);
+      }
+      static {
+        __name(this, "RuntimeEngineError");
+      }
+    };
+    ConfigError = class extends RuntimeEngineError {
+      static {
+        __name(this, "ConfigError");
+      }
+      constructor(message, cause) {
+        super(message, "CONFIG_ERROR", cause);
+      }
+    };
+    ParseError = class extends RuntimeEngineError {
+      static {
+        __name(this, "ParseError");
+      }
+      constructor(message, cause) {
+        super(message, "PARSE_ERROR", cause);
+      }
+    };
+    StateError = class extends RuntimeEngineError {
+      static {
+        __name(this, "StateError");
+      }
+      constructor(message, cause) {
+        super(message, "STATE_ERROR", cause);
+      }
+    };
+    QueueError = class extends RuntimeEngineError {
+      static {
+        __name(this, "QueueError");
+      }
+      constructor(message, cause) {
+        super(message, "QUEUE_ERROR", cause);
+      }
+    };
+    ProcessingError = class extends RuntimeEngineError {
+      static {
+        __name(this, "ProcessingError");
+      }
+      constructor(message, cause) {
+        super(message, "PROCESSING_ERROR", cause);
+      }
+    };
+    IPCError = class extends RuntimeEngineError {
+      static {
+        __name(this, "IPCError");
+      }
+      constructor(message, cause) {
+        super(message, "IPC_ERROR", cause);
+      }
+    };
+    WorkflowError = class extends RuntimeEngineError {
+      static {
+        __name(this, "WorkflowError");
+      }
+      constructor(message, cause) {
+        super(message, "WORKFLOW_ERROR", cause);
+      }
+    };
+    WorkflowTimeoutError = class extends RuntimeEngineError {
+      /** The timeout value in milliseconds that was exceeded. */
+      constructor(message, timeoutMs, cause) {
+        super(message, "WORKFLOW_TIMEOUT_ERROR", cause);
+        this.timeoutMs = timeoutMs;
+      }
+      static {
+        __name(this, "WorkflowTimeoutError");
+      }
+    };
+  }
+});
+
+// src/shared/utils.ts
+function generateId() {
+  return (0, import_node_crypto.randomUUID)();
+}
+function timestamp() {
+  return Date.now();
+}
+function generateEventId() {
+  return `evt_${(0, import_node_crypto.randomUUID)()}`;
+}
+function generateWorkflowId() {
+  return `wf_${(0, import_node_crypto.randomUUID)()}`;
+}
+function toErrorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+function assertString(value, fieldName) {
+  if (typeof value !== "string") throw new TypeError(`${fieldName} must be a string, got ${typeof value}`);
+  return value;
+}
+function assertOptionalString(value, fieldName) {
+  if (value === void 0 || value === null) return void 0;
+  return assertString(value, fieldName);
+}
+function safeJsonParse(input, fallback, logError) {
+  try {
+    return JSON.parse(input);
+  } catch (err) {
+    if (logError) {
+      logError(err instanceof Error ? err.message : String(err));
+    }
+    return fallback;
+  }
+}
+function parseRelativeTime(input) {
+  const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
+  if (!match) {
+    throw new ParseError(
+      `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
+    );
+  }
+  const value = parseFloat(match[1]);
+  const unit = match[2];
+  const ms = value * DURATION_UNITS[unit];
+  return new Date(Date.now() + ms);
+}
+var import_node_crypto, DURATION_UNITS;
+var init_utils = __esm({
+  "src/shared/utils.ts"() {
+    "use strict";
+    import_node_crypto = require("node:crypto");
+    init_errors();
+    __name(generateId, "generateId");
+    __name(timestamp, "timestamp");
+    __name(generateEventId, "generateEventId");
+    __name(generateWorkflowId, "generateWorkflowId");
+    __name(toErrorMessage, "toErrorMessage");
+    __name(assertString, "assertString");
+    __name(assertOptionalString, "assertOptionalString");
+    __name(safeJsonParse, "safeJsonParse");
+    DURATION_UNITS = {
+      s: 1e3,
+      m: 6e4,
+      h: 36e5,
+      d: 864e5
+    };
+    __name(parseRelativeTime, "parseRelativeTime");
+  }
+});
+
+// src/shared/events.ts
+function createEvent(overrides) {
+  return {
+    id: generateEventId(),
+    timestamp: Date.now(),
+    priority: 0,
+    ...overrides,
+    metadata: {
+      version: 1,
+      session_id: "",
+      sequence: 0,
+      ...overrides.metadata
+    }
+  };
+}
+var init_events = __esm({
+  "src/shared/events.ts"() {
+    "use strict";
+    init_utils();
+    __name(createEvent, "createEvent");
+  }
+});
+
+// src/shared/logger.ts
+function resolveActiveLevel() {
+  const now = Date.now();
+  if (_cachedLevel !== void 0 && now < _cacheExpiresAt) return _cachedLevel;
+  const raw = (process.env["GOODVIBES_LOG_LEVEL"] ?? "info").toLowerCase();
+  _cachedLevel = raw in LEVEL_ORDER ? raw : "info";
+  _cacheExpiresAt = now + LOG_LEVEL_CACHE_TTL_MS;
+  return _cachedLevel;
+}
+function createLogger(component) {
+  function write(level, message, metadata) {
+    const activeLevel = resolveActiveLevel();
+    if (LEVEL_ORDER[level] < LEVEL_ORDER[activeLevel]) return;
+    const entry = {
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      level,
+      component,
+      message,
+      ...metadata !== void 0 ? { metadata } : {}
+    };
+    process.stderr.write(JSON.stringify(entry) + "\n");
+  }
+  __name(write, "write");
+  return {
+    debug: /* @__PURE__ */ __name((msg, meta3) => write("debug", msg, meta3), "debug"),
+    info: /* @__PURE__ */ __name((msg, meta3) => write("info", msg, meta3), "info"),
+    warn: /* @__PURE__ */ __name((msg, meta3) => write("warn", msg, meta3), "warn"),
+    error: /* @__PURE__ */ __name((msg, meta3) => write("error", msg, meta3), "error")
+  };
+}
+var LEVEL_ORDER, _cachedLevel, _cacheExpiresAt, LOG_LEVEL_CACHE_TTL_MS;
+var init_logger = __esm({
+  "src/shared/logger.ts"() {
+    "use strict";
+    LEVEL_ORDER = {
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3
+    };
+    _cacheExpiresAt = 0;
+    LOG_LEVEL_CACHE_TTL_MS = 5e3;
+    __name(resolveActiveLevel, "resolveActiveLevel");
+    __name(createLogger, "createLogger");
+  }
+});
+
+// src/extensions/events/factories.ts
+function hookTypeToSlug(hookType) {
+  return hookTypeSlugMap[hookType];
+}
+function createHookEvent(params) {
+  const base = createEvent({
+    source: { kind: "internal" },
+    type: params.type ?? `hook:${hookTypeToSlug(params.hook_type)}`,
+    payload: params.payload ?? params.hook_input,
+    priority: params.priority ?? 50,
+    context: params.context,
+    metadata: { session_id: "", sequence: 0 }
+  });
+  return {
+    ...base,
+    source: { kind: "internal" },
+    hook_type: params.hook_type,
+    hook_input: params.hook_input,
+    session_id: params.session_id
+  };
+}
+function createAgentEvent(params) {
+  const base = createEvent({
+    source: { kind: "agent", agent_id: params.agent_id },
+    type: params.type,
+    payload: params.payload ?? {},
+    priority: params.priority ?? 40,
+    context: params.context,
+    metadata: { session_id: "", sequence: 0 }
+  });
+  return {
+    ...base,
+    source: { kind: "agent", agent_id: params.agent_id },
+    agent_id: params.agent_id,
+    agent_type: params.agent_type,
+    ...params.result !== void 0 && { result: params.result },
+    ...params.score !== void 0 && { score: params.score },
+    ...params.artifacts !== void 0 && { artifacts: params.artifacts }
+  };
+}
+function createExternalEvent(params) {
+  const base = createEvent({
+    source: { kind: "external", origin: params.external_source },
+    type: params.type,
+    payload: params.payload ?? params.raw_payload,
+    priority: params.priority ?? 30,
+    context: params.context,
+    metadata: { session_id: "", sequence: 0 }
+  });
+  return {
+    ...base,
+    source: { kind: "external", origin: params.external_source },
+    external_source: params.external_source,
+    raw_payload: params.raw_payload,
+    normalized: params.normalized ?? false
+  };
+}
+function defaultTimeEventType(timeType) {
+  switch (timeType) {
+    case "heartbeat":
+      return "tick:heartbeat";
+    case "cron":
+      return "cron:tick";
+    case "scheduled":
+      return "schedule:tick";
+    case "one_shot":
+      return "schedule:one_shot";
+  }
+}
+function createTimeEvent(params) {
+  const base = createEvent({
+    source: { kind: "time" },
+    type: params.type ?? defaultTimeEventType(params.time_type),
+    payload: params.payload ?? {},
+    priority: params.priority ?? 10,
+    context: params.context,
+    metadata: { session_id: "", sequence: 0 }
+  });
+  return {
+    ...base,
+    source: { kind: "time" },
+    time_type: params.time_type,
+    ...params.interval_ms !== void 0 && { interval_ms: params.interval_ms },
+    ...params.schedule !== void 0 && { schedule: params.schedule },
+    ...params.ttl !== void 0 && { ttl: params.ttl },
+    ...params.fires_remaining !== void 0 && { fires_remaining: params.fires_remaining },
+    ...params.scheduled_at !== void 0 && { scheduled_at: params.scheduled_at }
+  };
+}
+var hookTypeSlugMap;
+var init_factories = __esm({
+  "src/extensions/events/factories.ts"() {
+    "use strict";
+    init_events();
+    hookTypeSlugMap = {
+      PreToolUse: "pre_tool_use",
+      PostToolUse: "post_tool_use",
+      PostToolUseFailure: "post_tool_use_failure",
+      SubagentStart: "subagent_start",
+      SubagentStop: "subagent_stop",
+      SessionStart: "session_start",
+      SessionEnd: "session_end",
+      PreCompact: "pre_compact",
+      UserPromptSubmit: "user_prompt_submit",
+      Notification: "notification",
+      Stop: "stop"
+    };
+    __name(hookTypeToSlug, "hookTypeToSlug");
+    __name(createHookEvent, "createHookEvent");
+    __name(createAgentEvent, "createAgentEvent");
+    __name(createExternalEvent, "createExternalEvent");
+    __name(defaultTimeEventType, "defaultTimeEventType");
+    __name(createTimeEvent, "createTimeEvent");
+  }
+});
+
+// src/plugins/devserver/index.ts
+var devserver_exports = {};
+__export(devserver_exports, {
+  DEFAULT_DEVSERVER_CONFIG: () => DEFAULT_DEVSERVER_CONFIG,
+  DevServerMonitor: () => DevServerMonitor
+});
+var logger60, DEFAULT_DEVSERVER_CONFIG, DevServerMonitor;
+var init_devserver = __esm({
+  "src/plugins/devserver/index.ts"() {
+    "use strict";
+    init_logger();
+    init_factories();
+    logger60 = createLogger("devserver-monitor");
+    DEFAULT_DEVSERVER_CONFIG = {
+      enabled: false,
+      command: "npm run dev",
+      port: 3e3,
+      check_interval_ms: 15e3
+    };
+    DevServerMonitor = class {
+      constructor(config2, eventBus) {
+        this.config = config2;
+        this.eventBus = eventBus;
+      }
+      static {
+        __name(this, "DevServerMonitor");
+      }
+      timer = null;
+      lastHealthy = true;
+      start() {
+        if (!this.config.enabled) {
+          logger60.debug("Dev server monitor disabled");
+          return;
+        }
+        const interval = this.config.check_interval_ms ?? 15e3;
+        this.timer = setInterval(() => void this.checkHealth(), interval);
+        logger60.info("Dev server monitor started", { port: this.config.port, interval });
+      }
+      stop() {
+        if (this.timer) {
+          clearInterval(this.timer);
+          this.timer = null;
+          logger60.info("Dev server monitor stopped");
+        }
+      }
+      async checkHealth() {
+        const url2 = this.config.health_url ?? `http://localhost:${this.config.port}`;
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5e3);
+          const response = await fetch(url2, { signal: controller.signal, method: "HEAD" });
+          clearTimeout(timeout);
+          if (response.ok) {
+            if (!this.lastHealthy) {
+              logger60.info("Dev server recovered", { port: this.config.port });
+              this.lastHealthy = true;
+            }
+          } else {
+            this.emitError(`HTTP ${response.status}`);
+          }
+        } catch (err) {
+          this.emitError(err instanceof Error ? err.message : String(err));
+        }
+      }
+      emitError(error2) {
+        if (this.lastHealthy) {
+          logger60.warn("Dev server unreachable", { port: this.config.port, error: error2 });
+          this.lastHealthy = false;
+          const event = createExternalEvent({
+            external_source: "devserver",
+            type: "devserver:error",
+            raw_payload: { error: error2, port: this.config.port, command: this.config.command },
+            payload: { error: error2, port: this.config.port, command: this.config.command },
+            normalized: true
+          });
+          this.eventBus.emit(event);
+        }
+      }
+      reconfigure(config2) {
+        const wasEnabled = this.config.enabled;
+        this.config = { ...this.config, ...config2 };
+        if (wasEnabled && !this.config.enabled) {
+          this.stop();
+        } else if (!wasEnabled && this.config.enabled) {
+          this.start();
+        } else if (this.config.enabled && this.timer !== null) {
+          this.stop();
+          this.start();
+        }
+      }
+    };
   }
 });
 
@@ -7559,8 +7998,8 @@ __name(getErrorMap, "getErrorMap");
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = /* @__PURE__ */ __name((params) => {
-  const { data, path: path3, errorMaps, issueData } = params;
-  const fullPath = [...path3, ...issueData.path || []];
+  const { data, path: path4, errorMaps, issueData } = params;
+  const fullPath = [...path4, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7682,11 +8121,11 @@ var ParseInputLazyPath = class {
   static {
     __name(this, "ParseInputLazyPath");
   }
-  constructor(parent, value, path3, key) {
+  constructor(parent, value, path4, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path3;
+    this._path = path4;
     this._key = key;
   }
   get path() {
@@ -11486,10 +11925,10 @@ function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
 __name(cloneDef, "cloneDef");
-function getElementAtPath(obj, path3) {
-  if (!path3)
+function getElementAtPath(obj, path4) {
+  if (!path4)
     return obj;
-  return path3.reduce((acc, key) => acc?.[key], obj);
+  return path4.reduce((acc, key) => acc?.[key], obj);
 }
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
@@ -11895,11 +12334,11 @@ function aborted(x, startIndex = 0) {
   return false;
 }
 __name(aborted, "aborted");
-function prefixIssues(path3, issues) {
+function prefixIssues(path4, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path3);
+    iss.path.unshift(path4);
     return iss;
   });
 }
@@ -21552,169 +21991,8 @@ var MAX_OUTPUT_PREVIEW_LENGTH = 200;
 var DEFAULT_HTTP_LISTENER_PORT = 3847;
 var DEFAULT_EVENT_QUERY_LIMIT = 50;
 
-// src/shared/utils.ts
-var import_node_crypto = require("node:crypto");
-
-// src/shared/errors.ts
-var RuntimeEngineError = class extends Error {
-  constructor(message, code, cause) {
-    super(message);
-    this.code = code;
-    this.cause = cause;
-    this.name = this.constructor.name;
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-  static {
-    __name(this, "RuntimeEngineError");
-  }
-};
-var ConfigError = class extends RuntimeEngineError {
-  static {
-    __name(this, "ConfigError");
-  }
-  constructor(message, cause) {
-    super(message, "CONFIG_ERROR", cause);
-  }
-};
-var ParseError = class extends RuntimeEngineError {
-  static {
-    __name(this, "ParseError");
-  }
-  constructor(message, cause) {
-    super(message, "PARSE_ERROR", cause);
-  }
-};
-var StateError = class extends RuntimeEngineError {
-  static {
-    __name(this, "StateError");
-  }
-  constructor(message, cause) {
-    super(message, "STATE_ERROR", cause);
-  }
-};
-var QueueError = class extends RuntimeEngineError {
-  static {
-    __name(this, "QueueError");
-  }
-  constructor(message, cause) {
-    super(message, "QUEUE_ERROR", cause);
-  }
-};
-var ProcessingError = class extends RuntimeEngineError {
-  static {
-    __name(this, "ProcessingError");
-  }
-  constructor(message, cause) {
-    super(message, "PROCESSING_ERROR", cause);
-  }
-};
-var IPCError = class extends RuntimeEngineError {
-  static {
-    __name(this, "IPCError");
-  }
-  constructor(message, cause) {
-    super(message, "IPC_ERROR", cause);
-  }
-};
-var WorkflowError = class extends RuntimeEngineError {
-  static {
-    __name(this, "WorkflowError");
-  }
-  constructor(message, cause) {
-    super(message, "WORKFLOW_ERROR", cause);
-  }
-};
-var WorkflowTimeoutError = class extends RuntimeEngineError {
-  /** The timeout value in milliseconds that was exceeded. */
-  constructor(message, timeoutMs, cause) {
-    super(message, "WORKFLOW_TIMEOUT_ERROR", cause);
-    this.timeoutMs = timeoutMs;
-  }
-  static {
-    __name(this, "WorkflowTimeoutError");
-  }
-};
-
-// src/shared/utils.ts
-function generateId() {
-  return (0, import_node_crypto.randomUUID)();
-}
-__name(generateId, "generateId");
-function timestamp() {
-  return Date.now();
-}
-__name(timestamp, "timestamp");
-function generateEventId() {
-  return `evt_${(0, import_node_crypto.randomUUID)()}`;
-}
-__name(generateEventId, "generateEventId");
-function generateWorkflowId() {
-  return `wf_${(0, import_node_crypto.randomUUID)()}`;
-}
-__name(generateWorkflowId, "generateWorkflowId");
-function toErrorMessage(err) {
-  return err instanceof Error ? err.message : String(err);
-}
-__name(toErrorMessage, "toErrorMessage");
-function assertString(value, fieldName) {
-  if (typeof value !== "string") throw new TypeError(`${fieldName} must be a string, got ${typeof value}`);
-  return value;
-}
-__name(assertString, "assertString");
-function assertOptionalString(value, fieldName) {
-  if (value === void 0 || value === null) return void 0;
-  return assertString(value, fieldName);
-}
-__name(assertOptionalString, "assertOptionalString");
-function safeJsonParse(input, fallback, logError) {
-  try {
-    return JSON.parse(input);
-  } catch (err) {
-    if (logError) {
-      logError(err instanceof Error ? err.message : String(err));
-    }
-    return fallback;
-  }
-}
-__name(safeJsonParse, "safeJsonParse");
-var DURATION_UNITS = {
-  s: 1e3,
-  m: 6e4,
-  h: 36e5,
-  d: 864e5
-};
-function parseRelativeTime(input) {
-  const match = /^(\d+(?:\.\d+)?)(s|m|h|d)$/.exec(input.trim());
-  if (!match) {
-    throw new ParseError(
-      `Invalid relative time format: "${input}". Expected a number followed by s/m/h/d (e.g. "5m", "30s", "2h").`
-    );
-  }
-  const value = parseFloat(match[1]);
-  const unit = match[2];
-  const ms = value * DURATION_UNITS[unit];
-  return new Date(Date.now() + ms);
-}
-__name(parseRelativeTime, "parseRelativeTime");
-
-// src/shared/events.ts
-function createEvent(overrides) {
-  return {
-    id: generateEventId(),
-    timestamp: Date.now(),
-    priority: 0,
-    ...overrides,
-    metadata: {
-      version: 1,
-      session_id: "",
-      sequence: 0,
-      ...overrides.metadata
-    }
-  };
-}
-__name(createEvent, "createEvent");
-
 // src/transport/local-transport.ts
+init_events();
 var LocalTransport = class {
   static {
     __name(this, "LocalTransport");
@@ -21851,50 +22129,8 @@ var LocalTransport = class {
 
 // src/transport/remote-transport.ts
 var import_node_net = require("node:net");
-
-// src/shared/logger.ts
-var LEVEL_ORDER = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3
-};
-var _cachedLevel;
-var _cacheExpiresAt = 0;
-var LOG_LEVEL_CACHE_TTL_MS = 5e3;
-function resolveActiveLevel() {
-  const now = Date.now();
-  if (_cachedLevel !== void 0 && now < _cacheExpiresAt) return _cachedLevel;
-  const raw = (process.env["GOODVIBES_LOG_LEVEL"] ?? "info").toLowerCase();
-  _cachedLevel = raw in LEVEL_ORDER ? raw : "info";
-  _cacheExpiresAt = now + LOG_LEVEL_CACHE_TTL_MS;
-  return _cachedLevel;
-}
-__name(resolveActiveLevel, "resolveActiveLevel");
-function createLogger(component) {
-  function write(level, message, metadata) {
-    const activeLevel = resolveActiveLevel();
-    if (LEVEL_ORDER[level] < LEVEL_ORDER[activeLevel]) return;
-    const entry = {
-      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      level,
-      component,
-      message,
-      ...metadata !== void 0 ? { metadata } : {}
-    };
-    process.stderr.write(JSON.stringify(entry) + "\n");
-  }
-  __name(write, "write");
-  return {
-    debug: /* @__PURE__ */ __name((msg, meta3) => write("debug", msg, meta3), "debug"),
-    info: /* @__PURE__ */ __name((msg, meta3) => write("info", msg, meta3), "info"),
-    warn: /* @__PURE__ */ __name((msg, meta3) => write("warn", msg, meta3), "warn"),
-    error: /* @__PURE__ */ __name((msg, meta3) => write("error", msg, meta3), "error")
-  };
-}
-__name(createLogger, "createLogger");
-
-// src/transport/remote-transport.ts
+init_utils();
+init_logger();
 var logger = createLogger("remote-transport");
 var RemoteTransport = class {
   static {
@@ -22051,7 +22287,7 @@ var RemoteTransport = class {
         socket.on("close", () => this.onClose());
         socket.on("error", (err) => this.onSocketError(err));
         const joinId = generateId();
-        const join19 = JSON.stringify({
+        const join23 = JSON.stringify({
           type: "session_join",
           id: joinId,
           session_id: this.sessionId
@@ -22071,7 +22307,7 @@ var RemoteTransport = class {
             reject(err);
           }, "reject")
         });
-        socket.write(join19, (err) => {
+        socket.write(join23, (err) => {
           if (err) {
             this.pending.delete(joinId);
             clearTimeout(timer);
@@ -22396,6 +22632,7 @@ var import_node_fs3 = require("node:fs");
 
 // src/shared/file-io.ts
 var import_node_fs2 = require("node:fs");
+init_errors();
 var import_node_path2 = require("node:path");
 function writeAtomicSync(filePath, content) {
   const dir = (0, import_node_path2.dirname)(filePath);
@@ -22419,6 +22656,8 @@ function writeJsonSync(filePath, data) {
 __name(writeJsonSync, "writeJsonSync");
 
 // src/shared/config.ts
+init_utils();
+init_errors();
 var import_node_path3 = require("node:path");
 var import_node_os = require("node:os");
 var VALID_EXECUTOR_MODES = ["engaged", "daemon", "hybrid"];
@@ -22544,6 +22783,21 @@ var DEFAULT_CONFIG = {
       max_payload_bytes: 1 * 1024 * 1024
       // 1MB
     }
+  },
+  devserver: {
+    enabled: false,
+    command: "npm run dev",
+    port: 3e3,
+    check_interval_ms: 15e3
+  },
+  tool_gating: {
+    enabled: false,
+    force_allow_all: false,
+    rules: []
+  },
+  context_injection: {
+    enabled: false,
+    include: []
   }
 };
 function deepMerge(base, override) {
@@ -22705,15 +22959,24 @@ function ensureRuntimeSections(projectRoot) {
 }
 __name(ensureRuntimeSections, "ensureRuntimeSections");
 
+// src/plugins/mcp/mcp-server.ts
+init_logger();
+init_utils();
+
 // src/bootstrap.ts
-var import_node_path16 = require("node:path");
-var import_node_fs16 = require("node:fs");
+var import_node_path21 = require("node:path");
+var import_node_fs18 = require("node:fs");
+init_logger();
+init_utils();
+init_errors();
 
 // src/core/utils/pid-file.ts
 var import_node_fs4 = require("node:fs");
 var import_node_crypto2 = require("node:crypto");
 var import_node_path4 = require("node:path");
 var import_node_os2 = require("node:os");
+init_logger();
+init_utils();
 var logger2 = createLogger("pid-file");
 function getPidFilePath(projectRoot) {
   const hash2 = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
@@ -22945,6 +23208,7 @@ var HealthChecker = class {
 
 // src/extensions/events/subsystem.ts
 var import_node_path6 = require("node:path");
+init_logger();
 
 // src/core/utils/fs-utils.ts
 var import_node_fs5 = require("node:fs");
@@ -22954,6 +23218,8 @@ function ensureDirSync(dirPath) {
 __name(ensureDirSync, "ensureDirSync");
 
 // src/extensions/events/event-bus.ts
+init_utils();
+init_logger();
 var logger3 = createLogger("event-bus");
 var TimeoutError = class extends Error {
   static {
@@ -23101,8 +23367,8 @@ var EventBus = class {
    *
    * @param log - An object with an `append` method.
    */
-  setEventLog(log9) {
-    this.eventLog = log9;
+  setEventLog(log18) {
+    this.eventLog = log18;
   }
   /**
    * Emits a runtime event.
@@ -23317,6 +23583,8 @@ var EventBus = class {
 var import_node_fs6 = require("node:fs");
 var readline = __toESM(require("node:readline"), 1);
 var import_node_path5 = require("node:path");
+init_logger();
+init_utils();
 var logger4 = createLogger("event-log");
 var FLUSH_INTERVAL_MS = 100;
 var FLUSH_THRESHOLD_BYTES = 64 * 1024;
@@ -23918,6 +24186,43 @@ async function createEventSubsystem(config2, projectRoot) {
 }
 __name(createEventSubsystem, "createEventSubsystem");
 
+// src/extensions/workflow/subsystem.ts
+init_logger();
+
+// src/extensions/workflow/workflow-engine.ts
+init_logger();
+init_utils();
+init_errors();
+
+// src/extensions/directives/legacy-directive-builder.ts
+function buildSpawnDirectiveMessage(agentType, task, context) {
+  const directive = {
+    action: "spawn",
+    wid: context?.workflow_id ?? "unknown",
+    type: agentType,
+    task
+  };
+  return "<gv>" + JSON.stringify(directive) + "</gv>";
+}
+__name(buildSpawnDirectiveMessage, "buildSpawnDirectiveMessage");
+function buildWorkflowCompleteMessage(workflowId) {
+  const directive = {
+    action: "complete",
+    wid: workflowId
+  };
+  return "<gv>" + JSON.stringify(directive) + "</gv>";
+}
+__name(buildWorkflowCompleteMessage, "buildWorkflowCompleteMessage");
+function buildEscalationMessage(workflowId, fixAttempts, lastScore) {
+  const directive = {
+    action: "escalate",
+    wid: workflowId,
+    reason: fixAttempts + " fix attempts failed, last score " + lastScore + "/10"
+  };
+  return "<gv>" + JSON.stringify(directive) + "</gv>";
+}
+__name(buildEscalationMessage, "buildEscalationMessage");
+
 // src/extensions/workflow/workflow-engine.ts
 var log = createLogger("workflow-engine");
 var WorkflowEngine = class {
@@ -23950,6 +24255,7 @@ var WorkflowEngine = class {
   _queue = /* @__PURE__ */ new Map();
   eventBus;
   directiveQueue;
+  agentWorkflowMap;
   /**
    * @param config - Workflow-specific configuration from the runtime config.
    */
@@ -23981,6 +24287,18 @@ var WorkflowEngine = class {
    */
   setDirectiveQueue(queue) {
     this.directiveQueue = queue;
+  }
+  /**
+   * Injects an AgentWorkflowMap for registering pending binds when a
+   * spawn_agent action is executed.
+   *
+   * This dependency is optional. When not set, no pending bind is registered
+   * but the directive is still enqueued.
+   *
+   * @param map - The AgentWorkflowMap instance.
+   */
+  setAgentWorkflowMap(map2) {
+    this.agentWorkflowMap = map2;
   }
   /**
    * Registers a workflow definition so instances can be created from it.
@@ -24539,7 +24857,7 @@ var WorkflowEngine = class {
    * - `emit_event`     — emits a runtime event via the injected EventBus
    * - `update_context` — shallow-merges config into the workflow context
    * - `invoke_handler` — calls a registered action handler by name
-   * - `spawn_agent`    — placeholder; logs a warning (Phase 5)
+   * - `spawn_agent`    — enqueues a spawn directive to directiveQueue and registers a pending bind in agentWorkflowMap
    *
    * @param actions - Ordered list of ActionDefinitions to execute.
    * @param context - Workflow context (mutated in-place by update_context).
@@ -24582,9 +24900,43 @@ var WorkflowEngine = class {
             break;
           }
           case "spawn_agent": {
-            log.warn("spawn_agent action type is not yet implemented (Phase 5 stub)", {
-              action_type: action.type,
-              workflow_id: context.workflow_id ?? "unknown"
+            const agentType = this.resolveValue(
+              action.config["agent_type"],
+              context
+            );
+            const task = this.resolveValue(
+              action.config["task"],
+              context
+            );
+            const workflowId = context.workflow_id ?? "unknown";
+            if (!this.directiveQueue) {
+              log.warn("spawn_agent: directiveQueue not available, action skipped", {
+                agent_type: agentType,
+                workflow_id: workflowId
+              });
+              break;
+            }
+            const spawnMessage = buildSpawnDirectiveMessage(agentType, task, {
+              workflow_id: workflowId
+            });
+            const spawnDirective = {
+              type: "inject_system_message",
+              content: spawnMessage,
+              priority: 10,
+              source: "workflow-engine:spawn_agent",
+              workflow_id: workflowId
+            };
+            this.directiveQueue.enqueue("subagent_stop", spawnDirective);
+            if (this.agentWorkflowMap) {
+              const sessionId = context.session_id ?? "default";
+              this.agentWorkflowMap.addPendingBind(agentType, workflowId, sessionId);
+              if (!agentType.startsWith("goodvibes:")) {
+                this.agentWorkflowMap.addPendingBind(`goodvibes:${agentType}`, workflowId, sessionId);
+              }
+            }
+            log.info("spawn_agent: directive enqueued, pending bind registered", {
+              agent_type: agentType,
+              workflow_id: workflowId
             });
             break;
           }
@@ -25128,6 +25480,8 @@ var REVIEW_ONLY_DEFINITION = {
 // src/extensions/workflow/definitions/custom-loader.ts
 var import_node_fs7 = require("node:fs");
 var import_node_path7 = require("node:path");
+init_logger();
+init_utils();
 var log2 = createLogger("custom-loader");
 function validateWorkflowDefinition(def) {
   const errors = [];
@@ -25301,7 +25655,12 @@ async function createWorkflowSubsystem(config2, projectRoot) {
 }
 __name(createWorkflowSubsystem, "createWorkflowSubsystem");
 
+// src/extensions/triggers/subsystem.ts
+init_logger();
+
 // src/core/trigger-registry.ts
+init_logger();
+init_errors();
 var log3 = createLogger("trigger-registry");
 var TriggerRegistry = class {
   static {
@@ -25907,43 +26266,16 @@ var ConditionEvaluator = class {
   }
 };
 
-// src/extensions/directives/legacy-directive-builder.ts
-function buildSpawnDirectiveMessage(agentType, task, context) {
-  const directive = {
-    action: "spawn",
-    wid: context?.workflow_id ?? "unknown",
-    type: agentType,
-    task
-  };
-  return "<gv>" + JSON.stringify(directive) + "</gv>";
-}
-__name(buildSpawnDirectiveMessage, "buildSpawnDirectiveMessage");
-function buildWorkflowCompleteMessage(workflowId) {
-  const directive = {
-    action: "complete",
-    wid: workflowId
-  };
-  return "<gv>" + JSON.stringify(directive) + "</gv>";
-}
-__name(buildWorkflowCompleteMessage, "buildWorkflowCompleteMessage");
-function buildEscalationMessage(workflowId, fixAttempts, lastScore) {
-  const directive = {
-    action: "escalate",
-    wid: workflowId,
-    reason: fixAttempts + " fix attempts failed, last score " + lastScore + "/10"
-  };
-  return "<gv>" + JSON.stringify(directive) + "</gv>";
-}
-__name(buildEscalationMessage, "buildEscalationMessage");
-
 // src/extensions/triggers/trigger-action-executor.ts
+init_utils();
+init_logger();
 var log4 = createLogger("action-executor");
 var DENIED_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 function resolveStringTemplate(value, event) {
-  return value.replace(/\$event\.([\w.]+)/g, (_match, path3) => {
-    const parts = path3.split(".");
+  return value.replace(/\$event\.([\w.]+)/g, (_match, path4) => {
+    const parts = path4.split(".");
     if (parts.some((part) => DENIED_PATH_SEGMENTS.has(part))) {
-      log4.warn("Blocked prototype chain traversal attempt in template", { path: path3, template: value });
+      log4.warn("Blocked prototype chain traversal attempt in template", { path: path4, template: value });
       return "";
     }
     let current = event;
@@ -25954,11 +26286,11 @@ function resolveStringTemplate(value, event) {
       current = current[part];
     }
     if (current === void 0 || current === null) {
-      log4.debug("Template reference resolved to null/undefined", { path: path3, template: value });
+      log4.debug("Template reference resolved to null/undefined", { path: path4, template: value });
       return "";
     }
     if (typeof current === "object") {
-      log4.debug("Template reference resolved to object (not serializable)", { path: path3, template: value });
+      log4.debug("Template reference resolved to object (not serializable)", { path: path4, template: value });
       return "";
     }
     return String(current);
@@ -26384,6 +26716,56 @@ function getBuiltinTriggers() {
       cooldown_ms: 3e4,
       max_fires: 10,
       fires_count: 0
+    },
+    // ─── 6. Webhook Received ──────────────────────────────────────────────────────
+    {
+      id: "builtin_webhook_received",
+      name: "webhook_received",
+      description: "Log/notify on any incoming webhook event",
+      enabled: true,
+      priority: 50,
+      condition: {
+        type: "event",
+        event_type: "webhook:*"
+      },
+      action: {
+        type: "emit_event",
+        event_type: "external:webhook_received",
+        payload_template: {
+          source_event_id: "$event.id",
+          source_type: "$event.type",
+          external_source: "$event.payload.data.external_source"
+        }
+      },
+      cooldown_ms: 5e3,
+      max_fires: 100,
+      fires_count: 0
+    },
+    // ─── 7. CI Failure Bridge ─────────────────────────────────────────────────────
+    {
+      id: "builtin_ci_failure",
+      name: "ci_failure",
+      description: "Bridge CI webhook events to build:failed for existing triggers. Uses invoke_handler so the bridgeCIFailure handler can filter on payload.data.status before emitting build:failed \u2014 prevents success/pending events from firing the build fix loop.",
+      enabled: true,
+      priority: 15,
+      condition: {
+        type: "event",
+        event_type: "webhook:ci:*"
+      },
+      action: {
+        type: "invoke_handler",
+        handler: "bridgeCIFailure",
+        args_template: {
+          status: "$event.payload.data.status",
+          provider: "$event.payload.data.provider",
+          branch: "$event.payload.data.branch",
+          commit: "$event.payload.data.commit",
+          source_event_id: "$event.id"
+        }
+      },
+      cooldown_ms: 3e4,
+      max_fires: 20,
+      fires_count: 0
     }
   ];
 }
@@ -26410,6 +26792,8 @@ function createTriggerSubsystem(config2, deps) {
 __name(createTriggerSubsystem, "createTriggerSubsystem");
 
 // src/extensions/agents/budget-tracker.ts
+init_logger();
+init_utils();
 var logger8 = createLogger("budget-tracker");
 var BudgetTracker = class {
   static {
@@ -26652,6 +27036,9 @@ var BudgetTracker = class {
 };
 
 // src/extensions/agents/agent-coordinator.ts
+init_logger();
+init_utils();
+init_errors();
 var logger9 = createLogger("agent-coordinator");
 var DEFAULT_COST_PER_TOKEN = 3e-6;
 var VALID_TRANSITIONS = {
@@ -27275,10 +27662,10 @@ var AgentCoordinator = class {
       }
     }
     if (!endNode) return [];
-    const path3 = [];
+    const path4 = [];
     let current = endNode;
     while (current) {
-      path3.unshift(current);
+      path4.unshift(current);
       const agent = agentMap.get(current);
       if (!agent || agent.depends_on.length === 0) break;
       current = agent.depends_on.reduce((best, depId) => {
@@ -27287,7 +27674,7 @@ var AgentCoordinator = class {
         return dd > bd ? depId : best;
       }, agent.depends_on[0]);
     }
-    return path3;
+    return path4;
   }
 };
 function statusToEventType(status) {
@@ -27316,6 +27703,7 @@ __name(createAgentSubsystem, "createAgentSubsystem");
 
 // src/extensions/directives/directive-queue.ts
 var import_node_crypto3 = require("node:crypto");
+init_logger();
 var logger10 = createLogger("directive-queue");
 var HOLD_TTL_MS = 3e3;
 var MAX_QUEUE_DEPTH = 100;
@@ -27544,6 +27932,7 @@ var DirectiveQueue = class {
 };
 
 // src/extensions/directives/agent-workflow-map.ts
+init_logger();
 var log5 = createLogger("agent-workflow-map");
 var AgentWorkflowMap = class _AgentWorkflowMap {
   static {
@@ -27782,9 +28171,17 @@ function createDirectiveSubsystem() {
 }
 __name(createDirectiveSubsystem, "createDirectiveSubsystem");
 
+// src/extensions/persistence/subsystem.ts
+init_logger();
+init_utils();
+
 // src/extensions/persistence/state-store.ts
 var import_node_fs8 = require("node:fs");
 var import_node_path8 = require("node:path");
+init_utils();
+init_logger();
+init_utils();
+init_errors();
 var logger11 = createLogger("state-store");
 var JsonStateStore = class {
   static {
@@ -27918,9 +28315,9 @@ var JsonStateStore = class {
    * @throws {Error} If a non-ENOENT I/O error or JSON parse failure occurs.
    */
   async get(key) {
-    const path3 = this.keyPath(key);
+    const path4 = this.keyPath(key);
     try {
-      const content = (0, import_node_fs8.readFileSync)(path3, "utf-8");
+      const content = (0, import_node_fs8.readFileSync)(path4, "utf-8");
       const result = safeJsonParse(content, null);
       if (result === null) throw new SyntaxError("Failed to parse JSON");
       return result;
@@ -27941,9 +28338,9 @@ var JsonStateStore = class {
    * @throws {Error} If a non-ENOENT I/O error occurs.
    */
   async delete(key) {
-    const path3 = this.keyPath(key);
+    const path4 = this.keyPath(key);
     try {
-      (0, import_node_fs8.unlinkSync)(path3);
+      (0, import_node_fs8.unlinkSync)(path4);
       logger11.debug("Deleted state", { key });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -28001,7 +28398,12 @@ var JsonStateStore = class {
   }
 };
 
+// src/extensions/persistence/checkpoint-manager.ts
+init_logger();
+init_utils();
+
 // src/core/observability/timer.ts
+init_logger();
 var logger12 = createLogger("timer");
 var Timer = class {
   static {
@@ -28153,6 +28555,8 @@ var CheckpointManager = class {
 };
 
 // src/extensions/persistence/snapshot-manager.ts
+init_logger();
+init_utils();
 var logger14 = createLogger("snapshot-manager");
 var SNAPSHOT_KEY = "runtime_snapshot";
 var SNAPSHOT_VERSION = 1;
@@ -28361,6 +28765,8 @@ function captureTriggerState(registry2) {
 __name(captureTriggerState, "captureTriggerState");
 
 // src/extensions/persistence/replay-engine.ts
+init_logger();
+init_utils();
 var logger15 = createLogger("replay-engine");
 async function replayEvents(eventLog, deps, options = {}) {
   const startMs = Date.now();
@@ -28646,6 +29052,8 @@ function processEvent(event, _deps, restoredWorkflows, restoredAgentBindings, tr
 __name(processEvent, "processEvent");
 
 // src/extensions/persistence/startup-recovery.ts
+init_logger();
+init_utils();
 var logger16 = createLogger("startup-recovery");
 async function recoverState(eventLog, snapshotManager, deps) {
   const startMs = Date.now();
@@ -28820,7 +29228,150 @@ async function createPersistenceSubsystem(deps) {
 }
 __name(createPersistenceSubsystem, "createPersistenceSubsystem");
 
+// src/extensions/persistence/workflow-persistence.ts
+var import_node_fs9 = require("node:fs");
+var import_node_path9 = __toESM(require("node:path"), 1);
+init_logger();
+var log6 = createLogger("workflow-persistence");
+var DEFAULT_TTL_MS = 24 * 60 * 60 * 1e3;
+var WorkflowPersistence = class {
+  static {
+    __name(this, "WorkflowPersistence");
+  }
+  stateDir;
+  ttlMs;
+  enabled;
+  constructor(config2) {
+    this.stateDir = config2.stateDir;
+    this.ttlMs = config2.ttlMs ?? DEFAULT_TTL_MS;
+    this.enabled = config2.enabled ?? true;
+  }
+  /**
+   * Atomically persist a workflow instance to disk.
+   *
+   * Uses write-then-rename: writes to `<id>.tmp`, then renames to `<id>.json`.
+   * If the write fails for any reason, the error is logged and swallowed —
+   * persistence failures must never interrupt workflow execution.
+   *
+   * @param instance - Any object with an `id: string` field.
+   */
+  async persist(instance) {
+    if (!this.enabled) return;
+    try {
+      await import_node_fs9.promises.mkdir(this.stateDir, { recursive: true });
+      const tmpPath = import_node_path9.default.join(this.stateDir, `${instance.id}.tmp`);
+      const finalPath = import_node_path9.default.join(this.stateDir, `${instance.id}.json`);
+      await import_node_fs9.promises.writeFile(tmpPath, JSON.stringify(instance, null, 2), "utf-8");
+      await import_node_fs9.promises.rename(tmpPath, finalPath);
+      log6.debug("Workflow instance persisted", { id: instance.id });
+    } catch (err) {
+      log6.warn("Failed to persist workflow state", {
+        id: instance.id,
+        error: String(err)
+      });
+    }
+  }
+  /**
+   * Restore all persisted workflow instances from disk.
+   *
+   * Skips malformed files with a warning. Returns an empty array when the
+   * state directory does not exist or is empty.
+   *
+   * @returns Array of parsed workflow instance objects.
+   */
+  async restore() {
+    if (!this.enabled) return [];
+    try {
+      await import_node_fs9.promises.mkdir(this.stateDir, { recursive: true });
+      const files = await import_node_fs9.promises.readdir(this.stateDir);
+      const instances = [];
+      for (const file2 of files) {
+        if (!file2.endsWith(".json")) continue;
+        const filePath = import_node_path9.default.join(this.stateDir, file2);
+        try {
+          const content = await import_node_fs9.promises.readFile(filePath, "utf-8");
+          instances.push(JSON.parse(content));
+        } catch {
+          log6.warn("Failed to restore workflow state file", { file: file2 });
+        }
+      }
+      log6.debug("Workflow instances restored", { count: instances.length });
+      return instances;
+    } catch {
+      return [];
+    }
+  }
+  /**
+   * Remove state files for completed or failed workflows older than `ttlMs`.
+   *
+   * A workflow file is eligible for removal if:
+   * 1. Its `status` field is `'completed'` or `'failed'`.
+   * 2. The `completed_at`, `updated_at`, or epoch 0 timestamp is older than TTL.
+   *
+   * Malformed files and I/O errors are silently skipped.
+   *
+   * @returns Number of files removed.
+   */
+  async cleanup() {
+    if (!this.enabled) return 0;
+    try {
+      const files = await import_node_fs9.promises.readdir(this.stateDir);
+      let removed = 0;
+      const now = Date.now();
+      for (const file2 of files) {
+        if (!file2.endsWith(".json")) continue;
+        const filePath = import_node_path9.default.join(this.stateDir, file2);
+        try {
+          const content = await import_node_fs9.promises.readFile(filePath, "utf-8");
+          const data = JSON.parse(content);
+          const isTerminal2 = data["status"] === "completed" || data["status"] === "failed" || data["status"] === "cancelled" || data["status"] === "timed_out";
+          if (isTerminal2) {
+            const completedAt = data["completed_at"] ?? data["updated_at"] ?? 0;
+            if (now - completedAt > this.ttlMs) {
+              await import_node_fs9.promises.unlink(filePath);
+              removed++;
+              log6.debug("Removed expired workflow state file", { file: file2 });
+            }
+          }
+        } catch {
+        }
+      }
+      if (removed > 0) {
+        log6.info("Workflow state cleanup complete", { removed });
+      }
+      return removed;
+    } catch {
+      return 0;
+    }
+  }
+  /**
+   * Remove the state file for a specific workflow instance.
+   *
+   * Used when a workflow is explicitly cancelled or deleted. Errors are
+   * logged and swallowed.
+   *
+   * @param instanceId - The workflow instance ID whose file should be removed.
+   */
+  async remove(instanceId) {
+    if (!this.enabled) return;
+    const filePath = import_node_path9.default.join(this.stateDir, `${instanceId}.json`);
+    try {
+      await import_node_fs9.promises.unlink(filePath);
+      log6.debug("Workflow state file removed", { id: instanceId });
+    } catch (err) {
+      const code = err.code;
+      if (code !== "ENOENT") {
+        log6.warn("Failed to remove workflow state file", {
+          id: instanceId,
+          error: String(err)
+        });
+      }
+    }
+  }
+};
+
 // src/extensions/directives/wrfc-config-store.ts
+init_logger();
 var logger18 = createLogger("wrfc-config-store");
 function validateWRFCConfig(raw) {
   const validated = {};
@@ -28864,6 +29415,7 @@ var WRFCConfigStore = class {
 };
 
 // src/extensions/directives/gv-tag-parser.ts
+init_utils();
 var GV_TAG_REGEX = /<gv>([^<]*)<\/gv>/;
 var KNOWN_FIELDS = /* @__PURE__ */ new Set(["score", "files", "count", "minimum_score", "agent-type"]);
 function parseRawJson(raw) {
@@ -28917,8 +29469,10 @@ function extractFiles(text) {
 __name(extractFiles, "extractFiles");
 
 // src/extensions/workflow/watchdog.ts
-var import_node_fs9 = require("node:fs");
-var import_node_path9 = require("node:path");
+var import_node_fs10 = require("node:fs");
+var import_node_path10 = require("node:path");
+init_logger();
+init_utils();
 
 // src/extensions/workflow/wrfc-fields.ts
 function getWRFCFields(ctx) {
@@ -29146,13 +29700,13 @@ var WatchdogCoordinator = class {
     if (matching.length === 0) {
       return;
     }
-    const urgentPath = (0, import_node_path9.join)(stateDir, "urgent-directives.json");
+    const urgentPath = (0, import_node_path10.join)(stateDir, "urgent-directives.json");
     let writeSucceeded = false;
     try {
       ensureDirSync(stateDir);
       let existingDirectives = [];
       try {
-        const existing = (0, import_node_fs9.readFileSync)(urgentPath, "utf-8");
+        const existing = (0, import_node_fs10.readFileSync)(urgentPath, "utf-8");
         const parsed = safeJsonParse(existing, {});
         if (Array.isArray(parsed.directives)) {
           existingDirectives = parsed.directives;
@@ -29201,6 +29755,8 @@ function createTrigger(overrides) {
 __name(createTrigger, "createTrigger");
 
 // src/core/queues/event-queue.ts
+init_logger();
+init_errors();
 var logger20 = createLogger("core:event-queue");
 var DEFAULT_MAX_DEPTH = 1e3;
 var DEFAULT_DEDUP_TTL_MS = 6e4;
@@ -29447,8 +30003,10 @@ var EventQueue = class _EventQueue {
 };
 
 // src/core/queues/dead-letter.ts
-var import_node_fs10 = require("node:fs");
-var import_node_path10 = require("node:path");
+var import_node_fs11 = require("node:fs");
+var import_node_path11 = require("node:path");
+init_logger();
+init_utils();
 var logger21 = createLogger("core:dead-letter");
 var DeadLetterQueue = class {
   static {
@@ -29462,8 +30020,8 @@ var DeadLetterQueue = class {
     this.maxSize = options.max_size ?? 500;
     this.persistEnabled = options.persist !== false;
     const cwd = process.cwd();
-    const defaultPath = (0, import_node_path10.join)(cwd, ".goodvibes", "memory", "dead-letter.json");
-    this.filePath = options.file_path ? (0, import_node_path10.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path10.join)(cwd, options.file_path) : defaultPath;
+    const defaultPath = (0, import_node_path11.join)(cwd, ".goodvibes", "memory", "dead-letter.json");
+    this.filePath = options.file_path ? (0, import_node_path11.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path11.join)(cwd, options.file_path) : defaultPath;
     if (this.persistEnabled) {
       this.load();
     }
@@ -29569,7 +30127,7 @@ var DeadLetterQueue = class {
   // ─── Private Helpers ──────────────────────────────────────────────────────
   load() {
     try {
-      const content = (0, import_node_fs10.readFileSync)(this.filePath, "utf-8");
+      const content = (0, import_node_fs11.readFileSync)(this.filePath, "utf-8");
       const parsed = safeJsonParse(content, null);
       if (Array.isArray(parsed)) {
         const valid = parsed.filter((item) => {
@@ -29613,7 +30171,12 @@ var DeadLetterQueue = class {
   }
 };
 
+// src/core/matching/error-handler.ts
+init_logger();
+
 // src/core/utils/retry.ts
+init_logger();
+init_errors();
 var logger22 = createLogger("core:retry");
 function computeDelay(backoff, baseMs, attempt) {
   if (backoff === "exponential") {
@@ -29624,6 +30187,7 @@ function computeDelay(backoff, baseMs, attempt) {
 __name(computeDelay, "computeDelay");
 
 // src/core/matching/error-handler.ts
+init_utils();
 var logger23 = createLogger("core:error-handler");
 function sleep(ms) {
   return new Promise((resolve2) => setTimeout(resolve2, ms));
@@ -29748,6 +30312,8 @@ var ErrorHandler = class {
 };
 
 // src/core/processing/event-processor.ts
+init_logger();
+init_utils();
 var logger24 = createLogger("core:event-processor");
 var MAX_EVENTS_PER_BATCH = 100;
 var MAX_CHAIN_DEPTH = 10;
@@ -30201,6 +30767,8 @@ var EventProcessor = class {
 };
 
 // src/core/processing/lifecycle.ts
+init_logger();
+init_errors();
 var logger25 = createLogger("core:lifecycle");
 var VALID_TRANSITIONS2 = {
   stopped: ["running"],
@@ -30346,6 +30914,8 @@ var LoopLifecycleManager = class {
 };
 
 // src/core/processing/executor-mode.ts
+init_logger();
+init_utils();
 var logger26 = createLogger("executor-mode");
 var ExecutorModeManager = class {
   static {
@@ -30444,6 +31014,7 @@ var ExecutorModeManager = class {
 };
 
 // src/core/processing/signals.ts
+init_utils();
 var SIGTERM_GRACE_MS = 1e4;
 var SIGINT_GRACE_MS = 5e3;
 function setupSignalHandlers(onShutdown) {
@@ -30523,12 +31094,14 @@ function setupSignalHandlers(onShutdown) {
 __name(setupSignalHandlers, "setupSignalHandlers");
 
 // src/core/state/state-store.ts
-var import_node_fs11 = require("node:fs");
-var import_node_path11 = require("node:path");
+var import_node_fs12 = require("node:fs");
+var import_node_path12 = require("node:path");
+init_logger();
+init_utils();
 var logger27 = createLogger("core:state-store");
 var FORBIDDEN_PATH_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
-function validateDotPath(path3) {
-  const segments = path3.split(".");
+function validateDotPath(path4) {
+  const segments = path4.split(".");
   for (const seg of segments) {
     if (FORBIDDEN_PATH_SEGMENTS.has(seg)) {
       throw new TypeError(
@@ -30538,8 +31111,8 @@ function validateDotPath(path3) {
   }
 }
 __name(validateDotPath, "validateDotPath");
-function setPath(obj, path3, value) {
-  const segments = path3.split(".");
+function setPath(obj, path4, value) {
+  const segments = path4.split(".");
   let current = obj;
   for (let i = 0; i < segments.length - 1; i++) {
     const seg = segments[i];
@@ -30552,8 +31125,8 @@ function setPath(obj, path3, value) {
   current[lastSeg] = value;
 }
 __name(setPath, "setPath");
-function getPath(obj, path3) {
-  const segments = path3.split(".");
+function getPath(obj, path4) {
+  const segments = path4.split(".");
   let current = obj;
   for (const seg of segments) {
     if (current === null || typeof current !== "object") return void 0;
@@ -30562,8 +31135,8 @@ function getPath(obj, path3) {
   return current;
 }
 __name(getPath, "getPath");
-function deletePath(obj, path3) {
-  const segments = path3.split(".");
+function deletePath(obj, path4) {
+  const segments = path4.split(".");
   let current = obj;
   for (let i = 0; i < segments.length - 1; i++) {
     const seg = segments[i];
@@ -30608,8 +31181,8 @@ var CoreStateStore = class {
   changeListener;
   constructor(options = {}) {
     const cwd = process.cwd();
-    const defaultPath = (0, import_node_path11.join)(cwd, ".goodvibes", "memory", "runtime-state.json");
-    this.filePath = options.file_path ? (0, import_node_path11.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path11.join)(cwd, options.file_path) : defaultPath;
+    const defaultPath = (0, import_node_path12.join)(cwd, ".goodvibes", "memory", "runtime-state.json");
+    this.filePath = options.file_path ? (0, import_node_path12.isAbsolute)(options.file_path) ? options.file_path : (0, import_node_path12.join)(cwd, options.file_path) : defaultPath;
     this.saveDebounceMs = options.save_debounce_ms ?? 1e3;
     this.load();
   }
@@ -30758,7 +31331,7 @@ var CoreStateStore = class {
   /** Load from disk on construction. Missing file is not an error. */
   load() {
     try {
-      const content = (0, import_node_fs11.readFileSync)(this.filePath, "utf-8");
+      const content = (0, import_node_fs12.readFileSync)(this.filePath, "utf-8");
       const parsed = safeJsonParse(content, null);
       if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
         this.data = parsed;
@@ -30841,13 +31414,20 @@ function readStreamBody(stream, maxBytes) {
 }
 __name(readStreamBody, "readStreamBody");
 
+// src/core/state/file-fallback.ts
+init_logger();
+init_utils();
+
 // src/core/utils/poll.ts
+init_logger();
+init_errors();
 var logger28 = createLogger("core:poll");
 
 // src/core/state/file-fallback.ts
 var logger29 = createLogger("file-fallback");
 
 // src/core/observability/metrics.ts
+init_logger();
 var logger30 = createLogger("core:metrics");
 var RollingWindow = class {
   constructor(capacity) {
@@ -31078,6 +31658,9 @@ function createCoreRuntime(actionExecutor, triggerRegistry) {
 }
 __name(createCoreRuntime, "createCoreRuntime");
 
+// src/plugins/wrfc/wrfc-plugin.ts
+init_logger();
+
 // src/extensions/triggers/factories.ts
 function createWRFCTrigger(params) {
   if (params.score_threshold !== void 0 && (params.score_threshold < 0 || params.score_threshold > 10)) {
@@ -31104,6 +31687,9 @@ function createWRFCTrigger(params) {
   };
 }
 __name(createWRFCTrigger, "createWRFCTrigger");
+
+// src/plugins/wrfc/handlers.ts
+init_logger();
 
 // src/plugins/wrfc/constants.ts
 var ENGINEER_AGENT_TYPES = /* @__PURE__ */ new Set([
@@ -31142,7 +31728,11 @@ var REQUIRE_REVIEW_AGENT_TYPES = /* @__PURE__ */ new Set([...ENGINEER_AGENT_TYPE
 var DEFAULT_MIN_REVIEW_SCORE = 9.5;
 var EARLY_WORKFLOW_STATES = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
 
+// src/plugins/wrfc/handlers.ts
+init_events();
+
 // src/plugins/wrfc/score-evaluator.ts
+init_utils();
 function extractScore(text) {
   if (!text) return null;
   const result = parseGvTag(text);
@@ -31197,7 +31787,7 @@ function buildEscalateAction(wid, reason, params) {
 __name(buildEscalateAction, "buildEscalateAction");
 
 // src/plugins/wrfc/handlers.ts
-var log6 = createLogger("wrfc-plugin:handlers");
+var log7 = createLogger("wrfc-plugin:handlers");
 var FALLBACK_NO_REVIEW_OUTPUT = "No review output captured.";
 var FALLBACK_SEE_PAYLOAD = "See the wrfc:review_completed event payload for review details.";
 var DEFAULT_MAX_FIX_ATTEMPTS = 3;
@@ -31222,7 +31812,7 @@ var AM = /* @__PURE__ */ __name((sid, agentId) => `wrfc.sessions.${sid}.agent_ma
 function eventSessionId(event) {
   const sid = event.metadata?.["session_id"];
   if (!sid || sid.length === 0) {
-    log6.warn("eventSessionId: missing session_id in event metadata, using default", {
+    log7.warn("eventSessionId: missing session_id in event metadata, using default", {
       event_type: event.type,
       event_id: event.id
     });
@@ -31259,7 +31849,7 @@ function handleWorkflowCreated(event, _trigger, store) {
   const data = typeof payload["data"] === "object" && payload["data"] !== null ? payload["data"] : payload;
   const agentId = typeof data["agent_id"] === "string" ? data["agent_id"] : null;
   if (!agentId) {
-    log6.debug("handleWorkflowCreated: no agent_id in payload, skipping");
+    log7.debug("handleWorkflowCreated: no agent_id in payload, skipping");
     return {};
   }
   const sid = eventSessionId(event);
@@ -31267,7 +31857,7 @@ function handleWorkflowCreated(event, _trigger, store) {
   const incomingWid = typeof data["workflow_id"] === "string" && data["workflow_id"].length > 0 ? data["workflow_id"] : null;
   const task = typeof data["task"] === "string" ? data["task"] : "";
   if (!incomingWid && agentType && matchesAgentType(agentType, AUTO_COMPLETE_AGENT_TYPES)) {
-    log6.debug("handleWorkflowCreated: skipping auto-complete agent type", { agent_type: agentType });
+    log7.debug("handleWorkflowCreated: skipping auto-complete agent type", { agent_type: agentType });
     return {};
   }
   let wid;
@@ -31276,11 +31866,11 @@ function handleWorkflowCreated(event, _trigger, store) {
   } else {
     const effectiveRequireReview = getEffectiveRequireReviewTypes(store);
     if (!agentType) {
-      log6.warn("handleWorkflowCreated: agent_type is empty/missing, cannot determine if review is required", { agent_id: agentId });
+      log7.warn("handleWorkflowCreated: agent_type is empty/missing, cannot determine if review is required", { agent_id: agentId });
     }
     if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       wid = `wrfc_auto_${Date.now()}_${agentId.slice(0, 8)}_${Math.random().toString(36).slice(2, 6)}`;
-      log6.info("handleWorkflowCreated: auto-creating workflow for require-review agent type", {
+      log7.info("handleWorkflowCreated: auto-creating workflow for require-review agent type", {
         wid,
         agent_id: agentId,
         agent_type: agentType
@@ -31305,9 +31895,9 @@ function handleWorkflowCreated(event, _trigger, store) {
       { key: WS(sid, wid, "fix_attempts"), value: 0, op: "set" },
       { key: WS(sid, wid, "files_modified"), value: [], op: "set" }
     );
-    log6.info("handleWorkflowCreated: initialised workflow", { wid, agent_id: agentId, agent_type: agentType });
+    log7.info("handleWorkflowCreated: initialised workflow", { wid, agent_id: agentId, agent_type: agentType });
   } else {
-    log6.info("handleWorkflowCreated: bound chain agent to existing workflow", { wid, agent_id: agentId });
+    log7.info("handleWorkflowCreated: bound chain agent to existing workflow", { wid, agent_id: agentId });
   }
   return { state_updates };
 }
@@ -31331,12 +31921,12 @@ function handleAgentCompleted(event, _trigger, store) {
   if (!wid) {
     const isExpectedInWorkflow = agentType && (matchesAgentType(agentType, REQUIRE_REVIEW_AGENT_TYPES) || matchesAgentType(agentType, ENGINEER_AGENT_TYPES) || matchesAgentType(agentType, REVIEWER_AGENT_TYPES));
     if (isExpectedInWorkflow) {
-      log6.warn("handleAgentCompleted: no workflow binding found for expected agent type", {
+      log7.warn("handleAgentCompleted: no workflow binding found for expected agent type", {
         agent_id: agentId,
         agent_type: agentType
       });
     } else {
-      log6.debug("handleAgentCompleted: no workflow binding found, skipping", { agent_id: agentId });
+      log7.debug("handleAgentCompleted: no workflow binding found, skipping", { agent_id: agentId });
     }
     return {};
   }
@@ -31347,7 +31937,7 @@ function handleAgentCompleted(event, _trigger, store) {
   const filesModified = storeGet(store, WS(sid, wid, "files_modified"), []);
   const effectivePhase = EARLY_WORKFLOW_STATES.has(phase) ? "WRITING" : phase;
   if (EARLY_WORKFLOW_STATES.has(phase)) {
-    log6.warn("handleAgentCompleted: workflow stuck in early state, treating as WRITING", {
+    log7.warn("handleAgentCompleted: workflow stuck in early state, treating as WRITING", {
       wid,
       actual_phase: phase
     });
@@ -31355,14 +31945,14 @@ function handleAgentCompleted(event, _trigger, store) {
   if (effectivePhase === "WRITING") {
     const effectiveRequireReview = getEffectiveRequireReviewTypes(store);
     if (!agentType) {
-      log6.warn("handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required", { wid, agent_id: agentId });
+      log7.warn("handleAgentCompleted: agent_type is empty/missing, cannot determine if review is required", { wid, agent_id: agentId });
     }
     if (agentType && matchesAgentType(agentType, effectiveRequireReview)) {
       const task2 = `[WRFC:${wid}] Review the work completed in workflow ${wid}. Minimum score: ${minScore}. ` + (filesModified.length > 0 ? `Files modified: ${filesModified.join(", ")}.` : "No files recorded yet.");
       const actions2 = [buildSpawnAction({ wid, type: "reviewer", task: task2, files: filesModified })];
       const state_updates2 = phaseUpdate(sid, wid, "REVIEWING");
       const events2 = [makeChainEvent("wrfc:review_started", wid, event)];
-      log6.info("handleAgentCompleted: force-review for require-review agent type", {
+      log7.info("handleAgentCompleted: force-review for require-review agent type", {
         wid,
         agent_type: agentType
       });
@@ -31372,9 +31962,9 @@ function handleAgentCompleted(event, _trigger, store) {
       const actions2 = [buildCompleteAction(wid)];
       const state_updates2 = [
         ...phaseUpdate(sid, wid, "COMPLETED"),
-        { key: AM(sid, agentId), value: null, op: "delete" }
+        { key: AM(sid, agentId ?? ""), value: null, op: "delete" }
       ];
-      log6.info("handleAgentCompleted: auto-complete (whitelisted agent type)", {
+      log7.info("handleAgentCompleted: auto-complete (whitelisted agent type)", {
         wid,
         agent_type: agentType
       });
@@ -31384,12 +31974,12 @@ function handleAgentCompleted(event, _trigger, store) {
     const actions = [buildSpawnAction({ wid, type: "reviewer", task, files: filesModified })];
     const state_updates = phaseUpdate(sid, wid, "REVIEWING");
     const events = [makeChainEvent("wrfc:review_started", wid, event)];
-    log6.info("handleAgentCompleted: spawning reviewer, advancing to REVIEWING", { wid });
+    log7.info("handleAgentCompleted: spawning reviewer, advancing to REVIEWING", { wid });
     return { actions, state_updates, events };
   }
   if (effectivePhase === "REVIEWING") {
     if (!matchesAgentType(agentType, REVIEWER_AGENT_TYPES)) {
-      log6.debug("handleAgentCompleted: REVIEWING phase but not a reviewer, skipping", {
+      log7.debug("handleAgentCompleted: REVIEWING phase but not a reviewer, skipping", {
         wid,
         agent_type: agentType
       });
@@ -31397,7 +31987,7 @@ function handleAgentCompleted(event, _trigger, store) {
     }
     const score = extractScore(agentOutput);
     if (score === null) {
-      log6.warn("handleAgentCompleted: could not parse review score", {
+      log7.warn("handleAgentCompleted: could not parse review score", {
         wid,
         output_preview: agentOutput?.slice(0, MAX_OUTPUT_PREVIEW_LENGTH)
       });
@@ -31422,10 +32012,10 @@ function handleAgentCompleted(event, _trigger, store) {
       const state_updates = [
         ...phaseUpdate(sid, wid, "COMPLETED"),
         { key: WS(sid, wid, "review_score"), value: score, op: "set" },
-        { key: AM(sid, agentId), value: null, op: "delete" }
+        { key: AM(sid, agentId ?? ""), value: null, op: "delete" }
       ];
       const events = [makeChainEvent("wrfc:review_completed", wid, event)];
-      log6.info("handleAgentCompleted: review passed, completing workflow", {
+      log7.info("handleAgentCompleted: review passed, completing workflow", {
         wid,
         score,
         threshold: minScore
@@ -31441,7 +32031,7 @@ Files: ${filesModified.join(", ")}.` : "");
         ...phaseUpdate(sid, wid, "FIXING"),
         { key: WS(sid, wid, "review_score"), value: score, op: "set" }
       ];
-      log6.info("handleAgentCompleted: review failed, spawning fixer", {
+      log7.info("handleAgentCompleted: review failed, spawning fixer", {
         wid,
         score,
         threshold: minScore
@@ -31451,7 +32041,7 @@ Files: ${filesModified.join(", ")}.` : "");
   }
   if (effectivePhase === "FIXING") {
     if (!matchesAgentType(agentType, ENGINEER_AGENT_TYPES)) {
-      log6.debug("handleAgentCompleted: FIXING phase but not an engineer, skipping", {
+      log7.debug("handleAgentCompleted: FIXING phase but not an engineer, skipping", {
         wid,
         agent_type: agentType
       });
@@ -31468,9 +32058,9 @@ Files: ${filesModified.join(", ")}.` : "");
         ...phaseUpdate(sid, wid, "ESCALATED"),
         { key: WS(sid, wid, "fix_attempts"), value: newFixAttempts, op: "set" },
         { key: WS(sid, wid, "files_modified"), value: mergedFiles, op: "set" },
-        { key: AM(sid, agentId), value: null, op: "delete" }
+        { key: AM(sid, agentId ?? ""), value: null, op: "delete" }
       ];
-      log6.warn("handleAgentCompleted: fix budget exhausted, escalating", {
+      log7.warn("handleAgentCompleted: fix budget exhausted, escalating", {
         wid,
         fix_attempts: newFixAttempts,
         max_fix: maxFix
@@ -31485,7 +32075,7 @@ Files: ${filesModified.join(", ")}.` : "");
         { key: WS(sid, wid, "files_modified"), value: mergedFiles, op: "set" }
       ];
       const events = [makeChainEvent("wrfc:fix_completed", wid, event)];
-      log6.info("handleAgentCompleted: fix complete, re-reviewing", {
+      log7.info("handleAgentCompleted: fix complete, re-reviewing", {
         wid,
         fix_attempts: newFixAttempts,
         max_fix: maxFix
@@ -31493,7 +32083,7 @@ Files: ${filesModified.join(", ")}.` : "");
       return { actions, state_updates, events };
     }
   }
-  log6.debug("handleAgentCompleted: unhandled phase", { wid, phase: effectivePhase });
+  log7.debug("handleAgentCompleted: unhandled phase", { wid, phase: effectivePhase });
   return {};
 }
 __name(handleAgentCompleted, "handleAgentCompleted");
@@ -31501,19 +32091,19 @@ function handleQualityGate(event, _trigger, store) {
   const payload = event.payload;
   const wid = typeof payload["workflow_id"] === "string" ? payload["workflow_id"] : null;
   if (!wid) {
-    log6.debug("handleQualityGate: no workflow_id in payload, skipping");
+    log7.debug("handleQualityGate: no workflow_id in payload, skipping");
     return {};
   }
   const sid = eventSessionId(event);
   const rawScore = payload["review_score"];
   const score = typeof rawScore === "number" ? rawScore : parseFloat(String(rawScore ?? ""));
   if (isNaN(score)) {
-    log6.warn("handleQualityGate: invalid review_score", { wid, raw: rawScore });
+    log7.warn("handleQualityGate: invalid review_score", { wid, raw: rawScore });
     return {};
   }
   const phase = storeGet(store, WS(sid, wid, "phase"), "");
   if (phase === "COMPLETED" || phase === "ESCALATED") {
-    log6.debug("handleQualityGate: workflow already terminal, skipping", { wid, phase });
+    log7.debug("handleQualityGate: workflow already terminal, skipping", { wid, phase });
     return {};
   }
   const minScore = storeGet(store, WS(sid, wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
@@ -31526,7 +32116,7 @@ function handleQualityGate(event, _trigger, store) {
   if (score >= minScore) {
     const actions2 = [buildCompleteAction(wid)];
     state_updates.push(...phaseUpdate(sid, wid, "COMPLETED"));
-    log6.info("handleQualityGate: quality gate passed", { wid, score, threshold: minScore });
+    log7.info("handleQualityGate: quality gate passed", { wid, score, threshold: minScore });
     return { actions: actions2, state_updates };
   }
   const newFixAttempts = fixAttempts + 1;
@@ -31535,7 +32125,7 @@ function handleQualityGate(event, _trigger, store) {
     const reason = `${newFixAttempts} fix attempts failed, last score ${score}/10`;
     const actions2 = [buildEscalateAction(wid, reason)];
     state_updates.push(...phaseUpdate(sid, wid, "ESCALATED"));
-    log6.warn("handleQualityGate: fix budget exhausted, escalating", { wid, fix_attempts: newFixAttempts });
+    log7.warn("handleQualityGate: fix budget exhausted, escalating", { wid, fix_attempts: newFixAttempts });
     return { actions: actions2, state_updates };
   }
   const rawIssues = payload["issues"];
@@ -31546,7 +32136,7 @@ Files: ${filesModified.join(", ")}.` : "");
   const actions = [buildSpawnAction({ wid, type: "engineer", task, files: filesModified })];
   state_updates.push(...phaseUpdate(sid, wid, "FIXING"));
   const events = [makeChainEvent("wrfc:fix_started", wid, event)];
-  log6.info("handleQualityGate: quality gate failed, spawning fixer", {
+  log7.info("handleQualityGate: quality gate failed, spawning fixer", {
     wid,
     score,
     threshold: minScore,
@@ -31684,7 +32274,7 @@ function getWRFCTriggerDefinitions() {
 __name(getWRFCTriggerDefinitions, "getWRFCTriggerDefinitions");
 
 // src/plugins/wrfc/wrfc-plugin.ts
-var log7 = createLogger("wrfc-plugin");
+var log8 = createLogger("wrfc-plugin");
 function getDefaultWRFCConfig() {
   return {
     score_threshold: 9.5,
@@ -31728,6 +32318,8 @@ var WRFCPlugin = class {
   version = "1.0.0";
   state = "registered";
   config;
+  /** Captured services reference, set during register(). Used by reconfigure(). */
+  _services = null;
   /**
    * Captured event handlers, populated during register().
    * Returned by getHandlers() so callers can inspect registered handlers.
@@ -31748,6 +32340,7 @@ var WRFCPlugin = class {
    * After this call, start() only transitions lifecycle state to 'running'.
    */
   register(services) {
+    this._services = services;
     const store = makeStoreAdapter(services);
     store.set("wrfc.config.min_review_score", this.config.score_threshold);
     store.set("wrfc.config.max_fix_attempts", this.config.max_fix_attempts);
@@ -31819,7 +32412,7 @@ var WRFCPlugin = class {
       }
     ];
     this.state = "starting";
-    log7.debug("WRFCPlugin registered with runtime services", {
+    log8.debug("WRFCPlugin registered with runtime services", {
       triggers: Object.values(TRIGGER_IDS),
       handlers: Object.values(HANDLER_IDS),
       config: this.config
@@ -31835,13 +32428,50 @@ var WRFCPlugin = class {
       throw new Error("WRFCPlugin: register() must be called before start()");
     }
     this.state = "running";
-    log7.info("WRFCPlugin started", { config: this.config });
+    log8.info("WRFCPlugin started", { config: this.config });
   }
   /** Stop the plugin and clean up. */
   stop() {
     this.state = "stopped";
     this._handlers = [];
-    log7.debug("WRFCPlugin stopped");
+    this._services = null;
+    log8.debug("WRFCPlugin stopped");
+  }
+  /**
+   * Apply runtime configuration changes to the WRFC plugin.
+   * Updates internal config and propagates changes to the state store
+   * so active handler closures pick up the new values on their next invocation.
+   * Throws if called before register().
+   */
+  reconfigure(config2) {
+    if (!this._services) {
+      throw new Error("WRFCPlugin.reconfigure: plugin must be registered before reconfigure() is called");
+    }
+    if (typeof config2["score_threshold"] === "number") {
+      const val = config2["score_threshold"];
+      if (val < 0 || val > 10 || !Number.isFinite(val)) {
+        throw new Error(`WRFCPlugin.reconfigure: score_threshold must be 0-10, got ${val}`);
+      }
+      this.config.score_threshold = val;
+      this._services.setState("wrfc.config.min_review_score", val);
+    }
+    if (typeof config2["max_fix_attempts"] === "number") {
+      const val = config2["max_fix_attempts"];
+      if (!Number.isInteger(val) || val < 1) {
+        throw new Error(`WRFCPlugin.reconfigure: max_fix_attempts must be a positive integer, got ${val}`);
+      }
+      this.config.max_fix_attempts = val;
+      this._services.setState("wrfc.config.max_fix_attempts", val);
+    }
+    if (typeof config2["enable_quality_gates"] === "boolean") {
+      this.config.enable_quality_gates = config2["enable_quality_gates"];
+      this._services.setState("wrfc.config.enable_quality_gates", config2["enable_quality_gates"]);
+    }
+    if (Array.isArray(config2["require_review_types"])) {
+      this.config.require_review_types = config2["require_review_types"];
+      this._services.setState("wrfc.config.require_review_types", config2["require_review_types"]);
+    }
+    log8.info("WRFCPlugin reconfigured", { config: this.config });
   }
   /** Returns WRFC workflow definition metadata for plugin registration. */
   getWorkflowDefinitions() {
@@ -31862,96 +32492,13 @@ var WRFCPlugin = class {
   }
 };
 
-// src/extensions/events/factories.ts
-var hookTypeSlugMap = {
-  PreToolUse: "pre_tool_use",
-  PostToolUse: "post_tool_use",
-  PostToolUseFailure: "post_tool_use_failure",
-  SubagentStart: "subagent_start",
-  SubagentStop: "subagent_stop",
-  SessionStart: "session_start",
-  SessionEnd: "session_end",
-  PreCompact: "pre_compact",
-  UserPromptSubmit: "user_prompt_submit",
-  Notification: "notification",
-  Stop: "stop"
-};
-function hookTypeToSlug(hookType) {
-  return hookTypeSlugMap[hookType];
-}
-__name(hookTypeToSlug, "hookTypeToSlug");
-function createHookEvent(params) {
-  const base = createEvent({
-    source: { kind: "internal" },
-    type: params.type ?? `hook:${hookTypeToSlug(params.hook_type)}`,
-    payload: params.payload ?? params.hook_input,
-    priority: params.priority ?? 50,
-    context: params.context,
-    metadata: { session_id: "", sequence: 0 }
-  });
-  return {
-    ...base,
-    source: { kind: "internal" },
-    hook_type: params.hook_type,
-    hook_input: params.hook_input,
-    session_id: params.session_id
-  };
-}
-__name(createHookEvent, "createHookEvent");
-function createExternalEvent(params) {
-  const base = createEvent({
-    source: { kind: "external", origin: params.external_source },
-    type: params.type,
-    payload: params.payload ?? params.raw_payload,
-    priority: params.priority ?? 30,
-    context: params.context,
-    metadata: { session_id: "", sequence: 0 }
-  });
-  return {
-    ...base,
-    source: { kind: "external", origin: params.external_source },
-    external_source: params.external_source,
-    raw_payload: params.raw_payload,
-    normalized: params.normalized ?? false
-  };
-}
-__name(createExternalEvent, "createExternalEvent");
-function defaultTimeEventType(timeType) {
-  switch (timeType) {
-    case "heartbeat":
-      return "tick:heartbeat";
-    case "cron":
-      return "cron:tick";
-    case "scheduled":
-      return "schedule:tick";
-    case "one_shot":
-      return "schedule:one_shot";
-  }
-}
-__name(defaultTimeEventType, "defaultTimeEventType");
-function createTimeEvent(params) {
-  const base = createEvent({
-    source: { kind: "time" },
-    type: params.type ?? defaultTimeEventType(params.time_type),
-    payload: params.payload ?? {},
-    priority: params.priority ?? 10,
-    context: params.context,
-    metadata: { session_id: "", sequence: 0 }
-  });
-  return {
-    ...base,
-    source: { kind: "time" },
-    time_type: params.time_type,
-    ...params.interval_ms !== void 0 && { interval_ms: params.interval_ms },
-    ...params.schedule !== void 0 && { schedule: params.schedule },
-    ...params.ttl !== void 0 && { ttl: params.ttl },
-    ...params.fires_remaining !== void 0 && { fires_remaining: params.fires_remaining },
-    ...params.scheduled_at !== void 0 && { scheduled_at: params.scheduled_at }
-  };
-}
-__name(createTimeEvent, "createTimeEvent");
+// src/plugins/hooks/hook-processor.ts
+init_factories();
+init_logger();
 
 // src/extensions/adapters/hook-adapter.ts
+init_utils();
+init_logger();
 var logger31 = createLogger("hook-adapter");
 var VALID_HOOK_TYPES = /* @__PURE__ */ new Set([
   "PreToolUse",
@@ -32100,6 +32647,7 @@ var HookProcessor = class {
 };
 
 // src/plugins/hooks/hook-registry.ts
+init_logger();
 var logger33 = createLogger("hook-registry");
 var HookRegistry = class {
   static {
@@ -32187,6 +32735,7 @@ var HookRegistry = class {
 };
 
 // src/plugins/hooks/handlers/pre-tool-use.ts
+init_logger();
 var logger34 = createLogger("handler:pre-tool-use");
 var BLOCKED_TOOLS = /* @__PURE__ */ new Set([
   "Read",
@@ -32224,6 +32773,7 @@ async function handlePreToolUse(_event, input) {
 __name(handlePreToolUse, "handlePreToolUse");
 
 // src/plugins/hooks/handlers/subagent-start.ts
+init_logger();
 var logger35 = createLogger("handler:subagent-start");
 function createSubagentStartHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSubagentStart(_event, input) {
@@ -32255,6 +32805,8 @@ function createSubagentStartHandler(deps) {
 __name(createSubagentStartHandler, "createSubagentStartHandler");
 
 // src/plugins/hooks/handlers/subagent-stop.ts
+init_logger();
+init_utils();
 var logger36 = createLogger("handler:subagent-stop");
 function createSubagentStopHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSubagentStop(_event, input) {
@@ -32308,6 +32860,7 @@ function extractReviewScore2(output) {
 __name(extractReviewScore2, "extractReviewScore");
 
 // src/plugins/hooks/handlers/session-start.ts
+init_logger();
 var logger37 = createLogger("handler:session-start");
 function createSessionStartHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSessionStart(event, input) {
@@ -32347,6 +32900,7 @@ function createSessionStartHandler(deps) {
 __name(createSessionStartHandler, "createSessionStartHandler");
 
 // src/plugins/hooks/handlers/session-end.ts
+init_logger();
 var logger38 = createLogger("handler:session-end");
 function createSessionEndHandler(deps) {
   return /* @__PURE__ */ __name(async function handleSessionEnd(event, _input) {
@@ -32378,6 +32932,7 @@ function createSessionEndHandler(deps) {
 __name(createSessionEndHandler, "createSessionEndHandler");
 
 // src/plugins/hooks/handlers/pre-compact.ts
+init_logger();
 var logger39 = createLogger("handler:pre-compact");
 function createPreCompactHandler(deps) {
   return /* @__PURE__ */ __name(async function handlePreCompact(event, _input) {
@@ -32416,6 +32971,7 @@ function createPreCompactHandler(deps) {
 __name(createPreCompactHandler, "createPreCompactHandler");
 
 // src/plugins/hooks/handlers/post-tool-use.ts
+init_logger();
 var logger40 = createLogger("handler:post-tool-use");
 var FILE_WRITE_TOOLS = /* @__PURE__ */ new Set([
   "precision_write",
@@ -32428,7 +32984,7 @@ function createPostToolUseHandler(deps) {
     const sessionId = event.session_id;
     if (FILE_WRITE_TOOLS.has(toolName)) {
       const paths = extractModifiedPaths(input);
-      for (const path3 of paths) {
+      for (const path4 of paths) {
         try {
           deps.eventBus.emit({
             id: `evt_file_modified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -32438,7 +32994,7 @@ function createPostToolUseHandler(deps) {
             payload: {
               type: "file:modified",
               data: {
-                path: path3,
+                path: path4,
                 change_type: "modify"
               }
             },
@@ -32446,7 +33002,7 @@ function createPostToolUseHandler(deps) {
           });
         } catch (err) {
           logger40.warn("Failed to emit file:modified", {
-            path: path3,
+            path: path4,
             error: err instanceof Error ? err.message : String(err)
           });
         }
@@ -32474,6 +33030,7 @@ function extractModifiedPaths(input) {
 __name(extractModifiedPaths, "extractModifiedPaths");
 
 // src/plugins/hooks/handlers/user-prompt-submit.ts
+init_logger();
 var logger41 = createLogger("handler:user-prompt-submit");
 var TASK_NOTIFICATION_PATTERN = "<task-notification>";
 function createUserPromptSubmitHandler(deps) {
@@ -32612,6 +33169,7 @@ function createHookSubsystem(deps) {
 __name(createHookSubsystem, "createHookSubsystem");
 
 // src/plugins/time/heartbeat.ts
+init_factories();
 var HeartbeatManager = class {
   constructor(config2) {
     this.config = config2;
@@ -32651,6 +33209,9 @@ var HeartbeatManager = class {
   getLastTickAt() {
     return this.lastTickAt;
   }
+  getInterval() {
+    return this.config.interval_ms;
+  }
   isEnabled() {
     return this.config.enabled;
   }
@@ -32685,6 +33246,8 @@ var HeartbeatManager = class {
 };
 
 // src/plugins/time/scheduler.ts
+init_factories();
+init_errors();
 var PERSIST_KEY = "time_plugin.schedules";
 var EventScheduler = class {
   constructor(config2, store) {
@@ -32841,6 +33404,36 @@ var EventScheduler = class {
     }
     return events;
   }
+  // ─── Pause / Resume ─────────────────────────────────────────────────────────
+  /**
+   * Pause a scheduled item by shifting its next_fire_at far into the future.
+   * The item remains registered and can be resumed.
+   * Returns true if the item was found and paused.
+   */
+  pause(id) {
+    const item = this.items.get(id);
+    if (!item) return false;
+    item.next_fire_at = Date.now() + 365 * 24 * 60 * 60 * 1e3;
+    this.dirty = true;
+    return true;
+  }
+  /**
+   * Resume a paused scheduled item.
+   * - Recurring items (heartbeat/cron): resumes at now + interval_ms.
+   * - One-shot items: fires immediately on next tick.
+   * Returns true if the item was found and resumed.
+   */
+  resume(id) {
+    const item = this.items.get(id);
+    if (!item) return false;
+    if (item.interval_ms !== void 0) {
+      item.next_fire_at = Date.now() + item.interval_ms;
+    } else {
+      item.next_fire_at = Date.now();
+    }
+    this.dirty = true;
+    return true;
+  }
   // ─── Cancellation ────────────────────────────────────────────────────────────
   /** Cancel a single scheduled item by ID. Returns true if the item existed. */
   cancel(id) {
@@ -32985,12 +33578,43 @@ var TimePlugin = class {
   getScheduler() {
     return this.scheduler;
   }
+  /**
+   * Apply runtime configuration changes to the time plugin.
+   * Accepts a partial config keyed by subsection ('heartbeat', 'scheduler').
+   * Throws on invalid input to trigger rollback in the caller.
+   */
+  reconfigure(config2) {
+    const heartbeatConfig = config2["heartbeat"];
+    const schedulerConfig = config2["scheduler"];
+    if (heartbeatConfig !== void 0 && typeof heartbeatConfig === "object") {
+      if (typeof heartbeatConfig.interval_ms === "number") {
+        if (heartbeatConfig.interval_ms <= 0 || !Number.isFinite(heartbeatConfig.interval_ms)) {
+          throw new Error(`TimePlugin.reconfigure: interval_ms must be a positive finite number, got ${heartbeatConfig.interval_ms}`);
+        }
+        this.heartbeat.setInterval(heartbeatConfig.interval_ms);
+      }
+      if (typeof heartbeatConfig.enabled === "boolean") {
+        if (heartbeatConfig.enabled) {
+          this.heartbeat.enable();
+        } else {
+          this.heartbeat.disable();
+        }
+      }
+    }
+    if (schedulerConfig !== void 0 && typeof schedulerConfig === "object") {
+      if (schedulerConfig.max_scheduled_items !== void 0) {
+      }
+    }
+  }
 };
 
 // src/plugins/external/file-watcher.ts
 var crypto = __toESM(require("node:crypto"), 1);
-var fs = __toESM(require("node:fs/promises"), 1);
-var path = __toESM(require("node:path"), 1);
+var fs2 = __toESM(require("node:fs/promises"), 1);
+var path2 = __toESM(require("node:path"), 1);
+init_logger();
+init_errors();
+init_utils();
 var logger42 = createLogger("file-watcher");
 function isDropFilePayload(value) {
   if (typeof value !== "object" || value === null) return false;
@@ -33028,7 +33652,7 @@ var FileWatcher = class {
   async scan() {
     let entries;
     try {
-      const dirEntries = await fs.readdir(this.config.incoming_dir);
+      const dirEntries = await fs2.readdir(this.config.incoming_dir);
       entries = dirEntries.filter((f) => f.endsWith(".json"));
     } catch (err) {
       const code = err.code;
@@ -33042,10 +33666,10 @@ var FileWatcher = class {
     let events_ingested = 0;
     const confirmedRemoved = /* @__PURE__ */ new Set();
     for (const filename of batch) {
-      const filepath = path.join(this.config.incoming_dir, filename);
+      const filepath = path2.join(this.config.incoming_dir, filename);
       let succeeded = false;
       try {
-        const raw = await fs.readFile(filepath, "utf-8");
+        const raw = await fs2.readFile(filepath, "utf-8");
         const parsed = safeJsonParse(raw, null);
         if (!isDropFilePayload(parsed)) {
           throw new ProcessingError(
@@ -33065,13 +33689,13 @@ var FileWatcher = class {
         succeeded = true;
       } catch (scanErr) {
         logger42.error(`Failed to process file '${filename}'`, { error: scanErr });
-        const errorPath = path.join(this.config.error_dir, filename);
+        const errorPath = path2.join(this.config.error_dir, filename);
         try {
-          await fs.rename(filepath, errorPath);
+          await fs2.rename(filepath, errorPath);
           confirmedRemoved.add(filename);
         } catch (moveErr) {
           try {
-            await fs.unlink(filepath);
+            await fs2.unlink(filepath);
             confirmedRemoved.add(filename);
           } catch {
             logger42.debug(`Failed to remove error file '${filename}' after move failure`, { error: moveErr });
@@ -33080,9 +33704,9 @@ var FileWatcher = class {
       }
       if (succeeded) {
         const processedName = `${crypto.randomUUID()}_${filename}`;
-        const processedPath = path.join(this.config.processed_dir, processedName);
+        const processedPath = path2.join(this.config.processed_dir, processedName);
         try {
-          await fs.rename(filepath, processedPath);
+          await fs2.rename(filepath, processedPath);
           confirmedRemoved.add(filename);
         } catch (moveErr) {
           logger42.error(`Failed to move processed file '${filename}'`, { error: moveErr });
@@ -33100,18 +33724,21 @@ var FileWatcher = class {
    */
   async ensureDirs() {
     await Promise.all([
-      fs.mkdir(this.config.incoming_dir, { recursive: true }),
-      fs.mkdir(this.config.processed_dir, { recursive: true }),
-      fs.mkdir(this.config.error_dir, { recursive: true })
+      fs2.mkdir(this.config.incoming_dir, { recursive: true }),
+      fs2.mkdir(this.config.processed_dir, { recursive: true }),
+      fs2.mkdir(this.config.error_dir, { recursive: true })
     ]);
   }
 };
 
 // src/plugins/external/http-listener.ts
 var http = __toESM(require("node:http"), 1);
-var fs2 = __toESM(require("node:fs/promises"), 1);
-var path2 = __toESM(require("node:path"), 1);
+var fs3 = __toESM(require("node:fs/promises"), 1);
+var path3 = __toESM(require("node:path"), 1);
 var crypto2 = __toESM(require("node:crypto"), 1);
+init_logger();
+init_errors();
+init_utils();
 var logger43 = createLogger("http-listener");
 var DEFAULT_HTTP_LISTENER_CONFIG = {
   port: DEFAULT_HTTP_LISTENER_PORT,
@@ -33148,7 +33775,7 @@ var HttpListener = class {
     if (this.running) {
       throw new ConfigError("HttpListener is already running");
     }
-    await fs2.mkdir(this.dropDir, { recursive: true });
+    await fs3.mkdir(this.dropDir, { recursive: true });
     return new Promise((resolve2, reject) => {
       this.server = http.createServer((req, res) => {
         this.handleRequest(req, res).catch(() => {
@@ -33246,14 +33873,14 @@ var HttpListener = class {
       }
       const fileId = crypto2.randomUUID();
       const filename = `${Date.now()}_${source}_${fileId}.json`;
-      const filepath = path2.join(this.dropDir, filename);
+      const filepath = path3.join(this.dropDir, filename);
       const dropPayload = {
         source,
         payload: parsedPayload,
         headers: forwardedHeaders,
         received_at: (/* @__PURE__ */ new Date()).toISOString()
       };
-      await fs2.writeFile(filepath, JSON.stringify(dropPayload, null, 2), "utf-8");
+      await fs3.writeFile(filepath, JSON.stringify(dropPayload, null, 2), "utf-8");
       sendJson(res, 202, { accepted: true, id: fileId });
       return;
     }
@@ -33269,6 +33896,7 @@ var HttpListener = class {
 };
 
 // src/plugins/external/normalizers/github.ts
+init_factories();
 function resolveGithubEventType(githubEvent, action) {
   const base = `webhook:github:${githubEvent}`;
   if (action !== void 0 && action.length > 0) {
@@ -33334,6 +33962,7 @@ function normalizeGithub(rawPayload, headers) {
 __name(normalizeGithub, "normalizeGithub");
 
 // src/plugins/external/normalizers/generic.ts
+init_factories();
 function normalizeGeneric(rawPayload, source, headers) {
   let eventType = `webhook:${source}:event`;
   if (rawPayload !== null && typeof rawPayload === "object" && !Array.isArray(rawPayload)) {
@@ -33358,6 +33987,87 @@ function normalizeGeneric(rawPayload, source, headers) {
   });
 }
 __name(normalizeGeneric, "normalizeGeneric");
+
+// src/plugins/external/normalizers/slack.ts
+init_factories();
+function normalizeSlack(rawPayload, _headers) {
+  const payload = rawPayload !== null && typeof rawPayload === "object" ? rawPayload : {};
+  if (typeof payload.challenge === "string") {
+    return createExternalEvent({
+      external_source: "slack",
+      type: "webhook:slack:url_verification",
+      raw_payload: rawPayload,
+      payload: { challenge: payload.challenge },
+      normalized: true
+    });
+  }
+  const eventType = payload.event?.type ?? payload.type ?? "unknown";
+  const canonicalType = `webhook:slack:${eventType}`;
+  const normalizedPayload = {
+    event_type: eventType,
+    ...payload.event?.channel !== void 0 && { channel: payload.event.channel },
+    ...payload.event?.user !== void 0 && { user: payload.event.user },
+    ...payload.event?.text !== void 0 && { text: payload.event.text },
+    ...payload.event?.thread_ts !== void 0 && { thread_ts: payload.event.thread_ts },
+    ...payload.team_id !== void 0 && { team_id: payload.team_id }
+  };
+  return createExternalEvent({
+    external_source: "slack",
+    type: canonicalType,
+    raw_payload: rawPayload,
+    payload: normalizedPayload,
+    normalized: true
+  });
+}
+__name(normalizeSlack, "normalizeSlack");
+
+// src/plugins/external/normalizers/ci.ts
+init_factories();
+function detectProvider(payload, headers) {
+  if (headers?.["x-github-event"] === "workflow_run") return "github_actions";
+  if (headers?.["x-gitlab-event"] !== void 0) return "gitlab_ci";
+  if (payload.build !== void 0 && typeof payload.build === "object") return "circleci";
+  return "generic_ci";
+}
+__name(detectProvider, "detectProvider");
+function resolveStatus(payload) {
+  if (payload.workflow_run?.conclusion) return payload.workflow_run.conclusion;
+  if (payload.object_attributes?.status) return payload.object_attributes.status;
+  if (payload.build?.status) return payload.build.status;
+  return payload.conclusion ?? payload.status ?? payload.state ?? payload.result ?? "unknown";
+}
+__name(resolveStatus, "resolveStatus");
+function resolveBranch(payload) {
+  return payload.workflow_run?.head_branch ?? payload.object_attributes?.ref ?? payload.build?.branch?.name ?? payload.branch ?? payload.ref;
+}
+__name(resolveBranch, "resolveBranch");
+function resolveCommit(payload) {
+  return payload.workflow_run?.head_sha ?? payload.object_attributes?.sha ?? payload.build?.vcs_revision ?? payload.head_sha ?? payload.sha ?? payload.commit;
+}
+__name(resolveCommit, "resolveCommit");
+function normalizeCI(rawPayload, headers) {
+  const payload = rawPayload !== null && typeof rawPayload === "object" ? rawPayload : {};
+  const provider = detectProvider(payload, headers);
+  const status = resolveStatus(payload);
+  const canonicalType = `webhook:ci:${provider}:${status}`;
+  const branch = resolveBranch(payload);
+  const commit = resolveCommit(payload);
+  const normalizedPayload = {
+    provider,
+    status,
+    ...branch !== void 0 && { branch },
+    ...commit !== void 0 && { commit },
+    ...payload.workflow_run?.name !== void 0 && { workflow_name: payload.workflow_run.name }
+  };
+  return createExternalEvent({
+    external_source: `ci_${provider}`,
+    type: canonicalType,
+    raw_payload: rawPayload,
+    payload: normalizedPayload,
+    normalized: true
+  });
+}
+__name(normalizeCI, "normalizeCI");
 
 // src/plugins/external/normalizers/index.ts
 var NormalizerRegistry = class {
@@ -33402,10 +34112,18 @@ var NormalizerRegistry = class {
   sources() {
     return Array.from(this.normalizers.keys());
   }
+  /**
+   * Alias for `sources()`. Returns all registered source names.
+   */
+  listNormalizers() {
+    return this.sources();
+  }
 };
 function createDefaultRegistry() {
   const registry2 = new NormalizerRegistry();
   registry2.register("github", normalizeGithub);
+  registry2.register("slack", normalizeSlack);
+  registry2.register("ci", (rawPayload, headers) => normalizeCI(rawPayload, headers));
   registry2.register(
     "generic",
     (rawPayload, headers) => normalizeGeneric(rawPayload, "generic", headers)
@@ -33415,6 +34133,7 @@ function createDefaultRegistry() {
 __name(createDefaultRegistry, "createDefaultRegistry");
 
 // src/plugins/external/external-plugin.ts
+init_logger();
 var logger44 = createLogger("external-plugin");
 var ExternalPlugin = class {
   constructor(queue, config2) {
@@ -33510,10 +34229,24 @@ var ExternalPlugin = class {
   getNormalizerRegistry() {
     return this.normalizers;
   }
+  /**
+   * Returns the port the HTTP listener is bound to, or null if not configured.
+   */
+  getHttpPort() {
+    return this.config.http_listener?.port ?? null;
+  }
+  /**
+   * Returns the bind address the HTTP listener is configured for, or null if not configured.
+   */
+  getHttpAddress() {
+    return this.config.http_listener?.address ?? null;
+  }
 };
 
 // src/plugins/agent-tracker/agent-tracker-plugin.ts
-var log8 = createLogger("agent-tracker-plugin");
+init_logger();
+init_factories();
+var log9 = createLogger("agent-tracker-plugin");
 var AGENT_KEY = /* @__PURE__ */ __name((id) => `agent_tracker.agents.${id}`, "AGENT_KEY");
 var INDEX_KEY = "agent_tracker.agent_ids";
 var WRFC_MAP_KEY = /* @__PURE__ */ __name((sid, id) => `wrfc.sessions.${sid}.agent_map.${id}`, "WRFC_MAP_KEY");
@@ -33552,7 +34285,10 @@ var AgentTrackerPlugin = class {
     const unsubFailed = services.subscribe("agent:failed", (event) => {
       this.handleFinished(event, "failed");
     });
-    this._unsubscribes = [unsubSpawned, unsubCompleted, unsubFailed];
+    const unsubHeartbeat = services.subscribe("tick:heartbeat", () => {
+      this.emitProgressForActiveAgents();
+    });
+    this._unsubscribes = [unsubSpawned, unsubCompleted, unsubFailed, unsubHeartbeat];
     this._handlers = [
       { event_type: "agent:spawned", handler: /* @__PURE__ */ __name((e) => {
         this.handleSpawned(e);
@@ -33565,14 +34301,14 @@ var AgentTrackerPlugin = class {
       }, "handler"), priority: 5 }
     ];
     this.state = "starting";
-    log8.debug("AgentTrackerPlugin registered with EventBus subscriptions");
+    log9.debug("AgentTrackerPlugin registered with EventBus subscriptions");
   }
   start() {
     if (this._handlers.length === 0) {
       throw new Error("AgentTrackerPlugin: register() must be called before start()");
     }
     this.state = "running";
-    log8.info("AgentTrackerPlugin started");
+    log9.info("AgentTrackerPlugin started");
   }
   stop() {
     for (const unsub of this._unsubscribes) unsub();
@@ -33580,7 +34316,7 @@ var AgentTrackerPlugin = class {
     this._handlers = [];
     this._services = null;
     this.state = "stopped";
-    log8.debug("AgentTrackerPlugin stopped");
+    log9.debug("AgentTrackerPlugin stopped");
   }
   getWorkflowDefinitions() {
     return [];
@@ -33594,16 +34330,17 @@ var AgentTrackerPlugin = class {
   // ─── Event handlers ───────────────────────────────────────────────────────
   handleSpawned(event) {
     if (!this._services) {
-      log8.warn("handleSpawned: plugin not registered, skipping");
+      log9.warn("handleSpawned: plugin not registered, skipping");
       return;
     }
+    if (event.source.kind === "agent") return;
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
-      log8.debug("handleSpawned: no agent_id, skipping");
+      log9.debug("handleSpawned: no agent_id, skipping");
       return;
     }
     if (!agent_type) {
-      log8.debug("handleSpawned: no agent_type, skipping", { agent_id });
+      log9.debug("handleSpawned: no agent_type, skipping", { agent_id });
       return;
     }
     const sessionId = typeof event.metadata?.["session_id"] === "string" ? event.metadata["session_id"] : "default";
@@ -33619,21 +34356,34 @@ var AgentTrackerPlugin = class {
     };
     this._services.setState(AGENT_KEY(agent_id), tracked);
     this.addToIndex(agent_id);
-    log8.info("Agent tracked: spawned", { agent_id, agent_type, workflow_id: resolvedWid });
+    {
+      try {
+        this._services.emit(createAgentEvent({
+          type: "agent:spawned",
+          agent_id,
+          agent_type,
+          payload: { agent_id, agent_type, workflow_id: resolvedWid, spawned_at: tracked.spawned_at }
+        }));
+      } catch (err) {
+        log9.warn("Failed to emit agent:spawned event", { agent_id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    log9.info("Agent tracked: spawned", { agent_id, agent_type, workflow_id: resolvedWid });
   }
   handleFinished(event, status) {
     if (!this._services) {
-      log8.warn(`handleFinished(${status}): plugin not registered, skipping`);
+      log9.warn(`handleFinished(${status}): plugin not registered, skipping`);
       return;
     }
+    if (event.source.kind === "agent") return;
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
-      log8.debug(`handleFinished(${status}): no agent_id, skipping`);
+      log9.debug(`handleFinished(${status}): no agent_id, skipping`);
       return;
     }
     const existing = this._services.getState(AGENT_KEY(agent_id));
     if (!existing && !agent_type) {
-      log8.debug(`handleFinished(${status}): untracked agent with no type, skipping`, { agent_id });
+      log9.debug(`handleFinished(${status}): untracked agent with no type, skipping`, { agent_id });
       return;
     }
     const now = event.timestamp;
@@ -33650,19 +34400,68 @@ var AgentTrackerPlugin = class {
     };
     this._services.setState(AGENT_KEY(agent_id), tracked);
     this.addToIndex(agent_id);
-    log8.info(`Agent tracked: ${status}`, {
+    {
+      try {
+        this._services.emit(createAgentEvent({
+          type: `agent:${status}`,
+          agent_id,
+          agent_type: tracked.type,
+          payload: {
+            agent_id,
+            agent_type: tracked.type,
+            workflow_id: tracked.workflow_id,
+            duration_ms: tracked.duration_ms,
+            status
+          }
+        }));
+      } catch (err) {
+        log9.warn(`Failed to emit agent:${status} event`, { agent_id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    log9.info(`Agent tracked: ${status}`, {
       agent_id,
       agent_type: tracked.type,
       workflow_id: tracked.workflow_id,
       duration_ms: tracked.duration_ms
     });
   }
+  // ─── Progress emission ────────────────────────────────────────────────────
+  /**
+   * Emits agent:progress events for all actively spawned agents.
+   * Called on each tick:heartbeat event so long-running agent triggers
+   * (e.g. builtin_budget_warning) can fire based on elapsed time.
+   */
+  emitProgressForActiveAgents() {
+    if (!this._services) return;
+    const activeAgents = this.getAgentsByStatus("spawned");
+    if (activeAgents.length === 0) return;
+    const now = Date.now();
+    for (const agent of activeAgents) {
+      const elapsed_ms = now - agent.spawned_at;
+      try {
+        this._services.emit(createAgentEvent({
+          type: "agent:progress",
+          agent_id: agent.id,
+          agent_type: agent.type,
+          payload: {
+            agent_id: agent.id,
+            agent_type: agent.type,
+            workflow_id: agent.workflow_id,
+            elapsed_ms,
+            status: "spawned"
+          }
+        }));
+      } catch (err) {
+        log9.warn("Failed to emit agent:progress event", { agent_id: agent.id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  }
   // ─── Workflow ID resolution ────────────────────────────────────────────────
   resolveWorkflowId(agentId, sessionId) {
     if (!this._services) return null;
     const wid = this._services.getState(WRFC_MAP_KEY(sessionId, agentId));
     if (typeof wid === "string" && wid.length > 0) {
-      log8.debug("Resolved workflow_id from WRFC state", { agent_id: agentId, workflow_id: wid });
+      log9.debug("Resolved workflow_id from WRFC state", { agent_id: agentId, workflow_id: wid });
       return wid;
     }
     return null;
@@ -33711,6 +34510,7 @@ var AgentTrackerPlugin = class {
 
 // src/extensions/executor/tick-driver.ts
 var import_node_child_process = require("node:child_process");
+init_logger();
 var logger45 = createLogger("tick-driver");
 var TMUX_TIMEOUT_MS = 5e3;
 var DAEMON_HEARTBEAT_ID = "daemon:auto_tick";
@@ -33978,6 +34778,8 @@ var TickDriver = class _TickDriver {
 };
 
 // src/extensions/executor/executor-budget.ts
+init_logger();
+init_utils();
 var logger46 = createLogger("executor-budget");
 var BUDGET_STATE_KEY = "executor.budget.spending";
 function checkCapThreshold(params) {
@@ -34292,8 +35094,13 @@ var ExecutorBudgetManager = class {
   }
 };
 
+// src/extensions/executor/daemon-tick-handler.ts
+init_logger();
+init_utils();
+
 // src/extensions/executor/context-clearer.ts
 var import_node_child_process2 = require("node:child_process");
+init_logger();
 var logger47 = createLogger("context-clearer");
 var TMUX_TIMEOUT_MS2 = 5e3;
 var ContextClearer = class {
@@ -34519,6 +35326,7 @@ Active workflows: ${activeWorkflows}`;
 };
 
 // src/extensions/executor/action-executor.ts
+init_logger();
 var logger49 = createLogger("action-executor");
 var ActionExecutor = class {
   constructor(directiveQueue, agentWorkflowMap) {
@@ -34593,6 +35401,8 @@ var ActionExecutor = class {
 };
 
 // src/extensions/executor/subsystem.ts
+init_logger();
+init_utils();
 var logger50 = createLogger("executor-subsystem");
 function createExecutorSubsystem(config2, eventBus) {
   try {
@@ -34634,6 +35444,7 @@ function createExecutorSubsystem(config2, eventBus) {
 __name(createExecutorSubsystem, "createExecutorSubsystem");
 
 // src/extensions/adapters/registry.ts
+init_logger();
 var logger51 = createLogger("adapter-registry");
 
 // src/extensions/adapters/time-adapter.ts
@@ -34707,16 +35518,19 @@ function createExternalAdapter(plugin) {
 __name(createExternalAdapter, "createExternalAdapter");
 
 // src/extensions/ipc/setup.ts
-var import_node_fs14 = require("node:fs");
+var import_node_fs15 = require("node:fs");
 var import_node_crypto4 = require("node:crypto");
-var import_node_path14 = require("node:path");
+var import_node_path15 = require("node:path");
+init_logger();
+init_utils();
 
 // src/shared/ipc/ipc-server.ts
 var net = __toESM(require("node:net"), 1);
-var import_node_fs12 = require("node:fs");
-var import_node_path12 = require("node:path");
+var import_node_fs13 = require("node:fs");
+var import_node_path13 = require("node:path");
 
 // src/shared/ipc/protocol.ts
+init_logger();
 var logger52 = createLogger("ipc-protocol");
 var VALID_IPC_MESSAGE_TYPES = /* @__PURE__ */ new Set([
   "hook_event",
@@ -34748,6 +35562,9 @@ function validateIPCMessage(obj) {
 __name(validateIPCMessage, "validateIPCMessage");
 
 // src/shared/ipc/ipc-server.ts
+init_logger();
+init_utils();
+init_errors();
 var logger53 = createLogger("ipc-server");
 var CONNECTION_TIMEOUT_MS = 5e3;
 var MAX_MESSAGE_SIZE = 1048576;
@@ -34821,12 +35638,12 @@ var IPCServer = class {
    * @throws If the server cannot bind to the socket path.
    */
   async listen() {
-    const dir = (0, import_node_path12.dirname)(this.socketPath);
-    (0, import_node_fs12.mkdirSync)(dir, { recursive: true, mode: 448 });
-    (0, import_node_fs12.chmodSync)(dir, 448);
-    if ((0, import_node_fs12.existsSync)(this.socketPath)) {
+    const dir = (0, import_node_path13.dirname)(this.socketPath);
+    (0, import_node_fs13.mkdirSync)(dir, { recursive: true, mode: 448 });
+    (0, import_node_fs13.chmodSync)(dir, 448);
+    if ((0, import_node_fs13.existsSync)(this.socketPath)) {
       try {
-        (0, import_node_fs12.unlinkSync)(this.socketPath);
+        (0, import_node_fs13.unlinkSync)(this.socketPath);
         logger53.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
         logger53.warn("Could not remove stale socket file", {
@@ -34847,7 +35664,7 @@ var IPCServer = class {
       }
       srv.once("error", reject);
       srv.listen(this.socketPath, () => {
-        (0, import_node_fs12.chmodSync)(this.socketPath, 384);
+        (0, import_node_fs13.chmodSync)(this.socketPath, 384);
         logger53.info("IPC server listening", { path: this.socketPath });
         srv.removeListener("error", reject);
         resolve2();
@@ -35086,8 +35903,8 @@ var IPCServer = class {
    */
   removeSocketFile() {
     try {
-      if ((0, import_node_fs12.existsSync)(this.socketPath)) {
-        (0, import_node_fs12.unlinkSync)(this.socketPath);
+      if ((0, import_node_fs13.existsSync)(this.socketPath)) {
+        (0, import_node_fs13.unlinkSync)(this.socketPath);
         logger53.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
@@ -35100,8 +35917,10 @@ var IPCServer = class {
 };
 
 // src/extensions/ipc/ipc-router.ts
-var import_node_fs13 = require("node:fs");
-var import_node_path13 = require("node:path");
+init_logger();
+init_utils();
+var import_node_fs14 = require("node:fs");
+var import_node_path14 = require("node:path");
 var logger54 = createLogger("ipc-router");
 var IPCRouter = class {
   static {
@@ -35125,6 +35944,10 @@ var IPCRouter = class {
   executorBudget;
   /** Optional DaemonTickHandler for process_tick queries. */
   daemonTickHandler;
+  /** Optional ToolGateEvaluator for should_block_tool queries. */
+  toolGateEvaluator;
+  /** Optional ContextInjector for get_context_injection queries. */
+  contextInjector;
   wrfcConfigStore;
   /** Optional callback for synchronous in-band hook event processing. */
   processHookEvent;
@@ -35149,6 +35972,8 @@ var IPCRouter = class {
     this.executorMode = deps.executorMode ?? null;
     this.executorBudget = deps.executorBudget ?? null;
     this.daemonTickHandler = deps.daemonTickHandler ?? null;
+    this.toolGateEvaluator = deps.toolGateEvaluator ?? null;
+    this.contextInjector = deps.contextInjector ?? null;
     this.wrfcConfigStore = deps.wrfcConfigStore ?? null;
     this.processHookEvent = deps.processHookEvent ?? null;
   }
@@ -35171,9 +35996,9 @@ var IPCRouter = class {
   removeSessionPointers() {
     if (!this.stateDir) return;
     for (const sessionId of this.registeredSessions) {
-      const pointerFile = (0, import_node_path13.join)(this.stateDir, `runtime-${sessionId}.socket`);
+      const pointerFile = (0, import_node_path14.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
-        (0, import_node_fs13.unlinkSync)(pointerFile);
+        (0, import_node_fs14.unlinkSync)(pointerFile);
         logger54.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
@@ -35298,8 +36123,8 @@ var IPCRouter = class {
       this.directiveQueue?.clear();
       if (this.socketPath && this.stateDir && typeof sessionId === "string" && sessionId.length > 0) {
         try {
-          const pointerFile = (0, import_node_path13.join)(this.stateDir, `runtime-${sessionId}.socket`);
-          (0, import_node_fs13.writeFileSync)(pointerFile, this.socketPath, "utf-8");
+          const pointerFile = (0, import_node_path14.join)(this.stateDir, `runtime-${sessionId}.socket`);
+          (0, import_node_fs14.writeFileSync)(pointerFile, this.socketPath, "utf-8");
           this.registeredSessions.add(sessionId);
           logger54.info("Session pointer file written", { sessionId, pointer: pointerFile });
         } catch (err) {
@@ -35369,17 +36194,20 @@ var IPCRouter = class {
       };
     }
     if (q.kind === "should_block_tool") {
+      const toolName = q.tool_name ?? "";
+      const result = this.toolGateEvaluator?.evaluate(toolName) ?? { allow: true };
       return {
         id: msg.id,
         status: "ok",
-        data: { kind: "tool_decision", allow: true }
+        data: { kind: "tool_decision", allow: result.allow, reason: result.reason }
       };
     }
     if (q.kind === "get_context_injection") {
+      const result = this.contextInjector?.getContext() ?? { context: "", priority: 0 };
       return {
         id: msg.id,
         status: "ok",
-        data: { kind: "context_injection", context: "", priority: 0 }
+        data: { kind: "context_injection", context: result.context, priority: result.priority }
       };
     }
     if (q.kind === "resolve_pending_bind") {
@@ -35471,8 +36299,205 @@ var IPCRouter = class {
   }
 };
 
+// src/extensions/ipc/tool-gating.ts
+init_logger();
+var logger55 = createLogger("tool-gating");
+var ToolGateEvaluator = class {
+  static {
+    __name(this, "ToolGateEvaluator");
+  }
+  config;
+  budgetManager;
+  workflowEngine;
+  constructor(config2, deps) {
+    this.config = config2;
+    this.budgetManager = deps?.budgetManager;
+    this.workflowEngine = deps?.workflowEngine;
+  }
+  /**
+   * Evaluate whether the named tool should be allowed.
+   *
+   * @param toolName - The tool name to evaluate (e.g. 'Bash', 'precision_exec').
+   * @returns { allow: true } unless a matching rule fires, in which case
+   *   { allow: false, message? }. Always returns { allow: true } on error.
+   */
+  evaluate(toolName) {
+    try {
+      if (!this.config.enabled || this.config.force_allow_all) {
+        return { allow: true };
+      }
+      for (const rule of this.config.rules) {
+        if (!this.matchesPattern(toolName, rule.tool_pattern)) {
+          continue;
+        }
+        const fires = this.evaluateCondition(rule);
+        if (fires) {
+          logger55.debug("Tool blocked by rule", {
+            tool: toolName,
+            pattern: rule.tool_pattern,
+            condition: rule.condition
+          });
+          return { allow: false, reason: rule.message };
+        }
+      }
+      return { allow: true };
+    } catch (err) {
+      logger55.warn("Tool gate evaluation error \u2014 failing open", {
+        tool: toolName,
+        error: err instanceof Error ? err.message : String(err)
+      });
+      return { allow: true };
+    }
+  }
+  /**
+   * Simple glob matching for tool patterns.
+   * Supports '*' (match all), exact names, and '*' suffix/prefix wildcards.
+   */
+  matchesPattern(toolName, pattern) {
+    if (pattern === "*") return true;
+    if (pattern === toolName) return true;
+    if (pattern.endsWith("*")) {
+      return toolName.startsWith(pattern.slice(0, -1));
+    }
+    if (pattern.startsWith("*")) {
+      return toolName.endsWith(pattern.slice(1));
+    }
+    return false;
+  }
+  /** Evaluate whether a rule's condition is currently met. */
+  evaluateCondition(rule) {
+    switch (rule.condition) {
+      case "always":
+        return true;
+      case "budget_exceeded": {
+        if (!this.budgetManager) {
+          return false;
+        }
+        return !this.budgetManager.canProcess();
+      }
+      case "workflow_phase": {
+        if (!this.workflowEngine) {
+          return false;
+        }
+        const activeInstances = this.workflowEngine.getActiveInstances();
+        return activeInstances.some(
+          (instance) => typeof instance.current_state === "string" && instance.current_state.toLowerCase().includes("review")
+        );
+      }
+      case "custom":
+        logger55.warn("Custom tool block condition is not yet implemented", {
+          pattern: rule.tool_pattern
+        });
+        return false;
+      default:
+        return false;
+    }
+  }
+};
+
+// src/extensions/ipc/context-injector.ts
+init_logger();
+var logger56 = createLogger("context-injector");
+var ContextInjector = class _ContextInjector {
+  static {
+    __name(this, "ContextInjector");
+  }
+  static DEFAULT_PRIORITY = 5;
+  config;
+  workflowEngine;
+  agentCoordinator;
+  budgetManager;
+  constructor(config2, deps) {
+    this.config = config2;
+    this.workflowEngine = deps?.workflowEngine;
+    this.agentCoordinator = deps?.agentCoordinator;
+    this.budgetManager = deps?.budgetManager;
+  }
+  /**
+   * Gather and assemble context from configured sources.
+   *
+   * @returns Assembled context string and its priority. Returns empty context
+   *   when disabled or all sources are unavailable/empty.
+   */
+  getContext() {
+    if (!this.config.enabled) {
+      return { context: "", priority: 0 };
+    }
+    const sections = [];
+    for (const source of this.config.include) {
+      try {
+        const section = this.gatherSource(source);
+        if (section) {
+          sections.push(section);
+        }
+      } catch (err) {
+        logger56.warn("Context source failed \u2014 skipping", {
+          source,
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
+    const context = sections.join("\n\n");
+    return { context, priority: context.length > 0 ? _ContextInjector.DEFAULT_PRIORITY : 0 };
+  }
+  /** Gather a single context source and return a Markdown section string. */
+  gatherSource(source) {
+    switch (source) {
+      case "workflow_state":
+        return this.gatherWorkflowState();
+      case "agent_roster":
+        return this.gatherAgentRoster();
+      case "budget_status":
+        return this.gatherBudgetStatus();
+      default:
+        return "";
+    }
+  }
+  /** Gather active workflow state summary. */
+  gatherWorkflowState() {
+    if (!this.workflowEngine) return "";
+    const instances = this.workflowEngine.getActiveInstances();
+    if (instances.length === 0) return "";
+    const lines = ["## Active Workflows"];
+    for (const inst of instances) {
+      const ctx = inst.context;
+      const score = typeof ctx["score"] === "number" ? ` | score: ${ctx["score"]}` : "";
+      const attempts = typeof ctx["fix_attempts"] === "number" ? ` | attempts: ${ctx["fix_attempts"]}` : "";
+      const maxAttempts = typeof ctx["max_fix_attempts"] === "number" ? `/${ctx["max_fix_attempts"]}` : "";
+      lines.push(
+        `- \`${inst.id}\` state: **${inst.current_state}** (${inst.definition_id})${score}${attempts}${maxAttempts}`
+      );
+    }
+    return lines.join("\n");
+  }
+  /** Gather running agent roster. */
+  gatherAgentRoster() {
+    if (!this.agentCoordinator) return "";
+    const agents = this.agentCoordinator.listActive();
+    if (agents.length === 0) return "";
+    const lines = ["## Active Agents"];
+    for (const agent of agents) {
+      const phase = agent.workflow_phase ? ` (${agent.workflow_phase})` : "";
+      lines.push(`- \`${agent.id}\` type: ${agent.type} | status: **${agent.status}**${phase}`);
+    }
+    return lines.join("\n");
+  }
+  /** Gather executor budget status. */
+  gatherBudgetStatus() {
+    if (!this.budgetManager) return "";
+    const spending = this.budgetManager.getSpending();
+    const canProcess = this.budgetManager.canProcess();
+    const status = canProcess ? "ok" : "**EXCEEDED**";
+    const lines = [
+      "## Budget Status",
+      `- Total spent: $${spending.total_usd.toFixed(4)} | Daily: $${spending.daily_usd.toFixed(4)} | Status: ${status}`
+    ];
+    return lines.join("\n");
+  }
+};
+
 // src/extensions/ipc/setup.ts
-var logger55 = createLogger("ipc-setup");
+var logger57 = createLogger("ipc-setup");
 function isPidAlive(pid) {
   try {
     process.kill(pid, 0);
@@ -35482,11 +36507,11 @@ function isPidAlive(pid) {
   }
 }
 __name(isPidAlive, "isPidAlive");
-function cleanStalePointerFiles(stateDir, log9) {
+function cleanStalePointerFiles(stateDir, log18) {
   try {
     let entries;
     try {
-      entries = (0, import_node_fs14.readdirSync)(stateDir);
+      entries = (0, import_node_fs15.readdirSync)(stateDir);
     } catch (err) {
       if (err.code === "ENOENT") return;
       throw err;
@@ -35497,20 +36522,20 @@ function cleanStalePointerFiles(stateDir, log9) {
       if (!match) continue;
       const pid = parseInt(match[1], 10);
       if (isPidAlive(pid)) continue;
-      const pointerPath = (0, import_node_path14.join)(stateDir, filename);
+      const pointerPath = (0, import_node_path15.join)(stateDir, filename);
       let socketFilePath;
       try {
-        socketFilePath = (0, import_node_fs14.readFileSync)(pointerPath, "utf-8").trim();
+        socketFilePath = (0, import_node_fs15.readFileSync)(pointerPath, "utf-8").trim();
       } catch {
       }
       let socketCleaned = false;
       if (socketFilePath) {
         try {
-          (0, import_node_fs14.unlinkSync)(socketFilePath);
+          (0, import_node_fs15.unlinkSync)(socketFilePath);
           socketCleaned = true;
         } catch (err) {
           if (err.code !== "ENOENT") {
-            log9.warn("Could not remove stale socket file", {
+            log18.warn("Could not remove stale socket file", {
               path: socketFilePath,
               err: toErrorMessage(err)
             });
@@ -35518,30 +36543,48 @@ function cleanStalePointerFiles(stateDir, log9) {
         }
       }
       try {
-        (0, import_node_fs14.unlinkSync)(pointerPath);
+        (0, import_node_fs15.unlinkSync)(pointerPath);
       } catch (err) {
         if (err.code !== "ENOENT") {
-          log9.warn("Could not remove stale socket pointer file", {
+          log18.warn("Could not remove stale socket pointer file", {
             path: pointerPath,
             err: toErrorMessage(err)
           });
         }
       }
-      log9.info("Cleaned stale socket pointer", { pid, pointer: pointerPath, socketCleaned });
+      log18.info("Cleaned stale socket pointer", { pid, pointer: pointerPath, socketCleaned });
     }
   } catch (err) {
-    log9.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
+    log18.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
   }
 }
 __name(cleanStalePointerFiles, "cleanStalePointerFiles");
 async function createIPCSubsystem(opts) {
   const { config: config2, projectRoot, directiveQueue, agentWorkflowMap } = opts;
-  const stateDir = (0, import_node_path14.join)(projectRoot, config2.persistence.state_dir);
+  const stateDir = (0, import_node_path15.join)(projectRoot, config2.persistence.state_dir);
   const socketDir = config2.ipc.socket_dir;
   const hash2 = (0, import_node_crypto4.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  const socketPath = (0, import_node_path14.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
+  const socketPath = (0, import_node_path15.join)(socketDir, `goodvibes-runtime-${hash2}-${process.pid}.sock`);
   try {
     const ipcServer = new IPCServer(socketPath);
+    const toolGatingConfig = opts.config.tool_gating ?? {
+      enabled: false,
+      force_allow_all: false,
+      rules: []
+    };
+    const toolGateEvaluator = new ToolGateEvaluator(toolGatingConfig, {
+      budgetManager: opts.executorBudget ?? void 0,
+      workflowEngine: opts.workflowEngine ?? void 0
+    });
+    const contextInjectionConfig = opts.config.context_injection ?? {
+      enabled: false,
+      include: []
+    };
+    const contextInjector = new ContextInjector(contextInjectionConfig, {
+      workflowEngine: opts.workflowEngine ?? void 0,
+      agentCoordinator: opts.agentCoordinator ?? void 0,
+      budgetManager: opts.executorBudget ?? void 0
+    });
     const ipcRouter = new IPCRouter({
       eventBus: opts.eventBus,
       triggerRegistry: opts.triggerRegistry,
@@ -35557,6 +36600,8 @@ async function createIPCSubsystem(opts) {
       executorMode: opts.executorMode,
       executorBudget: opts.executorBudget,
       daemonTickHandler: opts.daemonTickHandler,
+      toolGateEvaluator,
+      contextInjector,
       processHookEvent: opts.processHookEvent
     });
     ipcServer.onMessage(ipcRouter.route.bind(ipcRouter));
@@ -35576,16 +36621,16 @@ async function createIPCSubsystem(opts) {
         return awm.lookup(agentId) ?? null;
       });
     }
-    cleanStalePointerFiles(stateDir, logger55);
-    (0, import_node_fs14.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+    cleanStalePointerFiles(stateDir, logger57);
+    (0, import_node_fs15.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
     ensureDirSync(stateDir);
-    const pointerFile = (0, import_node_path14.join)(stateDir, `runtime-${process.pid}.socket`);
-    (0, import_node_fs14.writeFileSync)(pointerFile, socketPath, "utf-8");
-    logger55.info("IPC subsystem created", { socket: socketPath });
+    const pointerFile = (0, import_node_path15.join)(stateDir, `runtime-${process.pid}.socket`);
+    (0, import_node_fs15.writeFileSync)(pointerFile, socketPath, "utf-8");
+    logger57.info("IPC subsystem created", { socket: socketPath });
     return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
   } catch (err) {
-    logger55.error("Failed to create IPC subsystem", {
+    logger57.error("Failed to create IPC subsystem", {
       socket: socketPath,
       err: toErrorMessage(err)
     });
@@ -35595,21 +36640,23 @@ async function createIPCSubsystem(opts) {
 __name(createIPCSubsystem, "createIPCSubsystem");
 
 // src/extensions/ipc/teardown.ts
-var import_node_fs15 = require("node:fs");
-var import_node_path15 = require("node:path");
-var logger56 = createLogger("ipc-teardown");
+var import_node_fs16 = require("node:fs");
+var import_node_path16 = require("node:path");
+init_logger();
+init_utils();
+var logger58 = createLogger("ipc-teardown");
 function removeSocketPointerFile(projectRoot, config2) {
-  const pointerFile = (0, import_node_path15.join)(
+  const pointerFile = (0, import_node_path16.join)(
     projectRoot,
     config2.persistence.state_dir,
     `runtime-${process.pid}.socket`
   );
   try {
-    (0, import_node_fs15.unlinkSync)(pointerFile);
-    logger56.debug("Socket pointer file removed", { path: pointerFile });
+    (0, import_node_fs16.unlinkSync)(pointerFile);
+    logger58.debug("Socket pointer file removed", { path: pointerFile });
   } catch (err) {
     if (err.code !== "ENOENT") {
-      logger56.warn("Could not remove socket pointer file", {
+      logger58.warn("Could not remove socket pointer file", {
         path: pointerFile,
         err: toErrorMessage(err)
       });
@@ -35622,17 +36669,433 @@ async function teardownIPC(subsystem, projectRoot, config2) {
     await subsystem.ipcServer.close();
     removeSocketPointerFile(projectRoot, config2);
     subsystem.ipcRouter.removeSessionPointers();
-    logger56.debug("IPC teardown complete");
+    logger58.debug("IPC teardown complete");
   } catch (err) {
-    logger56.warn("IPC teardown failed", {
+    logger58.warn("IPC teardown failed", {
       err: toErrorMessage(err)
     });
   }
 }
 __name(teardownIPC, "teardownIPC");
 
+// src/extensions/executor/handlers/devserver-handler.ts
+var import_node_child_process3 = require("node:child_process");
+init_logger();
+init_utils();
+var log10 = createLogger("handler:devserver");
+var PORT_POLL_TIMEOUT_MS = 3e4;
+var PORT_POLL_INTERVAL_MS = 500;
+async function waitForPort(port, timeoutMs) {
+  const { createConnection: createConnection3 } = await import("node:net");
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const open = await new Promise((resolve2) => {
+      const socket = createConnection3({ port, host: "127.0.0.1" });
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve2(true);
+      });
+      socket.once("error", () => {
+        socket.destroy();
+        resolve2(false);
+      });
+    });
+    if (open) return true;
+    await new Promise((r) => setTimeout(r, PORT_POLL_INTERVAL_MS));
+  }
+  return false;
+}
+__name(waitForPort, "waitForPort");
+async function killProcessOnPort(port) {
+  return new Promise((resolve2) => {
+    const proc = (0, import_node_child_process3.spawn)("fuser", ["-k", `${port}/tcp`], { stdio: "ignore" });
+    proc.on("close", () => resolve2());
+    proc.on("error", () => resolve2());
+  });
+}
+__name(killProcessOnPort, "killProcessOnPort");
+function restartDevServer(projectRoot) {
+  return async (args, _event) => {
+    const command = typeof args["command"] === "string" ? args["command"] : "npm run dev";
+    const port = typeof args["port"] === "number" ? args["port"] : 3e3;
+    log10.info("Restarting dev server", { command, port, projectRoot });
+    try {
+      log10.debug("Killing process on port", { port });
+      await killProcessOnPort(port);
+      await new Promise((r) => setTimeout(r, 500));
+      const [cmd, ...cmdArgs] = command.split(" ");
+      const child = (0, import_node_child_process3.spawn)(cmd ?? command, cmdArgs, {
+        cwd: projectRoot,
+        detached: true,
+        stdio: "ignore"
+      });
+      child.unref();
+      log10.info("Dev server process spawned", { pid: child.pid, command });
+      const available = await waitForPort(port, PORT_POLL_TIMEOUT_MS);
+      if (available) {
+        log10.info("Dev server restarted successfully", { port });
+      } else {
+        log10.warn("Dev server restart timed out waiting for port", { port, timeoutMs: PORT_POLL_TIMEOUT_MS });
+      }
+    } catch (err) {
+      log10.error("Failed to restart dev server", { error: toErrorMessage(err), command, port });
+    }
+  };
+}
+__name(restartDevServer, "restartDevServer");
+
+// src/extensions/executor/handlers/notify-handler.ts
+var import_promises = require("node:fs/promises");
+var import_node_path17 = require("node:path");
+init_logger();
+init_utils();
+var log11 = createLogger("handler:notify");
+function notifyUser(projectRoot) {
+  return async (args, _event) => {
+    const message = typeof args["message"] === "string" ? args["message"] : "Notification";
+    const source = typeof args["source"] === "string" ? args["source"] : "runtime-engine";
+    const rawSeverity = args["severity"];
+    const severity = rawSeverity === "warn" || rawSeverity === "error" ? rawSeverity : "info";
+    const notificationsDir = (0, import_node_path17.join)(projectRoot, ".goodvibes", "notifications");
+    const id = generateId();
+    const ts = timestamp();
+    const filename = `${ts}-${id}.json`;
+    const filePath = (0, import_node_path17.join)(notificationsDir, filename);
+    const record2 = {
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      message,
+      source,
+      severity
+    };
+    try {
+      await (0, import_promises.mkdir)(notificationsDir, { recursive: true });
+      await (0, import_promises.writeFile)(filePath, JSON.stringify(record2, null, 2), "utf-8");
+      log11.info("Notification written", { filePath, severity, source });
+    } catch (err) {
+      log11.error("Failed to write notification", { error: toErrorMessage(err), filePath });
+    }
+  };
+}
+__name(notifyUser, "notifyUser");
+async function notifyComplete(context, config2) {
+  const source = typeof config2["source"] === "string" ? config2["source"] : "workflow-engine";
+  const workflowId = typeof context["workflow_id"] === "string" ? context["workflow_id"] : "unknown";
+  const task = typeof context["task"] === "string" ? context["task"] : "unnamed task";
+  log11.info("Workflow completed", { workflowId, task, source });
+}
+__name(notifyComplete, "notifyComplete");
+
+// src/extensions/executor/handlers/log-handler.ts
+var import_promises2 = require("node:fs/promises");
+var import_node_path18 = require("node:path");
+init_logger();
+init_utils();
+var log12 = createLogger("handler:log");
+function formatLogEntry(event, args) {
+  const ts = (/* @__PURE__ */ new Date()).toISOString();
+  const lines = [
+    `## ${ts}`,
+    "",
+    `**Event**: \`${event.type}\``,
+    `**Event ID**: \`${event.id}\``
+  ];
+  if (Object.keys(args).length > 0) {
+    lines.push("**Args**:");
+    for (const [key, value] of Object.entries(args)) {
+      lines.push(`- \`${key}\`: ${JSON.stringify(value)}`);
+    }
+  }
+  if (event.payload && typeof event.payload === "object") {
+    const data = event.payload["data"];
+    if (data !== void 0 && data !== null) {
+      lines.push(`**Payload**: \`${JSON.stringify(data)}\``);
+    }
+  }
+  lines.push("", "---", "");
+  return lines.join("\n");
+}
+__name(formatLogEntry, "formatLogEntry");
+function logEvent(projectRoot) {
+  return async (args, event) => {
+    const logPath = (0, import_node_path18.join)(projectRoot, ".goodvibes", "logs", "activity.md");
+    try {
+      await (0, import_promises2.mkdir)((0, import_node_path18.dirname)(logPath), { recursive: true });
+      const entry = formatLogEntry(event, args);
+      await (0, import_promises2.appendFile)(logPath, entry, "utf-8");
+      log12.debug("Activity logged", { eventType: event.type, logPath });
+    } catch (err) {
+      log12.error("Failed to append activity log", { error: toErrorMessage(err), logPath });
+    }
+  };
+}
+__name(logEvent, "logEvent");
+
+// src/extensions/executor/handlers/memory-handler.ts
+var import_promises3 = require("node:fs/promises");
+var import_node_path19 = require("node:path");
+init_logger();
+init_utils();
+var log13 = createLogger("handler:memory");
+var ALLOWED_MEMORY_FILES = /* @__PURE__ */ new Set([
+  "decisions",
+  "failures",
+  "patterns",
+  "preferences",
+  "runtime-state"
+]);
+async function readJsonFile(filePath) {
+  try {
+    const raw = await (0, import_promises3.readFile)(filePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      return parsed;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+__name(readJsonFile, "readJsonFile");
+function updateMemory(projectRoot) {
+  return async (args, _event) => {
+    const file2 = typeof args["file"] === "string" ? args["file"] : "";
+    const key = typeof args["key"] === "string" ? args["key"] : "";
+    const value = args["value"];
+    if (!file2) {
+      log13.warn("updateMemory called without args.file");
+      return;
+    }
+    if (!key) {
+      log13.warn("updateMemory called without args.key", { file: file2 });
+      return;
+    }
+    const safeName = file2.replace(/[^a-z0-9-]/gi, "");
+    if (!ALLOWED_MEMORY_FILES.has(safeName)) {
+      log13.warn("updateMemory blocked unknown memory file", { file: file2, safeName });
+      return;
+    }
+    const memoryDir = (0, import_node_path19.join)(projectRoot, ".goodvibes", "memory");
+    const filePath = (0, import_node_path19.join)(memoryDir, `${safeName}.json`);
+    try {
+      await (0, import_promises3.mkdir)((0, import_node_path19.dirname)(filePath), { recursive: true });
+      const existing = await readJsonFile(filePath);
+      existing[key] = value;
+      await (0, import_promises3.writeFile)(filePath, JSON.stringify(existing, null, 2), "utf-8");
+      log13.info("Memory updated", { file: safeName, key, filePath });
+    } catch (err) {
+      log13.error("Failed to update memory file", { error: toErrorMessage(err), filePath, key });
+    }
+  };
+}
+__name(updateMemory, "updateMemory");
+
+// src/extensions/executor/handlers/build-handler.ts
+var import_node_child_process4 = require("node:child_process");
+var import_node_util = require("node:util");
+init_logger();
+init_utils();
+var log14 = createLogger("handler:build");
+var execAsync = (0, import_node_util.promisify)(import_node_child_process4.exec);
+var MAX_OUTPUT_CHARS = 2e3;
+function runBuild(projectRoot) {
+  return async (context, config2) => {
+    const command = typeof config2["command"] === "string" ? config2["command"] : "npm run build";
+    const cwd = typeof config2["cwd"] === "string" ? config2["cwd"] : projectRoot;
+    log14.info("Running build", { command, cwd });
+    try {
+      const { stdout, stderr } = await execAsync(command, { cwd });
+      const combined = `${stdout}
+${stderr}`.trim().slice(0, MAX_OUTPUT_CHARS);
+      context["build_result"] = "success";
+      context["build_output"] = combined;
+      log14.info("Build succeeded", { command });
+    } catch (err) {
+      const execErr = err;
+      const combined = [
+        execErr.stdout ?? "",
+        execErr.stderr ?? "",
+        execErr.message ?? toErrorMessage(err)
+      ].join("\n").trim().slice(0, MAX_OUTPUT_CHARS);
+      context["build_result"] = "failed";
+      context["build_output"] = combined;
+      log14.warn("Build failed", { command, error: execErr.message ?? toErrorMessage(err) });
+    }
+  };
+}
+__name(runBuild, "runBuild");
+
+// src/extensions/executor/handlers/test-handler.ts
+var import_node_child_process5 = require("node:child_process");
+var import_node_util2 = require("node:util");
+init_logger();
+init_utils();
+var log15 = createLogger("handler:test");
+var execAsync2 = (0, import_node_util2.promisify)(import_node_child_process5.exec);
+var MAX_OUTPUT_CHARS2 = 2e3;
+function runTests(projectRoot) {
+  return async (context, config2) => {
+    const command = typeof config2["command"] === "string" ? config2["command"] : "npm test";
+    const cwd = typeof config2["cwd"] === "string" ? config2["cwd"] : projectRoot;
+    log15.info("Running tests", { command, cwd });
+    try {
+      const { stdout, stderr } = await execAsync2(command, { cwd });
+      const combined = `${stdout}
+${stderr}`.trim().slice(0, MAX_OUTPUT_CHARS2);
+      context["test_result"] = "success";
+      context["test_output"] = combined;
+      log15.info("Tests passed", { command });
+    } catch (err) {
+      const execErr = err;
+      const combined = [
+        execErr.stdout ?? "",
+        execErr.stderr ?? "",
+        execErr.message ?? toErrorMessage(err)
+      ].join("\n").trim().slice(0, MAX_OUTPUT_CHARS2);
+      context["test_result"] = "failed";
+      context["test_output"] = combined;
+      log15.warn("Tests failed", { command, error: execErr.message ?? toErrorMessage(err) });
+    }
+  };
+}
+__name(runTests, "runTests");
+
+// src/extensions/executor/handlers/guards.ts
+var import_node_fs17 = require("node:fs");
+var import_node_path20 = require("node:path");
+init_logger();
+init_utils();
+var log16 = createLogger("handler:guards");
+var DEFAULT_NPM_TEST_SCRIPT = 'echo "Error: no test specified"';
+function hasTestSuite(projectRoot) {
+  return (_context, _event) => {
+    const pkgPath = (0, import_node_path20.join)(projectRoot, "package.json");
+    try {
+      const raw = (0, import_node_fs17.readFileSync)(pkgPath, "utf-8");
+      const pkg = JSON.parse(raw);
+      if (typeof pkg !== "object" || pkg === null) return false;
+      const scripts = pkg["scripts"];
+      if (typeof scripts !== "object" || scripts === null) return false;
+      const testScript = scripts["test"];
+      if (typeof testScript !== "string") return false;
+      return testScript.trim() !== "" && !testScript.includes(DEFAULT_NPM_TEST_SCRIPT);
+    } catch (err) {
+      log16.debug("hasTestSuite: could not read package.json", { error: toErrorMessage(err), projectRoot });
+      return false;
+    }
+  };
+}
+__name(hasTestSuite, "hasTestSuite");
+function buildPassing(stateStore) {
+  return (_context, _event) => {
+    const result = stateStore.get("build.last_result");
+    return result === "success";
+  };
+}
+__name(buildPassing, "buildPassing");
+
+// src/extensions/executor/handlers/ci-handler.ts
+init_logger();
+init_events();
+var log17 = createLogger("handler:ci");
+var FAILURE_STATUSES = /* @__PURE__ */ new Set(["failure", "failed", "error"]);
+function bridgeCIFailure(_projectRoot, emitter) {
+  return async (args, _event) => {
+    const status = typeof args["status"] === "string" ? args["status"].toLowerCase() : "";
+    if (!FAILURE_STATUSES.has(status)) {
+      log17.debug("CI event is not a failure \u2014 skipping", { status });
+      return;
+    }
+    const provider = typeof args["provider"] === "string" ? args["provider"] : "ci";
+    const branch = typeof args["branch"] === "string" ? args["branch"] : "unknown";
+    const commit = typeof args["commit"] === "string" ? args["commit"] : "unknown";
+    const sourceEventId = typeof args["source_event_id"] === "string" ? args["source_event_id"] : "";
+    log17.info("CI failure detected \u2014 emitting build:failed", { provider, branch, commit, status });
+    emitter.emit(createEvent({
+      type: "build:failed",
+      source: { kind: "system" },
+      payload: {
+        type: "build:failed",
+        data: {
+          command: `ci:${provider}`,
+          exit_code: 1,
+          duration_ms: 0,
+          errors: [
+            `CI pipeline failed on branch "${branch}" at commit "${commit}" (status: ${status})`
+          ],
+          warnings: []
+        }
+      }
+    }));
+  };
+}
+__name(bridgeCIFailure, "bridgeCIFailure");
+
+// src/plugins/hooks/handlers/build-test-detector.ts
+init_logger();
+init_events();
+var logger59 = createLogger("build-test-detector");
+var DEFAULT_DETECTOR_CONFIG = {
+  build_commands: ["npm run build", "npx tsc", "node build", "vite build", "next build"],
+  test_commands: ["npm test", "npm run test", "vitest", "jest", "playwright test", "npx vitest"]
+};
+var BuildTestDetector = class {
+  constructor(eventBus, config2 = DEFAULT_DETECTOR_CONFIG) {
+    this.eventBus = eventBus;
+    this.config = config2;
+  }
+  static {
+    __name(this, "BuildTestDetector");
+  }
+  start() {
+    this.eventBus.on("hook:post_tool_use", (event) => {
+      this.analyzeToolResult(event);
+    });
+    logger59.info("BuildTestDetector started, listening for hook:post_tool_use");
+  }
+  analyzeToolResult(event) {
+    const hookInput = event.hook_input ?? event.payload?.data ?? {};
+    const toolName = hookInput.tool_name ?? hookInput.tool ?? "";
+    const exitCode = hookInput.exit_code ?? hookInput.exitCode;
+    const command = hookInput.command ?? hookInput.cmd ?? hookInput.input?.command ?? "";
+    if (!this.isExecTool(toolName)) return;
+    if (typeof exitCode !== "number") return;
+    if (typeof command !== "string" || command.length === 0) return;
+    const isBuild = this.matchesPatterns(command, this.config.build_commands);
+    const isTest = this.matchesPatterns(command, this.config.test_commands);
+    if (!isBuild && !isTest) return;
+    const succeeded = exitCode === 0;
+    const category = isBuild ? "build" : "test";
+    const eventType = `${category}:${succeeded ? "succeeded" : "failed"}`;
+    const emittedEvent = createEvent({
+      source: { kind: "internal" },
+      type: eventType,
+      payload: {
+        type: eventType,
+        data: {
+          command,
+          exit_code: exitCode,
+          tool_name: toolName,
+          detected_by: "build-test-detector"
+        }
+      },
+      priority: 45,
+      metadata: { session_id: "", sequence: 0 }
+    });
+    this.eventBus.emit(emittedEvent);
+    logger59.info("Detected command result", { category, succeeded, command, eventType });
+  }
+  isExecTool(toolName) {
+    const execTools = ["Bash", "precision_exec", "mcp__plugin_goodvibes_precision-engine__precision_exec"];
+    return execTools.some((t) => toolName.includes(t));
+  }
+  matchesPatterns(command, patterns) {
+    const normalized = command.toLowerCase().trim();
+    return patterns.some((p) => normalized.startsWith(p.toLowerCase()) || normalized.includes(p.toLowerCase()));
+  }
+};
+
 // src/bootstrap.ts
-var logger57 = createLogger("bootstrap");
+var logger61 = createLogger("bootstrap");
 function eventMatcherToCondition(eventMatch) {
   const eventType = eventMatch.type;
   const pattern = typeof eventType === "string" ? eventType : "*";
@@ -35661,12 +37124,12 @@ function toTriggerDefinitionBase(trigger) {
   };
 }
 __name(toTriggerDefinitionBase, "toTriggerDefinitionBase");
-function loggerToPluginLogger(log9) {
+function loggerToPluginLogger(log18) {
   return {
-    debug: /* @__PURE__ */ __name((...args) => log9.debug(String(args[0]), args[1]), "debug"),
-    info: /* @__PURE__ */ __name((...args) => log9.info(String(args[0]), args[1]), "info"),
-    warn: /* @__PURE__ */ __name((...args) => log9.warn(String(args[0]), args[1]), "warn"),
-    error: /* @__PURE__ */ __name((...args) => log9.error(String(args[0]), args[1]), "error")
+    debug: /* @__PURE__ */ __name((...args) => log18.debug(String(args[0]), args[1]), "debug"),
+    info: /* @__PURE__ */ __name((...args) => log18.info(String(args[0]), args[1]), "info"),
+    warn: /* @__PURE__ */ __name((...args) => log18.warn(String(args[0]), args[1]), "warn"),
+    error: /* @__PURE__ */ __name((...args) => log18.error(String(args[0]), args[1]), "error")
   };
 }
 __name(loggerToPluginLogger, "loggerToPluginLogger");
@@ -35695,6 +37158,10 @@ var RuntimeEngine = class {
   watchdog = null;
   wrfcPlugin = null;
   externalPlugin = null;
+  timePlugin = null;
+  devServerMonitor = null;
+  /** Generic registry of reconfigurable subsystems, populated during startup(). */
+  reconfigurables = /* @__PURE__ */ new Map();
   constructor(config2, projectRoot = process.cwd()) {
     this.startTime = Date.now();
     this.config = config2;
@@ -35703,12 +37170,12 @@ var RuntimeEngine = class {
   }
   // ─── Lifecycle ─────────────────────────────────────────────────────────────
   async startup() {
-    logger57.info("Starting up");
+    logger61.info("Starting up");
     try {
       this.config = loadConfig(this.projectRoot);
-      logger57.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger61.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger57.warn("Could not load config from disk \u2014 using defaults", { err: toErrorMessage(err) });
+      logger61.warn("Could not load config from disk \u2014 using defaults", { err: toErrorMessage(err) });
     }
     this.events = await createEventSubsystem(this.config, this.projectRoot);
     await checkCrashRecovery(this.projectRoot);
@@ -35742,6 +37209,30 @@ var RuntimeEngine = class {
     this.triggers = createTriggerSubsystem(this.config, triggerDeps);
     if (this.workflow) {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
+      if (this.directives.agentWorkflowMap) {
+        this.workflow.workflowEngine.setAgentWorkflowMap(this.directives.agentWorkflowMap);
+      }
+      const workflowPersistence = new WorkflowPersistence({
+        stateDir: (0, import_node_path21.join)(this.projectRoot, ".goodvibes", "state", "workflows"),
+        ttlMs: 24 * 60 * 60 * 1e3,
+        // 24 hours
+        enabled: true
+      });
+      const savedInstances = await workflowPersistence.restore();
+      for (const raw of savedInstances) {
+        try {
+          this.workflow.workflowEngine.restoreInstance(
+            raw
+          );
+        } catch (err) {
+          logger61.debug("Failed to restore workflow instance", { error: String(err) });
+        }
+      }
+      if (savedInstances.length > 0) {
+        logger61.debug("Restored workflow instances from persistence", { count: savedInstances.length });
+      }
+      workflowPersistence.cleanup().catch(() => {
+      });
     }
     this.events.eventBus.on("*", async (event) => {
       if (event.source?.kind === "internal" && event.source.hook_name) {
@@ -35750,7 +37241,7 @@ var RuntimeEngine = class {
       try {
         if (this.triggers) await this.triggers.triggerRegistry.evaluate(event);
       } catch (err) {
-        logger57.warn("Trigger evaluation error", { error: toErrorMessage(err) });
+        logger61.warn("Trigger evaluation error", { error: toErrorMessage(err) });
       }
     });
     if (this.config.features.agents_enabled) {
@@ -35761,7 +37252,7 @@ var RuntimeEngine = class {
         workflowEngine: this.workflow.workflowEngine,
         directiveQueue: this.directives.directiveQueue,
         agentWorkflowMap: this.directives.agentWorkflowMap,
-        stateDir: (0, import_node_path16.join)(this.projectRoot, this.config.persistence.state_dir)
+        stateDir: (0, import_node_path21.join)(this.projectRoot, this.config.persistence.state_dir)
       });
     }
     this.persistence = await createPersistenceSubsystem({
@@ -35786,7 +37277,7 @@ var RuntimeEngine = class {
     );
     const wrfcConfig = getDefaultWRFCConfig();
     try {
-      const raw = (0, import_node_fs16.readFileSync)((0, import_node_path16.join)(this.projectRoot, ".goodvibes", "goodvibes.json"), "utf-8");
+      const raw = (0, import_node_fs18.readFileSync)((0, import_node_path21.join)(this.projectRoot, ".goodvibes", "goodvibes.json"), "utf-8");
       const parsed = JSON.parse(raw);
       const wrfcOverrides = parsed?.runtime?.wrfc;
       if (wrfcOverrides && typeof wrfcOverrides === "object") {
@@ -35802,7 +37293,7 @@ var RuntimeEngine = class {
         if (Array.isArray(wrfcOverrides.require_review_types)) {
           wrfcConfig.require_review_types = wrfcOverrides.require_review_types;
         }
-        logger57.info("WRFC config overrides applied from goodvibes.json", {
+        logger61.info("WRFC config overrides applied from goodvibes.json", {
           score_threshold: wrfcConfig.score_threshold,
           max_fix_attempts: wrfcConfig.max_fix_attempts
         });
@@ -35846,7 +37337,7 @@ var RuntimeEngine = class {
       listStateKeys: /* @__PURE__ */ __name((prefix) => coreStore.keys(prefix), "listStateKeys"),
       registerTrigger: /* @__PURE__ */ __name((id, definition, handler) => {
         if (!coreTriggerRegistry) {
-          logger57.warn("registerTrigger: trigger subsystem not available", { id });
+          logger61.warn("registerTrigger: trigger subsystem not available", { id });
           return;
         }
         const trigger = createWRFCTrigger({
@@ -35874,7 +37365,7 @@ var RuntimeEngine = class {
     this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
     this.wrfcPlugin.register(runtimeServices);
     this.wrfcPlugin.start();
-    logger57.debug("WRFC plugin registered via RuntimePlugin interface", {
+    logger61.debug("WRFC plugin registered via RuntimePlugin interface", {
       name: this.wrfcPlugin.name,
       version: this.wrfcPlugin.version,
       state: this.wrfcPlugin.state
@@ -35882,11 +37373,32 @@ var RuntimeEngine = class {
     const agentTrackerPlugin = new AgentTrackerPlugin();
     agentTrackerPlugin.register(runtimeServices);
     agentTrackerPlugin.start();
-    logger57.debug("AgentTracker plugin registered", {
+    logger61.debug("AgentTracker plugin registered", {
       name: agentTrackerPlugin.name,
       version: agentTrackerPlugin.version,
       state: agentTrackerPlugin.state
     });
+    if (this.triggers) {
+      const triggerReg = this.triggers.triggerRegistry;
+      triggerReg.registerHandler("restartDevServer", restartDevServer(this.projectRoot));
+      triggerReg.registerHandler("bridgeCIFailure", bridgeCIFailure(this.projectRoot, eventBusRef));
+      triggerReg.registerHandler("notifyUser", notifyUser(this.projectRoot));
+      triggerReg.registerHandler("logEvent", logEvent(this.projectRoot));
+      triggerReg.registerHandler("updateMemory", updateMemory(this.projectRoot));
+      logger61.debug("Trigger action handlers registered");
+    }
+    const wfEngine = this.workflow?.workflowEngine;
+    if (wfEngine && this.coreRuntime) {
+      wfEngine.registerAction("run_build", runBuild(this.projectRoot));
+      wfEngine.registerAction("run_tests", runTests(this.projectRoot));
+      wfEngine.registerAction("notify_complete", notifyComplete);
+      wfEngine.registerGuard("has_test_suite", hasTestSuite(this.projectRoot));
+      wfEngine.registerGuard("build_passing", buildPassing(this.coreRuntime.stateStore));
+      logger61.debug("Workflow action handlers and guards registered");
+    }
+    const buildTestDetector = new BuildTestDetector(this.events.eventBus);
+    buildTestDetector.start();
+    logger61.debug("BuildTestDetector wired to EventBus");
     this.coreRuntime.eventProcessor.start();
     const hookSubsystem = createHookSubsystem({
       eventBus: this.events.eventBus,
@@ -35896,8 +37408,8 @@ var RuntimeEngine = class {
       executorMode: this.executorSubsystem?.executorMode ?? null
     });
     this.hookProcessor = hookSubsystem.hookProcessor;
-    logger57.debug("Hook subsystem created", { handlerCount: hookSubsystem.hookRegistry.count() });
-    const timePlugin = new TimePlugin({
+    logger61.debug("Hook subsystem created", { handlerCount: hookSubsystem.hookRegistry.count() });
+    const timePlugin = this.timePlugin = new TimePlugin({
       queue: this.coreRuntime.eventQueue,
       store: this.coreRuntime.stateStore,
       config: this.config.time
@@ -35908,21 +37420,31 @@ var RuntimeEngine = class {
     try {
       await this.externalPlugin.initialize();
     } catch (err) {
-      logger57.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
+      logger61.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
     }
     if (httpEnabled) {
       try {
         await this.externalPlugin.startHttpListener();
-        logger57.info("HTTP webhook listener started", {
+        logger61.info("HTTP webhook listener started", {
           port: this.config.external.http_listener.port,
           host: this.config.external.http_listener.address
         });
       } catch (err) {
-        logger57.warn("Failed to start HTTP webhook listener", { err: toErrorMessage(err) });
+        logger61.warn("Failed to start HTTP webhook listener", { err: toErrorMessage(err) });
       }
     }
+    this.reconfigurables = /* @__PURE__ */ new Map();
+    this.reconfigurables.set("time", this.timePlugin);
+    if (this.wrfcPlugin) this.reconfigurables.set("wrfc", this.wrfcPlugin);
+    if (this.config.devserver?.enabled) {
+      const { DevServerMonitor: DevServerMonitor2 } = await Promise.resolve().then(() => (init_devserver(), devserver_exports));
+      this.devServerMonitor = new DevServerMonitor2(this.config.devserver, this.events.eventBus);
+      this.devServerMonitor.start();
+      this.reconfigurables.set("devserver", this.devServerMonitor);
+      logger61.debug("DevServerMonitor started");
+    }
     if (!this.executorSubsystem?.executorMode) {
-      logger57.warn("Skipping tick driver \u2014 executorMode not available");
+      logger61.warn("Skipping tick driver \u2014 executorMode not available");
     } else {
       this.tickDriver = new TickDriver({
         config: this.config.executor,
@@ -35963,7 +37485,7 @@ var RuntimeEngine = class {
             try {
               await processor.processImmediate(event);
             } catch (err) {
-              logger57.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
+              logger61.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
             }
           }
         }, "processHookEvent")
@@ -35973,7 +37495,7 @@ var RuntimeEngine = class {
         ipcSocketPath = ipcResult.socketPath;
       }
     } else {
-      logger57.debug("IPC server disabled by feature flag");
+      logger61.debug("IPC server disabled by feature flag");
     }
     this.tickDriver?.start();
     this.events.eventBus.emit({
@@ -35992,17 +37514,19 @@ var RuntimeEngine = class {
       }
     });
     this.running = true;
-    logger57.info("Startup complete", { pid: process.pid, uptime_ms: this.getUptime() });
+    logger61.info("Startup complete", { pid: process.pid, uptime_ms: this.getUptime() });
   }
   async shutdown(timeout_ms = 1e4) {
-    logger57.info("Shutting down", { timeout_ms });
+    logger61.info("Shutting down", { timeout_ms });
     const shutdownTimer = setTimeout(() => {
-      logger57.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
+      logger61.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
       process.exit(1);
     }, timeout_ms);
     shutdownTimer.unref();
     try {
       this.workflow?.shutdown();
+      this.devServerMonitor?.stop();
+      this.devServerMonitor = null;
       this.wrfcPlugin?.stop();
       this.wrfcPlugin = null;
       this.tickDriver?.stop();
@@ -36017,7 +37541,7 @@ var RuntimeEngine = class {
             payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
           });
         } catch (err) {
-          logger57.warn("Failed to emit shutdown event", { err: toErrorMessage(err) });
+          logger61.warn("Failed to emit shutdown event", { err: toErrorMessage(err) });
         }
       }
       if (this.ipcSubsystem) {
@@ -36028,14 +37552,14 @@ var RuntimeEngine = class {
         try {
           this.executorSubsystem.executorBudget.persist(coreStateStoreForShutdown);
         } catch (err) {
-          logger57.warn("Executor budget persistence failed", { err: toErrorMessage(err) });
+          logger61.warn("Executor budget persistence failed", { err: toErrorMessage(err) });
         }
       }
       if (this.persistence) await this.persistence.shutdown();
       if (this.events) await this.events.shutdown();
       removePidFile(this.projectRoot);
       this.running = false;
-      logger57.info("Shutdown complete");
+      logger61.info("Shutdown complete");
     } finally {
       clearTimeout(shutdownTimer);
     }
@@ -36067,9 +37591,19 @@ var RuntimeEngine = class {
     this.agents?.agentCoordinator?.updateConfig(config2.agents);
     this.executorSubsystem?.executorMode?.updateConfig(config2.executor);
     this.tickDriver?.reconfigure(config2.executor);
+    for (const [name, subsystem] of this.reconfigurables) {
+      const sectionConfig = config2[name];
+      if (sectionConfig !== void 0 && typeof sectionConfig === "object" && sectionConfig !== null) {
+        try {
+          subsystem.reconfigure(sectionConfig);
+        } catch (err) {
+          logger61.warn(`Failed to reconfigure ${name}`, { error: toErrorMessage(err) });
+        }
+      }
+    }
     if (this.externalPlugin) {
       this.reconfigureExternalPlugins(oldConfig, config2).catch((err) => {
-        logger57.error("Failed to reconfigure external plugins", { error: toErrorMessage(err) });
+        logger61.error("Failed to reconfigure external plugins", { error: toErrorMessage(err) });
         this.events?.eventBus.emit({
           id: generateEventId(),
           timestamp: timestamp(),
@@ -36102,21 +37636,21 @@ var RuntimeEngine = class {
       try {
         await this.externalPlugin.stopHttpListener();
         this.externalPlugin.updateConfig({ file_watcher: newConfig.external.file_watcher });
-        logger57.info("HTTP webhook listener stopped (disabled by config change)");
+        logger61.info("HTTP webhook listener stopped (disabled by config change)");
       } catch (err) {
-        logger57.warn("Failed to stop HTTP webhook listener", { error: toErrorMessage(err) });
+        logger61.warn("Failed to stop HTTP webhook listener", { error: toErrorMessage(err) });
       }
     } else if (!wasEnabled && nowEnabled) {
       try {
         const newExternalConfig = this.buildExternalConfig(newConfig);
         this.externalPlugin.updateConfig(newExternalConfig);
         await this.externalPlugin.startHttpListener();
-        logger57.info("HTTP webhook listener started (enabled by config change)", {
+        logger61.info("HTTP webhook listener started (enabled by config change)", {
           port: newHttp.port,
           host: newHttp.address
         });
       } catch (err) {
-        logger57.error("Failed to start HTTP webhook listener after config change", {
+        logger61.error("Failed to start HTTP webhook listener after config change", {
           error: toErrorMessage(err),
           port: newHttp.port,
           address: newHttp.address
@@ -36130,12 +37664,12 @@ var RuntimeEngine = class {
         await this.externalPlugin.stopHttpListener();
         this.externalPlugin.updateConfig(newExternalConfig);
         await this.externalPlugin.startHttpListener();
-        logger57.info("HTTP webhook listener restarted (port change)", {
+        logger61.info("HTTP webhook listener restarted (port change)", {
           oldPort: oldHttp.port,
           newPort: newHttp.port
         });
       } catch (err) {
-        logger57.error("Failed to restart HTTP webhook listener on port change \u2014 attempting rollback", {
+        logger61.error("Failed to restart HTTP webhook listener on port change \u2014 attempting rollback", {
           error: toErrorMessage(err),
           oldPort: oldHttp.port,
           newPort: newHttp.port
@@ -36143,9 +37677,9 @@ var RuntimeEngine = class {
         try {
           this.externalPlugin.updateConfig(oldExternalConfig);
           await this.externalPlugin.startHttpListener();
-          logger57.warn("HTTP webhook listener rolled back to previous port", { port: oldHttp.port });
+          logger61.warn("HTTP webhook listener rolled back to previous port", { port: oldHttp.port });
         } catch (rollbackErr) {
-          logger57.error("Rollback failed \u2014 HTTP webhook listener is permanently down", {
+          logger61.error("Rollback failed \u2014 HTTP webhook listener is permanently down", {
             error: toErrorMessage(rollbackErr)
           });
           this.events?.eventBus.emit({
@@ -36221,17 +37755,25 @@ var RuntimeEngine = class {
   getExecutorBudget() {
     return this.executorSubsystem?.executorBudget ?? null;
   }
+  getTimePlugin() {
+    return this.timePlugin;
+  }
+  getExternalPlugin() {
+    return this.externalPlugin;
+  }
   getDaemonTickHandler() {
     return this.executorSubsystem?.daemonTickHandler ?? null;
   }
 };
 
 // src/transport/daemon-lifecycle.ts
-var import_node_fs17 = require("node:fs");
-var import_node_path17 = require("node:path");
-var import_node_child_process3 = require("node:child_process");
+var import_node_fs19 = require("node:fs");
+var import_node_path22 = require("node:path");
+var import_node_child_process6 = require("node:child_process");
 var import_node_net2 = require("node:net");
-var logger58 = createLogger("daemon-lifecycle");
+init_logger();
+init_utils();
+var logger62 = createLogger("daemon-lifecycle");
 var STARTUP_TIMEOUT_MS = 1e4;
 var HEALTH_CHECK_INTERVAL_MS = 500;
 var DEFAULT_HEALTH_CHECK_INTERVAL_MS = 3e4;
@@ -36250,10 +37792,10 @@ var DaemonLifecycle = class {
   cachedHealth = null;
   constructor(projectRoot, options) {
     this.projectRoot = projectRoot;
-    this.goodvibesDir = (0, import_node_path17.resolve)(projectRoot, ".goodvibes");
-    this.pidFilePath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_PID_FILE);
-    this.socketPointerPath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_SOCKET_POINTER);
-    this.lockFilePath = (0, import_node_path17.resolve)(this.goodvibesDir, DAEMON_LOCK_FILE);
+    this.goodvibesDir = (0, import_node_path22.resolve)(projectRoot, ".goodvibes");
+    this.pidFilePath = (0, import_node_path22.resolve)(this.goodvibesDir, DAEMON_PID_FILE);
+    this.socketPointerPath = (0, import_node_path22.resolve)(this.goodvibesDir, DAEMON_SOCKET_POINTER);
+    this.lockFilePath = (0, import_node_path22.resolve)(this.goodvibesDir, DAEMON_LOCK_FILE);
     this.healthCheckIntervalMs = options?.healthCheckIntervalMs ?? DEFAULT_HEALTH_CHECK_INTERVAL_MS;
   }
   /**
@@ -36286,11 +37828,11 @@ var DaemonLifecycle = class {
   }
   async doStart() {
     if (await this.isRunning()) {
-      logger58.info("Daemon already running");
+      logger62.info("Daemon already running");
       return;
     }
     if (!this.acquireLock()) {
-      logger58.info("Daemon start in progress by another process, waiting...");
+      logger62.info("Daemon start in progress by another process, waiting...");
       await this.waitForLockRelease(STARTUP_TIMEOUT_MS);
       if (await this.isRunning()) return;
       throw new Error("Daemon failed to start (spawned by another process)");
@@ -36304,18 +37846,18 @@ var DaemonLifecycle = class {
   async doStartLocked() {
     this.cleanupStaleFiles();
     const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"] ?? process.cwd();
-    const daemonScript = (0, import_node_path17.resolve)(
+    const daemonScript = (0, import_node_path22.resolve)(
       pluginRoot,
       "tools/implementations/runtime-engine",
       DAEMON_ENTRY
     );
-    if (!(0, import_node_fs17.existsSync)(daemonScript)) {
+    if (!(0, import_node_fs19.existsSync)(daemonScript)) {
       throw new Error(
         `Daemon entry point not found: ${daemonScript}. Run the build first.`
       );
     }
-    logger58.info("Starting daemon process", { script: daemonScript });
-    const child = (0, import_node_child_process3.spawn)(process.execPath, [daemonScript], {
+    logger62.info("Starting daemon process", { script: daemonScript });
+    const child = (0, import_node_child_process6.spawn)(process.execPath, [daemonScript], {
       detached: true,
       stdio: "ignore",
       env: {
@@ -36329,7 +37871,7 @@ var DaemonLifecycle = class {
     }
     const daemonPid = child.pid;
     await this.waitForSocket(STARTUP_TIMEOUT_MS);
-    logger58.info("Daemon started", { pid: daemonPid });
+    logger62.info("Daemon started", { pid: daemonPid });
     this.startHealthCheck();
   }
   /**
@@ -36342,31 +37884,31 @@ var DaemonLifecycle = class {
   }
   _tryAcquireLock(allowStaleRetry) {
     try {
-      const fd = (0, import_node_fs17.openSync)(this.lockFilePath, "wx");
+      const fd = (0, import_node_fs19.openSync)(this.lockFilePath, "wx");
       try {
-        (0, import_node_fs17.writeSync)(fd, String(process.pid));
+        (0, import_node_fs19.writeSync)(fd, String(process.pid));
       } finally {
-        (0, import_node_fs17.closeSync)(fd);
+        (0, import_node_fs19.closeSync)(fd);
       }
       return true;
     } catch (err) {
       const code = err.code;
       if (code !== "EEXIST") {
-        logger58.warn("Unexpected error acquiring daemon lock", { err: toErrorMessage(err) });
+        logger62.warn("Unexpected error acquiring daemon lock", { err: toErrorMessage(err) });
         return false;
       }
       try {
-        const content = (0, import_node_fs17.readFileSync)(this.lockFilePath, "utf-8").trim();
+        const content = (0, import_node_fs19.readFileSync)(this.lockFilePath, "utf-8").trim();
         const lockerPid = parseInt(content, 10);
         if (Number.isFinite(lockerPid) && this.isProcessAlive(lockerPid)) {
           return false;
         }
       } catch (readErr) {
-        logger58.debug("Failed to read lock file during stale detection, assuming stale", { err: toErrorMessage(readErr) });
+        logger62.debug("Failed to read lock file during stale detection, assuming stale", { err: toErrorMessage(readErr) });
       }
       if (allowStaleRetry) {
         try {
-          (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+          (0, import_node_fs19.unlinkSync)(this.lockFilePath);
         } catch {
         }
         return this._tryAcquireLock(false);
@@ -36379,11 +37921,11 @@ var DaemonLifecycle = class {
    */
   releaseLock() {
     try {
-      (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+      (0, import_node_fs19.unlinkSync)(this.lockFilePath);
     } catch (err) {
       const code = err.code;
       if (code !== "ENOENT") {
-        logger58.warn("Failed to release daemon lock", { err: toErrorMessage(err) });
+        logger62.warn("Failed to release daemon lock", { err: toErrorMessage(err) });
       }
     }
   }
@@ -36394,10 +37936,10 @@ var DaemonLifecycle = class {
   async waitForLockRelease(timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      if (!(0, import_node_fs17.existsSync)(this.lockFilePath)) return;
+      if (!(0, import_node_fs19.existsSync)(this.lockFilePath)) return;
       await new Promise((r) => setTimeout(r, 200));
     }
-    logger58.debug("waitForLockRelease timed out, proceeding", { timeoutMs });
+    logger62.debug("waitForLockRelease timed out, proceeding", { timeoutMs });
   }
   /**
    * Stop the daemon process by sending SIGTERM.
@@ -36406,19 +37948,19 @@ var DaemonLifecycle = class {
     this.stopHealthCheck();
     const pid = this.readPid();
     if (pid === null) {
-      logger58.info("No daemon PID file found");
+      logger62.info("No daemon PID file found");
       return;
     }
     if (!this.isProcessAlive(pid)) {
-      logger58.info("Daemon process already dead, cleaning up");
+      logger62.info("Daemon process already dead, cleaning up");
       this.cleanupStaleFiles();
       return;
     }
-    logger58.info("Sending SIGTERM to daemon", { pid });
+    logger62.info("Sending SIGTERM to daemon", { pid });
     try {
       process.kill(pid, "SIGTERM");
     } catch (err) {
-      logger58.warn("Failed to send SIGTERM", { err: toErrorMessage(err) });
+      logger62.warn("Failed to send SIGTERM", { err: toErrorMessage(err) });
     }
     const deadline = Date.now() + 5e3;
     while (Date.now() < deadline) {
@@ -36426,7 +37968,7 @@ var DaemonLifecycle = class {
       await new Promise((r) => setTimeout(r, 200));
     }
     if (this.isProcessAlive(pid)) {
-      logger58.warn("Daemon did not exit gracefully, sending SIGKILL", { pid });
+      logger62.warn("Daemon did not exit gracefully, sending SIGKILL", { pid });
       try {
         process.kill(pid, "SIGKILL");
       } catch {
@@ -36539,23 +38081,23 @@ var DaemonLifecycle = class {
   }
   // ── Private Helpers ────────────────────────────────────────────
   readPid() {
-    if (!(0, import_node_fs17.existsSync)(this.pidFilePath)) return null;
+    if (!(0, import_node_fs19.existsSync)(this.pidFilePath)) return null;
     try {
-      const content = (0, import_node_fs17.readFileSync)(this.pidFilePath, "utf-8").trim();
+      const content = (0, import_node_fs19.readFileSync)(this.pidFilePath, "utf-8").trim();
       const pid = parseInt(content, 10);
       return Number.isFinite(pid) ? pid : null;
     } catch (err) {
-      logger58.debug("Failed to read PID file", { path: this.pidFilePath, err: toErrorMessage(err) });
+      logger62.debug("Failed to read PID file", { path: this.pidFilePath, err: toErrorMessage(err) });
       return null;
     }
   }
   readSocketPointer() {
-    if (!(0, import_node_fs17.existsSync)(this.socketPointerPath)) return null;
+    if (!(0, import_node_fs19.existsSync)(this.socketPointerPath)) return null;
     try {
-      const content = (0, import_node_fs17.readFileSync)(this.socketPointerPath, "utf-8").trim();
+      const content = (0, import_node_fs19.readFileSync)(this.socketPointerPath, "utf-8").trim();
       return content || null;
     } catch (err) {
-      logger58.debug("Failed to read socket pointer file", { path: this.socketPointerPath, err: toErrorMessage(err) });
+      logger62.debug("Failed to read socket pointer file", { path: this.socketPointerPath, err: toErrorMessage(err) });
       return null;
     }
   }
@@ -36569,7 +38111,7 @@ var DaemonLifecycle = class {
   }
   probeSocket(socketPath) {
     return new Promise((done) => {
-      if (!(0, import_node_fs17.existsSync)(socketPath)) {
+      if (!(0, import_node_fs19.existsSync)(socketPath)) {
         done(false);
         return;
       }
@@ -36589,25 +38131,25 @@ var DaemonLifecycle = class {
     });
   }
   cleanupStaleFiles() {
-    for (const path3 of [this.pidFilePath, this.socketPointerPath]) {
+    for (const path4 of [this.pidFilePath, this.socketPointerPath]) {
       try {
-        (0, import_node_fs17.unlinkSync)(path3);
+        (0, import_node_fs19.unlinkSync)(path4);
       } catch {
       }
     }
-    if ((0, import_node_fs17.existsSync)(this.lockFilePath)) {
+    if ((0, import_node_fs19.existsSync)(this.lockFilePath)) {
       try {
-        const content = (0, import_node_fs17.readFileSync)(this.lockFilePath, "utf-8").trim();
+        const content = (0, import_node_fs19.readFileSync)(this.lockFilePath, "utf-8").trim();
         const lockerPid = parseInt(content, 10);
         if (!Number.isFinite(lockerPid) || !this.isProcessAlive(lockerPid)) {
           try {
-            (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+            (0, import_node_fs19.unlinkSync)(this.lockFilePath);
           } catch {
           }
         }
       } catch {
         try {
-          (0, import_node_fs17.unlinkSync)(this.lockFilePath);
+          (0, import_node_fs19.unlinkSync)(this.lockFilePath);
         } catch {
         }
       }
@@ -36655,7 +38197,9 @@ function toError(error2, version2, uptime_ms, execution_ms) {
 __name(toError, "toError");
 
 // src/plugins/mcp/handlers/status.ts
-var logger59 = createLogger("tool-handlers:status");
+init_logger();
+init_utils();
+var logger63 = createLogger("tool-handlers:status");
 var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   if (args !== null && args !== void 0 && typeof args !== "object") {
@@ -36681,17 +38225,20 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
       statusData = ctx.getHealth();
       version2 = ctx.version;
     }
-    logger59.debug("runtime_status computed", { status: statusData.status });
+    logger63.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, version2, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger59.error("runtime_status failed", { error: message });
+    logger63.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
 
 // src/plugins/mcp/handlers/config.ts
-var logger60 = createLogger("tool-handlers:config");
+init_logger();
+init_utils();
+init_errors();
+var logger64 = createLogger("tool-handlers:config");
 var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "ipc.socket_dir",
   "ipc.connect_timeout_ms",
@@ -36824,8 +38371,8 @@ var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["external.http_listener.auth_token", "string"],
   ["external.http_listener.max_payload_bytes", "number"]
 ]);
-function getNestedValue(obj, path3) {
-  const segments = path3.split(".");
+function getNestedValue(obj, path4) {
+  const segments = path4.split(".");
   let current = obj;
   for (const segment of segments) {
     if (current === null || typeof current !== "object") return void 0;
@@ -36834,13 +38381,13 @@ function getNestedValue(obj, path3) {
   return current;
 }
 __name(getNestedValue, "getNestedValue");
-function setNestedValue(obj, path3, value) {
-  if (!path3) {
+function setNestedValue(obj, path4, value) {
+  if (!path4) {
     throw new ConfigError("setNestedValue: path must not be empty");
   }
-  const segments = path3.split(".");
+  const segments = path4.split(".");
   if (segments.some((s) => s === "")) {
-    throw new ConfigError(`setNestedValue: path contains empty segment: "${path3}"`);
+    throw new ConfigError(`setNestedValue: path contains empty segment: "${path4}"`);
   }
   let current = obj;
   for (let i = 0; i < segments.length - 1; i++) {
@@ -36946,7 +38493,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         saveConfig(ctx.projectRoot, updated);
         ctx.updateConfig(updated);
       }
-      logger60.info("Config key set", { key, value });
+      logger64.info("Config key set", { key, value });
       const result = { key, value, persisted: true };
       if (key === "executor.mode") {
         result.warning = "executor.mode change takes effect on next session restart. Most other config keys are hot-reloaded immediately.";
@@ -36965,7 +38512,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
         ctx.updateConfig(DEFAULT_CONFIG);
       }
-      logger60.info("Config reset to defaults");
+      logger64.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -36981,13 +38528,15 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger60.error("runtime_config failed", { error: message });
+    logger64.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
 
 // src/plugins/mcp/handlers/events.ts
-var logger61 = createLogger("tool-handlers:events");
+init_logger();
+init_utils();
+var logger65 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
   if (pattern === "*") return true;
   if (pattern.endsWith(":*")) {
@@ -37157,13 +38706,15 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger61.error("runtime_events failed", { error: message });
+    logger65.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
 
 // src/plugins/mcp/handlers/emit.ts
-var logger62 = createLogger("tool-handlers:emit");
+init_logger();
+init_utils();
+var logger66 = createLogger("tool-handlers:emit");
 var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -37195,7 +38746,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger62.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
+      logger66.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
     }
     const eventId = generateEventId();
     const fullEvent = {
@@ -37221,17 +38772,19 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       emittedId = emitted2.id;
     }
     const emitted = { ...fullEvent, id: emittedId };
-    logger62.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    logger66.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger62.error("runtime_emit failed", { error: message });
+    logger66.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
 
 // src/plugins/mcp/handlers/workflow.ts
-var logger63 = createLogger("tool-handlers:workflow");
+init_logger();
+init_utils();
+var logger67 = createLogger("tool-handlers:workflow");
 var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -37258,7 +38811,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       const context = params.context ?? {};
       if (ctx.transport) {
         const result = await ctx.transport.startWorkflow(definitionId, context);
-        logger63.info("runtime_workflow: created", { id: result.workflow_id, definition: definitionId });
+        logger67.info("runtime_workflow: created", { id: result.workflow_id, definition: definitionId });
         return toSuccess({ instance: { id: result.workflow_id, definition_id: definitionId, context } }, ctx.version, uptimeMs, Date.now() - start);
       }
       const engine = ctx.getWorkflowEngine();
@@ -37266,7 +38819,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.create(definitionId, context);
-      logger63.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      logger67.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
@@ -37370,13 +38923,15 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger63.error("runtime_workflow failed", { error: message });
+    logger67.error("runtime_workflow failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeWorkflow");
 
 // src/plugins/mcp/handlers/triggers.ts
-var logger64 = createLogger("tool-handlers:triggers");
+init_logger();
+init_utils();
+var logger68 = createLogger("tool-handlers:triggers");
 var VALID_TRIGGER_ACTION_TYPES = /* @__PURE__ */ new Set([
   "emit_event",
   "spawn_agent",
@@ -37469,7 +39024,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       if (ctx.transport) {
         await ctx.transport.registerTrigger(triggerDef);
-        logger64.info("runtime_triggers: registered", { id: triggerDef.id });
+        logger68.info("runtime_triggers: registered", { id: triggerDef.id });
         return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
       }
       const registry2 = ctx.getTriggerRegistry();
@@ -37477,7 +39032,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.register(triggerDef);
-      logger64.info("runtime_triggers: registered", { id: triggerDef.id });
+      logger68.info("runtime_triggers: registered", { id: triggerDef.id });
       return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "update") {
@@ -37494,7 +39049,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       updateRegistry.replace(updateDef);
-      logger64.info("runtime_triggers: updated", { id: updateDef.id });
+      logger68.info("runtime_triggers: updated", { id: updateDef.id });
       return toSuccess({ updated: true, id: updateDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "delete") {
@@ -37504,7 +39059,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       if (ctx.transport) {
         await ctx.transport.unregisterTrigger(deleteTriggerId);
-        logger64.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+        logger68.info("runtime_triggers: unregistered", { id: deleteTriggerId });
         return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
       }
       const deleteRegistry = ctx.getTriggerRegistry();
@@ -37512,7 +39067,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       deleteRegistry.unregister(deleteTriggerId);
-      logger64.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+      logger68.info("runtime_triggers: unregistered", { id: deleteTriggerId });
       return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "enable" || action === "disable") {
@@ -37526,7 +39081,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       enableRegistry.setEnabled(enableTriggerId, enabled);
-      logger64.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
+      logger68.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
       return toSuccess({ [action + "d"]: true, id: enableTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "test") {
@@ -37563,13 +39118,15 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger64.error("runtime_triggers failed", { error: message });
+    logger68.error("runtime_triggers failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeTriggers");
 
 // src/plugins/mcp/handlers/agents.ts
-var logger65 = createLogger("tool-handlers:agents");
+init_logger();
+init_utils();
+var logger69 = createLogger("tool-handlers:agents");
 var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -37676,7 +39233,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       };
       const agentId = spawnCoordinator.spawn(options);
       const agent = spawnCoordinator.getAgent(agentId);
-      logger65.info("runtime_agents: spawned", { agentId, type: options.type });
+      logger69.info("runtime_agents: spawned", { agentId, type: options.type });
       return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
@@ -37726,13 +39283,15 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger65.error("runtime_agents failed", { error: message });
+    logger69.error("runtime_agents failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeAgents");
 
 // src/plugins/mcp/handlers/state.ts
-var logger66 = createLogger("tool-handlers:state");
+init_logger();
+init_utils();
+var logger70 = createLogger("tool-handlers:state");
 var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -37830,10 +39389,10 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
         const filtered = {};
         const pfx = namespace + ".";
         const MAX_WALK_DEPTH = 20;
-        const walk = /* @__PURE__ */ __name((obj, path3, depth = 0) => {
+        const walk = /* @__PURE__ */ __name((obj, path4, depth = 0) => {
           if (depth >= MAX_WALK_DEPTH) return;
           for (const [k, v] of Object.entries(obj)) {
-            const full = path3 ? `${path3}.${k}` : k;
+            const full = path4 ? `${path4}.${k}` : k;
             if (full === namespace || full.startsWith(pfx)) {
               filtered[full] = v;
             } else if (typeof v === "object" && v !== null && !Array.isArray(v) && namespace.startsWith(full)) {
@@ -37854,13 +39413,15 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger66.error("runtime_state failed", { error: message });
+    logger70.error("runtime_state failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeState");
 
 // src/plugins/mcp/handlers/daemon-handler.ts
-var logger67 = createLogger("daemon-handler");
+init_utils();
+init_logger();
+var logger71 = createLogger("daemon-handler");
 async function handleDaemon(args, ctx) {
   const startTime = Date.now();
   const version2 = ctx.version;
@@ -37880,7 +39441,7 @@ async function handleDaemon(args, ctx) {
   switch (action) {
     case "start": {
       try {
-        logger67.info("Starting daemon");
+        logger71.info("Starting daemon");
         await lifecycle.start();
         const status = await lifecycle.getStatus();
         return toSuccess(
@@ -37900,7 +39461,7 @@ async function handleDaemon(args, ctx) {
     }
     case "stop": {
       try {
-        logger67.info("Stopping daemon");
+        logger71.info("Stopping daemon");
         await lifecycle.stop();
         return toSuccess(
           { message: "Daemon stopped" },
@@ -37919,7 +39480,7 @@ async function handleDaemon(args, ctx) {
     }
     case "restart": {
       try {
-        logger67.info("Restarting daemon");
+        logger71.info("Restarting daemon");
         await lifecycle.stop();
         await new Promise((r) => setTimeout(r, 500));
         await lifecycle.start();
@@ -38000,6 +39561,439 @@ async function handleDaemon(args, ctx) {
   }
 }
 __name(handleDaemon, "handleDaemon");
+
+// src/plugins/mcp/handlers/schedule.ts
+init_logger();
+init_utils();
+
+// src/shared/presets.ts
+var INTERVAL_PRESETS = {
+  every_minute: 6e4,
+  every_5_minutes: 3e5,
+  every_15_minutes: 9e5,
+  every_hour: 36e5,
+  every_6_hours: 216e5,
+  daily: 864e5
+};
+function resolveInterval(presetOrMs) {
+  if (typeof presetOrMs === "number") return presetOrMs;
+  const ms = INTERVAL_PRESETS[presetOrMs];
+  if (ms === void 0) {
+    throw new Error(
+      `Unknown preset: ${presetOrMs}. Valid: ${Object.keys(INTERVAL_PRESETS).join(", ")}`
+    );
+  }
+  return ms;
+}
+__name(resolveInterval, "resolveInterval");
+
+// src/plugins/mcp/handlers/schedule.ts
+var logger72 = createLogger("tool-handlers:schedule");
+var VALID_ACTIONS = ["list", "create", "cancel", "get", "pause", "resume", "heartbeat"];
+var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const version2 = ctx.version;
+  const uptime = ctx.getUptime();
+  const params = args ?? {};
+  const action = params.action;
+  if (!action) {
+    return toError("Missing required parameter: action", version2, uptime, Date.now() - start);
+  }
+  if (!VALID_ACTIONS.includes(action)) {
+    return toError(
+      `Unknown action: ${action}. Valid: ${VALID_ACTIONS.join(", ")}`,
+      version2,
+      uptime,
+      Date.now() - start
+    );
+  }
+  const timePlugin = ctx.getTimePlugin?.();
+  if (!timePlugin) {
+    return toError(
+      "TimePlugin is not available (engine may not be running in local mode)",
+      version2,
+      uptime,
+      Date.now() - start
+    );
+  }
+  const scheduler = timePlugin.getScheduler();
+  const heartbeat = timePlugin.getHeartbeat();
+  try {
+    switch (action) {
+      case "list": {
+        const filter = params.filter;
+        let items = scheduler.getAllItems();
+        if (filter?.type) {
+          items = items.filter((item) => item.time_type === filter.type);
+        }
+        return toSuccess(
+          { items, count: items.length },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+      case "get": {
+        const scheduleId = params.schedule_id;
+        if (!scheduleId) {
+          return toError(
+            "Missing required parameter: schedule_id",
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        const item = scheduler.getItem(scheduleId);
+        if (!item) {
+          return toError(
+            `Schedule not found: ${scheduleId}`,
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        return toSuccess({ item }, version2, uptime, Date.now() - start);
+      }
+      case "create": {
+        const scheduleId = params.schedule_id;
+        const eventType = params.event_type;
+        const scheduleType = params.type ?? "heartbeat";
+        const payloadRaw = params.payload;
+        const ttl = params.ttl;
+        if (!scheduleId) {
+          return toError(
+            "Missing required parameter: schedule_id",
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        if (!eventType) {
+          return toError(
+            "Missing required parameter: event_type",
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        const presetOrMs = params.preset ?? params.interval_ms;
+        const delayMs = params.delay_ms;
+        let item;
+        if (scheduleType === "one_shot") {
+          if (delayMs === void 0) {
+            return toError(
+              "Missing required parameter: delay_ms (required for one_shot type)",
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+          item = scheduler.scheduleOneShot({
+            id: scheduleId,
+            event_type: eventType,
+            delay_ms: delayMs,
+            ...payloadRaw !== void 0 && { payload: payloadRaw }
+          });
+        } else if (scheduleType === "cron") {
+          if (presetOrMs === void 0) {
+            return toError(
+              "Missing required parameter: interval_ms or preset",
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+          let intervalMs;
+          try {
+            intervalMs = resolveInterval(presetOrMs);
+          } catch (err) {
+            return toError(toErrorMessage(err), version2, uptime, Date.now() - start);
+          }
+          item = scheduler.scheduleCron({
+            id: scheduleId,
+            event_type: eventType,
+            interval_ms: intervalMs,
+            ...payloadRaw !== void 0 && { payload: payloadRaw }
+          });
+        } else {
+          if (presetOrMs === void 0) {
+            return toError(
+              "Missing required parameter: interval_ms or preset",
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+          let intervalMs;
+          try {
+            intervalMs = resolveInterval(presetOrMs);
+          } catch (err) {
+            return toError(toErrorMessage(err), version2, uptime, Date.now() - start);
+          }
+          item = scheduler.scheduleHeartbeat({
+            id: scheduleId,
+            event_type: eventType,
+            interval_ms: intervalMs,
+            ...ttl !== void 0 && { ttl },
+            ...payloadRaw !== void 0 && { payload: payloadRaw }
+          });
+        }
+        logger72.info("runtime_schedule: created", { id: scheduleId, type: scheduleType });
+        return toSuccess({ created: item }, version2, uptime, Date.now() - start);
+      }
+      case "cancel": {
+        const scheduleId = params.schedule_id;
+        if (!scheduleId) {
+          return toError(
+            "Missing required parameter: schedule_id",
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        const cancelled = scheduler.cancel(scheduleId);
+        return toSuccess(
+          { cancelled, schedule_id: scheduleId },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+      case "pause": {
+        const scheduleId = params.schedule_id;
+        if (scheduleId) {
+          const paused = scheduler.pause(scheduleId);
+          if (!paused) {
+            return toError(
+              `Schedule not found: ${scheduleId}`,
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+          return toSuccess(
+            { paused: true, schedule_id: scheduleId },
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        heartbeat.disable();
+        return toSuccess(
+          { paused: true, target: "heartbeat" },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+      case "resume": {
+        const scheduleId = params.schedule_id;
+        if (scheduleId) {
+          const resumed = scheduler.resume(scheduleId);
+          if (!resumed) {
+            return toError(
+              `Schedule not found: ${scheduleId}`,
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+          return toSuccess(
+            { resumed: true, schedule_id: scheduleId },
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        heartbeat.enable();
+        return toSuccess(
+          { resumed: true, target: "heartbeat" },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+      case "heartbeat": {
+        const subAction = params.sub_action;
+        if (subAction === "set_interval") {
+          const intervalMs = params.interval_ms;
+          if (!intervalMs || intervalMs < 1e3) {
+            return toError(
+              "interval_ms must be a number >= 1000",
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+          heartbeat.setInterval(intervalMs);
+          logger72.info("runtime_schedule: heartbeat interval updated", { interval_ms: intervalMs });
+          return toSuccess(
+            { action: "heartbeat", sub_action: "set_interval", interval_ms: intervalMs },
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        return toSuccess(
+          {
+            enabled: heartbeat.isEnabled(),
+            tick_count: heartbeat.getTickCount(),
+            last_tick_at: heartbeat.getLastTickAt(),
+            scheduled_count: scheduler.size(),
+            interval_ms: heartbeat.getInterval()
+          },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+    }
+  } catch (err) {
+    const message = toErrorMessage(err);
+    logger72.error("runtime_schedule failed", { action, error: message });
+    return toError(message, version2, uptime, Date.now() - start);
+  }
+}, "handleRuntimeSchedule");
+
+// src/plugins/mcp/handlers/external.ts
+init_logger();
+init_utils();
+var logger73 = createLogger("tool-handlers:external");
+var VALID_ACTIONS2 = ["status", "normalizers", "test_normalize", "stats", "queue"];
+var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
+  const start = Date.now();
+  const version2 = ctx.version;
+  const uptime = ctx.getUptime();
+  const params = args ?? {};
+  const action = params.action;
+  if (!action) {
+    return toError("Missing required parameter: action", version2, uptime, Date.now() - start);
+  }
+  if (!VALID_ACTIONS2.includes(action)) {
+    return toError(
+      `Unknown action: ${action}. Valid: ${VALID_ACTIONS2.join(", ")}`,
+      version2,
+      uptime,
+      Date.now() - start
+    );
+  }
+  const externalPlugin = ctx.getExternalPlugin?.();
+  if (!externalPlugin) {
+    return toError(
+      "ExternalPlugin is not available (engine may not be running in local mode)",
+      version2,
+      uptime,
+      Date.now() - start
+    );
+  }
+  try {
+    switch (action) {
+      case "status": {
+        const httpRunning = externalPlugin.isHttpListenerRunning();
+        const normalizerSources = externalPlugin.getNormalizerRegistry().sources();
+        return toSuccess(
+          {
+            http_listener: {
+              running: httpRunning,
+              port: externalPlugin.getHttpPort(),
+              address: externalPlugin.getHttpAddress()
+            },
+            normalizer_count: normalizerSources.length,
+            normalizer_sources: normalizerSources
+          },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+      case "normalizers": {
+        const registry2 = externalPlugin.getNormalizerRegistry();
+        const sources = registry2.sources();
+        return toSuccess(
+          { sources, count: sources.length },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+      case "test_normalize": {
+        const source = params.source;
+        const payload = params.payload;
+        const headers = params.headers;
+        if (!source) {
+          return toError(
+            "Missing required parameter: source",
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        if (payload === void 0) {
+          return toError(
+            "Missing required parameter: payload",
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+        const registry2 = externalPlugin.getNormalizerRegistry();
+        try {
+          const normalized = registry2.normalize(source, payload, headers);
+          return toSuccess(
+            { normalized, source },
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        } catch (normErr) {
+          return toError(
+            `Normalization failed for source '${source}': ${toErrorMessage(normErr)}`,
+            version2,
+            uptime,
+            Date.now() - start
+          );
+        }
+      }
+      case "stats": {
+        const since = params.since ? new Date(params.since).getTime() : 0;
+        const normalizerRegistry = externalPlugin.getNormalizerRegistry();
+        return toSuccess(
+          {
+            action: "stats",
+            since: since > 0 ? new Date(since).toISOString() : "all_time",
+            normalizers: normalizerRegistry ? normalizerRegistry.sources() : [],
+            http_listener: {
+              running: externalPlugin.isHttpListenerRunning()
+            },
+            note: "Detailed webhook receive/error counts require ExternalPlugin stats tracking (not yet implemented)"
+          },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+      case "queue": {
+        const stateStore = ctx.getCoreStateStore();
+        const eventQueue = ctx.getEventQueue();
+        const queueDepth = eventQueue != null ? eventQueue.depth() : null;
+        const queueStats = stateStore?.get?.("external_plugin.stats") ?? null;
+        return toSuccess(
+          {
+            queue_depth: queueDepth,
+            external_stats: queueStats
+          },
+          version2,
+          uptime,
+          Date.now() - start
+        );
+      }
+    }
+  } catch (err) {
+    const message = toErrorMessage(err);
+    logger73.error("runtime_external failed", { action, error: message });
+    return toError(message, version2, uptime, Date.now() - start);
+  }
+}, "handleRuntimeExternal");
 
 // src/plugins/mcp/handlers/schemas.ts
 var allSchemas = [
@@ -38295,6 +40289,104 @@ var allSchemas = [
       },
       additionalProperties: false
     }
+  },
+  {
+    name: "runtime_schedule",
+    description: "Manage named event schedules: list, create, cancel, pause, resume. Supports heartbeat, cron, and one-shot types with preset interval names.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["list", "create", "cancel", "get", "pause", "resume", "heartbeat"],
+          description: "Schedule management action. heartbeat: returns status (enabled, tick_count, last_tick_at, interval_ms); use sub_action=set_interval with interval_ms to change the heartbeat interval at runtime."
+        },
+        sub_action: {
+          type: "string",
+          enum: ["set_interval"],
+          description: "Sub-action for the heartbeat action. set_interval: update the heartbeat interval at runtime."
+        },
+        schedule_id: {
+          type: "string",
+          description: "Unique schedule identifier."
+        },
+        type: {
+          type: "string",
+          enum: ["heartbeat", "cron", "one_shot"],
+          description: "Schedule type (for create action). Defaults to 'heartbeat' if omitted."
+        },
+        filter: {
+          type: "object",
+          properties: {
+            type: {
+              type: "string",
+              enum: ["heartbeat", "cron", "one_shot"],
+              description: "Filter listed items by schedule type."
+            }
+          },
+          description: "Optional filter for the list action."
+        },
+        event_type: {
+          type: "string",
+          description: "Event type to emit when the schedule fires."
+        },
+        interval_ms: {
+          type: "number",
+          description: "Recurrence interval in milliseconds."
+        },
+        delay_ms: {
+          type: "number",
+          description: "Delay before firing in milliseconds (one_shot only)."
+        },
+        preset: {
+          type: "string",
+          enum: ["every_minute", "every_5_minutes", "every_15_minutes", "every_hour", "every_6_hours", "daily"],
+          description: "Named interval preset (alternative to interval_ms)."
+        },
+        payload: {
+          type: "object",
+          description: "Arbitrary payload forwarded into the emitted event."
+        },
+        ttl: {
+          type: "number",
+          description: "Maximum fires before the schedule is auto-removed."
+        }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "runtime_external",
+    description: "Inspect the ExternalPlugin: HTTP webhook listener status, normalizer registry, payload normalization testing, and ingestion stats.",
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: {
+          type: "string",
+          enum: ["status", "normalizers", "test_normalize", "stats", "queue"],
+          description: "External plugin action."
+        },
+        source: {
+          type: "string",
+          description: "Normalizer source name (for test_normalize)."
+        },
+        payload: {
+          type: "object",
+          description: "Raw webhook payload to normalize."
+        },
+        headers: {
+          type: "object",
+          description: "HTTP headers accompanying the payload."
+        },
+        since: {
+          type: "string",
+          description: "Start time for filtering (ISO timestamp or relative: '5m', '1h')."
+        }
+      },
+      additionalProperties: false
+    }
   }
 ];
 
@@ -38308,7 +40400,9 @@ var handlerRegistry = /* @__PURE__ */ new Map([
   ["runtime_triggers", handleRuntimeTriggers],
   ["runtime_agents", handleRuntimeAgents],
   ["runtime_state", handleRuntimeState],
-  ["runtime_daemon", handleDaemon]
+  ["runtime_daemon", handleDaemon],
+  ["runtime_schedule", handleRuntimeSchedule],
+  ["runtime_external", handleRuntimeExternal]
 ]);
 function getHandler(toolName) {
   return handlerRegistry.get(toolName);
@@ -38321,7 +40415,7 @@ __name(listHandlers, "listHandlers");
 
 // src/plugins/mcp/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger68 = createLogger("mcp-server");
+var logger74 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -38343,12 +40437,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger68.debug("ListTools request");
+      logger74.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger68.debug("CallTool request", { name });
+      logger74.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -38365,7 +40459,7 @@ var RuntimeEngineServer = class {
           if (this.processManager) {
             this.processManager.updateConfig(config2);
           } else {
-            logger68.warn(
+            logger74.warn(
               "updateConfig called but no local RuntimeEngine (daemon/hybrid mode) \u2014 config change will not take effect until restart",
               { transportMode: this.runtimeTransport?.mode ?? "unknown" }
             );
@@ -38386,14 +40480,16 @@ var RuntimeEngineServer = class {
           } catch {
             return null;
           }
-        }, "getCoreStateStore")
+        }, "getCoreStateStore"),
+        getTimePlugin: /* @__PURE__ */ __name(() => this.processManager?.getTimePlugin?.() ?? null, "getTimePlugin"),
+        getExternalPlugin: /* @__PURE__ */ __name(() => this.processManager?.getExternalPlugin?.() ?? null, "getExternalPlugin")
       };
       try {
         return await handler(args, ctx);
       } catch (error2) {
         if (error2 instanceof McpError) throw error2;
         const message = toErrorMessage(error2);
-        logger68.error(`Tool ${name} failed`, { error: message });
+        logger74.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -38405,7 +40501,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger68.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger74.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -38419,13 +40515,13 @@ var RuntimeEngineServer = class {
    */
   async start() {
     const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    logger68.info("Starting runtime engine server", {
+    logger74.info("Starting runtime engine server", {
       projectRoot,
       source: process.env.CLAUDE_PROJECT_DIR ? "CLAUDE_PROJECT_DIR" : "cwd"
     });
     ensureRuntimeSections(projectRoot);
     const config2 = loadConfig(projectRoot);
-    logger68.info("Config loaded", {
+    logger74.info("Config loaded", {
       mode: config2.executor.mode,
       http_listener_enabled: config2.external?.http_listener?.enabled ?? false,
       http_listener_port: config2.external?.http_listener?.port
@@ -38466,7 +40562,7 @@ var RuntimeEngineServer = class {
           projectRoot: this.processManager.getProjectRoot()
         });
       } catch (err) {
-        logger68.warn("Transport creation failed, falling back to local transport", {
+        logger74.warn("Transport creation failed, falling back to local transport", {
           mode: config2.executor.mode,
           err: toErrorMessage(err)
         });
@@ -38481,7 +40577,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger68.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger74.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid,
       transportMode: this.runtimeTransport?.mode ?? "unknown"
@@ -38505,7 +40601,7 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger68.info("Stopping runtime engine");
+    logger74.info("Stopping runtime engine");
     if (this.runtimeTransport) {
       try {
         await this.runtimeTransport.disconnect();
@@ -38517,7 +40613,7 @@ var RuntimeEngineServer = class {
       try {
         await this.processManager.shutdown();
       } catch (err) {
-        logger68.warn("RuntimeEngine shutdown error", {
+        logger74.warn("RuntimeEngine shutdown error", {
           err: toErrorMessage(err)
         });
       }
@@ -38525,15 +40621,16 @@ var RuntimeEngineServer = class {
     try {
       await this.server.close();
     } catch (err) {
-      logger68.warn("MCP server close error", {
+      logger74.warn("MCP server close error", {
         err: toErrorMessage(err)
       });
     }
-    logger68.info("Runtime engine stopped");
+    logger74.info("Runtime engine stopped");
   }
 };
 
 // src/server.ts
+init_utils();
 async function main() {
   const server = new RuntimeEngineServer();
   await server.start();
