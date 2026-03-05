@@ -24,6 +24,18 @@ export interface UserPromptSubmitDeps {
   daemonTickHandler: DaemonTickHandler | null;
   /** ExecutorModeManager for checking the current executor mode. */
   executorMode: ExecutorModeManager | null;
+  /**
+   * EventBus for emitting human:prompt events.
+   * When present, a `human:prompt` event is emitted via `createHumanEvent()`
+   * for every non-task-notification user prompt. This is the correct integration
+   * point for `createHumanEvent` from '../../extensions/events/factories.js'.
+   *
+   * To enable: pass an EventBus instance here and call:
+   *   eventBus.emit(createHumanEvent({ type: 'human:prompt', prompt }))
+   *
+   * Not yet wired — add `eventBus: EventBus | null` when ready to enable.
+   */
+  // TODO: eventBus: EventBus | null;  // wire createHumanEvent() when budget allows
 }
 
 /**

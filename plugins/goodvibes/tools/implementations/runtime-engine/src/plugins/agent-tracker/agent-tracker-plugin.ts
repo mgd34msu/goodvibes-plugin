@@ -10,6 +10,7 @@
  */
 
 import { createLogger } from '../../shared/logger.js';
+import { createAgentEvent } from '../../extensions/events/factories.js';
 import type {
   RuntimePlugin,
   PluginState,
@@ -88,8 +89,12 @@ export class AgentTrackerPlugin implements RuntimePlugin {
     const unsubFailed = services.subscribe('agent:failed', (event) => {
       this.handleFinished(event, 'failed');
     });
+    // Subscribe to heartbeat to emit agent:progress for active agents
+    const unsubHeartbeat = services.subscribe('tick:heartbeat', () => {
+      this.emitProgressForActiveAgents();
+    });
 
-    this._unsubscribes = [unsubSpawned, unsubCompleted, unsubFailed];
+    this._unsubscribes = [unsubSpawned, unsubCompleted, unsubFailed, unsubHeartbeat];
 
     this._handlers = [
       { event_type: 'agent:spawned', handler: (e: RuntimeEvent) => { this.handleSpawned(e); }, priority: 5 },
@@ -158,6 +163,23 @@ export class AgentTrackerPlugin implements RuntimePlugin {
     this._services.setState(AGENT_KEY(agent_id), tracked);
     this.addToIndex(agent_id);
 
+    // Emit a canonical agent:spawned AgentEvent if the incoming event was not already
+    // an AgentEvent (i.e. it came from the hook system). This avoids re-emission loops
+    // while ensuring AgentEvent-typed events are always on the bus for trigger matching.
+    const sourceKind = (event.source as Record<string, unknown>)?.['kind'];
+    if (sourceKind !== 'agent') {
+      try {
+        this._services.emit(createAgentEvent({
+          type: 'agent:spawned',
+          agent_id,
+          agent_type,
+          payload: { agent_id, agent_type, workflow_id: resolvedWid, spawned_at: tracked.spawned_at },
+        }));
+      } catch (err) {
+        log.warn('Failed to emit agent:spawned event', { agent_id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
     log.info('Agent tracked: spawned', { agent_id, agent_type, workflow_id: resolvedWid });
   }
 
@@ -198,12 +220,68 @@ export class AgentTrackerPlugin implements RuntimePlugin {
     this._services.setState(AGENT_KEY(agent_id), tracked);
     this.addToIndex(agent_id);
 
+    // Emit a canonical AgentEvent if the incoming event was not already an AgentEvent.
+    // Guards against re-emission loops when the event originated from this plugin.
+    const sourceKindFinished = (event.source as Record<string, unknown>)?.['kind'];
+    if (sourceKindFinished !== 'agent') {
+      try {
+        this._services.emit(createAgentEvent({
+          type: `agent:${status}`,
+          agent_id,
+          agent_type: tracked.type,
+          payload: {
+            agent_id,
+            agent_type: tracked.type,
+            workflow_id: tracked.workflow_id,
+            duration_ms: tracked.duration_ms,
+            status,
+          },
+        }));
+      } catch (err) {
+        log.warn(`Failed to emit agent:${status} event`, { agent_id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
     log.info(`Agent tracked: ${status}`, {
       agent_id,
       agent_type: tracked.type,
       workflow_id: tracked.workflow_id,
       duration_ms: tracked.duration_ms,
     });
+  }
+
+  // ─── Progress emission ────────────────────────────────────────────────────
+
+  /**
+   * Emits agent:progress events for all actively spawned agents.
+   * Called on each tick:heartbeat event so long-running agent triggers
+   * (e.g. builtin_budget_warning) can fire based on elapsed time.
+   */
+  private emitProgressForActiveAgents(): void {
+    if (!this._services) return;
+    const activeAgents = this.getAgentsByStatus('spawned');
+    if (activeAgents.length === 0) return;
+
+    const now = Date.now();
+    for (const agent of activeAgents) {
+      const elapsed_ms = now - agent.spawned_at;
+      try {
+        this._services.emit(createAgentEvent({
+          type: 'agent:progress',
+          agent_id: agent.id,
+          agent_type: agent.type,
+          payload: {
+            agent_id: agent.id,
+            agent_type: agent.type,
+            workflow_id: agent.workflow_id,
+            elapsed_ms,
+            status: 'spawned',
+          },
+        }));
+      } catch (err) {
+        log.warn('Failed to emit agent:progress event', { agent_id: agent.id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
   }
 
   // ─── Workflow ID resolution ────────────────────────────────────────────────
