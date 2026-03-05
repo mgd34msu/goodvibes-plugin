@@ -362,6 +362,92 @@ export class DaemonServer {
         tp.getHeartbeat().setInterval(args['intervalMs'] as number);
         return;
       }
+      case 'listSchedules': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        const filter = args['filter'] as { type?: string } | undefined;
+        let items = tp.getScheduler().getAllItems();
+        if (filter?.type) {
+          items = items.filter((item) => item.time_type === filter.type);
+        }
+        return items;
+      }
+      case 'getSchedule': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        const item = tp.getScheduler().getItem(args['scheduleId'] as string);
+        return item ?? null;
+      }
+      case 'createSchedule': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        const scheduler = tp.getScheduler();
+        const p = args['params'] as {
+          schedule_id: string;
+          event_type: string;
+          schedule_type: string;
+          interval_ms?: number;
+          delay_ms?: number;
+          ttl?: number;
+          payload?: Record<string, unknown>;
+        };
+        const { schedule_id, event_type, schedule_type, interval_ms, delay_ms, ttl, payload } = p;
+        let item;
+        if (schedule_type === 'one_shot') {
+          if (delay_ms === undefined) throw new Error('delay_ms required for one_shot');
+          item = scheduler.scheduleOneShot({
+            id: schedule_id,
+            event_type,
+            delay_ms,
+            ...(payload !== undefined && { payload }),
+          });
+        } else if (schedule_type === 'cron') {
+          if (interval_ms === undefined) throw new Error('interval_ms required for cron');
+          item = scheduler.scheduleCron({
+            id: schedule_id,
+            event_type,
+            interval_ms,
+            ...(payload !== undefined && { payload }),
+          });
+        } else {
+          if (interval_ms === undefined) throw new Error('interval_ms required for heartbeat');
+          item = scheduler.scheduleHeartbeat({
+            id: schedule_id,
+            event_type,
+            interval_ms,
+            ...(ttl !== undefined && { ttl }),
+            ...(payload !== undefined && { payload }),
+          });
+        }
+        return item;
+      }
+      case 'cancelSchedule': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        return tp.getScheduler().cancel(args['scheduleId'] as string);
+      }
+      case 'pauseSchedule': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        return tp.getScheduler().pause(args['scheduleId'] as string);
+      }
+      case 'resumeSchedule': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        return tp.getScheduler().resume(args['scheduleId'] as string);
+      }
+      case 'pauseHeartbeat': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        tp.getHeartbeat().disable();
+        return;
+      }
+      case 'resumeHeartbeat': {
+        const tp = e.getTimePlugin();
+        if (!tp) throw new Error('TimePlugin not available');
+        tp.getHeartbeat().enable();
+        return;
+      }
       case 'getExternalStatus': {
         const ep = e.getExternalPlugin();
         if (!ep) throw new Error('ExternalPlugin not available');
@@ -374,6 +460,63 @@ export class DaemonServer {
           },
           normalizer_count: sources.length,
           normalizer_sources: sources,
+        };
+      }
+      case 'getExternalNormalizers': {
+        const ep = e.getExternalPlugin();
+        if (!ep) throw new Error('ExternalPlugin not available');
+        const sources = ep.getNormalizerRegistry().sources();
+        return { sources, count: sources.length };
+      }
+      case 'testNormalize': {
+        const ep = e.getExternalPlugin();
+        if (!ep) throw new Error('ExternalPlugin not available');
+        const source = args['source'] as string;
+        const payload = args['payload'] as Record<string, unknown>;
+        const headers = args['headers'] as Record<string, string> | undefined;
+        const normalized = ep.getNormalizerRegistry().normalize(source, payload, headers);
+        return { normalized, source };
+      }
+      case 'getExternalStats': {
+        const ep = e.getExternalPlugin();
+        if (!ep) throw new Error('ExternalPlugin not available');
+        const since = args['since'] as number | undefined;
+        const normalizerRegistry = ep.getNormalizerRegistry();
+        return {
+          action: 'stats',
+          since: since && since > 0 ? new Date(since).toISOString() : 'all_time',
+          normalizers: normalizerRegistry ? normalizerRegistry.sources() : [],
+          http_listener: { running: ep.isHttpListenerRunning() },
+          note: 'Detailed webhook receive/error counts require ExternalPlugin stats tracking (not yet implemented)',
+        };
+      }
+      case 'getExternalQueue': {
+        const stateStore = e.getCoreStateStore();
+        const eventQueue = e.getEventQueue();
+        const queueDepth = eventQueue != null ? eventQueue.depth() : null;
+        const queueStats = stateStore?.get?.('external_plugin.stats') ?? null;
+        return { queue_depth: queueDepth, external_stats: queueStats };
+      }
+      case 'testTrigger': {
+        const tr = e.getTriggerRegistry();
+        if (!tr) throw new Error('TriggerRegistry not available');
+        const triggerId = args['triggerId'] as string;
+        const testEvent = args['testEvent'] as Record<string, unknown>;
+        const mockEvent = {
+          id: (testEvent['id'] as string) ?? generateId(),
+          timestamp: (testEvent['timestamp'] as number) ?? Date.now(),
+          type: testEvent['type'],
+          source: testEvent['source'] ?? { kind: 'mcp_tool' as const, tool_name: 'runtime_triggers' },
+          payload: testEvent['payload'] ?? { type: testEvent['type'], data: {} },
+          priority: (testEvent['priority'] as number) ?? 0,
+          metadata: testEvent['metadata'] ?? { session_id: req.session_id, sequence: 0, version: 1 as const },
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const results = await tr.evaluate(mockEvent as any);
+        const result = results.find((r) => r.trigger_id === triggerId);
+        return {
+          result: (result as unknown as Record<string, unknown>) ?? null,
+          all_results: results as unknown as Record<string, unknown>[],
         };
       }
       case 'ping': {

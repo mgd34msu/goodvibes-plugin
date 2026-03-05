@@ -588,11 +588,78 @@ export class RemoteTransport implements RuntimeTransport {
     return this.rpc<void>('setHeartbeatInterval', { intervalMs });
   }
 
+  async listSchedules(filter?: { type?: string }): Promise<Record<string, unknown>[]> {
+    return this.rpc<Record<string, unknown>[]>('listSchedules', { filter });
+  }
+
+  async getSchedule(scheduleId: string): Promise<Record<string, unknown> | null> {
+    return this.rpc<Record<string, unknown> | null>('getSchedule', { scheduleId });
+  }
+
+  async createSchedule(params: {
+    schedule_id: string;
+    event_type: string;
+    schedule_type: string;
+    interval_ms?: number;
+    delay_ms?: number;
+    ttl?: number;
+    payload?: Record<string, unknown>;
+  }): Promise<Record<string, unknown>> {
+    return this.rpc<Record<string, unknown>>('createSchedule', { params });
+  }
+
+  async cancelSchedule(scheduleId: string): Promise<boolean> {
+    return this.rpc<boolean>('cancelSchedule', { scheduleId });
+  }
+
+  async pauseSchedule(scheduleId: string): Promise<boolean> {
+    return this.rpc<boolean>('pauseSchedule', { scheduleId });
+  }
+
+  async resumeSchedule(scheduleId: string): Promise<boolean> {
+    return this.rpc<boolean>('resumeSchedule', { scheduleId });
+  }
+
+  async pauseHeartbeat(): Promise<void> {
+    return this.rpc<void>('pauseHeartbeat');
+  }
+
+  async resumeHeartbeat(): Promise<void> {
+    return this.rpc<void>('resumeHeartbeat');
+  }
+
   async getExternalStatus(): Promise<{
     http_listener: { running: boolean; port: number | null; address: string | null };
     normalizer_count: number;
     normalizer_sources: string[];
   }> {
     return this.rpc('getExternalStatus');
+  }
+
+  async getExternalNormalizers(): Promise<{ sources: string[]; count: number }> {
+    return this.rpc('getExternalNormalizers');
+  }
+
+  async testNormalize(
+    source: string,
+    payload: Record<string, unknown>,
+    headers?: Record<string, string>,
+  ): Promise<{ normalized: Record<string, unknown>; source: string }> {
+    return this.rpc('testNormalize', { source, payload, headers });
+  }
+
+  async getExternalStats(since?: number): Promise<Record<string, unknown>> {
+    return this.rpc('getExternalStats', { since });
+  }
+
+  async getExternalQueue(): Promise<{ queue_depth: number | null; external_stats: unknown }> {
+    return this.rpc('getExternalQueue');
+  }
+
+  async testTrigger(
+    triggerId: string,
+    testEvent: Record<string, unknown>,
+  ): Promise<{ result: Record<string, unknown> | null; all_results: Record<string, unknown>[] }> {
+    return this.rpc('testTrigger', { triggerId, testEvent });
   }
 }

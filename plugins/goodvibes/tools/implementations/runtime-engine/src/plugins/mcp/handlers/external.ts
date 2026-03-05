@@ -52,16 +52,6 @@ export const handleRuntimeExternal = async (
   }
 
   try {
-    // Non-status actions require local ExternalPlugin access
-    if (action !== 'status' && !externalPlugin) {
-      return toError(
-        'ExternalPlugin is not available — operations other than status are not yet supported in daemon mode',
-        version,
-        uptime,
-        Date.now() - start,
-      );
-    }
-
     switch (action) {
       case 'status': {
         if (ctx.transport) {
@@ -87,6 +77,10 @@ export const handleRuntimeExternal = async (
       }
 
       case 'normalizers': {
+        if (ctx.transport) {
+          const result = await ctx.transport.getExternalNormalizers();
+          return toSuccess(result, version, uptime, Date.now() - start);
+        }
         const registry = externalPlugin!.getNormalizerRegistry();
         const sources = registry.sources();
         return toSuccess(
@@ -119,6 +113,19 @@ export const handleRuntimeExternal = async (
           );
         }
 
+        if (ctx.transport) {
+          try {
+            const result = await ctx.transport.testNormalize(source, payload, headers);
+            return toSuccess(result, version, uptime, Date.now() - start);
+          } catch (normErr) {
+            return toError(
+              `Normalization failed for source '${source}': ${toErrorMessage(normErr)}`,
+              version,
+              uptime,
+              Date.now() - start,
+            );
+          }
+        }
         const registry = externalPlugin!.getNormalizerRegistry();
         try {
           const normalized = registry.normalize(source, payload, headers);
@@ -139,6 +146,11 @@ export const handleRuntimeExternal = async (
       }
 
       case 'stats': {
+        if (ctx.transport) {
+          const since = params.since ? new Date(params.since as string).getTime() : undefined;
+          const result = await ctx.transport.getExternalStats(since);
+          return toSuccess(result, version, uptime, Date.now() - start);
+        }
         const since = params.since ? new Date(params.since as string).getTime() : 0;
         const normalizerRegistry = externalPlugin!.getNormalizerRegistry();
         return toSuccess(
@@ -158,6 +170,10 @@ export const handleRuntimeExternal = async (
       }
 
       case 'queue': {
+        if (ctx.transport) {
+          const result = await ctx.transport.getExternalQueue();
+          return toSuccess(result, version, uptime, Date.now() - start);
+        }
         // Surface event queue depth via the EventQueue.depth() API and any
         // persisted external plugin stats from the state store.
         const stateStore = ctx.getCoreStateStore();

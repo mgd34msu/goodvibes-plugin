@@ -7495,6 +7495,23 @@ function createExternalEvent(params) {
     normalized: params.normalized ?? false
   };
 }
+function createHumanEvent(params) {
+  const base = createEvent({
+    source: { kind: "user" },
+    type: params.type,
+    payload: params.payload ?? {},
+    priority: params.priority ?? 70,
+    context: params.context,
+    metadata: { session_id: "", sequence: 0 }
+  });
+  return {
+    ...base,
+    source: { kind: "user" },
+    ...params.prompt !== void 0 && { prompt: params.prompt },
+    ...params.command !== void 0 && { command: params.command },
+    ...params.approval !== void 0 && { approval: params.approval }
+  };
+}
 function defaultTimeEventType(timeType) {
   switch (timeType) {
     case "heartbeat":
@@ -7549,6 +7566,7 @@ var init_factories = __esm({
     __name(createHookEvent, "createHookEvent");
     __name(createAgentEvent, "createAgentEvent");
     __name(createExternalEvent, "createExternalEvent");
+    __name(createHumanEvent, "createHumanEvent");
     __name(defaultTimeEventType, "defaultTimeEventType");
     __name(createTimeEvent, "createTimeEvent");
   }
@@ -22209,6 +22227,92 @@ var LocalTransport = class {
       throw new Error("TimePlugin not available");
     timePlugin.getHeartbeat().setInterval(intervalMs);
   }
+  async listSchedules(filter) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const scheduler = timePlugin.getScheduler();
+    let items = scheduler.getAllItems();
+    if (filter?.type) {
+      items = items.filter((item) => item.time_type === filter.type);
+    }
+    return items;
+  }
+  async getSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const item = timePlugin.getScheduler().getItem(scheduleId);
+    return item ? item : null;
+  }
+  async createSchedule(params) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const scheduler = timePlugin.getScheduler();
+    const { schedule_id, event_type, schedule_type, interval_ms, delay_ms, ttl, payload } = params;
+    let item;
+    if (schedule_type === "one_shot") {
+      if (delay_ms === void 0)
+        throw new Error("delay_ms required for one_shot");
+      item = scheduler.scheduleOneShot({
+        id: schedule_id,
+        event_type,
+        delay_ms,
+        ...payload !== void 0 && { payload }
+      });
+    } else if (schedule_type === "cron") {
+      if (interval_ms === void 0)
+        throw new Error("interval_ms required for cron");
+      item = scheduler.scheduleCron({
+        id: schedule_id,
+        event_type,
+        interval_ms,
+        ...payload !== void 0 && { payload }
+      });
+    } else {
+      if (interval_ms === void 0)
+        throw new Error("interval_ms required for heartbeat");
+      item = scheduler.scheduleHeartbeat({
+        id: schedule_id,
+        event_type,
+        interval_ms,
+        ...ttl !== void 0 && { ttl },
+        ...payload !== void 0 && { payload }
+      });
+    }
+    return item;
+  }
+  async cancelSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    return timePlugin.getScheduler().cancel(scheduleId);
+  }
+  async pauseSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    return timePlugin.getScheduler().pause(scheduleId);
+  }
+  async resumeSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    return timePlugin.getScheduler().resume(scheduleId);
+  }
+  async pauseHeartbeat() {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    timePlugin.getHeartbeat().disable();
+  }
+  async resumeHeartbeat() {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    timePlugin.getHeartbeat().enable();
+  }
   // ─── External ──────────────────────────────────────────────
   async getExternalStatus() {
     const externalPlugin = this.engine.getExternalPlugin();
@@ -22223,6 +22327,61 @@ var LocalTransport = class {
       },
       normalizer_count: normalizerSources.length,
       normalizer_sources: normalizerSources
+    };
+  }
+  async getExternalNormalizers() {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const sources = externalPlugin.getNormalizerRegistry().sources();
+    return { sources, count: sources.length };
+  }
+  async testNormalize(source, payload, headers) {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const normalized = externalPlugin.getNormalizerRegistry().normalize(source, payload, headers);
+    return { normalized, source };
+  }
+  async getExternalStats(since) {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const normalizerRegistry = externalPlugin.getNormalizerRegistry();
+    return {
+      action: "stats",
+      since: since && since > 0 ? new Date(since).toISOString() : "all_time",
+      normalizers: normalizerRegistry ? normalizerRegistry.sources() : [],
+      http_listener: { running: externalPlugin.isHttpListenerRunning() },
+      note: "Detailed webhook receive/error counts require ExternalPlugin stats tracking (not yet implemented)"
+    };
+  }
+  async getExternalQueue() {
+    const stateStore = this.engine.getCoreStateStore();
+    const eventQueue = this.engine.getEventQueue();
+    const queueDepth = eventQueue != null ? eventQueue.depth() : null;
+    const queueStats = stateStore?.get?.("external_plugin.stats") ?? null;
+    return { queue_depth: queueDepth, external_stats: queueStats };
+  }
+  // ─── Triggers (extended) ────────────────────────────────────────
+  async testTrigger(triggerId, testEvent) {
+    const registry2 = this.engine.getTriggerRegistry();
+    if (!registry2)
+      throw new Error("Trigger registry not available");
+    const mockEvent = {
+      id: testEvent["id"] ?? "test-mock-id",
+      timestamp: testEvent["timestamp"] ?? Date.now(),
+      type: testEvent["type"],
+      source: testEvent["source"] ?? { kind: "mcp_tool", tool_name: "runtime_triggers" },
+      payload: testEvent["payload"] ?? { type: testEvent["type"], data: {} },
+      priority: testEvent["priority"] ?? 0,
+      metadata: testEvent["metadata"] ?? { session_id: "", sequence: 0, version: 1 }
+    };
+    const results = await registry2.evaluate(mockEvent);
+    const result = results.find((r) => r.trigger_id === triggerId);
+    return {
+      result: result ?? null,
+      all_results: results
     };
   }
 };
@@ -22647,8 +22806,47 @@ var RemoteTransport = class {
   async setHeartbeatInterval(intervalMs) {
     return this.rpc("setHeartbeatInterval", { intervalMs });
   }
+  async listSchedules(filter) {
+    return this.rpc("listSchedules", { filter });
+  }
+  async getSchedule(scheduleId) {
+    return this.rpc("getSchedule", { scheduleId });
+  }
+  async createSchedule(params) {
+    return this.rpc("createSchedule", { params });
+  }
+  async cancelSchedule(scheduleId) {
+    return this.rpc("cancelSchedule", { scheduleId });
+  }
+  async pauseSchedule(scheduleId) {
+    return this.rpc("pauseSchedule", { scheduleId });
+  }
+  async resumeSchedule(scheduleId) {
+    return this.rpc("resumeSchedule", { scheduleId });
+  }
+  async pauseHeartbeat() {
+    return this.rpc("pauseHeartbeat");
+  }
+  async resumeHeartbeat() {
+    return this.rpc("resumeHeartbeat");
+  }
   async getExternalStatus() {
     return this.rpc("getExternalStatus");
+  }
+  async getExternalNormalizers() {
+    return this.rpc("getExternalNormalizers");
+  }
+  async testNormalize(source, payload, headers) {
+    return this.rpc("testNormalize", { source, payload, headers });
+  }
+  async getExternalStats(since) {
+    return this.rpc("getExternalStats", { since });
+  }
+  async getExternalQueue() {
+    return this.rpc("getExternalQueue");
+  }
+  async testTrigger(triggerId, testEvent) {
+    return this.rpc("testTrigger", { triggerId, testEvent });
   }
 };
 
@@ -23184,6 +23382,87 @@ async function checkCrashRecovery(projectRoot) {
   }
 }
 __name(checkCrashRecovery, "checkCrashRecovery");
+
+// src/core/processing/signals.ts
+init_utils();
+var SIGTERM_GRACE_MS = 1e4;
+var SIGINT_GRACE_MS = 5e3;
+function setupSignalHandlers(onShutdown) {
+  let shuttingDown = false;
+  async function gracefulShutdown(signal, graceMs) {
+    if (shuttingDown)
+      return;
+    shuttingDown = true;
+    process.stderr.write(
+      `[runtime-engine] Received ${signal} \u2014 initiating graceful shutdown (${graceMs / 1e3}s grace)
+`
+    );
+    const watchdog = setTimeout(() => {
+      process.stderr.write(
+        `[runtime-engine] Shutdown timed out after ${graceMs / 1e3}s \u2014 forcing exit
+`
+      );
+      process.exit(1);
+    }, graceMs);
+    watchdog.unref();
+    let exitCode = 0;
+    try {
+      await onShutdown();
+      process.stderr.write("[runtime-engine] Graceful shutdown complete\n");
+    } catch (err) {
+      process.stderr.write(
+        `[runtime-engine] Error during shutdown: ${toErrorMessage(err)}
+`
+      );
+      exitCode = 1;
+    } finally {
+      clearTimeout(watchdog);
+      process.exit(exitCode);
+    }
+  }
+  __name(gracefulShutdown, "gracefulShutdown");
+  process.on("SIGTERM", () => {
+    void gracefulShutdown("SIGTERM", SIGTERM_GRACE_MS);
+  });
+  process.on("SIGINT", () => {
+    void gracefulShutdown("SIGINT", SIGINT_GRACE_MS);
+  });
+  process.on("SIGUSR1", () => {
+    process.stderr.write(
+      "[runtime-engine] Received SIGUSR1 \u2014 checkpoint requested (not yet implemented; see @todo in signals.ts)\n"
+    );
+  });
+  process.on("SIGUSR2", () => {
+    const mem = process.memoryUsage();
+    process.stderr.write(
+      JSON.stringify({
+        signal: "SIGUSR2",
+        pid: process.pid,
+        uptime_ms: Math.round(process.uptime() * 1e3),
+        memory_rss_mb: Math.round(mem.rss / 1024 / 1024),
+        memory_heap_used_mb: Math.round(mem.heapUsed / 1024 / 1024),
+        memory_heap_total_mb: Math.round(mem.heapTotal / 1024 / 1024),
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      }) + "\n"
+    );
+  });
+  process.on("uncaughtException", (error2) => {
+    process.stderr.write(
+      `[runtime-engine] Uncaught exception: ${error2.stack ?? error2.message}
+`
+    );
+    void gracefulShutdown("uncaughtException", SIGTERM_GRACE_MS);
+  });
+  process.on("unhandledRejection", (reason) => {
+    const message = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
+    process.stderr.write(
+      `[runtime-engine] Unhandled promise rejection: ${message}
+`
+    );
+    void gracefulShutdown("unhandledRejection", SIGTERM_GRACE_MS);
+  });
+}
+__name(setupSignalHandlers, "setupSignalHandlers");
 
 // src/core/observability/health.ts
 var MIN_HEALTHY_UPTIME_MS = 1e3;
@@ -26141,6 +26420,33 @@ var TriggerRegistry = class {
    */
   pruneOldEvents(maxAgeMs) {
     this.evaluator.pruneOldEvents(maxAgeMs);
+  }
+  /**
+   * Applies updated configuration at runtime (implements {@link Reconfigurable}).
+   *
+   * Accepts a partial {@link TriggersConfig} shape. Recognized keys:
+   *   - `default_cooldown_ms`   — new default cooldown between trigger fires
+   *   - `max_fires_per_session` — new per-session fire budget
+   *
+   * Unknown keys are silently ignored so callers can pass the whole
+   * `triggers` section of {@link RuntimeConfig} without filtering.
+   *
+   * @param config - New configuration values (partial).
+   */
+  reconfigure(config2) {
+    const mutableConfig = this.config;
+    if (typeof config2["default_cooldown_ms"] === "number") {
+      mutableConfig["default_cooldown_ms"] = config2["default_cooldown_ms"];
+      log3.info("TriggerRegistry: default_cooldown_ms updated", {
+        value: config2["default_cooldown_ms"]
+      });
+    }
+    if (typeof config2["max_fires_per_session"] === "number") {
+      mutableConfig["max_fires_per_session"] = config2["max_fires_per_session"];
+      log3.info("TriggerRegistry: max_fires_per_session updated", {
+        value: config2["max_fires_per_session"]
+      });
+    }
   }
   // ─── Private Helpers ──────────────────────────────────────────────────────
   /**
@@ -31272,87 +31578,6 @@ var ExecutorModeManager = class {
   }
 };
 
-// src/core/processing/signals.ts
-init_utils();
-var SIGTERM_GRACE_MS = 1e4;
-var SIGINT_GRACE_MS = 5e3;
-function setupSignalHandlers(onShutdown) {
-  let shuttingDown = false;
-  async function gracefulShutdown(signal, graceMs) {
-    if (shuttingDown)
-      return;
-    shuttingDown = true;
-    process.stderr.write(
-      `[runtime-engine] Received ${signal} \u2014 initiating graceful shutdown (${graceMs / 1e3}s grace)
-`
-    );
-    const watchdog = setTimeout(() => {
-      process.stderr.write(
-        `[runtime-engine] Shutdown timed out after ${graceMs / 1e3}s \u2014 forcing exit
-`
-      );
-      process.exit(1);
-    }, graceMs);
-    watchdog.unref();
-    let exitCode = 0;
-    try {
-      await onShutdown();
-      process.stderr.write("[runtime-engine] Graceful shutdown complete\n");
-    } catch (err) {
-      process.stderr.write(
-        `[runtime-engine] Error during shutdown: ${toErrorMessage(err)}
-`
-      );
-      exitCode = 1;
-    } finally {
-      clearTimeout(watchdog);
-      process.exit(exitCode);
-    }
-  }
-  __name(gracefulShutdown, "gracefulShutdown");
-  process.on("SIGTERM", () => {
-    void gracefulShutdown("SIGTERM", SIGTERM_GRACE_MS);
-  });
-  process.on("SIGINT", () => {
-    void gracefulShutdown("SIGINT", SIGINT_GRACE_MS);
-  });
-  process.on("SIGUSR1", () => {
-    process.stderr.write(
-      "[runtime-engine] Received SIGUSR1 \u2014 checkpoint requested (not yet implemented; see @todo in signals.ts)\n"
-    );
-  });
-  process.on("SIGUSR2", () => {
-    const mem = process.memoryUsage();
-    process.stderr.write(
-      JSON.stringify({
-        signal: "SIGUSR2",
-        pid: process.pid,
-        uptime_ms: Math.round(process.uptime() * 1e3),
-        memory_rss_mb: Math.round(mem.rss / 1024 / 1024),
-        memory_heap_used_mb: Math.round(mem.heapUsed / 1024 / 1024),
-        memory_heap_total_mb: Math.round(mem.heapTotal / 1024 / 1024),
-        timestamp: (/* @__PURE__ */ new Date()).toISOString()
-      }) + "\n"
-    );
-  });
-  process.on("uncaughtException", (error2) => {
-    process.stderr.write(
-      `[runtime-engine] Uncaught exception: ${error2.stack ?? error2.message}
-`
-    );
-    void gracefulShutdown("uncaughtException", SIGTERM_GRACE_MS);
-  });
-  process.on("unhandledRejection", (reason) => {
-    const message = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
-    process.stderr.write(
-      `[runtime-engine] Unhandled promise rejection: ${message}
-`
-    );
-    void gracefulShutdown("unhandledRejection", SIGTERM_GRACE_MS);
-  });
-}
-__name(setupSignalHandlers, "setupSignalHandlers");
-
 // src/core/state/state-store.ts
 var import_node_fs12 = require("node:fs");
 var import_node_path12 = require("node:path");
@@ -33317,6 +33542,7 @@ function extractModifiedPaths(input) {
 __name(extractModifiedPaths, "extractModifiedPaths");
 
 // src/plugins/hooks/handlers/user-prompt-submit.ts
+init_factories();
 init_logger();
 var logger41 = createLogger("handler:user-prompt-submit");
 var TASK_NOTIFICATION_PATTERN = "<task-notification>";
@@ -33344,6 +33570,9 @@ function createUserPromptSubmitHandler(deps) {
       }
     }
     if (!prompt.includes(TASK_NOTIFICATION_PATTERN)) {
+      if (deps.eventBus && prompt.length > 0) {
+        deps.eventBus.emit(createHumanEvent({ type: "human:prompt", prompt }));
+      }
       return null;
     }
     if (!deps.directiveQueue) {
@@ -33386,7 +33615,8 @@ function registerDefaultHandlers(registry2, deps) {
     handler: createUserPromptSubmitHandler({
       directiveQueue: deps.directiveQueue,
       daemonTickHandler: deps.daemonTickHandler ?? null,
-      executorMode: deps.executorMode ?? null
+      executorMode: deps.executorMode ?? null,
+      eventBus: deps.eventBus
     }),
     priority: 80,
     enabled: true
@@ -37800,6 +38030,8 @@ var RuntimeEngine = class {
     this.reconfigurables.set("time", this.timePlugin);
     if (this.wrfcPlugin)
       this.reconfigurables.set("wrfc", this.wrfcPlugin);
+    if (this.triggers)
+      this.reconfigurables.set("triggers", this.triggers.triggerRegistry);
     if (this.config.devserver?.enabled) {
       const { DevServerMonitor: DevServerMonitor2 } = await Promise.resolve().then(() => (init_devserver(), devserver_exports));
       this.devServerMonitor = new DevServerMonitor2(this.config.devserver, this.events.eventBus);
@@ -37877,6 +38109,7 @@ var RuntimeEngine = class {
         }
       }
     });
+    setupSignalHandlers(() => this.shutdown());
     this.running = true;
     logger61.info("Startup complete", { pid: process.pid, uptime_ms: this.getUptime() });
   }
@@ -39498,6 +39731,10 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       if (!testEvent) {
         return toError("Missing required field: test_event", ctx.version, uptimeMs, Date.now() - start);
       }
+      if (ctx.transport) {
+        const result2 = await ctx.transport.testTrigger(testTriggerId, testEvent);
+        return toSuccess(result2, ctx.version, uptimeMs, Date.now() - start);
+      }
       const testRegistry = ctx.getTriggerRegistry();
       if (!testRegistry) {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
@@ -40026,17 +40263,13 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
   const scheduler = timePlugin?.getScheduler();
   const heartbeat = timePlugin?.getHeartbeat();
   try {
-    if (action !== "heartbeat" && !timePlugin) {
-      return toError(
-        "TimePlugin is not available \u2014 schedule operations other than heartbeat are not yet supported in daemon mode",
-        version2,
-        uptime,
-        Date.now() - start
-      );
-    }
     switch (action) {
       case "list": {
         const filter = params.filter;
+        if (ctx.transport) {
+          const items2 = await ctx.transport.listSchedules(filter);
+          return toSuccess({ items: items2, count: items2.length }, version2, uptime, Date.now() - start);
+        }
         let items = scheduler.getAllItems();
         if (filter?.type) {
           items = items.filter((item) => item.time_type === filter.type);
@@ -40057,6 +40290,13 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
             uptime,
             Date.now() - start
           );
+        }
+        if (ctx.transport) {
+          const item2 = await ctx.transport.getSchedule(scheduleId);
+          if (!item2) {
+            return toError(`Schedule not found: ${scheduleId}`, version2, uptime, Date.now() - start);
+          }
+          return toSuccess({ item: item2 }, version2, uptime, Date.now() - start);
         }
         const item = scheduler.getItem(scheduleId);
         if (!item) {
@@ -40093,6 +40333,42 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
         }
         const presetOrMs = params.preset ?? params.interval_ms;
         const delayMs = params.delay_ms;
+        if (ctx.transport) {
+          let resolvedIntervalMs;
+          if (scheduleType !== "one_shot") {
+            if (presetOrMs === void 0) {
+              return toError(
+                "Missing required parameter: interval_ms or preset",
+                version2,
+                uptime,
+                Date.now() - start
+              );
+            }
+            try {
+              resolvedIntervalMs = resolveInterval(presetOrMs);
+            } catch (err) {
+              return toError(toErrorMessage(err), version2, uptime, Date.now() - start);
+            }
+          } else if (delayMs === void 0) {
+            return toError(
+              "Missing required parameter: delay_ms (required for one_shot type)",
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+          const created = await ctx.transport.createSchedule({
+            schedule_id: scheduleId,
+            event_type: eventType,
+            schedule_type: scheduleType,
+            interval_ms: resolvedIntervalMs,
+            delay_ms: delayMs,
+            ttl,
+            payload: payloadRaw
+          });
+          logger72.info("runtime_schedule: created via transport", { id: scheduleId, type: scheduleType });
+          return toSuccess({ created }, version2, uptime, Date.now() - start);
+        }
         let item;
         if (scheduleType === "one_shot") {
           if (delayMs === void 0) {
@@ -40166,6 +40442,10 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
             Date.now() - start
           );
         }
+        if (ctx.transport) {
+          const cancelled2 = await ctx.transport.cancelSchedule(scheduleId);
+          return toSuccess({ cancelled: cancelled2, schedule_id: scheduleId }, version2, uptime, Date.now() - start);
+        }
         const cancelled = scheduler.cancel(scheduleId);
         return toSuccess(
           { cancelled, schedule_id: scheduleId },
@@ -40177,6 +40457,13 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
       case "pause": {
         const scheduleId = params.schedule_id;
         if (scheduleId) {
+          if (ctx.transport) {
+            const paused2 = await ctx.transport.pauseSchedule(scheduleId);
+            if (!paused2) {
+              return toError(`Schedule not found: ${scheduleId}`, version2, uptime, Date.now() - start);
+            }
+            return toSuccess({ paused: true, schedule_id: scheduleId }, version2, uptime, Date.now() - start);
+          }
           const paused = scheduler.pause(scheduleId);
           if (!paused) {
             return toError(
@@ -40193,7 +40480,11 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
             Date.now() - start
           );
         }
-        heartbeat.disable();
+        if (ctx.transport) {
+          await ctx.transport.pauseHeartbeat();
+        } else {
+          heartbeat.disable();
+        }
         return toSuccess(
           { paused: true, target: "heartbeat" },
           version2,
@@ -40204,6 +40495,13 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
       case "resume": {
         const scheduleId = params.schedule_id;
         if (scheduleId) {
+          if (ctx.transport) {
+            const resumed2 = await ctx.transport.resumeSchedule(scheduleId);
+            if (!resumed2) {
+              return toError(`Schedule not found: ${scheduleId}`, version2, uptime, Date.now() - start);
+            }
+            return toSuccess({ resumed: true, schedule_id: scheduleId }, version2, uptime, Date.now() - start);
+          }
           const resumed = scheduler.resume(scheduleId);
           if (!resumed) {
             return toError(
@@ -40220,7 +40518,11 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
             Date.now() - start
           );
         }
-        heartbeat.enable();
+        if (ctx.transport) {
+          await ctx.transport.resumeHeartbeat();
+        } else {
+          heartbeat.enable();
+        }
         return toSuccess(
           { resumed: true, target: "heartbeat" },
           version2,
@@ -40310,14 +40612,6 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   }
   try {
-    if (action !== "status" && !externalPlugin) {
-      return toError(
-        "ExternalPlugin is not available \u2014 operations other than status are not yet supported in daemon mode",
-        version2,
-        uptime,
-        Date.now() - start
-      );
-    }
     switch (action) {
       case "status": {
         if (ctx.transport) {
@@ -40342,6 +40636,10 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
         );
       }
       case "normalizers": {
+        if (ctx.transport) {
+          const result = await ctx.transport.getExternalNormalizers();
+          return toSuccess(result, version2, uptime, Date.now() - start);
+        }
         const registry2 = externalPlugin.getNormalizerRegistry();
         const sources = registry2.sources();
         return toSuccess(
@@ -40371,6 +40669,19 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
             Date.now() - start
           );
         }
+        if (ctx.transport) {
+          try {
+            const result = await ctx.transport.testNormalize(source, payload, headers);
+            return toSuccess(result, version2, uptime, Date.now() - start);
+          } catch (normErr) {
+            return toError(
+              `Normalization failed for source '${source}': ${toErrorMessage(normErr)}`,
+              version2,
+              uptime,
+              Date.now() - start
+            );
+          }
+        }
         const registry2 = externalPlugin.getNormalizerRegistry();
         try {
           const normalized = registry2.normalize(source, payload, headers);
@@ -40390,6 +40701,11 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
         }
       }
       case "stats": {
+        if (ctx.transport) {
+          const since2 = params.since ? new Date(params.since).getTime() : void 0;
+          const result = await ctx.transport.getExternalStats(since2);
+          return toSuccess(result, version2, uptime, Date.now() - start);
+        }
         const since = params.since ? new Date(params.since).getTime() : 0;
         const normalizerRegistry = externalPlugin.getNormalizerRegistry();
         return toSuccess(
@@ -40408,6 +40724,10 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
         );
       }
       case "queue": {
+        if (ctx.transport) {
+          const result = await ctx.transport.getExternalQueue();
+          return toSuccess(result, version2, uptime, Date.now() - start);
+        }
         const stateStore = ctx.getCoreStateStore();
         const eventQueue = ctx.getEventQueue();
         const queueDepth = eventQueue != null ? eventQueue.depth() : null;

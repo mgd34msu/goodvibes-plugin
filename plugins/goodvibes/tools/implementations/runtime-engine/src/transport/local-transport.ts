@@ -247,6 +247,97 @@ export class LocalTransport implements RuntimeTransport {
     timePlugin.getHeartbeat().setInterval(intervalMs);
   }
 
+  async listSchedules(filter?: { type?: string }): Promise<Record<string, unknown>[]> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    const scheduler = timePlugin.getScheduler();
+    let items = scheduler.getAllItems();
+    if (filter?.type) {
+      items = items.filter((item) => item.time_type === filter.type);
+    }
+    return items as unknown as Record<string, unknown>[];
+  }
+
+  async getSchedule(scheduleId: string): Promise<Record<string, unknown> | null> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    const item = timePlugin.getScheduler().getItem(scheduleId);
+    return item ? (item as unknown as Record<string, unknown>) : null;
+  }
+
+  async createSchedule(params: {
+    schedule_id: string;
+    event_type: string;
+    schedule_type: string;
+    interval_ms?: number;
+    delay_ms?: number;
+    ttl?: number;
+    payload?: Record<string, unknown>;
+  }): Promise<Record<string, unknown>> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    const scheduler = timePlugin.getScheduler();
+    const { schedule_id, event_type, schedule_type, interval_ms, delay_ms, ttl, payload } = params;
+    let item;
+    if (schedule_type === 'one_shot') {
+      if (delay_ms === undefined) throw new Error('delay_ms required for one_shot');
+      item = scheduler.scheduleOneShot({
+        id: schedule_id,
+        event_type,
+        delay_ms,
+        ...(payload !== undefined && { payload }),
+      });
+    } else if (schedule_type === 'cron') {
+      if (interval_ms === undefined) throw new Error('interval_ms required for cron');
+      item = scheduler.scheduleCron({
+        id: schedule_id,
+        event_type,
+        interval_ms,
+        ...(payload !== undefined && { payload }),
+      });
+    } else {
+      if (interval_ms === undefined) throw new Error('interval_ms required for heartbeat');
+      item = scheduler.scheduleHeartbeat({
+        id: schedule_id,
+        event_type,
+        interval_ms,
+        ...(ttl !== undefined && { ttl }),
+        ...(payload !== undefined && { payload }),
+      });
+    }
+    return item as unknown as Record<string, unknown>;
+  }
+
+  async cancelSchedule(scheduleId: string): Promise<boolean> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    return timePlugin.getScheduler().cancel(scheduleId);
+  }
+
+  async pauseSchedule(scheduleId: string): Promise<boolean> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    return timePlugin.getScheduler().pause(scheduleId);
+  }
+
+  async resumeSchedule(scheduleId: string): Promise<boolean> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    return timePlugin.getScheduler().resume(scheduleId);
+  }
+
+  async pauseHeartbeat(): Promise<void> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    timePlugin.getHeartbeat().disable();
+  }
+
+  async resumeHeartbeat(): Promise<void> {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin) throw new Error('TimePlugin not available');
+    timePlugin.getHeartbeat().enable();
+  }
+
   // ─── External ──────────────────────────────────────────────
 
   async getExternalStatus(): Promise<{
@@ -265,6 +356,72 @@ export class LocalTransport implements RuntimeTransport {
       },
       normalizer_count: normalizerSources.length,
       normalizer_sources: normalizerSources,
+    };
+  }
+
+  async getExternalNormalizers(): Promise<{ sources: string[]; count: number }> {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin) throw new Error('ExternalPlugin not available');
+    const sources = externalPlugin.getNormalizerRegistry().sources();
+    return { sources, count: sources.length };
+  }
+
+  async testNormalize(
+    source: string,
+    payload: Record<string, unknown>,
+    headers?: Record<string, string>,
+  ): Promise<{ normalized: Record<string, unknown>; source: string }> {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin) throw new Error('ExternalPlugin not available');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalized = externalPlugin.getNormalizerRegistry().normalize(source, payload, headers) as any as Record<string, unknown>;
+    return { normalized, source };
+  }
+
+  async getExternalStats(since?: number): Promise<Record<string, unknown>> {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin) throw new Error('ExternalPlugin not available');
+    const normalizerRegistry = externalPlugin.getNormalizerRegistry();
+    return {
+      action: 'stats',
+      since: since && since > 0 ? new Date(since).toISOString() : 'all_time',
+      normalizers: normalizerRegistry ? normalizerRegistry.sources() : [],
+      http_listener: { running: externalPlugin.isHttpListenerRunning() },
+      note: 'Detailed webhook receive/error counts require ExternalPlugin stats tracking (not yet implemented)',
+    };
+  }
+
+  async getExternalQueue(): Promise<{ queue_depth: number | null; external_stats: unknown }> {
+    const stateStore = this.engine.getCoreStateStore();
+    const eventQueue = this.engine.getEventQueue();
+    const queueDepth = eventQueue != null ? eventQueue.depth() : null;
+    const queueStats = stateStore?.get?.('external_plugin.stats') ?? null;
+    return { queue_depth: queueDepth, external_stats: queueStats };
+  }
+
+  // ─── Triggers (extended) ────────────────────────────────────────
+
+  async testTrigger(
+    triggerId: string,
+    testEvent: Record<string, unknown>,
+  ): Promise<{ result: Record<string, unknown> | null; all_results: Record<string, unknown>[] }> {
+    const registry = this.engine.getTriggerRegistry();
+    if (!registry) throw new Error('Trigger registry not available');
+    const mockEvent = {
+      id: (testEvent['id'] as string) ?? 'test-mock-id',
+      timestamp: (testEvent['timestamp'] as number) ?? Date.now(),
+      type: testEvent['type'],
+      source: testEvent['source'] ?? { kind: 'mcp_tool', tool_name: 'runtime_triggers' },
+      payload: testEvent['payload'] ?? { type: testEvent['type'], data: {} },
+      priority: (testEvent['priority'] as number) ?? 0,
+      metadata: testEvent['metadata'] ?? { session_id: '', sequence: 0, version: 1 },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = await registry.evaluate(mockEvent as any);
+    const result = results.find((r) => r.trigger_id === triggerId);
+    return {
+      result: (result as unknown as Record<string, unknown>) ?? null,
+      all_results: results as unknown as Record<string, unknown>[],
     };
   }
 }

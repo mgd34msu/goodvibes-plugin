@@ -208,7 +208,10 @@ export const handleRuntimeTriggers = async (
       if (!testEvent) {
         return toError('Missing required field: test_event', ctx.version, uptimeMs, Date.now() - start);
       }
-      // test is not covered by transport — fall back to direct registry access
+      if (ctx.transport) {
+        const result = await ctx.transport.testTrigger(testTriggerId, testEvent);
+        return toSuccess(result, ctx.version, uptimeMs, Date.now() - start);
+      }
       const testRegistry = ctx.getTriggerRegistry();
       if (!testRegistry) {
         return toError('Trigger registry is unavailable', ctx.version, uptimeMs, Date.now() - start);

@@ -174,6 +174,38 @@ export interface RuntimeTransport {
   /** Set the heartbeat interval (ms). Must be >= 1000. */
   setHeartbeatInterval(intervalMs: number): Promise<void>;
 
+  /** List all scheduled items, optionally filtered by type. */
+  listSchedules(filter?: { type?: string }): Promise<Record<string, unknown>[]>;
+
+  /** Get a scheduled item by ID. Returns null if not found. */
+  getSchedule(scheduleId: string): Promise<Record<string, unknown> | null>;
+
+  /** Create a new schedule (one_shot, cron, or heartbeat type). */
+  createSchedule(params: {
+    schedule_id: string;
+    event_type: string;
+    schedule_type: string;
+    interval_ms?: number;
+    delay_ms?: number;
+    ttl?: number;
+    payload?: Record<string, unknown>;
+  }): Promise<Record<string, unknown>>;
+
+  /** Cancel a schedule by ID. Returns true if cancelled. */
+  cancelSchedule(scheduleId: string): Promise<boolean>;
+
+  /** Pause a schedule by ID. Returns true if paused. */
+  pauseSchedule(scheduleId: string): Promise<boolean>;
+
+  /** Resume a paused schedule by ID. Returns true if resumed. */
+  resumeSchedule(scheduleId: string): Promise<boolean>;
+
+  /** Pause the global heartbeat (no schedule_id). */
+  pauseHeartbeat(): Promise<void>;
+
+  /** Resume the global heartbeat (no schedule_id). */
+  resumeHeartbeat(): Promise<void>;
+
   // ─── External ──────────────────────────────────────────────
 
   /** Get external plugin status (HTTP listener, normalizers). */
@@ -186,4 +218,28 @@ export interface RuntimeTransport {
     normalizer_count: number;
     normalizer_sources: string[];
   }>;
+
+  /** List registered normalizer sources. */
+  getExternalNormalizers(): Promise<{ sources: string[]; count: number }>;
+
+  /** Run a normalizer on test input. */
+  testNormalize(
+    source: string,
+    payload: Record<string, unknown>,
+    headers?: Record<string, string>,
+  ): Promise<{ normalized: Record<string, unknown>; source: string }>;
+
+  /** Get external plugin ingestion stats. */
+  getExternalStats(since?: number): Promise<Record<string, unknown>>;
+
+  /** Get external event queue info. */
+  getExternalQueue(): Promise<{ queue_depth: number | null; external_stats: unknown }>;
+
+  // ─── Triggers (extended) ─────────────────────────────────────────
+
+  /** Test a trigger against a mock event. Returns evaluation results. */
+  testTrigger(
+    triggerId: string,
+    testEvent: Record<string, unknown>,
+  ): Promise<{ result: Record<string, unknown> | null; all_results: Record<string, unknown>[] }>;
 }

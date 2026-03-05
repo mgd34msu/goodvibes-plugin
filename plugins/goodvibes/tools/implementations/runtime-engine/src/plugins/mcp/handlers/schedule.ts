@@ -57,19 +57,13 @@ export const handleRuntimeSchedule = async (
   const heartbeat = timePlugin?.getHeartbeat();
 
   try {
-    // Non-heartbeat actions require local TimePlugin access
-    if (action !== 'heartbeat' && !timePlugin) {
-      return toError(
-        'TimePlugin is not available — schedule operations other than heartbeat are not yet supported in daemon mode',
-        version,
-        uptime,
-        Date.now() - start,
-      );
-    }
-
     switch (action) {
       case 'list': {
         const filter = params.filter as { type?: string } | undefined;
+        if (ctx.transport) {
+          const items = await ctx.transport.listSchedules(filter);
+          return toSuccess({ items, count: items.length }, version, uptime, Date.now() - start);
+        }
         let items = scheduler!.getAllItems();
         if (filter?.type) {
           items = items.filter(item => item.time_type === filter.type);
@@ -91,6 +85,13 @@ export const handleRuntimeSchedule = async (
             uptime,
             Date.now() - start,
           );
+        }
+        if (ctx.transport) {
+          const item = await ctx.transport.getSchedule(scheduleId);
+          if (!item) {
+            return toError(`Schedule not found: ${scheduleId}`, version, uptime, Date.now() - start);
+          }
+          return toSuccess({ item }, version, uptime, Date.now() - start);
         }
         const item = scheduler!.getItem(scheduleId);
         if (!item) {
@@ -131,6 +132,44 @@ export const handleRuntimeSchedule = async (
         // Resolve interval from preset or raw ms
         const presetOrMs = params.preset ?? params.interval_ms;
         const delayMs = params.delay_ms as number | undefined;
+
+        if (ctx.transport) {
+          // Validate and resolve interval before delegating to transport
+          let resolvedIntervalMs: number | undefined;
+          if (scheduleType !== 'one_shot') {
+            if (presetOrMs === undefined) {
+              return toError(
+                'Missing required parameter: interval_ms or preset',
+                version,
+                uptime,
+                Date.now() - start,
+              );
+            }
+            try {
+              resolvedIntervalMs = resolveInterval(presetOrMs as string | number);
+            } catch (err) {
+              return toError(toErrorMessage(err), version, uptime, Date.now() - start);
+            }
+          } else if (delayMs === undefined) {
+            return toError(
+              'Missing required parameter: delay_ms (required for one_shot type)',
+              version,
+              uptime,
+              Date.now() - start,
+            );
+          }
+          const created = await ctx.transport.createSchedule({
+            schedule_id: scheduleId,
+            event_type: eventType,
+            schedule_type: scheduleType,
+            interval_ms: resolvedIntervalMs,
+            delay_ms: delayMs,
+            ttl,
+            payload: payloadRaw,
+          });
+          logger.info('runtime_schedule: created via transport', { id: scheduleId, type: scheduleType });
+          return toSuccess({ created }, version, uptime, Date.now() - start);
+        }
 
         let item;
         if (scheduleType === 'one_shot') {
@@ -208,6 +247,10 @@ export const handleRuntimeSchedule = async (
             Date.now() - start,
           );
         }
+        if (ctx.transport) {
+          const cancelled = await ctx.transport.cancelSchedule(scheduleId);
+          return toSuccess({ cancelled, schedule_id: scheduleId }, version, uptime, Date.now() - start);
+        }
         const cancelled = scheduler!.cancel(scheduleId);
         return toSuccess(
           { cancelled, schedule_id: scheduleId },
@@ -220,6 +263,13 @@ export const handleRuntimeSchedule = async (
       case 'pause': {
         const scheduleId = params.schedule_id as string | undefined;
         if (scheduleId) {
+          if (ctx.transport) {
+            const paused = await ctx.transport.pauseSchedule(scheduleId);
+            if (!paused) {
+              return toError(`Schedule not found: ${scheduleId}`, version, uptime, Date.now() - start);
+            }
+            return toSuccess({ paused: true, schedule_id: scheduleId }, version, uptime, Date.now() - start);
+          }
           const paused = scheduler!.pause(scheduleId);
           if (!paused) {
             return toError(
@@ -236,7 +286,11 @@ export const handleRuntimeSchedule = async (
             Date.now() - start,
           );
         }
-        heartbeat!.disable();
+        if (ctx.transport) {
+          await ctx.transport.pauseHeartbeat();
+        } else {
+          heartbeat!.disable();
+        }
         return toSuccess(
           { paused: true, target: 'heartbeat' },
           version,
@@ -248,6 +302,13 @@ export const handleRuntimeSchedule = async (
       case 'resume': {
         const scheduleId = params.schedule_id as string | undefined;
         if (scheduleId) {
+          if (ctx.transport) {
+            const resumed = await ctx.transport.resumeSchedule(scheduleId);
+            if (!resumed) {
+              return toError(`Schedule not found: ${scheduleId}`, version, uptime, Date.now() - start);
+            }
+            return toSuccess({ resumed: true, schedule_id: scheduleId }, version, uptime, Date.now() - start);
+          }
           const resumed = scheduler!.resume(scheduleId);
           if (!resumed) {
             return toError(
@@ -264,7 +325,11 @@ export const handleRuntimeSchedule = async (
             Date.now() - start,
           );
         }
-        heartbeat!.enable();
+        if (ctx.transport) {
+          await ctx.transport.resumeHeartbeat();
+        } else {
+          heartbeat!.enable();
+        }
         return toSuccess(
           { resumed: true, target: 'heartbeat' },
           version,

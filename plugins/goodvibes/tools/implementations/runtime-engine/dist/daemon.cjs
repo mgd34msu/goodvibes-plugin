@@ -278,6 +278,23 @@ function createExternalEvent(params) {
     normalized: params.normalized ?? false
   };
 }
+function createHumanEvent(params) {
+  const base = createEvent({
+    source: { kind: "user" },
+    type: params.type,
+    payload: params.payload ?? {},
+    priority: params.priority ?? 70,
+    context: params.context,
+    metadata: { session_id: "", sequence: 0 }
+  });
+  return {
+    ...base,
+    source: { kind: "user" },
+    ...params.prompt !== void 0 && { prompt: params.prompt },
+    ...params.command !== void 0 && { command: params.command },
+    ...params.approval !== void 0 && { approval: params.approval }
+  };
+}
 function defaultTimeEventType(timeType) {
   switch (timeType) {
     case "heartbeat":
@@ -332,6 +349,7 @@ var init_factories = __esm({
     __name(createHookEvent, "createHookEvent");
     __name(createAgentEvent, "createAgentEvent");
     __name(createExternalEvent, "createExternalEvent");
+    __name(createHumanEvent, "createHumanEvent");
     __name(defaultTimeEventType, "defaultTimeEventType");
     __name(createTimeEvent, "createTimeEvent");
   }
@@ -847,6 +865,87 @@ async function checkCrashRecovery(projectRoot) {
   }
 }
 __name(checkCrashRecovery, "checkCrashRecovery");
+
+// src/core/processing/signals.ts
+init_utils();
+var SIGTERM_GRACE_MS = 1e4;
+var SIGINT_GRACE_MS = 5e3;
+function setupSignalHandlers(onShutdown) {
+  let shuttingDown = false;
+  async function gracefulShutdown(signal, graceMs) {
+    if (shuttingDown)
+      return;
+    shuttingDown = true;
+    process.stderr.write(
+      `[runtime-engine] Received ${signal} \u2014 initiating graceful shutdown (${graceMs / 1e3}s grace)
+`
+    );
+    const watchdog = setTimeout(() => {
+      process.stderr.write(
+        `[runtime-engine] Shutdown timed out after ${graceMs / 1e3}s \u2014 forcing exit
+`
+      );
+      process.exit(1);
+    }, graceMs);
+    watchdog.unref();
+    let exitCode = 0;
+    try {
+      await onShutdown();
+      process.stderr.write("[runtime-engine] Graceful shutdown complete\n");
+    } catch (err) {
+      process.stderr.write(
+        `[runtime-engine] Error during shutdown: ${toErrorMessage(err)}
+`
+      );
+      exitCode = 1;
+    } finally {
+      clearTimeout(watchdog);
+      process.exit(exitCode);
+    }
+  }
+  __name(gracefulShutdown, "gracefulShutdown");
+  process.on("SIGTERM", () => {
+    void gracefulShutdown("SIGTERM", SIGTERM_GRACE_MS);
+  });
+  process.on("SIGINT", () => {
+    void gracefulShutdown("SIGINT", SIGINT_GRACE_MS);
+  });
+  process.on("SIGUSR1", () => {
+    process.stderr.write(
+      "[runtime-engine] Received SIGUSR1 \u2014 checkpoint requested (not yet implemented; see @todo in signals.ts)\n"
+    );
+  });
+  process.on("SIGUSR2", () => {
+    const mem = process.memoryUsage();
+    process.stderr.write(
+      JSON.stringify({
+        signal: "SIGUSR2",
+        pid: process.pid,
+        uptime_ms: Math.round(process.uptime() * 1e3),
+        memory_rss_mb: Math.round(mem.rss / 1024 / 1024),
+        memory_heap_used_mb: Math.round(mem.heapUsed / 1024 / 1024),
+        memory_heap_total_mb: Math.round(mem.heapTotal / 1024 / 1024),
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      }) + "\n"
+    );
+  });
+  process.on("uncaughtException", (error) => {
+    process.stderr.write(
+      `[runtime-engine] Uncaught exception: ${error.stack ?? error.message}
+`
+    );
+    void gracefulShutdown("uncaughtException", SIGTERM_GRACE_MS);
+  });
+  process.on("unhandledRejection", (reason) => {
+    const message = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
+    process.stderr.write(
+      `[runtime-engine] Unhandled promise rejection: ${message}
+`
+    );
+    void gracefulShutdown("unhandledRejection", SIGTERM_GRACE_MS);
+  });
+}
+__name(setupSignalHandlers, "setupSignalHandlers");
 
 // src/core/observability/health.ts
 var MIN_HEALTHY_UPTIME_MS = 1e3;
@@ -3804,6 +3903,33 @@ var TriggerRegistry = class {
    */
   pruneOldEvents(maxAgeMs) {
     this.evaluator.pruneOldEvents(maxAgeMs);
+  }
+  /**
+   * Applies updated configuration at runtime (implements {@link Reconfigurable}).
+   *
+   * Accepts a partial {@link TriggersConfig} shape. Recognized keys:
+   *   - `default_cooldown_ms`   — new default cooldown between trigger fires
+   *   - `max_fires_per_session` — new per-session fire budget
+   *
+   * Unknown keys are silently ignored so callers can pass the whole
+   * `triggers` section of {@link RuntimeConfig} without filtering.
+   *
+   * @param config - New configuration values (partial).
+   */
+  reconfigure(config) {
+    const mutableConfig = this.config;
+    if (typeof config["default_cooldown_ms"] === "number") {
+      mutableConfig["default_cooldown_ms"] = config["default_cooldown_ms"];
+      log3.info("TriggerRegistry: default_cooldown_ms updated", {
+        value: config["default_cooldown_ms"]
+      });
+    }
+    if (typeof config["max_fires_per_session"] === "number") {
+      mutableConfig["max_fires_per_session"] = config["max_fires_per_session"];
+      log3.info("TriggerRegistry: max_fires_per_session updated", {
+        value: config["max_fires_per_session"]
+      });
+    }
   }
   // ─── Private Helpers ──────────────────────────────────────────────────────
   /**
@@ -8935,9 +9061,6 @@ var ExecutorModeManager = class {
   }
 };
 
-// src/core/processing/signals.ts
-init_utils();
-
 // src/core/state/state-store.ts
 var import_node_fs11 = require("node:fs");
 var import_node_path11 = require("node:path");
@@ -10902,6 +11025,7 @@ function extractModifiedPaths(input) {
 __name(extractModifiedPaths, "extractModifiedPaths");
 
 // src/plugins/hooks/handlers/user-prompt-submit.ts
+init_factories();
 init_logger();
 var logger40 = createLogger("handler:user-prompt-submit");
 var TASK_NOTIFICATION_PATTERN = "<task-notification>";
@@ -10929,6 +11053,9 @@ function createUserPromptSubmitHandler(deps) {
       }
     }
     if (!prompt.includes(TASK_NOTIFICATION_PATTERN)) {
+      if (deps.eventBus && prompt.length > 0) {
+        deps.eventBus.emit(createHumanEvent({ type: "human:prompt", prompt }));
+      }
       return null;
     }
     if (!deps.directiveQueue) {
@@ -10971,7 +11098,8 @@ function registerDefaultHandlers(registry, deps) {
     handler: createUserPromptSubmitHandler({
       directiveQueue: deps.directiveQueue,
       daemonTickHandler: deps.daemonTickHandler ?? null,
-      executorMode: deps.executorMode ?? null
+      executorMode: deps.executorMode ?? null,
+      eventBus: deps.eventBus
     }),
     priority: 80,
     enabled: true
@@ -15385,6 +15513,8 @@ var RuntimeEngine = class {
     this.reconfigurables.set("time", this.timePlugin);
     if (this.wrfcPlugin)
       this.reconfigurables.set("wrfc", this.wrfcPlugin);
+    if (this.triggers)
+      this.reconfigurables.set("triggers", this.triggers.triggerRegistry);
     if (this.config.devserver?.enabled) {
       const { DevServerMonitor: DevServerMonitor2 } = await Promise.resolve().then(() => (init_devserver(), devserver_exports));
       this.devServerMonitor = new DevServerMonitor2(this.config.devserver, this.events.eventBus);
@@ -15462,6 +15592,7 @@ var RuntimeEngine = class {
         }
       }
     });
+    setupSignalHandlers(() => this.shutdown());
     this.running = true;
     logger60.info("Startup complete", { pid: process.pid, uptime_ms: this.getUptime() });
   }
@@ -15907,6 +16038,92 @@ var LocalTransport = class {
       throw new Error("TimePlugin not available");
     timePlugin.getHeartbeat().setInterval(intervalMs);
   }
+  async listSchedules(filter) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const scheduler = timePlugin.getScheduler();
+    let items = scheduler.getAllItems();
+    if (filter?.type) {
+      items = items.filter((item) => item.time_type === filter.type);
+    }
+    return items;
+  }
+  async getSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const item = timePlugin.getScheduler().getItem(scheduleId);
+    return item ? item : null;
+  }
+  async createSchedule(params) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    const scheduler = timePlugin.getScheduler();
+    const { schedule_id, event_type, schedule_type, interval_ms, delay_ms, ttl, payload } = params;
+    let item;
+    if (schedule_type === "one_shot") {
+      if (delay_ms === void 0)
+        throw new Error("delay_ms required for one_shot");
+      item = scheduler.scheduleOneShot({
+        id: schedule_id,
+        event_type,
+        delay_ms,
+        ...payload !== void 0 && { payload }
+      });
+    } else if (schedule_type === "cron") {
+      if (interval_ms === void 0)
+        throw new Error("interval_ms required for cron");
+      item = scheduler.scheduleCron({
+        id: schedule_id,
+        event_type,
+        interval_ms,
+        ...payload !== void 0 && { payload }
+      });
+    } else {
+      if (interval_ms === void 0)
+        throw new Error("interval_ms required for heartbeat");
+      item = scheduler.scheduleHeartbeat({
+        id: schedule_id,
+        event_type,
+        interval_ms,
+        ...ttl !== void 0 && { ttl },
+        ...payload !== void 0 && { payload }
+      });
+    }
+    return item;
+  }
+  async cancelSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    return timePlugin.getScheduler().cancel(scheduleId);
+  }
+  async pauseSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    return timePlugin.getScheduler().pause(scheduleId);
+  }
+  async resumeSchedule(scheduleId) {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    return timePlugin.getScheduler().resume(scheduleId);
+  }
+  async pauseHeartbeat() {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    timePlugin.getHeartbeat().disable();
+  }
+  async resumeHeartbeat() {
+    const timePlugin = this.engine.getTimePlugin();
+    if (!timePlugin)
+      throw new Error("TimePlugin not available");
+    timePlugin.getHeartbeat().enable();
+  }
   // ─── External ──────────────────────────────────────────────
   async getExternalStatus() {
     const externalPlugin = this.engine.getExternalPlugin();
@@ -15921,6 +16138,61 @@ var LocalTransport = class {
       },
       normalizer_count: normalizerSources.length,
       normalizer_sources: normalizerSources
+    };
+  }
+  async getExternalNormalizers() {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const sources = externalPlugin.getNormalizerRegistry().sources();
+    return { sources, count: sources.length };
+  }
+  async testNormalize(source, payload, headers) {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const normalized = externalPlugin.getNormalizerRegistry().normalize(source, payload, headers);
+    return { normalized, source };
+  }
+  async getExternalStats(since) {
+    const externalPlugin = this.engine.getExternalPlugin();
+    if (!externalPlugin)
+      throw new Error("ExternalPlugin not available");
+    const normalizerRegistry = externalPlugin.getNormalizerRegistry();
+    return {
+      action: "stats",
+      since: since && since > 0 ? new Date(since).toISOString() : "all_time",
+      normalizers: normalizerRegistry ? normalizerRegistry.sources() : [],
+      http_listener: { running: externalPlugin.isHttpListenerRunning() },
+      note: "Detailed webhook receive/error counts require ExternalPlugin stats tracking (not yet implemented)"
+    };
+  }
+  async getExternalQueue() {
+    const stateStore = this.engine.getCoreStateStore();
+    const eventQueue = this.engine.getEventQueue();
+    const queueDepth = eventQueue != null ? eventQueue.depth() : null;
+    const queueStats = stateStore?.get?.("external_plugin.stats") ?? null;
+    return { queue_depth: queueDepth, external_stats: queueStats };
+  }
+  // ─── Triggers (extended) ────────────────────────────────────────
+  async testTrigger(triggerId, testEvent) {
+    const registry = this.engine.getTriggerRegistry();
+    if (!registry)
+      throw new Error("Trigger registry not available");
+    const mockEvent = {
+      id: testEvent["id"] ?? "test-mock-id",
+      timestamp: testEvent["timestamp"] ?? Date.now(),
+      type: testEvent["type"],
+      source: testEvent["source"] ?? { kind: "mcp_tool", tool_name: "runtime_triggers" },
+      payload: testEvent["payload"] ?? { type: testEvent["type"], data: {} },
+      priority: testEvent["priority"] ?? 0,
+      metadata: testEvent["metadata"] ?? { session_id: "", sequence: 0, version: 1 }
+    };
+    const results = await registry.evaluate(mockEvent);
+    const result = results.find((r) => r.trigger_id === triggerId);
+    return {
+      result: result ?? null,
+      all_results: results
     };
   }
 };
@@ -16255,6 +16527,95 @@ var DaemonServer = class {
         tp.getHeartbeat().setInterval(args["intervalMs"]);
         return;
       }
+      case "listSchedules": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        const filter = args["filter"];
+        let items = tp.getScheduler().getAllItems();
+        if (filter?.type) {
+          items = items.filter((item) => item.time_type === filter.type);
+        }
+        return items;
+      }
+      case "getSchedule": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        const item = tp.getScheduler().getItem(args["scheduleId"]);
+        return item ?? null;
+      }
+      case "createSchedule": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        const scheduler = tp.getScheduler();
+        const p = args["params"];
+        const { schedule_id, event_type, schedule_type, interval_ms, delay_ms, ttl, payload } = p;
+        let item;
+        if (schedule_type === "one_shot") {
+          if (delay_ms === void 0)
+            throw new Error("delay_ms required for one_shot");
+          item = scheduler.scheduleOneShot({
+            id: schedule_id,
+            event_type,
+            delay_ms,
+            ...payload !== void 0 && { payload }
+          });
+        } else if (schedule_type === "cron") {
+          if (interval_ms === void 0)
+            throw new Error("interval_ms required for cron");
+          item = scheduler.scheduleCron({
+            id: schedule_id,
+            event_type,
+            interval_ms,
+            ...payload !== void 0 && { payload }
+          });
+        } else {
+          if (interval_ms === void 0)
+            throw new Error("interval_ms required for heartbeat");
+          item = scheduler.scheduleHeartbeat({
+            id: schedule_id,
+            event_type,
+            interval_ms,
+            ...ttl !== void 0 && { ttl },
+            ...payload !== void 0 && { payload }
+          });
+        }
+        return item;
+      }
+      case "cancelSchedule": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        return tp.getScheduler().cancel(args["scheduleId"]);
+      }
+      case "pauseSchedule": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        return tp.getScheduler().pause(args["scheduleId"]);
+      }
+      case "resumeSchedule": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        return tp.getScheduler().resume(args["scheduleId"]);
+      }
+      case "pauseHeartbeat": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        tp.getHeartbeat().disable();
+        return;
+      }
+      case "resumeHeartbeat": {
+        const tp = e.getTimePlugin();
+        if (!tp)
+          throw new Error("TimePlugin not available");
+        tp.getHeartbeat().enable();
+        return;
+      }
       case "getExternalStatus": {
         const ep = e.getExternalPlugin();
         if (!ep)
@@ -16268,6 +16629,66 @@ var DaemonServer = class {
           },
           normalizer_count: sources.length,
           normalizer_sources: sources
+        };
+      }
+      case "getExternalNormalizers": {
+        const ep = e.getExternalPlugin();
+        if (!ep)
+          throw new Error("ExternalPlugin not available");
+        const sources = ep.getNormalizerRegistry().sources();
+        return { sources, count: sources.length };
+      }
+      case "testNormalize": {
+        const ep = e.getExternalPlugin();
+        if (!ep)
+          throw new Error("ExternalPlugin not available");
+        const source = args["source"];
+        const payload = args["payload"];
+        const headers = args["headers"];
+        const normalized = ep.getNormalizerRegistry().normalize(source, payload, headers);
+        return { normalized, source };
+      }
+      case "getExternalStats": {
+        const ep = e.getExternalPlugin();
+        if (!ep)
+          throw new Error("ExternalPlugin not available");
+        const since = args["since"];
+        const normalizerRegistry = ep.getNormalizerRegistry();
+        return {
+          action: "stats",
+          since: since && since > 0 ? new Date(since).toISOString() : "all_time",
+          normalizers: normalizerRegistry ? normalizerRegistry.sources() : [],
+          http_listener: { running: ep.isHttpListenerRunning() },
+          note: "Detailed webhook receive/error counts require ExternalPlugin stats tracking (not yet implemented)"
+        };
+      }
+      case "getExternalQueue": {
+        const stateStore = e.getCoreStateStore();
+        const eventQueue = e.getEventQueue();
+        const queueDepth = eventQueue != null ? eventQueue.depth() : null;
+        const queueStats = stateStore?.get?.("external_plugin.stats") ?? null;
+        return { queue_depth: queueDepth, external_stats: queueStats };
+      }
+      case "testTrigger": {
+        const tr = e.getTriggerRegistry();
+        if (!tr)
+          throw new Error("TriggerRegistry not available");
+        const triggerId = args["triggerId"];
+        const testEvent = args["testEvent"];
+        const mockEvent = {
+          id: testEvent["id"] ?? generateId(),
+          timestamp: testEvent["timestamp"] ?? Date.now(),
+          type: testEvent["type"],
+          source: testEvent["source"] ?? { kind: "mcp_tool", tool_name: "runtime_triggers" },
+          payload: testEvent["payload"] ?? { type: testEvent["type"], data: {} },
+          priority: testEvent["priority"] ?? 0,
+          metadata: testEvent["metadata"] ?? { session_id: req.session_id, sequence: 0, version: 1 }
+        };
+        const results = await tr.evaluate(mockEvent);
+        const result = results.find((r) => r.trigger_id === triggerId);
+        return {
+          result: result ?? null,
+          all_results: results
         };
       }
       case "ping": {
