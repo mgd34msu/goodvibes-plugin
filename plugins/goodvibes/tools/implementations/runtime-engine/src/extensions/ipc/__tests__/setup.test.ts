@@ -421,7 +421,8 @@ describe('createIPCSubsystem', () => {
 // ─── cleanStalePointerFiles unit tests ─────────────────────────────────────────────────────────────
 
 describe('cleanStalePointerFiles', () => {
-  let killSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let killSpy: any;
 
   beforeEach(() => {
     mockReaddirSync.mockClear();

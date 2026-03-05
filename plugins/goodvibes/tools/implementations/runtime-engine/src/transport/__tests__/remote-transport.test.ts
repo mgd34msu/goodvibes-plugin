@@ -304,6 +304,482 @@ describe('RemoteTransport', () => {
       expect(parsed.method).toBe('drainDirectives');
       expect(parsed.args).toEqual({ target: 'subagent_stop', workflowId: 'wf-1' });
     });
+
+    it('cancelWorkflow() sends workflowId and reason', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      await transport.cancelWorkflow('wf-1', 'user cancelled');
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('cancelWorkflow');
+      expect(parsed.args).toEqual({ workflowId: 'wf-1', reason: 'user cancelled' });
+    });
+
+    it('getEventHistory() sends filter as argument', async () => {
+      const events = [{ type: 'test:event' }];
+      setupConnectAndRPC(events);
+      await transport.connect();
+      const filter = { type: 'test:*' } as any;
+      const result = await transport.getEventHistory(filter);
+      expect(result).toEqual(events);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getEventHistory');
+      expect(parsed.args).toEqual({ filter });
+    });
+
+    it('getEventStats() sends rpc_call with method "getEventStats"', async () => {
+      const stats = { log: { total_events: 5 }, queue: { pending: 0 } };
+      setupConnectAndRPC(stats);
+      await transport.connect();
+      const result = await transport.getEventStats();
+      expect(result).toEqual(stats);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getEventStats');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('getHeartbeat() sends rpc_call with method "getHeartbeat"', async () => {
+      const hb = { enabled: true, tick_count: 3, last_tick_at: 0, scheduled_count: 1, interval_ms: 500 };
+      setupConnectAndRPC(hb);
+      await transport.connect();
+      const result = await transport.getHeartbeat();
+      expect(result).toEqual(hb);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getHeartbeat');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('setHeartbeatInterval() sends intervalMs as argument', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      await transport.setHeartbeatInterval(2000);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('setHeartbeatInterval');
+      expect(parsed.args).toEqual({ intervalMs: 2000 });
+    });
+
+    it('getExternalStatus() sends rpc_call with method "getExternalStatus"', async () => {
+      const status = { http_listener: { running: true, port: 8080, address: '127.0.0.1' }, normalizer_count: 2, normalizer_sources: ['github'] };
+      setupConnectAndRPC(status);
+      await transport.connect();
+      const result = await transport.getExternalStatus();
+      expect(result).toEqual(status);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getExternalStatus');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('listSchedules() sends filter as argument', async () => {
+      const items = [{ id: 's1' }];
+      setupConnectAndRPC(items);
+      await transport.connect();
+      const result = await transport.listSchedules({ type: 'cron' });
+      expect(result).toEqual(items);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('listSchedules');
+      expect(parsed.args).toEqual({ filter: { type: 'cron' } });
+    });
+
+    it('getSchedule() sends scheduleId as argument', async () => {
+      const item = { id: 'sched-1', time_type: 'cron' };
+      setupConnectAndRPC(item);
+      await transport.connect();
+      const result = await transport.getSchedule('sched-1');
+      expect(result).toEqual(item);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getSchedule');
+      expect(parsed.args).toEqual({ scheduleId: 'sched-1' });
+    });
+
+    it('createSchedule() sends params as argument', async () => {
+      const item = { id: 'cr-1' };
+      setupConnectAndRPC(item);
+      await transport.connect();
+      const params = { schedule_id: 'cr-1', event_type: 'tick', schedule_type: 'cron', interval_ms: 60000 };
+      const result = await transport.createSchedule(params);
+      expect(result).toEqual(item);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('createSchedule');
+      expect(parsed.args).toEqual({ params });
+    });
+
+    it('cancelSchedule() sends scheduleId as argument', async () => {
+      setupConnectAndRPC(true);
+      await transport.connect();
+      const result = await transport.cancelSchedule('sched-1');
+      expect(result).toBe(true);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('cancelSchedule');
+      expect(parsed.args).toEqual({ scheduleId: 'sched-1' });
+    });
+
+    it('pauseSchedule() sends scheduleId as argument', async () => {
+      setupConnectAndRPC(true);
+      await transport.connect();
+      const result = await transport.pauseSchedule('sched-1');
+      expect(result).toBe(true);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('pauseSchedule');
+      expect(parsed.args).toEqual({ scheduleId: 'sched-1' });
+    });
+
+    it('resumeSchedule() sends scheduleId as argument', async () => {
+      setupConnectAndRPC(true);
+      await transport.connect();
+      const result = await transport.resumeSchedule('sched-1');
+      expect(result).toBe(true);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('resumeSchedule');
+      expect(parsed.args).toEqual({ scheduleId: 'sched-1' });
+    });
+
+    it('pauseHeartbeat() sends rpc_call with method "pauseHeartbeat"', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      await transport.pauseHeartbeat();
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('pauseHeartbeat');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('resumeHeartbeat() sends rpc_call with method "resumeHeartbeat"', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      await transport.resumeHeartbeat();
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('resumeHeartbeat');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('getExternalNormalizers() sends rpc_call with method "getExternalNormalizers"', async () => {
+      const normalizers = { sources: ['github'], count: 1 };
+      setupConnectAndRPC(normalizers);
+      await transport.connect();
+      const result = await transport.getExternalNormalizers();
+      expect(result).toEqual(normalizers);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getExternalNormalizers');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('testNormalize() sends source, payload, and headers', async () => {
+      const normalized = { type: 'push' };
+      setupConnectAndRPC({ normalized, source: 'github' });
+      await transport.connect();
+      const payload = { action: 'push' };
+      const headers = { 'x-github-event': 'push' };
+      const result = await transport.testNormalize('github', payload, headers);
+      expect(result).toEqual({ normalized, source: 'github' });
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('testNormalize');
+      expect(parsed.args).toEqual({ source: 'github', payload, headers });
+    });
+
+    it('getExternalStats() sends since as argument', async () => {
+      const stats = { action: 'stats', since: 'all_time' };
+      setupConnectAndRPC(stats);
+      await transport.connect();
+      const result = await transport.getExternalStats(0);
+      expect(result).toEqual(stats);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getExternalStats');
+      expect(parsed.args).toEqual({ since: 0 });
+    });
+
+    it('getExternalQueue() sends rpc_call with method "getExternalQueue"', async () => {
+      const queue = { queue_depth: 3, external_stats: null };
+      setupConnectAndRPC(queue);
+      await transport.connect();
+      const result = await transport.getExternalQueue();
+      expect(result).toEqual(queue);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getExternalQueue');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('testTrigger() sends triggerId and testEvent', async () => {
+      const response = { result: { trigger_id: 't1', matched: true }, all_results: [] };
+      setupConnectAndRPC(response);
+      await transport.connect();
+      const testEvent = { type: 'push:event', payload: {} };
+      const result = await transport.testTrigger('t1', testEvent);
+      expect(result).toEqual(response);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('testTrigger');
+      expect(parsed.args).toEqual({ triggerId: 't1', testEvent });
+    });
+
+    // ─── State methods ───────────────────────────────────────────────────────
+
+    it('deleteState() sends key as argument', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      await transport.deleteState('my.key');
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('deleteState');
+      expect(parsed.args).toEqual({ key: 'my.key' });
+    });
+
+    it('listStateKeys() sends prefix as argument', async () => {
+      const keys = ['ns.a', 'ns.b'];
+      setupConnectAndRPC(keys);
+      await transport.connect();
+      const result = await transport.listStateKeys('ns');
+      expect(result).toEqual(keys);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('listStateKeys');
+      expect(parsed.args).toEqual({ prefix: 'ns' });
+    });
+
+    it('listStateKeys() sends no prefix when omitted', async () => {
+      setupConnectAndRPC([]);
+      await transport.connect();
+      await transport.listStateKeys();
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('listStateKeys');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('getStateSnapshot() sends rpc_call with method "getStateSnapshot"', async () => {
+      const snapshot = { 'ns.key': 'value' };
+      setupConnectAndRPC(snapshot);
+      await transport.connect();
+      const result = await transport.getStateSnapshot();
+      expect(result).toEqual(snapshot);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getStateSnapshot');
+      expect(parsed.args).toEqual({});
+    });
+
+    // ─── Event methods ───────────────────────────────────────────────────────
+
+    it('emitEvent() sends event as argument', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      const event = { type: 'test:event', payload: { key: 'val' } } as any;
+      await transport.emitEvent(event);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('emitEvent');
+      expect(parsed.args).toEqual({ event });
+    });
+
+    it('queryEvents() sends filter as argument', async () => {
+      const events = [{ type: 'test:event' }];
+      setupConnectAndRPC(events);
+      await transport.connect();
+      const filter = { type: 'test:*' } as any;
+      const result = await transport.queryEvents(filter);
+      expect(result).toEqual(events);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('queryEvents');
+      expect(parsed.args).toEqual({ filter });
+    });
+
+    it('getQueueDepth() sends rpc_call with method "getQueueDepth"', async () => {
+      setupConnectAndRPC(7);
+      await transport.connect();
+      const result = await transport.getQueueDepth();
+      expect(result).toBe(7);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getQueueDepth');
+      expect(parsed.args).toEqual({});
+    });
+
+    // ─── Workflow methods ────────────────────────────────────────────────────
+
+    it('getWorkflow() sends workflowId as argument', async () => {
+      const wf = { id: 'wf-1', state: 'running' };
+      setupConnectAndRPC(wf);
+      await transport.connect();
+      const result = await transport.getWorkflow('wf-1');
+      expect(result).toEqual(wf);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getWorkflow');
+      expect(parsed.args).toEqual({ workflowId: 'wf-1' });
+    });
+
+    it('listWorkflows() sends rpc_call with method "listWorkflows"', async () => {
+      const wfs = [{ id: 'wf-1' }, { id: 'wf-2' }];
+      setupConnectAndRPC(wfs);
+      await transport.connect();
+      const result = await transport.listWorkflows();
+      expect(result).toEqual(wfs);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('listWorkflows');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('transitionWorkflow() sends workflowId, event, and data', async () => {
+      const updated = { id: 'wf-1', state: 'completed' };
+      setupConnectAndRPC(updated);
+      await transport.connect();
+      const result = await transport.transitionWorkflow('wf-1', 'complete', { output: 'done' });
+      expect(result).toEqual(updated);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('transitionWorkflow');
+      expect(parsed.args).toEqual({ workflowId: 'wf-1', event: 'complete', data: { output: 'done' } });
+    });
+
+    // ─── Trigger methods ─────────────────────────────────────────────────────
+
+    it('listTriggers() sends rpc_call with method "listTriggers"', async () => {
+      const triggers = [{ id: 't1' }, { id: 't2' }];
+      setupConnectAndRPC(triggers);
+      await transport.connect();
+      const result = await transport.listTriggers();
+      expect(result).toEqual(triggers);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('listTriggers');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('getTrigger() sends triggerId as argument', async () => {
+      const trigger = { id: 't1', event_pattern: 'push:*' };
+      setupConnectAndRPC(trigger);
+      await transport.connect();
+      const result = await transport.getTrigger('t1');
+      expect(result).toEqual(trigger);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getTrigger');
+      expect(parsed.args).toEqual({ triggerId: 't1' });
+    });
+
+    it('registerTrigger() sends definition as argument', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      const definition = { id: 't-new', event_pattern: 'deploy:*', workflow_id: 'wf-1' };
+      await transport.registerTrigger(definition);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('registerTrigger');
+      expect(parsed.args).toEqual({ definition });
+    });
+
+    it('unregisterTrigger() sends triggerId as argument', async () => {
+      setupConnectAndRPC(true);
+      await transport.connect();
+      const result = await transport.unregisterTrigger('t1');
+      expect(result).toBe(true);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('unregisterTrigger');
+      expect(parsed.args).toEqual({ triggerId: 't1' });
+    });
+
+    // ─── Agent methods ───────────────────────────────────────────────────────
+
+    it('getAgent() sends agentId as argument', async () => {
+      const agent = { id: 'agent-1', type: 'engineer' };
+      setupConnectAndRPC(agent);
+      await transport.connect();
+      const result = await transport.getAgent('agent-1');
+      expect(result).toEqual(agent);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getAgent');
+      expect(parsed.args).toEqual({ agentId: 'agent-1' });
+    });
+
+    it('listAgents() sends rpc_call with method "listAgents"', async () => {
+      const agents = [{ id: 'agent-1' }, { id: 'agent-2' }];
+      setupConnectAndRPC(agents);
+      await transport.connect();
+      const result = await transport.listAgents();
+      expect(result).toEqual(agents);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('listAgents');
+      expect(parsed.args).toEqual({});
+    });
+
+    // ─── Config/health methods ───────────────────────────────────────────────
+
+    it('getVersion() sends rpc_call with method "getVersion"', async () => {
+      setupConnectAndRPC('1.2.3');
+      await transport.connect();
+      const result = await transport.getVersion();
+      expect(result).toBe('1.2.3');
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getVersion');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('getProjectRoot() sends rpc_call with method "getProjectRoot"', async () => {
+      setupConnectAndRPC('/home/user/project');
+      await transport.connect();
+      const result = await transport.getProjectRoot();
+      expect(result).toBe('/home/user/project');
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getProjectRoot');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('getConfig() sends rpc_call with method "getConfig"', async () => {
+      const config = { queue: { max_size: 10000 } };
+      setupConnectAndRPC(config);
+      await transport.connect();
+      const result = await transport.getConfig();
+      expect(result).toEqual(config);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getConfig');
+      expect(parsed.args).toEqual({});
+    });
+
+    it('updateConfig() sends config as argument', async () => {
+      setupConnectAndRPC(undefined);
+      await transport.connect();
+      const config = { queue: { max_size: 5000 } } as any;
+      await transport.updateConfig(config);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('updateConfig');
+      expect(parsed.args).toEqual({ config });
+    });
+
+    it('getHealth() sends rpc_call with method "getHealth"', async () => {
+      const health = { status: 'ok', uptime: 12345 };
+      setupConnectAndRPC(health);
+      await transport.connect();
+      const result = await transport.getHealth();
+      expect(result).toEqual(health);
+      const sock = capturedSockets[0];
+      const parsed = JSON.parse(sock.written[1].replace('\n', ''));
+      expect(parsed.method).toBe('getHealth');
+      expect(parsed.args).toEqual({});
+    });
   });
 
   // ─── RPC error handling ─────────────────────────────────────────────────

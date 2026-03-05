@@ -20,14 +20,17 @@ const mocks = vi.hoisted(() => {
 
   const mockEventBus = {
     emit: vi.fn(),
+    getHistory: vi.fn(),
   };
 
   const mockEventLog = {
     query: vi.fn(),
+    getStats: vi.fn(),
   };
 
   const mockEventQueue = {
     depth: vi.fn(),
+    getStats: vi.fn(),
   };
 
   const mockWorkflowEngine = {
@@ -35,6 +38,46 @@ const mocks = vi.hoisted(() => {
     listAll: vi.fn(),
     create: vi.fn(),
     sendEvent: vi.fn(),
+    cancel: vi.fn(),
+  };
+
+  const mockHeartbeat = {
+    isEnabled: vi.fn(),
+    getTickCount: vi.fn(),
+    getLastTickAt: vi.fn(),
+    getInterval: vi.fn(),
+    setInterval: vi.fn(),
+    disable: vi.fn(),
+    enable: vi.fn(),
+  };
+
+  const mockScheduler = {
+    size: vi.fn(),
+    getAllItems: vi.fn(),
+    getItem: vi.fn(),
+    cancel: vi.fn(),
+    pause: vi.fn(),
+    resume: vi.fn(),
+    scheduleOneShot: vi.fn(),
+    scheduleCron: vi.fn(),
+    scheduleHeartbeat: vi.fn(),
+  };
+
+  const mockTimePlugin = {
+    getHeartbeat: vi.fn(() => mockHeartbeat),
+    getScheduler: vi.fn(() => mockScheduler),
+  };
+
+  const mockNormalizerRegistry = {
+    sources: vi.fn(),
+    normalize: vi.fn(),
+  };
+
+  const mockExternalPlugin = {
+    isHttpListenerRunning: vi.fn(),
+    getHttpPort: vi.fn(),
+    getHttpAddress: vi.fn(),
+    getNormalizerRegistry: vi.fn(() => mockNormalizerRegistry),
   };
 
   const mockTriggerRegistry = {
@@ -42,6 +85,7 @@ const mocks = vi.hoisted(() => {
     get: vi.fn(),
     register: vi.fn(),
     unregister: vi.fn(),
+    evaluate: vi.fn(),
   };
 
   const mockAgentCoordinator = {
@@ -68,6 +112,8 @@ const mocks = vi.hoisted(() => {
     getTriggerRegistry: vi.fn(() => mockTriggerRegistry),
     getAgentCoordinator: vi.fn(() => mockAgentCoordinator),
     getDirectiveQueue: vi.fn(() => mockDirectiveQueue),
+    getTimePlugin: vi.fn(() => mockTimePlugin),
+    getExternalPlugin: vi.fn(() => mockExternalPlugin),
   };
 
   return {
@@ -81,6 +127,11 @@ const mocks = vi.hoisted(() => {
     mockTriggerRegistry,
     mockAgentCoordinator,
     mockDirectiveQueue,
+    mockTimePlugin,
+    mockHeartbeat,
+    mockScheduler,
+    mockExternalPlugin,
+    mockNormalizerRegistry,
   };
 });
 
@@ -101,6 +152,11 @@ describe('LocalTransport', () => {
     mocks.mockEngine.getTriggerRegistry.mockReturnValue(mocks.mockTriggerRegistry);
     mocks.mockEngine.getAgentCoordinator.mockReturnValue(mocks.mockAgentCoordinator);
     mocks.mockEngine.getDirectiveQueue.mockReturnValue(mocks.mockDirectiveQueue);
+    mocks.mockEngine.getTimePlugin.mockReturnValue(mocks.mockTimePlugin);
+    mocks.mockEngine.getExternalPlugin.mockReturnValue(mocks.mockExternalPlugin);
+    mocks.mockTimePlugin.getHeartbeat.mockReturnValue(mocks.mockHeartbeat);
+    mocks.mockTimePlugin.getScheduler.mockReturnValue(mocks.mockScheduler);
+    mocks.mockExternalPlugin.getNormalizerRegistry.mockReturnValue(mocks.mockNormalizerRegistry);
     transport = new LocalTransport(mocks.mockEngine as unknown as RuntimeEngine);
   });
 
@@ -460,6 +516,369 @@ describe('LocalTransport', () => {
       mocks.mockEngine.getDirectiveQueue.mockReturnValue(null as any);
       const result = await transport.drainDirectives('subagent_stop', 'wf-xyz');
       expect(result).toEqual({ directives: [] });
+    });
+  });
+
+  // ─── 11. cancelWorkflow ────────────────────────────────────────────────────
+
+  describe('cancelWorkflow()', () => {
+    it('delegates to getWorkflowEngine().cancel(workflowId, reason)', async () => {
+      await transport.cancelWorkflow('wf-1', 'user request');
+      expect(mocks.mockWorkflowEngine.cancel).toHaveBeenCalledWith('wf-1', 'user request');
+    });
+
+    it('uses default reason when none provided', async () => {
+      await transport.cancelWorkflow('wf-2');
+      expect(mocks.mockWorkflowEngine.cancel).toHaveBeenCalledWith('wf-2', 'cancelled via MCP');
+    });
+
+    it('throws when getWorkflowEngine() returns null', async () => {
+      mocks.mockEngine.getWorkflowEngine.mockReturnValue(null as any);
+      await expect(transport.cancelWorkflow('wf-1')).rejects.toThrow('Workflow engine not available');
+    });
+  });
+
+  // ─── 12. getEventHistory ───────────────────────────────────────────────────
+
+  describe('getEventHistory()', () => {
+    it('delegates to getEventBus().getHistory(filter)', async () => {
+      const events = [{ type: 'test:event', payload: {} }] as any;
+      mocks.mockEventBus.getHistory.mockReturnValue(events);
+      const filter = { type: 'test:*' } as any;
+      const result = await transport.getEventHistory(filter);
+      expect(result).toBe(events);
+      expect(mocks.mockEventBus.getHistory).toHaveBeenCalledWith(filter);
+    });
+
+    it('passes undefined when no filter provided', async () => {
+      mocks.mockEventBus.getHistory.mockReturnValue([]);
+      await transport.getEventHistory();
+      expect(mocks.mockEventBus.getHistory).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  // ─── 13. getEventStats ────────────────────────────────────────────────────
+
+  describe('getEventStats()', () => {
+    it('delegates to getEventLog().getStats() and getEventQueue().getStats()', async () => {
+      const logStats = { total_events: 42, file_size_bytes: 1024, events_per_type: {} };
+      const queueStats = { pending: 3, max_depth: 100, dedup_cache_size: 10 };
+      mocks.mockEventLog.getStats.mockReturnValue(logStats);
+      mocks.mockEventQueue.getStats.mockReturnValue(queueStats);
+      const result = await transport.getEventStats();
+      expect(result).toEqual({ log: logStats, queue: queueStats });
+      expect(mocks.mockEventLog.getStats).toHaveBeenCalledOnce();
+      expect(mocks.mockEventQueue.getStats).toHaveBeenCalledOnce();
+    });
+  });
+
+  // ─── 14. Heartbeat methods ─────────────────────────────────────────────────
+
+  describe('heartbeat methods', () => {
+    it('getHeartbeat() aggregates heartbeat and scheduler data', async () => {
+      mocks.mockHeartbeat.isEnabled.mockReturnValue(true);
+      mocks.mockHeartbeat.getTickCount.mockReturnValue(5);
+      mocks.mockHeartbeat.getLastTickAt.mockReturnValue(1000);
+      mocks.mockHeartbeat.getInterval.mockReturnValue(500);
+      mocks.mockScheduler.size.mockReturnValue(3);
+      const result = await transport.getHeartbeat();
+      expect(result).toEqual({
+        enabled: true,
+        tick_count: 5,
+        last_tick_at: 1000,
+        scheduled_count: 3,
+        interval_ms: 500,
+      });
+    });
+
+    it('getHeartbeat() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.getHeartbeat()).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('setHeartbeatInterval() calls heartbeat.setInterval(intervalMs)', async () => {
+      await transport.setHeartbeatInterval(2000);
+      expect(mocks.mockHeartbeat.setInterval).toHaveBeenCalledWith(2000);
+    });
+
+    it('setHeartbeatInterval() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.setHeartbeatInterval(1000)).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('pauseHeartbeat() calls heartbeat.disable()', async () => {
+      await transport.pauseHeartbeat();
+      expect(mocks.mockHeartbeat.disable).toHaveBeenCalledOnce();
+    });
+
+    it('pauseHeartbeat() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.pauseHeartbeat()).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('resumeHeartbeat() calls heartbeat.enable()', async () => {
+      await transport.resumeHeartbeat();
+      expect(mocks.mockHeartbeat.enable).toHaveBeenCalledOnce();
+    });
+
+    it('resumeHeartbeat() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.resumeHeartbeat()).rejects.toThrow('TimePlugin not available');
+    });
+  });
+
+  // ─── 15. Schedule methods ──────────────────────────────────────────────────
+
+  describe('schedule methods', () => {
+    it('listSchedules() returns all items when no filter', async () => {
+      const items = [{ id: 's1', time_type: 'cron' }, { id: 's2', time_type: 'one_shot' }];
+      mocks.mockScheduler.getAllItems.mockReturnValue(items);
+      const result = await transport.listSchedules();
+      expect(result).toEqual(items);
+      expect(mocks.mockScheduler.getAllItems).toHaveBeenCalledOnce();
+    });
+
+    it('listSchedules() filters by type when provided', async () => {
+      const items = [{ id: 's1', time_type: 'cron' }, { id: 's2', time_type: 'one_shot' }];
+      mocks.mockScheduler.getAllItems.mockReturnValue(items);
+      const result = await transport.listSchedules({ type: 'cron' });
+      expect(result).toEqual([{ id: 's1', time_type: 'cron' }]);
+    });
+
+    it('listSchedules() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.listSchedules()).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('getSchedule() delegates to scheduler.getItem(scheduleId)', async () => {
+      const item = { id: 'sched-1', time_type: 'cron' };
+      mocks.mockScheduler.getItem.mockReturnValue(item);
+      const result = await transport.getSchedule('sched-1');
+      expect(result).toEqual(item);
+      expect(mocks.mockScheduler.getItem).toHaveBeenCalledWith('sched-1');
+    });
+
+    it('getSchedule() returns null when not found', async () => {
+      mocks.mockScheduler.getItem.mockReturnValue(null);
+      const result = await transport.getSchedule('no-such');
+      expect(result).toBeNull();
+    });
+
+    it('getSchedule() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.getSchedule('s1')).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('createSchedule() calls scheduleOneShot for one_shot type', async () => {
+      const item = { id: 'os-1', time_type: 'one_shot' };
+      mocks.mockScheduler.scheduleOneShot.mockReturnValue(item);
+      const result = await transport.createSchedule({
+        schedule_id: 'os-1',
+        event_type: 'my:event',
+        schedule_type: 'one_shot',
+        delay_ms: 5000,
+      });
+      expect(result).toEqual(item);
+      expect(mocks.mockScheduler.scheduleOneShot).toHaveBeenCalledWith({
+        id: 'os-1',
+        event_type: 'my:event',
+        delay_ms: 5000,
+      });
+    });
+
+    it('createSchedule() throws for one_shot without delay_ms', async () => {
+      await expect(transport.createSchedule({
+        schedule_id: 'os-fail',
+        event_type: 'my:event',
+        schedule_type: 'one_shot',
+      })).rejects.toThrow('delay_ms required for one_shot');
+    });
+
+    it('createSchedule() calls scheduleCron for cron type', async () => {
+      const item = { id: 'cr-1', time_type: 'cron' };
+      mocks.mockScheduler.scheduleCron.mockReturnValue(item);
+      const result = await transport.createSchedule({
+        schedule_id: 'cr-1',
+        event_type: 'tick:event',
+        schedule_type: 'cron',
+        interval_ms: 60000,
+        payload: { key: 'val' },
+      });
+      expect(result).toEqual(item);
+      expect(mocks.mockScheduler.scheduleCron).toHaveBeenCalledWith({
+        id: 'cr-1',
+        event_type: 'tick:event',
+        interval_ms: 60000,
+        payload: { key: 'val' },
+      });
+    });
+
+    it('createSchedule() calls scheduleHeartbeat for heartbeat type', async () => {
+      const item = { id: 'hb-1', time_type: 'heartbeat' };
+      mocks.mockScheduler.scheduleHeartbeat.mockReturnValue(item);
+      const result = await transport.createSchedule({
+        schedule_id: 'hb-1',
+        event_type: 'hb:tick',
+        schedule_type: 'heartbeat',
+        interval_ms: 1000,
+        ttl: 10,
+      });
+      expect(result).toEqual(item);
+      expect(mocks.mockScheduler.scheduleHeartbeat).toHaveBeenCalledWith({
+        id: 'hb-1',
+        event_type: 'hb:tick',
+        interval_ms: 1000,
+        ttl: 10,
+      });
+    });
+
+    it('createSchedule() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.createSchedule({
+        schedule_id: 'x',
+        event_type: 'y',
+        schedule_type: 'one_shot',
+        delay_ms: 100,
+      })).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('cancelSchedule() delegates to scheduler.cancel(scheduleId)', async () => {
+      mocks.mockScheduler.cancel.mockReturnValue(true);
+      const result = await transport.cancelSchedule('sched-1');
+      expect(result).toBe(true);
+      expect(mocks.mockScheduler.cancel).toHaveBeenCalledWith('sched-1');
+    });
+
+    it('cancelSchedule() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.cancelSchedule('s1')).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('pauseSchedule() delegates to scheduler.pause(scheduleId)', async () => {
+      mocks.mockScheduler.pause.mockReturnValue(true);
+      const result = await transport.pauseSchedule('sched-1');
+      expect(result).toBe(true);
+      expect(mocks.mockScheduler.pause).toHaveBeenCalledWith('sched-1');
+    });
+
+    it('pauseSchedule() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.pauseSchedule('s1')).rejects.toThrow('TimePlugin not available');
+    });
+
+    it('resumeSchedule() delegates to scheduler.resume(scheduleId)', async () => {
+      mocks.mockScheduler.resume.mockReturnValue(true);
+      const result = await transport.resumeSchedule('sched-1');
+      expect(result).toBe(true);
+      expect(mocks.mockScheduler.resume).toHaveBeenCalledWith('sched-1');
+    });
+
+    it('resumeSchedule() throws when TimePlugin not available', async () => {
+      mocks.mockEngine.getTimePlugin.mockReturnValue(null as any);
+      await expect(transport.resumeSchedule('s1')).rejects.toThrow('TimePlugin not available');
+    });
+  });
+
+  // ─── 16. External methods ──────────────────────────────────────────────────
+
+  describe('external methods', () => {
+    it('getExternalStatus() returns aggregated http_listener and normalizer info', async () => {
+      mocks.mockExternalPlugin.isHttpListenerRunning.mockReturnValue(true);
+      mocks.mockExternalPlugin.getHttpPort.mockReturnValue(8080);
+      mocks.mockExternalPlugin.getHttpAddress.mockReturnValue('127.0.0.1');
+      mocks.mockNormalizerRegistry.sources.mockReturnValue(['github', 'generic']);
+      const result = await transport.getExternalStatus();
+      expect(result).toEqual({
+        http_listener: { running: true, port: 8080, address: '127.0.0.1' },
+        normalizer_count: 2,
+        normalizer_sources: ['github', 'generic'],
+      });
+    });
+
+    it('getExternalStatus() throws when ExternalPlugin not available', async () => {
+      mocks.mockEngine.getExternalPlugin.mockReturnValue(null as any);
+      await expect(transport.getExternalStatus()).rejects.toThrow('ExternalPlugin not available');
+    });
+
+    it('getExternalNormalizers() returns sources and count', async () => {
+      mocks.mockNormalizerRegistry.sources.mockReturnValue(['github', 'generic', 'custom']);
+      const result = await transport.getExternalNormalizers();
+      expect(result).toEqual({ sources: ['github', 'generic', 'custom'], count: 3 });
+    });
+
+    it('getExternalNormalizers() throws when ExternalPlugin not available', async () => {
+      mocks.mockEngine.getExternalPlugin.mockReturnValue(null as any);
+      await expect(transport.getExternalNormalizers()).rejects.toThrow('ExternalPlugin not available');
+    });
+
+    it('testNormalize() delegates to normalizerRegistry.normalize()', async () => {
+      const normalized = { type: 'push', data: {} };
+      mocks.mockNormalizerRegistry.normalize.mockReturnValue(normalized);
+      const payload = { action: 'push', ref: 'main' };
+      const headers = { 'x-github-event': 'push' };
+      const result = await transport.testNormalize('github', payload, headers);
+      expect(result).toEqual({ normalized, source: 'github' });
+      expect(mocks.mockNormalizerRegistry.normalize).toHaveBeenCalledWith('github', payload, headers);
+    });
+
+    it('testNormalize() throws when ExternalPlugin not available', async () => {
+      mocks.mockEngine.getExternalPlugin.mockReturnValue(null as any);
+      await expect(transport.testNormalize('github', {})).rejects.toThrow('ExternalPlugin not available');
+    });
+
+    it('getExternalStats() returns stats object with normalizers and http_listener info', async () => {
+      mocks.mockNormalizerRegistry.sources.mockReturnValue(['github']);
+      mocks.mockExternalPlugin.isHttpListenerRunning.mockReturnValue(false);
+      const result = await transport.getExternalStats();
+      expect(result).toMatchObject({
+        action: 'stats',
+        normalizers: ['github'],
+        http_listener: { running: false },
+      });
+    });
+
+    it('getExternalStats() throws when ExternalPlugin not available', async () => {
+      mocks.mockEngine.getExternalPlugin.mockReturnValue(null as any);
+      await expect(transport.getExternalStats()).rejects.toThrow('ExternalPlugin not available');
+    });
+
+    it('getExternalQueue() returns queue_depth from eventQueue.depth()', async () => {
+      mocks.mockEventQueue.depth.mockReturnValue(5);
+      mocks.mockStateStore.get.mockReturnValue(null);
+      const result = await transport.getExternalQueue();
+      expect(result.queue_depth).toBe(5);
+    });
+
+    it('getExternalQueue() returns null queue_depth when eventQueue is null', async () => {
+      mocks.mockEngine.getEventQueue.mockReturnValue(null as any);
+      const result = await transport.getExternalQueue();
+      expect(result.queue_depth).toBeNull();
+    });
+  });
+
+  // ─── 17. testTrigger ──────────────────────────────────────────────────────
+
+  describe('testTrigger()', () => {
+    it('delegates to triggerRegistry.evaluate() and returns matching result', async () => {
+      const matchResult = { trigger_id: 't1', matched: true, actions: [] };
+      const otherResult = { trigger_id: 't2', matched: false, actions: [] };
+      mocks.mockTriggerRegistry.evaluate.mockResolvedValue([matchResult, otherResult]);
+      const testEvent = { type: 'push:event', payload: { data: {} } };
+      const result = await transport.testTrigger('t1', testEvent);
+      expect(result.result).toEqual(matchResult);
+      expect(result.all_results).toEqual([matchResult, otherResult]);
+    });
+
+    it('returns null result when no trigger matches triggerId', async () => {
+      mocks.mockTriggerRegistry.evaluate.mockResolvedValue([]);
+      const result = await transport.testTrigger('no-such', { type: 'test' });
+      expect(result.result).toBeNull();
+      expect(result.all_results).toEqual([]);
+    });
+
+    it('throws when getTriggerRegistry() returns null', async () => {
+      mocks.mockEngine.getTriggerRegistry.mockReturnValue(null as any);
+      await expect(transport.testTrigger('t1', { type: 'test' })).rejects.toThrow('Trigger registry not available');
     });
   });
 });
