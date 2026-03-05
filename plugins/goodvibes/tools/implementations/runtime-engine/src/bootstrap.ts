@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 
 import type { RuntimeConfig } from './shared/config.js';
 import { loadConfig } from './shared/config.js';
+import type { Reconfigurable } from './shared/interfaces.js';
 import { ENGINE_VERSION } from './shared/constants.js';
 import { createLogger } from './shared/logger.js';
 import type { Logger } from './shared/logger.js';
@@ -56,6 +57,18 @@ import type { PluginLogger } from './shared/plugin.js';
 import type { EventQueue } from './core/queues/event-queue.js';
 import type { IPCServer } from './shared/ipc/ipc-server.js';
 import type { TriggerDefinitionBase, Trigger } from './core/types.js';
+import {
+  restartDevServer,
+  notifyUser,
+  logEvent,
+  updateMemory,
+  runBuild,
+  runTests,
+  notifyComplete,
+  hasTestSuite,
+  buildPassing,
+} from './extensions/executor/handlers/index.js';
+import { BuildTestDetector } from './plugins/hooks/handlers/build-test-detector.js';
 
 const logger = createLogger('bootstrap');
 
@@ -154,6 +167,9 @@ export class RuntimeEngine {
   private watchdog: WatchdogCoordinator | null = null;
   private wrfcPlugin: WRFCPlugin | null = null;
   private externalPlugin: import('./plugins/index.js').ExternalPlugin | null = null;
+  private timePlugin: import('./plugins/time/time-plugin.js').TimePlugin | null = null;
+  /** Generic registry of reconfigurable subsystems, populated during startup(). */
+  private reconfigurables: Map<string, Reconfigurable> = new Map();
 
   constructor(config: RuntimeConfig, projectRoot: string = process.cwd()) {
     this.startTime = Date.now();
@@ -215,9 +231,12 @@ export class RuntimeEngine {
     };
     this.triggers = createTriggerSubsystem(this.config, triggerDeps);
 
-    // 7. Cross-layer wiring: workflow directive queue + wildcard event listener
+    // 7. Cross-layer wiring: workflow directive queue + agent-workflow map
     if (this.workflow) {
       this.workflow.workflowEngine.setDirectiveQueue(this.directives.directiveQueue);
+      if (this.directives.agentWorkflowMap) {
+        this.workflow.workflowEngine.setAgentWorkflowMap(this.directives.agentWorkflowMap);
+      }
     }
     this.events.eventBus.on('*', async (event: RuntimeEvent) => {
       if (event.source?.kind === 'internal' && event.source.hook_name) {
@@ -402,6 +421,31 @@ export class RuntimeEngine {
       state: agentTrackerPlugin.state,
     });
 
+    // 14c. Register trigger action handlers + workflow handlers + guards (L3 wiring)
+    if (this.triggers) {
+      const triggerReg = this.triggers.triggerRegistry;
+      triggerReg.registerHandler('restartDevServer', restartDevServer(this.projectRoot));
+      triggerReg.registerHandler('notifyUser', notifyUser(this.projectRoot));
+      triggerReg.registerHandler('logEvent', logEvent(this.projectRoot));
+      triggerReg.registerHandler('updateMemory', updateMemory(this.projectRoot));
+      logger.debug('Trigger action handlers registered');
+    }
+
+    const wfEngine = this.workflow?.workflowEngine;
+    if (wfEngine && this.coreRuntime) {
+      wfEngine.registerAction('run_build', runBuild(this.projectRoot));
+      wfEngine.registerAction('run_tests', runTests(this.projectRoot));
+      wfEngine.registerAction('notify_complete', notifyComplete);
+      wfEngine.registerGuard('has_test_suite', hasTestSuite(this.projectRoot));
+      wfEngine.registerGuard('build_passing', buildPassing(this.coreRuntime.stateStore));
+      logger.debug('Workflow action handlers and guards registered');
+    }
+
+    // 14d. Build/Test event detector (L3) — listens on EventBus for tool results
+    const buildTestDetector = new BuildTestDetector(this.events.eventBus);
+    buildTestDetector.start();
+    logger.debug('BuildTestDetector wired to EventBus');
+
     // 14.5 Start core event processor lifecycle
     this.coreRuntime.eventProcessor.start();
 
@@ -419,7 +463,7 @@ export class RuntimeEngine {
     logger.debug('Hook subsystem created', { handlerCount: hookSubsystem.hookRegistry.count() });
 
     // 17. Time plugin (L3)
-    const timePlugin = new TimePlugin({
+    const timePlugin = this.timePlugin = new TimePlugin({
       queue: this.coreRuntime.eventQueue,
       store: this.coreRuntime.stateStore,
       config: this.config.time,
@@ -445,6 +489,11 @@ export class RuntimeEngine {
         logger.warn('Failed to start HTTP webhook listener', { err: toErrorMessage(err) });
       }
     }
+
+    // 18.5 Register reconfigurable subsystems for generic hot-reload loop
+    this.reconfigurables = new Map<string, Reconfigurable>();
+    this.reconfigurables.set('time', this.timePlugin);
+    if (this.wrfcPlugin) this.reconfigurables.set('wrfc', this.wrfcPlugin);
 
     // 19. Tick driver (L2)
     if (!this.executorSubsystem?.executorMode) {
@@ -620,6 +669,18 @@ export class RuntimeEngine {
     this.executorSubsystem?.executorMode?.updateConfig(config.executor);
     this.tickDriver?.reconfigure(config.executor);
 
+    // Generic reconfigure loop for subsystems implementing Reconfigurable
+    for (const [name, subsystem] of this.reconfigurables) {
+      const sectionConfig = (config as unknown as Record<string, unknown>)[name];
+      if (sectionConfig !== undefined && typeof sectionConfig === 'object' && sectionConfig !== null) {
+        try {
+          subsystem.reconfigure(sectionConfig as Record<string, unknown>);
+        } catch (err) {
+          logger.warn(`Failed to reconfigure ${name}`, { error: toErrorMessage(err) });
+        }
+      }
+    }
+
     // Reconfigure external plugins if they changed
     if (this.externalPlugin) {
       this.reconfigureExternalPlugins(oldConfig, config).catch((err) => {
@@ -770,5 +831,7 @@ export class RuntimeEngine {
   getEventProcessor(): EventProcessor | null { return this.coreRuntime?.eventProcessor ?? null; }
   getExecutorMode(): ExecutorModeManager | null { return this.executorSubsystem?.executorMode ?? null; }
   getExecutorBudget(): ExecutorBudgetManager | null { return this.executorSubsystem?.executorBudget ?? null; }
+  getTimePlugin(): import('./plugins/index.js').TimePlugin | null { return this.timePlugin; }
+  getExternalPlugin(): import('./plugins/index.js').ExternalPlugin | null { return this.externalPlugin; }
   getDaemonTickHandler(): DaemonTickHandler | null { return this.executorSubsystem?.daemonTickHandler ?? null; }
 }

@@ -9,6 +9,7 @@
 import { EventQueueInterface, StateStoreInterface } from '../../core/types.js';
 import { HeartbeatManager, HeartbeatConfig } from './heartbeat.js';
 import { EventScheduler, SchedulerConfig } from './scheduler.js';
+import type { Reconfigurable } from '../../shared/interfaces.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ export interface TimePluginContext {
 
 // ─── TimePlugin ───────────────────────────────────────────────────────────────
 
-export class TimePlugin {
+export class TimePlugin implements Reconfigurable {
   private heartbeat: HeartbeatManager;
   private scheduler: EventScheduler;
   private queue: EventQueueInterface;
@@ -83,6 +84,42 @@ export class TimePlugin {
 
   getHeartbeat(): HeartbeatManager { return this.heartbeat; }
   getScheduler(): EventScheduler { return this.scheduler; }
+
+  /**
+   * Apply runtime configuration changes to the time plugin.
+   * Accepts a partial config keyed by subsection ('heartbeat', 'scheduler').
+   * Throws on invalid input to trigger rollback in the caller.
+   */
+  reconfigure(config: Record<string, unknown>): void {
+    const heartbeatConfig = config['heartbeat'] as Partial<HeartbeatConfig> | undefined;
+    const schedulerConfig = config['scheduler'] as Partial<SchedulerConfig> | undefined;
+
+    if (heartbeatConfig !== undefined && typeof heartbeatConfig === 'object') {
+      if (typeof heartbeatConfig.interval_ms === 'number') {
+        if (heartbeatConfig.interval_ms <= 0 || !Number.isFinite(heartbeatConfig.interval_ms)) {
+          throw new Error(`TimePlugin.reconfigure: interval_ms must be a positive finite number, got ${heartbeatConfig.interval_ms}`);
+        }
+        this.heartbeat.setInterval(heartbeatConfig.interval_ms);
+      }
+      if (typeof heartbeatConfig.enabled === 'boolean') {
+        if (heartbeatConfig.enabled) {
+          this.heartbeat.enable();
+        } else {
+          this.heartbeat.disable();
+        }
+      }
+    }
+
+    // Scheduler config: max_scheduled_items is a construction-time parameter;
+    // changes are noted but cannot be applied to a live scheduler without
+    // reinitialisation. Log a no-op for observability.
+    if (schedulerConfig !== undefined && typeof schedulerConfig === 'object') {
+      if (schedulerConfig.max_scheduled_items !== undefined) {
+        // max_scheduled_items is set at construction time; runtime changes have no effect.
+        // Silently ignore to avoid breaking callers that pass through full config sections.
+      }
+    }
+  }
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────

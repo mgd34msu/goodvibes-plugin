@@ -23,6 +23,8 @@ import type { IHookProcessor as IHookProcessorInterface } from './types.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';
+import type { ToolGateEvaluator } from './tool-gating.js';
+import type { ContextInjector } from './context-injector.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -84,6 +86,10 @@ export interface IPCRouterDeps {
   executorBudget?: ExecutorBudgetManager | null;
   /** Daemon tick handler for process_tick queries. */
   daemonTickHandler?: DaemonTickHandler | null;
+  /** Tool gate evaluator for should_block_tool queries. */
+  toolGateEvaluator?: ToolGateEvaluator | null;
+  /** Context injector for get_context_injection queries. */
+  contextInjector?: ContextInjector | null;
   /**
    * Optional callback invoked synchronously (awaited) inside handleHookEvent,
    * BEFORE the IPC ack is returned. When provided, the hook event is processed
@@ -122,6 +128,10 @@ export class IPCRouter {
   private readonly executorBudget: ExecutorBudgetManager | null;
   /** Optional DaemonTickHandler for process_tick queries. */
   private readonly daemonTickHandler: DaemonTickHandler | null;
+  /** Optional ToolGateEvaluator for should_block_tool queries. */
+  private readonly toolGateEvaluator: ToolGateEvaluator | null;
+  /** Optional ContextInjector for get_context_injection queries. */
+  private readonly contextInjector: ContextInjector | null;
   private readonly wrfcConfigStore: WRFCConfigStore | null;
   /** Optional callback for synchronous in-band hook event processing. */
   private readonly processHookEvent: ((event: RuntimeEvent) => Promise<void>) | null;
@@ -149,6 +159,8 @@ export class IPCRouter {
     this.executorMode = deps.executorMode ?? null;
     this.executorBudget = deps.executorBudget ?? null;
     this.daemonTickHandler = deps.daemonTickHandler ?? null;
+    this.toolGateEvaluator = deps.toolGateEvaluator ?? null;
+    this.contextInjector = deps.contextInjector ?? null;
     this.wrfcConfigStore = deps.wrfcConfigStore ?? null;
     this.processHookEvent = deps.processHookEvent ?? null;
   }
@@ -413,18 +425,20 @@ export class IPCRouter {
       };
     }
     if (q.kind === 'should_block_tool') {
+      const toolName = (q as Record<string, unknown>)['tool_name'] as string ?? '';
+      const result = this.toolGateEvaluator?.evaluate(toolName) ?? { allow: true };
       return {
         id: msg.id,
         status: 'ok',
-        data: { kind: 'tool_decision', allow: true },
+        data: { kind: 'tool_decision', allow: result.allow, reason: result.reason },
       };
     }
     if (q.kind === 'get_context_injection') {
-      // Not yet wired — return an explicit empty context rather than silently acking
+      const result = this.contextInjector?.getContext() ?? { context: '', priority: 0 };
       return {
         id: msg.id,
         status: 'ok',
-        data: { kind: 'context_injection', context: '', priority: 0 },
+        data: { kind: 'context_injection', context: result.context, priority: result.priority },
       };
     }
     if (q.kind === 'resolve_pending_bind') {

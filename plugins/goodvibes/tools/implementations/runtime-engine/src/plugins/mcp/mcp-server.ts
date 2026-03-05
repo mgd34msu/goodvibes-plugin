@@ -119,6 +119,8 @@ export class RuntimeEngineServer {
           try { return this.processManager?.getCoreStateStore() ?? null; }
           catch { return null; }
         },
+        getTimePlugin: () => this.processManager?.getTimePlugin?.() ?? null,
+        getExternalPlugin: () => this.processManager?.getExternalPlugin?.() ?? null,
       };
 
       try {

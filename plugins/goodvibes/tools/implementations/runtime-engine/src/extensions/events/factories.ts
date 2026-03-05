@@ -112,7 +112,7 @@ export function createHookEvent(params: {
 /**
  * A runtime event sourced from an agent lifecycle transition.
  */
-interface AgentEvent extends RuntimeEvent {
+export interface AgentEvent extends RuntimeEvent {
   /** Agent events always originate from the agent source. */
   source: { kind: 'agent'; agent_id: string };
   /** Unique identifier for the agent instance that produced this event. */
@@ -128,6 +128,40 @@ interface AgentEvent extends RuntimeEvent {
   score?: number;
   /** File paths or identifiers produced as output artifacts. */
   artifacts?: string[];
+}
+
+/**
+ * Creates an AgentEvent with sensible defaults.
+ * Priority defaults to 40.
+ */
+export function createAgentEvent(params: {
+  agent_id: string;
+  agent_type: string;
+  type: string; // e.g. 'agent:spawned', 'agent:completed', 'agent:failed', 'agent:progress'
+  result?: unknown;
+  score?: number;
+  artifacts?: string[];
+  payload?: unknown;
+  priority?: number;
+  context?: EventContext;
+}): AgentEvent {
+  const base = createEvent({
+    source: { kind: 'agent', agent_id: params.agent_id } as const,
+    type: params.type as EventType,
+    payload: (params.payload ?? {}) as EventPayload,
+    priority: params.priority ?? 40,
+    context: params.context,
+    metadata: { session_id: '', sequence: 0 },
+  });
+  return {
+    ...base,
+    source: { kind: 'agent', agent_id: params.agent_id } as const,
+    agent_id: params.agent_id,
+    agent_type: params.agent_type,
+    ...(params.result !== undefined && { result: params.result }),
+    ...(params.score !== undefined && { score: params.score }),
+    ...(params.artifacts !== undefined && { artifacts: params.artifacts }),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,7 +223,7 @@ export function createExternalEvent(params: {
 /**
  * A runtime event sourced from a human interaction.
  */
-interface HumanEvent extends RuntimeEvent {
+export interface HumanEvent extends RuntimeEvent {
   /** Human events always originate from the human source. */
   source: { kind: 'user' };
   /** Raw user prompt text, if applicable. */
@@ -198,6 +232,36 @@ interface HumanEvent extends RuntimeEvent {
   command?: string;
   /** Approval decision for approval/rejection flows. */
   approval?: boolean;
+}
+
+/**
+ * Creates a HumanEvent with sensible defaults.
+ * Priority defaults to 70 (highest — human input takes precedence).
+ */
+export function createHumanEvent(params: {
+  type: string; // e.g. 'human:prompt', 'human:command', 'human:approval'
+  prompt?: string;
+  command?: string;
+  approval?: boolean;
+  payload?: unknown;
+  priority?: number;
+  context?: EventContext;
+}): HumanEvent {
+  const base = createEvent({
+    source: { kind: 'user' } as const,
+    type: params.type as EventType,
+    payload: (params.payload ?? {}) as EventPayload,
+    priority: params.priority ?? 70,
+    context: params.context,
+    metadata: { session_id: '', sequence: 0 },
+  });
+  return {
+    ...base,
+    source: { kind: 'user' } as const,
+    ...(params.prompt !== undefined && { prompt: params.prompt }),
+    ...(params.command !== undefined && { command: params.command }),
+    ...(params.approval !== undefined && { approval: params.approval }),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -136,9 +136,9 @@ export class DaemonServer {
       this.handleRPCCall(session, msg as DaemonRPCRequest);
     } else {
       const resp: DaemonRPCResponse = {
-        id: (msg as DaemonRPCRequest).id ?? '',
+        id: (msg as unknown as DaemonRPCRequest).id ?? '',
         status: 'error',
-        error: `Unknown message type: ${(msg as DaemonRPCRequest).type}`,
+        error: `Unknown message type: ${(msg as unknown as DaemonRPCRequest).type}`,
       };
       this.sendResponse(session.socket, resp);
     }

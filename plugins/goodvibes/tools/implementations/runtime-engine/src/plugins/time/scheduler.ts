@@ -278,6 +278,41 @@ export class EventScheduler {
     return events;
   }
 
+  // ─── Pause / Resume ─────────────────────────────────────────────────────────
+
+  /**
+   * Pause a scheduled item by shifting its next_fire_at far into the future.
+   * The item remains registered and can be resumed.
+   * Returns true if the item was found and paused.
+   */
+  pause(id: string): boolean {
+    const item = this.items.get(id);
+    if (!item) return false;
+    item.next_fire_at = Date.now() + 365 * 24 * 60 * 60 * 1000;
+    this.dirty = true;
+    return true;
+  }
+
+  /**
+   * Resume a paused scheduled item.
+   * - Recurring items (heartbeat/cron): resumes at now + interval_ms.
+   * - One-shot items: fires immediately on next tick.
+   * Returns true if the item was found and resumed.
+   */
+  resume(id: string): boolean {
+    const item = this.items.get(id);
+    if (!item) return false;
+    if (item.interval_ms !== undefined) {
+      // Recurring: schedule to fire after one interval
+      item.next_fire_at = Date.now() + item.interval_ms;
+    } else {
+      // One-shot: fire immediately on next tick
+      item.next_fire_at = Date.now();
+    }
+    this.dirty = true;
+    return true;
+  }
+
   // ─── Cancellation ────────────────────────────────────────────────────────────
 
   /** Cancel a single scheduled item by ID. Returns true if the item existed. */

@@ -505,7 +505,7 @@ vi.mock('node:fs', async (importOriginal) => {
     },
     readFileSync: (p: string, enc?: string) => {
       if (lifecycleMockActive) return mockReadFileSync(p, enc);
-      return real.readFileSync(p, enc);
+      return (real.readFileSync as (p: string, enc?: string) => string | Buffer)(p, enc);
     },
     unlinkSync: (p: string) => {
       if (lifecycleMockActive) { mockUnlinkSync(p); return; }
@@ -513,7 +513,7 @@ vi.mock('node:fs', async (importOriginal) => {
     },
     openSync: (p: string, flags: string, ...rest: unknown[]) => {
       if (lifecycleMockActive) return mockOpenSync(p, flags);
-      return real.openSync(p, flags, ...(rest as []));
+      return (real.openSync as (...args: unknown[]) => number)(p, flags, ...rest);
     },
     writeSync: (fd: number, data: string) => {
       if (lifecycleMockActive) return mockWriteSync(fd, data);
@@ -531,7 +531,7 @@ vi.mock('node:fs', async (importOriginal) => {
       },
       readFileSync: (p: string, enc?: string) => {
         if (lifecycleMockActive) return mockReadFileSync(p, enc);
-        return real.readFileSync(p, enc);
+        return (real.readFileSync as (p: string, enc?: string) => string | Buffer)(p, enc);
       },
       unlinkSync: (p: string) => {
         if (lifecycleMockActive) { mockUnlinkSync(p); return; }
@@ -539,7 +539,7 @@ vi.mock('node:fs', async (importOriginal) => {
       },
       openSync: (p: string, flags: string, ...rest: unknown[]) => {
         if (lifecycleMockActive) return mockOpenSync(p, flags);
-        return real.openSync(p, flags, ...(rest as []));
+        return (real.openSync as (...args: unknown[]) => number)(p, flags, ...rest);
       },
       writeSync: (fd: number, data: string) => {
         if (lifecycleMockActive) return mockWriteSync(fd, data);

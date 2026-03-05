@@ -241,6 +241,51 @@ export interface ExternalPluginRuntimeConfig {
   http_listener: HttpListenerPluginConfig;
 }
 
+/** Dev server health monitor configuration (Layer 3). Opt-in — disabled by default. */
+export interface DevServerConfig {
+  /** Whether the dev server monitor is enabled. Default: false. */
+  enabled: boolean;
+  /** The command used to start the dev server (informational only). */
+  command: string;
+  /** Port to health-check. Default: 3000. */
+  port: number;
+  /** Optional URL override for health checks. Defaults to http://localhost:{port}. */
+  health_url?: string;
+  /** Interval in ms between health checks. Default: 15000. */
+  check_interval_ms?: number;
+}
+
+/** Tool block rule for the tool gating system. */
+export interface ToolBlockRule {
+  /** Glob pattern matching tool names: 'Bash', 'precision_exec', '*', etc. */
+  tool_pattern: string;
+  /** Condition under which the rule fires. */
+  condition: 'always' | 'budget_exceeded' | 'workflow_phase' | 'custom';
+  /** Human-readable reason shown when the tool is blocked. */
+  message?: string;
+}
+
+/** Top-level configuration for the tool gating system. */
+export interface ToolGatingConfig {
+  /** Whether tool gating is active. When false, all tools are allowed. */
+  enabled: boolean;
+  /** When true, bypasses all rules and allows all tools unconditionally. */
+  force_allow_all: boolean;
+  /** Ordered list of block rules. First match wins. */
+  rules: ToolBlockRule[];
+}
+
+/** Which context sources to include in injected output. */
+export type ContextSource = 'workflow_state' | 'agent_roster' | 'budget_status';
+
+/** Configuration for the context injection system. */
+export interface ContextInjectionConfig {
+  /** Whether context injection is active. When false, returns empty context. */
+  enabled: boolean;
+  /** Ordered list of sources to include in the injected context. */
+  include: Array<ContextSource>;
+}
+
 /** Feature flags -- controls which subsystems are active */
 export interface FeaturesConfig {
   /** Whether IPC communication is enabled */
@@ -268,6 +313,12 @@ export interface RuntimeConfig {
   time: TimePluginRuntimeConfig;
   /** External event ingestion settings (file watcher, HTTP listener). */
   external: ExternalPluginRuntimeConfig;
+  /** Dev server health monitor settings. Opt-in — disabled by default. */
+  devserver?: DevServerConfig;
+  /** Tool gating settings — blocks specific tools under configurable conditions. */
+  tool_gating?: ToolGatingConfig;
+  /** Context injection settings — assembles dynamic runtime context for agents. */
+  context_injection?: ContextInjectionConfig;
 }
 
 /** Default configuration values -- safe for all environments */
@@ -385,6 +436,21 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
       max_payload_bytes: 1 * 1024 * 1024, // 1MB
     },
   },
+  devserver: {
+    enabled: false,
+    command: 'npm run dev',
+    port: 3000,
+    check_interval_ms: 15_000,
+  },
+  tool_gating: {
+    enabled: false,
+    force_allow_all: false,
+    rules: [],
+  },
+  context_injection: {
+    enabled: false,
+    include: [],
+  },
 };
 
 /**
@@ -462,7 +528,7 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
   const goodvibesPath = join(root, '.goodvibes', 'goodvibes.json');
   try {
     const raw = readFileSync(goodvibesPath, 'utf-8');
-    const parsed = safeJsonParse<Record<string, unknown>>(raw, null);
+    const parsed = safeJsonParse<Record<string, unknown> | null>(raw, null);
     if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && 'runtime' in parsed) {
       const runtimeSection = parsed.runtime;
       if (typeof runtimeSection === 'object' && runtimeSection !== null && !Array.isArray(runtimeSection)) {

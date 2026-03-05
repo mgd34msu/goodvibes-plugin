@@ -29,8 +29,7 @@ vi.mock('../file-watcher.js', () => {
       incoming_dir: '/tmp/gv-test/incoming',
       processed_dir: '/tmp/gv-test/processed',
       error_dir: '/tmp/gv-test/errors',
-      poll_interval_ms: 500,
-      max_files_per_tick: 10,
+      max_files_per_scan: 50,
     },
   };
 });
@@ -65,15 +64,14 @@ function makeConfig(overrides: Partial<ExternalPluginConfig> = {}): ExternalPlug
       incoming_dir: '/tmp/gv-test/incoming',
       processed_dir: '/tmp/gv-test/processed',
       error_dir: '/tmp/gv-test/errors',
-      poll_interval_ms: 500,
-      max_files_per_tick: 10,
+      max_files_per_scan: 50,
     },
     ...overrides,
   };
 }
 
 function makeHttpConfig(port = 8080) {
-  return { port, address: '127.0.0.1', path: '/webhook', secret: undefined };
+  return { port, address: '127.0.0.1', bind_mode: 'localhost' as const, max_payload_bytes: 1 * 1024 * 1024 };
 }
 
 function makeQueue() {

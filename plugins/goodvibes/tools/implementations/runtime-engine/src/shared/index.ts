@@ -13,3 +13,5 @@ export * from './utils.js';
 export * from './types.js';
 export * from './events.js';
 export * from './plugin.js';
+export * from './interfaces.js';
+export * from './presets.js';

@@ -354,6 +354,10 @@ export type EventType =
   /** The event queue depth exceeded the configured warning threshold. */
   | 'core:queue_depth_warning'
 
+  // ── External events ─────────────────────────────────────────────────────
+  /** An incoming webhook was received and forwarded by the webhook trigger. */
+  | 'external:webhook_received'
+
   // ── State events ──────────────────────────────────────────────────────────
   /** A value in the state store was created or updated. */
   | 'state:changed';
@@ -671,6 +675,8 @@ export type EventPayload =
   | { type: 'executor:budget_exceeded'; data: { cap_type: 'flat' | 'daily'; spent_usd: number; cap_usd: number } }
   | { type: 'executor:budget_reset'; data: { previous_daily_spent: number; reset_hour: number } }
   | { type: 'executor:paused' | 'executor:resumed'; data: { reason: string } }
+  // External events
+  | { type: 'external:webhook_received'; data: { source_event_id: string; source_type: string; external_source: string } }
   // State events
   | { type: 'state:changed'; data: StateChangedPayload };
 

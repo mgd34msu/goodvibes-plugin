@@ -28,6 +28,8 @@ import type { IHookProcessor } from './types.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';
+import { ToolGateEvaluator } from './tool-gating.js';
+import { ContextInjector } from './context-injector.js';
 
 export { IHookProcessor } from './types.js';
 
@@ -138,6 +140,12 @@ export interface CreateIPCOptions {
   processHookEvent?: (event: import('../../shared/events.js').RuntimeEvent) => Promise<void>;
 }
 
+/** Re-export for external consumers. */
+export { ToolGateEvaluator } from './tool-gating.js';
+export type { ToolGatingConfig, ToolBlockRule } from './tool-gating.js';
+export { ContextInjector } from './context-injector.js';
+export type { ContextInjectionConfig } from './context-injector.js';
+
 /**
  * Create the IPC subsystem: server + router, wired with L2 deps.
  *
@@ -156,6 +164,28 @@ export async function createIPCSubsystem(
   try {
     const ipcServer = new IPCServer(socketPath);
 
+    // Build tool gate evaluator from config (disabled by default)
+    const toolGatingConfig = opts.config.tool_gating ?? {
+      enabled: false,
+      force_allow_all: false,
+      rules: [],
+    };
+    const toolGateEvaluator = new ToolGateEvaluator(toolGatingConfig, {
+      budgetManager: opts.executorBudget ?? undefined,
+      workflowEngine: opts.workflowEngine ?? undefined,
+    });
+
+    // Build context injector from config (disabled by default)
+    const contextInjectionConfig = opts.config.context_injection ?? {
+      enabled: false,
+      include: [],
+    };
+    const contextInjector = new ContextInjector(contextInjectionConfig, {
+      workflowEngine: opts.workflowEngine ?? undefined,
+      agentCoordinator: opts.agentCoordinator ?? undefined,
+      budgetManager: opts.executorBudget ?? undefined,
+    });
+
     const ipcRouter = new IPCRouter({
       eventBus: opts.eventBus,
       triggerRegistry: opts.triggerRegistry,
@@ -171,6 +201,8 @@ export async function createIPCSubsystem(
       executorMode: opts.executorMode,
       executorBudget: opts.executorBudget,
       daemonTickHandler: opts.daemonTickHandler,
+      toolGateEvaluator,
+      contextInjector,
       processHookEvent: opts.processHookEvent,
     });
     ipcServer.onMessage(ipcRouter.route.bind(ipcRouter));

@@ -451,7 +451,7 @@ describe('ensureRuntimeSections', () => {
 
   it('does not write when all sections already present', () => {
     const allSections = Object.fromEntries(
-      Object.keys(DEFAULT_CONFIG).map(k => [k, (DEFAULT_CONFIG as Record<string, unknown>)[k]])
+      Object.keys(DEFAULT_CONFIG).map(k => [k, (DEFAULT_CONFIG as unknown as Record<string, unknown>)[k]])
     );
     mockReadFileSync.mockReturnValue(JSON.stringify({ runtime: allSections }));
     ensureRuntimeSections('/proj');

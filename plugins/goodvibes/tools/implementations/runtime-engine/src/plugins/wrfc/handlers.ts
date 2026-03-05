@@ -90,7 +90,7 @@ const AM = (sid: string, agentId: string) => `wrfc.sessions.${sid}.agent_map.${a
 
 /** Extract session ID from event metadata, falling back to 'default'. */
 function eventSessionId(event: RuntimeEvent): string {
-  const sid = (event.metadata as Record<string, unknown> | undefined)?.['session_id'] as string;
+  const sid = (event.metadata as unknown as Record<string, unknown> | undefined)?.['session_id'] as string;
   if (!sid || sid.length === 0) {
     log.warn('eventSessionId: missing session_id in event metadata, using default', {
       event_type: event.type,
@@ -359,7 +359,7 @@ export function handleAgentCompleted(
       const actions: Action[] = [buildCompleteAction(wid)];
       const state_updates: StateUpdate[] = [
         ...phaseUpdate(sid, wid, 'COMPLETED'),
-        { key: AM(sid, agentId), value: null, op: 'delete' },
+        { key: AM(sid, agentId ?? ''), value: null, op: 'delete' },
       ];
 
       log.info('handleAgentCompleted: auto-complete (whitelisted agent type)', {
@@ -421,7 +421,7 @@ export function handleAgentCompleted(
       const state_updates: StateUpdate[] = [
         ...phaseUpdate(sid, wid, 'COMPLETED'),
         { key: WS(sid, wid, 'review_score'), value: score, op: 'set' },
-        { key: AM(sid, agentId), value: null, op: 'delete' },
+        { key: AM(sid, agentId ?? ''), value: null, op: 'delete' },
       ];
       const events: RuntimeEvent[] = [makeChainEvent('wrfc:review_completed', wid, event)];
 
@@ -475,7 +475,7 @@ export function handleAgentCompleted(
         ...phaseUpdate(sid, wid, 'ESCALATED'),
         { key: WS(sid, wid, 'fix_attempts'), value: newFixAttempts, op: 'set' },
         { key: WS(sid, wid, 'files_modified'), value: mergedFiles, op: 'set' },
-        { key: AM(sid, agentId), value: null, op: 'delete' },
+        { key: AM(sid, agentId ?? ''), value: null, op: 'delete' },
       ];
 
       log.warn('handleAgentCompleted: fix budget exhausted, escalating', {
@@ -540,7 +540,7 @@ export function handleQualityGate(
     return {};
   }
 
-  const phase = storeGet(store, WS(sid, wid, 'phase'), '');
+  const phase = storeGet<string>(store, WS(sid, wid, 'phase'), '');
   if (phase === 'COMPLETED' || phase === 'ESCALATED') {
     log.debug('handleQualityGate: workflow already terminal, skipping', { wid, phase });
     return {};

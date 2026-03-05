@@ -42,6 +42,7 @@ import {
 } from './handlers.js';
 import { getWRFCWorkflowDefinitions } from './workflows.js';
 import { getWRFCTriggerDefinitions } from './triggers.js';
+import type { Reconfigurable } from '../../shared/interfaces.js';
 
 const log = createLogger('wrfc-plugin');
 
@@ -244,12 +245,14 @@ function makeStoreAdapter(services: RuntimeServices): StateStoreInterface {
  * The function-based `registerWRFCPlugin` API remains exported for backward
  * compatibility and as the shared internal implementation.
  */
-export class WRFCPlugin implements RuntimePlugin {
+export class WRFCPlugin implements RuntimePlugin, Reconfigurable {
   readonly name = 'wrfc';
   readonly version = '1.0.0';
   state: PluginState = 'registered';
 
   private config: WRFCPluginConfig;
+  /** Captured services reference, set during register(). Used by reconfigure(). */
+  private _services: RuntimeServices | null = null;
 
   /**
    * Captured event handlers, populated during register().
@@ -273,6 +276,7 @@ export class WRFCPlugin implements RuntimePlugin {
    * After this call, start() only transitions lifecycle state to 'running'.
    */
   register(services: RuntimeServices): void {
+    this._services = services;
     const store = makeStoreAdapter(services);
 
     // Seed config into state store
@@ -387,7 +391,47 @@ export class WRFCPlugin implements RuntimePlugin {
   stop(): void {
     this.state = 'stopped';
     this._handlers = [];
+    this._services = null;
     log.debug('WRFCPlugin stopped');
+  }
+
+  /**
+   * Apply runtime configuration changes to the WRFC plugin.
+   * Updates internal config and propagates changes to the state store
+   * so active handler closures pick up the new values on their next invocation.
+   * Throws if called before register().
+   */
+  reconfigure(config: Record<string, unknown>): void {
+    if (!this._services) {
+      throw new Error('WRFCPlugin.reconfigure: plugin must be registered before reconfigure() is called');
+    }
+
+    if (typeof config['score_threshold'] === 'number') {
+      const val = config['score_threshold'];
+      if (val < 0 || val > 10 || !Number.isFinite(val)) {
+        throw new Error(`WRFCPlugin.reconfigure: score_threshold must be 0-10, got ${val}`);
+      }
+      this.config.score_threshold = val;
+      this._services.setState('wrfc.config.min_review_score', val);
+    }
+    if (typeof config['max_fix_attempts'] === 'number') {
+      const val = config['max_fix_attempts'];
+      if (!Number.isInteger(val) || val < 1) {
+        throw new Error(`WRFCPlugin.reconfigure: max_fix_attempts must be a positive integer, got ${val}`);
+      }
+      this.config.max_fix_attempts = val;
+      this._services.setState('wrfc.config.max_fix_attempts', val);
+    }
+    if (typeof config['enable_quality_gates'] === 'boolean') {
+      this.config.enable_quality_gates = config['enable_quality_gates'];
+      this._services.setState('wrfc.config.enable_quality_gates', config['enable_quality_gates']);
+    }
+    if (Array.isArray(config['require_review_types'])) {
+      this.config.require_review_types = config['require_review_types'] as string[];
+      this._services.setState('wrfc.config.require_review_types', config['require_review_types']);
+    }
+
+    log.info('WRFCPlugin reconfigured', { config: this.config });
   }
 
   /** Returns WRFC workflow definition metadata for plugin registration. */

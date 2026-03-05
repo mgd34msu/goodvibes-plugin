@@ -5,7 +5,7 @@
  * and restart failure (start throws after stop succeeds).
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { handleDaemon } from '../daemon-handler.js';
 import type { HandlerContext } from '../types.js';
 

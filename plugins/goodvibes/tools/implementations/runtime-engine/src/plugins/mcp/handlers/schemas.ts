@@ -329,4 +329,101 @@ export const allSchemas = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'runtime_schedule',
+    description:
+      'Manage named event schedules: list, create, cancel, pause, resume. ' +
+      'Supports heartbeat, cron, and one-shot types with preset interval names.',
+    inputSchema: {
+      type: 'object',
+      required: ['action'],
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['list', 'create', 'cancel', 'get', 'pause', 'resume', 'heartbeat'],
+          description: 'Schedule management action.',
+        },
+        schedule_id: {
+          type: 'string',
+          description: 'Unique schedule identifier.',
+        },
+        type: {
+          type: 'string',
+          enum: ['heartbeat', 'cron', 'one_shot'],
+          description: 'Schedule type (for create action). Defaults to \'heartbeat\' if omitted.',
+        },
+        filter: {
+          type: 'object',
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['heartbeat', 'cron', 'one_shot'],
+              description: 'Filter listed items by schedule type.',
+            },
+          },
+          description: 'Optional filter for the list action.',
+        },
+        event_type: {
+          type: 'string',
+          description: 'Event type to emit when the schedule fires.',
+        },
+        interval_ms: {
+          type: 'number',
+          description: 'Recurrence interval in milliseconds.',
+        },
+        delay_ms: {
+          type: 'number',
+          description: 'Delay before firing in milliseconds (one_shot only).',
+        },
+        preset: {
+          type: 'string',
+          enum: ['every_minute', 'every_5_minutes', 'every_15_minutes', 'every_hour', 'every_6_hours', 'daily'],
+          description: 'Named interval preset (alternative to interval_ms).',
+        },
+        payload: {
+          type: 'object',
+          description: 'Arbitrary payload forwarded into the emitted event.',
+        },
+        ttl: {
+          type: 'number',
+          description: 'Maximum fires before the schedule is auto-removed.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'runtime_external',
+    description:
+      'Inspect the ExternalPlugin: HTTP webhook listener status, normalizer registry, ' +
+      'payload normalization testing, and ingestion stats.',
+    inputSchema: {
+      type: 'object',
+      required: ['action'],
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['status', 'normalizers', 'test_normalize', 'stats', 'queue'],
+          description: 'External plugin action.',
+        },
+        source: {
+          type: 'string',
+          description: 'Normalizer source name (for test_normalize).',
+        },
+        payload: {
+          type: 'object',
+          description: 'Raw webhook payload to normalize.',
+        },
+        headers: {
+          type: 'object',
+          description: 'HTTP headers accompanying the payload.',
+        },
+        since: {
+          type: 'string',
+          description: "Start time for filtering (ISO timestamp or relative: '5m', '1h').",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;

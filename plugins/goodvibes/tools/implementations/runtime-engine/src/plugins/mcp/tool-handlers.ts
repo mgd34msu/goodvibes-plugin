@@ -20,6 +20,8 @@ export {
   handleRuntimeAgents,
   handleRuntimeState,
   handleDaemon,
+  handleRuntimeSchedule,
+  handleRuntimeExternal,
   toSuccess,
   toError,
   VALID_CONFIG_KEYS,

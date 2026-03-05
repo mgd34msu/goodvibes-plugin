@@ -59,4 +59,8 @@ export interface HandlerContext {
   getCoreStateStore: () => import('../../../core/state/state-store.js').CoreStateStore | null;
   /** The runtime transport (local or remote). Preferred over direct engine accessors. */
   transport?: RuntimeTransport;
+  /** The TimePlugin instance (may be null in daemon/remote mode). */
+  getTimePlugin?: () => import('../../../plugins/time/time-plugin.js').TimePlugin | null;
+  /** The ExternalPlugin instance (may be null in daemon/remote mode). */
+  getExternalPlugin?: () => import('../../../plugins/external/external-plugin.js').ExternalPlugin | null;
 }

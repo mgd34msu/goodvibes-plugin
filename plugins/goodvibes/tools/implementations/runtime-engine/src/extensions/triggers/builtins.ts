@@ -1,9 +1,9 @@
 /**
  * Built-in Trigger Definitions
  *
- * Five pre-configured triggers that cover the most common automation scenarios:
+ * Seven pre-configured triggers that cover the most common automation scenarios:
  * build failure recovery, test failure recovery, budget monitoring,
- * spawn rate limiting, and dev server recovery.
+ * spawn rate limiting, dev server recovery, webhook logging, and CI failure bridging.
  *
  * WRFC event routing is handled exclusively by the L3 WRFC plugin pipeline
  * (plugins/wrfc). The L2 WRFC handler triggers have been removed.
@@ -12,7 +12,7 @@
 import type { TriggerDefinition } from './types.js';
 
 /**
- * Returns the full list of built-in trigger definitions (5 total).
+ * Returns the full list of built-in trigger definitions (7 total).
  *
  * These are registered into the TriggerRegistry at engine startup.
  * All built-in triggers use `builtin_` prefix in their IDs.
@@ -155,6 +155,58 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
       },
       cooldown_ms: 30_000,
       max_fires: 10,
+      fires_count: 0,
+    },
+
+    // ─── 6. Webhook Received ──────────────────────────────────────────────────────
+    {
+      id: 'builtin_webhook_received',
+      name: 'webhook_received',
+      description: 'Log/notify on any incoming webhook event',
+      enabled: true,
+      priority: 50,
+      condition: {
+        type: 'event',
+        event_type: 'webhook:*',
+      },
+      action: {
+        type: 'emit_event',
+        event_type: 'external:webhook_received',
+        payload_template: {
+          source_event_id: '$event.id',
+          source_type: '$event.type',
+          external_source: '$event.payload.data.external_source',
+        },
+      },
+      cooldown_ms: 5_000,
+      max_fires: 100,
+      fires_count: 0,
+    },
+
+    // ─── 7. CI Failure Bridge ─────────────────────────────────────────────────────
+    {
+      id: 'builtin_ci_failure',
+      name: 'ci_failure',
+      description: 'Bridge CI webhook events to build:failed for existing triggers. Uses invoke_handler so the bridgeCIFailure handler can filter on payload.data.status before emitting build:failed — prevents success/pending events from firing the build fix loop.',
+      enabled: true,
+      priority: 15,
+      condition: {
+        type: 'event',
+        event_type: 'webhook:ci:*',
+      },
+      action: {
+        type: 'invoke_handler',
+        handler: 'bridgeCIFailure',
+        args_template: {
+          status: '$event.payload.data.status',
+          provider: '$event.payload.data.provider',
+          branch: '$event.payload.data.branch',
+          commit: '$event.payload.data.commit',
+          source_event_id: '$event.id',
+        },
+      },
+      cooldown_ms: 30_000,
+      max_fires: 20,
       fires_count: 0,
     },
 

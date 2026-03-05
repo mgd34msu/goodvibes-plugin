@@ -140,8 +140,8 @@ export class AgentTrackerPlugin implements RuntimePlugin {
       return;
     }
 
-    const sessionId = typeof (event.metadata as Record<string, unknown> | undefined)?.['session_id'] === 'string'
-      ? (event.metadata as Record<string, unknown>)['session_id'] as string
+    const sessionId = typeof (event.metadata as unknown as Record<string, unknown> | undefined)?.['session_id'] === 'string'
+      ? (event.metadata as unknown as Record<string, unknown>)['session_id'] as string
       : 'default';
     const resolvedWid = workflow_id ?? this.resolveWorkflowId(agent_id, sessionId);
 
@@ -180,8 +180,8 @@ export class AgentTrackerPlugin implements RuntimePlugin {
     }
     const now = event.timestamp;
 
-    const sessionId = typeof (event.metadata as Record<string, unknown> | undefined)?.['session_id'] === 'string'
-      ? (event.metadata as Record<string, unknown>)['session_id'] as string
+    const sessionId = typeof (event.metadata as unknown as Record<string, unknown> | undefined)?.['session_id'] === 'string'
+      ? (event.metadata as unknown as Record<string, unknown>)['session_id'] as string
       : 'default';
     const resolvedWid = existing?.workflow_id ?? workflow_id ?? this.resolveWorkflowId(agent_id, sessionId);
 

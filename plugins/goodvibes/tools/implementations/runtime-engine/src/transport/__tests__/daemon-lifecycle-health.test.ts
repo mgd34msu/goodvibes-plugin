@@ -189,7 +189,7 @@ describe('DaemonLifecycle health check polling', () => {
     lifecycle.startHealthCheck(500);
     await flushPromises();
 
-    const callCountAfterStart = mocks.mockExistsSync.call_count ?? mocks.mockExistsSync.mock.calls.length;
+    const callCountAfterStart = mocks.mockExistsSync.mock.calls.length;
 
     // Advance timer by one interval
     await vi.advanceTimersByTimeAsync(500);
