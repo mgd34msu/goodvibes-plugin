@@ -37917,6 +37917,28 @@ async function handleDaemon(args, ctx) {
         );
       }
     }
+    case "restart": {
+      try {
+        logger67.info("Restarting daemon");
+        await lifecycle.stop();
+        await new Promise((r) => setTimeout(r, 500));
+        await lifecycle.start();
+        const status = await lifecycle.getStatus();
+        return toSuccess(
+          { message: "Daemon restarted", ...status },
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      } catch (err) {
+        return toError(
+          `Failed to restart daemon: ${toErrorMessage(err)}`,
+          version2,
+          uptime,
+          Date.now() - startTime
+        );
+      }
+    }
     case "status": {
       try {
         const status = await lifecycle.getStatus();
@@ -37970,7 +37992,7 @@ async function handleDaemon(args, ctx) {
     }
     default:
       return toError(
-        `Unknown daemon action: ${action}. Valid: start, stop, status, sessions`,
+        `Unknown daemon action: ${action}. Valid: start, stop, restart, status, sessions`,
         version2,
         uptime,
         Date.now() - startTime
@@ -38260,15 +38282,15 @@ var allSchemas = [
   },
   {
     name: "runtime_daemon",
-    description: "Manage the GoodVibes runtime daemon process. Start, stop, check status, or list connected sessions.",
+    description: "Manage the GoodVibes runtime daemon process. Start, stop, restart, check status, or list connected sessions.",
     inputSchema: {
       type: "object",
       required: ["action"],
       properties: {
         action: {
           type: "string",
-          enum: ["start", "stop", "status", "sessions"],
-          description: "Daemon management action."
+          enum: ["start", "stop", "restart", "status", "sessions"],
+          description: "Daemon management action. Use restart to stop and re-start with updated code."
         }
       },
       additionalProperties: false

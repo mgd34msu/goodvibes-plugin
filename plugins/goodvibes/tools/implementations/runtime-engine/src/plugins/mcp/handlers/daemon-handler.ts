@@ -1,6 +1,6 @@
 /**
  * MCP handler for daemon management.
- * Provides start/stop/status/sessions actions.
+ * Provides start/stop/restart/status/sessions actions.
  */
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -78,6 +78,30 @@ export async function handleDaemon(
       }
     }
 
+    case 'restart': {
+      try {
+        logger.info('Restarting daemon');
+        await lifecycle.stop();
+        // Brief pause for socket/PID cleanup
+        await new Promise((r) => setTimeout(r, 500));
+        await lifecycle.start();
+        const status = await lifecycle.getStatus();
+        return toSuccess(
+          { message: 'Daemon restarted', ...status },
+          version,
+          uptime,
+          Date.now() - startTime,
+        );
+      } catch (err) {
+        return toError(
+          `Failed to restart daemon: ${toErrorMessage(err)}`,
+          version,
+          uptime,
+          Date.now() - startTime,
+        );
+      }
+    }
+
     case 'status': {
       try {
         const status = await lifecycle.getStatus();
@@ -136,7 +160,7 @@ export async function handleDaemon(
 
     default:
       return toError(
-        `Unknown daemon action: ${action}. Valid: start, stop, status, sessions`,
+        `Unknown daemon action: ${action}. Valid: start, stop, restart, status, sessions`,
         version,
         uptime,
         Date.now() - startTime,

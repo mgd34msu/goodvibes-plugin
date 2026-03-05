@@ -315,15 +315,15 @@ export const allSchemas = [
     name: 'runtime_daemon',
     description:
       'Manage the GoodVibes runtime daemon process. ' +
-      'Start, stop, check status, or list connected sessions.',
+      'Start, stop, restart, check status, or list connected sessions.',
     inputSchema: {
       type: 'object',
       required: ['action'],
       properties: {
         action: {
           type: 'string',
-          enum: ['start', 'stop', 'status', 'sessions'],
-          description: 'Daemon management action.',
+          enum: ['start', 'stop', 'restart', 'status', 'sessions'],
+          description: 'Daemon management action. Use restart to stop and re-start with updated code.',
         },
       },
       additionalProperties: false,
