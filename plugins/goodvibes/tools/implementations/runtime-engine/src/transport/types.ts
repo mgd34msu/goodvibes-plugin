@@ -106,6 +106,9 @@ export interface RuntimeTransport {
     data?: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
 
+  /** Cancel a workflow instance. */
+  cancelWorkflow(workflowId: string, reason?: string): Promise<void>;
+
   // ─── Triggers ──────────────────────────────────────────────
 
   /** List all registered triggers. @returns TriggerDefinition[] */

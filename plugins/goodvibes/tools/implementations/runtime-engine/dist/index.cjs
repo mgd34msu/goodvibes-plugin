@@ -22125,6 +22125,12 @@ var LocalTransport = class {
     });
     return engine.sendEvent(workflowId, runtimeEvent);
   }
+  async cancelWorkflow(workflowId, reason) {
+    const engine = this.engine.getWorkflowEngine();
+    if (!engine)
+      throw new Error("Workflow engine not available");
+    engine.cancel(workflowId, reason ?? "cancelled via MCP");
+  }
   // ─── Triggers ───────────────────────────────────────────────
   async listTriggers() {
     const registry2 = this.engine.getTriggerRegistry();
@@ -22558,6 +22564,9 @@ var RemoteTransport = class {
   }
   async transitionWorkflow(workflowId, event, data) {
     return this.rpc("transitionWorkflow", { workflowId, event, data });
+  }
+  async cancelWorkflow(workflowId, reason) {
+    return this.rpc("cancelWorkflow", { workflowId, reason });
   }
   async listTriggers() {
     return this.rpc("listTriggers");
@@ -39206,6 +39215,11 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = assertOptionalString(params.reason, "reason") ?? "cancelled via MCP";
+      if (ctx.transport) {
+        await ctx.transport.cancelWorkflow(cancelWorkflowId, reason);
+        const cancelledInstance2 = await ctx.transport.getWorkflow(cancelWorkflowId);
+        return toSuccess({ cancelled: true, instance: cancelledInstance2 ?? null }, ctx.version, uptimeMs, Date.now() - start);
+      }
       const cancelEngine = ctx.getWorkflowEngine();
       if (!cancelEngine) {
         return toError("Workflow engine is disabled", ctx.version, uptimeMs, Date.now() - start);
@@ -39218,6 +39232,14 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       const historyWorkflowId = assertOptionalString(params.workflow_id, "workflow_id");
       if (!historyWorkflowId) {
         return toError("Missing required field: workflow_id", ctx.version, uptimeMs, Date.now() - start);
+      }
+      if (ctx.transport) {
+        const historyInstance2 = await ctx.transport.getWorkflow(historyWorkflowId);
+        if (!historyInstance2) {
+          return toError(`Workflow not found: ${historyWorkflowId}`, ctx.version, uptimeMs, Date.now() - start);
+        }
+        const history = historyInstance2["history"] ?? [];
+        return toSuccess({ history, count: history.length }, ctx.version, uptimeMs, Date.now() - start);
       }
       const historyEngine = ctx.getWorkflowEngine();
       if (!historyEngine) {

@@ -141,6 +141,12 @@ export class LocalTransport implements RuntimeTransport {
     return engine.sendEvent(workflowId, runtimeEvent) as unknown as Promise<Record<string, unknown>>;
   }
 
+  async cancelWorkflow(workflowId: string, reason?: string): Promise<void> {
+    const engine = this.engine.getWorkflowEngine();
+    if (!engine) throw new Error('Workflow engine not available');
+    engine.cancel(workflowId, reason ?? 'cancelled via MCP');
+  }
+
   // ─── Triggers ───────────────────────────────────────────────
 
   async listTriggers(): Promise<Record<string, unknown>[]> {

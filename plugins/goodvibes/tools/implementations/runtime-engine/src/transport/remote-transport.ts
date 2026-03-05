@@ -531,6 +531,10 @@ export class RemoteTransport implements RuntimeTransport {
     return this.rpc<Record<string, unknown>>('transitionWorkflow', { workflowId, event, data });
   }
 
+  async cancelWorkflow(workflowId: string, reason?: string): Promise<void> {
+    return this.rpc<void>('cancelWorkflow', { workflowId, reason });
+  }
+
   async listTriggers(): Promise<Record<string, unknown>[]> {
     return this.rpc<Record<string, unknown>[]>('listTriggers');
   }

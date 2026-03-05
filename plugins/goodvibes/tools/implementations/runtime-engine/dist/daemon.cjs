@@ -15823,6 +15823,12 @@ var LocalTransport = class {
     });
     return engine.sendEvent(workflowId, runtimeEvent);
   }
+  async cancelWorkflow(workflowId, reason) {
+    const engine = this.engine.getWorkflowEngine();
+    if (!engine)
+      throw new Error("Workflow engine not available");
+    engine.cancel(workflowId, reason ?? "cancelled via MCP");
+  }
   // ─── Triggers ───────────────────────────────────────────────
   async listTriggers() {
     const registry = this.engine.getTriggerRegistry();

@@ -139,7 +139,11 @@ export const handleRuntimeWorkflow = async (
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
       const reason = assertOptionalString(params.reason, 'reason') ?? 'cancelled via MCP';
-      // cancel is not covered by transport — fall back to direct engine access
+      if (ctx.transport) {
+        await ctx.transport.cancelWorkflow(cancelWorkflowId, reason);
+        const cancelledInstance = await ctx.transport.getWorkflow(cancelWorkflowId);
+        return toSuccess({ cancelled: true, instance: cancelledInstance ?? null }, ctx.version, uptimeMs, Date.now() - start);
+      }
       const cancelEngine = ctx.getWorkflowEngine();
       if (!cancelEngine) {
         return toError('Workflow engine is disabled', ctx.version, uptimeMs, Date.now() - start);
@@ -154,7 +158,14 @@ export const handleRuntimeWorkflow = async (
       if (!historyWorkflowId) {
         return toError('Missing required field: workflow_id', ctx.version, uptimeMs, Date.now() - start);
       }
-      // history is not covered by transport — fall back to direct engine access
+      if (ctx.transport) {
+        const historyInstance = await ctx.transport.getWorkflow(historyWorkflowId);
+        if (!historyInstance) {
+          return toError(`Workflow not found: ${historyWorkflowId}`, ctx.version, uptimeMs, Date.now() - start);
+        }
+        const history = (historyInstance['history'] as unknown[]) ?? [];
+        return toSuccess({ history, count: history.length }, ctx.version, uptimeMs, Date.now() - start);
+      }
       const historyEngine = ctx.getWorkflowEngine();
       if (!historyEngine) {
         return toSuccess({ history: [], count: 0 }, ctx.version, uptimeMs, Date.now() - start);
