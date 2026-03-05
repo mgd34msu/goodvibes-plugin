@@ -22,6 +22,7 @@ import type { WorkflowContextProvider } from './extensions/triggers/types.js';
 import { createAgentSubsystem, type AgentSubsystem } from './extensions/agents/subsystem.js';
 import { createDirectiveSubsystem, type DirectiveSubsystem } from './extensions/directives/subsystem.js';
 import { createPersistenceSubsystem, type PersistenceSubsystem } from './extensions/persistence/subsystem.js';
+import { WorkflowPersistence } from './extensions/persistence/workflow-persistence.js';
 import type { JsonStateStore } from './extensions/persistence/state-store.js';
 import type { EventBus } from './extensions/events/event-bus.js';
 import type { EventLog } from './extensions/events/event-log.js';
@@ -237,6 +238,33 @@ export class RuntimeEngine {
       if (this.directives.agentWorkflowMap) {
         this.workflow.workflowEngine.setAgentWorkflowMap(this.directives.agentWorkflowMap);
       }
+
+      // Wire WorkflowPersistence: restore saved instances at startup, and
+      // attach the persistence instance to the workflow engine so it can
+      // call persist() on state transitions.
+      // TODO: Call workflowPersistence.persist(instance) after each transition
+      //       by hooking into workflow:state_changed events on the EventBus.
+      const workflowPersistence = new WorkflowPersistence({
+        stateDir: join(this.projectRoot, '.goodvibes', 'state', 'workflows'),
+        ttlMs: 24 * 60 * 60 * 1000, // 24 hours
+        enabled: true,
+      });
+      // Restore previously persisted workflow instances into the engine.
+      const savedInstances = await workflowPersistence.restore();
+      for (const raw of savedInstances) {
+        try {
+          this.workflow.workflowEngine.restoreInstance(
+            raw as import('./extensions/workflow/types.js').WorkflowInstance
+          );
+        } catch {
+          // Ignore instances that fail to restore (e.g. unknown definition_id)
+        }
+      }
+      if (savedInstances.length > 0) {
+        logger.debug('Restored workflow instances from persistence', { count: savedInstances.length });
+      }
+      // Run initial cleanup of expired workflow state files.
+      workflowPersistence.cleanup().catch(() => {/* non-critical */});
     }
     this.events.eventBus.on('*', async (event: RuntimeEvent) => {
       if (event.source?.kind === 'internal' && event.source.hook_name) {
