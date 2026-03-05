@@ -1,5 +1,5 @@
 version: 2.0.0
-generated: '2026-03-05T06:38:27.890Z'
+generated: '2026-03-05T06:54:32.773Z'
 total: 75
 servers:
   - name: precision-engine
@@ -387,7 +387,9 @@ servers:
           state.
       - name: runtime_daemon
         path: runtime-engine/runtime-daemon.yaml
-        description: Manage the GoodVibes runtime daemon process. ' + 'Start, stop, check status, or list connected sessions.
+        description: >-
+          Manage the GoodVibes runtime daemon process. ' + 'Start, stop, restart, check status, or list connected
+          sessions.
 search_index:
   - name: precision_write
     keywords:
@@ -2442,11 +2444,12 @@ search_index:
       - process
       - start
       - stop
+      - restart
       - check
       - status
       - list
       - connected
       - sessions
     path: runtime-engine/runtime-daemon.yaml
-    description: Manage the GoodVibes runtime daemon process. ' + 'Start, stop, check status, or list connected sessions.
+    description: Manage the GoodVibes runtime daemon process. ' + 'Start, stop, restart, check status, or list connected sessions.
     server: runtime-engine
