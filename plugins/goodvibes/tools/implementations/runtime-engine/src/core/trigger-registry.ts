@@ -18,6 +18,7 @@
 
 import { createLogger } from '../shared/logger.js';
 import { QueueError } from '../shared/errors.js';
+import type { Reconfigurable } from '../shared/interfaces.js';
 import type { RuntimeEvent } from '../shared/events.js';
 import type { TriggersConfig } from '../shared/config.js';
 import type {
@@ -52,7 +53,7 @@ const log = createLogger('trigger-registry');
  * 2. Register built-in and user-defined triggers via `register`.
  * 3. Call `evaluate(event)` for every event that flows through the engine.
  */
-export class TriggerRegistry implements TriggerRegistryInterface {
+export class TriggerRegistry implements TriggerRegistryInterface, Reconfigurable {
   /** All registered trigger definitions, keyed by trigger ID. */
   private readonly triggers: Map<string, TriggerDefinition> = new Map();
   /** Stateful condition evaluator with recent-event O(1) ring buffer. */
@@ -414,6 +415,34 @@ export class TriggerRegistry implements TriggerRegistryInterface {
    */
   pruneOldEvents(maxAgeMs: number): void {
     this.evaluator.pruneOldEvents(maxAgeMs);
+  }
+
+  /**
+   * Applies updated configuration at runtime (implements {@link Reconfigurable}).
+   *
+   * Accepts a partial {@link TriggersConfig} shape. Recognized keys:
+   *   - `default_cooldown_ms`   — new default cooldown between trigger fires
+   *   - `max_fires_per_session` — new per-session fire budget
+   *
+   * Unknown keys are silently ignored so callers can pass the whole
+   * `triggers` section of {@link RuntimeConfig} without filtering.
+   *
+   * @param config - New configuration values (partial).
+   */
+  reconfigure(config: Record<string, unknown>): void {
+    const mutableConfig = this.config as unknown as Record<string, unknown>;
+    if (typeof config['default_cooldown_ms'] === 'number') {
+      mutableConfig['default_cooldown_ms'] = config['default_cooldown_ms'];
+      log.info('TriggerRegistry: default_cooldown_ms updated', {
+        value: config['default_cooldown_ms'],
+      });
+    }
+    if (typeof config['max_fires_per_session'] === 'number') {
+      mutableConfig['max_fires_per_session'] = config['max_fires_per_session'];
+      log.info('TriggerRegistry: max_fires_per_session updated', {
+        value: config['max_fires_per_session'],
+      });
+    }
   }
 
   // ─── Private Helpers ──────────────────────────────────────────────────────

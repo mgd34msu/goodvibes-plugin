@@ -94,6 +94,7 @@ export function registerDefaultHandlers(
       directiveQueue: deps.directiveQueue,
       daemonTickHandler: deps.daemonTickHandler ?? null,
       executorMode: deps.executorMode ?? null,
+      eventBus: deps.eventBus,
     }),
     priority: 80,
     enabled: true,

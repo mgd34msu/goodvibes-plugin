@@ -7,10 +7,12 @@
  */
 
 import type { HookEvent } from '../../../extensions/events/factories.js';
+import { createHumanEvent } from '../../../extensions/events/factories.js';
 import type { ClaudeHookResponse } from '../hook-processor.js';
 import type { DirectiveQueue } from '../../../extensions/directives/directive-queue.js';
 import type { DaemonTickHandler } from '../../../extensions/executor/daemon-tick-handler.js';
 import type { ExecutorModeManager } from '../../../core/processing/executor-mode.js';
+import type { EventBus } from '../../../extensions/events/event-bus.js';
 import { createLogger } from '../../../shared/logger.js';
 
 const logger = createLogger('handler:user-prompt-submit');
@@ -27,15 +29,9 @@ export interface UserPromptSubmitDeps {
   /**
    * EventBus for emitting human:prompt events.
    * When present, a `human:prompt` event is emitted via `createHumanEvent()`
-   * for every non-task-notification user prompt. This is the correct integration
-   * point for `createHumanEvent` from '../../extensions/events/factories.js'.
-   *
-   * To enable: pass an EventBus instance here and call:
-   *   eventBus.emit(createHumanEvent({ type: 'human:prompt', prompt }))
-   *
-   * Not yet wired — add `eventBus: EventBus | null` when ready to enable.
+   * for every non-task-notification user prompt.
    */
-  // TODO: eventBus: EventBus | null;  // wire createHumanEvent() when budget allows
+  eventBus: EventBus | null;
 }
 
 /**
@@ -76,8 +72,11 @@ export function createUserPromptSubmitHandler(
       }
     }
 
-    // Fast path: not a task-notification
+    // Fast path: not a task-notification — emit human:prompt event and return
     if (!prompt.includes(TASK_NOTIFICATION_PATTERN)) {
+      if (deps.eventBus && prompt.length > 0) {
+        deps.eventBus.emit(createHumanEvent({ type: 'human:prompt', prompt }));
+      }
       return null;
     }
 

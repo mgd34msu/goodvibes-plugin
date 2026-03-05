@@ -13,6 +13,7 @@ import { generateEventId, timestamp, toErrorMessage } from './shared/utils.js';
 import { ProcessingError } from './shared/errors.js';
 
 import { writePidFile, removePidFile, checkCrashRecovery } from './core/utils/pid-file.js';
+import { setupSignalHandlers } from './core/processing/signals.js';
 import { HealthChecker } from './core/observability/health.js';
 
 import { createEventSubsystem, type EventSubsystem } from './extensions/events/subsystem.js';
@@ -534,6 +535,7 @@ export class RuntimeEngine {
     this.reconfigurables = new Map<string, Reconfigurable>();
     this.reconfigurables.set('time', this.timePlugin);
     if (this.wrfcPlugin) this.reconfigurables.set('wrfc', this.wrfcPlugin);
+    if (this.triggers) this.reconfigurables.set('triggers', this.triggers.triggerRegistry);
 
     // 18.6 DevServer health monitor (L3) — opt-in, disabled by default
     if (this.config.devserver?.enabled) {
@@ -625,6 +627,9 @@ export class RuntimeEngine {
         },
       },
     });
+
+    // 25. Register OS signal handlers for graceful shutdown
+    setupSignalHandlers(() => this.shutdown());
 
     this.running = true;
     logger.info('Startup complete', { pid: process.pid, uptime_ms: this.getUptime() });
