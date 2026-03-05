@@ -98,7 +98,7 @@ function makeEventBus() {
 }
 
 function makeDirectiveQueue() {
-  return { purge: vi.fn().mockReturnValue(0) };
+  return { purge: vi.fn().mockReturnValue(0), enqueue: vi.fn() };
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

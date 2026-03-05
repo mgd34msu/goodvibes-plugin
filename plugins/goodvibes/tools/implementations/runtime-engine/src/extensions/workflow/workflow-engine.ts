@@ -33,6 +33,9 @@ import { generateEventId, generateWorkflowId, timestamp, toErrorMessage } from '
 import { WorkflowError, WorkflowTimeoutError } from '../../shared/errors.js';
 import type { WorkflowsConfig } from '../../shared/config.js';
 import type { RuntimeEvent, EventType } from '../../shared/events.js';
+import type { Directive } from '../../shared/ipc/protocol.js';
+import type { AgentWorkflowMap } from '../directives/agent-workflow-map.js';
+import { buildSpawnDirectiveMessage } from '../directives/legacy-directive-builder.js';
 import type {
   WorkflowDefinition,
   WorkflowInstance,
@@ -61,11 +64,13 @@ export interface WorkflowEventBusDep {
 /**
  * Minimal interface for the DirectiveQueue dependency.
  *
- * The engine only calls `purge` when a workflow reaches a terminal state.
+ * The engine calls `purge` when a workflow reaches a terminal state, and
+ * `enqueue` when a spawn_agent action needs to deliver a directive.
  * Using a named interface improves discoverability and type-checks callers.
  */
 export interface PurgableQueue {
   purge(workflowId: string): number;
+  enqueue(target: string, directive: Directive): void;
 }
 
 /**
@@ -113,6 +118,7 @@ export class WorkflowEngine {
   private readonly _queue: Map<string, QueuedTransition[]> = new Map();
   private eventBus?: WorkflowEventBusDep;
   private directiveQueue?: PurgableQueue;
+  private agentWorkflowMap?: AgentWorkflowMap;
 
   /**
    * @param config - Workflow-specific configuration from the runtime config.
@@ -148,6 +154,19 @@ export class WorkflowEngine {
    */
   setDirectiveQueue(queue: PurgableQueue): void {
     this.directiveQueue = queue;
+  }
+
+  /**
+   * Injects an AgentWorkflowMap for registering pending binds when a
+   * spawn_agent action is executed.
+   *
+   * This dependency is optional. When not set, no pending bind is registered
+   * but the directive is still enqueued.
+   *
+   * @param map - The AgentWorkflowMap instance.
+   */
+  setAgentWorkflowMap(map: AgentWorkflowMap): void {
+    this.agentWorkflowMap = map;
   }
 
   /**
@@ -859,10 +878,45 @@ export class WorkflowEngine {
             break;
           }
           case 'spawn_agent': {
-            // Placeholder for Phase 5 — agent spawning not yet implemented
-            log.warn('spawn_agent action type is not yet implemented (Phase 5 stub)', {
-              action_type: action.type,
-              workflow_id: (context.workflow_id as string | undefined) ?? 'unknown',
+            const agentType = this.resolveValue(
+              action.config['agent_type'] as string, context
+            ) as string;
+            const task = this.resolveValue(
+              action.config['task'] as string, context
+            ) as string;
+            const workflowId = (context.workflow_id as string | undefined) ?? 'unknown';
+
+            if (!this.directiveQueue) {
+              log.warn('spawn_agent: directiveQueue not available, action skipped', {
+                agent_type: agentType,
+                workflow_id: workflowId,
+              });
+              break;
+            }
+
+            // Build and enqueue the spawn directive
+            const spawnMessage = buildSpawnDirectiveMessage(agentType, task, {
+              workflow_id: workflowId,
+            });
+            const spawnDirective: Directive = {
+              type: 'inject_system_message',
+              content: spawnMessage,
+              priority: 10,
+              source: 'workflow-engine:spawn_agent',
+              workflow_id: workflowId,
+            };
+            this.directiveQueue.enqueue('subagent_stop', spawnDirective);
+
+            // Register a pending bind so SubagentStart can route the spawned agent
+            // to this workflow. Use session_id from context when available.
+            if (this.agentWorkflowMap) {
+              const sessionId = (context.session_id as string | undefined) ?? 'default';
+              this.agentWorkflowMap.addPendingBind(agentType, workflowId, sessionId);
+            }
+
+            log.info('spawn_agent: directive enqueued, pending bind registered', {
+              agent_type: agentType,
+              workflow_id: workflowId,
             });
             break;
           }
