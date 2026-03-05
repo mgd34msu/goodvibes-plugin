@@ -30969,6 +30969,7 @@ var EventProcessor = class {
   rateLimit;
   queueDepthWarning;
   actionExecutor;
+  eventBus;
   /**
    * Workflow-level processing lock: workflow_id → lock_acquired_at (epoch ms).
    * A lock is considered stale when its age exceeds lock_timeout_ms.
@@ -31016,7 +31017,15 @@ var EventProcessor = class {
     this.rateLimit = options.rate_limit ? { max_per_window: options.rate_limit.max_per_window, window_ms: options.rate_limit.window_ms ?? RATE_LIMIT_WINDOW_MS } : void 0;
     this.queueDepthWarning = options.queue_depth_warning;
     this.actionExecutor = options?.action_executor;
+    this.eventBus = options?.event_bus;
     this.rateLimitWindowStart = Date.now();
+  }
+  /**
+   * Set (or replace) the EventBus reference after construction.
+   * Used by bootstrap to wire the bus after createCoreRuntime() returns.
+   */
+  setEventBus(bus) {
+    this.eventBus = bus;
   }
   /**
    * Register a handler for a trigger.
@@ -31247,6 +31256,17 @@ var EventProcessor = class {
   async processEvent(event) {
     const startMs = Date.now();
     logger24.debug("Processing event", { id: event.id, type: event.type });
+    if (this.eventBus && (event.context?.chain_depth ?? 0) === 0) {
+      try {
+        this.eventBus.emit(event);
+      } catch (err) {
+        logger24.debug("EventBus emit failed for queue event", {
+          event_id: event.id,
+          event_type: event.type,
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
     const matchedTriggers = this.registry.match(event, this.store);
     const chainedEvents = [];
     for (const trigger of matchedTriggers) {
@@ -35255,25 +35275,30 @@ var TickDriver = class _TickDriver {
         logger45.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
       }
     }
+    const runProcessBatch = /* @__PURE__ */ __name(() => {
+      if (this.eventProcessor) {
+        this.eventProcessor.processBatch().catch((err) => {
+          this.evalFailureCount++;
+          const msg = err instanceof Error ? err.message : String(err);
+          logger45.warn("eventProcessor.processBatch() error", { error: msg, eval_failures: this.evalFailureCount });
+          if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
+            logger45.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
+          }
+        });
+      }
+    }, "runProcessBatch");
     if (this.externalPlugin) {
-      this.externalPlugin.onTick().catch((err) => {
+      this.externalPlugin.onTick().then(runProcessBatch).catch((err) => {
         this.evalFailureCount++;
         const msg = err instanceof Error ? err.message : String(err);
         logger45.warn("externalPlugin.onTick() error", { error: msg, eval_failures: this.evalFailureCount });
         if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
           logger45.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
         }
+        runProcessBatch();
       });
-    }
-    if (this.eventProcessor) {
-      this.eventProcessor.processBatch().catch((err) => {
-        this.evalFailureCount++;
-        const msg = err instanceof Error ? err.message : String(err);
-        logger45.warn("eventProcessor.processBatch() error", { error: msg, eval_failures: this.evalFailureCount });
-        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
-          logger45.warn("eval failure threshold crossed", { eval_failures: this.evalFailureCount });
-        }
-      });
+    } else {
+      runProcessBatch();
     }
     if (this.staleWorkflowChecker) {
       try {
@@ -37869,6 +37894,9 @@ var RuntimeEngine = class {
       actionExecutor,
       this.triggers?.triggerRegistry
     );
+    if (this.events) {
+      this.coreRuntime.eventProcessor.setEventBus(this.events.eventBus);
+    }
     const wrfcConfig = getDefaultWRFCConfig();
     try {
       const raw = (0, import_node_fs18.readFileSync)((0, import_node_path21.join)(this.projectRoot, ".goodvibes", "goodvibes.json"), "utf-8");
