@@ -278,17 +278,27 @@ try {
   if (!prompt.includes(TASK_NOTIFICATION_PATTERN)) {
     const tickCommand = process.env['GOODVIBES_TICK_COMMAND'] || DEFAULT_TICK_COMMAND;
     const trimmedPrompt = prompt.trim();
-    if (trimmedPrompt === tickCommand) {
-      const projectDir = hookInput?.cwd || null;
-      const sessionId = hookInput?.session_id || null;
-      const socketPath = discoverSocket(projectDir, sessionId);
+    const projectDir = hookInput?.cwd || null;
+    const sessionId = hookInput?.session_id || null;
+    const isSubagent = hookInput?.is_subagent === true;
+    const socketPath = discoverSocket(projectDir, sessionId);
 
+    if (trimmedPrompt === tickCommand) {
       if (socketPath && existsSync(socketPath)) {
         const mode = await queryExecutorMode(socketPath);
         if (mode === 'daemon' || mode === 'hybrid') {
           await sendProcessTick(socketPath);
         }
       }
+    } else if (!isSubagent && trimmedPrompt.length > 0 && socketPath && existsSync(socketPath)) {
+      // Fire-and-forget: notify daemon of human prompt for EventBus emission
+      sendMessage(socketPath, {
+        type: 'hook_event',
+        id: generateId(),
+        hook_name: 'user_prompt_submit',
+        hook_input: { prompt: trimmedPrompt, session_id: sessionId },
+        timestamp: new Date().toISOString(),
+      }, QUERY_TIMEOUT_MS).catch(() => {}); // fire-and-forget, don't block response
     }
     respond(continueResponse()); // process.exit(0) — no code executes after this
     return;

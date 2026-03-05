@@ -264,28 +264,37 @@ export class TickDriver {
       }
     }
 
-    // Step 2: External events (async — fire and forget with error logging)
+    // Step 2 + 3: External events then process batch.
+    // Chain processBatch() after externalPlugin.onTick() resolves so that
+    // webhook events enqueued during the scan are visible in the same tick
+    // rather than deferred to tick N+1 (race condition fix).
+    const runProcessBatch = (): void => {
+      if (this.eventProcessor) {
+        this.eventProcessor.processBatch().catch((err) => {
+          this.evalFailureCount++;
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.warn('eventProcessor.processBatch() error', { error: msg, eval_failures: this.evalFailureCount });
+          if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
+            logger.warn('eval failure threshold crossed', { eval_failures: this.evalFailureCount });
+          }
+        });
+      }
+    };
+
     if (this.externalPlugin) {
-      this.externalPlugin.onTick().catch((err) => {
+      this.externalPlugin.onTick().then(runProcessBatch).catch((err) => {
         this.evalFailureCount++;
         const msg = err instanceof Error ? err.message : String(err);
         logger.warn('externalPlugin.onTick() error', { error: msg, eval_failures: this.evalFailureCount });
         if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
           logger.warn('eval failure threshold crossed', { eval_failures: this.evalFailureCount });
         }
+        // Still run processBatch even if externalPlugin.onTick() fails so that
+        // previously enqueued events are not indefinitely blocked.
+        runProcessBatch();
       });
-    }
-
-    // Step 3: Process queued events through triggers
-    if (this.eventProcessor) {
-      this.eventProcessor.processBatch().catch((err) => {
-        this.evalFailureCount++;
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.warn('eventProcessor.processBatch() error', { error: msg, eval_failures: this.evalFailureCount });
-        if (this.evalFailureCount === 5 || this.evalFailureCount === 10) {
-          logger.warn('eval failure threshold crossed', { eval_failures: this.evalFailureCount });
-        }
-      });
+    } else {
+      runProcessBatch();
     }
 
     // Step 4: Stale workflow watchdog

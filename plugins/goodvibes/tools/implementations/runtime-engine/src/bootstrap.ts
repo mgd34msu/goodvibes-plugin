@@ -340,6 +340,14 @@ export class RuntimeEngine {
       this.triggers?.triggerRegistry,
     );
 
+    // Wire EventBus into EventProcessor so that original queue events (webhook,
+    // file-drop, etc.) are visible via runtime_events queries and EventBus
+    // subscribers. Only non-chained events (chain_depth === 0) are forwarded
+    // to prevent feedback loops with trigger-produced chained events.
+    if (this.events) {
+      this.coreRuntime.eventProcessor.setEventBus(this.events.eventBus);
+    }
+
     // 14. WRFC plugin (L3) — class-based registration via RuntimePlugin interface.
     // WRFCPlugin.register() is the single canonical entry point: it seeds config,
     // registers all triggers, and wires all event handlers via RuntimeServices.

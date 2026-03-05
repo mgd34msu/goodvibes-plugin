@@ -113,6 +113,13 @@ export interface EventProcessorOptions {
   lock_timeout_ms?: number;
   /** Optional executor for actions produced by handlers */
   action_executor?: ActionExecutorInterface;
+  /**
+   * Optional EventBus reference. When set, original (non-chained) queue events
+   * are emitted to the bus before trigger matching, making them visible to
+   * `runtime_events` queries and other EventBus subscribers.
+   * Only events with chain_depth === 0 are forwarded to avoid feedback loops.
+   */
+  event_bus?: { emit(event: RuntimeEvent): void };
 }
 
 /**
@@ -216,6 +223,7 @@ export class EventProcessor {
   private readonly rateLimit: Required<RateLimitConfig> | undefined;
   private readonly queueDepthWarning: number | undefined;
   private readonly actionExecutor?: ActionExecutorInterface;
+  private eventBus?: { emit(event: RuntimeEvent): void };
 
   /**
    * Workflow-level processing lock: workflow_id → lock_acquired_at (epoch ms).
@@ -281,7 +289,16 @@ export class EventProcessor {
       : undefined;
     this.queueDepthWarning = options.queue_depth_warning;
     this.actionExecutor = options?.action_executor;
+    this.eventBus = options?.event_bus;
     this.rateLimitWindowStart = Date.now();
+  }
+
+  /**
+   * Set (or replace) the EventBus reference after construction.
+   * Used by bootstrap to wire the bus after createCoreRuntime() returns.
+   */
+  setEventBus(bus: { emit(event: RuntimeEvent): void } | undefined): void {
+    this.eventBus = bus;
   }
 
   /**
@@ -531,6 +548,21 @@ export class EventProcessor {
   private async processEvent(event: RuntimeEvent): Promise<void> {
     const startMs = Date.now();
     logger.debug('Processing event', { id: event.id, type: event.type });
+
+    // Bridge original (non-chained) queue events to EventBus so they are visible
+    // to runtime_events queries and other EventBus subscribers.
+    // Chained events (chain_depth > 0) are skipped to prevent feedback loops.
+    if (this.eventBus && (event.context?.chain_depth ?? 0) === 0) {
+      try {
+        this.eventBus.emit(event);
+      } catch (err) {
+        logger.debug('EventBus emit failed for queue event', {
+          event_id: event.id,
+          event_type: event.type,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
 
     // Match triggers
     const matchedTriggers = this.registry.match(event, this.store);
