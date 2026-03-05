@@ -103,8 +103,11 @@ export class ExternalPlugin {
     if (this.config.http_listener === undefined) {
       // HTTP listener not configured — file-drop mode only.
       // Callers must set http_listener in config to enable HTTP ingestion.
-      logger.warn('startHttpListener called but http_listener is not configured — no-op');
-      return;
+      logger.error(
+        'startHttpListener called but http_listener is not configured — this is a bug; '
+        + 'caller must set http_listener in config before calling startHttpListener()',
+      );
+      throw new Error('startHttpListener: http_listener config is undefined — cannot start listener');
     }
     if (this.listener === null) {
       this.listener = new HttpListener(
@@ -112,7 +115,13 @@ export class ExternalPlugin {
         this.config.http_listener,
       );
     }
+    logger.info('Starting HTTP webhook listener', {
+      port: this.config.http_listener.port,
+      address: this.config.http_listener.address,
+      bind_mode: this.config.http_listener.bind_mode,
+    });
     await this.listener.start();
+    logger.info('HTTP webhook listener is running', { port: this.config.http_listener.port });
   }
 
   /**

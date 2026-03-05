@@ -476,15 +476,26 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
         }
         const merged = deepMerge(DEFAULT_CONFIG, filtered);
         validateConfig(merged);
+        process.stderr.write(
+          `[runtime-engine] Config loaded from ${goodvibesPath} (http_listener.enabled=${merged.external.http_listener.enabled})\n`,
+        );
         return merged;
       }
+      process.stderr.write(
+        `[runtime-engine] Warning: goodvibes.json has no valid "runtime" object — trying legacy config\n`,
+      );
+    } else {
+      process.stderr.write(
+        `[runtime-engine] Warning: goodvibes.json has no "runtime" key — trying legacy config\n`,
+      );
     }
   } catch (err) {
     if (!(err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT')) {
       process.stderr.write(
-        `[runtime-engine] Warning: failed to read goodvibes.json: ${toErrorMessage(err)} — trying legacy config\n`,
+        `[runtime-engine] Warning: failed to read goodvibes.json at "${goodvibesPath}": ${toErrorMessage(err)} — trying legacy config\n`,
       );
     }
+    // ENOENT is silent — normal first-run, no goodvibes.json yet
   }
 
   // Fall back to legacy runtime-config.json
@@ -500,6 +511,9 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
     }
     const merged = deepMerge(DEFAULT_CONFIG, parsed as Partial<RuntimeConfig>);
     validateConfig(merged);
+    process.stderr.write(
+      `[runtime-engine] Config loaded from legacy ${configPath} (http_listener.enabled=${merged.external.http_listener.enabled})\n`,
+    );
     return merged;
   } catch (err) {
     // ENOENT means the config file does not exist yet (normal first-run).

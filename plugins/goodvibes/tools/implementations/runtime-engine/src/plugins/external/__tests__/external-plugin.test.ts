@@ -175,14 +175,14 @@ describe('ExternalPlugin reconfigureExternalPlugins scenarios', () => {
     expect(listenerInstances.at(-1)!.start).toHaveBeenCalledOnce();
   });
 
-  it('enable-from-disabled: startHttpListener without prior updateConfig is a no-op', async () => {
+  it('enable-from-disabled: startHttpListener without prior updateConfig throws', async () => {
     const queue = makeQueue();
     // Construct without http_listener — ExternalPlugin has no listener config
     const plugin = new ExternalPlugin(queue as never, makeConfig());
     const countBefore = listenerInstances.length;
 
-    // startHttpListener without updateConfig should be a no-op (no listener to start)
-    await plugin.startHttpListener();
+    // startHttpListener without http_listener config should throw (programmer error)
+    await expect(plugin.startHttpListener()).rejects.toThrow('http_listener config is undefined');
     expect(listenerInstances.length).toBe(countBefore);
     expect(plugin.isHttpListenerRunning()).toBe(false);
 

@@ -679,7 +679,12 @@ export class RuntimeEngine {
           host: newHttp.address,
         });
       } catch (err) {
-        logger.warn('Failed to start HTTP webhook listener', { error: toErrorMessage(err) });
+        logger.error('Failed to start HTTP webhook listener after config change', {
+          error: toErrorMessage(err),
+          port: newHttp.port,
+          address: newHttp.address,
+        });
+        throw err;
       }
     } else if (wasEnabled && nowEnabled && portChanged) {
       // Port changed: restart the listener

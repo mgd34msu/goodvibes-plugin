@@ -22598,13 +22598,31 @@ function loadConfig(projectRoot) {
         }
         const merged = deepMerge(DEFAULT_CONFIG, filtered);
         validateConfig(merged);
+        process.stderr.write(
+          `[runtime-engine] Config loaded from ${goodvibesPath} (http_listener.enabled=${merged.external.http_listener.enabled})
+`
+        );
         return merged;
       }
+      process.stderr.write(
+        `[runtime-engine] Warning: goodvibes.json has no valid "runtime" object \u2014 trying legacy config
+`
+      );
+    } else {
+      process.stderr.write(
+        `[runtime-engine] Warning: goodvibes.json has no "runtime" key \u2014 trying legacy config
+`
+      );
     }
   } catch (err) {
     if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
       process.stderr.write(
-        `[runtime-engine] Warning: failed to read goodvibes.json: ${toErrorMessage(err)} \u2014 trying legacy config
+        `[runtime-engine] Warning: failed to read goodvibes.json at "${goodvibesPath}": ${toErrorMessage(err)} \u2014 trying legacy config
+`
+      );
+    } else {
+      process.stderr.write(
+        `[runtime-engine] Config file not found at "${goodvibesPath}" \u2014 trying legacy config
 `
       );
     }
@@ -22622,9 +22640,17 @@ function loadConfig(projectRoot) {
     }
     const merged = deepMerge(DEFAULT_CONFIG, parsed);
     validateConfig(merged);
+    process.stderr.write(
+      `[runtime-engine] Config loaded from legacy ${configPath} (http_listener.enabled=${merged.external.http_listener.enabled})
+`
+    );
     return merged;
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+      process.stderr.write(
+        `[runtime-engine] Warning: using DEFAULT_CONFIG (projectRoot=${root}, neither goodvibes.json nor legacy runtime-config.json found). http_listener.enabled=${DEFAULT_CONFIG.external.http_listener.enabled}
+`
+      );
     } else {
       process.stderr.write(
         `[runtime-engine] Warning: failed to load config at "${configPath}": ${toErrorMessage(err)} \u2014 using defaults
@@ -33440,8 +33466,10 @@ var ExternalPlugin = class {
    */
   async startHttpListener() {
     if (this.config.http_listener === void 0) {
-      logger44.warn("startHttpListener called but http_listener is not configured \u2014 no-op");
-      return;
+      logger44.error(
+        "startHttpListener called but http_listener is not configured \u2014 this is a bug; caller must set http_listener in config before calling startHttpListener()"
+      );
+      throw new Error("startHttpListener: http_listener config is undefined \u2014 cannot start listener");
     }
     if (this.listener === null) {
       this.listener = new HttpListener(
@@ -33449,7 +33477,13 @@ var ExternalPlugin = class {
         this.config.http_listener
       );
     }
+    logger44.info("Starting HTTP webhook listener", {
+      port: this.config.http_listener.port,
+      address: this.config.http_listener.address,
+      bind_mode: this.config.http_listener.bind_mode
+    });
     await this.listener.start();
+    logger44.info("HTTP webhook listener is running", { port: this.config.http_listener.port });
   }
   /**
    * Stop the HTTP listener gracefully.
@@ -36091,7 +36125,12 @@ var RuntimeEngine = class {
           host: newHttp.address
         });
       } catch (err) {
-        logger57.warn("Failed to start HTTP webhook listener", { error: toErrorMessage(err) });
+        logger57.error("Failed to start HTTP webhook listener after config change", {
+          error: toErrorMessage(err),
+          port: newHttp.port,
+          address: newHttp.address
+        });
+        throw err;
       }
     } else if (wasEnabled && nowEnabled && portChanged) {
       const newExternalConfig = this.buildExternalConfig(newConfig);
@@ -38310,7 +38349,14 @@ var RuntimeEngineServer = class {
         getConfig: /* @__PURE__ */ __name(() => this.processManager?.getConfig() ?? loadConfig(process.env.CLAUDE_PROJECT_DIR || process.cwd()), "getConfig"),
         getHealth: /* @__PURE__ */ __name(() => this.processManager?.getHealthChecker().check() ?? { status: "unhealthy", checks: [] }, "getHealth"),
         updateConfig: /* @__PURE__ */ __name((config2) => {
-          if (this.processManager) this.processManager.updateConfig(config2);
+          if (this.processManager) {
+            this.processManager.updateConfig(config2);
+          } else {
+            logger68.warn(
+              "updateConfig called but no local RuntimeEngine (daemon/hybrid mode) \u2014 config change will not take effect until restart",
+              { transportMode: this.runtimeTransport?.mode ?? "unknown" }
+            );
+          }
         }, "updateConfig"),
         projectRoot: this.processManager?.getProjectRoot() ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
         version: ENGINE_VERSION,

@@ -350,13 +350,31 @@ function loadConfig(projectRoot) {
         }
         const merged = deepMerge(DEFAULT_CONFIG, filtered);
         validateConfig(merged);
+        process.stderr.write(
+          `[runtime-engine] Config loaded from ${goodvibesPath} (http_listener.enabled=${merged.external.http_listener.enabled})
+`
+        );
         return merged;
       }
+      process.stderr.write(
+        `[runtime-engine] Warning: goodvibes.json has no valid "runtime" object \u2014 trying legacy config
+`
+      );
+    } else {
+      process.stderr.write(
+        `[runtime-engine] Warning: goodvibes.json has no "runtime" key \u2014 trying legacy config
+`
+      );
     }
   } catch (err) {
     if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
       process.stderr.write(
-        `[runtime-engine] Warning: failed to read goodvibes.json: ${toErrorMessage(err)} \u2014 trying legacy config
+        `[runtime-engine] Warning: failed to read goodvibes.json at "${goodvibesPath}": ${toErrorMessage(err)} \u2014 trying legacy config
+`
+      );
+    } else {
+      process.stderr.write(
+        `[runtime-engine] Config file not found at "${goodvibesPath}" \u2014 trying legacy config
 `
       );
     }
@@ -374,9 +392,17 @@ function loadConfig(projectRoot) {
     }
     const merged = deepMerge(DEFAULT_CONFIG, parsed);
     validateConfig(merged);
+    process.stderr.write(
+      `[runtime-engine] Config loaded from legacy ${configPath} (http_listener.enabled=${merged.external.http_listener.enabled})
+`
+    );
     return merged;
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+      process.stderr.write(
+        `[runtime-engine] Warning: using DEFAULT_CONFIG (projectRoot=${root}, neither goodvibes.json nor legacy runtime-config.json found). http_listener.enabled=${DEFAULT_CONFIG.external.http_listener.enabled}
+`
+      );
     } else {
       process.stderr.write(
         `[runtime-engine] Warning: failed to load config at "${configPath}": ${toErrorMessage(err)} \u2014 using defaults
@@ -11134,8 +11160,10 @@ var ExternalPlugin = class {
    */
   async startHttpListener() {
     if (this.config.http_listener === void 0) {
-      logger43.warn("startHttpListener called but http_listener is not configured \u2014 no-op");
-      return;
+      logger43.error(
+        "startHttpListener called but http_listener is not configured \u2014 this is a bug; caller must set http_listener in config before calling startHttpListener()"
+      );
+      throw new Error("startHttpListener: http_listener config is undefined \u2014 cannot start listener");
     }
     if (this.listener === null) {
       this.listener = new HttpListener(
@@ -11143,7 +11171,13 @@ var ExternalPlugin = class {
         this.config.http_listener
       );
     }
+    logger43.info("Starting HTTP webhook listener", {
+      port: this.config.http_listener.port,
+      address: this.config.http_listener.address,
+      bind_mode: this.config.http_listener.bind_mode
+    });
     await this.listener.start();
+    logger43.info("HTTP webhook listener is running", { port: this.config.http_listener.port });
   }
   /**
    * Stop the HTTP listener gracefully.
@@ -13785,7 +13819,12 @@ var RuntimeEngine = class {
           host: newHttp.address
         });
       } catch (err) {
-        logger56.warn("Failed to start HTTP webhook listener", { error: toErrorMessage(err) });
+        logger56.error("Failed to start HTTP webhook listener after config change", {
+          error: toErrorMessage(err),
+          port: newHttp.port,
+          address: newHttp.address
+        });
+        throw err;
       }
     } else if (wasEnabled && nowEnabled && portChanged) {
       const newExternalConfig = this.buildExternalConfig(newConfig);

@@ -97,7 +97,14 @@ export class RuntimeEngineServer {
         getHealth: () => this.processManager?.getHealthChecker().check()
           ?? ({ status: 'unhealthy', checks: [] } as unknown as HealthStatus),
         updateConfig: (config) => {
-          if (this.processManager) this.processManager.updateConfig(config);
+          if (this.processManager) {
+            this.processManager.updateConfig(config);
+          } else {
+            logger.warn(
+              'updateConfig called but no local RuntimeEngine (daemon/hybrid mode) — config change will not take effect until restart',
+              { transportMode: this.runtimeTransport?.mode ?? 'unknown' },
+            );
+          }
         },
         projectRoot: this.processManager?.getProjectRoot() ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
         version: ENGINE_VERSION,
