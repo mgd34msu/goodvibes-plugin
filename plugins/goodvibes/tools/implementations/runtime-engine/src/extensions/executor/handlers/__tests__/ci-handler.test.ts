@@ -136,7 +136,7 @@ describe('bridgeCIFailure', () => {
       const payload = emittedEvent.payload as Record<string, unknown>;
       const data = payload['data'] as Record<string, unknown>;
       const errors = data['errors'] as string[];
-      expect(errors[0]).toContain('"unknown"');
+      expect(errors[0]).toContain('branch "unknown"');
     });
 
     it('defaults commit to "unknown" when not provided', async () => {
@@ -146,7 +146,7 @@ describe('bridgeCIFailure', () => {
       const payload = emittedEvent.payload as Record<string, unknown>;
       const data = payload['data'] as Record<string, unknown>;
       const errors = data['errors'] as string[];
-      expect(errors[0]).toContain('"unknown"');
+      expect(errors[0]).toContain('commit "unknown"');
     });
   });
 
@@ -208,14 +208,11 @@ describe('bridgeCIFailure', () => {
       expect(data['warnings']).toEqual([]);
     });
 
-    it('emitted event source.kind is a string (system subsystem)', async () => {
+    it('emitted event source is { kind: \'system\' }', async () => {
       const handler = bridgeCIFailure('/project', emitter);
       await handler(makeArgs(), event);
       const emittedEvent = emitter.emit.mock.calls[0][0] as RuntimeEvent;
-      // The ci-handler specifies source: { kind: 'system' }.
-      // createEvent spreads overrides, so source.kind should be present.
-      expect(typeof emittedEvent.source.kind).toBe('string');
-      expect(emittedEvent.source.kind).toBeTruthy();
+      expect(emittedEvent.source).toEqual({ kind: 'system' });
     });
 
     it('emitted event has a string id', async () => {

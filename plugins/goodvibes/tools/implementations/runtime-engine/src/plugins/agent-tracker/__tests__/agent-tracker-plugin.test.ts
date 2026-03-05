@@ -131,7 +131,7 @@ describe('AgentTrackerPlugin', () => {
   // ─── register / start / stop lifecycle ──────────────────────────────────────
 
   describe('lifecycle', () => {
-    it('state is registered before register() is called', () => {
+    it('initial state is registered', () => {
       const plugin = new AgentTrackerPlugin();
       expect(plugin.state).toBe('registered');
     });
@@ -327,6 +327,98 @@ describe('AgentTrackerPlugin', () => {
       const stats = plugin.getStats();
       expect(stats.active).toBe(1);
       expect(stats.total).toBe(1);
+    });
+  });
+
+  // ─── query methods ─────────────────────────────────────────────────────────
+
+  describe('query methods', () => {
+    it('getAgent returns null when agent does not exist', () => {
+      const { plugin } = setupPlugin();
+      expect(plugin.getAgent('no-such-agent')).toBeNull();
+    });
+
+    it('getAgent returns the tracked agent after spawn', () => {
+      const { plugin, services } = setupPlugin();
+      spawnAgent(services, 'agent-q1', 'goodvibes:engineer');
+      const agent = plugin.getAgent('agent-q1');
+      expect(agent).not.toBeNull();
+      expect(agent!.id).toBe('agent-q1');
+      expect(agent!.type).toBe('goodvibes:engineer');
+      expect(agent!.status).toBe('spawned');
+    });
+
+    it('getAllAgents returns empty array when no agents tracked', () => {
+      const { plugin } = setupPlugin();
+      expect(plugin.getAllAgents()).toEqual([]);
+    });
+
+    it('getAllAgents returns all tracked agents', () => {
+      const { plugin, services } = setupPlugin();
+      spawnAgent(services, 'agent-a1', 'goodvibes:engineer');
+      spawnAgent(services, 'agent-a2', 'goodvibes:reviewer');
+      const agents = plugin.getAllAgents();
+      expect(agents).toHaveLength(2);
+      const ids = agents.map(a => a.id);
+      expect(ids).toContain('agent-a1');
+      expect(ids).toContain('agent-a2');
+    });
+
+    it('getAgentsByStatus returns only agents with matching status', () => {
+      const { plugin, services } = setupPlugin();
+      spawnAgent(services, 'agent-s1', 'goodvibes:engineer');
+      spawnAgent(services, 'agent-s2', 'goodvibes:reviewer');
+
+      // Complete agent-s1
+      const completedCb = services._subscriptions.get('agent:completed') as SubscribeCallback;
+      completedCb(makeAgentEvent({ type: 'agent:completed', agent_id: 'agent-s1', agent_type: 'goodvibes:engineer' }));
+
+      const spawned = plugin.getAgentsByStatus('spawned');
+      expect(spawned).toHaveLength(1);
+      expect(spawned[0].id).toBe('agent-s2');
+
+      const completed = plugin.getAgentsByStatus('completed');
+      expect(completed).toHaveLength(1);
+      expect(completed[0].id).toBe('agent-s1');
+    });
+
+    it('getAgentsByWorkflow returns only agents with matching workflow_id', () => {
+      const { plugin, services } = setupPlugin();
+      // spawnAgent uses makeAgentEvent which sets workflow_id: null by default
+      // We need to inject events with workflow_id directly
+      const cb = services._subscriptions.get('agent:spawned') as SubscribeCallback;
+      cb(makeAgentEvent({ type: 'agent:spawned', agent_id: 'agent-w1', agent_type: 'goodvibes:engineer', workflow_id: 'wf-abc' }));
+      cb(makeAgentEvent({ type: 'agent:spawned', agent_id: 'agent-w2', agent_type: 'goodvibes:reviewer', workflow_id: 'wf-xyz' }));
+      cb(makeAgentEvent({ type: 'agent:spawned', agent_id: 'agent-w3', agent_type: 'goodvibes:engineer', workflow_id: 'wf-abc' }));
+
+      const wfAbc = plugin.getAgentsByWorkflow('wf-abc');
+      expect(wfAbc).toHaveLength(2);
+      const wfAbcIds = wfAbc.map(a => a.id);
+      expect(wfAbcIds).toContain('agent-w1');
+      expect(wfAbcIds).toContain('agent-w3');
+
+      const wfXyz = plugin.getAgentsByWorkflow('wf-xyz');
+      expect(wfXyz).toHaveLength(1);
+      expect(wfXyz[0].id).toBe('agent-w2');
+    });
+
+    it('getHandlers returns an array of PluginEventHandler objects', () => {
+      const { plugin } = setupPlugin();
+      const handlers = plugin.getHandlers();
+      expect(Array.isArray(handlers)).toBe(true);
+      expect(handlers.length).toBeGreaterThan(0);
+      for (const h of handlers) {
+        expect(typeof h.event_type).toBe('string');
+        expect(typeof h.handler).toBe('function');
+      }
+    });
+
+    it('getHandlers covers agent:spawned, agent:completed, agent:failed', () => {
+      const { plugin } = setupPlugin();
+      const eventTypes = plugin.getHandlers().map(h => h.event_type);
+      expect(eventTypes).toContain('agent:spawned');
+      expect(eventTypes).toContain('agent:completed');
+      expect(eventTypes).toContain('agent:failed');
     });
   });
 
