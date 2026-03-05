@@ -1,6 +1,6 @@
 version: 2.0.0
-generated: '2026-03-05T06:54:32.773Z'
-total: 75
+generated: '2026-03-05T15:14:44.560Z'
+total: 77
 servers:
   - name: precision-engine
     count: 12
@@ -342,7 +342,7 @@ servers:
           route segments, and flags issues like missing fallback UI, missing reset/retry mechanisms, overly broad
           boundaries, and async components without protection.
   - name: runtime-engine
-    count: 9
+    count: 11
     tools:
       - name: runtime_status
         path: runtime-engine/runtime-status.yaml
@@ -390,6 +390,19 @@ servers:
         description: >-
           Manage the GoodVibes runtime daemon process. ' + 'Start, stop, restart, check status, or list connected
           sessions.
+      - name: runtime_schedule
+        path: runtime-engine/runtime-schedule.yaml
+        description: |
+          Manage named event schedules in the runtime engine.
+          List, create, cancel, pause, or resume scheduled events.
+          Supports heartbeat, cron, and one-shot schedule types.
+          Use preset names (every_minute, every_5_minutes, every_15_minutes,
+          every_hour, every_6_hours, daily) or raw interval_ms values.
+      - name: runtime_external
+        path: runtime-engine/runtime-external.yaml
+        description: >-
+          Inspect the ExternalPlugin: HTTP webhook listener status, normalizer registry, ' + 'payload normalization
+          testing, and ingestion stats.
 search_index:
   - name: precision_write
     keywords:
@@ -2452,4 +2465,67 @@ search_index:
       - sessions
     path: runtime-engine/runtime-daemon.yaml
     description: Manage the GoodVibes runtime daemon process. ' + 'Start, stop, restart, check status, or list connected sessions.
+    server: runtime-engine
+  - name: runtime_schedule
+    keywords:
+      - runtime
+      - schedule
+      - manage
+      - named
+      - event
+      - schedules
+      - engine
+      - list
+      - create
+      - cancel
+      - pause
+      - resume
+      - scheduled
+      - events
+      - supports
+      - heartbeat
+      - cron
+      - one
+      - shot
+      - types
+      - preset
+      - names
+      - every_minute
+      - every_5_minutes
+      - every_15_minutes
+      - every_hour
+      - every_6_hours
+      - daily
+      - raw
+      - interval_ms
+      - values
+    path: runtime-engine/runtime-schedule.yaml
+    description: |
+      Manage named event schedules in the runtime engine.
+      List, create, cancel, pause, or resume scheduled events.
+      Supports heartbeat, cron, and one-shot schedule types.
+      Use preset names (every_minute, every_5_minutes, every_15_minutes,
+      every_hour, every_6_hours, daily) or raw interval_ms values.
+    server: runtime-engine
+  - name: runtime_external
+    keywords:
+      - runtime
+      - external
+      - inspect
+      - externalplugin
+      - http
+      - webhook
+      - listener
+      - status
+      - normalizer
+      - registry
+      - payload
+      - normalization
+      - testing
+      - ingestion
+      - stats
+    path: runtime-engine/runtime-external.yaml
+    description: >-
+      Inspect the ExternalPlugin: HTTP webhook listener status, normalizer registry, ' + 'payload normalization testing,
+      and ingestion stats.
     server: runtime-engine

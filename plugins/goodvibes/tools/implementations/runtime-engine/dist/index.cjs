@@ -374,43 +374,43 @@ var require_codegen = __commonJS({
     var code_1 = require_code();
     var scope_1 = require_scope();
     var code_2 = require_code();
-    Object.defineProperty(exports2, "_", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "_", { enumerable: true, get: function() {
       return code_2._;
-    }, "get") });
-    Object.defineProperty(exports2, "str", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "str", { enumerable: true, get: function() {
       return code_2.str;
-    }, "get") });
-    Object.defineProperty(exports2, "strConcat", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "strConcat", { enumerable: true, get: function() {
       return code_2.strConcat;
-    }, "get") });
-    Object.defineProperty(exports2, "nil", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "nil", { enumerable: true, get: function() {
       return code_2.nil;
-    }, "get") });
-    Object.defineProperty(exports2, "getProperty", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "getProperty", { enumerable: true, get: function() {
       return code_2.getProperty;
-    }, "get") });
-    Object.defineProperty(exports2, "stringify", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "stringify", { enumerable: true, get: function() {
       return code_2.stringify;
-    }, "get") });
-    Object.defineProperty(exports2, "regexpCode", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "regexpCode", { enumerable: true, get: function() {
       return code_2.regexpCode;
-    }, "get") });
-    Object.defineProperty(exports2, "Name", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "Name", { enumerable: true, get: function() {
       return code_2.Name;
-    }, "get") });
+    } });
     var scope_2 = require_scope();
-    Object.defineProperty(exports2, "Scope", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "Scope", { enumerable: true, get: function() {
       return scope_2.Scope;
-    }, "get") });
-    Object.defineProperty(exports2, "ValueScope", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "ValueScope", { enumerable: true, get: function() {
       return scope_2.ValueScope;
-    }, "get") });
-    Object.defineProperty(exports2, "ValueScopeName", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "ValueScopeName", { enumerable: true, get: function() {
       return scope_2.ValueScopeName;
-    }, "get") });
-    Object.defineProperty(exports2, "varKinds", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "varKinds", { enumerable: true, get: function() {
       return scope_2.varKinds;
-    }, "get") });
+    } });
     exports2.operators = {
       GT: new code_1._Code(">"),
       GTE: new code_1._Code(">="),
@@ -1277,25 +1277,25 @@ var require_util = __commonJS({
     __name(makeMergeEvaluated, "makeMergeEvaluated");
     exports2.mergeEvaluated = {
       props: makeMergeEvaluated({
-        mergeNames: /* @__PURE__ */ __name((gen, from, to) => gen.if((0, codegen_1._)`${to} !== true && ${from} !== undefined`, () => {
+        mergeNames: (gen, from, to) => gen.if((0, codegen_1._)`${to} !== true && ${from} !== undefined`, () => {
           gen.if((0, codegen_1._)`${from} === true`, () => gen.assign(to, true), () => gen.assign(to, (0, codegen_1._)`${to} || {}`).code((0, codegen_1._)`Object.assign(${to}, ${from})`));
-        }), "mergeNames"),
-        mergeToName: /* @__PURE__ */ __name((gen, from, to) => gen.if((0, codegen_1._)`${to} !== true`, () => {
+        }),
+        mergeToName: (gen, from, to) => gen.if((0, codegen_1._)`${to} !== true`, () => {
           if (from === true) {
             gen.assign(to, true);
           } else {
             gen.assign(to, (0, codegen_1._)`${to} || {}`);
             setEvaluated(gen, to, from);
           }
-        }), "mergeToName"),
-        mergeValues: /* @__PURE__ */ __name((from, to) => from === true ? true : { ...from, ...to }, "mergeValues"),
+        }),
+        mergeValues: (from, to) => from === true ? true : { ...from, ...to },
         resultToName: evaluatedPropsToName
       }),
       items: makeMergeEvaluated({
-        mergeNames: /* @__PURE__ */ __name((gen, from, to) => gen.if((0, codegen_1._)`${to} !== true && ${from} !== undefined`, () => gen.assign(to, (0, codegen_1._)`${from} === true ? true : ${to} > ${from} ? ${to} : ${from}`)), "mergeNames"),
-        mergeToName: /* @__PURE__ */ __name((gen, from, to) => gen.if((0, codegen_1._)`${to} !== true`, () => gen.assign(to, from === true ? true : (0, codegen_1._)`${to} > ${from} ? ${to} : ${from}`)), "mergeToName"),
-        mergeValues: /* @__PURE__ */ __name((from, to) => from === true ? true : Math.max(from, to), "mergeValues"),
-        resultToName: /* @__PURE__ */ __name((gen, items) => gen.var("items", items), "resultToName")
+        mergeNames: (gen, from, to) => gen.if((0, codegen_1._)`${to} !== true && ${from} !== undefined`, () => gen.assign(to, (0, codegen_1._)`${from} === true ? true : ${to} > ${from} ? ${to} : ${from}`)),
+        mergeToName: (gen, from, to) => gen.if((0, codegen_1._)`${to} !== true`, () => gen.assign(to, from === true ? true : (0, codegen_1._)`${to} > ${from} ? ${to} : ${from}`)),
+        mergeValues: (from, to) => from === true ? true : Math.max(from, to),
+        resultToName: (gen, items) => gen.var("items", items)
       })
     };
     function evaluatedPropsToName(gen, ps) {
@@ -1398,10 +1398,10 @@ var require_errors = __commonJS({
     var util_1 = require_util();
     var names_1 = require_names();
     exports2.keywordError = {
-      message: /* @__PURE__ */ __name(({ keyword }) => (0, codegen_1.str)`must pass "${keyword}" keyword validation`, "message")
+      message: ({ keyword }) => (0, codegen_1.str)`must pass "${keyword}" keyword validation`
     };
     exports2.keyword$DataError = {
-      message: /* @__PURE__ */ __name(({ keyword, schemaType }) => schemaType ? (0, codegen_1.str)`"${keyword}" keyword must be ${schemaType} ($data)` : (0, codegen_1.str)`"${keyword}" keyword is invalid ($data)`, "message")
+      message: ({ keyword, schemaType }) => schemaType ? (0, codegen_1.str)`"${keyword}" keyword must be ${schemaType} ($data)` : (0, codegen_1.str)`"${keyword}" keyword is invalid ($data)`
     };
     function reportError(cxt, error2 = exports2.keywordError, errorPaths, overrideAllErrors) {
       const { it } = cxt;
@@ -1802,8 +1802,8 @@ var require_dataType = __commonJS({
     __name(checkDataTypes, "checkDataTypes");
     exports2.checkDataTypes = checkDataTypes;
     var typeError = {
-      message: /* @__PURE__ */ __name(({ schema }) => `must be ${schema}`, "message"),
-      params: /* @__PURE__ */ __name(({ schema, schemaValue }) => typeof schema == "string" ? (0, codegen_1._)`{type: ${schema}}` : (0, codegen_1._)`{type: ${schemaValue}}`, "params")
+      message: ({ schema }) => `must be ${schema}`,
+      params: ({ schema, schemaValue }) => typeof schema == "string" ? (0, codegen_1._)`{type: ${schema}}` : (0, codegen_1._)`{type: ${schemaValue}}`
     };
     function reportTypeError(it) {
       const cxt = getTypeErrorContext(it);
@@ -2239,28 +2239,38 @@ var require_fast_deep_equal = __commonJS({
   "node_modules/fast-deep-equal/index.js"(exports2, module2) {
     "use strict";
     module2.exports = /* @__PURE__ */ __name(function equal(a, b) {
-      if (a === b) return true;
+      if (a === b)
+        return true;
       if (a && b && typeof a == "object" && typeof b == "object") {
-        if (a.constructor !== b.constructor) return false;
+        if (a.constructor !== b.constructor)
+          return false;
         var length, i, keys;
         if (Array.isArray(a)) {
           length = a.length;
-          if (length != b.length) return false;
+          if (length != b.length)
+            return false;
           for (i = length; i-- !== 0; )
-            if (!equal(a[i], b[i])) return false;
+            if (!equal(a[i], b[i]))
+              return false;
           return true;
         }
-        if (a.constructor === RegExp) return a.source === b.source && a.flags === b.flags;
-        if (a.valueOf !== Object.prototype.valueOf) return a.valueOf() === b.valueOf();
-        if (a.toString !== Object.prototype.toString) return a.toString() === b.toString();
+        if (a.constructor === RegExp)
+          return a.source === b.source && a.flags === b.flags;
+        if (a.valueOf !== Object.prototype.valueOf)
+          return a.valueOf() === b.valueOf();
+        if (a.toString !== Object.prototype.toString)
+          return a.toString() === b.toString();
         keys = Object.keys(a);
         length = keys.length;
-        if (length !== Object.keys(b).length) return false;
+        if (length !== Object.keys(b).length)
+          return false;
         for (i = length; i-- !== 0; )
-          if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
+          if (!Object.prototype.hasOwnProperty.call(b, keys[i]))
+            return false;
         for (i = length; i-- !== 0; ) {
           var key = keys[i];
-          if (!equal(a[key], b[key])) return false;
+          if (!equal(a[key], b[key]))
+            return false;
         }
         return true;
       }
@@ -3491,7 +3501,8 @@ var require_utils = __commonJS({
     function findToken(str, token) {
       let ind = 0;
       for (let i = 0; i < str.length; i++) {
-        if (str[i] === token) ind++;
+        if (str[i] === token)
+          ind++;
       }
       return ind;
     }
@@ -3968,7 +3979,8 @@ var require_fast_uri = __commonJS({
       const options = Object.assign({}, opts);
       const uriTokens = [];
       const schemeHandler = getSchemeHandler(options.scheme || component.scheme);
-      if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options);
+      if (schemeHandler && schemeHandler.serialize)
+        schemeHandler.serialize(component, options);
       if (component.path !== void 0) {
         if (!options.skipEscape) {
           component.path = escape(component.path);
@@ -4133,28 +4145,28 @@ var require_core = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.CodeGen = exports2.Name = exports2.nil = exports2.stringify = exports2.str = exports2._ = exports2.KeywordCxt = void 0;
     var validate_1 = require_validate();
-    Object.defineProperty(exports2, "KeywordCxt", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "KeywordCxt", { enumerable: true, get: function() {
       return validate_1.KeywordCxt;
-    }, "get") });
+    } });
     var codegen_1 = require_codegen();
-    Object.defineProperty(exports2, "_", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "_", { enumerable: true, get: function() {
       return codegen_1._;
-    }, "get") });
-    Object.defineProperty(exports2, "str", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "str", { enumerable: true, get: function() {
       return codegen_1.str;
-    }, "get") });
-    Object.defineProperty(exports2, "stringify", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "stringify", { enumerable: true, get: function() {
       return codegen_1.stringify;
-    }, "get") });
-    Object.defineProperty(exports2, "nil", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "nil", { enumerable: true, get: function() {
       return codegen_1.nil;
-    }, "get") });
-    Object.defineProperty(exports2, "Name", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "Name", { enumerable: true, get: function() {
       return codegen_1.Name;
-    }, "get") });
-    Object.defineProperty(exports2, "CodeGen", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "CodeGen", { enumerable: true, get: function() {
       return codegen_1.CodeGen;
-    }, "get") });
+    } });
     var validation_error_1 = require_validation_error();
     var ref_error_1 = require_ref_error();
     var rules_1 = require_rules();
@@ -4940,8 +4952,8 @@ var require_limitNumber = __commonJS({
       exclusiveMinimum: { okStr: ">", ok: ops.GT, fail: ops.LTE }
     };
     var error2 = {
-      message: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1.str)`must be ${KWDs[keyword].okStr} ${schemaCode}`, "message"),
-      params: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`, "params")
+      message: ({ keyword, schemaCode }) => (0, codegen_1.str)`must be ${KWDs[keyword].okStr} ${schemaCode}`,
+      params: ({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`
     };
     var def = {
       keyword: Object.keys(KWDs),
@@ -4965,8 +4977,8 @@ var require_multipleOf = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must be multiple of ${schemaCode}`, "message"),
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{multipleOf: ${schemaCode}}`, "params")
+      message: ({ schemaCode }) => (0, codegen_1.str)`must be multiple of ${schemaCode}`,
+      params: ({ schemaCode }) => (0, codegen_1._)`{multipleOf: ${schemaCode}}`
     };
     var def = {
       keyword: "multipleOf",
@@ -5026,7 +5038,7 @@ var require_limitLength = __commonJS({
         const comp = keyword === "maxLength" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} characters`;
       },
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{limit: ${schemaCode}}`, "params")
+      params: ({ schemaCode }) => (0, codegen_1._)`{limit: ${schemaCode}}`
     };
     var def = {
       keyword: ["maxLength", "minLength"],
@@ -5054,8 +5066,8 @@ var require_pattern = __commonJS({
     var util_1 = require_util();
     var codegen_1 = require_codegen();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must match pattern "${schemaCode}"`, "message"),
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{pattern: ${schemaCode}}`, "params")
+      message: ({ schemaCode }) => (0, codegen_1.str)`must match pattern "${schemaCode}"`,
+      params: ({ schemaCode }) => (0, codegen_1._)`{pattern: ${schemaCode}}`
     };
     var def = {
       keyword: "pattern",
@@ -5093,7 +5105,7 @@ var require_limitProperties = __commonJS({
         const comp = keyword === "maxProperties" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} properties`;
       },
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{limit: ${schemaCode}}`, "params")
+      params: ({ schemaCode }) => (0, codegen_1._)`{limit: ${schemaCode}}`
     };
     var def = {
       keyword: ["maxProperties", "minProperties"],
@@ -5120,8 +5132,8 @@ var require_required = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ params: { missingProperty } }) => (0, codegen_1.str)`must have required property '${missingProperty}'`, "message"),
-      params: /* @__PURE__ */ __name(({ params: { missingProperty } }) => (0, codegen_1._)`{missingProperty: ${missingProperty}}`, "params")
+      message: ({ params: { missingProperty } }) => (0, codegen_1.str)`must have required property '${missingProperty}'`,
+      params: ({ params: { missingProperty } }) => (0, codegen_1._)`{missingProperty: ${missingProperty}}`
     };
     var def = {
       keyword: "required",
@@ -5208,7 +5220,7 @@ var require_limitItems = __commonJS({
         const comp = keyword === "maxItems" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} items`;
       },
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{limit: ${schemaCode}}`, "params")
+      params: ({ schemaCode }) => (0, codegen_1._)`{limit: ${schemaCode}}`
     };
     var def = {
       keyword: ["maxItems", "minItems"],
@@ -5247,8 +5259,8 @@ var require_uniqueItems = __commonJS({
     var util_1 = require_util();
     var equal_1 = require_equal();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ params: { i, j } }) => (0, codegen_1.str)`must NOT have duplicate items (items ## ${j} and ${i} are identical)`, "message"),
-      params: /* @__PURE__ */ __name(({ params: { i, j } }) => (0, codegen_1._)`{i: ${i}, j: ${j}}`, "params")
+      message: ({ params: { i, j } }) => (0, codegen_1.str)`must NOT have duplicate items (items ## ${j} and ${i} are identical)`,
+      params: ({ params: { i, j } }) => (0, codegen_1._)`{i: ${i}, j: ${j}}`
     };
     var def = {
       keyword: "uniqueItems",
@@ -5318,7 +5330,7 @@ var require_const = __commonJS({
     var equal_1 = require_equal();
     var error2 = {
       message: "must be equal to constant",
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{allowedValue: ${schemaCode}}`, "params")
+      params: ({ schemaCode }) => (0, codegen_1._)`{allowedValue: ${schemaCode}}`
     };
     var def = {
       keyword: "const",
@@ -5347,7 +5359,7 @@ var require_enum = __commonJS({
     var equal_1 = require_equal();
     var error2 = {
       message: "must be equal to one of the allowed values",
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{allowedValues: ${schemaCode}}`, "params")
+      params: ({ schemaCode }) => (0, codegen_1._)`{allowedValues: ${schemaCode}}`
     };
     var def = {
       keyword: "enum",
@@ -5435,8 +5447,8 @@ var require_additionalItems = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`, "message"),
-      params: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`, "params")
+      message: ({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`,
+      params: ({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`
     };
     var def = {
       keyword: "additionalItems",
@@ -5551,7 +5563,7 @@ var require_prefixItems = __commonJS({
       type: "array",
       schemaType: ["array"],
       before: "uniqueItems",
-      code: /* @__PURE__ */ __name((cxt) => (0, items_1.validateTuple)(cxt, "items"), "code")
+      code: (cxt) => (0, items_1.validateTuple)(cxt, "items")
     };
     exports2.default = def;
   }
@@ -5567,8 +5579,8 @@ var require_items2020 = __commonJS({
     var code_1 = require_code2();
     var additionalItems_1 = require_additionalItems();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`, "message"),
-      params: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`, "params")
+      message: ({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`,
+      params: ({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`
     };
     var def = {
       keyword: "items",
@@ -5600,8 +5612,8 @@ var require_contains = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ params: { min, max } }) => max === void 0 ? (0, codegen_1.str)`must contain at least ${min} valid item(s)` : (0, codegen_1.str)`must contain at least ${min} and no more than ${max} valid item(s)`, "message"),
-      params: /* @__PURE__ */ __name(({ params: { min, max } }) => max === void 0 ? (0, codegen_1._)`{minContains: ${min}}` : (0, codegen_1._)`{minContains: ${min}, maxContains: ${max}}`, "params")
+      message: ({ params: { min, max } }) => max === void 0 ? (0, codegen_1.str)`must contain at least ${min} valid item(s)` : (0, codegen_1.str)`must contain at least ${min} and no more than ${max} valid item(s)`,
+      params: ({ params: { min, max } }) => max === void 0 ? (0, codegen_1._)`{minContains: ${min}}` : (0, codegen_1._)`{minContains: ${min}, maxContains: ${max}}`
     };
     var def = {
       keyword: "contains",
@@ -5699,14 +5711,14 @@ var require_dependencies = __commonJS({
     var util_1 = require_util();
     var code_1 = require_code2();
     exports2.error = {
-      message: /* @__PURE__ */ __name(({ params: { property, depsCount, deps } }) => {
+      message: ({ params: { property, depsCount, deps } }) => {
         const property_ies = depsCount === 1 ? "property" : "properties";
         return (0, codegen_1.str)`must have ${property_ies} ${deps} when property ${property} is present`;
-      }, "message"),
-      params: /* @__PURE__ */ __name(({ params: { property, depsCount, deps, missingProperty } }) => (0, codegen_1._)`{property: ${property},
+      },
+      params: ({ params: { property, depsCount, deps, missingProperty } }) => (0, codegen_1._)`{property: ${property},
     missingProperty: ${missingProperty},
     depsCount: ${depsCount},
-    deps: ${deps}}`, "params")
+    deps: ${deps}}`
       // TODO change to reference
     };
     var def = {
@@ -5795,7 +5807,7 @@ var require_propertyNames = __commonJS({
     var util_1 = require_util();
     var error2 = {
       message: "property name must be valid",
-      params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{propertyName: ${params.propertyName}}`, "params")
+      params: ({ params }) => (0, codegen_1._)`{propertyName: ${params.propertyName}}`
     };
     var def = {
       keyword: "propertyNames",
@@ -5840,7 +5852,7 @@ var require_additionalProperties = __commonJS({
     var util_1 = require_util();
     var error2 = {
       message: "must NOT have additional properties",
-      params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{additionalProperty: ${params.additionalProperty}}`, "params")
+      params: ({ params }) => (0, codegen_1._)`{additionalProperty: ${params.additionalProperty}}`
     };
     var def = {
       keyword: "additionalProperties",
@@ -6134,7 +6146,7 @@ var require_oneOf = __commonJS({
     var util_1 = require_util();
     var error2 = {
       message: "must match exactly one schema in oneOf",
-      params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{passingSchemas: ${params.passing}}`, "params")
+      params: ({ params }) => (0, codegen_1._)`{passingSchemas: ${params.passing}}`
     };
     var def = {
       keyword: "oneOf",
@@ -6219,8 +6231,8 @@ var require_if = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ params }) => (0, codegen_1.str)`must match "${params.ifClause}" schema`, "message"),
-      params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{failingKeyword: ${params.ifClause}}`, "params")
+      message: ({ params }) => (0, codegen_1.str)`must match "${params.ifClause}" schema`,
+      params: ({ params }) => (0, codegen_1._)`{failingKeyword: ${params.ifClause}}`
     };
     var def = {
       keyword: "if",
@@ -6357,8 +6369,8 @@ var require_format = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must match format "${schemaCode}"`, "message"),
-      params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{format: ${schemaCode}}`, "params")
+      message: ({ schemaCode }) => (0, codegen_1.str)`must match format "${schemaCode}"`,
+      params: ({ schemaCode }) => (0, codegen_1._)`{format: ${schemaCode}}`
     };
     var def = {
       keyword: "format",
@@ -6529,8 +6541,8 @@ var require_discriminator = __commonJS({
     var ref_error_1 = require_ref_error();
     var util_1 = require_util();
     var error2 = {
-      message: /* @__PURE__ */ __name(({ params: { discrError, tagName } }) => discrError === types_1.DiscrError.Tag ? `tag "${tagName}" must be string` : `value of tag "${tagName}" must be in oneOf`, "message"),
-      params: /* @__PURE__ */ __name(({ params: { discrError, tag, tagName } }) => (0, codegen_1._)`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag}}`, "params")
+      message: ({ params: { discrError, tagName } }) => discrError === types_1.DiscrError.Tag ? `tag "${tagName}" must be string` : `value of tag "${tagName}" must be in oneOf`,
+      params: ({ params: { discrError, tag, tagName } }) => (0, codegen_1._)`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag}}`
     };
     var def = {
       keyword: "discriminator",
@@ -6826,36 +6838,36 @@ var require_ajv = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = Ajv2;
     var validate_1 = require_validate();
-    Object.defineProperty(exports2, "KeywordCxt", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "KeywordCxt", { enumerable: true, get: function() {
       return validate_1.KeywordCxt;
-    }, "get") });
+    } });
     var codegen_1 = require_codegen();
-    Object.defineProperty(exports2, "_", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "_", { enumerable: true, get: function() {
       return codegen_1._;
-    }, "get") });
-    Object.defineProperty(exports2, "str", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "str", { enumerable: true, get: function() {
       return codegen_1.str;
-    }, "get") });
-    Object.defineProperty(exports2, "stringify", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "stringify", { enumerable: true, get: function() {
       return codegen_1.stringify;
-    }, "get") });
-    Object.defineProperty(exports2, "nil", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "nil", { enumerable: true, get: function() {
       return codegen_1.nil;
-    }, "get") });
-    Object.defineProperty(exports2, "Name", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "Name", { enumerable: true, get: function() {
       return codegen_1.Name;
-    }, "get") });
-    Object.defineProperty(exports2, "CodeGen", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    } });
+    Object.defineProperty(exports2, "CodeGen", { enumerable: true, get: function() {
       return codegen_1.CodeGen;
-    }, "get") });
+    } });
     var validation_error_1 = require_validation_error();
-    Object.defineProperty(exports2, "ValidationError", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "ValidationError", { enumerable: true, get: function() {
       return validation_error_1.default;
-    }, "get") });
+    } });
     var ref_error_1 = require_ref_error();
-    Object.defineProperty(exports2, "MissingRefError", { enumerable: true, get: /* @__PURE__ */ __name(function() {
+    Object.defineProperty(exports2, "MissingRefError", { enumerable: true, get: function() {
       return ref_error_1.default;
-    }, "get") });
+    } });
   }
 });
 
@@ -7094,8 +7106,8 @@ var require_limit = __commonJS({
       formatExclusiveMinimum: { okStr: ">", ok: ops.GT, fail: ops.LTE }
     };
     var error2 = {
-      message: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1.str)`should be ${KWDs[keyword].okStr} ${schemaCode}`, "message"),
-      params: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`, "params")
+      message: ({ keyword, schemaCode }) => (0, codegen_1.str)`should be ${KWDs[keyword].okStr} ${schemaCode}`,
+      params: ({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`
     };
     exports2.formatLimitDefinition = {
       keyword: Object.keys(KWDs),
@@ -7299,11 +7311,13 @@ function toErrorMessage(err) {
   return err instanceof Error ? err.message : String(err);
 }
 function assertString(value, fieldName) {
-  if (typeof value !== "string") throw new TypeError(`${fieldName} must be a string, got ${typeof value}`);
+  if (typeof value !== "string")
+    throw new TypeError(`${fieldName} must be a string, got ${typeof value}`);
   return value;
 }
 function assertOptionalString(value, fieldName) {
-  if (value === void 0 || value === null) return void 0;
+  if (value === void 0 || value === null)
+    return void 0;
   return assertString(value, fieldName);
 }
 function safeJsonParse(input, fallback, logError) {
@@ -7378,7 +7392,8 @@ var init_events = __esm({
 // src/shared/logger.ts
 function resolveActiveLevel() {
   const now = Date.now();
-  if (_cachedLevel !== void 0 && now < _cacheExpiresAt) return _cachedLevel;
+  if (_cachedLevel !== void 0 && now < _cacheExpiresAt)
+    return _cachedLevel;
   const raw = (process.env["GOODVIBES_LOG_LEVEL"] ?? "info").toLowerCase();
   _cachedLevel = raw in LEVEL_ORDER ? raw : "info";
   _cacheExpiresAt = now + LOG_LEVEL_CACHE_TTL_MS;
@@ -7387,7 +7402,8 @@ function resolveActiveLevel() {
 function createLogger(component) {
   function write(level, message, metadata) {
     const activeLevel = resolveActiveLevel();
-    if (LEVEL_ORDER[level] < LEVEL_ORDER[activeLevel]) return;
+    if (LEVEL_ORDER[level] < LEVEL_ORDER[activeLevel])
+      return;
     const entry = {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       level,
@@ -7399,10 +7415,10 @@ function createLogger(component) {
   }
   __name(write, "write");
   return {
-    debug: /* @__PURE__ */ __name((msg, meta3) => write("debug", msg, meta3), "debug"),
-    info: /* @__PURE__ */ __name((msg, meta3) => write("info", msg, meta3), "info"),
-    warn: /* @__PURE__ */ __name((msg, meta3) => write("warn", msg, meta3), "warn"),
-    error: /* @__PURE__ */ __name((msg, meta3) => write("error", msg, meta3), "error")
+    debug: (msg, meta3) => write("debug", msg, meta3),
+    info: (msg, meta3) => write("info", msg, meta3),
+    warn: (msg, meta3) => write("warn", msg, meta3),
+    error: (msg, meta3) => write("error", msg, meta3)
   };
 }
 var LEVEL_ORDER, _cachedLevel, _cacheExpiresAt, LOG_LEVEL_CACHE_TTL_MS;
@@ -7621,11 +7637,16 @@ var init_devserver = __esm({
       }
       reconfigure(config2) {
         const patch = {};
-        if (typeof config2.enabled === "boolean") patch.enabled = config2.enabled;
-        if (typeof config2.command === "string") patch.command = config2.command;
-        if (typeof config2.port === "number") patch.port = config2.port;
-        if (typeof config2.health_url === "string") patch.health_url = config2.health_url;
-        if (typeof config2.check_interval_ms === "number") patch.check_interval_ms = config2.check_interval_ms;
+        if (typeof config2.enabled === "boolean")
+          patch.enabled = config2.enabled;
+        if (typeof config2.command === "string")
+          patch.command = config2.command;
+        if (typeof config2.port === "number")
+          patch.port = config2.port;
+        if (typeof config2.health_url === "string")
+          patch.health_url = config2.health_url;
+        if (typeof config2.check_interval_ms === "number")
+          patch.check_interval_ms = config2.check_interval_ms;
         const wasEnabled = this.config.enabled;
         this.config = { ...this.config, ...patch };
         if (wasEnabled && !this.config.enabled) {
@@ -8400,7 +8421,7 @@ var ZodType = class {
     this["~standard"] = {
       version: 1,
       vendor: "zod",
-      validate: /* @__PURE__ */ __name((data) => this["~validate"](data), "validate")
+      validate: (data) => this["~validate"](data)
     };
   }
   optional() {
@@ -9936,7 +9957,7 @@ function deepPartialify(schema) {
     }
     return new ZodObject({
       ...schema._def,
-      shape: /* @__PURE__ */ __name(() => newShape, "shape")
+      shape: () => newShape
     });
   } else if (schema instanceof ZodArray) {
     return new ZodArray({
@@ -10067,7 +10088,7 @@ var ZodObject = class _ZodObject extends ZodType {
       ...this._def,
       unknownKeys: "strict",
       ...message !== void 0 ? {
-        errorMap: /* @__PURE__ */ __name((issue2, ctx) => {
+        errorMap: (issue2, ctx) => {
           const defaultError = this._def.errorMap?.(issue2, ctx).message ?? ctx.defaultError;
           if (issue2.code === "unrecognized_keys")
             return {
@@ -10076,7 +10097,7 @@ var ZodObject = class _ZodObject extends ZodType {
           return {
             message: defaultError
           };
-        }, "errorMap")
+        }
       } : {}
     });
   }
@@ -10112,10 +10133,10 @@ var ZodObject = class _ZodObject extends ZodType {
   extend(augmentation) {
     return new _ZodObject({
       ...this._def,
-      shape: /* @__PURE__ */ __name(() => ({
+      shape: () => ({
         ...this._def.shape(),
         ...augmentation
-      }), "shape")
+      })
     });
   }
   /**
@@ -10127,10 +10148,10 @@ var ZodObject = class _ZodObject extends ZodType {
     const merged = new _ZodObject({
       unknownKeys: merging._def.unknownKeys,
       catchall: merging._def.catchall,
-      shape: /* @__PURE__ */ __name(() => ({
+      shape: () => ({
         ...this._def.shape(),
         ...merging._def.shape()
-      }), "shape"),
+      }),
       typeName: ZodFirstPartyTypeKind.ZodObject
     });
     return merged;
@@ -10209,7 +10230,7 @@ var ZodObject = class _ZodObject extends ZodType {
     }
     return new _ZodObject({
       ...this._def,
-      shape: /* @__PURE__ */ __name(() => shape, "shape")
+      shape: () => shape
     });
   }
   omit(mask) {
@@ -10221,7 +10242,7 @@ var ZodObject = class _ZodObject extends ZodType {
     }
     return new _ZodObject({
       ...this._def,
-      shape: /* @__PURE__ */ __name(() => shape, "shape")
+      shape: () => shape
     });
   }
   /**
@@ -10242,7 +10263,7 @@ var ZodObject = class _ZodObject extends ZodType {
     }
     return new _ZodObject({
       ...this._def,
-      shape: /* @__PURE__ */ __name(() => newShape, "shape")
+      shape: () => newShape
     });
   }
   required(mask) {
@@ -10261,7 +10282,7 @@ var ZodObject = class _ZodObject extends ZodType {
     }
     return new _ZodObject({
       ...this._def,
-      shape: /* @__PURE__ */ __name(() => newShape, "shape")
+      shape: () => newShape
     });
   }
   keyof() {
@@ -10270,7 +10291,7 @@ var ZodObject = class _ZodObject extends ZodType {
 };
 ZodObject.create = (shape, params) => {
   return new ZodObject({
-    shape: /* @__PURE__ */ __name(() => shape, "shape"),
+    shape: () => shape,
     unknownKeys: "strip",
     catchall: ZodNever.create(),
     typeName: ZodFirstPartyTypeKind.ZodObject,
@@ -10279,7 +10300,7 @@ ZodObject.create = (shape, params) => {
 };
 ZodObject.strictCreate = (shape, params) => {
   return new ZodObject({
-    shape: /* @__PURE__ */ __name(() => shape, "shape"),
+    shape: () => shape,
     unknownKeys: "strict",
     catchall: ZodNever.create(),
     typeName: ZodFirstPartyTypeKind.ZodObject,
@@ -11200,14 +11221,14 @@ var ZodEffects = class extends ZodType {
     const { status, ctx } = this._processInputParams(input);
     const effect = this._def.effect || null;
     const checkCtx = {
-      addIssue: /* @__PURE__ */ __name((arg) => {
+      addIssue: (arg) => {
         addIssueToContext(ctx, arg);
         if (arg.fatal) {
           status.abort();
         } else {
           status.dirty();
         }
-      }, "addIssue"),
+      },
       get path() {
         return ctx.path;
       }
@@ -11480,6 +11501,7 @@ ZodNaN.create = (params) => {
     ...processCreateParams(params)
   });
 };
+var BRAND = Symbol("zod_brand");
 var ZodBranded = class extends ZodType {
   static {
     __name(this, "ZodBranded");
@@ -11709,16 +11731,17 @@ function $constructor(name, initializer3, params) {
   __name(_, "_");
   Object.defineProperty(_, "init", { value: init });
   Object.defineProperty(_, Symbol.hasInstance, {
-    value: /* @__PURE__ */ __name((inst) => {
+    value: (inst) => {
       if (params?.Parent && inst instanceof params.Parent)
         return true;
       return inst?._zod?.traits?.has(name);
-    }, "value")
+    }
   });
   Object.defineProperty(_, "name", { value: name });
   return _;
 }
 __name($constructor, "$constructor");
+var $brand = Symbol("zod_brand");
 var $ZodAsyncError = class extends Error {
   static {
     __name(this, "$ZodAsyncError");
@@ -11884,7 +11907,7 @@ function floatSafeRemainder2(val, step) {
   return valInt % stepInt / 10 ** decCount;
 }
 __name(floatSafeRemainder2, "floatSafeRemainder");
-var EVALUATING = /* @__PURE__ */ Symbol("evaluating");
+var EVALUATING = Symbol("evaluating");
 function defineLazy(object3, key, getter) {
   let value = void 0;
   Object.defineProperty(object3, key, {
@@ -12084,7 +12107,7 @@ function normalizeParams(_params) {
   if (!params)
     return {};
   if (typeof params === "string")
-    return { error: /* @__PURE__ */ __name(() => params, "error") };
+    return { error: () => params };
   if (params?.message !== void 0) {
     if (params?.error !== void 0)
       throw new Error("Cannot specify both `message` and `error` params");
@@ -12092,7 +12115,7 @@ function normalizeParams(_params) {
   }
   delete params.message;
   if (typeof params.error === "string")
-    return { ...params, error: /* @__PURE__ */ __name(() => params.error, "error") };
+    return { ...params, error: () => params.error };
   return params;
 }
 __name(normalizeParams, "normalizeParams");
@@ -12493,7 +12516,7 @@ var initializer = /* @__PURE__ */ __name((inst, def) => {
   });
   inst.message = JSON.stringify(def, jsonStringifyReplacer, 2);
   Object.defineProperty(inst, "toString", {
-    value: /* @__PURE__ */ __name(() => inst.message, "value"),
+    value: () => inst.message,
     enumerable: false
   });
 }, "initializer");
@@ -13484,14 +13507,14 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
     };
   }
   defineLazy(inst, "~standard", () => ({
-    validate: /* @__PURE__ */ __name((value) => {
+    validate: (value) => {
       try {
         const r = safeParse(inst, value);
         return r.success ? { value: r.data } : { issues: r.error?.issues };
       } catch (_) {
         return safeParseAsync(inst, value).then((r) => r.success ? { value: r.data } : { issues: r.error?.issues });
       }
-    }, "validate"),
+    },
     vendor: "zod",
     version: 1
   }));
@@ -14106,13 +14129,13 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   if (!desc?.get) {
     const sh = def.shape;
     Object.defineProperty(def, "shape", {
-      get: /* @__PURE__ */ __name(() => {
+      get: () => {
         const newSh = { ...sh };
         Object.defineProperty(def, "shape", {
           value: newSh
         });
         return newSh;
-      }, "get")
+      }
     });
   }
   const _normalized = cached(() => normalizeDef(def));
@@ -15492,6 +15515,8 @@ __name(en_default2, "default");
 
 // node_modules/zod/v4/core/registries.js
 var _a;
+var $output = Symbol("ZodOutput");
+var $input = Symbol("ZodInput");
 var $ZodRegistry = class {
   static {
     __name(this, "$ZodRegistry");
@@ -16381,7 +16406,7 @@ function _stringbool(Classes, _params) {
     type: "pipe",
     in: stringSchema,
     out: booleanSchema,
-    transform: /* @__PURE__ */ __name(((input, payload) => {
+    transform: (input, payload) => {
       let data = input;
       if (params.case !== "sensitive")
         data = data.toLowerCase();
@@ -16400,14 +16425,14 @@ function _stringbool(Classes, _params) {
         });
         return {};
       }
-    }), "transform"),
-    reverseTransform: /* @__PURE__ */ __name(((input, _payload) => {
+    },
+    reverseTransform: (input, _payload) => {
       if (input === true) {
         return truthyArray[0] || "true";
       } else {
         return falsyArray[0] || "false";
       }
-    }), "reverseTransform"),
+    },
     error: params.error
   });
   return codec2;
@@ -17586,25 +17611,25 @@ var initializer2 = /* @__PURE__ */ __name((inst, issues) => {
   inst.name = "ZodError";
   Object.defineProperties(inst, {
     format: {
-      value: /* @__PURE__ */ __name((mapper) => formatError(inst, mapper), "value")
+      value: (mapper) => formatError(inst, mapper)
       // enumerable: false,
     },
     flatten: {
-      value: /* @__PURE__ */ __name((mapper) => flattenError(inst, mapper), "value")
+      value: (mapper) => flattenError(inst, mapper)
       // enumerable: false,
     },
     addIssue: {
-      value: /* @__PURE__ */ __name((issue2) => {
+      value: (issue2) => {
         inst.issues.push(issue2);
         inst.message = JSON.stringify(inst.issues, jsonStringifyReplacer, 2);
-      }, "value")
+      }
       // enumerable: false,
     },
     addIssues: {
-      value: /* @__PURE__ */ __name((issues2) => {
+      value: (issues2) => {
         inst.issues.push(...issues2);
         inst.message = JSON.stringify(inst.issues, jsonStringifyReplacer, 2);
-      }, "value")
+      }
       // enumerable: false,
     },
     isEmpty: {
@@ -17660,10 +17685,10 @@ var ZodType2 = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   inst.with = inst.check;
   inst.clone = (def2, params) => clone(inst, def2, params);
   inst.brand = () => inst;
-  inst.register = ((reg, meta3) => {
+  inst.register = (reg, meta3) => {
     reg.add(inst, meta3);
     return inst;
-  });
+  };
   inst.parse = (data, params) => parse2(inst, data, params, { callee: inst.parse });
   inst.safeParse = (data, params) => safeParse3(inst, data, params);
   inst.parseAsync = async (data, params) => parseAsync2(inst, data, params, { callee: inst.parseAsync });
@@ -18768,7 +18793,7 @@ function _instanceof(cls, params = {}) {
   const inst = new ZodCustom({
     type: "custom",
     check: "custom",
-    fn: /* @__PURE__ */ __name((data) => data instanceof cls, "fn"),
+    fn: (data) => data instanceof cls,
     abort: true,
     ...util_exports.normalizeParams(params)
   });
@@ -20337,6 +20362,9 @@ function isTerminal(status) {
 }
 __name(isTerminal, "isTerminal");
 
+// node_modules/zod-to-json-schema/dist/esm/Options.js
+var ignoreOverride = Symbol("Let zodToJsonSchema decide on which parser to use");
+
 // node_modules/zod-to-json-schema/dist/esm/parsers/string.js
 var ALPHA_NUMERIC = new Set("ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvxyz0123456789");
 
@@ -20631,7 +20659,7 @@ var Protocol = class {
       signal: abortController.signal,
       sessionId: capturedTransport?.sessionId,
       _meta: request.params?._meta,
-      sendNotification: /* @__PURE__ */ __name(async (notification) => {
+      sendNotification: async (notification) => {
         if (abortController.signal.aborted)
           return;
         const notificationOptions = { relatedRequestId: request.id };
@@ -20639,8 +20667,8 @@ var Protocol = class {
           notificationOptions.relatedTask = { taskId: relatedTaskId };
         }
         await this.notification(notification, notificationOptions);
-      }, "sendNotification"),
-      sendRequest: /* @__PURE__ */ __name(async (r, resultSchema, options) => {
+      },
+      sendRequest: async (r, resultSchema, options) => {
         if (abortController.signal.aborted) {
           throw new McpError(ErrorCode.ConnectionClosed, "Request was cancelled");
         }
@@ -20653,7 +20681,7 @@ var Protocol = class {
           await taskStore.updateTaskStatus(effectiveTaskId, "input_required");
         }
         return await this.request(r, resultSchema, requestOptions);
-      }, "sendRequest"),
+      },
       authInfo: extra?.authInfo,
       requestId: request.id,
       requestInfo: extra?.requestInfo,
@@ -21234,7 +21262,7 @@ var Protocol = class {
       throw new Error("No task store configured");
     }
     return {
-      createTask: /* @__PURE__ */ __name(async (taskParams) => {
+      createTask: async (taskParams) => {
         if (!request) {
           throw new Error("No request provided");
         }
@@ -21242,15 +21270,15 @@ var Protocol = class {
           method: request.method,
           params: request.params
         }, sessionId);
-      }, "createTask"),
-      getTask: /* @__PURE__ */ __name(async (taskId) => {
+      },
+      getTask: async (taskId) => {
         const task = await taskStore.getTask(taskId, sessionId);
         if (!task) {
           throw new McpError(ErrorCode.InvalidParams, "Failed to retrieve task: Task not found");
         }
         return task;
-      }, "getTask"),
-      storeTaskResult: /* @__PURE__ */ __name(async (taskId, status, result) => {
+      },
+      storeTaskResult: async (taskId, status, result) => {
         await taskStore.storeTaskResult(taskId, status, result, sessionId);
         const task = await taskStore.getTask(taskId, sessionId);
         if (task) {
@@ -21263,11 +21291,11 @@ var Protocol = class {
             this._cleanupTaskProgressHandler(taskId);
           }
         }
-      }, "storeTaskResult"),
-      getTaskResult: /* @__PURE__ */ __name((taskId) => {
+      },
+      getTaskResult: (taskId) => {
         return taskStore.getTaskResult(taskId, sessionId);
-      }, "getTaskResult"),
-      updateTaskStatus: /* @__PURE__ */ __name(async (taskId, status, statusMessage) => {
+      },
+      updateTaskStatus: async (taskId, status, statusMessage) => {
         const task = await taskStore.getTask(taskId, sessionId);
         if (!task) {
           throw new McpError(ErrorCode.InvalidParams, `Task "${taskId}" not found - it may have been cleaned up`);
@@ -21287,10 +21315,10 @@ var Protocol = class {
             this._cleanupTaskProgressHandler(taskId);
           }
         }
-      }, "updateTaskStatus"),
-      listTasks: /* @__PURE__ */ __name((cursor) => {
+      },
+      listTasks: (cursor) => {
         return taskStore.listTasks(cursor, sessionId);
-      }, "listTasks")
+      }
     };
   }
 };
@@ -22067,24 +22095,28 @@ var LocalTransport = class {
   // ─── Workflows ──────────────────────────────────────────────
   async getWorkflow(workflowId) {
     const engine = this.engine.getWorkflowEngine();
-    if (!engine) return null;
+    if (!engine)
+      return null;
     const instance = engine.get(workflowId);
     return instance ? instance : null;
   }
   async listWorkflows() {
     const engine = this.engine.getWorkflowEngine();
-    if (!engine) return [];
+    if (!engine)
+      return [];
     return engine.listAll();
   }
   async startWorkflow(definitionId, context) {
     const engine = this.engine.getWorkflowEngine();
-    if (!engine) throw new Error("Workflow engine not available");
+    if (!engine)
+      throw new Error("Workflow engine not available");
     const instance = engine.create(definitionId, context ?? {});
     return { workflow_id: instance.id };
   }
   async transitionWorkflow(workflowId, event, data) {
     const engine = this.engine.getWorkflowEngine();
-    if (!engine) throw new Error("Workflow engine not available");
+    if (!engine)
+      throw new Error("Workflow engine not available");
     const runtimeEvent = createEvent({
       source: { kind: "internal" },
       type: event,
@@ -22096,41 +22128,48 @@ var LocalTransport = class {
   // ─── Triggers ───────────────────────────────────────────────
   async listTriggers() {
     const registry2 = this.engine.getTriggerRegistry();
-    if (!registry2) return [];
+    if (!registry2)
+      return [];
     return registry2.list();
   }
   async getTrigger(triggerId) {
     const registry2 = this.engine.getTriggerRegistry();
-    if (!registry2) return null;
+    if (!registry2)
+      return null;
     const trigger = registry2.get(triggerId);
     return trigger ? trigger : null;
   }
   async registerTrigger(definition) {
     const registry2 = this.engine.getTriggerRegistry();
-    if (!registry2) throw new Error("Trigger registry not available");
+    if (!registry2)
+      throw new Error("Trigger registry not available");
     registry2.register(definition);
   }
   async unregisterTrigger(triggerId) {
     const registry2 = this.engine.getTriggerRegistry();
-    if (!registry2) return false;
+    if (!registry2)
+      return false;
     return registry2.unregister(triggerId);
   }
   // ─── Agents ─────────────────────────────────────────────────
   async getAgent(agentId) {
     const coordinator = this.engine.getAgentCoordinator();
-    if (!coordinator) return null;
+    if (!coordinator)
+      return null;
     const agent = coordinator.getAgent(agentId);
     return agent ? agent : null;
   }
   async listAgents() {
     const coordinator = this.engine.getAgentCoordinator();
-    if (!coordinator) return [];
+    if (!coordinator)
+      return [];
     return coordinator.listActive();
   }
   // ─── Directives ─────────────────────────────────────────────
   async drainDirectives(target, workflowId) {
     const queue = this.engine.getDirectiveQueue();
-    if (!queue) return { directives: [] };
+    if (!queue)
+      return { directives: [] };
     const result = await queue.holdDrain(target, workflowId);
     return { directives: result.directives };
   }
@@ -22198,8 +22237,10 @@ var RemoteTransport = class {
    * Resolves when session is established; rejects on timeout or error.
    */
   async connect() {
-    if (this.state === "connected") return;
-    if (this.connectPromise) return this.connectPromise;
+    if (this.state === "connected")
+      return;
+    if (this.connectPromise)
+      return this.connectPromise;
     this.state = "connecting";
     this.reconnectAttempt = 0;
     this.connectPromise = this.connectSocket().then(() => {
@@ -22302,7 +22343,7 @@ var RemoteTransport = class {
           session_id: this.sessionId
         }) + "\n";
         this.pending.set(joinId, {
-          resolve: /* @__PURE__ */ __name((resp) => {
+          resolve: (resp) => {
             clearTimeout(timer);
             if (resp.status === "error") {
               socket.destroy();
@@ -22310,11 +22351,11 @@ var RemoteTransport = class {
             } else {
               resolve2();
             }
-          }, "resolve"),
-          reject: /* @__PURE__ */ __name((err) => {
+          },
+          reject: (err) => {
             clearTimeout(timer);
             reject(err);
-          }, "reject")
+          }
         });
         socket.write(join23, (err) => {
           if (err) {
@@ -22335,12 +22376,14 @@ var RemoteTransport = class {
     const lines = this.buffer.split("\n");
     this.buffer = lines.pop() ?? "";
     for (const line of lines) {
-      if (!line.trim()) continue;
+      if (!line.trim())
+        continue;
       try {
         const msg = JSON.parse(line);
         const entry = this.pending.get(msg.id);
         if (entry) {
-          if (entry.timer) clearTimeout(entry.timer);
+          if (entry.timer)
+            clearTimeout(entry.timer);
           this.pending.delete(msg.id);
           entry.resolve(msg);
         }
@@ -22384,12 +22427,14 @@ var RemoteTransport = class {
     }, delay);
   }
   doReconnect(attempt) {
-    if (this.state !== "reconnecting") return;
+    if (this.state !== "reconnecting")
+      return;
     this.reconnectAttempt = attempt;
     this.onReconnectingCb?.(attempt);
     logger.info("Reconnecting to daemon", { attempt, maxAttempts: this.reconnectOpts.maxAttempts });
     this.connectSocket().then(() => {
-      if (this.state !== "reconnecting") return;
+      if (this.state !== "reconnecting")
+        return;
       this.state = "connected";
       this.reconnectAttempt = 0;
       logger.info("Reconnected to daemon");
@@ -22399,7 +22444,8 @@ var RemoteTransport = class {
         cb();
       }
     }).catch(() => {
-      if (this.state !== "reconnecting") return;
+      if (this.state !== "reconnecting")
+        return;
       if (this.reconnectAttempt >= this.reconnectOpts.maxAttempts) {
         this.transitionToDead();
       } else {
@@ -22428,7 +22474,8 @@ var RemoteTransport = class {
   }
   rejectAllPending(err) {
     for (const [id, entry] of this.pending) {
-      if (entry.timer) clearTimeout(entry.timer);
+      if (entry.timer)
+        clearTimeout(entry.timer);
       this.pending.delete(id);
       entry.reject(err);
     }
@@ -22449,7 +22496,8 @@ var RemoteTransport = class {
       const line = JSON.stringify(request) + "\n";
       this.socket.write(line, (err) => {
         if (err) {
-          if (entry.timer) clearTimeout(entry.timer);
+          if (entry.timer)
+            clearTimeout(entry.timer);
           this.pending.delete(request.id);
           reject(err);
         }
@@ -22538,10 +22586,12 @@ var RemoteTransport = class {
 function discoverDaemonSocket(projectRoot) {
   const goodvibesDir = (0, import_node_path.join)(projectRoot, ".goodvibes");
   const pointerPath = (0, import_node_path.join)(goodvibesDir, DAEMON_SOCKET_POINTER);
-  if (!(0, import_node_fs.existsSync)(pointerPath)) return void 0;
+  if (!(0, import_node_fs.existsSync)(pointerPath))
+    return void 0;
   try {
     const content = (0, import_node_fs.readFileSync)(pointerPath, "utf-8").trim();
-    if (!content) return void 0;
+    if (!content)
+      return void 0;
     const pidPath = (0, import_node_path.join)(goodvibesDir, DAEMON_PID_FILE);
     if ((0, import_node_fs.existsSync)(pidPath)) {
       const pidStr = (0, import_node_fs.readFileSync)(pidPath, "utf-8").trim();
@@ -22675,7 +22725,8 @@ var DEFAULT_CONFIG = {
     socket_dir: (() => {
       try {
         const xdg = process.env["XDG_RUNTIME_DIR"];
-        if (xdg) return `${xdg}/goodvibes`;
+        if (xdg)
+          return `${xdg}/goodvibes`;
         const uid = process.getuid?.() ?? (() => {
           try {
             return (0, import_node_os.userInfo)().uid;
@@ -22812,7 +22863,8 @@ var DEFAULT_CONFIG = {
 function deepMerge(base, override) {
   const result = { ...base };
   for (const key of Object.keys(override)) {
-    if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+    if (key === "__proto__" || key === "constructor" || key === "prototype")
+      continue;
     const baseVal = base[key];
     const overrideVal = override[key];
     if (overrideVal !== void 0 && overrideVal !== null && typeof overrideVal === "object" && !Array.isArray(overrideVal) && typeof baseVal === "object" && baseVal !== null) {
@@ -23027,7 +23079,8 @@ function removePidFile(projectRoot) {
 __name(removePidFile, "removePidFile");
 async function checkCrashRecovery(projectRoot) {
   const pidFilePath = getPidFilePath(projectRoot);
-  if (!(0, import_node_fs4.existsSync)(pidFilePath)) return;
+  if (!(0, import_node_fs4.existsSync)(pidFilePath))
+    return;
   try {
     const stalePid = (0, import_node_fs4.readFileSync)(pidFilePath, "utf-8").trim();
     const currentPid = String(process.pid);
@@ -23209,8 +23262,10 @@ var HealthChecker = class {
    * @returns 'healthy', 'degraded', or 'unhealthy'.
    */
   aggregateStatus(checks) {
-    if (checks.some((c) => c.status === "fail")) return "unhealthy";
-    if (checks.some((c) => c.status === "warn")) return "degraded";
+    if (checks.some((c) => c.status === "fail"))
+      return "unhealthy";
+    if (checks.some((c) => c.status === "warn"))
+      return "degraded";
     return "healthy";
   }
 };
@@ -23420,7 +23475,8 @@ var EventBus = class {
       if (this.historyWriteIndex >= Number.MAX_SAFE_INTEGER - this.maxHistorySize) {
         this.historyWriteIndex = this.historyWriteIndex % this.maxHistorySize;
       }
-      if (this.historyCount < this.maxHistorySize) this.historyCount++;
+      if (this.historyCount < this.maxHistorySize)
+        this.historyCount++;
     }
     for (const [pattern, entryMap] of this.handlers) {
       if (this.matchPattern(full.type, pattern)) {
@@ -23443,7 +23499,7 @@ var EventBus = class {
     if (!this.handlers.has(pattern)) {
       this.handlers.set(pattern, /* @__PURE__ */ new Map());
     }
-    const key = /* @__PURE__ */ Symbol();
+    const key = Symbol();
     const opts = options ?? {};
     const entry = {
       handler,
@@ -23498,7 +23554,8 @@ var EventBus = class {
       const startIndex = this.historyCount < this.maxHistorySize ? 0 : this.historyWriteIndex % this.maxHistorySize;
       for (let i = 0; i < this.historyCount; i++) {
         const entry = this.historyBuffer[(startIndex + i) % this.maxHistorySize];
-        if (entry !== void 0) events.push(entry);
+        if (entry !== void 0)
+          events.push(entry);
       }
     }
     let filteredEvents = events;
@@ -23681,8 +23738,10 @@ var EventLog = class {
           }
           const ts = event.timestamp;
           if (ts) {
-            if (!this.oldestEvent || ts < this.oldestEvent) this.oldestEvent = ts;
-            if (!this.newestEvent || ts > this.newestEvent) this.newestEvent = ts;
+            if (!this.oldestEvent || ts < this.oldestEvent)
+              this.oldestEvent = ts;
+            if (!this.newestEvent || ts > this.newestEvent)
+              this.newestEvent = ts;
           }
           this.eventCount++;
         } catch {
@@ -23715,7 +23774,8 @@ var EventLog = class {
    * @param event - The event to persist.
    */
   append(event) {
-    if (this.closed) return;
+    if (this.closed)
+      return;
     const line = JSON.stringify(event) + "\n";
     this.writeBuffer += line;
     this.writeBufferBytes += Buffer.byteLength(line, "utf-8");
@@ -23727,7 +23787,8 @@ var EventLog = class {
       this.typeCountCache[event.type] = (this.typeCountCache[event.type] ?? 0) + 1;
     }
     if (event.timestamp) {
-      if (!this.oldestEvent) this.oldestEvent = event.timestamp;
+      if (!this.oldestEvent)
+        this.oldestEvent = event.timestamp;
       this.newestEvent = event.timestamp;
     }
     if (this.writeBufferBytes >= FLUSH_THRESHOLD_BYTES) {
@@ -23743,7 +23804,8 @@ var EventLog = class {
    * @returns A Promise that resolves once the buffer has been written.
    */
   async flush() {
-    if (this.writeBuffer.length === 0) return;
+    if (this.writeBuffer.length === 0)
+      return;
     return new Promise((resolve2, reject) => {
       this.flushWaiters.push({ resolve: resolve2, reject });
       this.scheduleFlush();
@@ -23971,7 +24033,8 @@ var EventLog = class {
    * Used before compaction to safely replace the underlying file.
    */
   async closeWriteStream() {
-    if (!this.writeStream) return;
+    if (!this.writeStream)
+      return;
     const stream = this.writeStream;
     this.writeStream = null;
     await new Promise((resolve2) => {
@@ -23982,7 +24045,8 @@ var EventLog = class {
    * Ensures the periodic flush timer is running.
    */
   ensureFlushTimer() {
-    if (this.flushTimer !== null || this.closed) return;
+    if (this.flushTimer !== null || this.closed)
+      return;
     this.flushTimer = setTimeout(() => {
       this.flushTimer = null;
       this.scheduleFlush();
@@ -24006,7 +24070,8 @@ var EventLog = class {
     if (this.flushing || this.writeBuffer.length === 0) {
       if (this.writeBuffer.length === 0 && this.flushWaiters.length > 0) {
         const waiters = this.flushWaiters.splice(0);
-        for (const { resolve: resolve2 } of waiters) resolve2();
+        for (const { resolve: resolve2 } of waiters)
+          resolve2();
       }
       return;
     }
@@ -24019,7 +24084,8 @@ var EventLog = class {
    * Resolves all queued flush waiters once complete.
    */
   async drainBuffer() {
-    if (this.flushing || this.writeBuffer.length === 0) return;
+    if (this.flushing || this.writeBuffer.length === 0)
+      return;
     this.flushing = true;
     const data = this.writeBuffer;
     this.writeBuffer = "";
@@ -24030,8 +24096,10 @@ var EventLog = class {
         const stream = this.writeStream;
         await new Promise((resolve2, reject) => {
           stream.write(data, (err) => {
-            if (err) reject(err);
-            else resolve2();
+            if (err)
+              reject(err);
+            else
+              resolve2();
           });
         });
       } else {
@@ -24048,9 +24116,11 @@ var EventLog = class {
       if (this.flushWaiters.length > 0) {
         const waiters = this.flushWaiters.splice(0);
         if (drainError) {
-          for (const { reject } of waiters) reject(drainError);
+          for (const { reject } of waiters)
+            reject(drainError);
         } else {
-          for (const { resolve: resolve2 } of waiters) resolve2();
+          for (const { resolve: resolve2 } of waiters)
+            resolve2();
         }
       }
       if (this.writeBuffer.length > 0) {
@@ -24086,9 +24156,11 @@ var EventLog = class {
         }
       }, "onError");
       rl.on("line", (line) => {
-        if (done) return;
+        if (done)
+          return;
         const trimmed = line.trim();
-        if (trimmed.length === 0) return;
+        if (trimmed.length === 0)
+          return;
         const result = onLine(trimmed);
         if (result === false) {
           cleanup();
@@ -24108,32 +24180,44 @@ var EventLog = class {
   /** Returns true when `event` matches all criteria in `filter`. */
   matchesFilter(event, filter) {
     if (filter.types && filter.types.length > 0) {
-      if (!filter.types.includes(event.type)) return false;
+      if (!filter.types.includes(event.type))
+        return false;
     }
-    if (filter.since && event.timestamp && event.timestamp < filter.since) return false;
-    if (filter.until && event.timestamp && event.timestamp > filter.until) return false;
-    if (filter.since_sequence !== void 0 && (typeof event.metadata?.sequence !== "number" || event.metadata.sequence <= filter.since_sequence)) return false;
-    if (filter.correlation_id && event.metadata?.correlation_id !== filter.correlation_id) return false;
+    if (filter.since && event.timestamp && event.timestamp < filter.since)
+      return false;
+    if (filter.until && event.timestamp && event.timestamp > filter.until)
+      return false;
+    if (filter.since_sequence !== void 0 && (typeof event.metadata?.sequence !== "number" || event.metadata.sequence <= filter.since_sequence))
+      return false;
+    if (filter.correlation_id && event.metadata?.correlation_id !== filter.correlation_id)
+      return false;
     if (filter.source) {
       const src = filter.source;
-      if (src.kind && event.source.kind !== src.kind) return false;
+      if (src.kind && event.source.kind !== src.kind)
+        return false;
       if ("hook_name" in src && src.hook_name) {
-        if (event.source.kind !== "internal" || event.source.hook_name !== src.hook_name) return false;
+        if (event.source.kind !== "internal" || event.source.hook_name !== src.hook_name)
+          return false;
       }
       if ("workflow_id" in src && src.workflow_id) {
-        if (event.source.kind !== "workflow" || event.source.workflow_id !== src.workflow_id) return false;
+        if (event.source.kind !== "workflow" || event.source.workflow_id !== src.workflow_id)
+          return false;
       }
       if ("agent_id" in src && src.agent_id) {
-        if (event.source.kind !== "agent" || event.source.agent_id !== src.agent_id) return false;
+        if (event.source.kind !== "agent" || event.source.agent_id !== src.agent_id)
+          return false;
       }
       if ("trigger_id" in src && src.trigger_id) {
-        if (event.source.kind !== "trigger" || event.source.trigger_id !== src.trigger_id) return false;
+        if (event.source.kind !== "trigger" || event.source.trigger_id !== src.trigger_id)
+          return false;
       }
       if ("tool_name" in src && src.tool_name) {
-        if (event.source.kind !== "mcp_tool" || event.source.tool_name !== src.tool_name) return false;
+        if (event.source.kind !== "mcp_tool" || event.source.tool_name !== src.tool_name)
+          return false;
       }
       if ("client_id" in src && src.client_id) {
-        if (event.source.kind !== "ipc" || event.source.client_id !== src.client_id) return false;
+        if (event.source.kind !== "ipc" || event.source.client_id !== src.client_id)
+          return false;
       }
     }
     return true;
@@ -24156,8 +24240,10 @@ var EventLog = class {
         }
         const ts = event.timestamp;
         if (ts) {
-          if (!oldest || ts < oldest) oldest = ts;
-          if (!newest || ts > newest) newest = ts;
+          if (!oldest || ts < oldest)
+            oldest = ts;
+          if (!newest || ts > newest)
+            newest = ts;
         }
       } catch {
         skippedLines++;
@@ -24459,14 +24545,14 @@ var WorkflowEngine = class {
         const queue = this._queue.get(workflowId);
         if (queue && queue.length > 0) {
           const next = queue.shift();
-          if (queue.length === 0) this._queue.delete(workflowId);
+          if (queue.length === 0)
+            this._queue.delete(workflowId);
           const nextResult = this._executeTransition(workflowId, next.event).then(next.resolve, next.reject).finally(() => {
             return this._drainQueue(workflowId).then(() => {
               resolveInFlight();
               this._inFlight.delete(workflowId);
             });
           });
-          void nextResult;
           return result;
         } else {
           resolveInFlight();
@@ -24486,9 +24572,11 @@ var WorkflowEngine = class {
    */
   _drainQueue(workflowId) {
     const queue = this._queue.get(workflowId);
-    if (!queue || queue.length === 0) return Promise.resolve();
+    if (!queue || queue.length === 0)
+      return Promise.resolve();
     const next = queue.shift();
-    if (queue.length === 0) this._queue.delete(workflowId);
+    if (queue.length === 0)
+      this._queue.delete(workflowId);
     return this._executeTransition(workflowId, next.event).then(next.resolve, next.reject).then(() => this._drainQueue(workflowId));
   }
   /**
@@ -24554,8 +24642,10 @@ var WorkflowEngine = class {
       return null;
     }
     const matchingTransition = currentStateDef.transitions.find((t) => {
-      if (t.event !== event.type) return false;
-      if (!t.guard) return true;
+      if (t.event !== event.type)
+        return false;
+      if (!t.guard)
+        return true;
       return this.evaluateGuard(t.guard, instance.context, event);
     });
     if (!matchingTransition) {
@@ -24608,7 +24698,8 @@ var WorkflowEngine = class {
       instance.current_state = preTransitionState;
       instance.updated_at = preTransitionUpdatedAt;
       for (const key of Object.keys(instance.context)) {
-        if (!(key in contextBefore)) delete instance.context[key];
+        if (!(key in contextBefore))
+          delete instance.context[key];
       }
       Object.assign(instance.context, contextBefore);
       return null;
@@ -25039,16 +25130,21 @@ var WorkflowEngine = class {
       const parts = fieldPath.split(".");
       let value = context;
       for (const part of parts) {
-        if (value === null || value === void 0) return void 0;
+        if (value === null || value === void 0)
+          return void 0;
         value = value[part];
       }
       return value;
     }
-    if (raw === "true") return true;
-    if (raw === "false") return false;
-    if (raw === "null") return null;
+    if (raw === "true")
+      return true;
+    if (raw === "false")
+      return false;
+    if (raw === "null")
+      return null;
     const asNumber = Number(raw);
-    if (!isNaN(asNumber) && raw !== "") return asNumber;
+    if (!isNaN(asNumber) && raw !== "")
+      return asNumber;
     return raw;
   }
   /**
@@ -25061,7 +25157,8 @@ var WorkflowEngine = class {
    * @param extra    - Additional data to include in the event payload.
    */
   emitWorkflowEvent(type, instance, extra) {
-    if (!this.eventBus) return;
+    if (!this.eventBus)
+      return;
     try {
       this.eventBus.emit({
         id: generateEventId(),
@@ -25727,9 +25824,11 @@ var TriggerRegistry = class {
     const now = Date.now();
     const matched = [];
     for (const trigger of this.triggers.values()) {
-      if (this.passesGuards(trigger, now) !== true) continue;
+      if (this.passesGuards(trigger, now) !== true)
+        continue;
       const conditionMet = this.evaluator.evaluate(trigger.condition, event);
-      if (!conditionMet) continue;
+      if (!conditionMet)
+        continue;
       matched.push(this.toL1Trigger(trigger));
     }
     return matched;
@@ -25800,8 +25899,10 @@ var TriggerRegistry = class {
       throw new QueueError(`Cannot replace trigger '${trigger.id}': not registered`);
     }
     const partial2 = trigger;
-    if (!("fires_count" in partial2)) trigger.fires_count = existing.fires_count;
-    if (!("last_fired" in partial2)) trigger.last_fired = existing.last_fired;
+    if (!("fires_count" in partial2))
+      trigger.fires_count = existing.fires_count;
+    if (!("last_fired" in partial2))
+      trigger.last_fired = existing.last_fired;
     this.triggers.set(trigger.id, trigger);
     this.sortedTriggerCache = null;
     log3.info("Trigger replaced", { trigger_id: trigger.id });
@@ -25988,12 +26089,15 @@ var TriggerRegistry = class {
    *   `'disabled'` to identify the first failing guard.
    */
   passesGuards(trigger, now) {
-    if (!trigger.enabled) return "disabled";
+    if (!trigger.enabled)
+      return "disabled";
     if (trigger.last_fired !== void 0 && trigger.cooldown_ms !== void 0) {
-      if (now - trigger.last_fired < trigger.cooldown_ms) return "cooldown";
+      if (now - trigger.last_fired < trigger.cooldown_ms)
+        return "cooldown";
     }
     const effectiveMax = trigger.max_fires ?? this.config.max_fires_per_session;
-    if (trigger.fires_count >= effectiveMax) return "max_fires";
+    if (trigger.fires_count >= effectiveMax)
+      return "max_fires";
     return true;
   }
   /**
@@ -26170,7 +26274,8 @@ var ConditionEvaluator = class {
    * - An exact string matches only that specific type
    */
   matchEventType(eventType, pattern) {
-    if (pattern === "*") return true;
+    if (pattern === "*")
+      return true;
     if (pattern.endsWith(":*")) {
       return eventType.startsWith(pattern.slice(0, -1));
     }
@@ -26180,11 +26285,13 @@ var ConditionEvaluator = class {
    * Evaluates a simple event condition: type match + optional payload filter.
    */
   evaluateEvent(cond, event) {
-    if (!this.matchEventType(event.type, cond.event_type)) return false;
+    if (!this.matchEventType(event.type, cond.event_type))
+      return false;
     if (cond.filter) {
       const data = event.payload.data ?? {};
       for (const [key, expected] of Object.entries(cond.filter)) {
-        if (data[key] !== expected) return false;
+        if (data[key] !== expected)
+          return false;
       }
     }
     return true;
@@ -26193,13 +26300,15 @@ var ConditionEvaluator = class {
    * Returns the contents of the ring buffer in chronological order (oldest first).
    */
   getRecentEventsInOrder() {
-    if (this.recentEventsCount === 0) return [];
+    if (this.recentEventsCount === 0)
+      return [];
     const capacity = this.maxRecentEvents;
     const startIndex = this.recentEventsCount < capacity ? 0 : this.recentEventsHead % capacity;
     const result = [];
     for (let i = 0; i < this.recentEventsCount; i++) {
       const entry = this.recentEventsBuffer[(startIndex + i) % capacity];
-      if (entry !== void 0) result.push(entry);
+      if (entry !== void 0)
+        result.push(entry);
     }
     return result;
   }
@@ -26208,15 +26317,19 @@ var ConditionEvaluator = class {
    * within the last `window_ms` milliseconds (including the current event).
    */
   evaluateThreshold(cond, event) {
-    if (!this.matchEventType(event.type, cond.event_type)) return false;
+    if (!this.matchEventType(event.type, cond.event_type))
+      return false;
     const now = Date.now();
     const windowStart = now - cond.window_ms;
     let matchCount = 0;
     for (const entry of this.getRecentEventsInOrder()) {
-      if (entry.timestamp < windowStart) continue;
-      if (!this.matchEventType(entry.event.type, cond.event_type)) continue;
+      if (entry.timestamp < windowStart)
+        continue;
+      if (!this.matchEventType(entry.event.type, cond.event_type))
+        continue;
       matchCount++;
-      if (matchCount >= cond.count) return true;
+      if (matchCount >= cond.count)
+        return true;
     }
     return false;
   }
@@ -26226,10 +26339,13 @@ var ConditionEvaluator = class {
    * current event matching the final pattern in the sequence.
    */
   evaluateSequence(cond, event) {
-    if (cond.events.length === 0) return false;
+    if (cond.events.length === 0)
+      return false;
     const lastPattern = cond.events[cond.events.length - 1];
-    if (!this.matchEventType(event.type, lastPattern)) return false;
-    if (cond.events.length === 1) return true;
+    if (!this.matchEventType(event.type, lastPattern))
+      return false;
+    if (cond.events.length === 1)
+      return true;
     const now = Date.now();
     const windowStart = now - cond.window_ms;
     const windowEvents = this.getRecentEventsInOrder().filter(
@@ -26238,7 +26354,8 @@ var ConditionEvaluator = class {
     let patternIndex = 0;
     const patternsToMatch = cond.events.slice(0, -1);
     for (const entry of windowEvents) {
-      if (patternIndex >= patternsToMatch.length) break;
+      if (patternIndex >= patternsToMatch.length)
+        break;
       const pattern = patternsToMatch[patternIndex];
       if (this.matchEventType(entry.event.type, pattern)) {
         patternIndex++;
@@ -26833,7 +26950,8 @@ var BudgetTracker = class {
    * @param workflowId - Optional workflow the agent belongs to.
    */
   registerAgent(agentId, agentType, workflowId) {
-    if (this.records.has(agentId)) return;
+    if (this.records.has(agentId))
+      return;
     this.records.set(agentId, {
       agentId,
       workflowId,
@@ -26897,7 +27015,8 @@ var BudgetTracker = class {
    */
   updateAgentStatus(agentId, status) {
     const record2 = this.records.get(agentId);
-    if (record2) record2.status = status;
+    if (record2)
+      record2.status = status;
   }
   /**
    * Check whether sufficient session budget remains to spawn a new agent.
@@ -26909,7 +27028,8 @@ var BudgetTracker = class {
    * @returns True if the session budget allows spawning.
    */
   hasBudget(requiredAmount) {
-    if (this.config.session_budget === 0) return true;
+    if (this.config.session_budget === 0)
+      return true;
     const needed = requiredAmount ?? this.config.default_budget;
     const spent = this.getTotalSpent();
     return spent + needed <= this.config.session_budget;
@@ -26946,8 +27066,10 @@ var BudgetTracker = class {
         wf.tokens.output += b.output_tokens;
         wf.tokens.cache += b.cache_tokens;
         wf.cost_usd += b.cost_usd;
-        if (record2.status === "completed") wf.agents_completed += 1;
-        if (record2.status === "running") wf.agents_active += 1;
+        if (record2.status === "completed")
+          wf.agents_completed += 1;
+        if (record2.status === "running")
+          wf.agents_active += 1;
       }
       if (!byAgentType[record2.agentType]) {
         byAgentType[record2.agentType] = {
@@ -27176,8 +27298,10 @@ var AgentCoordinator = class {
     }
     const prev = agent.status;
     agent.status = status;
-    if (details?.files_modified) agent.files_modified = details.files_modified;
-    if (details?.tools_called !== void 0) agent.tools_called = details.tools_called;
+    if (details?.files_modified)
+      agent.files_modified = details.files_modified;
+    if (details?.tools_called !== void 0)
+      agent.tools_called = details.tools_called;
     if (status === "running" && !agent.started_at) {
       agent.started_at = timestamp();
     }
@@ -27272,9 +27396,11 @@ var AgentCoordinator = class {
     const phaseMap = /* @__PURE__ */ new Map();
     for (const agent of workflowAgents) {
       const phase = agent.workflow_phase ?? "unknown";
-      if (!phaseMap.has(phase)) phaseMap.set(phase, []);
+      if (!phaseMap.has(phase))
+        phaseMap.set(phase, []);
       const phaseList = phaseMap.get(phase);
-      if (phaseList) phaseList.push(agent);
+      if (phaseList)
+        phaseList.push(agent);
     }
     const phases = [];
     let maxParallelism = 1;
@@ -27288,7 +27414,8 @@ var AgentCoordinator = class {
         depends_on: a.depends_on
       }));
       const parallelAgents = agentsInPhase.filter((a) => a.parallel).length;
-      if (parallelAgents > maxParallelism) maxParallelism = parallelAgents;
+      if (parallelAgents > maxParallelism)
+        maxParallelism = parallelAgents;
       const phaseTokens = phaseAgents.reduce(
         (sum, a) => sum + a.budget.allocated,
         0
@@ -27362,7 +27489,8 @@ var AgentCoordinator = class {
       }
       totalTokensSpent += agent.budget.spent;
       totalCostUsd += agent.budget.cost_usd;
-      if (agent.workflow_id) workflowIds.add(agent.workflow_id);
+      if (agent.workflow_id)
+        workflowIds.add(agent.workflow_id);
     }
     return {
       total_agents: this.agents.size,
@@ -27554,10 +27682,12 @@ var AgentCoordinator = class {
    */
   resolveDependencies(completedAgentId) {
     const completed = this.agents.get(completedAgentId);
-    if (!completed) return;
+    if (!completed)
+      return;
     for (const waitingId of completed.depended_by) {
       const waiting = this.agents.get(waitingId);
-      if (!waiting || waiting.status !== "pending") continue;
+      if (!waiting || waiting.status !== "pending")
+        continue;
       const allDepsComplete = waiting.depends_on.every((depId) => {
         const dep = this.agents.get(depId);
         return dep?.status === "completed";
@@ -27615,11 +27745,14 @@ var AgentCoordinator = class {
    */
   updateWorkflowPhaseOnCompletion(completedAgentId) {
     const agent = this.agents.get(completedAgentId);
-    if (!agent?.workflow_id || !agent.workflow_phase) return;
+    if (!agent?.workflow_id || !agent.workflow_phase)
+      return;
     const chain = this.workflowChains.get(agent.workflow_id);
-    if (!chain) return;
+    if (!chain)
+      return;
     const phase = chain.phases.find((p) => p.name === agent.workflow_phase);
-    if (!phase || phase.status === "completed") return;
+    if (!phase || phase.status === "completed")
+      return;
     const allDone = phase.agent_ids.every((aid) => {
       const a = this.agents.get(aid);
       return a?.status === "completed" || a?.status === "failed" || a?.status === "cancelled";
@@ -27641,12 +27774,15 @@ var AgentCoordinator = class {
    * @returns Ordered list of agent IDs on the critical path.
    */
   computeCriticalPath(agentList) {
-    if (agentList.length === 0) return [];
+    if (agentList.length === 0)
+      return [];
     const agentMap = new Map(agentList.map((a) => [a.id, a]));
     const depths = /* @__PURE__ */ new Map();
     const getDepth = /* @__PURE__ */ __name((id, visited = /* @__PURE__ */ new Set()) => {
-      if (depths.has(id)) return depths.get(id);
-      if (visited.has(id)) return 0;
+      if (depths.has(id))
+        return depths.get(id);
+      if (visited.has(id))
+        return 0;
       visited.add(id);
       const agent = agentMap.get(id);
       if (!agent || agent.depends_on.length === 0) {
@@ -27669,13 +27805,15 @@ var AgentCoordinator = class {
         endNode = id;
       }
     }
-    if (!endNode) return [];
+    if (!endNode)
+      return [];
     const path4 = [];
     let current = endNode;
     while (current) {
       path4.unshift(current);
       const agent = agentMap.get(current);
-      if (!agent || agent.depends_on.length === 0) break;
+      if (!agent || agent.depends_on.length === 0)
+        break;
       current = agent.depends_on.reduce((best, depId) => {
         const bd = depths.get(best) ?? -1;
         const dd = depths.get(depId) ?? -1;
@@ -27753,7 +27891,8 @@ var DirectiveQueue = class {
    */
   drain(target, workflowId) {
     const queue = this.queues.get(target);
-    if (!queue || queue.length === 0) return [];
+    if (!queue || queue.length === 0)
+      return [];
     if (workflowId === void 0) {
       const items = [...queue];
       this.queues.delete(target);
@@ -27799,7 +27938,8 @@ var DirectiveQueue = class {
    * Release a held batch — directives confirmed delivered. No-op for unknown holdId.
    */
   releaseHold(holdId) {
-    if (!holdId) return;
+    if (!holdId)
+      return;
     const deleted = this.held.delete(holdId);
     if (deleted) {
       logger10.debug("DirectiveQueue hold released", { holdId });
@@ -27811,7 +27951,8 @@ var DirectiveQueue = class {
    */
   reEnqueueHold(holdId) {
     const batch = this.held.get(holdId);
-    if (!batch) return 0;
+    if (!batch)
+      return 0;
     this.held.delete(holdId);
     const queue = this.queues.get(batch.target) ?? [];
     const merged = [...batch.directives, ...queue];
@@ -28214,7 +28355,8 @@ var JsonStateStore = class {
    * already exist. Safe to call multiple times; subsequent calls are no-ops.
    */
   async initialize() {
-    if (this.initialised) return;
+    if (this.initialised)
+      return;
     ensureDirSync(this.stateDir);
     this.initialised = true;
     logger11.debug("State store initialised", { stateDir: this.stateDir });
@@ -28327,7 +28469,8 @@ var JsonStateStore = class {
     try {
       const content = (0, import_node_fs8.readFileSync)(path4, "utf-8");
       const result = safeJsonParse(content, null);
-      if (result === null) throw new SyntaxError("Failed to parse JSON");
+      if (result === null)
+        throw new SyntaxError("Failed to parse JSON");
       return result;
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {
@@ -28428,7 +28571,8 @@ var Timer = class {
   }
   /** Start the timer. Idempotent — no-op if already running. */
   start() {
-    if (this.handle) return;
+    if (this.handle)
+      return;
     if (this.intervalMs <= 0) {
       logger12.warn("cannot start timer \u2014 intervalMs must be > 0", {
         label: this.label,
@@ -28451,7 +28595,8 @@ var Timer = class {
   }
   /** Stop the timer. Idempotent — no-op if not running. */
   stop() {
-    if (!this.handle) return;
+    if (!this.handle)
+      return;
     clearInterval(this.handle);
     this.handle = null;
     logger12.debug("timer stopped", { label: this.label });
@@ -28466,9 +28611,11 @@ var Timer = class {
    */
   reconfigure(intervalMs) {
     const wasRunning = this.isRunning();
-    if (wasRunning) this.stop();
+    if (wasRunning)
+      this.stop();
     this.intervalMs = intervalMs;
-    if (wasRunning) this.start();
+    if (wasRunning)
+      this.start();
     logger12.debug("timer reconfigured", {
       label: this.label,
       intervalMs,
@@ -28504,7 +28651,7 @@ var CheckpointManager = class {
       MIN_CHECKPOINT_INTERVAL_MS
     );
     this.checkpointTimer = new Timer({
-      callback: /* @__PURE__ */ __name(() => {
+      callback: () => {
         this.saveCheckpoint().catch((err) => {
           logger13.warn("Periodic checkpoint failed", {
             err: toErrorMessage(err)
@@ -28516,7 +28663,7 @@ var CheckpointManager = class {
         } catch (err) {
           logger13.warn("Periodic prune failed", { err: toErrorMessage(err) });
         }
-      }, "callback"),
+      },
       intervalMs: interval,
       label: "checkpoint"
     });
@@ -28541,7 +28688,8 @@ var CheckpointManager = class {
    */
   async saveCheckpoint() {
     const { stateStore, eventLog, healthChecker } = this.deps;
-    if (!stateStore) return;
+    if (!stateStore)
+      return;
     const health = healthChecker.check();
     await stateStore.set("runtime.checkpoint", {
       pid: process.pid,
@@ -28672,12 +28820,12 @@ var SnapshotManager = class {
     }
     const safeInterval = Math.max(intervalMs, 5e3);
     this.periodicTimer = new Timer({
-      callback: /* @__PURE__ */ __name(() => {
+      callback: () => {
         const seq = getSequence();
         this.takeSnapshot(deps, seq).catch((err) => {
           logger14.warn("Periodic snapshot failed", { error: toErrorMessage(err) });
         });
-      }, "callback"),
+      },
       intervalMs: safeInterval,
       label: "snapshot"
     });
@@ -28742,7 +28890,8 @@ var SnapshotManager = class {
   }
 };
 function captureWorkflowState(engine) {
-  if (!engine) return [];
+  if (!engine)
+    return [];
   try {
     return engine.getAllInstances();
   } catch (err) {
@@ -28752,7 +28901,8 @@ function captureWorkflowState(engine) {
 }
 __name(captureWorkflowState, "captureWorkflowState");
 function captureAgentWorkflowBindings(map2) {
-  if (!map2) return {};
+  if (!map2)
+    return {};
   try {
     return map2.snapshot();
   } catch (err) {
@@ -28762,7 +28912,8 @@ function captureAgentWorkflowBindings(map2) {
 }
 __name(captureAgentWorkflowBindings, "captureAgentWorkflowBindings");
 function captureTriggerState(registry2) {
-  if (!registry2) return [];
+  if (!registry2)
+    return [];
   try {
     return registry2.getTriggerStates();
   } catch (err) {
@@ -28829,7 +28980,8 @@ async function replayEvents(eventLog, deps, options = {}) {
     }
     if (eventTypes && eventTypes.length > 0) {
       const typeMatches = eventTypes.some((prefix) => event.type.startsWith(prefix));
-      if (!typeMatches) continue;
+      if (!typeMatches)
+        continue;
     }
     try {
       const processed = processEvent(event, deps, restoredWorkflows, restoredAgentBindings, triggerStateMap, skipActions);
@@ -29044,7 +29196,8 @@ function processEvent(event, _deps, restoredWorkflows, restoredAgentBindings, tr
       const lastFiredTs = event.timestamp ? new Date(event.timestamp).getTime() : void 0;
       if (existing) {
         existing.firesCount++;
-        if (lastFiredTs !== void 0) existing.lastFired = lastFiredTs;
+        if (lastFiredTs !== void 0)
+          existing.lastFired = lastFiredTs;
       } else {
         triggerStateMap.set(triggerId, {
           firesCount: 1,
@@ -29264,7 +29417,8 @@ var WorkflowPersistence = class {
    * @param instance - Any object with an `id: string` field.
    */
   async persist(instance) {
-    if (!this.enabled) return;
+    if (!this.enabled)
+      return;
     try {
       await import_node_fs9.promises.mkdir(this.stateDir, { recursive: true });
       const tmpPath = import_node_path9.default.join(this.stateDir, `${instance.id}.tmp`);
@@ -29288,13 +29442,15 @@ var WorkflowPersistence = class {
    * @returns Array of parsed workflow instance objects.
    */
   async restore() {
-    if (!this.enabled) return [];
+    if (!this.enabled)
+      return [];
     try {
       await import_node_fs9.promises.mkdir(this.stateDir, { recursive: true });
       const files = await import_node_fs9.promises.readdir(this.stateDir);
       const instances = [];
       for (const file2 of files) {
-        if (!file2.endsWith(".json")) continue;
+        if (!file2.endsWith(".json"))
+          continue;
         const filePath = import_node_path9.default.join(this.stateDir, file2);
         try {
           const content = await import_node_fs9.promises.readFile(filePath, "utf-8");
@@ -29321,13 +29477,15 @@ var WorkflowPersistence = class {
    * @returns Number of files removed.
    */
   async cleanup() {
-    if (!this.enabled) return 0;
+    if (!this.enabled)
+      return 0;
     try {
       const files = await import_node_fs9.promises.readdir(this.stateDir);
       let removed = 0;
       const now = Date.now();
       for (const file2 of files) {
-        if (!file2.endsWith(".json")) continue;
+        if (!file2.endsWith(".json"))
+          continue;
         const filePath = import_node_path9.default.join(this.stateDir, file2);
         try {
           const content = await import_node_fs9.promises.readFile(filePath, "utf-8");
@@ -29361,7 +29519,8 @@ var WorkflowPersistence = class {
    * @param instanceId - The workflow instance ID whose file should be removed.
    */
   async remove(instanceId) {
-    if (!this.enabled) return;
+    if (!this.enabled)
+      return;
     const filePath = import_node_path9.default.join(this.stateDir, `${instanceId}.json`);
     try {
       await import_node_fs9.promises.unlink(filePath);
@@ -29439,7 +29598,8 @@ function parseRawJson(raw) {
     if (Array.isArray(parsed.files)) {
       data.files = parsed.files.filter((f) => typeof f === "string");
     }
-    if (typeof parsed.count === "number") data.count = parsed.count;
+    if (typeof parsed.count === "number")
+      data.count = parsed.count;
     if (typeof parsed.minimum_score === "number") {
       data.minimum_score = Math.max(0, Math.min(10, parsed.minimum_score));
     } else if (parsed.minimum_score === null) {
@@ -29460,9 +29620,11 @@ function parseRawJson(raw) {
 }
 __name(parseRawJson, "parseRawJson");
 function parseGvTag(text) {
-  if (!text) return { found: false, data: null };
+  if (!text)
+    return { found: false, data: null };
   const match = text.match(GV_TAG_REGEX);
-  if (!match) return { found: false, data: null };
+  if (!match)
+    return { found: false, data: null };
   const raw = match[1].trim();
   return parseRawJson(raw);
 }
@@ -29553,7 +29715,8 @@ var WatchdogCoordinator = class {
    */
   checkStaleWorkflows() {
     const { workflowEngine, directiveQueue } = this.deps;
-    if (!workflowEngine || !directiveQueue) return;
+    if (!workflowEngine || !directiveQueue)
+      return;
     this.evictStaleEntries();
     directiveQueue.sweepStaleHolds();
     const now = Date.now();
@@ -29571,12 +29734,15 @@ var WatchdogCoordinator = class {
     const pendingDirectives = directiveQueue.peek("subagent_stop");
     for (const workflow of activeWorkflows) {
       const rawState = workflow.current_state.toUpperCase();
-      if (rawState !== "REVIEWING" && rawState !== "FIXING") continue;
+      if (rawState !== "REVIEWING" && rawState !== "FIXING")
+        continue;
       const state = rawState;
       const stateAge = now - new Date(workflow.updated_at).getTime();
-      if (stateAge < WATCHDOG_STALE_MS) continue;
+      if (stateAge < WATCHDOG_STALE_MS)
+        continue;
       const lastRecovery = this.watchdogRecovery.get(workflow.id);
-      if (lastRecovery && now - lastRecovery < WATCHDOG_COOLDOWN_MS) continue;
+      if (lastRecovery && now - lastRecovery < WATCHDOG_COOLDOWN_MS)
+        continue;
       const hasPendingForWorkflow = pendingDirectives.some(
         (d) => isDirectiveForWorkflow(d, workflow.id)
       );
@@ -29620,7 +29786,8 @@ var WatchdogCoordinator = class {
    */
   recoverStaleWorkflow(workflow, state) {
     const { directiveQueue, agentWorkflowMap } = this.deps;
-    if (!directiveQueue) return;
+    if (!directiveQueue)
+      return;
     const wrfc = getWRFCFields(workflow.context);
     const filesModified = Array.isArray(wrfc.files_modified) ? wrfc.files_modified : [];
     if (state === "REVIEWING") {
@@ -29703,7 +29870,8 @@ var WatchdogCoordinator = class {
    */
   writeUrgentDirectives(workflowId) {
     const { directiveQueue, stateDir } = this.deps;
-    if (!directiveQueue) return;
+    if (!directiveQueue)
+      return;
     const matching = directiveQueue.drain("subagent_stop", workflowId);
     if (matching.length === 0) {
       return;
@@ -29972,23 +30140,28 @@ var EventQueue = class _EventQueue {
       let best = i;
       const l = this.left(i);
       const r = this.right(i);
-      if (l < n && this.higher(this.heap[l], this.heap[best])) best = l;
-      if (r < n && this.higher(this.heap[r], this.heap[best])) best = r;
-      if (best === i) break;
+      if (l < n && this.higher(this.heap[l], this.heap[best]))
+        best = l;
+      if (r < n && this.higher(this.heap[r], this.heap[best]))
+        best = r;
+      if (best === i)
+        break;
       this.swap(i, best);
       i = best;
     }
   }
   /** Remove and return the root (highest-priority) entry from the heap. */
   heapPop() {
-    if (this.heap.length === 0) return void 0;
+    if (this.heap.length === 0)
+      return void 0;
     const root = this.heap[0];
     const last = this.heap.pop();
     if (this.heap.length > 0) {
       this.heap[0] = last;
       this.siftDown(0);
     }
-    if (!root.cancelled) this._size--;
+    if (!root.cancelled)
+      this._size--;
     return root;
   }
   // ─── Dedup Helpers ────────────────────────────────────────────────────────
@@ -29998,8 +30171,10 @@ var EventQueue = class _EventQueue {
    */
   maybeCleanDedup() {
     const now = Date.now();
-    if (now - this.lastDedupClean < _EventQueue.DEDUP_CLEAN_INTERVAL_MS) return;
-    if (this.dedupCache.size === 0) return;
+    if (now - this.lastDedupClean < _EventQueue.DEDUP_CLEAN_INTERVAL_MS)
+      return;
+    if (this.dedupCache.size === 0)
+      return;
     this.lastDedupClean = now;
     const cutoff = now - this.dedupTtlMs;
     for (const [id, record2] of this.dedupCache) {
@@ -30096,7 +30271,8 @@ var DeadLetterQueue = class {
     const before = this.entries.length;
     this.entries = this.entries.filter((e) => e.event.id !== event_id);
     const removed = this.entries.length < before;
-    if (removed && this.persistEnabled) this.persist();
+    if (removed && this.persistEnabled)
+      this.persist();
     return removed;
   }
   /**
@@ -30104,7 +30280,8 @@ var DeadLetterQueue = class {
    */
   clear() {
     this.entries = [];
-    if (this.persistEnabled) this.persist();
+    if (this.persistEnabled)
+      this.persist();
   }
   /**
    * Replay a dead-letter entry: calls the re-enqueue callback with the event,
@@ -30114,7 +30291,8 @@ var DeadLetterQueue = class {
    */
   async replay(event_id, reenqueue) {
     const entry = this.getById(event_id);
-    if (!entry) return null;
+    if (!entry)
+      return null;
     try {
       await reenqueue(entry.event);
     } catch (err) {
@@ -30139,7 +30317,8 @@ var DeadLetterQueue = class {
       const parsed = safeJsonParse(content, null);
       if (Array.isArray(parsed)) {
         const valid = parsed.filter((item) => {
-          if (typeof item !== "object" || item === null) return false;
+          if (typeof item !== "object" || item === null)
+            return false;
           const entry = item;
           return typeof entry["error"] === "string" && typeof entry["trigger_id"] === "string" && typeof entry["dead_lettered_at"] === "number" && typeof entry["attempt_count"] === "number" && typeof entry["event"] === "object" && entry["event"] !== null && typeof entry["event"]["id"] === "string";
         });
@@ -30646,7 +30825,8 @@ var EventProcessor = class {
    * At the warning threshold, emits a budget warning event.
    */
   consumeTokens(count) {
-    if (!this.budget || this.budget.total === 0) return;
+    if (!this.budget || this.budget.total === 0)
+      return;
     this.tokensConsumed += count;
     const fraction = this.tokensConsumed / this.budget.total;
     if (!this.budgetWarningSent && fraction >= this.budget.warn_threshold) {
@@ -30663,7 +30843,8 @@ var EventProcessor = class {
    * Call this when tokens are added back to the budget.
    */
   replenishTokens(count) {
-    if (!this.budget || this.budget.total === 0) return;
+    if (!this.budget || this.budget.total === 0)
+      return;
     this.tokensConsumed = Math.max(0, this.tokensConsumed - count);
     const fraction = this.tokensConsumed / this.budget.total;
     if (fraction < this.budget.warn_threshold) {
@@ -31028,7 +31209,8 @@ var SIGINT_GRACE_MS = 5e3;
 function setupSignalHandlers(onShutdown) {
   let shuttingDown = false;
   async function gracefulShutdown(signal, graceMs) {
-    if (shuttingDown) return;
+    if (shuttingDown)
+      return;
     shuttingDown = true;
     process.stderr.write(
       `[runtime-engine] Received ${signal} \u2014 initiating graceful shutdown (${graceMs / 1e3}s grace)
@@ -31137,7 +31319,8 @@ function getPath(obj, path4) {
   const segments = path4.split(".");
   let current = obj;
   for (const seg of segments) {
-    if (current === null || typeof current !== "object") return void 0;
+    if (current === null || typeof current !== "object")
+      return void 0;
     current = current[seg];
   }
   return current;
@@ -31148,7 +31331,8 @@ function deletePath(obj, path4) {
   let current = obj;
   for (let i = 0; i < segments.length - 1; i++) {
     const seg = segments[i];
-    if (typeof current !== "object" || current === null) return;
+    if (typeof current !== "object" || current === null)
+      return;
     current = current[seg];
   }
   if (typeof current === "object" && current !== null) {
@@ -31310,7 +31494,8 @@ var CoreStateStore = class {
   }
   keys(prefix) {
     const allKeys = this.collectKeys(this.data, "");
-    if (!prefix) return allKeys;
+    if (!prefix)
+      return allKeys;
     return allKeys.filter((k) => k === prefix || k.startsWith(prefix + "."));
   }
   /**
@@ -31321,7 +31506,8 @@ var CoreStateStore = class {
   collectKeys(obj, parentPath, depth = 0) {
     if (depth >= DEEP_MERGE_MAX_DEPTH) {
       logger27.warn("collectKeys depth limit exceeded; treating as leaf", { depth, path: parentPath });
-      if (parentPath) return [parentPath];
+      if (parentPath)
+        return [parentPath];
       return [];
     }
     const result = [];
@@ -31391,7 +31577,8 @@ function readStreamBody(stream, maxBytes) {
     let limitExceeded = false;
     let resolved = false;
     stream.on("data", (chunk) => {
-      if (limitExceeded) return;
+      if (limitExceeded)
+        return;
       totalBytes += chunk.length;
       if (totalBytes > maxBytes) {
         limitExceeded = true;
@@ -31406,7 +31593,8 @@ function readStreamBody(stream, maxBytes) {
       chunks.push(chunk);
     });
     stream.on("end", () => {
-      if (limitExceeded) return;
+      if (limitExceeded)
+        return;
       if (!resolved) {
         resolved = true;
         resolve2(Buffer.concat(chunks).toString("utf-8"));
@@ -31464,7 +31652,8 @@ var RollingWindow = class {
     }
   }
   average() {
-    if (this.count === 0) return 0;
+    if (this.count === 0)
+      return 0;
     let sum = 0;
     for (let i = 0; i < this.count; i++) {
       sum += this.buffer[(this.head + i) % this.capacity];
@@ -31472,11 +31661,13 @@ var RollingWindow = class {
     return sum / this.count;
   }
   max() {
-    if (this.count === 0) return 0;
+    if (this.count === 0)
+      return 0;
     let best = -Infinity;
     for (let i = 0; i < this.count; i++) {
       const v = this.buffer[(this.head + i) % this.capacity];
-      if (v > best) best = v;
+      if (v > best)
+        best = v;
     }
     return best;
   }
@@ -31640,13 +31831,13 @@ function createCoreRuntime(actionExecutor, triggerRegistry) {
   const eventQueue = new EventQueue();
   const stateStore = new CoreStateStore();
   const registry2 = triggerRegistry ?? {
-    match: /* @__PURE__ */ __name(() => [], "match"),
-    recordFire: /* @__PURE__ */ __name(() => void 0, "recordFire"),
-    register: /* @__PURE__ */ __name(() => void 0, "register"),
-    unregister: /* @__PURE__ */ __name(() => false, "unregister"),
-    enable: /* @__PURE__ */ __name(() => void 0, "enable"),
-    disable: /* @__PURE__ */ __name(() => void 0, "disable"),
-    get: /* @__PURE__ */ __name(() => void 0, "get")
+    match: () => [],
+    recordFire: () => void 0,
+    register: () => void 0,
+    unregister: () => false,
+    enable: () => void 0,
+    disable: () => void 0,
+    get: () => void 0
   };
   const lifecycle = new LoopLifecycleManager();
   const metrics = new EventMetrics();
@@ -31723,11 +31914,14 @@ var AUTO_COMPLETE_AGENT_TYPES = /* @__PURE__ */ new Set([
   ...REVIEWER_AGENT_TYPES
 ]);
 function matchesAgentType(agentType, typeSet) {
-  if (!agentType) return false;
-  if (typeSet.has(agentType)) return true;
+  if (!agentType)
+    return false;
+  if (typeSet.has(agentType))
+    return true;
   const lower = agentType.toLowerCase();
   for (const entry of typeSet) {
-    if (entry.toLowerCase() === lower) return true;
+    if (entry.toLowerCase() === lower)
+      return true;
   }
   return false;
 }
@@ -31742,7 +31936,8 @@ init_events();
 // src/plugins/wrfc/score-evaluator.ts
 init_utils();
 function extractScore(text) {
-  if (!text) return null;
+  if (!text)
+    return null;
   const result = parseGvTag(text);
   if (result.found && result.data?.score !== void 0) {
     return Math.max(0, Math.min(10, result.data.score));
@@ -32522,10 +32717,12 @@ var VALID_HOOK_TYPES = /* @__PURE__ */ new Set([
   "Stop"
 ]);
 function normalizeHookName(raw) {
-  if (VALID_HOOK_TYPES.has(raw)) return raw;
+  if (VALID_HOOK_TYPES.has(raw))
+    return raw;
   const colonIdx = raw.indexOf(":");
   const withoutPrefix = colonIdx >= 0 ? raw.slice(colonIdx + 1) : raw;
-  if (VALID_HOOK_TYPES.has(withoutPrefix)) return withoutPrefix;
+  if (VALID_HOOK_TYPES.has(withoutPrefix))
+    return withoutPrefix;
   const pascal = withoutPrefix.split("_").map((s) => (s[0]?.toUpperCase() ?? "") + s.slice(1)).join("");
   return VALID_HOOK_TYPES.has(pascal) ? pascal : null;
 }
@@ -32604,8 +32801,10 @@ var HookProcessor = class {
    * - suppressOutput: true wins (any true → true).
    */
   mergeResponses(responses) {
-    if (responses.length === 0) return {};
-    if (responses.length === 1) return { ...responses[0] };
+    if (responses.length === 0)
+      return {};
+    if (responses.length === 1)
+      return { ...responses[0] };
     const merged = {};
     const blockReasons = [];
     const contexts = [];
@@ -32613,7 +32812,8 @@ var HookProcessor = class {
     for (const r of responses) {
       if (r.decision === "block") {
         hasBlock = true;
-        if (r.reason) blockReasons.push(r.reason);
+        if (r.reason)
+          blockReasons.push(r.reason);
       }
       if (r.additionalContext) {
         contexts.push(r.additionalContext);
@@ -32634,7 +32834,8 @@ var HookProcessor = class {
       const allowResp = responses.find((r) => r.decision === "allow");
       if (allowResp) {
         merged.decision = "allow";
-        if (allowResp.reason) merged.reason = allowResp.reason;
+        if (allowResp.reason)
+          merged.reason = allowResp.reason;
       }
     }
     if (contexts.length > 0) {
@@ -32690,11 +32891,13 @@ var HookRegistry = class {
    */
   unregister(id) {
     const handler = this.byId.get(id);
-    if (!handler) return false;
+    if (!handler)
+      return false;
     const list = this.handlers.get(handler.hook_type);
     if (list) {
       const idx = list.findIndex((h) => h.id === id);
-      if (idx !== -1) list.splice(idx, 1);
+      if (idx !== -1)
+        list.splice(idx, 1);
     }
     this.byId.delete(id);
     logger33.debug("Handler unregistered", { id });
@@ -32767,7 +32970,8 @@ var REPLACEMENT_MAP = {
 };
 async function handlePreToolUse(_event, input) {
   const toolName = typeof input["tool_name"] === "string" ? input["tool_name"] : null;
-  if (!toolName) return null;
+  if (!toolName)
+    return null;
   if (BLOCKED_TOOLS.has(toolName)) {
     const replacement = REPLACEMENT_MAP[toolName] ?? "the precision_engine equivalent";
     logger34.info("Blocking deprecated native tool", { toolName, replacement });
@@ -32859,10 +33063,12 @@ function createSubagentStopHandler(deps) {
 __name(createSubagentStopHandler, "createSubagentStopHandler");
 function extractReviewScore2(output) {
   const match = output.match(/<gv>([\s\S]*?)<\/gv>/);
-  if (!match || !match[1]) return null;
+  if (!match || !match[1])
+    return null;
   const data = safeJsonParse(match[1], {});
   const score = data["score"];
-  if (typeof score === "number") return score;
+  if (typeof score === "number")
+    return score;
   return null;
 }
 __name(extractReviewScore2, "extractReviewScore");
@@ -32988,7 +33194,8 @@ var FILE_WRITE_TOOLS = /* @__PURE__ */ new Set([
 function createPostToolUseHandler(deps) {
   return /* @__PURE__ */ __name(async function handlePostToolUse(event, input) {
     const toolName = typeof input["tool_name"] === "string" ? input["tool_name"] : null;
-    if (!toolName || !deps.eventBus) return null;
+    if (!toolName || !deps.eventBus)
+      return null;
     const sessionId = event.session_id;
     if (FILE_WRITE_TOOLS.has(toolName)) {
       const paths = extractModifiedPaths(input);
@@ -33022,7 +33229,8 @@ function createPostToolUseHandler(deps) {
 __name(createPostToolUseHandler, "createPostToolUseHandler");
 function extractModifiedPaths(input) {
   const result = input["tool_result"];
-  if (!result || typeof result !== "object") return [];
+  if (!result || typeof result !== "object")
+    return [];
   const r = result;
   if (Array.isArray(r["files"])) {
     return r["files"].filter((f) => typeof f === "object" && f !== null && typeof f["path"] === "string").map((f) => f.path);
@@ -33031,7 +33239,8 @@ function extractModifiedPaths(input) {
   if (toolInput && typeof toolInput === "object") {
     const ti = toolInput;
     const inputPath = ti["path"] ?? ti["file_path"];
-    if (typeof inputPath === "string") return [inputPath];
+    if (typeof inputPath === "string")
+      return [inputPath];
   }
   return [];
 }
@@ -33195,7 +33404,8 @@ var HeartbeatManager = class {
    * or null if the interval has not yet elapsed (debounce guard).
    */
   tick() {
-    if (!this.config.enabled) return null;
+    if (!this.config.enabled)
+      return null;
     const now = this.now();
     if (this.lastTickAt > 0 && now - this.lastTickAt < this.config.interval_ms * 0.8) {
       return null;
@@ -33371,7 +33581,8 @@ var EventScheduler = class {
     const events = [];
     const toRemove = [];
     for (const [id, item] of this.items) {
-      if (item.next_fire_at > now) continue;
+      if (item.next_fire_at > now)
+        continue;
       if (item.active_hours !== void 0) {
         const { start, end, timezone_offset_hours } = item.active_hours;
         const utcHour = new Date(now).getUTCHours();
@@ -33423,7 +33634,8 @@ var EventScheduler = class {
    */
   pause(id) {
     const item = this.items.get(id);
-    if (!item) return false;
+    if (!item)
+      return false;
     item.next_fire_at = Date.now() + 365 * 24 * 60 * 60 * 1e3;
     this.dirty = true;
     return true;
@@ -33436,7 +33648,8 @@ var EventScheduler = class {
    */
   resume(id) {
     const item = this.items.get(id);
-    if (!item) return false;
+    if (!item)
+      return false;
     if (item.interval_ms !== void 0) {
       item.next_fire_at = Date.now() + item.interval_ms;
     } else {
@@ -33457,9 +33670,11 @@ var EventScheduler = class {
   cancelByRef(ref) {
     const toDelete = [];
     for (const [id, item] of this.items) {
-      if (item.ref === ref) toDelete.push(id);
+      if (item.ref === ref)
+        toDelete.push(id);
     }
-    for (const id of toDelete) this.items.delete(id);
+    for (const id of toDelete)
+      this.items.delete(id);
     return toDelete.length;
   }
   // ─── Accessors ───────────────────────────────────────────────────────────────
@@ -33478,7 +33693,8 @@ var EventScheduler = class {
    * No-op if persist_schedules is false or no store was provided.
    */
   persist() {
-    if (!this.config.persist_schedules || this.store === void 0) return;
+    if (!this.config.persist_schedules || this.store === void 0)
+      return;
     const snapshot = Array.from(this.items.values());
     this.store.set(PERSIST_KEY, snapshot);
   }
@@ -33488,12 +33704,15 @@ var EventScheduler = class {
    * No-op if persist_schedules is false or no store was provided.
    */
   restore() {
-    if (!this.config.persist_schedules || this.store === void 0) return;
+    if (!this.config.persist_schedules || this.store === void 0)
+      return;
     const snapshot = this.store.get(PERSIST_KEY);
-    if (!Array.isArray(snapshot)) return;
+    if (!Array.isArray(snapshot))
+      return;
     const now = Date.now();
     for (const item of snapshot) {
-      if (this.items.has(item.id)) continue;
+      if (this.items.has(item.id))
+        continue;
       if (item.next_fire_at < now) {
         item.next_fire_at = now;
       }
@@ -33628,7 +33847,8 @@ init_errors();
 init_utils();
 var logger42 = createLogger("file-watcher");
 function isDropFilePayload(value) {
-  if (typeof value !== "object" || value === null) return false;
+  if (typeof value !== "object" || value === null)
+    return false;
   const v = value;
   return typeof v["source"] === "string" && v["source"].length > 0 && "payload" in v;
 }
@@ -34035,16 +34255,22 @@ __name(normalizeSlack, "normalizeSlack");
 // src/plugins/external/normalizers/ci.ts
 init_factories();
 function detectProvider(payload, headers) {
-  if (headers?.["x-github-event"] === "workflow_run") return "github_actions";
-  if (headers?.["x-gitlab-event"] !== void 0) return "gitlab_ci";
-  if (payload.build !== void 0 && typeof payload.build === "object") return "circleci";
+  if (headers?.["x-github-event"] === "workflow_run")
+    return "github_actions";
+  if (headers?.["x-gitlab-event"] !== void 0)
+    return "gitlab_ci";
+  if (payload.build !== void 0 && typeof payload.build === "object")
+    return "circleci";
   return "generic_ci";
 }
 __name(detectProvider, "detectProvider");
 function resolveStatus(payload) {
-  if (payload.workflow_run?.conclusion) return payload.workflow_run.conclusion;
-  if (payload.object_attributes?.status) return payload.object_attributes.status;
-  if (payload.build?.status) return payload.build.status;
+  if (payload.workflow_run?.conclusion)
+    return payload.workflow_run.conclusion;
+  if (payload.object_attributes?.status)
+    return payload.object_attributes.status;
+  if (payload.build?.status)
+    return payload.build.status;
   return payload.conclusion ?? payload.status ?? payload.state ?? payload.result ?? "unknown";
 }
 __name(resolveStatus, "resolveStatus");
@@ -34301,15 +34527,15 @@ var AgentTrackerPlugin = class {
     });
     this._unsubscribes = [unsubSpawned, unsubCompleted, unsubFailed, unsubHeartbeat];
     this._handlers = [
-      { event_type: "agent:spawned", handler: /* @__PURE__ */ __name((e) => {
+      { event_type: "agent:spawned", handler: (e) => {
         this.handleSpawned(e);
-      }, "handler"), priority: 5 },
-      { event_type: "agent:completed", handler: /* @__PURE__ */ __name((e) => {
+      }, priority: 5 },
+      { event_type: "agent:completed", handler: (e) => {
         this.handleFinished(e, "completed");
-      }, "handler"), priority: 5 },
-      { event_type: "agent:failed", handler: /* @__PURE__ */ __name((e) => {
+      }, priority: 5 },
+      { event_type: "agent:failed", handler: (e) => {
         this.handleFinished(e, "failed");
-      }, "handler"), priority: 5 }
+      }, priority: 5 }
     ];
     this.state = "starting";
     log9.debug("AgentTrackerPlugin registered with EventBus subscriptions");
@@ -34322,7 +34548,8 @@ var AgentTrackerPlugin = class {
     log9.info("AgentTrackerPlugin started");
   }
   stop() {
-    for (const unsub of this._unsubscribes) unsub();
+    for (const unsub of this._unsubscribes)
+      unsub();
     this._unsubscribes = [];
     this._handlers = [];
     this._services = null;
@@ -34344,7 +34571,8 @@ var AgentTrackerPlugin = class {
       log9.warn("handleSpawned: plugin not registered, skipping");
       return;
     }
-    if (event.source.kind === "agent") return;
+    if (event.source.kind === "agent")
+      return;
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
       log9.debug("handleSpawned: no agent_id, skipping");
@@ -34386,7 +34614,8 @@ var AgentTrackerPlugin = class {
       log9.warn(`handleFinished(${status}): plugin not registered, skipping`);
       return;
     }
-    if (event.source.kind === "agent") return;
+    if (event.source.kind === "agent")
+      return;
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
       log9.debug(`handleFinished(${status}): no agent_id, skipping`);
@@ -34443,9 +34672,11 @@ var AgentTrackerPlugin = class {
    * (e.g. builtin_budget_warning) can fire based on elapsed time.
    */
   emitProgressForActiveAgents() {
-    if (!this._services) return;
+    if (!this._services)
+      return;
     const activeAgents = this.getAgentsByStatus("spawned");
-    if (activeAgents.length === 0) return;
+    if (activeAgents.length === 0)
+      return;
     const now = Date.now();
     for (const agent of activeAgents) {
       const elapsed_ms = now - agent.spawned_at;
@@ -34469,7 +34700,8 @@ var AgentTrackerPlugin = class {
   }
   // ─── Workflow ID resolution ────────────────────────────────────────────────
   resolveWorkflowId(agentId, sessionId) {
-    if (!this._services) return null;
+    if (!this._services)
+      return null;
     const wid = this._services.getState(WRFC_MAP_KEY(sessionId, agentId));
     if (typeof wid === "string" && wid.length > 0) {
       log9.debug("Resolved workflow_id from WRFC state", { agent_id: agentId, workflow_id: wid });
@@ -34479,7 +34711,8 @@ var AgentTrackerPlugin = class {
   }
   // ─── Index management ─────────────────────────────────────────────────────
   addToIndex(agentId) {
-    if (!this._services) return;
+    if (!this._services)
+      return;
     const ids = this._services.getState(INDEX_KEY) ?? [];
     if (!ids.includes(agentId)) {
       this._services.setState(INDEX_KEY, [...ids, agentId]);
@@ -34487,16 +34720,19 @@ var AgentTrackerPlugin = class {
   }
   // ─── Query methods ────────────────────────────────────────────────────────
   getAgent(agentId) {
-    if (!this._services) return null;
+    if (!this._services)
+      return null;
     return this._services.getState(AGENT_KEY(agentId)) ?? null;
   }
   getAllAgents() {
-    if (!this._services) return [];
+    if (!this._services)
+      return [];
     const ids = this._services.getState(INDEX_KEY) ?? [];
     const agents = [];
     for (const id of ids) {
       const agent = this._services.getState(AGENT_KEY(id));
-      if (agent) agents.push(agent);
+      if (agent)
+        agents.push(agent);
     }
     return agents;
   }
@@ -34548,7 +34784,7 @@ var TickDriver = class _TickDriver {
     this.eventProcessor = deps.eventProcessor;
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
     this.timer = new Timer({
-      callback: /* @__PURE__ */ __name(() => this.evaluate(), "callback"),
+      callback: () => this.evaluate(),
       intervalMs: deps.config.daemon.eval_interval_ms,
       label: "tick-driver"
     });
@@ -34565,7 +34801,8 @@ var TickDriver = class _TickDriver {
    * - Starts unconditionally
    */
   start() {
-    if (this.timer.isRunning()) return;
+    if (this.timer.isRunning())
+      return;
     const mode = this.executorMode.getMode();
     if (mode === "daemon") {
       if (!this.config.daemon.auto_tick) {
@@ -34834,7 +35071,8 @@ var ExecutorBudgetManager = class {
    * Adds to both total and daily accumulators, then checks thresholds and caps.
    */
   recordSpending(amount_usd) {
-    if (amount_usd <= 0) return;
+    if (amount_usd <= 0)
+      return;
     this.spending.total_usd += amount_usd;
     this.spending.daily_usd += amount_usd;
     this.spending.last_updated = timestamp();
@@ -34851,7 +35089,7 @@ var ExecutorBudgetManager = class {
         warningFired: this.warningFired.flat,
         capType: "flat",
         paused: this.paused,
-        onWarning: /* @__PURE__ */ __name(() => {
+        onWarning: () => {
           logger46.warn("Executor flat cap warning threshold reached", {
             spent_usd: this.spending.total_usd,
             cap_usd: this.config.flat_cap_usd,
@@ -34872,8 +35110,8 @@ var ExecutorBudgetManager = class {
               }
             }
           });
-        }, "onWarning"),
-        onExceeded: /* @__PURE__ */ __name(() => {
+        },
+        onExceeded: () => {
           this.paused = true;
           logger46.warn("Executor flat cap exceeded \u2014 processing paused", {
             spent_usd: this.spending.total_usd,
@@ -34903,10 +35141,11 @@ var ExecutorBudgetManager = class {
               data: { reason: "flat_cap_exceeded" }
             }
           });
-        }, "onExceeded")
+        }
       });
       this.warningFired.flat = flatResult.warningFired;
-      if (flatResult.exceeded) return;
+      if (flatResult.exceeded)
+        return;
     }
     if (this.config.daily_cap_usd !== void 0 && this.config.daily_cap_usd > 0) {
       const dailyResult = checkCapThreshold({
@@ -34916,7 +35155,7 @@ var ExecutorBudgetManager = class {
         warningFired: this.warningFired.daily,
         capType: "daily",
         paused: this.paused,
-        onWarning: /* @__PURE__ */ __name(() => {
+        onWarning: () => {
           logger46.warn("Executor daily cap warning threshold reached", {
             spent_usd: this.spending.daily_usd,
             cap_usd: this.config.daily_cap_usd,
@@ -34937,8 +35176,8 @@ var ExecutorBudgetManager = class {
               }
             }
           });
-        }, "onWarning"),
-        onExceeded: /* @__PURE__ */ __name(() => {
+        },
+        onExceeded: () => {
           this.paused = true;
           logger46.warn("Executor daily cap exceeded \u2014 processing paused", {
             spent_usd: this.spending.daily_usd,
@@ -34968,7 +35207,7 @@ var ExecutorBudgetManager = class {
               data: { reason: "daily_cap_exceeded" }
             }
           });
-        }, "onExceeded")
+        }
       });
       this.warningFired.daily = dailyResult.warningFired;
     }
@@ -35190,7 +35429,7 @@ var DaemonTickHandler = class {
   config;
   contextClearer;
   /** Returns the current core event queue depth. Wired after plugin init via setQueueDepthGetter(). */
-  getQueueDepth = /* @__PURE__ */ __name(() => 0, "getQueueDepth");
+  getQueueDepth = () => 0;
   constructor(deps) {
     this.executorMode = deps.executorMode;
     this.budgetManager = deps.budgetManager;
@@ -35484,11 +35723,11 @@ var TimeAdapter = class {
   getScheduler() {
     const scheduler = this.plugin.getScheduler();
     return {
-      getItem: /* @__PURE__ */ __name((id) => scheduler.getItem(id), "getItem"),
-      cancel: /* @__PURE__ */ __name((id) => scheduler.cancel(id), "cancel"),
-      scheduleHeartbeat: /* @__PURE__ */ __name((params) => {
+      getItem: (id) => scheduler.getItem(id),
+      cancel: (id) => scheduler.cancel(id),
+      scheduleHeartbeat: (params) => {
         scheduler.scheduleHeartbeat(params);
-      }, "scheduleHeartbeat")
+      }
     };
   }
 };
@@ -35550,10 +35789,13 @@ var VALID_IPC_MESSAGE_TYPES = /* @__PURE__ */ new Set([
   "heartbeat"
 ]);
 function validateIPCMessage(obj) {
-  if (typeof obj !== "object" || obj === null) return false;
+  if (typeof obj !== "object" || obj === null)
+    return false;
   const msg = obj;
-  if (typeof msg["type"] !== "string" || !VALID_IPC_MESSAGE_TYPES.has(msg["type"])) return false;
-  if (typeof msg["id"] !== "string" || msg["id"].length === 0) return false;
+  if (typeof msg["type"] !== "string" || !VALID_IPC_MESSAGE_TYPES.has(msg["type"]))
+    return false;
+  if (typeof msg["id"] !== "string" || msg["id"].length === 0)
+    return false;
   switch (msg["type"]) {
     case "hook_event":
       return typeof msg["hook_name"] === "string" && msg["hook_name"].length > 0 && typeof msg["hook_input"] === "object" && msg["hook_input"] !== null && !Array.isArray(msg["hook_input"]) && typeof msg["timestamp"] === "string";
@@ -35897,7 +36139,8 @@ var IPCServer = class {
    * Check if the current message rate exceeds the limit.
    */
   isRateLimited() {
-    if (this.msgCount < RATE_LIMIT_MAX) return false;
+    if (this.msgCount < RATE_LIMIT_MAX)
+      return false;
     const oldest = this.recentMessages[(this.msgHead - this.msgCount + RATE_LIMIT_MAX) % RATE_LIMIT_MAX];
     return Date.now() - oldest < RATE_LIMIT_WINDOW_MS2;
   }
@@ -35907,7 +36150,8 @@ var IPCServer = class {
   recordMessage() {
     this.recentMessages[this.msgHead] = Date.now();
     this.msgHead = (this.msgHead + 1) % RATE_LIMIT_MAX;
-    if (this.msgCount < RATE_LIMIT_MAX) this.msgCount++;
+    if (this.msgCount < RATE_LIMIT_MAX)
+      this.msgCount++;
   }
   /**
    * Remove the socket file from the filesystem, ignoring errors.
@@ -36005,7 +36249,8 @@ var IPCRouter = class {
    * Called during shutdown to prevent stale session pointers.
    */
   removeSessionPointers() {
-    if (!this.stateDir) return;
+    if (!this.stateDir)
+      return;
     for (const sessionId of this.registeredSessions) {
       const pointerFile = (0, import_node_path14.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
@@ -36365,8 +36610,10 @@ var ToolGateEvaluator = class {
    * Supports '*' (match all), exact names, and '*' suffix/prefix wildcards.
    */
   matchesPattern(toolName, pattern) {
-    if (pattern === "*") return true;
-    if (pattern === toolName) return true;
+    if (pattern === "*")
+      return true;
+    if (pattern === toolName)
+      return true;
     if (pattern.endsWith("*")) {
       return toolName.startsWith(pattern.slice(0, -1));
     }
@@ -36466,9 +36713,11 @@ var ContextInjector = class _ContextInjector {
   }
   /** Gather active workflow state summary. */
   gatherWorkflowState() {
-    if (!this.workflowEngine) return "";
+    if (!this.workflowEngine)
+      return "";
     const instances = this.workflowEngine.getActiveInstances();
-    if (instances.length === 0) return "";
+    if (instances.length === 0)
+      return "";
     const lines = ["## Active Workflows"];
     for (const inst of instances) {
       const ctx = inst.context;
@@ -36483,9 +36732,11 @@ var ContextInjector = class _ContextInjector {
   }
   /** Gather running agent roster. */
   gatherAgentRoster() {
-    if (!this.agentCoordinator) return "";
+    if (!this.agentCoordinator)
+      return "";
     const agents = this.agentCoordinator.listActive();
-    if (agents.length === 0) return "";
+    if (agents.length === 0)
+      return "";
     const lines = ["## Active Agents"];
     for (const agent of agents) {
       const phase = agent.workflow_phase ? ` (${agent.workflow_phase})` : "";
@@ -36495,7 +36746,8 @@ var ContextInjector = class _ContextInjector {
   }
   /** Gather executor budget status. */
   gatherBudgetStatus() {
-    if (!this.budgetManager) return "";
+    if (!this.budgetManager)
+      return "";
     const spending = this.budgetManager.getSpending();
     const canProcess = this.budgetManager.canProcess();
     const status = canProcess ? "ok" : "**EXCEEDED**";
@@ -36524,15 +36776,18 @@ function cleanStalePointerFiles(stateDir, log18) {
     try {
       entries = (0, import_node_fs15.readdirSync)(stateDir);
     } catch (err) {
-      if (err.code === "ENOENT") return;
+      if (err.code === "ENOENT")
+        return;
       throw err;
     }
     const pointerFiles = entries.filter((f) => /^runtime-\d+\.socket$/.test(f));
     for (const filename of pointerFiles) {
       const match = filename.match(/^runtime-(\d+)\.socket$/);
-      if (!match) continue;
+      if (!match)
+        continue;
       const pid = parseInt(match[1], 10);
-      if (isPidAlive(pid)) continue;
+      if (isPidAlive(pid))
+        continue;
       const pointerPath = (0, import_node_path15.join)(stateDir, filename);
       let socketFilePath;
       try {
@@ -36711,7 +36966,8 @@ async function waitForPort(port, timeoutMs) {
         resolve2(false);
       });
     });
-    if (open) return true;
+    if (open)
+      return true;
     await new Promise((r) => setTimeout(r, PORT_POLL_INTERVAL_MS));
   }
   return false;
@@ -36990,11 +37246,14 @@ function hasTestSuite(projectRoot) {
     try {
       const raw = (0, import_node_fs17.readFileSync)(pkgPath, "utf-8");
       const pkg = JSON.parse(raw);
-      if (typeof pkg !== "object" || pkg === null) return false;
+      if (typeof pkg !== "object" || pkg === null)
+        return false;
       const scripts = pkg["scripts"];
-      if (typeof scripts !== "object" || scripts === null) return false;
+      if (typeof scripts !== "object" || scripts === null)
+        return false;
       const testScript = scripts["test"];
-      if (typeof testScript !== "string") return false;
+      if (typeof testScript !== "string")
+        return false;
       return testScript.trim() !== "" && !testScript.includes(DEFAULT_NPM_TEST_SCRIPT);
     } catch (err) {
       log16.debug("hasTestSuite: could not read package.json", { error: toErrorMessage(err), projectRoot });
@@ -37075,12 +37334,16 @@ var BuildTestDetector = class {
     const toolName = hookInput.tool_name ?? hookInput.tool ?? "";
     const exitCode = hookInput.exit_code ?? hookInput.exitCode;
     const command = hookInput.command ?? hookInput.cmd ?? hookInput.input?.command ?? "";
-    if (!this.isExecTool(toolName)) return;
-    if (typeof exitCode !== "number") return;
-    if (typeof command !== "string" || command.length === 0) return;
+    if (!this.isExecTool(toolName))
+      return;
+    if (typeof exitCode !== "number")
+      return;
+    if (typeof command !== "string" || command.length === 0)
+      return;
     const isBuild = this.matchesPatterns(command, this.config.build_commands);
     const isTest = this.matchesPatterns(command, this.config.test_commands);
-    if (!isBuild && !isTest) return;
+    if (!isBuild && !isTest)
+      return;
     const succeeded = exitCode === 0;
     const category = isBuild ? "build" : "test";
     const eventType = `${category}:${succeeded ? "succeeded" : "failed"}`;
@@ -37144,10 +37407,10 @@ function toTriggerDefinitionBase(trigger) {
 __name(toTriggerDefinitionBase, "toTriggerDefinitionBase");
 function loggerToPluginLogger(log18) {
   return {
-    debug: /* @__PURE__ */ __name((...args) => log18.debug(String(args[0]), args[1]), "debug"),
-    info: /* @__PURE__ */ __name((...args) => log18.info(String(args[0]), args[1]), "info"),
-    warn: /* @__PURE__ */ __name((...args) => log18.warn(String(args[0]), args[1]), "warn"),
-    error: /* @__PURE__ */ __name((...args) => log18.error(String(args[0]), args[1]), "error")
+    debug: (...args) => log18.debug(String(args[0]), args[1]),
+    info: (...args) => log18.info(String(args[0]), args[1]),
+    warn: (...args) => log18.warn(String(args[0]), args[1]),
+    error: (...args) => log18.error(String(args[0]), args[1])
   };
 }
 __name(loggerToPluginLogger, "loggerToPluginLogger");
@@ -37205,9 +37468,11 @@ var RuntimeEngine = class {
     this.directives = createDirectiveSubsystem();
     this.wrfcConfigStore = new WRFCConfigStore();
     const wrfcContextProvider = /* @__PURE__ */ __name((type) => {
-      if (type !== "wrfc") return {};
+      if (type !== "wrfc")
+        return {};
       const wrfcStore = this.wrfcConfigStore;
-      if (!wrfcStore) return {};
+      if (!wrfcStore)
+        return {};
       const config2 = wrfcStore.get();
       const defaults = {};
       if (typeof config2.min_review_score === "number" && Number.isFinite(config2.min_review_score)) {
@@ -37265,7 +37530,8 @@ var RuntimeEngine = class {
         return;
       }
       try {
-        if (this.triggers) await this.triggers.triggerRegistry.evaluate(event);
+        if (this.triggers)
+          await this.triggers.triggerRegistry.evaluate(event);
       } catch (err) {
         logger61.warn("Trigger evaluation error", { error: toErrorMessage(err) });
       }
@@ -37288,12 +37554,12 @@ var RuntimeEngine = class {
       healthChecker: this.healthChecker,
       workflowEngine: this.workflow?.workflowEngine ?? null,
       agentCoordinator: this.agents?.agentCoordinator ?? null,
-      getSnapshotDeps: /* @__PURE__ */ __name(() => ({
+      getSnapshotDeps: () => ({
         workflowEngine: this.workflow?.workflowEngine ?? null,
         triggerRegistry: this.triggers?.triggerRegistry ?? null,
         agentCoordinator: this.agents?.agentCoordinator ?? null,
         agentWorkflowMap: this.directives?.agentWorkflowMap ?? null
-      }), "getSnapshotDeps")
+      })
     });
     this.executorSubsystem = createExecutorSubsystem(this.config, this.events.eventBus);
     const actionExecutor = this.directives ? new ActionExecutor(this.directives.directiveQueue, this.directives.agentWorkflowMap) : void 0;
@@ -37349,19 +37615,19 @@ var RuntimeEngine = class {
       });
     });
     const runtimeServices = {
-      emit: /* @__PURE__ */ __name((event) => eventBusRef.emit(event), "emit"),
-      subscribe: /* @__PURE__ */ __name((eventType, handler) => {
+      emit: (event) => eventBusRef.emit(event),
+      subscribe: (eventType, handler) => {
         return eventBusRef.on(
           eventType,
           handler
         );
-      }, "subscribe"),
-      getConfig: /* @__PURE__ */ __name(() => this.config, "getConfig"),
-      getState: /* @__PURE__ */ __name((key) => coreStore.get(key), "getState"),
-      setState: /* @__PURE__ */ __name((key, value) => coreStore.set(key, value), "setState"),
-      deleteState: /* @__PURE__ */ __name((key) => coreStore.delete(key), "deleteState"),
-      listStateKeys: /* @__PURE__ */ __name((prefix) => coreStore.keys(prefix), "listStateKeys"),
-      registerTrigger: /* @__PURE__ */ __name((id, definition, handler) => {
+      },
+      getConfig: () => this.config,
+      getState: (key) => coreStore.get(key),
+      setState: (key, value) => coreStore.set(key, value),
+      deleteState: (key) => coreStore.delete(key),
+      listStateKeys: (prefix) => coreStore.keys(prefix),
+      registerTrigger: (id, definition, handler) => {
         if (!coreTriggerRegistry) {
           logger61.warn("registerTrigger: trigger subsystem not available", { id });
           return;
@@ -37379,14 +37645,15 @@ var RuntimeEngine = class {
         coreTriggerRegistry.register(toTriggerDefinitionBase(trigger));
         const registeredTrigger = coreTriggerRegistry.get(id);
         coreEventProcessor.registerHandler(id, async (event) => {
-          if (!registeredTrigger) return {};
+          if (!registeredTrigger)
+            return {};
           return await Promise.resolve(handler(event)) ?? {};
         });
-      }, "registerTrigger"),
-      unregisterTrigger: /* @__PURE__ */ __name((id) => {
+      },
+      unregisterTrigger: (id) => {
         coreTriggerRegistry?.unregister(id);
-      }, "unregisterTrigger"),
-      getLogger: /* @__PURE__ */ __name((name) => loggerToPluginLogger(createLogger(name)), "getLogger")
+      },
+      getLogger: (name) => loggerToPluginLogger(createLogger(name))
     };
     this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
     this.wrfcPlugin.register(runtimeServices);
@@ -37461,7 +37728,8 @@ var RuntimeEngine = class {
     }
     this.reconfigurables = /* @__PURE__ */ new Map();
     this.reconfigurables.set("time", this.timePlugin);
-    if (this.wrfcPlugin) this.reconfigurables.set("wrfc", this.wrfcPlugin);
+    if (this.wrfcPlugin)
+      this.reconfigurables.set("wrfc", this.wrfcPlugin);
     if (this.config.devserver?.enabled) {
       const { DevServerMonitor: DevServerMonitor2 } = await Promise.resolve().then(() => (init_devserver(), devserver_exports));
       this.devServerMonitor = new DevServerMonitor2(this.config.devserver, this.events.eventBus);
@@ -37478,7 +37746,7 @@ var RuntimeEngine = class {
         timePlugin: createTimeAdapter(timePlugin),
         externalPlugin: createExternalAdapter(this.externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor,
-        staleWorkflowChecker: /* @__PURE__ */ __name(() => this.watchdog?.checkStaleWorkflows(), "staleWorkflowChecker")
+        staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows()
       });
     }
     if (this.executorSubsystem?.executorBudget && this.coreRuntime.stateStore) {
@@ -37505,7 +37773,7 @@ var RuntimeEngine = class {
         executorMode: this.executorSubsystem?.executorMode ?? null,
         executorBudget: this.executorSubsystem?.executorBudget ?? null,
         daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
-        processHookEvent: /* @__PURE__ */ __name(async (event) => {
+        processHookEvent: async (event) => {
           const processor = this.coreRuntime?.eventProcessor;
           if (processor) {
             try {
@@ -37514,7 +37782,7 @@ var RuntimeEngine = class {
               logger61.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
             }
           }
-        }, "processHookEvent")
+        }
       });
       if (ipcResult) {
         this.ipcSubsystem = ipcResult.subsystem;
@@ -37581,8 +37849,10 @@ var RuntimeEngine = class {
           logger61.warn("Executor budget persistence failed", { err: toErrorMessage(err) });
         }
       }
-      if (this.persistence) await this.persistence.shutdown();
-      if (this.events) await this.events.shutdown();
+      if (this.persistence)
+        await this.persistence.shutdown();
+      if (this.events)
+        await this.events.shutdown();
       removePidFile(this.projectRoot);
       this.running = false;
       logger61.info("Shutdown complete");
@@ -37607,7 +37877,8 @@ var RuntimeEngine = class {
     return this.running;
   }
   getStateStore() {
-    if (!this.persistence?.stateStore) throw new ProcessingError("getStateStore() called before startup()");
+    if (!this.persistence?.stateStore)
+      throw new ProcessingError("getStateStore() called before startup()");
     return this.persistence.stateStore;
   }
   updateConfig(config2) {
@@ -37652,7 +37923,8 @@ var RuntimeEngine = class {
    * Handles HTTP listener enable/disable and port changes without a full restart.
    */
   async reconfigureExternalPlugins(oldConfig, newConfig) {
-    if (!this.externalPlugin) return;
+    if (!this.externalPlugin)
+      return;
     const oldHttp = oldConfig.external.http_listener;
     const newHttp = newConfig.external.http_listener;
     const wasEnabled = oldHttp.enabled;
@@ -37739,15 +38011,18 @@ var RuntimeEngine = class {
     return { file_watcher: config2.external.file_watcher };
   }
   getEventBus() {
-    if (!this.events?.eventBus) throw new ProcessingError("getEventBus() called before startup()");
+    if (!this.events?.eventBus)
+      throw new ProcessingError("getEventBus() called before startup()");
     return this.events.eventBus;
   }
   getEventLog() {
-    if (!this.events?.eventLog) throw new ProcessingError("getEventLog() called before startup()");
+    if (!this.events?.eventLog)
+      throw new ProcessingError("getEventLog() called before startup()");
     return this.events.eventLog;
   }
   getEventQueue() {
-    if (!this.coreRuntime?.eventQueue) throw new ProcessingError("getEventQueue() called before startup()");
+    if (!this.coreRuntime?.eventQueue)
+      throw new ProcessingError("getEventQueue() called before startup()");
     return this.coreRuntime.eventQueue;
   }
   getIPCServer() {
@@ -37766,7 +38041,8 @@ var RuntimeEngine = class {
     return this.directives?.directiveQueue ?? null;
   }
   getCoreStateStore() {
-    if (!this.coreRuntime?.stateStore) throw new ProcessingError("getCoreStateStore() called before startup()");
+    if (!this.coreRuntime?.stateStore)
+      throw new ProcessingError("getCoreStateStore() called before startup()");
     return this.coreRuntime.stateStore;
   }
   getHookProcessor() {
@@ -37830,7 +38106,8 @@ var DaemonLifecycle = class {
    */
   async isRunning() {
     const pid = this.readPid();
-    if (pid === null) return false;
+    if (pid === null)
+      return false;
     if (!this.isProcessAlive(pid)) {
       this.cleanupStaleFiles();
       return false;
@@ -37846,7 +38123,8 @@ var DaemonLifecycle = class {
    * Uses a single-instance guard to prevent concurrent starts spawning duplicate daemons.
    */
   async start() {
-    if (this.startPromise) return this.startPromise;
+    if (this.startPromise)
+      return this.startPromise;
     this.startPromise = this.doStart().finally(() => {
       this.startPromise = null;
     });
@@ -37860,7 +38138,8 @@ var DaemonLifecycle = class {
     if (!this.acquireLock()) {
       logger62.info("Daemon start in progress by another process, waiting...");
       await this.waitForLockRelease(STARTUP_TIMEOUT_MS);
-      if (await this.isRunning()) return;
+      if (await this.isRunning())
+        return;
       throw new Error("Daemon failed to start (spawned by another process)");
     }
     try {
@@ -37962,7 +38241,8 @@ var DaemonLifecycle = class {
   async waitForLockRelease(timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      if (!(0, import_node_fs19.existsSync)(this.lockFilePath)) return;
+      if (!(0, import_node_fs19.existsSync)(this.lockFilePath))
+        return;
       await new Promise((r) => setTimeout(r, 200));
     }
     logger62.debug("waitForLockRelease timed out, proceeding", { timeoutMs });
@@ -37990,7 +38270,8 @@ var DaemonLifecycle = class {
     }
     const deadline = Date.now() + 5e3;
     while (Date.now() < deadline) {
-      if (!this.isProcessAlive(pid)) break;
+      if (!this.isProcessAlive(pid))
+        break;
       await new Promise((r) => setTimeout(r, 200));
     }
     if (this.isProcessAlive(pid)) {
@@ -38035,7 +38316,8 @@ var DaemonLifecycle = class {
    * Runs updateHealth() immediately, then on the given interval.
    */
   startHealthCheck(intervalMs = this.healthCheckIntervalMs) {
-    if (this.healthCheckTimer !== null) return;
+    if (this.healthCheckTimer !== null)
+      return;
     this.healthCheckIntervalMs = intervalMs;
     void this.updateHealth();
     this.healthCheckTimer = setInterval(() => {
@@ -38107,7 +38389,8 @@ var DaemonLifecycle = class {
   }
   // ── Private Helpers ────────────────────────────────────────────
   readPid() {
-    if (!(0, import_node_fs19.existsSync)(this.pidFilePath)) return null;
+    if (!(0, import_node_fs19.existsSync)(this.pidFilePath))
+      return null;
     try {
       const content = (0, import_node_fs19.readFileSync)(this.pidFilePath, "utf-8").trim();
       const pid = parseInt(content, 10);
@@ -38118,7 +38401,8 @@ var DaemonLifecycle = class {
     }
   }
   readSocketPointer() {
-    if (!(0, import_node_fs19.existsSync)(this.socketPointerPath)) return null;
+    if (!(0, import_node_fs19.existsSync)(this.socketPointerPath))
+      return null;
     try {
       const content = (0, import_node_fs19.readFileSync)(this.socketPointerPath, "utf-8").trim();
       return content || null;
@@ -38401,7 +38685,8 @@ function getNestedValue(obj, path4) {
   const segments = path4.split(".");
   let current = obj;
   for (const segment of segments) {
-    if (current === null || typeof current !== "object") return void 0;
+    if (current === null || typeof current !== "object")
+      return void 0;
     current = current[segment];
   }
   return current;
@@ -38564,7 +38849,8 @@ init_logger();
 init_utils();
 var logger65 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
-  if (pattern === "*") return true;
+  if (pattern === "*")
+    return true;
   if (pattern.endsWith(":*")) {
     const ns = pattern.slice(0, -2);
     return eventType.startsWith(`${ns}:`);
@@ -38573,9 +38859,11 @@ function matchesTypePattern(eventType, pattern) {
 }
 __name(matchesTypePattern, "matchesTypePattern");
 function resolveTimestamp(value) {
-  if (value.includes("T") || value.includes("-")) return new Date(value).getTime();
+  if (value.includes("T") || value.includes("-"))
+    return new Date(value).getTime();
   const asNumber = Number(value);
-  if (!isNaN(asNumber) && asNumber > 0) return asNumber;
+  if (!isNaN(asNumber) && asNumber > 0)
+    return asNumber;
   try {
     const futureDate = parseRelativeTime(value);
     const durationMs = futureDate.getTime() - Date.now();
@@ -39416,7 +39704,8 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
         const pfx = namespace + ".";
         const MAX_WALK_DEPTH = 20;
         const walk = /* @__PURE__ */ __name((obj, path4, depth = 0) => {
-          if (depth >= MAX_WALK_DEPTH) return;
+          if (depth >= MAX_WALK_DEPTH)
+            return;
           for (const [k, v] of Object.entries(obj)) {
             const full = path4 ? `${path4}.${k}` : k;
             if (full === namespace || full.startsWith(pfx)) {
@@ -39602,7 +39891,8 @@ var INTERVAL_PRESETS = {
   daily: 864e5
 };
 function resolveInterval(presetOrMs) {
-  if (typeof presetOrMs === "number") return presetOrMs;
+  if (typeof presetOrMs === "number")
+    return presetOrMs;
   const ms = INTERVAL_PRESETS[presetOrMs];
   if (ms === void 0) {
     throw new Error(
@@ -40478,10 +40768,10 @@ var RuntimeEngineServer = class {
       }
       const ctx = {
         transport: this.runtimeTransport ?? void 0,
-        getUptime: /* @__PURE__ */ __name(() => this.processManager?.getUptime() ?? 0, "getUptime"),
-        getConfig: /* @__PURE__ */ __name(() => this.processManager?.getConfig() ?? loadConfig(process.env.CLAUDE_PROJECT_DIR || process.cwd()), "getConfig"),
-        getHealth: /* @__PURE__ */ __name(() => this.processManager?.getHealthChecker().check() ?? { status: "unhealthy", checks: [] }, "getHealth"),
-        updateConfig: /* @__PURE__ */ __name((config2) => {
+        getUptime: () => this.processManager?.getUptime() ?? 0,
+        getConfig: () => this.processManager?.getConfig() ?? loadConfig(process.env.CLAUDE_PROJECT_DIR || process.cwd()),
+        getHealth: () => this.processManager?.getHealthChecker().check() ?? { status: "unhealthy", checks: [] },
+        updateConfig: (config2) => {
           if (this.processManager) {
             this.processManager.updateConfig(config2);
           } else {
@@ -40490,30 +40780,31 @@ var RuntimeEngineServer = class {
               { transportMode: this.runtimeTransport?.mode ?? "unknown" }
             );
           }
-        }, "updateConfig"),
+        },
         projectRoot: this.processManager?.getProjectRoot() ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd(),
         version: ENGINE_VERSION,
-        getEventBus: /* @__PURE__ */ __name(() => this.processManager?.getEventBus() ?? null, "getEventBus"),
-        getEventLog: /* @__PURE__ */ __name(() => this.processManager?.getEventLog() ?? null, "getEventLog"),
-        getEventQueue: /* @__PURE__ */ __name(() => this.processManager?.getEventQueue() ?? null, "getEventQueue"),
-        getWorkflowEngine: /* @__PURE__ */ __name(() => this.processManager?.getWorkflowEngine() ?? null, "getWorkflowEngine"),
-        getTriggerRegistry: /* @__PURE__ */ __name(() => this.processManager?.getTriggerRegistry() ?? null, "getTriggerRegistry"),
-        getAgentCoordinator: /* @__PURE__ */ __name(() => this.processManager?.getAgentCoordinator() ?? null, "getAgentCoordinator"),
-        getDirectiveQueue: /* @__PURE__ */ __name(() => this.processManager?.getDirectiveQueue() ?? null, "getDirectiveQueue"),
-        getCoreStateStore: /* @__PURE__ */ __name(() => {
+        getEventBus: () => this.processManager?.getEventBus() ?? null,
+        getEventLog: () => this.processManager?.getEventLog() ?? null,
+        getEventQueue: () => this.processManager?.getEventQueue() ?? null,
+        getWorkflowEngine: () => this.processManager?.getWorkflowEngine() ?? null,
+        getTriggerRegistry: () => this.processManager?.getTriggerRegistry() ?? null,
+        getAgentCoordinator: () => this.processManager?.getAgentCoordinator() ?? null,
+        getDirectiveQueue: () => this.processManager?.getDirectiveQueue() ?? null,
+        getCoreStateStore: () => {
           try {
             return this.processManager?.getCoreStateStore() ?? null;
           } catch {
             return null;
           }
-        }, "getCoreStateStore"),
-        getTimePlugin: /* @__PURE__ */ __name(() => this.processManager?.getTimePlugin?.() ?? null, "getTimePlugin"),
-        getExternalPlugin: /* @__PURE__ */ __name(() => this.processManager?.getExternalPlugin?.() ?? null, "getExternalPlugin")
+        },
+        getTimePlugin: () => this.processManager?.getTimePlugin?.() ?? null,
+        getExternalPlugin: () => this.processManager?.getExternalPlugin?.() ?? null
       };
       try {
         return await handler(args, ctx);
       } catch (error2) {
-        if (error2 instanceof McpError) throw error2;
+        if (error2 instanceof McpError)
+          throw error2;
         const message = toErrorMessage(error2);
         logger74.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
@@ -40613,9 +40904,11 @@ var RuntimeEngineServer = class {
     return process.env.CLAUDE_SESSION_ID ?? process.env.SESSION_ID ?? `mcp-${process.pid}`;
   }
   async ensureDaemonRunning(projectRoot, config2) {
-    if (!config2.executor.transport?.auto_start) return;
+    if (!config2.executor.transport?.auto_start)
+      return;
     const lifecycle = new DaemonLifecycle(projectRoot);
-    if (await lifecycle.isRunning()) return;
+    if (await lifecycle.isRunning())
+      return;
     await lifecycle.start();
   }
   /**
