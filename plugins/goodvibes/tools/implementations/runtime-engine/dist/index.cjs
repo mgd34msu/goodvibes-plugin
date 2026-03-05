@@ -7610,15 +7610,24 @@ var init_devserver = __esm({
             external_source: "devserver",
             type: "devserver:error",
             raw_payload: { error: error2, port: this.config.port, command: this.config.command },
-            payload: { error: error2, port: this.config.port, command: this.config.command },
+            payload: {
+              type: "devserver:error",
+              data: { error: error2, port: this.config.port, command: this.config.command }
+            },
             normalized: true
           });
           this.eventBus.emit(event);
         }
       }
       reconfigure(config2) {
+        const patch = {};
+        if (typeof config2.enabled === "boolean") patch.enabled = config2.enabled;
+        if (typeof config2.command === "string") patch.command = config2.command;
+        if (typeof config2.port === "number") patch.port = config2.port;
+        if (typeof config2.health_url === "string") patch.health_url = config2.health_url;
+        if (typeof config2.check_interval_ms === "number") patch.check_interval_ms = config2.check_interval_ms;
         const wasEnabled = this.config.enabled;
-        this.config = { ...this.config, ...config2 };
+        this.config = { ...this.config, ...patch };
         if (wasEnabled && !this.config.enabled) {
           this.stop();
         } else if (!wasEnabled && this.config.enabled) {
@@ -26708,7 +26717,6 @@ function getBuiltinTriggers() {
         args_template: {
           event_id: "$event.id",
           error: "$event.payload.data.error",
-          pid: "$event.payload.data.pid",
           port: "$event.payload.data.port",
           command: "$event.payload.data.command"
         }
@@ -33223,6 +33231,9 @@ var HeartbeatManager = class {
   }
   /** Update the heartbeat interval at runtime. */
   setInterval(interval_ms) {
+    if (!Number.isFinite(interval_ms) || interval_ms < 1e3) {
+      throw new Error(`Invalid heartbeat interval: ${interval_ms}ms (minimum 1000ms)`);
+    }
     this.config.interval_ms = interval_ms;
   }
   /** Reset internal state (tick count and last fire time). */
@@ -36707,8 +36718,15 @@ async function waitForPort(port, timeoutMs) {
 }
 __name(waitForPort, "waitForPort");
 async function killProcessOnPort(port) {
+  const { platform } = await import("node:os");
+  const os = platform();
   return new Promise((resolve2) => {
-    const proc = (0, import_node_child_process3.spawn)("fuser", ["-k", `${port}/tcp`], { stdio: "ignore" });
+    let proc;
+    if (os === "darwin") {
+      proc = (0, import_node_child_process3.spawn)("sh", ["-c", `lsof -ti :${port} | xargs kill -9 2>/dev/null`], { stdio: "ignore" });
+    } else {
+      proc = (0, import_node_child_process3.spawn)("fuser", ["-k", `${port}/tcp`], { stdio: "ignore" });
+    }
     proc.on("close", () => resolve2());
     proc.on("error", () => resolve2());
   });
@@ -37012,7 +37030,7 @@ function bridgeCIFailure(_projectRoot, emitter) {
     log17.info("CI failure detected \u2014 emitting build:failed", { provider, branch, commit, status });
     emitter.emit(createEvent({
       type: "build:failed",
-      source: { kind: "system" },
+      source: { kind: "internal" },
       payload: {
         type: "build:failed",
         data: {
@@ -37053,7 +37071,8 @@ var BuildTestDetector = class {
     logger59.info("BuildTestDetector started, listening for hook:post_tool_use");
   }
   analyzeToolResult(event) {
-    const hookInput = event.hook_input ?? event.payload?.data ?? {};
+    const payloadData = event.payload?.data;
+    const hookInput = payloadData ?? {};
     const toolName = hookInput.tool_name ?? hookInput.tool ?? "";
     const exitCode = hookInput.exit_code ?? hookInput.exitCode;
     const command = hookInput.command ?? hookInput.cmd ?? hookInput.input?.command ?? "";
@@ -37232,6 +37251,14 @@ var RuntimeEngine = class {
         logger61.debug("Restored workflow instances from persistence", { count: savedInstances.length });
       }
       workflowPersistence.cleanup().catch(() => {
+      });
+      this.events.eventBus.on("workflow:state_changed", (event) => {
+        const data = event.payload?.data;
+        if (data?.instance?.id) {
+          workflowPersistence.persist(data.instance).catch((err) => {
+            logger61.warn("Failed to persist workflow state", { error: toErrorMessage(err) });
+          });
+        }
       });
     }
     this.events.eventBus.on("*", async (event) => {
@@ -39817,9 +39844,9 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
         const subAction = params.sub_action;
         if (subAction === "set_interval") {
           const intervalMs = params.interval_ms;
-          if (!intervalMs || intervalMs < 1e3) {
+          if (intervalMs == null || intervalMs < 1e3) {
             return toError(
-              "interval_ms must be a number >= 1000",
+              "interval_ms must be a number >= 1000 (minimum 1 second to prevent excessive CPU usage)",
               version2,
               uptime,
               Date.now() - start
