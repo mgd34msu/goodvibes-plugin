@@ -68,6 +68,7 @@ import {
   notifyComplete,
   hasTestSuite,
   buildPassing,
+  bridgeCIFailure,
 } from './extensions/executor/handlers/index.js';
 import { BuildTestDetector } from './plugins/hooks/handlers/build-test-detector.js';
 
@@ -169,6 +170,7 @@ export class RuntimeEngine {
   private wrfcPlugin: WRFCPlugin | null = null;
   private externalPlugin: import('./plugins/index.js').ExternalPlugin | null = null;
   private timePlugin: import('./plugins/time/time-plugin.js').TimePlugin | null = null;
+  private devServerMonitor: import('./plugins/devserver/index.js').DevServerMonitor | null = null;
   /** Generic registry of reconfigurable subsystems, populated during startup(). */
   private reconfigurables: Map<string, Reconfigurable> = new Map();
 
@@ -254,7 +256,7 @@ export class RuntimeEngine {
       for (const raw of savedInstances) {
         try {
           this.workflow.workflowEngine.restoreInstance(
-            raw as import('./extensions/workflow/types.js').WorkflowInstance
+            raw as unknown as import('./extensions/workflow/types.js').WorkflowInstance
           );
         } catch (err) {
           logger.debug('Failed to restore workflow instance', { error: String(err) });
@@ -453,6 +455,7 @@ export class RuntimeEngine {
     if (this.triggers) {
       const triggerReg = this.triggers.triggerRegistry;
       triggerReg.registerHandler('restartDevServer', restartDevServer(this.projectRoot));
+      triggerReg.registerHandler('bridgeCIFailure', bridgeCIFailure(this.projectRoot, eventBusRef));
       triggerReg.registerHandler('notifyUser', notifyUser(this.projectRoot));
       triggerReg.registerHandler('logEvent', logEvent(this.projectRoot));
       triggerReg.registerHandler('updateMemory', updateMemory(this.projectRoot));
@@ -522,6 +525,15 @@ export class RuntimeEngine {
     this.reconfigurables = new Map<string, Reconfigurable>();
     this.reconfigurables.set('time', this.timePlugin);
     if (this.wrfcPlugin) this.reconfigurables.set('wrfc', this.wrfcPlugin);
+
+    // 18.6 DevServer health monitor (L3) — opt-in, disabled by default
+    if (this.config.devserver?.enabled) {
+      const { DevServerMonitor } = await import('./plugins/devserver/index.js');
+      this.devServerMonitor = new DevServerMonitor(this.config.devserver, this.events.eventBus);
+      this.devServerMonitor.start();
+      this.reconfigurables.set('devserver', this.devServerMonitor as unknown as Reconfigurable);
+      logger.debug('DevServerMonitor started');
+    }
 
     // 19. Tick driver (L2)
     if (!this.executorSubsystem?.executorMode) {
@@ -621,6 +633,10 @@ export class RuntimeEngine {
     try {
       // Stop active workflows
       this.workflow?.shutdown();
+
+      // Stop DevServer monitor
+      this.devServerMonitor?.stop();
+      this.devServerMonitor = null;
 
       // Stop WRFC plugin lifecycle
       this.wrfcPlugin?.stop();

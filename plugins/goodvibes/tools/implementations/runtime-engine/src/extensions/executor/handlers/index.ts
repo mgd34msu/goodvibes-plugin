@@ -13,3 +13,4 @@ export { updateMemory } from './memory-handler.js';
 export { runBuild } from './build-handler.js';
 export { runTests } from './test-handler.js';
 export { hasTestSuite, buildPassing } from './guards.js';
+export { bridgeCIFailure } from './ci-handler.js';
