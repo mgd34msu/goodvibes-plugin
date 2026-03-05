@@ -439,8 +439,16 @@ export interface AgentSpawnedPayload {
 export interface AgentProgressPayload {
   /** Identifier of the reporting agent. */
   agent_id: string;
-  /** Cumulative token usage so far. */
-  tokens_used: {
+  /** Type of agent (e.g. 'engineer', 'reviewer'). Only available from agent completion payloads. */
+  agent_type?: string;
+  /** Workflow this agent belongs to, if known. */
+  workflow_id?: string | null;
+  /** Elapsed time in milliseconds since the agent was spawned. Available during heartbeat progress. */
+  elapsed_ms?: number;
+  /** Current status of the agent. Available during heartbeat progress. */
+  status?: string;
+  /** Cumulative token usage so far. Only available when resource tracking data is present. */
+  tokens_used?: {
     /** Input tokens consumed. */
     input: number;
     /** Output tokens generated. */
@@ -448,12 +456,12 @@ export interface AgentProgressPayload {
     /** Cache hit tokens. */
     cache: number;
   };
-  /** Estimated cost in USD at the time of this progress report. */
-  cost_usd: number;
+  /** Estimated cost in USD at the time of this progress report. Only available when cost data is present. */
+  cost_usd?: number;
   /** Total number of tool calls made so far. */
-  tools_called: number;
+  tools_called?: number;
   /** List of file paths modified during this agent's execution. */
-  files_modified: string[];
+  files_modified?: string[];
 }
 
 /**

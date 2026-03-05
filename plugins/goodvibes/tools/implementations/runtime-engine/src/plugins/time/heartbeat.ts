@@ -71,6 +71,9 @@ export class HeartbeatManager {
 
   /** Update the heartbeat interval at runtime. */
   setInterval(interval_ms: number): void {
+    if (!Number.isFinite(interval_ms) || interval_ms < 1000) {
+      throw new Error(`Invalid heartbeat interval: ${interval_ms}ms (minimum 1000ms)`);
+    }
     this.config.interval_ms = interval_ms;
   }
 

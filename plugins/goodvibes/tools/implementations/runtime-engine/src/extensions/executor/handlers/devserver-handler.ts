@@ -42,16 +42,26 @@ async function waitForPort(port: number, timeoutMs: number): Promise<boolean> {
 }
 
 /**
- * Attempts to kill the process listening on the given port using `fuser -k`.
- * Silently ignores failures (port may already be free).
+ * Attempts to kill the process listening on the given port.
+ * Uses lsof on macOS and fuser on Linux. Silently ignores failures.
  *
  * @param port - TCP port to kill.
  */
 async function killProcessOnPort(port: number): Promise<void> {
+  const { platform } = await import('node:os');
+  const os = platform();
+
   return new Promise(resolve => {
-    const proc = spawn('fuser', ['-k', `${port}/tcp`], { stdio: 'ignore' });
+    let proc;
+    if (os === 'darwin') {
+      // macOS: use lsof to find and kill the process
+      proc = spawn('sh', ['-c', `lsof -ti :${port} | xargs kill -9 2>/dev/null`], { stdio: 'ignore' });
+    } else {
+      // Linux: use fuser
+      proc = spawn('fuser', ['-k', `${port}/tcp`], { stdio: 'ignore' });
+    }
     proc.on('close', () => resolve());
-    proc.on('error', () => resolve()); // fuser may not be installed; ignore
+    proc.on('error', () => resolve()); // command may not be installed; ignore
   });
 }
 

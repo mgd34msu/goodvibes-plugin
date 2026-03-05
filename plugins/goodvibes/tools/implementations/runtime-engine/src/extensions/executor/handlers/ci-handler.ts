@@ -59,7 +59,7 @@ export function bridgeCIFailure(
 
     emitter.emit(createEvent({
       type: 'build:failed',
-      source: { kind: 'system' },
+      source: { kind: 'internal' },
       payload: {
         type: 'build:failed',
         data: {

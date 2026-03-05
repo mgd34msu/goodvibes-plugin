@@ -268,9 +268,9 @@ export const handleRuntimeSchedule = async (
 
         if (subAction === 'set_interval') {
           const intervalMs = params.interval_ms as number | undefined;
-          if (!intervalMs || intervalMs < 1000) {
+          if (intervalMs == null || intervalMs < 1000) {
             return toError(
-              'interval_ms must be a number >= 1000',
+              'interval_ms must be a number >= 1000 (minimum 1 second to prevent excessive CPU usage)',
               version,
               uptime,
               Date.now() - start,

@@ -26,6 +26,16 @@ interface EventBusLike {
   emit(event: RuntimeEvent | Omit<RuntimeEvent, 'metadata'> & { metadata?: Partial<RuntimeEvent['metadata']> }): void;
 }
 
+interface HookInputData {
+  tool_name?: string;
+  tool?: string;
+  exit_code?: number;
+  exitCode?: number;
+  command?: string;
+  cmd?: string;
+  input?: { command?: string };
+}
+
 export class BuildTestDetector {
   constructor(
     private readonly eventBus: EventBusLike,
@@ -41,8 +51,8 @@ export class BuildTestDetector {
 
   private analyzeToolResult(event: RuntimeEvent): void {
     // Extract hook_input fields
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hookInput = (event as any).hook_input ?? (event.payload as any)?.data ?? {};
+    const payloadData = (event.payload as { type: string; data?: Record<string, unknown> })?.data;
+    const hookInput: HookInputData = (payloadData ?? {}) as HookInputData;
     const toolName = hookInput.tool_name ?? hookInput.tool ?? '';
     const exitCode = hookInput.exit_code ?? hookInput.exitCode;
     const command = hookInput.command ?? hookInput.cmd ?? hookInput.input?.command ?? '';

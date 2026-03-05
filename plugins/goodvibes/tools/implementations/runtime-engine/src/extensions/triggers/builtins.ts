@@ -148,7 +148,6 @@ export function getBuiltinTriggers(): TriggerDefinition[] {
         args_template: {
           event_id: '$event.id',
           error: '$event.payload.data.error',
-          pid: '$event.payload.data.pid',
           port: '$event.payload.data.port',
           command: '$event.payload.data.command',
         },

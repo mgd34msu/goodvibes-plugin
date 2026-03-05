@@ -244,8 +244,7 @@ export class RuntimeEngine {
       // Wire WorkflowPersistence: restore saved instances at startup, and
       // attach the persistence instance to the workflow engine so it can
       // call persist() on state transitions.
-      // TODO: Call workflowPersistence.persist(instance) after each transition
-      //       by hooking into workflow:state_changed events on the EventBus.
+      // Persistence is wired via EventBus: workflow:state_changed events trigger persist().
       const workflowPersistence = new WorkflowPersistence({
         stateDir: join(this.projectRoot, '.goodvibes', 'state', 'workflows'),
         ttlMs: 24 * 60 * 60 * 1000, // 24 hours
@@ -267,6 +266,16 @@ export class RuntimeEngine {
       }
       // Run initial cleanup of expired workflow state files.
       workflowPersistence.cleanup().catch(() => {/* non-critical */});
+
+      // Persist workflow state on transitions
+      this.events.eventBus.on('workflow:state_changed', (event: RuntimeEvent) => {
+        const data = (event.payload as { type: string; data?: { instance?: { id: string } } })?.data;
+        if (data?.instance?.id) {
+          workflowPersistence.persist(data.instance).catch((err: unknown) => {
+            logger.warn('Failed to persist workflow state', { error: toErrorMessage(err) });
+          });
+        }
+      });
     }
     this.events.eventBus.on('*', async (event: RuntimeEvent) => {
       if (event.source?.kind === 'internal' && event.source.hook_name) {
@@ -531,7 +540,7 @@ export class RuntimeEngine {
       const { DevServerMonitor } = await import('./plugins/devserver/index.js');
       this.devServerMonitor = new DevServerMonitor(this.config.devserver, this.events.eventBus);
       this.devServerMonitor.start();
-      this.reconfigurables.set('devserver', this.devServerMonitor as unknown as Reconfigurable);
+      this.reconfigurables.set('devserver', this.devServerMonitor);
       logger.debug('DevServerMonitor started');
     }
 

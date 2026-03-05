@@ -79,7 +79,10 @@ export class AgentTrackerPlugin implements RuntimePlugin {
       services.setState(INDEX_KEY, []);
     }
 
-    // Subscribe directly to the EventBus
+    // Subscribe directly to the EventBus for real-time event delivery.
+    // _handlers is ALSO populated below for the getHandlers() interface contract
+    // (used by the plugin system to enumerate registered handlers). Both must
+    // exist: subscribe() wires live dispatch, _handlers satisfies the interface.
     const unsubSpawned = services.subscribe('agent:spawned', (event) => {
       this.handleSpawned(event);
     });

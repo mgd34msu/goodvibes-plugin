@@ -11,6 +11,7 @@
 import { createLogger } from '../../shared/logger.js';
 import type { EventBus } from '../../extensions/events/event-bus.js';
 import { createExternalEvent } from '../../extensions/events/factories.js';
+import type { Reconfigurable } from '../../shared/interfaces.js';
 
 const logger = createLogger('devserver-monitor');
 
@@ -34,7 +35,7 @@ export const DEFAULT_DEVSERVER_CONFIG: DevServerConfig = {
   check_interval_ms: 15_000,
 };
 
-export class DevServerMonitor {
+export class DevServerMonitor implements Reconfigurable {
   private timer: ReturnType<typeof setInterval> | null = null;
   private lastHealthy = true;
 
@@ -91,16 +92,27 @@ export class DevServerMonitor {
         external_source: 'devserver',
         type: 'devserver:error',
         raw_payload: { error, port: this.config.port, command: this.config.command },
-        payload: { error, port: this.config.port, command: this.config.command },
+        payload: {
+          type: 'devserver:error',
+          data: { error, port: this.config.port, command: this.config.command },
+        },
         normalized: true,
       });
       this.eventBus.emit(event);
     }
   }
 
-  reconfigure(config: Partial<DevServerConfig>): void {
+  reconfigure(config: Record<string, unknown>): void {
+    // Extract known DevServerConfig fields safely
+    const patch: Partial<DevServerConfig> = {};
+    if (typeof config.enabled === 'boolean') patch.enabled = config.enabled;
+    if (typeof config.command === 'string') patch.command = config.command;
+    if (typeof config.port === 'number') patch.port = config.port;
+    if (typeof config.health_url === 'string') patch.health_url = config.health_url;
+    if (typeof config.check_interval_ms === 'number') patch.check_interval_ms = config.check_interval_ms;
+
     const wasEnabled = this.config.enabled;
-    this.config = { ...this.config, ...config };
+    this.config = { ...this.config, ...patch };
 
     if (wasEnabled && !this.config.enabled) {
       this.stop();
