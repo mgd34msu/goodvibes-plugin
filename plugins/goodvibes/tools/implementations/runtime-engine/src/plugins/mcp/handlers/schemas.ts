@@ -341,7 +341,15 @@ export const allSchemas = [
         action: {
           type: 'string',
           enum: ['list', 'create', 'cancel', 'get', 'pause', 'resume', 'heartbeat'],
-          description: 'Schedule management action.',
+          description:
+            'Schedule management action. ' +
+            'heartbeat: returns status (enabled, tick_count, last_tick_at, interval_ms); ' +
+            'use sub_action=set_interval with interval_ms to change the heartbeat interval at runtime.',
+        },
+        sub_action: {
+          type: 'string',
+          enum: ['set_interval'],
+          description: 'Sub-action for the heartbeat action. set_interval: update the heartbeat interval at runtime.',
         },
         schedule_id: {
           type: 'string',

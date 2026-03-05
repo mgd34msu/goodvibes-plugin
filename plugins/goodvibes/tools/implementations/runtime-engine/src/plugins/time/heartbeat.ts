@@ -64,6 +64,7 @@ export class HeartbeatManager {
 
   getTickCount(): number { return this.tickCount; }
   getLastTickAt(): number { return this.lastTickAt; }
+  getInterval(): number { return this.config.interval_ms; }
   isEnabled(): boolean { return this.config.enabled; }
   enable(): void { this.config.enabled = true; }
   disable(): void { this.config.enabled = false; }

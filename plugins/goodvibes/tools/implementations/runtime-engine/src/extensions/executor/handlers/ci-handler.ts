@@ -8,9 +8,9 @@
  */
 
 import { createLogger } from '../../../shared/logger.js';
-import { generateEventId, timestamp } from '../../../shared/utils.js';
 import type { TriggerActionHandler, EventEmitter } from '../../../core/types.js';
 import type { RuntimeEvent } from '../../../shared/events.js';
+import { createEvent } from '../../../shared/events.js';
 
 const log = createLogger('handler:ci');
 
@@ -57,9 +57,7 @@ export function bridgeCIFailure(
 
     log.info('CI failure detected — emitting build:failed', { provider, branch, commit, status });
 
-    emitter.emit({
-      id: generateEventId(),
-      timestamp: timestamp(),
+    emitter.emit(createEvent({
       type: 'build:failed',
       source: { kind: 'system' },
       payload: {
@@ -72,14 +70,8 @@ export function bridgeCIFailure(
             `CI pipeline failed on branch "${branch}" at commit "${commit}" (status: ${status})`,
           ],
           warnings: [],
-          // Extra context for downstream handlers
-          ci_provider: provider,
-          ci_branch: branch,
-          ci_commit: commit,
-          ci_status: status,
-          source_event_id: sourceEventId,
-        } as Record<string, unknown>,
+        },
       },
-    });
+    }));
   };
 }

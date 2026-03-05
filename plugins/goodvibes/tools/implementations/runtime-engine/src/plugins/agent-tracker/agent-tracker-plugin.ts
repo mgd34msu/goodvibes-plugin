@@ -135,6 +135,9 @@ export class AgentTrackerPlugin implements RuntimePlugin {
       return;
     }
 
+    // Skip re-emitted AgentEvents from this plugin to prevent duplicate state processing
+    if (event.source.kind === 'agent') return;
+
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
       log.debug('handleSpawned: no agent_id, skipping');
@@ -166,8 +169,7 @@ export class AgentTrackerPlugin implements RuntimePlugin {
     // Emit a canonical agent:spawned AgentEvent if the incoming event was not already
     // an AgentEvent (i.e. it came from the hook system). This avoids re-emission loops
     // while ensuring AgentEvent-typed events are always on the bus for trigger matching.
-    const sourceKind = (event.source as Record<string, unknown>)?.['kind'];
-    if (sourceKind !== 'agent') {
+    {
       try {
         this._services.emit(createAgentEvent({
           type: 'agent:spawned',
@@ -188,6 +190,9 @@ export class AgentTrackerPlugin implements RuntimePlugin {
       log.warn(`handleFinished(${status}): plugin not registered, skipping`);
       return;
     }
+
+    // Skip re-emitted AgentEvents from this plugin to prevent duplicate state processing
+    if (event.source.kind === 'agent') return;
 
     const { agent_id, agent_type, workflow_id } = extractAgentData(event);
     if (!agent_id) {
@@ -222,8 +227,7 @@ export class AgentTrackerPlugin implements RuntimePlugin {
 
     // Emit a canonical AgentEvent if the incoming event was not already an AgentEvent.
     // Guards against re-emission loops when the event originated from this plugin.
-    const sourceKindFinished = (event.source as Record<string, unknown>)?.['kind'];
-    if (sourceKindFinished !== 'agent') {
+    {
       try {
         this._services.emit(createAgentEvent({
           type: `agent:${status}`,

@@ -165,4 +165,18 @@ export class ExternalPlugin {
   getNormalizerRegistry(): NormalizerRegistry {
     return this.normalizers;
   }
+
+  /**
+   * Returns the port the HTTP listener is bound to, or null if not configured.
+   */
+  getHttpPort(): number | null {
+    return this.config.http_listener?.port ?? null;
+  }
+
+  /**
+   * Returns the bind address the HTTP listener is configured for, or null if not configured.
+   */
+  getHttpAddress(): string | null {
+    return this.config.http_listener?.address ?? null;
+  }
 }

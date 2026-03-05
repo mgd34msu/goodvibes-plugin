@@ -264,12 +264,36 @@ export const handleRuntimeSchedule = async (
       }
 
       case 'heartbeat': {
+        const subAction = params.sub_action as string | undefined;
+
+        if (subAction === 'set_interval') {
+          const intervalMs = params.interval_ms as number | undefined;
+          if (!intervalMs || intervalMs < 1000) {
+            return toError(
+              'interval_ms must be a number >= 1000',
+              version,
+              uptime,
+              Date.now() - start,
+            );
+          }
+          heartbeat.setInterval(intervalMs);
+          logger.info('runtime_schedule: heartbeat interval updated', { interval_ms: intervalMs });
+          return toSuccess(
+            { action: 'heartbeat', sub_action: 'set_interval', interval_ms: intervalMs },
+            version,
+            uptime,
+            Date.now() - start,
+          );
+        }
+
+        // Default: return current heartbeat status
         return toSuccess(
           {
             enabled: heartbeat.isEnabled(),
             tick_count: heartbeat.getTickCount(),
             last_tick_at: heartbeat.getLastTickAt(),
             scheduled_count: scheduler.size(),
+            interval_ms: heartbeat.getInterval(),
           },
           version,
           uptime,

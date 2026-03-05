@@ -58,7 +58,11 @@ export const handleRuntimeExternal = async (
         const normalizerSources = externalPlugin.getNormalizerRegistry().sources();
         return toSuccess(
           {
-            http_listener_running: httpRunning,
+            http_listener: {
+              running: httpRunning,
+              port: externalPlugin.getHttpPort(),
+              address: externalPlugin.getHttpAddress(),
+            },
             normalizer_count: normalizerSources.length,
             normalizer_sources: normalizerSources,
           },
