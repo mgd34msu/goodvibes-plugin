@@ -28,7 +28,7 @@ export type {
   FeaturesConfig,
   RuntimeConfig,
 } from './shared/config.js';
-export { loadConfig, saveConfig, DEFAULT_CONFIG } from './shared/config.js';
+export { loadConfig, saveConfig, ensureRuntimeSections, DEFAULT_CONFIG } from './shared/config.js';
 
 // Constants
 export { ENGINE_VERSION } from './shared/constants.js';

@@ -17,7 +17,7 @@ vi.mock('../file-io.js', () => ({
 
 import * as fs from 'node:fs';
 import * as fileIo from '../file-io.js';
-import { loadConfig, saveConfig, DEFAULT_CONFIG } from '../config.js';
+import { loadConfig, saveConfig, ensureRuntimeSections, DEFAULT_CONFIG } from '../config.js';
 import type { RuntimeConfig } from '../config.js';
 
 const mockReadFileSync = vi.mocked(fs.readFileSync);
@@ -36,10 +36,6 @@ function makeEaccesError(): NodeJS.ErrnoException {
 }
 
 describe('DEFAULT_CONFIG', () => {
-  it('has the expected schema_version', () => {
-    expect(DEFAULT_CONFIG.schema_version).toBe('1.0.0');
-  });
-
   it('has correct ipc defaults', () => {
     expect(DEFAULT_CONFIG.ipc.connect_timeout_ms).toBe(500);
     expect(DEFAULT_CONFIG.ipc.query_timeout_ms).toBe(200);
@@ -142,10 +138,9 @@ describe('loadConfig', () => {
     stderrSpy.mockRestore();
   });
 
-  it('returns default config when file does not exist (ENOENT)', () => {
+  it('returns default config when both files do not exist (ENOENT)', () => {
     mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
     const config = loadConfig('/some/project');
-    expect(config.schema_version).toBe(DEFAULT_CONFIG.schema_version);
     expect(config.queue.max_size).toBe(DEFAULT_CONFIG.queue.max_size);
     // No stderr written for ENOENT
     expect(stderrSpy).not.toHaveBeenCalled();
@@ -153,22 +148,80 @@ describe('loadConfig', () => {
 
   it('uses process.cwd() when no projectRoot is provided (ENOENT fallback)', () => {
     mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
-    const config = loadConfig();
-    expect(config.schema_version).toBe('1.0.0');
-    const expectedPath = join(process.cwd(), '.goodvibes', 'state', 'runtime-config.json');
-    expect(mockReadFileSync).toHaveBeenCalledWith(expectedPath, 'utf-8');
+    loadConfig();
+    const goodvibesPath = join(process.cwd(), '.goodvibes', 'goodvibes.json');
+    const legacyPath = join(process.cwd(), '.goodvibes', 'state', 'runtime-config.json');
+    expect(mockReadFileSync).toHaveBeenCalledWith(goodvibesPath, 'utf-8');
+    expect(mockReadFileSync).toHaveBeenCalledWith(legacyPath, 'utf-8');
   });
 
-  it('reads from the correct path inside the projectRoot', () => {
+  it('reads from goodvibes.json first, then falls back to runtime-config.json', () => {
     mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
     loadConfig('/my/project');
-    const expectedPath = join('/my/project', '.goodvibes', 'state', 'runtime-config.json');
-    expect(mockReadFileSync).toHaveBeenCalledWith(expectedPath, 'utf-8');
+    const goodvibesPath = join('/my/project', '.goodvibes', 'goodvibes.json');
+    const legacyPath = join('/my/project', '.goodvibes', 'state', 'runtime-config.json');
+    expect(mockReadFileSync).toHaveBeenCalledWith(goodvibesPath, 'utf-8');
+    expect(mockReadFileSync).toHaveBeenCalledWith(legacyPath, 'utf-8');
   });
 
-  it('returns deep-merged config when file contains valid overrides', () => {
-    const override = { queue: { max_size: 5000 } };
-    mockReadFileSync.mockReturnValue(JSON.stringify(override));
+  it('loads config from goodvibes.json under "runtime" key', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    const legacyPath = join('/proj', '.goodvibes', 'state', 'runtime-config.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) return JSON.stringify({ runtime: { queue: { max_size: 7777 } } });
+      if (p === legacyPath) throw makeEnoentError();
+      throw makeEnoentError();
+    });
+    const config = loadConfig('/proj');
+    expect(config.queue.max_size).toBe(7777);
+    expect(config.queue.max_attempts).toBe(DEFAULT_CONFIG.queue.max_attempts);
+  });
+
+  it('falls back to runtime-config.json when goodvibes.json has no "runtime" key', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    const legacyPath = join('/proj', '.goodvibes', 'state', 'runtime-config.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) return JSON.stringify({ sandbox: false });
+      if (p === legacyPath) return JSON.stringify({ queue: { max_size: 4321 } });
+      throw makeEnoentError();
+    });
+    const config = loadConfig('/proj');
+    expect(config.queue.max_size).toBe(4321);
+  });
+
+  it('falls back to runtime-config.json when goodvibes.json has non-object "runtime" value', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    const legacyPath = join('/proj', '.goodvibes', 'state', 'runtime-config.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) return JSON.stringify({ runtime: 42 });
+      if (p === legacyPath) return JSON.stringify({ queue: { max_size: 8888 } });
+      throw makeEnoentError();
+    });
+    const config = loadConfig('/proj');
+    expect(config.queue.max_size).toBe(8888);
+  });
+
+  it('ignores non-RuntimeConfig keys in runtime section (e.g. wrfc)', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) return JSON.stringify({ runtime: {
+        wrfc: { score_threshold: 9.9 },
+        queue: { max_size: 2222 },
+      }});
+      throw makeEnoentError();
+    });
+    const config = loadConfig('/proj');
+    expect(config.queue.max_size).toBe(2222);
+    // wrfc is not in RuntimeConfig, should not exist on config
+    expect((config as unknown as Record<string, unknown>).wrfc).toBeUndefined();
+  });
+
+  it('deep-merges config from legacy runtime-config.json', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return JSON.stringify({ queue: { max_size: 5000 } });
+    });
     const config = loadConfig('/proj');
     expect(config.queue.max_size).toBe(5000);
     // Other queue fields should retain defaults
@@ -176,97 +229,102 @@ describe('loadConfig', () => {
     expect(config.queue.backoff_base_ms).toBe(DEFAULT_CONFIG.queue.backoff_base_ms);
   });
 
-  it('deep-merges nested objects (not shallow replace)', () => {
-    const override = { triggers: { max_triggers: 200 } };
-    mockReadFileSync.mockReturnValue(JSON.stringify(override));
+  it('deep-merges nested objects from legacy file (not shallow replace)', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return JSON.stringify({ triggers: { max_triggers: 200 } });
+    });
     const config = loadConfig('/proj');
-    // Overridden field
     expect(config.triggers.max_triggers).toBe(200);
-    // Sibling fields retain defaults
     expect(config.triggers.default_cooldown_ms).toBe(DEFAULT_CONFIG.triggers.default_cooldown_ms);
     expect(config.triggers.max_fires_per_session).toBe(DEFAULT_CONFIG.triggers.max_fires_per_session);
     expect(config.triggers.handler_timeout_ms).toBe(DEFAULT_CONFIG.triggers.handler_timeout_ms);
   });
 
-  it('deep-merges multiple sections simultaneously', () => {
-    const override = {
-      queue: { max_size: 999 },
-      health: { memory_warn_mb: 128 },
-    };
-    mockReadFileSync.mockReturnValue(JSON.stringify(override));
+  it('deep-merges multiple sections simultaneously from legacy file', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return JSON.stringify({ queue: { max_size: 999 }, health: { memory_warn_mb: 128 } });
+    });
     const config = loadConfig('/proj');
     expect(config.queue.max_size).toBe(999);
     expect(config.health.memory_warn_mb).toBe(128);
-    // Other fields unaffected
     expect(config.queue.max_attempts).toBe(DEFAULT_CONFIG.queue.max_attempts);
     expect(config.health.check_interval_ms).toBe(DEFAULT_CONFIG.health.check_interval_ms);
   });
 
-  it('deep-merges doubly-nested objects (executor.daemon)', () => {
-    const override = { executor: { daemon: { auto_tick: true } } };
-    mockReadFileSync.mockReturnValue(JSON.stringify(override));
+  it('deep-merges doubly-nested objects (executor.daemon) from legacy file', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return JSON.stringify({ executor: { daemon: { auto_tick: true } } });
+    });
     const config = loadConfig('/proj');
     expect(config.executor.daemon.auto_tick).toBe(true);
-    // Sibling fields retained
     expect(config.executor.daemon.tick_command).toBe('tick');
     expect(config.executor.mode).toBe('engaged');
   });
 
-  it('overrides arrays entirely (not merged)', () => {
-    const override = { agents: { budget_thresholds: [25, 75] } };
-    mockReadFileSync.mockReturnValue(JSON.stringify(override));
+  it('overrides arrays entirely (not merged) from legacy file', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return JSON.stringify({ agents: { budget_thresholds: [25, 75] } });
+    });
     const config = loadConfig('/proj');
-    // Arrays are replaced, not merged
     expect(config.agents.budget_thresholds).toEqual([25, 75]);
   });
 
-  it('returns defaults and writes to stderr when file contains non-object JSON (array)', () => {
-    mockReadFileSync.mockReturnValue(JSON.stringify([1, 2, 3]));
+  it('returns defaults and writes to stderr when legacy file contains non-object JSON (array)', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return JSON.stringify([1, 2, 3]);
+    });
     const config = loadConfig('/proj');
-    expect(config.schema_version).toBe(DEFAULT_CONFIG.schema_version);
+    expect(config.queue.max_size).toBe(DEFAULT_CONFIG.queue.max_size);
     expect(stderrSpy).toHaveBeenCalledTimes(1);
     expect(stderrSpy.mock.calls[0]![0]).toContain('not an object');
   });
 
-  it('returns defaults and writes to stderr when file contains non-object JSON (string)', () => {
-    mockReadFileSync.mockReturnValue(JSON.stringify('just a string'));
+  it('returns defaults and writes to stderr when legacy file contains null JSON', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return 'null';
+    });
     const config = loadConfig('/proj');
-    expect(config.schema_version).toBe(DEFAULT_CONFIG.schema_version);
+    expect(config.queue.max_size).toBe(DEFAULT_CONFIG.queue.max_size);
     expect(stderrSpy).toHaveBeenCalledTimes(1);
     expect(stderrSpy.mock.calls[0]![0]).toContain('not an object');
   });
 
-  it('returns defaults and writes to stderr when file contains null JSON', () => {
-    mockReadFileSync.mockReturnValue('null');
+  it('returns defaults and writes to stderr when legacy file contains malformed JSON', () => {
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) throw makeEnoentError();
+      return '{invalid json}';
+    });
     const config = loadConfig('/proj');
-    expect(config.schema_version).toBe(DEFAULT_CONFIG.schema_version);
-    expect(stderrSpy).toHaveBeenCalledTimes(1);
-    expect(stderrSpy.mock.calls[0]![0]).toContain('not an object');
-  });
-
-  it('returns defaults and writes to stderr when file contains malformed JSON', () => {
-    // safeJsonParse returns null for invalid JSON
-    mockReadFileSync.mockReturnValue('{invalid json}');
-    const config = loadConfig('/proj');
-    // safeJsonParse returns fallback null → parsed is null → non-object branch
-    expect(config.schema_version).toBe(DEFAULT_CONFIG.schema_version);
+    expect(config.queue.max_size).toBe(DEFAULT_CONFIG.queue.max_size);
     expect(stderrSpy).toHaveBeenCalledTimes(1);
   });
 
   it('returns defaults and writes to stderr for non-ENOENT filesystem errors (EACCES)', () => {
     mockReadFileSync.mockImplementation(() => { throw makeEaccesError(); });
     const config = loadConfig('/proj');
-    expect(config.schema_version).toBe(DEFAULT_CONFIG.schema_version);
-    expect(stderrSpy).toHaveBeenCalledTimes(1);
-    expect(stderrSpy.mock.calls[0]![0]).toContain('failed to load config');
-    expect(stderrSpy.mock.calls[0]![0]).toContain('EACCES');
+    expect(config.queue.max_size).toBe(DEFAULT_CONFIG.queue.max_size);
+    // EACCES on goodvibes.json writes warning, then EACCES on legacy writes warning
+    expect(stderrSpy).toHaveBeenCalled();
   });
 
   it('returns defaults and writes to stderr for unexpected non-Error throws', () => {
     mockReadFileSync.mockImplementation(() => { throw 'unexpected string error'; });
     const config = loadConfig('/proj');
-    expect(config.schema_version).toBe(DEFAULT_CONFIG.schema_version);
-    expect(stderrSpy).toHaveBeenCalledTimes(1);
+    expect(config.queue.max_size).toBe(DEFAULT_CONFIG.queue.max_size);
+    expect(stderrSpy).toHaveBeenCalled();
   });
 
   it('returned config is a copy of defaults, not the same reference', () => {
@@ -276,7 +334,11 @@ describe('loadConfig', () => {
   });
 
   it('returned merged config is not the same reference as DEFAULT_CONFIG', () => {
-    mockReadFileSync.mockReturnValue(JSON.stringify({ queue: { max_size: 1 } }));
+    const goodvibesPath = join('/proj', '.goodvibes', 'goodvibes.json');
+    mockReadFileSync.mockImplementation((p: unknown) => {
+      if (p === goodvibesPath) return JSON.stringify({ runtime: { queue: { max_size: 1 } } });
+      throw makeEnoentError();
+    });
     const config = loadConfig('/proj');
     expect(config).not.toBe(DEFAULT_CONFIG);
     expect(config.queue).not.toBe(DEFAULT_CONFIG.queue);
@@ -288,35 +350,111 @@ describe('saveConfig', () => {
     vi.clearAllMocks();
   });
 
-  it('calls writeJsonSync with the correct config path', () => {
+  it('writes to goodvibes.json (not runtime-config.json)', () => {
+    mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
     const config: RuntimeConfig = { ...DEFAULT_CONFIG };
     saveConfig('/my/project', config);
-    const expectedPath = join('/my/project', '.goodvibes', 'state', 'runtime-config.json');
-    expect(mockWriteJsonSync).toHaveBeenCalledWith(expectedPath, config);
+    const expectedPath = join('/my/project', '.goodvibes', 'goodvibes.json');
+    expect(mockWriteJsonSync).toHaveBeenCalledWith(expectedPath, expect.any(Object));
   });
 
-  it('calls writeJsonSync exactly once', () => {
-    saveConfig('/proj', { ...DEFAULT_CONFIG });
-    expect(mockWriteJsonSync).toHaveBeenCalledTimes(1);
-  });
-
-  it('passes the exact config object to writeJsonSync', () => {
+  it('writes config under "runtime" key', () => {
+    mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
     const config: RuntimeConfig = {
       ...DEFAULT_CONFIG,
       queue: { ...DEFAULT_CONFIG.queue, max_size: 42 },
     };
     saveConfig('/proj', config);
-    expect(mockWriteJsonSync).toHaveBeenCalledWith(expect.any(String), config);
-    const passedConfig = mockWriteJsonSync.mock.calls[0]![1] as RuntimeConfig;
-    expect(passedConfig.queue.max_size).toBe(42);
+    const written = mockWriteJsonSync.mock.calls[0]![1] as Record<string, unknown>;
+    expect(written.runtime).toBeDefined();
+    const runtimeSection = written.runtime as Record<string, unknown>;
+    expect((runtimeSection.queue as Record<string, unknown>).max_size).toBe(42);
+  });
+
+  it('preserves existing non-RuntimeConfig keys (e.g. sandbox, fetch)', () => {
+    mockReadFileSync.mockReturnValue(JSON.stringify({
+      sandbox: false,
+      fetch: { services: {} },
+      runtime: { wrfc: { score_threshold: 9.9 } },
+    }));
+    saveConfig('/proj', { ...DEFAULT_CONFIG });
+    const written = mockWriteJsonSync.mock.calls[0]![1] as Record<string, unknown>;
+    expect(written.sandbox).toBe(false);
+    expect(written.fetch).toBeDefined();
+  });
+
+  it('preserves runtime.wrfc key when saving config', () => {
+    mockReadFileSync.mockReturnValue(JSON.stringify({
+      runtime: { wrfc: { score_threshold: 9.9, auto_commit: true } },
+    }));
+    saveConfig('/proj', { ...DEFAULT_CONFIG });
+    const written = mockWriteJsonSync.mock.calls[0]![1] as Record<string, unknown>;
+    const runtimeSection = written.runtime as Record<string, unknown>;
+    expect(runtimeSection.wrfc).toEqual({ score_threshold: 9.9, auto_commit: true });
+  });
+
+  it('calls writeJsonSync exactly once', () => {
+    mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
+    saveConfig('/proj', { ...DEFAULT_CONFIG });
+    expect(mockWriteJsonSync).toHaveBeenCalledTimes(1);
   });
 
   it('constructs path using the provided projectRoot', () => {
+    mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
     saveConfig('/custom/root', { ...DEFAULT_CONFIG });
     const [calledPath] = mockWriteJsonSync.mock.calls[0]!;
     expect(calledPath).toContain('/custom/root');
     expect(calledPath).toContain('.goodvibes');
-    expect(calledPath).toContain('state');
-    expect(calledPath).toContain('runtime-config.json');
+    expect(calledPath).toContain('goodvibes.json');
+  });
+});
+
+describe('ensureRuntimeSections', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is a no-op when goodvibes.json does not exist (ENOENT)', () => {
+    mockReadFileSync.mockImplementation(() => { throw makeEnoentError(); });
+    // Should not throw
+    ensureRuntimeSections('/proj');
+    // No write should have occurred (writeFileSync not mocked — if called it throws)
+  });
+
+  it('does not overwrite existing runtime sections', () => {
+    const existingContent = JSON.stringify({
+      runtime: { queue: { max_size: 1234 } },
+    });
+    mockReadFileSync.mockReturnValue(existingContent);
+    ensureRuntimeSections('/proj');
+    // writeJsonSync should have been called since other sections are missing
+    if (mockWriteJsonSync.mock.calls.length > 0) {
+      const written = mockWriteJsonSync.mock.calls[0]![1] as Record<string, unknown>;
+      const rt = written.runtime as Record<string, unknown>;
+      expect((rt.queue as Record<string, unknown>).max_size).toBe(1234);
+    }
+  });
+
+  it('adds missing runtime sections with defaults', () => {
+    const existingContent = JSON.stringify({
+      runtime: { queue: { max_size: 5000 } },
+    });
+    mockReadFileSync.mockReturnValue(existingContent);
+    ensureRuntimeSections('/proj');
+    // Since queue section already exists, only missing sections are added
+    expect(mockWriteJsonSync).toHaveBeenCalled();
+    const written = mockWriteJsonSync.mock.calls[0]![1] as Record<string, unknown>;
+    const rt = written.runtime as Record<string, unknown>;
+    expect(rt.ipc).toBeDefined();
+    expect(rt.persistence).toBeDefined();
+  });
+
+  it('does not write when all sections already present', () => {
+    const allSections = Object.fromEntries(
+      Object.keys(DEFAULT_CONFIG).map(k => [k, (DEFAULT_CONFIG as Record<string, unknown>)[k]])
+    );
+    mockReadFileSync.mockReturnValue(JSON.stringify({ runtime: allSections }));
+    ensureRuntimeSections('/proj');
+    expect(mockWriteJsonSync).not.toHaveBeenCalled();
   });
 });

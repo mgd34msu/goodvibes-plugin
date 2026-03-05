@@ -3,7 +3,7 @@
  *
  * Defines the full configuration schema for the goodvibes runtime engine.
  * All sections have sensible production defaults that can be overridden via
- * .goodvibes/state/runtime-config.json in the project root.
+ * .goodvibes/goodvibes.json (under the "runtime" key) in the project root.
  */
 
 import { readFileSync } from 'node:fs';
@@ -255,8 +255,6 @@ export interface FeaturesConfig {
 
 /** Complete runtime engine configuration */
 export interface RuntimeConfig {
-  /** Config schema version. Not used for engine version reporting — see ENGINE_VERSION in constants.ts */
-  schema_version: string;
   ipc: IpcConfig;
   queue: QueueConfig;
   persistence: PersistenceConfig;
@@ -274,7 +272,6 @@ export interface RuntimeConfig {
 
 /** Default configuration values -- safe for all environments */
 export const DEFAULT_CONFIG: RuntimeConfig = {
-  schema_version: '1.0.0',
   ipc: {
     socket_dir: (() => {
       try {
@@ -450,8 +447,9 @@ function resolveRoot(projectRoot?: string): string {
 /**
  * Loads the runtime configuration for a project.
  *
- * Reads from `{projectRoot}/.goodvibes/state/runtime-config.json` if it exists
- * and deep-merges it with {@link DEFAULT_CONFIG}. Missing keys fall back to defaults.
+ * Tries `{projectRoot}/.goodvibes/goodvibes.json` first (under the "runtime" key).
+ * Falls back to `{projectRoot}/.goodvibes/state/runtime-config.json` for backwards compatibility.
+ * Deep-merges with {@link DEFAULT_CONFIG}. Missing keys fall back to defaults.
  *
  * @param projectRoot - Optional path to the project root directory.
  *   Defaults to `process.cwd()`.
@@ -459,6 +457,37 @@ function resolveRoot(projectRoot?: string): string {
  */
 export function loadConfig(projectRoot?: string): RuntimeConfig {
   const root = resolveRoot(projectRoot);
+
+  // Try goodvibes.json first (new location, under "runtime" key)
+  const goodvibesPath = join(root, '.goodvibes', 'goodvibes.json');
+  try {
+    const raw = readFileSync(goodvibesPath, 'utf-8');
+    const parsed = safeJsonParse<Record<string, unknown>>(raw, null);
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && 'runtime' in parsed) {
+      const runtimeSection = parsed.runtime;
+      if (typeof runtimeSection === 'object' && runtimeSection !== null && !Array.isArray(runtimeSection)) {
+        // Filter to only RuntimeConfig keys to avoid unknown keys (e.g. 'wrfc') polluting the config
+        const knownKeys = Object.keys(DEFAULT_CONFIG) as (keyof RuntimeConfig)[];
+        const filtered: Partial<RuntimeConfig> = {};
+        for (const key of knownKeys) {
+          if (key in (runtimeSection as Record<string, unknown>)) {
+            (filtered as Record<string, unknown>)[key] = (runtimeSection as Record<string, unknown>)[key];
+          }
+        }
+        const merged = deepMerge(DEFAULT_CONFIG, filtered);
+        validateConfig(merged);
+        return merged;
+      }
+    }
+  } catch (err) {
+    if (!(err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT')) {
+      process.stderr.write(
+        `[runtime-engine] Warning: failed to read goodvibes.json: ${toErrorMessage(err)} — trying legacy config\n`,
+      );
+    }
+  }
+
+  // Fall back to legacy runtime-config.json
   const configPath = join(root, '.goodvibes', 'state', 'runtime-config.json');
   try {
     const raw = readFileSync(configPath, 'utf-8');
@@ -496,14 +525,76 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
 /**
  * Persists the runtime configuration to disk.
  *
- * Creates the state directory if it does not exist, then writes the full
- * config as formatted JSON to `{projectRoot}/.goodvibes/state/runtime-config.json`.
+ * Writes RuntimeConfig keys under the "runtime" key in `{projectRoot}/.goodvibes/goodvibes.json`,
+ * preserving all other keys in that file (e.g. sandbox, fetch, runtime.wrfc).
  *
+ * @param projectRoot - Path to the project root directory.
  * @param config - The {@link RuntimeConfig} to persist.
+ */
+export function saveConfig(projectRoot: string, config: RuntimeConfig): void {
+  const goodvibesPath = join(projectRoot, '.goodvibes', 'goodvibes.json');
+  let existing: Record<string, unknown> = {};
+  try {
+    const raw = readFileSync(goodvibesPath, 'utf-8');
+    existing = safeJsonParse<Record<string, unknown>>(raw, {}) ?? {};
+  } catch { /* file doesn't exist yet or unreadable — start fresh */ }
+
+  // Merge only RuntimeConfig keys into runtime section, preserving non-RuntimeConfig keys like 'wrfc'
+  const existingRuntime = (typeof existing.runtime === 'object' && existing.runtime !== null)
+    ? existing.runtime as Record<string, unknown>
+    : {};
+  const configKeys = Object.keys(DEFAULT_CONFIG) as (keyof RuntimeConfig)[];
+  const updatedRuntime: Record<string, unknown> = { ...existingRuntime };
+  for (const key of configKeys) {
+    updatedRuntime[key] = config[key] as unknown;
+  }
+  existing.runtime = updatedRuntime;
+  writeJsonSync(goodvibesPath, existing);
+}
+
+/**
+ * Ensures all RuntimeConfig sections exist under the "runtime" key in goodvibes.json.
+ *
+ * Reads goodvibes.json and adds any missing top-level RuntimeConfig sections with
+ * their defaults. Never overwrites existing values. A no-op if goodvibes.json does not exist.
+ *
  * @param projectRoot - Optional path to the project root directory.
  *   Defaults to `process.cwd()`.
  */
-export function saveConfig(projectRoot: string, config: RuntimeConfig): void {
-  const configPath = join(projectRoot, '.goodvibes', 'state', 'runtime-config.json');
-  writeJsonSync(configPath, config);
+export function ensureRuntimeSections(projectRoot?: string): void {
+  const root = resolveRoot(projectRoot);
+  const goodvibesPath = join(root, '.goodvibes', 'goodvibes.json');
+
+  let existing: Record<string, unknown>;
+  try {
+    const raw = readFileSync(goodvibesPath, 'utf-8');
+    existing = safeJsonParse<Record<string, unknown>>(raw, {}) ?? {};
+  } catch {
+    return; // No goodvibes.json — nothing to ensure
+  }
+
+  if (typeof existing.runtime !== 'object' || existing.runtime === null) {
+    existing.runtime = {};
+  }
+
+  const runtime = existing.runtime as Record<string, unknown>;
+  const defaults = DEFAULT_CONFIG as unknown as Record<string, unknown>;
+  let changed = false;
+
+  for (const key of Object.keys(defaults)) {
+    if (!(key in runtime)) {
+      runtime[key] = defaults[key];
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    try {
+      writeJsonSync(goodvibesPath, existing);
+    } catch (err) {
+      process.stderr.write(
+        `[runtime-engine] Warning: failed to write runtime defaults to goodvibes.json: ${toErrorMessage(err)}\n`,
+      );
+    }
+  }
 }

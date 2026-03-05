@@ -19,7 +19,7 @@ import {
 
 import { createTransport } from '../../transport/factory.js';
 import type { RuntimeTransport } from '../../transport/types.js';
-import { loadConfig } from '../../shared/config.js';
+import { loadConfig, ensureRuntimeSections } from '../../shared/config.js';
 import { ENGINE_VERSION } from '../../shared/constants.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
@@ -149,6 +149,7 @@ export class RuntimeEngineServer {
    */
   async start(): Promise<void> {
     const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    ensureRuntimeSections(projectRoot);
     const config = loadConfig(projectRoot);
     const mode = config.executor.mode;
 

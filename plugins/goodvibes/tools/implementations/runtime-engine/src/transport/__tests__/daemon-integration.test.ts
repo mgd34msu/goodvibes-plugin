@@ -47,7 +47,7 @@ function createMockEngine() {
   return {
     isRunning: vi.fn().mockReturnValue(true),
     getUptime: vi.fn().mockReturnValue(5000),
-    getConfig: vi.fn().mockReturnValue({ schema_version: '1.0.0', executor: { mode: 'engaged' } }),
+    getConfig: vi.fn().mockReturnValue({ executor: { mode: 'engaged' } }),
     getHealthChecker: vi.fn().mockReturnValue({
       check: vi.fn().mockResolvedValue({ status: 'healthy' }),
     }),
@@ -194,8 +194,8 @@ describe('1.2 RPC round-trip', () => {
     const config = await transport.getConfig();
     expect(config).toBeDefined();
     expect(typeof config).toBe('object');
-    // The mock engine returns { schema_version, executor }
-    expect(config).toHaveProperty('schema_version', '1.0.0');
+    // The mock engine returns { executor }
+    expect(config).toHaveProperty('executor');
   });
 
   it('setState and getState round-trip', async () => {
