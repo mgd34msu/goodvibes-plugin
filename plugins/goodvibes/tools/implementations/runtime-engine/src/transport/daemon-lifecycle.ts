@@ -207,8 +207,9 @@ export class DaemonLifecycle {
         if (Number.isFinite(lockerPid) && this.isProcessAlive(lockerPid)) {
           return false; // Holder is alive, we must wait
         }
-      } catch {
+      } catch (readErr) {
         // Can't read lock — assume stale
+        logger.debug('Failed to read lock file during stale detection, assuming stale', { err: toErrorMessage(readErr) });
       }
 
       // Stale lock: holder is dead — clean it up and retry once
@@ -224,7 +225,14 @@ export class DaemonLifecycle {
    * Release the startup lock by removing the lock file.
    */
   private releaseLock(): void {
-    try { unlinkSync(this.lockFilePath); } catch { /* ignore */ }
+    try {
+      unlinkSync(this.lockFilePath);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') {
+        logger.warn('Failed to release daemon lock', { err: toErrorMessage(err) });
+      }
+    }
   }
 
   /**
@@ -238,6 +246,7 @@ export class DaemonLifecycle {
       await new Promise((r) => setTimeout(r, 200));
     }
     // Timed out waiting — proceed anyway; caller will check isRunning()
+    logger.debug('waitForLockRelease timed out, proceeding', { timeoutMs });
   }
 
   /**

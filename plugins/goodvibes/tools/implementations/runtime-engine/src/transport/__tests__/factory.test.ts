@@ -8,12 +8,17 @@
  * - Socket discovery (env var, pointer file)
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { EventEmitter } from 'node:events';
 
 // ── Hoisted mocks ──────────────────────────────────────────────
 
-const { mockEngine, MockSocket, capturedSockets, mockReadFileSync,
-  mockExistsSync, mockLocalTransport, mockRemoteTransport } = vi.hoisted(() => {
+// Use var so it is hoisted to undefined rather than entering TDZ —
+// vi.mock factories execute before const/let bindings are initialized.
+// eslint-disable-next-line no-var
+var h = vi.hoisted(() => {
+  // require is safe here — vi.hoisted runs before ESM imports are resolved
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { EventEmitter } = require('node:events') as typeof import('node:events');
+
   const mockEngine = {
     isReady: vi.fn().mockReturnValue(true),
     getUptime: vi.fn().mockReturnValue(1000),
@@ -65,10 +70,13 @@ const { mockEngine, MockSocket, capturedSockets, mockReadFileSync,
   };
 });
 
+const { mockEngine, MockSocket, capturedSockets, mockReadFileSync,
+  mockExistsSync, mockLocalTransport, mockRemoteTransport } = h;
+
 vi.mock('node:net', () => ({
   createConnection: vi.fn((...args: unknown[]) => {
-    const sock = new MockSocket();
-    capturedSockets.push(sock);
+    const sock = new h.MockSocket();
+    h.capturedSockets.push(sock);
     // Auto-emit connect on next tick for success tests
     // Tests override via respondWith pattern
     return sock;
@@ -76,16 +84,16 @@ vi.mock('node:net', () => ({
 }));
 
 vi.mock('node:fs', () => ({
-  readFileSync: mockReadFileSync,
-  existsSync: mockExistsSync,
+  readFileSync: h.mockReadFileSync,
+  existsSync: h.mockExistsSync,
 }));
 
 vi.mock('../local-transport.js', () => ({
-  LocalTransport: vi.fn().mockImplementation(() => mockLocalTransport),
+  LocalTransport: vi.fn(function () { return h.mockLocalTransport; }),
 }));
 
 vi.mock('../remote-transport.js', () => ({
-  RemoteTransport: vi.fn().mockImplementation(() => mockRemoteTransport),
+  RemoteTransport: vi.fn(function () { return h.mockRemoteTransport; }),
 }));
 
 vi.mock('../../../shared/logger.js', () => ({

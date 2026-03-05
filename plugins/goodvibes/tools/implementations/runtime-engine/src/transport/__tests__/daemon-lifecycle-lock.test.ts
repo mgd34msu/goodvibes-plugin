@@ -128,17 +128,8 @@ describe('DaemonLifecycle lock methods', () => {
 
   it('acquireLock succeeds when no lock file exists', () => {
     setupLockFree();
-    // acquireLock is private — test via doStart by checking that openSync was called with wx
-    // We expose it indirectly: openSync called with 'wx' mode means atomic lock attempt
-    expect(mocks.mockOpenSync).not.toHaveBeenCalled();
-
-    // Simulate a full no-daemon-running scenario and call start
-    // We only verify openSync is called with 'wx' flag on the lock path
-    // by observing it was called (acquireLock internally calls openSync)
-    setupLockFree();
     mocks.mockExistsSync.mockReturnValue(false); // no pid file, no daemon running
 
-    // We need to test acquireLock directly. Since it's private, we access it via prototype.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = (lifecycle as any).acquireLock();
     expect(result).toBe(true);
@@ -268,5 +259,133 @@ describe('DaemonLifecycle lock methods', () => {
       (c) => (c[0] as string).endsWith('daemon.lock'),
     );
     expect(lockUnlinks).toHaveLength(0);
+  });
+
+  // ── acquireLock: corrupted lock file ────────────────────────────────────────
+
+  it('acquireLock treats corrupted/empty lock file as stale and retries', () => {
+    // First openSync: EEXIST (lock file exists but content is garbage/empty)
+    // Second openSync (retry after stale removal): succeeds
+    const eexist = Object.assign(new Error('EEXIST'), { code: 'EEXIST' }) as NodeJS.ErrnoException;
+    let openCallCount = 0;
+    mocks.mockOpenSync.mockImplementation(() => {
+      openCallCount++;
+      if (openCallCount === 1) throw eexist;
+      return 42;
+    });
+    // Return empty string — parseInt returns NaN, treated as stale
+    mocks.mockReadFileSync.mockImplementation((p: string) => {
+      if (p.endsWith('daemon.lock')) return '';
+      return '';
+    });
+    mocks.mockExistsSync.mockImplementation((p: string) => {
+      return p.endsWith('daemon.lock');
+    });
+    mocks.mockWriteSync.mockReturnValue(0);
+    mocks.mockCloseSync.mockReturnValue(undefined);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = (lifecycle as any).acquireLock();
+    expect(result).toBe(true);
+    expect(mocks.mockUnlinkSync).toHaveBeenCalledWith(
+      expect.stringContaining('daemon.lock'),
+    );
+    expect(openCallCount).toBe(2);
+  });
+
+  // ── waitForLockRelease ──────────────────────────────────────────────────────
+
+  it('waitForLockRelease resolves when lock file disappears before timeout', async () => {
+    let lockExists = true;
+    mocks.mockExistsSync.mockImplementation((p: string) => {
+      if (p.endsWith('daemon.lock')) return lockExists;
+      return false;
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const waitPromise = (lifecycle as any).waitForLockRelease(2000);
+
+    // Advance 200ms — lock still held
+    await vi.advanceTimersByTimeAsync(200);
+    expect(lockExists).toBe(true);
+
+    // Release the lock
+    lockExists = false;
+
+    // Advance another 200ms — polling loop should detect removal
+    await vi.advanceTimersByTimeAsync(200);
+
+    await expect(waitPromise).resolves.toBeUndefined();
+  });
+
+  it('waitForLockRelease times out when lock is never released', async () => {
+    mocks.mockExistsSync.mockImplementation((p: string) => {
+      if (p.endsWith('daemon.lock')) return true; // always held
+      return false;
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const waitPromise = (lifecycle as any).waitForLockRelease(400);
+
+    // Advance past the timeout
+    await vi.advanceTimersByTimeAsync(600);
+
+    // Should resolve (not reject) — caller checks isRunning() after timeout
+    await expect(waitPromise).resolves.toBeUndefined();
+  });
+
+  // ── doStart integration ─────────────────────────────────────────────────────
+
+  it('doStart acquires lock, spawns daemon, then releases lock', async () => {
+    const socketPath = '/tmp/goodvibes-runtime.sock';
+
+    // Daemon not running: no pid file
+    mocks.mockExistsSync.mockImplementation((p: string) => {
+      // pid file absent — daemon not running
+      if (p.endsWith('goodvibes-runtime.pid')) return false;
+      // daemon script exists
+      if (p.endsWith('dist/daemon.cjs')) return true;
+      // socket pointer file exists (for readSocketPointer)
+      if (p.endsWith('daemon.socket')) return true;
+      // socket file exists (for probeSocket)
+      if (p === socketPath) return true;
+      return false;
+    });
+    setupLockFree();
+
+    // Spawn returns a child process mock with a pid
+    const mockChild = { pid: 54321, unref: vi.fn() };
+    mocks.mockSpawn.mockReturnValue(mockChild);
+
+    // Socket pointer returns the socket path once daemon is "running"
+    mocks.mockReadFileSync.mockImplementation((p: string) => {
+      if (p.endsWith('daemon.socket')) return socketPath;
+      return '';
+    });
+
+    // createConnection auto-invokes connect callback — socket is responsive
+    mocks.mockCreateConnection.mockImplementation((_path: string, connectCb?: () => void) => {
+      if (connectCb) setTimeout(connectCb, 0);
+      return { on: vi.fn().mockReturnThis(), destroy: vi.fn() };
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const startPromise = (lifecycle as any).doStart();
+    // Advance enough for one waitForSocket poll (500ms interval) + probeSocket (0ms callback)
+    await vi.advanceTimersByTimeAsync(600);
+    await startPromise;
+
+    // Lock should have been acquired (openSync with 'wx')
+    expect(mocks.mockOpenSync).toHaveBeenCalledWith(
+      expect.stringContaining('daemon.lock'),
+      'wx',
+    );
+    // Lock should have been released (unlinkSync on lock file)
+    expect(mocks.mockUnlinkSync).toHaveBeenCalledWith(
+      expect.stringContaining('daemon.lock'),
+    );
+    // Daemon should have been spawned
+    expect(mocks.mockSpawn).toHaveBeenCalled();
+    expect(mockChild.unref).toHaveBeenCalled();
   });
 });

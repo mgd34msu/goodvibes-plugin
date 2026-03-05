@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LocalTransport } from '../local-transport.js';
 import { ENGINE_VERSION } from '../../shared/constants.js';
-import type { RuntimeEngine } from '../../index.js';
+import type { RuntimeEngine } from '../../bootstrap.js';
 
 // ─── Mock factories ───────────────────────────────────────────────────────────
 
@@ -32,9 +32,9 @@ const mocks = vi.hoisted(() => {
 
   const mockWorkflowEngine = {
     get: vi.fn(),
-    list: vi.fn(),
-    start: vi.fn(),
-    transition: vi.fn(),
+    listAll: vi.fn(),
+    create: vi.fn(),
+    sendEvent: vi.fn(),
   };
 
   const mockTriggerRegistry = {
@@ -46,7 +46,7 @@ const mocks = vi.hoisted(() => {
 
   const mockAgentCoordinator = {
     getAgent: vi.fn(),
-    list: vi.fn(),
+    listActive: vi.fn(),
   };
 
   const mockDirectiveQueue = {
@@ -275,45 +275,53 @@ describe('LocalTransport', () => {
       expect(result).toBeNull();
     });
 
-    it('listWorkflows() delegates to getWorkflowEngine().list()', async () => {
+    it('listWorkflows() delegates to getWorkflowEngine().listAll()', async () => {
       const wfs = [{ id: 'wf-1' }, { id: 'wf-2' }];
-      mocks.mockWorkflowEngine.list.mockResolvedValue(wfs);
+      mocks.mockWorkflowEngine.listAll.mockReturnValue(wfs);
       const result = await transport.listWorkflows();
       expect(result).toBe(wfs);
-      expect(mocks.mockWorkflowEngine.list).toHaveBeenCalledOnce();
+      expect(mocks.mockWorkflowEngine.listAll).toHaveBeenCalledOnce();
     });
 
-    it('startWorkflow() delegates to getWorkflowEngine().start()', async () => {
-      mocks.mockWorkflowEngine.start.mockResolvedValue({ workflow_id: 'new-wf' });
+    it('startWorkflow() delegates to getWorkflowEngine().create() and wraps result', async () => {
+      const instance = { id: 'new-wf', definition_id: 'def-1', current_state: 'initial', context: {}, history: [], created_at: 0, updated_at: 0, status: 'active' };
+      mocks.mockWorkflowEngine.create.mockReturnValue(instance);
       const ctx = { input: 'data' };
       const result = await transport.startWorkflow('def-1', ctx);
       expect(result).toEqual({ workflow_id: 'new-wf' });
-      expect(mocks.mockWorkflowEngine.start).toHaveBeenCalledWith('def-1', ctx);
+      expect(mocks.mockWorkflowEngine.create).toHaveBeenCalledWith('def-1', ctx);
     });
 
-    it('startWorkflow() works without context argument', async () => {
-      mocks.mockWorkflowEngine.start.mockResolvedValue({ workflow_id: 'bare-wf' });
+    it('startWorkflow() works without context argument, passes empty object to create()', async () => {
+      const instance = { id: 'bare-wf', definition_id: 'def-2', current_state: 'initial', context: {}, history: [], created_at: 0, updated_at: 0, status: 'active' };
+      mocks.mockWorkflowEngine.create.mockReturnValue(instance);
       const result = await transport.startWorkflow('def-2');
       expect(result).toEqual({ workflow_id: 'bare-wf' });
-      expect(mocks.mockWorkflowEngine.start).toHaveBeenCalledWith('def-2', undefined);
+      expect(mocks.mockWorkflowEngine.create).toHaveBeenCalledWith('def-2', {});
     });
 
-    it('transitionWorkflow() delegates to getWorkflowEngine().transition()', async () => {
+    it('transitionWorkflow() delegates to getWorkflowEngine().sendEvent() with a constructed RuntimeEvent', async () => {
       const updated = { id: 'wf-1', state: 'completed' };
-      mocks.mockWorkflowEngine.transition.mockResolvedValue(updated);
+      mocks.mockWorkflowEngine.sendEvent.mockResolvedValue(updated);
       const result = await transport.transitionWorkflow('wf-1', 'complete', { result: 'ok' });
       expect(result).toBe(updated);
-      expect(mocks.mockWorkflowEngine.transition).toHaveBeenCalledWith('wf-1', 'complete', { result: 'ok' });
+      expect(mocks.mockWorkflowEngine.sendEvent).toHaveBeenCalledWith(
+        'wf-1',
+        expect.objectContaining({
+          type: 'complete',
+          source: { kind: 'internal' },
+        }),
+      );
     });
 
     it('getWorkflow() returns null when getWorkflowEngine() returns null', async () => {
-      mocks.mockEngine.getWorkflowEngine.mockReturnValue(null);
+      mocks.mockEngine.getWorkflowEngine.mockReturnValue(null as any);
       const result = await transport.getWorkflow('wf-1');
       expect(result).toBeNull();
     });
 
     it('listWorkflows() returns [] when getWorkflowEngine() returns null', async () => {
-      mocks.mockEngine.getWorkflowEngine.mockReturnValue(null);
+      mocks.mockEngine.getWorkflowEngine.mockReturnValue(null as any);
       const result = await transport.listWorkflows();
       expect(result).toEqual([]);
     });
@@ -339,7 +347,7 @@ describe('LocalTransport', () => {
     });
 
     it('getTrigger() returns null when not found', async () => {
-      mocks.mockTriggerRegistry.get.mockReturnValue(null);
+      mocks.mockTriggerRegistry.get.mockReturnValue(null as any);
       const result = await transport.getTrigger('no-such');
       expect(result).toBeNull();
     });
@@ -364,13 +372,13 @@ describe('LocalTransport', () => {
     });
 
     it('listTriggers() returns [] when getTriggerRegistry() returns null', async () => {
-      mocks.mockEngine.getTriggerRegistry.mockReturnValue(null);
+      mocks.mockEngine.getTriggerRegistry.mockReturnValue(null as any);
       const result = await transport.listTriggers();
       expect(result).toEqual([]);
     });
 
     it('getTrigger() returns null when getTriggerRegistry() returns null', async () => {
-      mocks.mockEngine.getTriggerRegistry.mockReturnValue(null);
+      mocks.mockEngine.getTriggerRegistry.mockReturnValue(null as any);
       const result = await transport.getTrigger('t1');
       expect(result).toBeNull();
     });
@@ -388,27 +396,27 @@ describe('LocalTransport', () => {
     });
 
     it('getAgent() returns null when agent not found', async () => {
-      mocks.mockAgentCoordinator.getAgent.mockReturnValue(null);
+      mocks.mockAgentCoordinator.getAgent.mockReturnValue(null as any);
       const result = await transport.getAgent('no-such');
       expect(result).toBeNull();
     });
 
-    it('listAgents() delegates to getAgentCoordinator().list()', async () => {
+    it('listAgents() delegates to getAgentCoordinator().listActive()', async () => {
       const agents = [{ id: 'ag-1' }, { id: 'ag-2' }];
-      mocks.mockAgentCoordinator.list.mockReturnValue(agents);
+      mocks.mockAgentCoordinator.listActive.mockReturnValue(agents);
       const result = await transport.listAgents();
       expect(result).toBe(agents);
-      expect(mocks.mockAgentCoordinator.list).toHaveBeenCalledOnce();
+      expect(mocks.mockAgentCoordinator.listActive).toHaveBeenCalledOnce();
     });
 
     it('getAgent() returns null when getAgentCoordinator() returns null', async () => {
-      mocks.mockEngine.getAgentCoordinator.mockReturnValue(null);
+      mocks.mockEngine.getAgentCoordinator.mockReturnValue(null as any);
       const result = await transport.getAgent('ag-1');
       expect(result).toBeNull();
     });
 
     it('listAgents() returns [] when getAgentCoordinator() returns null', async () => {
-      mocks.mockEngine.getAgentCoordinator.mockReturnValue(null);
+      mocks.mockEngine.getAgentCoordinator.mockReturnValue(null as any);
       const result = await transport.listAgents();
       expect(result).toEqual([]);
     });
@@ -443,13 +451,13 @@ describe('LocalTransport', () => {
     });
 
     it('returns { directives: [] } when getDirectiveQueue() returns null', async () => {
-      mocks.mockEngine.getDirectiveQueue.mockReturnValue(null);
+      mocks.mockEngine.getDirectiveQueue.mockReturnValue(null as any);
       const result = await transport.drainDirectives('subagent_stop');
       expect(result).toEqual({ directives: [] });
     });
 
     it('returns { directives: [] } when getDirectiveQueue() returns null with workflowId', async () => {
-      mocks.mockEngine.getDirectiveQueue.mockReturnValue(null);
+      mocks.mockEngine.getDirectiveQueue.mockReturnValue(null as any);
       const result = await transport.drainDirectives('subagent_stop', 'wf-xyz');
       expect(result).toEqual({ directives: [] });
     });

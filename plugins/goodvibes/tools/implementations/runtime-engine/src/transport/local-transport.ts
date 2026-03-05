@@ -6,6 +6,7 @@ import type { RuntimeConfig } from '../shared/config.js';
 import type { RuntimeEvent, EventFilter } from '../shared/events.js';
 import type { HealthStatus } from '../shared/types.js';
 import { ENGINE_VERSION } from '../shared/constants.js';
+import { createEvent } from '../shared/events.js';
 
 /**
  * In-process transport — wraps RuntimeEngine with zero overhead.
@@ -110,7 +111,7 @@ export class LocalTransport implements RuntimeTransport {
   async listWorkflows(): Promise<Record<string, unknown>[]> {
     const engine = this.engine.getWorkflowEngine();
     if (!engine) return [];
-    return engine.listAll().map((i) => i as unknown as Record<string, unknown>);
+    return engine.listAll() as unknown as Record<string, unknown>[];
   }
 
   async startWorkflow(
@@ -119,7 +120,7 @@ export class LocalTransport implements RuntimeTransport {
   ): Promise<{ workflow_id: string }> {
     const engine = this.engine.getWorkflowEngine();
     if (!engine) throw new Error('Workflow engine not available');
-    const instance = engine.create(definitionId, context);
+    const instance = engine.create(definitionId, context ?? {});
     return { workflow_id: instance.id };
   }
 
@@ -130,20 +131,14 @@ export class LocalTransport implements RuntimeTransport {
   ): Promise<Record<string, unknown>> {
     const engine = this.engine.getWorkflowEngine();
     if (!engine) throw new Error('Workflow engine not available');
-    // Construct a synthetic RuntimeEvent to trigger the workflow transition.
-    // The event string is a user-supplied type that may not be in the typed
-    // EventType union — cast through unknown to satisfy the type checker.
-    const syntheticEvent = {
-      id: (await import('../shared/utils.js')).generateId(),
-      type: event as unknown as import('../shared/events.js').EventType,
-      source: { kind: 'mcp_tool' as const, tool_name: 'transitionWorkflow' },
-      payload: { type: event, data: data ?? {} } as unknown as import('../shared/events.js').EventPayload,
-      timestamp: Date.now(),
-      priority: 0,
-      metadata: { session_id: '', sequence: 0, version: 1 as const },
-    };
-    const result = await engine.sendEvent(workflowId, syntheticEvent);
-    return result as unknown as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runtimeEvent = createEvent({
+      source: { kind: 'internal' },
+      type: event as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payload: { type: event, data: data ?? {} } as any,
+    });
+    return engine.sendEvent(workflowId, runtimeEvent) as unknown as Promise<Record<string, unknown>>;
   }
 
   // ─── Triggers ───────────────────────────────────────────────
@@ -151,7 +146,7 @@ export class LocalTransport implements RuntimeTransport {
   async listTriggers(): Promise<Record<string, unknown>[]> {
     const registry = this.engine.getTriggerRegistry();
     if (!registry) return [];
-    return registry.list().map((t) => t as unknown as Record<string, unknown>);
+    return registry.list() as unknown as Record<string, unknown>[];
   }
 
   async getTrigger(triggerId: string): Promise<Record<string, unknown> | null> {
@@ -186,7 +181,7 @@ export class LocalTransport implements RuntimeTransport {
   async listAgents(): Promise<Record<string, unknown>[]> {
     const coordinator = this.engine.getAgentCoordinator();
     if (!coordinator) return [];
-    return coordinator.listActive().map((a) => a as unknown as Record<string, unknown>);
+    return coordinator.listActive() as unknown as Record<string, unknown>[];
   }
 
   // ─── Directives ─────────────────────────────────────────────
@@ -197,7 +192,7 @@ export class LocalTransport implements RuntimeTransport {
   ): Promise<{ directives: unknown[] }> {
     const queue = this.engine.getDirectiveQueue();
     if (!queue) return { directives: [] };
-    const result = queue.holdDrain(target, workflowId);
+    const result = await queue.holdDrain(target, workflowId);
     // NOTE: Message assembly (filtering by type, sorting by priority, joining)
     // is a presentation concern — it stays in the MCP handler layer, not here.
     // Transport returns raw directives only.

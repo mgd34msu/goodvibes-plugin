@@ -46,7 +46,8 @@ const mocks = vi.hoisted(() => {
     }
   }
 
-  const mockLoadConfig = vi.fn().mockReturnValue({ someConfig: true });
+  const mockLoadConfig = vi.fn().mockReturnValue({ someConfig: true, executor: { mode: 'engaged' } });
+  const mockEnsureRuntimeSections = vi.fn();
 
   const mockLogger = {
     debug: vi.fn(),
@@ -70,6 +71,7 @@ const mocks = vi.hoisted(() => {
   const mockGetDirectiveQueue = vi.fn().mockReturnValue({});
   const mockHealthCheckerCheck = vi.fn().mockResolvedValue({ status: 'ok' });
   const mockGetHealthChecker = vi.fn().mockReturnValue({ check: mockHealthCheckerCheck });
+  const mockGetCoreStateStore = vi.fn().mockReturnValue({});
 
   function makeEngineInstance() {
     return {
@@ -87,6 +89,7 @@ const mocks = vi.hoisted(() => {
       getAgentCoordinator: mockGetAgentCoordinator,
       getDirectiveQueue: mockGetDirectiveQueue,
       getHealthChecker: mockGetHealthChecker,
+      getCoreStateStore: mockGetCoreStateStore,
     };
   }
 
@@ -108,6 +111,7 @@ const mocks = vi.hoisted(() => {
     mockMcpServerCtor,
     mockStdioServerTransport,
     mockLoadConfig,
+    mockEnsureRuntimeSections,
     mockLogger,
     mockStartup,
     mockShutdown,
@@ -155,6 +159,7 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 
 vi.mock('../../../shared/config.js', () => ({
   loadConfig: (...args: unknown[]) => mocks.mockLoadConfig(...args),
+  ensureRuntimeSections: (...args: unknown[]) => mocks.mockEnsureRuntimeSections(...args),
 }));
 
 vi.mock('../../../shared/constants.js', () => ({
@@ -176,6 +181,17 @@ vi.mock('../../../bootstrap.js', () => ({
 
 vi.mock('../../../core/processing/signals.js', () => ({
   setupSignalHandlers: (...args: unknown[]) => mocks.mockSetupSignalHandlers(...args),
+}));
+
+vi.mock('../../../transport/factory.js', () => ({
+  createTransport: vi.fn().mockResolvedValue({ mode: 'engaged', disconnect: vi.fn().mockResolvedValue(undefined) }),
+}));
+
+vi.mock('../../../transport/daemon-lifecycle.js', () => ({
+  DaemonLifecycle: vi.fn().mockImplementation(() => ({
+    isRunning: vi.fn().mockResolvedValue(false),
+    start: vi.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 vi.mock('../tool-handlers.js', () => ({
@@ -244,8 +260,9 @@ describe('RuntimeEngineServer', () => {
       );
     });
 
-    it('creates a RuntimeEngine with loaded config and project root', () => {
-      new RuntimeEngineServer();
+    it('creates a RuntimeEngine with loaded config and project root', async () => {
+      const server = new RuntimeEngineServer();
+      await server.start();
       expect(mockLoadConfig).toHaveBeenCalled();
       expect(MockRuntimeEngine).toHaveBeenCalled();
     });
@@ -299,16 +316,18 @@ describe('RuntimeEngineServer', () => {
   // ─── stop() ───────────────────────────────────────────────────────────────
 
   describe('stop()', () => {
-    it('calls processManager.shutdown()', async () => {
+    it('calls processManager.shutdown() — normal shutdown path', async () => {
       const server = new RuntimeEngineServer();
+      await server.start();
       await server.stop();
       expect(mockShutdown).toHaveBeenCalledTimes(1);
     });
 
-    it('calls server.close()', async () => {
+    it('calls server.close() — stop without prior start skips engine shutdown', async () => {
       const server = new RuntimeEngineServer();
       await server.stop();
       expect(mockClose).toHaveBeenCalledTimes(1);
+      expect(mockShutdown).not.toHaveBeenCalled();
     });
 
     it('logs stopping and stopped messages', async () => {
@@ -319,9 +338,9 @@ describe('RuntimeEngineServer', () => {
     });
 
     it('logs warn and continues when shutdown() throws', async () => {
-      mockStartup.mockResolvedValue(undefined);
       mockShutdown.mockRejectedValueOnce(new Error('shutdown error'));
       const server = new RuntimeEngineServer();
+      await server.start();
       await expect(server.stop()).resolves.not.toThrow();
       expect(mockLogger.warn).toHaveBeenCalledWith('RuntimeEngine shutdown error', expect.any(Object));
     });
@@ -426,7 +445,14 @@ describe('RuntimeEngineServer', () => {
     it('passes HandlerContext with all required methods to handler', async () => {
       const mockToolHandler = vi.fn().mockResolvedValue({ content: [] });
       mockGetHandler.mockReturnValue(mockToolHandler);
-      const callToolHandler = getCallToolHandler();
+      // Build a server that has start()ed so processManager is populated
+      const serverInstance = new RuntimeEngineServer();
+      await serverInstance.start();
+      // Capture the CallTool handler that was registered
+      const callToolCall = mockSetRequestHandler.mock.calls.find(
+        (call: unknown[]) => call[0] === 'CallToolRequestSchema'
+      );
+      const callToolHandler = callToolCall![1] as (req: unknown) => Promise<unknown>;
       await callToolHandler({ params: { name: 'runtime_status', arguments: {} } });
       const ctx = mockToolHandler.mock.calls[0][1] as Record<string, unknown>;
       expect(typeof ctx['getUptime']).toBe('function');
@@ -442,6 +468,7 @@ describe('RuntimeEngineServer', () => {
       expect(typeof ctx['getTriggerRegistry']).toBe('function');
       expect(typeof ctx['getAgentCoordinator']).toBe('function');
       expect(typeof ctx['getDirectiveQueue']).toBe('function');
+      expect(typeof ctx['getCoreStateStore']).toBe('function');
     });
   });
 });

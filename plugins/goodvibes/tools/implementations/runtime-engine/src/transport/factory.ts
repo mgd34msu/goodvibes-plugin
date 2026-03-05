@@ -103,10 +103,18 @@ export async function createTransport(options: TransportFactoryOptions): Promise
     return new LocalTransport(options.engine);
   }
 
-  // Resolve socket path
+  if (mode !== 'daemon' && mode !== 'hybrid') {
+    throw new Error(`TransportFactory: unknown mode '${mode}'`);
+  }
+
+  // Resolve socket path — explicit > env var > pointer file
   let socketPath = options.socketPath;
-  if (!socketPath && options.projectRoot) {
-    socketPath = discoverDaemonSocket(options.projectRoot);
+  if (!socketPath) {
+    socketPath = process.env.GOODVIBES_DAEMON_SOCKET;
+  }
+  if (!socketPath) {
+    const projectRoot = options.projectRoot ?? process.cwd();
+    socketPath = discoverDaemonSocket(projectRoot);
   }
 
   // Note: TransportFactoryOptions uses camelCase (baseDelayMs, maxDelayMs) which maps 1:1

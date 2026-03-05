@@ -218,7 +218,7 @@ describe('handleRuntimeEmit', () => {
       expect(emittedArg['metadata']).toMatchObject({ correlation_id: 'corr-abc' });
     });
 
-    it('omits metadata when correlation_id is not provided', async () => {
+    it('includes metadata without correlation_id when correlation_id is not provided', async () => {
       const emitMock = vi.fn().mockReturnValue(makeEmittedEvent());
       ctx = makeContext({
         getEventBus: vi.fn().mockReturnValue({ emit: emitMock }),
@@ -227,7 +227,12 @@ describe('handleRuntimeEmit', () => {
       await handleRuntimeEmit({ event_type: 'trigger:fired' }, ctx);
 
       const emittedArg = emitMock.mock.calls[0][0] as Record<string, unknown>;
-      expect(emittedArg['metadata']).toBeUndefined();
+      const metadata = emittedArg['metadata'] as Record<string, unknown>;
+      expect(metadata).toBeDefined();
+      expect(metadata['session_id']).toBe('');
+      expect(metadata['sequence']).toBe(0);
+      expect(metadata['version']).toBe(1);
+      expect(metadata['correlation_id']).toBeUndefined();
     });
   });
 

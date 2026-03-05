@@ -21,14 +21,15 @@ const { MockSocket, mockCreateConnection, capturedSockets } = vi.hoisted(() => {
   class MockSocket extends EventEmitter {
     destroyed = false;
     written: string[] = [];
-    write = vi.fn((data: string, _enc?: string, cb?: () => void) => {
+    write = vi.fn((data: string, encOrCb?: string | (() => void), cb?: () => void) => {
       this.written.push(data);
-      if (cb) cb();
+      const callback = typeof encOrCb === 'function' ? encOrCb : cb;
+      if (callback) callback();
       return true;
     });
     destroy = vi.fn(() => { this.destroyed = true; });
     pause = vi.fn();
-    end = vi.fn();
+    end = vi.fn((cb?: () => void) => { if (cb) cb(); });
 
     /** Helper: simulate daemon responding with JSON */
     respondWith(response: Record<string, unknown>): void {
@@ -91,7 +92,8 @@ describe('RemoteTransport', () => {
     transport = new RemoteTransport({
       daemonSocketPath: SOCKET_PATH,
       sessionId: SESSION_ID,
-      timeoutMs: 100, // short timeout for tests
+      timeoutMs: 100, // short timeout for connect
+      pendingTimeoutMs: 100, // short timeout for per-RPC calls
     });
   });
 
@@ -178,7 +180,7 @@ describe('RemoteTransport', () => {
     });
 
     it('sends session_leave and sets ready=false', async () => {
-      // First connect
+      // First connect — respond to session_join with ok
       mockCreateConnection.mockImplementationOnce((_opts: unknown) => {
         const sock = new MockSocket();
         capturedSockets.push(sock);
@@ -186,7 +188,11 @@ describe('RemoteTransport', () => {
         sock.write = vi.fn((data: string) => {
           sock.written.push(data);
           const parsed = JSON.parse(data.replace('\n', ''));
-          sock.respondWith({ id: parsed.id, status: 'ok', result: {} });
+          if (parsed.type === 'session_join') {
+            sock.respondWith({ id: parsed.id, status: 'ok', result: {} });
+          } else if (parsed.type === 'session_leave') {
+            // session_leave is fire-and-forget; no response needed
+          }
           return true;
         });
         return sock;
@@ -194,39 +200,43 @@ describe('RemoteTransport', () => {
       await transport.connect();
       expect(transport.isReady()).toBe(true);
 
-      // Then disconnect
-      mockCreateConnection.mockImplementationOnce((_opts: unknown) => {
-        const sock = new MockSocket();
-        capturedSockets.push(sock);
-        process.nextTick(() => sock.emit('connect'));
-        sock.write = vi.fn((data: string) => {
-          sock.written.push(data);
-          const parsed = JSON.parse(data.replace('\n', ''));
-          expect(parsed.type).toBe('session_leave');
-          sock.respondWith({ id: parsed.id, status: 'ok' });
-          return true;
-        });
-        return sock;
-      });
+      // Verify session_leave is written to the same socket, then disconnect
+      const sock = capturedSockets[0];
       await transport.disconnect();
+
+      // Confirm session_leave was sent via the existing socket
+      const leaves = sock.written.filter((w) => {
+        const p = JSON.parse(w.replace('\n', ''));
+        return p.type === 'session_leave';
+      });
+      expect(leaves.length).toBe(1);
       expect(transport.isReady()).toBe(false);
     });
   });
 
   // ─── RPC proxy methods ──────────────────────────────────────────────────
 
-  /** Helper: configure mock to respond to any RPC call with a result */
-  function setupRPCResponse(result: unknown): void {
+  /**
+   * Helper: configure a single mock socket that handles session_join then one RPC call with a result.
+   * Configures mock for connect + single RPC
+   */
+  function setupConnectAndRPC(result: unknown): void {
     mockCreateConnection.mockImplementationOnce((_opts: unknown) => {
       const sock = new MockSocket();
       capturedSockets.push(sock);
       process.nextTick(() => sock.emit('connect'));
+      let joined = false;
       sock.write = vi.fn((data: string) => {
         sock.written.push(data);
         const parsed = JSON.parse(data.replace('\n', ''));
-        expect(parsed.type).toBe('rpc_call');
-        expect(parsed.session_id).toBe(SESSION_ID);
-        sock.respondWith({ id: parsed.id, status: 'ok', result });
+        if (!joined && parsed.type === 'session_join') {
+          joined = true;
+          sock.respondWith({ id: parsed.id, status: 'ok', result: { session_count: 1 } });
+        } else {
+          expect(parsed.type).toBe('rpc_call');
+          expect(parsed.session_id).toBe(SESSION_ID);
+          sock.respondWith({ id: parsed.id, status: 'ok', result });
+        }
         return true;
       });
       return sock;
@@ -235,53 +245,64 @@ describe('RemoteTransport', () => {
 
   describe('RPC proxy methods', () => {
     it('getUptime() sends rpc_call with method "getUptime"', async () => {
-      setupRPCResponse(12345);
+      setupConnectAndRPC(12345);
+      await transport.connect();
       const result = await transport.getUptime();
       expect(result).toBe(12345);
-      const written = capturedSockets[0].written[0];
-      const parsed = JSON.parse(written.replace('\n', ''));
+      // written[0] = session_join, written[1] = rpc_call
+      const sock = capturedSockets[0];
+      const rpcWrite = sock.written[1];
+      const parsed = JSON.parse(rpcWrite.replace('\n', ''));
       expect(parsed.method).toBe('getUptime');
-      expect(parsed.args).toEqual([]);
+      expect(parsed.args).toEqual({});
     });
 
     it('getState() sends key as argument', async () => {
-      setupRPCResponse('state-value');
+      setupConnectAndRPC('state-value');
+      await transport.connect();
       const result = await transport.getState('my.key');
       expect(result).toBe('state-value');
-      const written = capturedSockets[0].written[0];
-      const parsed = JSON.parse(written.replace('\n', ''));
+      const sock = capturedSockets[0];
+      const rpcWrite = sock.written[1];
+      const parsed = JSON.parse(rpcWrite.replace('\n', ''));
       expect(parsed.method).toBe('getState');
-      expect(parsed.args).toEqual(['my.key']);
+      expect(parsed.args).toEqual({ key: 'my.key' });
     });
 
     it('setState() sends key and value as arguments', async () => {
-      setupRPCResponse(undefined);
+      setupConnectAndRPC(undefined);
+      await transport.connect();
       await transport.setState('my.key', { nested: true });
-      const written = capturedSockets[0].written[0];
-      const parsed = JSON.parse(written.replace('\n', ''));
+      const sock = capturedSockets[0];
+      const rpcWrite = sock.written[1];
+      const parsed = JSON.parse(rpcWrite.replace('\n', ''));
       expect(parsed.method).toBe('setState');
-      expect(parsed.args).toEqual(['my.key', { nested: true }]);
+      expect(parsed.args).toEqual({ key: 'my.key', value: { nested: true } });
     });
 
     it('startWorkflow() sends definitionId and context', async () => {
-      setupRPCResponse({ workflow_id: 'wf-123' });
+      setupConnectAndRPC({ workflow_id: 'wf-123' });
+      await transport.connect();
       const result = await transport.startWorkflow('my-defn', { key: 'val' });
       expect(result).toEqual({ workflow_id: 'wf-123' });
-      const written = capturedSockets[0].written[0];
-      const parsed = JSON.parse(written.replace('\n', ''));
+      const sock = capturedSockets[0];
+      const rpcWrite = sock.written[1];
+      const parsed = JSON.parse(rpcWrite.replace('\n', ''));
       expect(parsed.method).toBe('startWorkflow');
-      expect(parsed.args).toEqual(['my-defn', { key: 'val' }]);
+      expect(parsed.args).toEqual({ definitionId: 'my-defn', context: { key: 'val' } });
     });
 
     it('drainDirectives() sends target and workflowId', async () => {
       const directives = [{ type: 'inject', content: 'test' }];
-      setupRPCResponse({ directives });
+      setupConnectAndRPC({ directives });
+      await transport.connect();
       const result = await transport.drainDirectives('subagent_stop', 'wf-1');
       expect(result.directives).toEqual(directives);
-      const written = capturedSockets[0].written[0];
-      const parsed = JSON.parse(written.replace('\n', ''));
+      const sock = capturedSockets[0];
+      const rpcWrite = sock.written[1];
+      const parsed = JSON.parse(rpcWrite.replace('\n', ''));
       expect(parsed.method).toBe('drainDirectives');
-      expect(parsed.args).toEqual(['subagent_stop', 'wf-1']);
+      expect(parsed.args).toEqual({ target: 'subagent_stop', workflowId: 'wf-1' });
     });
   });
 
@@ -289,19 +310,27 @@ describe('RemoteTransport', () => {
 
   describe('RPC error handling', () => {
     it('throws when daemon returns status error', async () => {
+      // Connect first with a mock that accepts session_join, then returns error for rpc_call
       mockCreateConnection.mockImplementationOnce((_opts: unknown) => {
         const sock = new MockSocket();
         capturedSockets.push(sock);
         process.nextTick(() => sock.emit('connect'));
+        let joined = false;
         sock.write = vi.fn((data: string) => {
           sock.written.push(data);
           const parsed = JSON.parse(data.replace('\n', ''));
-          sock.respondWith({ id: parsed.id, status: 'error', error: 'Method failed' });
+          if (!joined && parsed.type === 'session_join') {
+            joined = true;
+            sock.respondWith({ id: parsed.id, status: 'ok', result: { session_count: 1 } });
+          } else {
+            sock.respondWith({ id: parsed.id, status: 'error', error: 'Method failed' });
+          }
           return true;
         });
         return sock;
       });
 
+      await transport.connect();
       await expect(transport.getUptime()).rejects.toThrow(/Method failed|Daemon RPC failed/);
     });
   });
@@ -310,18 +339,26 @@ describe('RemoteTransport', () => {
 
   describe('timeout handling', () => {
     it('throws when socket never responds', async () => {
+      // Connect first, then the RPC call will time out (pendingTimeoutMs = 100ms)
       mockCreateConnection.mockImplementationOnce((_opts: unknown) => {
         const sock = new MockSocket();
         capturedSockets.push(sock);
         process.nextTick(() => sock.emit('connect'));
-        // Write but never respond
+        let joined = false;
         sock.write = vi.fn((data: string) => {
           sock.written.push(data);
+          const parsed = JSON.parse(data.replace('\n', ''));
+          if (!joined && parsed.type === 'session_join') {
+            joined = true;
+            sock.respondWith({ id: parsed.id, status: 'ok', result: { session_count: 1 } });
+          }
+          // rpc_call writes receive no response — will hit pendingTimeoutMs
           return true;
         });
         return sock;
       });
 
+      await transport.connect();
       await expect(transport.getUptime()).rejects.toThrow(/no response|Daemon RPC failed/);
     }, 5000);
   });
@@ -329,16 +366,54 @@ describe('RemoteTransport', () => {
   // ─── Socket error handling ───────────────────────────────────────────────
 
   describe('socket error handling', () => {
-    it('throws when socket emits error', async () => {
+    it('throws when not connected', async () => {
+      // transport.state is 'idle' — sendRaw rejects immediately without touching the socket
+      await expect(transport.getUptime()).rejects.toThrow();
+    });
+
+    it('rejects active RPC when socket emits error then closes', async () => {
+      // Use a local transport with reconnect disabled so onClose rejects pending RPCs immediately
+      const localTransport = new RemoteTransport({
+        daemonSocketPath: SOCKET_PATH,
+        sessionId: SESSION_ID,
+        timeoutMs: 100,
+        pendingTimeoutMs: 100,
+        reconnect: { enabled: false },
+      });
+
       mockCreateConnection.mockImplementationOnce((_opts: unknown) => {
         const sock = new MockSocket();
         capturedSockets.push(sock);
-        // Emit error instead of connect
-        process.nextTick(() => sock.emit('error', new Error('ECONNREFUSED')));
+        process.nextTick(() => sock.emit('connect'));
+        let joined = false;
+        sock.write = vi.fn((data: string, encOrCb?: string | (() => void), cb?: () => void) => {
+          sock.written.push(data);
+          const callback = typeof encOrCb === 'function' ? encOrCb : cb;
+          if (callback) callback();
+          const parsed = JSON.parse(data.replace('\n', ''));
+          if (!joined && parsed.type === 'session_join') {
+            joined = true;
+            sock.respondWith({ id: parsed.id, status: 'ok', result: { session_count: 1 } });
+          }
+          // rpc_call receives no response — socket will error instead
+          return true;
+        });
         return sock;
       });
 
-      await expect(transport.getUptime()).rejects.toThrow(/no response|Daemon RPC failed/);
+      await localTransport.connect();
+      expect(localTransport.isReady()).toBe(true);
+
+      const sock = capturedSockets[0];
+
+      // Start an RPC without responding, then emit error + close
+      const rpcPromise = localTransport.getUptime();
+      process.nextTick(() => {
+        sock.emit('error', new Error('EPIPE'));
+        sock.emit('close');
+      });
+
+      await expect(rpcPromise).rejects.toThrow();
     });
 
     it('throws when connection is refused', async () => {
