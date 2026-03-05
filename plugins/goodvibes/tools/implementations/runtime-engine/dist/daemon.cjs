@@ -372,11 +372,6 @@ function loadConfig(projectRoot) {
         `[runtime-engine] Warning: failed to read goodvibes.json at "${goodvibesPath}": ${toErrorMessage(err)} \u2014 trying legacy config
 `
       );
-    } else {
-      process.stderr.write(
-        `[runtime-engine] Config file not found at "${goodvibesPath}" \u2014 trying legacy config
-`
-      );
     }
   }
   const configPath = (0, import_node_path2.join)(root, ".goodvibes", "state", "runtime-config.json");
@@ -399,10 +394,6 @@ function loadConfig(projectRoot) {
     return merged;
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-      process.stderr.write(
-        `[runtime-engine] Warning: using DEFAULT_CONFIG (projectRoot=${root}, neither goodvibes.json nor legacy runtime-config.json found). http_listener.enabled=${DEFAULT_CONFIG.external.http_listener.enabled}
-`
-      );
     } else {
       process.stderr.write(
         `[runtime-engine] Warning: failed to load config at "${configPath}": ${toErrorMessage(err)} \u2014 using defaults

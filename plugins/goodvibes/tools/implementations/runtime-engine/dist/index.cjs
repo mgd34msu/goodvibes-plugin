@@ -22620,11 +22620,6 @@ function loadConfig(projectRoot) {
         `[runtime-engine] Warning: failed to read goodvibes.json at "${goodvibesPath}": ${toErrorMessage(err)} \u2014 trying legacy config
 `
       );
-    } else {
-      process.stderr.write(
-        `[runtime-engine] Config file not found at "${goodvibesPath}" \u2014 trying legacy config
-`
-      );
     }
   }
   const configPath = (0, import_node_path3.join)(root, ".goodvibes", "state", "runtime-config.json");
@@ -22647,10 +22642,6 @@ function loadConfig(projectRoot) {
     return merged;
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-      process.stderr.write(
-        `[runtime-engine] Warning: using DEFAULT_CONFIG (projectRoot=${root}, neither goodvibes.json nor legacy runtime-config.json found). http_listener.enabled=${DEFAULT_CONFIG.external.http_listener.enabled}
-`
-      );
     } else {
       process.stderr.write(
         `[runtime-engine] Warning: failed to load config at "${configPath}": ${toErrorMessage(err)} \u2014 using defaults
@@ -38406,8 +38397,17 @@ var RuntimeEngineServer = class {
    */
   async start() {
     const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    logger68.info("Starting runtime engine server", {
+      projectRoot,
+      source: process.env.CLAUDE_PROJECT_DIR ? "CLAUDE_PROJECT_DIR" : "cwd"
+    });
     ensureRuntimeSections(projectRoot);
     const config2 = loadConfig(projectRoot);
+    logger68.info("Config loaded", {
+      mode: config2.executor.mode,
+      http_listener_enabled: config2.external?.http_listener?.enabled ?? false,
+      http_listener_port: config2.external?.http_listener?.port
+    });
     const mode = config2.executor.mode;
     if (mode === "daemon") {
       await this.ensureDaemonRunning(projectRoot, config2);

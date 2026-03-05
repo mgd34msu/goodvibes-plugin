@@ -156,8 +156,17 @@ export class RuntimeEngineServer {
    */
   async start(): Promise<void> {
     const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    logger.info('Starting runtime engine server', {
+      projectRoot,
+      source: process.env.CLAUDE_PROJECT_DIR ? 'CLAUDE_PROJECT_DIR' : 'cwd',
+    });
     ensureRuntimeSections(projectRoot);
     const config = loadConfig(projectRoot);
+    logger.info('Config loaded', {
+      mode: config.executor.mode,
+      http_listener_enabled: config.external?.http_listener?.enabled ?? false,
+      http_listener_port: config.external?.http_listener?.port,
+    });
     const mode = config.executor.mode;
 
     if (mode === 'daemon') {
