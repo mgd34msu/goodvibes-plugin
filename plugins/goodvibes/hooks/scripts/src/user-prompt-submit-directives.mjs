@@ -291,7 +291,9 @@ try {
         }
       }
     } else if (!isSubagent && trimmedPrompt.length > 0 && socketPath && existsSync(socketPath)) {
-      // Fire-and-forget: notify daemon of human prompt for EventBus emission
+      // Fire-and-forget: sends hook_event to daemon IPC.
+      // Flow: hook_event → IPC router → HookProcessor → createUserPromptSubmitHandler → human:prompt emission on EventBus.
+      // Also emits user_prompt_submit on EventBus directly from IPC router handleHookEvent().
       sendMessage(socketPath, {
         type: 'hook_event',
         id: generateId(),
