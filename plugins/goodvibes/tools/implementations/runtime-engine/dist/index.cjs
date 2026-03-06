@@ -24003,6 +24003,16 @@ init_utils();
 var logger4 = createLogger("event-log");
 var FLUSH_INTERVAL_MS = 100;
 var FLUSH_THRESHOLD_BYTES = 64 * 1024;
+function normalizeTimestamp(ts) {
+  if (typeof ts === "number")
+    return ts;
+  if (typeof ts === "string") {
+    const ms = new Date(ts).getTime();
+    return isNaN(ms) ? 0 : ms;
+  }
+  return 0;
+}
+__name(normalizeTimestamp, "normalizeTimestamp");
 var EventLog = class {
   static {
     __name(this, "EventLog");
@@ -24285,7 +24295,7 @@ var EventLog = class {
             skippedLines++;
             return true;
           }
-          const ts = event.timestamp ?? 0;
+          const ts = normalizeTimestamp(event.timestamp);
           if (ts < cutoff) {
             toArchive.push(line);
           } else {
@@ -24532,9 +24542,9 @@ var EventLog = class {
       if (!filter.types.includes(event.type))
         return false;
     }
-    if (filter.since && event.timestamp && event.timestamp < filter.since)
+    if (filter.since && normalizeTimestamp(event.timestamp) < filter.since)
       return false;
-    if (filter.until && event.timestamp && event.timestamp > filter.until)
+    if (filter.until && normalizeTimestamp(event.timestamp) > filter.until)
       return false;
     if (filter.since_sequence !== void 0 && (typeof event.metadata?.sequence !== "number" || event.metadata.sequence <= filter.since_sequence))
       return false;
@@ -28264,13 +28274,24 @@ var DirectiveQueue = class {
    *   matching this workflow_id are returned and removed; the rest remain in
    *   the queue. When omitted, ALL directives for the target are returned and
    *   the queue is cleared (backward-compatible behaviour).
+   * @param sessionId - Optional session ID. When provided, only directives
+   *   matching this session_id (or directives with no session_id) are returned
+   *   and removed; directives scoped to a different session remain in the queue.
+   *   When omitted, ALL directives are eligible regardless of session_id.
    * @returns Array of directives in FIFO order (may be empty).
    */
-  drain(target, workflowId) {
+  drain(target, workflowId, sessionId) {
     const queue = this.queues.get(target);
     if (!queue || queue.length === 0)
       return [];
-    if (workflowId === void 0) {
+    const matches = /* @__PURE__ */ __name((d) => {
+      if (workflowId !== void 0 && d.workflow_id !== workflowId)
+        return false;
+      if (sessionId !== void 0 && d.session_id !== void 0 && d.session_id !== sessionId)
+        return false;
+      return true;
+    }, "matches");
+    if (workflowId === void 0 && sessionId === void 0) {
       const items = [...queue];
       this.queues.delete(target);
       return items;
@@ -28278,7 +28299,7 @@ var DirectiveQueue = class {
     const matching = [];
     const remaining = [];
     for (const d of queue) {
-      if (d.workflow_id === workflowId) {
+      if (matches(d)) {
         matching.push(d);
       } else {
         remaining.push(d);
@@ -28294,9 +28315,13 @@ var DirectiveQueue = class {
   /**
    * Drain directives into a held state instead of permanently removing them.
    * Held directives can be released (confirmed delivered) or re-enqueued (delivery failed).
+   *
+   * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID filter (same semantics as drain).
+   * @param sessionId - Optional session ID filter (same semantics as drain).
    */
-  holdDrain(target, workflowId) {
-    const directives = this.drain(target, workflowId);
+  holdDrain(target, workflowId, sessionId) {
+    const directives = this.drain(target, workflowId, sessionId);
     if (directives.length === 0) {
       return { holdId: "", directives: [] };
     }
@@ -35095,6 +35120,7 @@ var import_node_child_process = require("node:child_process");
 init_logger();
 var logger45 = createLogger("tick-driver");
 var TMUX_TIMEOUT_MS = 5e3;
+var COMPACTION_INTERVAL_MS = 36e5;
 var DAEMON_HEARTBEAT_ID = "daemon:auto_tick";
 var DAEMON_HEARTBEAT_EVENT = "daemon:tick";
 var TickDriver = class _TickDriver {
@@ -35111,11 +35137,12 @@ var TickDriver = class _TickDriver {
   eventProcessor;
   staleWorkflowChecker;
   hasPendingDirectives;
-  eventLog;
   isDaemonProcess;
   evalFailureCount = 0;
-  /** Epoch ms timestamp of the last webhook event delivered to tmux. */
-  lastWebhookDeliveredAt = 0;
+  lastCompactionAt = 0;
+  compactEventLog;
+  /** In-memory buffer of webhook events received via EventBus subscription. Drained each tick. */
+  pendingWebhookEvents = [];
   constructor(deps) {
     this.config = deps.config;
     this.executorMode = deps.executorMode;
@@ -35124,8 +35151,15 @@ var TickDriver = class _TickDriver {
     this.eventProcessor = deps.eventProcessor;
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
     this.hasPendingDirectives = deps.hasPendingDirectives;
-    this.eventLog = deps.eventLog;
     this.isDaemonProcess = deps.isDaemonProcess ?? false;
+    this.compactEventLog = deps.compactEventLog;
+    if (deps.eventBus) {
+      deps.eventBus.on((event) => {
+        if (event.type.startsWith("webhook:")) {
+          this.pendingWebhookEvents.push(event);
+        }
+      });
+    }
     this.timer = new Timer({
       callback: () => this.evaluate(),
       intervalMs: deps.config.daemon.eval_interval_ms,
@@ -35343,11 +35377,18 @@ var TickDriver = class _TickDriver {
         this.sendTick();
       }
     }
-    if (this.isDaemonProcess && this.eventLog) {
-      this.deliverWebhookEvents().catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger45.warn("deliverWebhookEvents() error", { error: msg });
-      });
+    if (this.isDaemonProcess && this.pendingWebhookEvents.length > 0) {
+      this.deliverWebhookEvents();
+    }
+    if (this.isDaemonProcess && this.compactEventLog) {
+      const now = Date.now();
+      if (now - this.lastCompactionAt >= COMPACTION_INTERVAL_MS) {
+        this.lastCompactionAt = now;
+        this.compactEventLog().catch((err) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger45.warn("compactEventLog() error", { error: msg });
+        });
+      }
     }
   }
   /**
@@ -35371,33 +35412,20 @@ var TickDriver = class _TickDriver {
     );
   }
   /**
-   * Query the event log for undelivered webhook events and send each to the
-   * tmux session as user input. Fire-and-forget from evaluate().
+   * Drain the in-memory webhook event buffer and send each event to the tmux
+   * session as user input. Synchronous — no file I/O or queries required.
    */
-  async deliverWebhookEvents() {
-    if (!this.eventLog)
-      return;
-    const allEvents = await this.eventLog.query({
-      since: this.lastWebhookDeliveredAt > 0 ? this.lastWebhookDeliveredAt : void 0,
-      limit: 50
-    });
-    const events = allEvents.filter((e) => e.type.startsWith("webhook:"));
+  deliverWebhookEvents() {
+    const events = this.pendingWebhookEvents.splice(0);
     if (events.length === 0)
       return;
     const sessionName = this.config.daemon.tmux_session_name;
-    let deliveredCount = 0;
     for (const event of events) {
-      if (event.timestamp <= this.lastWebhookDeliveredAt)
-        continue;
       const content = this.formatWebhookEvent(event);
       this.sendToTmux(sessionName, content);
-      deliveredCount++;
-      if (event.timestamp > this.lastWebhookDeliveredAt) {
-        this.lastWebhookDeliveredAt = event.timestamp;
-      }
     }
     logger45.info("webhook events delivered to tmux", {
-      count: deliveredCount,
+      count: events.length,
       session: sessionName
     });
   }
@@ -35971,7 +35999,11 @@ var ActionExecutor = class {
           content,
           priority,
           source: "wrfc",
-          ...workflowId !== void 0 && { workflow_id: workflowId }
+          ...workflowId !== void 0 && { workflow_id: workflowId },
+          // Tag with session_id (non-'default') so drain can scope delivery
+          // to only the session that originated this directive, preventing the
+          // daemon session from stealing orchestrator-bound directives.
+          ...sessionId !== "default" && { session_id: sessionId }
         };
         try {
           this.directiveQueue.enqueue(target, directive);
@@ -36639,9 +36671,13 @@ var IPCRouter = class {
    * @param workflowId - Optional workflow ID for per-workflow isolation.
    *   When provided, only directives with a matching workflow_id are drained.
    *   When omitted, all directives for the target are drained (backward compat).
+   * @param sessionId - Optional session ID for cross-session isolation.
+   *   When provided, only directives with a matching session_id (or no session_id)
+   *   are drained. Directives scoped to a different session remain in the queue.
+   *   When omitted, all directives are eligible regardless of session_id.
    */
-  drainDirectiveMessages(workflowId) {
-    const result = this.directiveQueue?.holdDrain("subagent_stop", workflowId) ?? { holdId: "", directives: [] };
+  drainDirectiveMessages(workflowId, sessionId) {
+    const result = this.directiveQueue?.holdDrain("subagent_stop", workflowId, sessionId) ?? { holdId: "", directives: [] };
     const message = result.directives.filter((d) => d.type === "inject_system_message").sort((a, b) => b.priority - a.priority).map((d) => d.content).join("\n\n");
     return { message, directives: result.directives, holdId: result.holdId };
   }
@@ -36653,8 +36689,11 @@ var IPCRouter = class {
    * @param agentId - Optional agent ID from the query. When provided and a
    *   resolver is registered, it is used to scope the drain to that agent's
    *   workflow, preventing cross-workflow directive delivery.
+   * @param sessionId - Optional session ID from the query. When provided, only
+   *   directives scoped to this session (or with no session_id) are returned.
+   *   This prevents the daemon session from stealing orchestrator directives.
    */
-  buildDirectivesResponse(msgId, agentId) {
+  buildDirectivesResponse(msgId, agentId, sessionId) {
     let workflowId;
     if (agentId && this.agentWorkflowResolver) {
       const resolved = this.agentWorkflowResolver(agentId);
@@ -36670,7 +36709,7 @@ var IPCRouter = class {
         };
       }
     }
-    const { message, directives, holdId } = this.drainDirectiveMessages(workflowId);
+    const { message, directives, holdId } = this.drainDirectiveMessages(workflowId, sessionId);
     return {
       response: {
         id: msgId,
@@ -36753,6 +36792,70 @@ var IPCRouter = class {
           });
         }
       }
+      if (this.stateDir) {
+        try {
+          const KEEP_SESSION_COUNT = 10;
+          const entries = (0, import_node_fs14.readdirSync)(this.stateDir);
+          const sessionFiles = entries.filter((f) => f.startsWith("session_") && f.endsWith(".json")).map((f) => {
+            const fullPath = (0, import_node_path14.join)(this.stateDir, f);
+            try {
+              const stat = (0, import_node_fs14.statSync)(fullPath);
+              return { path: fullPath, mtime: stat.mtimeMs };
+            } catch {
+              return { path: fullPath, mtime: 0 };
+            }
+          }).sort((a, b) => b.mtime - a.mtime);
+          const staleSessionFiles = sessionFiles.slice(KEEP_SESSION_COUNT);
+          for (const { path: path4 } of staleSessionFiles) {
+            try {
+              (0, import_node_fs14.unlinkSync)(path4);
+            } catch {
+            }
+          }
+          if (staleSessionFiles.length > 0) {
+            logger53.info("Session cleanup: removed stale session_*.json files", {
+              count: staleSessionFiles.length,
+              total: sessionFiles.length
+            });
+          }
+          const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const PID_RE = /^\d+$/;
+          const socketPointers = entries.filter((f) => f.startsWith("runtime-") && f.endsWith(".socket"));
+          for (const file2 of socketPointers) {
+            const key = file2.slice("runtime-".length, -".socket".length);
+            const pointerFilePath = (0, import_node_path14.join)(this.stateDir, file2);
+            let shouldDelete = false;
+            if (UUID_RE.test(key)) {
+              shouldDelete = !this.registeredSessions.has(key);
+            } else if (PID_RE.test(key)) {
+              try {
+                process.kill(Number(key), 0);
+              } catch {
+                shouldDelete = true;
+              }
+            }
+            if (shouldDelete) {
+              try {
+                const socketTarget = (0, import_node_fs14.readFileSync)(pointerFilePath, "utf-8").trim();
+                if (socketTarget) {
+                  try {
+                    (0, import_node_fs14.unlinkSync)(socketTarget);
+                  } catch {
+                  }
+                }
+              } catch {
+              }
+              try {
+                (0, import_node_fs14.unlinkSync)(pointerFilePath);
+              } catch {
+              }
+              logger53.info("Session cleanup: removed stale socket pointer", { file: file2, key });
+            }
+          }
+        } catch (err) {
+          logger53.warn("Session cleanup failed", { error: toErrorMessage(err) });
+        }
+      }
     }
     if (msg.hook_name === "config:loaded" && this.directiveQueue) {
       const wrfcConfig = msg.hook_input?.wrfc;
@@ -36784,7 +36887,8 @@ var IPCRouter = class {
   async handleQuery(msg) {
     const q = msg.query;
     if (q.kind === "get_directives") {
-      return this.buildDirectivesResponse(msg.id, q.agent_id);
+      const querySessionId = typeof q.session_id === "string" && q.session_id.length > 0 ? q.session_id : void 0;
+      return this.buildDirectivesResponse(msg.id, q.agent_id, querySessionId);
     }
     if (q.kind === "get_system_message") {
       return {
@@ -38122,8 +38226,11 @@ var RuntimeEngine = class {
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
         hasPendingDirectives: () => (this.directives?.directiveQueue?.peek("subagent_stop")?.length ?? 0) > 0,
-        eventLog: this.events?.eventLog ?? void 0,
-        isDaemonProcess
+        eventBus: this.events?.eventBus ?? void 0,
+        isDaemonProcess,
+        compactEventLog: async () => {
+          await this.events?.eventLog?.compact();
+        }
       });
     }
     if (this.executorSubsystem?.executorBudget && this.coreRuntime.stateStore) {
